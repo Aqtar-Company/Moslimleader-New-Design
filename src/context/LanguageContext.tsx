@@ -300,11 +300,17 @@ const LangContext = createContext<LangContextType>({
 });
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [lang, setLang] = useState<Lang>('ar');
+  const [lang, setLang] = useState<Lang>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('lang') as Lang) || 'ar';
+    }
+    return 'ar';
+  });
 
   useEffect(() => {
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    localStorage.setItem('lang', lang);
   }, [lang]);
 
   const toggleLang = () => setLang(l => (l === 'ar' ? 'en' : 'ar'));

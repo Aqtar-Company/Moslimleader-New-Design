@@ -300,20 +300,26 @@ const LangContext = createContext<LangContextType>({
 });
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [lang, setLang] = useState<Lang>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('lang') as Lang) || 'ar';
-    }
-    return 'ar';
-  });
+  const [lang, setLang] = useState<Lang>('ar');
 
+  // On client mount, restore saved language from localStorage
   useEffect(() => {
-    document.documentElement.lang = lang;
-    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
-    localStorage.setItem('lang', lang);
-  }, [lang]);
+    const saved = localStorage.getItem('lang') as Lang | null;
+    const resolved = saved === 'en' ? 'en' : 'ar';
+    setLang(resolved);
+    document.documentElement.lang = resolved;
+    document.documentElement.dir = resolved === 'ar' ? 'rtl' : 'ltr';
+  }, []);
 
-  const toggleLang = () => setLang(l => (l === 'ar' ? 'en' : 'ar'));
+  const toggleLang = () => {
+    setLang(l => {
+      const next = l === 'ar' ? 'en' : 'ar';
+      localStorage.setItem('lang', next);
+      document.documentElement.lang = next;
+      document.documentElement.dir = next === 'ar' ? 'rtl' : 'ltr';
+      return next;
+    });
+  };
   const t = (key: TranslationKey): string => translations[lang][key] ?? key;
   const isRtl = lang === 'ar';
 

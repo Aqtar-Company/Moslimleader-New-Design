@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useLang } from '@/context/LanguageContext';
 
 export default function ContactPage() {
-  const { t } = useLang();
+  const { t, isRtl } = useLang();
   const [form, setForm] = useState({ name: '', email: '', phone: '', message: '' });
   const [sent, setSent] = useState(false);
 
@@ -14,7 +14,7 @@ export default function ContactPage() {
   }
 
   return (
-    <>
+    <div dir={isRtl ? 'rtl' : 'ltr'}>
       {/* Banner */}
       <div className="bg-[#F5C518] py-12 text-center">
         <h1 className="text-3xl md:text-5xl font-black text-gray-900">{t('contact.title')}</h1>
@@ -99,7 +99,7 @@ export default function ContactPage() {
                   required
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full border-2 border-gray-200 focus:border-[#F5C518] rounded-xl px-4 py-3 outline-none text-right"
+                  className="w-full border-2 border-gray-200 focus:border-[#F5C518] rounded-xl px-4 py-3 outline-none"
                   placeholder={t('contact.form.name.ph')}
                 />
               </div>
@@ -110,7 +110,7 @@ export default function ContactPage() {
                   required
                   value={form.email}
                   onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                  className="w-full border-2 border-gray-200 focus:border-[#F5C518] rounded-xl px-4 py-3 outline-none text-right"
+                  className="w-full border-2 border-gray-200 focus:border-[#F5C518] rounded-xl px-4 py-3 outline-none"
                   placeholder="example@email.com"
                   dir="ltr"
                 />
@@ -121,7 +121,7 @@ export default function ContactPage() {
                   type="tel"
                   value={form.phone}
                   onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                  className="w-full border-2 border-gray-200 focus:border-[#F5C518] rounded-xl px-4 py-3 outline-none text-right"
+                  className="w-full border-2 border-gray-200 focus:border-[#F5C518] rounded-xl px-4 py-3 outline-none"
                   placeholder={t('contact.form.phone.ph')}
                   dir="ltr"
                 />
@@ -133,7 +133,7 @@ export default function ContactPage() {
                   rows={5}
                   value={form.message}
                   onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
-                  className="w-full border-2 border-gray-200 focus:border-[#F5C518] rounded-xl px-4 py-3 outline-none text-right resize-none"
+                  className="w-full border-2 border-gray-200 focus:border-[#F5C518] rounded-xl px-4 py-3 outline-none resize-none"
                   placeholder={t('contact.form.message.ph')}
                 />
               </div>
@@ -147,6 +147,6 @@ export default function ContactPage() {
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }

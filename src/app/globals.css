@@ -11,10 +11,12 @@ body {
   color: #1a1a1a;
 }
 
+html[dir="rtl"],
 [dir="rtl"] body {
   font-family: 'Cairo', 'Segoe UI', system-ui, sans-serif;
 }
 
+html[dir="ltr"],
 [dir="ltr"] body {
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
 }

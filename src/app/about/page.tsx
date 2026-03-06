@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useLang } from '@/context/LanguageContext';
 
 const CATALOG_PREVIEW  = 'https://drive.google.com/file/d/17LSwyrbq01E3D1ST2QDDqqJsSqSI4ofw/preview';
@@ -23,11 +24,11 @@ export default function AboutPage() {
   ];
 
   const products = [
-    { icon: '📚', title: t('about.prod1.title'), desc: t('about.prod1.desc') },
-    { icon: '📖', title: t('about.prod2.title'), desc: t('about.prod2.desc') },
-    { icon: '🎲', title: t('about.prod3.title'), desc: t('about.prod3.desc') },
-    { icon: '🕌', title: t('about.prod4.title'), desc: t('about.prod4.desc') },
-    { icon: '✏️', title: t('about.prod5.title'), desc: t('about.prod5.desc') },
+    { img: '/icons/icon-books.png',      title: t('about.prod1.title'), desc: t('about.prod1.desc') },
+    { img: '/icons/icon-stories.png',    title: t('about.prod2.title'), desc: t('about.prod2.desc') },
+    { img: '/icons/icon-games.png',      title: t('about.prod3.title'), desc: t('about.prod3.desc') },
+    { img: '/icons/icon-quran.png',      title: t('about.prod4.title'), desc: t('about.prod4.desc') },
+    { img: '/icons/icon-stationery.png', title: t('about.prod5.title'), desc: t('about.prod5.desc') },
   ];
 
   return (
@@ -82,7 +83,9 @@ export default function AboutPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {products.map((p) => (
               <div key={p.title} className="bg-white rounded-2xl p-6 text-center shadow-sm border-b-4 border-[#F5C518] hover:-translate-y-1 transition-transform">
-                <div className="text-5xl mb-4">{p.icon}</div>
+                <div className="w-24 h-24 mx-auto mb-4 relative">
+                  <Image src={p.img} alt={p.title} fill className="object-contain" unoptimized />
+                </div>
                 <h3 className="font-black text-gray-900 mb-2">{p.title}</h3>
                 <p className="text-gray-500 text-sm leading-relaxed">{p.desc}</p>
               </div>

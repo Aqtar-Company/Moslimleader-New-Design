@@ -7,18 +7,18 @@ import ProductCard from '@/components/product/ProductCard';
 import { useLang } from '@/context/LanguageContext';
 
 export default function HomePage() {
-  const { t } = useLang();
+  const { t, isRtl } = useLang();
   const featured = getFeaturedProducts();
   const displayCategories = categories.filter(c => c.id !== 'all');
 
   return (
-    <>
+    <div dir={isRtl ? 'rtl' : 'ltr'}>
       {/* Hero */}
       <section className="bg-[#F5C518] overflow-hidden">
         <div className="max-w-6xl mx-auto px-4 py-10 md:py-16 flex flex-col md:flex-row items-center gap-8">
           {/* Text side */}
-          <div className="flex-1 text-center md:text-right order-2 md:order-1">
-            <div className="flex items-center justify-center md:justify-end gap-3 mb-4">
+          <div className={`flex-1 text-center ${isRtl ? 'md:text-right order-2 md:order-1' : 'md:text-left order-2 md:order-2'}`}>
+            <div className={`flex items-center justify-center ${isRtl ? 'md:justify-end' : 'md:justify-start'} gap-3 mb-4`}>
               <Image
                 src="https://moslimleader.com/wp-content/uploads/2024/07/Logo.webp"
                 alt="Moslim Leader"
@@ -37,7 +37,7 @@ export default function HomePage() {
             <p className="text-gray-700 mb-8 max-w-md mx-auto md:mx-0">
               {t('home.hero.desc')}
             </p>
-            <div className="flex gap-3 justify-center md:justify-end">
+            <div className={`flex gap-3 justify-center ${isRtl ? 'md:justify-end' : 'md:justify-start'}`}>
               <Link
                 href="/shop"
                 className="bg-gray-900 hover:bg-gray-700 text-white font-bold px-8 py-3 rounded-xl transition"
@@ -54,7 +54,7 @@ export default function HomePage() {
           </div>
 
           {/* Image side */}
-          <div className="flex-1 flex justify-center order-1 md:order-2">
+          <div className={`flex-1 flex justify-center ${isRtl ? 'order-1 md:order-2' : 'order-1 md:order-1'}`}>
             <Image
               src="https://moslimleader.com/wp-content/uploads/2024/07/Asset-4-20.jpg"
               alt="Muslim Leader Products"
@@ -148,6 +148,6 @@ export default function HomePage() {
           </Link>
         </div>
       </section>
-    </>
+    </div>
   );
 }

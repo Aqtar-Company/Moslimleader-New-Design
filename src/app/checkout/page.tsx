@@ -142,7 +142,7 @@ export default function CheckoutPage() {
   const stepIndex = steps.indexOf(step);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10">
+    <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto px-4 py-10">
       <h1 className="text-3xl font-black text-gray-900 mb-8">{txt.checkout}</h1>
 
       {/* Progress steps */}
@@ -373,7 +373,7 @@ export default function CheckoutPage() {
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{item.product.name}</p>
+                    <p className="text-sm font-semibold text-gray-900 truncate">{isRtl ? item.product.name : (item.product.nameEn || item.product.name)}</p>
                   </div>
                   <p className="text-sm font-bold text-gray-900 shrink-0">{item.product.price * item.quantity} {txt.currency}</p>
                 </div>

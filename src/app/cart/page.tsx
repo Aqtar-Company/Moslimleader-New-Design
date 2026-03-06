@@ -7,11 +7,11 @@ import { useLang } from '@/context/LanguageContext';
 
 export default function CartPage() {
   const { items, total, updateQty, removeItem, clear } = useCart();
-  const { t } = useLang();
+  const { t, isRtl } = useLang();
 
   if (items.length === 0) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-24 text-center">
+      <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-2xl mx-auto px-4 py-24 text-center">
         <div className="text-7xl mb-6">🛒</div>
         <h1 className="text-2xl font-black text-gray-900 mb-3">{t('cart.empty.title')}</h1>
         <p className="text-gray-500 mb-8">{t('cart.empty.desc')}</p>
@@ -28,7 +28,7 @@ export default function CartPage() {
   const shipping = 80;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10">
+    <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto px-4 py-10">
       <h1 className="text-3xl font-black text-gray-900 mb-8">{t('cart.title')}</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -50,7 +50,7 @@ export default function CartPage() {
               {/* Details */}
               <div className="flex-1 flex flex-col gap-1">
                 <Link href={`/shop/${item.product.slug}`} className="font-bold text-gray-900 hover:text-purple-700 transition text-sm leading-snug">
-                  {item.product.name}
+                  {isRtl ? item.product.name : (item.product.nameEn || item.product.name)}
                 </Link>
                 <span className="text-gray-500 text-xs">{item.product.category}</span>
                 <span className="font-bold text-gray-900">{item.product.price} {t('cart.currency')}</span>

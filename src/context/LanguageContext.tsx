@@ -124,6 +124,14 @@ const translations = {
     'footer.contactUs': 'تواصل معنا',
     'footer.copyright': 'مسلم ليدر — جميع الحقوق محفوظة',
 
+    // Product Card / Detail
+    'product.outOfStock': 'نفذ المخزون',
+    'product.addToCart': 'أضف للسلة',
+    'product.unavailable': 'غير متاح',
+    'product.inStock': 'متوفر في المخزون',
+    'product.added': '✓ تم الإضافة!',
+    'product.related': 'منتجات ذات صلة',
+
     // Categories
     'cat.all': 'الكل',
     'cat.ألعاب تعليمية': 'ألعاب تعليمية',
@@ -253,6 +261,14 @@ const translations = {
     'footer.quickLinks': 'Quick Links',
     'footer.contactUs': 'Contact Us',
     'footer.copyright': 'Muslim Leader — All Rights Reserved',
+
+    // Product Card / Detail
+    'product.outOfStock': 'Out of Stock',
+    'product.addToCart': 'Add to Cart',
+    'product.unavailable': 'Unavailable',
+    'product.inStock': 'In Stock',
+    'product.added': '✓ Added!',
+    'product.related': 'Related Products',
 
     // Categories
     'cat.all': 'All',

@@ -8,14 +8,17 @@ import { useLang } from '@/context/LanguageContext';
 
 function ShopContent() {
   const searchParams = useSearchParams();
-  const { t } = useLang();
+  const { t, isRtl } = useLang();
   const initialCategory = searchParams.get('category') || 'all';
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [search, setSearch] = useState('');
 
   const filtered = products.filter(p => {
     const matchCat = activeCategory === 'all' || p.category === activeCategory;
-    const matchSearch = p.name.includes(search) || p.shortDescription.includes(search);
+    const matchSearch = isRtl
+      ? p.name.includes(search) || p.shortDescription.includes(search)
+      : (p.nameEn || p.name).toLowerCase().includes(search.toLowerCase()) ||
+        (p.shortDescriptionEn || p.shortDescription).toLowerCase().includes(search.toLowerCase());
     return matchCat && matchSearch;
   });
 
@@ -36,7 +39,7 @@ function ShopContent() {
               placeholder={t('shop.search.ph')}
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full border-2 border-gray-200 focus:border-[#F5C518] rounded-xl px-4 py-3 pr-10 outline-none text-right"
+              className={`w-full border-2 border-gray-200 focus:border-[#F5C518] rounded-xl px-4 py-3 pr-10 outline-none ${isRtl ? 'text-right' : 'text-left'}`}
             />
             <svg className="absolute right-3 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />

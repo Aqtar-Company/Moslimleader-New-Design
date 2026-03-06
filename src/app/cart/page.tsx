@@ -113,9 +113,9 @@ export default function CartPage() {
               </div>
             </div>
 
-            <button className="mt-6 w-full bg-purple-700 hover:bg-purple-800 text-white font-bold py-4 rounded-xl transition text-lg">
+            <Link href="/checkout" className="mt-6 block w-full bg-purple-700 hover:bg-purple-800 text-white font-bold py-4 rounded-xl transition text-lg text-center">
               {t('cart.checkout')}
-            </button>
+            </Link>
             <Link href="/shop" className="mt-3 block text-center text-sm text-gray-500 hover:text-gray-900 transition">
               {t('cart.continue')}
             </Link>

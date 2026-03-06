@@ -6,14 +6,34 @@
   --purple: #6B21A8;
 }
 
-html {
-  direction: rtl;
-}
-
 body {
   background: #fff;
   color: #1a1a1a;
+}
+
+[dir="rtl"] body {
   font-family: 'Cairo', 'Segoe UI', system-ui, sans-serif;
+}
+
+[dir="ltr"] body {
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+}
+
+[dir="ltr"] input,
+[dir="ltr"] textarea,
+[dir="ltr"] select {
+  text-align: left;
+}
+
+[dir="rtl"] input,
+[dir="rtl"] textarea,
+[dir="rtl"] select {
+  text-align: right;
+}
+
+[dir="ltr"] .product-description ul {
+  padding-left: 1.4rem;
+  padding-right: 0;
 }
 
 .product-description h3 {

@@ -1,7 +1,20 @@
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
+import { useLang } from '@/context/LanguageContext';
 
 export default function Footer() {
+  const { t } = useLang();
+
+  const navLinks = [
+    { href: '/', label: t('nav.home') },
+    { href: '/shop', label: t('nav.shop') },
+    { href: '/about', label: t('nav.about') },
+    { href: '/contact', label: t('nav.contact') },
+    { href: '/cart', label: t('nav.cart') },
+  ];
+
   return (
     <footer className="bg-gray-900 text-gray-300 pt-12 pb-6 mt-16">
       <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-10">
@@ -16,9 +29,7 @@ export default function Footer() {
             className="h-12 w-auto object-contain"
             unoptimized
           />
-          <p className="text-sm leading-relaxed text-gray-400">
-            معاً نبني قادة الغد — منتجات تربوية وتعليمية للأطفال والأسرة المسلمة
-          </p>
+          <p className="text-sm leading-relaxed text-gray-400">{t('footer.tagline')}</p>
           {/* Social */}
           <div className="flex gap-3 mt-2">
             <a href="https://facebook.com" target="_blank" rel="noopener noreferrer"
@@ -47,15 +58,9 @@ export default function Footer() {
 
         {/* Quick links */}
         <div>
-          <h4 className="text-white font-bold text-lg mb-4">روابط سريعة</h4>
+          <h4 className="text-white font-bold text-lg mb-4">{t('footer.quickLinks')}</h4>
           <ul className="space-y-2 text-sm">
-            {[
-              { href: '/', label: 'الرئيسية' },
-              { href: '/shop', label: 'المتجر' },
-              { href: '/about', label: 'من نحن' },
-              { href: '/contact', label: 'اتصل بنا' },
-              { href: '/cart', label: 'عربة التسوق' },
-            ].map(l => (
+            {navLinks.map(l => (
               <li key={l.href}>
                 <Link href={l.href} className="hover:text-[#F5C518] transition">
                   {l.label}
@@ -67,7 +72,7 @@ export default function Footer() {
 
         {/* Contact info */}
         <div>
-          <h4 className="text-white font-bold text-lg mb-4">تواصل معنا</h4>
+          <h4 className="text-white font-bold text-lg mb-4">{t('footer.contactUs')}</h4>
           <ul className="space-y-3 text-sm">
             <li className="flex items-start gap-2">
               <svg className="w-4 h-4 mt-0.5 text-[#F5C518] shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -87,7 +92,7 @@ export default function Footer() {
 
       {/* Bottom bar */}
       <div className="max-w-6xl mx-auto px-4 mt-10 pt-6 border-t border-gray-700 flex flex-col md:flex-row items-center justify-between gap-2 text-xs text-gray-500">
-        <p>© {new Date().getFullYear()} مسلم ليدر — جميع الحقوق محفوظة</p>
+        <p>© {new Date().getFullYear()} {t('footer.copyright')}</p>
         <div className="flex gap-3">
           {['Visa', 'MasterCard', 'American-Express'].map(m => (
             <Image

@@ -3,21 +3,23 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
+import { useLang } from '@/context/LanguageContext';
 
 export default function CartPage() {
   const { items, total, updateQty, removeItem, clear } = useCart();
+  const { t } = useLang();
 
   if (items.length === 0) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-24 text-center">
         <div className="text-7xl mb-6">🛒</div>
-        <h1 className="text-2xl font-black text-gray-900 mb-3">عربة التسوق فارغة</h1>
-        <p className="text-gray-500 mb-8">لم تضف أي منتجات بعد</p>
+        <h1 className="text-2xl font-black text-gray-900 mb-3">{t('cart.empty.title')}</h1>
+        <p className="text-gray-500 mb-8">{t('cart.empty.desc')}</p>
         <Link
           href="/shop"
           className="inline-block bg-[#F5C518] hover:bg-[#e0b000] text-gray-900 font-bold px-8 py-3 rounded-xl transition"
         >
-          تسوق الآن
+          {t('cart.empty.cta')}
         </Link>
       </div>
     );
@@ -27,7 +29,7 @@ export default function CartPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-black text-gray-900 mb-8">عربة التسوق</h1>
+      <h1 className="text-3xl font-black text-gray-900 mb-8">{t('cart.title')}</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Items */}
@@ -51,7 +53,7 @@ export default function CartPage() {
                   {item.product.name}
                 </Link>
                 <span className="text-gray-500 text-xs">{item.product.category}</span>
-                <span className="font-bold text-gray-900">{item.product.price} ج.م</span>
+                <span className="font-bold text-gray-900">{item.product.price} {t('cart.currency')}</span>
 
                 <div className="flex items-center gap-3 mt-auto">
                   {/* Qty */}
@@ -71,14 +73,14 @@ export default function CartPage() {
                     onClick={() => removeItem(item.product.id)}
                     className="text-red-400 hover:text-red-600 text-xs transition"
                   >
-                    حذف
+                    {t('cart.delete')}
                   </button>
                 </div>
               </div>
 
               {/* Line total */}
               <div className="shrink-0 text-left font-black text-gray-900">
-                {item.product.price * item.quantity} ج.م
+                {item.product.price * item.quantity} {t('cart.currency')}
               </div>
             </div>
           ))}
@@ -87,35 +89,35 @@ export default function CartPage() {
             onClick={clear}
             className="text-sm text-gray-400 hover:text-red-500 transition self-end mt-2"
           >
-            مسح الكل
+            {t('cart.clearAll')}
           </button>
         </div>
 
         {/* Summary */}
         <div className="lg:col-span-1">
           <div className="bg-gray-50 rounded-2xl p-6 sticky top-24">
-            <h2 className="text-xl font-black text-gray-900 mb-5">ملخص الطلب</h2>
+            <h2 className="text-xl font-black text-gray-900 mb-5">{t('cart.summary.title')}</h2>
 
             <div className="flex flex-col gap-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-500">المجموع الفرعي</span>
-                <span className="font-bold">{total} ج.م</span>
+                <span className="text-gray-500">{t('cart.summary.subtotal')}</span>
+                <span className="font-bold">{total} {t('cart.currency')}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">الشحن</span>
-                <span className="font-bold">{shipping} ج.م</span>
+                <span className="text-gray-500">{t('cart.summary.shipping')}</span>
+                <span className="font-bold">{shipping} {t('cart.currency')}</span>
               </div>
               <div className="border-t pt-3 flex justify-between text-base">
-                <span className="font-black text-gray-900">الإجمالي</span>
-                <span className="font-black text-gray-900 text-lg">{total + shipping} ج.م</span>
+                <span className="font-black text-gray-900">{t('cart.summary.total')}</span>
+                <span className="font-black text-gray-900 text-lg">{total + shipping} {t('cart.currency')}</span>
               </div>
             </div>
 
             <button className="mt-6 w-full bg-purple-700 hover:bg-purple-800 text-white font-bold py-4 rounded-xl transition text-lg">
-              إتمام الشراء
+              {t('cart.checkout')}
             </button>
             <Link href="/shop" className="mt-3 block text-center text-sm text-gray-500 hover:text-gray-900 transition">
-              ← متابعة التسوق
+              {t('cart.continue')}
             </Link>
           </div>
         </div>

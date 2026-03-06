@@ -4,31 +4,33 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
 import { useCart } from '@/context/CartContext';
+import { useLang } from '@/context/LanguageContext';
 
 export default function Header() {
   const { totalItems } = useCart();
+  const { t, lang, toggleLang } = useLang();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const navLinks = [
-    { href: '/', label: 'الرئيسية' },
-    { href: '/shop', label: 'المتجر' },
-    { href: '/about', label: 'من نحن' },
-    { href: '/contact', label: 'اتصل بنا' },
+    { href: '/', label: t('nav.home') },
+    { href: '/shop', label: t('nav.shop') },
+    { href: '/about', label: t('nav.about') },
+    { href: '/contact', label: t('nav.contact') },
   ];
 
   return (
     <header className="sticky top-0 z-50">
       {/* Top promo bar */}
       <div className="bg-gray-900 text-white text-center text-sm py-2 px-4">
-        <span>ⓘ خصم حصري على جميع المنتجات لفترة محدودة</span>
+        <span>{t('header.promo')}</span>
       </div>
 
       {/* Main header */}
       <nav className="bg-[#F5C518] shadow-md">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
 
-          {/* Left: icons */}
-          <div className="flex items-center gap-3">
+          {/* Left: icons + lang toggle */}
+          <div className="flex items-center gap-2">
             {/* Cart */}
             <Link href="/cart" className="relative flex items-center justify-center w-10 h-10 border-2 border-gray-800 rounded-lg hover:bg-yellow-300 transition">
               <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -47,6 +49,15 @@ export default function Header() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
             </Link>
+
+            {/* Language toggle */}
+            <button
+              onClick={toggleLang}
+              className="flex items-center border-2 border-gray-800 rounded-lg px-3 h-10 hover:bg-yellow-300 transition font-bold text-gray-900 text-sm"
+              aria-label="Switch language"
+            >
+              {lang === 'ar' ? 'EN' : 'ع'}
+            </button>
           </div>
 
           {/* Center: nav links */}
@@ -74,7 +85,7 @@ export default function Header() {
           <button
             className="md:hidden flex items-center justify-center w-10 h-10"
             onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="قائمة"
+            aria-label="menu"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {menuOpen

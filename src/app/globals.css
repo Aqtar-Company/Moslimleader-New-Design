@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+:root {
+  --yellow: #F5C518;
+  --yellow-dark: #e0b000;
+  --purple: #6B21A8;
+}
+
+html {
+  direction: rtl;
+}
+
+body {
+  background: #fff;
+  color: #1a1a1a;
+  font-family: 'Cairo', 'Segoe UI', system-ui, sans-serif;
+}
+
+.product-description h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 1rem 0 0.4rem;
+}
+.product-description ul {
+  list-style: disc;
+  padding-right: 1.4rem;
+}
+.product-description li {
+  margin-bottom: 0.2rem;
+  color: #555;
+}
+.product-description p {
+  margin-bottom: 0.6rem;
+  color: #555;
+  line-height: 1.75;
+}
+.product-description strong {
+  color: #1a1a1a;
+}

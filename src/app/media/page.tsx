@@ -1,18 +1,28 @@
 'use client';
 
+import { useState } from 'react';
 import { useLang } from '@/context/LanguageContext';
 
-const PLAYLIST_ID = 'PL24Wl0s0dv_SoE3N5BMM9XxZKazu_v8l9';
 const CHANNEL_URL = 'https://www.youtube.com/@moslimleader7687';
+
+const VIDEOS = [
+  { id: '9kSSCSAg2us' },
+  { id: 'joO3J8S1qkc' },
+  { id: 'oa_RUjlWo6Y' },
+  { id: 'HNpsuHbxyck' },
+  { id: 'Vt2gb9bb6Rk' },
+  { id: '4Z7asM6e9IM' },
+];
 
 export default function MediaPage() {
   const { lang } = useLang();
   const isRtl = lang === 'ar';
+  const [playingId, setPlayingId] = useState<string | null>(null);
 
   const txt = {
-    title:    isRtl ? 'أناشيد وميديا مسلم ليدر' : 'Muslim Leader Media & Nasheeds',
+    title:   isRtl ? 'أناشيد وميديا مسلم ليدر' : 'Muslim Leader Media & Nasheeds',
     subtitle: isRtl ? 'ومضات تربوية من قناة مسلم ليدر' : 'Educational flashes from Muslim Leader',
-    channel:  isRtl ? 'قناة مسلم ليدر على YouTube' : 'Muslim Leader YouTube Channel',
+    channel: isRtl ? 'قناة مسلم ليدر على YouTube' : 'Muslim Leader YouTube Channel',
   };
 
   return (
@@ -34,16 +44,41 @@ export default function MediaPage() {
         </a>
       </div>
 
-      {/* Playlist Embed */}
-      <div className="max-w-5xl mx-auto px-4 py-10">
-        <div className="rounded-2xl overflow-hidden shadow-lg aspect-video">
-          <iframe
-            className="w-full h-full"
-            src={`https://www.youtube.com/embed/videoseries?list=${PLAYLIST_ID}&hl=${lang}`}
-            title={txt.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
+      {/* Video Grid */}
+      <div className="max-w-6xl mx-auto px-4 py-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {VIDEOS.map((v) => (
+            <div key={v.id} className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition">
+              <div className="relative aspect-video bg-gray-900">
+                {playingId === v.id ? (
+                  <iframe
+                    className="w-full h-full"
+                    src={`https://www.youtube.com/embed/${v.id}?autoplay=1`}
+                    allow="autoplay; encrypted-media"
+                    allowFullScreen
+                  />
+                ) : (
+                  <button
+                    onClick={() => setPlayingId(v.id)}
+                    className="absolute inset-0 w-full h-full group"
+                  >
+                    <img
+                      src={`https://img.youtube.com/vi/${v.id}/hqdefault.jpg`}
+                      alt="video thumbnail"
+                      className="w-full h-full object-cover opacity-90"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-14 h-14 bg-[#F5C518] rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition">
+                        <svg className="w-6 h-6 text-gray-900 ms-0.5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </>

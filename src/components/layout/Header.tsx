@@ -36,13 +36,8 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50">
-      {/* Top promo bar */}
-      <div className="bg-gray-900 text-white text-center text-sm py-2 px-4">
-        <span>{t('header.promo')}</span>
-      </div>
-
       {/* Main header */}
-      <nav className="bg-[#F5C518] shadow-md">
+      <nav className="bg-[#F5C518]">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
 
           {/* Left: icons + lang toggle */}

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState } from 'react';
 import { useLang } from '@/context/LanguageContext';
 
@@ -15,10 +16,26 @@ export default function ContactPage() {
 
   return (
     <div dir={isRtl ? 'rtl' : 'ltr'}>
-      {/* Banner */}
-      <div className="bg-[#F5C518] py-12 text-center">
-        <h1 className="text-3xl md:text-5xl font-black text-gray-900">{t('contact.title')}</h1>
-        <p className="text-gray-700 mt-2 text-lg">{t('contact.subtitle')}</p>
+      {/* Hero – full-width image */}
+      <div className="relative w-full h-[340px] md:h-[480px] lg:h-[560px] overflow-hidden">
+        <Image
+          src="/contact-hero.png"
+          alt="contact hero"
+          fill
+          priority
+          className="object-cover object-center"
+        />
+        {/* dark overlay */}
+        <div className="absolute inset-0 bg-black/45" />
+        {/* text on top */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+          <h1 className="text-4xl md:text-6xl font-black text-white drop-shadow-lg">
+            {t('contact.title')}
+          </h1>
+          <p className="text-white/80 mt-3 text-lg md:text-xl max-w-xl drop-shadow">
+            {t('contact.subtitle')}
+          </p>
+        </div>
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-16 grid grid-cols-1 md:grid-cols-2 gap-12">

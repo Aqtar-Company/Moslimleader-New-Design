@@ -1,12 +1,56 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
 import { useState, Suspense, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { products, categories } from '@/lib/products';
 import ProductCard from '@/components/product/ProductCard';
 import { useLang } from '@/context/LanguageContext';
+
+/* ── Hero slideshow ─────────────────────────────────────────── */
+const heroImages = [
+  { src: '/girl and book.jpg', alt: 'Muslim Leader Store' },
+  { src: '/about-hero-portrait.jpg', alt: 'About Muslim Leader' },
+  { src: '/contact-hero-portrait.png', alt: 'Contact Muslim Leader' },
+];
+
+function HeroSlideshow() {
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrent(c => (c + 1) % heroImages.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <>
+      {heroImages.map((img, i) => (
+        <Image
+          key={img.src}
+          src={img.src}
+          alt={img.alt}
+          fill
+          priority={i === 0}
+          className="object-cover object-center transition-opacity duration-1000"
+          style={{ opacity: i === current ? 1 : 0, zIndex: 1 }}
+          unoptimized
+        />
+      ))}
+
+      {/* Dot indicators */}
+      <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex gap-2" style={{ zIndex: 4 }}>
+        {heroImages.map((_, i) => (
+          <div
+            key={i}
+            className={`rounded-full transition-all duration-500 ${i === current ? 'w-6 h-2 bg-white' : 'w-2 h-2 bg-white/50'}`}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
 
 /* ── Fade-in on scroll wrapper ──────────────────────────────── */
 function FadeInSection({ children }: { children: React.ReactNode }) {
@@ -119,22 +163,17 @@ export default function ShopPage() {
 
   return (
     <>
-      {/* ── Full-screen hero ── */}
+      {/* ── Full-screen hero slideshow ── */}
       <section className="relative w-full h-screen overflow-hidden">
-        <Image
-          src="/girl and book.jpg"
-          alt="Muslim Leader"
-          fill
-          priority
-          className="object-cover object-center"
-        />
+        <HeroSlideshow />
 
         {/* gradient: clear top → dark bottom */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/10 to-black/75" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/10 to-black/75" style={{ zIndex: 2 }} />
 
         {/* text pinned to bottom */}
         <div
           className="absolute inset-x-0 bottom-24 flex flex-col items-center text-center px-6"
+          style={{ zIndex: 3 }}
           dir={isRtl ? 'rtl' : 'ltr'}
         >
           <h1 className="text-4xl md:text-6xl font-black text-white drop-shadow-lg leading-tight">
@@ -143,16 +182,10 @@ export default function ShopPage() {
           <p className="text-white/80 mt-3 text-lg md:text-xl max-w-xl drop-shadow">
             {t('home.hero.subtitle')}
           </p>
-          <Link
-            href="/about"
-            className="mt-6 bg-[#F5C518] hover:bg-yellow-400 text-gray-900 font-bold px-8 py-3 rounded-xl transition shadow-lg"
-          >
-            {t('home.hero.aboutUs')}
-          </Link>
         </div>
 
         {/* scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 animate-bounce">
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 animate-bounce" style={{ zIndex: 3 }}>
           <span className="text-white/60 text-xs tracking-widest uppercase">scroll</span>
           <svg className="w-6 h-6 text-white/70" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />

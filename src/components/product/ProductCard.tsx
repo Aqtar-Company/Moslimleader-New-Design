@@ -16,7 +16,7 @@ export default function ProductCard({ product }: { product: Product }) {
   return (
     <div className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 overflow-hidden flex flex-col">
       {/* Image */}
-      <Link href={`/shop/${product.slug}`} className="block relative aspect-square overflow-hidden bg-gray-50">
+      <Link href={`/shop/${product.slug}`} target="_blank" rel="noopener noreferrer" className="block relative aspect-square overflow-hidden bg-gray-50">
         <Image
           src={product.images[0]}
           alt={displayName}
@@ -33,7 +33,7 @@ export default function ProductCard({ product }: { product: Product }) {
 
       {/* Info */}
       <div className="p-4 flex flex-col gap-2 flex-1">
-        <Link href={`/shop/${product.slug}`}>
+        <Link href={`/shop/${product.slug}`} target="_blank" rel="noopener noreferrer">
           <h3 className="font-bold text-gray-900 text-base leading-snug hover:text-purple-700 transition line-clamp-2">
             {displayName}
           </h3>

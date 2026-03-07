@@ -16,7 +16,7 @@ export default function CartPage() {
         <h1 className="text-2xl font-black text-gray-900 mb-3">{t('cart.empty.title')}</h1>
         <p className="text-gray-500 mb-8">{t('cart.empty.desc')}</p>
         <Link
-          href="/shop"
+          href="/"
           className="inline-block bg-[#F5C518] hover:bg-[#e0b000] text-gray-900 font-bold px-8 py-3 rounded-xl transition"
         >
           {t('cart.empty.cta')}
@@ -116,7 +116,7 @@ export default function CartPage() {
             <Link href="/checkout" className="mt-6 block w-full bg-purple-700 hover:bg-purple-800 text-white font-bold py-4 rounded-xl transition text-lg text-center">
               {t('cart.checkout')}
             </Link>
-            <Link href="/shop" className="mt-3 block text-center text-sm text-gray-500 hover:text-gray-900 transition">
+            <Link href="/" className="mt-3 block text-center text-sm text-gray-500 hover:text-gray-900 transition">
               {t('cart.continue')}
             </Link>
           </div>

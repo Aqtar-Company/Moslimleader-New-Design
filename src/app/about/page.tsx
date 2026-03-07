@@ -264,7 +264,7 @@ export default function AboutPage() {
           {t('about.brand.title')}
         </h2>
         <Link
-          href="/shop"
+          href="/"
           className="inline-block bg-gray-900 hover:bg-gray-800 text-white font-bold
             px-10 py-4 rounded-2xl text-lg transition shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]
             hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,0.2)] hover:-translate-y-0.5 duration-200"

@@ -112,7 +112,7 @@ export default function CheckoutPage() {
         <h1 className="text-2xl font-black text-gray-900 mb-3">
           {isRtl ? 'عربة التسوق فارغة' : 'Your cart is empty'}
         </h1>
-        <Link href="/shop" className="inline-block mt-4 bg-[#F5C518] hover:bg-[#e0b000] text-gray-900 font-bold px-8 py-3 rounded-xl transition">
+        <Link href="/" className="inline-block mt-4 bg-[#F5C518] hover:bg-[#e0b000] text-gray-900 font-bold px-8 py-3 rounded-xl transition">
           {isRtl ? 'تسوق الآن' : 'Shop Now'}
         </Link>
       </div>

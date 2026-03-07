@@ -8,8 +8,7 @@ export default function Footer() {
   const { t } = useLang();
 
   const navLinks = [
-    { href: '/', label: t('nav.home') },
-    { href: '/shop', label: t('nav.shop') },
+    { href: '/', label: t('nav.shop') },
     { href: '/about', label: t('nav.about') },
     { href: '/contact', label: t('nav.contact') },
     { href: '/cart', label: t('nav.cart') },

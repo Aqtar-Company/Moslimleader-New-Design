@@ -37,7 +37,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
         <div className="max-w-6xl mx-auto px-4 flex items-center gap-2 text-sm text-gray-500">
           <Link href="/" className="hover:text-gray-900 transition">{t('nav.home')}</Link>
           <span>/</span>
-          <Link href="/shop" className="hover:text-gray-900 transition">{t('nav.shop')}</Link>
+          <Link href="/" className="hover:text-gray-900 transition">{t('nav.shop')}</Link>
           <span>/</span>
           <span className="text-gray-900 font-medium">{displayName}</span>
         </div>

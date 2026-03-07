@@ -27,8 +27,7 @@ export default function Header() {
   }, []);
 
   const navLinks = [
-    { href: '/', label: t('nav.home') },
-    { href: '/shop', label: t('nav.shop') },
+    { href: '/', label: t('nav.shop') },
     { href: '/media', label: isRtl ? 'الوسائط' : 'Media' },
     { href: '/about', label: t('nav.about') },
     { href: '/contact', label: t('nav.contact') },

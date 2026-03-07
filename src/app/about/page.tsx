@@ -35,7 +35,7 @@ export default function AboutPage() {
     <div dir={isRtl ? 'rtl' : 'ltr'}>
 
       {/* ── HERO ── */}
-      <section className="relative w-full overflow-hidden" style={{ aspectRatio: '1500/522' }}>
+      <section className="relative w-full overflow-hidden mt-16" style={{ aspectRatio: '1500/522' }}>
         <Image
           src="/about-hero.png"
           alt={t('about.title')}

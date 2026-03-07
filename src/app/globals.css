@@ -59,3 +59,15 @@ html[dir="ltr"],
 .product-description strong {
   color: #1a1a1a;
 }
+
+/* ── Scroll fade-in animation ──────────────────────────────── */
+.fade-section {
+  opacity: 0;
+  transform: translateY(48px);
+  transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.fade-section.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}

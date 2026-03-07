@@ -2,12 +2,40 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { products, categories } from '@/lib/products';
 import ProductCard from '@/components/product/ProductCard';
 import { useLang } from '@/context/LanguageContext';
 
+/* ── Fade-in on scroll wrapper ──────────────────────────────── */
+function FadeInSection({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.classList.add('is-visible');
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.08 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} className="fade-section">
+      {children}
+    </div>
+  );
+}
+
+/* ── Shop content ───────────────────────────────────────────── */
 function ShopContent() {
   const searchParams = useSearchParams();
   const { t, isRtl } = useLang();
@@ -84,65 +112,60 @@ function ShopContent() {
   );
 }
 
+/* ── Page ───────────────────────────────────────────────────── */
 export default function ShopPage() {
   const { t, lang } = useLang();
   const isRtl = lang === 'ar';
 
   return (
     <>
-      {/* Hero */}
-      <section className="bg-[#F5C518] overflow-hidden">
-        <div className="max-w-6xl mx-auto px-4 py-10 md:py-16 flex flex-col md:flex-row items-center gap-8" dir={isRtl ? 'rtl' : 'ltr'}>
-          {/* Text side */}
-          <div className={`flex-1 text-center ${isRtl ? 'md:text-right order-2 md:order-1' : 'md:text-left order-2 md:order-2'}`}>
-            <div className={`flex items-center justify-center ${isRtl ? 'md:justify-end' : 'md:justify-start'} gap-3 mb-4`}>
-              <Image
-                src="https://moslimleader.com/wp-content/uploads/2024/07/Logo.webp"
-                alt="Moslim Leader"
-                width={120}
-                height={48}
-                className="h-12 w-auto object-contain"
-                unoptimized
-              />
-            </div>
-            <h1 className="text-3xl md:text-5xl font-black text-gray-900 leading-tight mb-3">
-              {t('home.hero.title')}
-            </h1>
-            <p className="text-xl md:text-2xl font-bold text-gray-800 mb-6">
-              {t('home.hero.subtitle')}
-            </p>
-            <p className="text-gray-700 mb-8 max-w-md mx-auto md:mx-0">
-              {t('home.hero.desc')}
-            </p>
-            <div className={`flex gap-3 justify-center ${isRtl ? 'md:justify-end' : 'md:justify-start'}`}>
-              <Link
-                href="/about"
-                className="border-2 border-gray-900 hover:bg-gray-900 hover:text-white text-gray-900 font-bold px-8 py-3 rounded-xl transition"
-              >
-                {t('home.hero.aboutUs')}
-              </Link>
-            </div>
-          </div>
+      {/* ── Full-screen hero ── */}
+      <section className="relative w-full h-screen overflow-hidden">
+        <Image
+          src="/girl and book.jpg"
+          alt="Muslim Leader"
+          fill
+          priority
+          className="object-cover object-center"
+        />
 
-          {/* Image side */}
-          <div className={`flex-1 flex justify-center ${isRtl ? 'order-1 md:order-2' : 'order-1 md:order-1'}`}>
-            <Image
-              src="https://moslimleader.com/wp-content/uploads/2024/07/Asset-4-20.jpg"
-              alt="Muslim Leader Products"
-              width={500}
-              height={400}
-              className="w-full max-w-sm md:max-w-lg object-contain rounded-2xl"
-              unoptimized
-              priority
-            />
-          </div>
+        {/* gradient: clear top → dark bottom */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/10 to-black/75" />
+
+        {/* text pinned to bottom */}
+        <div
+          className="absolute inset-x-0 bottom-24 flex flex-col items-center text-center px-6"
+          dir={isRtl ? 'rtl' : 'ltr'}
+        >
+          <h1 className="text-4xl md:text-6xl font-black text-white drop-shadow-lg leading-tight">
+            {t('home.hero.title')}
+          </h1>
+          <p className="text-white/80 mt-3 text-lg md:text-xl max-w-xl drop-shadow">
+            {t('home.hero.subtitle')}
+          </p>
+          <Link
+            href="/about"
+            className="mt-6 bg-[#F5C518] hover:bg-yellow-400 text-gray-900 font-bold px-8 py-3 rounded-xl transition shadow-lg"
+          >
+            {t('home.hero.aboutUs')}
+          </Link>
+        </div>
+
+        {/* scroll indicator */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 animate-bounce">
+          <span className="text-white/60 text-xs tracking-widest uppercase">scroll</span>
+          <svg className="w-6 h-6 text-white/70" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
         </div>
       </section>
 
-      {/* Shop content */}
-      <Suspense>
-        <ShopContent />
-      </Suspense>
+      {/* ── Shop content with fade-in ── */}
+      <FadeInSection>
+        <Suspense>
+          <ShopContent />
+        </Suspense>
+      </FadeInSection>
     </>
   );
 }

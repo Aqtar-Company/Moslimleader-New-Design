@@ -25,10 +25,10 @@ export default function ContactPage() {
           priority
           className="object-cover object-center"
         />
-        {/* dark overlay */}
-        <div className="absolute inset-0 bg-black/45" />
-        {/* text on top */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+        {/* gradient overlay: transparent top → dark bottom */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/10 to-black/70" />
+        {/* text pinned to bottom */}
+        <div className="absolute inset-x-0 bottom-0 flex flex-col items-center text-center px-4 pb-10">
           <h1 className="text-4xl md:text-6xl font-black text-white drop-shadow-lg">
             {t('contact.title')}
           </h1>

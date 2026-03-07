@@ -84,29 +84,25 @@ export default function AboutPage() {
     <div dir={dir} className="overflow-x-hidden">
 
       {/* ══ HERO ══════════════════════════════════════════════ */}
-      <section className="relative w-full overflow-hidden mt-16">
+      <section className="relative w-full h-[340px] md:h-[480px] lg:h-[560px] overflow-hidden">
         <Image
-          src="/about-hero-portrait.jpg"
+          src="/about-hero.png"
           alt={t('about.title')}
-          width={1080} height={1350}
-          className="block md:hidden w-full h-auto object-cover"
-          priority unoptimized
+          fill
+          priority
+          className="object-cover object-center"
         />
-        <Image
-          src="/about-hero-landscape.jpg"
-          alt={t('about.title')}
-          width={1500} height={522}
-          className="hidden md:block w-full h-auto object-cover"
-          priority unoptimized
-        />
-      </section>
-
-      {/* ══ INTRO STRIP ═══════════════════════════════════════ */}
-      <section className="bg-[#F5C518] py-14 px-4 text-center">
-        <h1 className="text-3xl md:text-5xl font-black text-gray-900 mb-3">{t('about.title')}</h1>
-        <p className="text-gray-800 text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
-          {t('about.subtitle')}
-        </p>
+        {/* gradient overlay: transparent top → dark bottom */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/10 to-black/70" />
+        {/* text pinned to bottom */}
+        <div className="absolute inset-x-0 bottom-0 flex flex-col items-center text-center px-4 pb-10">
+          <h1 className="text-4xl md:text-6xl font-black text-white drop-shadow-lg">
+            {t('about.title')}
+          </h1>
+          <p className="text-white/80 mt-3 text-lg md:text-xl max-w-xl drop-shadow">
+            {t('about.subtitle')}
+          </p>
+        </div>
       </section>
 
       {/* ══ BRAND STORY ═══════════════════════════════════════ */}

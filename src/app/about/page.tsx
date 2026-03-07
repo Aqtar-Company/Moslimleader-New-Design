@@ -35,13 +35,15 @@ export default function AboutPage() {
     <div dir={isRtl ? 'rtl' : 'ltr'}>
 
       {/* ── HERO ── */}
-      <section className="bg-[#F5C518] py-16 px-4 text-center">
-        <h1 className="text-3xl md:text-5xl font-black text-gray-900 mb-6">
-          {t('about.title')}
-        </h1>
-        <p className="max-w-3xl mx-auto text-gray-800 text-base md:text-lg leading-relaxed">
-          {t('about.hero.text')}
-        </p>
+      <section className="relative w-full overflow-hidden" style={{ aspectRatio: '1500/522' }}>
+        <Image
+          src="/about-hero.png"
+          alt={t('about.title')}
+          fill
+          className="object-cover object-center"
+          priority
+          unoptimized
+        />
       </section>
 
       {/* ── VISION / MISSION / GOAL ── */}

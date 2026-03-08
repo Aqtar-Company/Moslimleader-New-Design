@@ -125,26 +125,19 @@ export default function CartPage() {
                 </div>
               </div>
 
-              {user ? (
-                <button className="mt-6 w-full bg-gray-900 text-white py-3.5 rounded-xl font-bold hover:bg-gray-700 transition text-sm">
+              <div className="mt-6 flex flex-col gap-2">
+                <Link
+                  href="/checkout"
+                  className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-bold hover:bg-gray-700 transition text-sm text-center"
+                >
                   {t('cart.checkout')}
-                </button>
-              ) : (
-                <div className="mt-6 flex flex-col gap-2">
-                  <Link
-                    href="/auth"
-                    className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-bold hover:bg-gray-700 transition text-sm text-center"
-                  >
-                    {isRtl ? 'سجل دخول لإتمام الشراء' : 'Sign in to Checkout'}
-                  </Link>
+                </Link>
+                {!user && (
                   <p className="text-xs text-center text-gray-400">
-                    {isRtl ? 'أو تسوق كضيف' : 'or continue as guest'}
+                    {isRtl ? 'يمكنك الشراء كضيف بدون تسجيل' : 'You can checkout as a guest'}
                   </p>
-                  <button className="w-full border-2 border-gray-900 text-gray-900 py-3 rounded-xl font-bold hover:bg-gray-100 transition text-sm">
-                    {t('cart.checkout')}
-                  </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>

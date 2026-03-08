@@ -43,7 +43,7 @@ export default function Header() {
             <Link href="/">
               <Image
                 src="/logo gold.png"
-                alt="Moslim Leader"
+                alt="Muslim Leader"
                 width={200}
                 height={88}
                 className="h-20 w-auto object-contain"

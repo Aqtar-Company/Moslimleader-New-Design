@@ -94,7 +94,7 @@ export default function AuthPage() {
         <div className="flex justify-center mb-8">
           <Image
             src="/Logo.webp"
-            alt="Moslim Leader"
+            alt="Muslim Leader"
             width={160}
             height={64}
             className="h-16 w-auto object-contain"

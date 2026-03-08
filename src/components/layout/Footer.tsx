@@ -78,7 +78,7 @@ export default function Footer() {
           <div className="flex flex-col items-center sm:items-start gap-3">
             <Image
               src="/Logo.webp"
-              alt="Moslim Leader"
+              alt="Muslim Leader"
               width={160}
               height={64}
               className="h-16 w-auto object-contain"
@@ -95,10 +95,8 @@ export default function Footer() {
               {isRtl ? 'روابط سريعة' : 'Quick Links'}
             </h4>
             {[
-              { href: '/',        ar: 'الرئيسية',  en: 'Home' },
-              { href: '/shop',    ar: 'المتجر',     en: 'Shop' },
-              { href: '/about',   ar: 'من نحن',     en: 'About' },
-              { href: '/contact', ar: 'تواصل معنا', en: 'Contact' },
+              { href: '/',      ar: 'الرئيسية', en: 'Home' },
+              { href: '/about', ar: 'من نحن',   en: 'About' },
             ].map(link => (
               <Link
                 key={link.href}

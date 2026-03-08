@@ -13,7 +13,7 @@ export default function Header() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
-      <nav className="bg-gradient-to-b from-black/70 to-transparent">
+      <nav className="bg-gradient-to-b from-[#1a0f00]/80 to-transparent">
         <div className="max-w-6xl mx-auto px-4 h-20 grid grid-cols-3 items-center">
 
           {/* Left: Cart + Lang */}

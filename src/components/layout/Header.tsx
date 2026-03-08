@@ -44,9 +44,9 @@ export default function Header() {
               <Image
                 src="/logo gold.png"
                 alt="Moslim Leader"
-                width={200}
-                height={88}
-                className="h-20 w-auto object-contain"
+                width={300}
+                height={132}
+                className="h-24 md:h-28 w-auto object-contain"
                 unoptimized
               />
             </Link>

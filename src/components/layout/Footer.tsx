@@ -50,11 +50,11 @@ export default function Footer() {
           {/* Logo */}
           <div className="shrink-0">
             <Image
-              src="https://moslimleader.com/wp-content/uploads/2024/10/Logo.webp"
+              src="https://moslimleader.com/wp-content/uploads/2024/07/Logo.webp"
               alt="Moslim Leader"
-              width={110}
-              height={44}
-              className="h-11 w-auto object-contain"
+              width={150}
+              height={60}
+              className="h-14 w-auto object-contain"
               unoptimized
             />
           </div>

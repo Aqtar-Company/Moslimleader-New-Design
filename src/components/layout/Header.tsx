@@ -9,14 +9,14 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50">
-      <nav className="bg-[#F5C518]">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+      <nav className="bg-gradient-to-b from-black/80 to-transparent">
+        <div className="max-w-6xl mx-auto px-4 h-20 flex items-center justify-between gap-4">
 
           {/* Left: lang toggle */}
           <div className="flex items-center gap-2">
             <button
               onClick={toggleLang}
-              className="flex items-center border-2 border-gray-800 rounded-lg px-3 h-10 hover:bg-yellow-300 transition font-bold text-gray-900 text-sm"
+              className="flex items-center border-2 border-white/70 rounded-lg px-3 h-10 hover:bg-white/20 transition font-bold text-white text-sm"
               aria-label="Switch language"
             >
               {lang === 'ar' ? 'EN' : 'ع'}
@@ -28,9 +28,9 @@ export default function Header() {
             <Image
               src="https://moslimleader.com/wp-content/uploads/2024/07/Logo.webp"
               alt="Moslim Leader"
-              width={100}
-              height={40}
-              className="h-10 w-auto object-contain"
+              width={150}
+              height={60}
+              className="h-14 w-auto object-contain"
               unoptimized
             />
           </Link>

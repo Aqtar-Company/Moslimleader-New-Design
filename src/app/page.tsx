@@ -9,9 +9,9 @@ import { useLang } from '@/context/LanguageContext';
 
 /* ── Hero slideshow ─────────────────────────────────────────── */
 const heroImages = [
-  { src: '/girl and book.jpg', alt: 'Muslim Leader Store' },
-  { src: '/about-hero-portrait.jpg', alt: 'About Muslim Leader' },
-  { src: '/contact-hero-portrait.png', alt: 'Contact Muslim Leader' },
+  { src: '/family-hero.png', alt: 'Muslim Leader Family' },
+  { src: '/reading-boy-hero.png', alt: 'Reading Boy' },
+  { src: '/reading-girl-heero.jpg', alt: 'Reading Girl' },
 ];
 
 function HeroSlideshow() {

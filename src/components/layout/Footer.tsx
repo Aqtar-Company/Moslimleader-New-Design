@@ -95,8 +95,7 @@ export default function Footer() {
               {isRtl ? 'روابط سريعة' : 'Quick Links'}
             </h4>
             {[
-              { href: '/',      ar: 'الرئيسية', en: 'Home' },
-              { href: '/about', ar: 'من نحن',   en: 'About' },
+              { href: '/', ar: 'الرئيسية', en: 'Home' },
             ].map(link => (
               <Link
                 key={link.href}

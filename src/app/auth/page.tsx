@@ -47,33 +47,38 @@ function AuthContent() {
     <div className="min-h-screen flex" dir={isRtl ? 'rtl' : 'ltr'}>
 
       {/* Brand panel — desktop only */}
-      <div className="hidden lg:flex lg:w-5/12 xl:w-1/2 bg-gray-950 flex-col items-center justify-center p-12 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(245,197,24,0.08)_0%,transparent_70%)]" />
-        <div className="relative z-10 flex flex-col items-center text-center max-w-xs gap-8">
+      <div className="hidden lg:flex lg:w-5/12 xl:w-1/2 bg-gray-950 flex-col items-start justify-center p-14 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(245,197,24,0.07)_0%,transparent_60%)]" />
+        <div className="absolute top-0 start-0 w-1 h-full bg-[#F5C518]/30" />
+        <div className="relative z-10 flex flex-col items-start text-start max-w-sm gap-8">
           <Image
             src="https://moslimleader.com/wp-content/uploads/2024/10/Logo.webp"
             alt="Moslim Leader"
             width={100}
             height={100}
-            className="w-24 h-24 object-contain brightness-0 invert"
+            className="w-20 h-20 object-contain brightness-0 invert"
             unoptimized
           />
           <div>
-            <h1 className="text-3xl font-black text-white tracking-tight mb-3">
+            <h1 className="text-3xl font-black text-white tracking-tight mb-1">
               {isRtl ? 'مسلم ليدر' : 'Moslim Leader'}
             </h1>
+            <div className="w-10 h-0.5 bg-[#F5C518] mt-2 mb-4" />
             <p className="text-gray-400 text-sm leading-relaxed">
               {isRtl
                 ? 'معاً نبني قادة الغد — منتجات تربوية وتعليمية للأطفال والأسرة'
                 : "Together We Build Tomorrow's Leaders — Educational products for Muslim children and families"}
             </p>
           </div>
-          <div className="flex flex-col gap-3 w-full">
+          <div className="flex flex-col gap-3.5 w-full">
             {(isRtl
-              ? ['✦ شحن سريع لجميع المحافظات', '✦ منتجات أصيلة بهوية إسلامية', '✦ جودة عالية مضمونة']
-              : ['✦ Fast delivery to all governorates', '✦ Authentic Islamic-identity products', '✦ Premium quality guaranteed']
+              ? ['شحن سريع لجميع المحافظات', 'منتجات أصيلة بهوية إسلامية', 'جودة عالية مضمونة']
+              : ['Fast delivery to all governorates', 'Authentic Islamic-identity products', 'Premium quality guaranteed']
             ).map(f => (
-              <p key={f} className="text-xs text-gray-500 text-start">{f}</p>
+              <div key={f} className="flex items-center gap-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#F5C518] shrink-0" />
+                <p className="text-xs text-gray-400">{f}</p>
+              </div>
             ))}
           </div>
         </div>

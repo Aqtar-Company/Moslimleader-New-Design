@@ -11,7 +11,7 @@ export default function AboutPage() {
     { titleKey: 'about.vision.title',  textKey: 'about.vision.text',  icon: '🌟' },
     { titleKey: 'about.mission.title', textKey: 'about.mission.text', icon: '🎯' },
     { titleKey: 'about.goal.title',    textKey: 'about.goal.text',    icon: '🏆' },
-  ];
+  ] as const;
 
   const features = [
     { text: t('about.feat1'), icon: '🎨' },
@@ -26,13 +26,13 @@ export default function AboutPage() {
     { titleKey: 'about.prod3.title', descKey: 'about.prod3.desc', icon: '🎲' },
     { titleKey: 'about.prod4.title', descKey: 'about.prod4.desc', icon: '📿' },
     { titleKey: 'about.prod5.title', descKey: 'about.prod5.desc', icon: '✏️' },
-  ];
+  ] as const;
 
   const values = [
     { titleKey: 'about.val1.title', descKey: 'about.val1.desc', icon: '☪️' },
     { titleKey: 'about.val2.title', descKey: 'about.val2.desc', icon: '✨' },
     { titleKey: 'about.val3.title', descKey: 'about.val3.desc', icon: '👨‍👩‍👧' },
-  ];
+  ] as const;
 
   return (
     <div className="min-h-screen bg-white" dir={isRtl ? 'rtl' : 'ltr'}>

@@ -42,6 +42,7 @@ export const products: Product[] = [
       `${BASE}/2024/07/Feast-Day-6.webp`,
     ],
     inStock: true,
+    videos: ['4Z7asM6e9IM', 'PkF7SmB8k_E'],
   },
   {
     id: '2',
@@ -363,6 +364,7 @@ export const products: Product[] = [
       `${BASE}/2025/09/Mothers-of-Greats.webp`,
     ],
     inStock: true,
+    videos: ['joO3J8S1qkc'],
   },
   {
     id: '11',
@@ -398,6 +400,7 @@ export const products: Product[] = [
       `${BASE}/2024/11/Bukhari.webp`,
     ],
     inStock: true,
+    videos: ['Vt2gb9bb6Rk'],
   },
   {
     id: '12',
@@ -432,6 +435,7 @@ export const products: Product[] = [
       `${BASE}/2024/07/Fakih-in-Wonderland-4.webp`,
     ],
     inStock: true,
+    videos: ['HNpsuHbxyck'],
   },
   {
     id: '13',
@@ -575,6 +579,7 @@ export const products: Product[] = [
       `${BASE}/2024/07/Girls-Notebook-3.webp`,
     ],
     inStock: true,
+    videos: ['9kSSCSAg2us'],
   },
   {
     id: '17',
@@ -614,6 +619,7 @@ export const products: Product[] = [
       `${BASE}/2024/07/Women-Notebook-3.webp`,
     ],
     inStock: true,
+    videos: ['9kSSCSAg2us'],
   },
   {
     id: '18',

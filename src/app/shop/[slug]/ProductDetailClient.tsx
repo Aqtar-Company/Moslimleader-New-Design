@@ -130,6 +130,33 @@ export default function ProductDetailClient({ product }: { product: Product }) {
           </div>
         </div>
 
+        {/* ── Product Videos ── */}
+        {product.videos && product.videos.length > 0 && (
+          <div className="mt-12">
+            <h2 className="text-xl font-black text-gray-900 mb-5 flex items-center gap-2">
+              <span className="w-7 h-7 rounded-lg bg-red-600 flex items-center justify-center">
+                <svg className="w-3.5 h-3.5 text-white fill-current" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </span>
+              {isRtl ? 'فيديوهات المنتج' : 'Product Videos'}
+            </h2>
+            <div className={`grid gap-5 ${product.videos.length === 1 ? 'grid-cols-1 max-w-2xl' : 'grid-cols-1 md:grid-cols-2'}`}>
+              {product.videos.map((videoId, i) => (
+                <div key={videoId} className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-black aspect-video">
+                  <iframe
+                    src={`https://www.youtube.com/embed/${videoId}`}
+                    title={`${displayName} - ${isRtl ? 'فيديو' : 'Video'} ${i + 1}`}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full h-full"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {related.length > 0 && (
           <div className="mt-16">
             <h2 className="text-xl font-black text-gray-900 mb-6">{t('product.related')}</h2>

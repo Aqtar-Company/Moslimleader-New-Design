@@ -13,6 +13,7 @@ export interface Product {
   images: string[];
   inStock: boolean;
   featured?: boolean;
+  videos?: string[];
 }
 
 export interface Category {

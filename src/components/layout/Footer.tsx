@@ -77,7 +77,7 @@ export default function Footer() {
           {/* ── Column 1: Logo + tagline ── */}
           <div className="flex flex-col items-center sm:items-start gap-3">
             <Image
-              src="/Logo.webp"
+              src="/white-Logo.webp"
               alt="Muslim Leader"
               width={160}
               height={64}

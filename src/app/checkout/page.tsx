@@ -1,316 +1,358 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
-import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
+import { useLang } from '@/context/LanguageContext';
 import { governorates, getShipping } from '@/lib/shipping';
 
-type PaymentMethod = 'cod' | 'vodafone' | 'instapay';
 type Step = 'address' | 'payment' | 'confirm';
+type PayMethod = 'cod' | 'card' | 'vodafone' | 'instapay';
 
-interface OrderForm {
+interface AddressForm {
   fullName: string; phone: string; governorate: string;
-  city: string; street: string; building: string; notes: string; payment: PaymentMethod;
+  city: string; street: string; building: string; notes: string;
 }
 
-const STEPS: Step[] = ['address', 'payment', 'confirm'];
+const EMPTY: AddressForm = { fullName: '', phone: '', governorate: '', city: '', street: '', building: '', notes: '' };
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function StepDot({ n, current, done }: { n: number; current: boolean; done: boolean }) {
   return (
-    <div>
-      <label className="block text-sm font-semibold text-gray-700 mb-1.5">{label}</label>
-      {children}
+    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition ${
+      done ? 'bg-green-500 text-white' : current ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-400'
+    }`}>
+      {done ? <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" /></svg> : n}
     </div>
   );
 }
 
-const inputCls = 'w-full border border-gray-200 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/5 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-300 outline-none transition bg-gray-50 focus:bg-white';
-
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, total, clear } = useCart();
-  const { isRtl } = useLang();
   const { user } = useAuth();
+  const { lang } = useLang();
+  const isRtl = lang === 'ar';
 
   const [step, setStep] = useState<Step>('address');
-  const [placed, setPlaced] = useState(false);
-  const [form, setForm] = useState<OrderForm>({
-    fullName: user?.name ?? '', phone: user?.phone ?? '',
-    governorate: '', city: '', street: '', building: '', notes: '', payment: 'cod',
-  });
+  const [address, setAddress] = useState<AddressForm>({ ...EMPTY, fullName: user?.name || '', phone: user?.phone || '' });
+  const [payMethod, setPayMethod] = useState<PayMethod>('cod');
+  const [errors, setErrors] = useState<Partial<AddressForm>>({});
+  const [orderPlaced, setOrderPlaced] = useState(false);
+  const [orderNumber] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
 
-  const shipping = form.governorate ? getShipping(form.governorate) : 0;
-  const grandTotal = total + shipping;
-  const selectedGov = governorates.find(g => g.id === form.governorate);
-  const set = (k: keyof OrderForm, v: string) => setForm(f => ({ ...f, [k]: v }));
+  const shipping = address.governorate ? getShipping(address.governorate) : 0;
+  const govObj = governorates.find(g => g.id === address.governorate);
+  const steps: Step[] = ['address', 'payment', 'confirm'];
+  const stepIdx = steps.indexOf(step);
 
-  if (items.length === 0 && !placed) {
+  const L = {
+    checkout: isRtl ? 'إتمام الشراء' : 'Checkout',
+    address: isRtl ? 'عنوان التوصيل' : 'Delivery',
+    payment: isRtl ? 'الدفع' : 'Payment',
+    confirm: isRtl ? 'تأكيد' : 'Confirm',
+    fullName: isRtl ? 'الاسم بالكامل' : 'Full Name',
+    phone: isRtl ? 'رقم الهاتف' : 'Phone',
+    governorate: isRtl ? 'المحافظة' : 'Governorate',
+    city: isRtl ? 'المدينة / الحي' : 'City / District',
+    street: isRtl ? 'اسم الشارع' : 'Street',
+    building: isRtl ? 'رقم المبنى / الشقة (اختياري)' : 'Building / Apt (optional)',
+    notes: isRtl ? 'ملاحظات للمندوب (اختياري)' : 'Notes (optional)',
+    next: isRtl ? 'التالي' : 'Next',
+    back: isRtl ? 'رجوع' : 'Back',
+    place: isRtl ? 'تأكيد وإتمام الطلب' : 'Place Order',
+    required: isRtl ? 'هذا الحقل مطلوب' : 'Required',
+    currency: isRtl ? 'ج.م' : 'EGP',
+    subtotal: isRtl ? 'المجموع' : 'Subtotal',
+    shippingLabel: isRtl ? 'الشحن' : 'Shipping',
+    totalLabel: isRtl ? 'الإجمالي' : 'Total',
+    orderSummary: isRtl ? 'ملخص الطلب' : 'Order Summary',
+    successTitle: isRtl ? 'تم تأكيد طلبك!' : 'Order Confirmed!',
+    successDesc: isRtl ? 'شكراً! سيتواصل معك فريقنا لتأكيد التوصيل.' : 'Thank you! Our team will contact you to confirm delivery.',
+    orderNo: isRtl ? 'رقم الطلب' : 'Order No.',
+    continueShopping: isRtl ? 'مواصلة التسوق' : 'Continue Shopping',
+    signInNote: isRtl ? 'سجل دخولك لحفظ عنوانك وتتبع طلباتك' : 'Sign in to save your address and track orders',
+    signIn: isRtl ? 'تسجيل الدخول' : 'Sign In',
+  };
+
+  const inputClass = (err?: string) =>
+    `w-full bg-gray-50 border rounded-xl px-4 py-3 outline-none transition text-gray-900 text-sm placeholder:text-gray-400 ${
+      err ? 'border-red-300 focus:border-red-400' : 'border-gray-200 focus:border-gray-400 focus:bg-white'
+    }`;
+
+  function validate() {
+    const e: Partial<AddressForm> = {};
+    if (!address.fullName.trim()) e.fullName = L.required;
+    if (!address.phone.trim()) e.phone = L.required;
+    if (!address.governorate) e.governorate = L.required;
+    if (!address.city.trim()) e.city = L.required;
+    if (!address.street.trim()) e.street = L.required;
+    setErrors(e);
+    return !Object.keys(e).length;
+  }
+
+  if (items.length === 0 && !orderPlaced) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4 pt-16" dir={isRtl ? 'rtl' : 'ltr'}>
-        <div className="text-5xl">🛒</div>
-        <p className="text-gray-500 font-semibold">{isRtl ? 'عربة التسوق فارغة' : 'Your cart is empty'}</p>
-        <Link href="/" className="bg-gray-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-gray-700 transition text-sm">
+      <div className="max-w-lg mx-auto px-4 py-24 text-center">
+        <div className="text-5xl mb-4">🛒</div>
+        <h1 className="text-xl font-black text-gray-900 mb-3">{isRtl ? 'عربة التسوق فارغة' : 'Your cart is empty'}</h1>
+        <Link href="/" className="inline-block mt-4 bg-gray-900 hover:bg-gray-700 text-white font-bold px-8 py-3 rounded-xl transition text-sm">
           {isRtl ? 'تسوق الآن' : 'Shop Now'}
         </Link>
       </div>
     );
   }
 
-  if (placed) {
+  if (orderPlaced) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-6 px-4 pt-16" dir={isRtl ? 'rtl' : 'ltr'}>
-        <div className="w-20 h-20 rounded-full bg-green-50 border-2 border-green-200 flex items-center justify-center text-4xl">✅</div>
-        <div className="text-center">
-          <h1 className="text-2xl font-black text-gray-900 mb-2">{isRtl ? 'تم استلام طلبك!' : 'Order Placed!'}</h1>
-          <p className="text-gray-400 text-sm max-w-xs mx-auto">{isRtl ? 'شكراً لك! سيتواصل معك فريقنا قريباً.' : 'Thank you! Our team will contact you soon.'}</p>
+      <div className="max-w-lg mx-auto px-4 py-24 text-center">
+        <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
+          <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 w-full max-w-sm text-sm space-y-2">
-          {[
-            { label: isRtl ? 'الاسم' : 'Name', val: form.fullName },
-            { label: isRtl ? 'الهاتف' : 'Phone', val: form.phone },
-            { label: isRtl ? 'المحافظة' : 'Governorate', val: isRtl ? selectedGov?.name : selectedGov?.nameEn },
-          ].map(r => (
-            <div key={r.label} className="flex justify-between">
-              <span className="text-gray-400">{r.label}</span>
-              <span className="font-semibold text-gray-800">{r.val}</span>
-            </div>
-          ))}
-          <div className="flex justify-between font-black text-base pt-2 border-t border-gray-100">
-            <span className="text-gray-900">{isRtl ? 'الإجمالي' : 'Total'}</span>
-            <span className="text-[#F5C518]">{grandTotal} {isRtl ? 'ج.م' : 'EGP'}</span>
-          </div>
+        <h1 className="text-2xl font-black text-gray-900 mb-2">{L.successTitle}</h1>
+        <p className="text-gray-500 text-sm mb-8">{L.successDesc}</p>
+        <div className="bg-gray-50 rounded-2xl px-6 py-4 inline-block mb-8">
+          <p className="text-xs text-gray-400 mb-1">{L.orderNo}</p>
+          <p className="text-2xl font-black text-gray-900">#{orderNumber}</p>
         </div>
-        <Link href="/" className="bg-gray-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-gray-700 transition text-sm">
-          {isRtl ? 'العودة للمتجر' : 'Back to Shop'}
-        </Link>
+        <div>
+          <Link href="/" className="inline-block bg-gray-900 hover:bg-gray-700 text-white font-bold px-8 py-3 rounded-xl transition text-sm">
+            {L.continueShopping}
+          </Link>
+        </div>
       </div>
     );
   }
 
-  const stepIndex = STEPS.indexOf(step);
-  const stepLabels = isRtl ? ['العنوان', 'الدفع', 'التأكيد'] : ['Address', 'Payment', 'Confirm'];
-  const canProceedAddress = form.fullName && form.phone && form.governorate && form.city && form.street;
-  const handlePlaceOrder = () => { clear(); setPlaced(true); };
-
   return (
-    <div className="min-h-screen bg-gray-50 pt-24 pb-16" dir={isRtl ? 'rtl' : 'ltr'}>
-      <div className="max-w-4xl mx-auto px-4">
+    <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto px-4 py-10">
+      <h1 className="text-2xl font-black text-gray-900 mb-8">{L.checkout}</h1>
 
-        <h1 className="text-2xl font-black text-gray-900 mb-2">{isRtl ? 'إتمام الشراء' : 'Checkout'}</h1>
-
-        {/* Step bar */}
-        <div className="flex items-center gap-0 mb-8 mt-5">
-          {STEPS.map((s, i) => (
-            <div key={s} className="flex items-center flex-1 last:flex-none">
-              <div className="flex items-center gap-2 shrink-0">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition ${
-                  i < stepIndex ? 'bg-[#F5C518] text-gray-900' :
-                  i === stepIndex ? 'bg-gray-900 text-white' :
-                  'bg-white border-2 border-gray-200 text-gray-400'
-                }`}>
-                  {i < stepIndex ? (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : i + 1}
-                </div>
-                <span className={`text-sm font-semibold hidden sm:block ${i === stepIndex ? 'text-gray-900' : i < stepIndex ? 'text-[#F5C518]' : 'text-gray-400'}`}>
-                  {stepLabels[i]}
-                </span>
-              </div>
-              {i < STEPS.length - 1 && (
-                <div className={`flex-1 h-px mx-3 ${i < stepIndex ? 'bg-[#F5C518]' : 'bg-gray-200'}`} />
-              )}
+      {/* Progress */}
+      <div className="flex items-center gap-0 mb-10">
+        {[L.address, L.payment, L.confirm].map((label, i) => (
+          <div key={i} className="flex items-center flex-1 last:flex-none">
+            <div className="flex items-center gap-2">
+              <StepDot n={i + 1} current={i === stepIdx} done={i < stepIdx} />
+              <span className={`text-sm font-semibold hidden sm:block ${i === stepIdx ? 'text-gray-900' : i < stepIdx ? 'text-green-600' : 'text-gray-400'}`}>
+                {label}
+              </span>
             </div>
-          ))}
+            {i < 2 && <div className={`flex-1 h-px mx-3 ${i < stepIdx ? 'bg-green-400' : 'bg-gray-200'}`} />}
+          </div>
+        ))}
+      </div>
+
+      {/* Guest note */}
+      {!user && (
+        <div className="bg-blue-50 border border-blue-100 rounded-2xl px-5 py-3.5 flex items-center justify-between gap-4 mb-6">
+          <p className="text-sm text-blue-700">{L.signInNote}</p>
+          <Link href={`/auth?redirect=/checkout`} className="text-sm font-bold text-blue-700 hover:underline shrink-0">{L.signIn}</Link>
         </div>
+      )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-            {/* ── Step 1 ── */}
-            {step === 'address' && (
-              <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
-                <h2 className="font-black text-gray-900">{isRtl ? 'بيانات التوصيل' : 'Delivery Details'}</h2>
+        {/* Step content */}
+        <div className="lg:col-span-2">
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label={`${isRtl ? 'الاسم الكامل' : 'Full Name'} *`}>
-                    <input value={form.fullName} onChange={e => set('fullName', e.target.value)} className={inputCls} placeholder={isRtl ? 'الاسم الكامل' : 'Full name'} />
-                  </Field>
-                  <Field label={`${isRtl ? 'رقم الهاتف' : 'Phone'} *`}>
-                    <input value={form.phone} onChange={e => set('phone', e.target.value)} className={inputCls} placeholder="+20 1xx xxx xxxx" type="tel" />
-                  </Field>
+          {/* STEP 1 */}
+          {step === 'address' && (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+              <h2 className="text-lg font-black text-gray-900 mb-6">{L.address}</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.fullName} *</label>
+                  <input type="text" value={address.fullName}
+                    onChange={e => setAddress(a => ({ ...a, fullName: e.target.value }))}
+                    placeholder={isRtl ? 'الاسم بالكامل' : 'Full name'}
+                    className={inputClass(errors.fullName)} />
+                  {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName}</p>}
                 </div>
-
-                <Field label={`${isRtl ? 'المحافظة' : 'Governorate'} *`}>
-                  <select value={form.governorate} onChange={e => set('governorate', e.target.value)} className={inputCls}>
-                    <option value="">{isRtl ? '-- اختر المحافظة --' : '-- Select Governorate --'}</option>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.phone} *</label>
+                  <input type="tel" value={address.phone} dir="ltr"
+                    onChange={e => setAddress(a => ({ ...a, phone: e.target.value }))}
+                    placeholder="01xxxxxxxxx"
+                    className={inputClass(errors.phone)} />
+                  {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.governorate} *</label>
+                  <select value={address.governorate}
+                    onChange={e => setAddress(a => ({ ...a, governorate: e.target.value }))}
+                    className={inputClass(errors.governorate) + ' bg-white cursor-pointer'}>
+                    <option value="">{isRtl ? 'اختر المحافظة' : 'Select'}</option>
                     {governorates.map(g => (
-                      <option key={g.id} value={g.id}>{isRtl ? g.name : g.nameEn} — {g.shipping} {isRtl ? 'ج.م' : 'EGP'}</option>
+                      <option key={g.id} value={g.id}>
+                        {isRtl ? g.name : g.nameEn} — {g.shipping} {L.currency}
+                      </option>
                     ))}
                   </select>
-                </Field>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label={`${isRtl ? 'المدينة / المنطقة' : 'City / Area'} *`}>
-                    <input value={form.city} onChange={e => set('city', e.target.value)} className={inputCls} placeholder={isRtl ? 'مثال: مدينة نصر' : 'e.g. Nasr City'} />
-                  </Field>
-                  <Field label={isRtl ? 'رقم المبنى' : 'Building No.'}>
-                    <input value={form.building} onChange={e => set('building', e.target.value)} className={inputCls} placeholder={isRtl ? 'رقم المبنى' : 'Building number'} />
-                  </Field>
+                  {errors.governorate && <p className="text-red-500 text-xs mt-1">{errors.governorate}</p>}
                 </div>
-
-                <Field label={`${isRtl ? 'الشارع والعنوان' : 'Street & Address'} *`}>
-                  <input value={form.street} onChange={e => set('street', e.target.value)} className={inputCls} placeholder={isRtl ? 'اسم الشارع' : 'Street name'} />
-                </Field>
-
-                <Field label={isRtl ? 'ملاحظات' : 'Notes'}>
-                  <textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={2}
-                    className={`${inputCls} resize-none`} placeholder={isRtl ? 'أي ملاحظات للمندوب...' : 'Notes for courier...'} />
-                </Field>
-
-                <button onClick={() => setStep('payment')} disabled={!canProceedAddress}
-                  className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-bold hover:bg-gray-700 transition text-sm disabled:opacity-30">
-                  {isRtl ? 'التالي: الدفع' : 'Next: Payment'} →
-                </button>
-              </div>
-            )}
-
-            {/* ── Step 2 ── */}
-            {step === 'payment' && (
-              <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
-                <h2 className="font-black text-gray-900">{isRtl ? 'طريقة الدفع' : 'Payment Method'}</h2>
-
-                <div className="space-y-3">
-                  {([
-                    { method: 'cod',      icon: '💵', titleAr: 'الدفع عند الاستلام', titleEn: 'Cash on Delivery',  descAr: 'ادفع نقداً عند الاستلام', descEn: 'Pay cash when order arrives' },
-                    { method: 'vodafone', icon: '📱', titleAr: 'فودافون كاش',        titleEn: 'Vodafone Cash',      descAr: 'حول على 01060306803',    descEn: 'Transfer to 01060306803' },
-                    { method: 'instapay', icon: '⚡', titleAr: 'InstaPay',           titleEn: 'InstaPay',           descAr: 'حول وأرسل الإيصال',      descEn: 'Transfer & send receipt' },
-                  ] as const).map(({ method, icon, titleAr, titleEn, descAr, descEn }) => {
-                    const active = form.payment === method;
-                    return (
-                      <label key={method}
-                        className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition ${active ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-200'}`}>
-                        <input type="radio" name="payment" value={method} checked={active} onChange={() => set('payment', method)} className="sr-only" />
-                        <span className="text-2xl">{icon}</span>
-                        <div className="flex-1">
-                          <p className={`font-bold text-sm ${active ? 'text-gray-900' : 'text-gray-700'}`}>{isRtl ? titleAr : titleEn}</p>
-                          <p className="text-gray-400 text-xs mt-0.5">{isRtl ? descAr : descEn}</p>
-                        </div>
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${active ? 'border-gray-900 bg-gray-900' : 'border-gray-200'}`}>
-                          {active && <div className="w-2 h-2 rounded-full bg-white" />}
-                        </div>
-                      </label>
-                    );
-                  })}
-                </div>
-
-                {(form.payment === 'vodafone' || form.payment === 'instapay') && (
-                  <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-sm text-amber-700">
-                    {isRtl
-                      ? `بعد إتمام الطلب، حول ${grandTotal} ج.م على 01060306803 وأرسل صورة الإيصال على واتساب.`
-                      : `After ordering, transfer ${grandTotal} EGP to 01060306803 and send the receipt via WhatsApp.`}
-                  </div>
-                )}
-
-                <div className="flex gap-3">
-                  <button onClick={() => setStep('address')}
-                    className="flex-1 border border-gray-200 text-gray-500 py-3 rounded-xl font-bold hover:border-gray-400 hover:text-gray-700 transition text-sm">
-                    ← {isRtl ? 'رجوع' : 'Back'}
-                  </button>
-                  <button onClick={() => setStep('confirm')}
-                    className="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold hover:bg-gray-700 transition text-sm">
-                    {isRtl ? 'التالي: تأكيد' : 'Next: Confirm'} →
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ── Step 3 ── */}
-            {step === 'confirm' && (
-              <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-5">
-                <h2 className="font-black text-gray-900">{isRtl ? 'مراجعة الطلب' : 'Review Order'}</h2>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="bg-gray-50 rounded-xl p-4 text-sm space-y-1">
-                    <p className="font-black text-gray-500 text-xs uppercase tracking-wide mb-2">{isRtl ? 'عنوان التوصيل' : 'Delivery'}</p>
-                    <p className="font-semibold text-gray-900">{form.fullName}</p>
-                    <p className="text-gray-500">{form.phone}</p>
-                    <p className="text-gray-500">{isRtl ? selectedGov?.name : selectedGov?.nameEn}، {form.city}</p>
-                    <p className="text-gray-500">{form.street}{form.building ? `، ${form.building}` : ''}</p>
-                    {form.notes && <p className="text-gray-400 italic text-xs">{form.notes}</p>}
-                  </div>
-                  <div className="bg-gray-50 rounded-xl p-4 text-sm">
-                    <p className="font-black text-gray-500 text-xs uppercase tracking-wide mb-2">{isRtl ? 'طريقة الدفع' : 'Payment'}</p>
-                    <p className="font-semibold text-gray-900">
-                      {form.payment === 'cod' ? (isRtl ? 'الدفع عند الاستلام' : 'Cash on Delivery')
-                        : form.payment === 'vodafone' ? 'Vodafone Cash' : 'InstaPay'}
-                    </p>
-                  </div>
-                </div>
-
                 <div>
-                  <p className="font-black text-gray-500 text-xs uppercase tracking-wide mb-3">{isRtl ? 'المنتجات' : 'Items'}</p>
-                  <div className="space-y-3">
-                    {items.map(({ product, quantity }) => (
-                      <div key={product.id} className="flex items-center gap-3">
-                        <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-gray-100 shrink-0">
-                          <Image src={product.images[0]} alt={product.name} fill className="object-cover" unoptimized />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 text-sm line-clamp-1">{product.name}</p>
-                          <p className="text-gray-400 text-xs">× {quantity}</p>
-                        </div>
-                        <p className="font-black text-gray-900 text-sm shrink-0">{product.price * quantity} {isRtl ? 'ج.م' : 'EGP'}</p>
-                      </div>
-                    ))}
-                  </div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.city} *</label>
+                  <input type="text" value={address.city}
+                    onChange={e => setAddress(a => ({ ...a, city: e.target.value }))}
+                    placeholder={isRtl ? 'مثال: مدينة نصر' : 'e.g. Nasr City'}
+                    className={inputClass(errors.city)} />
+                  {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city}</p>}
                 </div>
-
-                <div className="flex gap-3">
-                  <button onClick={() => setStep('payment')}
-                    className="flex-1 border border-gray-200 text-gray-500 py-3 rounded-xl font-bold hover:border-gray-400 hover:text-gray-700 transition text-sm">
-                    ← {isRtl ? 'رجوع' : 'Back'}
-                  </button>
-                  <button onClick={handlePlaceOrder}
-                    className="flex-1 bg-[#F5C518] text-gray-900 py-3 rounded-xl font-black hover:bg-yellow-400 transition text-sm">
-                    ✓ {isRtl ? 'تأكيد الطلب' : 'Place Order'}
-                  </button>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.street} *</label>
+                  <input type="text" value={address.street}
+                    onChange={e => setAddress(a => ({ ...a, street: e.target.value }))}
+                    placeholder={isRtl ? 'اسم الشارع' : 'Street name'}
+                    className={inputClass(errors.street)} />
+                  {errors.street && <p className="text-red-500 text-xs mt-1">{errors.street}</p>}
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.building}</label>
+                  <input type="text" value={address.building}
+                    onChange={e => setAddress(a => ({ ...a, building: e.target.value }))}
+                    placeholder={isRtl ? 'مبنى ١٢، شقة ٤' : 'Bldg 12, Apt 4'}
+                    className={inputClass()} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.notes}</label>
+                  <input type="text" value={address.notes}
+                    onChange={e => setAddress(a => ({ ...a, notes: e.target.value }))}
+                    placeholder={isRtl ? 'أي تعليمات للمندوب' : 'Any courier instructions'}
+                    className={inputClass()} />
                 </div>
               </div>
-            )}
-          </div>
+              <button onClick={() => validate() && setStep('payment')}
+                className="mt-6 w-full bg-gray-900 hover:bg-gray-700 text-white font-bold py-4 rounded-xl transition text-sm">
+                {L.next} →
+              </button>
+            </div>
+          )}
 
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl border border-gray-100 p-5 sticky top-28 text-sm">
-              <h3 className="font-black text-gray-900 mb-4">{isRtl ? 'ملخص الطلب' : 'Order Summary'}</h3>
-              <div className="space-y-2 text-gray-500 mb-4">
-                {items.map(({ product, quantity }) => (
-                  <div key={product.id} className="flex justify-between">
-                    <span className="line-clamp-1 flex-1 ml-2 text-xs">{product.name} ×{quantity}</span>
-                    <span className="font-semibold text-gray-800 shrink-0">{product.price * quantity}</span>
-                  </div>
+          {/* STEP 2 */}
+          {step === 'payment' && (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+              <h2 className="text-lg font-black text-gray-900 mb-6">{L.payment}</h2>
+              <div className="flex flex-col gap-3">
+                {([
+                  { id: 'cod',      icon: '💵', title: isRtl ? 'الدفع عند الاستلام' : 'Cash on Delivery',     desc: isRtl ? 'ادفع نقداً عند وصول طلبك' : 'Pay cash when your order arrives', ok: true },
+                  { id: 'vodafone', icon: '📱', title: 'Vodafone Cash',                                       desc: isRtl ? 'ادفع عبر محفظة فودافون كاش' : 'Pay via Vodafone Cash wallet',       ok: true },
+                  { id: 'instapay', icon: '⚡', title: 'InstaPay',                                            desc: isRtl ? 'ادفع عبر تطبيق InstaPay' : 'Pay via InstaPay app',               ok: true },
+                  { id: 'card',     icon: '💳', title: isRtl ? 'بطاقة بنكية (قريباً)' : 'Card (coming soon)', desc: '',                                                                        ok: false },
+                ] as const).map(m => (
+                  <label key={m.id}
+                    className={`flex items-center gap-4 border-2 rounded-2xl p-4 cursor-pointer transition ${
+                      !m.ok ? 'opacity-40 cursor-not-allowed' : payMethod === m.id ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-300'
+                    }`}>
+                    <input type="radio" name="pay" value={m.id} checked={payMethod === m.id}
+                      disabled={!m.ok} onChange={() => m.ok && setPayMethod(m.id as PayMethod)}
+                      className="accent-gray-900" />
+                    <span className="text-xl">{m.icon}</span>
+                    <div>
+                      <p className="font-bold text-gray-900 text-sm">{m.title}</p>
+                      {m.desc && <p className="text-xs text-gray-500 mt-0.5">{m.desc}</p>}
+                    </div>
+                  </label>
                 ))}
               </div>
-              <div className="border-t border-gray-100 pt-3 space-y-2">
-                <div className="flex justify-between text-gray-400">
-                  <span>{isRtl ? 'المجموع' : 'Subtotal'}</span>
-                  <span>{total} {isRtl ? 'ج.م' : 'EGP'}</span>
+
+              {(payMethod === 'vodafone' || payMethod === 'instapay') && (
+                <div className="mt-4 bg-amber-50 border border-amber-100 rounded-2xl p-4 text-sm">
+                  <p className="font-semibold text-gray-900 mb-1">{isRtl ? 'أرسل المبلغ على الرقم:' : 'Send the amount to:'}</p>
+                  <p className="font-black text-xl tracking-widest text-gray-900" dir="ltr">01060306803</p>
+                  <p className="text-gray-500 text-xs mt-1">{isRtl ? 'ثم أرسل صورة التحويل على واتساب' : 'Then send screenshot on WhatsApp to confirm'}</p>
                 </div>
-                <div className="flex justify-between text-gray-400">
-                  <span>{isRtl ? 'الشحن' : 'Shipping'}</span>
-                  <span>{shipping > 0 ? `${shipping} ${isRtl ? 'ج.م' : 'EGP'}` : (isRtl ? 'يُحدد لاحقاً' : 'TBD')}</span>
+              )}
+
+              <div className="flex gap-3 mt-6">
+                <button onClick={() => setStep('address')}
+                  className="flex-1 border-2 border-gray-200 hover:border-gray-400 text-gray-700 font-bold py-3.5 rounded-xl transition text-sm">
+                  ← {L.back}
+                </button>
+                <button onClick={() => setStep('confirm')}
+                  className="flex-1 bg-gray-900 hover:bg-gray-700 text-white font-bold py-3.5 rounded-xl transition text-sm">
+                  {L.next} →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3 */}
+          {step === 'confirm' && (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+              <h2 className="text-lg font-black text-gray-900 mb-6">{L.confirm}</h2>
+
+              <div className="flex flex-col gap-3 mb-6">
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">{L.address}</p>
+                    <button onClick={() => setStep('address')} className="text-xs text-purple-700 hover:underline">{isRtl ? 'تعديل' : 'Edit'}</button>
+                  </div>
+                  <p className="text-sm text-gray-700 font-semibold">{address.fullName} · {address.phone}</p>
+                  <p className="text-sm text-gray-500">{address.street}{address.building ? '، ' + address.building : ''}, {address.city}, {isRtl ? govObj?.name : govObj?.nameEn}</p>
                 </div>
-                <div className="flex justify-between font-black text-base pt-2 border-t border-gray-100">
-                  <span className="text-gray-900">{isRtl ? 'الإجمالي' : 'Total'}</span>
-                  <span className="text-[#F5C518]">{grandTotal} {isRtl ? 'ج.م' : 'EGP'}</span>
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">{L.payment}</p>
+                    <button onClick={() => setStep('payment')} className="text-xs text-purple-700 hover:underline">{isRtl ? 'تعديل' : 'Edit'}</button>
+                  </div>
+                  <p className="text-sm text-gray-700">
+                    {payMethod === 'cod' ? (isRtl ? 'الدفع عند الاستلام' : 'Cash on Delivery') : payMethod === 'vodafone' ? 'Vodafone Cash' : payMethod === 'instapay' ? 'InstaPay' : 'Card'}
+                  </p>
                 </div>
               </div>
+
+              <button onClick={() => { clear(); setOrderPlaced(true); }}
+                className="w-full bg-[#F5C518] hover:bg-[#e0b000] text-gray-900 font-black py-4 rounded-xl transition text-base">
+                {L.place}
+              </button>
+              <button onClick={() => setStep('payment')}
+                className="mt-3 w-full text-center text-xs text-gray-400 hover:text-gray-700 transition">
+                ← {L.back}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Order summary */}
+        <div className="lg:col-span-1">
+          <div className="bg-gray-50 rounded-2xl p-5 sticky top-24">
+            <h3 className="font-black text-gray-900 text-sm mb-4">{L.orderSummary}</h3>
+            <div className="flex flex-col gap-3 mb-4">
+              {items.map(item => (
+                <div key={item.product.id} className="flex items-center gap-3">
+                  <div className="relative w-11 h-11 rounded-lg overflow-hidden bg-white border border-gray-200 shrink-0">
+                    <Image src={item.product.images[0]} alt={item.product.name} fill className="object-cover" unoptimized />
+                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-gray-900 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
+                      {item.quantity}
+                    </span>
+                  </div>
+                  <p className="flex-1 text-xs font-semibold text-gray-900 truncate">
+                    {isRtl ? item.product.name : (item.product.nameEn || item.product.name)}
+                  </p>
+                  <p className="text-xs font-black text-gray-900 shrink-0">{item.product.price * item.quantity} {L.currency}</p>
+                </div>
+              ))}
+            </div>
+            <div className="border-t pt-3 flex flex-col gap-2 text-xs">
+              <div className="flex justify-between text-gray-500">
+                <span>{L.subtotal}</span>
+                <span className="font-semibold text-gray-900">{total} {L.currency}</span>
+              </div>
+              <div className="flex justify-between text-gray-500">
+                <span>{L.shippingLabel} {address.governorate ? `— ${isRtl ? govObj?.name : govObj?.nameEn}` : ''}</span>
+                <span className="font-semibold text-gray-900">{shipping > 0 ? `${shipping} ${L.currency}` : '—'}</span>
+              </div>
+              {address.governorate && (
+                <div className="flex justify-between border-t pt-2 text-sm">
+                  <span className="font-black text-gray-900">{L.totalLabel}</span>
+                  <span className="font-black text-gray-900 text-base">{total + shipping} <span className="text-xs text-gray-500">{L.currency}</span></span>
+                </div>
+              )}
             </div>
           </div>
         </div>

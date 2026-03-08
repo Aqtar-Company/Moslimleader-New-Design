@@ -106,9 +106,9 @@ export const products: Product[] = [
 <ul>
   <li>Heavy cardboard box (4 × 32.5 × 25 cm)</li>
   <li>13 heavy cardboard cards (23 × 16 cm)</li>
-  <li>Muslim Leader notebook (15 × 17 cm)</li>
+  <li>Moslim Leader notebook (15 × 17 cm)</li>
   <li>A3 leader task schedule</li>
-  <li>Muslim Leader badge</li>
+  <li>Moslim Leader badge</li>
 </ul>`,
     price: 230,
     category: 'ألعاب تعليمية',
@@ -625,7 +625,7 @@ export const products: Product[] = [
     id: '18',
     slug: 'ml-bag',
     name: 'شنطة مسلم ليدر',
-    nameEn: 'Muslim Leader Bag',
+    nameEn: 'Moslim Leader Bag',
     shortDescription: 'شنطة مدرسية للحضانة KG1–KG2 بتصاميم إسلامية',
     shortDescriptionEn: 'A school bag for kindergarten KG1–KG2 with Islamic designs',
     description: `<p>شنطة مسلم ليدر برسومات مناسبة لهويتنا وثقافتنا، بعيداً عن أوهام الشخصيات الدخيلة. متوفرة نموذجين أولاد وبنات.</p>
@@ -637,7 +637,7 @@ export const products: Product[] = [
   <li>سوستتان كبيرتان وجيب أمامي</li>
   <li>33 × 28 × 12 سم</li>
 </ul>`,
-    descriptionEn: `<p>Muslim Leader bag with designs true to our identity and culture — free from foreign cartoon characters. Available in two versions: boys and girls.</p>
+    descriptionEn: `<p>Moslim Leader bag with designs true to our identity and culture — free from foreign cartoon characters. Available in two versions: boys and girls.</p>
 <h3>Specifications</h3>
 <ul>
   <li>Kindergarten bag for KG1 – KG2</li>
@@ -820,9 +820,9 @@ export const products: Product[] = [
     id: '23',
     slug: 'ml-pin',
     name: 'دبوس',
-    nameEn: 'Muslim Leader Pin',
+    nameEn: 'Moslim Leader Pin',
     shortDescription: 'دبوس مسلم ليدر بتصاميم متنوعة',
-    shortDescriptionEn: 'Muslim Leader pin with various designs',
+    shortDescriptionEn: 'Moslim Leader pin with various designs',
     description: `<p>دبوس مسلم ليدر بتصاميم جذابة ومتنوعة تعبر عن الهوية الإسلامية، خامة بلاستيك عالية الجودة.</p>
 <h3>المواصفات</h3>
 <ul>
@@ -830,7 +830,7 @@ export const products: Product[] = [
   <li>قطر 4.5 سم</li>
   <li>الوزن: 6 جرام</li>
 </ul>`,
-    descriptionEn: `<p>A Muslim Leader pin with attractive and diverse designs expressing Islamic identity, made from high-quality plastic.</p>
+    descriptionEn: `<p>A Moslim Leader pin with attractive and diverse designs expressing Islamic identity, made from high-quality plastic.</p>
 <h3>Specifications</h3>
 <ul>
   <li>Plastic material</li>

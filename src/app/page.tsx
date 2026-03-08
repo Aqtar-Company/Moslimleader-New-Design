@@ -9,7 +9,7 @@ import { useLang } from '@/context/LanguageContext';
 
 /* ── Hero slideshow ─────────────────────────────────────────── */
 const heroImages = [
-  { src: '/family-hero.png', alt: 'Muslim Leader Family' },
+  { src: '/family-hero.png', alt: 'Moslim Leader Family' },
   { src: '/reading-boy-hero.png', alt: 'Reading Boy' },
   { src: '/reading-girl-heero.jpg', alt: 'Reading Girl' },
 ];

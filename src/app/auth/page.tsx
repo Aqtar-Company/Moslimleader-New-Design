@@ -82,6 +82,18 @@ function AuthContent() {
             ))}
           </div>
         </div>
+
+        {/* Sign-in illustration */}
+        <div className="absolute bottom-0 left-0 right-0">
+          <Image
+            src="/sign-in.jpg"
+            alt=""
+            width={600}
+            height={400}
+            className="w-full object-cover object-top opacity-60"
+            unoptimized
+          />
+        </div>
       </div>
 
       {/* Form panel */}

@@ -14,11 +14,10 @@ export default function Header() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
       <nav className="bg-gradient-to-b from-black/70 to-transparent">
-        <div className="max-w-6xl mx-auto px-4 h-20 flex items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto px-4 h-20 grid grid-cols-3 items-center">
 
-          {/* Left: cart + auth + lang */}
+          {/* Left: Cart + Lang */}
           <div className="flex items-center gap-2">
-            {/* Cart */}
             <Link href="/cart" className="relative flex items-center justify-center w-10 h-10 border-2 border-white/70 rounded-lg hover:bg-white/20 transition">
               <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.4 7h12.8M7 13L5.4 5M10 21a1 1 0 100-2 1 1 0 000 2zm7 0a1 1 0 100-2 1 1 0 000 2z" />
@@ -30,7 +29,31 @@ export default function Header() {
               )}
             </Link>
 
-            {/* Sign in */}
+            <button
+              onClick={toggleLang}
+              className="flex items-center border-2 border-white/70 rounded-lg px-3 h-10 hover:bg-white/20 transition font-bold text-white text-sm"
+              aria-label="Switch language"
+            >
+              {lang === 'ar' ? 'EN' : 'ع'}
+            </button>
+          </div>
+
+          {/* Center: Logo */}
+          <div className="flex justify-center">
+            <Link href="/">
+              <Image
+                src="/logo gold.png"
+                alt="Moslim Leader"
+                width={120}
+                height={56}
+                className="h-14 w-auto object-contain"
+                unoptimized
+              />
+            </Link>
+          </div>
+
+          {/* Right: Sign In */}
+          <div className="flex items-center justify-end">
             {!user && (
               <Link
                 href="/auth"
@@ -42,28 +65,8 @@ export default function Header() {
                 <span className="hidden sm:block">{lang === 'ar' ? 'دخول' : 'Sign In'}</span>
               </Link>
             )}
-
-            {/* Lang toggle */}
-            <button
-              onClick={toggleLang}
-              className="flex items-center border-2 border-white/70 rounded-lg px-3 h-10 hover:bg-white/20 transition font-bold text-white text-sm"
-              aria-label="Switch language"
-            >
-              {lang === 'ar' ? 'EN' : 'ع'}
-            </button>
           </div>
 
-          {/* Right: logo */}
-          <Link href="/" className="flex items-center gap-2 shrink-0">
-            <Image
-              src="https://moslimleader.com/wp-content/uploads/2024/07/Logo.webp"
-              alt="Moslim Leader"
-              width={150}
-              height={60}
-              className="h-14 w-auto object-contain"
-              unoptimized
-            />
-          </Link>
         </div>
       </nav>
     </header>

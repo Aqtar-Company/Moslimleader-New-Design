@@ -85,7 +85,7 @@ export default function Footer() {
               unoptimized
             />
             <p className="text-xs text-gray-500 text-center sm:text-start leading-relaxed max-w-[180px]">
-              {isRtl ? 'تمكين المسلمين في كل مكان' : 'Empowering Muslims everywhere'}
+              {isRtl ? 'معًا نبني قادة الغد' : "Together We Build Tomorrow's Leaders"}
             </p>
           </div>
 

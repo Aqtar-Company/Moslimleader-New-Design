@@ -77,7 +77,7 @@ export default function AuthPage() {
         <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-[#F5C518]/10 to-transparent" />
 
         <div className="relative z-10 text-center">
-          <Image src="/white-Logo.webp" alt="Muslim Leader" width={180} height={72} className="h-20 w-auto object-contain mx-auto mb-10" unoptimized />
+          <Image src="/white-Logo.webp" alt="Moslim Leader" width={180} height={72} className="h-20 w-auto object-contain mx-auto mb-10" unoptimized />
           <h2 className="text-white text-2xl font-black leading-snug mb-4">
             {isRtl ? 'معاً نبني قادة الغد' : "Together We Build Tomorrow's Leaders"}
           </h2>
@@ -98,7 +98,7 @@ export default function AuthPage() {
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 bg-white">
         {/* Mobile logo */}
         <div className="lg:hidden mb-8">
-          <Image src="/Logo.webp" alt="Muslim Leader" width={140} height={56} className="h-14 w-auto object-contain" style={{ filter: 'brightness(0)' }} unoptimized />
+          <Image src="/Logo.webp" alt="Moslim Leader" width={140} height={56} className="h-14 w-auto object-contain" style={{ filter: 'brightness(0)' }} unoptimized />
         </div>
 
         <div className="w-full max-w-sm">
@@ -109,7 +109,7 @@ export default function AuthPage() {
             <p className="text-gray-400 text-sm">
               {mode === 'signin'
                 ? (isRtl ? 'سجّل دخولك للمتابعة' : 'Sign in to continue')
-                : (isRtl ? 'انضم إلى مجتمع مسلم ليدر' : 'Join the Muslim Leader community')}
+                : (isRtl ? 'انضم إلى مجتمع مسلم ليدر' : 'Join the Moslim Leader community')}
             </p>
           </div>
 

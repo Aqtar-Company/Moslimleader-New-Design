@@ -153,7 +153,7 @@ const translations = {
     'header.promo': 'ⓘ Exclusive discount on all products for a limited time',
 
     // Home
-    'home.hero.title': 'Muslim Leader',
+    'home.hero.title': 'Moslim Leader',
     'home.hero.subtitle': "Together We Build Tomorrow's Leaders",
     'home.hero.desc': 'Educational & upbringing products for Muslim children and families — games, books, stories, Quran tools and more',
     'home.hero.shopNow': 'Shop Now',
@@ -161,7 +161,7 @@ const translations = {
     'home.categories.title': 'Browse Categories',
     'home.featured.title': 'Best Sellers',
     'home.featured.viewAll': 'View All →',
-    'home.why.title': 'Why Muslim Leader?',
+    'home.why.title': 'Why Moslim Leader?',
     'home.why.quality.title': 'High Quality',
     'home.why.quality.desc': 'Every product is made from premium materials and carefully reviewed to ensure the highest quality',
     'home.why.content.title': 'Meaningful Content',
@@ -174,14 +174,14 @@ const translations = {
 
     // About
     'about.title': 'About Us',
-    'about.subtitle': 'Learn about Muslim Leader and our mission',
+    'about.subtitle': 'Learn about Moslim Leader and our mission',
     'about.hero.text': 'Our ultimate goal is to present Islamic values to the Muslim generation, raising them with a love of Islam and teaching them what benefits them in their faith and worldly life — in a fun and engaging way. Our passion is developing enjoyable ideas for children of all ages so they can learn and have fun at the same time. That is why we work diligently to deliver products with designs that help educators provide their children with valuable Islamic knowledge and etiquette, nurturing a righteous Muslim generation in a natural and enjoyable environment.',
     'about.vision.title': 'Our Vision',
     'about.vision.text': 'To prepare a Muslim generation that is fully aware of everything happening around them — a generation that understands itself so well that no one can manipulate its mind. A generation grounded in the fundamentals of every Islamic science, advanced in worldly knowledge, yet proud of its Islamic identity and unashamed to practice its faith openly.',
     'about.mission.title': 'Our Mission',
     'about.mission.text': 'To present the Islamic religious and educational heritage in a manner that suits the nature of our era, equipping educators and teachers with materials and tools that support their noble mission.',
     'about.goal.title': 'Our Goal',
-    'about.goal.text': 'Muslim Leader Foundation aims to build the Muslim child culturally and intellectually through innovative products that align with our values, ethics, and authentic Islamic identity.',
+    'about.goal.text': 'Moslim Leader Foundation aims to build the Muslim child culturally and intellectually through innovative products that align with our values, ethics, and authentic Islamic identity.',
     'about.features.title': 'What Sets Us Apart?',
     'about.feat1': 'A strong focus on designs and illustrations to reinforce understanding and deliver information effectively, alongside leveraging AI technology to produce engaging visuals.',
     'about.feat2': 'Keeping pace with technology through dedicated mobile apps and the use of augmented reality (AR) in select educational games.',
@@ -189,7 +189,7 @@ const translations = {
     'about.feat4': 'A diverse range of products — digital and print, books and games, for children and adults — targeting every member of the family through varied media.',
     'about.products.title': 'Our Products',
     'about.prod1.title': 'Books & Novels',
-    'about.prod1.desc': 'Muslim Leader books present complex sciences and ideas in an engaging narrative style with rich visual representation to simplify delivery of knowledge.',
+    'about.prod1.desc': 'Moslim Leader books present complex sciences and ideas in an engaging narrative style with rich visual representation to simplify delivery of knowledge.',
     'about.prod2.title': "Children's Stories",
     'about.prod2.desc': 'Purposeful stories designed to instill faith-based values and moral character in children, while guiding parents on improving their children\'s behavior.',
     'about.prod3.title': 'Educational Board Games',
@@ -209,7 +209,7 @@ const translations = {
     'about.val3.title': 'Family First',
     'about.val3.desc': 'We focus on strengthening family bonds and encouraging constructive dialogue between generations',
     'about.brand.title': "Together We Build Tomorrow's Leaders",
-    'about.brand.text': "Muslim Leader started with a simple vision: to provide an authentic alternative to educational products that respect our children's identity and Islamic culture. Today, we are proud of a diverse range of products serving children, fathers, and mothers alike.",
+    'about.brand.text': "Moslim Leader started with a simple vision: to provide an authentic alternative to educational products that respect our children's identity and Islamic culture. Today, we are proud of a diverse range of products serving children, fathers, and mothers alike.",
     'about.cta': 'Discover Our Products',
 
     // Contact
@@ -260,7 +260,7 @@ const translations = {
     'footer.tagline': "Together We Build Tomorrow's Leaders — Educational products for Muslim children and families",
     'footer.quickLinks': 'Quick Links',
     'footer.contactUs': 'Contact Us',
-    'footer.copyright': 'Muslim Leader — All Rights Reserved',
+    'footer.copyright': 'Moslim Leader — All Rights Reserved',
 
     // Product Card / Detail
     'product.outOfStock': 'Out of Stock',

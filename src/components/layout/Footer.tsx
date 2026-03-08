@@ -78,7 +78,7 @@ export default function Footer() {
           <div className="flex flex-col items-center sm:items-start gap-3">
             <Image
               src="/white-Logo.webp"
-              alt="Muslim Leader"
+              alt="Moslim Leader"
               width={160}
               height={64}
               className="h-16 w-auto object-contain"

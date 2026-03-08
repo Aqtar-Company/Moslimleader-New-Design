@@ -7,7 +7,7 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 
 export const metadata: Metadata = {
-  title: 'مسلم ليدر | Muslim Leader',
+  title: 'مسلم ليدر | Moslim Leader',
   description: 'معاً نبني قادة الغد — منتجات تربوية وتعليمية للأطفال والأسرة',
 };
 

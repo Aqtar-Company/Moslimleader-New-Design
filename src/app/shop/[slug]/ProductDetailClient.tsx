@@ -9,19 +9,8 @@ import { useLang } from '@/context/LanguageContext';
 import { Product } from '@/types';
 import ProductCard from '@/components/product/ProductCard';
 
-// activeMedia: { type: 'image', index: number } | { type: 'video', index: number }
-type ActiveMedia = { type: 'image'; index: number } | { type: 'video'; index: number };
-
-function PlayIcon() {
-  return (
-    <svg className="w-6 h-6 text-white drop-shadow" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M8 5v14l11-7z" />
-    </svg>
-  );
-}
-
 export default function ProductDetailClient({ product }: { product: Product }) {
-  const [active, setActive] = useState<ActiveMedia>({ type: 'image', index: 0 });
+  const [mainImg, setMainImg] = useState(0);
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
   const { addItem } = useCart();
@@ -43,8 +32,6 @@ export default function ProductDetailClient({ product }: { product: Product }) {
     setTimeout(() => setAdded(false), 2000);
   }
 
-  const hasThumbs = product.images.length > 1 || videos.length > 0;
-
   return (
     <div dir={isRtl ? 'rtl' : 'ltr'}>
       {/* Breadcrumb */}
@@ -61,87 +48,35 @@ export default function ProductDetailClient({ product }: { product: Product }) {
       <div className="max-w-6xl mx-auto px-4 py-10">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
 
-          {/* ── Media Column ── */}
+          {/* Images */}
           <div className="flex flex-col gap-4">
-
-            {/* Main viewer */}
             <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-50 border border-gray-100">
-              {active.type === 'image' ? (
-                <>
-                  <Image
-                    src={product.images[active.index]}
-                    alt={displayName}
-                    fill
-                    className="object-contain p-4"
-                    unoptimized
-                  />
-                  {!product.inStock && (
-                    <div className="absolute top-3 right-3 bg-gray-900 text-white text-xs font-bold px-3 py-1 rounded-full">
-                      {t('product.outOfStock')}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <iframe
-                  src={`https://www.youtube.com/embed/${videos[active.index]}?autoplay=1`}
-                  title={`${displayName} - ${isRtl ? 'فيديو' : 'Video'} ${active.index + 1}`}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="w-full h-full border-0"
-                />
+              <Image
+                src={product.images[mainImg]}
+                alt={displayName}
+                fill
+                className="object-contain p-4"
+                unoptimized
+              />
+              {!product.inStock && (
+                <div className="absolute top-3 right-3 bg-gray-900 text-white text-xs font-bold px-3 py-1 rounded-full">
+                  {t('product.outOfStock')}
+                </div>
               )}
             </div>
-
-            {/* Thumbnails strip */}
-            {hasThumbs && (
+            {product.images.length > 1 && (
               <div className="flex gap-2 overflow-x-auto pb-1">
-
-                {/* Image thumbs */}
-                {product.images.map((img, i) => {
-                  const isActive = active.type === 'image' && active.index === i;
-                  return (
-                    <button
-                      key={`img-${i}`}
-                      onClick={() => setActive({ type: 'image', index: i })}
-                      className={`relative w-16 h-16 shrink-0 rounded-xl overflow-hidden border-2 transition ${
-                        isActive ? 'border-[#F5C518]' : 'border-gray-200 hover:border-gray-400'
-                      }`}
-                    >
-                      <Image src={img} alt="" fill className="object-cover" unoptimized />
-                    </button>
-                  );
-                })}
-
-                {/* Video thumbs */}
-                {videos.map((videoId, i) => {
-                  const isActive = active.type === 'video' && active.index === i;
-                  return (
-                    <button
-                      key={`vid-${i}`}
-                      onClick={() => setActive({ type: 'video', index: i })}
-                      className={`relative w-16 h-16 shrink-0 rounded-xl overflow-hidden border-2 transition group ${
-                        isActive ? 'border-red-500' : 'border-gray-200 hover:border-red-400'
-                      }`}
-                    >
-                      {/* YouTube thumbnail */}
-                      <Image
-                        src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
-                        alt={`video ${i + 1}`}
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
-                      {/* Dark overlay */}
-                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition" />
-                      {/* Play icon */}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-7 h-7 rounded-full bg-red-600 flex items-center justify-center shadow-md">
-                          <PlayIcon />
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
+                {product.images.map((img, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setMainImg(i)}
+                    className={`relative w-16 h-16 shrink-0 rounded-xl overflow-hidden border-2 transition ${
+                      mainImg === i ? 'border-[#F5C518]' : 'border-gray-200 hover:border-gray-400'
+                    }`}
+                  >
+                    <Image src={img} alt="" fill className="object-cover" unoptimized />
+                  </button>
+                ))}
               </div>
             )}
           </div>
@@ -197,6 +132,34 @@ export default function ProductDetailClient({ product }: { product: Product }) {
           </div>
         </div>
 
+        {/* ── Videos Section ── */}
+        {videos.length > 0 && (
+          <div className="mt-12 border-t border-gray-100 pt-10">
+            <h2 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2.5">
+              <span className="w-8 h-8 rounded-xl bg-red-600 flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4 text-white fill-current" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </span>
+              {isRtl ? 'فيديوهات المنتج' : 'Product Videos'}
+            </h2>
+            <div className={`grid gap-5 ${videos.length === 1 ? 'grid-cols-1 max-w-2xl' : 'grid-cols-1 md:grid-cols-2'}`}>
+              {videos.map((videoId, i) => (
+                <div key={videoId} className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-black aspect-video">
+                  <iframe
+                    src={`https://www.youtube.com/embed/${videoId}`}
+                    title={`${displayName} - ${isRtl ? 'فيديو' : 'Video'} ${i + 1}`}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full h-full border-0"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Related */}
         {related.length > 0 && (
           <div className="mt-16">
             <h2 className="text-xl font-black text-gray-900 mb-6">{t('product.related')}</h2>

@@ -47,16 +47,16 @@ function AuthContent() {
     <div className="min-h-screen flex" dir={isRtl ? 'rtl' : 'ltr'}>
 
       {/* Brand panel — desktop only */}
-      <div className="hidden lg:flex lg:w-5/12 xl:w-1/2 bg-gray-950 flex-col items-start justify-center p-14 relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-5/12 xl:w-1/2 bg-gray-950 flex-col items-start justify-center px-24 py-14 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(245,197,24,0.07)_0%,transparent_60%)]" />
         <div className="absolute top-0 start-0 w-1 h-full bg-[#F5C518]/30" />
         <div className="relative z-10 flex flex-col items-start text-start max-w-sm gap-8">
           <Image
-            src="https://moslimleader.com/wp-content/uploads/2024/10/Logo.webp"
+            src="/white-Logo.webp"
             alt="Moslim Leader"
-            width={100}
-            height={100}
-            className="w-20 h-20 object-contain"
+            width={160}
+            height={64}
+            className="h-16 w-auto object-contain"
             unoptimized
           />
           <div>

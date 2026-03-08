@@ -44,8 +44,8 @@ export default function Footer() {
     <footer className="bg-gray-900 text-gray-300 pt-7 pb-4 mt-16">
       <div className="max-w-5xl mx-auto px-4">
 
-        {/* Main row: logo on left + socials & contact on right */}
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-5">
+        {/* Main row: logo | socials (left) ←→ contact (right) */}
+        <div className="flex flex-col sm:flex-row items-center sm:items-center gap-6 mb-5">
 
           {/* Logo */}
           <div className="shrink-0">
@@ -62,8 +62,10 @@ export default function Footer() {
           {/* Divider */}
           <div className="hidden sm:block w-px self-stretch bg-gray-700" />
 
-          {/* Socials + contact */}
-          <div className="flex flex-col items-center sm:items-start gap-3">
+          {/* Socials on left, contact on right — space-between */}
+          <div className="flex-1 flex flex-col sm:flex-row items-center sm:items-center sm:justify-between gap-3">
+
+            {/* Social icons */}
             <div className="flex gap-2">
               {SOCIAL.map(s => (
                 <a
@@ -79,7 +81,8 @@ export default function Footer() {
               ))}
             </div>
 
-            <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400">
+            {/* Contact */}
+            <div className="flex flex-col sm:items-end gap-1.5 text-xs text-gray-400">
               <a href="mailto:info@moslimleader.com" className="flex items-center gap-1.5 hover:text-[#F5C518] transition">
                 <svg className="w-3.5 h-3.5 text-[#F5C518] shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -93,6 +96,7 @@ export default function Footer() {
                 ‪(+20) 106 030 6803‬
               </a>
             </div>
+
           </div>
         </div>
 

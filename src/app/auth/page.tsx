@@ -23,34 +23,35 @@ export default function AuthPage() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
 
-  const inputCls = "w-full bg-gray-900/60 border border-white/10 focus:border-[#F5C518] rounded-xl px-4 py-3 outline-none text-sm text-white placeholder:text-gray-500 transition";
+  const inputCls =
+    'w-full bg-black/80 border border-white/10 focus:border-white rounded-xl px-4 py-3 outline-none text-sm text-white placeholder:text-gray-500 transition';
+  const labelCls = 'block text-xs font-bold text-black/60 mb-1.5 uppercase tracking-wide';
 
-  // Profile screen
+  /* ── Profile screen ── */
   if (user) {
     return (
       <div
         className="min-h-screen flex items-center justify-center px-4 pt-20"
-        style={{ background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1200 60%, #0a0a0a 100%)' }}
+        style={{ background: 'linear-gradient(160deg,#F5C518 0%,#e8b800 100%)' }}
         dir={isRtl ? 'rtl' : 'ltr'}
       >
-        <div className="bg-gray-900/80 backdrop-blur border border-white/10 rounded-3xl shadow-2xl p-8 w-full max-w-md text-center">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#F5C518] to-yellow-600 flex items-center justify-center text-gray-900 text-3xl font-black mx-auto mb-4 shadow-lg">
+        <div className="bg-black rounded-3xl shadow-2xl p-8 w-full max-w-sm text-center">
+          <div className="w-20 h-20 rounded-full bg-[#F5C518] flex items-center justify-center text-gray-900 text-3xl font-black mx-auto mb-4 shadow-lg">
             {user.name.charAt(0).toUpperCase()}
           </div>
           <h2 className="text-xl font-black text-white mb-1">{user.name}</h2>
           <p className="text-gray-400 text-sm mb-1">{user.email}</p>
           {user.phone && <p className="text-gray-500 text-sm mb-6">{user.phone}</p>}
-
           <div className="flex flex-col gap-3 mt-6">
             <button
               onClick={() => router.push('/cart')}
-              className="w-full border border-[#F5C518]/40 text-[#F5C518] py-3 rounded-xl font-bold hover:bg-[#F5C518]/10 transition text-sm"
+              className="w-full bg-[#F5C518] text-black py-3 rounded-xl font-black hover:bg-yellow-300 transition text-sm"
             >
               {isRtl ? 'عربة التسوق' : 'My Cart'}
             </button>
             <button
               onClick={() => { signOut(); router.push('/'); }}
-              className="w-full bg-red-600/80 text-white py-3 rounded-xl font-bold hover:bg-red-600 transition text-sm"
+              className="w-full border border-white/10 text-gray-300 py-3 rounded-xl font-bold hover:bg-white/5 transition text-sm"
             >
               {isRtl ? 'تسجيل الخروج' : 'Sign Out'}
             </button>
@@ -64,22 +65,13 @@ export default function AuthPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     if (mode === 'signin') {
       const res = await signIn(email, password);
       if (res.error) setError(res.error);
       else router.push('/');
     } else {
-      if (!name.trim()) {
-        setError(isRtl ? 'الاسم مطلوب' : 'Name is required');
-        setLoading(false);
-        return;
-      }
-      if (password.length < 6) {
-        setError(isRtl ? 'كلمة المرور 6 أحرف على الأقل' : 'Password must be at least 6 characters');
-        setLoading(false);
-        return;
-      }
+      if (!name.trim()) { setError(isRtl ? 'الاسم مطلوب' : 'Name is required'); setLoading(false); return; }
+      if (password.length < 6) { setError(isRtl ? 'كلمة المرور 6 أحرف على الأقل' : 'Password must be at least 6 characters'); setLoading(false); return; }
       const res = await signUp(name.trim(), email, password, phone || undefined);
       if (res.error) setError(res.error);
       else router.push('/');
@@ -90,42 +82,46 @@ export default function AuthPage() {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4 pt-20 pb-10"
-      style={{ background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1200 60%, #0a0a0a 100%)' }}
+      style={{ background: 'linear-gradient(160deg,#F5C518 0%,#e8b800 100%)' }}
       dir={isRtl ? 'rtl' : 'ltr'}
     >
-      {/* subtle gold glow */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-[#F5C518]/5 blur-[120px]" />
-      </div>
+      {/* subtle texture overlay */}
+      <div className="pointer-events-none fixed inset-0" style={{ backgroundImage: 'radial-gradient(circle at 20% 80%, rgba(0,0,0,0.06) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.15) 0%, transparent 50%)' }} />
 
       <div className="w-full max-w-md relative z-10">
 
-        {/* Logo */}
+        {/* Logo on yellow bg — use dark filter */}
         <div className="flex justify-center mb-8">
           <Image
-            src="/logo gold.png"
+            src="/Logo.webp"
             alt="Moslim Leader"
-            width={140}
-            height={56}
-            className="h-16 w-auto object-contain drop-shadow-lg"
+            width={160}
+            height={64}
+            className="h-16 w-auto object-contain"
+            style={{ filter: 'brightness(0)' }}
             unoptimized
           />
         </div>
 
-        {/* Card */}
-        <div className="bg-gray-900/80 backdrop-blur border border-white/10 rounded-3xl shadow-2xl p-8">
+        {/* Black card */}
+        <div className="bg-black rounded-3xl shadow-2xl p-8">
+
+          {/* Welcome text */}
+          <p className="text-center text-[#F5C518] text-xs font-bold uppercase tracking-widest mb-5">
+            {isRtl ? 'مرحباً بك' : 'Welcome'}
+          </p>
 
           {/* Tabs */}
-          <div className="flex rounded-xl overflow-hidden border border-white/10 mb-8">
+          <div className="flex rounded-xl overflow-hidden border border-white/10 mb-7">
             <button
               onClick={() => { setMode('signin'); setError(''); }}
-              className={`flex-1 py-2.5 text-sm font-bold transition ${mode === 'signin' ? 'bg-[#F5C518] text-gray-900' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+              className={`flex-1 py-2.5 text-sm font-bold transition ${mode === 'signin' ? 'bg-[#F5C518] text-black' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
             >
               {isRtl ? 'تسجيل الدخول' : 'Sign In'}
             </button>
             <button
               onClick={() => { setMode('signup'); setError(''); }}
-              className={`flex-1 py-2.5 text-sm font-bold transition ${mode === 'signup' ? 'bg-[#F5C518] text-gray-900' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+              className={`flex-1 py-2.5 text-sm font-bold transition ${mode === 'signup' ? 'bg-[#F5C518] text-black' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
             >
               {isRtl ? 'إنشاء حساب' : 'Create Account'}
             </button>
@@ -135,44 +131,35 @@ export default function AuthPage() {
 
             {mode === 'signup' && (
               <div>
-                <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">
-                  {isRtl ? 'الاسم الكامل' : 'Full Name'}
-                </label>
+                <label className={labelCls} style={{ color: '#aaa' }}>{isRtl ? 'الاسم الكامل' : 'Full Name'}</label>
                 <input type="text" value={name} onChange={e => setName(e.target.value)}
-                  placeholder={isRtl ? 'اسمك الكامل' : 'Your full name'} required
-                  className={inputCls} />
+                  placeholder={isRtl ? 'اسمك الكامل' : 'Your full name'} required className={inputCls} />
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">
-                {isRtl ? 'البريد الإلكتروني' : 'Email'}
-              </label>
+              <label className={labelCls} style={{ color: '#aaa' }}>{isRtl ? 'البريد الإلكتروني' : 'Email'}</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="example@email.com" required className={inputCls} />
             </div>
 
             {mode === 'signup' && (
               <div>
-                <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">
-                  {isRtl ? 'رقم الهاتف (اختياري)' : 'Phone (optional)'}
-                </label>
+                <label className={labelCls} style={{ color: '#aaa' }}>{isRtl ? 'رقم الهاتف (اختياري)' : 'Phone (optional)'}</label>
                 <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
                   placeholder="+20 1xx xxx xxxx" className={inputCls} />
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">
-                {isRtl ? 'كلمة المرور' : 'Password'}
-              </label>
+              <label className={labelCls} style={{ color: '#aaa' }}>{isRtl ? 'كلمة المرور' : 'Password'}</label>
               <div className="relative">
                 <input type={showPw ? 'text' : 'password'} value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••" required minLength={6}
-                  className={`${inputCls} pr-12`} />
+                  className={`${inputCls} ${isRtl ? 'pl-12' : 'pr-12'}`} />
                 <button type="button" onClick={() => setShowPw(v => !v)}
-                  className="absolute left-3 top-3.5 text-gray-500 hover:text-[#F5C518] transition"
+                  className={`absolute ${isRtl ? 'left-3' : 'right-3'} top-3.5 text-gray-500 hover:text-[#F5C518] transition`}
                   aria-label="toggle password">
                   {showPw ? (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -189,13 +176,13 @@ export default function AuthPage() {
             </div>
 
             {error && (
-              <div className="bg-red-900/40 border border-red-500/40 text-red-300 text-sm px-4 py-3 rounded-xl">
+              <div className="bg-red-900/30 border border-red-500/30 text-red-400 text-sm px-4 py-3 rounded-xl">
                 {error}
               </div>
             )}
 
             <button type="submit" disabled={loading}
-              className="w-full bg-[#F5C518] text-gray-900 py-3.5 rounded-xl font-black hover:bg-yellow-400 transition text-sm disabled:opacity-50 mt-2 shadow-lg shadow-yellow-900/20">
+              className="w-full bg-[#F5C518] text-black py-3.5 rounded-xl font-black hover:bg-yellow-300 transition text-sm disabled:opacity-50 mt-1 shadow-lg">
               {loading
                 ? (isRtl ? 'جاري...' : 'Loading...')
                 : mode === 'signin'
@@ -204,6 +191,11 @@ export default function AuthPage() {
             </button>
           </form>
         </div>
+
+        {/* bottom hint */}
+        <p className="text-center text-black/50 text-xs mt-5 font-medium">
+          {isRtl ? 'يمكنك الشراء كضيف بدون تسجيل' : 'You can shop as a guest without signing in'}
+        </p>
       </div>
     </div>
   );

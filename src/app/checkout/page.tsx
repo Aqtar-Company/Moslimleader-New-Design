@@ -10,7 +10,7 @@ import { governorates, getShipping } from '@/lib/shipping';
 import { countries, carrierRates, calculateInternationalShipping, type Carrier } from '@/lib/international-shipping';
 
 type Step = 'address' | 'payment' | 'confirm';
-type PayMethod = 'cod' | 'card' | 'vodafone' | 'instapay';
+type PayMethod = 'cod' | 'card' | 'vodafone' | 'instapay' | 'paypal';
 type ShippingType = 'local' | 'international';
 
 interface AddressForm {
@@ -263,7 +263,7 @@ export default function CheckoutPage() {
                       shippingType === t ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 text-gray-600 hover:border-gray-400'
                     }`}
                   >
-                    {t === 'local' ? '🇪🇬 ' : '🌍 '}{label}
+                    {label}
                   </button>
                 ))}
               </div>
@@ -377,7 +377,7 @@ export default function CheckoutPage() {
               </div>
               <button onClick={() => validateAddress() && setStep('payment')}
                 className="mt-6 w-full bg-gray-900 hover:bg-gray-700 text-white font-bold py-4 rounded-xl transition text-sm">
-                {L.next} →
+                {isRtl ? `← ${L.next}` : `${L.next} →`}
               </button>
             </div>
           )}
@@ -389,14 +389,15 @@ export default function CheckoutPage() {
               {shippingType === 'international' && (
                 <div className="mb-4 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-xs text-blue-700 font-semibold">
                   {isRtl
-                    ? '🌍 الشحن الدولي: وسائل الدفع المحلية (عند الاستلام، فودافون كاش، إنستاباي) غير متاحة. يُقبل الدفع ببطاقة ائتمانية فقط.'
-                    : '🌍 International Shipping: Local payment methods (COD, Vodafone Cash, InstaPay) are not available. Card payment only.'}
+                    ? 'الشحن الدولي: وسائل الدفع المحلية (عند الاستلام، فودافون كاش، إنستاباي) غير متاحة. يُقبل الدفع ببطاقة أو PayPal.'
+                    : 'International Shipping: Local payment methods are not available. Please use card or PayPal.'}
                 </div>
               )}
               <div className="flex flex-col gap-3">
                 {([
                   { id: 'cod',      icon: '💵', title: isRtl ? 'الدفع عند الاستلام' : 'Cash on Delivery',     desc: isRtl ? 'ادفع نقداً عند وصول طلبك' : 'Pay cash when your order arrives', intl: false },
                   { id: 'card',     icon: '💳', title: isRtl ? 'بطاقة بنكية (فيزا / ماستركارد)' : 'Credit / Debit Card', desc: isRtl ? 'فيزا، ماستركارد، أو ميزة' : 'Visa, Mastercard, or Meeza', intl: true },
+                  { id: 'paypal',   icon: '🅿️', title: 'PayPal',                                              desc: isRtl ? 'ادفع عبر حسابك على PayPal' : 'Pay with your PayPal account',      intl: true },
                   { id: 'vodafone', icon: '📱', title: 'Vodafone Cash',                                       desc: isRtl ? 'ادفع عبر محفظة فودافون كاش' : 'Pay via Vodafone Cash wallet',       intl: false },
                   { id: 'instapay', icon: '⚡', title: 'InstaPay',                                            desc: isRtl ? 'ادفع عبر تطبيق InstaPay' : 'Pay via InstaPay app',               intl: false },
                 ] as const).filter(m => shippingType === 'local' || m.intl).map(m => (
@@ -486,14 +487,21 @@ export default function CheckoutPage() {
                 </div>
               )}
 
+              {payMethod === 'paypal' && (
+                <div className="mt-4 bg-blue-50 border border-blue-100 rounded-2xl p-4 text-sm">
+                  <p className="font-semibold text-gray-900 mb-1">{isRtl ? 'الدفع عبر PayPal:' : 'Pay via PayPal:'}</p>
+                  <p className="text-gray-500 text-xs mt-1">{isRtl ? 'بعد تأكيد الطلب سنرسل لك رابط الدفع عبر واتساب أو البريد الإلكتروني.' : 'After placing your order, we will send you a PayPal payment link via WhatsApp or email.'}</p>
+                </div>
+              )}
+
               <div className="flex gap-3 mt-6">
                 <button onClick={() => setStep('address')}
                   className="flex-1 border-2 border-gray-200 hover:border-gray-400 text-gray-700 font-bold py-3.5 rounded-xl transition text-sm">
-                  ← {L.back}
+                  {isRtl ? `${L.back} →` : `← ${L.back}`}
                 </button>
                 <button onClick={() => { if (validateCard()) setStep('confirm'); }}
                   className="flex-1 bg-gray-900 hover:bg-gray-700 text-white font-bold py-3.5 rounded-xl transition text-sm">
-                  {L.next} →
+                  {isRtl ? `← ${L.next}` : `${L.next} →`}
                 </button>
               </div>
             </div>
@@ -528,7 +536,9 @@ export default function CheckoutPage() {
                   <p className="text-sm text-gray-700">
                     {payMethod === 'cod' ? (isRtl ? 'الدفع عند الاستلام' : 'Cash on Delivery')
                       : payMethod === 'card' ? (isRtl ? `بطاقة تنتهي بـ ${cardForm.number.slice(-4)}` : `Card ending in ${cardForm.number.slice(-4)}`)
-                      : payMethod === 'vodafone' ? 'Vodafone Cash' : 'InstaPay'}
+                      : payMethod === 'vodafone' ? 'Vodafone Cash'
+                      : payMethod === 'paypal' ? 'PayPal'
+                      : 'InstaPay'}
                   </p>
                 </div>
               </div>
@@ -539,7 +549,7 @@ export default function CheckoutPage() {
               </button>
               <button onClick={() => setStep('payment')}
                 className="mt-3 w-full text-center text-xs text-gray-400 hover:text-gray-700 transition">
-                ← {L.back}
+                {isRtl ? `${L.back} →` : `← ${L.back}`}
               </button>
             </div>
           )}

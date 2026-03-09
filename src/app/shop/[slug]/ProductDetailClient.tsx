@@ -11,7 +11,7 @@ import ProductCard from '@/components/product/ProductCard';
 
 const MODEL_CATEGORIES = ['مجات', 'مفكرات'];
 // Slugs where images[0] is overview and images[1+] are models
-const MODEL_SLUGS_WITH_COVER = ['masek'];
+const MODEL_SLUGS_WITH_COVER = ['masek', 'ml-pin'];
 // Slugs where ALL images are selectable models (no overview image)
 const MODEL_SLUGS_NO_COVER = ['ml-bag'];
 

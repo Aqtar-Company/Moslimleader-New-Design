@@ -10,7 +10,10 @@ import { Product } from '@/types';
 import ProductCard from '@/components/product/ProductCard';
 
 const MODEL_CATEGORIES = ['مجات', 'مفكرات'];
-const MODEL_SLUGS = ['ml-bag'];
+// Slugs where images[0] is overview and images[1+] are models
+const MODEL_SLUGS_WITH_COVER = ['masek'];
+// Slugs where ALL images are selectable models (no overview image)
+const MODEL_SLUGS_NO_COVER = ['ml-bag'];
 
 export default function ProductDetailClient({ product }: { product: Product }) {
   const [mainImg, setMainImg] = useState(0);
@@ -20,10 +23,11 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   const { addItem } = useCart();
   const { t, isRtl } = useLang();
 
-  const needsModel = MODEL_CATEGORIES.includes(product.category) || MODEL_SLUGS.includes(product.slug);
-  // For mugs/notebooks: images[0] is overview, models start at index 1
-  // For bags: all images are models (no separate overview image)
-  const modelOffset = MODEL_SLUGS.includes(product.slug) ? 0 : 1;
+  const needsModel = MODEL_CATEGORIES.includes(product.category)
+    || MODEL_SLUGS_WITH_COVER.includes(product.slug)
+    || MODEL_SLUGS_NO_COVER.includes(product.slug);
+  // bags: all images are models (offset=0); everything else: images[0] is overview (offset=1)
+  const modelOffset = MODEL_SLUGS_NO_COVER.includes(product.slug) ? 0 : 1;
   const modelImages = needsModel ? product.images.slice(modelOffset) : [];
 
   const videos = product.videos ?? [];

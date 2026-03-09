@@ -565,7 +565,7 @@ export default function CheckoutPage() {
                   ? item.product.images[item.selectedModel]
                   : item.product.images[0];
                 return (
-                  <div key={item.product.id} className="flex items-center gap-3">
+                  <div key={item.cartItemId} className="flex items-center gap-3">
                     <div className="relative w-11 h-11 rounded-lg overflow-hidden bg-white border border-gray-200 shrink-0">
                       <Image src={displayImg} alt={item.product.name} fill className="object-cover" unoptimized />
                       <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-gray-900 text-white text-[10px] rounded-full flex items-center justify-center font-bold">

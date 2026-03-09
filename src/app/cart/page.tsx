@@ -50,12 +50,14 @@ export default function CartPage() {
         {/* Items */}
         <div className="lg:col-span-2 flex flex-col gap-3">
           {items.map(item => (
-            <div key={item.product.id}
+            <div key={item.cartItemId}
               className="flex gap-4 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition">
 
               <Link href={`/shop/${item.product.slug}`}
                 className="relative w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-gray-50 border border-gray-100">
-                <Image src={item.product.images[0]} alt={item.product.name}
+                <Image
+                  src={item.selectedModel !== undefined ? item.product.images[item.selectedModel] : item.product.images[0]}
+                  alt={item.product.name}
                   fill className="object-cover" unoptimized />
               </Link>
 
@@ -71,17 +73,17 @@ export default function CartPage() {
               </div>
 
               <div className="shrink-0 flex flex-col items-end justify-between gap-2">
-                <button onClick={() => removeItem(item.product.id)}
+                <button onClick={() => removeItem(item.cartItemId)}
                   className="text-gray-300 hover:text-red-400 transition">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
                 <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
-                  <button onClick={() => updateQty(item.product.id, item.quantity - 1)}
+                  <button onClick={() => updateQty(item.cartItemId, item.quantity - 1)}
                     className="w-7 h-7 flex items-center justify-center text-sm hover:bg-gray-100 transition font-bold text-gray-700">−</button>
                   <span className="w-7 text-center text-sm font-bold text-gray-900">{item.quantity}</span>
-                  <button onClick={() => updateQty(item.product.id, item.quantity + 1)}
+                  <button onClick={() => updateQty(item.cartItemId, item.quantity + 1)}
                     className="w-7 h-7 flex items-center justify-center text-sm hover:bg-gray-100 transition font-bold text-gray-700">+</button>
                 </div>
                 <span className="text-sm font-black text-gray-900">

@@ -7,12 +7,13 @@ interface CartState {
   items: CartItem[];
 }
 
-function makeCartItemId(productId: string, selectedModel?: number) {
-  return selectedModel !== undefined ? `${productId}-${selectedModel}` : productId;
+let _counter = 0;
+function makeCartItemId() {
+  return `item-${Date.now()}-${_counter++}`;
 }
 
 type CartAction =
-  | { type: 'ADD_ITEM'; product: Product; selectedModel?: number }
+  | { type: 'ADD_ITEM'; product: Product; selectedModel?: number; qty: number }
   | { type: 'REMOVE_ITEM'; cartItemId: string }
   | { type: 'UPDATE_QTY'; cartItemId: string; quantity: number }
   | { type: 'CLEAR' }
@@ -21,18 +22,8 @@ type CartAction =
 function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
     case 'ADD_ITEM': {
-      const cartItemId = makeCartItemId(action.product.id, action.selectedModel);
-      const existing = state.items.find(i => i.cartItemId === cartItemId);
-      if (existing) {
-        return {
-          items: state.items.map(i =>
-            i.cartItemId === cartItemId
-              ? { ...i, quantity: i.quantity + 1 }
-              : i
-          ),
-        };
-      }
-      return { items: [...state.items, { cartItemId, product: action.product, quantity: 1, selectedModel: action.selectedModel }] };
+      const cartItemId = makeCartItemId();
+      return { items: [...state.items, { cartItemId, product: action.product, quantity: action.qty, selectedModel: action.selectedModel }] };
     }
     case 'REMOVE_ITEM':
       return { items: state.items.filter(i => i.cartItemId !== action.cartItemId) };
@@ -58,7 +49,7 @@ interface CartContextValue {
   items: CartItem[];
   total: number;
   totalItems: number;
-  addItem: (product: Product, selectedModel?: number) => void;
+  addItem: (product: Product, selectedModel?: number, qty?: number) => void;
   removeItem: (cartItemId: string) => void;
   updateQty: (cartItemId: string, quantity: number) => void;
   clear: () => void;
@@ -88,7 +79,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       items: state.items,
       total,
       totalItems,
-      addItem: (product, selectedModel) => dispatch({ type: 'ADD_ITEM', product, selectedModel }),
+      addItem: (product, selectedModel, qty = 1) => dispatch({ type: 'ADD_ITEM', product, selectedModel, qty }),
       removeItem: (cartItemId) => dispatch({ type: 'REMOVE_ITEM', cartItemId }),
       updateQty: (cartItemId, quantity) => dispatch({ type: 'UPDATE_QTY', cartItemId, quantity }),
       clear: () => dispatch({ type: 'CLEAR' }),

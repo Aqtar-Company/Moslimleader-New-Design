@@ -42,7 +42,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
 
   function handleAdd() {
     if (needsModel && selectedModel === undefined) return;
-    for (let i = 0; i < qty; i++) addItem(product, selectedModel);
+    addItem(product, selectedModel, qty);
     setAdded(true);
     setSelectedModel(undefined);
     setQty(1);

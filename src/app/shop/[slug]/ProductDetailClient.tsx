@@ -85,7 +85,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
           <div className="flex flex-col gap-5">
             <div>
               <span className="bg-[#FFF9E6] text-[#9a7b00] text-xs font-bold px-3 py-1 rounded-full">
-                {product.category}
+                {t(`cat.${product.category}` as Parameters<typeof t>[0])}
               </span>
             </div>
             <h1 className="text-2xl md:text-3xl font-black text-gray-900 leading-tight">
@@ -125,7 +125,9 @@ export default function ProductDetailClient({ product }: { product: Product }) {
             {product.tags.length > 0 && (
               <div className="flex flex-wrap gap-2 pt-2">
                 {product.tags.map(tag => (
-                  <span key={tag} className="bg-gray-100 text-gray-600 text-xs px-3 py-1 rounded-full">#{tag}</span>
+                  <span key={tag} className="bg-gray-100 text-gray-600 text-xs px-3 py-1 rounded-full">
+                    #{t(`tag.${tag}` as Parameters<typeof t>[0])}
+                  </span>
                 ))}
               </div>
             )}

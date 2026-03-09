@@ -35,7 +35,7 @@ export default function AboutPage() {
   ] as const;
 
   return (
-    <div className="min-h-screen bg-white" dir={isRtl ? 'rtl' : 'ltr'}>
+    <div className="bg-white" dir={isRtl ? 'rtl' : 'ltr'}>
 
       {/* ── Hero ── */}
       <div className="relative bg-gray-900 text-white pt-32 pb-20 overflow-hidden">

@@ -44,21 +44,16 @@ function AuthContent() {
   const inputClass = 'w-full bg-gray-50 border border-gray-200 focus:border-gray-400 focus:bg-white rounded-xl px-4 py-3 outline-none transition text-gray-900 placeholder:text-gray-400 text-sm';
 
   return (
-    <div className="flex h-screen" dir={isRtl ? 'rtl' : 'ltr'}>
+    <div className="flex min-h-screen" dir={isRtl ? 'rtl' : 'ltr'}>
 
       {/* ── Left panel (image only, hidden on mobile) ── */}
-      <div className="hidden lg:block lg:w-5/12 sticky top-0 h-screen bg-gray-900 overflow-hidden shrink-0">
+      <div className="hidden lg:block lg:w-1/2 bg-gray-900 overflow-hidden shrink-0">
         <Image src="/sign-in.jpg" alt="" fill className="object-cover object-center" unoptimized />
       </div>
 
       {/* ── Right panel: form ── */}
       <div className="flex-1 flex items-center justify-center px-6 py-12 bg-white">
         <div className="w-full max-w-md">
-
-          {/* Mobile logo */}
-          <div className="flex lg:hidden justify-center mb-8">
-            <Image src="/logo-mobile.png" alt="Moslim Leader" width={140} height={56} className="h-14 w-auto object-contain" unoptimized />
-          </div>
 
           <div className="mb-8">
             <h2 className="text-2xl font-black text-gray-900">

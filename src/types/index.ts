@@ -1,3 +1,13 @@
+export interface Review {
+  id: string;
+  author: string;
+  rating: number; // 1-5
+  comment: string;
+  commentEn?: string;
+  date: string; // ISO date string
+  verified?: boolean;
+}
+
 export interface Product {
   id: string;
   slug: string;
@@ -14,6 +24,8 @@ export interface Product {
   inStock: boolean;
   featured?: boolean;
   videos?: string[];
+  weight: number; // grams
+  reviews?: Review[];
 }
 
 export interface Category {

@@ -62,9 +62,9 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* Right: Sign In */}
+          {/* Right: Sign In / Account */}
           <div className="flex items-center justify-end">
-            {!user && (
+            {!user ? (
               <Link
                 href="/auth"
                 className="flex items-center border-2 border-white/70 rounded-lg px-3 h-10 hover:bg-white/20 transition font-bold text-white text-sm gap-1.5"
@@ -73,6 +73,16 @@ export default function Header() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
                 <span className="hidden sm:block">{lang === 'ar' ? 'دخول' : 'Sign In'}</span>
+              </Link>
+            ) : (
+              <Link
+                href="/account"
+                className="flex items-center border-2 border-white/70 rounded-lg px-3 h-10 hover:bg-white/20 transition font-bold text-white text-sm gap-1.5"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span className="hidden sm:block">{user.name.split(' ')[0]}</span>
               </Link>
             )}
           </div>

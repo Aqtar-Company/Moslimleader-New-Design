@@ -43,6 +43,12 @@ export const products: Product[] = [
     ],
     inStock: true,
     videos: ['4Z7asM6e9IM', 'PkF7SmB8k_E'],
+    weight: 550,
+    reviews: [
+      { id: 'r1-1', author: 'أم محمد', rating: 5, comment: 'لعبة رائعة جداً، أولادي استمتعوا بيها كتير وتعلموا قيم الصيام بطريقة ممتعة. جودة ممتازة وشكل جميل.', commentEn: 'Amazing game! My kids loved it and learned fasting values in a fun way. Excellent quality.', date: '2024-03-15', verified: true },
+      { id: 'r1-2', author: 'سارة أحمد', rating: 5, comment: 'اشتريتها هدية لابن أختي وأعجبتهم جداً. التغليف محترم والألوان جميلة.', date: '2024-02-20', verified: true },
+      { id: 'r1-3', author: 'خالد عبدالله', rating: 4, comment: 'لعبة تعليمية ممتازة. اللعبة محفزة للأطفال على الصيام. أنصح بيها.', date: '2024-01-10', verified: false },
+    ],
   },
   {
     id: '2',
@@ -84,6 +90,11 @@ export const products: Product[] = [
       `${BASE}/2024/07/Leader-Medal-6.webp`,
     ],
     inStock: true,
+    weight: 650,
+    reviews: [
+      { id: 'r2-1', author: 'ريم السيد', rating: 5, comment: 'من أجمل ما اشتريته لابني! شجعه على إتمام مهامه اليومية والصلاة. ممتاز جداً.', date: '2024-04-05', verified: true },
+      { id: 'r2-2', author: 'هدى محمود', rating: 5, comment: 'هدية مثالية لأي طفل. ابني فرح بيها جداً والأوسمة جميلة ومحفزة.', date: '2024-03-22', verified: true },
+    ],
   },
   {
     id: '3',
@@ -119,6 +130,10 @@ export const products: Product[] = [
       `${BASE}/2024/07/Muslim-Leaders-3.webp`,
     ],
     inStock: true,
+    weight: 500,
+    reviews: [
+      { id: 'r3-1', author: 'منى إبراهيم', rating: 4, comment: 'محتوى تعليمي ممتاز. الكروت واضحة ومفيدة. ابني استمتع بيها.', date: '2024-02-14', verified: true },
+    ],
   },
   {
     id: '4',
@@ -164,6 +179,12 @@ export const products: Product[] = [
     ],
     inStock: true,
     featured: true,
+    weight: 600,
+    reviews: [
+      { id: 'r4-1', author: 'أم عمر', rating: 5, comment: 'منتج رائع! الـ AR مدهش وابني بيحب يستخدمه لتعلم الصلاة. أفضل هدية قدمتها.', commentEn: 'Amazing product! The AR is stunning and my son loves using it to learn prayer. Best gift ever.', date: '2024-05-01', verified: true },
+      { id: 'r4-2', author: 'فاطمة علي', rating: 5, comment: 'اشتريتها لبنتي الصغيرة وهي مبسوطة بيها جداً. بتتعلم الصلاة وهي بتلعب.', date: '2024-04-18', verified: true },
+      { id: 'r4-3', author: 'أحمد محمود', rating: 4, comment: 'فكرة ممتازة وتنفيذ جيد. التطبيق شغال كويس. بنصح بيه للجميع.', date: '2024-03-30', verified: false },
+    ],
   },
   {
     id: '5',
@@ -194,6 +215,10 @@ export const products: Product[] = [
       `${BASE}/2024/07/Puzzle-Boys-4.webp`,
     ],
     inStock: true,
+    weight: 350,
+    reviews: [
+      { id: 'r5-1', author: 'نور حسن', rating: 5, comment: 'بازل جميل وخامات ممتازة. ابني بيلعب بيه كل يوم.', date: '2024-02-08', verified: true },
+    ],
   },
   {
     id: '6',
@@ -224,6 +249,10 @@ export const products: Product[] = [
       `${BASE}/2024/07/Puzzle-Girls-4.webp`,
     ],
     inStock: true,
+    weight: 350,
+    reviews: [
+      { id: 'r6-1', author: 'دانا محمد', rating: 5, comment: 'بنتي بتحبه جداً. الألوان جميلة ومناسبة للبنات.', date: '2024-03-12', verified: true },
+    ],
   },
   {
     id: '7',
@@ -262,6 +291,7 @@ export const products: Product[] = [
       `${BASE}/2024/11/Alwah.webp`,
     ],
     inStock: false,
+    weight: 800,
   },
   {
     id: '8',
@@ -296,6 +326,11 @@ export const products: Product[] = [
       `${BASE}/2024/11/Palestine-Book.webp`,
     ],
     inStock: true,
+    weight: 350,
+    reviews: [
+      { id: 'r8-1', author: 'أم يوسف', rating: 5, comment: 'كتاب رائع وضروري في كل بيت مسلم. المعلومات دقيقة والرسوم جميلة جداً.', date: '2024-03-01', verified: true },
+      { id: 'r8-2', author: 'مريم سالم', rating: 5, comment: 'قرأته مع ابني وانبهر بالمعلومات. كتاب ممتاز يعرف الأطفال بقضية فلسطين.', date: '2024-02-15', verified: true },
+    ],
   },
   {
     id: '9',
@@ -331,6 +366,10 @@ export const products: Product[] = [
       `${BASE}/2024/11/To-my-Son.webp`,
     ],
     inStock: true,
+    weight: 400,
+    reviews: [
+      { id: 'r9-1', author: 'عمر صالح', rating: 5, comment: 'كتاب يستحق القراءة. يرد على الشبهات بأسلوب علمي ومنطقي ممتاز.', date: '2024-04-20', verified: true },
+    ],
   },
   {
     id: '10',
@@ -365,6 +404,11 @@ export const products: Product[] = [
     ],
     inStock: true,
     videos: ['joO3J8S1qkc'],
+    weight: 250,
+    reviews: [
+      { id: 'r10-1', author: 'أم سلمى', rating: 5, comment: 'كتاب ملهم جداً لكل أم. غير نظرتي لكيفية تربية أطفالي. أنصح به بشدة.', date: '2024-01-25', verified: true },
+      { id: 'r10-2', author: 'دعاء محمد', rating: 5, comment: 'قرأته في يومين من كتر ما هو شيق. معلومات عملية ومفيدة جداً.', date: '2024-02-10', verified: true },
+    ],
   },
   {
     id: '11',
@@ -401,6 +445,10 @@ export const products: Product[] = [
     ],
     inStock: true,
     videos: ['Vt2gb9bb6Rk'],
+    weight: 280,
+    reviews: [
+      { id: 'r11-1', author: 'يوسف أمين', rating: 5, comment: 'أسلوب مبتكر جداً في شرح الحديث. الإنفوجرافيك رائع ويسهل الفهم كتير.', date: '2024-03-08', verified: true },
+    ],
   },
   {
     id: '12',
@@ -436,6 +484,11 @@ export const products: Product[] = [
     ],
     inStock: true,
     videos: ['HNpsuHbxyck'],
+    weight: 300,
+    reviews: [
+      { id: 'r12-1', author: 'حسناء طارق', rating: 5, comment: 'طريقة تعليم الفقه دي مش موجودة في أي كتاب تاني. ابني قرأه بنفسه وفهم.', date: '2024-04-02', verified: true },
+      { id: 'r12-2', author: 'إسلام محمد', rating: 4, comment: 'فكرة ممتازة وتنفيذ جيد. يستحق القراءة.', date: '2024-03-14', verified: false },
+    ],
   },
   {
     id: '13',
@@ -472,6 +525,10 @@ export const products: Product[] = [
       `${BASE}/2024/07/Pray-Story-4.webp`,
     ],
     inStock: true,
+    weight: 300,
+    reviews: [
+      { id: 'r13-1', author: 'آية عبدالرحمن', rating: 5, comment: 'قصص جميلة جداً وبنتي بتطلب أقراها ليها كل ليلة. الـ AR حاجة تانية!', date: '2024-02-28', verified: true },
+    ],
   },
   {
     id: '14',
@@ -506,6 +563,10 @@ export const products: Product[] = [
       `${BASE}/2024/07/My-Son-Asks-4.webp`,
     ],
     inStock: true,
+    weight: 320,
+    reviews: [
+      { id: 'r14-1', author: 'هبة سمير', rating: 5, comment: 'سلسلة ممتازة! ابني بيسأل أسئلة كتير وهي بتجاوب عليها بطريقة سهلة ومفهومة.', date: '2024-03-20', verified: true },
+    ],
   },
   {
     id: '15',
@@ -540,6 +601,10 @@ export const products: Product[] = [
       `${BASE}/2024/07/The-Series-of-Righteousness-4.webp`,
     ],
     inStock: true,
+    weight: 310,
+    reviews: [
+      { id: 'r15-1', author: 'إيمان خليل', rating: 5, comment: 'قصص تربوية ممتازة. أحسست إن ابني بقى أكتر احتراماً للكبار بعد ما قرأناها سوا.', date: '2024-04-10', verified: true },
+    ],
   },
   {
     id: '16',
@@ -580,6 +645,11 @@ export const products: Product[] = [
     ],
     inStock: true,
     videos: ['9kSSCSAg2us'],
+    weight: 350,
+    reviews: [
+      { id: 'r16-1', author: 'سمر علي', rating: 5, comment: 'مفكرة رائعة! ابني صبح ينظم وقته وعباداته بنفسه من غير ما نذكّره.', date: '2024-01-30', verified: true },
+      { id: 'r16-2', author: 'نادية حسن', rating: 5, comment: 'تصميم جميل وخامة ممتازة. بنتي بتكتب فيها كل يوم.', date: '2024-02-22', verified: true },
+    ],
   },
   {
     id: '17',
@@ -620,6 +690,10 @@ export const products: Product[] = [
     ],
     inStock: true,
     videos: ['9kSSCSAg2us'],
+    weight: 320,
+    reviews: [
+      { id: 'r17-1', author: 'خالد رضا', rating: 5, comment: 'مفكرة ممتازة لتنظيم العبادات اليومية. التصميم أنيق ومحفز على الاستمرار.', date: '2024-03-05', verified: true },
+    ],
   },
   {
     id: '18',
@@ -656,6 +730,7 @@ export const products: Product[] = [
       `${BASE}/2024/10/Girls-Bag-2.webp`,
     ],
     inStock: false,
+    weight: 400,
   },
   {
     id: '19',
@@ -693,6 +768,10 @@ export const products: Product[] = [
       `${BASE}/2024/10/Masek-4.webp`,
     ],
     inStock: true,
+    weight: 400,
+    reviews: [
+      { id: 'r19-1', author: 'أم زياد', rating: 5, comment: 'فكرة جميلة جداً. ابني صبح يحب يقرأ القرآن وهو مستني دوره على الماسك!', date: '2024-04-25', verified: true },
+    ],
   },
   {
     id: '20',
@@ -734,6 +813,11 @@ export const products: Product[] = [
       `${BASE}/2024/10/Boys-Mug-6.webp`,
     ],
     inStock: true,
+    weight: 350,
+    reviews: [
+      { id: 'r20-1', author: 'محمد السيد', rating: 5, comment: 'مج حلو جداً وخامة ممتازة. أهدى لابني وبيستخدمه كل يوم.', date: '2024-02-05', verified: true },
+      { id: 'r20-2', author: 'شيماء أحمد', rating: 4, comment: 'هدية مثالية. التصميم الإسلامي مميز ومختلف.', date: '2024-01-18', verified: false },
+    ],
   },
   {
     id: '21',
@@ -775,6 +859,10 @@ export const products: Product[] = [
       `${BASE}/2024/10/Girls-Mug-6.webp`,
     ],
     inStock: true,
+    weight: 350,
+    reviews: [
+      { id: 'r21-1', author: 'لمى حسام', rating: 5, comment: 'مج بنات تصميمه جميل ويعكس هويتنا الإسلامية. شكراً مسلم ليدر!', date: '2024-03-28', verified: true },
+    ],
   },
   {
     id: '22',
@@ -815,6 +903,10 @@ export const products: Product[] = [
       `${BASE}/2024/10/Women-Mugs-5.webp`,
     ],
     inStock: true,
+    weight: 350,
+    reviews: [
+      { id: 'r22-1', author: 'نوران إبراهيم', rating: 5, comment: 'هدية راقية وجميلة. التصميم الإسلامي يميزه عن أي مج تاني.', date: '2024-04-14', verified: true },
+    ],
   },
   {
     id: '23',
@@ -849,6 +941,7 @@ export const products: Product[] = [
       `${BASE}/2024/10/Girls-Pin.webp`,
     ],
     inStock: false,
+    weight: 20,
   },
 ];
 

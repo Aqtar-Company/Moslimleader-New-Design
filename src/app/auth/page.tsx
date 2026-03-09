@@ -44,72 +44,20 @@ function AuthContent() {
   const inputClass = 'w-full bg-gray-50 border border-gray-200 focus:border-gray-400 focus:bg-white rounded-xl px-4 py-3 outline-none transition text-gray-900 placeholder:text-gray-400 text-sm';
 
   return (
-    <div className="min-h-screen flex" dir={isRtl ? 'rtl' : 'ltr'}>
+    <div className="flex h-screen" dir={isRtl ? 'rtl' : 'ltr'}>
 
-      {/* Brand panel — desktop only */}
-      <div className="hidden lg:flex lg:w-5/12 xl:w-1/2 bg-gray-950 flex-col items-start justify-center px-24 py-14 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(245,197,24,0.07)_0%,transparent_60%)]" />
-        <div className="absolute top-0 start-0 w-1 h-full bg-[#F5C518]/30" />
-        <div className="relative z-10 flex flex-col items-start text-start max-w-sm gap-8">
-          <Image
-            src="/white-Logo.webp"
-            alt="Moslim Leader"
-            width={160}
-            height={64}
-            className="h-16 w-auto object-contain"
-            unoptimized
-          />
-          <div>
-            <h1 className="text-3xl font-black text-white tracking-tight mb-1">
-              {isRtl ? 'مسلم ليدر' : 'Moslim Leader'}
-            </h1>
-            <div className="w-10 h-0.5 bg-[#F5C518] mt-2 mb-4" />
-            <p className="text-gray-400 text-sm leading-relaxed">
-              {isRtl
-                ? 'معاً نبني قادة الغد — منتجات تربوية وتعليمية للأطفال والأسرة'
-                : "Together We Build Tomorrow's Leaders — Educational products for Muslim children and families"}
-            </p>
-          </div>
-          <div className="flex flex-col gap-3.5 w-full">
-            {(isRtl
-              ? ['شحن سريع لجميع المحافظات', 'منتجات أصيلة بهوية إسلامية', 'جودة عالية مضمونة']
-              : ['Fast delivery to all governorates', 'Authentic Islamic-identity products', 'Premium quality guaranteed']
-            ).map(f => (
-              <div key={f} className="flex items-center gap-3">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#F5C518] shrink-0" />
-                <p className="text-xs text-gray-400">{f}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Sign-in illustration */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <Image
-            src="/sign-in.jpg"
-            alt=""
-            width={600}
-            height={400}
-            className="w-full object-cover object-top opacity-60"
-            unoptimized
-          />
-        </div>
+      {/* ── Left panel (image only, hidden on mobile) ── */}
+      <div className="hidden lg:block lg:w-5/12 sticky top-0 h-screen bg-gray-900 overflow-hidden shrink-0">
+        <Image src="/girl and book.png" alt="" fill className="object-contain object-center" unoptimized />
       </div>
 
-      {/* Form panel */}
+      {/* ── Right panel: form ── */}
       <div className="flex-1 flex items-center justify-center px-6 py-12 bg-white">
         <div className="w-full max-w-md">
 
           {/* Mobile logo */}
           <div className="flex lg:hidden justify-center mb-8">
-            <Image
-              src="https://moslimleader.com/wp-content/uploads/2024/10/Logo.webp"
-              alt="Moslim Leader"
-              width={72}
-              height={72}
-              className="w-16 h-16 object-contain"
-              unoptimized
-            />
+            <Image src="/logo-mobile.png" alt="Moslim Leader" width={140} height={56} className="h-14 w-auto object-contain" unoptimized />
           </div>
 
           <div className="mb-8">

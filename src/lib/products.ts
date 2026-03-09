@@ -48,8 +48,6 @@ export const products: Product[] = [
       { id: 'r1-1', author: 'أم محمد', rating: 5, comment: 'لعبة رائعة جداً، أولادي استمتعوا بيها كتير وتعلموا قيم الصيام بطريقة ممتعة. جودة ممتازة وشكل جميل.', commentEn: 'Amazing game! My kids loved it and learned fasting values in a fun way. Excellent quality.', date: '2024-03-15', verified: true },
       { id: 'r1-2', author: 'سارة أحمد', rating: 5, comment: 'اشتريتها هدية لابن أختي وأعجبتهم جداً. التغليف محترم والألوان جميلة.', date: '2024-02-20', verified: true },
       { id: 'r1-3', author: 'خالد عبدالله', rating: 4, comment: 'لعبة تعليمية ممتازة. اللعبة محفزة للأطفال على الصيام. أنصح بيها.', date: '2024-01-10', verified: false },
-      { id: 'r1-4', author: 'Yasmien Elkhedr', rating: 5, comment: 'من أحلى الألعاب اللي جبتها للولادي', date: '2024-11-05', verified: true },
-      { id: 'r1-5', author: 'Sara Selim', rating: 5, comment: 'الألعاب رائعة وفكرتها جميلة لإثراء المعلومات وتعطي المعلومات للطفل بطريقة سلسة', date: '2024-12-10', verified: true },
     ],
   },
   {
@@ -135,8 +133,6 @@ export const products: Product[] = [
     weight: 500,
     reviews: [
       { id: 'r3-1', author: 'منى إبراهيم', rating: 4, comment: 'محتوى تعليمي ممتاز. الكروت واضحة ومفيدة. ابني استمتع بيها.', date: '2024-02-14', verified: true },
-      { id: 'r3-2', author: 'Gemini Sameh', rating: 5, comment: 'كروت القادة رائعة وتبني ثقة في النفس وتشجع الأطفال على الالتزام', date: '2024-07-28', verified: true },
-      { id: 'r3-3', author: 'Safy El Afandy', rating: 5, comment: 'كروت القادة فكرة تحفيزية رائعة للأولاد', date: '2024-09-03', verified: true },
     ],
   },
   {
@@ -188,7 +184,6 @@ export const products: Product[] = [
       { id: 'r4-1', author: 'أم عمر', rating: 5, comment: 'منتج رائع! الـ AR مدهش وابني بيحب يستخدمه لتعلم الصلاة. أفضل هدية قدمتها.', commentEn: 'Amazing product! The AR is stunning and my son loves using it to learn prayer. Best gift ever.', date: '2024-05-01', verified: true },
       { id: 'r4-2', author: 'فاطمة علي', rating: 5, comment: 'اشتريتها لبنتي الصغيرة وهي مبسوطة بيها جداً. بتتعلم الصلاة وهي بتلعب.', date: '2024-04-18', verified: true },
       { id: 'r4-3', author: 'أحمد محمود', rating: 4, comment: 'فكرة ممتازة وتنفيذ جيد. التطبيق شغال كويس. بنصح بيه للجميع.', date: '2024-03-30', verified: false },
-      { id: 'r4-4', author: 'منار الإسلام', rating: 5, comment: 'استلمت لعبة الصلاة والحج وكروت القادة كهدية لأحد طلابي والحاجة مناسبة جدا للأعمار المحددة', date: '2024-10-07', verified: true },
     ],
   },
   {
@@ -335,12 +330,6 @@ export const products: Product[] = [
     reviews: [
       { id: 'r8-1', author: 'أم يوسف', rating: 5, comment: 'كتاب رائع وضروري في كل بيت مسلم. المعلومات دقيقة والرسوم جميلة جداً.', date: '2024-03-01', verified: true },
       { id: 'r8-2', author: 'مريم سالم', rating: 5, comment: 'قرأته مع ابني وانبهر بالمعلومات. كتاب ممتاز يعرف الأطفال بقضية فلسطين.', date: '2024-02-15', verified: true },
-      { id: 'r8-3', author: 'هاجر أحمد', rating: 5, comment: 'فعلا الكتاب جميل جدا ياريت الناس كلها تشتريه وتعلم أطفالها تاريخ فلسطين', date: '2024-07-10', verified: true },
-      { id: 'r8-4', author: 'Eissa Tarek', rating: 5, comment: 'كتاب مميز جدا شرح تاريخ فلسطين على مر التاريخ مناسب للكبار قبل الأطفال', date: '2024-08-05', verified: true },
-      { id: 'r8-5', author: 'صفا حمدي', rating: 5, comment: 'الكتاب فلسطين في عيون أبنائي أكثر من رائع. المحتوى قيم والعرض شيق والأفكار منظمة', date: '2024-09-12', verified: true },
-      { id: 'r8-6', author: 'أسماء أحمد عبدالله', rating: 5, comment: 'كتاب فلسطين في عيون أبنائي رائع جدا', date: '2024-10-03', verified: true },
-      { id: 'r8-7', author: 'سمر درويش', rating: 5, comment: 'جزاكم الله خيرا منتجات أكثر من رائعة خصوصا كتاب فلسطين في عيون أبنائي استفدت منه قبل أولادي', date: '2024-11-18', verified: true },
-      { id: 'r8-8', author: 'علا محمود عفيفي', rating: 5, comment: 'الكتاب مليان معلومات كثيرة ولغته سهلة ويمكن للأمهات استخدامه مع أولادهم', date: '2024-12-01', verified: true },
     ],
   },
   {
@@ -380,7 +369,6 @@ export const products: Product[] = [
     weight: 400,
     reviews: [
       { id: 'r9-1', author: 'عمر صالح', rating: 5, comment: 'كتاب يستحق القراءة. يرد على الشبهات بأسلوب علمي ومنطقي ممتاز.', date: '2024-04-20', verified: true },
-      { id: 'r9-2', author: 'Safy El Afandy', rating: 5, comment: 'كتاب رائع والأسلوب شيق جدا وفيه عمق في الحوار', date: '2024-09-15', verified: true },
     ],
   },
   {
@@ -420,8 +408,6 @@ export const products: Product[] = [
     reviews: [
       { id: 'r10-1', author: 'أم سلمى', rating: 5, comment: 'كتاب ملهم جداً لكل أم. غير نظرتي لكيفية تربية أطفالي. أنصح به بشدة.', date: '2024-01-25', verified: true },
       { id: 'r10-2', author: 'دعاء محمد', rating: 5, comment: 'قرأته في يومين من كتر ما هو شيق. معلومات عملية ومفيدة جداً.', date: '2024-02-10', verified: true },
-      { id: 'r10-3', author: 'عميلة', rating: 5, comment: 'كتاب أمهات العظماء حقيقي قيم جدا وأنا قرأته أكثر من مرة', date: '2024-07-20', verified: true },
-      { id: 'r10-4', author: 'عميلة', rating: 5, comment: 'جزاكم الله خيرا لكتاب عظماء الأمهات ربنا ينفع بكم الأمة', date: '2024-08-14', verified: true },
     ],
   },
   {
@@ -462,7 +448,6 @@ export const products: Product[] = [
     weight: 180,
     reviews: [
       { id: 'r11-1', author: 'يوسف أمين', rating: 5, comment: 'أسلوب مبتكر جداً في شرح الحديث. الإنفوجرافيك رائع ويسهل الفهم كتير.', date: '2024-03-08', verified: true },
-      { id: 'r11-2', author: 'Mahmoud Elsharkawy', rating: 5, comment: 'بدأت في قراءته بصراحة كتاب رائع', date: '2024-08-30', verified: true },
     ],
   },
   {
@@ -503,8 +488,6 @@ export const products: Product[] = [
     reviews: [
       { id: 'r12-1', author: 'حسناء طارق', rating: 5, comment: 'طريقة تعليم الفقه دي مش موجودة في أي كتاب تاني. ابني قرأه بنفسه وفهم.', date: '2024-04-02', verified: true },
       { id: 'r12-2', author: 'إسلام محمد', rating: 4, comment: 'فكرة ممتازة وتنفيذ جيد. يستحق القراءة.', date: '2024-03-14', verified: false },
-      { id: 'r12-3', author: 'Dandona Hyatee', rating: 5, comment: 'جميل الكتاب وشيق ومعلوماته غزيرة ومهمة وطباعته جميلة', date: '2024-09-08', verified: true },
-      { id: 'r12-4', author: 'أفنان الجنان', rating: 5, comment: 'كتاب حلو أوي وأسلوبه سهل وشيق', date: '2024-10-22', verified: true },
     ],
   },
   {

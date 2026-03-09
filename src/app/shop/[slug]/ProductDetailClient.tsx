@@ -9,12 +9,19 @@ import { useLang } from '@/context/LanguageContext';
 import { Product } from '@/types';
 import ProductCard from '@/components/product/ProductCard';
 
+const MUG_CATEGORY = 'مجات';
+
 export default function ProductDetailClient({ product }: { product: Product }) {
   const [mainImg, setMainImg] = useState(0);
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<number | undefined>(undefined);
   const { addItem } = useCart();
   const { t, isRtl } = useLang();
+
+  const isMug = product.category === MUG_CATEGORY;
+  // For mugs: images[0] is collection overview, images[1..] are individual models
+  const modelImages = isMug ? product.images.slice(1) : [];
 
   const videos = product.videos ?? [];
 
@@ -27,7 +34,8 @@ export default function ProductDetailClient({ product }: { product: Product }) {
     .slice(0, 4);
 
   function handleAdd() {
-    for (let i = 0; i < qty; i++) addItem(product);
+    if (isMug && selectedModel === undefined) return; // require model selection for mugs
+    for (let i = 0; i < qty; i++) addItem(product, selectedModel);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   }
@@ -104,6 +112,41 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               </span>
             </div>
 
+            {/* Mug model selector */}
+            {isMug && modelImages.length > 0 && (
+              <div>
+                <p className="text-sm font-bold text-gray-700 mb-2">
+                  {isRtl ? 'اختر الموديل' : 'Select Model'}
+                  {selectedModel !== undefined && (
+                    <span className="text-purple-700 mr-2 ml-2">— {isRtl ? `موديل ${selectedModel + 1}` : `Model ${selectedModel + 1}`}</span>
+                  )}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {modelImages.map((img, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        setSelectedModel(i + 1); // +1 because index 0 is overview
+                        setMainImg(i + 1);
+                      }}
+                      className={`relative w-16 h-16 rounded-xl overflow-hidden border-2 transition ${
+                        selectedModel === i + 1
+                          ? 'border-purple-600 ring-2 ring-purple-300'
+                          : 'border-gray-200 hover:border-gray-400'
+                      }`}
+                    >
+                      <Image src={img} alt={`Model ${i + 1}`} fill className="object-cover" unoptimized />
+                    </button>
+                  ))}
+                </div>
+                {selectedModel === undefined && (
+                  <p className="text-amber-600 text-xs mt-1.5 font-semibold">
+                    {isRtl ? '* يرجى اختيار الموديل أولاً' : '* Please select a model first'}
+                  </p>
+                )}
+              </div>
+            )}
+
             {product.inStock && (
               <div className="flex items-center gap-3">
                 <div className="flex items-center border-2 border-gray-200 rounded-xl overflow-hidden">
@@ -113,7 +156,12 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                 </div>
                 <button
                   onClick={handleAdd}
-                  className="flex-1 bg-purple-700 hover:bg-purple-800 text-white font-bold py-3 px-6 rounded-xl transition text-center"
+                  disabled={isMug && selectedModel === undefined}
+                  className={`flex-1 font-bold py-3 px-6 rounded-xl transition text-center ${
+                    isMug && selectedModel === undefined
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'bg-purple-700 hover:bg-purple-800 text-white'
+                  }`}
                 >
                   {added ? t('product.added') : t('product.addToCart')}
                 </button>

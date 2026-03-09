@@ -48,7 +48,7 @@ function AuthContent() {
 
       {/* ── Left panel (image only, hidden on mobile) ── */}
       <div className="hidden lg:block lg:w-5/12 sticky top-0 h-screen bg-gray-900 overflow-hidden shrink-0">
-        <Image src="/girl and book.png" alt="" fill className="object-contain object-center" unoptimized />
+        <Image src="/sign-in.jpg" alt="" fill className="object-cover object-center" unoptimized />
       </div>
 
       {/* ── Right panel: form ── */}

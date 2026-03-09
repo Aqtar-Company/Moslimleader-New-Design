@@ -41,12 +41,22 @@ export default function Header() {
           {/* Center: Logo */}
           <div className="flex justify-center">
             <Link href="/">
+              {/* Mobile logo */}
+              <Image
+                src="/logo-mobile.png"
+                alt="Moslim Leader"
+                width={140}
+                height={56}
+                className="md:hidden h-14 w-auto object-contain"
+                unoptimized
+              />
+              {/* Desktop logo */}
               <Image
                 src="/logo gold.png"
                 alt="Moslim Leader"
                 width={300}
                 height={132}
-                className="h-24 md:h-28 w-auto object-contain"
+                className="hidden md:block h-28 w-auto object-contain"
                 unoptimized
               />
             </Link>

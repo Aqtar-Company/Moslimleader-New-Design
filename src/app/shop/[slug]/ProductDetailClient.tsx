@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { products } from '@/lib/products';
 import { useCart } from '@/context/CartContext';
+import { useWishlist } from '@/context/WishlistContext';
 import { useLang } from '@/context/LanguageContext';
 import { Product } from '@/types';
 import ProductCard from '@/components/product/ProductCard';
@@ -32,6 +33,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   const [reviewError, setReviewError] = useState(false);
   const [localReviews, setLocalReviews] = useState<Review[]>([]);
   const { addItem } = useCart();
+  const { isWishlisted, toggle: toggleWishlist } = useWishlist();
   const { t, isRtl } = useLang();
 
   useEffect(() => {
@@ -235,7 +237,36 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                 >
                   {added ? t('product.added') : t('product.addToCart')}
                 </button>
+                {/* Wishlist heart */}
+                <button
+                  onClick={() => toggleWishlist(product)}
+                  className={`w-12 h-12 shrink-0 rounded-xl border-2 flex items-center justify-center transition ${
+                    isWishlisted(product.id)
+                      ? 'border-red-300 bg-red-50 text-red-500'
+                      : 'border-gray-200 hover:border-red-300 hover:bg-red-50 text-gray-400 hover:text-red-500'
+                  }`}
+                  aria-label={isWishlisted(product.id) ? t('wishlist.remove') : t('wishlist.add')}
+                >
+                  <svg className="w-5 h-5" fill={isWishlisted(product.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                  </svg>
+                </button>
               </div>
+            )}
+            {!product.inStock && (
+              <button
+                onClick={() => toggleWishlist(product)}
+                className={`flex items-center gap-2 font-semibold py-2.5 px-5 rounded-xl border-2 transition text-sm ${
+                  isWishlisted(product.id)
+                    ? 'border-red-300 bg-red-50 text-red-500'
+                    : 'border-gray-200 hover:border-red-300 text-gray-500 hover:text-red-500'
+                }`}
+              >
+                <svg className="w-4 h-4" fill={isWishlisted(product.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                </svg>
+                {isWishlisted(product.id) ? t('wishlist.added') : t('wishlist.add')}
+              </button>
             )}
 
             {/* Weight badge */}

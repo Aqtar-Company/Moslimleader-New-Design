@@ -10,10 +10,15 @@ interface CartState {
   items: CartItem[];
 }
 
+let _counter = 0;
+function makeCartItemId() {
+  return `item-${Date.now()}-${_counter++}`;
+}
+
 type CartAction =
-  | { type: 'ADD_ITEM'; product: Product; qty?: number }
-  | { type: 'REMOVE_ITEM'; productId: string }
-  | { type: 'UPDATE_QTY'; productId: string; quantity: number }
+  | { type: 'ADD_ITEM'; product: Product; selectedModel?: number; qty: number }
+  | { type: 'REMOVE_ITEM'; cartItemId: string }
+  | { type: 'UPDATE_QTY'; cartItemId: string; quantity: number }
   | { type: 'CLEAR' }
   | { type: 'LOAD'; items: CartItem[] };
 
@@ -23,37 +28,31 @@ interface CartContextValue {
   totalItems: number;
   coupon: { code: string; pct: number } | null;
   discount: number;
-  addItem: (product: Product, qty?: number) => void;
-  removeItem: (productId: string) => void;
-  updateQty: (productId: string, quantity: number) => void;
-  clear: () => void;
   applyCoupon: (code: string) => boolean;
   removeCoupon: () => void;
+  addItem: (product: Product, selectedModel?: number, qty?: number) => void;
+  removeItem: (cartItemId: string) => void;
+  updateQty: (cartItemId: string, quantity: number) => void;
+  clear: () => void;
 }
 
 // ─── Reducer ─────────────────────────────────────────────────────────────────
 
-let _counter = 0;
-
 function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
     case 'ADD_ITEM': {
-      const cartItemId = `item-${Date.now()}-${_counter++}`;
-      const newItem: CartItem = {
-        product: { ...action.product, id: cartItemId },
-        quantity: action.qty ?? 1,
-      };
-      return { items: [...state.items, newItem] };
+      const cartItemId = makeCartItemId();
+      return { items: [...state.items, { cartItemId, product: action.product, quantity: action.qty, selectedModel: action.selectedModel }] };
     }
     case 'REMOVE_ITEM':
-      return { items: state.items.filter(i => i.product.id !== action.productId) };
+      return { items: state.items.filter(i => i.cartItemId !== action.cartItemId) };
     case 'UPDATE_QTY':
       if (action.quantity <= 0) {
-        return { items: state.items.filter(i => i.product.id !== action.productId) };
+        return { items: state.items.filter(i => i.cartItemId !== action.cartItemId) };
       }
       return {
         items: state.items.map(i =>
-          i.product.id === action.productId ? { ...i, quantity: action.quantity } : i
+          i.cartItemId === action.cartItemId ? { ...i, quantity: action.quantity } : i
         ),
       };
     case 'CLEAR':
@@ -82,23 +81,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, { items: [] });
   const [coupon, setCoupon] = useState<{ code: string; pct: number } | null>(null);
 
-  // Load cart from localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem('ml-cart');
       if (saved) dispatch({ type: 'LOAD', items: JSON.parse(saved) });
+      const savedCoupon = localStorage.getItem('ml-coupon');
+      if (savedCoupon) setCoupon(JSON.parse(savedCoupon));
     } catch {}
   }, []);
 
-  // Load saved coupon
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('ml-coupon');
-      if (saved) setCoupon(JSON.parse(saved));
-    } catch {}
-  }, []);
-
-  // Persist cart
   useEffect(() => {
     localStorage.setItem('ml-cart', JSON.stringify(state.items));
   }, [state.items]);
@@ -107,26 +98,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const totalItems = state.items.reduce((sum, i) => sum + i.quantity, 0);
   const discount = coupon ? Math.round(total * coupon.pct / 100) : 0;
 
-  const applyCoupon = (code: string): boolean => {
+  function applyCoupon(code: string): boolean {
     const coupons = getActiveCoupons();
     const upper = code.trim().toUpperCase();
     const pct = coupons[upper];
     if (!pct) return false;
-    const applied = { code: upper, pct };
-    setCoupon(applied);
-    localStorage.setItem('ml-coupon', JSON.stringify(applied));
+    const c = { code: upper, pct };
+    setCoupon(c);
+    try { localStorage.setItem('ml-coupon', JSON.stringify(c)); } catch {}
     return true;
-  };
+  }
 
-  const removeCoupon = () => {
+  function removeCoupon() {
     setCoupon(null);
-    localStorage.removeItem('ml-coupon');
-  };
-
-  const clear = () => {
-    dispatch({ type: 'CLEAR' });
-    removeCoupon();
-  };
+    try { localStorage.removeItem('ml-coupon'); } catch {}
+  }
 
   return (
     <CartContext.Provider value={{
@@ -135,12 +121,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       totalItems,
       coupon,
       discount,
-      addItem: (product, qty) => dispatch({ type: 'ADD_ITEM', product, qty }),
-      removeItem: (productId) => dispatch({ type: 'REMOVE_ITEM', productId }),
-      updateQty: (productId, quantity) => dispatch({ type: 'UPDATE_QTY', productId, quantity }),
-      clear,
       applyCoupon,
       removeCoupon,
+      addItem: (product, selectedModel, qty = 1) => dispatch({ type: 'ADD_ITEM', product, selectedModel, qty }),
+      removeItem: (cartItemId) => dispatch({ type: 'REMOVE_ITEM', cartItemId }),
+      updateQty: (cartItemId, quantity) => dispatch({ type: 'UPDATE_QTY', cartItemId, quantity }),
+      clear: () => { dispatch({ type: 'CLEAR' }); removeCoupon(); },
     }}>
       {children}
     </CartContext.Provider>

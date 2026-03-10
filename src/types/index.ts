@@ -35,6 +35,8 @@ export interface Category {
 }
 
 export interface CartItem {
+  cartItemId: string; // unique: productId or productId-modelIndex
   product: Product;
   quantity: number;
+  selectedModel?: number; // index of selected model image (for mugs)
 }

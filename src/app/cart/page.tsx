@@ -1,26 +1,16 @@
 'use client';
 
-import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useState } from 'react';
 import { useCart } from '@/context/CartContext';
 import { useLang } from '@/context/LanguageContext';
 
 export default function CartPage() {
-  const { items, total, discount, coupon, updateQty, removeItem, clear, applyCoupon, removeCoupon } = useCart();
+  const { items, total, discount, coupon, applyCoupon, removeCoupon, updateQty, removeItem, clear } = useCart();
   const { t, isRtl } = useLang();
   const [couponInput, setCouponInput] = useState('');
-  const [couponError, setCouponError] = useState('');
-
-  const shipping = 80;
-  const grandTotal = total - discount + shipping;
-
-  const handleApply = () => {
-    setCouponError('');
-    const ok = applyCoupon(couponInput);
-    if (!ok) setCouponError(isRtl ? 'كود الخصم غير صحيح' : 'Invalid coupon code');
-    else setCouponInput('');
-  };
+  const [couponError, setCouponError] = useState(false);
 
   if (items.length === 0) {
     return (
@@ -38,6 +28,15 @@ export default function CartPage() {
         </Link>
       </div>
     );
+  }
+
+  const shipping = 80;
+  const grandTotal = total - discount + shipping;
+
+  function handleApplyCoupon() {
+    const ok = applyCoupon(couponInput);
+    if (ok) { setCouponError(false); setCouponInput(''); }
+    else { setCouponError(true); }
   }
 
   return (
@@ -61,12 +60,14 @@ export default function CartPage() {
         {/* Items */}
         <div className="lg:col-span-2 flex flex-col gap-3">
           {items.map(item => (
-            <div key={item.product.id}
+            <div key={item.cartItemId}
               className="flex gap-4 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition">
 
               <Link href={`/shop/${item.product.slug}`}
                 className="relative w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-gray-50 border border-gray-100">
-                <Image src={item.product.images[0]} alt={item.product.name}
+                <Image
+                  src={item.selectedModel !== undefined ? item.product.images[item.selectedModel] : item.product.images[0]}
+                  alt={item.product.name}
                   fill className="object-cover" unoptimized />
               </Link>
 
@@ -82,17 +83,17 @@ export default function CartPage() {
               </div>
 
               <div className="shrink-0 flex flex-col items-end justify-between gap-2">
-                <button onClick={() => removeItem(item.product.id)}
+                <button onClick={() => removeItem(item.cartItemId)}
                   className="text-gray-300 hover:text-red-400 transition">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
                 <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
-                  <button onClick={() => updateQty(item.product.id, item.quantity - 1)}
+                  <button onClick={() => updateQty(item.cartItemId, item.quantity - 1)}
                     className="w-7 h-7 flex items-center justify-center text-sm hover:bg-gray-100 transition font-bold text-gray-700">−</button>
                   <span className="w-7 text-center text-sm font-bold text-gray-900">{item.quantity}</span>
-                  <button onClick={() => updateQty(item.product.id, item.quantity + 1)}
+                  <button onClick={() => updateQty(item.cartItemId, item.quantity + 1)}
                     className="w-7 h-7 flex items-center justify-center text-sm hover:bg-gray-100 transition font-bold text-gray-700">+</button>
                 </div>
                 <span className="text-sm font-black text-gray-900">
@@ -105,49 +106,49 @@ export default function CartPage() {
 
         {/* Summary */}
         <div className="lg:col-span-1">
-          <div className="bg-gray-950 rounded-2xl p-6 sticky top-24 text-white space-y-5">
-            <h2 className="font-black text-base">{t('cart.summary.title')}</h2>
+          <div className="bg-gray-950 rounded-2xl p-6 sticky top-24 text-white">
+            <h2 className="font-black text-base mb-5">{t('cart.summary.title')}</h2>
 
-            {/* Coupon input */}
-            {coupon ? (
-              <div className="bg-green-500/20 border border-green-500/30 rounded-xl px-4 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-green-300 text-xs font-bold">{isRtl ? 'كود خصم مطبق' : 'Coupon applied'}</p>
-                  <p className="font-mono font-black text-white text-sm">{coupon.code} — {coupon.pct}%</p>
+            {/* Coupon */}
+            <div className="mb-5">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 block">{t('cart.coupon.label')}</label>
+              {coupon ? (
+                <div className="flex items-center justify-between bg-green-900/40 border border-green-700/40 rounded-xl px-4 py-2.5">
+                  <div>
+                    <span className="text-green-400 text-xs font-black">{t('cart.coupon.applied')}</span>
+                    <span className="text-green-300 text-xs mr-2 ml-2">— {coupon.code} ({coupon.pct}%)</span>
+                  </div>
+                  <button onClick={removeCoupon} className="text-gray-500 hover:text-red-400 transition text-lg leading-none">×</button>
                 </div>
-                <button onClick={removeCoupon} className="text-green-400 hover:text-red-400 transition text-lg">✕</button>
-              </div>
-            ) : (
-              <div className="space-y-2">
+              ) : (
                 <div className="flex gap-2">
                   <input
+                    type="text"
                     value={couponInput}
-                    onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponError(''); }}
-                    onKeyDown={e => e.key === 'Enter' && handleApply()}
-                    placeholder={isRtl ? 'كود الخصم' : 'Coupon code'}
-                    className="flex-1 bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white placeholder:text-gray-500 outline-none focus:border-[#F5C518] font-mono uppercase"
-                    dir="ltr"
+                    onChange={e => { setCouponInput(e.target.value); setCouponError(false); }}
+                    onKeyDown={e => e.key === 'Enter' && handleApplyCoupon()}
+                    placeholder={t('cart.coupon.ph')}
+                    className="flex-1 bg-white/10 border border-white/15 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#F5C518]/50 uppercase tracking-wider"
                   />
-                  <button
-                    onClick={handleApply}
-                    className="bg-white/15 hover:bg-white/25 border border-white/20 text-white font-bold px-3 py-2 rounded-xl text-sm transition whitespace-nowrap"
-                  >
-                    {isRtl ? 'تطبيق' : 'Apply'}
+                  <button onClick={handleApplyCoupon}
+                    className="bg-white/10 hover:bg-white/20 border border-white/15 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition shrink-0">
+                    {t('cart.coupon.apply')}
                   </button>
                 </div>
-                {couponError && <p className="text-red-400 text-xs">{couponError}</p>}
-              </div>
-            )}
+              )}
+              {couponError && (
+                <p className="text-red-400 text-xs mt-1.5 font-semibold">{t('cart.coupon.invalid')}</p>
+              )}
+            </div>
 
-            {/* Totals */}
             <div className="flex flex-col gap-3 text-sm">
               <div className="flex justify-between text-gray-400">
                 <span>{t('cart.summary.subtotal')}</span>
                 <span className="text-white font-semibold">{total} {t('cart.currency')}</span>
               </div>
-              {discount > 0 && (
+              {coupon && (
                 <div className="flex justify-between text-green-400">
-                  <span>{isRtl ? `خصم (${coupon?.pct}%)` : `Discount (${coupon?.pct}%)`}</span>
+                  <span>{t('cart.coupon.discount')} ({coupon.pct}%)</span>
                   <span className="font-semibold">−{discount} {t('cart.currency')}</span>
                 </div>
               )}
@@ -162,7 +163,7 @@ export default function CartPage() {
             </div>
 
             <Link href="/checkout"
-              className="flex items-center justify-center gap-2 w-full bg-[#F5C518] hover:bg-[#e0b000] text-gray-900 font-black py-4 rounded-xl transition text-sm">
+              className="mt-6 flex items-center justify-center gap-2 w-full bg-[#F5C518] hover:bg-[#e0b000] text-gray-900 font-black py-4 rounded-xl transition text-sm">
               {t('cart.checkout')}
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'} />
@@ -170,7 +171,7 @@ export default function CartPage() {
             </Link>
 
             <Link href="/"
-              className="block text-center text-xs text-gray-500 hover:text-gray-300 transition">
+              className="mt-3 block text-center text-xs text-gray-500 hover:text-gray-300 transition">
               {t('cart.continue')}
             </Link>
           </div>

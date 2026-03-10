@@ -47,7 +47,7 @@ function AuthContent() {
     <div className="flex min-h-screen" dir={isRtl ? 'rtl' : 'ltr'}>
 
       {/* ── Left panel (image only, hidden on mobile) ── */}
-      <div className="hidden lg:block lg:w-1/2 bg-gray-900 overflow-hidden shrink-0">
+      <div className="hidden lg:relative lg:block lg:w-1/2 bg-gray-900 overflow-hidden shrink-0">
         <Image src="/sign-in.jpg" alt="" fill className="object-cover object-center" unoptimized />
       </div>
 

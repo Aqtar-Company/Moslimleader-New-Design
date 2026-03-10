@@ -10,7 +10,7 @@ import { governorates, getShipping } from '@/lib/shipping';
 import { countries, carrierRates, calculateInternationalShipping, type Carrier } from '@/lib/international-shipping';
 
 type Step = 'address' | 'payment' | 'confirm';
-type PayMethod = 'cod' | 'card' | 'vodafone' | 'instapay';
+type PayMethod = 'cod' | 'card' | 'vodafone' | 'instapay' | 'paypal';
 type ShippingType = 'local' | 'international';
 
 interface AddressForm {
@@ -47,7 +47,7 @@ function formatExpiry(val: string) {
 }
 
 export default function CheckoutPage() {
-  const { items, total, clear } = useCart();
+  const { items, total, coupon, discount, clear } = useCart();
   const { user } = useAuth();
   const { lang } = useLang();
   const isRtl = lang === 'ar';
@@ -57,6 +57,14 @@ export default function CheckoutPage() {
   const [address, setAddress] = useState<AddressForm>({ ...EMPTY_ADDR, fullName: user?.name || '', phone: user?.phone || '' });
   const [carrier, setCarrier] = useState<Carrier>('aramex');
   const [payMethod, setPayMethod] = useState<PayMethod>('cod');
+
+  // When switching shipping type, reset to valid payment method
+  function handleShippingTypeChange(t: ShippingType) {
+    setShippingType(t);
+    if (t === 'international' && payMethod !== 'card') {
+      setPayMethod('card');
+    }
+  }
   const [cardForm, setCardForm] = useState<CardForm>(EMPTY_CARD);
   const [cardErrors, setCardErrors] = useState<Partial<CardForm>>({});
   const [errors, setErrors] = useState<Partial<AddressForm>>({});
@@ -98,6 +106,7 @@ export default function CheckoutPage() {
     required: isRtl ? 'هذا الحقل مطلوب' : 'Required',
     currency: isRtl ? 'ج.م' : 'EGP',
     subtotal: isRtl ? 'المجموع' : 'Subtotal',
+    discount: isRtl ? 'خصم' : 'Discount',
     shippingLabel: isRtl ? 'الشحن' : 'Shipping',
     totalLabel: isRtl ? 'الإجمالي' : 'Total',
     orderSummary: isRtl ? 'ملخص الطلب' : 'Order Summary',
@@ -162,7 +171,7 @@ export default function CheckoutPage() {
       try {
         const key = `ml_orders_${user.id}`;
         const existing = JSON.parse(localStorage.getItem(key) || '[]');
-        existing.unshift({ id: orderNumber, date: new Date().toLocaleDateString('ar-EG'), total: total + shippingCost, status: isRtl ? 'قيد التجهيز' : 'Processing' });
+        existing.unshift({ id: orderNumber, date: new Date().toLocaleDateString('ar-EG'), total: total - discount + shippingCost, status: isRtl ? 'قيد التجهيز' : 'Processing' });
         localStorage.setItem(key, JSON.stringify(existing));
       } catch {}
     }
@@ -250,12 +259,12 @@ export default function CheckoutPage() {
                 {([['local', L.localShipping], ['international', L.intlShipping]] as [ShippingType, string][]).map(([t, label]) => (
                   <button
                     key={t}
-                    onClick={() => setShippingType(t)}
+                    onClick={() => handleShippingTypeChange(t)}
                     className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold border-2 transition ${
                       shippingType === t ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 text-gray-600 hover:border-gray-400'
                     }`}
                   >
-                    {t === 'local' ? '🇪🇬 ' : '🌍 '}{label}
+                    {label}
                   </button>
                 ))}
               </div>
@@ -369,7 +378,7 @@ export default function CheckoutPage() {
               </div>
               <button onClick={() => validateAddress() && setStep('payment')}
                 className="mt-6 w-full bg-gray-900 hover:bg-gray-700 text-white font-bold py-4 rounded-xl transition text-sm">
-                {L.next} →
+                {isRtl ? `← ${L.next}` : `${L.next} →`}
               </button>
             </div>
           )}
@@ -378,13 +387,21 @@ export default function CheckoutPage() {
           {step === 'payment' && (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
               <h2 className="text-lg font-black text-gray-900 mb-6">{L.payment}</h2>
+              {shippingType === 'international' && (
+                <div className="mb-4 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-xs text-blue-700 font-semibold">
+                  {isRtl
+                    ? 'الشحن الدولي: وسائل الدفع المحلية (عند الاستلام، فودافون كاش، إنستاباي) غير متاحة. يُقبل الدفع ببطاقة أو PayPal.'
+                    : 'International Shipping: Local payment methods are not available. Please use card or PayPal.'}
+                </div>
+              )}
               <div className="flex flex-col gap-3">
                 {([
-                  { id: 'cod',      icon: '💵', title: isRtl ? 'الدفع عند الاستلام' : 'Cash on Delivery',     desc: isRtl ? 'ادفع نقداً عند وصول طلبك' : 'Pay cash when your order arrives', ok: true },
-                  { id: 'card',     icon: '💳', title: isRtl ? 'بطاقة بنكية (فيزا / ماستركارد)' : 'Credit / Debit Card', desc: isRtl ? 'فيزا، ماستركارد، أو ميزة' : 'Visa, Mastercard, or Meeza', ok: true },
-                  { id: 'vodafone', icon: '📱', title: 'Vodafone Cash',                                       desc: isRtl ? 'ادفع عبر محفظة فودافون كاش' : 'Pay via Vodafone Cash wallet',       ok: true },
-                  { id: 'instapay', icon: '⚡', title: 'InstaPay',                                            desc: isRtl ? 'ادفع عبر تطبيق InstaPay' : 'Pay via InstaPay app',               ok: true },
-                ] as const).map(m => (
+                  { id: 'cod',      icon: '💵', title: isRtl ? 'الدفع عند الاستلام' : 'Cash on Delivery',     desc: isRtl ? 'ادفع نقداً عند وصول طلبك' : 'Pay cash when your order arrives', intl: false },
+                  { id: 'card',     icon: '💳', title: isRtl ? 'بطاقة بنكية (فيزا / ماستركارد)' : 'Credit / Debit Card', desc: isRtl ? 'فيزا، ماستركارد، أو ميزة' : 'Visa, Mastercard, or Meeza', intl: true },
+                  { id: 'paypal',   icon: '🅿️', title: 'PayPal',                                              desc: isRtl ? 'ادفع عبر حسابك على PayPal' : 'Pay with your PayPal account',      intl: true },
+                  { id: 'vodafone', icon: '📱', title: 'Vodafone Cash',                                       desc: isRtl ? 'ادفع عبر محفظة فودافون كاش' : 'Pay via Vodafone Cash wallet',       intl: false },
+                  { id: 'instapay', icon: '⚡', title: 'InstaPay',                                            desc: isRtl ? 'ادفع عبر تطبيق InstaPay' : 'Pay via InstaPay app',               intl: false },
+                ] as const).filter(m => shippingType === 'local' || m.intl).map(m => (
                   <label key={m.id}
                     className={`flex items-center gap-4 border-2 rounded-2xl p-4 cursor-pointer transition ${
                       payMethod === m.id ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-300'
@@ -471,14 +488,21 @@ export default function CheckoutPage() {
                 </div>
               )}
 
+              {payMethod === 'paypal' && (
+                <div className="mt-4 bg-blue-50 border border-blue-100 rounded-2xl p-4 text-sm">
+                  <p className="font-semibold text-gray-900 mb-1">{isRtl ? 'الدفع عبر PayPal:' : 'Pay via PayPal:'}</p>
+                  <p className="text-gray-500 text-xs mt-1">{isRtl ? 'بعد تأكيد الطلب سنرسل لك رابط الدفع عبر واتساب أو البريد الإلكتروني.' : 'After placing your order, we will send you a PayPal payment link via WhatsApp or email.'}</p>
+                </div>
+              )}
+
               <div className="flex gap-3 mt-6">
                 <button onClick={() => setStep('address')}
                   className="flex-1 border-2 border-gray-200 hover:border-gray-400 text-gray-700 font-bold py-3.5 rounded-xl transition text-sm">
-                  ← {L.back}
+                  {isRtl ? `${L.back} →` : `← ${L.back}`}
                 </button>
                 <button onClick={() => { if (validateCard()) setStep('confirm'); }}
                   className="flex-1 bg-gray-900 hover:bg-gray-700 text-white font-bold py-3.5 rounded-xl transition text-sm">
-                  {L.next} →
+                  {isRtl ? `← ${L.next}` : `${L.next} →`}
                 </button>
               </div>
             </div>
@@ -513,7 +537,9 @@ export default function CheckoutPage() {
                   <p className="text-sm text-gray-700">
                     {payMethod === 'cod' ? (isRtl ? 'الدفع عند الاستلام' : 'Cash on Delivery')
                       : payMethod === 'card' ? (isRtl ? `بطاقة تنتهي بـ ${cardForm.number.slice(-4)}` : `Card ending in ${cardForm.number.slice(-4)}`)
-                      : payMethod === 'vodafone' ? 'Vodafone Cash' : 'InstaPay'}
+                      : payMethod === 'vodafone' ? 'Vodafone Cash'
+                      : payMethod === 'paypal' ? 'PayPal'
+                      : 'InstaPay'}
                   </p>
                 </div>
               </div>
@@ -524,7 +550,7 @@ export default function CheckoutPage() {
               </button>
               <button onClick={() => setStep('payment')}
                 className="mt-3 w-full text-center text-xs text-gray-400 hover:text-gray-700 transition">
-                ← {L.back}
+                {isRtl ? `${L.back} →` : `← ${L.back}`}
               </button>
             </div>
           )}
@@ -535,29 +561,45 @@ export default function CheckoutPage() {
           <div className="bg-gray-50 rounded-2xl p-5 sticky top-24">
             <h3 className="font-black text-gray-900 text-sm mb-4">{L.orderSummary}</h3>
             <div className="flex flex-col gap-3 mb-4">
-              {items.map(item => (
-                <div key={item.product.id} className="flex items-center gap-3">
-                  <div className="relative w-11 h-11 rounded-lg overflow-hidden bg-white border border-gray-200 shrink-0">
-                    <Image src={item.product.images[0]} alt={item.product.name} fill className="object-cover" unoptimized />
-                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-gray-900 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
-                      {item.quantity}
-                    </span>
+              {items.map(item => {
+                const displayImg = item.selectedModel !== undefined
+                  ? item.product.images[item.selectedModel]
+                  : item.product.images[0];
+                return (
+                  <div key={item.cartItemId} className="flex items-center gap-3">
+                    <div className="relative w-11 h-11 rounded-lg overflow-hidden bg-white border border-gray-200 shrink-0">
+                      <Image src={displayImg} alt={item.product.name} fill className="object-cover" unoptimized />
+                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-gray-900 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
+                        {item.quantity}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-900 truncate">
+                        {isRtl ? item.product.name : (item.product.nameEn || item.product.name)}
+                      </p>
+                      {item.selectedModel !== undefined && (
+                        <p className="text-xs text-purple-600 font-semibold">
+                          {isRtl ? `موديل ${item.selectedModel}` : `Model ${item.selectedModel}`}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-400">{item.product.weight}g × {item.quantity}</p>
+                    </div>
+                    <p className="text-xs font-black text-gray-900 shrink-0">{item.product.price * item.quantity} {L.currency}</p>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-gray-900 truncate">
-                      {isRtl ? item.product.name : (item.product.nameEn || item.product.name)}
-                    </p>
-                    <p className="text-xs text-gray-400">{item.product.weight}g × {item.quantity}</p>
-                  </div>
-                  <p className="text-xs font-black text-gray-900 shrink-0">{item.product.price * item.quantity} {L.currency}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div className="border-t pt-3 flex flex-col gap-2 text-xs">
               <div className="flex justify-between text-gray-500">
                 <span>{L.subtotal}</span>
                 <span className="font-semibold text-gray-900">{total} {L.currency}</span>
               </div>
+              {coupon && discount > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>{L.discount} ({coupon.pct}%) — <span className="font-bold">{coupon.code}</span></span>
+                  <span className="font-semibold">−{discount} {L.currency}</span>
+                </div>
+              )}
               <div className="flex justify-between text-gray-500">
                 <span>
                   {L.shippingLabel}
@@ -575,7 +617,7 @@ export default function CheckoutPage() {
               {shippingCost > 0 && (
                 <div className="flex justify-between border-t pt-2 text-sm">
                   <span className="font-black text-gray-900">{L.totalLabel}</span>
-                  <span className="font-black text-gray-900 text-base">{total + shippingCost} <span className="text-xs text-gray-500">{L.currency}</span></span>
+                  <span className="font-black text-gray-900 text-base">{total - discount + shippingCost} <span className="text-xs text-gray-500">{L.currency}</span></span>
                 </div>
               )}
             </div>

@@ -47,7 +47,7 @@ function formatExpiry(val: string) {
 }
 
 export default function CheckoutPage() {
-  const { items, total, clear } = useCart();
+  const { items, total, coupon, discount, clear } = useCart();
   const { user } = useAuth();
   const { lang } = useLang();
   const isRtl = lang === 'ar';
@@ -106,6 +106,7 @@ export default function CheckoutPage() {
     required: isRtl ? 'هذا الحقل مطلوب' : 'Required',
     currency: isRtl ? 'ج.م' : 'EGP',
     subtotal: isRtl ? 'المجموع' : 'Subtotal',
+    discount: isRtl ? 'خصم' : 'Discount',
     shippingLabel: isRtl ? 'الشحن' : 'Shipping',
     totalLabel: isRtl ? 'الإجمالي' : 'Total',
     orderSummary: isRtl ? 'ملخص الطلب' : 'Order Summary',
@@ -170,7 +171,7 @@ export default function CheckoutPage() {
       try {
         const key = `ml_orders_${user.id}`;
         const existing = JSON.parse(localStorage.getItem(key) || '[]');
-        existing.unshift({ id: orderNumber, date: new Date().toLocaleDateString('ar-EG'), total: total + shippingCost, status: isRtl ? 'قيد التجهيز' : 'Processing' });
+        existing.unshift({ id: orderNumber, date: new Date().toLocaleDateString('ar-EG'), total: total - discount + shippingCost, status: isRtl ? 'قيد التجهيز' : 'Processing' });
         localStorage.setItem(key, JSON.stringify(existing));
       } catch {}
     }
@@ -593,6 +594,12 @@ export default function CheckoutPage() {
                 <span>{L.subtotal}</span>
                 <span className="font-semibold text-gray-900">{total} {L.currency}</span>
               </div>
+              {coupon && discount > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>{L.discount} ({coupon.pct}%) — <span className="font-bold">{coupon.code}</span></span>
+                  <span className="font-semibold">−{discount} {L.currency}</span>
+                </div>
+              )}
               <div className="flex justify-between text-gray-500">
                 <span>
                   {L.shippingLabel}
@@ -610,7 +617,7 @@ export default function CheckoutPage() {
               {shippingCost > 0 && (
                 <div className="flex justify-between border-t pt-2 text-sm">
                   <span className="font-black text-gray-900">{L.totalLabel}</span>
-                  <span className="font-black text-gray-900 text-base">{total + shippingCost} <span className="text-xs text-gray-500">{L.currency}</span></span>
+                  <span className="font-black text-gray-900 text-base">{total - discount + shippingCost} <span className="text-xs text-gray-500">{L.currency}</span></span>
                 </div>
               )}
             </div>

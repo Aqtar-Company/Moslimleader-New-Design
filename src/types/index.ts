@@ -19,6 +19,7 @@ export interface Product {
   descriptionEn?: string;
   price: number;
   category: string;
+  subcategory?: string;
   tags: string[];
   images: string[];
   inStock: boolean;

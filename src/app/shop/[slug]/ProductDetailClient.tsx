@@ -8,7 +8,7 @@ import { products } from '@/lib/products';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { useLang } from '@/context/LanguageContext';
-import { Product } from '@/types';
+import { Product, ProductVariant } from '@/types';
 import ProductCard from '@/components/product/ProductCard';
 
 const MODEL_CATEGORIES = ['مجات', 'مفكرات'];
@@ -22,6 +22,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
   const [selectedModel, setSelectedModel] = useState<number | undefined>(undefined);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   // Share
   const [copied, setCopied] = useState(false);
   // Review form
@@ -43,12 +44,17 @@ export default function ProductDetailClient({ product }: { product: Product }) {
     } catch {}
   }, [product.id]);
 
-  const needsModel = MODEL_CATEGORIES.includes(product.category)
+  // Named variants (admin-defined) take priority over hardcoded category logic
+  const hasVariants = !!(product.variants && product.variants.length > 0);
+  const needsLegacyModel = !hasVariants && (
+    MODEL_CATEGORIES.includes(product.category)
     || MODEL_SLUGS_WITH_COVER.includes(product.slug)
-    || MODEL_SLUGS_NO_COVER.includes(product.slug);
-  // bags: all images are models (offset=0); everything else: images[0] is overview (offset=1)
+    || MODEL_SLUGS_NO_COVER.includes(product.slug)
+  );
+  const needsModel = hasVariants || needsLegacyModel;
+  // Legacy: bags offset=0, rest offset=1
   const modelOffset = MODEL_SLUGS_NO_COVER.includes(product.slug) ? 0 : 1;
-  const modelImages = needsModel ? product.images.slice(modelOffset) : [];
+  const modelImages = needsLegacyModel ? product.images.slice(modelOffset) : [];
 
   const videos = product.videos ?? [];
 
@@ -102,9 +108,12 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   }
 
   function handleAdd() {
-    if (needsModel && selectedModel === undefined) return;
-    addItem(product, selectedModel, qty);
+    if (hasVariants && !selectedVariant) return;
+    if (needsLegacyModel && selectedModel === undefined) return;
+    const modelIdx = hasVariants ? selectedVariant!.imageIndex : selectedModel;
+    addItem(product, modelIdx, qty);
     setAdded(true);
+    setSelectedVariant(null);
     setSelectedModel(undefined);
     setQty(1);
     setTimeout(() => setAdded(false), 2000);
@@ -182,8 +191,48 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               </span>
             </div>
 
-            {/* Model selector (mugs, notebooks, bags) */}
-            {needsModel && modelImages.length > 0 && (
+            {/* Named variants (admin-defined) */}
+            {hasVariants && product.variants && (
+              <div>
+                <p className="text-sm font-bold text-gray-700 mb-2">
+                  {isRtl ? 'اختر الموديل' : 'Select Model'}
+                  {selectedVariant && (
+                    <span className="text-purple-700 mr-2 ml-2 font-normal">
+                      — {isRtl ? selectedVariant.name : (selectedVariant.nameEn || selectedVariant.name)}
+                    </span>
+                  )}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {product.variants.map(v => (
+                    <button
+                      key={v.id}
+                      onClick={() => { setSelectedVariant(v); setMainImg(v.imageIndex); }}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl border-2 transition ${
+                        selectedVariant?.id === v.id
+                          ? 'border-purple-600 bg-purple-50 text-purple-700 ring-2 ring-purple-200'
+                          : 'border-gray-200 hover:border-gray-400 text-gray-700'
+                      }`}
+                    >
+                      {/* Color swatch from image */}
+                      <span className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-gray-200">
+                        <Image src={product.images[v.imageIndex]} alt={v.name} fill className="object-cover" unoptimized />
+                      </span>
+                      <span className="text-sm font-bold">
+                        {isRtl ? v.name : (v.nameEn || v.name)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                {!selectedVariant && (
+                  <p className="text-amber-600 text-xs mt-1.5 font-semibold">
+                    {isRtl ? '* يرجى اختيار الموديل أولاً' : '* Please select a model first'}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Legacy model selector (mugs, notebooks, bags — hardcoded) */}
+            {needsLegacyModel && modelImages.length > 0 && (
               <div>
                 <p className="text-sm font-bold text-gray-700 mb-2">
                   {isRtl ? 'اختر الموديل' : 'Select Model'}
@@ -228,9 +277,9 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                 </div>
                 <button
                   onClick={handleAdd}
-                  disabled={needsModel && selectedModel === undefined}
+                  disabled={(hasVariants && !selectedVariant) || (needsLegacyModel && selectedModel === undefined)}
                   className={`flex-1 font-bold py-3 px-6 rounded-xl transition text-center ${
-                    needsModel && selectedModel === undefined
+                    (hasVariants && !selectedVariant) || (needsLegacyModel && selectedModel === undefined)
                       ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                       : 'bg-purple-700 hover:bg-purple-800 text-white'
                   }`}

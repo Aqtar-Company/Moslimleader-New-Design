@@ -6,7 +6,14 @@ import {
   addProduct, deleteAddedProduct, saveAddedProducts, ProductOverride,
 } from '@/lib/admin-storage';
 import { products as staticProducts, categories } from '@/lib/products';
-import { Product } from '@/types';
+import { Product, ProductVariant } from '@/types';
+
+interface VariantDraft {
+  id: string;
+  name: string;
+  nameEn: string;
+  imageIndex: number; // -1 = none selected
+}
 
 type MergedProduct = Product & { isAdded?: boolean };
 
@@ -59,6 +66,7 @@ export default function ProductsPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [formTags, setFormTags] = useState('');
   const [formImages, setFormImages] = useState<string[]>([]); // base64 or URLs
+  const [variants, setVariants] = useState<VariantDraft[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -152,10 +160,25 @@ export default function ProductsPage() {
 
   // ─── Form submit ──────────────────────────────────────────────────────────────
 
+  // ─── Variants helpers ─────────────────────────────────────────────────────────
+  const addVariant = () => {
+    setVariants(v => [...v, { id: `v-${Date.now()}`, name: '', nameEn: '', imageIndex: -1 }]);
+  };
+
+  const updateVariant = (id: string, patch: Partial<VariantDraft>) => {
+    setVariants(v => v.map(x => x.id === id ? { ...x, ...patch } : x));
+  };
+
+  const removeVariant = (id: string) => {
+    setVariants(v => v.filter(x => x.id !== id));
+  };
+
+  // ─── Form helpers ─────────────────────────────────────────────────────────────
   const resetForm = () => {
     setForm(EMPTY_FORM);
     setFormTags('');
     setFormImages([]);
+    setVariants([]);
     setShowForm(false);
   };
 
@@ -169,11 +192,16 @@ export default function ProductsPage() {
       return;
     }
     setSaving(true);
+    const builtVariants: ProductVariant[] = variants
+      .filter(v => v.name && v.imageIndex >= 0)
+      .map(v => ({ id: v.id, name: v.name, nameEn: v.nameEn || undefined, imageIndex: v.imageIndex }));
+
     const newProduct: Product = {
       ...form,
       id: `added-${Date.now()}`,
       tags: formTags.split(',').map(t => t.trim()).filter(Boolean),
       images: formImages,
+      variants: builtVariants.length > 0 ? builtVariants : undefined,
       reviews: [],
     };
     addProduct(newProduct);
@@ -303,6 +331,93 @@ export default function ProductsPage() {
               </div>
             )}
           </div>
+
+          {/* ── Variants / Modiels ── */}
+          {formImages.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600">
+                    الموديلات / الألوان
+                    <span className="text-gray-400 font-normal mr-1">(اختياري — لو المنتج له أشكال مختلفة)</span>
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  onClick={addVariant}
+                  className="text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 px-3 py-1.5 rounded-lg transition flex items-center gap-1"
+                >
+                  + إضافة موديل
+                </button>
+              </div>
+
+              {variants.length > 0 && (
+                <div className="space-y-3">
+                  {variants.map((v, idx) => (
+                    <div key={v.id} className="border border-gray-200 rounded-xl p-3 bg-gray-50 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-500 w-16 shrink-0">موديل {idx + 1}</span>
+                        <input
+                          value={v.name}
+                          onChange={e => updateVariant(v.id, { name: e.target.value })}
+                          placeholder="الاسم (عربي) — مثلاً: أحمر، كبير، A"
+                          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-purple-400 bg-white"
+                        />
+                        <input
+                          value={v.nameEn}
+                          onChange={e => updateVariant(v.id, { nameEn: e.target.value })}
+                          placeholder="English name (optional)"
+                          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-purple-400 bg-white"
+                          dir="ltr"
+                        />
+                        <button
+                          onClick={() => removeVariant(v.id)}
+                          className="text-red-400 hover:text-red-600 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition text-sm"
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      {/* Image picker for this variant */}
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1.5">اختر صورة هذا الموديل:</p>
+                        <div className="flex gap-2 flex-wrap">
+                          {formImages.map((src, imgIdx) => (
+                            <button
+                              key={imgIdx}
+                              type="button"
+                              onClick={() => updateVariant(v.id, { imageIndex: imgIdx })}
+                              className={`relative w-14 h-14 rounded-lg overflow-hidden border-2 transition ${
+                                v.imageIndex === imgIdx
+                                  ? 'border-purple-500 ring-2 ring-purple-300'
+                                  : 'border-gray-200 hover:border-gray-400'
+                              }`}
+                            >
+                              <img src={src} alt="" className="w-full h-full object-cover" />
+                              {v.imageIndex === imgIdx && (
+                                <div className="absolute inset-0 bg-purple-500/20 flex items-center justify-center">
+                                  <span className="text-white text-sm font-black">✓</span>
+                                </div>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                        {v.imageIndex < 0 && (
+                          <p className="text-amber-600 text-xs mt-1">* اختر صورة للموديل</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {variants.length === 0 && (
+                <p className="text-xs text-gray-400 bg-gray-50 border border-dashed border-gray-200 rounded-xl px-4 py-3 text-center">
+                  لو المنتج منه ألوان أو أشكال مختلفة — اضغط "إضافة موديل" وحدد اسم وصورة كل موديل
+                </p>
+              )}
+            </div>
+          )}
 
           {/* ── Fields grid ── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

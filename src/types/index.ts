@@ -1,3 +1,10 @@
+export interface ProductVariant {
+  id: string;
+  name: string;      // e.g. "أحمر"
+  nameEn?: string;   // e.g. "Red"
+  imageIndex: number; // which index in product.images[] to show
+}
+
 export interface Review {
   id: string;
   author: string;
@@ -20,6 +27,7 @@ export interface Product {
   price: number;
   category: string;
   subcategory?: string;
+  variants?: ProductVariant[]; // selectable models (colors, shapes, etc.)
   tags: string[];
   images: string[];
   inStock: boolean;

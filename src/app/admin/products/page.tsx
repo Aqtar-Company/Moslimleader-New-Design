@@ -37,7 +37,7 @@ function readFileAsDataURL(file: File): Promise<string> {
 const EMPTY_FORM = {
   slug: '', name: '', nameEn: '', shortDescription: '', shortDescriptionEn: '',
   description: '', descriptionEn: '', price: 0, category: '',
-  tags: [] as string[], images: [] as string[], inStock: true, featured: false, weight: 0,
+  tags: [] as string[], images: [] as string[], inStock: true, weight: 0,
 };
 
 export default function ProductsPage() {
@@ -117,16 +117,6 @@ export default function ProductsPage() {
     }
   };
 
-  const toggleFeatured = (p: MergedProduct) => {
-    if (p.isAdded) {
-      const updated = added.map(a => a.id === p.id ? { ...a, featured: !a.featured } : a);
-      setAdded(updated);
-      saveAddedProducts(updated);
-    } else {
-      setProductOverride(p.id, { featured: !(p.featured ?? false) });
-      load();
-    }
-  };
 
   const savePrice = (p: MergedProduct) => {
     const val = parseFloat(priceVal);
@@ -166,7 +156,6 @@ export default function ProductsPage() {
       tags: p.tags,
       images: p.images,
       inStock: p.inStock,
-      featured: p.featured ?? false,
       weight: p.weight,
     });
     setFormTags(p.tags.join(', '));
@@ -224,7 +213,6 @@ export default function ProductsPage() {
         price: form.price,
         category: form.category,
         inStock: form.inStock,
-        featured: form.featured,
         weight: form.weight,
         tags: parsedTags,
         images: formImages,
@@ -248,7 +236,6 @@ export default function ProductsPage() {
         price: form.price,
         category: form.category,
         inStock: form.inStock,
-        featured: form.featured,
         weight: form.weight,
         tags: parsedTags,
         images: formImages,
@@ -621,15 +608,6 @@ export default function ProductsPage() {
                 />
                 <span className="text-sm font-semibold text-gray-700">متوفر في المخزن</span>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.featured || false}
-                  onChange={e => setForm(f => ({ ...f, featured: e.target.checked }))}
-                  className="w-4 h-4 accent-[#F5C518]"
-                />
-                <span className="text-sm font-semibold text-gray-700">منتج مميز ⭐</span>
-              </label>
             </div>
           </div>
 
@@ -665,7 +643,6 @@ export default function ProductsPage() {
                 <th className="px-4 py-3.5 text-right">الفئة</th>
                 <th className="px-4 py-3.5 text-right">السعر</th>
                 <th className="px-4 py-3.5 text-center">المخزون</th>
-                <th className="px-4 py-3.5 text-center">مميز</th>
                 <th className="px-4 py-3.5 text-center">إجراءات</th>
               </tr>
             </thead>
@@ -720,14 +697,6 @@ export default function ProductsPage() {
                       }`}
                     >
                       {p.inStock ? 'متوفر' : 'نفذ'}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => toggleFeatured(p)}
-                      className={`text-lg transition hover:scale-125 ${p.featured ? 'opacity-100' : 'opacity-25'}`}
-                    >
-                      ⭐
                     </button>
                   </td>
                   <td className="px-4 py-3 text-center">

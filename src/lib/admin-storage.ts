@@ -36,7 +36,6 @@ export interface AdminReview {
 export interface ProductOverride {
   price?: number;
   inStock?: boolean;
-  featured?: boolean;
   name?: string;
   nameEn?: string;
   shortDescription?: string;
@@ -179,7 +178,6 @@ export function applyOverride(p: Product, ov: ProductOverride): Product {
     ...p,
     price: ov.price ?? p.price,
     inStock: ov.inStock ?? p.inStock,
-    featured: ov.featured ?? p.featured,
     name: ov.name ?? p.name,
     nameEn: ov.nameEn ?? p.nameEn,
     shortDescription: ov.shortDescription ?? p.shortDescription,

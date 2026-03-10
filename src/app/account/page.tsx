@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LanguageContext';
 import { Address } from '@/context/AuthContext';
 import { governorates } from '@/lib/shipping';
+import { ADMIN_EMAIL } from '@/lib/admin-config';
 
 type Tab = 'profile' | 'addresses' | 'orders';
 
@@ -145,12 +147,22 @@ export default function AccountPage() {
           <h1 className="text-2xl font-black text-gray-900">{L.title}</h1>
           <p className="text-sm text-gray-500 mt-1">{user.email}</p>
         </div>
-        <button
-          onClick={() => { signOut(); router.push('/'); }}
-          className="text-sm text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 rounded-xl px-4 py-2 transition font-semibold"
-        >
-          {L.signOut}
-        </button>
+        <div className="flex items-center gap-2">
+          {user.email === ADMIN_EMAIL && (
+            <Link
+              href="/admin/dashboard"
+              className="text-sm font-bold bg-[#F5C518] hover:bg-amber-400 text-[#1a1a2e] rounded-xl px-4 py-2 transition flex items-center gap-1.5"
+            >
+              <span>⚙️</span> {isRtl ? 'لوحة التحكم' : 'Dashboard'}
+            </Link>
+          )}
+          <button
+            onClick={() => { signOut(); router.push('/'); }}
+            className="text-sm text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 rounded-xl px-4 py-2 transition font-semibold"
+          >
+            {L.signOut}
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}

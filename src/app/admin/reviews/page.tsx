@@ -13,8 +13,8 @@ export default function ReviewsPage() {
   const load = useCallback(() => {
     const added = getAddedProducts();
     const allProds = [
-      ...staticProducts.map(p => ({ id: p.id, name: p.name })),
-      ...added.map(p => ({ id: p.id, name: p.name })),
+      ...staticProducts.map(p => ({ id: p.id, name: p.name, reviews: p.reviews })),
+      ...added.map(p => ({ id: p.id, name: p.name, reviews: p.reviews })),
     ];
     setReviews(getAllReviews(allProds));
   }, []);

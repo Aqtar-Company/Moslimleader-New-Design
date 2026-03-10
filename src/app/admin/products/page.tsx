@@ -3,39 +3,24 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   getProductOverrides, setProductOverride, getAddedProducts,
-  addProduct, deleteAddedProduct, saveAddedProducts, ProductOverride,
+  addProduct, deleteAddedProduct, saveAddedProducts, updateAddedProduct,
+  getAddedCategories, saveAddedCategories, applyOverride, ProductOverride,
 } from '@/lib/admin-storage';
-import { products as staticProducts, categories } from '@/lib/products';
+import { products as staticProducts, categories as staticCategories } from '@/lib/products';
 import { Product, ProductVariant } from '@/types';
 
 interface VariantDraft {
   id: string;
   name: string;
   nameEn: string;
-  imageIndex: number; // -1 = none selected
+  imageIndex: number;
 }
 
 type MergedProduct = Product & { isAdded?: boolean };
 
-// ─── Subcategories per category ───────────────────────────────────────────────
-const SUBCATEGORIES: Record<string, string[]> = {
-  'ألعاب تعليمية': ['ألعاب لوحية', 'ألعاب تفاعلية', 'ألعاب تركيب', 'ألعاب كروت'],
-  'كتب': ['كتب أطفال', 'كتب إسلامية', 'كتب تعليمية', 'كتب مغامرات'],
-  'كتب الأسرة': ['كتب تربية', 'كتب أمومة', 'تنمية ذاتية'],
-  'قصص الأطفال': ['قصص دينية', 'قصص تعليمية', 'قصص مغامرات'],
-  'أدوات القرآن': ['حاملات مصحف', 'أدوات قراءة', 'مستلزمات'],
-  'مفكرات': ['مفكرات أطفال', 'مفكرات كبار', 'أجندات'],
-  'إكسسوار': ['دبابيس', 'شنط', 'مفاتيح', 'هدايا'],
-  'مجات': ['مجات أطفال', 'مجات كبار', 'مجات نسائية'],
-};
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 function mergeProducts(overrides: Record<string, ProductOverride>, added: Product[]): MergedProduct[] {
   const base = staticProducts.map(p => ({
-    ...p,
-    price: overrides[p.id]?.price ?? p.price,
-    inStock: overrides[p.id]?.inStock ?? p.inStock,
-    featured: overrides[p.id]?.featured ?? p.featured,
+    ...(overrides[p.id] ? applyOverride(p, overrides[p.id]) : p),
   }));
   return [...base, ...added.map(p => ({ ...p, isAdded: true }))];
 }
@@ -49,38 +34,46 @@ function readFileAsDataURL(file: File): Promise<string> {
   });
 }
 
-// ─── Form state ───────────────────────────────────────────────────────────────
 const EMPTY_FORM = {
   slug: '', name: '', nameEn: '', shortDescription: '', shortDescriptionEn: '',
-  description: '', descriptionEn: '', price: 0, category: '', subcategory: '',
+  description: '', descriptionEn: '', price: 0, category: '',
   tags: [] as string[], images: [] as string[], inStock: true, featured: false, weight: 0,
 };
 
-// ─── Component ────────────────────────────────────────────────────────────────
 export default function ProductsPage() {
   const [overrides, setOverrides] = useState<Record<string, ProductOverride>>({});
   const [added, setAdded] = useState<Product[]>([]);
   const [editingPrice, setEditingPrice] = useState<string | null>(null);
   const [priceVal, setPriceVal] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [formTags, setFormTags] = useState('');
-  const [formImages, setFormImages] = useState<string[]>([]); // base64 or URLs
+  const [formImages, setFormImages] = useState<string[]>([]);
   const [variants, setVariants] = useState<VariantDraft[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [addedCats, setAddedCats] = useState<string[]>([]);
+  const [newCatInput, setNewCatInput] = useState('');
+
   const load = useCallback(() => {
     setOverrides(getProductOverrides());
     setAdded(getAddedProducts());
+    setAddedCats(getAddedCategories());
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
   const products = mergeProducts(overrides, added);
 
-  // ─── Image upload ────────────────────────────────────────────────────────────
+  const allCategoryNames = [
+    ...staticCategories.filter(c => c.id !== 'all').map(c => c.name),
+    ...addedCats,
+  ];
+
+  // ─── Image upload ─────────────────────────────────────────────────────────────
 
   const processFiles = async (files: FileList | File[]) => {
     const arr = Array.from(files).filter(f => f.type.startsWith('image/'));
@@ -100,9 +93,7 @@ export default function ProductsPage() {
     e.target.value = '';
   };
 
-  const removeImage = (idx: number) => {
-    setFormImages(prev => prev.filter((_, i) => i !== idx));
-  };
+  const removeImage = (idx: number) => setFormImages(prev => prev.filter((_, i) => i !== idx));
 
   const moveImage = (from: number, to: number) => {
     setFormImages(prev => {
@@ -158,27 +149,49 @@ export default function ProductsPage() {
     load();
   };
 
-  // ─── Form submit ──────────────────────────────────────────────────────────────
+  // ─── Edit ──────────────────────────────────────────────────────────────────────
+
+  const startEdit = (p: MergedProduct) => {
+    setEditingId(p.id);
+    setForm({
+      slug: p.slug,
+      name: p.name,
+      nameEn: p.nameEn || '',
+      shortDescription: p.shortDescription,
+      shortDescriptionEn: p.shortDescriptionEn || '',
+      description: p.description,
+      descriptionEn: p.descriptionEn || '',
+      price: p.price,
+      category: p.category,
+      tags: p.tags,
+      images: p.images,
+      inStock: p.inStock,
+      featured: p.featured ?? false,
+      weight: p.weight,
+    });
+    setFormTags(p.tags.join(', '));
+    setFormImages([...p.images]);
+    setVariants(
+      p.variants?.map(v => ({ id: v.id, name: v.name, nameEn: v.nameEn || '', imageIndex: v.imageIndex })) ?? []
+    );
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // ─── Variants helpers ─────────────────────────────────────────────────────────
-  const addVariant = () => {
-    setVariants(v => [...v, { id: `v-${Date.now()}`, name: '', nameEn: '', imageIndex: -1 }]);
-  };
 
-  const updateVariant = (id: string, patch: Partial<VariantDraft>) => {
-    setVariants(v => v.map(x => x.id === id ? { ...x, ...patch } : x));
-  };
-
-  const removeVariant = (id: string) => {
-    setVariants(v => v.filter(x => x.id !== id));
-  };
+  const addVariant = () => setVariants(v => [...v, { id: `v-${Date.now()}`, name: '', nameEn: '', imageIndex: -1 }]);
+  const updateVariant = (id: string, patch: Partial<VariantDraft>) => setVariants(v => v.map(x => x.id === id ? { ...x, ...patch } : x));
+  const removeVariant = (id: string) => setVariants(v => v.filter(x => x.id !== id));
 
   // ─── Form helpers ─────────────────────────────────────────────────────────────
+
   const resetForm = () => {
     setForm(EMPTY_FORM);
     setFormTags('');
     setFormImages([]);
     setVariants([]);
+    setEditingId(null);
     setShowForm(false);
   };
 
@@ -196,22 +209,75 @@ export default function ProductsPage() {
       .filter(v => v.name && v.imageIndex >= 0)
       .map(v => ({ id: v.id, name: v.name, nameEn: v.nameEn || undefined, imageIndex: v.imageIndex }));
 
-    const newProduct: Product = {
-      ...form,
-      id: `added-${Date.now()}`,
-      tags: formTags.split(',').map(t => t.trim()).filter(Boolean),
-      images: formImages,
-      variants: builtVariants.length > 0 ? builtVariants : undefined,
-      reviews: [],
-    };
-    addProduct(newProduct);
+    const parsedTags = formTags.split(',').map(t => t.trim()).filter(Boolean);
+
+    if (editingId) {
+      const isAdded = added.some(a => a.id === editingId);
+      const data: Partial<Product> = {
+        slug: form.slug,
+        name: form.name,
+        nameEn: form.nameEn || undefined,
+        shortDescription: form.shortDescription,
+        shortDescriptionEn: form.shortDescriptionEn || undefined,
+        description: form.description,
+        descriptionEn: form.descriptionEn || undefined,
+        price: form.price,
+        category: form.category,
+        inStock: form.inStock,
+        featured: form.featured,
+        weight: form.weight,
+        tags: parsedTags,
+        images: formImages,
+        variants: builtVariants.length > 0 ? builtVariants : undefined,
+      };
+      if (isAdded) {
+        updateAddedProduct(editingId, data);
+      } else {
+        setProductOverride(editingId, data);
+      }
+    } else {
+      addProduct({
+        id: `added-${Date.now()}`,
+        slug: form.slug,
+        name: form.name,
+        nameEn: form.nameEn || undefined,
+        shortDescription: form.shortDescription,
+        shortDescriptionEn: form.shortDescriptionEn || undefined,
+        description: form.description,
+        descriptionEn: form.descriptionEn || undefined,
+        price: form.price,
+        category: form.category,
+        inStock: form.inStock,
+        featured: form.featured,
+        weight: form.weight,
+        tags: parsedTags,
+        images: formImages,
+        variants: builtVariants.length > 0 ? builtVariants : undefined,
+        reviews: [],
+      });
+    }
+
     resetForm();
     setSaving(false);
     load();
   };
 
-  const categoryNames = categories.filter(c => c.id !== 'all').map(c => c.name);
-  const subcategoryOptions = form.category ? (SUBCATEGORIES[form.category] ?? []) : [];
+  // ─── Category management ──────────────────────────────────────────────────────
+
+  const addCategory = () => {
+    const name = newCatInput.trim();
+    if (!name || addedCats.includes(name)) return;
+    const updated = [...addedCats, name];
+    setAddedCats(updated);
+    saveAddedCategories(updated);
+    setNewCatInput('');
+  };
+
+  const deleteCategory = (cat: string) => {
+    const updated = addedCats.filter(c => c !== cat);
+    setAddedCats(updated);
+    saveAddedCategories(updated);
+  };
 
   // ─── Render ───────────────────────────────────────────────────────────────────
 
@@ -224,7 +290,7 @@ export default function ProductsPage() {
         </div>
         {!showForm && (
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => { setEditingId(null); setShowForm(true); }}
             className="bg-[#F5C518] hover:bg-amber-400 text-[#1a1a2e] font-bold px-4 py-2.5 rounded-xl text-sm transition flex items-center gap-2"
           >
             <span>+</span> إضافة منتج
@@ -232,11 +298,52 @@ export default function ProductsPage() {
         )}
       </div>
 
-      {/* ── Add product form ── */}
+      {/* ── Category management ── */}
+      {!showForm && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
+          <h3 className="text-sm font-bold text-gray-700">فئات مضافة</h3>
+          <div className="flex gap-2 flex-wrap">
+            {addedCats.length === 0 ? (
+              <p className="text-xs text-gray-400">لا توجد فئات مضافة بعد</p>
+            ) : (
+              addedCats.map(cat => (
+                <span key={cat} className="flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-800 px-3 py-1.5 rounded-full text-xs font-semibold">
+                  {cat}
+                  <button
+                    onClick={() => deleteCategory(cat)}
+                    className="text-amber-400 hover:text-red-500 font-bold mr-1"
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))
+            )}
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={newCatInput}
+              onChange={e => setNewCatInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addCategory()}
+              placeholder="اسم الفئة الجديدة..."
+              className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#F5C518]"
+            />
+            <button
+              onClick={addCategory}
+              className="bg-[#1a1a2e] text-white font-bold px-4 py-2 rounded-xl text-sm hover:bg-[#2a2a4e] transition"
+            >
+              + إضافة
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add / Edit product form ── */}
       {showForm && (
         <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-5">
           <div className="flex items-center justify-between">
-            <h2 className="font-bold text-gray-900 text-base">إضافة منتج جديد</h2>
+            <h2 className="font-bold text-gray-900 text-base">
+              {editingId ? 'تعديل المنتج' : 'إضافة منتج جديد'}
+            </h2>
             <button onClick={resetForm} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
           </div>
 
@@ -246,7 +353,6 @@ export default function ProductsPage() {
               الصور * <span className="text-gray-400 font-normal">(حتى 8 صور — الأولى هي الرئيسية)</span>
             </label>
 
-            {/* Dropzone */}
             <div
               onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
               onDragLeave={() => setIsDragging(false)}
@@ -271,7 +377,6 @@ export default function ProductsPage() {
               />
             </div>
 
-            {/* Image previews */}
             {formImages.length > 0 && (
               <div className="mt-3 grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
                 {formImages.map((src, idx) => (
@@ -281,37 +386,25 @@ export default function ProductsPage() {
                       alt={`صورة ${idx + 1}`}
                       className="w-full h-full object-cover rounded-xl border border-gray-200"
                     />
-                    {/* Order badge */}
                     <span className="absolute top-1 right-1 bg-black/60 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
                       {idx + 1}
                     </span>
-                    {/* Actions */}
                     <div className="absolute inset-0 bg-black/40 rounded-xl opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1">
                       {idx > 0 && (
                         <button
                           onClick={e => { e.stopPropagation(); moveImage(idx, idx - 1); }}
                           className="w-6 h-6 bg-white/90 rounded-full text-xs font-bold text-gray-800 hover:bg-white"
-                          title="تقديم"
-                        >
-                          {/* right arrow (RTL = forward) */}
-                          ›
-                        </button>
+                        >›</button>
                       )}
                       <button
                         onClick={e => { e.stopPropagation(); removeImage(idx); }}
                         className="w-6 h-6 bg-red-500 rounded-full text-white text-xs font-bold hover:bg-red-600"
-                        title="حذف"
-                      >
-                        ✕
-                      </button>
+                      >✕</button>
                       {idx < formImages.length - 1 && (
                         <button
                           onClick={e => { e.stopPropagation(); moveImage(idx, idx + 1); }}
                           className="w-6 h-6 bg-white/90 rounded-full text-xs font-bold text-gray-800 hover:bg-white"
-                          title="تأخير"
-                        >
-                          ‹
-                        </button>
+                        >‹</button>
                       )}
                     </div>
                     {idx === 0 && (
@@ -319,39 +412,34 @@ export default function ProductsPage() {
                     )}
                   </div>
                 ))}
-                {/* Add more */}
                 {formImages.length < 8 && (
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     className="aspect-square border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-600 transition text-2xl"
-                  >
-                    +
-                  </button>
+                  >+</button>
                 )}
               </div>
             )}
           </div>
 
-          {/* ── Variants / Modiels ── */}
+          {/* ── Variants ── */}
           {formImages.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600">
-                    الموديلات / الألوان
-                    <span className="text-gray-400 font-normal mr-1">(اختياري — لو المنتج له أشكال مختلفة)</span>
-                  </label>
-                </div>
+                <label className="block text-xs font-semibold text-gray-600">
+                  الموديلات / الألوان
+                  <span className="text-gray-400 font-normal mr-1">(اختياري)</span>
+                </label>
                 <button
                   type="button"
                   onClick={addVariant}
-                  className="text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 px-3 py-1.5 rounded-lg transition flex items-center gap-1"
+                  className="text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 px-3 py-1.5 rounded-lg transition"
                 >
                   + إضافة موديل
                 </button>
               </div>
 
-              {variants.length > 0 && (
+              {variants.length > 0 ? (
                 <div className="space-y-3">
                   {variants.map((v, idx) => (
                     <div key={v.id} className="border border-gray-200 rounded-xl p-3 bg-gray-50 space-y-2">
@@ -360,25 +448,21 @@ export default function ProductsPage() {
                         <input
                           value={v.name}
                           onChange={e => updateVariant(v.id, { name: e.target.value })}
-                          placeholder="الاسم (عربي) — مثلاً: أحمر، كبير، A"
+                          placeholder="الاسم (عربي)"
                           className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-purple-400 bg-white"
                         />
                         <input
                           value={v.nameEn}
                           onChange={e => updateVariant(v.id, { nameEn: e.target.value })}
-                          placeholder="English name (optional)"
+                          placeholder="English name"
                           className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-purple-400 bg-white"
                           dir="ltr"
                         />
                         <button
                           onClick={() => removeVariant(v.id)}
                           className="text-red-400 hover:text-red-600 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition text-sm"
-                        >
-                          ✕
-                        </button>
+                        >✕</button>
                       </div>
-
-                      {/* Image picker for this variant */}
                       <div>
                         <p className="text-xs text-gray-500 mb-1.5">اختر صورة هذا الموديل:</p>
                         <div className="flex gap-2 flex-wrap">
@@ -402,18 +486,14 @@ export default function ProductsPage() {
                             </button>
                           ))}
                         </div>
-                        {v.imageIndex < 0 && (
-                          <p className="text-amber-600 text-xs mt-1">* اختر صورة للموديل</p>
-                        )}
+                        {v.imageIndex < 0 && <p className="text-amber-600 text-xs mt-1">* اختر صورة للموديل</p>}
                       </div>
                     </div>
                   ))}
                 </div>
-              )}
-
-              {variants.length === 0 && (
+              ) : (
                 <p className="text-xs text-gray-400 bg-gray-50 border border-dashed border-gray-200 rounded-xl px-4 py-3 text-center">
-                  لو المنتج منه ألوان أو أشكال مختلفة — اضغط "إضافة موديل" وحدد اسم وصورة كل موديل
+                  لو المنتج منه ألوان أو أشكال مختلفة — اضغط &quot;إضافة موديل&quot;
                 </p>
               )}
             </div>
@@ -421,24 +501,15 @@ export default function ProductsPage() {
 
           {/* ── Fields grid ── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Name AR */}
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">الاسم (عربي) *</label>
               <input
                 value={form.name}
-                onChange={e => {
-                  const name = e.target.value;
-                  setForm(f => ({
-                    ...f,
-                    name,
-                    slug: f.slug || (f.nameEn ? '' : ''), // keep slug if already set
-                  }));
-                }}
+                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400"
               />
             </div>
 
-            {/* Name EN */}
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">الاسم (إنجليزي)</label>
               <input
@@ -448,7 +519,6 @@ export default function ProductsPage() {
                   setForm(f => ({
                     ...f,
                     nameEn,
-                    // Auto-generate slug from English name if slug not touched yet
                     slug: f.slug === '' ? nameEn.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : f.slug,
                   }));
                 }}
@@ -457,7 +527,6 @@ export default function ProductsPage() {
               />
             </div>
 
-            {/* Slug */}
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Slug (للرابط) *</label>
               <input
@@ -469,47 +538,18 @@ export default function ProductsPage() {
               />
             </div>
 
-            {/* Category */}
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">الفئة الرئيسية *</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">الفئة *</label>
               <select
                 value={form.category}
-                onChange={e => setForm(f => ({ ...f, category: e.target.value, subcategory: '' }))}
+                onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400 bg-white"
               >
                 <option value="">— اختر فئة —</option>
-                {categoryNames.map(c => <option key={c} value={c}>{c}</option>)}
+                {allCategoryNames.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
 
-            {/* Subcategory — shows only when category has options */}
-            {form.category && (
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  الفئة الفرعية
-                  <span className="text-gray-400 font-normal mr-1">(اختياري)</span>
-                </label>
-                {subcategoryOptions.length > 0 ? (
-                  <select
-                    value={form.subcategory || ''}
-                    onChange={e => setForm(f => ({ ...f, subcategory: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400 bg-white"
-                  >
-                    <option value="">— بدون فئة فرعية —</option>
-                    {subcategoryOptions.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                ) : (
-                  <input
-                    value={form.subcategory || ''}
-                    onChange={e => setForm(f => ({ ...f, subcategory: e.target.value }))}
-                    placeholder="اكتب الفئة الفرعية..."
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400"
-                  />
-                )}
-              </div>
-            )}
-
-            {/* Price */}
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">السعر (EGP) *</label>
               <input
@@ -521,9 +561,8 @@ export default function ProductsPage() {
               />
             </div>
 
-            {/* Weight */}
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">الوزن (جرام) — للشحن الدولي</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">الوزن (جرام)</label>
               <input
                 type="number"
                 value={form.weight || ''}
@@ -533,7 +572,6 @@ export default function ProductsPage() {
               />
             </div>
 
-            {/* Short description AR */}
             <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-gray-600 mb-1">الوصف المختصر (عربي)</label>
               <input
@@ -543,7 +581,6 @@ export default function ProductsPage() {
               />
             </div>
 
-            {/* Short description EN */}
             <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-gray-600 mb-1">الوصف المختصر (إنجليزي)</label>
               <input
@@ -554,7 +591,6 @@ export default function ProductsPage() {
               />
             </div>
 
-            {/* Description AR */}
             <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-gray-600 mb-1">الوصف الكامل (عربي — HTML مسموح)</label>
               <textarea
@@ -565,7 +601,6 @@ export default function ProductsPage() {
               />
             </div>
 
-            {/* Tags */}
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Tags (مفصولة بفاصلة)</label>
               <input
@@ -576,7 +611,6 @@ export default function ProductsPage() {
               />
             </div>
 
-            {/* Toggles */}
             <div className="flex items-center gap-6 pt-2">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -599,7 +633,6 @@ export default function ProductsPage() {
             </div>
           </div>
 
-          {/* Submit */}
           <div className="flex gap-3 pt-1 border-t border-gray-100">
             <button
               onClick={handleSubmit}
@@ -609,7 +642,7 @@ export default function ProductsPage() {
               {saving ? (
                 <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> جارٍ الحفظ...</>
               ) : (
-                <>'💾 حفظ المنتج</>
+                editingId ? '💾 حفظ التعديلات' : '💾 حفظ المنتج'
               )}
             </button>
             <button
@@ -649,7 +682,6 @@ export default function ProductsPage() {
                       <div>
                         <p className="font-semibold text-gray-900 text-xs leading-tight">{p.name}</p>
                         {p.nameEn && <p className="text-gray-400 text-xs">{p.nameEn}</p>}
-                        {p.subcategory && <p className="text-purple-400 text-xs">{p.subcategory}</p>}
                         {(p as MergedProduct).isAdded && (
                           <span className="text-xs bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded-full font-bold">مضاف</span>
                         )}
@@ -699,14 +731,22 @@ export default function ProductsPage() {
                     </button>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    {(p as MergedProduct).isAdded && (
+                    <div className="flex items-center justify-center gap-2">
                       <button
-                        onClick={() => handleDelete(p)}
-                        className="text-red-400 hover:text-red-600 text-xs font-bold transition"
+                        onClick={() => startEdit(p)}
+                        className="text-blue-500 hover:text-blue-700 text-xs font-bold transition hover:bg-blue-50 px-2 py-1 rounded-lg"
                       >
-                        حذف
+                        تعديل
                       </button>
-                    )}
+                      {(p as MergedProduct).isAdded && (
+                        <button
+                          onClick={() => handleDelete(p)}
+                          className="text-red-400 hover:text-red-600 text-xs font-bold transition hover:bg-red-50 px-2 py-1 rounded-lg"
+                        >
+                          حذف
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

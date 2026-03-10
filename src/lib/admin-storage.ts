@@ -1,4 +1,4 @@
-import { Product } from '@/types';
+import { Product, ProductVariant, Review } from '@/types';
 import { DEFAULT_COUPONS } from './admin-config';
 import { governorates } from './shipping';
 
@@ -30,12 +30,24 @@ export interface AdminReview {
   rating: number;
   comment: string;
   date: string;
+  isHardcoded?: boolean; // true = from products.ts, false = user-submitted
 }
 
 export interface ProductOverride {
   price?: number;
   inStock?: boolean;
   featured?: boolean;
+  name?: string;
+  nameEn?: string;
+  shortDescription?: string;
+  shortDescriptionEn?: string;
+  description?: string;
+  descriptionEn?: string;
+  category?: string;
+  variants?: ProductVariant[];
+  images?: string[];
+  weight?: number;
+  tags?: string[];
 }
 
 // ─── Coupons ──────────────────────────────────────────────────────────────────
@@ -62,6 +74,20 @@ export function deleteCoupon(code: string) {
   const coupons = getCoupons();
   delete coupons[code];
   saveCoupons(coupons);
+}
+
+// ─── Categories ───────────────────────────────────────────────────────────────
+
+export function getAddedCategories(): string[] {
+  try {
+    const raw = localStorage.getItem('ml-categories-added');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+export function saveAddedCategories(cats: string[]) {
+  localStorage.setItem('ml-categories-added', JSON.stringify(cats));
 }
 
 // ─── Users & Orders ───────────────────────────────────────────────────────────
@@ -147,6 +173,27 @@ export function setProductOverride(id: string, data: ProductOverride) {
   localStorage.setItem('ml-product-overrides', JSON.stringify(overrides));
 }
 
+// Apply all overrides to a static product
+export function applyOverride(p: Product, ov: ProductOverride): Product {
+  return {
+    ...p,
+    price: ov.price ?? p.price,
+    inStock: ov.inStock ?? p.inStock,
+    featured: ov.featured ?? p.featured,
+    name: ov.name ?? p.name,
+    nameEn: ov.nameEn ?? p.nameEn,
+    shortDescription: ov.shortDescription ?? p.shortDescription,
+    shortDescriptionEn: ov.shortDescriptionEn ?? p.shortDescriptionEn,
+    description: ov.description ?? p.description,
+    descriptionEn: ov.descriptionEn ?? p.descriptionEn,
+    category: ov.category ?? p.category,
+    variants: ov.variants ?? p.variants,
+    images: ov.images ?? p.images,
+    weight: ov.weight ?? p.weight,
+    tags: ov.tags ?? p.tags,
+  };
+}
+
 // ─── Added Products ───────────────────────────────────────────────────────────
 
 export function getAddedProducts(): Product[] {
@@ -172,18 +219,42 @@ export function deleteAddedProduct(id: string) {
   saveAddedProducts(existing);
 }
 
+export function updateAddedProduct(id: string, data: Partial<Product>) {
+  const existing = getAddedProducts().map(p => p.id === id ? { ...p, ...data } : p);
+  saveAddedProducts(existing);
+}
+
 // ─── Reviews ──────────────────────────────────────────────────────────────────
 
-export function getAllReviews(productList: { id: string; name: string }[]): AdminReview[] {
+export function getAllReviews(
+  productList: { id: string; name: string; reviews?: Review[] }[]
+): AdminReview[] {
   const all: AdminReview[] = [];
-  productList.forEach(({ id, name }) => {
+
+  productList.forEach(({ id, name, reviews: hardcoded }) => {
+    // Hardcoded reviews from products.ts
+    if (hardcoded) {
+      hardcoded.forEach(r => all.push({
+        id: r.id,
+        productId: id,
+        productName: name,
+        author: r.author,
+        rating: r.rating,
+        comment: r.comment,
+        date: r.date,
+        isHardcoded: true,
+      }));
+    }
+
+    // User-submitted reviews from localStorage
     try {
       const raw = localStorage.getItem(`reviews_${id}`);
       if (!raw) return;
       const reviews: { id: string; author: string; rating: number; comment: string; date: string }[] = JSON.parse(raw);
-      reviews.forEach(r => all.push({ ...r, productId: id, productName: name }));
+      reviews.forEach(r => all.push({ ...r, productId: id, productName: name, isHardcoded: false }));
     } catch {}
   });
+
   return all.sort((a, b) => b.date.localeCompare(a.date));
 }
 
@@ -199,7 +270,7 @@ export function deleteReview(productId: string, reviewId: string) {
 // ─── Shipping Overrides ───────────────────────────────────────────────────────
 
 export interface ShippingOverrides {
-  local: Record<string, number>; // governorateId → price
+  local: Record<string, number>;
 }
 
 export function getShippingOverrides(): ShippingOverrides {

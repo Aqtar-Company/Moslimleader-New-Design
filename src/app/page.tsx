@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useState, Suspense, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { products, categories } from '@/lib/products';
+import { getAddedProducts, getProductOverrides, getAddedCategories, applyOverride } from '@/lib/admin-storage';
 import ProductCard from '@/components/product/ProductCard';
 import { useLang } from '@/context/LanguageContext';
 
@@ -86,8 +87,32 @@ function ShopContent() {
   const initialCategory = searchParams.get('category') || 'all';
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [search, setSearch] = useState('');
+  const [allProducts, setAllProducts] = useState(products);
+  const [displayCategories, setDisplayCategories] = useState(categories);
 
-  const filtered = products.filter(p => {
+  useEffect(() => {
+    const overrides = getProductOverrides();
+    const added = getAddedProducts();
+    const customCats = getAddedCategories();
+
+    const staticWithOverrides = products.map(p => overrides[p.id] ? applyOverride(p, overrides[p.id]) : p);
+    const merged = [...staticWithOverrides, ...added];
+    setAllProducts(merged);
+
+    const staticUpdated = categories.map(cat =>
+      cat.id === 'all'
+        ? { ...cat, count: merged.length }
+        : { ...cat, count: merged.filter(p => p.category === cat.id).length }
+    );
+    const existingIds = new Set(categories.map(c => c.id));
+    const customEntries = customCats
+      .filter(c => !existingIds.has(c))
+      .map(c => ({ id: c, name: c, count: merged.filter(p => p.category === c).length }));
+
+    setDisplayCategories([...staticUpdated, ...customEntries]);
+  }, []);
+
+  const filtered = allProducts.filter(p => {
     const matchCat = activeCategory === 'all' || p.category === activeCategory;
     const matchSearch = isRtl
       ? p.name.includes(search) || p.shortDescription.includes(search)
@@ -116,7 +141,7 @@ function ShopContent() {
 
       {/* Category filter */}
       <div className="flex flex-wrap gap-2 justify-center mb-10">
-        {categories.map(cat => (
+        {displayCategories.map(cat => (
           <button
             key={cat.id}
             onClick={() => setActiveCategory(cat.id)}

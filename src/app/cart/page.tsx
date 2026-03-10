@@ -2,12 +2,23 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useState } from 'react';
 import { useCart } from '@/context/CartContext';
 import { useLang } from '@/context/LanguageContext';
+
+const COUPONS: Record<string, number> = {
+  'MOSLIM10': 10,
+  'RAMADAN20': 20,
+  'WELCOME15': 15,
+  'SAVE25': 25,
+};
 
 export default function CartPage() {
   const { items, total, updateQty, removeItem, clear } = useCart();
   const { t, isRtl } = useLang();
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; pct: number } | null>(null);
+  const [couponError, setCouponError] = useState(false);
 
   if (items.length === 0) {
     return (
@@ -28,6 +39,19 @@ export default function CartPage() {
   }
 
   const shipping = 80;
+  const discountAmt = appliedCoupon ? Math.round(total * appliedCoupon.pct / 100) : 0;
+  const grandTotal = total - discountAmt + shipping;
+
+  function applyCoupon() {
+    const code = couponInput.trim().toUpperCase();
+    if (COUPONS[code]) {
+      setAppliedCoupon({ code, pct: COUPONS[code] });
+      setCouponError(false);
+    } else {
+      setCouponError(true);
+      setAppliedCoupon(null);
+    }
+  }
 
   return (
     <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto px-4 pt-28 pb-10">
@@ -99,18 +123,57 @@ export default function CartPage() {
           <div className="bg-gray-950 rounded-2xl p-6 sticky top-24 text-white">
             <h2 className="font-black text-base mb-5">{t('cart.summary.title')}</h2>
 
+            {/* Coupon */}
+            <div className="mb-5">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 block">{t('cart.coupon.label')}</label>
+              {appliedCoupon ? (
+                <div className="flex items-center justify-between bg-green-900/40 border border-green-700/40 rounded-xl px-4 py-2.5">
+                  <div>
+                    <span className="text-green-400 text-xs font-black">{t('cart.coupon.applied')}</span>
+                    <span className="text-green-300 text-xs mr-2 ml-2">— {appliedCoupon.code} ({appliedCoupon.pct}%)</span>
+                  </div>
+                  <button onClick={() => { setAppliedCoupon(null); setCouponInput(''); }}
+                    className="text-gray-500 hover:text-red-400 transition text-lg leading-none">×</button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={couponInput}
+                    onChange={e => { setCouponInput(e.target.value); setCouponError(false); }}
+                    onKeyDown={e => e.key === 'Enter' && applyCoupon()}
+                    placeholder={t('cart.coupon.ph')}
+                    className="flex-1 bg-white/10 border border-white/15 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#F5C518]/50 uppercase tracking-wider"
+                  />
+                  <button onClick={applyCoupon}
+                    className="bg-white/10 hover:bg-white/20 border border-white/15 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition shrink-0">
+                    {t('cart.coupon.apply')}
+                  </button>
+                </div>
+              )}
+              {couponError && (
+                <p className="text-red-400 text-xs mt-1.5 font-semibold">{t('cart.coupon.invalid')}</p>
+              )}
+            </div>
+
             <div className="flex flex-col gap-3 text-sm">
               <div className="flex justify-between text-gray-400">
                 <span>{t('cart.summary.subtotal')}</span>
                 <span className="text-white font-semibold">{total} {t('cart.currency')}</span>
               </div>
+              {appliedCoupon && (
+                <div className="flex justify-between text-green-400">
+                  <span>{t('cart.coupon.discount')} ({appliedCoupon.pct}%)</span>
+                  <span className="font-semibold">−{discountAmt} {t('cart.currency')}</span>
+                </div>
+              )}
               <div className="flex justify-between text-gray-400">
                 <span>{t('cart.summary.shipping')}</span>
                 <span className="text-white font-semibold">{shipping} {t('cart.currency')}</span>
               </div>
               <div className="border-t border-white/10 pt-3 flex justify-between">
                 <span className="font-black text-base">{t('cart.summary.total')}</span>
-                <span className="font-black text-xl text-[#F5C518]">{total + shipping} <span className="text-sm font-bold text-gray-300">{t('cart.currency')}</span></span>
+                <span className="font-black text-xl text-[#F5C518]">{grandTotal} <span className="text-sm font-bold text-gray-300">{t('cart.currency')}</span></span>
               </div>
             </div>
 

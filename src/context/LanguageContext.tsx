@@ -131,6 +131,26 @@ const translations = {
     'product.inStock': 'متوفر في المخزون',
     'product.added': '✓ تم الإضافة!',
     'product.related': 'منتجات ذات صلة',
+    'product.share': 'شارك المنتج',
+    'product.share.copy': 'نسخ الرابط',
+    'product.share.copied': '✓ تم النسخ!',
+    // Review form
+    'review.write': 'اكتب تقييمك',
+    'review.name': 'الاسم',
+    'review.name.ph': 'اسمك الكريم',
+    'review.rating': 'التقييم',
+    'review.comment': 'التعليق',
+    'review.comment.ph': 'شاركنا رأيك في المنتج...',
+    'review.submit': 'إرسال التقييم',
+    'review.success': '🎉 شكراً لتقييمك! سيظهر تقييمك قريباً.',
+    'review.required': 'يرجى ملء جميع الحقول واختيار تقييم',
+    // Coupon
+    'cart.coupon.label': 'كوبون خصم',
+    'cart.coupon.ph': 'أدخل كود الخصم',
+    'cart.coupon.apply': 'تطبيق',
+    'cart.coupon.applied': '✓ تم تطبيق الخصم',
+    'cart.coupon.invalid': 'كود الخصم غير صحيح',
+    'cart.coupon.discount': 'خصم',
 
     // Categories
     'cat.all': 'الكل',
@@ -319,6 +339,26 @@ const translations = {
     'product.inStock': 'In Stock',
     'product.added': '✓ Added!',
     'product.related': 'Related Products',
+    'product.share': 'Share Product',
+    'product.share.copy': 'Copy Link',
+    'product.share.copied': '✓ Copied!',
+    // Review form
+    'review.write': 'Write a Review',
+    'review.name': 'Name',
+    'review.name.ph': 'Your name',
+    'review.rating': 'Rating',
+    'review.comment': 'Comment',
+    'review.comment.ph': 'Share your thoughts about this product...',
+    'review.submit': 'Submit Review',
+    'review.success': '🎉 Thank you for your review! It will appear soon.',
+    'review.required': 'Please fill all fields and select a rating',
+    // Coupon
+    'cart.coupon.label': 'Discount Coupon',
+    'cart.coupon.ph': 'Enter coupon code',
+    'cart.coupon.apply': 'Apply',
+    'cart.coupon.applied': '✓ Discount applied',
+    'cart.coupon.invalid': 'Invalid coupon code',
+    'cart.coupon.discount': 'Discount',
 
     // Categories
     'cat.all': 'All',

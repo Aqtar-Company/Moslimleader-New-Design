@@ -10,6 +10,7 @@ import { useWishlist } from '@/context/WishlistContext';
 import { useLang } from '@/context/LanguageContext';
 import { Product, ProductVariant } from '@/types';
 import ProductCard from '@/components/product/ProductCard';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 const MODEL_CATEGORIES = ['مجات', 'مفكرات'];
 // Slugs where images[0] is overview and images[1+] are models
@@ -326,7 +327,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               <span>{isRtl ? 'الوزن:' : 'Weight:'} <strong className="text-gray-700">{product.weight}g</strong></span>
             </div>
 
-            <div className="product-description border-t pt-5 mt-2" dangerouslySetInnerHTML={{ __html: displayDescription }} />
+            <div className="product-description border-t pt-5 mt-2" dangerouslySetInnerHTML={{ __html: sanitizeHtml(displayDescription) }} />
 
             {product.tags.length > 0 && (
               <div className="flex flex-wrap gap-2 pt-2">

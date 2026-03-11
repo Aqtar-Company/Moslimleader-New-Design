@@ -9,7 +9,9 @@ import { useLang } from '@/context/LanguageContext';
 function AuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get('redirect') || '/';
+  // Validate redirect is a relative path to prevent open redirect attacks
+  const rawRedirect = searchParams.get('redirect') || '/';
+  const redirect = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/';
   const { signIn, signUp } = useAuth();
   const { lang } = useLang();
 

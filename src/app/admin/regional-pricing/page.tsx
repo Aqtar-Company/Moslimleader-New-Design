@@ -28,7 +28,6 @@ const ROUNDING_LABELS: Record<RoundingRule, string> = {
 const ZONE_COLORS: Record<PricingZone, string> = {
   egypt: 'bg-green-50 border-green-200 text-green-800',
   saudi: 'bg-blue-50 border-blue-200 text-blue-800',
-  gulf:  'bg-purple-50 border-purple-200 text-purple-800',
   world: 'bg-orange-50 border-orange-200 text-orange-800',
 };
 
@@ -128,7 +127,7 @@ export default function RegionalPricingPage() {
       </div>
 
       {/* Quick info */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {(Object.values(ZONES)).map(z => (
           <div key={z.zone} className={`rounded-2xl border p-3 ${ZONE_COLORS[z.zone]}`}>
             <p className="text-xl mb-0.5">{z.flag}</p>
@@ -199,8 +198,7 @@ export default function RegionalPricingPage() {
               <h3 className="font-bold text-gray-900 text-sm border-b pb-2">الأسعار اليدوية</h3>
               <div className="grid grid-cols-2 gap-3">
                 {field('🇪🇬 سعر مصر (ج.م)', pricing.price_egp_manual, v => setPricing(x => ({ ...x, price_egp_manual: v ? +v : undefined })), 'number', `${currentProduct.price} (تلقائي)`)}
-                {field('🇸🇦 سعر السعودية (ر.س)', pricing.price_sar_manual, v => setPricing(x => ({ ...x, price_sar_manual: v ? +v : undefined })), 'number', 'مثال: 30')}
-                {field('🌍 سعر الخليج (خليجي)', pricing.price_gulf_manual, v => setPricing(x => ({ ...x, price_gulf_manual: v ? +v : undefined })), 'number', 'مثال: 30')}
+                {field('🇸🇦 سعر السعودية (﷼)', pricing.price_sar_manual, v => setPricing(x => ({ ...x, price_sar_manual: v ? +v : undefined })), 'number', 'مثال: 30')}
                 {field('🌐 سعر دولي (USD)', pricing.price_usd_manual, v => setPricing(x => ({ ...x, price_usd_manual: v ? +v : undefined })), 'number', 'مثال: 8.99')}
               </div>
             </div>
@@ -220,10 +218,9 @@ export default function RegionalPricingPage() {
                 </label>
               </div>
               {pricing.use_formula_fallback && (
-                <div className="grid grid-cols-3 gap-3">
-                  {field('معامل السعودية', pricing.saudi_multiplier, v => setPricing(x => ({ ...x, saudi_multiplier: +v })), 'number', '0.075')}
-                  {field('معامل الخليج', pricing.gulf_multiplier, v => setPricing(x => ({ ...x, gulf_multiplier: +v })), 'number', '0.075')}
-                  {field('معامل الدولي', pricing.usd_multiplier, v => setPricing(x => ({ ...x, usd_multiplier: +v })), 'number', '0.020')}
+                <div className="grid grid-cols-2 gap-3">
+                  {field('معامل السعودية (﷼)', pricing.saudi_multiplier, v => setPricing(x => ({ ...x, saudi_multiplier: +v })), 'number', '0.075')}
+                  {field('معامل الدولي (USD)', pricing.usd_multiplier, v => setPricing(x => ({ ...x, usd_multiplier: +v })), 'number', '0.020')}
                 </div>
               )}
               <p className="text-xs text-gray-400">
@@ -234,10 +231,9 @@ export default function RegionalPricingPage() {
             {/* Rounding rules */}
             <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
               <h3 className="font-bold text-gray-900 text-sm border-b pb-2">قواعد التقريب</h3>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 {roundSelect('🇪🇬 تقريب مصر', pricing.rounding_rule_egp, v => setPricing(x => ({ ...x, rounding_rule_egp: v })))}
                 {roundSelect('🇸🇦 تقريب السعودية', pricing.rounding_rule_sar, v => setPricing(x => ({ ...x, rounding_rule_sar: v })))}
-                {roundSelect('🌍 تقريب الخليج', pricing.rounding_rule_gulf, v => setPricing(x => ({ ...x, rounding_rule_gulf: v })))}
                 {roundSelect('🌐 تقريب الدولي', pricing.rounding_rule_usd, v => setPricing(x => ({ ...x, rounding_rule_usd: v })))}
               </div>
             </div>

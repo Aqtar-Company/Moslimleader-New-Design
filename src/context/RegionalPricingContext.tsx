@@ -7,7 +7,7 @@ import { Product } from '@/types';
 import { CartItem } from '@/types';
 
 const ZONE_STORAGE_KEY = 'ml-pricing-zone';
-const VALID_ZONES: PricingZone[] = ['egypt', 'saudi', 'gulf', 'world'];
+const VALID_ZONES: PricingZone[] = ['egypt', 'saudi', 'world'];
 
 interface RegionalPricingContextValue {
   zone: PricingZone;

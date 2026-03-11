@@ -4,6 +4,7 @@ import { CartProvider } from '@/context/CartContext';
 import { WishlistProvider } from '@/context/WishlistContext';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { AuthProvider } from '@/context/AuthContext';
+import { RegionalPricingProvider } from '@/context/RegionalPricingContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import AmeenChat from '@/components/AmeenChat';
@@ -24,14 +25,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <LanguageProvider>
           <AuthProvider>
-            <CartProvider>
-              <WishlistProvider>
-              <Header />
-              <main>{children}</main>
-              <Footer />
-              <AmeenChat />
-              </WishlistProvider>
-            </CartProvider>
+            <RegionalPricingProvider>
+              <CartProvider>
+                <WishlistProvider>
+                  <Header />
+                  <main>{children}</main>
+                  <Footer />
+                  <AmeenChat />
+                </WishlistProvider>
+              </CartProvider>
+            </RegionalPricingProvider>
           </AuthProvider>
         </LanguageProvider>
       </body>

@@ -1,6 +1,7 @@
 import { Product, ProductVariant, Review } from '@/types';
 import { DEFAULT_COUPONS } from './admin-config';
 import { governorates } from './shipping';
+import { RegionalPricing } from './geo-pricing';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -47,6 +48,18 @@ export interface ProductOverride {
   images?: string[];
   weight?: number;
   tags?: string[];
+  regionalPricing?: RegionalPricing;
+}
+
+// ─── Regional Pricing Overrides ───────────────────────────────────────────────
+
+export function getRegionalPricing(productId: string): RegionalPricing | null {
+  const overrides = getProductOverrides();
+  return overrides[productId]?.regionalPricing ?? null;
+}
+
+export function setRegionalPricing(productId: string, pricing: RegionalPricing) {
+  setProductOverride(productId, { regionalPricing: pricing });
 }
 
 // ─── Coupons ──────────────────────────────────────────────────────────────────

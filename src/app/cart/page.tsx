@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useCart } from '@/context/CartContext';
 import { useLang } from '@/context/LanguageContext';
+import { useRegionalPricing } from '@/context/RegionalPricingContext';
 
 export default function CartPage() {
-  const { items, total, discount, coupon, applyCoupon, removeCoupon, updateQty, removeItem, clear } = useCart();
+  const { items, coupon, applyCoupon, removeCoupon, updateQty, removeItem, clear } = useCart();
   const { t, isRtl } = useLang();
+  const { getProductPrice, formatPrice, getCartRegionalTotal, zoneInfo } = useRegionalPricing();
   const [couponInput, setCouponInput] = useState('');
   const [couponError, setCouponError] = useState(false);
 
@@ -31,7 +33,9 @@ export default function CartPage() {
   }
 
   const shipping = 80;
-  const grandTotal = total - discount + shipping;
+  const { total: regionalTotal, currency } = getCartRegionalTotal(items);
+  const regionalDiscount = coupon ? Math.round(regionalTotal * coupon.pct / 100) : 0;
+  const grandTotal = Math.round((regionalTotal - regionalDiscount + shipping) * 100) / 100;
 
   function handleApplyCoupon() {
     const ok = applyCoupon(couponInput);
@@ -48,6 +52,8 @@ export default function CartPage() {
           <h1 className="text-2xl font-black text-gray-900">{t('cart.title')}</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             {items.length} {isRtl ? 'منتج' : items.length === 1 ? 'item' : 'items'}
+            <span className="mr-2 ml-2 text-gray-300">·</span>
+            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{zoneInfo.flag} {zoneInfo.label}</span>
           </p>
         </div>
         <button onClick={clear} className="text-xs text-gray-400 hover:text-red-500 transition">
@@ -59,49 +65,51 @@ export default function CartPage() {
 
         {/* Items */}
         <div className="lg:col-span-2 flex flex-col gap-3">
-          {items.map(item => (
-            <div key={item.cartItemId}
-              className="flex gap-4 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition">
+          {items.map(item => {
+            const pr = getProductPrice(item.product);
+            const lineTotal = Math.round(pr.price * item.quantity * 100) / 100;
+            return (
+              <div key={item.cartItemId}
+                className="flex gap-4 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition">
 
-              <Link href={`/shop/${item.product.slug}`}
-                className="relative w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-gray-50 border border-gray-100">
-                <Image
-                  src={item.selectedModel !== undefined ? item.product.images[item.selectedModel] : item.product.images[0]}
-                  alt={item.product.name}
-                  fill className="object-cover" unoptimized />
-              </Link>
-
-              <div className="flex-1 min-w-0 flex flex-col gap-1">
                 <Link href={`/shop/${item.product.slug}`}
-                  className="font-bold text-gray-900 hover:text-purple-700 transition text-sm leading-snug line-clamp-2">
-                  {isRtl ? item.product.name : (item.product.nameEn || item.product.name)}
+                  className="relative w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-gray-50 border border-gray-100">
+                  <Image
+                    src={item.selectedModel !== undefined ? item.product.images[item.selectedModel] : item.product.images[0]}
+                    alt={item.product.name}
+                    fill className="object-cover" unoptimized />
                 </Link>
-                <span className="text-xs text-gray-400">{item.product.category}</span>
-                <span className="font-black text-gray-900 text-sm">
-                  {item.product.price} <span className="font-normal text-gray-500 text-xs">{t('cart.currency')}</span>
-                </span>
-              </div>
 
-              <div className="shrink-0 flex flex-col items-end justify-between gap-2">
-                <button onClick={() => removeItem(item.cartItemId)}
-                  className="text-gray-300 hover:text-red-400 transition">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-                <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
-                  <button onClick={() => updateQty(item.cartItemId, item.quantity - 1)}
-                    className="w-7 h-7 flex items-center justify-center text-sm hover:bg-gray-100 transition font-bold text-gray-700">−</button>
-                  <span className="w-7 text-center text-sm font-bold text-gray-900">{item.quantity}</span>
-                  <button onClick={() => updateQty(item.cartItemId, item.quantity + 1)}
-                    className="w-7 h-7 flex items-center justify-center text-sm hover:bg-gray-100 transition font-bold text-gray-700">+</button>
+                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                  <Link href={`/shop/${item.product.slug}`}
+                    className="font-bold text-gray-900 hover:text-purple-700 transition text-sm leading-snug line-clamp-2">
+                    {isRtl ? item.product.name : (item.product.nameEn || item.product.name)}
+                  </Link>
+                  <span className="text-xs text-gray-400">{item.product.category}</span>
+                  <span className="font-black text-gray-900 text-sm">{formatPrice(pr)}</span>
                 </div>
-                <span className="text-sm font-black text-gray-900">
-                  {item.product.price * item.quantity} <span className="font-normal text-gray-400 text-xs">{t('cart.currency')}</span>
-                </span>
+
+                <div className="shrink-0 flex flex-col items-end justify-between gap-2">
+                  <button onClick={() => removeItem(item.cartItemId)}
+                    className="text-gray-300 hover:text-red-400 transition">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+                    <button onClick={() => updateQty(item.cartItemId, item.quantity - 1)}
+                      className="w-7 h-7 flex items-center justify-center text-sm hover:bg-gray-100 transition font-bold text-gray-700">−</button>
+                    <span className="w-7 text-center text-sm font-bold text-gray-900">{item.quantity}</span>
+                    <button onClick={() => updateQty(item.cartItemId, item.quantity + 1)}
+                      className="w-7 h-7 flex items-center justify-center text-sm hover:bg-gray-100 transition font-bold text-gray-700">+</button>
+                  </div>
+                  <span className="text-sm font-black text-gray-900">
+                    {lineTotal % 1 === 0 ? lineTotal : lineTotal.toFixed(2)} <span className="font-normal text-gray-400 text-xs">{pr.currency}</span>
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Summary */}
@@ -144,21 +152,21 @@ export default function CartPage() {
             <div className="flex flex-col gap-3 text-sm">
               <div className="flex justify-between text-gray-400">
                 <span>{t('cart.summary.subtotal')}</span>
-                <span className="text-white font-semibold">{total} {t('cart.currency')}</span>
+                <span className="text-white font-semibold">{regionalTotal} {currency}</span>
               </div>
               {coupon && (
                 <div className="flex justify-between text-green-400">
                   <span>{t('cart.coupon.discount')} ({coupon.pct}%)</span>
-                  <span className="font-semibold">−{discount} {t('cart.currency')}</span>
+                  <span className="font-semibold">−{regionalDiscount} {currency}</span>
                 </div>
               )}
               <div className="flex justify-between text-gray-400">
                 <span>{t('cart.summary.shipping')}</span>
-                <span className="text-white font-semibold">{shipping} {t('cart.currency')}</span>
+                <span className="text-white font-semibold">{shipping} {currency}</span>
               </div>
               <div className="border-t border-white/10 pt-3 flex justify-between">
                 <span className="font-black text-base">{t('cart.summary.total')}</span>
-                <span className="font-black text-xl text-[#F5C518]">{grandTotal} <span className="text-sm font-bold text-gray-300">{t('cart.currency')}</span></span>
+                <span className="font-black text-xl text-[#F5C518]">{grandTotal} <span className="text-sm font-bold text-gray-300">{currency}</span></span>
               </div>
             </div>
 

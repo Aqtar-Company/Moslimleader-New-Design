@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LanguageContext';
+import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import { governorates, getShipping } from '@/lib/shipping';
 import { countries, calculateInternationalShipping } from '@/lib/international-shipping';
 
@@ -47,10 +48,14 @@ function formatExpiry(val: string) {
 }
 
 export default function CheckoutPage() {
-  const { items, total, coupon, discount, clear } = useCart();
+  const { items, coupon, clear } = useCart();
   const { user } = useAuth();
   const { lang } = useLang();
+  const { getProductPrice, getCartRegionalTotal, formatPrice, zoneInfo } = useRegionalPricing();
   const isRtl = lang === 'ar';
+
+  const { total, currency } = getCartRegionalTotal(items);
+  const discount = coupon ? Math.round(total * coupon.pct / 100) : 0;
 
   const [step, setStep] = useState<Step>('address');
   const [shippingType, setShippingType] = useState<ShippingType>('local');
@@ -104,7 +109,7 @@ export default function CheckoutPage() {
     back: isRtl ? 'رجوع' : 'Back',
     place: isRtl ? 'تأكيد وإتمام الطلب' : 'Place Order',
     required: isRtl ? 'هذا الحقل مطلوب' : 'Required',
-    currency: isRtl ? 'ج.م' : 'EGP',
+    currency: currency,
     subtotal: isRtl ? 'المجموع' : 'Subtotal',
     discount: isRtl ? 'خصم' : 'Discount',
     shippingLabel: isRtl ? 'الشحن' : 'Shipping',
@@ -561,7 +566,7 @@ export default function CheckoutPage() {
                       )}
                       <p className="text-xs text-gray-400">{item.product.weight}g × {item.quantity}</p>
                     </div>
-                    <p className="text-xs font-black text-gray-900 shrink-0">{item.product.price * item.quantity} {L.currency}</p>
+                    <p className="text-xs font-black text-gray-900 shrink-0">{formatPrice({ ...getProductPrice(item.product), price: getProductPrice(item.product).price * item.quantity })}</p>
                   </div>
                 );
               })}

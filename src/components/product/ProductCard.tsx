@@ -6,15 +6,18 @@ import { Product } from '@/types';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { useLang } from '@/context/LanguageContext';
+import { useRegionalPricing } from '@/context/RegionalPricingContext';
 
 export default function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
   const { isWishlisted, toggle } = useWishlist();
   const { t, isRtl } = useLang();
+  const { getProductPrice, formatPrice } = useRegionalPricing();
 
   const displayName = isRtl ? product.name : (product.nameEn || product.name);
   const displayShortDesc = isRtl ? product.shortDescription : (product.shortDescriptionEn || product.shortDescription);
   const wishlisted = isWishlisted(product.id);
+  const priceResult = getProductPrice(product);
 
   return (
     <div className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 overflow-hidden flex flex-col">
@@ -54,7 +57,7 @@ export default function ProductCard({ product }: { product: Product }) {
         <p className="text-gray-500 text-sm line-clamp-2">{displayShortDesc}</p>
 
         <div className="mt-auto pt-3 flex items-center justify-between gap-2">
-          <span className="text-gray-900 font-bold text-lg">{product.price} {t('cart.currency')}</span>
+          <span className="text-gray-900 font-bold text-lg">{formatPrice(priceResult)}</span>
           <button
             disabled={!product.inStock}
             onClick={() => product.inStock && addItem(product)}

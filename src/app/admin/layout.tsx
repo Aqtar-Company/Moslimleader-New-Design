@@ -7,13 +7,14 @@ import { useAuth } from '@/context/AuthContext';
 import { ADMIN_EMAIL } from '@/lib/admin-config';
 
 const NAV = [
-  { href: '/admin/dashboard', label: 'الرئيسية',  icon: '📊' },
-  { href: '/admin/orders',   label: 'الطلبات',    icon: '📦' },
-  { href: '/admin/products', label: 'المنتجات',   icon: '🛍️' },
-  { href: '/admin/coupons',  label: 'الكوبونات',  icon: '🎟️' },
-  { href: '/admin/users',    label: 'العملاء',    icon: '👥' },
-  { href: '/admin/reviews',  label: 'التقييمات',  icon: '⭐' },
-  { href: '/admin/shipping', label: 'الشحن',      icon: '🚚' },
+  { href: '/admin/dashboard',         label: 'الرئيسية',       icon: '📊' },
+  { href: '/admin/orders',            label: 'الطلبات',         icon: '📦' },
+  { href: '/admin/products',          label: 'المنتجات',        icon: '🛍️' },
+  { href: '/admin/regional-pricing',  label: 'التسعير الإقليمي', icon: '🌍' },
+  { href: '/admin/coupons',           label: 'الكوبونات',       icon: '🎟️' },
+  { href: '/admin/users',             label: 'العملاء',         icon: '👥' },
+  { href: '/admin/reviews',           label: 'التقييمات',       icon: '⭐' },
+  { href: '/admin/shipping',          label: 'الشحن',           icon: '🚚' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

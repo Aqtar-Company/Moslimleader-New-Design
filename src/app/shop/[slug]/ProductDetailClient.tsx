@@ -8,6 +8,7 @@ import { products } from '@/lib/products';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { useLang } from '@/context/LanguageContext';
+import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import { Product, ProductVariant } from '@/types';
 import ProductCard from '@/components/product/ProductCard';
 import { sanitizeHtml } from '@/lib/sanitize';
@@ -37,6 +38,8 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   const { addItem } = useCart();
   const { isWishlisted, toggle: toggleWishlist } = useWishlist();
   const { t, isRtl } = useLang();
+  const { getProductPrice, formatPrice } = useRegionalPricing();
+  const priceResult = getProductPrice(product);
 
   useEffect(() => {
     try {
@@ -182,7 +185,8 @@ export default function ProductDetailClient({ product }: { product: Product }) {
             <p className="text-gray-500">{displayShortDesc}</p>
 
             <div className="text-3xl font-black text-gray-900">
-              {product.price} <span className="text-lg font-bold text-gray-500">{t('cart.currency')}</span>
+              {formatPrice(priceResult)}
+              <p className="text-xs text-gray-400 font-normal mt-1">السعر المعروض حسب المنطقة الجغرافية</p>
             </div>
 
             <div className="flex items-center gap-2">

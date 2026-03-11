@@ -700,13 +700,19 @@ export default function ProductsPage() {
                     </button>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <div className="flex items-center justify-center gap-2">
+                    <div className="flex items-center justify-center gap-2 flex-wrap">
                       <button
                         onClick={() => startEdit(p)}
                         className="text-blue-500 hover:text-blue-700 text-xs font-bold transition hover:bg-blue-50 px-2 py-1 rounded-lg"
                       >
                         تعديل
                       </button>
+                      <a
+                        href={`/admin/regional-pricing`}
+                        className="text-purple-500 hover:text-purple-700 text-xs font-bold transition hover:bg-purple-50 px-2 py-1 rounded-lg"
+                      >
+                        🌍
+                      </a>
                       {(p as MergedProduct).isAdded && (
                         <button
                           onClick={() => handleDelete(p)}

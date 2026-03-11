@@ -7,7 +7,7 @@ import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LanguageContext';
 import { governorates, getShipping } from '@/lib/shipping';
-import { countries, carrierRates, calculateInternationalShipping, type Carrier } from '@/lib/international-shipping';
+import { countries, calculateInternationalShipping } from '@/lib/international-shipping';
 
 type Step = 'address' | 'payment' | 'confirm';
 type PayMethod = 'cod' | 'card' | 'vodafone' | 'instapay' | 'paypal';
@@ -55,7 +55,7 @@ export default function CheckoutPage() {
   const [step, setStep] = useState<Step>('address');
   const [shippingType, setShippingType] = useState<ShippingType>('local');
   const [address, setAddress] = useState<AddressForm>({ ...EMPTY_ADDR, fullName: user?.name || '', phone: user?.phone || '' });
-  const [carrier, setCarrier] = useState<Carrier>('aramex');
+  const carrier = 'aramex';
   const [payMethod, setPayMethod] = useState<PayMethod>('cod');
 
   // When switching shipping type, reset to valid payment method
@@ -120,7 +120,6 @@ export default function CheckoutPage() {
     intlShipping: isRtl ? 'شحن دولي' : 'International Shipping',
     selectCountry: isRtl ? 'اختر الدولة' : 'Select Country',
     country: isRtl ? 'الدولة' : 'Country',
-    carrier: isRtl ? 'شركة الشحن' : 'Shipping Carrier',
     weightLabel: isRtl ? 'الوزن الإجمالي' : 'Total Weight',
     estimatedDays: isRtl ? 'مدة التوصيل المتوقعة' : 'Estimated Delivery',
     days: isRtl ? ' أيام عمل' : ' business days',
@@ -213,9 +212,6 @@ export default function CheckoutPage() {
     );
   }
 
-  const selectedCarrierZoneRate = shippingType === 'international' && countryObj
-    ? carrierRates[carrier][countryObj.zone]
-    : null;
 
   return (
     <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto px-4 py-10 pt-28">
@@ -305,7 +301,7 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
-                {/* International: country + carrier */}
+                {/* International: country */}
                 {shippingType === 'international' && (<>
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.country} *</label>
@@ -319,26 +315,10 @@ export default function CheckoutPage() {
                     </select>
                     {errors.country && <p className="text-red-500 text-xs mt-1">{errors.country}</p>}
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.carrier}</label>
-                    <div className="flex gap-2">
-                      {(['aramex', 'fedex', 'dhl'] as Carrier[]).map(c => (
-                        <button key={c}
-                          onClick={() => setCarrier(c)}
-                          className={`flex-1 py-2 rounded-xl text-xs font-bold border-2 transition ${carrier === c ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 hover:border-gray-400 text-gray-700'}`}>
-                          {c === 'aramex' ? 'Aramex' : c === 'fedex' ? 'FedEx' : 'DHL'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  {/* Carrier info */}
-                  {selectedCarrierZoneRate && address.country && (
+                  {shippingCost > 0 && address.country && (
                     <div className="sm:col-span-2 bg-amber-50 border border-amber-100 rounded-xl p-4 text-sm">
                       <div className="flex justify-between items-center flex-wrap gap-2">
-                        <div>
-                          <p className="text-xs text-gray-500">{L.weightLabel}: <span className="font-bold text-gray-900">{(totalWeightGrams / 1000).toFixed(2)} kg</span></p>
-                          <p className="text-xs text-gray-500 mt-0.5">{L.estimatedDays}: <span className="font-bold text-gray-900">{selectedCarrierZoneRate.estimatedDays}{L.days}</span></p>
-                        </div>
+                        <p className="text-xs text-gray-500">{L.weightLabel}: <span className="font-bold text-gray-900">{(totalWeightGrams / 1000).toFixed(2)} kg</span></p>
                         <p className="font-black text-lg text-gray-900">{shippingCost} {L.currency}</p>
                       </div>
                     </div>
@@ -525,9 +505,6 @@ export default function CheckoutPage() {
                     {shippingType === 'local' && govObj ? `, ${isRtl ? govObj.name : govObj.nameEn}` : ''}
                     {shippingType === 'international' && countryObj ? `, ${isRtl ? countryObj.name : countryObj.nameEn}` : ''}
                   </p>
-                  {shippingType === 'international' && (
-                    <p className="text-xs text-gray-400 mt-1">{isRtl ? 'شركة الشحن:' : 'Carrier:'} {carrier.toUpperCase()}</p>
-                  )}
                 </div>
                 <div className="bg-gray-50 rounded-xl p-4">
                   <div className="flex justify-between items-center mb-2">
@@ -604,7 +581,7 @@ export default function CheckoutPage() {
                 <span>
                   {L.shippingLabel}
                   {shippingType === 'local' && address.governorate ? ` — ${isRtl ? govObj?.name : govObj?.nameEn}` : ''}
-                  {shippingType === 'international' && address.country ? ` — ${carrier.toUpperCase()}` : ''}
+                  {shippingType === 'international' && address.country && countryObj ? ` — ${isRtl ? countryObj.name : countryObj.nameEn}` : ''}
                 </span>
                 <span className="font-semibold text-gray-900">{shippingCost > 0 ? `${shippingCost} ${L.currency}` : '—'}</span>
               </div>

@@ -1,20 +1,20 @@
 /**
  * International Shipping — business logic and storage
  * Completely separate from local Egypt shipping (src/lib/shipping.ts)
+ *
+ * Zones:
+ *   saudi        → Saudi Arabia only (prices in SAR ﷼)
+ *   international → All other countries (prices in USD)
  */
 
-export type IntlZone = 'saudi' | 'gulf' | 'international';
+export type IntlZone = 'saudi' | 'international';
 export type RoundingRule = 'none' | 'whole' | 'friendly';
-
-/** Gulf countries — each belongs to the 'gulf' zone */
-export const GULF_COUNTRIES = ['AE', 'KW', 'QA', 'BH', 'OM'] as const;
 
 /** Map an ISO-2 country code to its international shipping zone.
  *  Returns null for Egypt (EG) — Egypt uses local shipping. */
 export function getIntlZone(countryCode: string): IntlZone | null {
   if (countryCode === 'EG') return null;
   if (countryCode === 'SA') return 'saudi';
-  if ((GULF_COUNTRIES as readonly string[]).includes(countryCode)) return 'gulf';
   return 'international';
 }
 
@@ -25,15 +25,13 @@ export interface WeightBracket {
   minKg: number;
   maxKg: number | null; // null = open-ended (no upper limit)
   /** Manual prices — always take priority over formula */
-  price_sar?: number;   // SAR  — Saudi zone
-  price_gulf?: number;  // AED  — Gulf zone
-  price_usd?: number;   // USD  — International zone
+  price_sar?: number;  // ﷼  — Saudi zone
+  price_usd?: number;  // USD — International zone
   /** Formula fallback (used only when manual price is absent/zero) */
   use_formula: boolean;
-  egp_base?: number;     // Base EGP shipping cost
-  saudi_mult: number;    // egp_base × saudi_mult = SAR price
-  gulf_mult: number;     // egp_base × gulf_mult  = AED price
-  usd_mult: number;      // egp_base × usd_mult   = USD price
+  egp_base?: number;  // Base EGP shipping cost
+  saudi_mult: number; // egp_base × saudi_mult = ﷼ price
+  usd_mult: number;   // egp_base × usd_mult   = USD price
   rounding: RoundingRule;
 }
 
@@ -45,14 +43,13 @@ export interface ZoneConfig {
 export interface HandlingFee {
   enabled: boolean;
   type: 'fixed' | 'percentage';
-  value: number; // fixed amount (in zone's currency) OR percentage
+  value: number;
 }
 
 export interface IntlShippingConfig {
   enabled: boolean; // master on/off — customers see nothing when false
   zones: {
     saudi:         ZoneConfig;
-    gulf:          ZoneConfig;
     international: ZoneConfig;
   };
   weightBrackets: WeightBracket[];
@@ -64,13 +61,11 @@ export interface IntlShippingConfig {
 
 export const ZONE_LABELS: Record<IntlZone, string> = {
   saudi:         '🇸🇦 المملكة العربية السعودية',
-  gulf:          '🌍 دول الخليج',
   international: '🌐 دولي (باقي العالم)',
 };
 
 export const ZONE_CURRENCY: Record<IntlZone, string> = {
-  saudi:         'SAR',
-  gulf:          'AED',
+  saudi:         '﷼',
   international: 'USD',
 };
 
@@ -82,7 +77,6 @@ export const DEFAULT_CONFIG: IntlShippingConfig = {
   enabled: false,
   zones: {
     saudi:         { enabled: true, blockedCountries: [] },
-    gulf:          { enabled: true, blockedCountries: [] },
     international: { enabled: true, blockedCountries: [] },
   },
   weightBrackets: [],
@@ -100,7 +94,6 @@ export function getIntlShippingConfig(): IntlShippingConfig {
       ...saved,
       zones: {
         saudi:         { ...DEFAULT_CONFIG.zones.saudi,         ...saved.zones?.saudi },
-        gulf:          { ...DEFAULT_CONFIG.zones.gulf,          ...saved.zones?.gulf },
         international: { ...DEFAULT_CONFIG.zones.international, ...saved.zones?.international },
       },
       handling: { ...DEFAULT_CONFIG.handling, ...saved.handling },
@@ -126,22 +119,13 @@ function applyRounding(val: number, rule: RoundingRule): number {
   return Math.round(val * 100) / 100;
 }
 
-function resolveZonePrice(
-  bracket: WeightBracket,
-  zone: IntlZone,
-): number | null {
-  // Manual price takes priority
-  const manual = zone === 'saudi' ? bracket.price_sar
-               : zone === 'gulf'  ? bracket.price_gulf
-               :                    bracket.price_usd;
+function resolveZonePrice(bracket: WeightBracket, zone: IntlZone): number | null {
+  const manual = zone === 'saudi' ? bracket.price_sar : bracket.price_usd;
 
   if (manual !== undefined && manual > 0) return manual;
 
-  // Formula fallback
   if (bracket.use_formula && bracket.egp_base && bracket.egp_base > 0) {
-    const mult = zone === 'saudi' ? bracket.saudi_mult
-               : zone === 'gulf'  ? bracket.gulf_mult
-               :                    bracket.usd_mult;
+    const mult = zone === 'saudi' ? bracket.saudi_mult : bracket.usd_mult;
     if (mult > 0) {
       return applyRounding(bracket.egp_base * mult, bracket.rounding);
     }
@@ -192,7 +176,6 @@ export function calculateIntlShipping(
 
   let amount = raw;
 
-  // Handling fee
   if (config.handling.enabled && config.handling.value > 0) {
     if (config.handling.type === 'percentage') {
       amount = applyRounding(amount * (1 + config.handling.value / 100), 'whole');

@@ -9,7 +9,6 @@ import {
   IntlShippingConfig,
   WeightBracket,
   ZoneConfig,
-  GULF_COUNTRIES,
   ZONE_LABELS,
   ZONE_CURRENCY,
   IntlZone,
@@ -18,36 +17,29 @@ import {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const GULF_LIST = countries.filter(c => (GULF_COUNTRIES as readonly string[]).includes(c.code));
-const INTL_COUNTRIES = countries.filter(
-  c => c.code !== 'EG' && c.code !== 'SA' && !(GULF_COUNTRIES as readonly string[]).includes(c.code),
-);
 const ALL_SELECTABLE = countries.filter(c => c.code !== 'EG');
+const INTL_COUNTRIES  = countries.filter(c => c.code !== 'EG' && c.code !== 'SA');
 
 function uid() { return Math.random().toString(36).slice(2, 10); }
 
 const EMPTY_BRACKET: Omit<WeightBracket, 'id'> = {
   minKg: 0, maxKg: 0.5,
-  price_sar: undefined, price_gulf: undefined, price_usd: undefined,
+  price_sar: undefined, price_usd: undefined,
   use_formula: false,
   egp_base: undefined,
-  saudi_mult: 0.05, gulf_mult: 0.05, usd_mult: 0.01,
+  saudi_mult: 0.05, usd_mult: 0.01,
   rounding: 'whole',
 };
 
 // ── Toggle ────────────────────────────────────────────────────────────────────
 
 function Toggle({ on, onChange, size = 'md' }: { on: boolean; onChange: (v: boolean) => void; size?: 'sm' | 'md' }) {
-  const h = size === 'sm' ? 'h-5 w-9' : 'h-6 w-11';
+  const h   = size === 'sm' ? 'h-5 w-9'  : 'h-6 w-11';
   const dot = size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4';
   const onX = size === 'sm' ? 'translate-x-4' : 'translate-x-5';
   return (
-    <button
-      dir="ltr"
-      type="button"
-      onClick={() => onChange(!on)}
-      className={`relative inline-flex ${h} items-center rounded-full transition-colors shrink-0 ${on ? 'bg-green-500' : 'bg-gray-300'}`}
-    >
+    <button dir="ltr" type="button" onClick={() => onChange(!on)}
+      className={`relative inline-flex ${h} items-center rounded-full transition-colors shrink-0 ${on ? 'bg-green-500' : 'bg-gray-300'}`}>
       <span className={`inline-block ${dot} transform rounded-full bg-white shadow transition-transform ${on ? onX : 'translate-x-1'}`} />
     </button>
   );
@@ -55,13 +47,15 @@ function Toggle({ on, onChange, size = 'md' }: { on: boolean; onChange: (v: bool
 
 // ── Blocked Country Tag Input ─────────────────────────────────────────────────
 
-function BlockedCountrySelector({
-  blocked, onChange, pool,
-}: { blocked: string[]; onChange: (v: string[]) => void; pool: typeof countries }) {
+function BlockedCountrySelector({ blocked, onChange, pool }: {
+  blocked: string[]; onChange: (v: string[]) => void; pool: typeof countries;
+}) {
   const [q, setQ] = useState('');
-  const filtered = pool.filter(
-    c => !blocked.includes(c.code) && (c.name.includes(q) || c.nameEn.toLowerCase().includes(q.toLowerCase()) || c.code.toLowerCase().includes(q.toLowerCase())),
-  ).slice(0, 6);
+  const filtered = pool
+    .filter(c => !blocked.includes(c.code) && (
+      c.name.includes(q) || c.nameEn.toLowerCase().includes(q.toLowerCase()) || c.code.toLowerCase().includes(q.toLowerCase())
+    ))
+    .slice(0, 6);
 
   return (
     <div className="space-y-2">
@@ -79,11 +73,9 @@ function BlockedCountrySelector({
         </div>
       )}
       <div className="relative">
-        <input
-          value={q} onChange={e => setQ(e.target.value)}
+        <input value={q} onChange={e => setQ(e.target.value)}
           placeholder="ابحث عن دولة لحظرها..."
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
-        />
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400" />
         {q && filtered.length > 0 && (
           <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
             {filtered.map(c => (
@@ -103,31 +95,11 @@ function BlockedCountrySelector({
 
 // ── Bracket Form ──────────────────────────────────────────────────────────────
 
-function BracketForm({
-  initial, onSave, onCancel,
-}: { initial: WeightBracket | null; onSave: (b: WeightBracket) => void; onCancel: () => void }) {
-  const [form, setForm] = useState<WeightBracket>(
-    initial ?? { id: uid(), ...EMPTY_BRACKET },
-  );
-
-  const set = <K extends keyof WeightBracket>(k: K, v: WeightBracket[K]) =>
-    setForm(f => ({ ...f, [k]: v }));
-
-  const numInput = (label: string, key: keyof WeightBracket, placeholder?: string, suffix?: string) => (
-    <div>
-      <label className="block text-xs font-semibold text-gray-500 mb-1">{label}</label>
-      <div className="flex items-center gap-1">
-        <input
-          type="number" step="0.01" min={0}
-          value={(form[key] as number | undefined) ?? ''}
-          onChange={e => set(key, e.target.value === '' ? undefined : Number(e.target.value) as WeightBracket[typeof key])}
-          placeholder={placeholder ?? '0'}
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
-        />
-        {suffix && <span className="text-xs text-gray-400 shrink-0">{suffix}</span>}
-      </div>
-    </div>
-  );
+function BracketForm({ initial, onSave, onCancel }: {
+  initial: WeightBracket | null; onSave: (b: WeightBracket) => void; onCancel: () => void;
+}) {
+  const [form, setForm] = useState<WeightBracket>(initial ?? { id: uid(), ...EMPTY_BRACKET });
+  const set = <K extends keyof WeightBracket>(k: K, v: WeightBracket[K]) => setForm(f => ({ ...f, [k]: v }));
 
   return (
     <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 space-y-5">
@@ -136,34 +108,42 @@ function BracketForm({
       {/* Weight range */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1">الحد الأدنى للوزن (كجم) *</label>
-          <input type="number" step="0.01" min={0}
-            value={form.minKg}
+          <label className="block text-xs font-semibold text-gray-500 mb-1">الحد الأدنى (كجم) *</label>
+          <input type="number" step="0.01" min={0} value={form.minKg}
             onChange={e => set('minKg', Number(e.target.value))}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400 bg-white"
-          />
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400 bg-white" />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1">الحد الأعلى للوزن (كجم)</label>
-          <div className="space-y-1.5">
-            <input type="number" step="0.01" min={0}
-              value={form.maxKg ?? ''}
-              placeholder="بلا حد أعلى"
-              onChange={e => set('maxKg', e.target.value === '' ? null : Number(e.target.value))}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400 bg-white"
-            />
-            {form.maxKg !== null && <p className="text-xs text-gray-400">اتركه فارغًا إذا لم يكن هناك حد أعلى</p>}
-          </div>
+          <label className="block text-xs font-semibold text-gray-500 mb-1">الحد الأعلى (كجم)</label>
+          <input type="number" step="0.01" min={0} value={form.maxKg ?? ''}
+            placeholder="بلا حد أعلى"
+            onChange={e => set('maxKg', e.target.value === '' ? null : Number(e.target.value))}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400 bg-white" />
         </div>
       </div>
 
       {/* Manual prices */}
       <div>
-        <p className="text-xs font-bold text-gray-700 mb-3 uppercase tracking-wide">الأسعار اليدوية (الأولوية القصوى)</p>
-        <div className="grid grid-cols-3 gap-3">
-          {numInput('السعودية — SAR', 'price_sar', 'SAR', 'SAR')}
-          {numInput('الخليج — AED', 'price_gulf', 'AED', 'AED')}
-          {numInput('دولي — USD', 'price_usd', 'USD', 'USD')}
+        <p className="text-xs font-bold text-gray-700 mb-3 uppercase tracking-wide">الأسعار اليدوية (أولوية قصوى)</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">السعودية — ﷼</label>
+            <div className="flex items-center gap-1">
+              <input type="number" step="0.01" min={0} value={form.price_sar ?? ''}
+                onChange={e => set('price_sar', e.target.value === '' ? undefined : Number(e.target.value))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400" />
+              <span className="text-sm text-gray-400 shrink-0">﷼</span>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">دولي — USD</label>
+            <div className="flex items-center gap-1">
+              <input type="number" step="0.01" min={0} value={form.price_usd ?? ''}
+                onChange={e => set('price_usd', e.target.value === '' ? undefined : Number(e.target.value))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400" />
+              <span className="text-sm text-gray-400 shrink-0">$</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -180,25 +160,29 @@ function BracketForm({
           <div className="space-y-3">
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1">سعر الشحن الأساسي بالجنيه (EGP)</label>
-              <input type="number" min={0}
-                value={form.egp_base ?? ''}
+              <input type="number" min={0} value={form.egp_base ?? ''}
                 onChange={e => set('egp_base', e.target.value === '' ? undefined : Number(e.target.value))}
                 placeholder="مثال: 150"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
-              />
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400" />
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              {numInput('مضاعف SAR', 'saudi_mult', '0.05')}
-              {numInput('مضاعف AED', 'gulf_mult', '0.05')}
-              {numInput('مضاعف USD', 'usd_mult', '0.01')}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">مضاعف ﷼ (سعودي)</label>
+                <input type="number" step="0.001" min={0} value={form.saudi_mult}
+                  onChange={e => set('saudi_mult', Number(e.target.value))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">مضاعف USD (دولي)</label>
+                <input type="number" step="0.001" min={0} value={form.usd_mult}
+                  onChange={e => set('usd_mult', Number(e.target.value))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400" />
+              </div>
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1">قاعدة التقريب</label>
-              <select
-                value={form.rounding}
-                onChange={e => set('rounding', e.target.value as RoundingRule)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400 bg-white"
-              >
+              <select value={form.rounding} onChange={e => set('rounding', e.target.value as RoundingRule)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400 bg-white">
                 <option value="none">بدون تقريب</option>
                 <option value="whole">تقريب لأعلى (عدد صحيح)</option>
                 <option value="friendly">تقريب لأقرب 5</option>
@@ -207,8 +191,8 @@ function BracketForm({
             {form.egp_base && form.egp_base > 0 && (
               <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-xs space-y-1">
                 <p className="font-bold text-blue-700">معاينة الحساب التلقائي:</p>
-                {(['saudi', 'gulf', 'international'] as IntlZone[]).map(z => {
-                  const mult = z === 'saudi' ? form.saudi_mult : z === 'gulf' ? form.gulf_mult : form.usd_mult;
+                {(['saudi', 'international'] as IntlZone[]).map(z => {
+                  const mult = z === 'saudi' ? form.saudi_mult : form.usd_mult;
                   let val = (form.egp_base ?? 0) * mult;
                   if (form.rounding === 'whole') val = Math.ceil(val);
                   else if (form.rounding === 'friendly') val = Math.ceil(val / 5) * 5;
@@ -225,17 +209,12 @@ function BracketForm({
         )}
       </div>
 
-      {/* Actions */}
       <div className="flex gap-2 justify-end">
         <button type="button" onClick={onCancel}
           className="px-4 py-2 border border-gray-200 text-gray-600 font-semibold text-sm rounded-xl hover:border-gray-400 transition">
           إلغاء
         </button>
-        <button type="button"
-          onClick={() => {
-            if (form.minKg < 0) return;
-            onSave(form);
-          }}
+        <button type="button" onClick={() => { if (form.minKg >= 0) onSave(form); }}
           className="px-5 py-2 bg-gray-900 text-white font-bold text-sm rounded-xl hover:bg-gray-700 transition">
           حفظ الشريحة
         </button>
@@ -248,13 +227,8 @@ function BracketForm({
 
 function PreviewTool({ config }: { config: IntlShippingConfig }) {
   const [country, setCountry] = useState('');
-  const [weight, setWeight] = useState('');
-  const [result, setResult] = useState<ReturnType<typeof calculateIntlShipping> | null>(null);
-
-  const run = () => {
-    if (!country || !weight) return;
-    setResult(calculateIntlShipping(parseFloat(weight), country, config));
-  };
+  const [weight, setWeight]   = useState('');
+  const [result, setResult]   = useState<ReturnType<typeof calculateIntlShipping> | null>(null);
 
   return (
     <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4">
@@ -276,25 +250,23 @@ function PreviewTool({ config }: { config: IntlShippingConfig }) {
           <input type="number" step="0.01" min={0} value={weight}
             onChange={e => { setWeight(e.target.value); setResult(null); }}
             placeholder="مثال: 1.5"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
-          />
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400" />
         </div>
       </div>
-      <button type="button" onClick={run}
+      <button type="button" onClick={() => {
+        if (!country || !weight) return;
+        setResult(calculateIntlShipping(parseFloat(weight), country, config));
+      }}
         disabled={!country || !weight}
-        className="w-full bg-gray-900 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-xl transition text-sm">
+        className="w-full bg-gray-900 hover:bg-gray-700 disabled:opacity-40 text-white font-bold py-2.5 rounded-xl transition text-sm">
         معاينة الشحن
       </button>
       {result && (
         <div className={`rounded-xl p-4 text-sm font-semibold ${result.ok ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-700'}`}>
           {result.ok ? (
             <div className="space-y-1">
-              <p className="text-base font-black">
-                {result.amount} {result.currency}
-              </p>
-              <p className="text-xs font-normal text-green-600">
-                المنطقة: {ZONE_LABELS[result.zone]}
-              </p>
+              <p className="text-base font-black">{result.amount} {result.currency}</p>
+              <p className="text-xs font-normal text-green-600">المنطقة: {ZONE_LABELS[result.zone]}</p>
             </div>
           ) : (
             <p>{result.message}</p>
@@ -308,8 +280,8 @@ function PreviewTool({ config }: { config: IntlShippingConfig }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function IntlShippingPage() {
-  const [config, setConfig] = useState<IntlShippingConfig | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [config, setConfig]   = useState<IntlShippingConfig | null>(null);
+  const [saved, setSaved]     = useState(false);
   const [editingId, setEditingId] = useState<string | 'new' | null>(null);
 
   useEffect(() => { setConfig(getIntlShippingConfig()); }, []);
@@ -379,17 +351,17 @@ export default function IntlShippingPage() {
           <div className="bg-white border border-gray-200 rounded-2xl p-5">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
-                <span className="text-xl">🇸🇦</span>
+                <span className="text-2xl">🇸🇦</span>
                 <div>
                   <p className="font-bold text-gray-900 text-sm">المملكة العربية السعودية</p>
-                  <p className="text-xs text-gray-400">الأسعار بالريال السعودي (SAR)</p>
+                  <p className="text-xs text-gray-400">الأسعار بالريال السعودي (﷼)</p>
                 </div>
               </div>
               <Toggle on={config.zones.saudi.enabled} onChange={v => patchZone('saudi', { enabled: v })} />
             </div>
             {config.zones.saudi.enabled && (
               <div>
-                <p className="text-xs font-semibold text-gray-500 mb-2">حظر الشحن لدولة بعينها (نادر الاستخدام):</p>
+                <p className="text-xs font-semibold text-gray-500 mb-2">حظر الشحن للسعودية (نادر):</p>
                 <BlockedCountrySelector
                   blocked={config.zones.saudi.blockedCountries}
                   onChange={v => patchZone('saudi', { blockedCountries: v })}
@@ -399,54 +371,14 @@ export default function IntlShippingPage() {
             )}
           </div>
 
-          {/* Gulf */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <span className="text-xl">🌍</span>
-                <div>
-                  <p className="font-bold text-gray-900 text-sm">دول الخليج</p>
-                  <p className="text-xs text-gray-400">الأسعار بالدرهم الإماراتي (AED)</p>
-                </div>
-              </div>
-              <Toggle on={config.zones.gulf.enabled} onChange={v => patchZone('gulf', { enabled: v })} />
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
-              {GULF_LIST.map(c => {
-                const blocked = config.zones.gulf.blockedCountries.includes(c.code);
-                return (
-                  <label key={c.code}
-                    className={`flex items-center gap-2 border rounded-lg px-3 py-2 cursor-pointer text-sm transition ${blocked ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50 hover:border-gray-300'}`}>
-                    <input type="checkbox"
-                      checked={!blocked}
-                      onChange={e => {
-                        const next = e.target.checked
-                          ? config.zones.gulf.blockedCountries.filter(b => b !== c.code)
-                          : [...config.zones.gulf.blockedCountries, c.code];
-                        patchZone('gulf', { blockedCountries: next });
-                      }}
-                      className="accent-green-500"
-                    />
-                    <span className={`font-semibold ${blocked ? 'text-red-500 line-through' : 'text-gray-700'}`}>{c.name}</span>
-                  </label>
-                );
-              })}
-            </div>
-            {config.zones.gulf.blockedCountries.length > 0 && (
-              <p className="text-xs text-red-500 font-semibold">
-                دول محظورة: {config.zones.gulf.blockedCountries.join(' | ')}
-              </p>
-            )}
-          </div>
-
           {/* International */}
           <div className="bg-white border border-gray-200 rounded-2xl p-5">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
-                <span className="text-xl">🌐</span>
+                <span className="text-2xl">🌐</span>
                 <div>
                   <p className="font-bold text-gray-900 text-sm">دولي — باقي العالم</p>
-                  <p className="text-xs text-gray-400">الأسعار بالدولار الأمريكي (USD)</p>
+                  <p className="text-xs text-gray-400">يشمل الخليج وأوروبا وأمريكا وكل الدول — الأسعار بالدولار (USD)</p>
                 </div>
               </div>
               <Toggle on={config.zones.international.enabled} onChange={v => patchZone('international', { enabled: v })} />
@@ -493,30 +425,29 @@ export default function IntlShippingPage() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr className="text-xs font-semibold text-gray-500">
-                    <th className="px-4 py-3 text-right">نطاق الوزن</th>
-                    <th className="px-4 py-3 text-center">SAR 🇸🇦</th>
-                    <th className="px-4 py-3 text-center">AED 🌍</th>
-                    <th className="px-4 py-3 text-center">USD 🌐</th>
-                    <th className="px-4 py-3 text-center">حساب تلقائي</th>
-                    <th className="px-4 py-3 text-center">إجراءات</th>
+                    <th className="px-4 py-3.5 text-right">نطاق الوزن</th>
+                    <th className="px-4 py-3.5 text-center">﷼ سعودي</th>
+                    <th className="px-4 py-3.5 text-center">$ دولي</th>
+                    <th className="px-4 py-3.5 text-center">حساب تلقائي</th>
+                    <th className="px-4 py-3.5 text-center">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {sortedBrackets.map(b => {
                     const isEditing = editingId === b.id;
-                    const displaySar  = b.price_sar  ?? (b.use_formula && b.egp_base ? '~' + Math.ceil((b.egp_base ?? 0) * b.saudi_mult) : '—');
-                    const displayGulf = b.price_gulf ?? (b.use_formula && b.egp_base ? '~' + Math.ceil((b.egp_base ?? 0) * b.gulf_mult) : '—');
-                    const displayUsd  = b.price_usd  ?? (b.use_formula && b.egp_base ? '~' + ((b.egp_base ?? 0) * b.usd_mult).toFixed(1) : '—');
+                    const dispSar = b.price_sar ?? (b.use_formula && b.egp_base ? '~' + Math.ceil((b.egp_base ?? 0) * b.saudi_mult) : '—');
+                    const dispUsd = b.price_usd ?? (b.use_formula && b.egp_base ? '~' + ((b.egp_base ?? 0) * b.usd_mult).toFixed(1) : '—');
                     return [
                       <tr key={b.id} className={`transition ${isEditing ? 'bg-amber-50' : 'hover:bg-gray-50'}`}>
                         <td className="px-4 py-3 font-bold text-gray-900">
                           {b.minKg} — {b.maxKg === null ? '∞' : b.maxKg} كجم
                         </td>
-                        <td className="px-4 py-3 text-center font-semibold text-gray-700">{displaySar}</td>
-                        <td className="px-4 py-3 text-center font-semibold text-gray-700">{displayGulf}</td>
-                        <td className="px-4 py-3 text-center font-semibold text-gray-700">{displayUsd}</td>
+                        <td className="px-4 py-3 text-center font-semibold text-gray-700">{dispSar}</td>
+                        <td className="px-4 py-3 text-center font-semibold text-gray-700">{dispUsd}</td>
                         <td className="px-4 py-3 text-center">
-                          {b.use_formula ? <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">مفعّل</span> : <span className="text-xs text-gray-400">—</span>}
+                          {b.use_formula
+                            ? <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">مفعّل</span>
+                            : <span className="text-xs text-gray-400">—</span>}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-2">
@@ -539,7 +470,7 @@ export default function IntlShippingPage() {
                       </tr>,
                       isEditing && (
                         <tr key={b.id + '-edit'}>
-                          <td colSpan={6} className="px-4 py-3">
+                          <td colSpan={5} className="px-4 py-3">
                             <BracketForm
                               initial={b}
                               onSave={updated => {
@@ -559,7 +490,6 @@ export default function IntlShippingPage() {
           </div>
         )}
 
-        {/* New bracket form */}
         {editingId === 'new' && (
           <BracketForm
             initial={null}
@@ -581,10 +511,8 @@ export default function IntlShippingPage() {
               <p className="font-semibold text-gray-900 text-sm">تفعيل رسوم المناولة</p>
               <p className="text-xs text-gray-500 mt-0.5">رسوم إضافية تُضاف على سعر الشحن</p>
             </div>
-            <Toggle
-              on={config.handling.enabled}
-              onChange={v => patchConfig({ handling: { ...config.handling, enabled: v } })}
-            />
+            <Toggle on={config.handling.enabled}
+              onChange={v => patchConfig({ handling: { ...config.handling, enabled: v } })} />
           </div>
           {config.handling.enabled && (
             <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
@@ -596,8 +524,7 @@ export default function IntlShippingPage() {
                       <input type="radio" name="handling_type" value={t}
                         checked={config.handling.type === t}
                         onChange={() => patchConfig({ handling: { ...config.handling, type: t } })}
-                        className="sr-only"
-                      />
+                        className="sr-only" />
                       {t === 'fixed' ? 'مبلغ ثابت' : 'نسبة مئوية'}
                     </label>
                   ))}
@@ -608,12 +535,10 @@ export default function IntlShippingPage() {
                   {config.handling.type === 'fixed' ? 'المبلغ (بعملة المنطقة)' : 'النسبة (%)'}
                 </label>
                 <div className="flex items-center gap-1.5">
-                  <input
-                    type="number" min={0} step={config.handling.type === 'percentage' ? 0.5 : 1}
+                  <input type="number" min={0} step={config.handling.type === 'percentage' ? 0.5 : 1}
                     value={config.handling.value}
                     onChange={e => patchConfig({ handling: { ...config.handling, value: Number(e.target.value) } })}
-                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
-                  />
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400" />
                   <span className="text-sm text-gray-500 shrink-0">{config.handling.type === 'percentage' ? '%' : 'وحدة'}</span>
                 </div>
               </div>
@@ -627,19 +552,15 @@ export default function IntlShippingPage() {
         <h2 className="text-base font-black text-gray-900 mb-3">رسالة الوزن الزائد</h2>
         <div className="bg-white border border-gray-200 rounded-2xl p-5">
           <p className="text-xs text-gray-500 mb-2">
-            تظهر هذه الرسالة عندما يتجاوز وزن الطلب أعلى شريحة وزن محددة
+            تظهر عندما يتجاوز وزن الطلب أعلى شريحة وزن محددة
           </p>
-          <input
-            type="text"
-            value={config.overweightMessage}
+          <input type="text" value={config.overweightMessage}
             onChange={e => patchConfig({ overweightMessage: e.target.value })}
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-gray-400 text-gray-900"
-          />
-          <p className="text-xs text-gray-400 mt-1.5">مثال: "سيتم تحديد تكلفة الشحن بعد مراجعة الطلب"</p>
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-gray-400 text-gray-900" />
         </div>
       </div>
 
-      {/* ── Preview Tool ── */}
+      {/* ── Preview ── */}
       <div>
         <h2 className="text-base font-black text-gray-900 mb-3">معاينة فورية</h2>
         <PreviewTool config={config} />

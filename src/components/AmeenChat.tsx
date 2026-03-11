@@ -116,7 +116,7 @@ export default function AmeenChat() {
     if (open && messages.length === 0) {
       setShowBadge(false);
       setTimeout(() => {
-        addAmeenMessage('مرحباً 👋 أنا أمنين، مساعدك لاختيار أفضل هدية!');
+        addAmeenMessage('مرحباً 👋 أنا أمين، مساعدك لاختيار أفضل هدية!');
         setTimeout(() => {
           addAmeenMessage('لمن تبحث عن هدية؟ 🎁');
           setStep('gender');
@@ -206,7 +206,7 @@ export default function AmeenChat() {
           onClick={() => setOpen(o => !o)}
           className="relative w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-2xl transition-transform hover:scale-110 active:scale-95"
           style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #4a1a6e 100%)' }}
-          aria-label="فتح مساعد أمنين"
+          aria-label="فتح مساعد أمين"
         >
           {open ? (
             <span className="text-white font-black text-lg">✕</span>
@@ -235,7 +235,7 @@ export default function AmeenChat() {
               🌟
             </div>
             <div>
-              <p className="font-black text-white text-sm leading-tight">أمنين</p>
+              <p className="font-black text-white text-sm leading-tight">أمين</p>
               <p className="text-white/70 text-xs">مساعدك الذكي للهدايا</p>
             </div>
             <div className="mr-auto flex items-center gap-1.5">
@@ -262,6 +262,7 @@ export default function AmeenChat() {
                       ? 'bg-white text-gray-800 rounded-tr-sm'
                       : 'text-[#1a1a2e] font-semibold rounded-tl-sm'
                   }`}
+
                   style={msg.from === 'user' ? { background: '#F5C518' } : {}}
                 >
                   {msg.text}

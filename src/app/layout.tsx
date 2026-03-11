@@ -6,6 +6,7 @@ import { LanguageProvider } from '@/context/LanguageContext';
 import { AuthProvider } from '@/context/AuthContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import AmeenChat from '@/components/AmeenChat';
 
 export const metadata: Metadata = {
   title: 'مسلم ليدر | Moslim Leader',
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Header />
               <main>{children}</main>
               <Footer />
+              <AmeenChat />
               </WishlistProvider>
             </CartProvider>
           </AuthProvider>

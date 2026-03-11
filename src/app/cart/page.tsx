@@ -32,10 +32,14 @@ export default function CartPage() {
     );
   }
 
-  const shipping = 80;
+  // Egypt users see 80 EGP estimated shipping; international users see "determined at checkout"
+  const isEgyptZone = zoneInfo.zone === 'egypt';
+  const shipping = isEgyptZone ? 80 : null;
   const { total: regionalTotal, currency } = getCartRegionalTotal(items);
   const regionalDiscount = coupon ? Math.round(regionalTotal * coupon.pct / 100) : 0;
-  const grandTotal = Math.round((regionalTotal - regionalDiscount + shipping) * 100) / 100;
+  const grandTotal = isEgyptZone
+    ? Math.round((regionalTotal - regionalDiscount + 80) * 100) / 100
+    : Math.round((regionalTotal - regionalDiscount) * 100) / 100;
 
   function handleApplyCoupon() {
     const ok = applyCoupon(couponInput);
@@ -162,11 +166,20 @@ export default function CartPage() {
               )}
               <div className="flex justify-between text-gray-400">
                 <span>{t('cart.summary.shipping')}</span>
-                <span className="text-white font-semibold">{shipping} {currency}</span>
+                {shipping !== null ? (
+                  <span className="text-white font-semibold">{shipping} {currency}</span>
+                ) : (
+                  <span className="text-amber-400 font-semibold text-xs">يُحدد عند الدفع</span>
+                )}
               </div>
               <div className="border-t border-white/10 pt-3 flex justify-between">
                 <span className="font-black text-base">{t('cart.summary.total')}</span>
-                <span className="font-black text-xl text-[#F5C518]">{grandTotal} <span className="text-sm font-bold text-gray-300">{currency}</span></span>
+                <div className="text-left">
+                  <span className="font-black text-xl text-[#F5C518]">{grandTotal} <span className="text-sm font-bold text-gray-300">{currency}</span></span>
+                  {!isEgyptZone && (
+                    <p className="text-xs text-gray-500 mt-0.5">+ {isRtl ? 'رسوم الشحن' : 'shipping'}</p>
+                  )}
+                </div>
               </div>
             </div>
 

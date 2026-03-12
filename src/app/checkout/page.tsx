@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
@@ -8,7 +8,14 @@ import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LanguageContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import { governorates, getShipping } from '@/lib/shipping';
-import { countries, calculateInternationalShipping } from '@/lib/international-shipping';
+import { countries } from '@/lib/international-shipping';
+import {
+  getIntlShippingConfig,
+  calculateIntlShipping,
+  DEFAULT_CONFIG,
+  IntlShippingConfig,
+  ShippingCalcResult,
+} from '@/lib/intl-shipping';
 
 type Step = 'address' | 'payment' | 'confirm';
 type PayMethod = 'cod' | 'card' | 'vodafone' | 'instapay' | 'paypal';
@@ -57,11 +64,23 @@ export default function CheckoutPage() {
   const { total, currency } = getCartRegionalTotal(items);
   const discount = coupon ? Math.round(total * coupon.pct / 100) : 0;
 
+  const [intlConfig, setIntlConfig] = useState<IntlShippingConfig>(DEFAULT_CONFIG);
   const [step, setStep] = useState<Step>('address');
   const [shippingType, setShippingType] = useState<ShippingType>('local');
   const [address, setAddress] = useState<AddressForm>({ ...EMPTY_ADDR, fullName: user?.name || '', phone: user?.phone || '' });
-  const carrier = 'aramex';
   const [payMethod, setPayMethod] = useState<PayMethod>('cod');
+  const [cardForm, setCardForm] = useState<CardForm>(EMPTY_CARD);
+  const [cardErrors, setCardErrors] = useState<Partial<CardForm>>({});
+  const [errors, setErrors] = useState<Partial<AddressForm>>({});
+  const [orderPlaced, setOrderPlaced] = useState(false);
+  const [orderNumber] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
+
+  // Load intl shipping config client-side (localStorage unavailable on server)
+  useEffect(() => {
+    const cfg = getIntlShippingConfig();
+    setIntlConfig(cfg);
+    if (!cfg.enabled) setShippingType('local');
+  }, []);
 
   // When switching shipping type, reset to valid payment method
   function handleShippingTypeChange(t: ShippingType) {
@@ -70,25 +89,32 @@ export default function CheckoutPage() {
       setPayMethod('card');
     }
   }
-  const [cardForm, setCardForm] = useState<CardForm>(EMPTY_CARD);
-  const [cardErrors, setCardErrors] = useState<Partial<CardForm>>({});
-  const [errors, setErrors] = useState<Partial<AddressForm>>({});
-  const [orderPlaced, setOrderPlaced] = useState(false);
-  const [orderNumber] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
 
-  // Total weight in grams
+  // Total weight in kg
   const totalWeightGrams = items.reduce((sum, item) => sum + item.product.weight * item.quantity, 0);
+  const totalWeightKg = totalWeightGrams / 1000;
 
-  // Shipping cost
+  // Shipping calculation
   const govObj = governorates.find(g => g.id === address.governorate);
   const countryObj = countries.find(c => c.code === address.country);
 
   let shippingCost = 0;
+  let shippingCurrency = currency;
+  let intlShippingResult: ShippingCalcResult | null = null;
+
   if (shippingType === 'local' && address.governorate) {
     shippingCost = getShipping(address.governorate);
-  } else if (shippingType === 'international' && address.country && totalWeightGrams > 0) {
-    shippingCost = calculateInternationalShipping(totalWeightGrams, carrier, countryObj?.zone ?? 'world');
+    shippingCurrency = 'ج.م';
+  } else if (shippingType === 'international' && address.country) {
+    intlShippingResult = calculateIntlShipping(totalWeightKg, address.country, intlConfig);
+    if (intlShippingResult.ok) {
+      shippingCost = intlShippingResult.amount;
+      shippingCurrency = intlShippingResult.currency;
+    }
   }
+
+  // Whether international shipping option should be visible
+  const intlAvailable = intlConfig.enabled;
 
   const steps: Step[] = ['address', 'payment', 'confirm'];
   const stepIdx = steps.indexOf(step);
@@ -255,19 +281,26 @@ export default function CheckoutPage() {
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
               <h2 className="text-lg font-black text-gray-900 mb-6">{L.address}</h2>
 
-              {/* Shipping Type Toggle */}
+              {/* Shipping Type Toggle — international only shown when enabled by admin */}
               <div className="flex gap-2 mb-6">
-                {([['local', L.localShipping], ['international', L.intlShipping]] as [ShippingType, string][]).map(([t, label]) => (
+                <button
+                  onClick={() => handleShippingTypeChange('local')}
+                  className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold border-2 transition ${
+                    shippingType === 'local' ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 text-gray-600 hover:border-gray-400'
+                  }`}
+                >
+                  {L.localShipping}
+                </button>
+                {intlAvailable && (
                   <button
-                    key={t}
-                    onClick={() => handleShippingTypeChange(t)}
+                    onClick={() => handleShippingTypeChange('international')}
                     className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold border-2 transition ${
-                      shippingType === t ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 text-gray-600 hover:border-gray-400'
+                      shippingType === 'international' ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 text-gray-600 hover:border-gray-400'
                     }`}
                   >
-                    {label}
+                    {L.intlShipping}
                   </button>
-                ))}
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -306,7 +339,7 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
-                {/* International: country */}
+                {/* International: country + shipping result */}
                 {shippingType === 'international' && (<>
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.country} *</label>
@@ -320,12 +353,22 @@ export default function CheckoutPage() {
                     </select>
                     {errors.country && <p className="text-red-500 text-xs mt-1">{errors.country}</p>}
                   </div>
-                  {shippingCost > 0 && address.country && (
-                    <div className="sm:col-span-2 bg-amber-50 border border-amber-100 rounded-xl p-4 text-sm">
-                      <div className="flex justify-between items-center flex-wrap gap-2">
-                        <p className="text-xs text-gray-500">{L.weightLabel}: <span className="font-bold text-gray-900">{(totalWeightGrams / 1000).toFixed(2)} kg</span></p>
-                        <p className="font-black text-lg text-gray-900">{shippingCost} {L.currency}</p>
-                      </div>
+
+                  {/* Shipping cost result */}
+                  {address.country && intlShippingResult && (
+                    <div className={`sm:col-span-2 rounded-xl p-4 text-sm border ${intlShippingResult.ok ? 'bg-amber-50 border-amber-100' : 'bg-red-50 border-red-100'}`}>
+                      {intlShippingResult.ok ? (
+                        <div className="flex justify-between items-center flex-wrap gap-2">
+                          <p className="text-xs text-gray-500">
+                            {L.weightLabel}: <span className="font-bold text-gray-900">{totalWeightKg.toFixed(2)} kg</span>
+                          </p>
+                          <p className="font-black text-lg text-gray-900">
+                            {intlShippingResult.amount} {intlShippingResult.currency}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-red-700 font-semibold text-xs">{intlShippingResult.message}</p>
+                      )}
                     </div>
                   )}
                 </>)}
@@ -588,18 +631,38 @@ export default function CheckoutPage() {
                   {shippingType === 'local' && address.governorate ? ` — ${isRtl ? govObj?.name : govObj?.nameEn}` : ''}
                   {shippingType === 'international' && address.country && countryObj ? ` — ${isRtl ? countryObj.name : countryObj.nameEn}` : ''}
                 </span>
-                <span className="font-semibold text-gray-900">{shippingCost > 0 ? `${shippingCost} ${L.currency}` : '—'}</span>
+                <span className="font-semibold text-gray-900">
+                  {shippingCost > 0
+                    ? `${shippingCost} ${shippingCurrency}`
+                    : intlShippingResult && !intlShippingResult.ok
+                      ? <span className="text-red-500 text-[10px]">{intlShippingResult.message}</span>
+                      : '—'}
+                </span>
               </div>
-              {shippingType === 'international' && totalWeightGrams > 0 && (
+              {shippingType === 'international' && totalWeightKg > 0 && (
                 <div className="flex justify-between text-gray-400 text-[10px]">
                   <span>{L.weightLabel}</span>
-                  <span>{(totalWeightGrams / 1000).toFixed(2)} kg</span>
+                  <span>{totalWeightKg.toFixed(2)} kg</span>
                 </div>
               )}
-              {shippingCost > 0 && (
+              {/* Show combined total only when shipping currency matches product currency */}
+              {shippingCost > 0 && shippingCurrency === currency && (
                 <div className="flex justify-between border-t pt-2 text-sm">
                   <span className="font-black text-gray-900">{L.totalLabel}</span>
-                  <span className="font-black text-gray-900 text-base">{total - discount + shippingCost} <span className="text-xs text-gray-500">{L.currency}</span></span>
+                  <span className="font-black text-gray-900 text-base">{total - discount + shippingCost} <span className="text-xs text-gray-500">{currency}</span></span>
+                </div>
+              )}
+              {/* When currencies differ (e.g. EGP products + USD shipping), show each line separately */}
+              {shippingCost > 0 && shippingCurrency !== currency && (
+                <div className="flex flex-col gap-1 border-t pt-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="font-bold text-gray-700">{isRtl ? 'المنتجات' : 'Products'}</span>
+                    <span className="font-bold text-gray-900">{total - discount} {currency}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-bold text-gray-700">{L.shippingLabel}</span>
+                    <span className="font-bold text-gray-900">{shippingCost} {shippingCurrency}</span>
+                  </div>
                 </div>
               )}
             </div>

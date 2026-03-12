@@ -45,7 +45,49 @@ function getRecommendations(gender: Gender, age: AgeRange, allProducts: Product[
   return slugs.map(s => bySlug[s]).filter(Boolean).filter(p => p.inStock).slice(0, 6);
 }
 
-/* ── Typing indicator ───────────────────────────────────────────────────────── */
+/* ── 3D Cartoon Boy Avatar ───────────────────────────────────────────────────── */
+function CartoonBoy({ size = 48 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 80 88" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Drop shadow */}
+      <ellipse cx="40" cy="85" rx="18" ry="4" fill="rgba(0,0,0,0.18)" />
+      {/* Body — deep blue robe */}
+      <path d="M18 88 L18 60 Q18 52 27 49 L40 46 L53 49 Q62 52 62 60 L62 88 Z" fill="#1a3a6e" />
+      {/* Body highlight */}
+      <path d="M18 60 Q18 52 27 49 L40 46 L40 88 L18 88 Z" fill="#1e4d99" opacity="0.5" />
+      {/* Collar */}
+      <path d="M32 49 Q40 52 48 49 Q44 56 40 57 Q36 56 32 49 Z" fill="#f0f0f0" />
+      {/* Neck */}
+      <rect x="35" y="43" width="10" height="8" rx="4" fill="#f5c898" />
+      {/* Head */}
+      <ellipse cx="40" cy="32" rx="19" ry="20" fill="#f5c898" />
+      {/* Head highlight (3D feel) */}
+      <ellipse cx="34" cy="25" rx="7" ry="6" fill="white" opacity="0.12" />
+      {/* Kufi / white cap */}
+      <path d="M22 26 Q21 14 40 13 Q59 14 58 26 Q55 20 40 19 Q25 20 22 26 Z" fill="#f8f8f8" />
+      <path d="M21 27 Q21 24 40 23 Q59 24 59 27 L58 29 Q40 27 22 29 Z" fill="#e8e8e8" />
+      {/* Eyebrows */}
+      <path d="M29 33 Q33 30 37 33" stroke="#6b3a2a" strokeWidth="1.8" strokeLinecap="round" fill="none" />
+      <path d="M43 33 Q47 30 51 33" stroke="#6b3a2a" strokeWidth="1.8" strokeLinecap="round" fill="none" />
+      {/* Eyes whites */}
+      <ellipse cx="33" cy="37" rx="4.5" ry="4.5" fill="white" />
+      <ellipse cx="47" cy="37" rx="4.5" ry="4.5" fill="white" />
+      {/* Irises */}
+      <circle cx="33.8" cy="37.5" r="2.8" fill="#2d1a0e" />
+      <circle cx="47.8" cy="37.5" r="2.8" fill="#2d1a0e" />
+      {/* Eye shine */}
+      <circle cx="35" cy="36.2" r="1.1" fill="white" opacity="0.9" />
+      <circle cx="49" cy="36.2" r="1.1" fill="white" opacity="0.9" />
+      {/* Nose */}
+      <path d="M38.5 42 Q40 44 41.5 42" stroke="#d4956a" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+      {/* Smile */}
+      <path d="M33 47 Q40 52.5 47 47" stroke="#c0724a" strokeWidth="2.2" strokeLinecap="round" fill="none" />
+      {/* Cheeks */}
+      <ellipse cx="26" cy="43" rx="5" ry="3.5" fill="#f4a07a" opacity="0.35" />
+      <ellipse cx="54" cy="43" rx="5" ry="3.5" fill="#f4a07a" opacity="0.35" />
+    </svg>
+  );
+}
 function TypingDots() {
   return (
     <div className="flex items-center gap-1 px-4 py-3 bg-white rounded-2xl rounded-tr-sm shadow-sm w-fit">
@@ -196,7 +238,7 @@ export default function AmeenChat() {
   return (
     <>
       {/* ── Floating button ── */}
-      <div className="fixed bottom-6 left-6 z-40 flex flex-col items-center gap-2" dir="rtl">
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2" dir="rtl">
         {!open && (
           <div className="bg-white border border-gray-200 rounded-2xl px-3 py-1.5 text-xs font-bold text-gray-700 shadow-md animate-bounce-slow whitespace-nowrap">
             محتاج مساعدة في الاختيار؟ 💡
@@ -204,17 +246,17 @@ export default function AmeenChat() {
         )}
         <button
           onClick={() => setOpen(o => !o)}
-          className="relative w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-2xl transition-transform hover:scale-110 active:scale-95"
-          style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #4a1a6e 100%)' }}
           aria-label="فتح مساعد أمين"
+          className="relative w-20 h-20 rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-110 active:scale-95 overflow-hidden"
+          style={{ background: 'linear-gradient(160deg, #1e3a6e 0%, #2d1060 100%)' }}
         >
           {open ? (
-            <span className="text-white font-black text-lg">✕</span>
+            <span className="text-white font-black text-xl">✕</span>
           ) : (
-            <span>🌟</span>
+            <CartoonBoy size={62} />
           )}
           {showBadge && !open && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse" />
+            <span className="absolute top-1 left-2 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse" />
           )}
         </button>
       </div>
@@ -223,16 +265,16 @@ export default function AmeenChat() {
       {open && (
         <div
           dir="rtl"
-          className="fixed bottom-24 left-6 z-40 w-[340px] sm:w-[380px] max-h-[560px] flex flex-col rounded-3xl shadow-2xl overflow-hidden border border-gray-200"
+          className="fixed bottom-28 right-6 z-40 w-[340px] sm:w-[380px] max-h-[560px] flex flex-col rounded-3xl shadow-2xl overflow-hidden border border-gray-200"
           style={{ background: '#f8f8fc' }}
         >
           {/* Header */}
           <div
-            className="flex items-center gap-3 px-4 py-3.5 shrink-0"
-            style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #4a1a6e 100%)' }}
+            className="flex items-center gap-3 px-4 py-3 shrink-0"
+            style={{ background: 'linear-gradient(160deg, #1e3a6e 0%, #2d1060 100%)' }}
           >
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-xl shrink-0">
-              🌟
+            <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0 overflow-hidden">
+              <CartoonBoy size={44} />
             </div>
             <div>
               <p className="font-black text-white text-sm leading-tight">أمين</p>
@@ -252,8 +294,8 @@ export default function AmeenChat() {
                 className={`flex gap-2 ${msg.from === 'ameen' ? 'justify-end' : 'justify-start'}`}
               >
                 {msg.from === 'ameen' && (
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#1a1a2e] to-[#4a1a6e] flex items-center justify-center text-sm shrink-0 mt-0.5">
-                    🌟
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#1e3a6e] to-[#2d1060] flex items-center justify-center shrink-0 mt-0.5 overflow-hidden">
+                    <CartoonBoy size={30} />
                   </div>
                 )}
                 <div
@@ -273,8 +315,8 @@ export default function AmeenChat() {
             {/* Typing indicator */}
             {step === 'thinking' && (
               <div className="flex gap-2 justify-end">
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#1a1a2e] to-[#4a1a6e] flex items-center justify-center text-sm shrink-0 mt-0.5">
-                  🌟
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#1e3a6e] to-[#2d1060] flex items-center justify-center shrink-0 mt-0.5 overflow-hidden">
+                  <CartoonBoy size={30} />
                 </div>
                 <TypingDots />
               </div>

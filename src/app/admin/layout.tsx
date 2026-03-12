@@ -14,7 +14,8 @@ const NAV = [
   { href: '/admin/coupons',           label: 'الكوبونات',       icon: '🎟️' },
   { href: '/admin/users',             label: 'العملاء',         icon: '👥' },
   { href: '/admin/reviews',           label: 'التقييمات',       icon: '⭐' },
-  { href: '/admin/shipping',          label: 'الشحن',           icon: '🚚' },
+  { href: '/admin/shipping',          label: 'الشحن المحلي',    icon: '🚚' },
+  { href: '/admin/intl-shipping',     label: 'الشحن الدولي',    icon: '✈️' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

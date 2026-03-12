@@ -13,10 +13,9 @@ import { ZONES, PricingZone } from '@/lib/geo-pricing';
 const iconBtn = 'relative flex items-center justify-center w-10 h-10 border-2 border-white/70 rounded-lg hover:bg-white/20 transition text-white';
 
 const ZONE_OPTIONS: { zone: PricingZone; label: string; flag: string }[] = [
-  { zone: 'egypt', label: 'مصر — ج.م',    flag: '🇪🇬' },
-  { zone: 'saudi', label: 'السعودية — ر.س', flag: '🇸🇦' },
-  { zone: 'gulf',  label: 'الخليج — خليجي', flag: '🌍' },
-  { zone: 'world', label: 'دولي — USD',     flag: '🌐' },
+  { zone: 'egypt', label: 'مصر — ج.م',   flag: '🇪🇬' },
+  { zone: 'saudi', label: 'السعودية — ﷼', flag: '🇸🇦' },
+  { zone: 'world', label: 'دولي — USD',   flag: '🌐' },
 ];
 
 export default function Header() {

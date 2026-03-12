@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react';
 import { useCart } from '@/context/CartContext';
 import { useLang } from '@/context/LanguageContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
-import { COUNTRIES, getIntlShippingConfig, calculateIntlShipping, IntlShippingConfig, DEFAULT_CONFIG } from '@/lib/intl-shipping';
 
 export default function CartPage() {
   const { items, coupon, applyCoupon, removeCoupon, updateQty, removeItem, clear } = useCart();
@@ -14,11 +13,6 @@ export default function CartPage() {
   const { getProductPrice, formatPrice, getCartRegionalTotal, zoneInfo } = useRegionalPricing();
   const [couponInput, setCouponInput] = useState('');
   const [couponError, setCouponError] = useState(false);
-  const [shippingCountry, setShippingCountry] = useState('');
-  const [intlCfg, setIntlCfg] = useState<IntlShippingConfig>(DEFAULT_CONFIG);
-  const [showCountryPicker, setShowCountryPicker] = useState(false);
-
-  useEffect(() => { setIntlCfg(getIntlShippingConfig()); }, []);
 
   if (items.length === 0) {
     return (
@@ -38,52 +32,16 @@ export default function CartPage() {
     );
   }
 
-  // Weight calculation
-  const totalWeightGrams = items.reduce((sum, i) => sum + i.product.weight * i.quantity, 0);
-  const totalWeightKg = totalWeightGrams / 1000;
-
-  // Pricing
-  const isEgyptZone = zoneInfo.zone === 'egypt';
   const { total: regionalTotal, currency } = getCartRegionalTotal(items);
   const regionalDiscount = coupon ? Math.round(regionalTotal * coupon.pct / 100) : 0;
 
-  // Shipping estimate
-  let shippingDisplay: { label: string; cost: number | null; currency: string; isError: boolean } = {
-    label: isRtl ? 'يُحدد عند الدفع' : 'Calculated at checkout',
-    cost: null,
-    currency,
-    isError: false,
-  };
-
-  if (isEgyptZone && !shippingCountry) {
-    shippingDisplay = { label: '80 ج.م', cost: 80, currency: 'ج.م', isError: false };
-  } else if (shippingCountry && shippingCountry !== 'EG') {
-    const result = calculateIntlShipping(totalWeightKg, shippingCountry, intlCfg);
-    if (result.ok) {
-      shippingDisplay = {
-        label: `${result.amount} ${result.currency}`,
-        cost: result.amount,
-        currency: result.currency,
-        isError: false,
-      };
-    } else {
-      shippingDisplay = { label: result.message, cost: null, currency: '', isError: true };
-    }
-  } else if (shippingCountry === 'EG') {
-    shippingDisplay = { label: '80 ج.م (تقريبي)', cost: 80, currency: 'ج.م', isError: false };
-  }
-
-  const grandTotal = shippingDisplay.cost !== null && shippingDisplay.currency === currency
-    ? Math.round((regionalTotal - regionalDiscount + shippingDisplay.cost) * 100) / 100
-    : Math.round((regionalTotal - regionalDiscount) * 100) / 100;
+  const grandTotal = Math.round((regionalTotal - regionalDiscount) * 100) / 100;
 
   function handleApplyCoupon() {
     const ok = applyCoupon(couponInput);
     if (ok) { setCouponError(false); setCouponInput(''); }
     else { setCouponError(true); }
   }
-
-  const shippingCountryObj = COUNTRIES.find(c => c.code === shippingCountry);
 
   return (
     <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto px-4 pt-28 pb-10">
@@ -96,8 +54,6 @@ export default function CartPage() {
             {items.length} {isRtl ? 'منتج' : items.length === 1 ? 'item' : 'items'}
             <span className="mr-2 ml-2 text-gray-300">·</span>
             <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{zoneInfo.flag} {zoneInfo.label}</span>
-            <span className="mr-2 ml-2 text-gray-300">·</span>
-            <span className="text-xs text-gray-500">{totalWeightKg.toFixed(2)} كجم</span>
           </p>
         </div>
         <button onClick={clear} className="text-xs text-gray-400 hover:text-red-500 transition">
@@ -186,39 +142,6 @@ export default function CartPage() {
               {couponError && <p className="text-red-400 text-xs mt-1.5 font-semibold">{t('cart.coupon.invalid')}</p>}
             </div>
 
-            {/* Country shipping estimator */}
-            <div className="mb-4">
-              <button
-                onClick={() => setShowCountryPicker(v => !v)}
-                className="w-full flex items-center justify-between bg-white/10 hover:bg-white/15 border border-white/15 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition">
-                <span className="flex items-center gap-2">
-                  🌍
-                  {shippingCountry && shippingCountryObj
-                    ? shippingCountryObj.nameAr
-                    : (isRtl ? 'قدّر تكلفة الشحن' : 'Estimate Shipping')}
-                </span>
-                <span className="text-gray-400 text-xs">{showCountryPicker ? '▲' : '▼'}</span>
-              </button>
-              {showCountryPicker && (
-                <div className="mt-2">
-                  <select
-                    value={shippingCountry}
-                    onChange={e => { setShippingCountry(e.target.value); setShowCountryPicker(false); }}
-                    className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-[#F5C518]/50"
-                    style={{ colorScheme: 'dark' }}
-                    size={1}>
-                    <option value="" className="bg-gray-900">{isRtl ? 'اختر دولتك' : 'Select country'}</option>
-                    <option value="EG" className="bg-gray-900">🇪🇬 مصر</option>
-                    {COUNTRIES.filter(c => c.code !== 'EG').map(c => (
-                      <option key={c.code} value={c.code} className="bg-gray-900">
-                        {c.nameAr}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-
             {/* Totals */}
             <div className="flex flex-col gap-3 text-sm">
               <div className="flex justify-between text-gray-400">
@@ -231,30 +154,12 @@ export default function CartPage() {
                   <span className="font-semibold">−{regionalDiscount} {currency}</span>
                 </div>
               )}
-              <div className="flex justify-between text-gray-400">
-                <span>{t('cart.summary.shipping')}</span>
-                {shippingDisplay.isError ? (
-                  <span className="text-red-400 font-semibold text-xs">{shippingDisplay.label}</span>
-                ) : shippingDisplay.cost !== null ? (
-                  <span className="text-white font-semibold">{shippingDisplay.label}</span>
-                ) : (
-                  <span className="text-amber-400 font-semibold text-xs">{shippingDisplay.label}</span>
-                )}
-              </div>
               <div className="border-t border-white/10 pt-3 flex justify-between">
                 <span className="font-black text-base">{t('cart.summary.total')}</span>
-                <div className="text-left rtl:text-right">
-                  <span className="font-black text-xl text-[#F5C518]">
-                    {grandTotal}
-                    <span className="text-sm font-bold text-gray-300 mr-1 ml-1">{currency}</span>
-                  </span>
-                  {shippingDisplay.cost !== null && shippingDisplay.currency !== currency && (
-                    <p className="text-xs text-gray-400 mt-0.5">+ {shippingDisplay.label} {isRtl ? 'شحن' : 'shipping'}</p>
-                  )}
-                  {shippingDisplay.cost === null && !shippingDisplay.isError && (
-                    <p className="text-xs text-gray-500 mt-0.5">+ {isRtl ? 'رسوم الشحن' : 'shipping'}</p>
-                  )}
-                </div>
+                <span className="font-black text-xl text-[#F5C518]">
+                  {grandTotal}
+                  <span className="text-sm font-bold text-gray-300 mr-1 ml-1">{currency}</span>
+                </span>
               </div>
             </div>
 

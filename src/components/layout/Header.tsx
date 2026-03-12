@@ -2,29 +2,18 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
 import { useLang } from '@/context/LanguageContext';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useWishlist } from '@/context/WishlistContext';
-import { useRegionalPricing } from '@/context/RegionalPricingContext';
-import { ZONES, PricingZone } from '@/lib/geo-pricing';
 
 const iconBtn = 'relative flex items-center justify-center w-10 h-10 border-2 border-white/70 rounded-lg hover:bg-white/20 transition text-white';
-
-const ZONE_OPTIONS: { zone: PricingZone; label: string; flag: string }[] = [
-  { zone: 'egypt', label: 'مصر — ج.م',   flag: '🇪🇬' },
-  { zone: 'saudi', label: 'السعودية — ﷼', flag: '🇸🇦' },
-  { zone: 'world', label: 'دولي — USD',   flag: '🌐' },
-];
 
 export default function Header() {
   const { lang, toggleLang } = useLang();
   const { totalItems } = useCart();
   const { user } = useAuth();
   const { totalItems: wishlistCount } = useWishlist();
-  const { zone, setZone, zoneInfo } = useRegionalPricing();
-  const [showZoneMenu, setShowZoneMenu] = useState(false);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
@@ -66,43 +55,8 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* Side B: Zone selector + Lang + Sign In/Account */}
+          {/* Side B: Lang + Sign In/Account */}
           <div className="flex items-center justify-end gap-2">
-
-            {/* Zone / Currency selector */}
-            <div className="relative">
-              <button
-                onClick={() => setShowZoneMenu(v => !v)}
-                className={`${iconBtn} text-xs font-black`}
-                aria-label="تغيير العملة"
-                title={zoneInfo.label}
-              >
-                <span className="text-base">{zoneInfo.flag}</span>
-              </button>
-              {showZoneMenu && (
-                <>
-                  {/* Backdrop */}
-                  <div className="fixed inset-0 z-40" onClick={() => setShowZoneMenu(false)} />
-                  {/* Dropdown */}
-                  <div className="absolute left-0 top-12 z-50 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden min-w-[180px]" dir="rtl">
-                    <div className="px-3 py-2 border-b border-gray-100">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">العملة / المنطقة</p>
-                    </div>
-                    {ZONE_OPTIONS.map(opt => (
-                      <button
-                        key={opt.zone}
-                        onClick={() => { setZone(opt.zone); setShowZoneMenu(false); }}
-                        className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-right transition hover:bg-gray-50 ${zone === opt.zone ? 'bg-amber-50 text-amber-800 font-bold' : 'text-gray-700'}`}
-                      >
-                        <span className="text-base">{opt.flag}</span>
-                        <span>{opt.label}</span>
-                        {zone === opt.zone && <span className="mr-auto text-amber-500 text-xs">✓</span>}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
 
             {/* Language toggle */}
             <button

@@ -33,6 +33,12 @@ interface CardForm {
 }
 
 const EMPTY_ADDR: AddressForm = { fullName: '', phone: '', governorate: '', city: '', street: '', building: '', notes: '', country: '' };
+
+const SAUDI_REGIONS = [
+  'الرياض', 'مكة المكرمة', 'المدينة المنورة', 'القصيم',
+  'المنطقة الشرقية', 'عسير', 'تبوك', 'حائل',
+  'الحدود الشمالية', 'جازان', 'نجران', 'الباحة', 'الجوف',
+];
 const EMPTY_CARD: CardForm = { number: '', name: '', expiry: '', cvv: '' };
 
 function StepDot({ n, current, done }: { n: number; current: boolean; done: boolean }) {
@@ -66,29 +72,41 @@ export default function CheckoutPage() {
 
   const [intlConfig, setIntlConfig] = useState<IntlShippingConfig>(DEFAULT_CONFIG);
   const [step, setStep] = useState<Step>('address');
-  const [shippingType, setShippingType] = useState<ShippingType>('local');
-  const [address, setAddress] = useState<AddressForm>({ ...EMPTY_ADDR, fullName: user?.name || '', phone: user?.phone || '' });
-  const [payMethod, setPayMethod] = useState<PayMethod>('cod');
+  const [shippingType, setShippingType] = useState<ShippingType>(
+    zoneInfo.zone === 'egypt' ? 'local' : 'international'
+  );
+  const [address, setAddress] = useState<AddressForm>({
+    ...EMPTY_ADDR,
+    fullName: user?.name || '',
+    phone: user?.phone || '',
+    country: zoneInfo.zone === 'saudi' ? 'SA' : '',
+  });
+  const [payMethod, setPayMethod] = useState<PayMethod>(
+    zoneInfo.zone === 'egypt' ? 'cod' : 'card'
+  );
   const [cardForm, setCardForm] = useState<CardForm>(EMPTY_CARD);
   const [cardErrors, setCardErrors] = useState<Partial<CardForm>>({});
   const [errors, setErrors] = useState<Partial<AddressForm>>({});
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderNumber] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
 
-  // Load intl shipping config client-side (localStorage unavailable on server)
+  // Load intl config
   useEffect(() => {
-    const cfg = getIntlShippingConfig();
-    setIntlConfig(cfg);
-    if (!cfg.enabled) setShippingType('local');
+    setIntlConfig(getIntlShippingConfig());
   }, []);
 
-  // When switching shipping type, reset to valid payment method
-  function handleShippingTypeChange(t: ShippingType) {
-    setShippingType(t);
-    if (t === 'international' && payMethod !== 'card') {
-      setPayMethod('card');
+  // Sync shipping type when zone detection completes
+  useEffect(() => {
+    if (zoneInfo.zone === 'egypt') {
+      setShippingType('local');
+    } else {
+      setShippingType('international');
+      if (zoneInfo.zone === 'saudi') {
+        setAddress(a => ({ ...a, country: a.country || 'SA' }));
+      }
+      setPayMethod(p => (p === 'cod' || p === 'vodafone' || p === 'instapay') ? 'card' : p);
     }
-  }
+  }, [zoneInfo.zone]);
 
   // Total weight in kg
   const totalWeightGrams = items.reduce((sum, item) => sum + item.product.weight * item.quantity, 0);
@@ -113,8 +131,6 @@ export default function CheckoutPage() {
     }
   }
 
-  // Whether international shipping option should be visible
-  const intlAvailable = intlConfig.enabled;
 
   const steps: Step[] = ['address', 'payment', 'confirm'];
   const stepIdx = steps.indexOf(step);
@@ -281,26 +297,15 @@ export default function CheckoutPage() {
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
               <h2 className="text-lg font-black text-gray-900 mb-6">{L.address}</h2>
 
-              {/* Shipping Type Toggle — international only shown when enabled by admin */}
-              <div className="flex gap-2 mb-6">
-                <button
-                  onClick={() => handleShippingTypeChange('local')}
-                  className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold border-2 transition ${
-                    shippingType === 'local' ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 text-gray-600 hover:border-gray-400'
-                  }`}
-                >
-                  {L.localShipping}
-                </button>
-                {intlAvailable && (
-                  <button
-                    onClick={() => handleShippingTypeChange('international')}
-                    className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold border-2 transition ${
-                      shippingType === 'international' ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 text-gray-600 hover:border-gray-400'
-                    }`}
-                  >
-                    {L.intlShipping}
-                  </button>
-                )}
+              {/* Shipping mode badge — auto-determined from user zone */}
+              <div className="flex items-center gap-2 mb-6 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+                <span className="text-lg">{zoneInfo.flag}</span>
+                <div>
+                  <p className="text-sm font-black text-gray-900">
+                    {shippingType === 'local' ? L.localShipping : L.intlShipping}
+                  </p>
+                  <p className="text-xs text-gray-500">{zoneInfo.label}</p>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -377,11 +382,22 @@ export default function CheckoutPage() {
                 </>)}
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.city} *</label>
-                  <input type="text" value={address.city}
-                    onChange={e => setAddress(a => ({ ...a, city: e.target.value }))}
-                    placeholder={isRtl ? 'مثال: مدينة نصر' : 'e.g. Nasr City'}
-                    className={inputClass(errors.city)} />
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
+                    {address.country === 'SA' ? (isRtl ? 'المنطقة' : 'Region') : L.city} *
+                  </label>
+                  {address.country === 'SA' ? (
+                    <select value={address.city}
+                      onChange={e => setAddress(a => ({ ...a, city: e.target.value }))}
+                      className={inputClass(errors.city) + ' bg-white cursor-pointer'}>
+                      <option value="">{isRtl ? 'اختر المنطقة' : 'Select Region'}</option>
+                      {SAUDI_REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  ) : (
+                    <input type="text" value={address.city}
+                      onChange={e => setAddress(a => ({ ...a, city: e.target.value }))}
+                      placeholder={isRtl ? 'مثال: مدينة نصر' : 'e.g. Nasr City'}
+                      className={inputClass(errors.city)} />
+                  )}
                   {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city}</p>}
                 </div>
                 <div className="sm:col-span-2">

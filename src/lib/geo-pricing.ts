@@ -2,15 +2,14 @@
 // 3 zones only: Egypt (EGP) | Saudi Arabia (SAR) | International/World (USD)
 
 export type PricingZone = 'egypt' | 'saudi' | 'world';
-export type RoundingRule = 'none' | 'whole' | 'friendly';
 
 export interface ZoneInfo {
   zone: PricingZone;
-  currency: string;     // e.g. "USD"
-  currencyAr: string;   // e.g. "ج.م"
-  currencyEn: string;   // e.g. "EGP"
-  label: string;        // Arabic label
-  labelEn: string;      // English label
+  currency: string;
+  currencyAr: string;
+  currencyEn: string;
+  label: string;
+  labelEn: string;
   flag: string;
 }
 
@@ -20,7 +19,6 @@ export const ZONES: Record<PricingZone, ZoneInfo> = {
   world: { zone: 'world', currency: 'USD',  currencyAr: 'USD',  currencyEn: 'USD', label: 'دولي',     labelEn: 'International', flag: '🌐' },
 };
 
-// Country code → zone  (Gulf countries now fall under 'world')
 const COUNTRY_ZONE_MAP: Record<string, PricingZone> = {
   EG: 'egypt',
   SA: 'saudi',
@@ -53,49 +51,15 @@ export async function detectZone(): Promise<PricingZone> {
 }
 
 // ─── Regional Pricing Config ──────────────────────────────────────────────────
+// Only manual prices — no formula fallback, no rounding tricks
 
 export interface RegionalPricing {
   price_egp_manual?: number;
   price_sar_manual?: number;
   price_usd_manual?: number;
-
-  use_formula_fallback: boolean;
-  saudi_multiplier: number;  // SAR = base_egp × multiplier  e.g. 0.075
-  usd_multiplier: number;    // USD = base_egp × multiplier  e.g. 0.020
-
-  rounding_rule_egp: RoundingRule;
-  rounding_rule_sar: RoundingRule;
-  rounding_rule_usd: RoundingRule;
 }
 
-export const DEFAULT_REGIONAL_PRICING: RegionalPricing = {
-  use_formula_fallback: true,
-  saudi_multiplier: 0.075,
-  usd_multiplier: 0.020,
-  rounding_rule_egp: 'whole',
-  rounding_rule_sar: 'friendly',
-  rounding_rule_usd: 'friendly',
-};
-
-// ─── Rounding Logic ───────────────────────────────────────────────────────────
-
-function friendlyRound(value: number, zone: PricingZone): number {
-  if (zone === 'world') {
-    if (value <= 1) return 0.99;
-    return Math.floor(value) + 0.99;
-  }
-  // SAR: round to friendly prices ending in 9
-  const whole = Math.ceil(value);
-  if (whole <= 5) return whole;
-  const tens = Math.floor(whole / 10) * 10;
-  return whole <= tens + 5 ? tens + 9 : tens + 9 + 10;
-}
-
-function applyRounding(value: number, rule: RoundingRule, zone: PricingZone): number {
-  if (rule === 'none')  return Math.round(value * 100) / 100;
-  if (rule === 'whole') return Math.round(value);
-  return friendlyRound(value, zone);
-}
+export const DEFAULT_REGIONAL_PRICING: RegionalPricing = {};
 
 // ─── Price Resolution ─────────────────────────────────────────────────────────
 
@@ -107,39 +71,44 @@ export interface PriceResult {
   isManual: boolean;
 }
 
+// Fixed internal conversion factors (not exposed to admin)
+const SAR_FACTOR = 0.075;
+const USD_FACTOR = 0.020;
+
 export function resolvePrice(
   baseEgpPrice: number,
   zone: PricingZone,
   pricing: RegionalPricing | null | undefined,
 ): PriceResult {
-  const p: RegionalPricing = pricing ?? DEFAULT_REGIONAL_PRICING;
+  const p = pricing ?? {};
   const egpBase = (p.price_egp_manual && p.price_egp_manual > 0) ? p.price_egp_manual : baseEgpPrice;
 
   if (zone === 'egypt') {
-    const price = applyRounding(egpBase, p.rounding_rule_egp, 'egypt');
-    return { price, currency: 'ج.م', currencyEn: 'EGP', zone, isManual: !!(p.price_egp_manual && p.price_egp_manual > 0) };
+    return {
+      price: Math.round(egpBase),
+      currency: 'ج.م', currencyEn: 'EGP', zone,
+      isManual: !!(p.price_egp_manual && p.price_egp_manual > 0),
+    };
   }
 
   if (zone === 'saudi') {
     if (p.price_sar_manual && p.price_sar_manual > 0) {
       return { price: p.price_sar_manual, currency: '﷼', currencyEn: 'SAR', zone, isManual: true };
     }
-    if (p.use_formula_fallback) {
-      const calc = applyRounding(egpBase * p.saudi_multiplier, p.rounding_rule_sar, 'saudi');
-      return { price: calc, currency: '﷼', currencyEn: 'SAR', zone, isManual: false };
-    }
-    return { price: egpBase, currency: 'ج.م', currencyEn: 'EGP', zone: 'egypt', isManual: false };
+    return {
+      price: Math.round(egpBase * SAR_FACTOR),
+      currency: '﷼', currencyEn: 'SAR', zone, isManual: false,
+    };
   }
 
-  // world / international / USD
+  // world
   if (p.price_usd_manual && p.price_usd_manual > 0) {
     return { price: p.price_usd_manual, currency: 'USD', currencyEn: 'USD', zone, isManual: true };
   }
-  if (p.use_formula_fallback) {
-    const calc = applyRounding(egpBase * p.usd_multiplier, p.rounding_rule_usd, 'world');
-    return { price: calc, currency: 'USD', currencyEn: 'USD', zone, isManual: false };
-  }
-  return { price: egpBase, currency: 'ج.م', currencyEn: 'EGP', zone: 'egypt', isManual: false };
+  return {
+    price: Math.round(egpBase * USD_FACTOR * 100) / 100,
+    currency: 'USD', currencyEn: 'USD', zone, isManual: false,
+  };
 }
 
 // ─── Preview helper (for admin dashboard) ─────────────────────────────────────

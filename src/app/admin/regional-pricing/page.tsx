@@ -5,7 +5,7 @@ import { products as staticProducts } from '@/lib/products';
 import { getProductOverrides, setProductOverride, getAddedProducts, applyOverride } from '@/lib/admin-storage';
 import {
   RegionalPricing, DEFAULT_REGIONAL_PRICING, previewAllZones,
-  RoundingRule, PricingZone, ZONES,
+  PricingZone, ZONES,
 } from '@/lib/geo-pricing';
 import { Product } from '@/types';
 
@@ -19,33 +19,20 @@ function mergeProducts(): MergedProduct[] {
   return [...base, ...added.map(p => ({ ...p, isAdded: true }))];
 }
 
-const ROUNDING_LABELS: Record<RoundingRule, string> = {
-  none: 'بدون تقريب',
-  whole: 'رقم صحيح',
-  friendly: 'تجاري (مثل 29، 8.99)',
-};
-
 const ZONE_COLORS: Record<PricingZone, string> = {
   egypt: 'bg-green-50 border-green-200 text-green-800',
   saudi: 'bg-blue-50 border-blue-200 text-blue-800',
   world: 'bg-orange-50 border-orange-200 text-orange-800',
 };
 
-function emptyPricing(): RegionalPricing {
-  return { ...DEFAULT_REGIONAL_PRICING };
-}
-
 export default function RegionalPricingPage() {
   const [products, setProducts] = useState<MergedProduct[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [pricing, setPricing] = useState<RegionalPricing>(emptyPricing());
+  const [pricing, setPricing] = useState<RegionalPricing>({ ...DEFAULT_REGIONAL_PRICING });
   const [search, setSearch] = useState('');
   const [saved, setSaved] = useState<string | null>(null);
 
-  const load = useCallback(() => {
-    setProducts(mergeProducts());
-  }, []);
-
+  const load = useCallback(() => { setProducts(mergeProducts()); }, []);
   useEffect(() => { load(); }, [load]);
 
   const filtered = products.filter(p =>
@@ -53,9 +40,8 @@ export default function RegionalPricingPage() {
   );
 
   function startEdit(p: MergedProduct) {
-    const overrides = getProductOverrides();
-    const existing = overrides[p.id]?.regionalPricing;
-    setPricing(existing ? { ...DEFAULT_REGIONAL_PRICING, ...existing } : emptyPricing());
+    const existing = getProductOverrides()[p.id]?.regionalPricing;
+    setPricing(existing ? { ...DEFAULT_REGIONAL_PRICING, ...existing } : { ...DEFAULT_REGIONAL_PRICING });
     setEditingId(p.id);
   }
 
@@ -75,49 +61,17 @@ export default function RegionalPricingPage() {
       delete overrides[editingId].regionalPricing;
       localStorage.setItem('ml-product-overrides', JSON.stringify(overrides));
     }
-    setPricing(emptyPricing());
+    setPricing({ ...DEFAULT_REGIONAL_PRICING });
     load();
   }
 
   const currentProduct = products.find(p => p.id === editingId);
   const preview = currentProduct ? previewAllZones(
-    pricing.price_egp_manual && pricing.price_egp_manual > 0 ? pricing.price_egp_manual : currentProduct.price,
+    pricing.price_egp_manual && pricing.price_egp_manual > 0
+      ? pricing.price_egp_manual
+      : currentProduct.price,
     pricing
   ) : null;
-
-  function field(label: string, value: string | number | undefined, onChange: (v: string) => void, type = 'number', placeholder = '') {
-    return (
-      <div>
-        <label className="block text-xs font-semibold text-gray-500 mb-1">{label}</label>
-        <input
-          type={type}
-          value={value ?? ''}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder}
-          min={0}
-          step={type === 'number' ? 'any' : undefined}
-          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#F5C518]"
-        />
-      </div>
-    );
-  }
-
-  function roundSelect(label: string, value: RoundingRule, onChange: (v: RoundingRule) => void) {
-    return (
-      <div>
-        <label className="block text-xs font-semibold text-gray-500 mb-1">{label}</label>
-        <select
-          value={value}
-          onChange={e => onChange(e.target.value as RoundingRule)}
-          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#F5C518] bg-white"
-        >
-          {(Object.keys(ROUNDING_LABELS) as RoundingRule[]).map(r => (
-            <option key={r} value={r}>{ROUNDING_LABELS[r]}</option>
-          ))}
-        </select>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-5" dir="rtl">
@@ -126,9 +80,9 @@ export default function RegionalPricingPage() {
         <p className="text-sm text-gray-500 mt-0.5">تحكم في سعر كل منتج حسب المنطقة الجغرافية</p>
       </div>
 
-      {/* Quick info */}
+      {/* Zone info */}
       <div className="grid grid-cols-3 gap-3">
-        {(Object.values(ZONES)).map(z => (
+        {Object.values(ZONES).map(z => (
           <div key={z.zone} className={`rounded-2xl border p-3 ${ZONE_COLORS[z.zone]}`}>
             <p className="text-xl mb-0.5">{z.flag}</p>
             <p className="font-bold text-sm">{z.label}</p>
@@ -151,14 +105,10 @@ export default function RegionalPricingPage() {
           </div>
           <div className="overflow-y-auto max-h-[600px] divide-y divide-gray-50">
             {filtered.map(p => {
-              const overrides = typeof window !== 'undefined' ? getProductOverrides() : {};
-              const hasRegional = !!overrides[p.id]?.regionalPricing;
+              const hasRegional = typeof window !== 'undefined' && !!getProductOverrides()[p.id]?.regionalPricing;
               return (
-                <button
-                  key={p.id}
-                  onClick={() => startEdit(p)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-right hover:bg-gray-50 transition ${editingId === p.id ? 'bg-amber-50 border-r-2 border-[#F5C518]' : ''}`}
-                >
+                <button key={p.id} onClick={() => startEdit(p)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-right hover:bg-gray-50 transition ${editingId === p.id ? 'bg-amber-50 border-r-2 border-[#F5C518]' : ''}`}>
                   <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0">
                     {p.images[0] && <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />}
                   </div>
@@ -195,46 +145,24 @@ export default function RegionalPricingPage() {
 
             {/* Manual prices */}
             <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
-              <h3 className="font-bold text-gray-900 text-sm border-b pb-2">الأسعار اليدوية</h3>
-              <div className="grid grid-cols-2 gap-3">
-                {field('🇪🇬 سعر مصر (ج.م)', pricing.price_egp_manual, v => setPricing(x => ({ ...x, price_egp_manual: v ? +v : undefined })), 'number', `${currentProduct.price} (تلقائي)`)}
-                {field('🇸🇦 سعر السعودية (﷼)', pricing.price_sar_manual, v => setPricing(x => ({ ...x, price_sar_manual: v ? +v : undefined })), 'number', 'مثال: 30')}
-                {field('🌐 سعر دولي (USD)', pricing.price_usd_manual, v => setPricing(x => ({ ...x, price_usd_manual: v ? +v : undefined })), 'number', 'مثال: 8.99')}
-              </div>
-            </div>
-
-            {/* Formula fallback */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
-              <div className="flex items-center justify-between border-b pb-2">
-                <h3 className="font-bold text-gray-900 text-sm">الحساب التلقائي (احتياطي)</h3>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={pricing.use_formula_fallback}
-                    onChange={e => setPricing(x => ({ ...x, use_formula_fallback: e.target.checked }))}
-                    className="w-4 h-4 accent-[#F5C518]"
-                  />
-                  <span className="text-xs font-semibold text-gray-600">تفعيل</span>
-                </label>
-              </div>
-              {pricing.use_formula_fallback && (
-                <div className="grid grid-cols-2 gap-3">
-                  {field('معامل السعودية (﷼)', pricing.saudi_multiplier, v => setPricing(x => ({ ...x, saudi_multiplier: +v })), 'number', '0.075')}
-                  {field('معامل الدولي (USD)', pricing.usd_multiplier, v => setPricing(x => ({ ...x, usd_multiplier: +v })), 'number', '0.020')}
-                </div>
-              )}
-              <p className="text-xs text-gray-400">
-                مثال: إذا السعر المصري = 200 ج.م ومعامل السعودية = 0.075، فالسعر = 15 ر.س
-              </p>
-            </div>
-
-            {/* Rounding rules */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
-              <h3 className="font-bold text-gray-900 text-sm border-b pb-2">قواعد التقريب</h3>
-              <div className="grid grid-cols-3 gap-3">
-                {roundSelect('🇪🇬 تقريب مصر', pricing.rounding_rule_egp, v => setPricing(x => ({ ...x, rounding_rule_egp: v })))}
-                {roundSelect('🇸🇦 تقريب السعودية', pricing.rounding_rule_sar, v => setPricing(x => ({ ...x, rounding_rule_sar: v })))}
-                {roundSelect('🌐 تقريب الدولي', pricing.rounding_rule_usd, v => setPricing(x => ({ ...x, rounding_rule_usd: v })))}
+              <h3 className="font-bold text-gray-900 text-sm border-b pb-2">الأسعار يدويًا (اتركها فارغة للحساب التلقائي)</h3>
+              <div className="grid grid-cols-1 gap-3">
+                {[
+                  { label: '🇪🇬 سعر مصر (ج.م)', field: 'price_egp_manual' as const, placeholder: `${currentProduct.price} (تلقائي)` },
+                  { label: '🇸🇦 سعر السعودية (﷼)', field: 'price_sar_manual' as const, placeholder: 'مثال: 30' },
+                  { label: '🌐 سعر دولي (USD)', field: 'price_usd_manual' as const, placeholder: 'مثال: 8' },
+                ].map(({ label, field, placeholder }) => (
+                  <div key={field}>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">{label}</label>
+                    <input
+                      type="number" min={0} step="any"
+                      value={pricing[field] ?? ''}
+                      onChange={e => setPricing(x => ({ ...x, [field]: e.target.value ? +e.target.value : undefined }))}
+                      placeholder={placeholder}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#F5C518]"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -242,8 +170,8 @@ export default function RegionalPricingPage() {
             {preview && (
               <div className="bg-gray-950 rounded-2xl p-5 text-white">
                 <h3 className="font-bold text-sm mb-3 text-gray-300">معاينة الأسعار</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {(Object.entries(preview) as [PricingZone, ReturnType<typeof previewAllZones>[PricingZone]][]).map(([zone, result]) => (
+                <div className="grid grid-cols-3 gap-3">
+                  {(Object.entries(preview) as [PricingZone, typeof preview[PricingZone]][]).map(([zone, result]) => (
                     <div key={zone} className="bg-white/10 rounded-xl p-3">
                       <p className="text-xs text-gray-400 mb-1">{ZONES[zone].flag} {ZONES[zone].label}</p>
                       <p className="font-black text-lg text-[#F5C518]">
@@ -251,7 +179,7 @@ export default function RegionalPricingPage() {
                         <span className="text-sm text-gray-300 font-normal mr-1">{result.currency}</span>
                       </p>
                       <p className="text-[10px] text-gray-500 mt-0.5">
-                        {result.isManual ? '✓ يدوي' : '⚡ حساب تلقائي'}
+                        {result.isManual ? '✓ يدوي' : '⚡ تلقائي'}
                       </p>
                     </div>
                   ))}
@@ -261,20 +189,15 @@ export default function RegionalPricingPage() {
 
             {/* Actions */}
             <div className="flex gap-3">
-              <button
-                onClick={savePricing}
-                className="flex-1 bg-[#F5C518] hover:bg-amber-400 text-gray-900 font-black py-3 rounded-xl text-sm transition"
-              >
+              <button onClick={savePricing}
+                className="flex-1 bg-[#F5C518] hover:bg-amber-400 text-gray-900 font-black py-3 rounded-xl text-sm transition">
                 {saved === editingId ? '✓ تم الحفظ' : '💾 حفظ التسعير'}
               </button>
-              <button
-                onClick={resetPricing}
-                className="border border-gray-200 text-gray-500 font-semibold px-4 py-3 rounded-xl text-sm hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition"
-              >
+              <button onClick={resetPricing}
+                className="border border-gray-200 text-gray-500 font-semibold px-4 py-3 rounded-xl text-sm hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition">
                 إعادة ضبط
               </button>
             </div>
-
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-dashed border-gray-200 flex flex-col items-center justify-center py-16 text-center px-6">

@@ -8,8 +8,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LanguageContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import { governorates, getShipping } from '@/lib/shipping';
-import { countries } from '@/lib/international-shipping';
 import {
+  COUNTRIES,
   getIntlShippingConfig,
   calculateIntlShipping,
   DEFAULT_CONFIG,
@@ -96,7 +96,7 @@ export default function CheckoutPage() {
 
   // Shipping calculation
   const govObj = governorates.find(g => g.id === address.governorate);
-  const countryObj = countries.find(c => c.code === address.country);
+  const countryObj = COUNTRIES.find(c => c.code === address.country);
 
   let shippingCost = 0;
   let shippingCurrency = currency;
@@ -347,8 +347,8 @@ export default function CheckoutPage() {
                       onChange={e => setAddress(a => ({ ...a, country: e.target.value }))}
                       className={inputClass(errors.country) + ' bg-white cursor-pointer'}>
                       <option value="">{L.selectCountry}</option>
-                      {countries.map(c => (
-                        <option key={c.code} value={c.code}>{isRtl ? c.name : c.nameEn}</option>
+                      {COUNTRIES.filter(c => c.code !== 'EG').map(c => (
+                        <option key={c.code} value={c.code}>{isRtl ? c.nameAr : c.nameEn}</option>
                       ))}
                     </select>
                     {errors.country && <p className="text-red-500 text-xs mt-1">{errors.country}</p>}
@@ -359,9 +359,12 @@ export default function CheckoutPage() {
                     <div className={`sm:col-span-2 rounded-xl p-4 text-sm border ${intlShippingResult.ok ? 'bg-amber-50 border-amber-100' : 'bg-red-50 border-red-100'}`}>
                       {intlShippingResult.ok ? (
                         <div className="flex justify-between items-center flex-wrap gap-2">
-                          <p className="text-xs text-gray-500">
-                            {L.weightLabel}: <span className="font-bold text-gray-900">{totalWeightKg.toFixed(2)} kg</span>
-                          </p>
+                          <div>
+                            <p className="text-xs text-gray-500">
+                              {L.weightLabel}: <span className="font-bold text-gray-900">{totalWeightKg.toFixed(2)} kg</span>
+                            </p>
+                            <p className="text-xs text-gray-400 mt-0.5">{intlShippingResult.zoneName}</p>
+                          </div>
                           <p className="font-black text-lg text-gray-900">
                             {intlShippingResult.amount} {intlShippingResult.currency}
                           </p>
@@ -551,7 +554,7 @@ export default function CheckoutPage() {
                   <p className="text-sm text-gray-500">
                     {address.street}{address.building ? '، ' + address.building : ''}, {address.city}
                     {shippingType === 'local' && govObj ? `, ${isRtl ? govObj.name : govObj.nameEn}` : ''}
-                    {shippingType === 'international' && countryObj ? `, ${isRtl ? countryObj.name : countryObj.nameEn}` : ''}
+                    {shippingType === 'international' && countryObj ? `, ${isRtl ? countryObj.nameAr : countryObj.nameEn}` : ''}
                   </p>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-4">
@@ -629,7 +632,7 @@ export default function CheckoutPage() {
                 <span>
                   {L.shippingLabel}
                   {shippingType === 'local' && address.governorate ? ` — ${isRtl ? govObj?.name : govObj?.nameEn}` : ''}
-                  {shippingType === 'international' && address.country && countryObj ? ` — ${isRtl ? countryObj.name : countryObj.nameEn}` : ''}
+                  {shippingType === 'international' && address.country && countryObj ? ` — ${isRtl ? countryObj.nameAr : countryObj.nameEn}` : ''}
                 </span>
                 <span className="font-semibold text-gray-900">
                   {shippingCost > 0

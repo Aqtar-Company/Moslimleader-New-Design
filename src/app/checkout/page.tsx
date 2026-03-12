@@ -104,7 +104,7 @@ export default function CheckoutPage() {
 
   if (shippingType === 'local' && address.governorate) {
     shippingCost = getShipping(address.governorate);
-    shippingCurrency = 'EGP';
+    shippingCurrency = 'ج.م';
   } else if (shippingType === 'international' && address.country) {
     intlShippingResult = calculateIntlShipping(totalWeightKg, address.country, intlConfig);
     if (intlShippingResult.ok) {

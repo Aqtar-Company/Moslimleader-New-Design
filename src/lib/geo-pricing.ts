@@ -72,8 +72,10 @@ export interface PriceResult {
 }
 
 // Fixed internal conversion factors (not exposed to admin)
-const SAR_FACTOR = 0.075;
-const USD_FACTOR = 0.020;
+// SAR: ~2.7× exchange rate — pricing suited for Saudi market
+// USD: ~5× exchange rate — pricing suited for European/global market
+const SAR_FACTOR = 0.25;
+const USD_FACTOR = 0.10;
 
 export function resolvePrice(
   baseEgpPrice: number,
@@ -106,7 +108,7 @@ export function resolvePrice(
     return { price: p.price_usd_manual, currency: 'USD', currencyEn: 'USD', zone, isManual: true };
   }
   return {
-    price: Math.round(egpBase * USD_FACTOR * 100) / 100,
+    price: Math.round(egpBase * USD_FACTOR),
     currency: 'USD', currencyEn: 'USD', zone, isManual: false,
   };
 }

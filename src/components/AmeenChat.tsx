@@ -49,7 +49,7 @@ function getRecommendations(gender: Gender, age: AgeRange, allProducts: Product[
 function AminAvatar({ size = 48 }: { size?: number }) {
   return (
     <img
-      src="/ِAmin-profile.png"
+      src="/amin-profile.png"
       alt="أمين"
       width={size}
       height={size}

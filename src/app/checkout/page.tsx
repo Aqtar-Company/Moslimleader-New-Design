@@ -210,7 +210,7 @@ export default function CheckoutPage() {
     return !Object.keys(e).length;
   }
 
-  function handlePlaceOrder() {
+  async function handlePlaceOrder() {
     clear();
     // Save order to localStorage if user is logged in
     if (user) {
@@ -221,6 +221,59 @@ export default function CheckoutPage() {
         localStorage.setItem(key, JSON.stringify(existing));
       } catch {}
     }
+
+    // Send order notification email
+    const itemsList = items.map(item =>
+      `${item.product.name} × ${item.quantity} = ${getProductPrice(item.product).price * item.quantity} ${currency}`
+    ).join('\n');
+
+    const payLabel = payMethod === 'cod' ? 'الدفع عند الاستلام'
+      : payMethod === 'card' ? `بطاقة تنتهي بـ ${cardForm.number.slice(-4)}`
+      : payMethod === 'vodafone' ? 'Vodafone Cash'
+      : payMethod === 'paypal' ? 'PayPal'
+      : 'InstaPay';
+
+    const addressLine = shippingType === 'local'
+      ? `${address.street}${address.building ? '، ' + address.building : ''}, ${address.city}, ${govObj?.name ?? ''}`
+      : `${address.street}${address.building ? '، ' + address.building : ''}, ${address.city}, ${countryObj?.nameAr ?? address.country}`;
+
+    const orderBody = `
+طلب جديد #${orderNumber}
+التاريخ: ${new Date().toLocaleString('ar-EG')}
+
+العميل: ${address.fullName}
+الهاتف: ${address.phone}
+العنوان: ${addressLine}
+
+المنتجات:
+${itemsList}
+
+المجموع الفرعي: ${total} ${currency}
+${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''}الشحن: ${shippingCost > 0 ? `${shippingCost} ${shippingCurrency}` : 'مجاني'}
+طريقة الدفع: ${payLabel}
+    `.trim();
+
+    try {
+      await fetch('https://formsubmit.co/ajax/orders@moslimleader.com', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          _subject: `طلب جديد #${orderNumber} — ${address.fullName}`,
+          _template: 'table',
+          order_number: orderNumber,
+          customer_name: address.fullName,
+          customer_phone: address.phone,
+          address: addressLine,
+          items: itemsList,
+          subtotal: `${total} ${currency}`,
+          discount: discount > 0 ? `-${discount} ${currency}` : '—',
+          shipping: shippingCost > 0 ? `${shippingCost} ${shippingCurrency}` : 'مجاني',
+          payment: payLabel,
+          message: orderBody,
+        }),
+      });
+    } catch { /* email failure shouldn't block order */ }
+
     setOrderPlaced(true);
   }
 
@@ -237,21 +290,113 @@ export default function CheckoutPage() {
   }
 
   if (orderPlaced) {
+    const finalTotal = total - discount + (shippingCurrency === currency ? shippingCost : 0);
+    const payLabel = payMethod === 'cod' ? 'الدفع عند الاستلام'
+      : payMethod === 'card' ? `بطاقة تنتهي بـ ${cardForm.number.slice(-4)}`
+      : payMethod === 'vodafone' ? 'Vodafone Cash'
+      : payMethod === 'paypal' ? 'PayPal'
+      : 'InstaPay';
+
     return (
-      <div className="max-w-lg mx-auto px-4 py-24 text-center">
-        <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
-          <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
+      <div className="max-w-xl mx-auto px-4 py-16 pt-28" dir="rtl">
+        {/* Success icon */}
+        <div className="text-center mb-8">
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-green-200">
+            <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-black text-gray-900 mb-3">🎉 تم تأكيد طلبك!</h1>
+          <p className="text-gray-600 text-base leading-relaxed max-w-sm mx-auto">
+            جزاك الله خيرًا على ثقتك بنا! طلبك وصلنا وسيتواصل معك فريقنا قريبًا لتأكيد التوصيل.
+          </p>
         </div>
-        <h1 className="text-2xl font-black text-gray-900 mb-2">{L.successTitle}</h1>
-        <p className="text-gray-500 text-sm mb-8">{L.successDesc}</p>
-        <div className="bg-gray-50 rounded-2xl px-6 py-4 inline-block mb-8">
-          <p className="text-xs text-gray-400 mb-1">{L.orderNo}</p>
-          <p className="text-2xl font-black text-gray-900">#{orderNumber}</p>
+
+        {/* Motivational banner */}
+        <div className="bg-gradient-to-l from-[#1a1a2e] to-[#2d1060] rounded-2xl px-6 py-5 mb-6 text-white text-center">
+          <p className="text-xl mb-1">🌟</p>
+          <p className="font-black text-base mb-1">أنت تبني جيلًا واعيًا!</p>
+          <p className="text-white/70 text-sm">كل هدية من مسلم ليدر هي استثمار في مستقبل أطفالنا المسلمين</p>
         </div>
-        <div>
-          <Link href="/" className="inline-block bg-gray-900 hover:bg-gray-700 text-white font-bold px-8 py-3 rounded-xl transition text-sm">
+
+        {/* Invoice card */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
+          {/* Header */}
+          <div className="bg-gray-50 border-b border-gray-100 px-5 py-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-400 font-semibold">رقم الطلب</p>
+              <p className="text-xl font-black text-gray-900">#{orderNumber}</p>
+            </div>
+            <div className="text-left">
+              <p className="text-xs text-gray-400 font-semibold">التاريخ</p>
+              <p className="text-sm font-bold text-gray-700">{new Date().toLocaleDateString('ar-EG')}</p>
+            </div>
+          </div>
+
+          {/* Items */}
+          <div className="px-5 py-4 space-y-3 border-b border-gray-100">
+            <p className="text-xs font-black text-gray-500 uppercase tracking-wide mb-2">المنتجات</p>
+            {items.map(item => (
+              <div key={item.cartItemId} className="flex items-center gap-3">
+                <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gray-50 border border-gray-200 shrink-0">
+                  <Image src={item.product.images[item.selectedModel ?? 0]} alt={item.product.name} fill className="object-cover" unoptimized />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-900 truncate">{item.product.name}</p>
+                  <p className="text-xs text-gray-400">{item.quantity} × {formatPrice(getProductPrice(item.product))}</p>
+                </div>
+                <p className="text-sm font-black text-gray-900 shrink-0">
+                  {formatPrice({ ...getProductPrice(item.product), price: getProductPrice(item.product).price * item.quantity })}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Totals */}
+          <div className="px-5 py-4 space-y-2 text-sm">
+            <div className="flex justify-between text-gray-500">
+              <span>المجموع الفرعي</span>
+              <span className="font-semibold text-gray-900">{total} {currency}</span>
+            </div>
+            {discount > 0 && (
+              <div className="flex justify-between text-green-600">
+                <span>خصم ({coupon?.code})</span>
+                <span className="font-semibold">−{discount} {currency}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-gray-500">
+              <span>الشحن</span>
+              <span className="font-semibold text-gray-900">
+                {shippingCost > 0 ? `${shippingCost} ${shippingCurrency}` : 'مجاني'}
+              </span>
+            </div>
+            {shippingCurrency === currency && (
+              <div className="flex justify-between border-t pt-2 font-black text-base">
+                <span className="text-gray-900">الإجمالي</span>
+                <span className="text-gray-900">{finalTotal} {currency}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-gray-500 pt-1">
+              <span>طريقة الدفع</span>
+              <span className="font-semibold text-gray-800">{payLabel}</span>
+            </div>
+          </div>
+
+          {/* Address */}
+          <div className="bg-gray-50 border-t border-gray-100 px-5 py-3">
+            <p className="text-xs font-black text-gray-500 mb-1">عنوان التوصيل</p>
+            <p className="text-sm text-gray-700 font-semibold">{address.fullName} · {address.phone}</p>
+            <p className="text-xs text-gray-500">
+              {address.street}{address.building ? '، ' + address.building : ''}, {address.city}
+              {shippingType === 'local' && govObj ? `, ${govObj.name}` : ''}
+              {shippingType === 'international' && countryObj ? `, ${countryObj.nameAr}` : ''}
+            </p>
+          </div>
+        </div>
+
+        <div className="text-center space-y-3">
+          <p className="text-xs text-gray-400">📩 تم إرسال تأكيد الطلب إلى فريقنا وسنتواصل معك قريبًا</p>
+          <Link href="/" className="inline-block bg-gray-900 hover:bg-gray-700 text-white font-bold px-10 py-3.5 rounded-xl transition text-sm">
             {L.continueShopping}
           </Link>
         </div>
@@ -344,8 +489,17 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
-                {/* International: country + shipping result */}
-                {shippingType === 'international' && (<>
+                {/* International disabled banner */}
+                {shippingType === 'international' && !intlConfig.enabled && (
+                  <div className="sm:col-span-2 bg-red-50 border-2 border-red-200 rounded-xl px-4 py-4 text-center">
+                    <p className="text-2xl mb-1">⛔</p>
+                    <p className="font-black text-red-700 text-sm">الشحن الدولي غير متاح حاليًا</p>
+                    <p className="text-xs text-red-500 mt-1">يرجى التواصل معنا مباشرة للاستفسار عن الشحن خارج مصر</p>
+                  </div>
+                )}
+
+              {/* International: country + shipping result */}
+                {shippingType === 'international' && intlConfig.enabled && (<>
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.country} *</label>
                     <select value={address.country}
@@ -423,8 +577,14 @@ export default function CheckoutPage() {
                     className={inputClass()} />
                 </div>
               </div>
-              <button onClick={() => validateAddress() && setStep('payment')}
-                className="mt-6 w-full bg-gray-900 hover:bg-gray-700 text-white font-bold py-4 rounded-xl transition text-sm">
+              <button
+                onClick={() => validateAddress() && setStep('payment')}
+                disabled={shippingType === 'international' && !intlConfig.enabled}
+                className={`mt-6 w-full font-bold py-4 rounded-xl transition text-sm ${
+                  shippingType === 'international' && !intlConfig.enabled
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-gray-900 hover:bg-gray-700 text-white'
+                }`}>
                 {isRtl ? `← ${L.next}` : `${L.next} →`}
               </button>
             </div>

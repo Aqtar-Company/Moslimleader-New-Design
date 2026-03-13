@@ -57,11 +57,11 @@ export default function ProductCard({ product }: { product: Product }) {
         <p className="text-gray-500 text-sm line-clamp-2">{displayShortDesc}</p>
 
         <div className="mt-auto pt-3 flex items-center justify-between gap-2">
-          <span className="text-gray-900 font-bold text-lg">{formatPrice(priceResult)}</span>
+          <span className="text-gray-900 font-bold text-lg shrink-0">{formatPrice(priceResult)}</span>
           <button
             disabled={!product.inStock}
             onClick={() => product.inStock && addItem(product)}
-            className="bg-purple-700 hover:bg-purple-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-semibold px-4 py-2 rounded-xl transition"
+            className="bg-purple-700 hover:bg-purple-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-semibold px-4 py-2 rounded-xl transition whitespace-nowrap shrink-0"
           >
             {product.inStock ? t('product.addToCart') : t('product.unavailable')}
           </button>

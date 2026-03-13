@@ -215,11 +215,6 @@ export default function AmeenChat() {
     <>
       {/* ── Floating button ── */}
       <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2" dir={isEn ? 'ltr' : 'rtl'}>
-        {!open && (
-          <div className="bg-white border border-gray-200 rounded-2xl px-3 py-1.5 text-xs font-bold text-gray-700 shadow-md animate-bounce-slow whitespace-nowrap">
-            {isEn ? 'Need help choosing?' : 'محتاج مساعدة في الاختيار؟'}
-          </div>
-        )}
         <button
           onClick={() => setOpen(o => !o)}
           aria-label="فتح مساعد أمين"

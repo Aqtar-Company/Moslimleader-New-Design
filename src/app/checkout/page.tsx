@@ -179,6 +179,16 @@ export default function CheckoutPage() {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderNumber] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
 
+  // Snapshot captured before cart is cleared — used in success page
+  const [snapshot, setSnapshot] = useState<{
+    items: typeof items;
+    total: number;
+    discount: number;
+    shippingCost: number;
+    shippingCurrency: string;
+    currency: string;
+  } | null>(null);
+
   // Load intl config
   useEffect(() => {
     setIntlConfig(getIntlShippingConfig());
@@ -339,6 +349,8 @@ export default function CheckoutPage() {
   }
 
   async function handlePlaceOrder() {
+    // Capture snapshot BEFORE clearing cart
+    setSnapshot({ items: [...items], total, discount, shippingCost, shippingCurrency, currency });
     clear();
     // Save order to localStorage (always use Arabic status keys for dashboard compatibility)
     if (user) {
@@ -426,7 +438,15 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
   }
 
   if (orderPlaced) {
-    const finalTotal = total - discount + (shippingCurrency === currency ? shippingCost : 0);
+    // Use snapshot values (cart was cleared after placing order)
+    const snap = snapshot ?? { items: [], total: 0, discount: 0, shippingCost: 0, shippingCurrency: currency, currency };
+    const snapTotal = snap.total;
+    const snapDiscount = snap.discount;
+    const snapShippingCost = snap.shippingCost;
+    const snapShippingCurrency = snap.shippingCurrency;
+    const snapCurrency = snap.currency;
+    const snapItems = snap.items;
+    const finalTotal = snapTotal - snapDiscount + (snapShippingCurrency === snapCurrency ? snapShippingCost : 0);
     const payLabelSuccess = payMethod === 'cod'
       ? (isRtl ? 'الدفع عند الاستلام' : 'Cash on Delivery')
       : payMethod === 'card'
@@ -484,7 +504,7 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
             <p className="text-xs font-black text-gray-500 uppercase tracking-wide mb-2">
               {isRtl ? 'المنتجات' : 'Items'}
             </p>
-            {items.map(item => (
+            {snapItems.map(item => (
               <div key={item.cartItemId} className="flex items-center gap-3">
                 <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gray-50 border border-gray-200 shrink-0">
                   <Image src={item.product.images[item.selectedModel ?? 0]} alt={item.product.name} fill className="object-cover" unoptimized />
@@ -506,24 +526,24 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
           <div className="px-5 py-4 space-y-2 text-sm">
             <div className="flex justify-between text-gray-500">
               <span>{isRtl ? 'المجموع الفرعي' : 'Subtotal'}</span>
-              <span className="font-semibold text-gray-900">{total} {currency}</span>
+              <span className="font-semibold text-gray-900">{snapTotal} {snapCurrency}</span>
             </div>
-            {discount > 0 && (
+            {snapDiscount > 0 && (
               <div className="flex justify-between text-green-600">
                 <span>{isRtl ? `خصم (${coupon?.code})` : `Discount (${coupon?.code})`}</span>
-                <span className="font-semibold">−{discount} {currency}</span>
+                <span className="font-semibold">−{snapDiscount} {snapCurrency}</span>
               </div>
             )}
             <div className="flex justify-between text-gray-500">
               <span>{isRtl ? 'الشحن' : 'Shipping'}</span>
               <span className="font-semibold text-gray-900">
-                {shippingCost > 0 ? `${shippingCost} ${shippingCurrency}` : (isRtl ? 'مجاني' : 'Free')}
+                {snapShippingCost > 0 ? `${snapShippingCost} ${snapShippingCurrency}` : (isRtl ? 'مجاني' : 'Free')}
               </span>
             </div>
-            {shippingCurrency === currency && (
+            {snapShippingCurrency === snapCurrency && (
               <div className="flex justify-between border-t pt-2 font-black text-base">
                 <span className="text-gray-900">{isRtl ? 'الإجمالي' : 'Total'}</span>
-                <span className="text-gray-900">{finalTotal} {currency}</span>
+                <span className="text-gray-900">{finalTotal} {snapCurrency}</span>
               </div>
             )}
             <div className="flex justify-between text-gray-500 pt-1">

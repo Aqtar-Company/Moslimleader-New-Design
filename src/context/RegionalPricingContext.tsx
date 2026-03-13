@@ -12,6 +12,7 @@ interface RegionalPricingContextValue {
   zone: PricingZone;
   zoneInfo: ZoneInfo;
   countryCode: string | null;
+  originCountryCode: string | null;
   setCountry: (code: string | null) => void;
   setZone: (zone: PricingZone) => void;
   isDetecting: boolean;
@@ -25,6 +26,7 @@ const RegionalPricingContext = createContext<RegionalPricingContextValue | null>
 export function RegionalPricingProvider({ children }: { children: ReactNode }) {
   const [zone, setZoneState] = useState<PricingZone>('egypt');
   const [countryCode, setCountryCodeState] = useState<string | null>(null);
+  const [originCountryCode, setOriginCountryCode] = useState<string | null>(null);
   const [isDetecting, setIsDetecting] = useState(true);
 
   useEffect(() => {
@@ -44,8 +46,10 @@ export function RegionalPricingProvider({ children }: { children: ReactNode }) {
       if (code) {
         setCountryCodeState(code);
         setZoneState(countryToZone(code));
+        setOriginCountryCode(code); // set once from IP, never changed
       } else {
         setZoneState('egypt');
+        setOriginCountryCode('EG'); // default to Egypt if detection fails
       }
       setIsDetecting(false);
     });
@@ -115,6 +119,7 @@ export function RegionalPricingProvider({ children }: { children: ReactNode }) {
       zone,
       zoneInfo,
       countryCode,
+      originCountryCode,
       setCountry,
       setZone,
       isDetecting,

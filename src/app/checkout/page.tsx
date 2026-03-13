@@ -150,7 +150,9 @@ export default function CheckoutPage() {
   const { items, coupon, clear } = useCart();
   const { user } = useAuth();
   const { lang } = useLang();
-  const { getProductPrice, getCartRegionalTotal, formatPrice, zoneInfo, countryCode, setCountry } = useRegionalPricing();
+  const { getProductPrice, getCartRegionalTotal, formatPrice, zoneInfo, countryCode, originCountryCode, setCountry } = useRegionalPricing();
+  // Is the user originally from Egypt (by IP)?
+  const isUserFromEgypt = !originCountryCode || originCountryCode === 'EG';
   const isRtl = lang === 'ar';
 
   const { total, currency } = getCartRegionalTotal(items);
@@ -208,10 +210,26 @@ export default function CheckoutPage() {
   let shippingCurrency = currency;
   let intlShippingResult: ShippingCalcResult | null = null;
 
+  // Case: international user shipping to Egypt — use local EGP shipping rate, convert to their currency
+  const intlUserShippingToEgypt = shippingType === 'international' && address.country === 'EG' && !isUserFromEgypt;
+
   if (shippingType === 'local' && address.governorate) {
     shippingCost = getShipping(address.governorate);
     shippingCurrency = 'ج.م';
-  } else if (shippingType === 'international' && address.country) {
+  } else if (intlUserShippingToEgypt && address.governorate) {
+    // Egypt delivery: get EGP rate, convert to user's country currency
+    const egpShipping = getShipping(address.governorate);
+    const userCurr = originCountryCode ? COUNTRY_CURRENCIES[originCountryCode] : null;
+    if (userCurr && userCurr.currencyEn !== 'EGP') {
+      // EGP → USD → user currency  (1 USD ≈ 50 EGP)
+      const egpToUsd = egpShipping / 50;
+      shippingCost = Math.round(egpToUsd * userCurr.usdRate * 10) / 10;
+      shippingCurrency = userCurr.currency;
+    } else {
+      shippingCost = egpShipping;
+      shippingCurrency = 'ج.م';
+    }
+  } else if (shippingType === 'international' && address.country && address.country !== 'EG') {
     intlShippingResult = calculateIntlShipping(totalWeightKg, address.country, intlConfig);
     if (intlShippingResult.ok) {
       const localCurr = COUNTRY_CURRENCIES[address.country.toUpperCase()];
@@ -296,10 +314,12 @@ export default function CheckoutPage() {
     if (!address.firstName.trim()) e.firstName = L.required;
     if (!address.lastName.trim()) e.lastName = L.required;
     if (!address.phone.trim()) e.phone = L.required;
-    if (!address.city.trim()) e.city = L.required;
     if (!address.street.trim()) e.street = L.required;
     if (shippingType === 'local' && !address.governorate) e.governorate = L.required;
     if (shippingType === 'international' && !address.country) e.country = L.required;
+    // Egypt destination for international user: governorate required for shipping calc; no city needed
+    if (intlUserShippingToEgypt && !address.governorate) e.governorate = L.required;
+    if (!intlUserShippingToEgypt && !address.city.trim()) e.city = L.required;
     setErrors(e);
     return !Object.keys(e).length;
   }
@@ -565,6 +585,51 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
                 </div>
               </div>
 
+              {/* ── Contextual pricing messages ─────────────────────────── */}
+
+              {/* Message 1: Egypt user + local shipping → EGP subsidised prices */}
+              {shippingType === 'local' && isUserFromEgypt && (
+                <div className="mb-4 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
+                  <p className="text-xs font-bold text-emerald-800 mb-0.5">
+                    🇪🇬 {isRtl
+                      ? 'الأسعار المعروضة بالجنيه المصري مخصصة للطلبات داخل جمهورية مصر العربية.'
+                      : 'Prices shown in EGP are dedicated to orders within Egypt.'}
+                  </p>
+                  <p className="text-xs text-emerald-600">
+                    {isRtl
+                      ? 'نحرص على إتاحة المنتجات التربوية بأسعار مدعومة داخل مصر، دعماً للأسر والمجتمع.'
+                      : 'We offer subsidized prices within Egypt to support families and the community.'}
+                  </p>
+                </div>
+              )}
+
+              {/* Message 2: Egypt user switches to international shipping → prices become international */}
+              {shippingType === 'international' && isUserFromEgypt && address.country && address.country !== 'EG' && (
+                <div className="mb-4 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+                  <p className="text-xs font-bold text-blue-800">
+                    🌍 {isRtl
+                      ? 'عند اختيار الشحن الدولي، يتم تطبيق الأسعار الدولية وتحويلها تلقائياً إلى عملة بلد الشحن.'
+                      : 'International shipping applies international pricing, automatically converted to the destination currency.'}
+                  </p>
+                </div>
+              )}
+
+              {/* Message 3: International user ships to Egypt → prices stay international */}
+              {intlUserShippingToEgypt && (
+                <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                  <p className="text-xs font-bold text-amber-800 mb-0.5">
+                    ℹ️ {isRtl
+                      ? 'الأسعار المحلية بالجنيه المصري مخصصة للعملاء داخل مصر.'
+                      : 'Local EGP prices are reserved for customers within Egypt.'}
+                  </p>
+                  <p className="text-xs text-amber-700">
+                    {isRtl
+                      ? 'طلبك يُسعَّر وفق الأسعار الدولية بعملتك. يتم احتساب تكلفة الشحن إلى مصر حسب الوزن والمحافظة.'
+                      : 'Your order is priced in international rates using your currency. Shipping to Egypt is calculated by weight and governorate.'}
+                  </p>
+                </div>
+              )}
+
               {/* International disabled banner */}
               {shippingType === 'international' && !intlConfig.enabled && (
                 <div className="mb-4 bg-red-50 border-2 border-red-200 rounded-xl px-4 py-4 text-center">
@@ -583,20 +648,41 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
                     <select value={address.country}
                       onChange={e => {
                         const code = e.target.value;
-                        setAddress(a => ({ ...a, country: code, city: '' }));
-                        if (code) setCountry(code);
+                        setAddress(a => ({ ...a, country: code, city: '', region: '', governorate: '' }));
+                        // International user picking Egypt: keep their market/currency, don't switch to EGP
+                        if (code && !(code === 'EG' && !isUserFromEgypt)) {
+                          setCountry(code);
+                        }
                       }}
                       className={inputClass(errors.country) + ' bg-white cursor-pointer'}>
                       <option value="">{L.selectCountry}</option>
+                      {/* Egypt first for easy access, then all other countries */}
+                      <option value="EG">{isRtl ? '🇪🇬 مصر' : '🇪🇬 Egypt'}</option>
                       {COUNTRIES.filter(c => c.code !== 'EG').map(c => (
                         <option key={c.code} value={c.code}>{isRtl ? c.nameAr : c.nameEn}</option>
                       ))}
                     </select>
                     {errors.country && <p className="text-red-500 text-xs mt-1">{errors.country}</p>}
-                    {/* Shipping cost */}
-                    {address.country && intlShippingResult && !intlShippingResult.ok && (
+                    {/* Shipping cost error for non-Egypt destinations */}
+                    {address.country && address.country !== 'EG' && intlShippingResult && !intlShippingResult.ok && (
                       <p className="text-red-600 text-xs mt-1.5 font-semibold">{intlShippingResult.message}</p>
                     )}
+                  </div>
+                )}
+
+                {/* Governorate picker for international user shipping to Egypt */}
+                {intlUserShippingToEgypt && (
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.governorate} *</label>
+                    <select value={address.governorate}
+                      onChange={e => setAddress(a => ({ ...a, governorate: e.target.value }))}
+                      className={inputClass(errors.governorate) + ' bg-white cursor-pointer'}>
+                      <option value="">{isRtl ? 'اختر المحافظة' : 'Select Governorate'}</option>
+                      {governorates.map(g => (
+                        <option key={g.id} value={g.id}>{isRtl ? g.name : g.nameEn}</option>
+                      ))}
+                    </select>
+                    {errors.governorate && <p className="text-red-500 text-xs mt-1">{errors.governorate}</p>}
                   </div>
                 )}
 
@@ -687,15 +773,17 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
                   </div>
                 )}
 
-                {/* 6. City / Province */}
-                <div className={shippingType === 'international' && COUNTRY_REGIONS[address.country] ? '' : 'sm:col-span-2'}>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.cityLabel} *</label>
-                  <input type="text" value={address.city}
-                    onChange={e => setAddress(a => ({ ...a, city: e.target.value }))}
-                    placeholder={isRtl ? 'مثال: الرياض' : 'e.g. London'}
-                    className={inputClass(errors.city)} />
-                  {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city}</p>}
-                </div>
+                {/* 6. City / Province (hidden when intl user ships to Egypt — governorate is used instead) */}
+                {!intlUserShippingToEgypt && (
+                  <div className={shippingType === 'international' && COUNTRY_REGIONS[address.country] ? '' : 'sm:col-span-2'}>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.cityLabel} *</label>
+                    <input type="text" value={address.city}
+                      onChange={e => setAddress(a => ({ ...a, city: e.target.value }))}
+                      placeholder={isRtl ? 'مثال: الرياض' : 'e.g. London'}
+                      className={inputClass(errors.city)} />
+                    {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city}</p>}
+                  </div>
+                )}
 
                 {/* 7. Street */}
                 <div className="sm:col-span-2">
@@ -726,7 +814,7 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
                 </div>
 
                 {/* Shipping cost summary */}
-                {shippingType === 'international' && address.country && intlShippingResult?.ok && (
+                {shippingType === 'international' && address.country && (intlShippingResult?.ok || (intlUserShippingToEgypt && address.governorate)) && shippingCost > 0 && (
                   <div className="sm:col-span-2 bg-amber-50 border border-amber-100 rounded-xl p-3 flex justify-between items-center text-sm">
                     <span className="text-gray-500 text-xs">{L.weightLabel}: <span className="font-bold text-gray-900">{totalWeightKg.toFixed(2)} kg</span></span>
                     <span className="font-black text-gray-900">{shippingCost} {shippingCurrency}</span>

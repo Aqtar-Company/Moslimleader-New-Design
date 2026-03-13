@@ -910,9 +910,12 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
                   <span className="font-black text-gray-900 text-base">{total - discount + shippingCost} <span className="text-xs text-gray-500">{currency}</span></span>
                 </div>
               )}
-              {/* When currencies differ (e.g. EGP products + USD shipping), show each line separately */}
+              {/* When currencies differ — show labeled breakdown as grand total */}
               {shippingCost > 0 && shippingCurrency !== currency && (
                 <div className="flex flex-col gap-1 border-t pt-2 text-xs">
+                  <div className="flex justify-between items-center mb-0.5">
+                    <span className="font-black text-sm text-gray-900">{L.totalLabel}</span>
+                  </div>
                   <div className="flex justify-between">
                     <span className="font-bold text-gray-700">{isRtl ? 'المنتجات' : 'Products'}</span>
                     <span className="font-bold text-gray-900">{total - discount} {currency}</span>

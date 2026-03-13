@@ -134,7 +134,7 @@ export default function Header() {
 
               {zoneOpen && (
                 <div
-                  className="absolute left-0 top-12 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 w-52 overflow-y-auto"
+                  className="absolute left-0 top-12 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 w-52 max-w-[calc(100vw-2rem)] overflow-y-auto"
                   style={{ maxHeight: '72vh' }}
                   dir="rtl"
                 >

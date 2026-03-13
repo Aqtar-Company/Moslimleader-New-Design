@@ -201,10 +201,10 @@ export default function ShopPage() {
           style={{ zIndex: 3 }}
           dir={isRtl ? 'rtl' : 'ltr'}
         >
-          <h1 className="text-4xl md:text-6xl font-black text-white drop-shadow-lg leading-tight">
+          <h1 className="text-2xl sm:text-4xl md:text-6xl font-black text-white drop-shadow-lg leading-tight">
             {t('home.hero.title')}
           </h1>
-          <p className="text-white/80 mt-3 text-lg md:text-xl max-w-xl drop-shadow">
+          <p className="text-white/80 mt-3 text-base sm:text-lg md:text-xl max-w-xl drop-shadow">
             {t('home.hero.subtitle')}
           </p>
         </div>

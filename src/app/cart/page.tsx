@@ -95,10 +95,10 @@ export default function CartPage() {
                   </button>
                   <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
                     <button onClick={() => updateQty(item.cartItemId, item.quantity - 1)}
-                      className="w-7 h-7 flex items-center justify-center text-sm hover:bg-gray-100 transition font-bold text-gray-700">−</button>
-                    <span className="w-7 text-center text-sm font-bold text-gray-900">{item.quantity}</span>
+                      className="w-9 h-9 flex items-center justify-center text-sm hover:bg-gray-100 transition font-bold text-gray-700">−</button>
+                    <span className="w-8 text-center text-sm font-bold text-gray-900">{item.quantity}</span>
                     <button onClick={() => updateQty(item.cartItemId, item.quantity + 1)}
-                      className="w-7 h-7 flex items-center justify-center text-sm hover:bg-gray-100 transition font-bold text-gray-700">+</button>
+                      className="w-9 h-9 flex items-center justify-center text-sm hover:bg-gray-100 transition font-bold text-gray-700">+</button>
                   </div>
                   <span className="text-sm font-black text-gray-900">
                     {lineTotal % 1 === 0 ? lineTotal : lineTotal.toFixed(2)} <span className="font-normal text-gray-400 text-xs">{pr.currency}</span>
@@ -111,7 +111,7 @@ export default function CartPage() {
 
         {/* Summary */}
         <div className="lg:col-span-1">
-          <div className="bg-gray-950 rounded-2xl p-6 sticky top-24 text-white">
+          <div className="bg-gray-950 rounded-2xl p-6 lg:sticky lg:top-24 text-white">
             <h2 className="font-black text-base mb-5">{t('cart.summary.title')}</h2>
 
             {/* Coupon */}

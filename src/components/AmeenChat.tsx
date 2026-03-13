@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { products as staticProducts } from '@/lib/products';
 import { getAddedProducts, getProductOverrides, applyOverride } from '@/lib/admin-storage';
+import { useLang } from '@/context/LanguageContext';
 import { Product } from '@/types';
 
 /* ── Types ─────────────────────────────────────────────────────────────────── */
@@ -72,7 +73,7 @@ function TypingDots() {
 }
 
 /* ── Product mini-card ─────────────────────────────────────────────────────── */
-function MiniCard({ p }: { p: Product }) {
+function MiniCard({ p, isEn }: { p: Product; isEn: boolean }) {
   return (
     <Link
       href={`/shop/${p.slug}`}
@@ -87,7 +88,7 @@ function MiniCard({ p }: { p: Product }) {
         />
       </div>
       <div className="p-2.5 flex-1 flex flex-col gap-1">
-        <p className="text-xs font-bold text-gray-800 leading-tight line-clamp-2">{p.name}</p>
+        <p className="text-xs font-bold text-gray-800 leading-tight line-clamp-2">{isEn && p.nameEn ? p.nameEn : p.name}</p>
         <p className="text-xs font-black text-[#1a1a2e] mt-auto">{p.price.toLocaleString('ar-EG')} ج</p>
       </div>
     </Link>
@@ -105,6 +106,8 @@ export default function AmeenChat() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [showBadge, setShowBadge] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { lang } = useLang();
+  const isEn = lang === 'en';
 
   // Load products from localStorage
   useEffect(() => {
@@ -127,9 +130,9 @@ export default function AmeenChat() {
     if (open && messages.length === 0) {
       setShowBadge(false);
       setTimeout(() => {
-        addAmeenMessage('مرحباً 👋 أنا أمين، مساعدك لاختيار أفضل هدية!');
+        addAmeenMessage(isEn ? "Hello 👋 I'm Ameen, your gift guide!" : 'مرحباً 👋 أنا أمين، مساعدك لاختيار أفضل هدية!');
         setTimeout(() => {
-          addAmeenMessage('لمن تبحث عن هدية؟ 🎁');
+          addAmeenMessage(isEn ? 'Who are you looking for? 🎁' : 'لمن تبحث عن هدية؟ 🎁');
           setStep('gender');
         }, 800);
       }, 400);
@@ -149,19 +152,21 @@ export default function AmeenChat() {
     setGender(g);
     setStep('age');
     if (g === 'adult') {
-      setTimeout(() => addAmeenMessage('ممتاز 😊 سأريك أفضل ما عندنا للكبار!'), 500);
+      setTimeout(() => addAmeenMessage(isEn ? 'Great 😊 Let me show you our best picks for adults!' : 'ممتاز 😊 سأريك أفضل ما عندنا للكبار!'), 500);
       setTimeout(() => {
         setStep('thinking');
         const recs = getRecommendations(g, '5to8', allProducts);
         setResults(recs);
         setTimeout(() => {
-          addAmeenMessage('لقيتلك هدايا رائعة! 🌟');
+          addAmeenMessage(isEn ? 'Found some great gifts for you! 🌟' : 'لقيتلك هدايا رائعة! 🌟');
           setStep('results');
         }, 1400);
       }, 1200);
     } else {
       setTimeout(() => {
-        addAmeenMessage('ممتاز 😊 كم عمر' + (g === 'boy' ? 'ه' : 'ها') + '؟');
+        addAmeenMessage(isEn
+          ? `Great 😊 How old is ${g === 'boy' ? 'he' : 'she'}?`
+          : 'ممتاز 😊 كم عمر' + (g === 'boy' ? 'ه' : 'ها') + '؟');
         setStep('age');
       }, 500);
     }
@@ -174,7 +179,9 @@ export default function AmeenChat() {
     setTimeout(() => {
       const recs = getRecommendations(gender!, a, allProducts);
       setResults(recs);
-      addAmeenMessage('لقيتلك هدايا تناسب' + (gender === 'boy' ? 'ه' : gender === 'girl' ? 'ها' : '') + ' تمام! 🎁');
+      addAmeenMessage(isEn
+        ? `Found perfect gifts for ${gender === 'boy' ? 'him' : gender === 'girl' ? 'her' : 'them'}! 🎁`
+        : 'لقيتلك هدايا تناسب' + (gender === 'boy' ? 'ه' : gender === 'girl' ? 'ها' : '') + ' تمام! 🎁');
       setStep('results');
     }, 1500);
   }
@@ -186,31 +193,31 @@ export default function AmeenChat() {
     setResults([]);
     setStep('welcome');
     setTimeout(() => {
-      addAmeenMessage('مرحباً مجدداً 👋 لمن تبحث عن هدية؟');
+      addAmeenMessage(isEn ? 'Hello again 👋 Who are you looking for?' : 'مرحباً مجدداً 👋 لمن تبحث عن هدية؟');
       setStep('gender');
     }, 300);
   }
 
   const genderOptions = [
-    { label: '👦 ولد', value: 'boy' as Gender },
-    { label: '👧 بنت', value: 'girl' as Gender },
-    { label: '🧑 شخص كبير', value: 'adult' as Gender },
+    { label: isEn ? '👦 Boy' : '👦 ولد', value: 'boy' as Gender },
+    { label: isEn ? '👧 Girl' : '👧 بنت', value: 'girl' as Gender },
+    { label: isEn ? '🧑 Adult' : '🧑 شخص كبير', value: 'adult' as Gender },
   ];
 
   const ageOptions: { label: string; value: AgeRange }[] = [
-    { label: '🐣 أقل من 5 سنوات', value: 'under5' },
-    { label: '🌱 5 - 8 سنوات', value: '5to8' },
-    { label: '📚 9 - 12 سنة', value: '9to12' },
-    { label: '🚀 13 سنة فأكثر', value: '13plus' },
+    { label: isEn ? '🐣 Under 5' : '🐣 أقل من 5 سنوات', value: 'under5' },
+    { label: isEn ? '🌱 5–8 yrs' : '🌱 5 - 8 سنوات', value: '5to8' },
+    { label: isEn ? '📚 9–12 yrs' : '📚 9 - 12 سنة', value: '9to12' },
+    { label: isEn ? '🚀 13+' : '🚀 13 سنة فأكثر', value: '13plus' },
   ];
 
   return (
     <>
       {/* ── Floating button ── */}
-      <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2" dir="rtl">
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2" dir={isEn ? 'ltr' : 'rtl'}>
         {!open && (
           <div className="bg-white border border-gray-200 rounded-2xl px-3 py-1.5 text-xs font-bold text-gray-700 shadow-md animate-bounce-slow whitespace-nowrap">
-            محتاج مساعدة في الاختيار؟ 💡
+            {isEn ? 'Need help choosing? 💡' : 'محتاج مساعدة في الاختيار؟ 💡'}
           </div>
         )}
         <button
@@ -233,7 +240,7 @@ export default function AmeenChat() {
       {/* ── Chat panel ── */}
       {open && (
         <div
-          dir="rtl"
+          dir={isEn ? 'ltr' : 'rtl'}
           className="fixed bottom-28 right-6 z-40 w-[340px] sm:w-[380px] max-h-[560px] flex flex-col rounded-3xl shadow-2xl overflow-hidden border border-gray-200"
           style={{ background: '#f8f8fc' }}
         >
@@ -246,12 +253,12 @@ export default function AmeenChat() {
               <AminAvatar size={44} />
             </div>
             <div>
-              <p className="font-black text-white text-sm leading-tight">أمين</p>
-              <p className="text-white/70 text-xs">مساعدك الذكي للهدايا</p>
+              <p className="font-black text-white text-sm leading-tight">{isEn ? 'Ameen' : 'أمين'}</p>
+              <p className="text-white/70 text-xs">{isEn ? 'Your smart gift assistant' : 'مساعدك الذكي للهدايا'}</p>
             </div>
             <div className="mr-auto flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              <span className="text-white/60 text-xs">متاح</span>
+              <span className="text-white/60 text-xs">{isEn ? 'online' : 'متاح'}</span>
             </div>
           </div>
 
@@ -324,25 +331,25 @@ export default function AmeenChat() {
             {step === 'results' && results.length > 0 && (
               <div className="space-y-3 pt-1">
                 <div className="grid grid-cols-2 gap-2.5">
-                  {results.slice(0, 6).map(p => <MiniCard key={p.id} p={p} />)}
+                  {results.slice(0, 6).map(p => <MiniCard key={p.id} p={p} isEn={isEn} />)}
                 </div>
                 <button
                   onClick={restart}
                   className="w-full text-center text-xs text-gray-500 hover:text-gray-700 py-2 border border-dashed border-gray-300 rounded-xl hover:border-gray-400 transition"
                 >
-                  🔄 ابدأ من جديد
+                  {isEn ? '🔄 Start over' : '🔄 ابدأ من جديد'}
                 </button>
               </div>
             )}
 
             {step === 'results' && results.length === 0 && (
               <div className="text-center py-4">
-                <p className="text-gray-500 text-sm">لم أجد منتجات متاحة حالياً 😔</p>
+                <p className="text-gray-500 text-sm">{isEn ? 'No available products found 😔' : 'لم أجد منتجات متاحة حالياً 😔'}</p>
                 <button
                   onClick={restart}
                   className="mt-2 text-xs text-[#1a1a2e] underline"
                 >
-                  ابدأ من جديد
+                  {isEn ? 'Start over' : 'ابدأ من جديد'}
                 </button>
               </div>
             )}

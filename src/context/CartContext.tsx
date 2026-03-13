@@ -41,6 +41,14 @@ interface CartContextValue {
 function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
     case 'ADD_ITEM': {
+      const existingIdx = state.items.findIndex(
+        i => i.product.id === action.product.id && i.selectedModel === action.selectedModel
+      );
+      if (existingIdx >= 0) {
+        const newItems = [...state.items];
+        newItems[existingIdx] = { ...newItems[existingIdx], quantity: newItems[existingIdx].quantity + action.qty };
+        return { items: newItems };
+      }
       const cartItemId = makeCartItemId();
       return { items: [...state.items, { cartItemId, product: action.product, quantity: action.qty, selectedModel: action.selectedModel }] };
     }

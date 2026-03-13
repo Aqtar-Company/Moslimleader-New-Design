@@ -21,7 +21,6 @@ function mergeProducts(): MergedProduct[] {
 
 const ZONE_COLORS: Record<PricingZone, string> = {
   egypt: 'bg-green-50 border-green-200 text-green-800',
-  saudi: 'bg-blue-50 border-blue-200 text-blue-800',
   world: 'bg-orange-50 border-orange-200 text-orange-800',
 };
 
@@ -81,7 +80,7 @@ export default function RegionalPricingPage() {
       </div>
 
       {/* Zone info */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         {Object.values(ZONES).map(z => (
           <div key={z.zone} className={`rounded-2xl border p-3 ${ZONE_COLORS[z.zone]}`}>
             <p className="text-xl mb-0.5">{z.flag}</p>
@@ -149,7 +148,6 @@ export default function RegionalPricingPage() {
               <div className="grid grid-cols-1 gap-3">
                 {[
                   { label: '🇪🇬 سعر مصر (ج.م)', field: 'price_egp_manual' as const, placeholder: `${currentProduct.price} (تلقائي)` },
-                  { label: '🇸🇦 سعر السعودية (﷼)', field: 'price_sar_manual' as const, placeholder: 'مثال: 30' },
                   { label: '🌐 سعر دولي (USD)', field: 'price_usd_manual' as const, placeholder: 'مثال: 8' },
                 ].map(({ label, field, placeholder }) => (
                   <div key={field}>
@@ -170,7 +168,7 @@ export default function RegionalPricingPage() {
             {preview && (
               <div className="bg-gray-950 rounded-2xl p-5 text-white">
                 <h3 className="font-bold text-sm mb-3 text-gray-300">معاينة الأسعار</h3>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   {(Object.entries(preview) as [PricingZone, typeof preview[PricingZone]][]).map(([zone, result]) => (
                     <div key={zone} className="bg-white/10 rounded-xl p-3">
                       <p className="text-xs text-gray-400 mb-1">{ZONES[zone].flag} {ZONES[zone].label}</p>

@@ -4,8 +4,7 @@
  * All values are editable from the admin dashboard.
  *
  * Zones (from Egypt):
- *   saudi    → Saudi Arabia              (SAR)
- *   gulf     → AE, KW, QA, BH, OM       (USD)
+ *   gulf     → SA, AE, KW, QA, BH, OM  (USD)
  *   arab     → Arab world ex-Gulf        (USD)
  *   europe   → Europe + Turkey           (USD)
  *   americas → Americas + AU + NZ        (USD)
@@ -16,7 +15,7 @@
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type ShippingZone = 'saudi' | 'gulf' | 'arab' | 'europe' | 'americas' | 'asia' | 'africa' | 'rest';
+export type ShippingZone = 'gulf' | 'arab' | 'europe' | 'americas' | 'asia' | 'africa' | 'rest';
 
 export interface Country {
   code: string;
@@ -36,7 +35,7 @@ export interface WeightBracket {
 export interface ZonePricing {
   zone: ShippingZone;
   nameAr: string;
-  currency: 'SAR' | 'USD';
+  currency: 'USD';
   prices: Record<string, number>; // bracketId → price
 }
 
@@ -72,14 +71,8 @@ const DEFAULT_BRACKETS: WeightBracket[] = [
 
 const DEFAULT_ZONES: ZonePricing[] = [
   {
-    zone: 'saudi',
-    nameAr: '🇸🇦 السعودية',
-    currency: 'SAR',
-    prices: { b1: 30, b2: 45, b3: 70, b4: 120, b5: 200 },
-  },
-  {
     zone: 'gulf',
-    nameAr: '🌙 دول الخليج',
+    nameAr: '🌙 دول الخليج (SA, AE, KW, QA, BH, OM)',
     currency: 'USD',
     prices: { b1: 12, b2: 18, b3: 28, b4: 50, b5: 85 },
   },
@@ -138,7 +131,7 @@ export const DEFAULT_BLOCKED: string[] = [
 
 export const COUNTRIES: Country[] = [
   // ─ Saudi Arabia ─
-  { code: 'SA', nameAr: 'المملكة العربية السعودية', nameEn: 'Saudi Arabia',          zone: 'saudi' },
+  { code: 'SA', nameAr: 'المملكة العربية السعودية', nameEn: 'Saudi Arabia',          zone: 'gulf' },
   // ─ Gulf ─
   { code: 'AE', nameAr: 'الإمارات العربية المتحدة', nameEn: 'United Arab Emirates',  zone: 'gulf'  },
   { code: 'KW', nameAr: 'الكويت',                    nameEn: 'Kuwait',                zone: 'gulf'  },
@@ -359,7 +352,7 @@ export function calculateIntlShipping(
     return { ok: false, reason: 'blocked', message: 'الشحن غير متاح لهذه الدولة حاليًا' };
   }
 
-  const zone = code === 'SA' ? 'saudi' : (getCountry(code)?.zone ?? 'rest');
+  const zone = getCountry(code)?.zone ?? 'rest';
   const zoneConfig = cfg.zones.find(z => z.zone === zone) ?? cfg.zones.find(z => z.zone === 'rest');
 
   if (!zoneConfig) {

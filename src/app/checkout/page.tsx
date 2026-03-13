@@ -23,9 +23,11 @@ type PayMethod = 'cod' | 'card' | 'vodafone' | 'instapay' | 'paypal';
 type ShippingType = 'local' | 'international';
 
 interface AddressForm {
-  fullName: string; phone: string; governorate: string;
+  firstName: string; lastName: string;
+  phone: string; whatsappSame: boolean;
+  governorate: string;
+  region: string;    // region/emirate (from COUNTRY_REGIONS)
   city: string; street: string; building: string; notes: string;
-  // International
   country: string;
 }
 
@@ -33,7 +35,25 @@ interface CardForm {
   number: string; name: string; expiry: string; cvv: string;
 }
 
-const EMPTY_ADDR: AddressForm = { fullName: '', phone: '', governorate: '', city: '', street: '', building: '', notes: '', country: '' };
+const EMPTY_ADDR: AddressForm = {
+  firstName: '', lastName: '', phone: '', whatsappSame: true,
+  governorate: '', region: '', city: '', street: '', building: '', notes: '', country: '',
+};
+
+// Phone dialing codes per country
+const COUNTRY_DIAL_CODES: Record<string, string> = {
+  EG:'+20', SA:'+966', AE:'+971', KW:'+965', QA:'+974', BH:'+973', OM:'+968',
+  JO:'+962', LB:'+961', IQ:'+964', PS:'+970', MA:'+212', TN:'+216', DZ:'+213',
+  GB:'+44', DE:'+49', FR:'+33', IT:'+39', ES:'+34', NL:'+31', TR:'+90',
+  US:'+1', CA:'+1', AU:'+61', SE:'+46', BE:'+32', NO:'+47', DK:'+45',
+  IN:'+91', PK:'+92', NG:'+234', GH:'+233', KE:'+254', ZA:'+27',
+};
+
+// Estimated delivery days per shipping zone
+const ZONE_DELIVERY_DAYS: Record<string, string> = {
+  gulf:'3–5', arab:'5–7', europe:'7–14', americas:'10–20',
+  asia:'7–14', africa:'10–21', rest:'10–21',
+};
 
 // Regions for countries that have standard administrative divisions
 const COUNTRY_REGIONS: Record<string, { ar: string; en: string }[]> = {
@@ -143,7 +163,8 @@ export default function CheckoutPage() {
   );
   const [address, setAddress] = useState<AddressForm>({
     ...EMPTY_ADDR,
-    fullName: user?.name || '',
+    firstName: user?.name?.split(' ')[0] || '',
+    lastName: user?.name?.split(' ').slice(1).join(' ') || '',
     phone: user?.phone || '',
     country: '',
   });
@@ -214,7 +235,18 @@ export default function CheckoutPage() {
     payment: isRtl ? 'الدفع' : 'Payment',
     confirm: isRtl ? 'تأكيد' : 'Confirm',
     fullName: isRtl ? 'الاسم بالكامل' : 'Full Name',
-    phone: isRtl ? 'رقم الهاتف' : 'Phone',
+    firstName: isRtl ? 'الاسم الأول' : 'First Name',
+    lastName: isRtl ? 'اسم العائلة' : 'Last Name',
+    phone: isRtl ? 'رقم الجوال' : 'Phone',
+    whatsappQ: isRtl ? 'هل رقم WhatsApp هو نفسه رقم الجوال؟' : 'Is WhatsApp the same as phone?',
+    whatsappYes: isRtl ? 'نعم' : 'Yes',
+    whatsappNo: isRtl ? 'لا' : 'No',
+    regionLabel: isRtl ? 'المنطقة / الإمارة' : 'Region / Emirate',
+    cityLabel: isRtl ? 'المدينة / المحافظة' : 'City / Province',
+    streetLabel: isRtl ? 'الشارع، العناوين' : 'Street, Address',
+    buildingLabel: isRtl ? 'المبنى، الوحدة السكنية، الطابق، الشقة (اختياري)' : 'Building, Unit, Floor, Apt (optional)',
+    deliveryBadge: isRtl ? 'أسرع توصيل خلال' : 'Est. delivery in',
+    deliveryDays: isRtl ? 'أيام عمل' : 'business days',
     governorate: isRtl ? 'المحافظة' : 'Governorate',
     city: isRtl ? 'المدينة / الحي' : 'City / District',
     street: isRtl ? 'اسم الشارع' : 'Street',
@@ -261,7 +293,8 @@ export default function CheckoutPage() {
 
   function validateAddress() {
     const e: Partial<AddressForm> = {};
-    if (!address.fullName.trim()) e.fullName = L.required;
+    if (!address.firstName.trim()) e.firstName = L.required;
+    if (!address.lastName.trim()) e.lastName = L.required;
     if (!address.phone.trim()) e.phone = L.required;
     if (!address.city.trim()) e.city = L.required;
     if (!address.street.trim()) e.street = L.required;
@@ -270,6 +303,8 @@ export default function CheckoutPage() {
     setErrors(e);
     return !Object.keys(e).length;
   }
+
+  const fullName = `${address.firstName} ${address.lastName}`.trim();
 
   function validateCard() {
     if (payMethod !== 'card') return true;
@@ -306,16 +341,18 @@ export default function CheckoutPage() {
       : payMethod === 'paypal' ? 'PayPal'
       : 'InstaPay';
 
+    const dialCode = COUNTRY_DIAL_CODES[address.country] || COUNTRY_DIAL_CODES['EG'];
     const addressLine = shippingType === 'local'
       ? `${address.street}${address.building ? '، ' + address.building : ''}, ${address.city}, ${govObj?.name ?? ''}`
-      : `${address.street}${address.building ? '، ' + address.building : ''}, ${address.city}, ${countryObj?.nameAr ?? address.country}`;
+      : `${address.street}${address.building ? '، ' + address.building : ''}, ${address.city}${address.region ? '، ' + address.region : ''}, ${countryObj?.nameAr ?? address.country}`;
 
     const orderBody = `
 طلب جديد #${orderNumber}
 التاريخ: ${new Date().toLocaleString('ar-EG')}
 
-العميل: ${address.fullName}
-الهاتف: ${address.phone}
+العميل: ${fullName}
+الهاتف: ${dialCode} ${address.phone}
+واتساب: ${address.whatsappSame ? 'نفس رقم الهاتف' : 'مختلف'}
 العنوان: ${addressLine}
 
 المنتجات:
@@ -331,11 +368,12 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({
-          _subject: `طلب جديد #${orderNumber} — ${address.fullName}`,
+          _subject: `طلب جديد #${orderNumber} — ${fullName}`,
           _template: 'table',
           order_number: orderNumber,
-          customer_name: address.fullName,
-          customer_phone: address.phone,
+          customer_name: fullName,
+          customer_phone: `${dialCode} ${address.phone}`,
+          whatsapp: address.whatsappSame ? 'Same as phone' : 'Different',
           address: addressLine,
           items: itemsList,
           subtotal: `${total} ${currency}`,
@@ -458,9 +496,10 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
           {/* Address */}
           <div className="bg-gray-50 border-t border-gray-100 px-5 py-3">
             <p className="text-xs font-black text-gray-500 mb-1">عنوان التوصيل</p>
-            <p className="text-sm text-gray-700 font-semibold">{address.fullName} · {address.phone}</p>
+            <p className="text-sm text-gray-700 font-semibold">{fullName} · {COUNTRY_DIAL_CODES[address.country] || COUNTRY_DIAL_CODES['EG']} {address.phone}</p>
             <p className="text-xs text-gray-500">
               {address.street}{address.building ? '، ' + address.building : ''}, {address.city}
+              {address.region ? `، ${address.region}` : ''}
               {shippingType === 'local' && govObj ? `, ${govObj.name}` : ''}
               {shippingType === 'international' && countryObj ? `, ${countryObj.nameAr}` : ''}
             </p>
@@ -526,27 +565,43 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.fullName} *</label>
-                  <input type="text" value={address.fullName}
-                    onChange={e => setAddress(a => ({ ...a, fullName: e.target.value }))}
-                    placeholder={isRtl ? 'الاسم بالكامل' : 'Full name'}
-                    className={inputClass(errors.fullName)} />
-                  {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName}</p>}
+              {/* International disabled banner */}
+              {shippingType === 'international' && !intlConfig.enabled && (
+                <div className="mb-4 bg-red-50 border-2 border-red-200 rounded-xl px-4 py-4 text-center">
+                  <p className="text-2xl mb-1">⛔</p>
+                  <p className="font-black text-red-700 text-sm">الشحن الدولي غير متاح حاليًا</p>
+                  <p className="text-xs text-red-500 mt-1">يرجى التواصل معنا مباشرة للاستفسار عن الشحن خارج مصر</p>
                 </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.phone} *</label>
-                  <input type="tel" value={address.phone} dir="ltr"
-                    onChange={e => setAddress(a => ({ ...a, phone: e.target.value }))}
-                    placeholder="01xxxxxxxxx"
-                    className={inputClass(errors.phone)} />
-                  {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
-                </div>
+              )}
 
-                {/* Local: governorate */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                {/* 1. Country (international) or Governorate (local) — always first */}
+                {shippingType === 'international' && intlConfig.enabled && (
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.country} *</label>
+                    <select value={address.country}
+                      onChange={e => {
+                        const code = e.target.value;
+                        setAddress(a => ({ ...a, country: code, city: '' }));
+                        if (code) setCountry(code);
+                      }}
+                      className={inputClass(errors.country) + ' bg-white cursor-pointer'}>
+                      <option value="">{L.selectCountry}</option>
+                      {COUNTRIES.filter(c => c.code !== 'EG').map(c => (
+                        <option key={c.code} value={c.code}>{isRtl ? c.nameAr : c.nameEn}</option>
+                      ))}
+                    </select>
+                    {errors.country && <p className="text-red-500 text-xs mt-1">{errors.country}</p>}
+                    {/* Shipping cost */}
+                    {address.country && intlShippingResult && !intlShippingResult.ok && (
+                      <p className="text-red-600 text-xs mt-1.5 font-semibold">{intlShippingResult.message}</p>
+                    )}
+                  </div>
+                )}
+
                 {shippingType === 'local' && (
-                  <div>
+                  <div className="sm:col-span-2">
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.governorate} *</label>
                     <select value={address.governorate}
                       onChange={e => setAddress(a => ({ ...a, governorate: e.target.value }))}
@@ -562,99 +617,121 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
                   </div>
                 )}
 
-                {/* International disabled banner */}
-                {shippingType === 'international' && !intlConfig.enabled && (
-                  <div className="sm:col-span-2 bg-red-50 border-2 border-red-200 rounded-xl px-4 py-4 text-center">
-                    <p className="text-2xl mb-1">⛔</p>
-                    <p className="font-black text-red-700 text-sm">الشحن الدولي غير متاح حاليًا</p>
-                    <p className="text-xs text-red-500 mt-1">يرجى التواصل معنا مباشرة للاستفسار عن الشحن خارج مصر</p>
-                  </div>
-                )}
+                {/* 2. First + Last name */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.firstName} *</label>
+                  <input type="text" value={address.firstName}
+                    onChange={e => setAddress(a => ({ ...a, firstName: e.target.value }))}
+                    placeholder={isRtl ? 'مثال: أحمد' : 'e.g. Ahmed'}
+                    className={inputClass(errors.firstName)} />
+                  {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.lastName} *</label>
+                  <input type="text" value={address.lastName}
+                    onChange={e => setAddress(a => ({ ...a, lastName: e.target.value }))}
+                    placeholder={isRtl ? 'مثال: محمد' : 'e.g. Mohamed'}
+                    className={inputClass(errors.lastName)} />
+                  {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}
+                </div>
 
-              {/* International: country + shipping result */}
-                {shippingType === 'international' && intlConfig.enabled && (<>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.country} *</label>
-                    <select value={address.country}
-                      onChange={e => {
-                        const code = e.target.value;
-                        setAddress(a => ({ ...a, country: code }));
-                        if (code) setCountry(code);
-                      }}
-                      className={inputClass(errors.country) + ' bg-white cursor-pointer'}>
-                      <option value="">{L.selectCountry}</option>
-                      {COUNTRIES.filter(c => c.code !== 'EG').map(c => (
-                        <option key={c.code} value={c.code}>{isRtl ? c.nameAr : c.nameEn}</option>
-                      ))}
-                    </select>
-                    {errors.country && <p className="text-red-500 text-xs mt-1">{errors.country}</p>}
-                  </div>
-
-                  {/* Shipping cost result */}
-                  {address.country && intlShippingResult && (
-                    <div className={`sm:col-span-2 rounded-xl p-4 text-sm border ${intlShippingResult.ok ? 'bg-amber-50 border-amber-100' : 'bg-red-50 border-red-100'}`}>
-                      {intlShippingResult.ok ? (
-                        <div className="flex justify-between items-center flex-wrap gap-2">
-                          <div>
-                            <p className="text-xs text-gray-500">
-                              {L.weightLabel}: <span className="font-bold text-gray-900">{totalWeightKg.toFixed(2)} kg</span>
-                            </p>
-                            <p className="text-xs text-gray-400 mt-0.5">{intlShippingResult.zoneName}</p>
-                          </div>
-                          <p className="font-black text-lg text-gray-900">
-                            {shippingCost} {shippingCurrency}
-                          </p>
-                        </div>
-                      ) : (
-                        <p className="text-red-700 font-semibold text-xs">{intlShippingResult.message}</p>
+                {/* 3. Phone with dial code */}
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.phone} *</label>
+                  <div className="flex gap-0">
+                    <div className="flex items-center px-3 bg-gray-100 border border-gray-200 border-r-0 rounded-r-xl text-sm font-bold text-gray-600 whitespace-nowrap" dir="ltr">
+                      {address.country || (shippingType === 'local' ? 'EG' : '')}
+                      {(COUNTRY_DIAL_CODES[address.country] || (shippingType === 'local' && COUNTRY_DIAL_CODES['EG'])) && (
+                        <span className="ml-1">{COUNTRY_DIAL_CODES[address.country] || COUNTRY_DIAL_CODES['EG']}</span>
                       )}
                     </div>
-                  )}
-                </>)}
+                    <input type="tel" value={address.phone} dir="ltr"
+                      onChange={e => setAddress(a => ({ ...a, phone: e.target.value }))}
+                      placeholder="xxxxxxxxxx"
+                      className={inputClass(errors.phone) + ' rounded-r-none'} />
+                  </div>
+                  {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
+                </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
-                    {COUNTRY_REGIONS[address.country] ? (isRtl ? 'المنطقة / المحافظة' : 'Region / Province') : L.city} *
-                  </label>
-                  {COUNTRY_REGIONS[address.country] ? (
-                    <select value={address.city}
-                      onChange={e => setAddress(a => ({ ...a, city: e.target.value }))}
-                      className={inputClass(errors.city) + ' bg-white cursor-pointer'}>
-                      <option value="">{isRtl ? 'اختر المنطقة' : 'Select Region'}</option>
+                {/* 4. WhatsApp same? */}
+                <div className="sm:col-span-2">
+                  <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">{L.whatsappQ} *</p>
+                  <div className="flex gap-6">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="whatsapp" checked={address.whatsappSame}
+                        onChange={() => setAddress(a => ({ ...a, whatsappSame: true }))}
+                        className="accent-gray-900 w-4 h-4" />
+                      <span className="text-sm font-semibold text-gray-800">{L.whatsappYes}</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="whatsapp" checked={!address.whatsappSame}
+                        onChange={() => setAddress(a => ({ ...a, whatsappSame: false }))}
+                        className="accent-gray-900 w-4 h-4" />
+                      <span className="text-sm font-semibold text-gray-800">{L.whatsappNo}</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* 5. Region / Emirate (only for countries with known regions) */}
+                {shippingType === 'international' && COUNTRY_REGIONS[address.country] && (
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.regionLabel} *</label>
+                    <select value={address.region}
+                      onChange={e => setAddress(a => ({ ...a, region: e.target.value }))}
+                      className={inputClass() + ' bg-white cursor-pointer'}>
+                      <option value="">{isRtl ? 'اختر' : 'Select'}</option>
                       {COUNTRY_REGIONS[address.country].map(r => (
                         <option key={r.en} value={isRtl ? r.ar : r.en}>{isRtl ? r.ar : r.en}</option>
                       ))}
                     </select>
-                  ) : (
-                    <input type="text" value={address.city}
-                      onChange={e => setAddress(a => ({ ...a, city: e.target.value }))}
-                      placeholder={isRtl ? 'مثال: مدينة نصر' : 'e.g. Nasr City'}
-                      className={inputClass(errors.city)} />
-                  )}
+                  </div>
+                )}
+
+                {/* 6. City / Province */}
+                <div className={shippingType === 'international' && COUNTRY_REGIONS[address.country] ? '' : 'sm:col-span-2'}>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.cityLabel} *</label>
+                  <input type="text" value={address.city}
+                    onChange={e => setAddress(a => ({ ...a, city: e.target.value }))}
+                    placeholder={isRtl ? 'مثال: الرياض' : 'e.g. London'}
+                    className={inputClass(errors.city)} />
                   {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city}</p>}
                 </div>
+
+                {/* 7. Street */}
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.street} *</label>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.streetLabel} *</label>
                   <input type="text" value={address.street}
                     onChange={e => setAddress(a => ({ ...a, street: e.target.value }))}
-                    placeholder={isRtl ? 'اسم الشارع' : 'Street name'}
+                    placeholder={isRtl ? 'مثل: طريق المنارة، شارع 2A' : 'e.g. Al Manara Road, Street 2A'}
                     className={inputClass(errors.street)} />
                   {errors.street && <p className="text-red-500 text-xs mt-1">{errors.street}</p>}
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.building}</label>
+
+                {/* 8. Building / Unit / Floor / Apt */}
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.buildingLabel}</label>
                   <input type="text" value={address.building}
                     onChange={e => setAddress(a => ({ ...a, building: e.target.value }))}
-                    placeholder={isRtl ? 'مبنى ١٢، شقة ٤' : 'Bldg 12, Apt 4'}
+                    placeholder={isRtl ? 'مثل: مبنى 11، الدور الثاني، شقة 2' : 'e.g. Bldg 11, Floor 2, Apt 2'}
                     className={inputClass()} />
                 </div>
-                <div>
+
+                {/* 9. Notes */}
+                <div className="sm:col-span-2">
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.notes}</label>
                   <input type="text" value={address.notes}
                     onChange={e => setAddress(a => ({ ...a, notes: e.target.value }))}
                     placeholder={isRtl ? 'أي تعليمات للمندوب' : 'Any courier instructions'}
                     className={inputClass()} />
                 </div>
+
+                {/* Shipping cost summary */}
+                {shippingType === 'international' && address.country && intlShippingResult?.ok && (
+                  <div className="sm:col-span-2 bg-amber-50 border border-amber-100 rounded-xl p-3 flex justify-between items-center text-sm">
+                    <span className="text-gray-500 text-xs">{L.weightLabel}: <span className="font-bold text-gray-900">{totalWeightKg.toFixed(2)} kg</span></span>
+                    <span className="font-black text-gray-900">{shippingCost} {shippingCurrency}</span>
+                  </div>
+                )}
               </div>
               <button
                 onClick={() => validateAddress() && setStep('payment')}
@@ -805,9 +882,10 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
                     <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">{L.address}</p>
                     <button onClick={() => setStep('address')} className="text-xs text-purple-700 hover:underline">{isRtl ? 'تعديل' : 'Edit'}</button>
                   </div>
-                  <p className="text-sm text-gray-700 font-semibold">{address.fullName} · {address.phone}</p>
+                  <p className="text-sm text-gray-700 font-semibold">{fullName} · {COUNTRY_DIAL_CODES[address.country] || COUNTRY_DIAL_CODES['EG']} {address.phone}</p>
                   <p className="text-sm text-gray-500">
                     {address.street}{address.building ? '، ' + address.building : ''}, {address.city}
+                    {address.region ? `، ${address.region}` : ''}
                     {shippingType === 'local' && govObj ? `, ${isRtl ? govObj.name : govObj.nameEn}` : ''}
                     {shippingType === 'international' && countryObj ? `, ${isRtl ? countryObj.nameAr : countryObj.nameEn}` : ''}
                   </p>

@@ -283,13 +283,24 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                 <button
                   onClick={handleAdd}
                   disabled={(hasVariants && !selectedVariant) || (needsLegacyModel && selectedModel === undefined)}
-                  className={`flex-1 font-bold py-3 px-6 rounded-xl transition text-center ${
-                    (hasVariants && !selectedVariant) || (needsLegacyModel && selectedModel === undefined)
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'bg-purple-700 hover:bg-purple-800 text-white'
+                  className={`flex-1 font-bold py-3 px-6 rounded-xl transition-all duration-300 text-center flex items-center justify-center gap-2 ${
+                    added
+                      ? 'bg-green-500 text-white scale-95'
+                      : (hasVariants && !selectedVariant) || (needsLegacyModel && selectedModel === undefined)
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-purple-700 hover:bg-purple-800 text-white active:scale-95'
                   }`}
                 >
-                  {added ? t('product.added') : t('product.addToCart')}
+                  {added ? (
+                    <>
+                      <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      {t('product.added')}
+                    </>
+                  ) : (
+                    t('product.addToCart')
+                  )}
                 </button>
                 {/* Wishlist heart */}
                 <button

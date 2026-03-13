@@ -2,18 +2,25 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useState } from 'react';
 import { useLang } from '@/context/LanguageContext';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useWishlist } from '@/context/WishlistContext';
+import { useRegionalPricing } from '@/context/RegionalPricingContext';
+import { ZONES, PricingZone } from '@/lib/geo-pricing';
 
 const iconBtn = 'relative flex items-center justify-center w-10 h-10 border-2 border-white/70 rounded-lg hover:bg-white/20 transition text-white';
+
+const ZONE_OPTIONS: PricingZone[] = ['egypt', 'saudi', 'world'];
 
 export default function Header() {
   const { lang, toggleLang } = useLang();
   const { totalItems } = useCart();
   const { user } = useAuth();
   const { totalItems: wishlistCount } = useWishlist();
+  const { zone, setZone } = useRegionalPricing();
+  const [zoneOpen, setZoneOpen] = useState(false);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
@@ -66,6 +73,33 @@ export default function Header() {
             >
               {lang === 'ar' ? 'EN' : 'ع'}
             </button>
+
+            {/* Zone Switcher */}
+            <div className="relative">
+              <button
+                onClick={() => setZoneOpen(o => !o)}
+                className={`${iconBtn} text-base`}
+                aria-label="تغيير المنطقة"
+                title={ZONES[zone].label}
+              >
+                {ZONES[zone].flag}
+              </button>
+              {zoneOpen && (
+                <div className="absolute left-0 top-12 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 w-36" dir="rtl">
+                  {ZONE_OPTIONS.map(z => (
+                    <button
+                      key={z}
+                      onClick={() => { setZone(z); setZoneOpen(false); }}
+                      className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm font-bold hover:bg-gray-50 transition ${zone === z ? 'bg-[#f5c518]/20 text-[#1a1a2e]' : 'text-gray-700'}`}
+                    >
+                      <span>{ZONES[z].flag}</span>
+                      <span>{ZONES[z].label}</span>
+                      {zone === z && <span className="mr-auto text-[#1a1a2e]">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Sign In / Account */}
             {!user ? (

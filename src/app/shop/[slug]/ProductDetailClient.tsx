@@ -186,7 +186,9 @@ export default function ProductDetailClient({ product }: { product: Product }) {
 
             <div className="text-3xl font-black text-gray-900">
               {formatPrice(priceResult)}
-              <p className="text-xs text-gray-400 font-normal mt-1">السعر المعروض حسب المنطقة الجغرافية</p>
+              <p className="text-xs text-gray-400 font-normal mt-1">
+                {isRtl ? 'السعر المعروض حسب المنطقة الجغرافية' : 'Price shown based on your region'}
+              </p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -283,14 +285,17 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                 <button
                   onClick={handleAdd}
                   disabled={(hasVariants && !selectedVariant) || (needsLegacyModel && selectedModel === undefined)}
-                  className={`flex-1 font-bold py-3 px-6 rounded-xl transition-all duration-300 text-center flex items-center justify-center gap-2 ${
+                  className={`relative flex-1 font-bold py-3 px-6 rounded-xl transition-all duration-300 text-center flex items-center justify-center gap-2 overflow-hidden ${
                     added
-                      ? 'bg-green-500 text-white scale-95'
+                      ? 'bg-green-500 text-white scale-95 ring-4 ring-green-300 shadow-lg shadow-green-200'
                       : (hasVariants && !selectedVariant) || (needsLegacyModel && selectedModel === undefined)
                         ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                        : 'bg-purple-700 hover:bg-purple-800 text-white active:scale-95'
+                        : 'bg-purple-700 hover:bg-purple-800 text-white active:scale-95 hover:shadow-md hover:shadow-purple-300'
                   }`}
                 >
+                  {added && (
+                    <span className="absolute inset-0 rounded-xl animate-ping bg-green-400 opacity-30 pointer-events-none" />
+                  )}
                   {added ? (
                     <>
                       <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">

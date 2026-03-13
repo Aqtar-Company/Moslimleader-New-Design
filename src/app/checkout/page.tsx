@@ -179,6 +179,16 @@ export default function CheckoutPage() {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderNumber] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
 
+  // Snapshot captured before cart is cleared — used in success page
+  const [snapshot, setSnapshot] = useState<{
+    items: typeof items;
+    total: number;
+    discount: number;
+    shippingCost: number;
+    shippingCurrency: string;
+    currency: string;
+  } | null>(null);
+
   // Load intl config
   useEffect(() => {
     setIntlConfig(getIntlShippingConfig());
@@ -339,13 +349,20 @@ export default function CheckoutPage() {
   }
 
   async function handlePlaceOrder() {
+    // Capture snapshot BEFORE clearing cart
+    setSnapshot({ items: [...items], total, discount, shippingCost, shippingCurrency, currency });
     clear();
-    // Save order to localStorage if user is logged in
+    // Save order to localStorage (always use Arabic status keys for dashboard compatibility)
     if (user) {
       try {
         const key = `ml_orders_${user.id}`;
         const existing = JSON.parse(localStorage.getItem(key) || '[]');
-        existing.unshift({ id: orderNumber, date: new Date().toLocaleDateString('ar-EG'), total: total - discount + shippingCost, status: isRtl ? 'قيد التجهيز' : 'Processing' });
+        existing.unshift({
+          id: orderNumber,
+          date: new Date().toLocaleDateString('ar-EG'),
+          total: total - discount + shippingCost,
+          status: 'قيد التجهيز',
+        });
         localStorage.setItem(key, JSON.stringify(existing));
       } catch {}
     }
@@ -421,15 +438,25 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
   }
 
   if (orderPlaced) {
-    const finalTotal = total - discount + (shippingCurrency === currency ? shippingCost : 0);
-    const payLabel = payMethod === 'cod' ? 'الدفع عند الاستلام'
-      : payMethod === 'card' ? `بطاقة تنتهي بـ ${cardForm.number.slice(-4)}`
-      : payMethod === 'vodafone' ? 'Vodafone Cash'
-      : payMethod === 'paypal' ? 'PayPal'
-      : 'InstaPay';
+    // Use snapshot values (cart was cleared after placing order)
+    const snap = snapshot ?? { items: [], total: 0, discount: 0, shippingCost: 0, shippingCurrency: currency, currency };
+    const snapTotal = snap.total;
+    const snapDiscount = snap.discount;
+    const snapShippingCost = snap.shippingCost;
+    const snapShippingCurrency = snap.shippingCurrency;
+    const snapCurrency = snap.currency;
+    const snapItems = snap.items;
+    const finalTotal = snapTotal - snapDiscount + (snapShippingCurrency === snapCurrency ? snapShippingCost : 0);
+    const payLabelSuccess = payMethod === 'cod'
+      ? (isRtl ? 'الدفع عند الاستلام' : 'Cash on Delivery')
+      : payMethod === 'card'
+        ? (isRtl ? `بطاقة تنتهي بـ ${cardForm.number.slice(-4)}` : `Card ending in ${cardForm.number.slice(-4)}`)
+        : payMethod === 'vodafone' ? 'Vodafone Cash'
+        : payMethod === 'paypal' ? 'PayPal'
+        : 'InstaPay';
 
     return (
-      <div className="max-w-xl mx-auto px-4 py-16 pt-28" dir="rtl">
+      <div className="max-w-xl mx-auto px-4 py-16 pt-28" dir={isRtl ? 'rtl' : 'ltr'}>
         {/* Success icon */}
         <div className="text-center mb-8">
           <div className="w-24 h-24 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-green-200">
@@ -437,43 +464,73 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h1 className="text-3xl font-black text-gray-900 mb-3">🎉 تم تأكيد طلبك!</h1>
+          <h1 className="text-3xl font-black text-gray-900 mb-3">🎉 {isRtl ? 'تم تأكيد طلبك!' : 'Order Confirmed!'}</h1>
           <p className="text-gray-600 text-base leading-relaxed max-w-sm mx-auto">
-            جزاك الله خيرًا على ثقتك بنا! طلبك وصلنا وسيتواصل معك فريقنا قريبًا لتأكيد التوصيل.
+            {isRtl
+              ? 'جزاك الله خيرًا على ثقتك بنا! طلبك وصلنا وسيتواصل معك فريقنا قريبًا لتأكيد التوصيل.'
+              : 'Thank you for your trust! Your order has been received and our team will contact you shortly to confirm delivery.'}
           </p>
         </div>
 
         {/* Motivational banner */}
         <div className="bg-gradient-to-l from-[#1a1a2e] to-[#2d1060] rounded-2xl px-6 py-5 mb-6 text-white text-center">
           <p className="text-xl mb-1">🌟</p>
-          <p className="font-black text-base mb-1">أنت تبني جيلًا واعيًا!</p>
-          <p className="text-white/70 text-sm">كل هدية من مسلم ليدر هي استثمار في مستقبل أطفالنا المسلمين</p>
+          <p className="font-black text-base mb-1">
+            {isRtl ? 'أنت تبني جيلًا واعيًا!' : 'You are raising a mindful generation!'}
+          </p>
+          <p className="text-white/70 text-sm">
+            {isRtl
+              ? 'كل هدية من مسلم ليدر هي استثمار في مستقبل أطفالنا المسلمين'
+              : 'Every Moslim Leader gift is an investment in the future of our Muslim children'}
+          </p>
         </div>
 
         {/* Invoice card */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
-          {/* Header */}
-          <div className="bg-gray-50 border-b border-gray-100 px-5 py-4 flex items-center justify-between">
+          {/* Brand header */}
+          <div className="bg-gradient-to-l from-[#1a1a2e] to-[#2d1060] px-5 py-4 flex items-center justify-between">
+            <Image
+              src="/white-Logo.webp"
+              alt="Moslim Leader"
+              width={120}
+              height={40}
+              className="h-10 w-auto"
+              unoptimized
+            />
+            <div className={isRtl ? 'text-left' : 'text-right'}>
+              <p className="text-[#F5C518] text-xs font-bold tracking-wide">
+                {isRtl ? 'تأكيد الطلب' : 'Order Confirmation'}
+              </p>
+              <p className="text-white/60 text-xs mt-0.5">
+                {new Date().toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB')}
+              </p>
+            </div>
+          </div>
+          {/* Order meta row */}
+          <div className="bg-gray-50 border-b border-gray-100 px-5 py-3 flex items-center justify-between">
             <div>
-              <p className="text-xs text-gray-400 font-semibold">رقم الطلب</p>
+              <p className="text-xs text-gray-400 font-semibold">{isRtl ? 'رقم الطلب' : 'Order No.'}</p>
               <p className="text-xl font-black text-gray-900">#{orderNumber}</p>
             </div>
-            <div className="text-left">
-              <p className="text-xs text-gray-400 font-semibold">التاريخ</p>
-              <p className="text-sm font-bold text-gray-700">{new Date().toLocaleDateString('ar-EG')}</p>
-            </div>
+            <span className="text-xs font-bold text-[#6B21A8] bg-purple-50 border border-purple-100 px-3 py-1.5 rounded-full">
+              {isRtl ? '✓ تم التأكيد' : '✓ Confirmed'}
+            </span>
           </div>
 
           {/* Items */}
           <div className="px-5 py-4 space-y-3 border-b border-gray-100">
-            <p className="text-xs font-black text-gray-500 uppercase tracking-wide mb-2">المنتجات</p>
-            {items.map(item => (
+            <p className="text-xs font-black text-gray-500 uppercase tracking-wide mb-2">
+              {isRtl ? 'المنتجات' : 'Items'}
+            </p>
+            {snapItems.map(item => (
               <div key={item.cartItemId} className="flex items-center gap-3">
                 <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gray-50 border border-gray-200 shrink-0">
                   <Image src={item.product.images[item.selectedModel ?? 0]} alt={item.product.name} fill className="object-cover" unoptimized />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900 truncate">{item.product.name}</p>
+                  <p className="text-sm font-bold text-gray-900 truncate">
+                    {isRtl ? item.product.name : (item.product.nameEn || item.product.name)}
+                  </p>
                   <p className="text-xs text-gray-400">{item.quantity} × {formatPrice(getProductPrice(item.product))}</p>
                 </div>
                 <p className="text-sm font-black text-gray-900 shrink-0">
@@ -486,48 +543,50 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
           {/* Totals */}
           <div className="px-5 py-4 space-y-2 text-sm">
             <div className="flex justify-between text-gray-500">
-              <span>المجموع الفرعي</span>
-              <span className="font-semibold text-gray-900">{total} {currency}</span>
+              <span>{isRtl ? 'المجموع الفرعي' : 'Subtotal'}</span>
+              <span className="font-semibold text-gray-900">{snapTotal} {snapCurrency}</span>
             </div>
-            {discount > 0 && (
+            {snapDiscount > 0 && (
               <div className="flex justify-between text-green-600">
-                <span>خصم ({coupon?.code})</span>
-                <span className="font-semibold">−{discount} {currency}</span>
+                <span>{isRtl ? `خصم (${coupon?.code})` : `Discount (${coupon?.code})`}</span>
+                <span className="font-semibold">−{snapDiscount} {snapCurrency}</span>
               </div>
             )}
             <div className="flex justify-between text-gray-500">
-              <span>الشحن</span>
+              <span>{isRtl ? 'الشحن' : 'Shipping'}</span>
               <span className="font-semibold text-gray-900">
-                {shippingCost > 0 ? `${shippingCost} ${shippingCurrency}` : 'مجاني'}
+                {snapShippingCost > 0 ? `${snapShippingCost} ${snapShippingCurrency}` : (isRtl ? 'مجاني' : 'Free')}
               </span>
             </div>
-            {shippingCurrency === currency && (
+            {snapShippingCurrency === snapCurrency && (
               <div className="flex justify-between border-t pt-2 font-black text-base">
-                <span className="text-gray-900">الإجمالي</span>
-                <span className="text-gray-900">{finalTotal} {currency}</span>
+                <span className="text-gray-900">{isRtl ? 'الإجمالي' : 'Total'}</span>
+                <span className="text-gray-900">{finalTotal} {snapCurrency}</span>
               </div>
             )}
             <div className="flex justify-between text-gray-500 pt-1">
-              <span>طريقة الدفع</span>
-              <span className="font-semibold text-gray-800">{payLabel}</span>
+              <span>{isRtl ? 'طريقة الدفع' : 'Payment'}</span>
+              <span className="font-semibold text-gray-800">{payLabelSuccess}</span>
             </div>
           </div>
 
           {/* Address */}
           <div className="bg-gray-50 border-t border-gray-100 px-5 py-3">
-            <p className="text-xs font-black text-gray-500 mb-1">عنوان التوصيل</p>
+            <p className="text-xs font-black text-gray-500 mb-1">{isRtl ? 'عنوان التوصيل' : 'Delivery Address'}</p>
             <p className="text-sm text-gray-700 font-semibold">{fullName} · {COUNTRY_DIAL_CODES[address.country] || COUNTRY_DIAL_CODES['EG']} {address.phone}</p>
             <p className="text-xs text-gray-500">
               {address.street}{address.building ? '، ' + address.building : ''}, {address.city}
-              {address.region ? `، ${address.region}` : ''}
-              {shippingType === 'local' && govObj ? `, ${govObj.name}` : ''}
-              {shippingType === 'international' && countryObj ? `, ${countryObj.nameAr}` : ''}
+              {address.region ? `, ${address.region}` : ''}
+              {shippingType === 'local' && govObj ? `, ${isRtl ? govObj.name : govObj.nameEn}` : ''}
+              {shippingType === 'international' && countryObj ? `, ${isRtl ? countryObj.nameAr : countryObj.nameEn}` : ''}
             </p>
           </div>
         </div>
 
         <div className="text-center space-y-3">
-          <p className="text-xs text-gray-400">📩 تم إرسال تأكيد الطلب إلى فريقنا وسنتواصل معك قريبًا</p>
+          <p className="text-xs text-gray-400">
+            📩 {isRtl ? 'تم إرسال تأكيد الطلب إلى فريقنا وسنتواصل معك قريبًا' : 'Order confirmation sent to our team — we will contact you soon'}
+          </p>
           <Link href="/" className="inline-block bg-gray-900 hover:bg-gray-700 text-white font-bold px-10 py-3.5 rounded-xl transition text-sm">
             {L.continueShopping}
           </Link>
@@ -581,7 +640,7 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
                   <p className="text-sm font-black text-gray-900">
                     {shippingType === 'local' ? L.localShipping : L.intlShipping}
                   </p>
-                  <p className="text-xs text-gray-500">{zoneInfo.label}</p>
+                  <p className="text-xs text-gray-500">{isRtl ? zoneInfo.label : zoneInfo.labelEn}</p>
                 </div>
               </div>
 
@@ -634,8 +693,12 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
               {shippingType === 'international' && !intlConfig.enabled && (
                 <div className="mb-4 bg-red-50 border-2 border-red-200 rounded-xl px-4 py-4 text-center">
                   <p className="text-2xl mb-1">⛔</p>
-                  <p className="font-black text-red-700 text-sm">الشحن الدولي غير متاح حاليًا</p>
-                  <p className="text-xs text-red-500 mt-1">يرجى التواصل معنا مباشرة للاستفسار عن الشحن خارج مصر</p>
+                  <p className="font-black text-red-700 text-sm">
+                    {isRtl ? 'الشحن الدولي غير متاح حاليًا' : 'International shipping is currently unavailable'}
+                  </p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {isRtl ? 'يرجى التواصل معنا مباشرة للاستفسار عن الشحن خارج مصر' : 'Please contact us directly for shipping outside Egypt'}
+                  </p>
                 </div>
               )}
 

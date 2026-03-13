@@ -7,6 +7,7 @@ import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LanguageContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
+import { COUNTRY_CURRENCIES } from '@/lib/geo-pricing';
 import { governorates, getShipping } from '@/lib/shipping';
 import {
   COUNTRIES,
@@ -129,7 +130,7 @@ export default function CheckoutPage() {
   const { items, coupon, clear } = useCart();
   const { user } = useAuth();
   const { lang } = useLang();
-  const { getProductPrice, getCartRegionalTotal, formatPrice, zoneInfo, countryCode } = useRegionalPricing();
+  const { getProductPrice, getCartRegionalTotal, formatPrice, zoneInfo, countryCode, setCountry } = useRegionalPricing();
   const isRtl = lang === 'ar';
 
   const { total, currency } = getCartRegionalTotal(items);
@@ -192,8 +193,14 @@ export default function CheckoutPage() {
   } else if (shippingType === 'international' && address.country) {
     intlShippingResult = calculateIntlShipping(totalWeightKg, address.country, intlConfig);
     if (intlShippingResult.ok) {
-      shippingCost = intlShippingResult.amount;
-      shippingCurrency = intlShippingResult.currency;
+      const localCurr = COUNTRY_CURRENCIES[address.country.toUpperCase()];
+      if (localCurr && localCurr.currencyEn !== 'USD') {
+        shippingCost = Math.round(intlShippingResult.amount * localCurr.usdRate * 10) / 10;
+        shippingCurrency = localCurr.currency;
+      } else {
+        shippingCost = intlShippingResult.amount;
+        shippingCurrency = intlShippingResult.currency;
+      }
     }
   }
 
@@ -569,7 +576,11 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.country} *</label>
                     <select value={address.country}
-                      onChange={e => setAddress(a => ({ ...a, country: e.target.value }))}
+                      onChange={e => {
+                        const code = e.target.value;
+                        setAddress(a => ({ ...a, country: code }));
+                        if (code) setCountry(code);
+                      }}
                       className={inputClass(errors.country) + ' bg-white cursor-pointer'}>
                       <option value="">{L.selectCountry}</option>
                       {COUNTRIES.filter(c => c.code !== 'EG').map(c => (
@@ -591,7 +602,7 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
                             <p className="text-xs text-gray-400 mt-0.5">{intlShippingResult.zoneName}</p>
                           </div>
                           <p className="font-black text-lg text-gray-900">
-                            {intlShippingResult.amount} {intlShippingResult.currency}
+                            {shippingCost} {shippingCurrency}
                           </p>
                         </div>
                       ) : (

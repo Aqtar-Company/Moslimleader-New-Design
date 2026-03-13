@@ -12,7 +12,7 @@ import { ZONES, PricingZone } from '@/lib/geo-pricing';
 
 const iconBtn = 'relative flex items-center justify-center w-10 h-10 border-2 border-white/70 rounded-lg hover:bg-white/20 transition text-white';
 
-const ZONE_OPTIONS: PricingZone[] = ['egypt', 'saudi', 'world'];
+const ZONE_OPTIONS: PricingZone[] = ['egypt', 'world'];
 
 export default function Header() {
   const { lang, toggleLang } = useLang();

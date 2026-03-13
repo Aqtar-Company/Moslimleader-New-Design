@@ -34,11 +34,76 @@ interface CardForm {
 
 const EMPTY_ADDR: AddressForm = { fullName: '', phone: '', governorate: '', city: '', street: '', building: '', notes: '', country: '' };
 
-const SAUDI_REGIONS = [
-  'الرياض', 'مكة المكرمة', 'المدينة المنورة', 'القصيم',
-  'المنطقة الشرقية', 'عسير', 'تبوك', 'حائل',
-  'الحدود الشمالية', 'جازان', 'نجران', 'الباحة', 'الجوف',
-];
+// Regions for countries that have standard administrative divisions
+const COUNTRY_REGIONS: Record<string, { ar: string; en: string }[]> = {
+  SA: [
+    { ar: 'الرياض', en: 'Riyadh' }, { ar: 'مكة المكرمة', en: 'Makkah' },
+    { ar: 'المدينة المنورة', en: 'Madinah' }, { ar: 'القصيم', en: 'Qassim' },
+    { ar: 'المنطقة الشرقية', en: 'Eastern Province' }, { ar: 'عسير', en: 'Asir' },
+    { ar: 'تبوك', en: 'Tabuk' }, { ar: 'حائل', en: 'Hail' },
+    { ar: 'الحدود الشمالية', en: 'Northern Borders' }, { ar: 'جازان', en: 'Jazan' },
+    { ar: 'نجران', en: 'Najran' }, { ar: 'الباحة', en: 'Al Bahah' }, { ar: 'الجوف', en: 'Al Jawf' },
+  ],
+  AE: [
+    { ar: 'أبوظبي', en: 'Abu Dhabi' }, { ar: 'دبي', en: 'Dubai' },
+    { ar: 'الشارقة', en: 'Sharjah' }, { ar: 'عجمان', en: 'Ajman' },
+    { ar: 'رأس الخيمة', en: 'Ras Al Khaimah' }, { ar: 'الفجيرة', en: 'Fujairah' },
+    { ar: 'أم القيوين', en: 'Umm Al Quwain' },
+  ],
+  KW: [
+    { ar: 'العاصمة', en: 'Capital' }, { ar: 'حولي', en: 'Hawalli' },
+    { ar: 'الفروانية', en: 'Farwaniya' }, { ar: 'مبارك الكبير', en: 'Mubarak Al-Kabeer' },
+    { ar: 'الأحمدي', en: 'Ahmadi' }, { ar: 'الجهراء', en: 'Jahra' },
+  ],
+  QA: [
+    { ar: 'الدوحة', en: 'Doha' }, { ar: 'الريان', en: 'Al Rayyan' },
+    { ar: 'الوكرة', en: 'Al Wakrah' }, { ar: 'الخور', en: 'Al Khor' },
+    { ar: 'الشمال', en: 'Al Shamal' }, { ar: 'الضعاين', en: 'Al Daayen' },
+  ],
+  BH: [
+    { ar: 'المنامة', en: 'Manama' }, { ar: 'المحرق', en: 'Muharraq' },
+    { ar: 'الوسطى', en: 'Central' }, { ar: 'الشمالية', en: 'Northern' },
+    { ar: 'الجنوبية', en: 'Southern' },
+  ],
+  OM: [
+    { ar: 'مسقط', en: 'Muscat' }, { ar: 'ظفار', en: 'Dhofar' },
+    { ar: 'مسندم', en: 'Musandam' }, { ar: 'البريمي', en: 'Al Buraymi' },
+    { ar: 'الداخلية', en: 'Al Dakhiliyah' }, { ar: 'شمال الباطنة', en: 'North Al Batinah' },
+    { ar: 'جنوب الباطنة', en: 'South Al Batinah' }, { ar: 'الشرقية الشمالية', en: 'North Al Sharqiyah' },
+    { ar: 'الشرقية الجنوبية', en: 'South Al Sharqiyah' }, { ar: 'الوسطى', en: 'Al Wusta' },
+  ],
+  JO: [
+    { ar: 'عمان', en: 'Amman' }, { ar: 'إربد', en: 'Irbid' }, { ar: 'الزرقاء', en: 'Zarqa' },
+    { ar: 'العقبة', en: 'Aqaba' }, { ar: 'المفرق', en: 'Mafraq' }, { ar: 'الكرك', en: 'Karak' },
+    { ar: 'جرش', en: 'Jerash' }, { ar: 'مأدبا', en: 'Madaba' }, { ar: 'عجلون', en: 'Ajloun' },
+    { ar: 'الطفيلة', en: 'Tafilah' }, { ar: 'معان', en: "Ma'an" }, { ar: 'البلقاء', en: 'Balqa' },
+  ],
+  GB: [
+    { ar: 'إنجلترا', en: 'England' }, { ar: 'اسكتلندا', en: 'Scotland' },
+    { ar: 'ويلز', en: 'Wales' }, { ar: 'أيرلندا الشمالية', en: 'Northern Ireland' },
+  ],
+  US: [
+    { ar: 'نيويورك', en: 'New York' }, { ar: 'كاليفورنيا', en: 'California' },
+    { ar: 'تكساس', en: 'Texas' }, { ar: 'فلوريدا', en: 'Florida' },
+    { ar: 'إلينوي', en: 'Illinois' }, { ar: 'بنسلفانيا', en: 'Pennsylvania' },
+    { ar: 'أوهايو', en: 'Ohio' }, { ar: 'جورجيا', en: 'Georgia' },
+    { ar: 'ميشيغان', en: 'Michigan' }, { ar: 'ولاية نيوجيرسي', en: 'New Jersey' },
+    { ar: 'أخرى', en: 'Other' },
+  ],
+  CA: [
+    { ar: 'أونتاريو', en: 'Ontario' }, { ar: 'كيبيك', en: 'Quebec' },
+    { ar: 'كولومبيا البريطانية', en: 'British Columbia' }, { ar: 'ألبرتا', en: 'Alberta' },
+    { ar: 'أخرى', en: 'Other' },
+  ],
+  DE: [
+    { ar: 'برلين', en: 'Berlin' }, { ar: 'بافاريا', en: 'Bavaria' },
+    { ar: 'هامبورغ', en: 'Hamburg' }, { ar: 'أخرى', en: 'Other' },
+  ],
+  TR: [
+    { ar: 'إسطنبول', en: 'Istanbul' }, { ar: 'أنقرة', en: 'Ankara' },
+    { ar: 'إزمير', en: 'Izmir' }, { ar: 'أنطاليا', en: 'Antalya' }, { ar: 'أخرى', en: 'Other' },
+  ],
+};
 const EMPTY_CARD: CardForm = { number: '', name: '', expiry: '', cvv: '' };
 
 function StepDot({ n, current, done }: { n: number; current: boolean; done: boolean }) {
@@ -79,7 +144,7 @@ export default function CheckoutPage() {
     ...EMPTY_ADDR,
     fullName: user?.name || '',
     phone: user?.phone || '',
-    country: zoneInfo.zone === 'saudi' ? 'SA' : '',
+    country: '',
   });
   const [payMethod, setPayMethod] = useState<PayMethod>(
     zoneInfo.zone === 'egypt' ? 'cod' : 'card'
@@ -101,10 +166,7 @@ export default function CheckoutPage() {
       setShippingType('local');
     } else {
       setShippingType('international');
-      if (zoneInfo.zone === 'saudi') {
-        setAddress(a => ({ ...a, country: a.country || 'SA' }));
-      }
-      setPayMethod(p => (p === 'cod' || p === 'vodafone' || p === 'instapay') ? 'card' : p);
+setPayMethod(p => (p === 'cod' || p === 'vodafone' || p === 'instapay') ? 'card' : p);
     }
   }, [zoneInfo.zone]);
 
@@ -537,14 +599,16 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
-                    {address.country === 'SA' ? (isRtl ? 'المنطقة' : 'Region') : L.city} *
+                    {COUNTRY_REGIONS[address.country] ? (isRtl ? 'المنطقة / المحافظة' : 'Region / Province') : L.city} *
                   </label>
-                  {address.country === 'SA' ? (
+                  {COUNTRY_REGIONS[address.country] ? (
                     <select value={address.city}
                       onChange={e => setAddress(a => ({ ...a, city: e.target.value }))}
                       className={inputClass(errors.city) + ' bg-white cursor-pointer'}>
                       <option value="">{isRtl ? 'اختر المنطقة' : 'Select Region'}</option>
-                      {SAUDI_REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                      {COUNTRY_REGIONS[address.country].map(r => (
+                        <option key={r.en} value={isRtl ? r.ar : r.en}>{isRtl ? r.ar : r.en}</option>
+                      ))}
                     </select>
                   ) : (
                     <input type="text" value={address.city}

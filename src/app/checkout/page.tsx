@@ -487,16 +487,34 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
 
         {/* Invoice card */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
-          {/* Header */}
-          <div className="bg-gray-50 border-b border-gray-100 px-5 py-4 flex items-center justify-between">
+          {/* Brand header */}
+          <div className="bg-gradient-to-l from-[#1a1a2e] to-[#2d1060] px-5 py-4 flex items-center justify-between">
+            <Image
+              src="/white-Logo.webp"
+              alt="Moslim Leader"
+              width={120}
+              height={40}
+              className="h-10 w-auto"
+              unoptimized
+            />
+            <div className={isRtl ? 'text-left' : 'text-right'}>
+              <p className="text-[#F5C518] text-xs font-bold tracking-wide">
+                {isRtl ? 'تأكيد الطلب' : 'Order Confirmation'}
+              </p>
+              <p className="text-white/60 text-xs mt-0.5">
+                {new Date().toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB')}
+              </p>
+            </div>
+          </div>
+          {/* Order meta row */}
+          <div className="bg-gray-50 border-b border-gray-100 px-5 py-3 flex items-center justify-between">
             <div>
               <p className="text-xs text-gray-400 font-semibold">{isRtl ? 'رقم الطلب' : 'Order No.'}</p>
               <p className="text-xl font-black text-gray-900">#{orderNumber}</p>
             </div>
-            <div className={isRtl ? 'text-left' : 'text-right'}>
-              <p className="text-xs text-gray-400 font-semibold">{isRtl ? 'التاريخ' : 'Date'}</p>
-              <p className="text-sm font-bold text-gray-700">{new Date().toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB')}</p>
-            </div>
+            <span className="text-xs font-bold text-[#6B21A8] bg-purple-50 border border-purple-100 px-3 py-1.5 rounded-full">
+              {isRtl ? '✓ تم التأكيد' : '✓ Confirmed'}
+            </span>
           </div>
 
           {/* Items */}

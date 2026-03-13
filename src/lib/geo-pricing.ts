@@ -1,5 +1,5 @@
 // ─── Pricing Zones ────────────────────────────────────────────────────────────
-// 2 zones only: Egypt (EGP) | International/World (USD)
+// 2 zones: Egypt (EGP) | World (USD base, converted to visitor's currency)
 
 export type PricingZone = 'egypt' | 'world';
 
@@ -18,6 +18,45 @@ export const ZONES: Record<PricingZone, ZoneInfo> = {
   world: { zone: 'world', currency: 'USD',  currencyAr: 'USD',  currencyEn: 'USD', label: 'دولي', labelEn: 'International', flag: '🌐' },
 };
 
+// ─── Country Currencies ───────────────────────────────────────────────────────
+// USD → local currency conversion (approximate fixed rates)
+
+export interface CountryCurrency {
+  currency: string;    // display symbol
+  currencyEn: string;  // ISO code
+  usdRate: number;     // 1 USD = X local
+  nameAr: string;
+  nameEn: string;
+  flag: string;
+}
+
+export const COUNTRY_CURRENCIES: Record<string, CountryCurrency> = {
+  // Gulf
+  SA: { currency: '﷼',   currencyEn: 'SAR', usdRate: 3.75,  nameAr: 'السعودية',   nameEn: 'Saudi Arabia', flag: '🇸🇦' },
+  AE: { currency: 'د.إ', currencyEn: 'AED', usdRate: 3.67,  nameAr: 'الإمارات',   nameEn: 'UAE',          flag: '🇦🇪' },
+  KW: { currency: 'د.ك', currencyEn: 'KWD', usdRate: 0.307, nameAr: 'الكويت',     nameEn: 'Kuwait',       flag: '🇰🇼' },
+  QA: { currency: 'ر.ق', currencyEn: 'QAR', usdRate: 3.64,  nameAr: 'قطر',        nameEn: 'Qatar',        flag: '🇶🇦' },
+  BH: { currency: 'د.ب', currencyEn: 'BHD', usdRate: 0.376, nameAr: 'البحرين',    nameEn: 'Bahrain',      flag: '🇧🇭' },
+  OM: { currency: 'ر.ع', currencyEn: 'OMR', usdRate: 0.385, nameAr: 'عُمان',       nameEn: 'Oman',         flag: '🇴🇲' },
+  // Arab
+  JO: { currency: 'د.أ', currencyEn: 'JOD', usdRate: 0.709, nameAr: 'الأردن',     nameEn: 'Jordan',       flag: '🇯🇴' },
+  LB: { currency: '$',   currencyEn: 'USD', usdRate: 1,     nameAr: 'لبنان',      nameEn: 'Lebanon',      flag: '🇱🇧' },
+  // International
+  US: { currency: '$',   currencyEn: 'USD', usdRate: 1,     nameAr: 'أمريكا',     nameEn: 'USA',          flag: '🇺🇸' },
+  GB: { currency: '£',   currencyEn: 'GBP', usdRate: 0.79,  nameAr: 'بريطانيا',   nameEn: 'UK',           flag: '🇬🇧' },
+  DE: { currency: '€',   currencyEn: 'EUR', usdRate: 0.92,  nameAr: 'ألمانيا',    nameEn: 'Germany',      flag: '🇩🇪' },
+  FR: { currency: '€',   currencyEn: 'EUR', usdRate: 0.92,  nameAr: 'فرنسا',      nameEn: 'France',       flag: '🇫🇷' },
+  CA: { currency: 'C$',  currencyEn: 'CAD', usdRate: 1.36,  nameAr: 'كندا',       nameEn: 'Canada',       flag: '🇨🇦' },
+  AU: { currency: 'A$',  currencyEn: 'AUD', usdRate: 1.55,  nameAr: 'أستراليا',   nameEn: 'Australia',    flag: '🇦🇺' },
+  TR: { currency: '₺',   currencyEn: 'TRY', usdRate: 36,    nameAr: 'تركيا',      nameEn: 'Turkey',       flag: '🇹🇷' },
+  // EU fallthrough
+  IT: { currency: '€',   currencyEn: 'EUR', usdRate: 0.92,  nameAr: 'إيطاليا',    nameEn: 'Italy',        flag: '🇮🇹' },
+  ES: { currency: '€',   currencyEn: 'EUR', usdRate: 0.92,  nameAr: 'إسبانيا',    nameEn: 'Spain',        flag: '🇪🇸' },
+  NL: { currency: '€',   currencyEn: 'EUR', usdRate: 0.92,  nameAr: 'هولندا',     nameEn: 'Netherlands',  flag: '🇳🇱' },
+  BE: { currency: '€',   currencyEn: 'EUR', usdRate: 0.92,  nameAr: 'بلجيكا',     nameEn: 'Belgium',      flag: '🇧🇪' },
+  SE: { currency: 'kr',  currencyEn: 'SEK', usdRate: 10.3,  nameAr: 'السويد',     nameEn: 'Sweden',       flag: '🇸🇪' },
+};
+
 const COUNTRY_ZONE_MAP: Record<string, PricingZone> = {
   EG: 'egypt',
 };
@@ -28,12 +67,12 @@ export function countryToZone(countryCode: string): PricingZone {
 
 // ─── Geo Detection ────────────────────────────────────────────────────────────
 
-export async function detectZone(): Promise<PricingZone> {
+export async function detectCountry(): Promise<string | null> {
   try {
     const res = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(4000) });
     if (res.ok) {
       const data = await res.json();
-      if (data.country_code) return countryToZone(data.country_code);
+      if (data.country_code) return data.country_code as string;
     }
   } catch {}
 
@@ -41,15 +80,19 @@ export async function detectZone(): Promise<PricingZone> {
     const res = await fetch('https://ip-api.com/json/?fields=countryCode', { signal: AbortSignal.timeout(4000) });
     if (res.ok) {
       const data = await res.json();
-      if (data.countryCode) return countryToZone(data.countryCode);
+      if (data.countryCode) return data.countryCode as string;
     }
   } catch {}
 
-  return 'egypt';
+  return null;
+}
+
+export async function detectZone(): Promise<PricingZone> {
+  const code = await detectCountry();
+  return code ? countryToZone(code) : 'egypt';
 }
 
 // ─── Regional Pricing Config ──────────────────────────────────────────────────
-// Only manual prices — no formula fallback, no rounding tricks
 
 export interface RegionalPricing {
   price_egp_manual?: number;
@@ -68,14 +111,21 @@ export interface PriceResult {
   isManual: boolean;
 }
 
-// Fixed internal conversion factor (not exposed to admin)
-// USD: ~5× exchange rate — pricing suited for international market
+// Fixed EGP→USD fallback factor
 const USD_FACTOR = 0.10;
+
+function smartRound(price: number): number {
+  if (price >= 100) return Math.round(price);
+  if (price >= 10)  return Math.round(price * 10) / 10;
+  if (price >= 1)   return Math.round(price * 100) / 100;
+  return Math.round(price * 1000) / 1000;
+}
 
 export function resolvePrice(
   baseEgpPrice: number,
   zone: PricingZone,
   pricing: RegionalPricing | null | undefined,
+  countryCode?: string | null,
 ): PriceResult {
   const p = pricing ?? {};
   const egpBase = (p.price_egp_manual && p.price_egp_manual > 0) ? p.price_egp_manual : baseEgpPrice;
@@ -88,14 +138,25 @@ export function resolvePrice(
     };
   }
 
-  // world
-  if (p.price_usd_manual && p.price_usd_manual > 0) {
-    return { price: p.price_usd_manual, currency: 'USD', currencyEn: 'USD', zone, isManual: true };
+  // world: get USD base first
+  const usdPrice = (p.price_usd_manual && p.price_usd_manual > 0)
+    ? p.price_usd_manual
+    : Math.round(egpBase * USD_FACTOR);
+  const isManual = !!(p.price_usd_manual && p.price_usd_manual > 0);
+
+  // Convert USD → country's local currency
+  const cc = countryCode ? COUNTRY_CURRENCIES[countryCode.toUpperCase()] : null;
+  if (cc) {
+    return {
+      price: smartRound(usdPrice * cc.usdRate),
+      currency: cc.currency,
+      currencyEn: cc.currencyEn,
+      zone,
+      isManual,
+    };
   }
-  return {
-    price: Math.round(egpBase * USD_FACTOR),
-    currency: 'USD', currencyEn: 'USD', zone, isManual: false,
-  };
+
+  return { price: usdPrice, currency: 'USD', currencyEn: 'USD', zone, isManual };
 }
 
 // ─── Preview helper (for admin dashboard) ─────────────────────────────────────

@@ -129,7 +129,7 @@ export default function CheckoutPage() {
   const { items, coupon, clear } = useCart();
   const { user } = useAuth();
   const { lang } = useLang();
-  const { getProductPrice, getCartRegionalTotal, formatPrice, zoneInfo } = useRegionalPricing();
+  const { getProductPrice, getCartRegionalTotal, formatPrice, zoneInfo, countryCode } = useRegionalPricing();
   const isRtl = lang === 'ar';
 
   const { total, currency } = getCartRegionalTotal(items);
@@ -160,15 +160,19 @@ export default function CheckoutPage() {
     setIntlConfig(getIntlShippingConfig());
   }, []);
 
-  // Sync shipping type when zone detection completes
+  // Sync shipping type + pre-fill country when zone/country detection completes
   useEffect(() => {
     if (zoneInfo.zone === 'egypt') {
       setShippingType('local');
     } else {
       setShippingType('international');
-setPayMethod(p => (p === 'cod' || p === 'vodafone' || p === 'instapay') ? 'card' : p);
+      setPayMethod(p => (p === 'cod' || p === 'vodafone' || p === 'instapay') ? 'card' : p);
+      // Pre-fill country from detected/selected country code
+      if (countryCode && countryCode !== 'EG') {
+        setAddress(a => ({ ...a, country: a.country || countryCode }));
+      }
     }
-  }, [zoneInfo.zone]);
+  }, [zoneInfo.zone, countryCode]);
 
   // Total weight in kg
   const totalWeightGrams = items.reduce((sum, item) => sum + item.product.weight * item.quantity, 0);

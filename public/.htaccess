@@ -5,9 +5,12 @@
 Options -Indexes
 DirectoryIndex index.html
 
-# ── Routing: Next.js pages ─────────────────────────────────────
+# ── Force HTTPS ────────────────────────────────────────────────
 RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
+# ── Routing: Next.js pages ─────────────────────────────────────
 # لا تُعيد كتابة الملفات أو المجلدات الموجودة
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

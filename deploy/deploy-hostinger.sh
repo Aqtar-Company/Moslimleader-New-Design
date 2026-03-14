@@ -3,70 +3,62 @@
 # deploy-hostinger.sh — رفع الموقع على Hostinger عبر FTP
 # ══════════════════════════════════════════════════════════════
 #
-# المتطلبات على جهازك:
-#   Linux/Mac: sudo apt install lftp  أو  brew install lftp
-#   Windows:   استخدم FileZilla يدوياً (اقرأ DEPLOYMENT-STEPS-HOSTINGER.txt)
+# المتطلبات:
+#   Linux/Mac/WSL: sudo apt install lftp
+#   Windows:       استخدم FileZilla (راجع DEPLOYMENT-STEPS-HOSTINGER.txt)
 #
-# قبل التشغيل:
-#   1. عدّل المتغيرات أدناه (FTP_USER, FTP_PASS)
-#   2. شغّل: chmod +x deploy/deploy-hostinger.sh && ./deploy/deploy-hostinger.sh
+# التشغيل:
+#   chmod +x deploy/deploy-hostinger.sh
+#   ./deploy/deploy-hostinger.sh
 # ══════════════════════════════════════════════════════════════
 
-# ── إعدادات Hostinger FTP ──────────────────────────────────────
-FTP_SERVER="ftp.moslimleader.com"
-FTP_USER="YOUR_FTP_USERNAME"    # ← من hPanel → Files → FTP Accounts
-FTP_PASS="YOUR_FTP_PASSWORD"    # ← كلمة مرور FTP
-REMOTE_DIR="/public_html"       # ← مجلد الموقع على Hostinger
-
-# ══════════════════════════════════════════════════════════════
+FTP_SERVER="217.196.54.78"
+FTP_USER="u460609394.moslimleader.com"
+FTP_PASS="Aqtar@FTP@5"
+REMOTE_DIR="/public_html"
+LOCAL_DIR="./out"
 
 # ── 1. Build ──────────────────────────────────────────────────
-echo "📦 Building Next.js static export..."
+echo "جاري البناء..."
 npm run build
 
 if [ $? -ne 0 ]; then
-  echo "❌ Build failed. Aborting."
+  echo "فشل البناء. تم الإيقاف."
   exit 1
 fi
-echo "✅ Build complete → ./out/"
+echo "تم البناء بنجاح → ./out/"
 
-# ── 2. Backup تحذير ───────────────────────────────────────────
-echo ""
-echo "⚠️  تحذير: هذا السكريبت سيحذف محتوى public_html/ الحالي (WordPress)"
-echo "   تأكد إنك أخذت backup من hPanel أولاً!"
-echo ""
-read -p "هل أخذت backup؟ (اكتب YES للمتابعة): " confirm
-if [ "$confirm" != "YES" ]; then
-  echo "❌ تم الإلغاء. خذ backup أولاً من hPanel → Backups"
+# ── 2. تحقق من وجود مجلد out ────────────────────────────────
+if [ ! -d "$LOCAL_DIR" ]; then
+  echo "مجلد out/ مش موجود!"
   exit 1
 fi
 
 # ── 3. Upload via FTP ─────────────────────────────────────────
 echo ""
-echo "🚀 رفع الملفات على Hostinger..."
+echo "جاري الرفع على Hostinger..."
 
 lftp -u "$FTP_USER","$FTP_PASS" "$FTP_SERVER" <<EOF
+set ftp:passive-mode yes
 set ftp:ssl-allow true
 set ssl:verify-certificate false
-set net:timeout 30
-set net:max-retries 3
+set net:timeout 60
+set net:max-retries 5
+set net:reconnect-interval-base 5
 
-# رفع كل محتوى out/ على public_html/
 mirror --reverse --delete --verbose \
   --exclude .git \
-  ./out/ $REMOTE_DIR/
+  --exclude .DS_Store \
+  $LOCAL_DIR/ $REMOTE_DIR/
 
 bye
 EOF
 
 if [ $? -ne 0 ]; then
-  echo "❌ FTP upload failed. تحقق من FTP credentials."
+  echo "فشل الرفع. تحقق من اتصال الإنترنت."
   exit 1
 fi
 
 echo ""
-echo "✅ تم الرفع بنجاح!"
-echo "🌐 افتح: https://moslimleader.com"
-echo ""
-echo "📌 إذا الصور مش ظاهرة:"
-echo "   تأكد إن صور المنتجات موجودة في /public_html/images/"
+echo "تم الرفع بنجاح!"
+echo "افتح: https://moslimleader.com"

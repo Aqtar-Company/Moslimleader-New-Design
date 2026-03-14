@@ -1,8 +1,9 @@
 'use client';
 
-import { createContext, useContext, useReducer, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useReducer, useEffect, useState, useRef, ReactNode } from 'react';
 import { CartItem, Product } from '@/types';
 import { DEFAULT_COUPONS } from '@/lib/admin-config';
+import { useAuth } from '@/context/AuthContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -50,7 +51,9 @@ function cartReducer(state: CartState, action: CartAction): CartState {
         return { items: newItems };
       }
       const cartItemId = makeCartItemId();
-      return { items: [...state.items, { cartItemId, product: action.product, quantity: action.qty, selectedModel: action.selectedModel }] };
+      return {
+        items: [...state.items, { cartItemId, product: action.product, quantity: action.qty, selectedModel: action.selectedModel }],
+      };
     }
     case 'REMOVE_ITEM':
       return { items: state.items.filter(i => i.cartItemId !== action.cartItemId) };
@@ -85,22 +88,112 @@ function getActiveCoupons(): Record<string, number> {
   return { ...DEFAULT_COUPONS };
 }
 
+// ─── API helpers ─────────────────────────────────────────────────────────────
+
+async function apiAddItem(productId: string, quantity: number, selectedModel?: number) {
+  await fetch('/api/cart', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ productId, quantity, selectedModel }),
+  });
+}
+
+async function apiRemoveItem(cartItemId: string) {
+  await fetch(`/api/cart/${cartItemId}`, { method: 'DELETE', credentials: 'include' });
+}
+
+async function apiUpdateQty(cartItemId: string, quantity: number) {
+  await fetch(`/api/cart/${cartItemId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ quantity }),
+  });
+}
+
+async function apiClearCart() {
+  await fetch('/api/cart', { method: 'DELETE', credentials: 'include' });
+}
+
+async function apiLoadCart(): Promise<CartItem[]> {
+  try {
+    const res = await fetch('/api/cart', { credentials: 'include' });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.items ?? [];
+  } catch {
+    return [];
+  }
+}
+
+// ─── Provider ─────────────────────────────────────────────────────────────────
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, { items: [] });
   const [coupon, setCoupon] = useState<{ code: string; pct: number } | null>(null);
+  const { user, isLoading: authLoading } = useAuth();
+  const prevUserId = useRef<string | null>(null);
 
+  // Load cart: from server if logged in, from localStorage if guest
   useEffect(() => {
+    if (authLoading) return;
+
+    if (user) {
+      // Logged in: load from server, then merge any guest items
+      const guestItems: CartItem[] = (() => {
+        try {
+          const raw = localStorage.getItem('ml-cart');
+          return raw ? JSON.parse(raw) : [];
+        } catch { return []; }
+      })();
+
+      apiLoadCart().then(serverItems => {
+        // Merge: server items take precedence, guest items added if not already present
+        const merged = [...serverItems];
+        guestItems.forEach(gItem => {
+          const alreadyIn = merged.some(
+            s => s.product.id === gItem.product.id && s.selectedModel === gItem.selectedModel
+          );
+          if (!alreadyIn) {
+            merged.push(gItem);
+            // Sync guest item to server
+            apiAddItem(gItem.product.id, gItem.quantity, gItem.selectedModel).catch(() => {});
+          }
+        });
+        dispatch({ type: 'LOAD', items: merged });
+        localStorage.removeItem('ml-cart'); // clear guest cart after merge
+      });
+
+      prevUserId.current = user.id;
+    } else {
+      // Guest: load from localStorage
+      if (prevUserId.current) {
+        // Just logged out — clear state
+        dispatch({ type: 'CLEAR' });
+        prevUserId.current = null;
+        return;
+      }
+      try {
+        const saved = localStorage.getItem('ml-cart');
+        if (saved) dispatch({ type: 'LOAD', items: JSON.parse(saved) });
+      } catch {}
+    }
+
+    // Load coupon from localStorage
     try {
-      const saved = localStorage.getItem('ml-cart');
-      if (saved) dispatch({ type: 'LOAD', items: JSON.parse(saved) });
       const savedCoupon = localStorage.getItem('ml-coupon');
       if (savedCoupon) setCoupon(JSON.parse(savedCoupon));
     } catch {}
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, authLoading]);
 
+  // Persist to localStorage for guest users
   useEffect(() => {
-    localStorage.setItem('ml-cart', JSON.stringify(state.items));
-  }, [state.items]);
+    if (!user) {
+      try { localStorage.setItem('ml-cart', JSON.stringify(state.items)); } catch {}
+    }
+  }, [state.items, user]);
 
   const total = state.items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
   const totalItems = state.items.reduce((sum, i) => sum + i.quantity, 0);
@@ -122,6 +215,39 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try { localStorage.removeItem('ml-coupon'); } catch {}
   }
 
+  function addItem(product: Product, selectedModel?: number, qty = 1) {
+    dispatch({ type: 'ADD_ITEM', product, selectedModel, qty });
+    if (user) {
+      apiAddItem(product.id, qty, selectedModel).catch(() => {});
+    }
+  }
+
+  function removeItem(cartItemId: string) {
+    dispatch({ type: 'REMOVE_ITEM', cartItemId });
+    if (user) {
+      apiRemoveItem(cartItemId).catch(() => {});
+    }
+  }
+
+  function updateQty(cartItemId: string, quantity: number) {
+    dispatch({ type: 'UPDATE_QTY', cartItemId, quantity });
+    if (user) {
+      if (quantity <= 0) {
+        apiRemoveItem(cartItemId).catch(() => {});
+      } else {
+        apiUpdateQty(cartItemId, quantity).catch(() => {});
+      }
+    }
+  }
+
+  function clear() {
+    dispatch({ type: 'CLEAR' });
+    removeCoupon();
+    if (user) {
+      apiClearCart().catch(() => {});
+    }
+  }
+
   return (
     <CartContext.Provider value={{
       items: state.items,
@@ -131,10 +257,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       discount,
       applyCoupon,
       removeCoupon,
-      addItem: (product, selectedModel, qty = 1) => dispatch({ type: 'ADD_ITEM', product, selectedModel, qty }),
-      removeItem: (cartItemId) => dispatch({ type: 'REMOVE_ITEM', cartItemId }),
-      updateQty: (cartItemId, quantity) => dispatch({ type: 'UPDATE_QTY', cartItemId, quantity }),
-      clear: () => { dispatch({ type: 'CLEAR' }); removeCoupon(); },
+      addItem,
+      removeItem,
+      updateQty,
+      clear,
     }}>
       {children}
     </CartContext.Provider>

@@ -375,19 +375,33 @@ export default function CheckoutPage() {
     // Capture snapshot BEFORE clearing cart
     setSnapshot({ items: [...items], total, discount, shippingCost, shippingCurrency, currency });
     clear();
-    // Save order to localStorage (always use Arabic status keys for dashboard compatibility)
+    // Save order to database via API
     if (user) {
       try {
-        const key = `ml_orders_${user.id}`;
-        const existing = JSON.parse(localStorage.getItem(key) || '[]');
-        existing.unshift({
-          id: orderNumber,
-          date: new Date().toLocaleDateString('ar-EG'),
-          total: total - discount + shippingCost,
-          status: 'قيد التجهيز',
+        await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            items: items.map(item => ({
+              productId: item.product.id,
+              quantity: item.quantity,
+              selectedModel: item.selectedModel,
+              unitPrice: getProductPrice(item.product).price,
+              productName: item.product.name,
+              productImage: item.product.images?.[0] ?? null,
+            })),
+            total: total - discount + shippingCost,
+            shippingCost,
+            discount,
+            couponCode: coupon?.code ?? null,
+            paymentMethod: payMethod,
+            shippingAddress: address,
+            notes: address.notes,
+            currency,
+          }),
         });
-        localStorage.setItem(key, JSON.stringify(existing));
-      } catch {}
+      } catch { /* DB failure shouldn't block order confirmation */ }
     }
 
     // Send order notification email

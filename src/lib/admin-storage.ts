@@ -125,8 +125,9 @@ export function getUserOrders(userId: string): AdminOrder[] {
     let userName = '';
     let userEmail = '';
     if (userRaw) {
-      const users = JSON.parse(userRaw);
-      const found = Object.values(users).find((u: any) => u.user.id === userId) as any;
+      type UserEntry = { password: string; user: { id: string; name: string; email: string; phone?: string } };
+      const users: Record<string, UserEntry> = JSON.parse(userRaw);
+      const found = Object.values(users).find(u => u.user.id === userId);
       if (found) { userName = found.user.name; userEmail = found.user.email; }
     }
     const statusOverrides = getOrderStatusOverrides();

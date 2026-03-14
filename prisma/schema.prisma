@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String   @id @default(cuid())
+  name           String
+  email          String   @unique
+  passwordHash   String
+  phone          String?
+  role           String   @default("customer")
+  savedAddresses Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  orders  Order[]
+  cart    Cart?
+  reviews Review[]
+}
+
+model Product {
+  id                 String   @id @default(cuid())
+  slug               String   @unique
+  name               String
+  nameEn             String?
+  shortDescription   String   @db.Text
+  shortDescriptionEn String?  @db.Text
+  description        String   @db.LongText
+  descriptionEn      String?  @db.LongText
+  price              Float
+  category           String
+  subcategory        String?
+  variants           Json?
+  tags               Json
+  images             Json
+  inStock            Boolean  @default(true)
+  featured           Boolean  @default(false)
+  videos             Json?
+  weight             Float    @default(0)
+  regionalPricing    Json?
+  source             String   @default("static")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  orderItems OrderItem[]
+  cartItems  CartItem[]
+  reviews    Review[]
+}
+
+model Order {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  status          String   @default("pending")
+  total           Float
+  shippingCost    Float    @default(0)
+  discount        Float    @default(0)
+  couponCode      String?
+  paymentMethod   String
+  shippingAddress Json
+  notes           String?  @db.Text
+  currency        String   @default("EGP")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  items OrderItem[]
+}
+
+model OrderItem {
+  id            String  @id @default(cuid())
+  orderId       String
+  order         Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product @relation(fields: [productId], references: [id])
+  productName   String
+  productImage  String?
+  quantity      Int
+  unitPrice     Float
+  selectedModel Int?
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Cart {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  updatedAt DateTime @updatedAt
+
+  items CartItem[]
+}
+
+model CartItem {
+  id            String  @id @default(cuid())
+  cartId        String
+  cart          Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product @relation(fields: [productId], references: [id])
+  quantity      Int
+  selectedModel Int?
+
+  @@index([cartId])
+}
+
+model ShippingRate {
+  id            String   @id @default(cuid())
+  governorateId String   @unique
+  rate          Float
+  updatedAt     DateTime @updatedAt
+}
+
+model Coupon {
+  code      String   @id
+  discount  Float
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  author    String
+  rating    Int
+  comment   String   @db.Text
+  commentEn String?  @db.Text
+  verified  Boolean  @default(false)
+  approved  Boolean  @default(true)
+  date      DateTime @default(now())
+
+  @@index([productId])
+}

@@ -24,7 +24,7 @@ type ShippingType = 'local' | 'international';
 
 interface AddressForm {
   firstName: string; lastName: string;
-  phone: string; whatsappSame: boolean;
+  phone: string; whatsappSame: boolean; whatsappNumber: string;
   governorate: string;
   region: string;    // region/emirate (from COUNTRY_REGIONS)
   city: string; street: string; building: string; notes: string;
@@ -36,7 +36,7 @@ interface CardForm {
 }
 
 const EMPTY_ADDR: AddressForm = {
-  firstName: '', lastName: '', phone: '', whatsappSame: true,
+  firstName: '', lastName: '', phone: '', whatsappSame: true, whatsappNumber: '',
   governorate: '', region: '', city: '', street: '', building: '', notes: '', country: '',
 };
 
@@ -47,6 +47,27 @@ const COUNTRY_DIAL_CODES: Record<string, string> = {
   GB:'+44', DE:'+49', FR:'+33', IT:'+39', ES:'+34', NL:'+31', TR:'+90',
   US:'+1', CA:'+1', AU:'+61', SE:'+46', BE:'+32', NO:'+47', DK:'+45',
   IN:'+91', PK:'+92', NG:'+234', GH:'+233', KE:'+254', ZA:'+27',
+};
+
+// Capital city per country (for city field placeholder)
+const COUNTRY_CAPITALS: Record<string, { ar: string; en: string }> = {
+  EG: { ar: 'القاهرة', en: 'Cairo' }, SA: { ar: 'الرياض', en: 'Riyadh' },
+  AE: { ar: 'دبي', en: 'Dubai' }, KW: { ar: 'الكويت', en: 'Kuwait City' },
+  QA: { ar: 'الدوحة', en: 'Doha' }, BH: { ar: 'المنامة', en: 'Manama' },
+  OM: { ar: 'مسقط', en: 'Muscat' }, JO: { ar: 'عمّان', en: 'Amman' },
+  LB: { ar: 'بيروت', en: 'Beirut' }, IQ: { ar: 'بغداد', en: 'Baghdad' },
+  PS: { ar: 'رام الله', en: 'Ramallah' }, MA: { ar: 'الدار البيضاء', en: 'Casablanca' },
+  TN: { ar: 'تونس', en: 'Tunis' }, DZ: { ar: 'الجزائر', en: 'Algiers' },
+  GB: { ar: 'لندن', en: 'London' }, DE: { ar: 'برلين', en: 'Berlin' },
+  FR: { ar: 'باريس', en: 'Paris' }, IT: { ar: 'روما', en: 'Rome' },
+  ES: { ar: 'مدريد', en: 'Madrid' }, NL: { ar: 'أمستردام', en: 'Amsterdam' },
+  TR: { ar: 'أنقرة', en: 'Ankara' }, US: { ar: 'نيويورك', en: 'New York' },
+  CA: { ar: 'تورنتو', en: 'Toronto' }, AU: { ar: 'سيدني', en: 'Sydney' },
+  SE: { ar: 'ستوكهولم', en: 'Stockholm' }, BE: { ar: 'بروكسل', en: 'Brussels' },
+  NO: { ar: 'أوسلو', en: 'Oslo' }, DK: { ar: 'كوبنهاغن', en: 'Copenhagen' },
+  IN: { ar: 'مومباي', en: 'Mumbai' }, PK: { ar: 'كراتشي', en: 'Karachi' },
+  NG: { ar: 'لاغوس', en: 'Lagos' }, GH: { ar: 'أكرا', en: 'Accra' },
+  KE: { ar: 'نيروبي', en: 'Nairobi' }, ZA: { ar: 'جوهانسبرغ', en: 'Johannesburg' },
 };
 
 // Estimated delivery days per shipping zone
@@ -269,6 +290,7 @@ export default function CheckoutPage() {
     whatsappQ: isRtl ? 'هل رقم WhatsApp هو نفسه رقم الجوال؟' : 'Is WhatsApp the same as phone?',
     whatsappYes: isRtl ? 'نعم' : 'Yes',
     whatsappNo: isRtl ? 'لا' : 'No',
+    whatsappNumberLabel: isRtl ? 'رقم واتساب' : 'WhatsApp Number',
     regionLabel: isRtl ? 'المنطقة / الإمارة' : 'Region / Emirate',
     cityLabel: isRtl ? 'المدينة / المحافظة' : 'City / Province',
     streetLabel: isRtl ? 'الشارع، العناوين' : 'Street, Address',
@@ -324,6 +346,7 @@ export default function CheckoutPage() {
     if (!address.firstName.trim()) e.firstName = L.required;
     if (!address.lastName.trim()) e.lastName = L.required;
     if (!address.phone.trim()) e.phone = L.required;
+    if (!address.whatsappSame && !address.whatsappNumber.trim()) e.whatsappNumber = L.required;
     if (!address.street.trim()) e.street = L.required;
     if (shippingType === 'local' && !address.governorate) e.governorate = L.required;
     if (shippingType === 'international' && !address.country) e.country = L.required;
@@ -352,19 +375,33 @@ export default function CheckoutPage() {
     // Capture snapshot BEFORE clearing cart
     setSnapshot({ items: [...items], total, discount, shippingCost, shippingCurrency, currency });
     clear();
-    // Save order to localStorage (always use Arabic status keys for dashboard compatibility)
+    // Save order to database via API
     if (user) {
       try {
-        const key = `ml_orders_${user.id}`;
-        const existing = JSON.parse(localStorage.getItem(key) || '[]');
-        existing.unshift({
-          id: orderNumber,
-          date: new Date().toLocaleDateString('ar-EG'),
-          total: total - discount + shippingCost,
-          status: 'قيد التجهيز',
+        await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            items: items.map(item => ({
+              productId: item.product.id,
+              quantity: item.quantity,
+              selectedModel: item.selectedModel,
+              unitPrice: getProductPrice(item.product).price,
+              productName: item.product.name,
+              productImage: item.product.images?.[0] ?? null,
+            })),
+            total: total - discount + shippingCost,
+            shippingCost,
+            discount,
+            couponCode: coupon?.code ?? null,
+            paymentMethod: payMethod,
+            shippingAddress: address,
+            notes: address.notes,
+            currency,
+          }),
         });
-        localStorage.setItem(key, JSON.stringify(existing));
-      } catch {}
+      } catch { /* DB failure shouldn't block order confirmation */ }
     }
 
     // Send order notification email
@@ -389,7 +426,7 @@ export default function CheckoutPage() {
 
 العميل: ${fullName}
 الهاتف: ${dialCode} ${address.phone}
-واتساب: ${address.whatsappSame ? 'نفس رقم الهاتف' : 'مختلف'}
+واتساب: ${address.whatsappSame ? 'نفس رقم الهاتف' : address.whatsappNumber}
 العنوان: ${addressLine}
 
 المنتجات:
@@ -410,7 +447,7 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
           order_number: orderNumber,
           customer_name: fullName,
           customer_phone: `${dialCode} ${address.phone}`,
-          whatsapp: address.whatsappSame ? 'Same as phone' : 'Different',
+          whatsapp: address.whatsappSame ? 'Same as phone' : address.whatsappNumber,
           address: addressLine,
           items: itemsList,
           subtotal: `${total} ${currency}`,
@@ -819,6 +856,20 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
                       <span className="text-sm font-semibold text-gray-800">{L.whatsappNo}</span>
                     </label>
                   </div>
+                  {!address.whatsappSame && (
+                    <div className="mt-3">
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.whatsappNumberLabel} *</label>
+                      <input
+                        type="tel"
+                        value={address.whatsappNumber}
+                        onChange={e => setAddress(a => ({ ...a, whatsappNumber: e.target.value }))}
+                        placeholder="xxxxxxxxxx"
+                        className={inputClass(errors.whatsappNumber)}
+                        dir="ltr"
+                      />
+                      {errors.whatsappNumber && <p className="text-red-500 text-xs mt-1">{errors.whatsappNumber}</p>}
+                    </div>
+                  )}
                 </div>
 
                 {/* 5. Region / Emirate (only for countries with known regions) */}
@@ -842,7 +893,11 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.cityLabel} *</label>
                     <input type="text" value={address.city}
                       onChange={e => setAddress(a => ({ ...a, city: e.target.value }))}
-                      placeholder={isRtl ? 'مثال: الرياض' : 'e.g. London'}
+                      placeholder={(() => {
+                        const cap = address.country ? COUNTRY_CAPITALS[address.country] : undefined;
+                        if (cap) return isRtl ? `مثال: ${cap.ar}` : `e.g. ${cap.en}`;
+                        return isRtl ? 'مثال: المدينة' : 'e.g. City';
+                      })()}
                       className={inputClass(errors.city)} />
                     {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city}</p>}
                   </div>

@@ -319,7 +319,8 @@ export default function AccountPage() {
           {orders.length === 0 ? (
             <div className="p-8 text-center text-gray-400 text-sm">{L.noOrders}</div>
           ) : (
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[480px]">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th className="text-start px-5 py-3 font-bold text-gray-500 text-xs uppercase">{L.orderId}</th>
@@ -341,6 +342,7 @@ export default function AccountPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       )}

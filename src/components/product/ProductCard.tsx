@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Product } from '@/types';
@@ -13,6 +14,7 @@ export default function ProductCard({ product }: { product: Product }) {
   const { isWishlisted, toggle } = useWishlist();
   const { t, isRtl } = useLang();
   const { getProductPrice, formatPrice } = useRegionalPricing();
+  const [added, setAdded] = useState(false);
 
   const displayName = isRtl ? product.name : (product.nameEn || product.name);
   const displayShortDesc = isRtl ? product.shortDescription : (product.shortDescriptionEn || product.shortDescription);
@@ -59,11 +61,22 @@ export default function ProductCard({ product }: { product: Product }) {
         <div className="mt-auto pt-3 flex items-center justify-between gap-2">
           <span className="text-gray-900 font-bold text-lg shrink-0">{formatPrice(priceResult)}</span>
           <button
-            disabled={!product.inStock}
-            onClick={() => product.inStock && addItem(product)}
-            className="bg-purple-700 hover:bg-purple-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-semibold px-4 py-2 rounded-xl transition whitespace-nowrap shrink-0"
+            disabled={!product.inStock || added}
+            onClick={() => {
+              if (!product.inStock) return;
+              addItem(product);
+              setAdded(true);
+              setTimeout(() => setAdded(false), 1500);
+            }}
+            className={`text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all whitespace-nowrap shrink-0 ${
+              added
+                ? 'bg-green-500 scale-95'
+                : product.inStock
+                  ? 'bg-purple-700 hover:bg-purple-800 active:scale-95'
+                  : 'bg-gray-300 cursor-not-allowed'
+            }`}
           >
-            {product.inStock ? t('product.addToCart') : t('product.unavailable')}
+            {added ? t('product.added') : product.inStock ? t('product.addToCart') : t('product.unavailable')}
           </button>
         </div>
       </div>

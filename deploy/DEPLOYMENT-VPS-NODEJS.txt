@@ -1,0 +1,145 @@
+══════════════════════════════════════════════════════════════════
+نشر الموقع على Hostinger VPS (Node.js)
+moslimleader.com
+══════════════════════════════════════════════════════════════════
+
+[ المتطلبات ]
+  - Hostinger VPS (KVM1 أو أعلى)
+  - Ubuntu 22.04 LTS
+  - صلاحية SSH (root أو sudo)
+
+══════════════════════════════════════════════════════════════════
+الخطوة 1: إعداد السيرفر (مرة واحدة فقط)
+══════════════════════════════════════════════════════════════════
+
+  ssh root@YOUR_VPS_IP
+
+  # تحديث النظام
+  apt update && apt upgrade -y
+
+  # تثبيت Node.js 20 LTS
+  curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+  apt install -y nodejs
+
+  # تثبيت PM2 (مدير العمليات)
+  npm install -g pm2
+
+  # تثبيت Nginx
+  apt install -y nginx
+
+  # تثبيت MySQL
+  apt install -y mysql-server
+  mysql_secure_installation
+
+  # تثبيت Certbot (SSL)
+  apt install -y certbot python3-certbot-nginx
+
+══════════════════════════════════════════════════════════════════
+الخطوة 2: إنشاء قاعدة البيانات
+══════════════════════════════════════════════════════════════════
+
+  mysql -u root -p
+
+  CREATE DATABASE u460609394_mldb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  CREATE USER 'u460609394_mluser'@'localhost' IDENTIFIED BY 'YOUR_DB_PASSWORD';
+  GRANT ALL PRIVILEGES ON u460609394_mldb.* TO 'u460609394_mluser'@'localhost';
+  FLUSH PRIVILEGES;
+  EXIT;
+
+══════════════════════════════════════════════════════════════════
+الخطوة 3: رفع الكود على السيرفر
+══════════════════════════════════════════════════════════════════
+
+  # على جهازك المحلي، شغّل:
+  ./deploy/deploy-vps.sh
+
+  # أو يدوياً:
+  rsync -avz --exclude='.git' --exclude='node_modules' --exclude='.next' \
+    ./ root@YOUR_VPS_IP:/var/www/moslimleader/
+
+══════════════════════════════════════════════════════════════════
+الخطوة 4: إعداد البيئة على السيرفر
+══════════════════════════════════════════════════════════════════
+
+  ssh root@YOUR_VPS_IP
+  cd /var/www/moslimleader
+
+  # أنشئ ملف .env.local
+  nano .env.local
+
+  # ضع فيه:
+  DATABASE_URL="mysql://u460609394_mluser:YOUR_DB_PASSWORD@localhost:3306/u460609394_mldb"
+  JWT_SECRET="your-super-secret-random-string-at-least-32-chars"
+  NODE_ENV="production"
+
+══════════════════════════════════════════════════════════════════
+الخطوة 5: بناء الموقع وتشغيله
+══════════════════════════════════════════════════════════════════
+
+  cd /var/www/moslimleader
+
+  npm install
+  npm run db:migrate
+  npm run db:seed
+  npm run build
+
+  # تشغيل مع PM2
+  pm2 start ecosystem.config.js
+  pm2 save
+  pm2 startup
+
+══════════════════════════════════════════════════════════════════
+الخطوة 6: إعداد Nginx
+══════════════════════════════════════════════════════════════════
+
+  cp /var/www/moslimleader/deploy/nginx.conf /etc/nginx/sites-available/moslimleader
+  ln -s /etc/nginx/sites-available/moslimleader /etc/nginx/sites-enabled/
+  rm /etc/nginx/sites-enabled/default
+  nginx -t && systemctl reload nginx
+
+══════════════════════════════════════════════════════════════════
+الخطوة 7: تفعيل SSL
+══════════════════════════════════════════════════════════════════
+
+  certbot --nginx -d moslimleader.com -d www.moslimleader.com
+  systemctl reload nginx
+
+══════════════════════════════════════════════════════════════════
+الخطوة 8: التحقق
+══════════════════════════════════════════════════════════════════
+
+  افتح: https://moslimleader.com
+
+  تحقق من:
+  ✓ الصفحة الرئيسية
+  ✓ /shop
+  ✓ /checkout
+  ✓ /admin
+  ✓ /api/products (يجيب JSON)
+  ✓ HTTPS يعمل
+
+══════════════════════════════════════════════════════════════════
+تحديث الموقع (عند كل تغيير)
+══════════════════════════════════════════════════════════════════
+
+  ./deploy/deploy-vps.sh
+
+  # أو يدوياً على السيرفر:
+  cd /var/www/moslimleader
+  git pull origin main
+  npm install
+  npm run build
+  pm2 reload moslimleader
+
+══════════════════════════════════════════════════════════════════
+أوامر مفيدة
+══════════════════════════════════════════════════════════════════
+
+  pm2 status              # حالة التطبيق
+  pm2 logs moslimleader   # السجلات
+  pm2 restart moslimleader
+  pm2 reload moslimleader  # بدون downtime
+  systemctl status nginx
+  systemctl status mysql
+
+══════════════════════════════════════════════════════════════════

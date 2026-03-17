@@ -168,7 +168,7 @@ export default function Footer() {
             {['Visa', 'MasterCard', 'American-Express'].map(m => (
               <Image
                 key={m}
-                src={`https://moslimleader.com/wp-content/uploads/2024/07/${m}.png`}
+                src={`/wp-content/uploads/2024/07/${m}.png`}
                 alt={m}
                 width={40}
                 height={26}

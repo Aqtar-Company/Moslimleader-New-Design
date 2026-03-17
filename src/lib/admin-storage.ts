@@ -279,6 +279,35 @@ export function deleteReview(productId: string, reviewId: string) {
   } catch {}
 }
 
+// ─── Payment Methods ──────────────────────────────────────────────────────────
+
+export type PaymentMethodId = 'cod' | 'card' | 'paypal' | 'vodafone' | 'instapay';
+
+export interface PaymentMethodConfig {
+  id: PaymentMethodId;
+  enabled: boolean;
+}
+
+const DEFAULT_PAYMENT_METHODS: PaymentMethodConfig[] = [
+  { id: 'cod',      enabled: true },
+  { id: 'card',     enabled: true },
+  { id: 'paypal',   enabled: true },
+  { id: 'vodafone', enabled: true },
+  { id: 'instapay', enabled: true },
+];
+
+export function getPaymentMethods(): PaymentMethodConfig[] {
+  try {
+    const raw = localStorage.getItem('ml-payment-methods');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return DEFAULT_PAYMENT_METHODS;
+}
+
+export function savePaymentMethods(methods: PaymentMethodConfig[]) {
+  localStorage.setItem('ml-payment-methods', JSON.stringify(methods));
+}
+
 // ─── Shipping Overrides ───────────────────────────────────────────────────────
 
 export interface ShippingOverrides {

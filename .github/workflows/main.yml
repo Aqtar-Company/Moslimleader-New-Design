@@ -1,4 +1,4 @@
-دname: Deploy to Hostinger Shared Hosting
+name: Deploy to Hostinger Shared Hosting
 
 on:
   push:

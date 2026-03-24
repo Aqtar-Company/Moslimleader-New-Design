@@ -1,4 +1,4 @@
-name: Deploy to Hostinger Shared Hosting
+دname: Deploy to Hostinger Shared Hosting
 
 on:
   push:
@@ -16,23 +16,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: client/package-lock.json
 
-      # Build React
       - name: Install & Build React
         run: |
           cd client
           npm ci
           npm run build
 
-      # Install server dependencies (production only)
       - name: Install Server Dependencies
         run: |
           cd server
           npm ci --omit=dev
 
-      # رفع React build على public_html
       - name: Deploy React to public_html
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -40,9 +35,8 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./client/dist/
-          server-dir: /public_html/new
+          server-dir: /public_html/
 
-      # رفع Node.js server
       - name: Deploy Node.js Server
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:

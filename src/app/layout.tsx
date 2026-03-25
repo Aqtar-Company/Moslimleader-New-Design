@@ -13,6 +13,10 @@ import WhatsAppButton from '@/components/WhatsAppButton';
 export const metadata: Metadata = {
   title: 'مسلم ليدر | Moslim Leader',
   description: 'معاً نبني قادة الغد — منتجات تربوية وتعليمية للأطفال والأسرة',
+  icons: {
+    icon: '/logo-mobile.png',
+    apple: '/logo-mobile.png',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

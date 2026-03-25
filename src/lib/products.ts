@@ -1,6 +1,6 @@
 import { Product, Category } from '@/types';
 
-const BASE = 'https://moslimleader.com/wp-content/uploads';
+const BASE = '/wp-content/uploads';
 
 export const products: Product[] = [
   {

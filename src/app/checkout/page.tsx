@@ -17,6 +17,7 @@ import {
   IntlShippingConfig,
   ShippingCalcResult,
 } from '@/lib/intl-shipping';
+import { getPaymentMethods } from '@/lib/admin-storage';
 
 type Step = 'address' | 'payment' | 'confirm';
 type PayMethod = 'cod' | 'card' | 'vodafone' | 'instapay' | 'paypal';
@@ -191,6 +192,11 @@ export default function CheckoutPage() {
     phone: user?.phone || '',
     country: '',
   });
+  const [enabledPaymentIds, setEnabledPaymentIds] = useState<string[]>(['cod', 'card', 'paypal', 'vodafone', 'instapay']);
+  useEffect(() => {
+    const methods = getPaymentMethods();
+    setEnabledPaymentIds(methods.filter(m => m.enabled).map(m => m.id));
+  }, []);
   const [payMethod, setPayMethod] = useState<PayMethod>(
     zoneInfo.zone === 'egypt' ? 'cod' : 'card'
   );
@@ -970,7 +976,7 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
                   { id: 'paypal',   icon: '🅿️', title: 'PayPal',                                              desc: isRtl ? 'ادفع عبر حسابك على PayPal' : 'Pay with your PayPal account',      intl: true },
                   { id: 'vodafone', icon: '📱', title: 'Vodafone Cash',                                       desc: isRtl ? 'ادفع عبر محفظة فودافون كاش' : 'Pay via Vodafone Cash wallet',       intl: false },
                   { id: 'instapay', icon: '⚡', title: 'InstaPay',                                            desc: isRtl ? 'ادفع عبر تطبيق InstaPay' : 'Pay via InstaPay app',               intl: false },
-                ] as const).filter(m => shippingType === 'local' || m.intl).map(m => (
+                ] as const).filter(m => (shippingType === 'local' || m.intl) && enabledPaymentIds.includes(m.id)).map(m => (
                   <label key={m.id}
                     className={`flex items-center gap-4 border-2 rounded-2xl p-4 cursor-pointer transition ${
                       payMethod === m.id ? 'border-gray-900 bg-gray-50' : 'border-gray-100 hover:border-gray-300'

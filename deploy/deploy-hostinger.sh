@@ -46,10 +46,17 @@ set net:timeout 60
 set net:max-retries 5
 set net:reconnect-interval-base 5
 
+# رفع ملفات الموقع المبني (out/)
 mirror --reverse --delete --verbose \
   --exclude .git \
   --exclude .DS_Store \
   $LOCAL_DIR/ $REMOTE_DIR/
+
+# رفع مجلد الصور (public/wp-content/) مباشرة
+mirror --reverse --verbose \
+  --exclude .git \
+  --exclude .DS_Store \
+  ./public/wp-content/ $REMOTE_DIR/wp-content/
 
 bye
 EOF

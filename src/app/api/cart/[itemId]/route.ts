@@ -1,8 +1,8 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 
-export const dynamic = 'force-dynamic';
 
 // PUT /api/cart/[itemId] — update quantity
 export async function PUT(

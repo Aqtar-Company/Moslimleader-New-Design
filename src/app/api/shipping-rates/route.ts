@@ -1,8 +1,8 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { governorates } from '@/lib/shipping';
 
-export const dynamic = 'force-dynamic';
 
 // GET /api/shipping-rates — get all shipping rates
 export async function GET() {

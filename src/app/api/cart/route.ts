@@ -1,9 +1,9 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
 
-export const dynamic = 'force-dynamic';
 
 // Helper: resolve product from DB or static fallback
 async function resolveProduct(productId: string) {

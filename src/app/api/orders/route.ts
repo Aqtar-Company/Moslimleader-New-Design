@@ -1,9 +1,9 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
 
-export const dynamic = 'force-dynamic';
 
 // GET /api/orders — list current user's orders
 export async function GET() {

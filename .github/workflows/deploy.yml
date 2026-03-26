@@ -24,15 +24,12 @@ jobs:
         run: npm ci
 
       - name: Remove API routes (not needed for static export)
-        run: mv src/app/api /tmp/api-bak
+        run: rm -rf src/app/api
 
       - name: Build static export
         run: npm run build
         env:
           NODE_ENV: production
-
-      - name: Restore API routes
-        run: mv /tmp/api-bak src/app/api
 
       - name: Verify out/ folder exists
         run: ls -la out/ | head -20

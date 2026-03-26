@@ -2,13 +2,21 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getAllOrders, getAllUsers, getCoupons, getAddedProducts, getProductOverrides } from '@/lib/admin-storage';
+import { getCoupons, getAddedProducts, getProductOverrides } from '@/lib/admin-storage';
 import { products as staticProducts } from '@/lib/products';
+
+interface DbOrder {
+  id: string;
+  status: string;
+  total: number;
+  createdAt: string;
+  user: { id: string; name: string; email: string };
+}
 
 interface Stats {
   totalOrders: number;
-  confirmedRevenue: number;  // delivered only
-  pendingRevenue: number;    // processing + shipped
+  confirmedRevenue: number;
+  pendingRevenue: number;
   totalUsers: number;
   activeCoupons: number;
   outOfStock: number;
@@ -21,48 +29,73 @@ const STATUS_COLORS: Record<string, string> = {
   'تم الشحن':    'bg-blue-100 text-blue-700',
   'تم التسليم':  'bg-green-100 text-green-700',
   'ملغي':        'bg-red-100 text-red-600',
+  'pending':     'bg-amber-100 text-amber-700',
 };
 
 const STATUSES = ['قيد التجهيز', 'تم الشحن', 'تم التسليم', 'ملغي'];
 
+function normalizeStatus(s: string): string {
+  if (s === 'pending' || s === 'processing') return 'قيد التجهيز';
+  if (s === 'shipped') return 'تم الشحن';
+  if (s === 'delivered') return 'تم التسليم';
+  if (s === 'cancelled') return 'ملغي';
+  return s;
+}
+
 export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const orders = getAllOrders();
-    const users = getAllUsers();
-    const coupons = getCoupons();
-    const overrides = getProductOverrides();
-    const addedProds = getAddedProducts();
+    async function load() {
+      try {
+        const [ordersRes, usersRes] = await Promise.all([
+          fetch('/api/admin/orders', { credentials: 'include' }),
+          fetch('/api/admin/users', { credentials: 'include' }),
+        ]);
+        const { orders: rawOrders }: { orders: DbOrder[] } = await ordersRes.json();
+        const { users }: { users: { id: string }[] } = await usersRes.json();
 
-    const allProducts = [
-      ...staticProducts.map(p => ({ ...p, inStock: overrides[p.id]?.inStock ?? p.inStock })),
-      ...addedProds,
-    ];
+        const orders = (rawOrders ?? []).map(o => ({ ...o, status: normalizeStatus(o.status) }));
 
-    const byStatus: Record<string, number> = { 'قيد التجهيز': 0, 'تم الشحن': 0, 'تم التسليم': 0, 'ملغي': 0 };
-    orders.forEach(o => { if (byStatus[o.status] !== undefined) byStatus[o.status]++; });
+        const coupons = getCoupons();
+        const overrides = getProductOverrides();
+        const addedProds = getAddedProducts();
+        const allProducts = [
+          ...staticProducts.map(p => ({ ...p, inStock: overrides[p.id]?.inStock ?? p.inStock })),
+          ...addedProds,
+        ];
 
-    // Revenue: exclude cancelled orders
-    const confirmedRevenue = orders
-      .filter(o => o.status === 'تم التسليم')
-      .reduce((s, o) => s + o.total, 0);
+        const byStatus: Record<string, number> = { 'قيد التجهيز': 0, 'تم الشحن': 0, 'تم التسليم': 0, 'ملغي': 0 };
+        orders.forEach(o => { if (byStatus[o.status] !== undefined) byStatus[o.status]++; });
 
-    const pendingRevenue = orders
-      .filter(o => o.status === 'قيد التجهيز' || o.status === 'تم الشحن')
-      .reduce((s, o) => s + o.total, 0);
+        const confirmedRevenue = orders.filter(o => o.status === 'تم التسليم').reduce((s, o) => s + o.total, 0);
+        const pendingRevenue   = orders.filter(o => o.status === 'قيد التجهيز' || o.status === 'تم الشحن').reduce((s, o) => s + o.total, 0);
 
-    setStats({
-      totalOrders: orders.length,
-      confirmedRevenue,
-      pendingRevenue,
-      totalUsers: users.length,
-      activeCoupons: Object.keys(coupons).length,
-      outOfStock: allProducts.filter(p => !p.inStock).length,
-      byStatus,
-      recentOrders: orders.slice(0, 6),
-    });
+        setStats({
+          totalOrders: orders.length,
+          confirmedRevenue,
+          pendingRevenue,
+          totalUsers: (users ?? []).length,
+          activeCoupons: Object.keys(coupons).length,
+          outOfStock: allProducts.filter(p => !p.inStock).length,
+          byStatus,
+          recentOrders: orders.slice(0, 6).map(o => ({
+            id: o.id,
+            userName: o.user?.name ?? '—',
+            date: new Date(o.createdAt).toLocaleDateString('ar-EG'),
+            total: o.total,
+            status: o.status,
+          })),
+        });
+      } catch {
+        setError('فشل تحميل الإحصائيات');
+      }
+    }
+    load();
   }, []);
+
+  if (error) return <div className="text-red-500 p-6">{error}</div>;
 
   if (!stats) return (
     <div className="flex items-center justify-center h-40">
@@ -71,38 +104,10 @@ export default function DashboardPage() {
   );
 
   const topCards = [
-    {
-      label: 'إجمالي الطلبات',
-      value: stats.totalOrders,
-      sub: `${stats.byStatus['ملغي']} ملغي`,
-      icon: '📦',
-      color: 'bg-blue-50 border-blue-200',
-      link: '/admin/orders',
-    },
-    {
-      label: 'إيرادات مؤكدة',
-      value: stats.confirmedRevenue.toLocaleString('ar-EG') + ' ج',
-      sub: 'طلبات تم تسليمها',
-      icon: '✅',
-      color: 'bg-green-50 border-green-200',
-      link: '/admin/orders',
-    },
-    {
-      label: 'إيرادات قيد التنفيذ',
-      value: stats.pendingRevenue.toLocaleString('ar-EG') + ' ج',
-      sub: 'تجهيز + شحن',
-      icon: '🚚',
-      color: 'bg-amber-50 border-amber-200',
-      link: '/admin/orders',
-    },
-    {
-      label: 'العملاء المسجلين',
-      value: stats.totalUsers,
-      sub: `${stats.activeCoupons} كوبون نشط`,
-      icon: '👥',
-      color: 'bg-purple-50 border-purple-200',
-      link: '/admin/users',
-    },
+    { label: 'إجمالي الطلبات',     value: stats.totalOrders, sub: `${stats.byStatus['ملغي']} ملغي`, icon: '📦', color: 'bg-blue-50 border-blue-200',   link: '/admin/orders' },
+    { label: 'إيرادات مؤكدة',      value: stats.confirmedRevenue.toLocaleString('ar-EG') + ' ج', sub: 'طلبات تم تسليمها', icon: '✅', color: 'bg-green-50 border-green-200', link: '/admin/orders' },
+    { label: 'إيرادات قيد التنفيذ', value: stats.pendingRevenue.toLocaleString('ar-EG') + ' ج',   sub: 'تجهيز + شحن',      icon: '🚚', color: 'bg-amber-50 border-amber-200', link: '/admin/orders' },
+    { label: 'العملاء المسجلين',   value: stats.totalUsers, sub: `${stats.activeCoupons} كوبون نشط`, icon: '👥', color: 'bg-purple-50 border-purple-200', link: '/admin/users' },
   ];
 
   const totalRevenue = stats.confirmedRevenue + stats.pendingRevenue;
@@ -114,7 +119,6 @@ export default function DashboardPage() {
         <p className="text-sm text-gray-500 mt-0.5">نظرة عامة على أداء المتجر</p>
       </div>
 
-      {/* Out of stock alert */}
       {stats.outOfStock > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
           <span className="text-lg">⚠️</span>
@@ -126,7 +130,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Stats cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {topCards.map(c => (
           <Link key={c.label} href={c.link} className={`${c.color} border rounded-2xl p-4 hover:shadow-md transition block`}>
@@ -138,19 +141,14 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Orders status breakdown */}
       <div className="bg-white rounded-2xl border border-gray-200 p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-bold text-gray-900 text-sm">توزيع الطلبات بالحالة</h2>
-          <span className="text-xs text-gray-400">إجمالي الإيرادات (غير الملغية): <span className="font-bold text-gray-700">{totalRevenue.toLocaleString('ar-EG')} ج.م</span></span>
+          <span className="text-xs text-gray-400">إجمالي الإيرادات: <span className="font-bold text-gray-700">{totalRevenue.toLocaleString('ar-EG')} ج.م</span></span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {STATUSES.map(s => (
-            <Link
-              key={s}
-              href={`/admin/orders`}
-              className="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition text-center gap-1"
-            >
+            <Link key={s} href="/admin/orders" className="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition text-center gap-1">
               <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${STATUS_COLORS[s]}`}>{s}</span>
               <span className="text-2xl font-black text-gray-900">{stats.byStatus[s] ?? 0}</span>
               <span className="text-xs text-gray-400">طلب</span>
@@ -159,7 +157,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Recent orders */}
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <h2 className="font-bold text-gray-900">آخر الطلبات</h2>
@@ -182,16 +179,12 @@ export default function DashboardPage() {
               <tbody className="divide-y divide-gray-50">
                 {stats.recentOrders.map(o => (
                   <tr key={o.id} className={`hover:bg-gray-50 transition ${o.status === 'ملغي' ? 'opacity-50' : ''}`}>
-                    <td className="px-5 py-3 font-mono font-bold text-gray-900">#{o.id}</td>
-                    <td className="px-5 py-3 text-gray-700">{o.userName || '—'}</td>
+                    <td className="px-5 py-3 font-mono font-bold text-gray-900">#{o.id.slice(-6)}</td>
+                    <td className="px-5 py-3 text-gray-700">{o.userName}</td>
                     <td className="px-5 py-3 text-gray-500">{o.date}</td>
-                    <td className={`px-5 py-3 font-semibold ${o.status === 'ملغي' ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                      {o.total.toLocaleString('ar-EG')} ج
-                    </td>
+                    <td className={`px-5 py-3 font-semibold ${o.status === 'ملغي' ? 'line-through text-gray-400' : 'text-gray-900'}`}>{o.total.toLocaleString('ar-EG')} ج</td>
                     <td className="px-5 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${STATUS_COLORS[o.status] || 'bg-gray-100 text-gray-600'}`}>
-                        {o.status}
-                      </span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${STATUS_COLORS[o.status] || 'bg-gray-100 text-gray-600'}`}>{o.status}</span>
                     </td>
                   </tr>
                 ))}

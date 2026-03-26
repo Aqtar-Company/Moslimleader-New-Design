@@ -1,4 +1,4 @@
-name: Deploy to Hostinger
+name: Deploy to Hostinger (Node.js)
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
       - claude/**
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -23,48 +23,56 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Remove API routes (not needed for static export)
-        run: mv src/app/api /tmp/api-bak
+      - name: Generate Prisma client
+        run: npx prisma generate
 
-      - name: Build static export
+      - name: Build
         run: npm run build
         env:
           NODE_ENV: production
-
-      - name: Restore API routes
-        run: mv /tmp/api-bak src/app/api
-
-      - name: Verify out/ folder exists
-        run: ls -la out/ | head -20
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
       - name: Install lftp
         run: sudo apt-get install -y lftp
 
-      - name: Deploy to Hostinger
+      - name: Deploy files via FTP
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          APP_DIR: ${{ secrets.APP_DIR }}
         run: |
           echo "machine $FTP_SERVER login $FTP_USERNAME password $FTP_PASSWORD" > ~/.netrc
           chmod 600 ~/.netrc
 
-          lftp "$FTP_SERVER" <<'FTPEOF'
+          lftp "$FTP_SERVER" <<FTPEOF
           set ftp:passive-mode yes
           set ftp:ssl-allow true
           set ssl:verify-certificate false
           set net:timeout 60
           set net:max-retries 5
 
-          mirror --reverse --delete --verbose \
-            --exclude .git \
-            --exclude .DS_Store \
-            ./out/ /public_html/
-
           mirror --reverse --verbose \
-            --exclude .git \
+            --exclude .git/ \
+            --exclude node_modules/ \
             --exclude .DS_Store \
-            ./public/wp-content/ /public_html/wp-content/
+            --exclude .env \
+            ./ $APP_DIR/
 
           bye
           FTPEOF
+
+      - name: Run DB migrations + restart app via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          script: |
+            cd ${{ secrets.APP_DIR }}
+            npm install --omit=dev
+            npx prisma migrate deploy
+            # Hostinger Node.js apps auto-restart when files change
+            # If using PM2:
+            # pm2 restart moslimleader || pm2 start npm --name moslimleader -- start

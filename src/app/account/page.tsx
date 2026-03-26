@@ -16,6 +16,7 @@ interface OrderRecord {
   date: string;
   total: number;
   status: string;
+  currency?: string;
 }
 
 export default function AccountPage() {
@@ -24,6 +25,8 @@ export default function AccountPage() {
   const { isRtl } = useLang();
 
   const [tab, setTab] = useState<Tab>('profile');
+  const [dbOrders, setDbOrders] = useState<OrderRecord[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
 
   // Profile form
   const [name, setName] = useState('');
@@ -50,6 +53,23 @@ export default function AccountPage() {
       setName(user.name);
       setPhone(user.phone || '');
       setEmail(user.email);
+      // Load orders from DB
+      setOrdersLoading(true);
+      fetch('/api/orders', { credentials: 'include' })
+        .then(r => r.json())
+        .then(data => {
+          if (data.orders) {
+            setDbOrders(data.orders.map((o: { id: string; createdAt: string; total: number; status: string; currency?: string }) => ({
+              id: o.id,
+              date: new Date(o.createdAt).toLocaleDateString('ar-EG'),
+              total: o.total,
+              status: o.status,
+              currency: o.currency,
+            })));
+          }
+        })
+        .catch(() => {})
+        .finally(() => setOrdersLoading(false));
     }
   }, [user, isLoading, router]);
 
@@ -126,13 +146,7 @@ export default function AccountPage() {
     updateUser({ savedAddresses: updated });
   }
 
-  // Load orders from localStorage
-  const orders: OrderRecord[] = (() => {
-    try {
-      const raw = localStorage.getItem(`ml_orders_${user.id}`);
-      return raw ? JSON.parse(raw) : [];
-    } catch { return []; }
-  })();
+  const orders = dbOrders;
 
   const govName = (id: string) => {
     const g = governorates.find(g => g.id === id);
@@ -316,7 +330,9 @@ export default function AccountPage() {
       {/* Orders Tab */}
       {tab === 'orders' && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          {orders.length === 0 ? (
+          {ordersLoading ? (
+            <div className="p-8 flex justify-center"><div className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" /></div>
+          ) : orders.length === 0 ? (
             <div className="p-8 text-center text-gray-400 text-sm">{L.noOrders}</div>
           ) : (
             <div className="overflow-x-auto">
@@ -332,9 +348,9 @@ export default function AccountPage() {
               <tbody className="divide-y divide-gray-50">
                 {orders.map(o => (
                   <tr key={o.id}>
-                    <td className="px-5 py-4 font-mono font-bold text-gray-900">#{o.id}</td>
+                    <td className="px-5 py-4 font-mono font-bold text-gray-900">#{o.id.slice(-6)}</td>
                     <td className="px-5 py-4 text-gray-500">{o.date}</td>
-                    <td className="px-5 py-4 font-bold text-gray-900">{o.total} {L.currency}</td>
+                    <td className="px-5 py-4 font-bold text-gray-900">{o.total.toLocaleString('ar-EG')} {o.currency || L.currency}</td>
                     <td className="px-5 py-4">
                       <span className="bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-full">{o.status}</span>
                     </td>

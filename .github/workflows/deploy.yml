@@ -27,26 +27,32 @@ jobs:
         env:
           NODE_ENV: production
 
-      - name: Deploy out/ to Hostinger via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./out/
-          server-dir: /public_html/
-          dangerous-clean-slate: false
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
+      - name: Install lftp
+        run: sudo apt-get install -y lftp
 
-      - name: Deploy images (wp-content) to Hostinger via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./public/wp-content/
-          server-dir: /public_html/wp-content/
-          dangerous-clean-slate: false
+      - name: Deploy via FTP
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER" <<'FTPEOF'
+          set ftp:passive-mode yes
+          set ftp:ssl-allow true
+          set ssl:verify-certificate false
+          set net:timeout 60
+          set net:max-retries 5
+          set net:reconnect-interval-base 5
+
+          mirror --reverse --delete --verbose \
+            --exclude .git \
+            --exclude .DS_Store \
+            ./out/ /public_html/
+
+          mirror --reverse --verbose \
+            --exclude .git \
+            --exclude .DS_Store \
+            ./public/wp-content/ /public_html/wp-content/
+
+          bye
+          FTPEOF

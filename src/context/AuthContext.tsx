@@ -40,73 +40,115 @@ const AuthContext = createContext<AuthContextType>({
   updateUser: async () => {},
 });
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+async function hashPassword(password: string): Promise<string> {
+  const buf = new TextEncoder().encode(password);
+  const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(hashBuf))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+type UsersStore = Record<string, { password: string; user: User }>;
+
+function getUsers(): UsersStore {
+  try {
+    const raw = localStorage.getItem('ml_users');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return {};
+}
+
+function saveUsers(users: UsersStore) {
+  localStorage.setItem('ml_users', JSON.stringify(users));
+}
+
+function getSession(): User | null {
+  try {
+    const raw = localStorage.getItem('ml_session');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+function saveSession(user: User) {
+  localStorage.setItem('ml_session', JSON.stringify(user));
+}
+
+function clearSession() {
+  localStorage.removeItem('ml_session');
+}
+
+// ─── Provider ─────────────────────────────────────────────────────────────────
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // On mount: check session via cookie → /api/auth/me
   useEffect(() => {
-    fetch('/api/auth/me', { credentials: 'include' })
-      .then(r => r.json())
-      .then(data => {
-        if (data.user) setUser(data.user);
-      })
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
+    setUser(getSession());
+    setIsLoading(false);
   }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) return { error: data.error ?? 'بيانات الدخول غير صحيحة' };
-      setUser(data.user);
+      const key = email.toLowerCase().trim();
+      const users = getUsers();
+      const entry = users[key];
+      if (!entry) return { error: 'بيانات الدخول غير صحيحة' };
+      const hash = await hashPassword(password);
+      if (hash !== entry.password) return { error: 'بيانات الدخول غير صحيحة' };
+      saveSession(entry.user);
+      setUser(entry.user);
       return {};
     } catch {
-      return { error: 'حدث خطأ في الاتصال بالخادم' };
+      return { error: 'حدث خطأ، حاول مرة أخرى' };
     }
   };
 
   const signUp = async (name: string, email: string, password: string, phone?: string) => {
     try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ name, email, password, phone }),
-      });
-      const data = await res.json();
-      if (!res.ok) return { error: data.error ?? 'فشل إنشاء الحساب' };
-      setUser(data.user);
+      if (!name || !email || !password) return { error: 'جميع الحقول مطلوبة' };
+      if (password.length < 6) return { error: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' };
+      const key = email.toLowerCase().trim();
+      const users = getUsers();
+      if (users[key]) return { error: 'البريد الإلكتروني مسجل بالفعل' };
+      const passwordHash = await hashPassword(password);
+      const newUser: User = {
+        id: Date.now().toString(),
+        name: name.trim(),
+        email: key,
+        phone: phone?.trim() || undefined,
+        role: 'customer',
+        savedAddresses: [],
+      };
+      users[key] = { password: passwordHash, user: newUser };
+      saveUsers(users);
+      saveSession(newUser);
+      setUser(newUser);
       return {};
     } catch {
-      return { error: 'حدث خطأ في الاتصال بالخادم' };
+      return { error: 'حدث خطأ، حاول مرة أخرى' };
     }
   };
 
-  const signOut = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-    } catch {}
+  const signOut = () => {
+    clearSession();
     setUser(null);
   };
 
   const updateUser = async (data: Partial<User>) => {
-    try {
-      const res = await fetch('/api/auth/update', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
-      const result = await res.json();
-      if (res.ok && result.user) setUser(result.user);
-    } catch {}
+    if (!user) return;
+    const updated = { ...user, ...data };
+    const users = getUsers();
+    const key = user.email;
+    if (users[key]) {
+      users[key].user = updated;
+      saveUsers(users);
+    }
+    saveSession(updated);
+    setUser(updated);
   };
 
   return (

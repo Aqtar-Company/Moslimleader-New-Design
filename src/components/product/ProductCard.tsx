@@ -58,8 +58,8 @@ export default function ProductCard({ product }: { product: Product }) {
         </Link>
         <p className="text-gray-500 text-sm line-clamp-2">{displayShortDesc}</p>
 
-        <div className="mt-auto pt-3 flex items-center justify-between gap-2">
-          <span className="text-gray-900 font-bold text-lg shrink-0">{formatPrice(priceResult)}</span>
+        <div className="mt-auto pt-3 flex items-center justify-between gap-1.5">
+          <span className="text-gray-900 font-bold text-sm sm:text-lg shrink-0">{formatPrice(priceResult)}</span>
           <button
             disabled={!product.inStock || added}
             onClick={() => {
@@ -68,7 +68,7 @@ export default function ProductCard({ product }: { product: Product }) {
               setAdded(true);
               setTimeout(() => setAdded(false), 1500);
             }}
-            className={`text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all whitespace-nowrap shrink-0 ${
+            className={`text-white text-xs sm:text-sm font-semibold px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all whitespace-nowrap shrink-0 ${
               added
                 ? 'bg-green-500 scale-95'
                 : product.inStock

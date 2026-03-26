@@ -71,8 +71,9 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
             cd ${{ secrets.APP_DIR }}
-            npm install --omit=dev
+            npm install
             npx prisma migrate deploy
+            npm prune --omit=dev
             # Hostinger Node.js apps auto-restart when files change
             # If using PM2:
             # pm2 restart moslimleader || pm2 start npm --name moslimleader -- start

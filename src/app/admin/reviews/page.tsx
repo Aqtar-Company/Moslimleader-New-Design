@@ -1,30 +1,47 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { getAllReviews, deleteReview, getAddedProducts, AdminReview } from '@/lib/admin-storage';
-import { products as staticProducts } from '@/lib/products';
+
+interface AdminReview {
+  id: string;
+  productId: string;
+  productName: string;
+  author: string;
+  rating: number;
+  comment: string;
+  date: string;
+  isHardcoded?: boolean;
+}
 
 const STARS = [1, 2, 3, 4, 5];
 
 export default function ReviewsPage() {
   const [reviews, setReviews] = useState<AdminReview[]>([]);
   const [filterRating, setFilterRating] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-  const load = useCallback(() => {
-    const added = getAddedProducts();
-    const allProds = [
-      ...staticProducts.map(p => ({ id: p.id, name: p.name, reviews: p.reviews })),
-      ...added.map(p => ({ id: p.id, name: p.name, reviews: p.reviews })),
-    ];
-    setReviews(getAllReviews(allProds));
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/reviews', { credentials: 'include' });
+      const data = await res.json();
+      setReviews(data.reviews ?? []);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
-  const handleDelete = (r: AdminReview) => {
+  const handleDelete = async (r: AdminReview) => {
+    if (r.isHardcoded) {
+      alert('لا يمكن حذف التقييمات الأصلية للمنتج');
+      return;
+    }
     if (!confirm(`حذف تقييم "${r.author}"؟`)) return;
-    deleteReview(r.productId, r.id);
-    load();
+    await fetch(`/api/admin/reviews?id=${r.id}`, { method: 'DELETE', credentials: 'include' });
+    await load();
   };
 
   const filtered = filterRating === 0 ? reviews : reviews.filter(r => r.rating === filterRating);
@@ -67,7 +84,12 @@ export default function ReviewsPage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="py-16 text-center text-gray-400">
+            <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-sm">جارٍ التحميل...</p>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="py-16 text-center text-gray-400">
             <p className="text-4xl mb-3">⭐</p>
             <p className="font-semibold">لا توجد تقييمات</p>
@@ -82,16 +104,21 @@ export default function ReviewsPage() {
                       <span className="font-bold text-gray-900 text-sm">{r.author}</span>
                       <span className="text-yellow-500 text-sm">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
                       <span className="text-xs text-gray-400">{r.date}</span>
+                      {r.isHardcoded && (
+                        <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">أصلي</span>
+                      )}
                     </div>
                     <p className="text-gray-700 text-sm leading-relaxed mb-1">{r.comment}</p>
                     <p className="text-xs text-gray-400">المنتج: <span className="font-semibold text-gray-600">{r.productName}</span></p>
                   </div>
-                  <button
-                    onClick={() => handleDelete(r)}
-                    className="text-red-400 hover:text-red-600 text-xs font-bold shrink-0 hover:bg-red-50 px-2 py-1 rounded-lg transition"
-                  >
-                    حذف
-                  </button>
+                  {!r.isHardcoded && (
+                    <button
+                      onClick={() => handleDelete(r)}
+                      className="text-red-400 hover:text-red-600 text-xs font-bold shrink-0 hover:bg-red-50 px-2 py-1 rounded-lg transition"
+                    >
+                      حذف
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

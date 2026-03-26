@@ -1,11 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import {
-  getProductOverrides, setProductOverride, getAddedProducts,
-  addProduct, deleteAddedProduct, saveAddedProducts, updateAddedProduct,
-  getAddedCategories, saveAddedCategories, applyOverride, ProductOverride,
-} from '@/lib/admin-storage';
 import { products as staticProducts, categories as staticCategories } from '@/lib/products';
 import { Product, ProductVariant } from '@/types';
 
@@ -17,13 +12,6 @@ interface VariantDraft {
 }
 
 type MergedProduct = Product & { isAdded?: boolean };
-
-function mergeProducts(overrides: Record<string, ProductOverride>, added: Product[]): MergedProduct[] {
-  const base = staticProducts.map(p => ({
-    ...(overrides[p.id] ? applyOverride(p, overrides[p.id]) : p),
-  }));
-  return [...base, ...added.map(p => ({ ...p, isAdded: true }))];
-}
 
 function readFileAsDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -41,8 +29,9 @@ const EMPTY_FORM = {
 };
 
 export default function ProductsPage() {
-  const [overrides, setOverrides] = useState<Record<string, ProductOverride>>({});
-  const [added, setAdded] = useState<Product[]>([]);
+  const [products, setProducts] = useState<MergedProduct[]>([]);
+  const [addedCats, setAddedCats] = useState<string[]>([]);
+  const [newCatInput, setNewCatInput] = useState('');
   const [editingPrice, setEditingPrice] = useState<string | null>(null);
   const [priceVal, setPriceVal] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -53,20 +42,28 @@ export default function ProductsPage() {
   const [variants, setVariants] = useState<VariantDraft[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [addedCats, setAddedCats] = useState<string[]>([]);
-  const [newCatInput, setNewCatInput] = useState('');
-
-  const load = useCallback(() => {
-    setOverrides(getProductOverrides());
-    setAdded(getAddedProducts());
-    setAddedCats(getAddedCategories());
+  const load = useCallback(async () => {
+    try {
+      const [prodRes, catRes] = await Promise.all([
+        fetch('/api/admin/products', { credentials: 'include' }),
+        fetch('/api/admin/settings?key=categories-added', { credentials: 'include' }),
+      ]);
+      const prodData = await prodRes.json();
+      const catData = await catRes.json();
+      setProducts(prodData.products ?? []);
+      setAddedCats(Array.isArray(catData.value) ? catData.value : []);
+    } catch {
+      // fallback to static only
+      setProducts(staticProducts as MergedProduct[]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
-
-  const products = mergeProducts(overrides, added);
 
   const allCategoryNames = [
     ...staticCategories.filter(c => c.id !== 'all').map(c => c.name),
@@ -106,37 +103,34 @@ export default function ProductsPage() {
 
   // ─── Table actions ────────────────────────────────────────────────────────────
 
-  const toggleStock = (p: MergedProduct) => {
-    if (p.isAdded) {
-      const updated = added.map(a => a.id === p.id ? { ...a, inStock: !a.inStock } : a);
-      setAdded(updated);
-      saveAddedProducts(updated);
-    } else {
-      setProductOverride(p.id, { inStock: !p.inStock });
-      load();
-    }
+  const toggleStock = async (p: MergedProduct) => {
+    await fetch(`/api/admin/products/${p.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ inStock: !p.inStock, isAdded: p.isAdded ?? false }),
+    });
+    setProducts(prev => prev.map(x => x.id === p.id ? { ...x, inStock: !x.inStock } : x));
   };
 
-
-  const savePrice = (p: MergedProduct) => {
+  const savePrice = async (p: MergedProduct) => {
     const val = parseFloat(priceVal);
     if (isNaN(val) || val <= 0) { setEditingPrice(null); return; }
-    if (p.isAdded) {
-      const updated = added.map(a => a.id === p.id ? { ...a, price: val } : a);
-      setAdded(updated);
-      saveAddedProducts(updated);
-    } else {
-      setProductOverride(p.id, { price: val });
-      load();
-    }
+    await fetch(`/api/admin/products/${p.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ price: val, isAdded: p.isAdded ?? false }),
+    });
+    setProducts(prev => prev.map(x => x.id === p.id ? { ...x, price: val } : x));
     setEditingPrice(null);
   };
 
-  const handleDelete = (p: MergedProduct) => {
+  const handleDelete = async (p: MergedProduct) => {
     if (!p.isAdded) return;
     if (!confirm(`حذف "${p.name}"؟`)) return;
-    deleteAddedProduct(p.id);
-    load();
+    await fetch(`/api/admin/products/${p.id}`, { method: 'DELETE', credentials: 'include' });
+    setProducts(prev => prev.filter(x => x.id !== p.id));
   };
 
   // ─── Edit ──────────────────────────────────────────────────────────────────────
@@ -184,7 +178,7 @@ export default function ProductsPage() {
     setShowForm(false);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.name || !form.slug || !form.price || !form.category) {
       alert('يرجى ملء الحقول المطلوبة: الاسم، الـ Slug، السعر، الفئة');
       return;
@@ -194,76 +188,76 @@ export default function ProductsPage() {
       return;
     }
     setSaving(true);
+
     const builtVariants: ProductVariant[] = variants
       .filter(v => v.name && v.imageIndex >= 0)
       .map(v => ({ id: v.id, name: v.name, nameEn: v.nameEn || undefined, imageIndex: v.imageIndex }));
 
     const parsedTags = formTags.split(',').map(t => t.trim()).filter(Boolean);
 
+    const payload = {
+      slug: form.slug,
+      name: form.name,
+      nameEn: form.nameEn || undefined,
+      shortDescription: form.shortDescription,
+      shortDescriptionEn: form.shortDescriptionEn || undefined,
+      description: form.description,
+      descriptionEn: form.descriptionEn || undefined,
+      price: form.price,
+      category: form.category,
+      inStock: form.inStock,
+      weight: form.weight,
+      tags: parsedTags,
+      images: formImages,
+      variants: builtVariants.length > 0 ? builtVariants : undefined,
+    };
+
     if (editingId) {
-      const isAdded = added.some(a => a.id === editingId);
-      const data: Partial<Product> = {
-        slug: form.slug,
-        name: form.name,
-        nameEn: form.nameEn || undefined,
-        shortDescription: form.shortDescription,
-        shortDescriptionEn: form.shortDescriptionEn || undefined,
-        description: form.description,
-        descriptionEn: form.descriptionEn || undefined,
-        price: form.price,
-        category: form.category,
-        inStock: form.inStock,
-        weight: form.weight,
-        tags: parsedTags,
-        images: formImages,
-        variants: builtVariants.length > 0 ? builtVariants : undefined,
-      };
-      if (isAdded) {
-        updateAddedProduct(editingId, data);
-      } else {
-        setProductOverride(editingId, data);
-      }
+      const editingProduct = products.find(p => p.id === editingId);
+      await fetch(`/api/admin/products/${editingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ...payload, isAdded: editingProduct?.isAdded ?? false }),
+      });
     } else {
-      addProduct({
-        id: `added-${Date.now()}`,
-        slug: form.slug,
-        name: form.name,
-        nameEn: form.nameEn || undefined,
-        shortDescription: form.shortDescription,
-        shortDescriptionEn: form.shortDescriptionEn || undefined,
-        description: form.description,
-        descriptionEn: form.descriptionEn || undefined,
-        price: form.price,
-        category: form.category,
-        inStock: form.inStock,
-        weight: form.weight,
-        tags: parsedTags,
-        images: formImages,
-        variants: builtVariants.length > 0 ? builtVariants : undefined,
-        reviews: [],
+      await fetch('/api/admin/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
       });
     }
 
     resetForm();
     setSaving(false);
-    load();
+    await load();
   };
 
   // ─── Category management ──────────────────────────────────────────────────────
 
-  const addCategory = () => {
+  const saveCategories = async (cats: string[]) => {
+    await fetch('/api/admin/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ key: 'categories-added', value: cats }),
+    });
+  };
+
+  const addCategory = async () => {
     const name = newCatInput.trim();
     if (!name || addedCats.includes(name)) return;
     const updated = [...addedCats, name];
     setAddedCats(updated);
-    saveAddedCategories(updated);
+    await saveCategories(updated);
     setNewCatInput('');
   };
 
-  const deleteCategory = (cat: string) => {
+  const deleteCategory = async (cat: string) => {
     const updated = addedCats.filter(c => c !== cat);
     setAddedCats(updated);
-    saveAddedCategories(updated);
+    await saveCategories(updated);
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────────
@@ -635,99 +629,106 @@ export default function ProductsPage() {
 
       {/* ── Products table ── */}
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr className="text-xs text-gray-500 font-semibold">
-                <th className="px-4 py-3.5 text-right">المنتج</th>
-                <th className="px-4 py-3.5 text-right">الفئة</th>
-                <th className="px-4 py-3.5 text-right">السعر</th>
-                <th className="px-4 py-3.5 text-center">المخزون</th>
-                <th className="px-4 py-3.5 text-center">إجراءات</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {products.map(p => (
-                <tr key={p.id} className="hover:bg-gray-50 transition">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0">
-                        {p.images[0] && (
-                          <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
-                        )}
+        {loading ? (
+          <div className="py-16 text-center text-gray-400">
+            <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-sm">جارٍ التحميل...</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr className="text-xs text-gray-500 font-semibold">
+                  <th className="px-4 py-3.5 text-right">المنتج</th>
+                  <th className="px-4 py-3.5 text-right">الفئة</th>
+                  <th className="px-4 py-3.5 text-right">السعر</th>
+                  <th className="px-4 py-3.5 text-center">المخزون</th>
+                  <th className="px-4 py-3.5 text-center">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {products.map(p => (
+                  <tr key={p.id} className="hover:bg-gray-50 transition">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                          {p.images[0] && (
+                            <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900 text-xs leading-tight">{p.name}</p>
+                          {p.nameEn && <p className="text-gray-400 text-xs">{p.nameEn}</p>}
+                          {p.isAdded && (
+                            <span className="text-xs bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded-full font-bold">مضاف</span>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-semibold text-gray-900 text-xs leading-tight">{p.name}</p>
-                        {p.nameEn && <p className="text-gray-400 text-xs">{p.nameEn}</p>}
-                        {(p as MergedProduct).isAdded && (
-                          <span className="text-xs bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded-full font-bold">مضاف</span>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">{p.category}</td>
-                  <td className="px-4 py-3">
-                    {editingPrice === p.id ? (
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          type="number"
-                          value={priceVal}
-                          onChange={e => setPriceVal(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') savePrice(p); if (e.key === 'Escape') setEditingPrice(null); }}
-                          autoFocus
-                          className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#F5C518]"
-                        />
-                        <button onClick={() => savePrice(p)} className="text-green-600 hover:text-green-700 font-bold text-xs">✓</button>
-                        <button onClick={() => setEditingPrice(null)} className="text-gray-400 hover:text-gray-600 text-xs">✕</button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => { setEditingPrice(p.id); setPriceVal(p.price.toString()); }}
-                        className="font-bold text-gray-900 hover:text-[#1a1a2e] hover:underline text-xs"
-                      >
-                        {p.price.toLocaleString('ar-EG')} ج
-                      </button>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => toggleStock(p)}
-                      className={`px-2.5 py-1 rounded-full text-xs font-bold transition ${
-                        p.inStock ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-red-100 text-red-600 hover:bg-red-200'
-                      }`}
-                    >
-                      {p.inStock ? 'متوفر' : 'نفذ'}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <div className="flex items-center justify-center gap-2 flex-wrap">
-                      <button
-                        onClick={() => startEdit(p)}
-                        className="text-blue-500 hover:text-blue-700 text-xs font-bold transition hover:bg-blue-50 px-2 py-1 rounded-lg"
-                      >
-                        تعديل
-                      </button>
-                      <a
-                        href={`/admin/regional-pricing`}
-                        className="text-purple-500 hover:text-purple-700 text-xs font-bold transition hover:bg-purple-50 px-2 py-1 rounded-lg"
-                      >
-                        🌍
-                      </a>
-                      {(p as MergedProduct).isAdded && (
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{p.category}</td>
+                    <td className="px-4 py-3">
+                      {editingPrice === p.id ? (
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            value={priceVal}
+                            onChange={e => setPriceVal(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') savePrice(p); if (e.key === 'Escape') setEditingPrice(null); }}
+                            autoFocus
+                            className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#F5C518]"
+                          />
+                          <button onClick={() => savePrice(p)} className="text-green-600 hover:text-green-700 font-bold text-xs">✓</button>
+                          <button onClick={() => setEditingPrice(null)} className="text-gray-400 hover:text-gray-600 text-xs">✕</button>
+                        </div>
+                      ) : (
                         <button
-                          onClick={() => handleDelete(p)}
-                          className="text-red-400 hover:text-red-600 text-xs font-bold transition hover:bg-red-50 px-2 py-1 rounded-lg"
+                          onClick={() => { setEditingPrice(p.id); setPriceVal(p.price.toString()); }}
+                          className="font-bold text-gray-900 hover:text-[#1a1a2e] hover:underline text-xs"
                         >
-                          حذف
+                          {p.price.toLocaleString('ar-EG')} ج
                         </button>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => toggleStock(p)}
+                        className={`px-2.5 py-1 rounded-full text-xs font-bold transition ${
+                          p.inStock ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-red-100 text-red-600 hover:bg-red-200'
+                        }`}
+                      >
+                        {p.inStock ? 'متوفر' : 'نفذ'}
+                      </button>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex items-center justify-center gap-2 flex-wrap">
+                        <button
+                          onClick={() => startEdit(p)}
+                          className="text-blue-500 hover:text-blue-700 text-xs font-bold transition hover:bg-blue-50 px-2 py-1 rounded-lg"
+                        >
+                          تعديل
+                        </button>
+                        <a
+                          href="/admin/regional-pricing"
+                          className="text-purple-500 hover:text-purple-700 text-xs font-bold transition hover:bg-purple-50 px-2 py-1 rounded-lg"
+                        >
+                          🌍
+                        </a>
+                        {p.isAdded && (
+                          <button
+                            onClick={() => handleDelete(p)}
+                            className="text-red-400 hover:text-red-600 text-xs font-bold transition hover:bg-red-50 px-2 py-1 rounded-lg"
+                          >
+                            حذف
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

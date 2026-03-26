@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - claude/**
 
 jobs:
   build-and-deploy:
@@ -22,27 +23,38 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
+      - name: Remove API routes (not needed for static export)
+        run: mv src/app/api src/app/api.bak
+
+      - name: Build static export
         run: npm run build
         env:
           NODE_ENV: production
 
+      - name: Restore API routes
+        run: mv src/app/api.bak src/app/api
+
+      - name: Verify out/ folder exists
+        run: ls -la out/ | head -20
+
       - name: Install lftp
         run: sudo apt-get install -y lftp
 
-      - name: Deploy via FTP
+      - name: Deploy to Hostinger
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
-          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER" <<'FTPEOF'
+          echo "machine $FTP_SERVER login $FTP_USERNAME password $FTP_PASSWORD" > ~/.netrc
+          chmod 600 ~/.netrc
+
+          lftp "$FTP_SERVER" <<'FTPEOF'
           set ftp:passive-mode yes
           set ftp:ssl-allow true
           set ssl:verify-certificate false
           set net:timeout 60
           set net:max-retries 5
-          set net:reconnect-interval-base 5
 
           mirror --reverse --delete --verbose \
             --exclude .git \

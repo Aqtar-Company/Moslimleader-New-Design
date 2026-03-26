@@ -1,44 +1,76 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { getCoupons, addCoupon, deleteCoupon } from '@/lib/admin-storage';
+
+interface Coupon {
+  code: string;
+  discount: number;
+  isActive: boolean;
+}
 
 export default function CouponsPage() {
-  const [coupons, setCoupons] = useState<Record<string, number>>({});
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [code, setCode] = useState('');
   const [pct, setPct] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const load = useCallback(() => { setCoupons(getCoupons()); }, []);
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/coupons', { credentials: 'include' });
+      const data = await res.json();
+      setCoupons(data.coupons ?? []);
+    } catch {
+      setError('تعذّر تحميل الكوبونات');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => { load(); }, [load]);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     setError('');
     const c = code.trim().toUpperCase();
     const p = parseInt(pct);
     if (!c) { setError('يرجى إدخال كود الكوبون'); return; }
     if (isNaN(p) || p < 1 || p > 100) { setError('نسبة الخصم يجب أن تكون بين 1 و 100'); return; }
-    if (coupons[c]) { setError('هذا الكود موجود بالفعل'); return; }
-    addCoupon(c, p);
-    load();
-    setCode('');
-    setPct('');
-    setSuccess(`تم إضافة كوبون "${c}" بخصم ${p}%`);
-    setTimeout(() => setSuccess(''), 3000);
+    if (coupons.some(x => x.code === c)) { setError('هذا الكود موجود بالفعل'); return; }
+
+    const res = await fetch('/api/admin/coupons', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ code: c, discount: p }),
+    });
+
+    if (res.ok) {
+      await load();
+      setCode('');
+      setPct('');
+      setSuccess(`تم إضافة كوبون "${c}" بخصم ${p}%`);
+      setTimeout(() => setSuccess(''), 3000);
+    } else {
+      const d = await res.json();
+      setError(d.error || 'حدث خطأ');
+    }
   };
 
-  const handleDelete = (c: string) => {
+  const handleDelete = async (c: string) => {
     if (!confirm(`حذف كوبون "${c}"؟`)) return;
-    deleteCoupon(c);
-    load();
+    await fetch(`/api/admin/coupons?code=${encodeURIComponent(c)}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    await load();
   };
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-black text-gray-900">الكوبونات</h1>
-        <p className="text-sm text-gray-500 mt-0.5">{Object.keys(coupons).length} كوبون نشط</p>
+        <p className="text-sm text-gray-500 mt-0.5">{coupons.length} كوبون نشط</p>
       </div>
 
       {/* Add coupon form */}
@@ -84,7 +116,12 @@ export default function CouponsPage() {
 
       {/* Coupons list */}
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-        {Object.keys(coupons).length === 0 ? (
+        {loading ? (
+          <div className="py-16 text-center text-gray-400">
+            <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-sm">جارٍ التحميل...</p>
+          </div>
+        ) : coupons.length === 0 ? (
           <div className="py-16 text-center text-gray-400">
             <p className="text-4xl mb-3">🎟️</p>
             <p className="font-semibold">لا توجد كوبونات</p>
@@ -100,7 +137,7 @@ export default function CouponsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {Object.entries(coupons).map(([c, p]) => (
+              {coupons.map(({ code: c, discount: p }) => (
                 <tr key={c} className="hover:bg-gray-50 transition">
                   <td className="px-6 py-4">
                     <span className="font-mono font-black text-gray-900 bg-gray-100 px-3 py-1.5 rounded-lg text-sm tracking-wider">{c}</span>
@@ -128,7 +165,7 @@ export default function CouponsPage() {
 
       <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700">
         <p className="font-bold mb-1">ملاحظة:</p>
-        <p>الكوبونات المضافة هنا ستظهر تلقائياً في صفحة الكارت. العميل يدخل الكود ويحصل على الخصم مباشرة.</p>
+        <p>الكوبونات المضافة هنا تُحفظ في قاعدة البيانات وتظهر تلقائياً في صفحة الكارت.</p>
       </div>
     </div>
   );

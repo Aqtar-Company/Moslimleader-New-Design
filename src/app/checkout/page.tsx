@@ -17,7 +17,6 @@ import {
   IntlShippingConfig,
   ShippingCalcResult,
 } from '@/lib/intl-shipping';
-import { getPaymentMethods } from '@/lib/admin-storage';
 
 type Step = 'address' | 'payment' | 'confirm';
 type PayMethod = 'cod' | 'card' | 'vodafone' | 'instapay' | 'paypal';
@@ -194,8 +193,16 @@ export default function CheckoutPage() {
   });
   const [enabledPaymentIds, setEnabledPaymentIds] = useState<string[]>(['cod', 'card', 'paypal', 'vodafone', 'instapay']);
   useEffect(() => {
-    const methods = getPaymentMethods();
-    setEnabledPaymentIds(methods.filter(m => m.enabled).map(m => m.id));
+    fetch('/api/admin/settings?key=payment-methods')
+      .then(r => r.json())
+      .then(d => {
+        if (Array.isArray(d.value)) {
+          setEnabledPaymentIds(
+            d.value.filter((m: { id: string; enabled: boolean }) => m.enabled).map((m: { id: string }) => m.id)
+          );
+        }
+      })
+      .catch(() => {});
   }, []);
   const [payMethod, setPayMethod] = useState<PayMethod>(
     zoneInfo.zone === 'egypt' ? 'cod' : 'card'

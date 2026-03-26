@@ -37,8 +37,8 @@ export default function CartPage() {
 
   const grandTotal = Math.round((regionalTotal - regionalDiscount) * 100) / 100;
 
-  function handleApplyCoupon() {
-    const ok = applyCoupon(couponInput);
+  async function handleApplyCoupon() {
+    const ok = await applyCoupon(couponInput);
     if (ok) { setCouponError(false); setCouponInput(''); }
     else { setCouponError(true); }
   }

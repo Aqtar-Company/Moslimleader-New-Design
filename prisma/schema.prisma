@@ -15,6 +15,7 @@ model User {
   phone          String?
   role           String   @default("customer")
   savedAddresses Json?
+  wishlistIds    Json?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -137,4 +138,10 @@ model Review {
   date      DateTime @default(now())
 
   @@index([productId])
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
 }

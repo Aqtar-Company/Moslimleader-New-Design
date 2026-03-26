@@ -1,24 +1,39 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getPaymentMethods, savePaymentMethods, PaymentMethodConfig, PaymentMethodId } from '@/lib/admin-storage';
+
+type PaymentMethodId = 'cod' | 'card' | 'paypal' | 'vodafone' | 'instapay';
+
+interface PaymentMethodConfig {
+  id: PaymentMethodId;
+  enabled: boolean;
+}
 
 const METHOD_META: Record<PaymentMethodId, { icon: string; label: string; desc: string; local: boolean; intl: boolean }> = {
-  cod:      { icon: '💵', label: 'الدفع عند الاستلام',          desc: 'متاح للشحن المحلي فقط',                           local: true,  intl: false },
-  card:     { icon: '💳', label: 'بطاقة بنكية (فيزا / ماستركارد)', desc: 'متاح للشحن المحلي والدولي',                    local: true,  intl: true  },
-  paypal:   { icon: '🅿️', label: 'PayPal',                        desc: 'متاح للشحن الدولي والمحلي',                    local: true,  intl: true  },
-  vodafone: { icon: '📱', label: 'Vodafone Cash',                  desc: 'متاح للشحن المحلي فقط',                        local: true,  intl: false },
-  instapay: { icon: '⚡', label: 'InstaPay',                        desc: 'متاح للشحن المحلي فقط',                        local: true,  intl: false },
+  cod:      { icon: '💵', label: 'الدفع عند الاستلام',             desc: 'متاح للشحن المحلي فقط',        local: true,  intl: false },
+  card:     { icon: '💳', label: 'بطاقة بنكية (فيزا / ماستركارد)', desc: 'متاح للشحن المحلي والدولي',    local: true,  intl: true  },
+  paypal:   { icon: '🅿️', label: 'PayPal',                         desc: 'متاح للشحن الدولي والمحلي',    local: true,  intl: true  },
+  vodafone: { icon: '📱', label: 'Vodafone Cash',                   desc: 'متاح للشحن المحلي فقط',        local: true,  intl: false },
+  instapay: { icon: '⚡', label: 'InstaPay',                         desc: 'متاح للشحن المحلي فقط',        local: true,  intl: false },
 };
 
 const ORDER: PaymentMethodId[] = ['cod', 'card', 'paypal', 'vodafone', 'instapay'];
 
+const DEFAULT_METHODS: PaymentMethodConfig[] = ORDER.map(id => ({ id, enabled: true }));
+
 export default function PaymentMethodsPage() {
-  const [methods, setMethods] = useState<PaymentMethodConfig[]>([]);
+  const [methods, setMethods] = useState<PaymentMethodConfig[]>(DEFAULT_METHODS);
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setMethods(getPaymentMethods());
+    fetch('/api/admin/settings?key=payment-methods', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => {
+        if (Array.isArray(d.value)) setMethods(d.value);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   function toggle(id: PaymentMethodId) {
@@ -26,13 +41,28 @@ export default function PaymentMethodsPage() {
     setSaved(false);
   }
 
-  function handleSave() {
-    savePaymentMethods(methods);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+  async function handleSave() {
+    const res = await fetch('/api/admin/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ key: 'payment-methods', value: methods }),
+    });
+    if (res.ok) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    }
   }
 
   const enabledCount = methods.filter(m => m.enabled).length;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-600 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-xl mx-auto space-y-6" dir="rtl">
@@ -44,8 +74,7 @@ export default function PaymentMethodsPage() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-100">
         {ORDER.map(id => {
           const meta = METHOD_META[id];
-          const config = methods.find(m => m.id === id);
-          const enabled = config?.enabled ?? true;
+          const enabled = methods.find(m => m.id === id)?.enabled ?? true;
 
           return (
             <div key={id} className="flex items-center gap-4 px-5 py-4">
@@ -62,7 +91,6 @@ export default function PaymentMethodsPage() {
                   )}
                 </div>
               </div>
-              {/* Toggle */}
               <button
                 onClick={() => toggle(id)}
                 className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
@@ -96,7 +124,7 @@ export default function PaymentMethodsPage() {
         disabled={enabledCount === 0}
         className="w-full bg-gray-900 hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition text-sm"
       >
-        {saved ? '✓ تم الحفظ' : 'حفظ الإعدادات'}
+        {saved ? '✓ تم الحفظ في قاعدة البيانات' : 'حفظ الإعدادات'}
       </button>
     </div>
   );

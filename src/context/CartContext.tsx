@@ -5,6 +5,28 @@ import { CartItem, Product } from '@/types';
 import { DEFAULT_COUPONS } from '@/lib/admin-config';
 import { useAuth } from '@/context/AuthContext';
 
+// Cache coupons fetched from API
+let _couponCache: Record<string, number> | null = null;
+
+async function fetchActiveCoupons(): Promise<Record<string, number>> {
+  if (_couponCache) return _couponCache;
+  try {
+    const res = await fetch('/api/admin/coupons', { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      const map: Record<string, number> = {};
+      (data.coupons ?? []).forEach((c: { code: string; discount: number; isActive: boolean }) => {
+        if (c.isActive) map[c.code] = c.discount;
+      });
+      _couponCache = map;
+      // Refresh cache after 5 minutes
+      setTimeout(() => { _couponCache = null; }, 5 * 60 * 1000);
+      return map;
+    }
+  } catch {}
+  return { ...DEFAULT_COUPONS };
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface CartState {
@@ -29,7 +51,7 @@ interface CartContextValue {
   totalItems: number;
   coupon: { code: string; pct: number } | null;
   discount: number;
-  applyCoupon: (code: string) => boolean;
+  applyCoupon: (code: string) => Promise<boolean>;
   removeCoupon: () => void;
   addItem: (product: Product, selectedModel?: number, qty?: number) => void;
   removeItem: (cartItemId: string) => void;
@@ -78,15 +100,6 @@ function cartReducer(state: CartState, action: CartAction): CartState {
 // ─── Context ──────────────────────────────────────────────────────────────────
 
 const CartContext = createContext<CartContextValue | null>(null);
-
-function getActiveCoupons(): Record<string, number> {
-  if (typeof window === 'undefined') return DEFAULT_COUPONS;
-  try {
-    const saved = localStorage.getItem('ml-coupons');
-    if (saved) return JSON.parse(saved);
-  } catch {}
-  return { ...DEFAULT_COUPONS };
-}
 
 // ─── API helpers ─────────────────────────────────────────────────────────────
 
@@ -199,8 +212,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const totalItems = state.items.reduce((sum, i) => sum + i.quantity, 0);
   const discount = coupon ? Math.round(total * coupon.pct / 100) : 0;
 
-  function applyCoupon(code: string): boolean {
-    const coupons = getActiveCoupons();
+  async function applyCoupon(code: string): Promise<boolean> {
+    const coupons = await fetchActiveCoupons();
     const upper = code.trim().toUpperCase();
     const pct = coupons[upper];
     if (!pct) return false;

@@ -34,7 +34,7 @@ export async function GET() {
       isAdded: false,
     }));
 
-    const adminProducts = dbProducts.map(p => ({ ...p, isAdded: true }));
+    const adminProducts = dbProducts.map((p: (typeof dbProducts)[number]) => ({ ...p, isAdded: true }));
 
     return NextResponse.json({ products: [...mergedStatic, ...adminProducts] });
   } catch (err) {

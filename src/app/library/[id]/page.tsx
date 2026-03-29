@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -41,6 +41,7 @@ interface BookData {
 
 export default function BookPage() {
   const { id } = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const [book, setBook] = useState<BookData | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
@@ -49,16 +50,37 @@ export default function BookPage() {
   const [shareLink, setShareLink] = useState('');
   const [lastPage, setLastPage] = useState(1);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [shareMsg, setShareMsg] = useState('');
 
   useEffect(() => {
     fetch(`/api/books/${id}`, { credentials: 'include' })
       .then(r => r.json())
-      .then(d => {
+      .then(async d => {
         setBook(d.book ?? null);
-        setHasAccess(d.hasAccess ?? false);
+        let access = d.hasAccess ?? false;
+
+        // Redeem friend share link if ?ref=TOKEN present
+        const refToken = searchParams.get('ref');
+        if (refToken && !access && user) {
+          try {
+            const res = await fetch(`/api/books/share/${refToken}`, {
+              method: 'POST',
+              credentials: 'include',
+            });
+            if (res.ok) {
+              access = true;
+              setShareMsg('🎁 تم تفعيل رابط المشاركة — يمكنك قراءة الكتاب كاملاً!');
+            } else {
+              const err = await res.json();
+              setShareMsg(err.error || 'الرابط غير صالح أو منتهي الصلاحية');
+            }
+          } catch {}
+        }
+        setHasAccess(access);
       })
+      .catch(() => {})
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, user, searchParams]);
 
   // Save reading progress (debounced)
   const saveProgress = useCallback((page: number) => {
@@ -121,6 +143,17 @@ export default function BookPage() {
           <span>/</span>
           <span className="text-gray-700 font-semibold">{book.title}</span>
         </div>
+
+        {/* Share link message banner */}
+        {shareMsg && (
+          <div className={`mb-5 px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-2 ${
+            shareMsg.startsWith('🎁')
+              ? 'bg-green-50 border border-green-200 text-green-700'
+              : 'bg-red-50 border border-red-200 text-red-600'
+          }`}>
+            {shareMsg}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* ── Sidebar (book info) ── */}
@@ -245,6 +278,8 @@ export default function BookPage() {
                   price={book.price}
                   initialPage={lastPage}
                   onPageChange={saveProgress}
+                  bookTitle={book.title}
+                  coverUrl={book.cover}
                 />
               </div>
             ) : (

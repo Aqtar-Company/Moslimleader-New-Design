@@ -11,12 +11,14 @@ interface BookReaderProps {
   bookId: string;
   freePages: number;
   hasAccess: boolean;
-  watermarkText?: string; // user email
+  watermarkText?: string;
   enableForensic?: boolean;
   allowQuoteShare?: boolean;
   price: number;
   initialPage?: number;
   onPageChange?: (page: number) => void;
+  bookTitle?: string;
+  coverUrl?: string;
 }
 
 // ── Forensic watermark: encode userId into zero-width chars ──────────────────
@@ -193,6 +195,7 @@ function QuoteToast({
 export default function BookReader({
   bookId, freePages, hasAccess, watermarkText, enableForensic = true,
   allowQuoteShare = true, price, initialPage = 1, onPageChange,
+  bookTitle = '', coverUrl = '',
 }: BookReaderProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState(initialPage);
@@ -369,8 +372,8 @@ export default function BookReader({
       {quoteToast && (
         <QuoteToast
           text={quoteToast}
-          bookTitle=""
-          coverUrl=""
+          bookTitle={bookTitle}
+          coverUrl={coverUrl}
           onClose={() => setQuoteToast(null)}
         />
       )}

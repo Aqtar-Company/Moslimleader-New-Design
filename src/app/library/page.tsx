@@ -26,6 +26,7 @@ export default function LibraryPage() {
     fetch('/api/books')
       .then(r => r.json())
       .then(d => setBooks(d.books ?? []))
+      .catch(() => setBooks([]))
       .finally(() => setLoading(false));
   }, []);
 

@@ -22,6 +22,7 @@ model User {
   orders  Order[]
   cart    Cart?
   reviews Review[]
+  bookAccesses BookAccess[]
 }
 
 model Product {
@@ -144,4 +145,58 @@ model Setting {
   key       String   @id
   value     Json
   updatedAt DateTime @updatedAt
+}
+
+model Book {
+  id            String   @id @default(cuid())
+  title         String
+  titleEn       String?
+  description   String   @db.Text
+  descriptionEn String?  @db.Text
+  cover         String   @default("")
+  filePath      String   @default("")
+  totalPages    Int      @default(0)
+  freePages     Int      @default(10)
+  price         Float    @default(0)
+  author        String?
+  category      String?
+  isPublished   Boolean  @default(false)
+  allowQuoteShare   Boolean @default(true)
+  allowFriendShare  Boolean @default(true)
+  friendShareHours  Int     @default(48)
+  enableReferral    Boolean @default(true)
+  referralDiscount  Int     @default(20)
+  enableWatermark   Boolean @default(true)
+  enableForensic    Boolean @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  accesses   BookAccess[]
+  shareLinks BookShareLink[]
+}
+
+model BookAccess {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  bookId    String
+  book      Book     @relation(fields: [bookId], references: [id])
+  lastPage  Int      @default(1)
+  grantedAt DateTime @default(now())
+
+  @@unique([userId, bookId])
+  @@index([bookId])
+}
+
+model BookShareLink {
+  id        String   @id @default(cuid())
+  bookId    String
+  book      Book     @relation(fields: [bookId], references: [id])
+  createdBy String
+  token     String   @unique @default(cuid())
+  expiresAt DateTime
+  usedCount Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([token])
 }

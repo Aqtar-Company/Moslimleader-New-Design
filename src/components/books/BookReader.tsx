@@ -21,13 +21,12 @@ interface BookReaderProps {
   coverUrl?: string;
 }
 
-// ── Forensic watermark: encode userId into zero-width chars ──────────────────
+// ── Forensic watermark ────────────────────────────────────────────────────────
 function encodeForensic(text: string, userId: string): string {
-  const ZWJ = '\u200D';  // 1
-  const ZWNJ = '\u200C'; // 0
+  const ZWJ = '\u200D';
+  const ZWNJ = '\u200C';
   const binary = userId.split('').map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join('');
   const hidden = binary.split('').map(b => b === '1' ? ZWJ : ZWNJ).join('');
-  // Inject after first word
   const words = text.split(' ');
   if (words.length < 2) return text + hidden;
   words[0] = words[0] + hidden;
@@ -42,23 +41,19 @@ function generateQuoteCard(quote: string, bookTitle: string, coverUrl: string): 
     canvas.height = 1080;
     const ctx = canvas.getContext('2d')!;
 
-    // Background gradient
     const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
     grad.addColorStop(0, '#1a1a2e');
     grad.addColorStop(1, '#16213e');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Gold accent line
     ctx.fillStyle = '#F5C518';
     ctx.fillRect(80, 80, 6, 920);
 
-    // Quote marks
     ctx.fillStyle = '#F5C518';
     ctx.font = 'bold 120px serif';
     ctx.fillText('❝', 100, 220);
 
-    // Quote text (RTL, wrapped)
     ctx.fillStyle = '#ffffff';
     ctx.font = '42px Arial';
     ctx.direction = 'rtl';
@@ -81,17 +76,26 @@ function generateQuoteCard(quote: string, bookTitle: string, coverUrl: string): 
     }
     if (line) ctx.fillText(line.trim(), canvas.width - 100, y);
 
-    // Book title
     ctx.fillStyle = '#F5C518';
     ctx.font = 'bold 32px Arial';
-    ctx.fillText(`— ${bookTitle}`, canvas.width - 100, 880);
+    ctx.fillText(bookTitle ? `— ${bookTitle}` : '', canvas.width - 100, 880);
 
-    // Site branding
     ctx.fillStyle = 'rgba(255,255,255,0.4)';
     ctx.font = '24px Arial';
     ctx.fillText('moslimleader.com', canvas.width - 100, 940);
 
-    resolve(canvas.toDataURL('image/png'));
+    if (coverUrl) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        ctx.drawImage(img, 100, 860, 60, 80);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => resolve(canvas.toDataURL('image/png'));
+      img.src = coverUrl;
+    } else {
+      resolve(canvas.toDataURL('image/png'));
+    }
   });
 }
 
@@ -106,7 +110,7 @@ function WatermarkOverlay({ text }: { text: string }) {
           style={{
             fontSize: '14px',
             opacity: 0.07,
-            transform: `rotate(-35deg)`,
+            transform: 'rotate(-35deg)',
             top: `${15 + i * 18}%`,
             left: '-10%',
             right: '-10%',
@@ -124,35 +128,42 @@ function WatermarkOverlay({ text }: { text: string }) {
 // ── Lock Overlay ──────────────────────────────────────────────────────────────
 function LockOverlay({ price, bookId }: { price: number; bookId: string }) {
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center z-20"
-      style={{ background: 'linear-gradient(to bottom, transparent 0%, rgba(26,26,46,0.95) 30%, #1a1a2e 100%)' }}>
+    <div
+      className="absolute inset-0 flex flex-col items-center justify-center z-20"
+      style={{ background: 'linear-gradient(to bottom, transparent 0%, rgba(26,26,46,0.97) 25%, #1a1a2e 100%)' }}
+    >
       <div className="text-center px-6 py-8 max-w-sm">
-        <div className="text-5xl mb-4">🔒</div>
-        <h3 className="text-white font-black text-xl mb-2">هذه الصفحة مقفولة</h3>
-        <p className="text-gray-300 text-sm mb-6">
-          اشترِ الكتاب كاملاً للاستمرار في القراءة
+        <div className="w-16 h-16 rounded-2xl bg-[#F5C518]/10 border border-[#F5C518]/30 flex items-center justify-center text-3xl mx-auto mb-5">🔒</div>
+        <h3 className="text-white font-black text-xl mb-2">أكمل رحلة القراءة</h3>
+        <p className="text-gray-400 text-sm mb-5 leading-relaxed">
+          انتهت صفحاتك المجانية — احصل على الكتاب كاملاً واستمر في التعلّم
         </p>
-        <div className="text-[#F5C518] font-black text-3xl mb-6">
-          {price.toLocaleString('ar-EG')} ج.م
+        <div className="flex items-baseline justify-center gap-1 mb-5">
+          <span className="text-[#F5C518] font-black text-4xl">{price.toLocaleString('ar-EG')}</span>
+          <span className="text-gray-400 text-sm">ج.م</span>
         </div>
         <a
           href={`/library/${bookId}/buy`}
-          className="block w-full bg-[#F5C518] hover:bg-amber-400 text-[#1a1a2e] font-black py-3.5 rounded-2xl text-base transition text-center"
+          className="block w-full bg-[#F5C518] hover:bg-amber-400 active:bg-amber-500 text-[#1a1a2e] font-black py-4 rounded-2xl text-base transition text-center shadow-lg shadow-amber-500/20"
         >
-          اشترِ الآن واقرأ كاملاً
+          اشترِ الآن 🔓
         </a>
-        <p className="text-gray-500 text-xs mt-4">
-          دفع آمن • وصول فوري بعد التأكيد
-        </p>
+        <div className="flex items-center justify-center gap-3 mt-4 text-gray-500 text-xs">
+          <span>✓ دفع آمن</span>
+          <span>•</span>
+          <span>✓ وصول فوري</span>
+          <span>•</span>
+          <span>✓ على جميع الأجهزة</span>
+        </div>
       </div>
     </div>
   );
 }
 
 // ── Quote Toast ───────────────────────────────────────────────────────────────
-function QuoteToast({
-  text, bookTitle, coverUrl, onClose,
-}: { text: string; bookTitle: string; coverUrl: string; onClose: () => void }) {
+function QuoteToast({ text, bookTitle, coverUrl, onClose }: {
+  text: string; bookTitle: string; coverUrl: string; onClose: () => void;
+}) {
   const [generating, setGenerating] = useState(false);
 
   const handleShare = async () => {
@@ -167,13 +178,13 @@ function QuoteToast({
   };
 
   return (
-    <div className="fixed bottom-6 right-6 left-6 sm:left-auto sm:w-80 bg-[#1a1a2e] border border-[#F5C518]/30 rounded-2xl p-4 shadow-2xl z-50 animate-in slide-in-from-bottom-4">
+    <div className="fixed bottom-6 right-4 left-4 sm:left-auto sm:right-6 sm:w-80 bg-[#1a1a2e] border border-[#F5C518]/40 rounded-2xl p-4 shadow-2xl z-50">
       <div className="flex items-start gap-3">
-        <div className="text-2xl">✨</div>
+        <div className="text-2xl shrink-0">✨</div>
         <div className="flex-1 min-w-0">
           <p className="text-white font-bold text-sm mb-1">حوّل الاقتباس لصورة</p>
-          <p className="text-gray-400 text-xs leading-relaxed line-clamp-2">{text}</p>
-          <div className="flex gap-2 mt-3">
+          <p className="text-gray-400 text-xs leading-relaxed line-clamp-2 mb-3">{text}</p>
+          <div className="flex gap-2">
             <button
               onClick={handleShare}
               disabled={generating}
@@ -181,12 +192,29 @@ function QuoteToast({
             >
               {generating ? 'جارٍ الإنشاء...' : '📸 نزّل كصورة'}
             </button>
-            <button onClick={onClose} className="text-gray-500 hover:text-gray-300 px-2 text-xs">
-              إلغاء
+            <button onClick={onClose} className="text-gray-500 hover:text-gray-300 px-3 text-xs">
+              ×
             </button>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Free Page Warning Toast ───────────────────────────────────────────────────
+function FreePageWarning({ remaining, bookId }: { remaining: number; bookId: string }) {
+  return (
+    <div className="absolute top-3 left-3 right-3 z-30 bg-amber-50 border border-amber-300 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2 shadow-sm">
+      <p className="text-amber-800 text-xs font-bold">
+        {remaining === 0 ? '⚠️ هذه آخر صفحة مجانية' : `⚠️ تبقّت ${remaining} صفحة مجانية فقط`}
+      </p>
+      <a
+        href={`/library/${bookId}/buy`}
+        className="text-xs font-black text-amber-700 underline whitespace-nowrap"
+      >
+        اشترِ الآن
+      </a>
     </div>
   );
 }
@@ -202,7 +230,22 @@ export default function BookReader({
   const [pageWidth, setPageWidth] = useState(600);
   const [quoteToast, setQuoteToast] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(false);
+  const [jumperValue, setJumperValue] = useState(String(initialPage));
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Load dark mode from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('reader-dark-mode');
+    if (saved === 'true') setDarkMode(true);
+  }, []);
+
+  // Save dark mode to localStorage
+  const toggleDark = () => {
+    setDarkMode(d => {
+      localStorage.setItem('reader-dark-mode', String(!d));
+      return !d;
+    });
+  };
 
   // Responsive width
   useEffect(() => {
@@ -216,155 +259,211 @@ export default function BookReader({
     return () => window.removeEventListener('resize', update);
   }, []);
 
-  // Intercept copy — inject forensic watermark + offer quote card
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement) return;
+      if (e.key === 'ArrowLeft' || e.key === 'PageDown') {
+        // Left arrow = next page (Arabic reading direction: left = forward)
+        setCurrentPage(p => {
+          const next = Math.min(p + 1, numPages);
+          if (next !== p) { onPageChange?.(next); setJumperValue(String(next)); }
+          return next;
+        });
+      } else if (e.key === 'ArrowRight' || e.key === 'PageUp') {
+        // Right arrow = previous page
+        setCurrentPage(p => {
+          const prev = Math.max(p - 1, 1);
+          if (prev !== p) { onPageChange?.(prev); setJumperValue(String(prev)); }
+          return prev;
+        });
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [numPages, onPageChange]);
+
+  // Intercept copy → forensic watermark + quote card
   useEffect(() => {
     if (!allowQuoteShare && !enableForensic) return;
-
     const handleCopy = (e: ClipboardEvent) => {
       const selection = window.getSelection()?.toString() || '';
       if (!selection.trim()) return;
       e.preventDefault();
-
       let finalText = selection;
       if (enableForensic && watermarkText) {
         finalText = encodeForensic(selection, watermarkText);
       }
       e.clipboardData?.setData('text/plain', finalText);
-
       if (allowQuoteShare && selection.length > 20) {
         setQuoteToast(selection.slice(0, 300));
       }
     };
-
     document.addEventListener('copy', handleCopy);
     return () => document.removeEventListener('copy', handleCopy);
   }, [watermarkText, enableForensic, allowQuoteShare]);
 
-  const canViewPage = (page: number) => hasAccess || page <= freePages;
-
   const goTo = useCallback((page: number) => {
     if (page < 1 || page > numPages) return;
     setCurrentPage(page);
+    setJumperValue(String(page));
     onPageChange?.(page);
   }, [numPages, onPageChange]);
 
   const isLocked = currentPage > freePages && !hasAccess;
+  const pagesLeft = freePages - currentPage;
+  const showWarning = !hasAccess && !isLocked && pagesLeft >= 0 && pagesLeft <= 2;
+
+  const dm = darkMode;
+  const btnCls = `w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm transition disabled:opacity-30 ${dm ? 'bg-gray-700 text-gray-200 hover:bg-gray-600 disabled:hover:bg-gray-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:hover:bg-gray-100'}`;
 
   return (
     <div
-      className={`flex flex-col h-full rounded-2xl overflow-hidden transition-colors ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}
+      dir="rtl"
+      className={`flex flex-col rounded-2xl overflow-hidden transition-colors ${dm ? 'bg-gray-950' : 'bg-gray-100'}`}
+      style={{ minHeight: '80vh' }}
       ref={containerRef}
     >
       {/* ── Toolbar ── */}
-      <div className={`flex items-center justify-between px-4 py-3 border-b ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => goTo(currentPage - 1)}
-            disabled={currentPage <= 1}
-            className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-30 text-gray-700 font-bold text-sm transition flex items-center justify-center"
-          >
-            ›
-          </button>
-          <span className={`text-xs font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-            {currentPage} / {numPages || '...'}
-          </span>
-          <button
-            onClick={() => goTo(currentPage + 1)}
-            disabled={currentPage >= numPages}
-            className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-30 text-gray-700 font-bold text-sm transition flex items-center justify-center"
-          >
-            ‹
-          </button>
+      <div className={`flex items-center gap-2 px-3 py-2.5 border-b ${dm ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
+        {/* Navigation: RIGHT = previous (السابقة), LEFT = next (التالية) in RTL */}
+        <button
+          onClick={() => goTo(currentPage - 1)}
+          disabled={currentPage <= 1}
+          aria-label="الصفحة السابقة"
+          className={btnCls}
+          title="الصفحة السابقة (→)"
+        >
+          ›
+        </button>
+
+        <div className={`text-xs font-bold tabular-nums px-1 ${dm ? 'text-gray-300' : 'text-gray-600'}`}>
+          {currentPage} <span className={dm ? 'text-gray-600' : 'text-gray-300'}>/</span> {numPages || '…'}
         </div>
 
-        {/* Progress bar */}
+        <button
+          onClick={() => goTo(currentPage + 1)}
+          disabled={currentPage >= numPages}
+          aria-label="الصفحة التالية"
+          className={btnCls}
+          title="الصفحة التالية (←)"
+        >
+          ‹
+        </button>
+
+        {/* Progress bar — always visible */}
         {numPages > 0 && (
-          <div className="flex-1 mx-4 hidden sm:block">
-            <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+          <div className="flex-1 mx-1 min-w-0">
+            <div className={`h-2 rounded-full overflow-hidden ${dm ? 'bg-gray-700' : 'bg-gray-200'}`}>
               <div
-                className="h-full bg-[#F5C518] rounded-full transition-all"
+                className="h-full bg-[#F5C518] rounded-full transition-all duration-300"
                 style={{ width: `${(currentPage / numPages) * 100}%` }}
               />
             </div>
-            {!hasAccess && (
-              <p className="text-xs text-gray-400 mt-1 text-center">
-                {freePages - currentPage > 0
-                  ? `تبقّى ${freePages - currentPage} صفحة مجانية`
-                  : 'انتهت الصفحات المجانية'}
+            {!hasAccess && numPages > 0 && (
+              <p className={`text-[10px] mt-0.5 text-center ${dm ? 'text-gray-500' : 'text-gray-400'}`}>
+                {pagesLeft > 0 ? `${pagesLeft} صفحة مجانية متبقية` : isLocked ? 'انتهت الصفحات المجانية' : 'آخر صفحة مجانية'}
               </p>
             )}
           </div>
         )}
 
+        {/* Dark mode toggle */}
         <button
-          onClick={() => setDarkMode(d => !d)}
-          className={`w-8 h-8 rounded-lg text-sm transition flex items-center justify-center ${darkMode ? 'bg-gray-700 text-yellow-400' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-          title={darkMode ? 'وضع النهار' : 'وضع الليل'}
+          onClick={toggleDark}
+          aria-label={dm ? 'وضع النهار' : 'وضع الليل'}
+          className={btnCls}
+          title={dm ? 'وضع النهار' : 'وضع الليل'}
         >
-          {darkMode ? '☀️' : '🌙'}
+          {dm ? '☀️' : '🌙'}
         </button>
       </div>
 
       {/* ── PDF Page ── */}
-      <div className={`flex-1 overflow-auto flex items-start justify-center py-4 ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+      <div className={`flex-1 overflow-auto flex items-start justify-center py-4 ${dm ? 'bg-gray-950' : 'bg-gray-100'}`}>
         <div className="relative">
+          {showWarning && !isLocked && (
+            <FreePageWarning remaining={pagesLeft} bookId={bookId} />
+          )}
+
           <Document
             file={`/api/books/${bookId}/file`}
             onLoadSuccess={({ numPages: n }) => setNumPages(n)}
             loading={
-              <div className="flex items-center justify-center w-full py-20">
-                <div className="w-8 h-8 border-2 border-[#F5C518] border-t-transparent rounded-full animate-spin" />
+              <div className="flex items-center justify-center py-24 px-12">
+                <div className="text-center">
+                  <div className="w-10 h-10 border-2 border-[#F5C518] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                  <p className={`text-xs ${dm ? 'text-gray-500' : 'text-gray-400'}`}>جارٍ تحميل الكتاب…</p>
+                </div>
               </div>
             }
             error={
-              <div className="text-center py-20 text-gray-400">
+              <div className="text-center py-20 px-8">
                 <p className="text-4xl mb-3">📚</p>
-                <p>تعذّر تحميل الكتاب</p>
+                <p className={`text-sm font-semibold mb-2 ${dm ? 'text-gray-400' : 'text-gray-500'}`}>تعذّر تحميل الكتاب</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="text-xs text-[#F5C518] underline"
+                >
+                  حاول مرة أخرى
+                </button>
               </div>
             }
           >
-            {canViewPage(currentPage) && !isLocked && (
+            {!isLocked && (
               <Page
                 pageNumber={currentPage}
                 width={pageWidth}
                 renderAnnotationLayer={false}
-                className="shadow-xl rounded-xl overflow-hidden"
+                className={`shadow-xl rounded-xl overflow-hidden ${dm ? 'brightness-90' : ''}`}
               />
             )}
           </Document>
 
-          {/* Watermark overlay */}
+          {/* Watermark */}
           {watermarkText && !isLocked && (
             <WatermarkOverlay text={watermarkText} />
           )}
 
           {/* Lock overlay */}
           {isLocked && (
-            <div style={{ width: pageWidth, height: pageWidth * 1.41 }} className="relative bg-gray-200 rounded-xl overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-b from-gray-200 to-gray-300" />
+            <div
+              style={{ width: pageWidth, height: Math.round(pageWidth * 1.41) }}
+              className="relative rounded-xl overflow-hidden bg-[#1a1a2e]"
+            >
               <LockOverlay price={price} bookId={bookId} />
             </div>
           )}
         </div>
       </div>
 
-      {/* ── Page jumper ── */}
+      {/* ── Footer: page jumper + keyboard hint ── */}
       {numPages > 0 && (
-        <div className={`px-4 py-2 border-t flex items-center justify-center gap-3 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <span className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>انتقل لصفحة:</span>
-          <input
-            type="number"
-            min={1}
-            max={numPages}
-            defaultValue={currentPage}
-            onKeyDown={e => {
-              if (e.key === 'Enter') {
-                const v = parseInt((e.target as HTMLInputElement).value);
-                if (v >= 1 && v <= numPages) goTo(v);
-              }
-            }}
-            className="w-16 text-center border border-gray-200 rounded-lg py-1 text-sm outline-none focus:border-[#F5C518]"
-          />
+        <div className={`px-4 py-2.5 border-t flex items-center justify-between gap-3 ${dm ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
+          <div className="flex items-center gap-2">
+            <span className={`text-xs ${dm ? 'text-gray-500' : 'text-gray-400'}`}>انتقل لصفحة:</span>
+            <input
+              type="number"
+              min={1}
+              max={numPages}
+              value={jumperValue}
+              onChange={e => setJumperValue(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  const v = parseInt(jumperValue);
+                  if (v >= 1 && v <= numPages) goTo(v);
+                }
+              }}
+              onBlur={() => {
+                const v = parseInt(jumperValue);
+                if (!v || v < 1 || v > numPages) setJumperValue(String(currentPage));
+              }}
+              className={`w-16 text-center border rounded-lg px-1 py-1 text-sm outline-none focus:border-[#F5C518] ${dm ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-800'}`}
+            />
+          </div>
+          <p className={`text-[10px] hidden sm:block ${dm ? 'text-gray-700' : 'text-gray-300'}`}>
+            ← التالية • السابقة →
+          </p>
         </div>
       )}
 

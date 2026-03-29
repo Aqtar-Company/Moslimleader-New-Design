@@ -28,17 +28,29 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(bytes);
 
     if (type === 'pdf') {
-      // Save PDF to private/books/
+      if (file.type !== 'application/pdf') {
+        return NextResponse.json({ error: 'يجب أن يكون الملف بصيغة PDF' }, { status: 400 });
+      }
+      // Verify PDF magic bytes (%PDF-)
+      if (buffer[0] !== 0x25 || buffer[1] !== 0x50 || buffer[2] !== 0x44 || buffer[3] !== 0x46) {
+        return NextResponse.json({ error: 'الملف ليس PDF صحيحاً' }, { status: 400 });
+      }
       const dir = path.join(process.cwd(), 'private', 'books');
       await mkdir(dir, { recursive: true });
       const filename = `${randomUUID()}.pdf`;
       await writeFile(path.join(dir, filename), buffer);
       return NextResponse.json({ path: filename, type: 'pdf' });
     } else {
-      // Save cover image to public/covers/
+      if (!file.type.startsWith('image/')) {
+        return NextResponse.json({ error: 'يجب أن تكون الغلاف صورة (jpg, png, webp...)' }, { status: 400 });
+      }
+      const ALLOWED_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'avif'];
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      if (!ALLOWED_EXTS.includes(ext)) {
+        return NextResponse.json({ error: 'امتداد الصورة غير مدعوم' }, { status: 400 });
+      }
       const dir = path.join(process.cwd(), 'public', 'covers');
       await mkdir(dir, { recursive: true });
-      const ext = file.name.split('.').pop() || 'jpg';
       const filename = `${randomUUID()}.${ext}`;
       await writeFile(path.join(dir, filename), buffer);
       return NextResponse.json({ path: `/covers/${filename}`, type: 'cover' });

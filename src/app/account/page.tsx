@@ -365,32 +365,57 @@ export default function AccountPage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {myBooks.map(book => (
-                <Link key={book.id} href={`/library/${book.id}`} className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition overflow-hidden">
-                  <div className="relative aspect-[2/3] bg-gradient-to-br from-[#1a1a2e] to-[#16213e]">
-                    {book.cover ? (
-                      <Image src={book.cover} alt={book.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" unoptimized />
-                    ) : (
-                      <div className="flex items-center justify-center h-full text-4xl">📖</div>
-                    )}
-                    {book.lastPage > 1 && (
-                      <div className="absolute bottom-2 left-2 right-2 h-1 bg-white/20 rounded-full overflow-hidden">
+              {myBooks.map(book => {
+                const pct = book.totalPages ? Math.min((book.lastPage / book.totalPages) * 100, 100) : 0;
+                const finished = pct >= 98;
+                return (
+                  <Link key={book.id} href={`/library/${book.id}`} className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition overflow-hidden flex flex-col">
+                    {/* Cover */}
+                    <div className="relative aspect-[2/3] bg-gradient-to-br from-[#1a1a2e] to-[#16213e] shrink-0">
+                      {book.cover ? (
+                        <Image src={book.cover} alt={book.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" unoptimized />
+                      ) : (
+                        <div className="flex items-center justify-center h-full text-4xl">📖</div>
+                      )}
+                      {finished && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <span className="text-white font-black text-xs bg-green-500 px-2 py-1 rounded-full">✓ منتهي</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Progress bar */}
+                    {book.totalPages > 0 && (
+                      <div className="h-1.5 bg-gray-100">
                         <div
-                          className="h-full bg-[#F5C518] rounded-full"
-                          style={{ width: `${Math.min((book.lastPage / (book.totalPages || 1)) * 100, 100)}%` }}
+                          className={`h-full rounded-none transition-all ${finished ? 'bg-green-500' : 'bg-[#F5C518]'}`}
+                          style={{ width: `${pct}%` }}
                         />
                       </div>
                     )}
-                  </div>
-                  <div className="p-3">
-                    <p className="font-black text-gray-900 text-xs leading-tight line-clamp-2">{book.title}</p>
-                    {book.author && <p className="text-gray-400 text-xs mt-0.5">{book.author}</p>}
-                    {book.lastPage > 1 && (
-                      <p className="text-amber-600 text-xs mt-1 font-semibold">ص {book.lastPage}</p>
-                    )}
-                  </div>
-                </Link>
-              ))}
+
+                    {/* Info */}
+                    <div className="p-3 flex flex-col flex-1">
+                      <p className="font-black text-gray-900 text-xs leading-tight line-clamp-2 mb-1">{book.title}</p>
+                      {book.author && <p className="text-gray-400 text-[10px]">{book.author}</p>}
+                      <div className="mt-auto pt-2">
+                        {finished ? (
+                          <p className="text-green-600 text-[10px] font-bold">اكتملت القراءة ✓</p>
+                        ) : book.lastPage > 1 ? (
+                          <p className="text-[#F5C518] text-[10px] font-bold">
+                            ▶ استكمل من ص {book.lastPage}
+                            {book.totalPages > 0 && (
+                              <span className="text-gray-400 font-normal"> / {book.totalPages}</span>
+                            )}
+                          </p>
+                        ) : (
+                          <p className="text-gray-400 text-[10px]">لم تبدأ القراءة بعد</p>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>

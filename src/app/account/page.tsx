@@ -3,13 +3,24 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LanguageContext';
 import { Address } from '@/context/AuthContext';
 import { governorates } from '@/lib/shipping';
 import { ADMIN_EMAIL } from '@/lib/admin-config';
 
-type Tab = 'profile' | 'addresses' | 'orders';
+type Tab = 'profile' | 'addresses' | 'orders' | 'books';
+
+interface MyBook {
+  id: string;
+  title: string;
+  cover: string;
+  author?: string;
+  lastPage: number;
+  totalPages: number;
+  grantedAt: string;
+}
 
 interface OrderRecord {
   id: string;
@@ -27,6 +38,8 @@ export default function AccountPage() {
   const [tab, setTab] = useState<Tab>('profile');
   const [dbOrders, setDbOrders] = useState<OrderRecord[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [myBooks, setMyBooks] = useState<MyBook[]>([]);
+  const [booksLoading, setBooksLoading] = useState(false);
 
   // Profile form
   const [name, setName] = useState('');
@@ -70,6 +83,14 @@ export default function AccountPage() {
         })
         .catch(() => {})
         .finally(() => setOrdersLoading(false));
+
+      // Load my books
+      setBooksLoading(true);
+      fetch('/api/books/my', { credentials: 'include' })
+        .then(r => r.json())
+        .then(d => setMyBooks(d.books ?? []))
+        .catch(() => {})
+        .finally(() => setBooksLoading(false));
     }
   }, [user, isLoading, router]);
 
@@ -181,7 +202,7 @@ export default function AccountPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-2xl p-1 mb-8 overflow-x-auto">
-        {([['profile', L.profile], ['addresses', L.addresses], ['orders', L.orders]] as [Tab, string][]).map(([t, label]) => (
+        {([['profile', L.profile], ['addresses', L.addresses], ['orders', L.orders], ['books', isRtl ? '📚 كتبي' : '📚 My Books']] as [Tab, string][]).map(([t, label]) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -322,6 +343,54 @@ export default function AccountPage() {
                 <button onClick={() => setShowAddressForm(false)} className="flex-1 border-2 border-gray-200 hover:border-gray-400 text-gray-700 font-bold py-3 rounded-xl transition text-sm">{L.cancel}</button>
                 <button onClick={handleAddAddress} className="flex-1 bg-gray-900 hover:bg-gray-700 text-white font-bold py-3 rounded-xl transition text-sm">{L.addBtn}</button>
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Books Tab */}
+      {tab === 'books' && (
+        <div>
+          {booksLoading ? (
+            <div className="flex justify-center py-16">
+              <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : myBooks.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
+              <p className="text-4xl mb-3">📚</p>
+              <p className="text-gray-500 font-semibold mb-4">{isRtl ? 'لا توجد كتب مشتراة بعد' : 'No books yet'}</p>
+              <Link href="/library" className="inline-block bg-[#F5C518] hover:bg-amber-400 text-[#1a1a2e] font-black px-6 py-2.5 rounded-xl text-sm transition">
+                {isRtl ? 'تصفح المكتبة' : 'Browse Library'}
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {myBooks.map(book => (
+                <Link key={book.id} href={`/library/${book.id}`} className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition overflow-hidden">
+                  <div className="relative aspect-[2/3] bg-gradient-to-br from-[#1a1a2e] to-[#16213e]">
+                    {book.cover ? (
+                      <Image src={book.cover} alt={book.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" unoptimized />
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-4xl">📖</div>
+                    )}
+                    {book.lastPage > 1 && (
+                      <div className="absolute bottom-2 left-2 right-2 h-1 bg-white/20 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[#F5C518] rounded-full"
+                          style={{ width: `${Math.min((book.lastPage / (book.totalPages || 1)) * 100, 100)}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <p className="font-black text-gray-900 text-xs leading-tight line-clamp-2">{book.title}</p>
+                    {book.author && <p className="text-gray-400 text-xs mt-0.5">{book.author}</p>}
+                    {book.lastPage > 1 && (
+                      <p className="text-amber-600 text-xs mt-1 font-semibold">ص {book.lastPage}</p>
+                    )}
+                  </div>
+                </Link>
+              ))}
             </div>
           )}
         </div>

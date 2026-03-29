@@ -70,10 +70,9 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             cd ${{ secrets.APP_DIR }}
             npm install
             npx prisma migrate deploy
             npm prune --omit=dev
-            # Hostinger Node.js apps auto-restart when files change
-            # If using PM2:
-            # pm2 restart moslimleader || pm2 start npm --name moslimleader -- start

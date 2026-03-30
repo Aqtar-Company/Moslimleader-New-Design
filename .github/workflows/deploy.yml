@@ -1,4 +1,4 @@
-name: Deploy to Hostinger (Node.js)
+name: Deploy to Hostinger
 
 on:
   push:
@@ -36,62 +36,35 @@ jobs:
           NEXTAUTH_SECRET: ${{ secrets.JWT_SECRET }}
           NEXTAUTH_URL: https://moslimleader.com
 
-      - name: Create .env.production file
+      - name: Create deployment zip
         run: |
-          cat > .env.production << EOF
-          DATABASE_URL=${{ secrets.DATABASE_URL }}
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
-          NEXTAUTH_SECRET=${{ secrets.JWT_SECRET }}
-          NEXTAUTH_URL=https://moslimleader.com
-          NODE_ENV=production
-          EOF
+          zip -r deploy.zip . \
+            --exclude "*.git*" \
+            --exclude "node_modules/*" \
+            --exclude ".DS_Store" \
+            --exclude ".env.local" \
+            --exclude "*.log"
+          echo "Zip created: $(du -sh deploy.zip)"
 
-      - name: Install lftp
-        run: sudo apt-get install -y lftp
-
-      - name: Deploy files via FTP
+      - name: Upload zip via FTP
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          APP_DIR: ${{ secrets.APP_DIR }}
         run: |
-          echo "machine $FTP_SERVER login $FTP_USERNAME password $FTP_PASSWORD" > ~/.netrc
-          chmod 600 ~/.netrc
+          sudo apt-get install -y lftp -qq
 
-          lftp "$FTP_SERVER" <<FTPEOF
+          lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "$FTP_SERVER" <<FTPEOF
           set ftp:passive-mode yes
           set ftp:ssl-allow true
           set ssl:verify-certificate false
-          set net:timeout 120
-          set net:max-retries 5
-          set mirror:parallel-transfer-count 5
+          set net:timeout 180
+          set net:max-retries 3
 
-          mirror --reverse --verbose \
-            --exclude .git/ \
-            --exclude node_modules/ \
-            --exclude .DS_Store \
-            --exclude .env.local \
-            --exclude .github/ \
-            --include .env.production \
-            --include .next/ \
-            ./ $APP_DIR/
+          put deploy.zip -o public_html/deploy.zip
 
           bye
           FTPEOF
 
-      - name: Run DB migrations via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 65002
-          script: |
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            cd ${{ secrets.APP_DIR }}
-            npm install --omit=dev
-            export DATABASE_URL="${{ secrets.DATABASE_URL }}"
-            npx prisma migrate deploy || npx prisma db push
-            echo "Deployment complete!"
+          echo "✅ Zip uploaded to Hostinger successfully!"
+          echo "⚠️  Please go to Hostinger hPanel → Deployments → Settings and redeploy to complete the deployment."

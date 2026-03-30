@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - claude/**
 
 jobs:
   deploy:
@@ -17,7 +16,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
@@ -25,13 +24,27 @@ jobs:
 
       - name: Generate Prisma client
         run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
-      - name: Build
+      - name: Build Next.js app
         run: npm run build
         env:
           NODE_ENV: production
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NEXTAUTH_SECRET: ${{ secrets.JWT_SECRET }}
+          NEXTAUTH_URL: https://moslimleader.com
+
+      - name: Create .env.production file
+        run: |
+          cat > .env.production << EOF
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          NEXTAUTH_SECRET=${{ secrets.JWT_SECRET }}
+          NEXTAUTH_URL=https://moslimleader.com
+          NODE_ENV=production
+          EOF
 
       - name: Install lftp
         run: sudo apt-get install -y lftp
@@ -50,29 +63,35 @@ jobs:
           set ftp:passive-mode yes
           set ftp:ssl-allow true
           set ssl:verify-certificate false
-          set net:timeout 60
+          set net:timeout 120
           set net:max-retries 5
+          set mirror:parallel-transfer-count 5
 
           mirror --reverse --verbose \
             --exclude .git/ \
             --exclude node_modules/ \
             --exclude .DS_Store \
-            --exclude .env \
+            --exclude .env.local \
+            --exclude .github/ \
+            --include .env.production \
+            --include .next/ \
             ./ $APP_DIR/
 
           bye
           FTPEOF
 
-      - name: Run DB migrations + restart app via SSH
+      - name: Run DB migrations via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
-          password: ${{ secrets.SSH_PASSWORD }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 65002
           script: |
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             cd ${{ secrets.APP_DIR }}
-            npm install
-            npx prisma migrate deploy
-            npm prune --omit=dev
+            npm install --omit=dev
+            export DATABASE_URL="${{ secrets.DATABASE_URL }}"
+            npx prisma migrate deploy || npx prisma db push
+            echo "Deployment complete!"

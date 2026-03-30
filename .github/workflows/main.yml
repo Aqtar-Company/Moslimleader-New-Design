@@ -35,8 +35,27 @@ jobs:
           NEXTAUTH_SECRET: ${{ secrets.JWT_SECRET }}
           NEXTAUTH_URL: https://moslimleader.com
 
-      # رفع الـ Next.js build على public_html/new
-      # نشمل node_modules/@prisma لأن الـ Prisma client لازم يكون موجود على السيرفر
+      # The turbopack build creates a symlink:
+      # .next/node_modules/@prisma/client-HASH -> ../../../node_modules/@prisma/client
+      # FTP uploads the symlink but not the target, causing "Cannot find module" error.
+      # Fix: replace the symlink with the actual directory content before uploading.
+      - name: Resolve Prisma symlink in .next/node_modules
+        run: |
+          PRISMA_LINK=$(ls .next/node_modules/@prisma/ 2>/dev/null | head -1)
+          if [ -n "$PRISMA_LINK" ]; then
+            echo "Found Prisma symlink: $PRISMA_LINK"
+            LINK_PATH=".next/node_modules/@prisma/$PRISMA_LINK"
+            REAL_PATH=$(readlink -f "$LINK_PATH")
+            echo "Resolving symlink: $LINK_PATH -> $REAL_PATH"
+            rm "$LINK_PATH"
+            cp -r "$REAL_PATH" "$LINK_PATH"
+            echo "Symlink resolved to real directory"
+            ls "$LINK_PATH" | head -5
+          else
+            echo "No Prisma symlink found, skipping"
+          fi
+
+      # Deploy: exclude node_modules (not needed since .next/node_modules has the Prisma client)
       - name: Deploy to Hostinger
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -47,8 +66,7 @@ jobs:
           server-dir: public_html/new/
           exclude: |
             **/.git*
-            **/node_modules/.cache/**
-            **/node_modules/.bin/**
+            **/node_modules/**
             **/.next/cache/**
             **/prisma/migrations/**
             **/*.md

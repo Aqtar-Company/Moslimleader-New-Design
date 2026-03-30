@@ -14,8 +14,12 @@ export const metadata: Metadata = {
   title: 'مسلم ليدر | Moslim Leader',
   description: 'معاً نبني قادة الغد — منتجات تربوية وتعليمية للأطفال والأسرة',
   icons: {
-    icon: '/logo-mobile.png',
-    apple: '/logo-mobile.png',
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/logo-mobile.png', type: 'image/png' },
+    ],
+    apple: '/apple-icon.png',
+    shortcut: '/favicon.ico',
   },
 };
 

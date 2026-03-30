@@ -21,8 +21,14 @@ export default function Header() {
       <nav className="bg-gradient-to-b from-[#1a0f00]/80 to-transparent">
         <div className="max-w-6xl mx-auto px-4 h-20 grid grid-cols-3 items-center">
 
-          {/* Side A: Cart + Wishlist */}
+          {/* Side A: Library + Cart + Wishlist */}
           <div className="flex items-center gap-2">
+            <Link href="/library" className={iconBtn} aria-label="Library">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </Link>
+
             <Link href="/cart" className={iconBtn} aria-label="Cart">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.4 7h12.8M7 13L5.4 5M10 21a1 1 0 100-2 1 1 0 000 2zm7 0a1 1 0 100-2 1 1 0 000 2z" />

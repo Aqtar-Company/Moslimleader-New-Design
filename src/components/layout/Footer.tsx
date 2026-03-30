@@ -96,6 +96,7 @@ export default function Footer() {
             </h4>
             {[
               { href: '/', ar: 'الرئيسية', en: 'Home' },
+              { href: '/library', ar: 'المكتبة الرقمية', en: 'Digital Library' },
               { href: '/about', ar: 'من نحن', en: 'About' },
             ].map(link => (
               <Link

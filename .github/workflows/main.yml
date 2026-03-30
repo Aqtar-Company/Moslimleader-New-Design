@@ -15,16 +15,28 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
+          cache: 'npm'
 
-      # البuild في الـ root مباشرة
       - name: Install dependencies
         run: npm ci
 
+      - name: Generate Prisma client
+        run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
       - name: Build Next.js
         run: npm run build
+        env:
+          NODE_ENV: production
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NEXTAUTH_SECRET: ${{ secrets.JWT_SECRET }}
+          NEXTAUTH_URL: https://moslimleader.com
 
       # رفع الـ Next.js build على public_html/new
+      # نشمل node_modules/@prisma لأن الـ Prisma client لازم يكون موجود على السيرفر
       - name: Deploy to Hostinger
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -35,7 +47,9 @@ jobs:
           server-dir: public_html/new/
           exclude: |
             **/.git*
-            **/node_modules/**
+            **/node_modules/.cache/**
+            **/node_modules/.bin/**
             **/.next/cache/**
-            **/prisma/**
+            **/prisma/migrations/**
             **/*.md
+            **/.DS_Store

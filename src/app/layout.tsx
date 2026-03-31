@@ -9,6 +9,7 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import AmeenChat from '@/components/AmeenChat';
 import WhatsAppButton from '@/components/WhatsAppButton';
+import { ToastProvider } from '@/components/ui/Toast';
 
 export const metadata: Metadata = {
   title: 'مسلم ليدر | Moslim Leader',
@@ -45,11 +46,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <RegionalPricingProvider>
               <CartProvider>
                 <WishlistProvider>
-                  <Header />
-                  <main>{children}</main>
-                  <Footer />
-                  <AmeenChat />
-                  <WhatsAppButton />
+                  <ToastProvider>
+                    <Header />
+                    <main>{children}</main>
+                    <Footer />
+                    <AmeenChat />
+                    <WhatsAppButton />
+                  </ToastProvider>
                 </WishlistProvider>
               </CartProvider>
             </RegionalPricingProvider>

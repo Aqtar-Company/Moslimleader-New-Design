@@ -10,9 +10,9 @@ import { useLang } from '@/context/LanguageContext';
 
 /* ── Hero slideshow ─────────────────────────────────────────── */
 const heroImages = [
-  { src: '/family-hero.webp', alt: 'Moslim Leader Family' },
-  { src: '/reading-boy-hero.webp', alt: 'Reading Boy' },
-  { src: '/reading-girl-heero.webp', alt: 'Reading Girl' },
+  { src: '/family-hero.png', alt: 'Moslim Leader Family' },
+  { src: '/reading-boy-hero.png', alt: 'Reading Boy' },
+  { src: '/reading-girl-heero.jpg', alt: 'Reading Girl' },
 ];
 
 function HeroSlideshow() {
@@ -89,6 +89,7 @@ function ShopContent() {
   const [search, setSearch] = useState('');
   const [allProducts, setAllProducts] = useState(products);
   const [displayCategories, setDisplayCategories] = useState(categories);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const overrides = getProductOverrides();
@@ -98,6 +99,7 @@ function ShopContent() {
     const staticWithOverrides = products.map(p => overrides[p.id] ? applyOverride(p, overrides[p.id]) : p);
     const merged = [...staticWithOverrides, ...added];
     setAllProducts(merged);
+    setLoading(false);
 
     const staticUpdated = categories.map(cat =>
       cat.id === 'all'
@@ -160,12 +162,27 @@ function ShopContent() {
       </div>
 
       {/* Results count */}
-      <p className="text-gray-500 text-sm mb-6">
-        {filtered.length} {t('shop.results')}
-      </p>
+      {!loading && (
+        <p className="text-gray-500 text-sm mb-6">
+          {filtered.length} {t('shop.results')}
+        </p>
+      )}
 
       {/* Grid */}
-      {filtered.length > 0 ? (
+      {loading ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
+              <div className="aspect-square bg-gray-200" />
+              <div className="p-4 space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-3/4" />
+                <div className="h-3 bg-gray-100 rounded w-1/2" />
+                <div className="h-8 bg-gray-200 rounded-xl mt-3" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : filtered.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
           {filtered.map(product => (
             <ProductCard key={product.id} product={product} />

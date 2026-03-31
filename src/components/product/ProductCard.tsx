@@ -8,12 +8,14 @@ import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { useLang } from '@/context/LanguageContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
+import { useToast } from '@/components/ui/Toast';
 
 export default function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
   const { isWishlisted, toggle } = useWishlist();
   const { t, isRtl } = useLang();
   const { getProductPrice, formatPrice } = useRegionalPricing();
+  const { addToast } = useToast();
   const [added, setAdded] = useState(false);
 
   const displayName = isRtl ? product.name : (product.nameEn || product.name);
@@ -65,6 +67,7 @@ export default function ProductCard({ product }: { product: Product }) {
             onClick={() => {
               if (!product.inStock) return;
               addItem(product);
+              addToast(`✓ أُضيف "${displayName}" للسلة`, 'success');
               setAdded(true);
               setTimeout(() => setAdded(false), 1500);
             }}

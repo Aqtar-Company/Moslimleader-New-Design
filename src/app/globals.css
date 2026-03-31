@@ -74,3 +74,8 @@ html[dir="ltr"],
   opacity: 1;
   transform: translateY(0);
 }
+
+/* ── Mobile menu + Toast animations ───────────────────────── */
+@keyframes toast-in  { from { transform:translateY(16px);opacity:0 } to { transform:translateY(0);opacity:1 } }
+@keyframes toast-out { from { opacity:1 } to { opacity:0;transform:translateY(8px) } }
+@keyframes menu-in   { from { transform:translateX(100%) } to { transform:translateX(0) } }

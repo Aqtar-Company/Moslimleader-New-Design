@@ -6,13 +6,16 @@ import { useState, useEffect } from 'react';
 import { useCart } from '@/context/CartContext';
 import { useLang } from '@/context/LanguageContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
+import { useToast } from '@/components/ui/Toast';
 
 export default function CartPage() {
   const { items, coupon, applyCoupon, removeCoupon, updateQty, removeItem, clear } = useCart();
   const { t, isRtl } = useLang();
   const { getProductPrice, formatPrice, getCartRegionalTotal, zoneInfo } = useRegionalPricing();
+  const { addToast } = useToast();
   const [couponInput, setCouponInput] = useState('');
   const [couponError, setCouponError] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
 
   if (items.length === 0) {
     return (
@@ -39,8 +42,20 @@ export default function CartPage() {
 
   async function handleApplyCoupon() {
     const ok = await applyCoupon(couponInput);
-    if (ok) { setCouponError(false); setCouponInput(''); }
-    else { setCouponError(true); }
+    if (ok) {
+      setCouponError(false);
+      setCouponInput('');
+      addToast('✓ كوبون مفعّل!', 'success');
+    } else {
+      setCouponError(true);
+      addToast(t('cart.coupon.invalid'), 'error');
+    }
+  }
+
+  function handleClearCart() {
+    clear();
+    setConfirmClear(false);
+    addToast('تم مسح السلة', 'info');
   }
 
   return (
@@ -56,7 +71,7 @@ export default function CartPage() {
             <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{zoneInfo.flag} {zoneInfo.label}</span>
           </p>
         </div>
-        <button onClick={clear} className="text-xs text-gray-400 hover:text-red-500 transition">
+        <button onClick={() => setConfirmClear(true)} className="text-xs text-gray-400 hover:text-red-500 transition">
           {t('cart.clearAll')}
         </button>
       </div>
@@ -178,6 +193,34 @@ export default function CartPage() {
           </div>
         </div>
       </div>
+
+      {/* Confirm clear dialog */}
+      {confirmClear && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center px-4 bg-black/50" onClick={() => setConfirmClear(false)}>
+          <div
+            className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full"
+            onClick={e => e.stopPropagation()}
+            dir={isRtl ? 'rtl' : 'ltr'}
+          >
+            <h3 className="font-black text-gray-900 text-base mb-2">{isRtl ? 'مسح السلة؟' : 'Clear cart?'}</h3>
+            <p className="text-gray-500 text-sm mb-5">{isRtl ? 'سيتم حذف جميع المنتجات من السلة.' : 'All items will be removed from your cart.'}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleClearCart}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-black py-2.5 rounded-xl text-sm transition"
+              >
+                {isRtl ? 'نعم، امسح' : 'Yes, clear'}
+              </button>
+              <button
+                onClick={() => setConfirmClear(false)}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 rounded-xl text-sm transition"
+              >
+                {isRtl ? 'إلغاء' : 'Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

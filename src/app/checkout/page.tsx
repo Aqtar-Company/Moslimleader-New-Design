@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LanguageContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import { COUNTRY_CURRENCIES } from '@/lib/geo-pricing';
+import { useToast } from '@/components/ui/Toast';
 import { governorates, getShipping } from '@/lib/shipping';
 import {
   COUNTRIES,
@@ -211,7 +212,9 @@ export default function CheckoutPage() {
   const [cardErrors, setCardErrors] = useState<Partial<CardForm>>({});
   const [errors, setErrors] = useState<Partial<AddressForm>>({});
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderNumber] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
+  const { addToast } = useToast();
 
   // Snapshot captured before cart is cleared — used in success page
   const [snapshot, setSnapshot] = useState<{
@@ -385,6 +388,9 @@ export default function CheckoutPage() {
   }
 
   async function handlePlaceOrder() {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
     // Capture snapshot BEFORE clearing cart
     setSnapshot({ items: [...items], total, discount, shippingCost, shippingCurrency, currency });
     clear();
@@ -473,6 +479,11 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
     } catch { /* email failure shouldn't block order */ }
 
     setOrderPlaced(true);
+    } catch {
+      addToast('حدث خطأ، حاول مرة أخرى', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   if (items.length === 0 && !orderPlaced) {
@@ -1124,9 +1135,20 @@ ${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''
                 </div>
               </div>
 
-              <button onClick={handlePlaceOrder}
-                className="w-full bg-[#F5C518] hover:bg-[#e0b000] text-gray-900 font-black py-4 rounded-xl transition text-base">
-                {L.place}
+              <button
+                onClick={handlePlaceOrder}
+                disabled={isSubmitting}
+                className={`w-full bg-[#F5C518] text-gray-900 font-black py-4 rounded-xl transition text-base flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : 'hover:bg-[#e0b000]'}`}
+              >
+                {isSubmitting ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                    {isRtl ? 'جاري المعالجة...' : 'Processing...'}
+                  </>
+                ) : L.place}
               </button>
               <button onClick={() => setStep('payment')}
                 className="mt-3 w-full text-center text-xs text-gray-400 hover:text-gray-700 transition">

@@ -21,6 +21,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'البريد الإلكتروني مسجل بالفعل' }, { status: 409 });
     }
 
+    const ADMIN_EMAILS = ['moslimleader2020@gmail.com'];
+    const role = ADMIN_EMAILS.includes(key) ? 'admin' : 'customer';
+
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
       data: {
@@ -28,7 +31,7 @@ export async function POST(req: NextRequest) {
         email: key,
         passwordHash,
         phone: phone?.trim() || null,
-        role: 'customer',
+        role,
         savedAddresses: [],
       },
     });

@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useLang } from '@/context/LanguageContext';
 
 interface Book {
   id: string;
@@ -23,15 +24,15 @@ interface Book {
 }
 
 export default function LibraryPage() {
+  const { lang } = useLang();
+  const isEn = lang === 'en';
+
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('');
-  const [activeLang, setActiveLang] = useState<'all' | 'ar' | 'en'>('all');
+  const [activeLang, setActiveLang] = useState<'ar' | 'en' | null>(null);
   const [sort, setSort] = useState<'newest' | 'popular' | 'price_asc' | 'price_desc'>('newest');
-  const [uiLang, setUiLang] = useState<'ar' | 'en'>('ar');
-
-  const isEn = uiLang === 'en';
 
   useEffect(() => {
     fetch('/api/books')
@@ -63,46 +64,28 @@ export default function LibraryPage() {
     if (activeCategory) {
       list = list.filter(b => b.category === activeCategory);
     }
-    if (activeLang !== 'all') {
+    if (activeLang) {
       list = list.filter(b => {
-        const lang = b.language || 'ar';
-        return lang === activeLang || lang === 'both';
+        const l = b.language || 'ar';
+        return l === activeLang || l === 'both';
       });
     }
     switch (sort) {
-      case 'popular':   return [...list].sort((a, b) => b._count.accesses - a._count.accesses);
-      case 'price_asc': return [...list].sort((a, b) => a.price - b.price);
-      case 'price_desc':return [...list].sort((a, b) => b.price - a.price);
-      default:          return list;
+      case 'popular':    return [...list].sort((a, b) => b._count.accesses - a._count.accesses);
+      case 'price_asc':  return [...list].sort((a, b) => a.price - b.price);
+      case 'price_desc': return [...list].sort((a, b) => b.price - a.price);
+      default:           return list;
     }
   }, [books, search, activeCategory, activeLang, sort]);
 
-  const getBookTitle = (book: Book) => isEn && book.titleEn ? book.titleEn : book.title;
-  const getBookAuthor = (book: Book) => isEn && book.authorEn ? book.authorEn : book.author;
+  const getBookTitle  = (b: Book) => isEn && b.titleEn  ? b.titleEn  : b.title;
+  const getBookAuthor = (b: Book) => isEn && b.authorEn ? b.authorEn : b.author;
 
   return (
     <div className="min-h-screen bg-gray-50" dir={isEn ? 'ltr' : 'rtl'}>
       {/* Hero */}
       <div className="bg-[#1a1a2e] pt-28 pb-12 px-4">
         <div className="max-w-4xl mx-auto text-center mb-8">
-          {/* UI Language Toggle */}
-          <div className="flex justify-center mb-5">
-            <div className="inline-flex bg-white/10 rounded-2xl p-1 gap-1">
-              <button
-                onClick={() => setUiLang('ar')}
-                className={`px-5 py-2 rounded-xl text-sm font-black transition ${uiLang === 'ar' ? 'bg-[#F5C518] text-[#1a1a2e]' : 'text-white/70 hover:text-white'}`}
-              >
-                العربية
-              </button>
-              <button
-                onClick={() => setUiLang('en')}
-                className={`px-5 py-2 rounded-xl text-sm font-black transition ${uiLang === 'en' ? 'bg-[#F5C518] text-[#1a1a2e]' : 'text-white/70 hover:text-white'}`}
-              >
-                English
-              </button>
-            </div>
-          </div>
-
           <p className="text-[#F5C518] font-bold text-sm tracking-widest mb-3 uppercase">
             {isEn ? 'Digital Library' : 'المكتبة الرقمية'}
           </p>
@@ -119,7 +102,11 @@ export default function LibraryPage() {
         {/* Search bar */}
         <div className="max-w-lg mx-auto">
           <div className="relative">
-            <span className={`absolute ${isEn ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none`}>🔍</span>
+            <span className={`absolute ${isEn ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none`}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </span>
             <input
               type="text"
               value={search}
@@ -142,64 +129,63 @@ export default function LibraryPage() {
       {/* Filters bar */}
       <div className="sticky top-16 z-20 bg-white border-b border-gray-100 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3 overflow-x-auto scrollbar-none">
-          {/* Language filter */}
-          <button
-            onClick={() => setActiveLang('all')}
-            className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition border ${
-              activeLang === 'all'
-                ? 'bg-[#1a1a2e] text-white border-[#1a1a2e]'
-                : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-            }`}
-          >
-            {isEn ? 'All Languages' : 'كل اللغات'}
-          </button>
-          <button
-            onClick={() => setActiveLang('ar')}
-            className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition border ${
-              activeLang === 'ar'
-                ? 'bg-[#1a1a2e] text-white border-[#1a1a2e]'
-                : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-            }`}
-          >
-            🇸🇦 {isEn ? 'Arabic' : 'عربي'}
-          </button>
-          <button
-            onClick={() => setActiveLang('en')}
-            className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition border ${
-              activeLang === 'en'
-                ? 'bg-[#1a1a2e] text-white border-[#1a1a2e]'
-                : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-            }`}
-          >
-            🇬🇧 {isEn ? 'English' : 'إنجليزي'}
-          </button>
 
-          <div className="w-px h-5 bg-gray-200 shrink-0" />
-
-          {/* Category chips */}
-          <button
-            onClick={() => setActiveCategory('')}
-            className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition ${
-              !activeCategory
-                ? 'bg-[#F5C518] text-[#1a1a2e]'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {isEn ? `All (${!loading ? books.length : '...'})` : `الكل ${!loading ? `(${books.length})` : ''}`}
-          </button>
-          {categories.map(cat => (
+          {/* Language filter — Arabic / English only, centered */}
+          <div className="flex items-center gap-2 mx-auto">
             <button
-              key={cat}
-              onClick={() => setActiveCategory(activeCategory === cat ? '' : cat)}
-              className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition ${
-                activeCategory === cat
-                  ? 'bg-[#F5C518] text-[#1a1a2e]'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              onClick={() => setActiveLang(activeLang === 'ar' ? null : 'ar')}
+              className={`shrink-0 flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition border ${
+                activeLang === 'ar'
+                  ? 'bg-[#1a1a2e] text-white border-[#1a1a2e]'
+                  : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
               }`}
             >
-              {cat}
+              <svg className="w-3.5 h-3.5" viewBox="0 0 20 15" fill="none">
+                <rect width="20" height="15" rx="2" fill="#006C35"/>
+                <rect y="5" width="20" height="5" fill="white"/>
+                <rect y="10" width="20" height="5" fill="black"/>
+              </svg>
+              {isEn ? 'Arabic' : 'عربي'}
             </button>
-          ))}
+
+            <button
+              onClick={() => setActiveLang(activeLang === 'en' ? null : 'en')}
+              className={`shrink-0 flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition border ${
+                activeLang === 'en'
+                  ? 'bg-[#1a1a2e] text-white border-[#1a1a2e]'
+                  : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 20 15" fill="none">
+                <rect width="20" height="15" rx="2" fill="#012169"/>
+                <path d="M0 0l20 15M20 0L0 15" stroke="white" strokeWidth="3"/>
+                <path d="M0 0l20 15M20 0L0 15" stroke="#C8102E" strokeWidth="1.5"/>
+                <path d="M10 0v15M0 7.5h20" stroke="white" strokeWidth="5"/>
+                <path d="M10 0v15M0 7.5h20" stroke="#C8102E" strokeWidth="3"/>
+              </svg>
+              {isEn ? 'English' : 'إنجليزي'}
+            </button>
+          </div>
+
+          {/* Category chips (if any) */}
+          {categories.length > 0 && (
+            <>
+              <div className="w-px h-5 bg-gray-200 shrink-0" />
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(activeCategory === cat ? '' : cat)}
+                  className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition ${
+                    activeCategory === cat
+                      ? 'bg-[#F5C518] text-[#1a1a2e]'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </>
+          )}
 
           <div className="flex-1" />
 
@@ -233,15 +219,19 @@ export default function LibraryPage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-gray-400">
-            <p className="text-5xl mb-4">{search ? '🔍' : '📚'}</p>
+            <div className="flex justify-center mb-4">
+              <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+              </svg>
+            </div>
             <p className="font-semibold text-lg mb-2">
               {search
                 ? (isEn ? `No results for "${search}"` : `لا توجد نتائج لـ "${search}"`)
                 : (isEn ? 'No books yet' : 'لا توجد كتب بعد')}
             </p>
-            {(search || activeCategory || activeLang !== 'all') && (
+            {(search || activeCategory || activeLang) && (
               <button
-                onClick={() => { setSearch(''); setActiveCategory(''); setActiveLang('all'); }}
+                onClick={() => { setSearch(''); setActiveCategory(''); setActiveLang(null); }}
                 className="text-sm text-[#F5C518] underline mt-2"
               >
                 {isEn ? 'Clear filters' : 'مسح الفلاتر'}
@@ -250,7 +240,7 @@ export default function LibraryPage() {
           </div>
         ) : (
           <>
-            {(search || activeCategory || activeLang !== 'all') && (
+            {(search || activeCategory || activeLang) && (
               <p className="text-xs text-gray-400 mb-4">
                 {filtered.length} {isEn ? 'results' : 'نتيجة'}
               </p>
@@ -271,46 +261,46 @@ export default function LibraryPage() {
                         />
                       ) : (
                         <div className="flex items-center justify-center h-full">
-                          <span className="text-5xl">📖</span>
+                          <svg className="w-12 h-12 text-white/30" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                          </svg>
                         </div>
                       )}
                       {/* Language badge */}
                       {book.language === 'en' && (
-                        <div className="absolute top-2 left-2 bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                          EN
-                        </div>
+                        <div className="absolute top-2 left-2 bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md">EN</div>
                       )}
                       {book.language === 'both' && (
-                        <div className="absolute top-2 left-2 bg-purple-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                          AR/EN
+                        <div className="absolute top-2 left-2 bg-purple-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md">AR/EN</div>
+                      )}
+                      {/* Free badge */}
+                      {book.freePages > 0 && (
+                        <div className="absolute top-2 right-2 bg-[#F5C518] text-[#1a1a2e] text-[9px] font-black px-1.5 py-0.5 rounded-md">
+                          {isEn ? 'FREE PREVIEW' : 'معاينة مجانية'}
                         </div>
                       )}
-                      <div className={`absolute top-2 ${isEn ? 'right-2' : 'right-2'} bg-[#F5C518] text-[#1a1a2e] text-[10px] font-black px-2 py-0.5 rounded-full`}>
-                        {book.freePages} {isEn ? 'free' : 'ص مجانية'}
-                      </div>
                     </div>
 
                     {/* Info */}
-                    <div className={`p-3 flex flex-col flex-1 ${isEn && book.titleEn ? '' : ''}`} dir={isEn && book.titleEn ? 'ltr' : 'rtl'}>
-                      <h3 className="font-black text-gray-900 text-sm leading-tight line-clamp-2 mb-1 flex-1">
+                    <div className="p-3 flex flex-col gap-1 flex-1">
+                      <h3 className="font-black text-gray-900 text-sm leading-tight line-clamp-2">
                         {getBookTitle(book)}
                       </h3>
                       {getBookAuthor(book) && (
-                        <p className="text-gray-400 text-xs mb-1">{getBookAuthor(book)}</p>
+                        <p className="text-gray-500 text-xs">{getBookAuthor(book)}</p>
                       )}
-                      {book.category && (
-                        <span className="inline-block text-[10px] text-amber-600 bg-amber-50 rounded-full px-2 py-0.5 mb-2 w-fit font-semibold">
-                          {book.category}
+                      <div className="mt-auto pt-2 flex items-center justify-between">
+                        <span className="text-[#F5C518] font-black text-sm">
+                          {book.price === 0
+                            ? (isEn ? 'Free' : 'مجاني')
+                            : `${book.price.toLocaleString(isEn ? 'en-EG' : 'ar-EG')} ${isEn ? 'EGP' : 'ج.م'}`}
                         </span>
-                      )}
-                      <div className="flex items-center justify-between mt-auto pt-1 border-t border-gray-50">
-                        <span className="font-black text-[#1a1a2e] text-sm">
-                          {book.price === 0 ? (
-                            <span className="text-green-600">{isEn ? 'Free' : 'مجاني'}</span>
-                          ) : isEn ? `${book.price} EGP` : `${book.price.toLocaleString('ar-EG')} ج`}
-                        </span>
-                        <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
-                          <span>👁</span> {book._count.accesses}
+                        <span className="text-gray-400 text-xs flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          {book._count.accesses}
                         </span>
                       </div>
                     </div>

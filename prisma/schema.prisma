@@ -159,7 +159,10 @@ model Book {
   freePages     Int      @default(10)
   price         Float    @default(0)
   author        String?
+  authorEn      String?
   category      String?
+  language      String?  @default("ar") // 'ar' | 'en' | 'both'
+  section       String?  @default("books") // 'books' | 'stories'
   isPublished   Boolean  @default(false)
   allowQuoteShare   Boolean @default(true)
   allowFriendShare  Boolean @default(true)

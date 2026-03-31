@@ -15,13 +15,38 @@ interface Book {
   author?: string;
   authorEn?: string;
   category?: string;
-  categoryEn?: string;
-  language?: string; // 'ar' | 'en' | 'both'
+  language?: string;
+  section?: string; // 'books' | 'stories'
   price: number;
   freePages: number;
   totalPages: number;
   _count: { accesses: number };
 }
+
+type SectionTab = 'books' | 'stories';
+
+const TABS: { id: SectionTab; ar: string; en: string; icon: React.ReactNode }[] = [
+  {
+    id: 'books',
+    ar: 'كتب وروايات',
+    en: 'Books & Novels',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+      </svg>
+    ),
+  },
+  {
+    id: 'stories',
+    ar: 'قصص تربوية',
+    en: 'Educational Stories',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+      </svg>
+    ),
+  },
+];
 
 export default function LibraryPage() {
   const { lang } = useLang();
@@ -30,7 +55,7 @@ export default function LibraryPage() {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState('');
+  const [activeTab, setActiveTab] = useState<SectionTab>('books');
   const [activeLang, setActiveLang] = useState<'ar' | 'en' | null>(null);
   const [sort, setSort] = useState<'newest' | 'popular' | 'price_asc' | 'price_desc'>('newest');
 
@@ -42,27 +67,26 @@ export default function LibraryPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Unique categories
-  const categories = useMemo(() => {
-    const cats = books.map(b => b.category).filter(Boolean) as string[];
-    return [...new Set(cats)];
-  }, [books]);
+  // Count per tab
+  const counts = useMemo(() => ({
+    books: books.filter(b => !b.section || b.section === 'books').length,
+    stories: books.filter(b => b.section === 'stories').length,
+  }), [books]);
 
   // Filter + sort
   const filtered = useMemo(() => {
-    let list = books;
+    let list = books.filter(b => {
+      const s = b.section || 'books';
+      return s === activeTab;
+    });
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(b =>
         b.title.toLowerCase().includes(q) ||
         (b.titleEn || '').toLowerCase().includes(q) ||
         (b.author || '').toLowerCase().includes(q) ||
-        (b.authorEn || '').toLowerCase().includes(q) ||
-        (b.category || '').toLowerCase().includes(q),
+        (b.authorEn || '').toLowerCase().includes(q),
       );
-    }
-    if (activeCategory) {
-      list = list.filter(b => b.category === activeCategory);
     }
     if (activeLang) {
       list = list.filter(b => {
@@ -76,15 +100,16 @@ export default function LibraryPage() {
       case 'price_desc': return [...list].sort((a, b) => b.price - a.price);
       default:           return list;
     }
-  }, [books, search, activeCategory, activeLang, sort]);
+  }, [books, search, activeTab, activeLang, sort]);
 
   const getBookTitle  = (b: Book) => isEn && b.titleEn  ? b.titleEn  : b.title;
   const getBookAuthor = (b: Book) => isEn && b.authorEn ? b.authorEn : b.author;
 
   return (
     <div className="min-h-screen bg-gray-50" dir={isEn ? 'ltr' : 'rtl'}>
-      {/* Hero */}
-      <div className="bg-[#1a1a2e] pt-28 pb-12 px-4">
+
+      {/* ── Hero ── */}
+      <div className="bg-[#1a1a2e] pt-28 pb-10 px-4">
         <div className="max-w-4xl mx-auto text-center mb-8">
           <p className="text-[#F5C518] font-bold text-sm tracking-widest mb-3 uppercase">
             {isEn ? 'Digital Library' : 'المكتبة الرقمية'}
@@ -99,7 +124,7 @@ export default function LibraryPage() {
           </p>
         </div>
 
-        {/* Search bar */}
+        {/* Search */}
         <div className="max-w-lg mx-auto">
           <div className="relative">
             <span className={`absolute ${isEn ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none`}>
@@ -115,10 +140,8 @@ export default function LibraryPage() {
               className={`w-full bg-white/10 border border-white/20 text-white placeholder:text-gray-400 rounded-2xl ${isEn ? 'pl-12 pr-4' : 'pr-12 pl-4'} py-3.5 text-sm outline-none focus:border-[#F5C518]/60 focus:bg-white/15 transition`}
             />
             {search && (
-              <button
-                onClick={() => setSearch('')}
-                className={`absolute ${isEn ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-lg`}
-              >
+              <button onClick={() => setSearch('')}
+                className={`absolute ${isEn ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-lg`}>
                 ×
               </button>
             )}
@@ -126,11 +149,42 @@ export default function LibraryPage() {
         </div>
       </div>
 
-      {/* Filters bar */}
-      <div className="sticky top-16 z-20 bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3 overflow-x-auto scrollbar-none">
+      {/* ── Tabs ── */}
+      <div className="bg-[#1a1a2e] border-b border-white/10">
+        <div className="max-w-6xl mx-auto px-4 flex gap-1 overflow-x-auto scrollbar-none">
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => { setActiveTab(tab.id); setActiveLang(null); setSearch(''); }}
+              className={`relative shrink-0 flex items-center gap-2 px-5 py-4 text-sm font-bold transition-colors ${
+                activeTab === tab.id
+                  ? 'text-[#F5C518]'
+                  : 'text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              {tab.icon}
+              {isEn ? tab.en : tab.ar}
+              {counts[tab.id] > 0 && (
+                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${
+                  activeTab === tab.id ? 'bg-[#F5C518]/20 text-[#F5C518]' : 'bg-white/10 text-gray-400'
+                }`}>
+                  {counts[tab.id]}
+                </span>
+              )}
+              {/* Active underline */}
+              {activeTab === tab.id && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F5C518] rounded-t-full" />
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
 
-          {/* Language filter — Arabic / English only, centered */}
+      {/* ── Filters bar ── */}
+      <div className="sticky top-16 z-20 bg-white border-b border-gray-100 shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center gap-3 overflow-x-auto scrollbar-none">
+
+          {/* Language filter */}
           <div className="flex items-center gap-2 mx-auto">
             <button
               onClick={() => setActiveLang(activeLang === 'ar' ? null : 'ar')}
@@ -167,26 +221,6 @@ export default function LibraryPage() {
             </button>
           </div>
 
-          {/* Category chips (if any) */}
-          {categories.length > 0 && (
-            <>
-              <div className="w-px h-5 bg-gray-200 shrink-0" />
-              {categories.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(activeCategory === cat ? '' : cat)}
-                  className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition ${
-                    activeCategory === cat
-                      ? 'bg-[#F5C518] text-[#1a1a2e]'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </>
-          )}
-
           <div className="flex-1" />
 
           {/* Sort */}
@@ -203,7 +237,7 @@ export default function LibraryPage() {
         </div>
       </div>
 
-      {/* Books grid */}
+      {/* ── Books Grid ── */}
       <div className="max-w-6xl mx-auto px-4 py-8">
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
@@ -218,20 +252,26 @@ export default function LibraryPage() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-20 text-gray-400">
+          <div className="text-center py-24 text-gray-400">
             <div className="flex justify-center mb-4">
-              <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-              </svg>
+              {TABS.find(t => t.id === activeTab)?.icon && (
+                <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-300">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                  </svg>
+                </div>
+              )}
             </div>
-            <p className="font-semibold text-lg mb-2">
+            <p className="font-bold text-lg mb-1 text-gray-500">
               {search
                 ? (isEn ? `No results for "${search}"` : `لا توجد نتائج لـ "${search}"`)
-                : (isEn ? 'No books yet' : 'لا توجد كتب بعد')}
+                : (isEn
+                    ? `No ${activeTab === 'books' ? 'books' : 'stories'} yet`
+                    : `لا توجد ${activeTab === 'books' ? 'كتب' : 'قصص'} بعد`)}
             </p>
-            {(search || activeCategory || activeLang) && (
+            {(search || activeLang) && (
               <button
-                onClick={() => { setSearch(''); setActiveCategory(''); setActiveLang(null); }}
+                onClick={() => { setSearch(''); setActiveLang(null); }}
                 className="text-sm text-[#F5C518] underline mt-2"
               >
                 {isEn ? 'Clear filters' : 'مسح الفلاتر'}
@@ -240,7 +280,7 @@ export default function LibraryPage() {
           </div>
         ) : (
           <>
-            {(search || activeCategory || activeLang) && (
+            {(search || activeLang) && (
               <p className="text-xs text-gray-400 mb-4">
                 {filtered.length} {isEn ? 'results' : 'نتيجة'}
               </p>
@@ -273,7 +313,7 @@ export default function LibraryPage() {
                       {book.language === 'both' && (
                         <div className="absolute top-2 left-2 bg-purple-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md">AR/EN</div>
                       )}
-                      {/* Free badge */}
+                      {/* Free preview badge */}
                       {book.freePages > 0 && (
                         <div className="absolute top-2 right-2 bg-[#F5C518] text-[#1a1a2e] text-[9px] font-black px-1.5 py-0.5 rounded-md">
                           {isEn ? 'FREE PREVIEW' : 'معاينة مجانية'}

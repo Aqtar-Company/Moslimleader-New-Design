@@ -8,6 +8,7 @@ interface Book {
   title: string;
   titleEn?: string;
   language?: string;
+  section?: string;
   description: string;
   cover: string;
   author?: string;
@@ -36,6 +37,7 @@ const emptyForm = {
   title: '',
   titleEn: '',
   language: 'ar',
+  section: 'books',
   description: '',
   authorEn: '',
   descriptionEn: '',
@@ -113,6 +115,7 @@ export default function AdminBooksPage() {
       title: b.title,
       titleEn: b.titleEn || '',
       language: (b as Book & { language?: string }).language || 'ar',
+      section: (b as Book & { section?: string }).section || 'books',
       authorEn: (b as Book & { authorEn?: string }).authorEn || '',
       descriptionEn: (b as Book & { descriptionEn?: string }).descriptionEn || '',
       description: b.description,
@@ -397,7 +400,26 @@ export default function AdminBooksPage() {
                             : 'border-gray-200 text-gray-500 hover:border-gray-300'
                         }`}
                       >
-                        {lang === 'ar' ? '🇸🇦 عربي' : lang === 'en' ? '🇬🇧 English' : '🌐 ثنائي'}
+                        {lang === 'ar' ? 'عربي' : lang === 'en' ? 'English' : 'ثنائي'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs font-bold text-gray-500 mb-1 block">القسم</label>
+                  <div className="flex gap-2">
+                    {([['books', 'كتب وروايات'], ['stories', 'قصص تربوية']] as const).map(([val, label]) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setForm(prev => ({ ...prev, section: val }))}
+                        className={`flex-1 py-2 rounded-xl text-xs font-black border-2 transition ${
+                          (form as typeof form & { section?: string }).section === val
+                            ? 'border-[#F5C518] bg-amber-50 text-[#1a1a2e]'
+                            : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                        }`}
+                      >
+                        {label}
                       </button>
                     ))}
                   </div>

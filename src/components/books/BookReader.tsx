@@ -19,6 +19,8 @@ interface BookReaderProps {
   onPageChange?: (page: number) => void;
   bookTitle?: string;
   coverUrl?: string;
+  /** 'ar' | 'en' | 'both' — controls arrow direction and keyboard hints */
+  bookLanguage?: 'ar' | 'en' | 'both';
 }
 
 // ── Forensic watermark ────────────────────────────────────────────────────────
@@ -133,7 +135,9 @@ function LockOverlay({ price, bookId }: { price: number; bookId: string }) {
       style={{ background: 'linear-gradient(to bottom, transparent 0%, rgba(26,26,46,0.97) 25%, #1a1a2e 100%)' }}
     >
       <div className="text-center px-6 py-8 max-w-sm">
-        <div className="w-16 h-16 rounded-2xl bg-[#F5C518]/10 border border-[#F5C518]/30 flex items-center justify-center text-3xl mx-auto mb-5">🔒</div>
+        <div className="w-16 h-16 rounded-2xl bg-[#F5C518]/10 border border-[#F5C518]/30 flex items-center justify-center mx-auto mb-5">
+            <svg className="w-8 h-8 text-[#F5C518]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
+          </div>
         <h3 className="text-white font-black text-xl mb-2">أكمل رحلة القراءة</h3>
         <p className="text-gray-400 text-sm mb-5 leading-relaxed">
           انتهت صفحاتك المجانية — احصل على الكتاب كاملاً واستمر في التعلّم
@@ -146,14 +150,14 @@ function LockOverlay({ price, bookId }: { price: number; bookId: string }) {
           href={`/library/${bookId}/buy`}
           className="block w-full bg-[#F5C518] hover:bg-amber-400 active:bg-amber-500 text-[#1a1a2e] font-black py-4 rounded-2xl text-base transition text-center shadow-lg shadow-amber-500/20"
         >
-          اشترِ الآن 🔓
+          اشترِ الآن
         </a>
-        <div className="flex items-center justify-center gap-3 mt-4 text-gray-500 text-xs">
-          <span>✓ دفع آمن</span>
+          <div className="flex items-center justify-center gap-3 mt-4 text-gray-500 text-xs">
+          <span className="flex items-center gap-1"><svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>دفع آمن</span>
           <span>•</span>
-          <span>✓ وصول فوري</span>
+          <span className="flex items-center gap-1"><svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>وصول فوري</span>
           <span>•</span>
-          <span>✓ على جميع الأجهزة</span>
+          <span className="flex items-center gap-1"><svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>على جميع الأجهزة</span>
         </div>
       </div>
     </div>
@@ -180,7 +184,9 @@ function QuoteToast({ text, bookTitle, coverUrl, onClose }: {
   return (
     <div className="fixed bottom-6 right-4 left-4 sm:left-auto sm:right-6 sm:w-80 bg-[#1a1a2e] border border-[#F5C518]/40 rounded-2xl p-4 shadow-2xl z-50">
       <div className="flex items-start gap-3">
-        <div className="text-2xl shrink-0">✨</div>
+        <div className="shrink-0 w-8 h-8 bg-[#F5C518]/20 rounded-xl flex items-center justify-center">
+          <svg className="w-4 h-4 text-[#F5C518]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
+        </div>
         <div className="flex-1 min-w-0">
           <p className="text-white font-bold text-sm mb-1">حوّل الاقتباس لصورة</p>
           <p className="text-gray-400 text-xs leading-relaxed line-clamp-2 mb-3">{text}</p>
@@ -190,8 +196,7 @@ function QuoteToast({ text, bookTitle, coverUrl, onClose }: {
               disabled={generating}
               className="flex-1 bg-[#F5C518] hover:bg-amber-400 text-[#1a1a2e] font-bold text-xs py-2 rounded-xl transition disabled:opacity-60"
             >
-              {generating ? 'جارٍ الإنشاء...' : '📸 نزّل كصورة'}
-            </button>
+              {generating ? 'جارِي الإنشاء...' : 'تنزيل كصورة'}            </button>
             <button onClick={onClose} className="text-gray-500 hover:text-gray-300 px-3 text-xs">
               ×
             </button>
@@ -207,7 +212,7 @@ function FreePageWarning({ remaining, bookId }: { remaining: number; bookId: str
   return (
     <div className="absolute top-3 left-3 right-3 z-30 bg-amber-50 border border-amber-300 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2 shadow-sm">
       <p className="text-amber-800 text-xs font-bold">
-        {remaining === 0 ? '⚠️ هذه آخر صفحة مجانية' : `⚠️ تبقّت ${remaining} صفحة مجانية فقط`}
+        {remaining === 0 ? 'هذه آخر صفحة مجانية' : `تبقّت ${remaining} صفحة مجانية فقط`}
       </p>
       <a
         href={`/library/${bookId}/buy`}
@@ -231,15 +236,18 @@ function ShareModal({ bookId, bookTitle, onClose }: { bookId: string; bookTitle:
     });
   };
 
-  const shareWhatsApp = () => window.open(`https://wa.me/?text=${encodeURIComponent(`📖 ${bookTitle}\n${shareUrl}`)}`, '_blank');
-  const shareTwitter = () => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`📖 ${bookTitle}`)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
+  // WhatsApp will use the OG meta tags (book cover) from the URL automatically
+  const shareWhatsApp = () => window.open(`https://wa.me/?text=${encodeURIComponent(`${bookTitle}\n${shareUrl}`)}`, '_blank');
+  const shareTwitter = () => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(bookTitle)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0" onClick={onClose}>
       <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="p-5">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-xl">🔗</div>
+            <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
+              <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+            </div>
             <div>
               <h3 className="font-black text-gray-900 text-sm">مشاركة الكتاب</h3>
               <p className="text-gray-400 text-xs line-clamp-1">{bookTitle}</p>
@@ -323,8 +331,11 @@ function ZoomModal({ bookId, pageNumber, numPages, onClose, dm }: {
 export default function BookReader({
   bookId, freePages, hasAccess, watermarkText, enableForensic = true,
   allowQuoteShare = true, price, initialPage = 1, onPageChange,
-  bookTitle = '', coverUrl = '',
+  bookTitle = '', coverUrl = '', bookLanguage = 'ar',
 }: BookReaderProps) {
+  // For Arabic/both books: left arrow = next page (reading right-to-left)
+  // For English books: right arrow = next page (reading left-to-right)
+  const isLtr = bookLanguage === 'en';
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [prevPage, setPrevPage] = useState(initialPage);
@@ -334,6 +345,7 @@ export default function BookReader({
   const [jumperValue, setJumperValue] = useState(String(initialPage));
   const [showShare, setShowShare] = useState(false);
   const [showZoom, setShowZoom] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1); // 1 = normal, 1.15 = slightly zoomed in (crops margins)
   const [pageAnim, setPageAnim] = useState<'none' | 'flip-next' | 'flip-prev'>('none');
   const [screenshotBlocked, setScreenshotBlocked] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -457,7 +469,10 @@ export default function BookReader({
       {/* Screenshot protection overlay */}
       {screenshotBlocked && (
         <div className="fixed inset-0 bg-black z-[9999] flex items-center justify-center">
-          <p className="text-white text-lg font-bold">🔒 محتوى محمي</p>
+          <div className="flex flex-col items-center gap-3">
+            <svg className="w-12 h-12 text-white/60" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
+            <p className="text-white text-lg font-bold">محتوى محمي</p>
+          </div>
         </div>
       )}
 
@@ -470,29 +485,40 @@ export default function BookReader({
       >
         {/* ── Toolbar ── */}
         <div className={`flex items-center gap-2 px-3 py-2.5 border-b ${dm ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
-          {/* Navigation RTL: ‹ (left) = next page, › (right) = previous page */}
+          {/* Left arrow: next for Arabic (RTL), previous for English (LTR) */}
           <button
-            onClick={() => goTo(currentPage + 1, 'next')}
-            disabled={currentPage >= numPages}
-            aria-label="الصفحة التالية"
-            className={btnCls}
-            title="الصفحة التالية"
+            onClick={() => isLtr ? goTo(currentPage - 1, 'prev') : goTo(currentPage + 1, 'next')}
+            disabled={isLtr ? currentPage <= 1 : currentPage >= numPages}
+            aria-label={isLtr ? 'الصفحة السابقة' : 'الصفحة التالية'}
+            title={isLtr ? 'الصفحة السابقة' : 'الصفحة التالية'}
+            className={`flex items-center justify-center gap-1 px-3 h-9 rounded-xl font-bold text-xs transition disabled:opacity-30 ${
+              isLtr
+                ? (dm ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')
+                : (dm ? 'bg-[#F5C518] text-[#1a1a2e] hover:bg-amber-400' : 'bg-[#F5C518] text-[#1a1a2e] hover:bg-amber-400')
+            }`}
           >
-            ‹
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+            <span className="hidden sm:inline">{isLtr ? 'السابق' : 'التالي'}</span>
           </button>
 
           <div className={`text-xs font-bold tabular-nums px-1 ${dm ? 'text-gray-300' : 'text-gray-600'}`}>
             {currentPage} <span className={dm ? 'text-gray-600' : 'text-gray-300'}>/</span> {numPages || '…'}
           </div>
 
+          {/* Right arrow: previous for Arabic (RTL), next for English (LTR) */}
           <button
-            onClick={() => goTo(currentPage - 1, 'prev')}
-            disabled={currentPage <= 1}
-            aria-label="الصفحة السابقة"
-            className={btnCls}
-            title="الصفحة السابقة"
+            onClick={() => isLtr ? goTo(currentPage + 1, 'next') : goTo(currentPage - 1, 'prev')}
+            disabled={isLtr ? currentPage >= numPages : currentPage <= 1}
+            aria-label={isLtr ? 'الصفحة التالية' : 'الصفحة السابقة'}
+            title={isLtr ? 'الصفحة التالية' : 'الصفحة السابقة'}
+            className={`flex items-center justify-center gap-1 px-3 h-9 rounded-xl font-bold text-xs transition disabled:opacity-30 ${
+              isLtr
+                ? (dm ? 'bg-[#F5C518] text-[#1a1a2e] hover:bg-amber-400' : 'bg-[#F5C518] text-[#1a1a2e] hover:bg-amber-400')
+                : (dm ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')
+            }`}
           >
-            ›
+            <span className="hidden sm:inline">{isLtr ? 'التالي' : 'السابق'}</span>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
           </button>
 
           {/* Progress bar */}
@@ -531,7 +557,11 @@ export default function BookReader({
             className={btnCls}
             title={dm ? 'وضع النهار' : 'وضع الليل'}
           >
-            {dm ? '☀️' : '🌙'}
+            {dm ? (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>
+            )}
           </button>
         </div>
 
@@ -542,22 +572,42 @@ export default function BookReader({
               <FreePageWarning remaining={pagesLeft} bookId={bookId} />
             )}
 
-            {/* Zoom icon overlay — appears on hover */}
+            {/* Zoom icon — inline zoom that crops margins, always visible */}
             {!isLocked && numPages > 0 && (
               <button
-                onClick={() => setShowZoom(true)}
-                className="absolute bottom-3 left-3 z-20 w-9 h-9 bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white rounded-xl flex items-center justify-center transition opacity-0 group-hover:opacity-100 shadow-lg"
-                title="تكبير"
-                aria-label="تكبير الصفحة"
+                onClick={() => setZoomLevel(z => z === 1 ? 1.18 : 1)}
+                className={`absolute bottom-3 left-3 z-20 w-9 h-9 backdrop-blur-sm text-white rounded-xl flex items-center justify-center transition shadow-lg ${
+                  zoomLevel > 1
+                    ? 'bg-[#F5C518] text-[#1a1a2e]'
+                    : 'bg-black/40 hover:bg-black/60'
+                }`}
+                title={zoomLevel > 1 ? 'عودة للحجم الطبيعي' : 'تكبير وإزالة الهوامش'}
+                aria-label={zoomLevel > 1 ? 'عودة للحجم الطبيعي' : 'تكبير'}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                </svg>
+                {zoomLevel > 1 ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" /></svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+                )}
               </button>
             )}
 
-            {/* Page with flip animation */}
-            <div style={pageAnimStyle}>
+            {/* Page with flip animation + inline zoom (crops margins) */}
+            <div
+              style={{
+                ...pageAnimStyle,
+                overflow: 'hidden',
+                borderRadius: '0.75rem',
+              }}
+            >
+              <div
+                style={{
+                  transform: `scale(${zoomLevel})`,
+                  transformOrigin: 'center center',
+                  transition: 'transform 0.25s ease',
+                  display: 'inline-block',
+                }}
+              >
               <Document
                 file={`/api/books/${bookId}/file`}
                 onLoadSuccess={({ numPages: n }) => setNumPages(n)}
@@ -571,7 +621,7 @@ export default function BookReader({
                 }
                 error={
                   <div className="text-center py-20 px-8">
-                    <p className="text-4xl mb-3">📚</p>
+                    <div className="flex justify-center mb-3"><svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg></div>
                     <p className={`text-sm font-semibold mb-2 ${dm ? 'text-gray-400' : 'text-gray-500'}`}>تعذّر تحميل الكتاب</p>
                     <button
                       onClick={() => window.location.reload()}
@@ -591,6 +641,7 @@ export default function BookReader({
                   />
                 )}
               </Document>
+              </div>{/* end zoom wrapper */}
             </div>
 
             {/* Watermark */}
@@ -635,7 +686,7 @@ export default function BookReader({
               />
             </div>
             <p className={`text-[10px] hidden sm:block ${dm ? 'text-gray-700' : 'text-gray-300'}`}>
-              → التالية • السابقة ←
+              {isLtr ? '← التالية • السابقة →' : '→ التالية • السابقة ←'}
             </p>
           </div>
         )}
@@ -656,16 +707,7 @@ export default function BookReader({
         <ShareModal bookId={bookId} bookTitle={bookTitle} onClose={() => setShowShare(false)} />
       )}
 
-      {/* Zoom Modal */}
-      {showZoom && (
-        <ZoomModal
-          bookId={bookId}
-          pageNumber={currentPage}
-          numPages={numPages}
-          onClose={() => setShowZoom(false)}
-          dm={dm}
-        />
-      )}
+      {/* Zoom Modal removed — replaced with inline zoom button */}
 
       {/* Page flip CSS */}
       <style jsx global>{`

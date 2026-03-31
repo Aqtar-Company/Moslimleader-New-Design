@@ -377,6 +377,7 @@ export default function BookPage() {
                   onPageChange={saveProgress}
                   bookTitle={book.title}
                   coverUrl={book.cover}
+                  bookLanguage={(book as any).language === 'en' ? 'en' : (book as any).language === 'both' ? 'both' : 'ar'}
                 />
               ) : (
                 <div className="p-16 text-center text-gray-400">

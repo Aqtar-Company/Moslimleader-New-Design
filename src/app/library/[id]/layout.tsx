@@ -1,14 +1,15 @@
 import type { Metadata } from 'next';
 
-interface Props {
-  params: { id: string };
+type Props = {
+  params: Promise<{ id: string }>;
   children: React.ReactNode;
-}
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://moslimleader.com';
-    const res = await fetch(`${baseUrl}/api/books/${params.id}`, { cache: 'no-store' });
+    const res = await fetch(`${baseUrl}/api/books/${id}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('not found');
     const data = await res.json();
     const book = data.book;
@@ -17,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const title = book.title || 'كتاب رقمي';
     const description = book.description || 'اقرأ هذا الكتاب على منصة مسلم ليدر';
     const cover = book.cover || `${baseUrl}/logo.png`;
-    const url = `${baseUrl}/library/${params.id}`;
+    const url = `${baseUrl}/library/${id}`;
 
     return {
       title: `${title} | مسلم ليدر`,
@@ -53,6 +54,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default function BookLayout({ children }: Props) {
+export default async function BookLayout({ params, children }: Props) {
+  await params; // ensure params is resolved
   return <>{children}</>;
 }

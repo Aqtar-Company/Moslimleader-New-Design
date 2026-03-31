@@ -264,14 +264,14 @@ export default function BookReader({
     const handleKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return;
       if (e.key === 'ArrowLeft' || e.key === 'PageDown') {
-        // Left arrow = next page (Arabic reading direction: left = forward)
+        // RTL: Left arrow = next page (forward in Arabic reading direction)
         setCurrentPage(p => {
           const next = Math.min(p + 1, numPages);
           if (next !== p) { onPageChange?.(next); setJumperValue(String(next)); }
           return next;
         });
       } else if (e.key === 'ArrowRight' || e.key === 'PageUp') {
-        // Right arrow = previous page
+        // RTL: Right arrow = previous page (backward in Arabic reading direction)
         setCurrentPage(p => {
           const prev = Math.max(p - 1, 1);
           if (prev !== p) { onPageChange?.(prev); setJumperValue(String(prev)); }
@@ -326,15 +326,15 @@ export default function BookReader({
     >
       {/* ── Toolbar ── */}
       <div className={`flex items-center gap-2 px-3 py-2.5 border-b ${dm ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
-        {/* Navigation: RIGHT = previous (السابقة), LEFT = next (التالية) in RTL */}
+        {/* Navigation RTL: ‹ (left) = previous page, › (right) = next page */}
         <button
-          onClick={() => goTo(currentPage - 1)}
-          disabled={currentPage <= 1}
-          aria-label="الصفحة السابقة"
+          onClick={() => goTo(currentPage + 1)}
+          disabled={currentPage >= numPages}
+          aria-label="الصفحة التالية"
           className={btnCls}
-          title="الصفحة السابقة (→)"
+          title="الصفحة التالية"
         >
-          ›
+          ‹
         </button>
 
         <div className={`text-xs font-bold tabular-nums px-1 ${dm ? 'text-gray-300' : 'text-gray-600'}`}>
@@ -342,13 +342,13 @@ export default function BookReader({
         </div>
 
         <button
-          onClick={() => goTo(currentPage + 1)}
-          disabled={currentPage >= numPages}
-          aria-label="الصفحة التالية"
+          onClick={() => goTo(currentPage - 1)}
+          disabled={currentPage <= 1}
+          aria-label="الصفحة السابقة"
           className={btnCls}
-          title="الصفحة التالية (←)"
+          title="الصفحة السابقة"
         >
-          ‹
+          ›
         </button>
 
         {/* Progress bar — always visible */}
@@ -462,7 +462,7 @@ export default function BookReader({
             />
           </div>
           <p className={`text-[10px] hidden sm:block ${dm ? 'text-gray-700' : 'text-gray-300'}`}>
-            ← التالية • السابقة →
+→ التالية • السابقة ←
           </p>
         </div>
       )}

@@ -435,15 +435,39 @@ export default function AdminBooksPage() {
                 <div>
                   <label className="text-xs font-bold text-gray-500 mb-1 block">صورة الغلاف</label>
                   <div
-                    className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-amber-400 transition overflow-hidden"
+                    className="border-2 border-dashed border-gray-200 rounded-xl p-3 text-center cursor-pointer hover:border-amber-400 transition overflow-hidden"
                     onClick={() => coverRef.current?.click()}
                   >
                     {coverFile ? (
-                      <p className="text-sm text-green-600 font-bold truncate">{coverFile.name}</p>
+                      <div className="space-y-2">
+                        <Image
+                          src={URL.createObjectURL(coverFile)}
+                          alt="cover preview"
+                          width={80}
+                          height={110}
+                          className="mx-auto rounded-lg object-cover shadow-sm"
+                          unoptimized
+                        />
+                        <p className="text-xs text-green-600 font-bold truncate">{coverFile.name}</p>
+                        <p className="text-[10px] text-gray-400">اضغط لتغيير الصورة</p>
+                      </div>
                     ) : uploadedCoverUrl ? (
-                      <Image src={uploadedCoverUrl} alt="cover" width={60} height={80} className="mx-auto rounded object-cover" unoptimized />
+                      <div className="space-y-2">
+                        <Image
+                          src={uploadedCoverUrl}
+                          alt="cover"
+                          width={80}
+                          height={110}
+                          className="mx-auto rounded-lg object-cover shadow-sm"
+                          unoptimized
+                        />
+                        <p className="text-[10px] text-gray-400">اضغط لتغيير الغلاف</p>
+                      </div>
                     ) : (
-                      <p className="text-sm text-gray-400">اختر صورة الغلاف</p>
+                      <div className="py-4">
+                        <p className="text-3xl mb-2">🖼️</p>
+                        <p className="text-sm text-gray-400">اختر صورة الغلاف</p>
+                      </div>
                     )}
                   </div>
                   <input

@@ -6,6 +6,8 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { useRegionalPricing } from '@/context/RegionalPricingContext';
+import { resolvePrice } from '@/lib/geo-pricing';
 
 const BookReader = dynamic(() => import('@/components/books/BookReader'), {
   ssr: false,
@@ -26,6 +28,7 @@ interface BookData {
   author?: string;
   category?: string;
   price: number;
+  priceUSD?: number;
   freePages: number;
   totalPages: number;
   isPublished: boolean;
@@ -45,6 +48,13 @@ export default function BookPage() {
   const { id } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const { user } = useAuth();
+  const { zone, countryCode } = useRegionalPricing();
+
+  // Resolve book price based on user's region
+  const resolvedBookPrice = (book: BookData) => {
+    const pricing = book.priceUSD ? { price_usd_manual: book.priceUSD } : null;
+    return resolvePrice(book.price, zone, pricing, countryCode);
+  };
 
   const [book, setBook] = useState<BookData | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
@@ -200,7 +210,9 @@ export default function BookPage() {
           <div className="space-y-3">
             <div className="text-center">
               <p className="text-gray-400 text-xs mb-1">سعر الكتاب كاملاً</p>
-              <p className="font-black text-[#1a1a2e] text-3xl">{book.price.toLocaleString('ar-EG')} ج.م</p>
+              <p className="font-black text-[#1a1a2e] text-3xl">
+                {(() => { const r = resolvedBookPrice(book); return `${r.price % 1 === 0 ? r.price : r.price.toFixed(2)} ${r.currency}`; })()}
+              </p>
             </div>
             {user ? (
               <Link
@@ -306,7 +318,7 @@ export default function BookPage() {
                   href={user ? `/library/${id}/buy` : `/auth?redirect=/library/${id}`}
                   className="inline-block bg-[#F5C518] text-[#1a1a2e] font-black text-xs px-4 py-2 rounded-xl"
                 >
-                  {user ? `اشترِ — ${book.price.toLocaleString('ar-EG')} ج` : 'سجّل دخولك'}
+                  {user ? (() => { const r = resolvedBookPrice(book); return `اشترِ — ${r.price % 1 === 0 ? r.price : r.price.toFixed(2)} ${r.currency}`; })() : 'سجّل دخولك'}
                 </Link>
               )}
               {hasAccess && (

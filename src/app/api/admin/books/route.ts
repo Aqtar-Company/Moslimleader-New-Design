@@ -36,8 +36,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const {
       title, titleEn, description, descriptionEn,
-      cover, filePath, totalPages, freePages, price,
-      author, category,
+      cover, filePath, totalPages, freePages, price, priceUSD,
+      author, authorEn, category, language, section,
       allowQuoteShare, allowFriendShare, friendShareHours,
       enableReferral, referralDiscount, enableWatermark, enableForensic,
     } = body;
@@ -51,7 +51,10 @@ export async function POST(req: NextRequest) {
         totalPages: Number(totalPages) || 0,
         freePages: Number(freePages) || 10,
         price: Number(price) || 0,
-        author, category,
+        priceUSD: priceUSD ? Number(priceUSD) : null,
+        author, authorEn, category,
+        language: language || 'ar',
+        section: section || 'books',
         allowQuoteShare: allowQuoteShare !== false,
         allowFriendShare: allowFriendShare !== false,
         friendShareHours: Number(friendShareHours) || 48,

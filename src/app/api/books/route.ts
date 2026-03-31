@@ -11,7 +11,8 @@ export async function GET() {
       select: {
         id: true, title: true, titleEn: true, cover: true,
         description: true, author: true, category: true,
-        price: true, freePages: true, totalPages: true,
+        price: true, priceUSD: true, freePages: true, totalPages: true,
+        language: true, section: true,
         allowFriendShare: true, enableReferral: true,
         _count: { select: { accesses: true } },
       },

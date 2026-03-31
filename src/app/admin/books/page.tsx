@@ -14,6 +14,7 @@ interface Book {
   author?: string;
   category?: string;
   price: number;
+  priceUSD?: number;
   freePages: number;
   totalPages: number;
   isPublished: boolean;
@@ -44,6 +45,7 @@ const emptyForm = {
   author: '',
   category: '',
   price: 0,
+  priceUSD: 0,
   freePages: 10,
   totalPages: 0,
   isPublished: false,
@@ -122,6 +124,7 @@ export default function AdminBooksPage() {
       author: b.author || '',
       category: b.category || '',
       price: b.price,
+      priceUSD: (b as Book & { priceUSD?: number }).priceUSD || 0,
       freePages: b.freePages,
       totalPages: b.totalPages,
       isPublished: b.isPublished,
@@ -443,11 +446,37 @@ export default function AdminBooksPage() {
               </div>
 
               {/* Pricing & pages */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-bold text-gray-500 mb-1 block">السعر (ج.م)</label>
-                  <input type="number" min={0} value={form.price} onChange={f('price')} className={inputCls} dir="ltr" />
+                  <label className="text-xs font-bold text-gray-500 mb-1 block">
+                    السعر بالجنيه المصري (ج.م)
+                    <span className="mr-1 text-xs font-normal text-gray-400">— للمستخدمين في مصر</span>
+                  </label>
+                  <div className="relative">
+                    <input type="number" min={0} value={form.price} onChange={f('price')} className={inputCls + ' pl-12'} dir="ltr" />
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-600">ج.م</span>
+                  </div>
                 </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-500 mb-1 block">
+                    السعر بالدولار (USD)
+                    <span className="mr-1 text-xs font-normal text-gray-400">— للمستخدمين خارج مصر</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number" min={0} step="0.01"
+                      value={(form as typeof form & { priceUSD?: number }).priceUSD || ''}
+                      onChange={f('priceUSD')}
+                      className={inputCls + ' pl-12'}
+                      dir="ltr"
+                      placeholder={form.price > 0 ? `تلقائي: ${(form.price * 0.10).toFixed(2)}` : '0.00'}
+                    />
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-blue-600">$</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">اتركه فارغاً للحساب التلقائي (10% من سعر الجنيه)</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-bold text-gray-500 mb-1 block">صفحات مجانية</label>
                   <input type="number" min={0} value={form.freePages} onChange={f('freePages')} className={inputCls} dir="ltr" />

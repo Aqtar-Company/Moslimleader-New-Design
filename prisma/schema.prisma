@@ -158,6 +158,7 @@ model Book {
   totalPages    Int      @default(0)
   freePages     Int      @default(10)
   price         Float    @default(0)
+  priceUSD      Float?   // Manual USD price; if null, auto-calculated from price * 0.10
   author        String?
   authorEn      String?
   category      String?

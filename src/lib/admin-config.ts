@@ -1,5 +1,5 @@
 // The email address that has admin access to the dashboard
-export const ADMIN_EMAIL = 'admin@moslimleader.com';
+export const ADMIN_EMAIL = 'moslimleader2020@gmail.com';
 
 // Default coupons (used as fallback if no coupons in localStorage)
 export const DEFAULT_COUPONS: Record<string, number> = {

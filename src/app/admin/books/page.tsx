@@ -391,19 +391,24 @@ export default function AdminBooksPage() {
                 </div>
                 <div className="col-span-2">
                   <label className="text-xs font-bold text-gray-500 mb-1 block">لغة الكتاب</label>
-                  <div className="flex gap-2">
-                    {(['ar', 'en', 'both'] as const).map(lang => (
+                  <div className="grid grid-cols-4 gap-2">
+                    {([
+                      { id: 'ar', label: 'عربي' },
+                      { id: 'en', label: 'English' },
+                      { id: 'fr', label: 'Français' },
+                      { id: 'hi', label: 'हिन्दी' },
+                    ] as const).map(opt => (
                       <button
-                        key={lang}
+                        key={opt.id}
                         type="button"
-                        onClick={() => setForm(prev => ({ ...prev, language: lang }))}
-                        className={`flex-1 py-2 rounded-xl text-xs font-black border-2 transition ${
-                          (form as typeof form & { language?: string }).language === lang
+                        onClick={() => setForm(prev => ({ ...prev, language: opt.id }))}
+                        className={`py-2 rounded-xl text-xs font-black border-2 transition ${
+                          (form as typeof form & { language?: string }).language === opt.id
                             ? 'border-[#F5C518] bg-amber-50 text-[#1a1a2e]'
                             : 'border-gray-200 text-gray-500 hover:border-gray-300'
                         }`}
                       >
-                        {lang === 'ar' ? 'عربي' : lang === 'en' ? 'English' : 'ثنائي'}
+                        {opt.label}
                       </button>
                     ))}
                   </div>

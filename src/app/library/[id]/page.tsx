@@ -11,6 +11,25 @@ import { resolvePrice } from '@/lib/geo-pricing';
 import { formatAgeLabel } from '@/lib/book-age';
 import ReCAPTCHA from 'react-google-recaptcha';
 
+// Simple device fingerprint based on browser properties
+async function generateFingerprint(): Promise<string> {
+  const ua = navigator.userAgent;
+  const lang = navigator.language;
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const screen = `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`;
+  const raw = `${ua}|${lang}|${tz}|${screen}`;
+  // Use SubtleCrypto if available, else fallback to simple hash
+  if (window.crypto && window.crypto.subtle) {
+    const buf = new TextEncoder().encode(raw);
+    const hash = await window.crypto.subtle.digest('SHA-256', buf);
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  // Fallback: simple djb2 hash
+  let h = 5381;
+  for (let i = 0; i < raw.length; i++) h = ((h << 5) + h) ^ raw.charCodeAt(i);
+  return (h >>> 0).toString(16);
+}
+
 // Error boundary to prevent full-page crash on iPad/Safari
 class ReaderErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -176,6 +195,28 @@ function BookPageInner() {
     const t = setTimeout(() => setShareMsg(null), 6000);
     return () => clearTimeout(t);
   }, [shareMsg]);
+
+  // Session ping every 90 seconds to detect concurrent access from another IP
+  useEffect(() => {
+    if (!isVerified) return;
+    const ping = async () => {
+      try {
+        const res = await fetch(`/api/books/${id}/session`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.conflict) {
+            alert(data.message || 'يبدو أن حسابك مفتوح على جهاز آخر في نفس الوقت.');
+          }
+        }
+      } catch {}
+    };
+    ping(); // immediate first ping
+    const interval = setInterval(ping, 90 * 1000); // every 90 seconds
+    return () => clearInterval(interval);
+  }, [isVerified, id]);
 
   const saveProgress = useCallback((page: number) => {
     setLastPage(page);
@@ -531,13 +572,33 @@ function BookPageInner() {
                       onChange={async (token) => {
                         if (token && !trackingDone) {
                           setTrackingDone(true);
-                          // Fire tracking API — record IP, device, geolocation
+                          // 1. Fire tracking API — record IP, device, geolocation
                           try {
                             await fetch(`/api/books/${id}/track`, {
                               method: 'POST',
                               credentials: 'include',
                             });
                           } catch {}
+
+                          // 2. Device fingerprint check (max 2 devices)
+                          try {
+                            const fp = await generateFingerprint();
+                            const devRes = await fetch(`/api/books/${id}/device`, {
+                              method: 'POST',
+                              credentials: 'include',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ fingerprint: fp }),
+                            });
+                            if (!devRes.ok) {
+                              const devData = await devRes.json();
+                              if (devData.error) {
+                                alert(devData.error);
+                                setTrackingDone(false);
+                                return;
+                              }
+                            }
+                          } catch {}
+
                           setIsVerified(true);
                         }
                       }}

@@ -25,6 +25,7 @@ model User {
   bookAccesses BookAccess[]
   oauthAccounts OAuthAccount[]
   bookOrders    BookOrder[]
+  devices       BookDevice[]
 }
 
 model Product {
@@ -280,4 +281,28 @@ model BookAccessLog {
   @@index([bookId])
   @@index([userId])
   @@index([ipAddress])
+}
+
+model BookDevice {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fingerprint String
+  userAgent   String?
+  ipAddress   String?
+  lastSeen    DateTime @default(now())
+  createdAt   DateTime @default(now())
+  @@unique([userId, fingerprint])
+  @@index([userId])
+}
+
+model BookSession {
+  id        String   @id @default(cuid())
+  userId    String
+  bookId    String
+  ipAddress String?
+  startedAt DateTime @default(now())
+  lastPing  DateTime @default(now())
+  @@index([userId, bookId])
+  @@index([lastPing])
 }

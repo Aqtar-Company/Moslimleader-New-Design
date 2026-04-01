@@ -91,6 +91,7 @@ export default function UsersPage() {
                 <th className="px-5 py-3.5 text-right">الهاتف</th>
                 <th className="px-5 py-3.5 text-center">عدد الطلبات</th>
                 <th className="px-5 py-3.5 text-center">عرض الطلبات</th>
+                <th className="px-5 py-3.5 text-center">الأجهزة</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -114,10 +115,23 @@ export default function UsersPage() {
                         {selectedId === u.id ? 'إخفاء' : 'عرض'}
                       </button>
                     </td>
+                    <td className="px-5 py-3.5 text-center">
+                      <button
+                        onClick={async () => {
+                          if (confirm(`إعادة تعيين أجهزة ${u.name}؟`)) {
+                            const res = await fetch(`/api/admin/devices?userId=${u.id}`, { method: 'DELETE', credentials: 'include' });
+                            if (res.ok) alert('تم إعادة تعيين الأجهزة بنجاح');
+                          }
+                        }}
+                        className="text-xs font-bold px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition"
+                      >
+                        إعادة تعيين
+                      </button>
+                    </td>
                   </tr>
                   {selectedId === u.id && (
                     <tr key={`${u.id}-orders`}>
-                      <td colSpan={5} className="bg-gray-50 px-5 py-4 border-b border-gray-100">
+                      <td colSpan={6} className="bg-gray-50 px-5 py-4 border-b border-gray-100">
                         {(userOrders[u.id] ?? []).length === 0 ? (
                           <p className="text-gray-400 text-sm text-center py-3">لا توجد طلبات لهذا العميل</p>
                         ) : (

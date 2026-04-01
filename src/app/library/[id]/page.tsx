@@ -74,7 +74,17 @@ interface BookData {
   maxAge?: number | null;
   needsParentalGuide?: boolean;
   paperProductSlug?: string | null;
+  seriesId?: string | null;
+  seriesOrder?: number | null;
   _count: { accesses: number };
+}
+
+interface SeriesBookNav {
+  id: string;
+  title: string;
+  titleEn?: string | null;
+  cover: string;
+  seriesOrder?: number | null;
 }
 
 type MobileTab = 'reader' | 'info';
@@ -119,6 +129,10 @@ function BookPageInner() {
   const [shareMsg, setShareMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [mobileTab, setMobileTab] = useState<MobileTab>('reader');
   const [copyDone, setCopyDone] = useState(false);
+  const [seriesBooks, setSeriesBooks] = useState<SeriesBookNav[]>([]);
+  const [seriesName, setSeriesName] = useState<string | null>(null);
+  const [seriesNameEn, setSeriesNameEn] = useState<string | null>(null);
+  const isEn = false; // Arabic-first; series names shown in Arabic by default
 
   useEffect(() => {
     fetch(`/api/books/${id}`, { credentials: 'include' })
@@ -127,6 +141,9 @@ function BookPageInner() {
         setBook(d.book ?? null);
         setViewCount(d.viewCount ?? null);
         setBuyCount(d.buyCount ?? null);
+        setSeriesBooks(d.seriesBooks ?? []);
+        setSeriesName(d.seriesName ?? null);
+        setSeriesNameEn(d.seriesNameEn ?? null);
         let access = d.hasAccess ?? false;
 
         const refToken = searchParams.get('ref');
@@ -562,6 +579,88 @@ function BookPageInner() {
           </div>
         </div>
       </div>
+
+      {/* ── Series Navigation Bar ── */}
+      {seriesBooks.length > 1 && book.seriesId && (
+        <div className="mt-6 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="bg-gradient-to-r from-[#1a1a2e] to-[#16213e] px-5 py-3 flex items-center justify-between">
+            <div>
+              <p className="text-[#F5C518] text-xs font-bold uppercase tracking-wider">
+                {(isEn && seriesNameEn) ? 'Series' : 'سلسلة'}
+              </p>
+              <p className="text-white font-black text-sm">
+                {(isEn && seriesNameEn) ? seriesNameEn : seriesName}
+              </p>
+            </div>
+            <span className="text-white/50 text-xs">
+              {isEn ? `Part ${book.seriesOrder} of ${seriesBooks.length}` : `الجزء ${book.seriesOrder} من ${seriesBooks.length}`}
+            </span>
+          </div>
+          <div className="p-4">
+            <div className="flex gap-3 overflow-x-auto pb-1">
+              {seriesBooks.map((sb) => {
+                const isCurrent = sb.id === id;
+                const sbTitle = (isEn && sb.titleEn) ? sb.titleEn : sb.title;
+                return (
+                  <Link
+                    key={sb.id}
+                    href={`/library/${sb.id}`}
+                    className={`shrink-0 flex flex-col items-center gap-1.5 group ${
+                      isCurrent ? 'opacity-100' : 'opacity-70 hover:opacity-100'
+                    } transition-opacity`}
+                  >
+                    <div className={`relative w-14 h-20 rounded-xl overflow-hidden border-2 transition ${
+                      isCurrent ? 'border-[#F5C518] shadow-lg shadow-[#F5C518]/20' : 'border-transparent group-hover:border-gray-300'
+                    }`}>
+                      {sb.cover ? (
+                        <Image src={sb.cover} alt={sbTitle} fill className="object-cover" unoptimized />
+                      ) : (
+                        <div className="w-full h-full bg-gray-100 flex items-center justify-center text-xl">📖</div>
+                      )}
+                      <div className={`absolute top-1 right-1 w-5 h-5 rounded-full text-[9px] font-black flex items-center justify-center shadow ${
+                        isCurrent ? 'bg-[#F5C518] text-[#1a1a2e]' : 'bg-gray-800/70 text-white'
+                      }`}>
+                        {sb.seriesOrder}
+                      </div>
+                    </div>
+                    <p className={`text-[10px] font-bold text-center w-14 leading-tight line-clamp-2 ${
+                      isCurrent ? 'text-[#1a1a2e]' : 'text-gray-500'
+                    }`}>{sbTitle}</p>
+                  </Link>
+                );
+              })}
+            </div>
+            {/* Prev / Next buttons */}
+            {(() => {
+              const currentIdx = seriesBooks.findIndex(sb => sb.id === id);
+              const prev = currentIdx > 0 ? seriesBooks[currentIdx - 1] : null;
+              const next = currentIdx < seriesBooks.length - 1 ? seriesBooks[currentIdx + 1] : null;
+              return (prev || next) ? (
+                <div className="flex gap-3 mt-4 pt-3 border-t border-gray-100">
+                  {prev && (
+                    <Link href={`/library/${prev.id}`} className="flex-1 flex items-center gap-2 px-4 py-2.5 bg-gray-50 hover:bg-gray-100 rounded-xl transition">
+                      <span className="text-gray-400">←</span>
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-gray-400">{isEn ? 'Previous' : 'السابق'}</p>
+                        <p className="text-xs font-bold text-gray-700 truncate">{(isEn && prev.titleEn) ? prev.titleEn : prev.title}</p>
+                      </div>
+                    </Link>
+                  )}
+                  {next && (
+                    <Link href={`/library/${next.id}`} className="flex-1 flex items-center justify-end gap-2 px-4 py-2.5 bg-[#F5C518]/10 hover:bg-[#F5C518]/20 rounded-xl transition">
+                      <div className="min-w-0 text-right">
+                        <p className="text-[10px] text-[#F5C518]">{isEn ? 'Next' : 'التالي'}</p>
+                        <p className="text-xs font-bold text-gray-700 truncate">{(isEn && next.titleEn) ? next.titleEn : next.title}</p>
+                      </div>
+                      <span className="text-[#F5C518]">→</span>
+                    </Link>
+                  )}
+                </div>
+              ) : null;
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* ── Share Modal ── */}
       {showShareModal && (

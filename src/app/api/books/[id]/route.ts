@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
-
 // GET /api/books/[id]
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const baseSelect = {
@@ -13,15 +12,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     isPublished: true, allowQuoteShare: true, allowFriendShare: true,
     friendShareHours: true, enableReferral: true, referralDiscount: true,
     enableWatermark: true, enableForensic: true,
-    paperProductSlug: true,
+    paperProductSlug: true, seriesId: true, seriesOrder: true,
     bgmUrl: true, promoVideoUrl: true,
     _count: { select: { accesses: true } },
   };
-
   try {
     const { id } = await params;
     const auth = await getAuthUser();
-
     let book;
     try {
       book = await prisma.book.findUnique({
@@ -32,11 +29,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       // Fallback if age columns don't exist yet
       book = await prisma.book.findUnique({ where: { id }, select: baseSelect });
     }
-
     if (!book || (!book.isPublished && (!auth || auth.role !== 'admin'))) {
       return NextResponse.json({ error: 'الكتاب غير موجود' }, { status: 404 });
     }
-
     // Check if current user has access
     let hasAccess = false;
     if (auth) {
@@ -45,10 +40,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       });
       hasAccess = !!access;
     }
-
     // buyCount = number of paid accesses
     const buyCount = (book as any)._count?.accesses ?? 0;
-
     // viewCount = number of unique visitors (from BookAccessLog)
     let viewCount = buyCount;
     try {
@@ -57,7 +50,35 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       // fallback to buyCount if table doesn't exist yet
     }
 
-    return NextResponse.json({ book, hasAccess, viewCount, buyCount });
+    // Series siblings for navigation (prev/next)
+    let seriesBooks: { id: string; title: string; titleEn?: string | null; cover: string; seriesOrder?: number | null }[] = [];
+    let seriesName: string | null = null;
+    let seriesNameEn: string | null = null;
+    if ((book as any).seriesId) {
+      try {
+        const series = await prisma.bookSeries.findUnique({
+          where: { id: (book as any).seriesId },
+          select: {
+            name: true,
+            nameEn: true,
+            books: {
+              where: { isPublished: true },
+              select: { id: true, title: true, titleEn: true, cover: true, seriesOrder: true },
+              orderBy: { seriesOrder: 'asc' },
+            },
+          },
+        });
+        if (series) {
+          seriesBooks = series.books;
+          seriesName = series.name;
+          seriesNameEn = series.nameEn ?? null;
+        }
+      } catch {
+        // series table may not exist yet
+      }
+    }
+
+    return NextResponse.json({ book, hasAccess, viewCount, buyCount, seriesBooks, seriesName, seriesNameEn });
   } catch (err) {
     console.error('[books/:id GET]', err);
     return NextResponse.json({ error: 'حدث خطأ في الخادم' }, { status: 500 });

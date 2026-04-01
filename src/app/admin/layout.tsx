@@ -18,6 +18,7 @@ const NAV = [
   { href: '/admin/intl-shipping',     label: 'الشحن الدولي',    icon: '✈️' },
   { href: '/admin/payment-methods',   label: 'وسائل الدفع',     icon: '💳' },
   { href: '/admin/books',             label: 'المكتبة الرقمية', icon: '📚' },
+  { href: '/admin/series',            label: 'السلاسل',         icon: '📖' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

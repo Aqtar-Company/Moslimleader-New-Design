@@ -24,7 +24,38 @@ interface Book {
   minAge?: number | null;
   maxAge?: number | null;
   needsParentalGuide?: boolean;
+  seriesId?: string | null;
+  seriesOrder?: number | null;
   _count: { accesses: number };
+}
+
+interface SeriesBook {
+  id: string;
+  title: string;
+  titleEn?: string;
+  cover: string;
+  price: number;
+  priceUSD?: number;
+  seriesOrder?: number;
+  language?: string;
+  freePages: number;
+  totalPages: number;
+  author?: string;
+  authorEn?: string;
+}
+
+interface BookSeriesData {
+  id: string;
+  name: string;
+  nameEn?: string;
+  slug: string;
+  description?: string;
+  descriptionEn?: string;
+  cover?: string;
+  seriesPrice?: number;
+  seriesPriceUSD?: number;
+  language?: string;
+  books: SeriesBook[];
 }
 
 type SectionTab = 'books' | 'stories';
@@ -110,11 +141,18 @@ export default function LibraryPage() {
   const [activeLang, setActiveLang] = useState<LangFilter>('ar');
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
 
+  const [seriesData, setSeriesData] = useState<BookSeriesData[]>([]);
+
   useEffect(() => {
-    fetch('/api/books')
-      .then(r => r.json())
-      .then(d => setBooks(d.books ?? []))
-      .catch(() => setBooks([]))
+    Promise.all([
+      fetch('/api/books').then(r => r.json()),
+      fetch('/api/series').then(r => r.json()),
+    ])
+      .then(([booksRes, seriesRes]) => {
+        setBooks(booksRes.books ?? []);
+        setSeriesData(seriesRes.series ?? []);
+      })
+      .catch(() => { setBooks([]); setSeriesData([]); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -319,6 +357,120 @@ export default function LibraryPage() {
                 {filtered.length} {isEn ? 'results' : 'نتيجة'}
               </p>
             )}
+            {/* Stories tab: show series groups, then standalone books */}
+            {activeTab === 'stories' && !search && seriesData.length > 0 ? (
+              <div className="space-y-10">
+                {seriesData
+                  .filter(s => {
+                    if (!activeLang) return true;
+                    return s.language === activeLang || s.language === 'both';
+                  })
+                  .map(series => {
+                    const seriesBooks = series.books.filter(b => {
+                      if (!activeLang) return true;
+                      const l = b.language || 'ar';
+                      return l === activeLang || l === 'both';
+                    });
+                    if (seriesBooks.length === 0) return null;
+                    const seriesName = isEn && series.nameEn ? series.nameEn : series.name;
+                    const seriesDesc = isEn && series.descriptionEn ? series.descriptionEn : series.description;
+                    return (
+                      <div key={series.id} className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+                        <div className="bg-gradient-to-r from-[#1a1a2e] to-[#16213e] px-6 py-5 flex items-center gap-4">
+                          {series.cover && (
+                            <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 border-2 border-[#F5C518]/30">
+                              <Image src={series.cover} alt={seriesName} width={56} height={56} className="w-full h-full object-cover" unoptimized />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-[#F5C518] text-xs font-bold uppercase tracking-wider">
+                                {isEn ? 'Series' : 'سلسلة'}
+                              </span>
+                              <span className="text-white/30 text-xs">•</span>
+                              <span className="text-white/60 text-xs">{seriesBooks.length} {isEn ? 'stories' : 'قصة'}</span>
+                            </div>
+                            <h2 className="text-white font-black text-xl mt-0.5">{seriesName}</h2>
+                            {seriesDesc && <p className="text-gray-400 text-xs mt-1 line-clamp-1">{seriesDesc}</p>}
+                          </div>
+                          {series.seriesPrice && (
+                            <div className="shrink-0 text-right">
+                              <p className="text-gray-400 text-xs">{isEn ? 'Full series' : 'السلسلة كاملة'}</p>
+                              <p className="text-[#F5C518] font-black text-lg">
+                                {isEn && series.seriesPriceUSD
+                                  ? `$${series.seriesPriceUSD}`
+                                  : `${series.seriesPrice} ${isEn ? 'EGP' : 'ج.م'}`}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-5">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-3">
+                            {seriesBooks.map((b, idx) => (
+                              <Link key={b.id} href={`/library/${b.id}`} className="group">
+                                <div className="bg-gray-50 rounded-2xl overflow-hidden hover:shadow-md transition-shadow duration-300 flex flex-col">
+                                  <div className="relative aspect-[2/3] bg-gradient-to-br from-[#1a1a2e] to-[#16213e] overflow-hidden shrink-0">
+                                    {b.cover ? (
+                                      <Image src={b.cover} alt={isEn && b.titleEn ? b.titleEn : b.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" unoptimized />
+                                    ) : (
+                                      <div className="flex items-center justify-center h-full text-white/30 text-3xl">📖</div>
+                                    )}
+                                    <div className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-[#F5C518] text-[#1a1a2e] text-[10px] font-black flex items-center justify-center shadow">
+                                      {b.seriesOrder || idx + 1}
+                                    </div>
+                                  </div>
+                                  <div className="p-2">
+                                    <p className="text-xs font-bold text-gray-800 leading-tight line-clamp-2">
+                                      {isEn && b.titleEn ? b.titleEn : b.title}
+                                    </p>
+                                    <p className="text-[#F5C518] font-black text-xs mt-1">
+                                      {b.price === 0
+                                        ? (isEn ? 'Free' : 'مجاني')
+                                        : isEn && b.priceUSD
+                                          ? `$${b.priceUSD}`
+                                          : `${b.price} ${isEn ? 'EGP' : 'ج.م'}`}
+                                    </p>
+                                  </div>
+                                </div>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                {filtered.filter(b => !b.seriesId).length > 0 && (
+                  <div>
+                    <h2 className="text-lg font-black text-gray-800 mb-4">
+                      {isEn ? 'Other Stories' : 'قصص أخرى'}
+                    </h2>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+                      {filtered.filter(b => !b.seriesId).map(book => (
+                        <Link key={book.id} href={`/library/${book.id}`} className="group">
+                          <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-300 h-full flex flex-col">
+                            <div className="relative aspect-[2/3] bg-gradient-to-br from-[#1a1a2e] to-[#16213e] overflow-hidden shrink-0">
+                              {book.cover ? (
+                                <Image src={book.cover} alt={getBookTitle(book)} fill className="object-cover group-hover:scale-105 transition-transform duration-500" unoptimized />
+                              ) : (
+                                <div className="flex items-center justify-center h-full text-white/30 text-4xl">📖</div>
+                              )}
+                            </div>
+                            <div className="p-3 flex flex-col gap-1 flex-1">
+                              <h3 className="font-black text-gray-900 text-sm leading-tight line-clamp-2">{getBookTitle(book)}</h3>
+                              <div className="mt-auto pt-2">
+                                <span className="text-[#F5C518] font-black text-sm">
+                                  {book.price === 0 ? (isEn ? 'Free' : 'مجاني') : `${book.price} ${isEn ? 'EGP' : 'ج.م'}`}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
               {filtered.map(book => (
                 <Link key={book.id} href={`/library/${book.id}`} className="group">
@@ -354,7 +506,6 @@ export default function LibraryPage() {
                         </div>
                       )}
                     </div>
-
                     {/* Info */}
                     <div className="p-3 flex flex-col gap-1 flex-1">
                       <h3 className="font-black text-gray-900 text-sm leading-tight line-clamp-2">
@@ -387,6 +538,7 @@ export default function LibraryPage() {
                 </Link>
               ))}
             </div>
+            )}
           </>
         )}
       </div>

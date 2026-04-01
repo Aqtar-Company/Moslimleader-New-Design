@@ -17,7 +17,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     const title = book.title || 'كتاب رقمي';
     const description = book.description || 'اقرأ هذا الكتاب على منصة مسلم ليدر';
-    const cover = book.cover || `${baseUrl}/logo.png`;
+    const rawCover = book.cover || '';
+    const cover = rawCover.startsWith('http') ? rawCover : rawCover ? `${baseUrl}${rawCover}` : `${baseUrl}/logo.png`;
     const url = `${baseUrl}/library/${id}`;
 
     return {

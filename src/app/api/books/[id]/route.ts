@@ -13,6 +13,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     isPublished: true, allowQuoteShare: true, allowFriendShare: true,
     friendShareHours: true, enableReferral: true, referralDiscount: true,
     enableWatermark: true, enableForensic: true,
+    paperProductSlug: true,
     _count: { select: { accesses: true } },
   };
 
@@ -44,7 +45,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       hasAccess = !!access;
     }
 
-    return NextResponse.json({ book, hasAccess });
+    // buyCount = number of paid accesses
+    const buyCount = (book as any)._count?.accesses ?? 0;
+
+    // viewCount = number of unique visitors (from BookAccessLog)
+    let viewCount = buyCount;
+    try {
+      viewCount = await prisma.bookAccessLog.count({ where: { bookId: id } });
+    } catch {
+      // fallback to buyCount if table doesn't exist yet
+    }
+
+    return NextResponse.json({ book, hasAccess, viewCount, buyCount });
   } catch (err) {
     console.error('[books/:id GET]', err);
     return NextResponse.json({ error: 'حدث خطأ في الخادم' }, { status: 500 });

@@ -29,6 +29,7 @@ interface Book {
   minAge?: number | null;
   maxAge?: number | null;
   needsParentalGuide?: boolean;
+  paperProductSlug?: string | null;
   _count: { accesses: number };
 }
 
@@ -63,6 +64,7 @@ const emptyForm = {
   minAge: '' as number | '',
   maxAge: '' as number | '',
   needsParentalGuide: false,
+  paperProductSlug: '',
 };
 
 export default function AdminBooksPage() {
@@ -147,6 +149,7 @@ export default function AdminBooksPage() {
       minAge: b.minAge ?? '',
       maxAge: b.maxAge ?? '',
       needsParentalGuide: b.needsParentalGuide ?? false,
+      paperProductSlug: (b as any).paperProductSlug || '',
     });
     setIsOpenEnded(b.minAge != null && b.maxAge == null);
     setUploadedPdfPath('');
@@ -650,6 +653,22 @@ export default function AdminBooksPage() {
                 </div>
               </div>
 
+              {/* Paper product slug */}
+              <div>
+                <p className="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider">النسخة الورقية</p>
+                <div>
+                  <label className="text-xs font-bold text-gray-500 mb-1 block">Slug المنتج الورقي (مثال: fakih-in-wonderland-book)</label>
+                  <input
+                    type="text"
+                    value={(form as any).paperProductSlug || ''}
+                    onChange={e => setForm(prev => ({ ...prev, paperProductSlug: e.target.value }))}
+                    className={inputCls}
+                    dir="ltr"
+                    placeholder="اتركه فارغاً إذا لم تكن هناك نسخة ورقية"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">سيظهر زر "اشترِ النسخة الورقية" يوجه لصفحة /shop/[slug]</p>
+                </div>
+              </div>
               {/* Friend share */}
               <div>
                 <p className="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider">المشاركة مع صديق</p>

@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Private book files
+private/books/
+
+# Public covers (uploaded files)
+public/covers/
+
+# Next.js build
+.next/

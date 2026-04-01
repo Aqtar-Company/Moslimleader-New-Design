@@ -23,6 +23,8 @@ model User {
   cart    Cart?
   reviews Review[]
   bookAccesses BookAccess[]
+  oauthAccounts OAuthAccount[]
+  bookOrders    BookOrder[]
 }
 
 model Product {
@@ -175,11 +177,14 @@ model Book {
   referralDiscount  Int     @default(20)
   enableWatermark   Boolean @default(true)
   enableForensic    Boolean @default(true)
+  paperProductSlug  String?  // slug of the paper version product in /shop
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   accesses   BookAccess[]
   shareLinks BookShareLink[]
+  bookOrders BookOrder[]
+  accessLogs BookAccessLog[]
 }
 
 model BookAccess {
@@ -206,4 +211,49 @@ model BookShareLink {
   createdAt DateTime @default(now())
 
   @@index([token])
+}
+
+model OAuthAccount {
+  id           String   @id @default(cuid())
+  provider     String
+  providerAccountId String
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@unique([provider, providerAccountId])
+}
+
+model BookOrder {
+  id            String   @id
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  bookId        String
+  book          Book     @relation(fields: [bookId], references: [id])
+  status        String   @default("pending")
+  price         Float
+  currency      String   @default("EGP")
+  paymentMethod String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([userId])
+  @@index([bookId])
+}
+
+model BookAccessLog {
+  id          String   @id @default(cuid())
+  bookId      String
+  book        Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  userId      String?
+  ipAddress   String?
+  userAgent   String?
+  country     String?
+  city        String?
+  region      String?
+  latitude    Float?
+  longitude   Float?
+  accessedAt  DateTime @default(now())
+  @@index([bookId])
+  @@index([userId])
+  @@index([ipAddress])
 }

@@ -231,11 +231,12 @@ export default function BookReader({
   const [darkMode, setDarkMode] = useState(false);
   const [jumperValue, setJumperValue] = useState(String(initialPage));
   const [showShare, setShowShare] = useState(false);
-  const [zoomLevel, setZoomLevel] = useState(1);
   const [pageAnim, setPageAnim] = useState<'none' | 'flip-next' | 'flip-prev'>('none');
   const [screenshotBlocked, setScreenshotBlocked] = useState(false);
   const [toolbarVisible, setToolbarVisible] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [isSaved, setIsSaved] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const toolbarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -481,9 +482,9 @@ export default function BookReader({
               </div>
             )}
 
-            {/* Zoom button — in toolbar, outside page container */}
+            {/* Zoom button */}
             <button
-              onClick={() => { setZoomLevel(z => z === 1 ? 1.18 : 1); resetToolbarTimer(); }}
+              onClick={() => { setZoomLevel(z => z === 1 ? 1.18 : 1); }}
               aria-label={zoomLevel > 1 ? 'تصغير' : 'تكبير'}
               title={zoomLevel > 1 ? 'عودة للحجم الطبيعي' : 'تكبير وإزالة الهوامش'}
               className={`${btnCls} ${zoomLevel > 1 ? 'bg-[#F5C518] text-[#1a1a2e]' : ''}`}
@@ -498,7 +499,17 @@ export default function BookReader({
                 </svg>
               )}
             </button>
-
+            {/* Bookmark button */}
+            <button
+              onClick={() => { setIsSaved(s => !s); }}
+              aria-label={isSaved ? 'إزالة العلامة' : 'حفظ الصفحة'}
+              title={isSaved ? 'إزالة العلامة' : 'حفظ الصفحة'}
+              className={`${btnCls} ${isSaved ? 'text-red-500' : ''}`}
+            >
+              <svg className="w-4 h-4" fill={isSaved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+              </svg>
+            </button>
             {/* Fullscreen button */}
             <button
               onClick={toggleFullscreen}
@@ -553,7 +564,7 @@ export default function BookReader({
 
             {/* Page with flip animation + inline zoom */}
             <div style={{ ...pageAnimStyle, overflow: 'hidden', borderRadius: '0.75rem' }}>
-              <div style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center', transition: 'transform 0.25s ease', display: 'inline-block' }}>
+              <div style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center top', transition: 'transform 0.25s ease', display: 'inline-block' }}>
                 <Document
                   file={`/api/books/${bookId}/file`}
                   onLoadSuccess={({ numPages: n }) => setNumPages(n)}

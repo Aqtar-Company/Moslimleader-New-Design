@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import { resolvePrice } from '@/lib/geo-pricing';
 import { formatAgeLabel } from '@/lib/book-age';
+import ReCAPTCHA from 'react-google-recaptcha';
 
 // Error boundary to prevent full-page crash on iPad/Safari
 class ReaderErrorBoundary extends React.Component<
@@ -72,6 +73,7 @@ interface BookData {
   minAge?: number | null;
   maxAge?: number | null;
   needsParentalGuide?: boolean;
+  paperProductSlug?: string | null;
   _count: { accesses: number };
 }
 
@@ -109,6 +111,10 @@ function BookPageInner() {
   const [shareLoading, setShareLoading] = useState(false);
   const [shareLink, setShareLink] = useState('');
   const [lastPage, setLastPage] = useState(1);
+  const [isVerified, setIsVerified] = useState(false);
+  const [trackingDone, setTrackingDone] = useState(false);
+  const [viewCount, setViewCount] = useState<number | null>(null);
+  const [buyCount, setBuyCount] = useState<number | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareMsg, setShareMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [mobileTab, setMobileTab] = useState<MobileTab>('reader');
@@ -119,6 +125,8 @@ function BookPageInner() {
       .then(r => r.json())
       .then(async d => {
         setBook(d.book ?? null);
+        setViewCount(d.viewCount ?? null);
+        setBuyCount(d.buyCount ?? null);
         let access = d.hasAccess ?? false;
 
         const refToken = searchParams.get('ref');
@@ -242,7 +250,7 @@ function BookPageInner() {
         <p className="text-gray-600 text-sm leading-relaxed">{book.description}</p>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-2 py-3 border-t border-gray-100">
+        <div className="grid grid-cols-4 gap-2 py-3 border-t border-gray-100">
           <div className="text-center">
             <p className="font-black text-gray-900 text-lg">{book.totalPages || '—'}</p>
             <p className="text-gray-400 text-[11px]">صفحة</p>
@@ -252,8 +260,12 @@ function BookPageInner() {
             <p className="text-gray-400 text-[11px]">مجانية</p>
           </div>
           <div className="text-center">
-            <p className="font-black text-gray-900 text-lg">{book._count.accesses}</p>
-            <p className="text-gray-400 text-[11px]">قارئ</p>
+            <p className="font-black text-gray-900 text-lg">{buyCount ?? book._count.accesses}</p>
+            <p className="text-gray-400 text-[11px]">مشتري</p>
+          </div>
+          <div className="text-center">
+            <p className="font-black text-blue-600 text-lg">{viewCount ?? 0}</p>
+            <p className="text-gray-400 text-[11px]">زائر</p>
           </div>
         </div>
 
@@ -261,7 +273,7 @@ function BookPageInner() {
         {!hasAccess && book.price > 0 && (
           <div className="space-y-3">
             <div className="text-center">
-              <p className="text-gray-400 text-xs mb-1">سعر الكتاب كاملاً</p>
+              <p className="text-gray-400 text-xs mb-1">سعر النسخة الرقمية</p>
               <p className="font-black text-[#1a1a2e] text-3xl">
                 {(() => { const r = resolvedBookPrice(book); return `${r.price % 1 === 0 ? r.price : r.price.toFixed(2)} ${r.currency}`; })()}
               </p>
@@ -271,7 +283,7 @@ function BookPageInner() {
                 href={`/library/${id}/buy`}
                 className="block w-full bg-[#F5C518] hover:bg-amber-400 active:bg-amber-500 text-[#1a1a2e] font-black py-3.5 rounded-xl text-center text-base transition shadow-md shadow-amber-200"
               >
-                اشترِ الآن 🔓
+                اشترِ النسخة الرقمية الآن
               </Link>
             ) : (
               <Link
@@ -279,6 +291,22 @@ function BookPageInner() {
                 className="block w-full bg-[#1a1a2e] hover:bg-[#2a2a4e] text-white font-black py-3.5 rounded-xl text-center text-base transition"
               >
                 سجّل دخولك للشراء
+              </Link>
+            )}
+            {/* Paper version button */}
+            {book.paperProductSlug ? (
+              <Link
+                href={`/shop/${book.paperProductSlug}`}
+                className="block w-full bg-white hover:bg-gray-50 border-2 border-[#1a1a2e] text-[#1a1a2e] font-black py-3 rounded-xl text-center text-base transition"
+              >
+                📦 اشترِ النسخة الورقية
+              </Link>
+            ) : (
+              <Link
+                href="/shop"
+                className="block w-full bg-white hover:bg-gray-50 border-2 border-[#1a1a2e] text-[#1a1a2e] font-black py-3 rounded-xl text-center text-base transition"
+              >
+                📦 تصفّح المنتجات الورقية
               </Link>
             )}
             <div className="flex justify-center gap-3 text-[11px] text-gray-400">
@@ -365,13 +393,52 @@ function BookPageInner() {
             <div className="flex-1 min-w-0">
               <h1 className="font-black text-gray-900 text-base leading-tight mb-1">{book.title}</h1>
               {book.author && <p className="text-gray-500 text-xs mb-2">{book.author}</p>}
+              {/* Visitor/Buyer counts */}
+              {(viewCount !== null || buyCount !== null) && (
+                <div className="flex items-center gap-4 mb-3">
+                  {viewCount !== null && (
+                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span>{viewCount.toLocaleString('ar-EG')} زائر</span>
+                    </div>
+                  )}
+                  {buyCount !== null && (
+                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                      </svg>
+                      <span>{buyCount.toLocaleString('ar-EG')} مشتري</span>
+                    </div>
+                  )}
+                </div>
+              )}
               {!hasAccess && book.price > 0 && (
-                <Link
-                  href={user ? `/library/${id}/buy` : `/auth?redirect=/library/${id}`}
-                  className="inline-block bg-[#F5C518] text-[#1a1a2e] font-black text-xs px-4 py-2 rounded-xl"
-                >
-                  {user ? (() => { const r = resolvedBookPrice(book); return `اشترِ — ${r.price % 1 === 0 ? r.price : r.price.toFixed(2)} ${r.currency}`; })() : 'سجّل دخولك'}
-                </Link>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    href={user ? `/library/${id}/buy` : `/auth?redirect=/library/${id}`}
+                    className="inline-block bg-[#F5C518] text-[#1a1a2e] font-black text-xs px-4 py-2 rounded-xl"
+                  >
+                    {user ? (() => { const r = resolvedBookPrice(book); return `رقمي — ${r.price % 1 === 0 ? r.price : r.price.toFixed(2)} ${r.currency}`; })() : 'سجّل دخولك'}
+                  </Link>
+                  {book.paperProductSlug ? (
+                    <Link
+                      href={`/shop/${book.paperProductSlug}`}
+                      className="inline-block bg-white border-2 border-[#1a1a2e] text-[#1a1a2e] font-black text-xs px-4 py-2 rounded-xl"
+                    >
+                      📦 ورقي
+                    </Link>
+                  ) : (
+                    <Link
+                      href="/shop"
+                      className="inline-block bg-white border-2 border-[#1a1a2e] text-[#1a1a2e] font-black text-xs px-4 py-2 rounded-xl"
+                    >
+                      📦 ورقي
+                    </Link>
+                  )}
+                </div>
               )}
               {hasAccess && (
                 <span className="inline-block bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-full">✓ وصول كامل</span>
@@ -429,6 +496,42 @@ function BookPageInner() {
               </div>
 
               {book.freePages > 0 ? (
+                !isVerified ? (
+                  <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                    <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mb-4">
+                      <svg className="w-8 h-8 text-[#F5C518]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-800 mb-1">تحقق سريع</h3>
+                    <p className="text-sm text-gray-500 mb-4">أثبت أنك إنسان وليس برنامج آلي</p>
+                    <div className="mb-5 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 text-right leading-relaxed max-w-xs">
+                      <p className="font-bold mb-1">🔍 تنبيه: يتم تسجيل بياناتك</p>
+                      <p>عند فتح هذا الكتاب يقوم النظام بتسجيل عنوان IP الخاص بك، نوع جهازك، وموقعك الجغرافي. أي انتهاك لحقوق الملكية الفكرية سيُستخدم كدليل قانوني.</p>
+                    </div>
+                    <ReCAPTCHA
+                      sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
+                      onChange={async (token) => {
+                        if (token && !trackingDone) {
+                          setTrackingDone(true);
+                          // Fire tracking API — record IP, device, geolocation
+                          try {
+                            await fetch(`/api/books/${id}/track`, {
+                              method: 'POST',
+                              credentials: 'include',
+                            });
+                          } catch {}
+                          setIsVerified(true);
+                        }
+                      }}
+                      hl="ar"
+                    />
+                    <p className="text-xs text-gray-400 mt-4 flex items-center gap-1">
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+                      محمي بواسطة Google reCAPTCHA
+                    </p>
+                  </div>
+                ) : (
                 <ReaderErrorBoundary>
                   <BookReader
                     bookId={id}
@@ -445,12 +548,14 @@ function BookPageInner() {
                     bookLanguage={(book as any).language === 'en' ? 'en' : (book as any).language === 'both' ? 'both' : 'ar'}
                   />
                 </ReaderErrorBoundary>
+                )
               ) : (
                 <div className="p-16 text-center text-gray-400">
                   <p className="text-5xl mb-4">📚</p>
                   <p className="font-semibold">ملف الكتاب قيد الرفع</p>
                 </div>
               )}
+
             </div>
           </div>
         </div>

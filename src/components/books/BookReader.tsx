@@ -371,64 +371,48 @@ function PromoVideoCard({ videoUrl, bookTitle, onClose }: { videoUrl: string; bo
 
 // ── Ambient Music Player ──────────────────────────────────────────────────────
 function AmbientMusicControl({ bgmUrl, dm }: { bgmUrl: string; dm: boolean }) {
+  const isSoundCloud = bgmUrl.includes('soundcloud.com');
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const scWidgetRef = useRef<HTMLIFrameElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [volume, setVolume] = useState(0.12);
   const [showVolume, setShowVolume] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const playTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Build SoundCloud widget URL
+  const scWidgetUrl = isSoundCloud
+    ? `https://w.soundcloud.com/player/?url=${encodeURIComponent(bgmUrl)}&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false&buying=false&sharing=false&download=false&color=%23F5C518`
+    : null;
+
   useEffect(() => {
+    if (isSoundCloud) return; // SoundCloud handled by iframe
     const audio = new Audio(bgmUrl);
-    audio.loop = false;
+    audio.loop = true; // loop the full file continuously
     audio.volume = volume;
     audioRef.current = audio;
-
-    // Auto-start immediately when book opens (browser may block autoplay — user can click play)
-    const tryPlay = () => {
-      audio.play().then(() => setPlaying(true)).catch(() => {
-        // Autoplay blocked by browser — user must interact first, button will be visible
-      });
-    };
-    // Small delay to let the component settle after reCAPTCHA
-    playTimerRef.current = setTimeout(tryPlay, 800);
-
+    // Auto-start after short delay
+    playTimerRef.current = setTimeout(() => {
+      audio.play().then(() => setPlaying(true)).catch(() => {});
+    }, 800);
     return () => {
       audio.pause();
       audio.src = '';
-      if (intervalRef.current) clearInterval(intervalRef.current);
       if (playTimerRef.current) clearTimeout(playTimerRef.current);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bgmUrl]);
 
-  // Schedule periodic play: 20s clip every 10 minutes
-  useEffect(() => {
-    if (!playing) return;
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const stopAfter = setTimeout(() => {
-      audio.pause();
-      audio.currentTime = 0;
-      setPlaying(false);
-      // Schedule next play in 10 minutes
-      intervalRef.current = setInterval(() => {
-        audio.play().then(() => setPlaying(true)).catch(() => {});
-      }, 10 * 60 * 1000);
-    }, 20000);
-
-    return () => clearTimeout(stopAfter);
-  }, [playing]);
-
   const toggle = () => {
+    if (isSoundCloud) {
+      // For SoundCloud: reload iframe to play, or hide to pause
+      setPlaying(p => !p);
+      return;
+    }
     const audio = audioRef.current;
     if (!audio) return;
     if (playing) {
       audio.pause();
       setPlaying(false);
-      if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
-      if (playTimerRef.current) { clearTimeout(playTimerRef.current); playTimerRef.current = null; }
     } else {
       audio.play().then(() => setPlaying(true)).catch(() => {});
     }
@@ -443,6 +427,16 @@ function AmbientMusicControl({ bgmUrl, dm }: { bgmUrl: string; dm: boolean }) {
 
   return (
     <div className="flex items-center gap-1 relative">
+      {/* Hidden SoundCloud iframe player */}
+      {isSoundCloud && scWidgetUrl && playing && (
+        <iframe
+          ref={scWidgetRef}
+          src={scWidgetUrl}
+          width="0" height="0"
+          allow="autoplay"
+          style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+        />
+      )}
       <button
         onClick={toggle}
         title={playing ? 'إيقاف الموسيقى' : 'تشغيل موسيقى الخلفية'}
@@ -468,7 +462,7 @@ function AmbientMusicControl({ bgmUrl, dm }: { bgmUrl: string; dm: boolean }) {
         </svg>
       </button>
       {showVolume && (
-        <div className={`absolute top-full mt-2 left-0 p-3 rounded-xl shadow-xl z-50 ${dm ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+        <div className={`absolute bottom-full mb-2 left-0 p-3 rounded-xl shadow-2xl z-[9999] ${dm ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
           <p className={`text-[10px] font-bold mb-2 ${dm ? 'text-gray-400' : 'text-gray-500'}`}>مستوى الصوت</p>
           <input
             type="range" min={0} max={1} step={0.05} value={volume}

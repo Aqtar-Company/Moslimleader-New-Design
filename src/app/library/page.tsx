@@ -266,7 +266,10 @@ export default function LibraryPage() {
           </div>
 
           {/* Language Dropdown */}
-          <div className="relative shrink-0">
+          <div className="relative shrink-0 flex flex-col gap-1">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">
+              {isEn ? 'Book Language' : 'اختار لغة الكتاب'}
+            </span>
             <button
               onClick={() => setLangDropdownOpen(o => !o)}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border transition ${

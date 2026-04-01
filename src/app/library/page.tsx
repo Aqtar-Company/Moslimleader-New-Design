@@ -235,10 +235,10 @@ export default function LibraryPage() {
 
       {/* ── Tabs + Language Dropdown ── */}
       <div className="bg-[#1a1a2e] border-b border-white/10 sticky top-16 z-20">
-        <div className="max-w-6xl mx-auto px-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
 
-          {/* Tabs */}
-          <div className="flex gap-1 overflow-x-auto scrollbar-none">
+          {/* Tabs — row 1 on mobile */}
+          <div className="flex gap-1 overflow-x-auto scrollbar-none border-b border-white/5 sm:border-0">
             {TABS.map(tab => (
               <button
                 key={tab.id}
@@ -265,8 +265,8 @@ export default function LibraryPage() {
             ))}
           </div>
 
-          {/* Language Dropdown */}
-          <div className="relative shrink-0 flex flex-col gap-1">
+          {/* Language Dropdown — row 2 on mobile */}
+          <div className="relative shrink-0 flex flex-col gap-1 py-2 sm:py-0">
             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">
               {isEn ? 'Book Language' : 'اختار لغة الكتاب'}
             </span>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
@@ -9,6 +9,35 @@ import { useAuth } from '@/context/AuthContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import { resolvePrice } from '@/lib/geo-pricing';
 import { formatAgeLabel } from '@/lib/book-age';
+
+// Error boundary to prevent full-page crash on iPad/Safari
+class ReaderErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-12 text-center">
+          <p className="text-4xl mb-4">📖</p>
+          <p className="text-gray-700 font-bold mb-2">تعذّر تحميل القارئ</p>
+          <p className="text-gray-400 text-sm mb-4">حاول تحديث الصفحة أو استخدم متصفح آخر</p>
+          <button onClick={() => window.location.reload()} className="text-[#F5C518] font-bold text-sm underline">
+            تحديث الصفحة
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const BookReader = dynamic(() => import('@/components/books/BookReader'), {
   ssr: false,
@@ -48,7 +77,21 @@ interface BookData {
 
 type MobileTab = 'reader' | 'info';
 
+import { Suspense } from 'react';
+
 export default function BookPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center pt-20">
+        <div className="w-10 h-10 border-2 border-[#F5C518] border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <BookPageInner />
+    </Suspense>
+  );
+}
+
+function BookPageInner() {
   const { id } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const { user } = useAuth();
@@ -139,7 +182,7 @@ export default function BookPage() {
   };
 
   const copyShareLink = async () => {
-    await navigator.clipboard.writeText(shareLink);
+    try { await navigator.clipboard.writeText(shareLink); } catch { /* fallback: ignored */ }
     setCopyDone(true);
     setTimeout(() => setCopyDone(false), 2000);
   };
@@ -386,20 +429,22 @@ export default function BookPage() {
               </div>
 
               {book.freePages > 0 ? (
-                <BookReader
-                  bookId={id}
-                  freePages={book.freePages}
-                  hasAccess={hasAccess}
-                  watermarkText={book.enableWatermark ? (user?.email || '') : undefined}
-                  enableForensic={book.enableForensic}
-                  allowQuoteShare={book.allowQuoteShare}
-                  price={book.price}
-                  initialPage={lastPage}
-                  onPageChange={saveProgress}
-                  bookTitle={book.title}
-                  coverUrl={book.cover}
-                  bookLanguage={(book as any).language === 'en' ? 'en' : (book as any).language === 'both' ? 'both' : 'ar'}
-                />
+                <ReaderErrorBoundary>
+                  <BookReader
+                    bookId={id}
+                    freePages={book.freePages}
+                    hasAccess={hasAccess}
+                    watermarkText={book.enableWatermark ? (user?.email || '') : undefined}
+                    enableForensic={book.enableForensic}
+                    allowQuoteShare={book.allowQuoteShare}
+                    price={book.price}
+                    initialPage={lastPage}
+                    onPageChange={saveProgress}
+                    bookTitle={book.title}
+                    coverUrl={book.cover}
+                    bookLanguage={(book as any).language === 'en' ? 'en' : (book as any).language === 'both' ? 'both' : 'ar'}
+                  />
+                </ReaderErrorBoundary>
               ) : (
                 <div className="p-16 text-center text-gray-400">
                   <p className="text-5xl mb-4">📚</p>

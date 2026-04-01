@@ -40,7 +40,8 @@ function generateQuoteCard(quote: string, bookTitle: string, coverUrl: string): 
   return new Promise(resolve => {
     const canvas = document.createElement('canvas');
     canvas.width = 1080; canvas.height = 1080;
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) { resolve(''); return; }
     const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
     grad.addColorStop(0, '#1a1a2e'); grad.addColorStop(1, '#16213e');
     ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -243,11 +244,13 @@ export default function BookReader({
 
   // Dark mode persistence
   useEffect(() => {
-    const saved = localStorage.getItem('reader-dark-mode');
-    if (saved === 'true') setDarkMode(true);
+    try {
+      const saved = localStorage.getItem('reader-dark-mode');
+      if (saved === 'true') setDarkMode(true);
+    } catch { /* Safari private mode */ }
   }, []);
   const toggleDark = () => {
-    setDarkMode(d => { localStorage.setItem('reader-dark-mode', String(!d)); return !d; });
+    setDarkMode(d => { try { localStorage.setItem('reader-dark-mode', String(!d)); } catch {} return !d; });
   };
 
   // Screenshot protection

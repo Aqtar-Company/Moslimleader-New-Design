@@ -269,11 +269,22 @@ export default function LibraryPage() {
           <div className="relative shrink-0">
             <button
               onClick={() => setLangDropdownOpen(o => !o)}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/10 transition"
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border transition ${
+                activeLang
+                  ? 'bg-[#F5C518] text-[#1a1a2e] border-[#F5C518]'
+                  : 'bg-white/10 text-white border-white/20 hover:bg-white/20'
+              }`}
             >
-              {activeLang && LANG_OPTIONS.find(l => l.id === activeLang)?.flag}
-              <span>{activeLang ? (isEn ? LANG_OPTIONS.find(l => l.id === activeLang)?.labelEn : LANG_OPTIONS.find(l => l.id === activeLang)?.label) : (isEn ? 'Language' : 'اللغة')}</span>
-              <svg className={`w-3.5 h-3.5 transition-transform ${langDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802" />
+              </svg>
+              <span>
+                {activeLang
+                  ? (isEn ? LANG_OPTIONS.find(l => l.id === activeLang)?.labelEn : LANG_OPTIONS.find(l => l.id === activeLang)?.label)
+                  : (isEn ? 'Select Book Language' : 'اختار لغة الكتاب')
+                }
+              </span>
+              <svg className={`w-3.5 h-3.5 shrink-0 transition-transform ${langDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
             </button>

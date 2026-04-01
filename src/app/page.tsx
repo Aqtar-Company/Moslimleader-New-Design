@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { useState, Suspense, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { products, categories } from '@/lib/products';
-import { getAddedProducts, getProductOverrides, getAddedCategories, applyOverride } from '@/lib/admin-storage';
+import { Product } from '@/types';
 import ProductCard from '@/components/product/ProductCard';
 import { useLang } from '@/context/LanguageContext';
 
@@ -87,31 +87,39 @@ function ShopContent() {
   const initialCategory = searchParams.get('category') || 'all';
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [search, setSearch] = useState('');
-  const [allProducts, setAllProducts] = useState(products);
+  const [allProducts, setAllProducts] = useState<Product[]>(products);
   const [displayCategories, setDisplayCategories] = useState(categories);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const overrides = getProductOverrides();
-    const added = getAddedProducts();
-    const customCats = getAddedCategories();
+    const fetchProducts = async () => {
+      try {
+        const res = await fetch('/api/products');
+        const data = await res.json();
+        const fetched: Product[] = data.products ?? products;
+        setAllProducts(fetched);
 
-    const staticWithOverrides = products.map(p => overrides[p.id] ? applyOverride(p, overrides[p.id]) : p);
-    const merged = [...staticWithOverrides, ...added];
-    setAllProducts(merged);
-    setLoading(false);
+        // Build category counts from fetched products
+        const staticUpdated = categories.map(cat =>
+          cat.id === 'all'
+            ? { ...cat, count: fetched.length }
+            : { ...cat, count: fetched.filter(p => p.category === cat.id).length }
+        );
+        const existingIds = new Set(categories.map(c => c.id));
+        const customEntries = fetched
+          .map(p => p.category)
+          .filter((c, i, arr) => !existingIds.has(c) && arr.indexOf(c) === i)
+          .map(c => ({ id: c, name: c, count: fetched.filter(p => p.category === c).length }));
 
-    const staticUpdated = categories.map(cat =>
-      cat.id === 'all'
-        ? { ...cat, count: merged.length }
-        : { ...cat, count: merged.filter(p => p.category === cat.id).length }
-    );
-    const existingIds = new Set(categories.map(c => c.id));
-    const customEntries = customCats
-      .filter(c => !existingIds.has(c))
-      .map(c => ({ id: c, name: c, count: merged.filter(p => p.category === c).length }));
-
-    setDisplayCategories([...staticUpdated, ...customEntries]);
+        setDisplayCategories([...staticUpdated, ...customEntries]);
+      } catch {
+        // Fallback to static products on API error
+        setAllProducts(products);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProducts();
   }, []);
 
   const filtered = allProducts.filter(p => {

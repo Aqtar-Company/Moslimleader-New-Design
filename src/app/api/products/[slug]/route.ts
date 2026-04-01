@@ -11,12 +11,18 @@ export async function GET(
   try {
     const { slug } = await params;
 
+    // Try DB product first (admin-added products)
     const product = await prisma.product.findUnique({ where: { slug } });
     if (product) return NextResponse.json({ product });
 
-    // Fallback to static
+    // Fallback to static with overrides applied
     const staticProduct = staticProducts.find(p => p.slug === slug);
-    if (staticProduct) return NextResponse.json({ product: staticProduct, source: 'static' });
+    if (staticProduct) {
+      const overrideSetting = await prisma.setting.findUnique({ where: { key: 'product-overrides' } });
+      const overrides = (overrideSetting?.value as Record<string, Record<string, unknown>>) ?? {};
+      const productWithOverrides = { ...staticProduct, ...(overrides[staticProduct.id] ?? {}) };
+      return NextResponse.json({ product: productWithOverrides, source: 'static' });
+    }
 
     return NextResponse.json({ error: 'المنتج غير موجود' }, { status: 404 });
   } catch (err) {

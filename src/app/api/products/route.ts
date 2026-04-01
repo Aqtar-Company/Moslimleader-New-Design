@@ -11,35 +11,37 @@ export async function GET(req: NextRequest) {
     const featured = searchParams.get('featured');
     const search = searchParams.get('q');
 
+    // Get overrides for static products
+    const overrideSetting = await prisma.setting.findUnique({ where: { key: 'product-overrides' } });
+    const overrides: Record<string, Record<string, unknown>> = (overrideSetting?.value as Record<string, Record<string, unknown>>) ?? {};
+
+    // Static products with overrides applied
+    const staticWithOverrides = staticProducts.map(p => ({
+      ...p,
+      ...(overrides[p.id] ?? {}),
+    }));
+
+    // DB-added products (admin-added)
     const dbProducts = await prisma.product.findMany({
-      where: {
-        ...(category && { category }),
-        ...(featured === 'true' && { featured: true }),
-        ...(search && {
-          OR: [
-            { name: { contains: search } },
-            { nameEn: { contains: search } },
-          ],
-        }),
-      },
+      where: { source: 'admin' },
       orderBy: { createdAt: 'desc' },
     });
 
-    // If no products in DB yet, return static products as fallback
-    if (dbProducts.length === 0) {
-      let filtered = staticProducts;
-      if (category) filtered = filtered.filter(p => p.category === category);
-      if (featured === 'true') filtered = filtered.filter(p => p.featured);
-      if (search) {
-        const q = search.toLowerCase();
-        filtered = filtered.filter(p =>
-          p.name.toLowerCase().includes(q) || (p.nameEn ?? '').toLowerCase().includes(q)
-        );
-      }
-      return NextResponse.json({ products: filtered, source: 'static' });
+    // Merge all products: static (with overrides) + DB-added
+    let allProducts: unknown[] = [...staticWithOverrides, ...dbProducts];
+
+    // Apply filters
+    if (category) allProducts = allProducts.filter((p: unknown) => (p as { category: string }).category === category);
+    if (featured === 'true') allProducts = allProducts.filter((p: unknown) => (p as { featured?: boolean }).featured);
+    if (search) {
+      const q = search.toLowerCase();
+      allProducts = allProducts.filter((p: unknown) => {
+        const prod = p as { name: string; nameEn?: string };
+        return prod.name.toLowerCase().includes(q) || (prod.nameEn ?? '').toLowerCase().includes(q);
+      });
     }
 
-    return NextResponse.json({ products: dbProducts, source: 'db' });
+    return NextResponse.json({ products: allProducts });
   } catch (err) {
     console.error('[products GET]', err);
     // Fallback to static products on DB error

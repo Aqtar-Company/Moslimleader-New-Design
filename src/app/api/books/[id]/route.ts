@@ -14,6 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     friendShareHours: true, enableReferral: true, referralDiscount: true,
     enableWatermark: true, enableForensic: true,
     paperProductSlug: true,
+    bgmUrl: true, promoVideoUrl: true,
     _count: { select: { accesses: true } },
   };
 

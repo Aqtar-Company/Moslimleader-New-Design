@@ -30,6 +30,8 @@ interface Book {
   maxAge?: number | null;
   needsParentalGuide?: boolean;
   paperProductSlug?: string | null;
+  bgmUrl?: string | null;
+  promoVideoUrl?: string | null;
   _count: { accesses: number };
 }
 
@@ -65,6 +67,8 @@ const emptyForm = {
   maxAge: '' as number | '',
   needsParentalGuide: false,
   paperProductSlug: '',
+  bgmUrl: '',
+  promoVideoUrl: '',
 };
 
 export default function AdminBooksPage() {
@@ -85,6 +89,9 @@ export default function AdminBooksPage() {
   const [uploadedCoverUrl, setUploadedCoverUrl] = useState('');
   const pdfRef = useRef<HTMLInputElement>(null);
   const coverRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLInputElement>(null);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [uploadedBgmUrl, setUploadedBgmUrl] = useState('');
 
   // Access management
   const [accessBookId, setAccessBookId] = useState<string | null>(null);
@@ -150,6 +157,8 @@ export default function AdminBooksPage() {
       maxAge: b.maxAge ?? '',
       needsParentalGuide: b.needsParentalGuide ?? false,
       paperProductSlug: (b as any).paperProductSlug || '',
+      bgmUrl: (b as any).bgmUrl || '',
+      promoVideoUrl: (b as any).promoVideoUrl || '',
     });
     setIsOpenEnded(b.minAge != null && b.maxAge == null);
     setUploadedPdfPath('');
@@ -160,7 +169,7 @@ export default function AdminBooksPage() {
     setShowForm(true);
   };
 
-  const uploadFile = async (file: File, type: 'pdf' | 'cover') => {
+  const uploadFile = async (file: File, type: 'pdf' | 'cover' | 'audio') => {
     const fd = new FormData();
     fd.append('file', file);
     fd.append('type', type);
@@ -177,10 +186,12 @@ export default function AdminBooksPage() {
     try {
       let pdfPath = uploadedPdfPath;
       let coverUrl = uploadedCoverUrl;
+      let bgmPath = uploadedBgmUrl;
 
       setUploading(true);
       if (pdfFile) pdfPath = await uploadFile(pdfFile, 'pdf');
       if (coverFile) coverUrl = await uploadFile(coverFile, 'cover');
+      if (audioFile) bgmPath = await uploadFile(audioFile, 'audio');
       setUploading(false);
 
       const body = {
@@ -189,6 +200,7 @@ export default function AdminBooksPage() {
         maxAge: !isOpenEnded && form.maxAge !== '' ? Number(form.maxAge) : null,
         ...(pdfPath ? { filePath: pdfPath } : {}),
         ...(coverUrl ? { cover: coverUrl } : {}),
+        ...(bgmPath ? { bgmUrl: bgmPath } : {}),
       };
 
       const url = editBook ? `/api/admin/books/${editBook.id}` : '/api/admin/books';
@@ -667,6 +679,37 @@ export default function AdminBooksPage() {
                     placeholder="اتركه فارغاً إذا لم تكن هناك نسخة ورقية"
                   />
                   <p className="text-xs text-gray-400 mt-1">سيظهر زر "اشترِ النسخة الورقية" يوجه لصفحة /shop/[slug]</p>
+                </div>
+              </div>
+              {/* Media: BGM + Promo Video */}
+              <div>
+                <p className="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider">الموسيقى والفيديو</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 mb-1 block">موسيقى الخلفية (MP3)</label>
+                    <div className="flex items-center gap-2">
+                      <input ref={audioRef} type="file" accept=".mp3,.ogg,.wav,.m4a" className="hidden"
+                        onChange={e => { const f = e.target.files?.[0]; if (f) setAudioFile(f); }} />
+                      <button type="button" onClick={() => audioRef.current?.click()}
+                        className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-lg transition">
+                        {audioFile ? audioFile.name : 'رفع ملف MP3'}
+                      </button>
+                      {(form as any).bgmUrl && !audioFile && (
+                        <span className="text-xs text-green-600 font-bold">✓ موسيقى محفوظة</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">أو أدخل رابط مباشر للملف:</p>
+                    <input type="text" value={(form as any).bgmUrl || ''} dir="ltr"
+                      onChange={e => setForm(prev => ({ ...prev, bgmUrl: e.target.value }))}
+                      className={inputCls} placeholder="https://... أو /audio/filename.mp3" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 mb-1 block">رابط فيديو البرومو (YouTube)</label>
+                    <input type="text" value={(form as any).promoVideoUrl || ''} dir="ltr"
+                      onChange={e => setForm(prev => ({ ...prev, promoVideoUrl: e.target.value }))}
+                      className={inputCls} placeholder="https://www.youtube.com/watch?v=..." />
+                    <p className="text-xs text-gray-400 mt-1">سيظهر كبطاقة صغيرة أثناء القراءة (مرة واحدة فقط)</p>
+                  </div>
                 </div>
               </div>
               {/* Friend share */}

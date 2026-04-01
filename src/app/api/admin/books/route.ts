@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       author, authorEn, category, language, section,
       minAge, maxAge, needsParentalGuide,
       allowQuoteShare, allowFriendShare, friendShareHours,
-      enableReferral, referralDiscount, enableWatermark, enableForensic, paperProductSlug,
+      enableReferral, referralDiscount, enableWatermark, enableForensic, paperProductSlug, bgmUrl, promoVideoUrl,
     } = body;
 
     if (!title) return NextResponse.json({ error: 'العنوان مطلوب' }, { status: 400 });
@@ -63,6 +63,8 @@ export async function POST(req: NextRequest) {
       enableWatermark: enableWatermark !== false,
       enableForensic: enableForensic !== false,
       paperProductSlug: paperProductSlug || null,
+        bgmUrl: bgmUrl || null,
+        promoVideoUrl: promoVideoUrl || null,
       updatedAt: new Date(),
     };
 

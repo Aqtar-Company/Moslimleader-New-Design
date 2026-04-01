@@ -178,6 +178,8 @@ model Book {
   enableWatermark   Boolean @default(true)
   enableForensic    Boolean @default(true)
   paperProductSlug  String?  // slug of the paper version product in /shop
+  bgmUrl            String?  // background music URL (MP3 file path or external)
+  promoVideoUrl     String?  // YouTube promo video URL
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

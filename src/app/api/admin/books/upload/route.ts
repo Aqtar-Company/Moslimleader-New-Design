@@ -40,6 +40,18 @@ export async function POST(req: NextRequest) {
       const filename = `${randomUUID()}.pdf`;
       await writeFile(path.join(dir, filename), buffer);
       return NextResponse.json({ path: filename, type: 'pdf' });
+    } else if (type === 'audio') {
+      const ALLOWED_AUDIO = ['mp3', 'ogg', 'wav', 'm4a'];
+      const ext = (file.name.split('.').pop() || 'mp3').toLowerCase();
+      if (!ALLOWED_AUDIO.includes(ext)) {
+        return NextResponse.json({ error: 'امتداد الصوت غير مدعوم (mp3, ogg, wav, m4a)' }, { status: 400 });
+      }
+      const dir = path.join(process.cwd(), 'public', 'audio');
+      await mkdir(dir, { recursive: true });
+      const audioId = randomUUID();
+      const audioFilename = audioId + '.' + ext;
+      await writeFile(path.join(dir, audioFilename), buffer);
+      return NextResponse.json({ path: '/audio/' + audioFilename, type: 'audio' });
     } else {
       if (!file.type.startsWith('image/')) {
         return NextResponse.json({ error: 'يجب أن تكون الغلاف صورة (jpg, png, webp...)' }, { status: 400 });

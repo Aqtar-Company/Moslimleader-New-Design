@@ -468,7 +468,7 @@ function AmbientMusicControl({ bgmUrl, dm }: { bgmUrl: string; dm: boolean }) {
         </svg>
       </button>
       {showVolume && (
-        <div className={`absolute bottom-10 left-0 p-3 rounded-xl shadow-xl z-50 ${dm ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+        <div className={`absolute top-full mt-2 left-0 p-3 rounded-xl shadow-xl z-50 ${dm ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
           <p className={`text-[10px] font-bold mb-2 ${dm ? 'text-gray-400' : 'text-gray-500'}`}>مستوى الصوت</p>
           <input
             type="range" min={0} max={1} step={0.05} value={volume}

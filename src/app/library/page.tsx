@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useLang } from '@/context/LanguageContext';
+import { formatAgeLabel } from '@/lib/book-age';
 
 interface Book {
   id: string;
@@ -20,6 +21,9 @@ interface Book {
   price: number;
   freePages: number;
   totalPages: number;
+  minAge?: number | null;
+  maxAge?: number | null;
+  needsParentalGuide?: boolean;
   _count: { accesses: number };
 }
 
@@ -358,6 +362,11 @@ export default function LibraryPage() {
                       </h3>
                       {getBookAuthor(book) && (
                         <p className="text-gray-500 text-xs">{getBookAuthor(book)}</p>
+                      )}
+                      {book.minAge != null && (
+                        <span className="inline-block bg-orange-50 text-orange-600 border border-orange-200 text-[10px] font-bold px-2 py-0.5 rounded-full mt-0.5">
+                          {formatAgeLabel(book.minAge, book.maxAge ?? null, book.needsParentalGuide ?? false, isEn ? 'en' : 'ar')}
+                        </span>
                       )}
                       <div className="mt-auto pt-2 flex items-center justify-between">
                         <span className="text-[#F5C518] font-black text-sm">

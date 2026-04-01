@@ -13,6 +13,7 @@ export async function GET() {
         description: true, author: true, category: true,
         price: true, priceUSD: true, freePages: true, totalPages: true,
         language: true, section: true,
+        minAge: true, maxAge: true, needsParentalGuide: true,
         allowFriendShare: true, enableReferral: true,
         _count: { select: { accesses: true } },
       },

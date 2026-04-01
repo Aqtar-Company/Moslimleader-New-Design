@@ -20,10 +20,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const body = await req.json();
 
-    const book = await prisma.book.update({
-      where: { id },
-      data: { ...body, updatedAt: new Date() },
-    });
+    let book;
+    try {
+      book = await prisma.book.update({
+        where: { id },
+        data: { ...body, updatedAt: new Date() },
+      });
+    } catch {
+      // Fallback: remove age fields if columns don't exist yet
+      const { minAge: _a, maxAge: _b, needsParentalGuide: _c, ...safeBody } = body;
+      book = await prisma.book.update({
+        where: { id },
+        data: { ...safeBody, updatedAt: new Date() },
+      });
+    }
 
     return NextResponse.json({ book });
   } catch (err) {

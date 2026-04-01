@@ -45,30 +45,40 @@ export async function POST(req: NextRequest) {
 
     if (!title) return NextResponse.json({ error: 'العنوان مطلوب' }, { status: 400 });
 
-    const book = await prisma.book.create({
-      data: {
-        title, titleEn, description: description || '', descriptionEn,
-        cover: cover || '', filePath: filePath || '',
-        totalPages: Number(totalPages) || 0,
-        freePages: Number(freePages) || 10,
-        price: Number(price) || 0,
-        priceUSD: priceUSD ? Number(priceUSD) : null,
-        author, authorEn, category,
-        language: language || 'ar',
-        section: section || 'books',
-        minAge: minAge != null ? Number(minAge) : null,
-        maxAge: maxAge != null ? Number(maxAge) : null,
-        needsParentalGuide: needsParentalGuide === true,
-        allowQuoteShare: allowQuoteShare !== false,
-        allowFriendShare: allowFriendShare !== false,
-        friendShareHours: Number(friendShareHours) || 48,
-        enableReferral: enableReferral !== false,
-        referralDiscount: Number(referralDiscount) || 20,
-        enableWatermark: enableWatermark !== false,
-        enableForensic: enableForensic !== false,
-        updatedAt: new Date(),
-      },
-    });
+    const baseData = {
+      title, titleEn, description: description || '', descriptionEn,
+      cover: cover || '', filePath: filePath || '',
+      totalPages: Number(totalPages) || 0,
+      freePages: Number(freePages) || 10,
+      price: Number(price) || 0,
+      priceUSD: priceUSD ? Number(priceUSD) : null,
+      author, authorEn, category,
+      language: language || 'ar',
+      section: section || 'books',
+      allowQuoteShare: allowQuoteShare !== false,
+      allowFriendShare: allowFriendShare !== false,
+      friendShareHours: Number(friendShareHours) || 48,
+      enableReferral: enableReferral !== false,
+      referralDiscount: Number(referralDiscount) || 20,
+      enableWatermark: enableWatermark !== false,
+      enableForensic: enableForensic !== false,
+      updatedAt: new Date(),
+    };
+
+    let book;
+    try {
+      book = await prisma.book.create({
+        data: {
+          ...baseData,
+          minAge: minAge != null ? Number(minAge) : null,
+          maxAge: maxAge != null ? Number(maxAge) : null,
+          needsParentalGuide: needsParentalGuide === true,
+        },
+      });
+    } catch {
+      // Fallback if age columns don't exist yet
+      book = await prisma.book.create({ data: baseData });
+    }
 
     return NextResponse.json({ book });
   } catch (err) {

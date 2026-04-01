@@ -384,10 +384,14 @@ function AmbientMusicControl({ bgmUrl, dm }: { bgmUrl: string; dm: boolean }) {
     audio.volume = volume;
     audioRef.current = audio;
 
-    // Auto-start after 30 seconds
-    playTimerRef.current = setTimeout(() => {
-      audio.play().then(() => setPlaying(true)).catch(() => {});
-    }, 30000);
+    // Auto-start immediately when book opens (browser may block autoplay — user can click play)
+    const tryPlay = () => {
+      audio.play().then(() => setPlaying(true)).catch(() => {
+        // Autoplay blocked by browser — user must interact first, button will be visible
+      });
+    };
+    // Small delay to let the component settle after reCAPTCHA
+    playTimerRef.current = setTimeout(tryPlay, 800);
 
     return () => {
       audio.pause();
@@ -553,7 +557,7 @@ export default function BookReader({
     const timer = setTimeout(() => {
       setShowPromo(true);
       try { localStorage.setItem(`promo-seen-${bookId}`, '1'); } catch {}
-    }, 5 * 60 * 1000);
+    }, 30 * 1000); // Show after 30 seconds
     return () => clearTimeout(timer);
   }, [bookId, promoVideoUrl]);
 

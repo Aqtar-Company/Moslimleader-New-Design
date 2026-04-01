@@ -687,20 +687,30 @@ export default function AdminBooksPage() {
                 <div className="space-y-3">
                   <div>
                     <label className="text-xs font-bold text-gray-500 mb-1 block">موسيقى الخلفية (MP3)</label>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <input ref={audioRef} type="file" accept=".mp3,.ogg,.wav,.m4a" className="hidden"
-                        onChange={e => { const f = e.target.files?.[0]; if (f) setAudioFile(f); }} />
+                        onChange={e => { const f = e.target.files?.[0]; if (f) { setAudioFile(f); setForm(prev => ({ ...prev, bgmUrl: '' })); } }} />
                       <button type="button" onClick={() => audioRef.current?.click()}
                         className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-lg transition">
                         {audioFile ? audioFile.name : 'رفع ملف MP3'}
                       </button>
+                      {audioFile && (
+                        <button type="button" onClick={() => { setAudioFile(null); if (audioRef.current) audioRef.current.value = ''; }}
+                          className="px-2 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg transition">
+                          ✕ إلغاء الملف
+                        </button>
+                      )}
                       {(form as any).bgmUrl && !audioFile && (
-                        <span className="text-xs text-green-600 font-bold">✓ موسيقى محفوظة</span>
+                        <span className="text-xs text-green-600 font-bold flex items-center gap-1">
+                          ✓ موسيقى محفوظة
+                          <button type="button" onClick={() => setForm(prev => ({ ...prev, bgmUrl: '' }))}
+                            className="text-red-400 hover:text-red-600 font-black ml-1">✕</button>
+                        </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">أو أدخل رابط مباشر للملف:</p>
+                    <p className="text-xs text-gray-400 mt-1">أو أدخل رابط مباشر للملف (سيستبدل الملف المرفوع):</p>
                     <input type="text" value={(form as any).bgmUrl || ''} dir="ltr"
-                      onChange={e => setForm(prev => ({ ...prev, bgmUrl: e.target.value }))}
+                      onChange={e => { setAudioFile(null); setForm(prev => ({ ...prev, bgmUrl: e.target.value })); }}
                       className={inputCls} placeholder="https://... أو /audio/filename.mp3" />
                   </div>
                   <div>

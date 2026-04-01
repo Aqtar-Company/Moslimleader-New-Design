@@ -24,6 +24,7 @@ jobs:
             cd /root/moslimleader
             git fetch origin
             git reset --hard origin/main
+            git clean -fd src/
             npm ci --production=false
             npx prisma generate
             npm run build

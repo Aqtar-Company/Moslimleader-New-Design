@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import { resolvePrice } from '@/lib/geo-pricing';
+import { formatAgeLabel } from '@/lib/book-age';
 
 const BookReader = dynamic(() => import('@/components/books/BookReader'), {
   ssr: false,
@@ -39,6 +40,9 @@ interface BookData {
   referralDiscount: number;
   enableWatermark: boolean;
   enableForensic: boolean;
+  minAge?: number | null;
+  maxAge?: number | null;
+  needsParentalGuide?: boolean;
   _count: { accesses: number };
 }
 
@@ -183,6 +187,11 @@ export default function BookPage() {
           {book.category && (
             <span className="inline-block mt-2 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold px-3 py-1 rounded-full">
               {book.category}
+            </span>
+          )}
+          {book.minAge != null && (
+            <span className="inline-block mt-2 ms-2 bg-orange-50 text-orange-700 border border-orange-200 text-xs font-bold px-3 py-1 rounded-full">
+              {formatAgeLabel(book.minAge, book.maxAge ?? null, book.needsParentalGuide ?? false, 'ar')}
             </span>
           )}
         </div>

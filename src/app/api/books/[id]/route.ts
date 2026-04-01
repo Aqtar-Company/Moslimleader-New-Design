@@ -16,6 +16,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         cover: true, author: true, category: true,
         price: true, priceUSD: true, freePages: true, totalPages: true,
         language: true, section: true,
+        minAge: true, maxAge: true, needsParentalGuide: true,
         isPublished: true, allowQuoteShare: true, allowFriendShare: true,
         friendShareHours: true, enableReferral: true, referralDiscount: true,
         enableWatermark: true, enableForensic: true,

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
+import { formatAgeLabel } from '@/lib/book-age';
 
 interface Book {
   id: string;
@@ -25,6 +26,9 @@ interface Book {
   referralDiscount: number;
   enableWatermark: boolean;
   enableForensic: boolean;
+  minAge?: number | null;
+  maxAge?: number | null;
+  needsParentalGuide?: boolean;
   _count: { accesses: number };
 }
 
@@ -56,6 +60,9 @@ const emptyForm = {
   referralDiscount: 10,
   enableWatermark: true,
   enableForensic: true,
+  minAge: '' as number | '',
+  maxAge: '' as number | '',
+  needsParentalGuide: false,
 };
 
 export default function AdminBooksPage() {
@@ -64,6 +71,7 @@ export default function AdminBooksPage() {
   const [showForm, setShowForm] = useState(false);
   const [editBook, setEditBook] = useState<Book | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
+  const [isOpenEnded, setIsOpenEnded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
@@ -103,6 +111,7 @@ export default function AdminBooksPage() {
   const openAdd = () => {
     setEditBook(null);
     setForm({ ...emptyForm });
+    setIsOpenEnded(false);
     setUploadedPdfPath('');
     setUploadedCoverUrl('');
     setPdfFile(null);
@@ -135,7 +144,11 @@ export default function AdminBooksPage() {
       referralDiscount: b.referralDiscount,
       enableWatermark: b.enableWatermark,
       enableForensic: b.enableForensic,
+      minAge: b.minAge ?? '',
+      maxAge: b.maxAge ?? '',
+      needsParentalGuide: b.needsParentalGuide ?? false,
     });
+    setIsOpenEnded(b.minAge != null && b.maxAge == null);
     setUploadedPdfPath('');
     setUploadedCoverUrl(b.cover || '');
     setPdfFile(null);
@@ -169,6 +182,8 @@ export default function AdminBooksPage() {
 
       const body = {
         ...form,
+        minAge: form.minAge !== '' ? Number(form.minAge) : null,
+        maxAge: !isOpenEnded && form.maxAge !== '' ? Number(form.maxAge) : null,
         ...(pdfPath ? { filePath: pdfPath } : {}),
         ...(coverUrl ? { cover: coverUrl } : {}),
       };
@@ -447,6 +462,68 @@ export default function AdminBooksPage() {
                 <div className="col-span-2">
                   <label className="text-xs font-bold text-gray-500 mb-1 block">الوصف</label>
                   <textarea value={form.description} onChange={f('description')} rows={3} className={inputCls + ' resize-none'} />
+                </div>
+              </div>
+
+              {/* Age range & parental guidance */}
+              <div>
+                <p className="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider">الفئة العمرية</p>
+                <div className="space-y-3">
+                  <div className="flex items-end gap-3 flex-wrap">
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">من سن</label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={99}
+                        value={form.minAge}
+                        onChange={f('minAge')}
+                        className={inputCls + ' w-20'}
+                        dir="ltr"
+                        placeholder="٤"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">إلى سن</label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={99}
+                        value={isOpenEnded ? '' : form.maxAge}
+                        onChange={f('maxAge')}
+                        disabled={isOpenEnded}
+                        className={inputCls + ' w-20 disabled:opacity-40 disabled:bg-gray-50 disabled:cursor-not-allowed'}
+                        dir="ltr"
+                        placeholder="٨"
+                      />
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer pb-2.5">
+                      <input
+                        type="checkbox"
+                        checked={isOpenEnded}
+                        onChange={e => {
+                          setIsOpenEnded(e.target.checked);
+                          if (e.target.checked) setForm(p => ({ ...p, maxAge: '' }));
+                        }}
+                        className="w-4 h-4 accent-amber-400"
+                      />
+                      <span className="text-sm text-gray-700">مفتوح (+)</span>
+                    </label>
+                  </div>
+                  {checkRow('needsParentalGuide', 'يحتاج مساعدة الوالدين')}
+                  {form.minAge !== '' && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400">معاينة:</span>
+                      <span className="bg-orange-50 text-orange-700 border border-orange-200 text-xs font-bold px-3 py-1 rounded-full">
+                        {formatAgeLabel(
+                          Number(form.minAge),
+                          isOpenEnded ? null : (form.maxAge !== '' ? Number(form.maxAge) : null),
+                          form.needsParentalGuide,
+                          'ar',
+                        )}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 

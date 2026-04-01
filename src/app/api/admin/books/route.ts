@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
       title, titleEn, description, descriptionEn,
       cover, filePath, totalPages, freePages, price, priceUSD,
       author, authorEn, category, language, section,
+      minAge, maxAge, needsParentalGuide,
       allowQuoteShare, allowFriendShare, friendShareHours,
       enableReferral, referralDiscount, enableWatermark, enableForensic,
     } = body;
@@ -55,6 +56,9 @@ export async function POST(req: NextRequest) {
         author, authorEn, category,
         language: language || 'ar',
         section: section || 'books',
+        minAge: minAge != null ? Number(minAge) : null,
+        maxAge: maxAge != null ? Number(maxAge) : null,
+        needsParentalGuide: needsParentalGuide === true,
         allowQuoteShare: allowQuoteShare !== false,
         allowFriendShare: allowFriendShare !== false,
         friendShareHours: Number(friendShareHours) || 48,

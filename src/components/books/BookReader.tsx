@@ -383,6 +383,8 @@ function AmbientMusicControl({ bgmUrl, dm }: { bgmUrl: string; dm: boolean }) {
   const [volume, setVolume] = useState(0.12);
   const [showVolume, setShowVolume] = useState(false);
   const playTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const repeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const REPEAT_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 
   // Build SoundCloud widget URL
   const scWidgetUrl = isSoundCloud
@@ -392,17 +394,33 @@ function AmbientMusicControl({ bgmUrl, dm }: { bgmUrl: string; dm: boolean }) {
   useEffect(() => {
     if (isSoundCloud) return; // SoundCloud handled by iframe
     const audio = new Audio(bgmUrl);
-    audio.loop = true; // loop the full file continuously
+    audio.loop = false; // play once, then repeat every 10 min via interval
     audio.volume = volume;
     audioRef.current = audio;
+
+    // Helper: play from start
+    const playOnce = () => {
+      audio.currentTime = 0;
+      audio.play().then(() => setPlaying(true)).catch(() => {});
+    };
+
+    // When audio ends naturally, mark as stopped (interval will restart it)
+    audio.addEventListener('ended', () => setPlaying(false));
+
     // Auto-start after short delay
     playTimerRef.current = setTimeout(() => {
-      audio.play().then(() => setPlaying(true)).catch(() => {});
+      playOnce();
+      // Schedule repeat every 10 minutes
+      repeatIntervalRef.current = setInterval(() => {
+        playOnce();
+      }, REPEAT_INTERVAL_MS);
     }, 800);
+
     return () => {
       audio.pause();
       audio.src = '';
       if (playTimerRef.current) clearTimeout(playTimerRef.current);
+      if (repeatIntervalRef.current) clearInterval(repeatIntervalRef.current);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bgmUrl]);
@@ -418,8 +436,23 @@ function AmbientMusicControl({ bgmUrl, dm }: { bgmUrl: string; dm: boolean }) {
     if (playing) {
       audio.pause();
       setPlaying(false);
+      // Stop the repeat interval when user manually pauses
+      if (repeatIntervalRef.current) {
+        clearInterval(repeatIntervalRef.current);
+        repeatIntervalRef.current = null;
+      }
     } else {
+      audio.currentTime = 0;
       audio.play().then(() => setPlaying(true)).catch(() => {});
+      // Restart repeat interval when user manually plays
+      if (!repeatIntervalRef.current) {
+        repeatIntervalRef.current = setInterval(() => {
+          if (audioRef.current) {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play().then(() => setPlaying(true)).catch(() => {});
+          }
+        }, REPEAT_INTERVAL_MS);
+      }
     }
   };
 

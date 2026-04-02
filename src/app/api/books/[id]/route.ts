@@ -54,13 +54,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     let seriesBooks: { id: string; title: string; titleEn?: string | null; cover: string; seriesOrder?: number | null }[] = [];
     let seriesName: string | null = null;
     let seriesNameEn: string | null = null;
+    let seriesSeriesId: string | null = null;
+    let seriesPrice: number | null = null;
+    let seriesPriceUSD: number | null = null;
     if ((book as any).seriesId) {
       try {
         const series = await prisma.bookSeries.findUnique({
           where: { id: (book as any).seriesId },
           select: {
+            id: true,
             name: true,
             nameEn: true,
+            seriesPrice: true,
+            seriesPriceUSD: true,
             books: {
               where: { isPublished: true },
               select: { id: true, title: true, titleEn: true, cover: true, seriesOrder: true },
@@ -72,13 +78,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           seriesBooks = series.books;
           seriesName = series.name;
           seriesNameEn = series.nameEn ?? null;
+          seriesSeriesId = series.id;
+          seriesPrice = series.seriesPrice ?? null;
+          seriesPriceUSD = series.seriesPriceUSD ?? null;
         }
       } catch {
         // series table may not exist yet
       }
     }
 
-    return NextResponse.json({ book, hasAccess, viewCount, buyCount, seriesBooks, seriesName, seriesNameEn });
+    return NextResponse.json({ book, hasAccess, viewCount, buyCount, seriesBooks, seriesName, seriesNameEn, seriesSeriesId, seriesPrice, seriesPriceUSD });
   } catch (err) {
     console.error('[books/:id GET]', err);
     return NextResponse.json({ error: 'حدث خطأ في الخادم' }, { status: 500 });

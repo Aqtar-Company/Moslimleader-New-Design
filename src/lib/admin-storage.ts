@@ -182,7 +182,24 @@ export function getProductOverrides(): Record<string, ProductOverride> {
 
 export function setProductOverride(id: string, data: ProductOverride) {
   const overrides = getProductOverrides();
-  overrides[id] = { ...overrides[id], ...data };
+  const merged: ProductOverride = { ...overrides[id], ...data };
+
+  // ── Bidirectional sync: price ↔ price_egp_manual ──────────────────────────
+  // If the base price was changed, sync it to price_egp_manual (regional EGP)
+  if (data.price !== undefined && data.regionalPricing === undefined) {
+    const existingRegional = merged.regionalPricing ?? {};
+    merged.regionalPricing = { ...existingRegional, price_egp_manual: data.price };
+  }
+  // If price_egp_manual was changed, sync it back to the base price
+  if (data.regionalPricing?.price_egp_manual !== undefined && data.price === undefined) {
+    const newEgpPrice = data.regionalPricing.price_egp_manual;
+    if (newEgpPrice && newEgpPrice > 0) {
+      merged.price = newEgpPrice;
+    }
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
+  overrides[id] = merged;
   localStorage.setItem('ml-product-overrides', JSON.stringify(overrides));
 }
 

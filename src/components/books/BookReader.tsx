@@ -452,25 +452,7 @@ function AmbientMusicControl({ bgmUrl, dm }: { bgmUrl: string; dm: boolean }) {
           </svg>
         )}
       </button>
-      <button
-        onClick={() => setShowVolume(v => !v)}
-        title="الصوت"
-        className={`${btnBase} ${dm ? 'text-gray-400' : 'text-gray-500'}`}
-      >
-        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 010 7.072M12 6v12m-3.536-9.536a5 5 0 000 7.072M6.343 9.657a8 8 0 000 4.686" />
-        </svg>
-      </button>
-      {showVolume && (
-        <div className={`absolute bottom-full mb-2 left-0 p-3 rounded-xl shadow-2xl z-[9999] ${dm ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
-          <p className={`text-[10px] font-bold mb-2 ${dm ? 'text-gray-400' : 'text-gray-500'}`}>مستوى الصوت</p>
-          <input
-            type="range" min={0} max={1} step={0.05} value={volume}
-            onChange={e => changeVolume(Number(e.target.value))}
-            className="w-24 accent-[#F5C518]"
-          />
-        </div>
-      )}
+
     </div>
   );
 }

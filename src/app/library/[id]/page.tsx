@@ -151,6 +151,9 @@ function BookPageInner() {
   const [seriesBooks, setSeriesBooks] = useState<SeriesBookNav[]>([]);
   const [seriesName, setSeriesName] = useState<string | null>(null);
   const [seriesNameEn, setSeriesNameEn] = useState<string | null>(null);
+  const [seriesSeriesId, setSeriesSeriesId] = useState<string | null>(null);
+  const [seriesPrice, setSeriesPrice] = useState<number | null>(null);
+  const [seriesPriceUSD, setSeriesPriceUSD] = useState<number | null>(null);
   const isEn = false; // Arabic-first; series names shown in Arabic by default
 
   useEffect(() => {
@@ -163,6 +166,9 @@ function BookPageInner() {
         setSeriesBooks(d.seriesBooks ?? []);
         setSeriesName(d.seriesName ?? null);
         setSeriesNameEn(d.seriesNameEn ?? null);
+        setSeriesSeriesId(d.seriesSeriesId ?? null);
+        setSeriesPrice(d.seriesPrice ?? null);
+        setSeriesPriceUSD(d.seriesPriceUSD ?? null);
         let access = d.hasAccess ?? false;
 
         const refToken = searchParams.get('ref');
@@ -555,17 +561,18 @@ function BookPageInner() {
 
               {book.freePages > 0 ? (
                 !isVerified ? (
-                  <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                  <div className="flex flex-col items-center justify-center py-10 px-6 text-center">
                     <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mb-4">
                       <svg className="w-8 h-8 text-[#F5C518]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
                       </svg>
                     </div>
-                    <h3 className="text-lg font-bold text-gray-800 mb-1">تحقق سريع</h3>
-                    <p className="text-sm text-gray-500 mb-4">أثبت أنك إنسان وليس برنامج آلي</p>
-                    <div className="mb-5 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 text-right leading-relaxed max-w-xs">
-                      <p className="font-bold mb-1">🔍 تنبيه: يتم تسجيل بياناتك</p>
-                      <p>عند فتح هذا الكتاب يقوم النظام بتسجيل عنوان IP الخاص بك، نوع جهازك، وموقعك الجغرافي. أي انتهاك لحقوق الملكية الفكرية سيُستخدم كدليل قانوني.</p>
+                    <h3 className="text-xl font-black text-gray-800 mb-1">تحقق سريع</h3>
+                    <p className="text-sm text-gray-500 mb-5">أثبت أنك إنسان وليس برنامج آلي</p>
+                    {/* ── Copyright warning — large prominent box ── */}
+                    <div className="mb-6 p-5 bg-amber-50 border-2 border-amber-400 rounded-2xl text-sm text-amber-900 text-right leading-relaxed w-full max-w-md shadow-md">
+                      <p className="font-black text-base mb-2">⚠️ تنبيه قانوني: يتم تسجيل بياناتك</p>
+                      <p className="leading-7">عند فتح هذا الكتاب يقوم النظام بتسجيل <strong>عنوان IP الخاص بك</strong>، نوع جهازك، وموقعك الجغرافي بشكل تلقائي. أي انتهاك لحقوق الملكية الفكرية — كالنسخ أو التوزيع غير المصرح به — سيُستخدم كدليل قانوني في المحاكم.</p>
                     </div>
                     <Turnstile
                       siteKey="0x4AAAAAACzKEGf-IQ39WfSB"
@@ -644,23 +651,41 @@ function BookPageInner() {
             </div>
           </div>
         </div>
+
+        {/* ── Small copyright reminder below the reader ── */}
+        {isVerified && (
+          <div className="mt-3 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-700 text-right leading-relaxed">
+            <span className="font-bold">⚠️ تذكير:</span> بياناتك مسجّلة (IP، الجهاز، الموقع). أي نسخ أو توزيع غير مصرح به يُعدّ انتهاكاً لحقوق الملكية الفكرية ويُستخدم كدليل قانوني.
+          </div>
+        )}
       </div>
 
       {/* ── Series Navigation Bar ── */}
       {seriesBooks.length > 1 && book.seriesId && (
         <div className="mt-6 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="bg-gradient-to-r from-[#1a1a2e] to-[#16213e] px-5 py-3 flex items-center justify-between">
-            <div>
+          <div className="bg-gradient-to-r from-[#1a1a2e] to-[#16213e] px-5 py-4 flex items-center justify-between gap-3">
+            <div className="min-w-0">
               <p className="text-[#F5C518] text-xs font-bold uppercase tracking-wider">
-                {(isEn && seriesNameEn) ? 'Series' : 'سلسلة'}
+                {(isEn && seriesNameEn) ? 'Series' : 'سلسلة'} • {isEn ? `${seriesBooks.length} stories` : `${seriesBooks.length} قصة`}
               </p>
-              <p className="text-white font-black text-sm">
+              <p className="text-white font-black text-sm truncate">
                 {(isEn && seriesNameEn) ? seriesNameEn : seriesName}
               </p>
+              <p className="text-white/40 text-xs mt-0.5">
+                {isEn ? `Part ${book.seriesOrder} of ${seriesBooks.length}` : `الجزء ${book.seriesOrder} من ${seriesBooks.length}`}
+              </p>
             </div>
-            <span className="text-white/50 text-xs">
-              {isEn ? `Part ${book.seriesOrder} of ${seriesBooks.length}` : `الجزء ${book.seriesOrder} من ${seriesBooks.length}`}
-            </span>
+            {seriesPrice && seriesSeriesId && (
+              <Link
+                href={`/library/series/${seriesSeriesId}/buy`}
+                className="shrink-0 flex flex-col items-center bg-[#F5C518] hover:bg-amber-400 active:bg-amber-500 text-[#1a1a2e] font-black rounded-2xl px-4 py-2.5 transition shadow-lg shadow-black/20 text-center"
+              >
+                <span className="text-lg leading-tight">
+                  {seriesPriceUSD ? `$${seriesPriceUSD}` : `${seriesPrice} ج.م`}
+                </span>
+                <span className="text-[10px] font-bold mt-0.5">شراء السلسلة كاملة →</span>
+              </Link>
+            )}
           </div>
           <div className="p-4">
             <div className="flex gap-3 overflow-x-auto pb-1">

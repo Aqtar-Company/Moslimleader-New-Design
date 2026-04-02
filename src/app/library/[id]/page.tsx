@@ -9,7 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import { resolvePrice } from '@/lib/geo-pricing';
 import { formatAgeLabel } from '@/lib/book-age';
-import ReCAPTCHA from 'react-google-recaptcha';
+import { Turnstile } from '@marsidev/react-turnstile';
 
 // Simple device fingerprint based on browser properties
 async function generateFingerprint(): Promise<string> {
@@ -567,9 +567,9 @@ function BookPageInner() {
                       <p className="font-bold mb-1">🔍 تنبيه: يتم تسجيل بياناتك</p>
                       <p>عند فتح هذا الكتاب يقوم النظام بتسجيل عنوان IP الخاص بك، نوع جهازك، وموقعك الجغرافي. أي انتهاك لحقوق الملكية الفكرية سيُستخدم كدليل قانوني.</p>
                     </div>
-                    <ReCAPTCHA
-                      sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
-                      onChange={async (token) => {
+                    <Turnstile
+                      siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+                      onSuccess={async (token) => {
                         if (token && !trackingDone) {
                           setTrackingDone(true);
                           // 1. Fire tracking API — record IP, device, geolocation
@@ -602,11 +602,11 @@ function BookPageInner() {
                           setIsVerified(true);
                         }
                       }}
-                      hl="ar"
+                      options={{ language: 'ar' }}
                     />
                     <p className="text-xs text-gray-400 mt-4 flex items-center gap-1">
                       <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
-                      محمي بواسطة Google reCAPTCHA
+                      محمي بواسطة Cloudflare Turnstile
                     </p>
                   </div>
                 ) : (

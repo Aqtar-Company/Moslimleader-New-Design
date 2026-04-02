@@ -753,7 +753,7 @@ export default function BookReader({
         onMouseMove={resetToolbarTimer}
       >
         {/* ── Toolbar (auto-hide) ── */}
-        <div className={`transition-all duration-300 ${toolbarVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'}`}>
+        <div className={`relative z-10 transition-all duration-300 ${toolbarVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'}`}>
           <div className={`flex items-center gap-2 px-3 py-2.5 border-b ${dm ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
 
             {/* Left arrow */}

@@ -754,178 +754,214 @@ export default function BookReader({
       >
         {/* ── Toolbar (always visible) ── */}
         <div className="relative z-50">
-          <div className={`flex items-center gap-2 px-3 py-2.5 border-b ${dm ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
+          <div className={`flex flex-col border-b ${dm ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
 
-            {/* Left arrow */}
-            <button
-              onClick={() => isLtr ? goTo(currentPage - 1, 'prev') : goTo(currentPage + 1, 'next')}
-              disabled={isLtr ? currentPage <= 1 : currentPage >= numPages}
-              aria-label={isLtr ? 'السابق' : 'التالي'}
-              className={`flex items-center justify-center gap-1 px-3 h-9 rounded-xl font-bold text-xs transition disabled:opacity-30 ${
-                isLtr
-                  ? (dm ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')
-                  : (dm ? 'bg-[#F5C518] text-[#1a1a2e] hover:bg-amber-400' : 'bg-[#F5C518] text-[#1a1a2e] hover:bg-amber-400')
-              }`}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-              </svg>
-              <span className="hidden sm:inline">{isLtr ? 'السابق' : 'التالي'}</span>
-            </button>
+            {/* ── Row 1: Navigation + Progress (all screens) ── */}
+            <div className="flex items-center gap-2 px-3 py-2">
 
-            {/* Page counter */}
-            <div className={`text-xs font-bold tabular-nums px-1 ${dm ? 'text-gray-300' : 'text-gray-600'}`}>
-              {currentPage} <span className={dm ? 'text-gray-600' : 'text-gray-300'}>/</span> {numPages || '…'}
-            </div>
-
-            {/* Right arrow */}
-            <button
-              onClick={() => isLtr ? goTo(currentPage + 1, 'next') : goTo(currentPage - 1, 'prev')}
-              disabled={isLtr ? currentPage >= numPages : currentPage <= 1}
-              aria-label={isLtr ? 'التالي' : 'السابق'}
-              className={`flex items-center justify-center gap-1 px-3 h-9 rounded-xl font-bold text-xs transition disabled:opacity-30 ${
-                isLtr
-                  ? (dm ? 'bg-[#F5C518] text-[#1a1a2e] hover:bg-amber-400' : 'bg-[#F5C518] text-[#1a1a2e] hover:bg-amber-400')
-                  : (dm ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')
-              }`}
-            >
-              <span className="hidden sm:inline">{isLtr ? 'التالي' : 'السابق'}</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-              </svg>
-            </button>
-
-            {/* Progress bar */}
-            {numPages > 0 && (
-              <div className="flex-1 mx-1 min-w-0">
-                <div className={`h-2 rounded-full overflow-hidden ${dm ? 'bg-gray-700' : 'bg-gray-200'}`}>
-                  <div className="h-full bg-[#F5C518] rounded-full transition-all duration-300"
-                    style={{ width: `${(currentPage / numPages) * 100}%` }} />
-                </div>
-              </div>
-            )}
-
-            {/* Zoom button */}
-            <button
-              onClick={() => setZoomLevel(z => z === 1 ? 1.18 : 1)}
-              aria-label={zoomLevel > 1 ? 'تصغير' : 'تكبير'}
-              className={`${btnCls} ${zoomLevel > 1 ? 'bg-[#F5C518] text-[#1a1a2e]' : ''}`}
-            >
-              {zoomLevel > 1 ? (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                </svg>
-              )}
-            </button>
-
-            {/* Bookmark button — opens add modal or shows panel if has bookmarks */}
-            <button
-              onClick={() => {
-                if (isCurrentPageBookmarked) {
-                  setShowBookmarkPanel(true);
-                } else {
-                  setShowAddBookmark(true);
-                }
-              }}
-              aria-label={isCurrentPageBookmarked ? 'عرض العلامات' : 'حفظ الصفحة'}
-              title={isCurrentPageBookmarked ? 'الصفحة محفوظة — اضغط لعرض العلامات' : 'حفظ هذه الصفحة'}
-              className={`${btnCls} relative ${isCurrentPageBookmarked ? 'text-[#F5C518]' : ''}`}
-            >
-              <svg className="w-4 h-4" fill={isCurrentPageBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
-              </svg>
-              {bookmarks.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#F5C518] text-[#1a1a2e] text-[9px] font-black rounded-full flex items-center justify-center">
-                  {bookmarks.length}
-                </span>
-              )}
-            </button>
-
-            {/* Bookmark list button — hidden on small screens, shown in overflow */}
-            <button
-              onClick={() => setShowBookmarkPanel(true)}
-              aria-label="قائمة العلامات"
-              title="عرض جميع العلامات المرجعية"
-              className={`${btnCls} hidden sm:flex`}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-              </svg>
-            </button>
-
-            {/* Ambient music control — single instance for all screens */}
-            {bgmUrl && (
-              <AmbientMusicControl bgmUrl={bgmUrl} dm={dm} />
-            )}
-
-            {/* Fullscreen button */}
-            <button onClick={toggleFullscreen} aria-label={isFullscreen ? 'خروج من ملء الشاشة' : 'ملء الشاشة'} className={btnCls}>
-              {isFullscreen ? (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
-                </svg>
-              )}
-            </button>
-
-            {/* Share button */}
-            <button onClick={() => setShowShare(true)} aria-label="مشاركة" title="مشاركة الكتاب" className={btnCls}>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-              </svg>
-            </button>
-
-            {/* Mobile overflow menu — shows bookmark list on small screens */}
-            <div className="relative sm:hidden">
+              {/* Left arrow */}
               <button
-                onClick={() => setShowMobileMenu(v => !v)}
-                aria-label="مزيد"
-                className={btnCls}
+                onClick={() => isLtr ? goTo(currentPage - 1, 'prev') : goTo(currentPage + 1, 'next')}
+                disabled={isLtr ? currentPage <= 1 : currentPage >= numPages}
+                aria-label={isLtr ? 'السابق' : 'التالي'}
+                className={`flex items-center justify-center gap-1 px-3 h-9 rounded-xl font-bold text-xs transition disabled:opacity-30 ${
+                  isLtr
+                    ? (dm ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')
+                    : (dm ? 'bg-[#F5C518] text-[#1a1a2e] hover:bg-amber-400' : 'bg-[#F5C518] text-[#1a1a2e] hover:bg-amber-400')
+                }`}
               >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
+                <span className="hidden sm:inline">{isLtr ? 'السابق' : 'التالي'}</span>
+              </button>
+
+              {/* Page counter */}
+              <div className={`text-xs font-bold tabular-nums px-1 ${dm ? 'text-gray-300' : 'text-gray-600'}`}>
+                {currentPage} <span className={dm ? 'text-gray-600' : 'text-gray-300'}>/</span> {numPages || '…'}
+              </div>
+
+              {/* Right arrow */}
+              <button
+                onClick={() => isLtr ? goTo(currentPage + 1, 'next') : goTo(currentPage - 1, 'prev')}
+                disabled={isLtr ? currentPage >= numPages : currentPage <= 1}
+                aria-label={isLtr ? 'التالي' : 'السابق'}
+                className={`flex items-center justify-center gap-1 px-3 h-9 rounded-xl font-bold text-xs transition disabled:opacity-30 ${
+                  isLtr
+                    ? (dm ? 'bg-[#F5C518] text-[#1a1a2e] hover:bg-amber-400' : 'bg-[#F5C518] text-[#1a1a2e] hover:bg-amber-400')
+                    : (dm ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')
+                }`}
+              >
+                <span className="hidden sm:inline">{isLtr ? 'التالي' : 'السابق'}</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>
               </button>
-              {showMobileMenu && (
-                <div className={`absolute top-10 left-0 z-50 rounded-xl shadow-xl border p-2 flex flex-col gap-1 min-w-[140px] ${
-                  dm ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-                }`}>
-                  <button
-                    onClick={() => { setShowBookmarkPanel(true); setShowMobileMenu(false); }}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold ${
-                      dm ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-50 text-gray-700'
-                    }`}
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                    </svg>
-                    علامات مرجعية ({bookmarks.length})
-                  </button>
+
+              {/* Progress bar */}
+              {numPages > 0 && (
+                <div className="flex-1 mx-1 min-w-0">
+                  <div className={`h-2 rounded-full overflow-hidden ${dm ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                    <div className="h-full bg-[#F5C518] rounded-full transition-all duration-300"
+                      style={{ width: `${(currentPage / numPages) * 100}%` }} />
+                  </div>
                 </div>
               )}
-            </div>
 
-            {/* Dark mode toggle */}
-            <button onClick={toggleDark} aria-label={dm ? 'وضع النهار' : 'وضع الليل'} className={btnCls}>
-              {dm ? (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+              {/* Desktop-only tools in row 1 */}
+              <div className="hidden sm:flex items-center gap-1">
+                {/* Zoom */}
+                <button
+                  onClick={() => setZoomLevel(z => z === 1 ? 1.18 : 1)}
+                  aria-label={zoomLevel > 1 ? 'تصغير' : 'تكبير'}
+                  className={`${btnCls} ${zoomLevel > 1 ? 'bg-[#F5C518] text-[#1a1a2e]' : ''}`}
+                >
+                  {zoomLevel > 1 ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                    </svg>
+                  )}
+                </button>
+                {/* Bookmark */}
+                <button
+                  onClick={() => { if (isCurrentPageBookmarked) { setShowBookmarkPanel(true); } else { setShowAddBookmark(true); } }}
+                  aria-label={isCurrentPageBookmarked ? 'عرض العلامات' : 'حفظ الصفحة'}
+                  className={`${btnCls} relative ${isCurrentPageBookmarked ? 'text-[#F5C518]' : ''}`}
+                >
+                  <svg className="w-4 h-4" fill={isCurrentPageBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+                  </svg>
+                  {bookmarks.length > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#F5C518] text-[#1a1a2e] text-[9px] font-black rounded-full flex items-center justify-center">{bookmarks.length}</span>
+                  )}
+                </button>
+                {/* Bookmark list */}
+                <button onClick={() => setShowBookmarkPanel(true)} aria-label="قائمة العلامات" className={btnCls}>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                  </svg>
+                </button>
+                {/* Music */}
+                {bgmUrl && <AmbientMusicControl bgmUrl={bgmUrl} dm={dm} />}
+                {/* Fullscreen */}
+                <button onClick={toggleFullscreen} aria-label={isFullscreen ? 'خروج ملء الشاشة' : 'ملء الشاشة'} className={btnCls}>
+                  {isFullscreen ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                    </svg>
+                  )}
+                </button>
+                {/* Share */}
+                <button onClick={() => setShowShare(true)} aria-label="مشاركة" className={btnCls}>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  </svg>
+                </button>
+                {/* Dark mode */}
+                <button onClick={toggleDark} aria-label={dm ? 'وضع النهار' : 'وضع الليل'} className={btnCls}>
+                  {dm ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+
+            </div>{/* end row 1 */}
+
+            {/* ── Row 2: Tools (mobile only) ── */}
+            <div className={`sm:hidden flex items-center justify-around gap-1 px-2 py-1.5 border-t ${dm ? 'border-gray-800' : 'border-gray-100'}`}>
+
+              {/* Zoom */}
+              <button
+                onClick={() => setZoomLevel(z => z === 1 ? 1.18 : 1)}
+                aria-label={zoomLevel > 1 ? 'تصغير' : 'تكبير'}
+                className={`${btnCls} ${zoomLevel > 1 ? 'bg-[#F5C518] text-[#1a1a2e]' : ''}`}
+              >
+                {zoomLevel > 1 ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                  </svg>
+                )}
+              </button>
+
+              {/* Bookmark */}
+              <button
+                onClick={() => { if (isCurrentPageBookmarked) { setShowBookmarkPanel(true); } else { setShowAddBookmark(true); } }}
+                aria-label={isCurrentPageBookmarked ? 'عرض العلامات' : 'حفظ الصفحة'}
+                className={`${btnCls} relative ${isCurrentPageBookmarked ? 'text-[#F5C518]' : ''}`}
+              >
+                <svg className="w-4 h-4" fill={isCurrentPageBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
                 </svg>
-              ) : (
+                {bookmarks.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#F5C518] text-[#1a1a2e] text-[9px] font-black rounded-full flex items-center justify-center">{bookmarks.length}</span>
+                )}
+              </button>
+
+              {/* Bookmark list */}
+              <button onClick={() => setShowBookmarkPanel(true)} aria-label="قائمة العلامات" className={btnCls}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                 </svg>
-              )}
-            </button>
-          </div>
-        </div>
+              </button>
+
+              {/* Music */}
+              {bgmUrl && <AmbientMusicControl bgmUrl={bgmUrl} dm={dm} />}
+
+              {/* Fullscreen */}
+              <button onClick={toggleFullscreen} aria-label={isFullscreen ? 'خروج ملء الشاشة' : 'ملء الشاشة'} className={btnCls}>
+                {isFullscreen ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                  </svg>
+                )}
+              </button>
+
+              {/* Share */}
+              <button onClick={() => setShowShare(true)} aria-label="مشاركة" className={btnCls}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+              </button>
+
+              {/* Dark mode */}
+              <button onClick={toggleDark} aria-label={dm ? 'وضع النهار' : 'وضع الليل'} className={btnCls}>
+                {dm ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+                  </svg>
+                )}
+              </button>
+
+            </div>{/* end row 2 mobile */}
+
+          </div>{/* end toolbar flex-col */}
+        </div>{/* end z-50 wrapper */}
 
         {/* ── PDF Page ── */}
         <div

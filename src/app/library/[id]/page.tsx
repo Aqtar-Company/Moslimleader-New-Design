@@ -568,7 +568,7 @@ function BookPageInner() {
                       <p>عند فتح هذا الكتاب يقوم النظام بتسجيل عنوان IP الخاص بك، نوع جهازك، وموقعك الجغرافي. أي انتهاك لحقوق الملكية الفكرية سيُستخدم كدليل قانوني.</p>
                     </div>
                     <Turnstile
-                      siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+                      siteKey="0x4AAAAAACzKEGf-IQ39WfSB"
                       onSuccess={async (token) => {
                         if (token && !trackingDone) {
                           setTrackingDone(true);

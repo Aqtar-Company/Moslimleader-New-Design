@@ -124,10 +124,8 @@ export interface PriceResult {
 }
 
 function smartRound(price: number): number {
-  if (price >= 100) return Math.round(price);
-  if (price >= 10)  return Math.round(price * 10) / 10;
-  if (price >= 1)   return Math.round(price * 100) / 100;
-  return Math.round(price * 1000) / 1000;
+  // Always round to nearest whole number for clean display
+  return Math.round(price);
 }
 
 export function resolvePrice(

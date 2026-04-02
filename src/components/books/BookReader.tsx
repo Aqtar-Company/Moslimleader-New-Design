@@ -857,11 +857,9 @@ export default function BookReader({
               </svg>
             </button>
 
-            {/* Ambient music control — hidden on small screens */}
+            {/* Ambient music control — single instance for all screens */}
             {bgmUrl && (
-              <div className="hidden sm:flex">
-                <AmbientMusicControl bgmUrl={bgmUrl} dm={dm} />
-              </div>
+              <AmbientMusicControl bgmUrl={bgmUrl} dm={dm} />
             )}
 
             {/* Fullscreen button */}
@@ -884,7 +882,7 @@ export default function BookReader({
               </svg>
             </button>
 
-            {/* Mobile overflow menu — shows bookmark list + music on small screens */}
+            {/* Mobile overflow menu — shows bookmark list on small screens */}
             <div className="relative sm:hidden">
               <button
                 onClick={() => setShowMobileMenu(v => !v)}
@@ -910,12 +908,6 @@ export default function BookReader({
                     </svg>
                     علامات مرجعية ({bookmarks.length})
                   </button>
-                  {bgmUrl && (
-                    <div className="px-2 py-1">
-                      <p className={`text-[10px] font-bold mb-1 ${ dm ? 'text-gray-500' : 'text-gray-400'}`}>موسيقى الخلفية</p>
-                      <AmbientMusicControl bgmUrl={bgmUrl} dm={dm} />
-                    </div>
-                  )}
                 </div>
               )}
             </div>

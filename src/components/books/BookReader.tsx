@@ -375,50 +375,58 @@ function PromoVideoCard({ videoUrl, bookTitle, onClose }: { videoUrl: string; bo
 }
 
 // ── Ambient Music Player ──────────────────────────────────────────────────────
+// AmbientMusicButton — renders just the play/pause button, receives state from parent
+function AmbientMusicButton({ playing, onToggle, dm }: { playing: boolean; onToggle: () => void; dm: boolean }) {
+  const btnBase = `w-8 h-8 rounded-xl flex items-center justify-center transition ${dm ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'}`;
+  return (
+    <button
+      onClick={onToggle}
+      title={playing ? 'إيقاف الموسيقى' : 'تشغيل موسيقى الخلفية'}
+      className={`${btnBase} ${playing ? 'bg-[#F5C518] text-[#1a1a2e]' : (dm ? 'text-gray-400' : 'text-gray-500')}`}
+    >
+      {playing ? (
+        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M6 4h4v16H6zm8 0h4v16h-4z"/>
+        </svg>
+      ) : (
+        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M8 5v14l11-7z"/>
+        </svg>
+      )}
+    </button>
+  );
+}
+
+// AmbientMusicControl — manages audio state + renders hidden iframe + ONE button
+// Pass buttonClassName to control visibility per breakpoint
 function AmbientMusicControl({ bgmUrl, dm }: { bgmUrl: string; dm: boolean }) {
   const isSoundCloud = bgmUrl.includes('soundcloud.com');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const scWidgetRef = useRef<HTMLIFrameElement | null>(null);
   const [playing, setPlaying] = useState(false);
-  const [volume, setVolume] = useState(0.12);
-  const [showVolume, setShowVolume] = useState(false);
+  const [volume] = useState(0.12);
   const playTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const repeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const REPEAT_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+  const REPEAT_INTERVAL_MS = 10 * 60 * 1000;
 
-  // Build SoundCloud widget URL
   const scWidgetUrl = isSoundCloud
     ? `https://w.soundcloud.com/player/?url=${encodeURIComponent(bgmUrl)}&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false&buying=false&sharing=false&download=false&color=%23F5C518`
     : null;
 
   useEffect(() => {
-    if (isSoundCloud) return; // SoundCloud handled by iframe
+    if (isSoundCloud) return;
     const audio = new Audio(bgmUrl);
-    audio.loop = false; // play once, then repeat every 10 min via interval
+    audio.loop = false;
     audio.volume = volume;
     audioRef.current = audio;
-
-    // Helper: play from start
-    const playOnce = () => {
-      audio.currentTime = 0;
-      audio.play().then(() => setPlaying(true)).catch(() => {});
-    };
-
-    // When audio ends naturally, mark as stopped (interval will restart it)
+    const playOnce = () => { audio.currentTime = 0; audio.play().then(() => setPlaying(true)).catch(() => {}); };
     audio.addEventListener('ended', () => setPlaying(false));
-
-    // Auto-start after short delay
     playTimerRef.current = setTimeout(() => {
       playOnce();
-      // Schedule repeat every 10 minutes
-      repeatIntervalRef.current = setInterval(() => {
-        playOnce();
-      }, REPEAT_INTERVAL_MS);
+      repeatIntervalRef.current = setInterval(playOnce, REPEAT_INTERVAL_MS);
     }, 800);
-
     return () => {
-      audio.pause();
-      audio.src = '';
+      audio.pause(); audio.src = '';
       if (playTimerRef.current) clearTimeout(playTimerRef.current);
       if (repeatIntervalRef.current) clearInterval(repeatIntervalRef.current);
     };
@@ -426,72 +434,33 @@ function AmbientMusicControl({ bgmUrl, dm }: { bgmUrl: string; dm: boolean }) {
   }, [bgmUrl]);
 
   const toggle = () => {
-    if (isSoundCloud) {
-      // For SoundCloud: reload iframe to play, or hide to pause
-      setPlaying(p => !p);
-      return;
-    }
+    if (isSoundCloud) { setPlaying(p => !p); return; }
     const audio = audioRef.current;
     if (!audio) return;
     if (playing) {
-      audio.pause();
-      setPlaying(false);
-      // Stop the repeat interval when user manually pauses
-      if (repeatIntervalRef.current) {
-        clearInterval(repeatIntervalRef.current);
-        repeatIntervalRef.current = null;
-      }
+      audio.pause(); setPlaying(false);
+      if (repeatIntervalRef.current) { clearInterval(repeatIntervalRef.current); repeatIntervalRef.current = null; }
     } else {
       audio.currentTime = 0;
       audio.play().then(() => setPlaying(true)).catch(() => {});
-      // Restart repeat interval when user manually plays
       if (!repeatIntervalRef.current) {
         repeatIntervalRef.current = setInterval(() => {
-          if (audioRef.current) {
-            audioRef.current.currentTime = 0;
-            audioRef.current.play().then(() => setPlaying(true)).catch(() => {});
-          }
+          if (audioRef.current) { audioRef.current.currentTime = 0; audioRef.current.play().then(() => setPlaying(true)).catch(() => {}); }
         }, REPEAT_INTERVAL_MS);
       }
     }
   };
 
-  const changeVolume = (v: number) => {
-    setVolume(v);
-    if (audioRef.current) audioRef.current.volume = v;
-  };
-
-  const btnBase = `w-8 h-8 rounded-xl flex items-center justify-center transition ${dm ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'}`;
-
   return (
-    <div className="flex items-center gap-1 relative">
-      {/* Hidden SoundCloud iframe player */}
+    <>
+      {/* Hidden SoundCloud iframe — only one instance */}
       {isSoundCloud && scWidgetUrl && playing && (
-        <iframe
-          ref={scWidgetRef}
-          src={scWidgetUrl}
-          width="0" height="0"
-          allow="autoplay"
-          style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
-        />
+        <iframe ref={scWidgetRef} src={scWidgetUrl} width="0" height="0" allow="autoplay"
+          style={{ position: 'fixed', top: 0, left: 0, opacity: 0, pointerEvents: 'none', zIndex: -1 }} />
       )}
-      <button
-        onClick={toggle}
-        title={playing ? 'إيقاف الموسيقى' : 'تشغيل موسيقى الخلفية'}
-        className={`${btnBase} ${playing ? 'bg-[#F5C518] text-[#1a1a2e]' : (dm ? 'text-gray-400' : 'text-gray-500')}`}
-      >
-        {playing ? (
-          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M6 4h4v16H6zm8 0h4v16h-4z"/>
-          </svg>
-        ) : (
-          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M8 5v14l11-7z"/>
-          </svg>
-        )}
-      </button>
-
-    </div>
+      {/* Single button — visible on all screens */}
+      <AmbientMusicButton playing={playing} onToggle={toggle} dm={dm} />
+    </>
   );
 }
 
@@ -527,6 +496,50 @@ export default function BookReader({
 
   // Mobile overflow menu
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+  // ── BGM Audio (single instance, shared across desktop + mobile buttons) ──
+  const [bgmPlaying, setBgmPlaying] = useState(false);
+  const bgmAudioRef = useRef<HTMLAudioElement | null>(null);
+  const bgmPlayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bgmRepeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const BGM_REPEAT_MS = 10 * 60 * 1000;
+
+  useEffect(() => {
+    if (!bgmUrl || bgmUrl.includes('soundcloud.com')) return;
+    const audio = new Audio(bgmUrl);
+    audio.loop = false;
+    audio.volume = 0.12;
+    bgmAudioRef.current = audio;
+    const playOnce = () => { audio.currentTime = 0; audio.play().then(() => setBgmPlaying(true)).catch(() => {}); };
+    audio.addEventListener('ended', () => setBgmPlaying(false));
+    bgmPlayTimerRef.current = setTimeout(() => {
+      playOnce();
+      bgmRepeatRef.current = setInterval(playOnce, BGM_REPEAT_MS);
+    }, 800);
+    return () => {
+      audio.pause(); audio.src = '';
+      if (bgmPlayTimerRef.current) clearTimeout(bgmPlayTimerRef.current);
+      if (bgmRepeatRef.current) clearInterval(bgmRepeatRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bgmUrl]);
+
+  const toggleBgm = useCallback(() => {
+    const audio = bgmAudioRef.current;
+    if (!audio) return;
+    if (bgmPlaying) {
+      audio.pause(); setBgmPlaying(false);
+      if (bgmRepeatRef.current) { clearInterval(bgmRepeatRef.current); bgmRepeatRef.current = null; }
+    } else {
+      audio.currentTime = 0;
+      audio.play().then(() => setBgmPlaying(true)).catch(() => {});
+      if (!bgmRepeatRef.current) {
+        bgmRepeatRef.current = setInterval(() => {
+          if (bgmAudioRef.current) { bgmAudioRef.current.currentTime = 0; bgmAudioRef.current.play().then(() => setBgmPlaying(true)).catch(() => {}); }
+        }, BGM_REPEAT_MS);
+      }
+    }
+  }, [bgmPlaying]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const toolbarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -681,7 +694,7 @@ export default function BookReader({
       setJumperValue(String(page));
       onPageChange?.(page);
       setPageAnim('none');
-    }, 150);
+    }, 175); // half of 0.35s animation — page changes at peak of flip
   }, [numPages, currentPage, onPageChange]);
 
   const isLocked = currentPage > freePages && !hasAccess;
@@ -691,10 +704,11 @@ export default function BookReader({
   const dm = darkMode;
   const btnCls = `w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm transition disabled:opacity-30 ${dm ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`;
 
+  // Page flip animation — direction aware (Arabic flips right, LTR flips left)
   const pageAnimStyle: React.CSSProperties = pageAnim === 'slide-next'
-    ? { animation: 'page-slide-out 0.15s ease-in forwards' }
+    ? { animation: `page-flip-next-${isLtr ? 'ltr' : 'rtl'} 0.35s cubic-bezier(0.4,0,0.2,1) forwards` }
     : pageAnim === 'slide-prev'
-    ? { animation: 'page-slide-in 0.15s ease-out forwards' }
+    ? { animation: `page-flip-prev-${isLtr ? 'ltr' : 'rtl'} 0.35s cubic-bezier(0.4,0,0.2,1) forwards` }
     : {};
 
   // Tap zone handler
@@ -716,7 +730,11 @@ export default function BookReader({
     }
   }, [currentPage, isLtr, goTo, resetToolbarTimer]);
 
-  // Swipe gesture handler
+  // Swipe gesture handler — direction aware
+  // Arabic (RTL): swipe LEFT (←) = go to NEXT page (pages go right-to-left)
+  //               swipe RIGHT (→) = go to PREV page
+  // English (LTR): swipe LEFT (←) = go to PREV page
+  //                swipe RIGHT (→) = go to NEXT page
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
@@ -726,9 +744,16 @@ export default function BookReader({
     const dy = e.changedTouches[0].clientY - touchStartY.current;
     if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
     resetToolbarTimer();
-    if (dx < 0) goTo(currentPage + 1, 'next');
-    else goTo(currentPage - 1, 'prev');
-  }, [currentPage, goTo, resetToolbarTimer]);
+    if (isLtr) {
+      // LTR: swipe right = next, swipe left = prev
+      if (dx > 0) goTo(currentPage + 1, 'next');
+      else goTo(currentPage - 1, 'prev');
+    } else {
+      // RTL Arabic: swipe left (←) = next page, swipe right (→) = prev page
+      if (dx < 0) goTo(currentPage + 1, 'next');
+      else goTo(currentPage - 1, 'prev');
+    }
+  }, [currentPage, isLtr, goTo, resetToolbarTimer]);
 
   return (
     <>
@@ -845,6 +870,8 @@ export default function BookReader({
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                   </svg>
                 </button>
+                {/* Music — desktop only */}
+                {bgmUrl && <AmbientMusicButton playing={bgmPlaying} onToggle={toggleBgm} dm={dm} />}
                 {/* Fullscreen */}
                 <button onClick={toggleFullscreen} aria-label={isFullscreen ? 'خروج ملء الشاشة' : 'ملء الشاشة'} className={btnCls}>
                   {isFullscreen ? (
@@ -921,7 +948,7 @@ export default function BookReader({
               </button>
 
               {/* Music */}
-              {bgmUrl && <AmbientMusicControl bgmUrl={bgmUrl} dm={dm} />}
+              {bgmUrl && <AmbientMusicButton playing={bgmPlaying} onToggle={toggleBgm} dm={dm} />}
 
               {/* Fullscreen */}
               <button onClick={toggleFullscreen} aria-label={isFullscreen ? 'خروج ملء الشاشة' : 'ملء الشاشة'} className={btnCls}>
@@ -1083,15 +1110,29 @@ export default function BookReader({
         />
       )}
 
-      {/* Page transition CSS — simple fade + slide */}
+      {/* Page transition CSS — book-like flip animation, direction-aware */}
       <style jsx global>{`
-        @keyframes page-slide-out {
-          0%   { opacity: 1; transform: translateX(0); }
-          100% { opacity: 0; transform: translateX(-16px); }
+        /* Arabic RTL: next page slides in from RIGHT, prev from LEFT */
+        @keyframes page-flip-next-rtl {
+          0%   { opacity: 1; transform: translateX(0) scale(1); }
+          40%  { opacity: 0.3; transform: translateX(40px) scale(0.97); }
+          100% { opacity: 1; transform: translateX(0) scale(1); }
         }
-        @keyframes page-slide-in {
-          0%   { opacity: 0; transform: translateX(16px); }
-          100% { opacity: 1; transform: translateX(0); }
+        @keyframes page-flip-prev-rtl {
+          0%   { opacity: 1; transform: translateX(0) scale(1); }
+          40%  { opacity: 0.3; transform: translateX(-40px) scale(0.97); }
+          100% { opacity: 1; transform: translateX(0) scale(1); }
+        }
+        /* English LTR: next page slides in from LEFT, prev from RIGHT */
+        @keyframes page-flip-next-ltr {
+          0%   { opacity: 1; transform: translateX(0) scale(1); }
+          40%  { opacity: 0.3; transform: translateX(-40px) scale(0.97); }
+          100% { opacity: 1; transform: translateX(0) scale(1); }
+        }
+        @keyframes page-flip-prev-ltr {
+          0%   { opacity: 1; transform: translateX(0) scale(1); }
+          40%  { opacity: 0.3; transform: translateX(40px) scale(0.97); }
+          100% { opacity: 1; transform: translateX(0) scale(1); }
         }
       `}</style>
     </>

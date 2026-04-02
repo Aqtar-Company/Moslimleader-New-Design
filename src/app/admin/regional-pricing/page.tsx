@@ -30,6 +30,20 @@ export default function RegionalPricingPage() {
   const [pricing, setPricing] = useState<RegionalPricing>({ ...DEFAULT_REGIONAL_PRICING });
   const [search, setSearch] = useState('');
   const [saved, setSaved] = useState<string | null>(null);
+  const [bulkUsdFactor, setBulkUsdFactor] = useState<number>(0.10);
+  const [bulkApplied, setBulkApplied] = useState(false);
+
+  function applyBulkPricing() {
+    if (!confirm(`سيتم تطبيق نسبة ${(bulkUsdFactor * 100).toFixed(0)}% من السعر المصري كسعر دولي (USD) على جميع المنتجات. هل تريد المتابعة؟`)) return;
+    const allProducts = mergeProducts();
+    allProducts.forEach(p => {
+      const usdPrice = Math.round(p.price * bulkUsdFactor * 100) / 100;
+      setProductOverride(p.id, { regionalPricing: { price_usd_manual: usdPrice } });
+    });
+    setBulkApplied(true);
+    setTimeout(() => setBulkApplied(false), 3000);
+    load();
+  }
 
   const load = useCallback(() => { setProducts(mergeProducts()); }, []);
   useEffect(() => { load(); }, [load]);
@@ -77,6 +91,42 @@ export default function RegionalPricingPage() {
       <div>
         <h1 className="text-xl font-black text-gray-900">التسعير الإقليمي</h1>
         <p className="text-sm text-gray-500 mt-0.5">تحكم في سعر كل منتج حسب المنطقة الجغرافية</p>
+      </div>
+
+      {/* Bulk pricing tool */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-4">
+        <h2 className="font-bold text-gray-900 text-sm mb-3">⚡ تطبيق التسعير الدولي على جميع المنتجات</h2>
+        <p className="text-xs text-gray-400 mb-3">تحديد نسبة تحويل السعر المصري إلى USD وتطبيقها على كل المنتجات دفعة واحدة</p>
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-semibold text-gray-600">نسبة USD:</label>
+            <select
+              value={bulkUsdFactor}
+              onChange={e => setBulkUsdFactor(+e.target.value)}
+              className="border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#F5C518]"
+            >
+              <option value={0.05}>5% (رخيص جداً)</option>
+              <option value={0.08}>8%</option>
+              <option value={0.10}>10% (افتراضي)</option>
+              <option value={0.12}>12%</option>
+              <option value={0.15}>15%</option>
+              <option value={0.20}>20%</option>
+            </select>
+          </div>
+          <div className="text-xs text-gray-400">
+            مثال: منتج 200 ج.م → ${(200 * bulkUsdFactor).toFixed(2)} USD → {(200 * bulkUsdFactor * 3.75).toFixed(2)} ريال سعودي
+          </div>
+          <button
+            onClick={applyBulkPricing}
+            className={`px-5 py-2 rounded-xl text-sm font-black transition ${
+              bulkApplied
+                ? 'bg-green-500 text-white'
+                : 'bg-[#F5C518] hover:bg-amber-400 text-gray-900'
+            }`}
+          >
+            {bulkApplied ? '✓ تم التطبيق على الكل' : 'تطبيق على جميع المنتجات'}
+          </button>
+        </div>
       </div>
 
       {/* Zone info */}

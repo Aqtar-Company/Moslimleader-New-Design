@@ -68,6 +68,17 @@ export function countryToZone(countryCode: string): PricingZone {
 // ─── Geo Detection ────────────────────────────────────────────────────────────
 
 export async function detectCountry(): Promise<string | null> {
+  // 1. Try our own server-side geo API first (uses Cloudflare headers + server-side IP lookup)
+  //    This is the most reliable method, especially on mobile where CORS can block external APIs
+  try {
+    const res = await fetch('/api/geo', { signal: AbortSignal.timeout(4000) });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.country && data.country.length === 2) return data.country as string;
+    }
+  } catch {}
+
+  // 2. Fallback: ipapi.co (client-side)
   try {
     const res = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(4000) });
     if (res.ok) {
@@ -76,6 +87,7 @@ export async function detectCountry(): Promise<string | null> {
     }
   } catch {}
 
+  // 3. Fallback: ip-api.com (client-side)
   try {
     const res = await fetch('https://ip-api.com/json/?fields=countryCode', { signal: AbortSignal.timeout(4000) });
     if (res.ok) {

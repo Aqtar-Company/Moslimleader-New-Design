@@ -24,7 +24,7 @@ function readFileAsDataURL(file: File): Promise<string> {
 
 const EMPTY_FORM = {
   slug: '', name: '', nameEn: '', shortDescription: '', shortDescriptionEn: '',
-  description: '', descriptionEn: '', price: 0, category: '',
+  description: '', descriptionEn: '', price: 0, priceUSD: 0, category: '',
   tags: [] as string[], images: [] as string[], inStock: true, weight: 0,
 };
 
@@ -34,6 +34,7 @@ export default function ProductsPage() {
   const [newCatInput, setNewCatInput] = useState('');
   const [editingPrice, setEditingPrice] = useState<string | null>(null);
   const [priceVal, setPriceVal] = useState('');
+  const [priceUSDVal, setPriceUSDVal] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -116,12 +117,26 @@ export default function ProductsPage() {
   const savePrice = async (p: MergedProduct) => {
     const val = parseFloat(priceVal);
     if (isNaN(val) || val <= 0) { setEditingPrice(null); return; }
+    const usdVal = parseFloat(priceUSDVal);
+    // Save EGP price
     await fetch(`/api/admin/products/${p.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({ price: val, isAdded: p.isAdded ?? false }),
     });
+    // Save USD price as regional pricing override
+    if (!isNaN(usdVal) && usdVal > 0) {
+      await fetch(`/api/admin/products/${p.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          regionalPricing: { price_egp_manual: val, price_usd_manual: usdVal },
+          isAdded: false,
+        }),
+      });
+    }
     setProducts(prev => prev.map(x => x.id === p.id ? { ...x, price: val } : x));
     setEditingPrice(null);
   };
@@ -137,6 +152,8 @@ export default function ProductsPage() {
 
   const startEdit = (p: MergedProduct) => {
     setEditingId(p.id);
+    // Load existing USD price from regionalPricing if available
+    const existingUSD = (p as MergedProduct & { regionalPricing?: { price_usd_manual?: number } }).regionalPricing?.price_usd_manual ?? 0;
     setForm({
       slug: p.slug,
       name: p.name,
@@ -146,6 +163,7 @@ export default function ProductsPage() {
       description: p.description,
       descriptionEn: p.descriptionEn || '',
       price: p.price,
+      priceUSD: existingUSD,
       category: p.category,
       tags: p.tags,
       images: p.images,
@@ -210,6 +228,10 @@ export default function ProductsPage() {
       tags: parsedTags,
       images: formImages,
       variants: builtVariants.length > 0 ? builtVariants : undefined,
+      regionalPricing: (form.priceUSD > 0 || form.price > 0) ? {
+        price_egp_manual: form.price > 0 ? form.price : undefined,
+        price_usd_manual: form.priceUSD > 0 ? form.priceUSD : undefined,
+      } : undefined,
     };
 
     if (editingId) {
@@ -532,14 +554,29 @@ export default function ProductsPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">السعر (EGP) *</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">سعر مصر (ج.م) *</label>
               <input
                 type="number"
                 value={form.price || ''}
                 onChange={e => setForm(f => ({ ...f, price: +e.target.value }))}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400"
                 min="0"
+                placeholder="مثال: 200"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">سعر دولي (USD) 🌍</label>
+              <input
+                type="number"
+                value={form.priceUSD || ''}
+                onChange={e => setForm(f => ({ ...f, priceUSD: +e.target.value }))}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400"
+                min="0"
+                step="0.01"
+                placeholder="مثال: 5"
+              />
+              <p className="text-xs text-gray-400 mt-1">يُحوَّل تلقائياً لعملة كل دولة</p>
             </div>
 
             <div>
@@ -668,24 +705,49 @@ export default function ProductsPage() {
                     <td className="px-4 py-3 text-gray-500 text-xs">{p.category}</td>
                     <td className="px-4 py-3">
                       {editingPrice === p.id ? (
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="number"
-                            value={priceVal}
-                            onChange={e => setPriceVal(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter') savePrice(p); if (e.key === 'Escape') setEditingPrice(null); }}
-                            autoFocus
-                            className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#F5C518]"
-                          />
-                          <button onClick={() => savePrice(p)} className="text-green-600 hover:text-green-700 font-bold text-xs">✓</button>
-                          <button onClick={() => setEditingPrice(null)} className="text-gray-400 hover:text-gray-600 text-xs">✕</button>
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-gray-500 w-8">ج.م</span>
+                            <input
+                              type="number"
+                              value={priceVal}
+                              onChange={e => setPriceVal(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') savePrice(p); if (e.key === 'Escape') setEditingPrice(null); }}
+                              autoFocus
+                              className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#F5C518]"
+                              placeholder="سعر مصر"
+                            />
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-gray-500 w-8">USD</span>
+                            <input
+                              type="number"
+                              value={priceUSDVal}
+                              onChange={e => setPriceUSDVal(e.target.value)}
+                              className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#F5C518]"
+                              placeholder="سعر دولي"
+                              step="0.01"
+                            />
+                          </div>
+                          <div className="flex gap-1">
+                            <button onClick={() => savePrice(p)} className="text-green-600 hover:text-green-700 font-bold text-xs">✓ حفظ</button>
+                            <button onClick={() => setEditingPrice(null)} className="text-gray-400 hover:text-gray-600 text-xs">✕</button>
+                          </div>
                         </div>
                       ) : (
                         <button
-                          onClick={() => { setEditingPrice(p.id); setPriceVal(p.price.toString()); }}
+                          onClick={() => {
+                            setEditingPrice(p.id);
+                            setPriceVal(p.price.toString());
+                            const existingUSD = (p as MergedProduct & { regionalPricing?: { price_usd_manual?: number } }).regionalPricing?.price_usd_manual ?? 0;
+                            setPriceUSDVal(existingUSD > 0 ? existingUSD.toString() : '');
+                          }}
                           className="font-bold text-gray-900 hover:text-[#1a1a2e] hover:underline text-xs"
                         >
-                          {p.price.toLocaleString('ar-EG')} ج
+                          <span>{p.price.toLocaleString('ar-EG')} ج.م</span>
+                          {(p as MergedProduct & { regionalPricing?: { price_usd_manual?: number } }).regionalPricing?.price_usd_manual ? (
+                            <span className="block text-gray-400 font-normal">{(p as MergedProduct & { regionalPricing?: { price_usd_manual?: number } }).regionalPricing!.price_usd_manual} $</span>
+                          ) : null}
                         </button>
                       )}
                     </td>

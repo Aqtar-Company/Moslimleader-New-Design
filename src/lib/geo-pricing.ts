@@ -123,9 +123,6 @@ export interface PriceResult {
   isManual: boolean;
 }
 
-// Fixed EGP→USD fallback factor
-const USD_FACTOR = 0.10;
-
 function smartRound(price: number): number {
   if (price >= 100) return Math.round(price);
   if (price >= 10)  return Math.round(price * 10) / 10;
@@ -140,23 +137,26 @@ export function resolvePrice(
   countryCode?: string | null,
 ): PriceResult {
   const p = pricing ?? {};
-  const egpBase = (p.price_egp_manual && p.price_egp_manual > 0) ? p.price_egp_manual : baseEgpPrice;
 
+  // مصر: استخدم سعر الجنيه اليدوي مباشرة، أو السعر الأساسي كاحتياط
   if (zone === 'egypt') {
+    const egpPrice = (p.price_egp_manual && p.price_egp_manual > 0) ? p.price_egp_manual : baseEgpPrice;
     return {
-      price: Math.round(egpBase),
+      price: Math.round(egpPrice),
       currency: 'ج.م', currencyEn: 'EGP', zone,
       isManual: !!(p.price_egp_manual && p.price_egp_manual > 0),
     };
   }
 
-  // world: get USD base first
-  const usdPrice = (p.price_usd_manual && p.price_usd_manual > 0)
-    ? p.price_usd_manual
-    : Math.round(egpBase * USD_FACTOR);
-  const isManual = !!(p.price_usd_manual && p.price_usd_manual > 0);
+  // دولي: استخدم سعر USD اليدوي فقط — بدون أي fallback
+  if (!p.price_usd_manual || p.price_usd_manual <= 0) {
+    // لا يوجد سعر USD محدد — أظهر السعر بالجنيه كاحتياط
+    return { price: Math.round(baseEgpPrice), currency: 'ج.م', currencyEn: 'EGP', zone, isManual: false };
+  }
 
-  // Convert USD → country's local currency
+  const usdPrice = p.price_usd_manual;
+
+  // حول USD → عملة الدولة
   const cc = countryCode ? COUNTRY_CURRENCIES[countryCode.toUpperCase()] : null;
   if (cc) {
     return {
@@ -164,11 +164,11 @@ export function resolvePrice(
       currency: cc.currency,
       currencyEn: cc.currencyEn,
       zone,
-      isManual,
+      isManual: true,
     };
   }
 
-  return { price: usdPrice, currency: 'USD', currencyEn: 'USD', zone, isManual };
+  return { price: usdPrice, currency: 'USD', currencyEn: 'USD', zone, isManual: true };
 }
 
 // ─── Preview helper (for admin dashboard) ─────────────────────────────────────

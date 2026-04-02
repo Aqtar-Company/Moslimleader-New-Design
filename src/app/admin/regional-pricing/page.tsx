@@ -163,7 +163,7 @@ export default function RegionalPricingPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-gray-900 text-xs leading-tight truncate">{p.name}</p>
-                    <p className="text-gray-400 text-xs mt-0.5">{p.price.toLocaleString()} ج.م أساسي</p>
+                    <p className="text-gray-400 text-xs mt-0.5">{p.price.toLocaleString()} ج.م</p>
                   </div>
                   {hasRegional && (
                     <span className="shrink-0 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">إقليمي ✓</span>
@@ -188,13 +188,13 @@ export default function RegionalPricingPage() {
               </div>
               <div>
                 <p className="font-bold text-gray-900 text-sm">{currentProduct.name}</p>
-                <p className="text-xs text-gray-400">السعر الأساسي: <span className="font-bold text-gray-700">{currentProduct.price.toLocaleString()} ج.م</span></p>
+                <p className="text-xs text-gray-400">سعر مصر: <span className="font-bold text-gray-700">{currentProduct.price.toLocaleString()} ج.م</span></p>
               </div>
             </div>
 
             {/* Manual prices */}
             <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
-              <h3 className="font-bold text-gray-900 text-sm border-b pb-2">الأسعار يدويًا (اتركها فارغة للحساب التلقائي)</h3>
+              <h3 className="font-bold text-gray-900 text-sm border-b pb-2">الأسعار المعتمدة</h3>
               <div className="grid grid-cols-1 gap-3">
                 {[
                   { label: '🇪🇬 سعر مصر (ج.م)', field: 'price_egp_manual' as const, placeholder: `${currentProduct.price} (تلقائي)` },

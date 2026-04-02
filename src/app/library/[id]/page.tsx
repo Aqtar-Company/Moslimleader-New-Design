@@ -362,20 +362,13 @@ function BookPageInner() {
                 سجّل دخولك للشراء
               </Link>
             )}
-            {/* Paper version button */}
-            {book.paperProductSlug ? (
+            {/* Paper version button — only show if book has a paper version */}
+            {book.paperProductSlug && (
               <Link
                 href={`/shop/${book.paperProductSlug}`}
                 className="block w-full bg-white hover:bg-gray-50 border-2 border-[#1a1a2e] text-[#1a1a2e] font-black py-3 rounded-xl text-center text-base transition"
               >
                 📦 اشترِ النسخة الورقية
-              </Link>
-            ) : (
-              <Link
-                href="/shop"
-                className="block w-full bg-white hover:bg-gray-50 border-2 border-[#1a1a2e] text-[#1a1a2e] font-black py-3 rounded-xl text-center text-base transition"
-              >
-                📦 تصفّح المنتجات الورقية
               </Link>
             )}
             <div className="flex justify-center gap-3 text-[11px] text-gray-400">
@@ -492,16 +485,9 @@ function BookPageInner() {
                   >
                     {user ? `رقمي — ${displayBookPrice(book)}` : 'سجّل دخولك'}
                   </Link>
-                  {book.paperProductSlug ? (
+                  {book.paperProductSlug && (
                     <Link
                       href={`/shop/${book.paperProductSlug}`}
-                      className="inline-block bg-white border-2 border-[#1a1a2e] text-[#1a1a2e] font-black text-xs px-4 py-2 rounded-xl"
-                    >
-                      📦 ورقي
-                    </Link>
-                  ) : (
-                    <Link
-                      href="/shop"
                       className="inline-block bg-white border-2 border-[#1a1a2e] text-[#1a1a2e] font-black text-xs px-4 py-2 rounded-xl"
                     >
                       📦 ورقي

@@ -59,7 +59,7 @@ interface BookSeriesData {
 }
 
 type SectionTab = 'books' | 'stories';
-type LangFilter = 'ar' | 'en' | 'fr' | 'hi' | null;
+type LangFilter = 'ar' | 'en' | 'ur' | 'id' | 'bn' | 'hi' | 'de' | 'fr' | null;
 
 const LANG_OPTIONS: { id: Exclude<LangFilter, null>; label: string; labelEn: string; flag: React.ReactNode }[] = [
   {
@@ -85,12 +85,32 @@ const LANG_OPTIONS: { id: Exclude<LangFilter, null>; label: string; labelEn: str
     ),
   },
   {
-    id: 'fr', label: 'فرنساوي', labelEn: 'French',
+    id: 'ur', label: 'اردو', labelEn: 'Urdu',
     flag: (
       <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 15" fill="none">
-        <rect width="20" height="15" rx="2" fill="#ED2939"/>
-        <rect width="7" height="15" rx="2" fill="#002395"/>
-        <rect x="7" width="6" height="15" fill="white"/>
+        <rect width="20" height="15" rx="2" fill="#01411C"/>
+        <rect width="5" height="15" rx="2" fill="white"/>
+        <circle cx="12" cy="7.5" r="3.5" fill="none" stroke="white" strokeWidth="1.2"/>
+        <circle cx="13" cy="7.5" r="3.5" fill="#01411C"/>
+        <path d="M14.5 5.5 L15.5 6" stroke="white" strokeWidth="0.8" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'id', label: 'Indonesia', labelEn: 'Indonesian',
+    flag: (
+      <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 15" fill="none">
+        <rect width="20" height="15" rx="2" fill="white"/>
+        <rect width="20" height="7.5" rx="2" fill="#CE1126"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'bn', label: 'বাংলা', labelEn: 'Bengali',
+    flag: (
+      <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 15" fill="none">
+        <rect width="20" height="15" rx="2" fill="#006A4E"/>
+        <circle cx="9" cy="7.5" r="4" fill="#F42A41"/>
       </svg>
     ),
   },
@@ -102,6 +122,26 @@ const LANG_OPTIONS: { id: Exclude<LangFilter, null>; label: string; labelEn: str
         <rect width="20" height="5" rx="2" fill="#FF9933"/>
         <rect y="5" width="20" height="5" fill="white"/>
         <circle cx="10" cy="7.5" r="2" fill="none" stroke="#000080" strokeWidth="0.8"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'de', label: 'ألماني', labelEn: 'German',
+    flag: (
+      <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 15" fill="none">
+        <rect width="20" height="15" rx="2" fill="#FFCE00"/>
+        <rect width="20" height="5" rx="2" fill="#000000"/>
+        <rect y="5" width="20" height="5" fill="#DD0000"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'fr', label: 'فرنساوي', labelEn: 'French',
+    flag: (
+      <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 15" fill="none">
+        <rect width="20" height="15" rx="2" fill="#ED2939"/>
+        <rect width="7" height="15" rx="2" fill="#002395"/>
+        <rect x="7" width="6" height="15" fill="white"/>
       </svg>
     ),
   },
@@ -507,11 +547,28 @@ export default function LibraryPage() {
                         </div>
                       )}
                       {/* Language badge */}
-                      {book.language === 'en' && (
-                        <div className="absolute top-2 left-2 bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md">EN</div>
-                      )}
-                      {book.language === 'both' && (
-                        <div className="absolute top-2 left-2 bg-purple-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md">AR/EN</div>
+                      {book.language && book.language !== 'ar' && (
+                        <div className={`absolute top-2 left-2 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md ${
+                          book.language === 'en' ? 'bg-blue-600' :
+                          book.language === 'ur' ? 'bg-emerald-700' :
+                          book.language === 'id' ? 'bg-red-600' :
+                          book.language === 'bn' ? 'bg-green-700' :
+                          book.language === 'hi' ? 'bg-orange-600' :
+                          book.language === 'de' ? 'bg-gray-800' :
+                          book.language === 'fr' ? 'bg-indigo-700' :
+                          book.language === 'both' ? 'bg-purple-600' :
+                          'bg-gray-600'
+                        }`}>
+                          {book.language === 'en' ? 'EN' :
+                           book.language === 'ur' ? 'UR' :
+                           book.language === 'id' ? 'ID' :
+                           book.language === 'bn' ? 'BN' :
+                           book.language === 'hi' ? 'HI' :
+                           book.language === 'de' ? 'DE' :
+                           book.language === 'fr' ? 'FR' :
+                           book.language === 'both' ? 'AR/EN' :
+                           book.language.toUpperCase()}
+                        </div>
                       )}
                       {/* Free preview badge */}
                       {book.freePages > 0 && (

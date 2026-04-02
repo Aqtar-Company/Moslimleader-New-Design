@@ -165,7 +165,7 @@ model Book {
   author        String?
   authorEn      String?
   category      String?
-  language      String?  @default("ar") // 'ar' | 'en' | 'both'
+  language      String?  @default("ar") // 'ar' | 'en' | 'ur' | 'id' | 'bn' | 'hi' | 'de' | 'fr' | 'both'
   section       String?  @default("books") // 'books' | 'stories'
   minAge        Int?     // null = no age restriction
   maxAge        Int?     // null = open-ended (minAge+), value = upper bound
@@ -204,7 +204,7 @@ model BookSeries {
   cover         String?  // cover image URL
   seriesPrice   Float?   // discounted price for buying the full series
   seriesPriceUSD Float?  // USD price for full series
-  language      String?  @default("ar") // 'ar' | 'en' | 'both'
+  language      String?  @default("ar") // 'ar' | 'en' | 'ur' | 'id' | 'bn' | 'hi' | 'de' | 'fr' | 'both'
   isPublished   Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

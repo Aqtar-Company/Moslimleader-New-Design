@@ -580,7 +580,7 @@ function BookPageInner() {
                             });
                           } catch {}
 
-                          // 2. Device fingerprint check (max 2 devices)
+                          // 2. Device fingerprint check (max 2 devices) — only for logged-in users
                           try {
                             const fp = await generateFingerprint();
                             const devRes = await fetch(`/api/books/${id}/device`, {
@@ -590,11 +590,16 @@ function BookPageInner() {
                               body: JSON.stringify({ fingerprint: fp }),
                             });
                             if (!devRes.ok) {
-                              const devData = await devRes.json();
-                              if (devData.error) {
-                                alert(devData.error);
-                                setTrackingDone(false);
-                                return;
+                              // 401 = not logged in (guest reading free pages) — allow
+                              if (devRes.status === 401) {
+                                // Guest user — skip device check, allow free pages
+                              } else {
+                                const devData = await devRes.json();
+                                if (devData.error) {
+                                  alert(devData.error);
+                                  setTrackingDone(false);
+                                  return;
+                                }
                               }
                             }
                           } catch {}

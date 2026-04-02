@@ -186,9 +186,6 @@ export default function ProductDetailClient({ product }: { product: Product }) {
 
             <div className="text-3xl font-black text-gray-900">
               {formatPrice(priceResult)}
-              <p className="text-xs text-gray-400 font-normal mt-1">
-                {isRtl ? 'السعر المعروض حسب المنطقة الجغرافية' : 'Price shown based on your region'}
-              </p>
             </div>
 
             <div className="flex items-center gap-2">

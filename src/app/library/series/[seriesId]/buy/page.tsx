@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
+import { useRegionalPricing } from '@/context/RegionalPricingContext';
+import { resolvePrice } from '@/lib/geo-pricing';
 
 type PayMethod = 'vodafone' | 'instapay' | 'bank';
 
@@ -32,6 +34,7 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const { addToast } = useToast();
+  const { zone, countryCode, formatPrice } = useRegionalPricing();
 
   useEffect(() => {
     params.then(p => setSeriesId(p.seriesId));
@@ -56,7 +59,15 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
   }, [seriesId, user, isLoading, router]);
 
   const payLabel = payMethod === 'vodafone' ? 'Vodafone Cash' : payMethod === 'instapay' ? 'InstaPay' : 'تحويل بنكي';
-  const priceStr = series ? `${Math.round(series.seriesPrice)} ج.م` : '';
+  
+  // Calculate regional price
+  const priceResult = series ? resolvePrice(
+    series.seriesPrice,
+    zone,
+    { price_egp_manual: series.seriesPrice, price_usd_manual: series.seriesPriceUSD ?? undefined },
+    countryCode
+  ) : null;
+  const priceStr = priceResult ? formatPrice(priceResult) : '';
 
   async function handleSubmit() {
     if (!series || !user) return;
@@ -70,8 +81,8 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
         body: JSON.stringify({
           orderId: newOrderId,
           paymentMethod: payLabel,
-          price: series.seriesPrice,
-          currency: 'EGP',
+          price: priceResult?.price ?? series.seriesPrice,
+          currency: priceResult?.currencyEn ?? 'EGP',
         }),
       });
 

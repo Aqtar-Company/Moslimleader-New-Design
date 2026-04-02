@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
+import { useRegionalPricing } from '@/context/RegionalPricingContext';
+import { resolvePrice } from '@/lib/geo-pricing';
 
 type PayMethod = 'vodafone' | 'instapay' | 'bank';
 
@@ -32,6 +34,7 @@ export default function BookBuyPage({ params }: { params: Promise<{ id: string }
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const { addToast } = useToast();
+  const { zone, countryCode, formatPrice } = useRegionalPricing();
 
   useEffect(() => {
     params.then(p => setId(p.id));
@@ -55,9 +58,14 @@ export default function BookBuyPage({ params }: { params: Promise<{ id: string }
       .finally(() => setLoading(false));
   }, [id, user, isLoading, router]);
 
-  const priceStr = book
-    ? `${Math.round(book.price)} ج.م`
-    : '';
+  // Calculate regional price
+  const priceResult = book ? resolvePrice(
+    book.price,
+    zone,
+    { price_usd_manual: book.priceUSD ?? undefined },
+    countryCode
+  ) : null;
+  const priceStr = priceResult ? formatPrice(priceResult) : '';
 
   const payLabel = payMethod === 'vodafone' ? 'Vodafone Cash' : payMethod === 'instapay' ? 'InstaPay' : 'تحويل بنكي';
 
@@ -73,8 +81,8 @@ export default function BookBuyPage({ params }: { params: Promise<{ id: string }
         body: JSON.stringify({
           orderId: newOrderId,
           paymentMethod: payLabel,
-          price: book.price,
-          currency: 'EGP',
+          price: priceResult?.price ?? book.price,
+          currency: priceResult?.currencyEn ?? 'EGP',
         }),
       });
 

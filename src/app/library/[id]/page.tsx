@@ -697,9 +697,7 @@ function BookPageInner() {
                 className="shrink-0 flex flex-col items-center bg-[#F5C518] hover:bg-amber-400 active:bg-amber-500 text-[#1a1a2e] font-black rounded-2xl px-4 py-2.5 transition shadow-lg shadow-black/20 text-center"
               >
                 <span className="text-lg leading-tight">
-                  {seriesPriceUSD && zone !== 'egypt'
-                    ? formatPrice(resolvePrice(seriesPrice ?? 0, zone, { price_egp_manual: seriesPrice ?? 0, price_usd_manual: seriesPriceUSD }, countryCode))
-                    : `${seriesPrice} ج.م`}
+                  {formatPrice(resolvePrice(seriesPrice ?? 0, zone, { price_egp_manual: seriesPrice ?? 0, price_usd_manual: seriesPriceUSD ?? undefined }, countryCode))}
                 </span>
                 <span className="text-[10px] font-bold mt-0.5">شراء السلسلة كاملة →</span>
               </Link>

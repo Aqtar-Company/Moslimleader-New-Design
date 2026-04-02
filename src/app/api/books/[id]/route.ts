@@ -69,7 +69,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             seriesPriceUSD: true,
             books: {
               where: { isPublished: true },
-              select: { id: true, title: true, titleEn: true, cover: true, seriesOrder: true },
+              select: { id: true, title: true, titleEn: true, cover: true, seriesOrder: true, language: true },
               orderBy: { seriesOrder: 'asc' },
             },
           },
@@ -79,8 +79,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           seriesName = series.name;
           seriesNameEn = series.nameEn ?? null;
           seriesSeriesId = series.id;
-          seriesPrice = series.seriesPrice ?? null;
-          seriesPriceUSD = series.seriesPriceUSD ?? null;
+          // Calculate series price based on current book language
+          const currentLang = (book as any).language || 'ar';
+          const totalBooks = series.books.length;
+          const filteredBooks = series.books.filter((b: any) => b.language === currentLang || !b.language);
+          const ratio = totalBooks > 0 && filteredBooks.length > 0 ? filteredBooks.length / totalBooks : 1;
+          const fullPrice = series.seriesPrice ?? null;
+          const fullPriceUSD = series.seriesPriceUSD ?? null;
+          seriesPrice = fullPrice ? Math.round(fullPrice * ratio) : null;
+          seriesPriceUSD = fullPriceUSD ? Math.round(fullPriceUSD * ratio * 2) / 2 : null;
         }
       } catch {
         // series table may not exist yet

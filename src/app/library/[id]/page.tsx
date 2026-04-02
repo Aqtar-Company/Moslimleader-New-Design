@@ -104,6 +104,7 @@ interface SeriesBookNav {
   titleEn?: string | null;
   cover: string;
   seriesOrder?: number | null;
+  language?: string | null;
 }
 
 type MobileTab = 'reader' | 'info';
@@ -145,6 +146,7 @@ function BookPageInner() {
   const [lastPage, setLastPage] = useState(1);
   const [isVerified, setIsVerified] = useState(false);
   const [trackingDone, setTrackingDone] = useState(false);
+  const [copyrightAgreed, setCopyrightAgreed] = useState(false);
   const [viewCount, setViewCount] = useState<number | null>(null);
   const [buyCount, setBuyCount] = useState<number | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -573,11 +575,21 @@ function BookPageInner() {
                     <h3 className="text-xl font-black text-gray-800 mb-1">تحقق سريع</h3>
                     <p className="text-sm text-gray-500 mb-5">أثبت أنك إنسان وليس برنامج آلي</p>
                     {/* ── Copyright warning — large prominent box ── */}
-                    <div className="mb-6 p-5 bg-amber-50 border-2 border-amber-400 rounded-2xl text-sm text-amber-900 text-right leading-relaxed w-full max-w-md shadow-md">
+                    <div className="mb-4 p-5 bg-amber-50 border-2 border-amber-400 rounded-2xl text-sm text-amber-900 text-right leading-relaxed w-full max-w-md shadow-md">
                       <p className="font-black text-base mb-2">⚠️ تنبيه قانوني: يتم تسجيل بياناتك</p>
                       <p className="leading-7">عند فتح هذا الكتاب يقوم النظام بتسجيل <strong>عنوان IP الخاص بك</strong>، نوع جهازك، وموقعك الجغرافي بشكل تلقائي. أي انتهاك لحقوق الملكية الفكرية — كالنسخ أو التوزيع غير المصرح به — سيُستخدم كدليل قانوني في المحاكم.</p>
                     </div>
-                    <Turnstile
+                    {/* ── Checkbox agreement ── */}
+                    <label className="flex items-center gap-3 mb-5 cursor-pointer select-none w-full max-w-md">
+                      <input
+                        type="checkbox"
+                        checked={copyrightAgreed}
+                        onChange={e => setCopyrightAgreed(e.target.checked)}
+                        className="w-5 h-5 accent-amber-500 rounded cursor-pointer flex-shrink-0"
+                      />
+                      <span className="text-sm text-gray-700 text-right">قرأت التنبيه وأوافق على شروط الاستخدام</span>
+                    </label>
+                    {copyrightAgreed && <Turnstile
                       siteKey="0x4AAAAAACzKEGf-IQ39WfSB"
                       onSuccess={async (token) => {
                         if (token && !trackingDone) {
@@ -618,7 +630,7 @@ function BookPageInner() {
                         }
                       }}
                       options={{ language: 'ar' }}
-                    />
+                    />}
                     <p className="text-xs text-gray-400 mt-4 flex items-center gap-1">
                       <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
                       محمي بواسطة Cloudflare Turnstile
@@ -670,13 +682,13 @@ function BookPageInner() {
           <div className="bg-gradient-to-r from-[#1a1a2e] to-[#16213e] px-5 py-4 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[#F5C518] text-xs font-bold uppercase tracking-wider">
-                {(isEn && seriesNameEn) ? 'Series' : 'سلسلة'} • {isEn ? `${seriesBooks.length} stories` : `${seriesBooks.length} قصة`}
+                {(isEn && seriesNameEn) ? 'Series' : 'سلسلة'} • {isEn ? `${seriesBooks.filter(sb => !sb.language || sb.language === (book as any).language || (book as any).language === 'both').length} stories` : `${seriesBooks.filter(sb => !sb.language || sb.language === (book as any).language || (book as any).language === 'both').length} قصة`}
               </p>
               <p className="text-white font-black text-sm truncate">
                 {(isEn && seriesNameEn) ? seriesNameEn : seriesName}
               </p>
               <p className="text-white/40 text-xs mt-0.5">
-                {isEn ? `Part ${book.seriesOrder} of ${seriesBooks.length}` : `الجزء ${book.seriesOrder} من ${seriesBooks.length}`}
+                {isEn ? `Part ${book.seriesOrder} of ${seriesBooks.filter(sb => !sb.language || sb.language === (book as any).language || (book as any).language === 'both').length}` : `الجزء ${book.seriesOrder} من ${seriesBooks.filter(sb => !sb.language || sb.language === (book as any).language || (book as any).language === 'both').length}`}
               </p>
             </div>
             {seriesPrice && seriesSeriesId && (
@@ -685,7 +697,9 @@ function BookPageInner() {
                 className="shrink-0 flex flex-col items-center bg-[#F5C518] hover:bg-amber-400 active:bg-amber-500 text-[#1a1a2e] font-black rounded-2xl px-4 py-2.5 transition shadow-lg shadow-black/20 text-center"
               >
                 <span className="text-lg leading-tight">
-                  {seriesPriceUSD ? `$${seriesPriceUSD}` : `${seriesPrice} ج.م`}
+                  {seriesPriceUSD && zone !== 'egypt'
+                    ? formatPrice(resolvePrice(seriesPrice ?? 0, zone, { price_egp_manual: seriesPrice ?? 0, price_usd_manual: seriesPriceUSD }, countryCode))
+                    : `${seriesPrice} ج.م`}
                 </span>
                 <span className="text-[10px] font-bold mt-0.5">شراء السلسلة كاملة →</span>
               </Link>
@@ -693,7 +707,7 @@ function BookPageInner() {
           </div>
           <div className="p-4">
             <div className="flex gap-3 overflow-x-auto pb-1">
-              {seriesBooks.map((sb) => {
+              {seriesBooks.filter(sb => !sb.language || sb.language === (book as any).language || (book as any).language === 'both').map((sb) => {
                 const isCurrent = sb.id === id;
                 const sbTitle = (isEn && sb.titleEn) ? sb.titleEn : sb.title;
                 return (
@@ -727,9 +741,10 @@ function BookPageInner() {
             </div>
             {/* Prev / Next buttons */}
             {(() => {
-              const currentIdx = seriesBooks.findIndex(sb => sb.id === id);
-              const prev = currentIdx > 0 ? seriesBooks[currentIdx - 1] : null;
-              const next = currentIdx < seriesBooks.length - 1 ? seriesBooks[currentIdx + 1] : null;
+              const filteredSeries = seriesBooks.filter(sb => !sb.language || sb.language === (book as any).language || (book as any).language === 'both');
+              const currentIdx = filteredSeries.findIndex(sb => sb.id === id);
+              const prev = currentIdx > 0 ? filteredSeries[currentIdx - 1] : null;
+              const next = currentIdx < filteredSeries.length - 1 ? filteredSeries[currentIdx + 1] : null;
               return (prev || next) ? (
                 <div className="flex gap-3 mt-4 pt-3 border-t border-gray-100">
                   {prev && (

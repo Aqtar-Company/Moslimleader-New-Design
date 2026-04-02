@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useLang } from '@/context/LanguageContext';
 import { formatAgeLabel } from '@/lib/book-age';
+import { useRegionalPricing } from '@/context/RegionalPricingContext';
+import { resolvePrice } from '@/lib/geo-pricing';
 
 interface Book {
   id: string;
@@ -19,6 +21,7 @@ interface Book {
   language?: string;
   section?: string; // 'books' | 'stories'
   price: number;
+  priceUSD?: number;
   freePages: number;
   totalPages: number;
   minAge?: number | null;
@@ -173,6 +176,14 @@ const TABS: { id: SectionTab; ar: string; en: string; icon: React.ReactNode }[] 
 export default function LibraryPage() {
   const { lang } = useLang();
   const isEn = lang === 'en';
+  const { zone, countryCode, formatPrice } = useRegionalPricing();
+
+  // Helper: resolve and format book price based on user region
+  const getBookPrice = (book: { price: number; priceUSD?: number }) => {
+    if (book.price === 0) return isEn ? 'Free' : 'مجاني';
+    const pricing = book.priceUSD ? { price_usd_manual: book.priceUSD } : null;
+    return formatPrice(resolvePrice(book.price, zone, pricing, countryCode));
+  };
 
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
@@ -451,9 +462,7 @@ export default function LibraryPage() {
                             <div className="shrink-0 text-right">
                               <p className="text-gray-400 text-xs">{isEn ? 'Full series' : 'السلسلة كاملة'}</p>
                               <p className="text-[#F5C518] font-black text-lg">
-                                {isEn && series.seriesPriceUSD
-                                  ? `$${series.seriesPriceUSD}`
-                                  : `${series.seriesPrice} ${isEn ? 'EGP' : 'ج.م'}`}
+                                {formatPrice(resolvePrice(series.seriesPrice ?? 0, zone, { price_egp_manual: series.seriesPrice, price_usd_manual: series.seriesPriceUSD }, countryCode))}
                               </p>
                             </div>
                           )}
@@ -478,11 +487,7 @@ export default function LibraryPage() {
                                       {isEn && b.titleEn ? b.titleEn : b.title}
                                     </p>
                                     <p className="text-[#F5C518] font-black text-xs mt-1">
-                                      {b.price === 0
-                                        ? (isEn ? 'Free' : 'مجاني')
-                                        : isEn && b.priceUSD
-                                          ? `$${b.priceUSD}`
-                                          : `${b.price} ${isEn ? 'EGP' : 'ج.م'}`}
+                                      {getBookPrice(b)}
                                     </p>
                                   </div>
                                 </div>
@@ -513,7 +518,7 @@ export default function LibraryPage() {
                               <h3 className="font-black text-gray-900 text-sm leading-tight line-clamp-2">{getBookTitle(book)}</h3>
                               <div className="mt-auto pt-2">
                                 <span className="text-[#F5C518] font-black text-sm">
-                                  {book.price === 0 ? (isEn ? 'Free' : 'مجاني') : `${book.price} ${isEn ? 'EGP' : 'ج.م'}`}
+                                  {getBookPrice(book)}
                                 </span>
                               </div>
                             </div>
@@ -592,9 +597,7 @@ export default function LibraryPage() {
                       )}
                       <div className="mt-auto pt-2 flex items-center justify-between">
                         <span className="text-[#F5C518] font-black text-sm">
-                          {book.price === 0
-                            ? (isEn ? 'Free' : 'مجاني')
-                            : `${book.price.toLocaleString(isEn ? 'en-EG' : 'ar-EG')} ${isEn ? 'EGP' : 'ج.م'}`}
+                          {getBookPrice(book)}
                         </span>
                         <span className="text-gray-400 text-xs flex items-center gap-1">
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">

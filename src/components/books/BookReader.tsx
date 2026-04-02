@@ -15,6 +15,7 @@ interface BookReaderProps {
   enableForensic?: boolean;
   allowQuoteShare?: boolean;
   price: number;
+  priceDisplay?: string; // formatted regional price string e.g. "3.75 ﷼" or "150 ج.م"
   initialPage?: number;
   onPageChange?: (page: number) => void;
   bookTitle?: string;
@@ -94,7 +95,7 @@ function WatermarkOverlay({ text }: { text: string }) {
 }
 
 // ── Lock Overlay ──────────────────────────────────────────────────────────────
-function LockOverlay({ price, bookId }: { price: number; bookId: string }) {
+function LockOverlay({ price, priceDisplay, bookId }: { price: number; priceDisplay?: string; bookId: string }) {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center z-20"
       style={{ background: 'linear-gradient(to bottom, transparent 0%, rgba(26,26,46,0.97) 25%, #1a1a2e 100%)' }}>
@@ -107,8 +108,12 @@ function LockOverlay({ price, bookId }: { price: number; bookId: string }) {
         <h3 className="text-white font-black text-xl mb-2">أكمل رحلة القراءة</h3>
         <p className="text-gray-400 text-sm mb-5 leading-relaxed">انتهت صفحاتك المجانية — احصل على الكتاب كاملاً واستمر في التعلّم</p>
         <div className="flex items-baseline justify-center gap-1 mb-5">
-          <span className="text-[#F5C518] font-black text-4xl">{price.toLocaleString('ar-EG')}</span>
-          <span className="text-gray-400 text-sm">ج.م</span>
+          <span className="text-[#F5C518] font-black text-4xl">
+            {priceDisplay ? priceDisplay.split(' ')[0] : price.toLocaleString('ar-EG')}
+          </span>
+          <span className="text-gray-400 text-sm">
+            {priceDisplay ? priceDisplay.split(' ').slice(1).join(' ') : 'ج.م'}
+          </span>
         </div>
         <a href={`/library/${bookId}/buy`}
           className="block w-full bg-[#F5C518] hover:bg-amber-400 active:bg-amber-500 text-[#1a1a2e] font-black py-4 rounded-2xl text-base transition text-center shadow-lg shadow-amber-500/20">
@@ -460,7 +465,7 @@ function AmbientMusicControl({ bgmUrl, dm }: { bgmUrl: string; dm: boolean }) {
 // ── Main BookReader ───────────────────────────────────────────────────────────
 export default function BookReader({
   bookId, freePages, hasAccess, watermarkText, enableForensic = true,
-  allowQuoteShare = true, price, initialPage = 1, onPageChange,
+  allowQuoteShare = true, price, priceDisplay, initialPage = 1, onPageChange,
   bookTitle = '', coverUrl = '', bookLanguage = 'ar',
   bgmUrl, promoVideoUrl,
 }: BookReaderProps) {
@@ -954,7 +959,7 @@ export default function BookReader({
             {isLocked && (
               <div style={{ width: pageWidth, height: Math.round(pageWidth * 1.41) }}
                 className="relative rounded-xl overflow-hidden bg-[#1a1a2e]">
-                <LockOverlay price={price} bookId={bookId} />
+                <LockOverlay price={price} priceDisplay={priceDisplay} bookId={bookId} />
               </div>
             )}
           </div>

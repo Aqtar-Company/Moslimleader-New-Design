@@ -126,13 +126,16 @@ function BookPageInner() {
   const { id } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const { user } = useAuth();
-  const { zone, countryCode } = useRegionalPricing();
+  const { zone, countryCode, formatPrice } = useRegionalPricing();
 
   // Resolve book price based on user's region
   const resolvedBookPrice = (book: BookData) => {
     const pricing = book.priceUSD ? { price_usd_manual: book.priceUSD } : null;
     return resolvePrice(book.price, zone, pricing, countryCode);
   };
+
+  // Format book price for display using the shared formatter
+  const displayBookPrice = (book: BookData) => formatPrice(resolvedBookPrice(book));
 
   const [book, setBook] = useState<BookData | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
@@ -339,7 +342,7 @@ function BookPageInner() {
             <div className="text-center">
               <p className="text-gray-400 text-xs mb-1">سعر النسخة الرقمية</p>
               <p className="font-black text-[#1a1a2e] text-3xl">
-                {(() => { const r = resolvedBookPrice(book); return `${r.price % 1 === 0 ? r.price : r.price.toFixed(2)} ${r.currency}`; })()}
+                {displayBookPrice(book)}
               </p>
             </div>
             {user ? (
@@ -485,7 +488,7 @@ function BookPageInner() {
                     href={user ? `/library/${id}/buy` : `/auth?redirect=/library/${id}`}
                     className="inline-block bg-[#F5C518] text-[#1a1a2e] font-black text-xs px-4 py-2 rounded-xl"
                   >
-                    {user ? (() => { const r = resolvedBookPrice(book); return `رقمي — ${r.price % 1 === 0 ? r.price : r.price.toFixed(2)} ${r.currency}`; })() : 'سجّل دخولك'}
+                    {user ? `رقمي — ${displayBookPrice(book)}` : 'سجّل دخولك'}
                   </Link>
                   {book.paperProductSlug ? (
                     <Link
@@ -631,6 +634,7 @@ function BookPageInner() {
                     enableForensic={book.enableForensic}
                     allowQuoteShare={book.allowQuoteShare}
                     price={book.price}
+                    priceDisplay={displayBookPrice(book)}
                     initialPage={lastPage}
                     onPageChange={saveProgress}
                     bookTitle={book.title}

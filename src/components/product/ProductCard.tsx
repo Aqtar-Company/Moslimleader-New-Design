@@ -31,8 +31,9 @@ export default function ProductCard({ product }: { product: Product }) {
           src={product.images[0]}
           alt={displayName}
           fill
+          sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          quality={75}
           className="object-cover hover:scale-105 transition-transform duration-300"
-          unoptimized
         />
         {!product.inStock && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">

@@ -34,9 +34,10 @@ function HeroSlideshow() {
           alt={img.alt}
           fill
           priority={i === 0}
+          sizes="100vw"
+          quality={85}
           className="object-cover object-center transition-opacity duration-1000"
           style={{ opacity: i === current ? 1 : 0, zIndex: 1 }}
-          unoptimized
         />
       ))}
 

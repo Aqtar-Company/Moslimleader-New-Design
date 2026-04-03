@@ -509,7 +509,14 @@ export default function LibraryPage() {
                           <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-300 h-full flex flex-col">
                             <div className="relative aspect-[2/3] bg-gradient-to-br from-[#1a1a2e] to-[#16213e] overflow-hidden shrink-0">
                               {book.cover ? (
-                                <Image src={book.cover} alt={getBookTitle(book)} fill className="object-cover group-hover:scale-105 transition-transform duration-500" unoptimized />
+                                <Image
+                                  src={book.cover}
+                                  alt={getBookTitle(book)}
+                                  fill
+                                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                                  quality={80}
+                                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                />
                               ) : (
                                 <div className="flex items-center justify-center h-full text-white/30 text-4xl">📖</div>
                               )}
@@ -541,8 +548,9 @@ export default function LibraryPage() {
                           src={book.cover}
                           alt={getBookTitle(book)}
                           fill
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                          quality={80}
                           className="object-cover group-hover:scale-105 transition-transform duration-500"
-                          unoptimized
                         />
                       ) : (
                         <div className="flex items-center justify-center h-full">

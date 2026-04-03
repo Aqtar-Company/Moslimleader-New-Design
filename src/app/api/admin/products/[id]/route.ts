@@ -18,7 +18,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const { id } = await params;
     const body = await req.json();
-    const { isAdded, ...data } = body;
+    const { isAdded, regionalPricing, ...data } = body;
+
+    // Convert numeric fields if present
+    if (data.price !== undefined) data.price = Number(data.price);
+    if (data.priceUsd !== undefined) data.priceUsd = Number(data.priceUsd);
+    if (data.weight !== undefined) data.weight = Number(data.weight);
 
     if (isAdded) {
       // Update DB product

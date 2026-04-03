@@ -31,6 +31,7 @@ export const products: Product[] = [
   <li>Electronic buzzer</li>
 </ul>`,
     price: 230,
+    priceUsd: 23,
     category: 'ألعاب تعليمية',
     tags: ['لعبة', 'صيام', 'رمضان', 'تربوية'],
     images: [
@@ -78,6 +79,7 @@ export const products: Product[] = [
   <li>Level star stickers</li>
 </ul>`,
     price: 320,
+    priceUsd: 32,
     category: 'ألعاب تعليمية',
     tags: ['قيادة', 'تربية', 'شخصية'],
     images: [
@@ -122,6 +124,7 @@ export const products: Product[] = [
   <li>Moslim Leader badge</li>
 </ul>`,
     price: 230,
+    priceUsd: 23,
     category: 'ألعاب تعليمية',
     tags: ['قيادة', 'تربية', 'تعليم'],
     images: [
@@ -167,6 +170,7 @@ export const products: Product[] = [
 </ul>
 <p><strong>Apps are free on Google Play</strong></p>`,
     price: 250,
+    priceUsd: 25,
     category: 'ألعاب تعليمية',
     tags: ['صلاة', 'حج', 'تعليم', 'AR'],
     images: [
@@ -206,6 +210,7 @@ export const products: Product[] = [
   <li>6 cardboard puzzle boards (15 × 15 cm)</li>
 </ul>`,
     price: 160,
+    priceUsd: 16,
     category: 'ألعاب تعليمية',
     tags: ['بازل', 'أولاد', 'تعليم'],
     images: [
@@ -240,6 +245,7 @@ export const products: Product[] = [
   <li>6 cardboard puzzle boards (15 × 15 cm)</li>
 </ul>`,
     price: 160,
+    priceUsd: 16,
     category: 'ألعاب تعليمية',
     tags: ['بازل', 'بنات', 'تعليم'],
     images: [
@@ -434,6 +440,7 @@ export const products: Product[] = [
   <li>Interior: 4-color print</li>
 </ul>`,
     price: 160,
+    priceUsd: 16,
     category: 'كتب',
     tags: ['حديث', 'شبهات', 'قصص', 'إنفوجرافيك'],
     images: [
@@ -632,6 +639,7 @@ export const products: Product[] = [
   <li>Metal spiral binding</li>
 </ul>`,
     price: 160,
+    priceUsd: 16,
     category: 'مفكرات',
     tags: ['مفكرة', 'أطفال', 'تنظيم', 'عبادات'],
     images: [
@@ -677,6 +685,7 @@ export const products: Product[] = [
   <li>Metal spiral binding</li>
 </ul>`,
     price: 160,
+    priceUsd: 16,
     category: 'مفكرات',
     tags: ['مفكرة', 'كبار', 'تنظيم', 'عبادات'],
     images: [

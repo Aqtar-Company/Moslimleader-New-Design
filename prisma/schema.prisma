@@ -38,6 +38,7 @@ model Product {
   description        String   @db.LongText
   descriptionEn      String?  @db.LongText
   price              Float
+  priceUsd           Float    @default(0)
   category           String
   subcategory        String?
   variants           Json?

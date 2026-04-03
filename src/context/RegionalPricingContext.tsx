@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { detectCountry, countryToZone, resolvePrice, PricingZone, PriceResult, ZONES, ZoneInfo, COUNTRY_CURRENCIES } from '@/lib/geo-pricing';
-import { getProductOverrides } from '@/lib/admin-storage';
 import { Product } from '@/types';
 import { CartItem } from '@/types';
 
@@ -32,11 +31,10 @@ export function RegionalPricingProvider({ children }: { children: ReactNode }) {
   const [isDetecting, setIsDetecting] = useState(true);
 
   useEffect(() => {
-    // Check saved preference — only use cache if it was set manually by user OR is fresh (< 6h)
     try {
       const saved = localStorage.getItem(COUNTRY_STORAGE_KEY);
       const savedTs = localStorage.getItem(COUNTRY_STORAGE_TIMESTAMP_KEY);
-      const isManual = !savedTs; // no timestamp = manually set by user, respect it
+      const isManual = !savedTs;
       const isFresh = savedTs && (Date.now() - parseInt(savedTs, 10)) < CACHE_TTL_MS;
       if (saved && (isManual || isFresh)) {
         setCountryCodeState(saved);
@@ -46,13 +44,11 @@ export function RegionalPricingProvider({ children }: { children: ReactNode }) {
       }
     } catch {}
 
-    // Auto-detect from IP (server-side API first, then client-side fallbacks)
     detectCountry().then(code => {
       if (code) {
         setCountryCodeState(code);
         setZoneState(countryToZone(code));
         setOriginCountryCode(code);
-        // Cache with timestamp so it expires after TTL
         try {
           localStorage.setItem(COUNTRY_STORAGE_KEY, code);
           localStorage.setItem(COUNTRY_STORAGE_TIMESTAMP_KEY, Date.now().toString());
@@ -75,7 +71,6 @@ export function RegionalPricingProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, []);
 
-  // Kept for backward compatibility
   const setZone = useCallback((z: PricingZone) => {
     setZoneState(z);
     if (z === 'egypt') {
@@ -85,13 +80,8 @@ export function RegionalPricingProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const getProductPrice = useCallback((product: Product): PriceResult => {
-    try {
-      const overrides = getProductOverrides();
-      const regionalPricing = overrides[product.id]?.regionalPricing ?? null;
-      return resolvePrice(product.price, zone, regionalPricing, countryCode);
-    } catch {
-      return resolvePrice(product.price, zone, null, countryCode);
-    }
+    // Directly use product.price (EGP) and product.priceUsd (USD)
+    return resolvePrice(product.price, product.priceUsd || 0, zone, countryCode);
   }, [zone, countryCode]);
 
   const formatPrice = useCallback((result: PriceResult): string => {
@@ -99,7 +89,6 @@ export function RegionalPricingProvider({ children }: { children: ReactNode }) {
     return `${num} ${result.currency}`;
   }, []);
 
-  // Build a dynamic zoneInfo reflecting the current country's currency
   const zoneInfo: ZoneInfo = zone === 'egypt'
     ? ZONES.egypt
     : countryCode && COUNTRY_CURRENCIES[countryCode]

@@ -24,7 +24,8 @@ export interface Product {
   shortDescriptionEn?: string;
   description: string;
   descriptionEn?: string;
-  price: number;
+  price: number; // EGP price
+  priceUsd: number; // USD price
   category: string;
   subcategory?: string;
   variants?: ProductVariant[]; // selectable models (colors, shapes, etc.)

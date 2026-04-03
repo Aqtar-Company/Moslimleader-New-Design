@@ -51,10 +51,10 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { slug, name, nameEn, shortDescription, shortDescriptionEn,
-            description, descriptionEn, price, category, subcategory,
-            variants, tags, images, inStock, weight, regionalPricing } = body;
+            description, descriptionEn, price, priceUsd, category, subcategory,
+            variants, tags, images, inStock, weight } = body;
 
-    if (!slug || !name || !price || !category) {
+    if (!slug || !name || price === undefined || !category) {
       return NextResponse.json({ error: 'الحقول المطلوبة: slug, name, price, category' }, { status: 400 });
     }
 
@@ -62,11 +62,13 @@ export async function POST(req: NextRequest) {
       data: {
         slug, name, nameEn, shortDescription: shortDescription || '',
         shortDescriptionEn, description: description || '',
-        descriptionEn, price: Number(price), category,
+        descriptionEn, 
+        price: Number(price), 
+        priceUsd: priceUsd !== undefined ? Number(priceUsd) : 0,
+        category,
         subcategory, variants: variants ?? null,
         tags: tags ?? [], images: images ?? [],
         inStock: inStock !== false, weight: weight ?? 0,
-        regionalPricing: regionalPricing ?? null,
         source: 'admin',
         updatedAt: new Date(),
       },

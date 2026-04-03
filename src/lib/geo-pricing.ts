@@ -68,8 +68,6 @@ export function countryToZone(countryCode: string): PricingZone {
 // ─── Geo Detection ────────────────────────────────────────────────────────────
 
 export async function detectCountry(): Promise<string | null> {
-  // Run all sources IN PARALLEL — return the first successful result
-  // Max wait: 2000ms total (not 12+ seconds sequentially)
   const tryFetch = async (
     url: string,
     extract: (d: Record<string, unknown>) => string | null
@@ -82,8 +80,6 @@ export async function detectCountry(): Promise<string | null> {
     } catch { return null; }
   };
 
-  // Promise.any returns the first resolved (non-null) result
-  // If all fail, returns null
   try {
     const result = await Promise.any([
       tryFetch('/api/geo',
@@ -107,15 +103,6 @@ export async function detectZone(): Promise<PricingZone> {
   return code ? countryToZone(code) : 'egypt';
 }
 
-// ─── Regional Pricing Config ──────────────────────────────────────────────────
-
-export interface RegionalPricing {
-  price_egp_manual?: number;
-  price_usd_manual?: number;
-}
-
-export const DEFAULT_REGIONAL_PRICING: RegionalPricing = {};
-
 // ─── Price Resolution ─────────────────────────────────────────────────────────
 
 export interface PriceResult {
@@ -123,39 +110,28 @@ export interface PriceResult {
   currency: string;
   currencyEn: string;
   zone: PricingZone;
-  isManual: boolean;
 }
 
 function smartRound(price: number): number {
-  // Always round to nearest whole number for clean display
   return Math.round(price);
 }
 
 export function resolvePrice(
   baseEgpPrice: number,
+  baseUsdPrice: number,
   zone: PricingZone,
-  pricing: RegionalPricing | null | undefined,
   countryCode?: string | null,
 ): PriceResult {
-  const p = pricing ?? {};
-
-  // مصر: استخدم سعر الجنيه اليدوي مباشرة، أو السعر الأساسي كاحتياط
+  // مصر: استخدم السعر بالجنيه مباشرة
   if (zone === 'egypt') {
-    const egpPrice = (p.price_egp_manual && p.price_egp_manual > 0) ? p.price_egp_manual : baseEgpPrice;
     return {
-      price: Math.round(egpPrice),
+      price: Math.round(baseEgpPrice),
       currency: 'ج.م', currencyEn: 'EGP', zone,
-      isManual: !!(p.price_egp_manual && p.price_egp_manual > 0),
     };
   }
 
-  // دولي: استخدم سعر USD اليدوي فقط — بدون أي fallback
-  if (!p.price_usd_manual || p.price_usd_manual <= 0) {
-    // لا يوجد سعر USD محدد — أظهر السعر بالجنيه كاحتياط
-    return { price: Math.round(baseEgpPrice), currency: 'ج.م', currencyEn: 'EGP', zone, isManual: false };
-  }
-
-  const usdPrice = p.price_usd_manual;
+  // دولي: استخدم السعر بالدولار
+  const usdPrice = baseUsdPrice > 0 ? baseUsdPrice : (baseEgpPrice * 0.10); // fallback بسيط لو الدولار صفر
 
   // حول USD → عملة الدولة
   const cc = countryCode ? COUNTRY_CURRENCIES[countryCode.toUpperCase()] : null;
@@ -165,21 +141,8 @@ export function resolvePrice(
       currency: cc.currency,
       currencyEn: cc.currencyEn,
       zone,
-      isManual: true,
     };
   }
 
-  return { price: usdPrice, currency: 'USD', currencyEn: 'USD', zone, isManual: true };
-}
-
-// ─── Preview helper (for admin dashboard) ─────────────────────────────────────
-
-export function previewAllZones(
-  baseEgpPrice: number,
-  pricing: RegionalPricing,
-): Record<PricingZone, PriceResult> {
-  return {
-    egypt: resolvePrice(baseEgpPrice, 'egypt', pricing),
-    world: resolvePrice(baseEgpPrice, 'world', pricing),
-  };
+  return { price: usdPrice, currency: 'USD', currencyEn: 'USD', zone };
 }

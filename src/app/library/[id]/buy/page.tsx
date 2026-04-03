@@ -62,8 +62,8 @@ export default function BookBuyPage({ params }: { params: Promise<{ id: string }
   const priceResult = book ? resolvePrice(
     book.price,
     zone as any,
-    { price_usd_manual: book.priceUSD ?? undefined },
-    countryCode
+    countryCode,
+    book.priceUSD ?? undefined
   ) : null;
   const priceStr = priceResult ? formatPrice(priceResult) : '';
 

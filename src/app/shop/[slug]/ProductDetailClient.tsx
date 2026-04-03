@@ -344,6 +344,30 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               <span>{isRtl ? 'الوزن:' : 'Weight:'} <strong className="text-gray-700">{product.weight}g</strong></span>
             </div>
 
+            {/* Intro Video (if present) */}
+            {product.videoUrl && (
+              <div className="mt-4 mb-6">
+                <p className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  {isRtl ? 'فيديو تعريفي' : 'Intro Video'}
+                </p>
+                <div className="relative aspect-video rounded-2xl overflow-hidden bg-black shadow-md border border-gray-100">
+                  <iframe
+                    src={product.videoUrl.includes('youtube.com/watch?v=') 
+                      ? `https://www.youtube.com/embed/${product.videoUrl.split('v=')[1].split('&')[0]}`
+                      : product.videoUrl.includes('youtu.be/')
+                      ? `https://www.youtube.com/embed/${product.videoUrl.split('youtu.be/')[1].split('?')[0]}`
+                      : product.videoUrl
+                    }
+                    title={displayName}
+                    className="absolute inset-0 w-full h-full border-0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="product-description border-t pt-5 mt-2" dangerouslySetInnerHTML={{ __html: sanitizeHtml(displayDescription) }} />
 
             {product.tags.length > 0 && (

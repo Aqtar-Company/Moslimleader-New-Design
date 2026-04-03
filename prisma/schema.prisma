@@ -47,6 +47,7 @@ model Product {
   inStock            Boolean  @default(true)
   featured           Boolean  @default(false)
   videos             Json?
+  videoUrl           String?
   weight             Float    @default(0)
   regionalPricing    Json?
   source             String   @default("static")

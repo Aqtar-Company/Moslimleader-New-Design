@@ -69,6 +69,7 @@ export async function POST(req: NextRequest) {
         subcategory, variants: variants ?? null,
         tags: tags ?? [], images: images ?? [],
         inStock: inStock !== false, weight: weight ?? 0,
+        videoUrl: body.videoUrl ?? null,
         source: 'admin',
         updatedAt: new Date(),
       },

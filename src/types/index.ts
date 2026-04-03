@@ -34,6 +34,7 @@ export interface Product {
   inStock: boolean;
   featured?: boolean;
   videos?: string[];
+  videoUrl?: string | null;
   weight: number; // grams
   reviews?: Review[];
 }

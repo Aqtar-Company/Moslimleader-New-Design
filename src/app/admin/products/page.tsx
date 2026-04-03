@@ -24,7 +24,7 @@ function readFileAsDataURL(file: File): Promise<string> {
 
 const EMPTY_FORM = {
   slug: '', name: '', nameEn: '', shortDescription: '', shortDescriptionEn: '',
-  description: '', descriptionEn: '', price: 0, priceUsd: 0, category: '',
+  description: '', descriptionEn: '', price: 0, priceUsd: 0, videoUrl: '', category: '',
   tags: [] as string[], images: [] as string[], inStock: true, weight: 0,
 };
 
@@ -148,6 +148,7 @@ export default function ProductsPage() {
       descriptionEn: p.descriptionEn || '',
       price: p.price,
       priceUsd: p.priceUsd || 0,
+      videoUrl: p.videoUrl || '',
       category: p.category,
       tags: p.tags,
       images: p.images,
@@ -202,8 +203,9 @@ export default function ProductsPage() {
       description: form.description,
       descriptionEn: form.descriptionEn || undefined,
       price: form.price,
-      priceUsd: form.priceUsd,
-      category: form.category,
+        priceUsd: form.priceUsd,
+        videoUrl: form.videoUrl || null,
+        category: form.category,
       inStock: form.inStock,
       weight: form.weight,
       tags: parsedTags,
@@ -341,6 +343,18 @@ export default function ProductsPage() {
                 onChange={e => setForm(f => ({ ...f, priceUsd: +e.target.value }))}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400"
                 min="0"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-semibold text-gray-600 mb-1">رابط الفيديو التعريفي (YouTube) 🎥</label>
+              <input
+                type="url"
+                value={form.videoUrl || ''}
+                onChange={e => setForm(f => ({ ...f, videoUrl: e.target.value }))}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400 font-mono"
+                placeholder="https://www.youtube.com/watch?v=..."
+                dir="ltr"
               />
             </div>
           </div>

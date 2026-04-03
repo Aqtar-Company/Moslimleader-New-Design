@@ -89,12 +89,14 @@ function ShopContent() {
   const [search, setSearch] = useState('');
   const [allProducts, setAllProducts] = useState<Product[]>(products);
   const [displayCategories, setDisplayCategories] = useState(categories);
-  const [loading, setLoading] = useState(true);
+  // Start with loading=false so static products show immediately
+  // DB products will silently replace them when ready
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const res = await fetch('/api/products');
+        const res = await fetch('/api/products', { signal: AbortSignal.timeout(8000) });
         const data = await res.json();
         const fetched: Product[] = data.products ?? products;
         setAllProducts(fetched);
@@ -113,8 +115,7 @@ function ShopContent() {
 
         setDisplayCategories([...staticUpdated, ...customEntries]);
       } catch {
-        // Fallback to static products on API error
-        setAllProducts(products);
+        // Fallback: keep showing static products (already displayed)
       } finally {
         setLoading(false);
       }

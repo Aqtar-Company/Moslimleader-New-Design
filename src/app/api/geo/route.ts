@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
   if (ip && ip !== '127.0.0.1' && ip !== '::1') {
     try {
       const res = await fetch(`https://ipapi.co/${ip}/country/`, {
-        signal: AbortSignal.timeout(3000),
+        signal: AbortSignal.timeout(1500),
         headers: { 'User-Agent': 'moslimleader-geo/1.0' },
       });
       if (res.ok) {
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
 
     try {
       const res = await fetch(`https://ip-api.com/json/${ip}?fields=countryCode`, {
-        signal: AbortSignal.timeout(3000),
+        signal: AbortSignal.timeout(1500),
       });
       if (res.ok) {
         const data = await res.json();

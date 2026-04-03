@@ -68,35 +68,38 @@ export function countryToZone(countryCode: string): PricingZone {
 // ─── Geo Detection ────────────────────────────────────────────────────────────
 
 export async function detectCountry(): Promise<string | null> {
-  // 1. Try our own server-side geo API first (uses Cloudflare headers + server-side IP lookup)
-  //    This is the most reliable method, especially on mobile where CORS can block external APIs
-  try {
-    const res = await fetch('/api/geo', { signal: AbortSignal.timeout(4000) });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.country && data.country.length === 2) return data.country as string;
-    }
-  } catch {}
+  // Run all sources IN PARALLEL — return the first successful result
+  // Max wait: 2000ms total (not 12+ seconds sequentially)
+  const tryFetch = async (
+    url: string,
+    extract: (d: Record<string, unknown>) => string | null
+  ): Promise<string | null> => {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(2000) });
+      if (!res.ok) return null;
+      const data = await res.json() as Record<string, unknown>;
+      return extract(data);
+    } catch { return null; }
+  };
 
-  // 2. Fallback: ipapi.co (client-side)
+  // Promise.any returns the first resolved (non-null) result
+  // If all fail, returns null
   try {
-    const res = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(4000) });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.country_code) return data.country_code as string;
-    }
-  } catch {}
-
-  // 3. Fallback: ip-api.com (client-side)
-  try {
-    const res = await fetch('https://ip-api.com/json/?fields=countryCode', { signal: AbortSignal.timeout(4000) });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.countryCode) return data.countryCode as string;
-    }
-  } catch {}
-
-  return null;
+    const result = await Promise.any([
+      tryFetch('/api/geo',
+        d => (typeof d.country === 'string' && d.country.length === 2) ? d.country : null
+      ).then(r => r ?? Promise.reject()),
+      tryFetch('https://ipapi.co/json/',
+        d => (typeof d.country_code === 'string' && d.country_code.length === 2) ? d.country_code : null
+      ).then(r => r ?? Promise.reject()),
+      tryFetch('https://ip-api.com/json/?fields=countryCode',
+        d => (typeof d.countryCode === 'string' && d.countryCode.length === 2) ? d.countryCode : null
+      ).then(r => r ?? Promise.reject()),
+    ]);
+    return result;
+  } catch {
+    return null;
+  }
 }
 
 export async function detectZone(): Promise<PricingZone> {

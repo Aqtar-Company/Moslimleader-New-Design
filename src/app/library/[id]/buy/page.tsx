@@ -61,7 +61,7 @@ export default function BookBuyPage({ params }: { params: Promise<{ id: string }
   // Calculate regional price
   const priceResult = book ? resolvePrice(
     book.price,
-    zone,
+    zone as any,
     { price_usd_manual: book.priceUSD ?? undefined },
     countryCode
   ) : null;

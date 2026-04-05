@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
       discount,
       couponCode,
       paymentMethod,
+      paypalOrderId,
       shippingAddress,
       notes,
       currency,
@@ -115,12 +116,13 @@ export async function POST(req: NextRequest) {
     const order = await prisma.order.create({
       data: {
         userId: auth.userId,
-        status: 'pending',
+        status: paymentMethod === 'paypal' && paypalOrderId ? 'paid' : 'pending',
         total: total ?? 0,
         shippingCost: shippingCost ?? 0,
         discount: discount ?? 0,
         couponCode: couponCode ?? null,
         paymentMethod,
+        paypalOrderId: paypalOrderId ?? null,
         shippingAddress,
         notes: notes ?? null,
         currency: currency ?? 'EGP',

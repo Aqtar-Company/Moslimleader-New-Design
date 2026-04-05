@@ -69,6 +69,7 @@ model Order {
   discount        Float    @default(0)
   couponCode      String?
   paymentMethod   String
+  paypalOrderId   String?  @unique
   shippingAddress Json
   notes           String?  @db.Text
   currency        String   @default("EGP")

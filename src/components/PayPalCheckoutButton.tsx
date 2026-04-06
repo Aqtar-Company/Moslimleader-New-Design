@@ -53,7 +53,7 @@ export default function PayPalCheckoutButton({
           {isRtl ? 'جاري تأكيد الدفع...' : 'Confirming payment...'}
         </div>
       )}
-      <PayPalScriptProvider options={{ clientId, currency: currency === 'EGP' ? 'USD' : currency }}>
+      <PayPalScriptProvider options={{ clientId, currency: 'USD', intent: 'capture' }}>
         <PayPalButtons
           style={{ layout: 'vertical', shape: 'rect', label: 'pay' }}
           disabled={processing}
@@ -63,7 +63,7 @@ export default function PayPalCheckoutButton({
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ items, shippingCost, discount, currency }),
+                body: JSON.stringify({ items, shippingUsd: shippingCost, discountUsd: discount }),
               });
               const data = await res.json();
               if (!res.ok) throw new Error(data.error || 'Failed to create PayPal order');
@@ -84,11 +84,10 @@ export default function PayPalCheckoutButton({
                   paypalOrderId: data.orderID,
                   items,
                   shippingAddress,
-                  shippingCost,
-                  discount,
+                  shippingUsd: shippingCost,
+                  discountUsd: discount,
                   couponCode,
                   notes,
-                  currency,
                 }),
               });
               const result = await res.json();

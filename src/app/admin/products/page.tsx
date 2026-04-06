@@ -49,8 +49,8 @@ export default function ProductsPage() {
   const load = useCallback(async () => {
     try {
       const [prodRes, catRes] = await Promise.all([
-        fetch('/api/admin/products', { credentials: 'include' }),
-        fetch('/api/admin/settings?key=categories-added', { credentials: 'include' }),
+        fetch('/api/admin/products', { credentials: 'include', cache: 'no-store' }),
+        fetch('/api/admin/settings?key=categories-added', { credentials: 'include', cache: 'no-store' }),
       ]);
       const prodData = await prodRes.json();
       const catData = await catRes.json();

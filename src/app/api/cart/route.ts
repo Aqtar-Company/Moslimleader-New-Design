@@ -5,11 +5,44 @@ import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
 
 
-// Helper: resolve product from DB or static fallback
-async function resolveProduct(productId: string) {
-  const dbProduct = await prisma.product.findUnique({ where: { id: productId } });
+// Helper: ensure product exists in DB (seed from static list if needed)
+async function ensureProductInDb(productId: string) {
+  // Try by id first
+  let dbProduct = await prisma.product.findFirst({
+    where: { OR: [{ id: productId }, { slug: productId }] },
+  });
   if (dbProduct) return dbProduct;
-  return staticProducts.find(p => p.id === productId) ?? null;
+
+  // Not in DB — look in static list and seed it
+  const staticP = staticProducts.find(p => p.id === productId || p.slug === productId);
+  if (!staticP) return null;
+
+  dbProduct = await prisma.product.upsert({
+    where: { slug: staticP.slug },
+    create: {
+      id: staticP.id,
+      slug: staticP.slug,
+      name: staticP.name,
+      nameEn: staticP.nameEn,
+      shortDescription: staticP.shortDescription,
+      shortDescriptionEn: staticP.shortDescriptionEn,
+      description: staticP.description,
+      descriptionEn: staticP.descriptionEn,
+      price: staticP.price,
+      category: staticP.category,
+      subcategory: staticP.subcategory,
+      variants: (staticP.variants ?? []) as object[],
+      tags: staticP.tags as string[],
+      images: staticP.images as string[],
+      inStock: staticP.inStock,
+      featured: staticP.featured ?? false,
+      videos: staticP.videos ?? [],
+      weight: staticP.weight,
+      source: 'static',
+    },
+    update: {},
+  });
+  return dbProduct;
 }
 
 // GET /api/cart — fetch user's cart
@@ -52,8 +85,12 @@ export async function POST(req: NextRequest) {
     const { productId, quantity = 1, selectedModel } = await req.json();
     if (!productId) return NextResponse.json({ error: 'productId مطلوب' }, { status: 400 });
 
-    const product = await resolveProduct(productId);
-    if (!product) return NextResponse.json({ error: 'المنتج غير موجود' }, { status: 404 });
+    // Ensure product exists in DB (seed static product if needed)
+    const dbProduct = await ensureProductInDb(String(productId));
+    if (!dbProduct) return NextResponse.json({ error: 'المنتج غير موجود' }, { status: 404 });
+
+    // Use the actual DB product id (may differ from the slug/id sent from client)
+    const realProductId = dbProduct.id;
 
     // Upsert cart for user
     let cart = await prisma.cart.findUnique({ where: { userId: auth.userId } });
@@ -67,7 +104,7 @@ export async function POST(req: NextRequest) {
     const existing = await prisma.cartItem.findFirst({
       where: {
         cartId: cart.id,
-        productId,
+        productId: realProductId,
         selectedModel: selectedModel ?? null,
       },
     });
@@ -81,7 +118,7 @@ export async function POST(req: NextRequest) {
       await prisma.cartItem.create({
         data: {
           cartId: cart.id,
-          productId,
+          productId: realProductId,
           quantity,
           selectedModel: selectedModel ?? null,
         },

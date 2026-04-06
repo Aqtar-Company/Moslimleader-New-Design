@@ -97,7 +97,7 @@ function ShopContent() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const res = await fetch('/api/products', { signal: AbortSignal.timeout(8000) });
+        const res = await fetch('/api/products', { signal: AbortSignal.timeout(8000), cache: 'no-store' });
         const data = await res.json();
         const fetched: Product[] = data.products ?? products;
         setAllProducts(fetched);

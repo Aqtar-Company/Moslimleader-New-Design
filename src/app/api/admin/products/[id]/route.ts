@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
+import { invalidateAdminProductsCache } from '../route';
 
 
 async function requireAdmin() {
@@ -34,6 +35,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           updatedAt: new Date(),
         },
       });
+      invalidateAdminProductsCache();
       return NextResponse.json({ product });
     } else {
       // Save override for static product in Setting table
@@ -47,6 +49,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         update: { value: updated as object, updatedAt: new Date() },
       });
 
+      invalidateAdminProductsCache();
       return NextResponse.json({ ok: true });
     }
   } catch (err) {
@@ -70,6 +73,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     await prisma.product.delete({ where: { id } });
+    invalidateAdminProductsCache();
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[admin products DELETE]', err);

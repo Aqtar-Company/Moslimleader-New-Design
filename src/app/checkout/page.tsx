@@ -9,6 +9,7 @@ import { useLang } from '@/context/LanguageContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import { COUNTRY_CURRENCIES } from '@/lib/geo-pricing';
 import { useToast } from '@/components/ui/Toast';
+import PayPalCheckoutButton from '@/components/PayPalCheckoutButton';
 import { governorates, getShipping } from '@/lib/shipping';
 import {
   COUNTRIES,
@@ -376,15 +377,9 @@ export default function CheckoutPage() {
   const fullName = `${address.firstName} ${address.lastName}`.trim();
 
   function validateCard() {
-    if (payMethod !== 'card') return true;
-    const e: Partial<CardForm> = {};
-    const digits = cardForm.number.replace(/\s/g, '');
-    if (digits.length < 16) e.number = L.invalidCard;
-    if (!cardForm.name.trim()) e.name = L.required;
-    if (!cardForm.expiry.match(/^\d{2}\/\d{2}$/)) e.expiry = L.invalidExpiry;
-    if (cardForm.cvv.length < 3) e.cvv = L.invalidCvv;
-    setCardErrors(e);
-    return !Object.keys(e).length;
+    // Card payment now goes through PayPal in the confirm step (not the old inline form).
+    // No client-side validation needed — PayPal SDK handles everything.
+    return true;
   }
 
   async function handlePlaceOrder() {
@@ -459,7 +454,7 @@ export default function CheckoutPage() {
     const payLabelSuccess = payMethod === 'cod'
       ? (isRtl ? 'الدفع عند الاستلام' : 'Cash on Delivery')
       : payMethod === 'card'
-        ? (isRtl ? `بطاقة تنتهي بـ ${cardForm.number.slice(-4)}` : `Card ending in ${cardForm.number.slice(-4)}`)
+        ? (isRtl ? 'بطاقة ائتمان (عبر PayPal)' : 'Credit Card (via PayPal)')
         : payMethod === 'vodafone' ? 'Vodafone Cash'
         : payMethod === 'paypal' ? 'PayPal'
         : 'InstaPay';
@@ -959,65 +954,19 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
-              {/* Card Form */}
-              {payMethod === 'card' && (
-                <div className="mt-5 bg-gray-50 border border-gray-200 rounded-2xl p-5 space-y-4">
-                  <p className="text-xs text-gray-500 font-semibold flex items-center gap-1.5">{L.securePayment}</p>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.cardNumber} *</label>
-                    <input
-                      type="text" dir="ltr" inputMode="numeric"
-                      value={cardForm.number}
-                      onChange={e => setCardForm(f => ({ ...f, number: formatCardNumber(e.target.value) }))}
-                      placeholder="0000 0000 0000 0000"
-                      maxLength={19}
-                      className={inputClass(cardErrors.number) + ' font-mono tracking-widest'}
-                    />
-                    {cardErrors.number && <p className="text-red-500 text-xs mt-1">{cardErrors.number}</p>}
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.cardName} *</label>
-                    <input
-                      type="text" dir="ltr"
-                      value={cardForm.name}
-                      onChange={e => setCardForm(f => ({ ...f, name: e.target.value.toUpperCase() }))}
-                      placeholder="AHMED MOHAMED"
-                      className={inputClass(cardErrors.name) + ' uppercase'}
-                    />
-                    {cardErrors.name && <p className="text-red-500 text-xs mt-1">{cardErrors.name}</p>}
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.cardExpiry} *</label>
-                      <input
-                        type="text" dir="ltr" inputMode="numeric"
-                        value={cardForm.expiry}
-                        onChange={e => setCardForm(f => ({ ...f, expiry: formatExpiry(e.target.value) }))}
-                        placeholder="MM/YY"
-                        maxLength={5}
-                        className={inputClass(cardErrors.expiry) + ' font-mono'}
-                      />
-                      {cardErrors.expiry && <p className="text-red-500 text-xs mt-1">{cardErrors.expiry}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{L.cardCvv} *</label>
-                      <input
-                        type="password" dir="ltr" inputMode="numeric"
-                        value={cardForm.cvv}
-                        onChange={e => setCardForm(f => ({ ...f, cvv: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
-                        placeholder="•••"
-                        maxLength={4}
-                        className={inputClass(cardErrors.cvv) + ' font-mono'}
-                      />
-                      {cardErrors.cvv && <p className="text-red-500 text-xs mt-1">{cardErrors.cvv}</p>}
-                    </div>
-                  </div>
-                  {/* Card type icons */}
-                  <div className="flex gap-2 items-center">
-                    <span className="bg-white border border-gray-200 rounded px-2 py-1 text-xs font-bold text-blue-700">VISA</span>
-                    <span className="bg-white border border-gray-200 rounded px-2 py-1 text-xs font-bold text-red-600">Mastercard</span>
-                    <span className="bg-white border border-gray-200 rounded px-2 py-1 text-xs font-bold text-green-700">Meeza</span>
-                  </div>
+              {/* Card / PayPal info — both go through PayPal in confirm step */}
+              {(payMethod === 'card' || payMethod === 'paypal') && (
+                <div className="mt-4 bg-blue-50 border border-blue-100 rounded-2xl p-4 text-sm">
+                  <p className="font-semibold text-gray-900 mb-1">
+                    {payMethod === 'card'
+                      ? (isRtl ? '💳 الدفع بالبطاقة الائتمانية' : '💳 Credit/Debit Card Payment')
+                      : (isRtl ? '🅿️ الدفع عبر PayPal' : '🅿️ PayPal Payment')}
+                  </p>
+                  <p className="text-gray-500 text-xs">
+                    {isRtl
+                      ? 'في الخطوة التالية ستظهر لك خيارات الدفع الآمنة عبر PayPal. اضغط "التالي" للمتابعة.'
+                      : 'In the next step, secure PayPal payment options will appear. Click "Next" to continue.'}
+                  </p>
                 </div>
               )}
 
@@ -1026,13 +975,6 @@ export default function CheckoutPage() {
                   <p className="font-semibold text-gray-900 mb-1">{isRtl ? 'أرسل المبلغ على الرقم:' : 'Send the amount to:'}</p>
                   <p className="font-black text-xl tracking-widest text-gray-900" dir="ltr">01060306803</p>
                   <p className="text-gray-500 text-xs mt-1">{isRtl ? 'ثم أرسل صورة التحويل على واتساب' : 'Then send screenshot on WhatsApp to confirm'}</p>
-                </div>
-              )}
-
-              {payMethod === 'paypal' && (
-                <div className="mt-4 bg-blue-50 border border-blue-100 rounded-2xl p-4 text-sm">
-                  <p className="font-semibold text-gray-900 mb-1">{isRtl ? 'الدفع عبر PayPal:' : 'Pay via PayPal:'}</p>
-                  <p className="text-gray-500 text-xs mt-1">{isRtl ? 'بعد تأكيد الطلب سنرسل لك رابط الدفع عبر واتساب أو البريد الإلكتروني.' : 'After placing your order, we will send you a PayPal payment link via WhatsApp or email.'}</p>
                 </div>
               )}
 
@@ -1075,7 +1017,7 @@ export default function CheckoutPage() {
                   </div>
                   <p className="text-sm text-gray-700">
                     {payMethod === 'cod' ? (isRtl ? 'الدفع عند الاستلام' : 'Cash on Delivery')
-                      : payMethod === 'card' ? (isRtl ? `بطاقة تنتهي بـ ${cardForm.number.slice(-4)}` : `Card ending in ${cardForm.number.slice(-4)}`)
+                      : payMethod === 'card' ? (isRtl ? 'بطاقة ائتمان (عبر PayPal)' : 'Credit Card (via PayPal)')
                       : payMethod === 'vodafone' ? 'Vodafone Cash'
                       : payMethod === 'paypal' ? 'PayPal'
                       : 'InstaPay'}
@@ -1083,21 +1025,49 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              <button
-                onClick={handlePlaceOrder}
-                disabled={isSubmitting}
-                className={`w-full bg-[#F5C518] text-gray-900 font-black py-4 rounded-xl transition text-base flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : 'hover:bg-[#e0b000]'}`}
-              >
-                {isSubmitting ? (
-                  <>
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                    </svg>
-                    {isRtl ? 'جاري المعالجة...' : 'Processing...'}
-                  </>
-                ) : L.place}
-              </button>
+              {(payMethod === 'paypal' || payMethod === 'card') ? (
+                <div className="w-full">
+                  <PayPalCheckoutButton
+                    items={items.map(item => ({
+                      productId: item.product.id,
+                      quantity: item.quantity,
+                      selectedModel: item.selectedModel,
+                      unitPrice: getProductPrice(item.product).price,
+                      productName: item.product.name,
+                      productImage: item.product.images?.[0] ?? undefined,
+                    }))}
+                    shippingCost={shippingCost}
+                    discount={discount}
+                    couponCode={coupon?.code}
+                    currency={currency}
+                    shippingAddress={address}
+                    notes={address.notes}
+                    onSuccess={() => {
+                      setSnapshot({ items: [...items], total, discount, shippingCost, shippingCurrency, currency });
+                      clear();
+                      setOrderPlaced(true);
+                    }}
+                    onError={(msg) => addToast(msg, 'error')}
+                    isRtl={isRtl}
+                  />
+                </div>
+              ) : (
+                <button
+                  onClick={handlePlaceOrder}
+                  disabled={isSubmitting}
+                  className={`w-full bg-[#F5C518] text-gray-900 font-black py-4 rounded-xl transition text-base flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : 'hover:bg-[#e0b000]'}`}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                      </svg>
+                      {isRtl ? 'جاري المعالجة...' : 'Processing...'}
+                    </>
+                  ) : L.place}
+                </button>
+              )}
               <button onClick={() => setStep('payment')}
                 className="mt-3 w-full text-center text-xs text-gray-400 hover:text-gray-700 transition">
                 {isRtl ? `${L.back} →` : `← ${L.back}`}

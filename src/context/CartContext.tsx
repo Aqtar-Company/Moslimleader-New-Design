@@ -11,16 +11,17 @@ let _couponCache: Record<string, number> | null = null;
 async function fetchActiveCoupons(): Promise<Record<string, number>> {
   if (_couponCache) return _couponCache;
   try {
-    const res = await fetch('/api/admin/coupons', { credentials: 'include' });
+    // Use the public /api/coupons endpoint (no auth required, returns only active)
+    const res = await fetch('/api/coupons', { cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();
       const map: Record<string, number> = {};
-      (data.coupons ?? []).forEach((c: { code: string; discount: number; isActive: boolean }) => {
-        if (c.isActive) map[c.code] = c.discount;
+      (data.coupons ?? []).forEach((c: { code: string; discount: number }) => {
+        map[c.code.toUpperCase()] = c.discount;
       });
       _couponCache = map;
-      // Refresh cache after 5 minutes
-      setTimeout(() => { _couponCache = null; }, 5 * 60 * 1000);
+      // Refresh cache after 60 seconds (so admin edits propagate quickly)
+      setTimeout(() => { _couponCache = null; }, 60 * 1000);
       return map;
     }
   } catch {}

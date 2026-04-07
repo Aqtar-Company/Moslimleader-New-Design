@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
-import { sendOrderNotificationEmail } from '@/lib/order-email';
+import { sendOrderEmails } from '@/lib/order-email';
 
 
 // GET /api/orders — list current user's orders
@@ -151,7 +151,7 @@ export async function POST(req: NextRequest) {
       const customerPhone = `${dialCode}${addr.phone || user?.phone || ''}`.trim();
       const subtotal = order.items.reduce((s: number, it: { unitPrice: number; quantity: number }) => s + it.unitPrice * it.quantity, 0);
 
-      await sendOrderNotificationEmail({
+      await sendOrderEmails({
         orderId: order.id,
         orderNumber: order.id.slice(-6).toUpperCase(),
         items: order.items.map((it: { productName: string; productImage: string | null; quantity: number; unitPrice: number }) => ({

@@ -423,60 +423,8 @@ export default function CheckoutPage() {
       } catch { /* DB failure shouldn't block order confirmation */ }
     }
 
-    // Send order notification email
-    const itemsList = items.map(item =>
-      `${item.product.name} × ${item.quantity} = ${getProductPrice(item.product).price * item.quantity} ${currency}`
-    ).join('\n');
-
-    const payLabel = payMethod === 'cod' ? 'الدفع عند الاستلام'
-      : payMethod === 'card' ? `بطاقة تنتهي بـ ${cardForm.number.slice(-4)}`
-      : payMethod === 'vodafone' ? 'Vodafone Cash'
-      : payMethod === 'paypal' ? 'PayPal'
-      : 'InstaPay';
-
-    const dialCode = COUNTRY_DIAL_CODES[address.country] || COUNTRY_DIAL_CODES['EG'];
-    const addressLine = shippingType === 'local'
-      ? `${address.street}${address.building ? '، ' + address.building : ''}, ${address.city}, ${govObj?.name ?? ''}`
-      : `${address.street}${address.building ? '، ' + address.building : ''}, ${address.city}${address.region ? '، ' + address.region : ''}, ${countryObj?.nameAr ?? address.country}`;
-
-    const orderBody = `
-طلب جديد #${orderNumber}
-التاريخ: ${new Date().toLocaleString('ar-EG')}
-
-العميل: ${fullName}
-الهاتف: ${dialCode} ${address.phone}
-واتساب: ${address.whatsappSame ? 'نفس رقم الهاتف' : address.whatsappNumber}
-العنوان: ${addressLine}
-
-المنتجات:
-${itemsList}
-
-المجموع الفرعي: ${total} ${currency}
-${discount > 0 ? `الخصم (${coupon?.code}): -${discount} ${currency}\n` : ''}الشحن: ${shippingCost > 0 ? `${shippingCost} ${shippingCurrency}` : 'مجاني'}
-طريقة الدفع: ${payLabel}
-    `.trim();
-
-    try {
-      await fetch('https://formsubmit.co/ajax/orders@moslimleader.com', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({
-          _subject: `طلب جديد #${orderNumber} — ${fullName}`,
-          _template: 'table',
-          order_number: orderNumber,
-          customer_name: fullName,
-          customer_phone: `${dialCode} ${address.phone}`,
-          whatsapp: address.whatsappSame ? 'Same as phone' : address.whatsappNumber,
-          address: addressLine,
-          items: itemsList,
-          subtotal: `${total} ${currency}`,
-          discount: discount > 0 ? `-${discount} ${currency}` : '—',
-          shipping: shippingCost > 0 ? `${shippingCost} ${shippingCurrency}` : 'مجاني',
-          payment: payLabel,
-          message: orderBody,
-        }),
-      });
-    } catch { /* email failure shouldn't block order */ }
+    // Email notification is now sent server-side from /api/orders
+    // (HTML template with logo, product images, totals breakdown — see src/lib/order-email.ts)
 
     setOrderPlaced(true);
     } catch {

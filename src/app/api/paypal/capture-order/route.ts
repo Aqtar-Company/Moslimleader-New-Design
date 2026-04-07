@@ -4,7 +4,7 @@ import { getAuthUser } from '@/lib/jwt';
 import { capturePayPalOrder } from '@/lib/paypal';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
-import { sendOrderNotificationEmail } from '@/lib/order-email';
+import { sendOrderEmails } from '@/lib/order-email';
 
 const EGP_TO_USD = 1 / 50;
 
@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
       const addr = (shippingAddress as Record<string, any>) || {};
       const subtotalUsd = order.items.reduce((s: number, it: { unitPrice: number; quantity: number }) => s + it.unitPrice * it.quantity, 0);
 
-      await sendOrderNotificationEmail({
+      await sendOrderEmails({
         orderId: order.id,
         orderNumber: order.id.slice(-6).toUpperCase(),
         items: order.items.map((it: { productName: string; productImage: string | null; quantity: number; unitPrice: number }) => ({

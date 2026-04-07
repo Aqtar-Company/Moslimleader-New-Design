@@ -332,7 +332,38 @@ export async function sendOrderNotificationEmail(data: OrderEmailData): Promise<
       replyTo: data.customerEmail,
     });
   } catch (err) {
-    console.error('[order-email] send failed', err);
+    console.error('[order-email admin] send failed', err);
     // Don't throw — email failure shouldn't block order processing
   }
+}
+
+/**
+ * Send order confirmation email to the customer.
+ * Same beautiful template as the admin email but with a customer-friendly subject and tone.
+ */
+export async function sendCustomerOrderEmail(data: OrderEmailData): Promise<void> {
+  if (!data.customerEmail || data.customerEmail === '—') return;
+  try {
+    const html = buildOrderEmailHtml(data);
+    await transporter.sendMail({
+      from: '"Moslim Leader" <noreply@moslimleader.com>',
+      to: data.customerEmail,
+      subject: `✅ تأكيد طلبك #${data.orderNumber} — Moslim Leader`,
+      html,
+      replyTo: 'orders@moslimleader.com',
+    });
+  } catch (err) {
+    console.error('[order-email customer] send failed', err);
+    // Don't throw
+  }
+}
+
+/**
+ * Send both admin notification and customer confirmation in one call.
+ */
+export async function sendOrderEmails(data: OrderEmailData): Promise<void> {
+  await Promise.all([
+    sendOrderNotificationEmail(data),
+    sendCustomerOrderEmail(data),
+  ]);
 }

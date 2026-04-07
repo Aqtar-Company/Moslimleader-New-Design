@@ -16,7 +16,7 @@ interface Book {
   author: string | null;
 }
 
-export default function BookBuyPage({ params }: { params: Promise<{ id: string }> }) {
+export default function BookBuyPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
   const [id, setId] = useState<string>('');
   const [book, setBook] = useState<Book | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,7 +27,8 @@ export default function BookBuyPage({ params }: { params: Promise<{ id: string }
   const { addToast } = useToast();
 
   useEffect(() => {
-    params.then(p => setId(p.id));
+    // Support both Next.js 14 (plain object) and Next.js 15 (Promise) params
+    Promise.resolve(params).then(p => setId(p.id));
   }, [params]);
 
   useEffect(() => {

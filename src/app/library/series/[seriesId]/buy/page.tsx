@@ -16,7 +16,7 @@ interface SeriesData {
   books: { id: string; title: string; cover: string | null; seriesOrder: number | null; price: number; priceUSD: number | null }[];
 }
 
-export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: string }> }) {
+export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: string }> | { seriesId: string } }) {
   const [seriesId, setSeriesId] = useState<string>('');
   const [series, setSeries] = useState<SeriesData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,7 +27,8 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
   const { addToast } = useToast();
 
   useEffect(() => {
-    params.then(p => setSeriesId(p.seriesId));
+    // Support both Next.js 14 (plain object) and Next.js 15 (Promise) params
+    Promise.resolve(params).then(p => setSeriesId(p.seriesId));
   }, [params]);
 
   useEffect(() => {

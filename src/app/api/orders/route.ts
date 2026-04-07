@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
+import { sendOrderNotificationEmail } from '@/lib/order-email';
 
 
 // GET /api/orders — list current user's orders
@@ -137,6 +138,50 @@ export async function POST(req: NextRequest) {
     const cart = await prisma.cart.findUnique({ where: { userId: auth.userId } });
     if (cart) {
       await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
+    }
+
+    // Send order notification email to admin (async, non-blocking)
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: auth.userId },
+        select: { name: true, email: true, phone: true },
+      });
+      const addr = (shippingAddress as Record<string, any>) || {};
+      const dialCode = addr.country ? '' : '';
+      const customerPhone = `${dialCode}${addr.phone || user?.phone || ''}`.trim();
+      const subtotal = order.items.reduce((s: number, it: { unitPrice: number; quantity: number }) => s + it.unitPrice * it.quantity, 0);
+
+      await sendOrderNotificationEmail({
+        orderId: order.id,
+        orderNumber: order.id.slice(-6).toUpperCase(),
+        items: order.items.map((it: { productName: string; productImage: string | null; quantity: number; unitPrice: number }) => ({
+          productName: it.productName,
+          productImage: it.productImage,
+          quantity: it.quantity,
+          unitPrice: it.unitPrice,
+        })),
+        subtotal,
+        discount: order.discount ?? 0,
+        couponCode: order.couponCode,
+        shippingCost: order.shippingCost ?? 0,
+        total: order.total,
+        currency: order.currency,
+        paymentMethod: order.paymentMethod,
+        customerName: `${addr.firstName ?? ''} ${addr.lastName ?? ''}`.trim() || user?.name || 'ضيف',
+        customerEmail: user?.email || '—',
+        customerPhone: customerPhone || '—',
+        shippingAddress: {
+          street: addr.street,
+          building: addr.building,
+          city: addr.city,
+          region: addr.region,
+          governorate: addr.governorate,
+          country: addr.country,
+        },
+        notes: order.notes,
+      });
+    } catch (emailErr) {
+      console.error('[orders POST email]', emailErr);
     }
 
     return NextResponse.json({ order }, { status: 201 });

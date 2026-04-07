@@ -4,6 +4,7 @@ import { getAuthUser } from '@/lib/jwt';
 import { capturePayPalOrder } from '@/lib/paypal';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
+import { sendOrderNotificationEmail } from '@/lib/order-email';
 
 const EGP_TO_USD = 1 / 50;
 
@@ -148,6 +149,48 @@ export async function POST(req: NextRequest) {
 
       return created;
     });
+
+    // Send order notification email to admin (async, non-blocking)
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: auth.userId },
+        select: { name: true, email: true, phone: true },
+      });
+      const addr = (shippingAddress as Record<string, any>) || {};
+      const subtotalUsd = order.items.reduce((s: number, it: { unitPrice: number; quantity: number }) => s + it.unitPrice * it.quantity, 0);
+
+      await sendOrderNotificationEmail({
+        orderId: order.id,
+        orderNumber: order.id.slice(-6).toUpperCase(),
+        items: order.items.map((it: { productName: string; productImage: string | null; quantity: number; unitPrice: number }) => ({
+          productName: it.productName,
+          productImage: it.productImage,
+          quantity: it.quantity,
+          unitPrice: it.unitPrice,
+        })),
+        subtotal: subtotalUsd,
+        discount: order.discount ?? 0,
+        couponCode: order.couponCode,
+        shippingCost: order.shippingCost ?? 0,
+        total: order.total,
+        currency: 'USD',
+        paymentMethod: 'paypal',
+        customerName: `${addr.firstName ?? ''} ${addr.lastName ?? ''}`.trim() || user?.name || 'ضيف',
+        customerEmail: user?.email || '—',
+        customerPhone: addr.phone || user?.phone || '—',
+        shippingAddress: {
+          street: addr.street,
+          building: addr.building,
+          city: addr.city,
+          region: addr.region,
+          governorate: addr.governorate,
+          country: addr.country,
+        },
+        notes: order.notes,
+      });
+    } catch (emailErr) {
+      console.error('[paypal capture-order email]', emailErr);
+    }
 
     return NextResponse.json({ orderId: order.id, status: 'paid', amountUsd: expectedUsd });
   } catch (err) {

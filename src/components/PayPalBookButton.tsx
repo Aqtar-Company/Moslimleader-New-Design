@@ -3,51 +3,41 @@
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import { useState } from 'react';
 
-interface PayPalCheckoutButtonProps {
-  items: {
-    productId: string;
-    quantity: number;
-    selectedModel?: number;
-    unitPrice: number;
-    productName: string;
-    productImage?: string;
-  }[];
-  shippingCost: number;
-  discount: number;
-  couponCode?: string;
-  currency: string;
-  shippingAddress: Record<string, unknown>;
-  notes?: string;
+interface PayPalBookButtonProps {
+  // Endpoint used for create-order (e.g. /api/books/abc123/paypal-create)
+  createEndpoint: string;
+  // Endpoint used for capture-order (e.g. /api/books/abc123/paypal-capture)
+  captureEndpoint: string;
+  // USD amount to display in the top notice (server recalculates for security)
+  amountUsd: number;
+  // Called when payment succeeds and access is granted
   onSuccess: (orderId: string) => void;
+  // Called on any error or cancellation
   onError: (message: string) => void;
-  isRtl: boolean;
+  isRtl?: boolean;
 }
 
-export default function PayPalCheckoutButton({
-  items,
-  shippingCost,
-  discount,
-  couponCode,
-  shippingAddress,
-  notes,
+export default function PayPalBookButton({
+  createEndpoint,
+  captureEndpoint,
+  amountUsd,
   onSuccess,
   onError,
-  isRtl,
-}: PayPalCheckoutButtonProps) {
+  isRtl = true,
+}: PayPalBookButtonProps) {
   const [processing, setProcessing] = useState(false);
-
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
+
   if (!clientId) {
     return <p className="text-red-500 text-sm text-center">{isRtl ? 'PayPal غير مُعَد' : 'PayPal not configured'}</p>;
   }
 
   const createOrder = async () => {
     try {
-      const res = await fetch('/api/paypal/create-order', {
+      const res = await fetch(createEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ items, shippingUsd: shippingCost, discountUsd: discount }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create PayPal order');
@@ -61,19 +51,11 @@ export default function PayPalCheckoutButton({
   const onApprove = async (data: { orderID: string }) => {
     setProcessing(true);
     try {
-      const res = await fetch('/api/paypal/capture-order', {
+      const res = await fetch(captureEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          paypalOrderId: data.orderID,
-          items,
-          shippingAddress,
-          shippingUsd: shippingCost,
-          discountUsd: discount,
-          couponCode,
-          notes,
-        }),
+        body: JSON.stringify({ paypalOrderId: data.orderID }),
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || 'Payment capture failed');
@@ -87,13 +69,18 @@ export default function PayPalCheckoutButton({
 
   return (
     <div className="w-full">
+      <div className="mb-3 p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-800 text-center">
+        {isRtl ? 'سيتم الدفع بالدولار عبر PayPal:' : 'Payment will be processed in USD via PayPal:'}{' '}
+        <strong>${amountUsd.toFixed(2)} USD</strong>
+      </div>
+
       {processing && (
         <div className="flex items-center justify-center gap-2 mb-3 text-sm text-gray-600">
           <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
-          {isRtl ? 'جاري تأكيد الدفع...' : 'Confirming payment...'}
+          {isRtl ? 'جاري تأكيد الدفع وتفعيل الوصول...' : 'Confirming payment and granting access...'}
         </div>
       )}
 
@@ -106,7 +93,7 @@ export default function PayPalCheckoutButton({
           enableFunding: 'card',
         }}
       >
-        {/* PayPal wallet button */}
+        {/* PayPal wallet button (gold) */}
         <PayPalButtons
           fundingSource="paypal"
           style={{ layout: 'vertical', shape: 'rect', label: 'paypal', color: 'gold', height: 48 }}
@@ -129,7 +116,7 @@ export default function PayPalCheckoutButton({
           <div className="flex-1 h-px bg-gray-200" />
         </div>
 
-        {/* Card button — handles Debit/Credit cards via PayPal Advanced Cards */}
+        {/* Card button (black) — handles Debit/Credit cards via PayPal */}
         <PayPalButtons
           fundingSource="card"
           style={{ layout: 'vertical', shape: 'rect', label: 'pay', color: 'black', height: 48 }}

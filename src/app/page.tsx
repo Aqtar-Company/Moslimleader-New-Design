@@ -88,11 +88,10 @@ function ShopContent() {
   const initialCategory = searchParams.get('category') || 'all';
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [search, setSearch] = useState('');
-  const [allProducts, setAllProducts] = useState<Product[]>(products);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [displayCategories, setDisplayCategories] = useState(categories);
-  // Start with loading=false so static products show immediately
-  // DB products will silently replace them when ready
-  const [loading, setLoading] = useState(false);
+  // Start with loading=true to avoid showing stale static prices before API responds
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -116,7 +115,8 @@ function ShopContent() {
 
         setDisplayCategories([...staticUpdated, ...customEntries]);
       } catch {
-        // Fallback: keep showing static products (already displayed)
+        // Fallback: show static products if API fails
+        setAllProducts(products);
       } finally {
         setLoading(false);
       }

@@ -25,7 +25,7 @@ jobs:
             git fetch origin
             git reset --hard origin/main
             git clean -fd src/
-            npm ci --production=false
+            npm ci --legacy-peer-deps --production=false
             npx prisma generate
             npm run build
             pm2 restart moslimleader

@@ -27,6 +27,7 @@ jobs:
             git clean -fd src/
             npm ci --legacy-peer-deps --production=false
             npx prisma generate
+            npx prisma db push --skip-generate
             npm run build
             pm2 restart moslimleader
             echo "=== Deployment complete! ==="

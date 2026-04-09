@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({ products: allProducts });
+    const _r = NextResponse.json({ products: allProducts }); _r.headers.set('Cache-Control','no-store,no-cache'); return _r;
   } catch (err) {
     console.error('[products GET]', err);
     // Fallback to static products on DB error

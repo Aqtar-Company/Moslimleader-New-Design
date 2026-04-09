@@ -10,7 +10,7 @@ import { useLang } from '@/context/LanguageContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import { useToast } from '@/components/ui/Toast';
 
-export default function ProductCard({ product }: { product: Product }) {
+export default function ProductCard({ product, priceLoading = false }: { product: Product; priceLoading?: boolean }) {
   const { addItem } = useCart();
   const { isWishlisted, toggle } = useWishlist();
   const { t, isRtl } = useLang();
@@ -62,11 +62,16 @@ export default function ProductCard({ product }: { product: Product }) {
         <p className="text-gray-500 text-sm line-clamp-2">{displayShortDesc}</p>
 
         <div className="mt-auto pt-3 flex items-center justify-between gap-1.5">
-          <span className="text-gray-900 font-bold text-sm sm:text-lg shrink-0">{formatPrice(priceResult)}</span>
+          {/* Price: show skeleton while fresh prices are loading from API */}
+          {priceLoading ? (
+            <span className="h-6 w-20 bg-gray-200 rounded-lg animate-pulse shrink-0" />
+          ) : (
+            <span className="text-gray-900 font-bold text-sm sm:text-lg shrink-0">{formatPrice(priceResult)}</span>
+          )}
           <button
-            disabled={!product.inStock || added}
+            disabled={!product.inStock || added || priceLoading}
             onClick={() => {
-              if (!product.inStock) return;
+              if (!product.inStock || priceLoading) return;
               addItem(product);
               addToast(`✓ أُضيف "${displayName}" للسلة`, 'success');
               setAdded(true);
@@ -75,7 +80,7 @@ export default function ProductCard({ product }: { product: Product }) {
             className={`text-white text-xs sm:text-sm font-semibold px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all whitespace-nowrap shrink-0 ${
               added
                 ? 'bg-green-500 scale-95'
-                : product.inStock
+                : product.inStock && !priceLoading
                   ? 'bg-purple-700 hover:bg-purple-800 active:scale-95'
                   : 'bg-gray-300 cursor-not-allowed'
             }`}

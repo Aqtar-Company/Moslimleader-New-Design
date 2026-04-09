@@ -88,10 +88,14 @@ function ShopContent() {
   const initialCategory = searchParams.get('category') || 'all';
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [search, setSearch] = useState('');
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
+
+  // Show static products immediately for fast render
+  const [allProducts, setAllProducts] = useState<Product[]>(products);
   const [displayCategories, setDisplayCategories] = useState(categories);
-  // Start with loading=true to avoid showing stale static prices before API responds
-  const [loading, setLoading] = useState(true);
+
+  // priceLoading=true means prices are still being fetched from DB
+  // Products show immediately but price shows a skeleton until API responds
+  const [priceLoading, setPriceLoading] = useState(true);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -115,10 +119,10 @@ function ShopContent() {
 
         setDisplayCategories([...staticUpdated, ...customEntries]);
       } catch {
-        // Fallback: show static products if API fails
-        setAllProducts(products);
+        // Fallback: keep showing static products (already displayed)
       } finally {
-        setLoading(false);
+        // Prices are now fresh from DB — remove skeleton
+        setPriceLoading(false);
       }
     };
     fetchProducts();
@@ -172,30 +176,15 @@ function ShopContent() {
       </div>
 
       {/* Results count */}
-      {!loading && (
-        <p className="text-gray-500 text-sm mb-6">
-          {filtered.length} {t('shop.results')}
-        </p>
-      )}
+      <p className="text-gray-500 text-sm mb-6">
+        {filtered.length} {t('shop.results')}
+      </p>
 
-      {/* Grid */}
-      {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
-              <div className="aspect-square bg-gray-200" />
-              <div className="p-4 space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-3/4" />
-                <div className="h-3 bg-gray-100 rounded w-1/2" />
-                <div className="h-8 bg-gray-200 rounded-xl mt-3" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : filtered.length > 0 ? (
+      {/* Grid — products show immediately, only price has skeleton */}
+      {filtered.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
           {filtered.map(product => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard key={product.id} product={product} priceLoading={priceLoading} />
           ))}
         </div>
       ) : (

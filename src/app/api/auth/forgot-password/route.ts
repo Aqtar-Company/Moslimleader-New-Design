@@ -32,20 +32,19 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Send email
+    // Send email via local postfix (same as order emails)
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://moslimleader.com';
     const resetUrl = `${siteUrl}/auth/reset-password?token=${token}`;
 
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: 'moslimleader2020@gmail.com',
-        pass: process.env.GMAIL_APP_PASSWORD || 'mamt cifm xezj rnfw',
-      },
+      host: 'localhost',
+      port: 25,
+      secure: false,
+      tls: { rejectUnauthorized: false },
     });
 
     await transporter.sendMail({
-      from: '"مسلم ليدر" <moslimleader2020@gmail.com>',
+      from: '"مسلم ليدر" <no-reply@moslimleader.com>',
       to: user.email,
       subject: 'إعادة تعيين كلمة المرور - مسلم ليدر',
       html: `

@@ -81,12 +81,20 @@ export async function POST(req: NextRequest) {
       totalUsd += unitUsd * qty;
     }
 
-    // Convert discount and shipping from their local currency to USD
-    const rawDiscount = Math.max(0, Number(body?.discountUsd) || 0);
+    // Convert shipping from local currency to USD
     const rawShipping = Math.max(0, Number(body?.shippingUsd) || 0);
-
     const shippingUsd = Math.min(500, toUsd(rawShipping, shippingCurrency));
-    const discountUsd = Math.min(totalUsd + shippingUsd, toUsd(rawDiscount, discountCurrency));
+
+    // Discount: either percentage (discountCurrency === 'PCT') or local currency amount
+    const rawDiscount = Math.max(0, Number(body?.discountUsd) || 0);
+    let discountUsd: number;
+    if (discountCurrency === 'PCT') {
+      // rawDiscount is a percentage (e.g. 95 = 95%)
+      const pct = Math.min(100, rawDiscount);
+      discountUsd = Math.round(totalUsd * pct) / 100;
+    } else {
+      discountUsd = Math.min(totalUsd + shippingUsd, toUsd(rawDiscount, discountCurrency));
+    }
 
     const finalUsd = Math.max(0.01, Math.round((totalUsd + shippingUsd - discountUsd) * 100) / 100);
     console.log('[paypal create-order DEBUG]', JSON.stringify({ totalUsd, rawShipping, rawDiscount, shippingCurrency, discountCurrency, shippingUsd, discountUsd, finalUsd }));

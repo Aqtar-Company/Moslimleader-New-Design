@@ -112,7 +112,13 @@ export async function POST(req: NextRequest) {
     const shippingCurrencyEn = String(body?.shippingCurrency || 'USD').toUpperCase();
     const discountCurrencyEn = String(body?.discountCurrency || 'USD').toUpperCase();
     const shippingUsd = Math.min(500, toUsd(rawShipping, shippingCurrencyEn));
-    const discountUsd = Math.min(totalUsd + shippingUsd, toUsd(rawDiscount, discountCurrencyEn));
+    let discountUsd: number;
+    if (discountCurrencyEn === 'PCT') {
+      const pct = Math.min(100, rawDiscount);
+      discountUsd = Math.round(totalUsd * pct) / 100;
+    } else {
+      discountUsd = Math.min(totalUsd + shippingUsd, toUsd(rawDiscount, discountCurrencyEn));
+    }
     const expectedUsd = Math.max(0.01, Math.round((totalUsd + shippingUsd - discountUsd) * 100) / 100);
 
     const captureResult = await capturePayPalOrder(paypalOrderId);

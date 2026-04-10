@@ -51,6 +51,10 @@ export async function createPayPalOrder(amount: number, currency: string, refere
           },
         },
       ],
+      application_context: {
+        shipping_preference: 'NO_SHIPPING',
+        user_action: 'PAY_NOW',
+      },
     }),
   });
 

@@ -8,7 +8,15 @@ import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LanguageContext';
 import { Address } from '@/context/AuthContext';
 import { governorates } from '@/lib/shipping';
+import { COUNTRY_CURRENCIES } from '@/lib/geo-pricing';
 import { ADMIN_EMAIL } from '@/lib/admin-config';
+
+const COUNTRIES_LIST = [
+  { code: 'EG', name: 'مصر', nameEn: 'Egypt' },
+  ...Object.entries(COUNTRY_CURRENCIES)
+    .filter(([code]) => code !== 'EG')
+    .map(([code, c]) => ({ code, name: c.nameAr, nameEn: c.nameEn }))
+];
 
 type Tab = 'profile' | 'addresses' | 'orders' | 'books';
 
@@ -57,6 +65,7 @@ export default function AccountPage() {
   const [addrCity, setAddrCity] = useState('');
   const [addrStreet, setAddrStreet] = useState('');
   const [addrBuilding, setAddrBuilding] = useState('');
+  const [addrCountry, setAddrCountry] = useState('EG');
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -145,7 +154,9 @@ export default function AccountPage() {
   }
 
   function handleAddAddress() {
-    if (!addrLabel.trim() || !addrFullName.trim() || !addrPhone.trim() || !addrGov || !addrCity.trim() || !addrStreet.trim()) return;
+    const needsGov = addrCountry === 'EG';
+    if (!addrLabel.trim() || !addrFullName.trim() || !addrPhone.trim() || !addrCity.trim() || !addrStreet.trim()) return;
+    if (needsGov && !addrGov) return;
     const newAddr: Address = {
       id: Date.now().toString(),
       label: addrLabel.trim(),
@@ -159,7 +170,7 @@ export default function AccountPage() {
     const existing = user?.savedAddresses ?? [];
     updateUser({ savedAddresses: [...existing, newAddr] });
     setShowAddressForm(false);
-    setAddrLabel(''); setAddrFullName(''); setAddrPhone(''); setAddrGov(''); setAddrCity(''); setAddrStreet(''); setAddrBuilding('');
+    setAddrLabel(''); setAddrFullName(''); setAddrPhone(''); setAddrGov(''); setAddrCity(''); setAddrStreet(''); setAddrBuilding(''); setAddrCountry('EG');
   }
 
   function handleDeleteAddress(id: string) {
@@ -317,15 +328,25 @@ export default function AccountPage() {
                   <label className={labelClass}>{L.phone} *</label>
                   <input type="tel" dir="ltr" value={addrPhone} onChange={e => setAddrPhone(e.target.value)} placeholder="01xxxxxxxxx" className={inputClass} />
                 </div>
-                <div>
-                  <label className={labelClass}>{L.governorate} *</label>
-                  <select value={addrGov} onChange={e => setAddrGov(e.target.value)} className={inputClass + ' bg-white cursor-pointer'}>
-                    <option value="">{isRtl ? 'اختر المحافظة' : 'Select'}</option>
-                    {governorates.map(g => (
-                      <option key={g.id} value={g.id}>{isRtl ? g.name : g.nameEn}</option>
+                <div className="sm:col-span-2">
+                  <label className={labelClass}>{isRtl ? 'الدولة' : 'Country'} *</label>
+                  <select value={addrCountry} onChange={e => { setAddrCountry(e.target.value); setAddrGov(''); }} className={inputClass + ' bg-white cursor-pointer'}>
+                    {COUNTRIES_LIST.map(c => (
+                      <option key={c.code} value={c.code}>{isRtl ? c.name : c.nameEn}</option>
                     ))}
                   </select>
                 </div>
+                {addrCountry === 'EG' && (
+                  <div>
+                    <label className={labelClass}>{L.governorate} *</label>
+                    <select value={addrGov} onChange={e => setAddrGov(e.target.value)} className={inputClass + ' bg-white cursor-pointer'}>
+                      <option value="">{isRtl ? 'اختر المحافظة' : 'Select'}</option>
+                      {governorates.map(g => (
+                        <option key={g.id} value={g.id}>{isRtl ? g.name : g.nameEn}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className={labelClass}>{L.city} *</label>
                   <input type="text" value={addrCity} onChange={e => setAddrCity(e.target.value)} className={inputClass} />

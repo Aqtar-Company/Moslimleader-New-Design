@@ -1041,8 +1041,8 @@ export default function CheckoutPage() {
                     }))}
                     shippingCost={shippingCost}
                     shippingCurrency={shippingCurrencyEn}
-                    discount={discount}
-                    discountCurrency={currencyEn}
+                    discount={coupon ? coupon.pct : 0}
+                    discountCurrency="PCT"
                     couponCode={coupon?.code}
                     currency={currency}
                     shippingAddress={address}

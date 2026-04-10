@@ -19,13 +19,15 @@ export async function GET(req: NextRequest) {
     const staticWithOverrides = staticProducts.map(p => {
       const override = overrides[p.id] ?? {};
       const merged = { ...p, ...override };
-      // Resolve priceUsd: prefer explicit priceUsd > regionalPricing.price_usd_manual
+      // Resolve priceUsd: explicit override > regionalPricing.price_usd_manual > static
       const regional = (merged as { regionalPricing?: { price_usd_manual?: number; price_egp_manual?: number } }).regionalPricing;
-      if ((!merged.priceUsd || (merged.priceUsd as number) === 0) && regional?.price_usd_manual) {
+      const hasExplicitPriceUsd = override.priceUsd !== undefined && (override.priceUsd as number) > 0;
+      if (!hasExplicitPriceUsd && (!merged.priceUsd || (merged.priceUsd as number) === 0) && regional?.price_usd_manual) {
         (merged as Record<string, unknown>).priceUsd = regional.price_usd_manual;
       }
-      // Resolve price (EGP): prefer explicit price > regionalPricing.price_egp_manual
-      if (regional?.price_egp_manual && regional.price_egp_manual > 0) {
+      // Resolve price (EGP): explicit override price takes priority over regionalPricing.price_egp_manual
+      const hasExplicitPrice = override.price !== undefined && (override.price as number) > 0;
+      if (!hasExplicitPrice && regional?.price_egp_manual && regional.price_egp_manual > 0) {
         (merged as Record<string, unknown>).price = regional.price_egp_manual;
       }
       return merged;

@@ -30,7 +30,7 @@ export const products: Product[] = [
   <li>Daily tracking chart</li>
   <li>Electronic buzzer</li>
 </ul>`,
-    price: 250,
+    price: 350,
     priceUsd: 15,
     category: 'ألعاب تعليمية',
     tags: ['لعبة', 'صيام', 'رمضان', 'تربوية'],
@@ -78,7 +78,7 @@ export const products: Product[] = [
   <li>Encouraging appreciation certificate A4</li>
   <li>Level star stickers</li>
 </ul>`,
-    price: 350,
+    price: 500,
     priceUsd: 32,
     category: 'ألعاب تعليمية',
     tags: ['قيادة', 'تربية', 'شخصية'],
@@ -123,7 +123,7 @@ export const products: Product[] = [
   <li>A3 leader task schedule</li>
   <li>Moslim Leader badge</li>
 </ul>`,
-    price: 250,
+    price: 370,
     priceUsd: 23,
     category: 'ألعاب تعليمية',
     tags: ['قيادة', 'تربية', 'تعليم'],
@@ -169,7 +169,7 @@ export const products: Product[] = [
   <li>White Board marker</li>
 </ul>
 <p><strong>Apps are free on Google Play</strong></p>`,
-    price: 250,
+    price: 350,
     priceUsd: 25,
     category: 'ألعاب تعليمية',
     tags: ['صلاة', 'حج', 'تعليم', 'AR'],
@@ -209,7 +209,7 @@ export const products: Product[] = [
   <li>Heavy cardboard box (3 × 18 × 18 cm)</li>
   <li>6 cardboard puzzle boards (15 × 15 cm)</li>
 </ul>`,
-    price: 160,
+    price: 220,
     priceUsd: 16,
     category: 'ألعاب تعليمية',
     tags: ['بازل', 'أولاد', 'تعليم'],
@@ -244,7 +244,7 @@ export const products: Product[] = [
   <li>Heavy cardboard box (3 × 18 × 18 cm)</li>
   <li>6 cardboard puzzle boards (15 × 15 cm)</li>
 </ul>`,
-    price: 160,
+    price: 220,
     priceUsd: 16,
     category: 'ألعاب تعليمية',
     tags: ['بازل', 'بنات', 'تعليم'],
@@ -323,7 +323,7 @@ export const products: Product[] = [
   <li>Interior: 70 or 80 gsm white paper</li>
   <li>Interior: 4-color print</li>
 </ul>`,
-    price: 230,
+    price: 350,
     priceUsd: 4.5,
     category: 'كتب الأسرة',
     tags: ['فلسطين', 'كتب', 'أسرة', 'تاريخ'],
@@ -363,7 +363,7 @@ export const products: Product[] = [
   <li>Interior: 70 or 80 gsm white paper</li>
   <li>Interior: 4-color print</li>
 </ul>`,
-    price: 180,
+    price: 250,
     priceUsd: 3.5,
     category: 'كتب',
     tags: ['شباب', 'تربية', 'فكر', 'شبهات'],
@@ -403,7 +403,7 @@ export const products: Product[] = [
   <li>Interior: 70 or 80 gsm white paper</li>
   <li>Interior: 2-color print</li>
 </ul>`,
-    price: 180,
+    price: 250,
     priceUsd: 3.5,
     category: 'كتب',
     tags: ['أمهات', 'تربية', 'أسرة'],
@@ -443,7 +443,7 @@ export const products: Product[] = [
   <li>Interior: 70 or 80 gsm white paper</li>
   <li>Interior: 4-color print</li>
 </ul>`,
-    price: 160,
+    price: 220,
     priceUsd: 16,
     category: 'كتب',
     tags: ['حديث', 'شبهات', 'قصص', 'إنفوجرافيك'],
@@ -527,7 +527,7 @@ export const products: Product[] = [
   <li>4-color print</li>
 </ul>
 <p><strong>App is free on Google Play</strong></p>`,
-    price: 190,
+    price: 250,
     priceUsd: 4,
     category: 'قصص الأطفال',
     tags: ['صلاة', 'قصص', 'أطفال', 'AR'],
@@ -566,7 +566,7 @@ export const products: Product[] = [
   <li>250 gsm paper</li>
   <li>4-color print</li>
 </ul>`,
-    price: 200,
+    price: 250,
     priceUsd: 4,
     category: 'قصص الأطفال',
     tags: ['قصص', 'أطفال', 'تساؤلات', 'إيمان'],
@@ -605,7 +605,7 @@ export const products: Product[] = [
   <li>250 gsm paper</li>
   <li>4-color print</li>
 </ul>`,
-    price: 200,
+    price: 300,
     priceUsd: 4,
     category: 'قصص الأطفال',
     tags: ['بر', 'والدين', 'قصص', 'أطفال'],
@@ -646,7 +646,7 @@ export const products: Product[] = [
   <li>2 sticker pages</li>
   <li>Metal spiral binding</li>
 </ul>`,
-    price: 170,
+    price: 220,
     priceUsd: 10,
     category: 'مفكرات',
     tags: ['مفكرة', 'أطفال', 'تنظيم', 'عبادات'],
@@ -692,7 +692,7 @@ export const products: Product[] = [
   <li>2 sticker pages</li>
   <li>Metal spiral binding</li>
 </ul>`,
-    price: 170,
+    price: 220,
     priceUsd: 10,
     category: 'مفكرات',
     tags: ['مفكرة', 'كبار', 'تنظيم', 'عبادات'],
@@ -775,7 +775,7 @@ export const products: Product[] = [
   <li>4-color print on both sides</li>
 </ul>
 <p><strong>App is free on Google Play</strong></p>`,
-    price: 190,
+    price: 230,
     priceUsd: 4,
     category: 'أدوات القرآن',
     tags: ['قرآن', 'حامل', 'مصحف', 'أطفال'],
@@ -819,7 +819,7 @@ export const products: Product[] = [
   <li>Name can be added upon request</li>
   <li>Premium dishwasher-safe material</li>
 </ul>`,
-    price: 170,
+    price: 210,
     priceUsd: 3.5,
     category: 'مجات',
     tags: ['مج', 'هدية', 'أولاد', 'إسلامي'],
@@ -866,7 +866,7 @@ export const products: Product[] = [
   <li>Name can be added upon request</li>
   <li>Premium dishwasher-safe material</li>
 </ul>`,
-    price: 170,
+    price: 210,
     priceUsd: 3.5,
     category: 'مجات',
     tags: ['مج', 'هدية', 'بنات', 'إسلامي'],
@@ -912,7 +912,7 @@ export const products: Product[] = [
   <li>Name can be added upon request</li>
   <li>Premium dishwasher-safe material</li>
 </ul>`,
-    price: 170,
+    price: 210,
     priceUsd: 3.5,
     category: 'مجات',
     tags: ['مج', 'هدية', 'نساء', 'إسلامي'],

@@ -100,7 +100,7 @@ function ShopContent() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const res = await fetch('/api/products', { signal: AbortSignal.timeout(8000), cache: 'no-store' });
+        const res = await fetch(`/api/products?_t=${Date.now()}`, { signal: AbortSignal.timeout(8000), cache: 'no-store' });
         const data = await res.json();
         const fetched: Product[] = data.products ?? products;
         setAllProducts(fetched);
@@ -118,10 +118,10 @@ function ShopContent() {
           .map(c => ({ id: c, name: c, count: fetched.filter(p => p.category === c).length }));
 
         setDisplayCategories([...staticUpdated, ...customEntries]);
+        // Prices are fresh from DB — remove skeleton only after data is set
+        setPriceLoading(false);
       } catch {
-        // Fallback: keep showing static products (already displayed)
-      } finally {
-        // Prices are now fresh from DB — remove skeleton
+        // Fallback: keep showing static products, still remove skeleton
         setPriceLoading(false);
       }
     };

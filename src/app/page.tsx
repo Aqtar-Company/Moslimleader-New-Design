@@ -121,8 +121,17 @@ function ShopContent() {
         // Prices are fresh from DB — remove skeleton only after data is set
         setPriceLoading(false);
       } catch {
-        // Fallback: keep showing static products, still remove skeleton
-        setPriceLoading(false);
+        // API failed — retry once after 3 seconds, keep skeleton until then
+        setTimeout(async () => {
+          try {
+            const res2 = await fetch(`/api/products?_t=${Date.now()}`, { cache: 'no-store' });
+            const data2 = await res2.json();
+            const fetched2: Product[] = data2.products ?? [];
+            if (fetched2.length > 0) setAllProducts(fetched2);
+          } catch { /* ignore */ } finally {
+            setPriceLoading(false);
+          }
+        }, 3000);
       }
     };
     fetchProducts();

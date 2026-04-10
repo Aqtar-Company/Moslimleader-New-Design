@@ -1,5 +1,7 @@
 import nodemailer from 'nodemailer';
 
+import { generateInvoicePdf } from './invoice-pdf';
+
 // ─── SMTP Transporter ─────────────────────────────────────────────────────────
 // Primary: port 465 (SSL). Fallback: port 587 (STARTTLS) if 465 fails.
 function createTransporter() {
@@ -338,14 +340,34 @@ export async function sendOrderNotificationEmail(data: OrderEmailData): Promise<
   try {
     const transporter = createTransporter();
     const html = buildOrderEmailHtml(data);
-    await transporter.sendMail({
+
+    // Try to generate PDF invoice attachment
+    const pdfBuffer = await generateInvoicePdf({
+      ...data,
+      subtotal: data.subtotal,
+    });
+
+    const mailOptions: Record<string, unknown> = {
       from: `"Moslim Leader Orders" <${process.env.SMTP_USER || 'orders@moslimleader.com'}>`,
       to: process.env.SMTP_USER || 'orders@moslimleader.com',
       subject: `🎁 طلب جديد #${data.orderNumber} — ${data.customerName}`,
       html,
       replyTo: data.customerEmail !== '—' ? data.customerEmail : undefined,
-    });
-    console.log('[order-email admin] sent successfully to admin');
+    };
+
+    // Attach PDF if generated successfully
+    if (pdfBuffer) {
+      mailOptions.attachments = [
+        {
+          filename: `فاتورة-${data.orderNumber}.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf',
+        },
+      ];
+    }
+
+    await transporter.sendMail(mailOptions);
+    console.error('[order-email admin] sent successfully to admin' + (pdfBuffer ? ' (with PDF)' : ' (no PDF)'));
   } catch (err) {
     console.error('[order-email admin] send failed', err);
     // Don't throw — email failure shouldn't block order processing

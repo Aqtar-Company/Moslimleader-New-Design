@@ -215,6 +215,7 @@ export default function CheckoutPage() {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null);
+  const [saveAddressChecked, setSaveAddressChecked] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const [orderNumber] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
   const { addToast } = useToast();
@@ -452,8 +453,8 @@ export default function CheckoutPage() {
     // Email notification is now sent server-side from /api/orders
     // (HTML template with logo, product images, totals breakdown — see src/lib/order-email.ts)
 
-    // Auto-save address to user account if logged in
-    if (user) {
+    // Auto-save address to user account if logged in and user opted in
+    if (user && (saveAddressChecked || selectedSavedAddressId)) {
       try {
         const newAddr = {
           id: selectedSavedAddressId ?? `addr_${Date.now()}`,
@@ -1071,6 +1072,21 @@ export default function CheckoutPage() {
                   </div>
                 )}
               </div>
+              {/* Save address checkbox — only for logged-in users entering a new address */}
+              {user && !selectedSavedAddressId && (
+                <label className="mt-5 flex items-center gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={saveAddressChecked}
+                    onChange={e => setSaveAddressChecked(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300 accent-gray-900 cursor-pointer"
+                  />
+                  <span className="text-sm text-gray-700 font-medium">
+                    {isRtl ? 'حفظ هذا العنوان لاستخدامه في المرة القادمة' : 'Save this address for next time'}
+                  </span>
+                </label>
+              )}
+
               <button
                 onClick={() => validateAddress() && setStep('payment')}
                 disabled={shippingType === 'international' && !intlConfig.enabled}

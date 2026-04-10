@@ -16,10 +16,20 @@ export async function GET(req: NextRequest) {
     const overrides: Record<string, Record<string, unknown>> = (overrideSetting?.value as Record<string, Record<string, unknown>>) ?? {};
 
     // Static products with overrides applied
-    const staticWithOverrides = staticProducts.map(p => ({
-      ...p,
-      ...(overrides[p.id] ?? {}),
-    }));
+    const staticWithOverrides = staticProducts.map(p => {
+      const override = overrides[p.id] ?? {};
+      const merged = { ...p, ...override };
+      // Resolve priceUsd: prefer explicit priceUsd > regionalPricing.price_usd_manual
+      const regional = (merged as { regionalPricing?: { price_usd_manual?: number; price_egp_manual?: number } }).regionalPricing;
+      if ((!merged.priceUsd || (merged.priceUsd as number) === 0) && regional?.price_usd_manual) {
+        (merged as Record<string, unknown>).priceUsd = regional.price_usd_manual;
+      }
+      // Resolve price (EGP): prefer explicit price > regionalPricing.price_egp_manual
+      if (regional?.price_egp_manual && regional.price_egp_manual > 0) {
+        (merged as Record<string, unknown>).price = regional.price_egp_manual;
+      }
+      return merged;
+    });
 
     // DB-added products (admin-added)
     const dbProducts = await prisma.product.findMany({

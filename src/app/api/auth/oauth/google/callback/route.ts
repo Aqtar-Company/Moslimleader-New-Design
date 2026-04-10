@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { signToken } from '@/lib/jwt';
+import { signToken, makeAuthCookie } from '@/lib/jwt';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -46,17 +46,23 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(`${baseUrl}/auth?error=google_email`);
     }
 
+    const emailKey = googleUser.email.toLowerCase();
+
     // Find or create user
-    let user = await prisma.user.findUnique({ where: { email: googleUser.email } });
+    let user = await prisma.user.findUnique({ where: { email: emailKey } });
 
     if (!user) {
-      // Create new user
+      // Grant admin role if email matches ADMIN_EMAIL env var
+      const adminEmail = (process.env.ADMIN_EMAIL || '').toLowerCase();
+      const role = (adminEmail && emailKey === adminEmail) ? 'admin' : 'customer';
+
       user = await prisma.user.create({
         data: {
-          name: googleUser.name || googleUser.email.split('@')[0],
-          email: googleUser.email,
+          name: googleUser.name || emailKey.split('@')[0],
+          email: emailKey,
           passwordHash: '', // No password for OAuth users
-          role: 'customer',
+          role,
+          savedAddresses: [],
         },
       });
     }
@@ -77,22 +83,14 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // Create JWT token
+    // Create JWT token and set cookie using shared makeAuthCookie (consistent cookie name)
     const token = await signToken({ userId: user.id, email: user.email, role: user.role });
-
-    // Set cookie and redirect
     const response = NextResponse.redirect(`${baseUrl}/`);
-    response.cookies.set('token', token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 30, // 30 days
-      path: '/',
-    });
+    response.cookies.set(makeAuthCookie(token));
 
     return response;
   } catch (err) {
-    console.error('Google OAuth error:', err);
+    console.error('[google oauth callback]', err);
     return NextResponse.redirect(`${baseUrl}/auth?error=google_failed`);
   }
 }

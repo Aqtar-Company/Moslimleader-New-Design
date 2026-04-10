@@ -6,7 +6,14 @@ const TOKEN_COOKIE = 'ml_auth';
 const COOKIE_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
 
 function getSecret() {
-  const secret = process.env.JWT_SECRET ?? 'fallback-dev-secret-change-in-production';
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('JWT_SECRET environment variable is not set');
+    }
+    // Dev only fallback — never reaches production
+    return new TextEncoder().encode('dev-only-fallback-secret-not-for-production');
+  }
   return new TextEncoder().encode(secret);
 }
 

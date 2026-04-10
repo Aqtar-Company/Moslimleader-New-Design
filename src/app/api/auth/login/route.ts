@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        role: user.role,
         savedAddresses: (user.savedAddresses as unknown[]) ?? [],
       },
     });

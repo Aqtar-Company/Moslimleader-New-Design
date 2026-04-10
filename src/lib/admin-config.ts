@@ -1,7 +1,8 @@
 // The email address that has admin access to the dashboard
-export const ADMIN_EMAIL = 'moslimleader2020@gmail.com';
+// Read from environment variable — never hardcoded
+export const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || '').toLowerCase();
 
-// Default coupons (used as fallback if no coupons in localStorage)
+// Default coupons (used as fallback if no coupons in DB)
 export const DEFAULT_COUPONS: Record<string, number> = {
   'MOSLIM10': 10,
   'RAMADAN20': 20,

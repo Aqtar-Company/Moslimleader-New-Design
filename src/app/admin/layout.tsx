@@ -4,8 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { ADMIN_EMAIL } from '@/lib/admin-config';
-
 const NAV = [
   { href: '/admin/dashboard',         label: 'الرئيسية',       icon: '📊' },
   { href: '/admin/orders',            label: 'الطلبات',         icon: '📦' },
@@ -33,12 +31,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       router.replace('/auth?redirect=' + pathname);
       return;
     }
-    if (user.email !== ADMIN_EMAIL) {
+    if (user.role !== 'admin') {
       router.replace('/');
     }
   }, [user, isLoading, router, pathname]);
 
-  if (isLoading || !user || user.email !== ADMIN_EMAIL) {
+  if (isLoading || !user || user.role !== 'admin') {
     return (
       <div className="fixed inset-0 z-50 bg-[#1a1a2e] flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-[#F5C518] border-t-transparent rounded-full animate-spin" />

@@ -9,8 +9,6 @@ import { useLang } from '@/context/LanguageContext';
 import { Address } from '@/context/AuthContext';
 import { governorates } from '@/lib/shipping';
 import { COUNTRY_CURRENCIES } from '@/lib/geo-pricing';
-import { ADMIN_EMAIL } from '@/lib/admin-config';
-
 const COUNTRIES_LIST = [
   { code: 'EG', name: 'مصر', nameEn: 'Egypt' },
   ...Object.entries(COUNTRY_CURRENCIES)
@@ -194,7 +192,7 @@ export default function AccountPage() {
           <p className="text-sm text-gray-500 mt-1">{user.email}</p>
         </div>
         <div className="flex items-center gap-2">
-          {user.email === ADMIN_EMAIL && (
+          {user.role === 'admin' && (
             <Link
               href="/admin/dashboard"
               className="text-sm font-bold bg-[#F5C518] hover:bg-amber-400 text-[#1a1a2e] rounded-xl px-4 py-2 transition flex items-center gap-1.5"

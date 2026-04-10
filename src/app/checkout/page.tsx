@@ -254,16 +254,16 @@ export default function CheckoutPage() {
   const govObj = governorates.find(g => g.id === address.governorate);
   const countryObj = COUNTRIES.find(c => c.code === address.country);
 
-  let shippingCost = 0;
+   let shippingCost = 0;
   let shippingCurrency = currency;
+  let shippingCurrencyEn = currencyEn; // ISO code for PayPal conversion
   let intlShippingResult: ShippingCalcResult | null = null;
-
   // Case: international user shipping to Egypt — use local EGP shipping rate, convert to their currency
   const intlUserShippingToEgypt = shippingType === 'international' && address.country === 'EG' && !isUserFromEgypt;
-
   if (shippingType === 'local' && address.governorate) {
     shippingCost = getShipping(address.governorate);
     shippingCurrency = 'ج.م';
+    shippingCurrencyEn = 'EGP';
   } else if (intlUserShippingToEgypt && address.governorate) {
     // Egypt delivery: get EGP rate, convert to user's country currency
     const egpShipping = getShipping(address.governorate);
@@ -273,9 +273,11 @@ export default function CheckoutPage() {
       const egpToUsd = egpShipping / 50;
       shippingCost = Math.round(egpToUsd * userCurr.usdRate * 10) / 10;
       shippingCurrency = userCurr.currency;
+      shippingCurrencyEn = userCurr.currencyEn;
     } else {
       shippingCost = egpShipping;
       shippingCurrency = 'ج.م';
+      shippingCurrencyEn = 'EGP';
     }
   } else if (shippingType === 'international' && address.country && address.country !== 'EG') {
     intlShippingResult = calculateIntlShipping(totalWeightKg, address.country, intlConfig);
@@ -284,13 +286,14 @@ export default function CheckoutPage() {
       if (localCurr && localCurr.currencyEn !== 'USD') {
         shippingCost = Math.round(intlShippingResult.amount * localCurr.usdRate * 10) / 10;
         shippingCurrency = localCurr.currency;
+        shippingCurrencyEn = localCurr.currencyEn;
       } else {
         shippingCost = intlShippingResult.amount;
         shippingCurrency = intlShippingResult.currency;
+        shippingCurrencyEn = 'USD';
       }
     }
   }
-
 
   const steps: Step[] = ['address', 'payment', 'confirm'];
   const stepIdx = steps.indexOf(step);
@@ -1037,7 +1040,7 @@ export default function CheckoutPage() {
                       productImage: item.product.images?.[0] ?? undefined,
                     }))}
                     shippingCost={shippingCost}
-                    shippingCurrency={shippingCurrency}
+                    shippingCurrency={shippingCurrencyEn}
                     discount={discount}
                     discountCurrency={currencyEn}
                     couponCode={coupon?.code}

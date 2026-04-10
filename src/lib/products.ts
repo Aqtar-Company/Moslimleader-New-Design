@@ -30,8 +30,8 @@ export const products: Product[] = [
   <li>Daily tracking chart</li>
   <li>Electronic buzzer</li>
 </ul>`,
-    price: 230,
-    priceUsd: 23,
+    price: 250,
+    priceUsd: 15,
     category: 'ألعاب تعليمية',
     tags: ['لعبة', 'صيام', 'رمضان', 'تربوية'],
     images: [
@@ -78,7 +78,7 @@ export const products: Product[] = [
   <li>Encouraging appreciation certificate A4</li>
   <li>Level star stickers</li>
 </ul>`,
-    price: 320,
+    price: 350,
     priceUsd: 32,
     category: 'ألعاب تعليمية',
     tags: ['قيادة', 'تربية', 'شخصية'],
@@ -123,7 +123,7 @@ export const products: Product[] = [
   <li>A3 leader task schedule</li>
   <li>Moslim Leader badge</li>
 </ul>`,
-    price: 230,
+    price: 250,
     priceUsd: 23,
     category: 'ألعاب تعليمية',
     tags: ['قيادة', 'تربية', 'تعليم'],
@@ -288,6 +288,7 @@ export const products: Product[] = [
 </ul>
 <p><strong>App is free on Google Play</strong></p>`,
     price: 350,
+    priceUsd: 7,
     category: 'أدوات القرآن',
     tags: ['قرآن', 'تعليم', 'ألواح'],
     images: [
@@ -322,7 +323,8 @@ export const products: Product[] = [
   <li>Interior: 70 or 80 gsm white paper</li>
   <li>Interior: 4-color print</li>
 </ul>`,
-    price: 220,
+    price: 230,
+    priceUsd: 4.5,
     category: 'كتب الأسرة',
     tags: ['فلسطين', 'كتب', 'أسرة', 'تاريخ'],
     images: [
@@ -362,6 +364,7 @@ export const products: Product[] = [
   <li>Interior: 4-color print</li>
 </ul>`,
     price: 180,
+    priceUsd: 3.5,
     category: 'كتب',
     tags: ['شباب', 'تربية', 'فكر', 'شبهات'],
     images: [
@@ -401,6 +404,7 @@ export const products: Product[] = [
   <li>Interior: 2-color print</li>
 </ul>`,
     price: 180,
+    priceUsd: 3.5,
     category: 'كتب',
     tags: ['أمهات', 'تربية', 'أسرة'],
     images: [
@@ -480,7 +484,8 @@ export const products: Product[] = [
   <li>Interior: 70 gsm white paper</li>
   <li>Interior: 4-color print</li>
 </ul>`,
-    price: 220,
+    price: 230,
+    priceUsd: 4.5,
     category: 'كتب',
     tags: ['فقه', 'طهارة', 'قصص', 'أطفال'],
     images: [
@@ -523,6 +528,7 @@ export const products: Product[] = [
 </ul>
 <p><strong>App is free on Google Play</strong></p>`,
     price: 190,
+    priceUsd: 4,
     category: 'قصص الأطفال',
     tags: ['صلاة', 'قصص', 'أطفال', 'AR'],
     images: [
@@ -561,6 +567,7 @@ export const products: Product[] = [
   <li>4-color print</li>
 </ul>`,
     price: 200,
+    priceUsd: 4,
     category: 'قصص الأطفال',
     tags: ['قصص', 'أطفال', 'تساؤلات', 'إيمان'],
     images: [
@@ -599,6 +606,7 @@ export const products: Product[] = [
   <li>4-color print</li>
 </ul>`,
     price: 200,
+    priceUsd: 4,
     category: 'قصص الأطفال',
     tags: ['بر', 'والدين', 'قصص', 'أطفال'],
     images: [
@@ -638,8 +646,8 @@ export const products: Product[] = [
   <li>2 sticker pages</li>
   <li>Metal spiral binding</li>
 </ul>`,
-    price: 160,
-    priceUsd: 16,
+    price: 170,
+    priceUsd: 10,
     category: 'مفكرات',
     tags: ['مفكرة', 'أطفال', 'تنظيم', 'عبادات'],
     images: [
@@ -684,8 +692,8 @@ export const products: Product[] = [
   <li>2 sticker pages</li>
   <li>Metal spiral binding</li>
 </ul>`,
-    price: 160,
-    priceUsd: 16,
+    price: 170,
+    priceUsd: 10,
     category: 'مفكرات',
     tags: ['مفكرة', 'كبار', 'تنظيم', 'عبادات'],
     images: [
@@ -730,6 +738,7 @@ export const products: Product[] = [
   <li>33 × 28 × 12 cm</li>
 </ul>`,
     price: 280,
+    priceUsd: 5.5,
     category: 'إكسسوار',
     tags: ['شنطة', 'أطفال', 'مدرسة', 'حضانة'],
     images: [
@@ -767,6 +776,7 @@ export const products: Product[] = [
 </ul>
 <p><strong>App is free on Google Play</strong></p>`,
     price: 190,
+    priceUsd: 4,
     category: 'أدوات القرآن',
     tags: ['قرآن', 'حامل', 'مصحف', 'أطفال'],
     images: [
@@ -810,6 +820,7 @@ export const products: Product[] = [
   <li>Premium dishwasher-safe material</li>
 </ul>`,
     price: 170,
+    priceUsd: 3.5,
     category: 'مجات',
     tags: ['مج', 'هدية', 'أولاد', 'إسلامي'],
     images: [
@@ -856,6 +867,7 @@ export const products: Product[] = [
   <li>Premium dishwasher-safe material</li>
 </ul>`,
     price: 170,
+    priceUsd: 3.5,
     category: 'مجات',
     tags: ['مج', 'هدية', 'بنات', 'إسلامي'],
     images: [
@@ -901,6 +913,7 @@ export const products: Product[] = [
   <li>Premium dishwasher-safe material</li>
 </ul>`,
     price: 170,
+    priceUsd: 3.5,
     category: 'مجات',
     tags: ['مج', 'هدية', 'نساء', 'إسلامي'],
     images: [
@@ -939,6 +952,7 @@ export const products: Product[] = [
   <li>Weight: 6 grams</li>
 </ul>`,
     price: 35,
+    priceUsd: 0.5,
     category: 'إكسسوار',
     tags: ['دبوس', 'هدية', 'إكسسوار'],
     images: [

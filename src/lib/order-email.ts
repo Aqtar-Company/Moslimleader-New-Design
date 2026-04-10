@@ -3,7 +3,7 @@ import nodemailer from 'nodemailer';
 // ─── SMTP Transporter ─────────────────────────────────────────────────────────
 // Primary: port 465 (SSL). Fallback: port 587 (STARTTLS) if 465 fails.
 function createTransporter() {
-  const host = process.env.SMTP_HOST || 'smtp.hostinger.com';
+  const host = process.env.SMTP_HOST || 'smtp.titan.email';
   const port = parseInt(process.env.SMTP_PORT || '465', 10);
   const user = process.env.SMTP_USER || 'orders@moslimleader.com';
   const pass = process.env.SMTP_PASS || '';

@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
     const discountUsd = Math.min(totalUsd + shippingUsd, toUsd(rawDiscount, discountCurrency));
 
     const finalUsd = Math.max(0.01, Math.round((totalUsd + shippingUsd - discountUsd) * 100) / 100);
+    console.log('[paypal create-order DEBUG]', JSON.stringify({ totalUsd, rawShipping, rawDiscount, shippingCurrency, discountCurrency, shippingUsd, discountUsd, finalUsd }));
 
     const referenceId = `${auth.userId}-${Date.now()}`;
     const paypalOrder = await createPayPalOrder(finalUsd, 'USD', referenceId);

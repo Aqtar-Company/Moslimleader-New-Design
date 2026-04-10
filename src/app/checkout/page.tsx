@@ -171,7 +171,7 @@ function formatExpiry(val: string) {
 
 export default function CheckoutPage() {
   const { items, coupon, clear } = useCart();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const { lang } = useLang();
   const { getProductPrice, getCartRegionalTotal, formatPrice, zoneInfo, countryCode, originCountryCode, setCountry } = useRegionalPricing();
   // Is the user originally from Egypt (by IP)?
@@ -214,6 +214,8 @@ export default function CheckoutPage() {
   const [errors, setErrors] = useState<Partial<AddressForm>>({});
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null);
+  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const [orderNumber] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
   const { addToast } = useToast();
 
@@ -231,6 +233,30 @@ export default function CheckoutPage() {
   useEffect(() => {
     setIntlConfig(getIntlShippingConfig());
   }, []);
+
+  // Pre-fill from first saved address if user has one
+  useEffect(() => {
+    if (user?.savedAddresses && user.savedAddresses.length > 0) {
+      const first = user.savedAddresses[0] as Record<string, unknown>;
+      setSelectedSavedAddressId((first.id as string) ?? null);
+      setAddress(prev => ({
+        ...prev,
+        firstName: (first.firstName as string) || prev.firstName,
+        lastName: (first.lastName as string) || prev.lastName,
+        phone: (first.phone as string) || prev.phone,
+        whatsappSame: (first.whatsappSame as boolean) ?? true,
+        whatsappNumber: (first.whatsappNumber as string) || '',
+        governorate: (first.governorate as string) || prev.governorate,
+        region: (first.region as string) || '',
+        city: (first.city as string) || '',
+        street: (first.street as string) || '',
+        building: (first.building as string) || '',
+        notes: (first.notes as string) || '',
+        country: (first.country as string) || prev.country,
+      }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Sync shipping type + pre-fill country when zone/country detection completes
   useEffect(() => {
@@ -395,7 +421,7 @@ export default function CheckoutPage() {
     // Save order to database via API
     if (user) {
       try {
-        await fetch('/api/orders', {
+        const orderRes = await fetch('/api/orders', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -418,11 +444,45 @@ export default function CheckoutPage() {
             currency,
           }),
         });
+        const orderData = await orderRes.json();
+        if (orderData.order?.id) setCreatedOrderId(orderData.order.id);
       } catch { /* DB failure shouldn't block order confirmation */ }
     }
 
     // Email notification is now sent server-side from /api/orders
     // (HTML template with logo, product images, totals breakdown — see src/lib/order-email.ts)
+
+    // Auto-save address to user account if logged in
+    if (user) {
+      try {
+        const newAddr = {
+          id: selectedSavedAddressId ?? `addr_${Date.now()}`,
+          label: shippingType === 'local'
+            ? (govObj ? (isRtl ? govObj.name : govObj.nameEn) : address.city)
+            : (countryObj ? (isRtl ? countryObj.nameAr : countryObj.nameEn) : address.city),
+          firstName: address.firstName,
+          lastName: address.lastName,
+          phone: address.phone,
+          whatsappSame: address.whatsappSame,
+          whatsappNumber: address.whatsappNumber,
+          governorate: address.governorate,
+          region: address.region,
+          city: address.city,
+          street: address.street,
+          building: address.building,
+          notes: address.notes,
+          country: address.country || (shippingType === 'local' ? 'EG' : ''),
+          shippingType,
+        };
+        const existingAddresses: unknown[] = (user.savedAddresses as unknown[]) ?? [];
+        // Replace if same id, else prepend (keep max 5)
+        const filtered = existingAddresses.filter(
+          (a: unknown) => (a as Record<string, unknown>).id !== newAddr.id
+        );
+        const updatedAddresses = [newAddr, ...filtered].slice(0, 5);
+        await updateUser({ savedAddresses: updatedAddresses as never });
+      } catch { /* non-blocking */ }
+    }
 
     setOrderPlaced(true);
     } catch {
@@ -594,9 +654,22 @@ export default function CheckoutPage() {
           <p className="text-xs text-gray-400">
             📩 {isRtl ? 'تم إرسال تأكيد الطلب إلى فريقنا وسنتواصل معك قريبًا' : 'Order confirmation sent to our team — we will contact you soon'}
           </p>
-          <Link href="/" className="inline-block bg-gray-900 hover:bg-gray-700 text-white font-bold px-10 py-3.5 rounded-xl transition text-sm">
-            {L.continueShopping}
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            {createdOrderId && (
+              <button
+                onClick={() => window.open(`/invoice/${createdOrderId}`, '_blank')}
+                className="inline-flex items-center justify-center gap-2 bg-[#F5C518] hover:bg-[#e0b000] text-gray-900 font-bold px-8 py-3.5 rounded-xl transition text-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                {isRtl ? 'تحميل الفاتورة PDF' : 'Download Invoice PDF'}
+              </button>
+            )}
+            <Link href="/" className="inline-block bg-gray-900 hover:bg-gray-700 text-white font-bold px-10 py-3.5 rounded-xl transition text-sm">
+              {L.continueShopping}
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -639,6 +712,95 @@ export default function CheckoutPage() {
           {step === 'address' && (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
               <h2 className="text-lg font-black text-gray-900 mb-6">{L.address}</h2>
+
+              {/* Saved addresses picker — shown only for logged-in users with saved addresses */}
+              {user && user.savedAddresses && user.savedAddresses.length > 0 && (
+                <div className="mb-6">
+                  <p className="text-xs font-black text-gray-500 uppercase tracking-wide mb-3">
+                    {isRtl ? 'عناوينك المحفوظة' : 'Your Saved Addresses'}
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {(user.savedAddresses as Record<string, unknown>[]).map((addr) => (
+                      <button
+                        key={addr.id as string}
+                        type="button"
+                        onClick={() => {
+                          setSelectedSavedAddressId(addr.id as string);
+                          setAddress(prev => ({
+                            ...prev,
+                            firstName: (addr.firstName as string) || '',
+                            lastName: (addr.lastName as string) || '',
+                            phone: (addr.phone as string) || '',
+                            whatsappSame: (addr.whatsappSame as boolean) ?? true,
+                            whatsappNumber: (addr.whatsappNumber as string) || '',
+                            governorate: (addr.governorate as string) || '',
+                            region: (addr.region as string) || '',
+                            city: (addr.city as string) || '',
+                            street: (addr.street as string) || '',
+                            building: (addr.building as string) || '',
+                            notes: (addr.notes as string) || '',
+                            country: (addr.country as string) || prev.country,
+                          }));
+                          // Restore shipping type if saved
+                          if (addr.shippingType === 'local' || addr.shippingType === 'international') {
+                            // Only switch if intl config allows it
+                            if (addr.shippingType === 'local') setShippingType('local');
+                          }
+                        }}
+                        className={`w-full text-start border-2 rounded-xl px-4 py-3 transition ${
+                          selectedSavedAddressId === (addr.id as string)
+                            ? 'border-gray-900 bg-gray-50'
+                            : 'border-gray-100 hover:border-gray-300 bg-white'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-base shrink-0">
+                              {(addr.shippingType as string) === 'local' ? '🇪🇬' : '🌍'}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-gray-900 truncate">
+                                {(addr.firstName as string)} {(addr.lastName as string)}
+                                {addr.label ? ` — ${addr.label as string}` : ''}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate">
+                                {(addr.street as string)}{addr.city ? `, ${addr.city as string}` : ''}
+                              </p>
+                            </div>
+                          </div>
+                          {selectedSavedAddressId === (addr.id as string) && (
+                            <span className="shrink-0 w-5 h-5 rounded-full bg-gray-900 flex items-center justify-center">
+                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                    {/* Option to enter a new address */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedSavedAddressId(`addr_${Date.now()}`);
+                        setAddress({
+                          ...EMPTY_ADDR,
+                          firstName: user?.name?.split(' ')[0] || '',
+                          lastName: user?.name?.split(' ').slice(1).join(' ') || '',
+                          phone: user?.phone || '',
+                          country: address.country,
+                        });
+                      }}
+                      className="w-full text-start border-2 border-dashed border-gray-200 hover:border-gray-400 rounded-xl px-4 py-3 transition bg-white"
+                    >
+                      <p className="text-sm font-bold text-gray-500">
+                        {isRtl ? '+ إضافة عنوان جديد' : '+ Add a new address'}
+                      </p>
+                    </button>
+                  </div>
+                  <div className="my-5 border-t border-gray-100" />
+                </div>
+              )}
 
               {/* Shipping mode badge — auto-determined from user zone */}
               <div className="flex items-center gap-2 mb-6 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">

@@ -1,11 +1,24 @@
 import nodemailer from 'nodemailer';
 
-const transporter = nodemailer.createTransport({
-  host: 'localhost',
-  port: 25,
-  secure: false,
-  tls: { rejectUnauthorized: false },
-});
+// ─── SMTP Transporter ─────────────────────────────────────────────────────────
+// Primary: port 465 (SSL). Fallback: port 587 (STARTTLS) if 465 fails.
+function createTransporter() {
+  const host = process.env.SMTP_HOST || 'smtp.hostinger.com';
+  const port = parseInt(process.env.SMTP_PORT || '465', 10);
+  const user = process.env.SMTP_USER || 'orders@moslimleader.com';
+  const pass = process.env.SMTP_PASS || '';
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465, // true for 465 (SSL), false for 587 (STARTTLS)
+    auth: { user, pass },
+    tls: { rejectUnauthorized: false },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
+  });
+}
 
 interface OrderEmailItem {
   productName: string;
@@ -262,7 +275,7 @@ export function buildOrderEmailHtml(data: OrderEmailData): string {
                   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f9fafb;border-radius:14px;border:1px solid #f3f4f6;">
                     <tr>
                       <td style="padding:16px 18px;">
-                        <p style="margin:0 0 8px;font-size:10px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">👤 العميل</p>
+                        <p style="margin:0 0 8px;font-size:10px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">👤 بيانات العميل</p>
                         <p style="margin:0 0 4px;font-size:14px;color:#1a1a2e;font-weight:700;">${escapeHtml(data.customerName)}</p>
                         <p style="margin:0 0 4px;font-size:11px;color:#6B7280;word-break:break-all;">📧 ${escapeHtml(data.customerEmail)}</p>
                         <p style="margin:0;font-size:11px;color:#6B7280;font-family:monospace;" dir="ltr">📱 ${escapeHtml(data.customerPhone)}</p>
@@ -323,14 +336,16 @@ export function buildOrderEmailHtml(data: OrderEmailData): string {
 
 export async function sendOrderNotificationEmail(data: OrderEmailData): Promise<void> {
   try {
+    const transporter = createTransporter();
     const html = buildOrderEmailHtml(data);
     await transporter.sendMail({
-      from: '"Moslim Leader Orders" <noreply@moslimleader.com>',
-      to: 'orders@moslimleader.com',
+      from: `"Moslim Leader Orders" <${process.env.SMTP_USER || 'orders@moslimleader.com'}>`,
+      to: process.env.SMTP_USER || 'orders@moslimleader.com',
       subject: `🎁 طلب جديد #${data.orderNumber} — ${data.customerName}`,
       html,
-      replyTo: data.customerEmail,
+      replyTo: data.customerEmail !== '—' ? data.customerEmail : undefined,
     });
+    console.log('[order-email admin] sent successfully to admin');
   } catch (err) {
     console.error('[order-email admin] send failed', err);
     // Don't throw — email failure shouldn't block order processing
@@ -339,19 +354,20 @@ export async function sendOrderNotificationEmail(data: OrderEmailData): Promise<
 
 /**
  * Send order confirmation email to the customer.
- * Same beautiful template as the admin email but with a customer-friendly subject and tone.
  */
 export async function sendCustomerOrderEmail(data: OrderEmailData): Promise<void> {
   if (!data.customerEmail || data.customerEmail === '—') return;
   try {
+    const transporter = createTransporter();
     const html = buildOrderEmailHtml(data);
     await transporter.sendMail({
-      from: '"Moslim Leader" <noreply@moslimleader.com>',
+      from: `"Moslim Leader" <${process.env.SMTP_USER || 'orders@moslimleader.com'}>`,
       to: data.customerEmail,
       subject: `✅ تأكيد طلبك #${data.orderNumber} — Moslim Leader`,
       html,
-      replyTo: 'orders@moslimleader.com',
+      replyTo: process.env.SMTP_USER || 'orders@moslimleader.com',
     });
+    console.log('[order-email customer] sent successfully to', data.customerEmail);
   } catch (err) {
     console.error('[order-email customer] send failed', err);
     // Don't throw

@@ -1209,11 +1209,35 @@ export default function CheckoutPage() {
                     currency={currency}
                     shippingAddress={address}
                     notes={address.notes}
-                    onSuccess={() => {
-                      setSnapshot({ items: [...items], total, discount, shippingCost, shippingCurrency, currency });
-                      clear();
-                      setOrderPlaced(true);
-                    }}
+                    onSuccess={(paypalOrderDbId) => {
+                       setSnapshot({ items: [...items], total, discount, shippingCost, shippingCurrency, currency });
+                       if (paypalOrderDbId) setCreatedOrderId(paypalOrderDbId);
+                       clear();
+                       // Auto-save address for PayPal orders too
+                       if (user) {
+                         try {
+                           const govObj2 = EGYPT_GOVERNORATES.find(g => g.id === address.governorate);
+                           const countryObj2 = COUNTRIES.find(c => c.code === address.country);
+                           const newAddr2 = {
+                             id: selectedSavedAddressId ?? `addr_${Date.now()}`,
+                             label: shippingType === 'local'
+                               ? (govObj2 ? (isRtl ? govObj2.name : govObj2.nameEn) : address.city)
+                               : (countryObj2 ? (isRtl ? countryObj2.nameAr : countryObj2.nameEn) : address.city),
+                             firstName: address.firstName, lastName: address.lastName,
+                             phone: address.phone, whatsappSame: address.whatsappSame,
+                             whatsappNumber: address.whatsappNumber,
+                             governorate: address.governorate, region: address.region,
+                             city: address.city, street: address.street, building: address.building,
+                             notes: address.notes, country: address.country || (shippingType === 'local' ? 'EG' : ''),
+                             shippingType,
+                           };
+                           const existing2: unknown[] = (user.savedAddresses as unknown[]) ?? [];
+                           const filtered2 = existing2.filter((a: unknown) => (a as Record<string, unknown>).id !== newAddr2.id);
+                           updateUser({ savedAddresses: [newAddr2, ...filtered2].slice(0, 5) as never });
+                         } catch { /* non-blocking */ }
+                       }
+                       setOrderPlaced(true);
+                     }}
                     onError={(msg) => addToast(msg, 'error')}
                     isRtl={isRtl}
                   />

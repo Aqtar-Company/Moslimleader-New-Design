@@ -5,8 +5,18 @@ import { capturePayPalOrder } from '@/lib/paypal';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
 import { sendOrderEmails } from '@/lib/order-email';
+import { COUNTRY_CURRENCIES } from '@/lib/geo-pricing';
 
 const EGP_TO_USD = 1 / 50;
+
+function toUsd(amount: number, currencyEn: string): number {
+  if (!amount || amount <= 0) return 0;
+  if (currencyEn === 'USD') return amount;
+  if (currencyEn === 'EGP') return amount * EGP_TO_USD;
+  const entry = Object.values(COUNTRY_CURRENCIES).find(c => c.currencyEn === currencyEn);
+  if (entry && entry.usdRate > 0) return amount / entry.usdRate;
+  return amount;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -97,8 +107,12 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const shippingUsd = Math.max(0, Math.min(500, Number(body?.shippingUsd) || 0));
-    const discountUsd = Math.max(0, Math.min(totalUsd, Number(body?.discountUsd) || 0));
+    const rawShipping = Math.max(0, Number(body?.shippingUsd) || 0);
+    const rawDiscount = Math.max(0, Number(body?.discountUsd) || 0);
+    const shippingCurrencyEn = String(body?.shippingCurrency || 'USD').toUpperCase();
+    const discountCurrencyEn = String(body?.discountCurrency || 'USD').toUpperCase();
+    const shippingUsd = Math.min(500, toUsd(rawShipping, shippingCurrencyEn));
+    const discountUsd = Math.min(totalUsd + shippingUsd, toUsd(rawDiscount, discountCurrencyEn));
     const expectedUsd = Math.max(0.01, Math.round((totalUsd + shippingUsd - discountUsd) * 100) / 100);
 
     const captureResult = await capturePayPalOrder(paypalOrderId);

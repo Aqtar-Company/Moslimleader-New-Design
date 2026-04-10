@@ -4,8 +4,28 @@ import { getAuthUser } from '@/lib/jwt';
 import { createPayPalOrder } from '@/lib/paypal';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
+import { COUNTRY_CURRENCIES } from '@/lib/geo-pricing';
 
 const EGP_TO_USD = 1 / 50;
+
+/**
+ * Convert a local-currency amount to USD.
+ * - If currencyEn is 'USD' or unknown → amount is already USD
+ * - If currencyEn is 'EGP' → use EGP_TO_USD rate
+ * - Otherwise → divide by the country's usdRate (1 USD = X local)
+ */
+function toUsd(amount: number, currencyEn: string): number {
+  if (!amount || amount <= 0) return 0;
+  if (currencyEn === 'USD') return amount;
+  if (currencyEn === 'EGP') return amount * EGP_TO_USD;
+  // Find the currency in COUNTRY_CURRENCIES
+  const entry = Object.values(COUNTRY_CURRENCIES).find(c => c.currencyEn === currencyEn);
+  if (entry && entry.usdRate > 0) {
+    return amount / entry.usdRate;
+  }
+  // Unknown currency — treat as USD (safe fallback)
+  return amount;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,6 +43,11 @@ export async function POST(req: NextRequest) {
     if (items.length > 50) {
       return NextResponse.json({ error: 'عدد المنتجات كبير جداً' }, { status: 400 });
     }
+
+    // Currency of the discount and shipping amounts sent from the frontend
+    // e.g. 'SAR', 'EGP', 'USD', 'AED' ...
+    const discountCurrency: string = String(body?.discountCurrency || 'USD').toUpperCase();
+    const shippingCurrency: string = String(body?.shippingCurrency || 'USD').toUpperCase();
 
     let totalUsd = 0;
     for (const item of items) {
@@ -56,8 +81,12 @@ export async function POST(req: NextRequest) {
       totalUsd += unitUsd * qty;
     }
 
-    const shippingUsd = Math.max(0, Math.min(500, Number(body?.shippingUsd) || 0));
-    const discountUsd = Math.max(0, Math.min(totalUsd, Number(body?.discountUsd) || 0));
+    // Convert discount and shipping from their local currency to USD
+    const rawDiscount = Math.max(0, Number(body?.discountUsd) || 0);
+    const rawShipping = Math.max(0, Number(body?.shippingUsd) || 0);
+
+    const shippingUsd = Math.min(500, toUsd(rawShipping, shippingCurrency));
+    const discountUsd = Math.min(totalUsd + shippingUsd, toUsd(rawDiscount, discountCurrency));
 
     const finalUsd = Math.max(0.01, Math.round((totalUsd + shippingUsd - discountUsd) * 100) / 100);
 

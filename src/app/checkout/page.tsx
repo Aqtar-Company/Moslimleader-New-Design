@@ -178,7 +178,7 @@ export default function CheckoutPage() {
   const isUserFromEgypt = !originCountryCode || originCountryCode === 'EG';
   const isRtl = lang === 'ar';
 
-  const { total, currency } = getCartRegionalTotal(items);
+  const { total, currency, currencyEn } = getCartRegionalTotal(items);
   const discount = coupon ? Math.round(total * coupon.pct / 100) : 0;
 
   const [intlConfig, setIntlConfig] = useState<IntlShippingConfig>(DEFAULT_CONFIG);
@@ -1037,7 +1037,9 @@ export default function CheckoutPage() {
                       productImage: item.product.images?.[0] ?? undefined,
                     }))}
                     shippingCost={shippingCost}
+                    shippingCurrency={shippingCurrency}
                     discount={discount}
+                    discountCurrency={currencyEn}
                     couponCode={coupon?.code}
                     currency={currency}
                     shippingAddress={address}

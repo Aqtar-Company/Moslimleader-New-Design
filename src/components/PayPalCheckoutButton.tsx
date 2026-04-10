@@ -13,7 +13,9 @@ interface PayPalCheckoutButtonProps {
     productImage?: string;
   }[];
   shippingCost: number;
+  shippingCurrency?: string;  // ISO code e.g. 'SAR', 'EGP', 'USD'
   discount: number;
+  discountCurrency?: string;  // ISO code e.g. 'SAR', 'EGP', 'USD'
   couponCode?: string;
   currency: string;
   shippingAddress: Record<string, unknown>;
@@ -26,7 +28,9 @@ interface PayPalCheckoutButtonProps {
 export default function PayPalCheckoutButton({
   items,
   shippingCost,
+  shippingCurrency = 'USD',
   discount,
+  discountCurrency = 'USD',
   couponCode,
   shippingAddress,
   notes,
@@ -47,7 +51,13 @@ export default function PayPalCheckoutButton({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ items, shippingUsd: shippingCost, discountUsd: discount }),
+        body: JSON.stringify({
+          items,
+          shippingUsd: shippingCost,
+          shippingCurrency,
+          discountUsd: discount,
+          discountCurrency,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create PayPal order');
@@ -70,7 +80,9 @@ export default function PayPalCheckoutButton({
           items,
           shippingAddress,
           shippingUsd: shippingCost,
+          shippingCurrency,
           discountUsd: discount,
+          discountCurrency,
           couponCode,
           notes,
         }),

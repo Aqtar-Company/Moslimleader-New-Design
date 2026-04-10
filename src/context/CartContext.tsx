@@ -130,6 +130,29 @@ async function apiClearCart() {
   await fetch('/api/cart', { method: 'DELETE', credentials: 'include' });
 }
 
+// Refresh prices in cart items from the latest products API
+async function refreshCartPrices(items: CartItem[]): Promise<CartItem[]> {
+  try {
+    const res = await fetch('/api/products', { cache: 'no-store' });
+    if (!res.ok) return items;
+    const data = await res.json();
+    const productsMap: Record<string, { price: number; priceUsd: number }> = {};
+    (data.products ?? []).forEach((p: { id: string; price: number; priceUsd: number }) => {
+      productsMap[p.id] = { price: p.price, priceUsd: p.priceUsd ?? 0 };
+    });
+    return items.map(item => {
+      const fresh = productsMap[item.product.id];
+      if (!fresh) return item;
+      return {
+        ...item,
+        product: { ...item.product, price: fresh.price, priceUsd: fresh.priceUsd },
+      };
+    });
+  } catch {
+    return items;
+  }
+}
+
 async function apiLoadCart(): Promise<CartItem[]> {
   try {
     const res = await fetch('/api/cart', { credentials: 'include' });
@@ -162,7 +185,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         } catch { return []; }
       })();
 
-      apiLoadCart().then(serverItems => {
+      apiLoadCart().then(async serverItems => {
         // Merge: server items take precedence, guest items added if not already present
         const merged = [...serverItems];
         guestItems.forEach(gItem => {
@@ -175,7 +198,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
             apiAddItem(gItem.product.id, gItem.quantity, gItem.selectedModel).catch(() => {});
           }
         });
-        dispatch({ type: 'LOAD', items: merged });
+        const refreshed = await refreshCartPrices(merged);
+        dispatch({ type: 'LOAD', items: refreshed });
         localStorage.removeItem('ml-cart'); // clear guest cart after merge
       });
 
@@ -190,7 +214,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
       try {
         const saved = localStorage.getItem('ml-cart');
-        if (saved) dispatch({ type: 'LOAD', items: JSON.parse(saved) });
+        if (saved) {
+          const parsed: CartItem[] = JSON.parse(saved);
+          refreshCartPrices(parsed).then(refreshed => {
+            dispatch({ type: 'LOAD', items: refreshed });
+          });
+        }
       } catch {}
     }
 

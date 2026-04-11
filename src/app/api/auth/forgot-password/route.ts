@@ -32,30 +32,37 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Send email via local postfix (same as order emails)
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://moslimleader.com';
     const resetUrl = `${siteUrl}/auth/reset-password?token=${token}`;
 
+    // Use Titan Email SMTP (same as order emails)
+    const smtpHost = process.env.SMTP_HOST || 'smtp.titan.email';
+    const smtpPort = parseInt(process.env.SMTP_PORT || '465');
+    const smtpUser = process.env.SMTP_USER || 'orders@moslimleader.com';
+    const smtpPass = process.env.SMTP_PASS || '';
+
     const transporter = nodemailer.createTransport({
-      host: 'localhost',
-      port: 25,
-      secure: false,
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: { user: smtpUser, pass: smtpPass },
       tls: { rejectUnauthorized: false },
     });
 
     await transporter.sendMail({
-      from: '"مسلم ليدر" <no-reply@moslimleader.com>',
+      from: `"مسلم ليدر" <${smtpUser}>`,
       to: user.email,
       subject: 'إعادة تعيين كلمة المرور - مسلم ليدر',
       html: `
         <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #1a1a1a;">إعادة تعيين كلمة المرور</h2>
+          <div style="text-align: center; margin-bottom: 24px;"><img src="${siteUrl}/Logo.webp" alt="مسلم ليدر" style="height: 60px;" /></div>
+          <h2 style="color: #1a1a1a; text-align: center;">إعادة تعيين كلمة المرور</h2>
           <p style="color: #555;">مرحباً ${user.name}،</p>
           <p style="color: #555;">تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بحسابك.</p>
           <p style="color: #555;">اضغط على الزر أدناه لإعادة تعيين كلمة المرور. الرابط صالح لمدة ساعة واحدة فقط.</p>
           <div style="text-align: center; margin: 30px 0;">
             <a href="${resetUrl}" 
-               style="background-color: #1a1a1a; color: white; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+               style="background-color: #F5C518; color: #1a1a1a; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 16px;">
               إعادة تعيين كلمة المرور
             </a>
           </div>

@@ -37,8 +37,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ar" dir="rtl">
       <head>
         <meta name="theme-color" content="#F5C518" />
-        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F5C518" />
-        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#F5C518" />
         <meta name="msapplication-TileColor" content="#F5C518" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />

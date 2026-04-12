@@ -10,22 +10,34 @@ type Props = { params: Promise<{ slug: string }> };
 
 // ── Helper: resolve product (DB first, then static + overrides) ──
 async function resolveProduct(slug: string): Promise<Product | null> {
+  // Load admin overrides once (applies to both DB-seeded and pure static products)
+  let overrides: Record<string, Record<string, unknown>> = {};
+  try {
+    const overrideSetting = await prisma.setting.findUnique({ where: { key: 'product-overrides' } });
+    overrides = (overrideSetting?.value as Record<string, Record<string, unknown>>) ?? {};
+  } catch {}
+
   try {
     const dbProduct = await prisma.product.findUnique({ where: { slug } });
-    if (dbProduct) return dbProduct as unknown as Product;
+    if (dbProduct) {
+      // Static-sourced products in DB may have stale prices — apply overrides
+      if (dbProduct.source === 'static') {
+        const override = overrides[dbProduct.id];
+        if (override && Object.keys(override).length > 0) {
+          return { ...dbProduct, ...override } as unknown as Product;
+        }
+      }
+      return dbProduct as unknown as Product;
+    }
   } catch {}
 
   const staticProduct = staticProducts.find(p => p.slug === slug);
   if (!staticProduct) return null;
 
-  try {
-    const overrideSetting = await prisma.setting.findUnique({ where: { key: 'product-overrides' } });
-    const overrides = (overrideSetting?.value as Record<string, Record<string, unknown>>) ?? {};
-    const override = overrides[staticProduct.id];
-    if (override && Object.keys(override).length > 0) {
-      return { ...staticProduct, ...override } as Product;
-    }
-  } catch {}
+  const override = overrides[staticProduct.id];
+  if (override && Object.keys(override).length > 0) {
+    return { ...staticProduct, ...override } as Product;
+  }
 
   return staticProduct;
 }

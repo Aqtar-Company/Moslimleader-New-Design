@@ -11,15 +11,29 @@ export async function GET(
   try {
     const { slug } = await params;
 
-    // Try DB product first (admin-added products)
-    const product = await prisma.product.findUnique({ where: { slug } });
-    if (product) return NextResponse.json({ product });
+    // Load admin overrides
+    let overrides: Record<string, Record<string, unknown>> = {};
+    try {
+      const overrideSetting = await prisma.setting.findUnique({ where: { key: 'product-overrides' } });
+      overrides = (overrideSetting?.value as Record<string, Record<string, unknown>>) ?? {};
+    } catch {}
 
-    // Fallback to static with overrides applied
+    // Try DB product first
+    const product = await prisma.product.findUnique({ where: { slug } });
+    if (product) {
+      // Static-sourced products in DB may have stale prices — apply overrides
+      if (product.source === 'static') {
+        const override = overrides[product.id];
+        if (override && Object.keys(override).length > 0) {
+          return NextResponse.json({ product: { ...product, ...override }, source: 'static' });
+        }
+      }
+      return NextResponse.json({ product });
+    }
+
+    // Fallback to pure static products
     const staticProduct = staticProducts.find(p => p.slug === slug);
     if (staticProduct) {
-      const overrideSetting = await prisma.setting.findUnique({ where: { key: 'product-overrides' } });
-      const overrides = (overrideSetting?.value as Record<string, Record<string, unknown>>) ?? {};
       const productWithOverrides = { ...staticProduct, ...(overrides[staticProduct.id] ?? {}) };
       return NextResponse.json({ product: productWithOverrides, source: 'static' });
     }

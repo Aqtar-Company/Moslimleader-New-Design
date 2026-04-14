@@ -9,7 +9,6 @@ import { useAuth } from '@/context/AuthContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import { resolvePrice } from '@/lib/geo-pricing';
 import { formatAgeLabel } from '@/lib/book-age';
-import { Turnstile } from '@marsidev/react-turnstile';
 
 // Simple device fingerprint based on browser properties
 async function generateFingerprint(): Promise<string> {
@@ -146,7 +145,8 @@ function BookPageInner() {
   const [lastPage, setLastPage] = useState(1);
   const [isVerified, setIsVerified] = useState(false);
   const [trackingDone, setTrackingDone] = useState(false);
-  const [copyrightAgreed, setCopyrightAgreed] = useState(false);
+  const [showLegal, setShowLegal] = useState(true);
+  const [legalCountdown, setLegalCountdown] = useState(5);
   const [viewCount, setViewCount] = useState<number | null>(null);
   const [buyCount, setBuyCount] = useState<number | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -166,6 +166,7 @@ function BookPageInner() {
       .then(r => r.json())
       .then(async d => {
         setBook(d.book ?? null);
+        setLastPage(d.lastPage ?? 1);
         setViewCount(d.viewCount ?? null);
         setBuyCount(d.buyCount ?? null);
         setSeriesBooks(d.seriesBooks ?? []);
@@ -195,10 +196,31 @@ function BookPageInner() {
           setShareMsg({ text: '🔐 سجّل دخولك أولاً لتفعيل رابط المشاركة', ok: false });
         }
         setHasAccess(access);
+        // Fire background tracking (no user action needed)
+        if (!trackingDone) {
+          setTrackingDone(true);
+          fetch(`/api/books/${id}/track`, { method: 'POST', credentials: 'include' }).catch(() => {});
+          generateFingerprint().then(fp =>
+            fetch(`/api/books/${id}/device`, {
+              method: 'POST', credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ fingerprint: fp }),
+            }).catch(() => {})
+          ).catch(() => {});
+        }
+        setIsVerified(true);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [id, user, searchParams]);
+
+  // Legal overlay auto-dismiss countdown
+  useEffect(() => {
+    if (!showLegal) return;
+    if (legalCountdown <= 0) { setShowLegal(false); return; }
+    const timer = setTimeout(() => setLegalCountdown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [showLegal, legalCountdown]);
 
   // Auto-hide share message after 6 seconds
   useEffect(() => {
@@ -413,6 +435,24 @@ function BookPageInner() {
   return (
     <div className="min-h-screen bg-gray-50 pt-20" dir="rtl">
 
+      {/* ── Legal notice overlay — 5-second auto-dismiss ── */}
+      {showLegal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/75 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+            <div className="flex flex-col items-center text-center gap-3">
+              <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-3xl">🔒</div>
+              <h3 className="font-black text-amber-700 text-sm">⚠️ تنبيه قانوني: يتم تسجيل بياناتك</h3>
+              <p className="text-gray-600 text-xs leading-relaxed">عند فتح هذا الكتاب يقوم النظام بتسجيل عنوان IP الخاص بك، نوع جهازك، وموقعك الجغرافي بشكل تلقائي. أي انتهاك لحقوق الملكية الفكرية — كالنسخ أو التوزيع غير المصرح به — سيُستخدم كدليل قانوني في المحاكم.</p>
+              <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden mt-1">
+                <div className="h-full bg-amber-400 rounded-full transition-all duration-1000 ease-linear"
+                  style={{ width: `${((5 - legalCountdown) / 5) * 100}%` }} />
+              </div>
+              <p className="text-gray-400 text-xs">سيُغلق خلال {legalCountdown}s</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Share link toast notification */}
       {shareMsg && (
         <div className={`fixed top-24 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-50 rounded-2xl px-4 py-3.5 shadow-2xl flex items-start gap-3 border ${
@@ -551,78 +591,6 @@ function BookPageInner() {
               </div>
 
               {book.freePages > 0 ? (
-                !isVerified ? (
-                  <div className="flex flex-col items-center justify-center py-10 px-6 text-center">
-                    <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mb-4">
-                      <svg className="w-8 h-8 text-[#F5C518]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-xl font-black text-gray-800 mb-1">تحقق سريع</h3>
-                    <p className="text-sm text-gray-500 mb-5">أثبت أنك إنسان وليس برنامج آلي</p>
-                    {/* ── Copyright warning — large prominent box ── */}
-                    <div className="mb-4 p-5 bg-amber-50 border-2 border-amber-400 rounded-2xl text-sm text-amber-900 text-right leading-relaxed w-full max-w-md shadow-md">
-                      <p className="font-black text-base mb-2">⚠️ تنبيه قانوني: يتم تسجيل بياناتك</p>
-                      <p className="leading-7">عند فتح هذا الكتاب يقوم النظام بتسجيل <strong>عنوان IP الخاص بك</strong>، نوع جهازك، وموقعك الجغرافي بشكل تلقائي. أي انتهاك لحقوق الملكية الفكرية — كالنسخ أو التوزيع غير المصرح به — سيُستخدم كدليل قانوني في المحاكم.</p>
-                    </div>
-                    {/* ── Checkbox agreement ── */}
-                    <label className="flex items-center gap-3 mb-5 cursor-pointer select-none w-full max-w-md">
-                      <input
-                        type="checkbox"
-                        checked={copyrightAgreed}
-                        onChange={e => setCopyrightAgreed(e.target.checked)}
-                        className="w-5 h-5 accent-amber-500 rounded cursor-pointer flex-shrink-0"
-                      />
-                      <span className="text-sm text-gray-700 text-right">قرأت التنبيه وأوافق على شروط الاستخدام</span>
-                    </label>
-                    {copyrightAgreed && <Turnstile
-                      siteKey="0x4AAAAAACzKEGf-IQ39WfSB"
-                      onSuccess={async (token) => {
-                        if (token && !trackingDone) {
-                          setTrackingDone(true);
-                          // 1. Fire tracking API — record IP, device, geolocation
-                          try {
-                            await fetch(`/api/books/${id}/track`, {
-                              method: 'POST',
-                              credentials: 'include',
-                            });
-                          } catch {}
-
-                          // 2. Device fingerprint check (max 2 devices) — only for logged-in users
-                          try {
-                            const fp = await generateFingerprint();
-                            const devRes = await fetch(`/api/books/${id}/device`, {
-                              method: 'POST',
-                              credentials: 'include',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ fingerprint: fp }),
-                            });
-                            if (!devRes.ok) {
-                              // 401 = not logged in (guest reading free pages) — allow
-                              if (devRes.status === 401) {
-                                // Guest user — skip device check, allow free pages
-                              } else {
-                                const devData = await devRes.json();
-                                if (devData.error) {
-                                  alert(devData.error);
-                                  setTrackingDone(false);
-                                  return;
-                                }
-                              }
-                            }
-                          } catch {}
-
-                          setIsVerified(true);
-                        }
-                      }}
-                      options={{ language: 'ar' }}
-                    />}
-                    <p className="text-xs text-gray-400 mt-4 flex items-center gap-1">
-                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
-                      محمي بواسطة Cloudflare Turnstile
-                    </p>
-                  </div>
-                ) : (
                 <ReaderErrorBoundary>
                   <BookReader
                     bookId={id}
@@ -642,7 +610,6 @@ function BookPageInner() {
                     promoVideoUrl={(book as any).promoVideoUrl || undefined}
                   />
                 </ReaderErrorBoundary>
-                )
               ) : (
                 <div className="p-16 text-center text-gray-400">
                   <p className="text-5xl mb-4">📚</p>
@@ -655,11 +622,9 @@ function BookPageInner() {
         </div>
 
         {/* ── Small copyright reminder below the reader ── */}
-        {isVerified && (
-          <div className="mt-3 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-700 text-right leading-relaxed">
-            <span className="font-bold">⚠️ تذكير:</span> بياناتك مسجّلة (IP، الجهاز، الموقع). أي نسخ أو توزيع غير مصرح به يُعدّ انتهاكاً لحقوق الملكية الفكرية ويُستخدم كدليل قانوني.
-          </div>
-        )}
+        <div className="mt-3 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-700 text-right leading-relaxed">
+          <span className="font-bold">⚠️ تذكير:</span> بياناتك مسجّلة (IP، الجهاز، الموقع). أي نسخ أو توزيع غير مصرح به يُعدّ انتهاكاً لحقوق الملكية الفكرية ويُستخدم كدليل قانوني.
+        </div>
       </div>
 
       {/* ── Series Navigation Bar ── */}

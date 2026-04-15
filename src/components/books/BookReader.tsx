@@ -872,8 +872,8 @@ export default function BookReader({
                 </button>
                 {/* Bookmark */}
                 <button
-                  onClick={() => { if (isCurrentPageBookmarked) { deleteBookmark(currentPage); } else { setShowAddBookmark(true); } }}
-                  aria-label={isCurrentPageBookmarked ? 'عرض العلامات' : 'حفظ الصفحة'}
+                  onClick={() => { if (isCurrentPageBookmarked) { setShowBookmarkPanel(true); } else { setShowAddBookmark(true); } }}
+                  aria-label={isCurrentPageBookmarked ? 'قائمة العلامات' : 'حفظ الصفحة'}
                   className={`${btnCls} relative ${isCurrentPageBookmarked ? 'text-[#F5C518]' : ''}`}
                 >
                   <svg className="w-4 h-4" fill={isCurrentPageBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -882,12 +882,6 @@ export default function BookReader({
                   {bookmarks.length > 0 && (
                     <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#F5C518] text-[#1a1a2e] text-[9px] font-black rounded-full flex items-center justify-center">{bookmarks.length}</span>
                   )}
-                </button>
-                {/* Bookmark list */}
-                <button onClick={() => setShowBookmarkPanel(true)} aria-label="قائمة العلامات" className={btnCls}>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                  </svg>
                 </button>
                 {/* Music — desktop only */}
                 {bgmUrl && <AmbientMusicButton playing={bgmPlaying} onToggle={toggleBgm} dm={dm} isLtr={isLtr} />}
@@ -947,8 +941,8 @@ export default function BookReader({
 
               {/* Bookmark */}
               <button
-                onClick={() => { if (isCurrentPageBookmarked) { deleteBookmark(currentPage); } else { setShowAddBookmark(true); } }}
-                aria-label={isCurrentPageBookmarked ? 'عرض العلامات' : 'حفظ الصفحة'}
+                onClick={() => { if (isCurrentPageBookmarked) { setShowBookmarkPanel(true); } else { setShowAddBookmark(true); } }}
+                aria-label={isCurrentPageBookmarked ? 'قائمة العلامات' : 'حفظ الصفحة'}
                 className={`${btnCls} relative ${isCurrentPageBookmarked ? 'text-[#F5C518]' : ''}`}
               >
                 <svg className="w-4 h-4" fill={isCurrentPageBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -957,13 +951,6 @@ export default function BookReader({
                 {bookmarks.length > 0 && (
                   <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#F5C518] text-[#1a1a2e] text-[9px] font-black rounded-full flex items-center justify-center">{bookmarks.length}</span>
                 )}
-              </button>
-
-              {/* Bookmark list */}
-              <button onClick={() => setShowBookmarkPanel(true)} aria-label="قائمة العلامات" className={btnCls}>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                </svg>
               </button>
 
               {/* Music */}

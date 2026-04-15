@@ -626,7 +626,7 @@ function BookPageInner() {
                 <p className="text-sm font-bold text-gray-700 line-clamp-1">{isEn && book.titleEn ? book.titleEn : book.title}</p>
                 {!hasAccess ? (
                   <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full font-semibold shrink-0">
-                    {book.freePages} صفحة مجانية
+                    {book.freePages} {isEn ? 'Free Pages' : 'صفحة مجانية'}
                   </span>
                 ) : (
                   <span className="text-xs text-green-600 bg-green-50 border border-green-200 px-3 py-1 rounded-full font-semibold shrink-0">

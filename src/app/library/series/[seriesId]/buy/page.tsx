@@ -1,4 +1,5 @@
 'use client';
+import { useLang } from '@/context/LanguageContext';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -76,8 +77,8 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
       <div className="min-h-screen flex items-center justify-center text-center px-4">
         <div>
           <p className="text-2xl mb-4">📚</p>
-          <p className="text-gray-600 font-bold">السلسلة غير موجودة</p>
-          <Link href="/library" className="mt-4 inline-block text-[#F5C518] font-bold underline">العودة للمكتبة</Link>
+          <p className="text-gray-600 font-bold">{isEn ? 'Series not found' : 'السلسلة غير موجودة'}</p>
+          <Link href="/library" className="mt-4 inline-block text-[#F5C518] font-bold underline">{isEn ? 'Back to Library' : 'العودة للمكتبة'}</Link>
         </div>
       </div>
     );
@@ -96,7 +97,7 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h1 className="text-2xl font-black text-gray-900 mb-2">تم تفعيل وصولك! 🎉</h1>
+            <h1 className="text-2xl font-black text-gray-900 mb-2">{isEn ? 'Access Activated! 🎉' : 'تم تفعيل وصولك! 🎉'}</h1>
             <p className="text-gray-500 text-sm leading-relaxed">
               طلبك رقم <span className="font-black text-gray-900">#{orderId}</span> تم تأكيده بنجاح.
               <br />
@@ -150,7 +151,7 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
             </div>
           )}
           <div>
-            <p className="text-xs text-gray-400 font-semibold mb-1">السلسلة كاملة — {series.books.length} كتاب</p>
+            <p className="text-xs text-gray-400 font-semibold mb-1">{isEn ? `Full Series — ${series.books.length} books` : `السلسلة كاملة — ${series.books.length} كتاب`}</p>
             <h1 className="text-lg font-black text-gray-900 leading-tight">{series.name}</h1>
             <p className="text-xs text-gray-500 mt-1">{series.books.map(b => b.title).join(' • ')}</p>
           </div>
@@ -158,7 +159,7 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
 
         {/* Price */}
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <span className="text-gray-500 text-sm">سعر السلسلة كاملة</span>
+          <span className="text-gray-500 text-sm">{isEn ? 'Full Series Price' : 'سعر السلسلة كاملة'}</span>
           <div className="text-left">
             <span className="text-3xl font-black text-[#F5C518]">${priceUsd.toFixed(2)}</span>
             <p className="text-xs text-gray-400 mt-0.5">USD</p>
@@ -168,15 +169,15 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
         {/* User info */}
         <div className="px-6 pt-5">
           <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3 text-xs text-gray-600 mb-4">
-            <p className="font-bold text-gray-700 mb-1">بياناتك:</p>
-            <p>الاسم: <span className="font-black text-gray-900">{user?.name}</span></p>
-            <p>الإيميل: <span className="font-black text-gray-900">{user?.email}</span></p>
+            <p className="font-bold text-gray-700 mb-1">{isEn ? 'Your Details:' : 'بياناتك:'}</p>
+            <p>{isEn ? 'Name: ' : 'الاسم: '}<span className="font-black text-gray-900">{user?.name}</span></p>
+            <p>{isEn ? 'Email: ' : 'الإيميل: '}<span className="font-black text-gray-900">{user?.email}</span></p>
           </div>
         </div>
 
         {/* Payment */}
         <div className="px-6 pb-6">
-          <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-3">اختر طريقة الدفع</p>
+          <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-3">{isEn ? 'Choose Payment Method' : 'اختر طريقة الدفع'}</p>
           <PayPalBookButton
             createEndpoint={`/api/series/${series.id}/paypal-create`}
             captureEndpoint={`/api/series/${series.id}/paypal-capture`}

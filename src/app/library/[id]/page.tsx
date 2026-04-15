@@ -48,8 +48,8 @@ class ReaderErrorBoundary extends React.Component<
       return (
         <div className="p-12 text-center">
           <p className="text-4xl mb-4">📖</p>
-          <p className="text-gray-700 font-bold mb-2">{isEn ? 'Unable to load reader' : 'تعذّر تحميل القارئ'}</p>
-          <p className="text-gray-400 text-sm mb-4">{isEn ? 'Try refreshing or use another browser' : 'حاول تحديث الصفحة أو استخدم متصفح آخر'}</p>
+          <p className="text-gray-700 font-bold mb-2">تعذّر تحميل القارئ / Unable to load reader</p>
+          <p className="text-gray-400 text-sm mb-4">حاول تحديث الصفحة أو استخدم متصفح آخر</p>
           <button onClick={() => window.location.reload()} className="text-[#F5C518] font-bold text-sm underline">
             تحديث الصفحة
           </button>
@@ -520,7 +520,7 @@ function BookPageInner() {
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-gray-400 mb-5">
           <Link href="/library" className="hover:text-gray-600 transition flex items-center gap-1">
-            <span>←</span> المكتبة
+            <span>←</span> {isEn ? "Library" : "المكتبة"}
           </Link>
           <span>/</span>
           <span className="text-gray-700 font-semibold line-clamp-1">{isEn && book.titleEn ? book.titleEn : book.title}</span>

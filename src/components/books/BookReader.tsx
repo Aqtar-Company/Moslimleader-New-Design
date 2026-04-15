@@ -166,7 +166,7 @@ function QuoteToast({ text, bookTitle, coverUrl, onClose }: { text: string; book
 }
 
 // ── Free Page Warning ─────────────────────────────────────────────────────────
-function FreePageWarning({ remaining, bookId }: { remaining: number; bookId: string }) {
+function FreePageWarning({ remaining, bookId, isLtr }: { remaining: number; bookId: string; isLtr: boolean }) {
   return (
     <div className="absolute top-3 left-3 right-3 z-30 bg-amber-50 border border-amber-300 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2 shadow-sm">
       <p className="text-amber-800 text-xs font-bold">
@@ -239,6 +239,7 @@ function BookmarkPanel({
   onDelete: (page: number) => void;
   onClose: () => void;
   dm: boolean;
+  isLtr: boolean;
 }) {
   return (
     <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0" onClick={onClose}>
@@ -301,6 +302,7 @@ function AddBookmarkModal({
   onSave: (note: string) => void;
   onClose: () => void;
   dm: boolean;
+  isLtr: boolean;
 }) {
   const [note, setNote] = useState('');
   return (
@@ -376,7 +378,7 @@ function PromoVideoCard({ videoUrl, bookTitle, onClose }: { videoUrl: string; bo
 
 // ── Ambient Music Player ──────────────────────────────────────────────────────
 // AmbientMusicButton — renders just the play/pause button, receives state from parent
-function AmbientMusicButton({ playing, onToggle, dm }: { playing: boolean; onToggle: () => void; dm: boolean }) {
+function AmbientMusicButton({ playing, onToggle, dm, isLtr }: { playing: boolean; onToggle: () => void; dm: boolean; isLtr: boolean }) {
   const btnBase = `w-8 h-8 rounded-xl flex items-center justify-center transition ${dm ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'}`;
   return (
     <button
@@ -788,7 +790,7 @@ export default function BookReader({
               <button
                 onClick={() => isLtr ? goTo(currentPage - 1, 'prev') : goTo(currentPage + 1, 'next')}
                 disabled={isLtr ? currentPage <= 1 : currentPage >= numPages}
-                aria-label={isLtr ? 'السابق' : 'التالي'}
+                aria-label={isLtr ? 'Previous' : 'Next'}
                 className={`flex items-center justify-center gap-1 px-3 h-9 rounded-xl font-bold text-xs transition disabled:opacity-30 ${
                   isLtr
                     ? (dm ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')
@@ -798,7 +800,7 @@ export default function BookReader({
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                 </svg>
-                <span className="hidden sm:inline">{isLtr ? 'السابق' : 'التالي'}</span>
+                <span className="hidden sm:inline">{isLtr ? 'Previous' : 'Next'}</span>
               </button>
 
               {/* Page counter */}
@@ -810,14 +812,14 @@ export default function BookReader({
               <button
                 onClick={() => isLtr ? goTo(currentPage + 1, 'next') : goTo(currentPage - 1, 'prev')}
                 disabled={isLtr ? currentPage >= numPages : currentPage <= 1}
-                aria-label={isLtr ? 'التالي' : 'السابق'}
+                aria-label={isLtr ? 'Next' : 'Previous'}
                 className={`flex items-center justify-center gap-1 px-3 h-9 rounded-xl font-bold text-xs transition disabled:opacity-30 ${
                   isLtr
                     ? (dm ? 'bg-[#F5C518] text-[#1a1a2e] hover:bg-amber-400' : 'bg-[#F5C518] text-[#1a1a2e] hover:bg-amber-400')
                     : (dm ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')
                 }`}
               >
-                <span className="hidden sm:inline">{isLtr ? 'التالي' : 'السابق'}</span>
+                <span className="hidden sm:inline">{isLtr ? 'Next' : 'Previous'}</span>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>
@@ -997,7 +999,7 @@ export default function BookReader({
         >
           <div className="relative">
             {showWarning && !isLocked && (
-              <FreePageWarning remaining={pagesLeft} bookId={bookId} />
+              <FreePageWarning isLtr={isLtr} remaining={pagesLeft} bookId={bookId} />
             )}
 
             {/* Page with simple slide animation */}

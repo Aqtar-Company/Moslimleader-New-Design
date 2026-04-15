@@ -170,7 +170,7 @@ function FreePageWarning({ remaining, bookId }: { remaining: number; bookId: str
   return (
     <div className="absolute top-3 left-3 right-3 z-30 bg-amber-50 border border-amber-300 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2 shadow-sm">
       <p className="text-amber-800 text-xs font-bold">
-        {remaining === 0 ? 'هذه آخر صفحة مجانية' : `تبقّت ${remaining} صفحة مجانية فقط`}
+        {remaining === 0 ? (isLtr ? 'This is the last free page' : 'هذه آخر صفحة مجانية') : (isLtr ? `Only ${remaining} free pages left` : `تبقّت ${remaining} صفحة مجانية فقط`)}
       </p>
       <a href={`/library/${bookId}/buy`} className="text-xs font-black text-amber-700 underline whitespace-nowrap">اشترِ الآن</a>
     </div>
@@ -254,7 +254,7 @@ function BookmarkPanel({
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
               </svg>
               <p className={`text-xs ${dm ? 'text-gray-500' : 'text-gray-400'}`}>لا توجد علامات مرجعية بعد</p>
-              <p className={`text-xs mt-1 ${dm ? 'text-gray-600' : 'text-gray-300'}`}>اضغط على أيقونة العلامة في شريط الأدوات لحفظ صفحة</p>
+              <p className={`text-xs mt-1 ${dm ? 'text-gray-600' : 'text-gray-300'}`}>{isLtr ? 'Tap the bookmark icon in the toolbar to save a page' : 'اضغط على أيقونة العلامة في شريط الأدوات لحفظ صفحة'}</p>
             </div>
           ) : (
             bookmarks.sort((a, b) => a.page - b.page).map(bm => (
@@ -314,7 +314,7 @@ function AddBookmarkModal({
               </svg>
             </div>
             <div>
-              <h3 className={`font-black text-sm ${dm ? 'text-white' : 'text-gray-900'}`}>حفظ صفحة {page}</h3>
+              <h3 className={`font-black text-sm ${dm ? 'text-white' : 'text-gray-900'}`}>{isLtr ? `Save Page ${page}` : `حفظ صفحة ${page}`}</h3>
               <p className={`text-xs ${dm ? 'text-gray-400' : 'text-gray-400'}`}>أضف ملاحظة اختيارية</p>
             </div>
             <button onClick={onClose} className={`mr-auto text-xl ${dm ? 'text-gray-400' : 'text-gray-400'}`}>×</button>
@@ -381,7 +381,7 @@ function AmbientMusicButton({ playing, onToggle, dm }: { playing: boolean; onTog
   return (
     <button
       onClick={onToggle}
-      title={playing ? 'إيقاف الموسيقى' : 'تشغيل موسيقى الخلفية'}
+      title={playing ? (isLtr ? 'Stop Music' : 'إيقاف الموسيقى') : (isLtr ? 'Play Background Music' : 'تشغيل موسيقى الخلفية')}
       className={`${btnBase} ${playing ? 'bg-[#F5C518] text-[#1a1a2e]' : (dm ? 'text-gray-400' : 'text-gray-500')}`}
     >
       {playing ? (

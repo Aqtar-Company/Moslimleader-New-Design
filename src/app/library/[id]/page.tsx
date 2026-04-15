@@ -312,7 +312,7 @@ function BookPageInner() {
       {/* Cover — hidden on mobile (shown above tabs) */}
       <div className="relative aspect-[2/3] rounded-2xl overflow-hidden shadow-xl bg-gradient-to-br from-[#1a1a2e] to-[#16213e] hidden lg:block">
         {book.cover ? (
-          <Image src={book.cover} alt={book.title} fill className="object-cover" unoptimized />
+          <Image src={book.cover} alt={isEn && book.titleEn ? book.titleEn : book.title} fill className="object-cover" unoptimized />
         ) : (
           <div className="flex items-center justify-center h-full text-7xl">📖</div>
         )}
@@ -326,7 +326,7 @@ function BookPageInner() {
       {/* Info card */}
       <div className="bg-white rounded-2xl p-5 shadow-sm space-y-4">
         <div>
-          <h1 className="font-black text-gray-900 text-xl leading-tight">{book.title}</h1>
+          <h1 className="font-black text-gray-900 text-xl leading-tight">{isEn && book.titleEn ? book.titleEn : book.title}</h1>
           {book.author && <p className="text-gray-500 text-sm mt-1">{book.author}</p>}
           {book.category && (
             <span className="inline-block mt-2 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold px-3 py-1 rounded-full">
@@ -456,8 +456,8 @@ function BookPageInner() {
                 <Turnstile
                   siteKey="0x4AAAAAACzKEGf-IQ39WfSB"
                   onSuccess={async (token) => {
-                    if (token && !trackingDone) {
-                      setTrackingDone(true);
+                    if (token) {
+                      if (!trackingDone) { setTrackingDone(true);
                       try {
                         await fetch(`/api/books/${id}/track`, { method: 'POST', credentials: 'include' });
                       } catch {}
@@ -473,6 +473,7 @@ function BookPageInner() {
                           if (devData.error) { alert(devData.error); setTrackingDone(false); return; }
                         }
                       } catch {}
+                      }
                       setIsVerified(true);
                     }
                   }}
@@ -522,7 +523,7 @@ function BookPageInner() {
             <span>←</span> المكتبة
           </Link>
           <span>/</span>
-          <span className="text-gray-700 font-semibold line-clamp-1">{book.title}</span>
+          <span className="text-gray-700 font-semibold line-clamp-1">{isEn && book.titleEn ? book.titleEn : book.title}</span>
         </div>
 
         {/* ── Mobile: Cover + Tabs ── */}
@@ -531,13 +532,13 @@ function BookPageInner() {
           <div className="flex items-start gap-4 mb-4">
             <div className="relative w-20 h-28 rounded-xl overflow-hidden shadow-lg bg-gradient-to-br from-[#1a1a2e] to-[#16213e] shrink-0">
               {book.cover ? (
-                <Image src={book.cover} alt={book.title} fill className="object-cover" unoptimized />
+                <Image src={book.cover} alt={isEn && book.titleEn ? book.titleEn : book.title} fill className="object-cover" unoptimized />
               ) : (
                 <div className="flex items-center justify-center h-full text-3xl">📖</div>
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="font-black text-gray-900 text-base leading-tight mb-1">{book.title}</h1>
+              <h1 className="font-black text-gray-900 text-base leading-tight mb-1">{isEn && book.titleEn ? book.titleEn : book.title}</h1>
               {book.author && <p className="text-gray-500 text-xs mb-2">{book.author}</p>}
               {/* Visitor/Buyer counts */}
               {(viewCount !== null || buyCount !== null) && (
@@ -622,7 +623,7 @@ function BookPageInner() {
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
               {/* Reader header */}
               <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                <p className="text-sm font-bold text-gray-700 line-clamp-1">{book.title}</p>
+                <p className="text-sm font-bold text-gray-700 line-clamp-1">{isEn && book.titleEn ? book.titleEn : book.title}</p>
                 {!hasAccess ? (
                   <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full font-semibold shrink-0">
                     {book.freePages} صفحة مجانية
@@ -647,7 +648,7 @@ function BookPageInner() {
                       priceDisplay={displayBookPrice(book)}
                       initialPage={lastPage}
                       onPageChange={saveProgress}
-                      bookTitle={book.title}
+                      bookTitle={isEn && book.titleEn ? book.titleEn : book.title}
                       coverUrl={book.cover}
                       bookLanguage={(book as any).language === 'en' ? 'en' : (book as any).language === 'both' ? 'both' : 'ar'}
                       bgmUrl={(book as any).bgmUrl || undefined}

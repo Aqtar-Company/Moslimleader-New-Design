@@ -480,7 +480,7 @@ export default function BookReader({
   const [pageWidth, setPageWidth] = useState(600);
   const [quoteToast, setQuoteToast] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(false);
-  const [jumperValue, setJumperValue] = useState(String(initialPage));
+  const [showPageJumper, setShowPageJumper] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [pageAnim, setPageAnim] = useState<'none' | 'slide-next' | 'slide-prev'>('none');
   const [screenshotBlocked, setScreenshotBlocked] = useState(false);
@@ -693,7 +693,6 @@ export default function BookReader({
     setPageAnim(dir === 'next' ? 'slide-next' : 'slide-prev');
     setTimeout(() => {
       setCurrentPage(page);
-      setJumperValue(String(page));
       onPageChange?.(page);
       setPageAnim('none');
     }, 175); // half of 0.35s animation — page changes at peak of flip
@@ -800,13 +799,31 @@ export default function BookReader({
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                 </svg>
-                <span className="hidden sm:inline">{isLtr ? 'Previous' : 'التالي'}</span>
+                <span className="hidden sm:inline">{isLtr ? 'السابق' : 'التالي'}</span>
               </button>
 
-              {/* Page counter */}
-              <div className={`text-xs font-bold tabular-nums px-1 ${dm ? 'text-gray-300' : 'text-gray-600'}`}>
-                {currentPage} <span className={dm ? 'text-gray-600' : 'text-gray-300'}>/</span> {numPages || '…'}
-              </div>
+              {/* Page counter — click to jump */}
+              {showPageJumper ? (
+                <input
+                  type="number" min={1} max={numPages}
+                  defaultValue={currentPage}
+                  autoFocus
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { const v = parseInt((e.target as HTMLInputElement).value); if (v >= 1 && v <= numPages) goTo(v); setShowPageJumper(false); }
+                    if (e.key === 'Escape') setShowPageJumper(false);
+                  }}
+                  onBlur={e => { const v = parseInt(e.target.value); if (v >= 1 && v <= numPages) goTo(v); setShowPageJumper(false); }}
+                  className={`w-16 text-center border rounded-lg px-1 py-1 text-xs outline-none focus:border-[#F5C518] ${dm ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-800'}`}
+                />
+              ) : (
+                <button
+                  onClick={() => setShowPageJumper(true)}
+                  title="اضغط للانتقال لصفحة"
+                  className={`text-xs font-bold tabular-nums px-2 py-1 rounded-lg hover:opacity-70 transition ${dm ? 'text-gray-300' : 'text-gray-600'}`}
+                >
+                  {currentPage} <span className={dm ? 'text-gray-600' : 'text-gray-300'}>/</span> {numPages || '…'}
+                </button>
+              )}
 
               {/* Right arrow */}
               <button
@@ -819,7 +836,7 @@ export default function BookReader({
                     : (dm ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')
                 }`}
               >
-                <span className="hidden sm:inline">{isLtr ? 'Next' : 'السابق'}</span>
+                <span className="hidden sm:inline">{isLtr ? 'التالي' : 'السابق'}</span>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>
@@ -855,7 +872,7 @@ export default function BookReader({
                 </button>
                 {/* Bookmark */}
                 <button
-                  onClick={() => { if (isCurrentPageBookmarked) { setShowBookmarkPanel(true); } else { setShowAddBookmark(true); } }}
+                  onClick={() => { if (isCurrentPageBookmarked) { deleteBookmark(currentPage); } else { setShowAddBookmark(true); } }}
                   aria-label={isCurrentPageBookmarked ? 'عرض العلامات' : 'حفظ الصفحة'}
                   className={`${btnCls} relative ${isCurrentPageBookmarked ? 'text-[#F5C518]' : ''}`}
                 >
@@ -930,7 +947,7 @@ export default function BookReader({
 
               {/* Bookmark */}
               <button
-                onClick={() => { if (isCurrentPageBookmarked) { setShowBookmarkPanel(true); } else { setShowAddBookmark(true); } }}
+                onClick={() => { if (isCurrentPageBookmarked) { deleteBookmark(currentPage); } else { setShowAddBookmark(true); } }}
                 aria-label={isCurrentPageBookmarked ? 'عرض العلامات' : 'حفظ الصفحة'}
                 className={`${btnCls} relative ${isCurrentPageBookmarked ? 'text-[#F5C518]' : ''}`}
               >
@@ -1052,25 +1069,6 @@ export default function BookReader({
             )}
           </div>
         </div>
-
-        {/* ── Footer: page jumper ── */}
-        {numPages > 0 && toolbarVisible && (
-          <div className={`px-4 py-2.5 border-t flex items-center justify-between gap-3 transition-all duration-300 ${dm ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
-            <div className="flex items-center gap-2">
-              <span className={`text-xs ${dm ? 'text-gray-500' : 'text-gray-400'}`}>انتقل لصفحة:</span>
-              <input
-                type="number" min={1} max={numPages} value={jumperValue}
-                onChange={e => setJumperValue(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { const v = parseInt(jumperValue); if (v >= 1 && v <= numPages) goTo(v); } }}
-                onBlur={() => { const v = parseInt(jumperValue); if (!v || v < 1 || v > numPages) setJumperValue(String(currentPage)); }}
-                className={`w-16 text-center border rounded-lg px-1 py-1 text-sm outline-none focus:border-[#F5C518] ${dm ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-800'}`}
-              />
-            </div>
-            <p className={`text-[10px] hidden sm:block ${dm ? 'text-gray-700' : 'text-gray-300'}`}>
-              اضغط المنتصف لإخفاء/إظهار شريط الأدوات
-            </p>
-          </div>
-        )}
 
         {/* Quote toast */}
         {quoteToast && (

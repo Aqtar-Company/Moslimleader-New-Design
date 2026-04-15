@@ -461,7 +461,7 @@ function AmbientMusicControl({ bgmUrl, dm }: { bgmUrl: string; dm: boolean }) {
           style={{ position: 'fixed', top: 0, left: 0, opacity: 0, pointerEvents: 'none', zIndex: -1 }} />
       )}
       {/* Single button — visible on all screens */}
-      <AmbientMusicButton playing={playing} onToggle={toggle} dm={dm} />
+      <AmbientMusicButton playing={playing} onToggle={toggle} dm={dm} isLtr={false} />
     </>
   );
 }
@@ -873,7 +873,7 @@ export default function BookReader({
                   </svg>
                 </button>
                 {/* Music — desktop only */}
-                {bgmUrl && <AmbientMusicButton playing={bgmPlaying} onToggle={toggleBgm} dm={dm} />}
+                {bgmUrl && <AmbientMusicButton playing={bgmPlaying} onToggle={toggleBgm} dm={dm} isLtr={isLtr} />}
                 {/* Fullscreen */}
                 <button onClick={toggleFullscreen} aria-label={isFullscreen ? 'خروج ملء الشاشة' : 'ملء الشاشة'} className={btnCls}>
                   {isFullscreen ? (
@@ -950,7 +950,7 @@ export default function BookReader({
               </button>
 
               {/* Music */}
-              {bgmUrl && <AmbientMusicButton playing={bgmPlaying} onToggle={toggleBgm} dm={dm} />}
+              {bgmUrl && <AmbientMusicButton playing={bgmPlaying} onToggle={toggleBgm} dm={dm} isLtr={isLtr} />}
 
               {/* Fullscreen */}
               <button onClick={toggleFullscreen} aria-label={isFullscreen ? 'خروج ملء الشاشة' : 'ملء الشاشة'} className={btnCls}>

@@ -148,8 +148,10 @@ function BookPageInner() {
   const [lastPage, setLastPage] = useState(1);
   const [isVerified, setIsVerified] = useState(false);
   const [trackingDone, setTrackingDone] = useState(false);
-  const [showLegal, setShowLegal] = useState(true);
-  const [legalCountdown, setLegalCountdown] = useState(10);
+  const legalSeenKey = `legal-seen-${id}`;
+  const hasSeenLegal = typeof window !== 'undefined' && !!localStorage.getItem(legalSeenKey);
+  const [showLegal, setShowLegal] = useState(!hasSeenLegal);
+  const [legalCountdown, setLegalCountdown] = useState(hasSeenLegal ? 0 : 10);
   const [viewCount, setViewCount] = useState<number | null>(null);
   const [buyCount, setBuyCount] = useState<number | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -219,10 +221,10 @@ function BookPageInner() {
   // Legal overlay auto-dismiss countdown
   useEffect(() => {
     if (!showLegal) return;
-    if (legalCountdown <= 0) { setShowLegal(false); return; }
+    if (legalCountdown <= 0) { setShowLegal(false); try { localStorage.setItem(legalSeenKey, '1'); } catch {} return; }
     const timer = setTimeout(() => setLegalCountdown(c => c - 1), 1000);
     return () => clearTimeout(timer);
-  }, [showLegal, legalCountdown]);
+  }, [showLegal, legalCountdown, legalSeenKey]);
 
   // Auto-hide share message after 6 seconds
   useEffect(() => {
@@ -482,7 +484,7 @@ function BookPageInner() {
               </div>
               {isVerified ? (
                 <button
-                  onClick={() => setShowLegal(false)}
+                  onClick={() => { setShowLegal(false); try { localStorage.setItem(legalSeenKey, '1'); } catch {} }}
                   className="w-full bg-[#F5C518] hover:bg-amber-400 text-[#1a1a2e] font-black py-3 rounded-xl text-sm transition"
                 >
                   {isEn ? 'Continue →' : 'متابعة →'}

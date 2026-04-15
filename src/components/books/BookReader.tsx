@@ -231,7 +231,7 @@ function ShareModal({ bookId, bookTitle, onClose }: { bookId: string; bookTitle:
 
 // ── Bookmark Panel ────────────────────────────────────────────────────────────
 function BookmarkPanel({
-  bookmarks, currentPage, onJump, onDelete, onClose, dm
+  bookmarks, currentPage, onJump, onDelete, onClose, dm, isLtr
 }: {
   bookmarks: Bookmark[];
   currentPage: number;
@@ -296,7 +296,7 @@ function BookmarkPanel({
 
 // ── Add Bookmark Modal ────────────────────────────────────────────────────────
 function AddBookmarkModal({
-  page, onSave, onClose, dm
+  page, onSave, onClose, dm, isLtr
 }: {
   page: number;
   onSave: (note: string) => void;
@@ -401,7 +401,7 @@ function AmbientMusicButton({ playing, onToggle, dm, isLtr }: { playing: boolean
 
 // AmbientMusicControl — manages audio state + renders hidden iframe + ONE button
 // Pass buttonClassName to control visibility per breakpoint
-function AmbientMusicControl({ bgmUrl, dm }: { bgmUrl: string; dm: boolean }) {
+function AmbientMusicControl({ bgmUrl, dm, isLtr }: { bgmUrl: string; dm: boolean; isLtr: boolean }) {
   const isSoundCloud = bgmUrl.includes('soundcloud.com');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const scWidgetRef = useRef<HTMLIFrameElement | null>(null);
@@ -461,7 +461,7 @@ function AmbientMusicControl({ bgmUrl, dm }: { bgmUrl: string; dm: boolean }) {
           style={{ position: 'fixed', top: 0, left: 0, opacity: 0, pointerEvents: 'none', zIndex: -1 }} />
       )}
       {/* Single button — visible on all screens */}
-      <AmbientMusicButton playing={playing} onToggle={toggle} dm={dm} isLtr={false} />
+      <AmbientMusicButton playing={playing} onToggle={toggle} dm={dm} isLtr={isLtr} />
     </>
   );
 }

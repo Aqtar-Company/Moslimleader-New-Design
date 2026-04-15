@@ -800,7 +800,7 @@ export default function BookReader({
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                 </svg>
-                <span className="hidden sm:inline">{isLtr ? 'Previous' : 'Next'}</span>
+                <span className="hidden sm:inline">{isLtr ? 'Previous' : 'التالي'}</span>
               </button>
 
               {/* Page counter */}
@@ -819,7 +819,7 @@ export default function BookReader({
                     : (dm ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')
                 }`}
               >
-                <span className="hidden sm:inline">{isLtr ? 'Next' : 'Previous'}</span>
+                <span className="hidden sm:inline">{isLtr ? 'Next' : 'السابق'}</span>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>

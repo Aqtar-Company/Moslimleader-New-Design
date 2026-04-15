@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { useLang } from '@/context/LanguageContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import { resolvePrice } from '@/lib/geo-pricing';
@@ -593,25 +594,70 @@ function BookPageInner() {
               </div>
 
               {book.freePages > 0 ? (
-                <ReaderErrorBoundary>
-                  <BookReader
-                    bookId={id}
-                    freePages={book.freePages}
-                    hasAccess={hasAccess}
-                    watermarkText={book.enableWatermark ? (user?.email || '') : undefined}
-                    enableForensic={book.enableForensic}
-                    allowQuoteShare={book.allowQuoteShare}
-                    price={book.price}
-                    priceDisplay={displayBookPrice(book)}
-                    initialPage={lastPage}
-                    onPageChange={saveProgress}
-                    bookTitle={book.title}
-                    coverUrl={book.cover}
-                    bookLanguage={(book as any).language === 'en' ? 'en' : (book as any).language === 'both' ? 'both' : 'ar'}
-                    bgmUrl={(book as any).bgmUrl || undefined}
-                    promoVideoUrl={(book as any).promoVideoUrl || undefined}
-                  />
-                </ReaderErrorBoundary>
+                !isVerified ? (
+                  <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                    <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mb-4">
+                      <svg className="w-8 h-8 text-[#F5C518]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-800 mb-1">{isEn ? 'Quick Verification' : 'تحقق سريع'}</h3>
+                    <p className="text-sm text-gray-500 mb-4">{isEn ? 'Prove you are human and not a bot' : 'أثبت أنك إنسان وليس برنامج آلي'}</p>
+                    <div className="mb-5 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 text-right leading-relaxed max-w-xs">
+                      <p className="font-bold mb-1">{isEn ? '🔍 Notice: Your data is being recorded' : '🔍 تنبيه: يتم تسجيل بياناتك'}</p>
+                      <p>{isEn ? 'When opening this book, the system records your IP, device type, and location. Any IP violation will be used as legal evidence.' : 'عند فتح هذا الكتاب يقوم النظام بتسجيل عنوان IP الخاص بك، نوع جهازك، وموقعك الجغرافي. أي انتهاك لحقوق الملكية الفكرية سيُستخدم كدليل قانوني.'}</p>
+                    </div>
+                    <Turnstile
+                      siteKey="0x4AAAAAACzKEGf-IQ39WfSB"
+                      onSuccess={async (token) => {
+                        if (token && !trackingDone) {
+                          setTrackingDone(true);
+                          try {
+                            await fetch(`/api/books/${id}/track`, { method: 'POST', credentials: 'include' });
+                          } catch {}
+                          try {
+                            const fp = await generateFingerprint();
+                            const devRes = await fetch(`/api/books/${id}/device`, {
+                              method: 'POST', credentials: 'include',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ fingerprint: fp }),
+                            });
+                            if (!devRes.ok && devRes.status !== 401) {
+                              const devData = await devRes.json();
+                              if (devData.error) { alert(devData.error); setTrackingDone(false); return; }
+                            }
+                          } catch {}
+                          setIsVerified(true);
+                        }
+                      }}
+                      options={{ language: isEn ? 'en' : 'ar' }}
+                    />
+                    <p className="text-xs text-gray-400 mt-4 flex items-center gap-1">
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+                      {isEn ? 'Protected by Cloudflare Turnstile' : 'محمي بواسطة Cloudflare Turnstile'}
+                    </p>
+                  </div>
+                ) : (
+                  <ReaderErrorBoundary>
+                    <BookReader
+                      bookId={id}
+                      freePages={book.freePages}
+                      hasAccess={hasAccess}
+                      watermarkText={book.enableWatermark ? (user?.email || '') : undefined}
+                      enableForensic={book.enableForensic}
+                      allowQuoteShare={book.allowQuoteShare}
+                      price={book.price}
+                      priceDisplay={displayBookPrice(book)}
+                      initialPage={lastPage}
+                      onPageChange={saveProgress}
+                      bookTitle={book.title}
+                      coverUrl={book.cover}
+                      bookLanguage={(book as any).language === 'en' ? 'en' : (book as any).language === 'both' ? 'both' : 'ar'}
+                      bgmUrl={(book as any).bgmUrl || undefined}
+                      promoVideoUrl={(book as any).promoVideoUrl || undefined}
+                    />
+                  </ReaderErrorBoundary>
+                )
               ) : (
                 <div className="p-16 text-center text-gray-400">
                   <p className="text-5xl mb-4">📚</p>

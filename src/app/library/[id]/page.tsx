@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { useLang } from '@/context/LanguageContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import { resolvePrice } from '@/lib/geo-pricing';
 import { formatAgeLabel } from '@/lib/book-age';
@@ -46,8 +47,8 @@ class ReaderErrorBoundary extends React.Component<
       return (
         <div className="p-12 text-center">
           <p className="text-4xl mb-4">📖</p>
-          <p className="text-gray-700 font-bold mb-2">تعذّر تحميل القارئ</p>
-          <p className="text-gray-400 text-sm mb-4">حاول تحديث الصفحة أو استخدم متصفح آخر</p>
+          <p className="text-gray-700 font-bold mb-2">{isEn ? 'Unable to load reader' : 'تعذّر تحميل القارئ'}</p>
+          <p className="text-gray-400 text-sm mb-4">{isEn ? 'Try refreshing or use another browser' : 'حاول تحديث الصفحة أو استخدم متصفح آخر'}</p>
           <button onClick={() => window.location.reload()} className="text-[#F5C518] font-bold text-sm underline">
             تحديث الصفحة
           </button>
@@ -126,6 +127,7 @@ function BookPageInner() {
   const { id } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const { user } = useAuth();
+  const { lang } = useLang();
   const { zone, countryCode, formatPrice } = useRegionalPricing();
 
   // Resolve book price based on user's region
@@ -159,7 +161,7 @@ function BookPageInner() {
   const [seriesSeriesId, setSeriesSeriesId] = useState<string | null>(null);
   const [seriesPrice, setSeriesPrice] = useState<number | null>(null);
   const [seriesPriceUSD, setSeriesPriceUSD] = useState<number | null>(null);
-  const isEn = false; // Arabic-first; series names shown in Arabic by default
+  const isEn = lang === 'en';
 
   useEffect(() => {
     fetch(`/api/books/${id}`, { credentials: 'include' })
@@ -298,8 +300,8 @@ function BookPageInner() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center pt-20 gap-4" dir="rtl">
         <p className="text-5xl">📚</p>
-        <p className="text-gray-500 font-semibold">الكتاب غير موجود</p>
-        <Link href="/library" className="text-[#F5C518] font-bold text-sm hover:underline">← العودة للمكتبة</Link>
+        <p className="text-gray-500 font-semibold">{isEn ? 'Book not found' : 'الكتاب غير موجود'}</p>
+        <Link href="/library" className="text-[#F5C518] font-bold text-sm hover:underline">{isEn ? '← Back to Library' : '← العودة للمكتبة'}</Link>
       </div>
     );
   }
@@ -344,19 +346,19 @@ function BookPageInner() {
         <div className="grid grid-cols-4 gap-2 py-3 border-t border-gray-100">
           <div className="text-center">
             <p className="font-black text-gray-900 text-lg">{book.totalPages || '—'}</p>
-            <p className="text-gray-400 text-[11px]">صفحة</p>
+            <p className="text-gray-400 text-[11px]">{isEn ? 'Pages' : 'صفحة'}</p>
           </div>
           <div className="text-center">
             <p className="font-black text-green-600 text-lg">{book.freePages}</p>
-            <p className="text-gray-400 text-[11px]">مجانية</p>
+            <p className="text-gray-400 text-[11px]">{isEn ? 'Free' : 'مجانية'}</p>
           </div>
           <div className="text-center">
             <p className="font-black text-gray-900 text-lg">{buyCount ?? book._count.accesses}</p>
-            <p className="text-gray-400 text-[11px]">مشتري</p>
+            <p className="text-gray-400 text-[11px]">{isEn ? 'Buyers' : 'مشتري'}</p>
           </div>
           <div className="text-center">
             <p className="font-black text-blue-600 text-lg">{viewCount ?? 0}</p>
-            <p className="text-gray-400 text-[11px]">زائر</p>
+            <p className="text-gray-400 text-[11px]">{isEn ? 'Visitors' : 'زائر'}</p>
           </div>
         </div>
 
@@ -364,7 +366,7 @@ function BookPageInner() {
         {!hasAccess && book.price > 0 && (
           <div className="space-y-3">
             <div className="text-center">
-              <p className="text-gray-400 text-xs mb-1">سعر النسخة الرقمية</p>
+              <p className="text-gray-400 text-xs mb-1">{isEn ? 'Digital Edition Price' : 'سعر النسخة الرقمية'}</p>
               <p className="font-black text-[#1a1a2e] text-3xl">
                 {displayBookPrice(book)}
               </p>
@@ -394,9 +396,9 @@ function BookPageInner() {
               </Link>
             )}
             <div className="flex justify-center gap-3 text-[11px] text-gray-400">
-              <span>✓ دفع آمن</span>
+              <span>{isEn ? '✓ Secure Payment' : '✓ دفع آمن'}</span>
               <span>•</span>
-              <span>✓ وصول فوري</span>
+              <span>{isEn ? '✓ Instant Access' : '✓ وصول فوري'}</span>
             </div>
           </div>
         )}
@@ -404,7 +406,7 @@ function BookPageInner() {
         {hasAccess && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-2">
             <span className="text-green-600 text-lg">✓</span>
-            <p className="text-green-700 text-sm font-bold">لديك وصول كامل لهذا الكتاب</p>
+            <p className="text-green-700 text-sm font-bold">{isEn ? 'You have full access to this book' : 'لديك وصول كامل لهذا الكتاب'}</p>
           </div>
         )}
 
@@ -441,13 +443,13 @@ function BookPageInner() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
             <div className="flex flex-col items-center text-center gap-3">
               <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-3xl">🔒</div>
-              <h3 className="font-black text-amber-700 text-sm">⚠️ تنبيه قانوني: يتم تسجيل بياناتك</h3>
-              <p className="text-gray-600 text-xs leading-relaxed">عند فتح هذا الكتاب يقوم النظام بتسجيل عنوان IP الخاص بك، نوع جهازك، وموقعك الجغرافي بشكل تلقائي. أي انتهاك لحقوق الملكية الفكرية — كالنسخ أو التوزيع غير المصرح به — سيُستخدم كدليل قانوني في المحاكم.</p>
+              <h3 className="font-black text-amber-700 text-sm">{isEn ? '⚠️ Legal Notice: Your data is being recorded' : '⚠️ تنبيه قانوني: يتم تسجيل بياناتك'}</h3>
+              <p className="text-gray-600 text-xs leading-relaxed">{isEn ? 'When opening this book, the system records your IP address, device type, and location. Any IP violation will be used as legal evidence in court.' : 'عند فتح هذا الكتاب يقوم النظام بتسجيل عنوان IP الخاص بك، نوع جهازك، وموقعك الجغرافي بشكل تلقائي. أي انتهاك لحقوق الملكية الفكرية — كالنسخ أو التوزيع غير المصرح به — سيُستخدم كدليل قانوني في المحاكم.'}</p>
               <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden mt-1">
                 <div className="h-full bg-amber-400 rounded-full transition-all duration-1000 ease-linear"
                   style={{ width: `${((5 - legalCountdown) / 5) * 100}%` }} />
               </div>
-              <p className="text-gray-400 text-xs">سيُغلق خلال {legalCountdown}s</p>
+              <p className="text-gray-400 text-xs">{isEn ? `Closes in ${legalCountdown}s` : `سيُغلق خلال ${legalCountdown}s`}</p>
             </div>
           </div>
         </div>
@@ -536,7 +538,7 @@ function BookPageInner() {
                 </div>
               )}
               {hasAccess && (
-                <span className="inline-block bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-full">✓ وصول كامل</span>
+                <span className="inline-block bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-full">{isEn ? '✓ Full Access' : '✓ وصول كامل'}</span>
               )}
             </div>
           </div>
@@ -613,7 +615,7 @@ function BookPageInner() {
               ) : (
                 <div className="p-16 text-center text-gray-400">
                   <p className="text-5xl mb-4">📚</p>
-                  <p className="font-semibold">ملف الكتاب قيد الرفع</p>
+                  <p className="font-semibold">{isEn ? 'Book file is being uploaded' : 'ملف الكتاب قيد الرفع'}</p>
                 </div>
               )}
 
@@ -623,7 +625,7 @@ function BookPageInner() {
 
         {/* ── Small copyright reminder below the reader ── */}
         <div className="mt-3 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-700 text-right leading-relaxed">
-          <span className="font-bold">⚠️ تذكير:</span> بياناتك مسجّلة (IP، الجهاز، الموقع). أي نسخ أو توزيع غير مصرح به يُعدّ انتهاكاً لحقوق الملكية الفكرية ويُستخدم كدليل قانوني.
+          <span className="font-bold">⚠️ {isEn ? 'Reminder:' : 'تذكير:'}</span> {isEn ? 'Your data is recorded (IP, device, location). Unauthorized copying or distribution is an IP violation and will be used as legal evidence.' : 'بياناتك مسجّلة (IP، الجهاز، الموقع). أي نسخ أو توزيع غير مصرح به يُعدّ انتهاكاً لحقوق الملكية الفكرية ويُستخدم كدليل قانوني.'}
         </div>
       </div>
 
@@ -735,7 +737,7 @@ function BookPageInner() {
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-2xl">🎁</div>
                 <div>
-                  <h3 className="font-black text-gray-900">رابط المشاركة جاهز!</h3>
+                  <h3 className="font-black text-gray-900">{isEn ? 'Share Link Ready!' : 'رابط المشاركة جاهز!'}</h3>
                   <p className="text-gray-400 text-xs">صديقك يقدر يقرأ الكتاب كاملاً لمدة {book.friendShareHours} ساعة</p>
                 </div>
               </div>

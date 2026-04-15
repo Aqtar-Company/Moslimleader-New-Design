@@ -22,6 +22,8 @@ interface BookReaderProps {
   coverUrl?: string;
   /** 'ar' | 'en' | 'both' — controls arrow direction */
   bookLanguage?: 'ar' | 'en' | 'both';
+  /** UI language — controls button labels text only */
+  uiLang?: 'ar' | 'en';
   bgmUrl?: string;
   promoVideoUrl?: string;
 }
@@ -471,9 +473,10 @@ export default function BookReader({
   bookId, freePages, hasAccess, watermarkText, enableForensic = true,
   allowQuoteShare = true, price, priceDisplay, initialPage = 1, onPageChange,
   bookTitle = '', coverUrl = '', bookLanguage = 'ar',
-  bgmUrl, promoVideoUrl,
+  uiLang = 'ar', bgmUrl, promoVideoUrl,
 }: BookReaderProps) {
   const isLtr = bookLanguage === 'en';
+  const isEnUI = uiLang === 'en';
 
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState(initialPage);
@@ -799,7 +802,7 @@ export default function BookReader({
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                 </svg>
-                <span className="hidden sm:inline">{isLtr ? 'السابق' : 'التالي'}</span>
+                <span className="hidden sm:inline">{isEnUI ? (isLtr ? 'Previous' : 'Next') : (isLtr ? 'السابق' : 'التالي')}</span>
               </button>
 
               {/* Page counter — click to jump */}
@@ -836,7 +839,7 @@ export default function BookReader({
                     : (dm ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')
                 }`}
               >
-                <span className="hidden sm:inline">{isLtr ? 'التالي' : 'السابق'}</span>
+                <span className="hidden sm:inline">{isEnUI ? (isLtr ? 'Next' : 'Previous') : (isLtr ? 'التالي' : 'السابق')}</span>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>

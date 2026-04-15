@@ -469,8 +469,8 @@ function BookPageInner() {
                           body: JSON.stringify({ fingerprint: fp }),
                         });
                         if (!devRes.ok && devRes.status !== 401) {
-                          const devData = await devRes.json();
-                          if (devData.error) { alert(devData.error); setTrackingDone(false); return; }
+                          const devData = await devRes.json().catch(() => ({}));
+                          if (devData.error) { console.error('[device-check]', devData.error); }
                         }
                       } catch {}
                       }

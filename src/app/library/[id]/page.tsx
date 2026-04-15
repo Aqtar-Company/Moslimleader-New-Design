@@ -149,7 +149,7 @@ function BookPageInner() {
   const [isVerified, setIsVerified] = useState(false);
   const [trackingDone, setTrackingDone] = useState(false);
   const [showLegal, setShowLegal] = useState(true);
-  const [legalCountdown, setLegalCountdown] = useState(5);
+  const [legalCountdown, setLegalCountdown] = useState(10);
   const [viewCount, setViewCount] = useState<number | null>(null);
   const [buyCount, setBuyCount] = useState<number | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -448,7 +448,7 @@ function BookPageInner() {
               <p className="text-gray-600 text-xs leading-relaxed">{isEn ? 'When opening this book, the system records your IP address, device type, and location. Any IP violation will be used as legal evidence in court.' : 'عند فتح هذا الكتاب يقوم النظام بتسجيل عنوان IP الخاص بك، نوع جهازك، وموقعك الجغرافي بشكل تلقائي. أي انتهاك لحقوق الملكية الفكرية — كالنسخ أو التوزيع غير المصرح به — سيُستخدم كدليل قانوني في المحاكم.'}</p>
               <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden mt-1">
                 <div className="h-full bg-amber-400 rounded-full transition-all duration-1000 ease-linear"
-                  style={{ width: `${((5 - legalCountdown) / 5) * 100}%` }} />
+                  style={{ width: `${((10 - legalCountdown) / 10) * 100}%` }} />
               </div>
               <p className="text-gray-400 text-xs">{isEn ? `Closes in ${legalCountdown}s` : `سيُغلق خلال ${legalCountdown}s`}</p>
             </div>

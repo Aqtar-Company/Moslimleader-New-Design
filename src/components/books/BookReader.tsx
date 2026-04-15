@@ -1084,6 +1084,7 @@ export default function BookReader({
       {/* Bookmark Panel */}
       {showBookmarkPanel && (
         <BookmarkPanel
+          isLtr={isLtr}
           bookmarks={bookmarks}
           currentPage={currentPage}
           onJump={page => goTo(page)}
@@ -1096,6 +1097,7 @@ export default function BookReader({
       {/* Add Bookmark Modal */}
       {showAddBookmark && (
         <AddBookmarkModal
+          isLtr={isLtr}
           page={currentPage}
           onSave={addBookmark}
           onClose={() => setShowAddBookmark(false)}

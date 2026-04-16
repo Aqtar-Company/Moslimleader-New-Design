@@ -12,18 +12,6 @@ type Gender = 'boy' | 'girl' | 'adult';
 type AgeRange = 'under5' | '5to8' | '9to12' | '13plus';
 type Step = 'welcome' | 'gender' | 'age' | 'thinking' | 'results';
 
-interface LibBook {
-  id: string;
-  title: string;
-  titleEn?: string;
-  cover: string;
-  price?: number;
-  priceUSD?: number;
-  minAge?: number | null;
-  maxAge?: number | null;
-  section?: string;
-}
-
 interface Message {
   id: string;
   from: 'ameen' | 'user';
@@ -56,18 +44,6 @@ function getRecommendations(gender: Gender, age: AgeRange, allProducts: Product[
   const slugs = RECOMMENDATIONS[gender]?.[age] ?? [];
   const bySlug = Object.fromEntries(allProducts.map(p => [p.slug, p]));
   return slugs.map(s => bySlug[s]).filter(Boolean).filter(p => p.inStock).slice(0, 6);
-}
-
-function getBookRecs(gender: Gender, age: AgeRange | null, books: LibBook[]): LibBook[] {
-  const ranges: Record<string, [number, number]> = {
-    under5: [0, 5], '5to8': [4, 8], '9to12': [8, 12], '13plus': [12, 99],
-  };
-  const [min, max] = gender === 'adult' ? [13, 99] : (ranges[age ?? '5to8'] ?? [0, 99]);
-  return books.filter(b => {
-    const bMin = b.minAge ?? 0;
-    const bMax = b.maxAge ?? 99;
-    return bMin <= max && bMax >= min;
-  }).slice(0, 4);
 }
 
 /* ── Amin Avatar ───────────────────────────────────────────────────────────── */
@@ -119,35 +95,6 @@ function MiniCard({ p, isEn }: { p: Product; isEn: boolean }) {
   );
 }
 
-/* ── Digital book mini-card ────────────────────────────────────────────────── */
-function BookMiniCard({ b, isEn }: { b: LibBook; isEn: boolean }) {
-  const title = isEn && b.titleEn ? b.titleEn : b.title;
-  const isFree = !b.price || b.price === 0;
-  return (
-    <Link
-      href={`/library/${b.id}`}
-      className="group bg-white rounded-xl border border-[#1e3a6e]/20 overflow-hidden hover:shadow-md transition-shadow flex flex-col"
-    >
-      <div className="aspect-square overflow-hidden bg-gray-50">
-        <img
-          src={b.cover}
-          alt={title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          onError={e => { (e.target as HTMLImageElement).src = '/placeholder.png'; }}
-        />
-      </div>
-      <div className="p-2.5 flex-1 flex flex-col gap-1">
-        <p className="text-xs font-bold text-gray-800 leading-tight line-clamp-2">{title}</p>
-        <p className="text-xs font-black text-[#1a1a2e] mt-auto">
-          {isFree
-            ? (isEn ? '🆓 Free' : '🆓 مجاني')
-            : `${b.price?.toLocaleString('ar-EG')} ج`}
-        </p>
-      </div>
-    </Link>
-  );
-}
-
 /* ── Main chat component ────────────────────────────────────────────────────── */
 export default function AmeenChat() {
   const [open, setOpen] = useState(false);
@@ -157,7 +104,6 @@ export default function AmeenChat() {
   const [age, setAge] = useState<AgeRange | null>(null);
   const [results, setResults] = useState<Product[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [libBooks, setLibBooks] = useState<LibBook[]>([]);
   const [showBadge, setShowBadge] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const { lang } = useLang();
@@ -172,14 +118,6 @@ export default function AmeenChat() {
       ...added,
     ];
     setAllProducts(merged);
-  }, []);
-
-  // Load digital books from API
-  useEffect(() => {
-    fetch('/api/books')
-      .then(r => r.json())
-      .then(data => setLibBooks(data.books ?? []))
-      .catch(() => {});
   }, []);
 
   // Auto-scroll to bottom on new message
@@ -390,32 +328,19 @@ export default function AmeenChat() {
             )}
 
             {/* Results */}
-            {step === 'results' && results.length > 0 && (() => {
-              const bookRecs = getBookRecs(gender!, age, libBooks);
-              return (
-                <div className="space-y-3 pt-1">
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {results.slice(0, 6).map(p => <MiniCard key={p.id} p={p} isEn={isEn} />)}
-                  </div>
-                  {bookRecs.length > 0 && (
-                    <div className="space-y-2 pt-1 border-t border-dashed border-gray-200">
-                      <p className="text-xs font-bold text-gray-400 pt-1">
-                        {isEn ? '📚 Related Digital Books' : '📚 كتب رقمية مرتبطة'}
-                      </p>
-                      <div className="grid grid-cols-2 gap-2.5">
-                        {bookRecs.map(b => <BookMiniCard key={b.id} b={b} isEn={isEn} />)}
-                      </div>
-                    </div>
-                  )}
-                  <button
-                    onClick={restart}
-                    className="w-full text-center text-xs text-gray-500 hover:text-gray-700 py-2 border border-dashed border-gray-300 rounded-xl hover:border-gray-400 transition"
-                  >
-                    {isEn ? '🔄 Start over' : '🔄 ابدأ من جديد'}
-                  </button>
+            {step === 'results' && results.length > 0 && (
+              <div className="space-y-3 pt-1">
+                <div className="grid grid-cols-2 gap-2.5">
+                  {results.slice(0, 6).map(p => <MiniCard key={p.id} p={p} isEn={isEn} />)}
                 </div>
-              );
-            })()}
+                <button
+                  onClick={restart}
+                  className="w-full text-center text-xs text-gray-500 hover:text-gray-700 py-2 border border-dashed border-gray-300 rounded-xl hover:border-gray-400 transition"
+                >
+                  {isEn ? '🔄 Start over' : '🔄 ابدأ من جديد'}
+                </button>
+              </div>
+            )}
 
             {step === 'results' && results.length === 0 && (
               <div className="text-center py-4">

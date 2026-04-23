@@ -17,11 +17,12 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          port: 2222
+          port: 22
+          password: ${{ secrets.VPS_PASSWORD }}
           script: |
             set -e
             echo "=== Starting deployment ==="
-            cd /root/moslimleader
+            cd /home/moslimleader.com/app
             git fetch origin
             git reset --hard origin/main
             git clean -fd src/
@@ -29,5 +30,6 @@ jobs:
             npx prisma generate
             npx prisma db push --skip-generate
             npm run build
-            pm2 restart moslimleader
+            pm2 restart 1 --update-env
+            pm2 save
             echo "=== Deployment complete! ==="

@@ -19,7 +19,7 @@ export default function Header() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
       <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
-      <nav className="bg-gradient-to-b from-[#1a0f00]/80 to-transparent">
+      <nav className="bg-gradient-to-b from-[#1a0f00]/80 to-transparent backdrop-blur-sm" style={{ WebkitBackdropFilter: 'blur(8px)', backdropFilter: 'blur(8px)' }}>
         <div className="max-w-6xl mx-auto px-4 h-20 grid grid-cols-3 items-center">
 
           {/* Side A (Right in RTL): Cart + Library */}

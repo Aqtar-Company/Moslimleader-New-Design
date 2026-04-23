@@ -213,11 +213,32 @@ export default function AdminSeriesPage() {
             </div>
             <div>
               <label className="text-xs font-bold text-gray-500 mb-1 block">اللغة</label>
-              <select className={inputCls} value={form.language} onChange={e => setForm(p => ({ ...p, language: e.target.value }))}>
-                <option value="ar">عربي فقط</option>
-                <option value="en">إنجليزي فقط</option>
-                <option value="both">عربي وإنجليزي</option>
-              </select>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { id: 'ar',   label: 'عربي' },
+                  { id: 'en',   label: 'English' },
+                  { id: 'both', label: 'عربي + EN' },
+                  { id: 'ur',   label: 'اردو' },
+                  { id: 'id',   label: 'Indonesia' },
+                  { id: 'bn',   label: 'বাংলা' },
+                  { id: 'hi',   label: 'हिन्दी' },
+                  { id: 'de',   label: 'Deutsch' },
+                  { id: 'fr',   label: 'Français' },
+                ] as const).map(opt => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setForm(p => ({ ...p, language: opt.id }))}
+                    className={`py-2 rounded-xl text-xs font-black border-2 transition ${
+                      form.language === opt.id
+                        ? 'border-[#F5C518] bg-amber-50 text-[#1a1a2e]'
+                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div>
               <label className="text-xs font-bold text-gray-500 mb-1 block">سعر السلسلة كاملة (ج.م)</label>

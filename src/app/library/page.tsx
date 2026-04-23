@@ -178,8 +178,8 @@ export default function LibraryPage() {
           </h1>
           <p className="text-gray-400 text-sm max-w-md mx-auto">
             {isEn
-              ? 'Curated books in leadership, self-development, and Islamic thought'
-              : 'كتب منتقاة في القيادة، التطوير الذاتي، والفكر الإسلامي'}
+              ? 'Educational & cultural content to build tomorrow\'s leaders | Righteous & reformers'
+              : 'محتوى تربوي وثقافي لبناء قادة الغد | صالحون مصلحون'}
           </p>
         </div>
 

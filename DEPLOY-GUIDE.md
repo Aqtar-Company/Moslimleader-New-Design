@@ -1,109 +1,125 @@
-# دليل نشر مسلم ليدر على السيرفر الخاص
+# دليل نشر مسلم ليدر — VPS (AlmaLinux)
 
-## المتطلبات على السيرفر
+## بيانات السيرفر الحالي
 
-- Node.js 20+
-- MySQL أو MariaDB
-- PM2 (لتشغيل التطبيق في الخلفية)
-- Nginx (اختياري، للـ reverse proxy)
+| | |
+|---|---|
+| **نظام التشغيل** | AlmaLinux (RHEL-based) |
+| **مسار المشروع** | `/home/moslimleader.com/app` |
+| **البورت** | 3000 (عبر Nginx reverse proxy) |
+| **PM2 process** | id: 1 — name: `moslimleader` |
+| **Nginx config** | `/etc/nginx/sites-available/moslimleader.com` |
+| **SSL** | Let's Encrypt (Certbot) |
 
 ---
 
-## خطوات النشر
-
-### 1. تحميل الكود من GitHub
+## النشر الأول (Fresh Deploy)
 
 ```bash
-git clone https://github.com/Aqtar-Company/Moslimleader-New-Design.git
-cd Moslimleader-New-Design
-npm install
-```
+# 1. كلون المشروع
+cd /home/moslimleader.com
+git clone https://github.com/Aqtar-Company/Moslimleader-New-Design.git app
+cd app
 
-### 2. إنشاء قاعدة البيانات
+# 2. إنشاء ملف البيئة
+cp .env.example .env
+nano .env   # عدّل القيم الحقيقية
 
-```sql
-CREATE DATABASE mldb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'mluser'@'localhost' IDENTIFIED BY 'كلمة_مرور_قوية';
-GRANT ALL PRIVILEGES ON mldb.* TO 'mluser'@'localhost';
-FLUSH PRIVILEGES;
-```
+# 3. تثبيت الحزم
+npm install --legacy-peer-deps
 
-### 3. إنشاء ملف `.env.local`
+# 4. توليد Prisma Client وتحديث DB
+npx prisma generate
+npx prisma db push --skip-generate
 
-```dotenv
-DATABASE_URL="mysql://mluser:كلمة_مرور_قوية@localhost:3306/mldb"
-JWT_SECRET="سلسلة_عشوائية_طويلة_على_الأقل_32_حرف"
-NODE_ENV="production"
-ADMIN_EMAIL="admin@yourdomain.com"
-ADMIN_PASSWORD="كلمة_مرور_المسؤول"
-```
-
-### 4. تهيئة قاعدة البيانات وتعبئة البيانات
-
-```bash
-export DATABASE_URL="mysql://mluser:كلمة_مرور_قوية@localhost:3306/mldb"
-npx prisma db push
-npm run db:seed
-```
-
-### 5. بناء التطبيق
-
-```bash
+# 5. بناء
 npm run build
+
+# 6. تشغيل مع PM2
+pm2 start npm --name moslimleader -- start
+pm2 save
+pm2 startup
 ```
 
-### 6. تشغيل التطبيق مع PM2
+---
+
+## تحديث الكود (بعد merge على main)
 
 ```bash
-# تثبيت PM2
-npm install -g pm2
-
-# تشغيل التطبيق
-pm2 start ecosystem.config.js
-
-# تفعيل التشغيل التلقائي عند إعادة تشغيل السيرفر
-pm2 startup
+cd /home/moslimleader.com/app
+git fetch origin
+git reset --hard origin/main
+npm install --legacy-peer-deps
+npx prisma generate
+npx prisma db push --skip-generate
+npm run build
+pm2 restart 1 --update-env
 pm2 save
 ```
 
-### 7. إعداد Nginx (اختياري)
+---
 
-```nginx
-server {
-    listen 80;
-    server_name yourdomain.com;
+## ملفات المحتوى المهمة
 
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
+| المجلد | المحتوى |
+|--------|---------|
+| `public/covers/` | أغلفة الكتب (مرفوعة من الأدمن) |
+| `public/books/` | ملفات PDF للكتب |
+| `public/` | صور الموقع العامة |
+
+> **تنبيه:** هذه المجلدات **لا تُحفظ في git** — عند نشر على سيرفر جديد انسخها يدوياً من السيرفر القديم.
+
+```bash
+cp -r /old-path/public/covers /home/moslimleader.com/app/public/
+cp -r /old-path/public/books  /home/moslimleader.com/app/public/
 ```
 
 ---
 
-## بيانات الدخول الافتراضية للأدمن
+## متغيرات البيئة المطلوبة
 
-- **البريد الإلكتروني:** admin@moslimleader.com
-- **كلمة المرور:** Admin@2026
-- **رابط الأدمن:** `/admin/dashboard`
+انظر ملف `.env.example` للقائمة الكاملة.
 
-> **تنبيه:** غيّر بيانات الأدمن فور النشر على السيرفر الحقيقي!
+المتغيرات الأساسية:
+- `DATABASE_URL` — رابط MySQL
+- `JWT_SECRET` — مفتاح التشفير (32 حرف على الأقل)
+- `NEXT_PUBLIC_BASE_URL` — رابط الموقع
+- `PAYPAL_CLIENT_ID` + `PAYPAL_CLIENT_SECRET` — PayPal
+- `SMTP_*` — إعدادات البريد (Titan Email)
 
 ---
 
-## الصفحات الرئيسية
+## لوحة الأدمن
 
-| الصفحة | الرابط |
+- **الرابط:** `https://moslimleader.com/admin/dashboard`
+- **الدخول:** عبر نفس صفحة `/auth` بحساب admin
+
+---
+
+## GitHub Actions (Auto Deploy)
+
+عند كل push على `main` يتم تلقائياً:
+1. SSH للسيرفر
+2. `git reset --hard origin/main`
+3. `npm run build`
+4. `pm2 restart`
+
+**Secrets المطلوبة في GitHub:**
+
+| Secret | القيمة |
 |--------|--------|
-| الصفحة الرئيسية | `/` |
-| المتجر | `/shop` |
-| سلة التسوق | `/cart` |
-| الدفع | `/checkout` |
-| المكتبة الرقمية | `/library` |
-| تسجيل الدخول | `/auth` |
-| لوحة الأدمن | `/admin/dashboard` |
+| `VPS_HOST` | عنوان IP السيرفر |
+| `VPS_USER` | `root` |
+| `VPS_PASSWORD` | كلمة مرور الـ root |
+
+---
+
+## أوامر مفيدة
+
+```bash
+pm2 status               # حالة التطبيق
+pm2 logs 1 --lines 50    # آخر 50 سطر من الـ logs
+pm2 restart 1            # إعادة تشغيل
+nginx -t                 # تحقق من إعدادات Nginx
+systemctl reload nginx   # تحديث Nginx
+```

@@ -118,17 +118,6 @@ const LANG_OPTIONS: { id: Exclude<LangFilter, null>; label: string; labelEn: str
     ),
   },
   {
-    id: 'hi', label: 'هندي', labelEn: 'Hindi',
-    flag: (
-      <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 15" fill="none">
-        <rect width="20" height="15" rx="2" fill="#138808"/>
-        <rect width="20" height="5" rx="2" fill="#FF9933"/>
-        <rect y="5" width="20" height="5" fill="white"/>
-        <circle cx="10" cy="7.5" r="2" fill="none" stroke="#000080" strokeWidth="0.8"/>
-      </svg>
-    ),
-  },
-  {
     id: 'de', label: 'ألماني', labelEn: 'German',
     flag: (
       <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 15" fill="none">

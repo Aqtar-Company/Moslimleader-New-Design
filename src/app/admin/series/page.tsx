@@ -221,7 +221,6 @@ export default function AdminSeriesPage() {
                   { id: 'ur',   label: 'اردو' },
                   { id: 'id',   label: 'Indonesia' },
                   { id: 'bn',   label: 'বাংলা' },
-                  { id: 'hi',   label: 'हिन्दी' },
                   { id: 'de',   label: 'Deutsch' },
                   { id: 'fr',   label: 'Français' },
                 ] as const).map(opt => (

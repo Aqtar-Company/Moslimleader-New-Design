@@ -168,8 +168,17 @@ export default function LibraryPage() {
     <div className="min-h-screen bg-gray-50" dir={isEn ? 'ltr' : 'rtl'}>
 
       {/* ── Hero ── */}
-      <div className="bg-[#1a1a2e] pt-28 pb-10 px-4">
-        <div className="max-w-4xl mx-auto text-center mb-8">
+      <div
+        className="relative pt-28 pb-10 px-4 overflow-hidden"
+        style={{
+          backgroundImage: 'url(/library-hero.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center top',
+        }}
+      >
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-[#0d0d1a]/70" />
+        <div className="relative z-10 max-w-4xl mx-auto text-center mb-8">
           <p className="text-[#F5C518] font-bold text-sm tracking-widest mb-3 uppercase">
             {isEn ? 'Digital Library' : 'المكتبة الرقمية'}
           </p>
@@ -184,7 +193,7 @@ export default function LibraryPage() {
         </div>
 
         {/* Search */}
-        <div className="max-w-lg mx-auto">
+        <div className="relative z-10 max-w-lg mx-auto">
           <div className="relative">
             <span className={`absolute ${isEn ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none`}>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">

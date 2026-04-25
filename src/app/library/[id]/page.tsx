@@ -214,14 +214,13 @@ function BookPageInner() {
       .finally(() => setLoading(false));
   }, [id, user, searchParams]);
 
-  // Legal overlay auto-dismiss countdown — starts only after book finishes loading
+  // Legal overlay auto-dismiss countdown — starts immediately on mount
   useEffect(() => {
-    if (loading) return;
     if (!showLegal) return;
     if (legalCountdown <= 0) { setShowLegal(false); return; }
     const timer = setTimeout(() => setLegalCountdown(c => c - 1), 1000);
     return () => clearTimeout(timer);
-  }, [loading, showLegal, legalCountdown]);
+  }, [showLegal, legalCountdown]);
 
   // Auto-hide share message after 6 seconds
   useEffect(() => {
@@ -287,10 +286,38 @@ function BookPageInner() {
     setTimeout(() => setCopyDone(false), 2000);
   };
 
+  const legalOverlayJsx = showLegal ? (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/75 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6" dir="rtl">
+        <div className="flex flex-col items-center text-center gap-4">
+          {loading && (
+            <div className="flex items-center gap-3 w-full bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+              <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin shrink-0" />
+              <p className="text-green-700 font-bold text-sm">جاري تحميل الكتاب...</p>
+            </div>
+          )}
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-2xl">🔒</div>
+          <h3 className="font-black text-amber-700 text-sm">⚠️ تنبيه قانوني: حقوق الملكية الفكرية</h3>
+          <p className="text-gray-600 text-xs leading-relaxed">عند فتح هذا الكتاب يقوم النظام بتسجيل عنوان IP الخاص بك، نوع جهازك، وموقعك الجغرافي بشكل تلقائي. أي نسخ أو توزيع أو مشاركة غير مصرح بها تُعدّ انتهاكاً صريحاً لحقوق الملكية الفكرية المحمية قانوناً، وستُستخدم البيانات المسجّلة كدليل قانوني أمام المحاكم.</p>
+          <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+            <div
+              className="h-full bg-amber-400 rounded-full transition-all duration-1000 ease-linear"
+              style={{ width: `${((5 - legalCountdown) / 5) * 100}%` }}
+            />
+          </div>
+          <p className="text-gray-400 text-xs">سيُغلق خلال {legalCountdown}s</p>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center pt-20">
-        <div className="w-10 h-10 border-2 border-[#F5C518] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-gray-50 pt-20" dir="rtl">
+        {legalOverlayJsx}
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="w-10 h-10 border-2 border-[#F5C518] border-t-transparent rounded-full animate-spin" />
+        </div>
       </div>
     );
   }
@@ -437,22 +464,7 @@ function BookPageInner() {
     <div className="min-h-screen bg-gray-50 pt-20" dir="rtl">
 
       {/* ── Legal notice overlay — 5-second auto-dismiss ── */}
-      {showLegal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/75 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
-            <div className="flex flex-col items-center text-center gap-3">
-              <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-3xl">🔒</div>
-              <h3 className="font-black text-amber-700 text-sm">⚠️ تنبيه قانوني: يتم تسجيل بياناتك</h3>
-              <p className="text-gray-600 text-xs leading-relaxed">عند فتح هذا الكتاب يقوم النظام بتسجيل عنوان IP الخاص بك، نوع جهازك، وموقعك الجغرافي بشكل تلقائي. أي انتهاك لحقوق الملكية الفكرية — كالنسخ أو التوزيع غير المصرح به — سيُستخدم كدليل قانوني في المحاكم.</p>
-              <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden mt-1">
-                <div className="h-full bg-amber-400 rounded-full transition-all duration-1000 ease-linear"
-                  style={{ width: `${((5 - legalCountdown) / 5) * 100}%` }} />
-              </div>
-              <p className="text-gray-400 text-xs">سيُغلق خلال {legalCountdown}s</p>
-            </div>
-          </div>
-        </div>
-      )}
+      {legalOverlayJsx}
 
       {/* Share link toast notification */}
       {shareMsg && (

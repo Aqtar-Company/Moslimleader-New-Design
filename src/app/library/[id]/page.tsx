@@ -147,7 +147,7 @@ function BookPageInner() {
   const [isVerified, setIsVerified] = useState(false);
   const [trackingDone, setTrackingDone] = useState(false);
   const [showLegal, setShowLegal] = useState(true);
-  const [legalCountdown, setLegalCountdown] = useState(5);
+  const [legalCountdown, setLegalCountdown] = useState(10);
   const [viewCount, setViewCount] = useState<number | null>(null);
   const [buyCount, setBuyCount] = useState<number | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -214,13 +214,14 @@ function BookPageInner() {
       .finally(() => setLoading(false));
   }, [id, user, searchParams]);
 
-  // Legal overlay auto-dismiss countdown — starts immediately on mount
+  // Legal overlay countdown — only starts after Turnstile is verified
   useEffect(() => {
     if (!showLegal) return;
+    if (!isVerified) return;
     if (legalCountdown <= 0) { setShowLegal(false); return; }
     const timer = setTimeout(() => setLegalCountdown(c => c - 1), 1000);
     return () => clearTimeout(timer);
-  }, [showLegal, legalCountdown]);
+  }, [showLegal, legalCountdown, isVerified]);
 
   // Auto-hide share message after 6 seconds
   useEffect(() => {
@@ -290,6 +291,7 @@ function BookPageInner() {
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/75 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6" dir="rtl">
         <div className="flex flex-col items-center text-center gap-4">
+          {/* Loading status */}
           {loading && (
             <div className="flex items-center gap-3 w-full bg-green-50 border border-green-200 rounded-xl px-4 py-3">
               <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin shrink-0" />
@@ -298,14 +300,31 @@ function BookPageInner() {
           )}
           <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-2xl">🔒</div>
           <h3 className="font-black text-amber-700 text-sm">⚠️ تنبيه قانوني: حقوق الملكية الفكرية</h3>
-          <p className="text-gray-600 text-xs leading-relaxed">عند فتح هذا الكتاب يقوم النظام بتسجيل عنوان IP الخاص بك، نوع جهازك، وموقعك الجغرافي بشكل تلقائي. أي نسخ أو توزيع أو مشاركة غير مصرح بها تُعدّ انتهاكاً صريحاً لحقوق الملكية الفكرية المحمية قانوناً، وستُستخدم البيانات المسجّلة كدليل قانوني أمام المحاكم.</p>
-          <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-            <div
-              className="h-full bg-amber-400 rounded-full transition-all duration-1000 ease-linear"
-              style={{ width: `${((5 - legalCountdown) / 5) * 100}%` }}
-            />
-          </div>
-          <p className="text-gray-400 text-xs">سيُغلق خلال {legalCountdown}s</p>
+          <p className="text-gray-600 text-xs leading-relaxed">عند فتح هذا الكتاب يقوم النظام بتسجيل عنوان IP الخاص بك، نوع جهازك، وموقعك الجغرافي بشكل تلقائي. أي نسخ أو توزيع غير مصرح به يُعدّ جريمة قانونية وستُستخدم البيانات كدليل أمام المحاكم.</p>
+          {/* Cloudflare Turnstile */}
+          {!isVerified ? (
+            <div className="flex flex-col items-center gap-2">
+              <Turnstile
+                siteKey="0x4AAAAAACzKEGf-IQ39WfSB"
+                onSuccess={() => setIsVerified(true)}
+                options={{ language: 'ar', theme: 'light' }}
+              />
+              <p className="text-xs text-gray-400 flex items-center gap-1">
+                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+                محمي بواسطة Cloudflare
+              </p>
+            </div>
+          ) : (
+            <div className="w-full space-y-2">
+              <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                <div
+                  className="h-full bg-amber-400 rounded-full transition-all duration-1000 ease-linear"
+                  style={{ width: `${((10 - legalCountdown) / 10) * 100}%` }}
+                />
+              </div>
+              <p className="text-gray-400 text-xs">سيُغلق خلال {legalCountdown}s</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -604,46 +623,25 @@ function BookPageInner() {
               </div>
 
               {book.freePages > 0 ? (
-                !isVerified ? (
-                  <div className="flex flex-col items-center justify-center py-12 px-6 text-center" dir="rtl">
-                    <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mb-4 text-3xl">🔐</div>
-                    <h3 className="text-xl font-black text-gray-800 mb-1">تحقق سريع</h3>
-                    <p className="text-sm text-gray-500 mb-5">أثبت أنك إنسان للوصول إلى الكتاب</p>
-                    <div className="mb-5 p-4 bg-amber-50 border border-amber-300 rounded-2xl text-sm text-amber-900 text-right leading-relaxed w-full max-w-sm">
-                      <p className="font-black mb-1">⚠️ تنبيه: بياناتك مسجّلة</p>
-                      <p className="text-xs leading-6">يتم تسجيل IP، الجهاز، والموقع الجغرافي. أي نسخ أو توزيع غير مصرح به يُعدّ جريمة قانونية.</p>
-                    </div>
-                    <Turnstile
-                      siteKey="0x4AAAAAACzKEGf-IQ39WfSB"
-                      onSuccess={() => setIsVerified(true)}
-                      options={{ language: 'ar' }}
-                    />
-                    <p className="text-xs text-gray-400 mt-4 flex items-center gap-1">
-                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
-                      محمي بواسطة Cloudflare Turnstile
-                    </p>
-                  </div>
-                ) : (
-                  <ReaderErrorBoundary>
-                    <BookReader
-                      bookId={id}
-                      freePages={book.freePages}
-                      hasAccess={hasAccess}
-                      watermarkText={book.enableWatermark ? (user?.email || '') : undefined}
-                      enableForensic={book.enableForensic}
-                      allowQuoteShare={book.allowQuoteShare}
-                      price={book.price}
-                      priceDisplay={displayBookPrice(book)}
-                      initialPage={lastPage}
-                      onPageChange={saveProgress}
-                      bookTitle={book.title}
-                      coverUrl={book.cover}
-                      bookLanguage={(book as any).language === 'en' ? 'en' : (book as any).language === 'both' ? 'both' : 'ar'}
-                      bgmUrl={(book as any).bgmUrl || undefined}
-                      promoVideoUrl={(book as any).promoVideoUrl || undefined}
-                    />
-                  </ReaderErrorBoundary>
-                )
+                <ReaderErrorBoundary>
+                  <BookReader
+                    bookId={id}
+                    freePages={book.freePages}
+                    hasAccess={hasAccess}
+                    watermarkText={book.enableWatermark ? (user?.email || '') : undefined}
+                    enableForensic={book.enableForensic}
+                    allowQuoteShare={book.allowQuoteShare}
+                    price={book.price}
+                    priceDisplay={displayBookPrice(book)}
+                    initialPage={lastPage}
+                    onPageChange={saveProgress}
+                    bookTitle={book.title}
+                    coverUrl={book.cover}
+                    bookLanguage={(book as any).language === 'en' ? 'en' : (book as any).language === 'both' ? 'both' : 'ar'}
+                    bgmUrl={(book as any).bgmUrl || undefined}
+                    promoVideoUrl={(book as any).promoVideoUrl || undefined}
+                  />
+                </ReaderErrorBoundary>
               ) : (
                 <div className="p-16 text-center text-gray-400">
                   <p className="text-5xl mb-4">📚</p>

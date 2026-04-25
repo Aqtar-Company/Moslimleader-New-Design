@@ -22,6 +22,8 @@ interface BookReaderProps {
   coverUrl?: string;
   /** 'ar' | 'en' | 'both' — controls arrow direction */
   bookLanguage?: 'ar' | 'en' | 'both';
+  /** UI language — controls button labels text only */
+  uiLang?: 'ar' | 'en';
   bgmUrl?: string;
   promoVideoUrl?: string;
 }
@@ -166,11 +168,11 @@ function QuoteToast({ text, bookTitle, coverUrl, onClose }: { text: string; book
 }
 
 // ── Free Page Warning ─────────────────────────────────────────────────────────
-function FreePageWarning({ remaining, bookId }: { remaining: number; bookId: string }) {
+function FreePageWarning({ remaining, bookId, isLtr }: { remaining: number; bookId: string; isLtr: boolean }) {
   return (
     <div className="absolute top-3 left-3 right-3 z-30 bg-amber-50 border border-amber-300 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2 shadow-sm">
       <p className="text-amber-800 text-xs font-bold">
-        {remaining === 0 ? 'هذه آخر صفحة مجانية' : `تبقّت ${remaining} صفحة مجانية فقط`}
+        {remaining === 0 ? (isLtr ? 'This is the last free page' : 'هذه آخر صفحة مجانية') : (isLtr ? `Only ${remaining} free pages left` : `تبقّت ${remaining} صفحة مجانية فقط`)}
       </p>
       <a href={`/library/${bookId}/buy`} className="text-xs font-black text-amber-700 underline whitespace-nowrap">اشترِ الآن</a>
     </div>
@@ -231,7 +233,7 @@ function ShareModal({ bookId, bookTitle, onClose }: { bookId: string; bookTitle:
 
 // ── Bookmark Panel ────────────────────────────────────────────────────────────
 function BookmarkPanel({
-  bookmarks, currentPage, onJump, onDelete, onClose, dm
+  bookmarks, currentPage, onJump, onDelete, onClose, dm, isLtr
 }: {
   bookmarks: Bookmark[];
   currentPage: number;
@@ -239,6 +241,7 @@ function BookmarkPanel({
   onDelete: (page: number) => void;
   onClose: () => void;
   dm: boolean;
+  isLtr: boolean;
 }) {
   return (
     <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0" onClick={onClose}>
@@ -254,7 +257,7 @@ function BookmarkPanel({
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
               </svg>
               <p className={`text-xs ${dm ? 'text-gray-500' : 'text-gray-400'}`}>لا توجد علامات مرجعية بعد</p>
-              <p className={`text-xs mt-1 ${dm ? 'text-gray-600' : 'text-gray-300'}`}>اضغط على أيقونة العلامة في شريط الأدوات لحفظ صفحة</p>
+              <p className={`text-xs mt-1 ${dm ? 'text-gray-600' : 'text-gray-300'}`}>{isLtr ? 'Tap the bookmark icon in the toolbar to save a page' : 'اضغط على أيقونة العلامة في شريط الأدوات لحفظ صفحة'}</p>
             </div>
           ) : (
             bookmarks.sort((a, b) => a.page - b.page).map(bm => (
@@ -295,12 +298,13 @@ function BookmarkPanel({
 
 // ── Add Bookmark Modal ────────────────────────────────────────────────────────
 function AddBookmarkModal({
-  page, onSave, onClose, dm
+  page, onSave, onClose, dm, isLtr
 }: {
   page: number;
   onSave: (note: string) => void;
   onClose: () => void;
   dm: boolean;
+  isLtr: boolean;
 }) {
   const [note, setNote] = useState('');
   return (
@@ -314,7 +318,7 @@ function AddBookmarkModal({
               </svg>
             </div>
             <div>
-              <h3 className={`font-black text-sm ${dm ? 'text-white' : 'text-gray-900'}`}>حفظ صفحة {page}</h3>
+              <h3 className={`font-black text-sm ${dm ? 'text-white' : 'text-gray-900'}`}>{isLtr ? `Save Page ${page}` : `حفظ صفحة ${page}`}</h3>
               <p className={`text-xs ${dm ? 'text-gray-400' : 'text-gray-400'}`}>أضف ملاحظة اختيارية</p>
             </div>
             <button onClick={onClose} className={`mr-auto text-xl ${dm ? 'text-gray-400' : 'text-gray-400'}`}>×</button>
@@ -376,12 +380,12 @@ function PromoVideoCard({ videoUrl, bookTitle, onClose }: { videoUrl: string; bo
 
 // ── Ambient Music Player ──────────────────────────────────────────────────────
 // AmbientMusicButton — renders just the play/pause button, receives state from parent
-function AmbientMusicButton({ playing, onToggle, dm }: { playing: boolean; onToggle: () => void; dm: boolean }) {
+function AmbientMusicButton({ playing, onToggle, dm, isLtr }: { playing: boolean; onToggle: () => void; dm: boolean; isLtr: boolean }) {
   const btnBase = `w-8 h-8 rounded-xl flex items-center justify-center transition ${dm ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'}`;
   return (
     <button
       onClick={onToggle}
-      title={playing ? 'إيقاف الموسيقى' : 'تشغيل موسيقى الخلفية'}
+      title={playing ? (isLtr ? 'Stop Music' : 'إيقاف الموسيقى') : (isLtr ? 'Play Background Music' : 'تشغيل موسيقى الخلفية')}
       className={`${btnBase} ${playing ? 'bg-[#F5C518] text-[#1a1a2e]' : (dm ? 'text-gray-400' : 'text-gray-500')}`}
     >
       {playing ? (
@@ -399,7 +403,7 @@ function AmbientMusicButton({ playing, onToggle, dm }: { playing: boolean; onTog
 
 // AmbientMusicControl — manages audio state + renders hidden iframe + ONE button
 // Pass buttonClassName to control visibility per breakpoint
-function AmbientMusicControl({ bgmUrl, dm }: { bgmUrl: string; dm: boolean }) {
+function AmbientMusicControl({ bgmUrl, dm, isLtr }: { bgmUrl: string; dm: boolean; isLtr: boolean }) {
   const isSoundCloud = bgmUrl.includes('soundcloud.com');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const scWidgetRef = useRef<HTMLIFrameElement | null>(null);
@@ -459,7 +463,7 @@ function AmbientMusicControl({ bgmUrl, dm }: { bgmUrl: string; dm: boolean }) {
           style={{ position: 'fixed', top: 0, left: 0, opacity: 0, pointerEvents: 'none', zIndex: -1 }} />
       )}
       {/* Single button — visible on all screens */}
-      <AmbientMusicButton playing={playing} onToggle={toggle} dm={dm} />
+      <AmbientMusicButton playing={playing} onToggle={toggle} dm={dm} isLtr={isLtr} />
     </>
   );
 }
@@ -469,16 +473,17 @@ export default function BookReader({
   bookId, freePages, hasAccess, watermarkText, enableForensic = true,
   allowQuoteShare = true, price, priceDisplay, initialPage = 1, onPageChange,
   bookTitle = '', coverUrl = '', bookLanguage = 'ar',
-  bgmUrl, promoVideoUrl,
+  uiLang = 'ar', bgmUrl, promoVideoUrl,
 }: BookReaderProps) {
   const isLtr = bookLanguage === 'en';
+  const isEnUI = uiLang === 'en';
 
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [pageWidth, setPageWidth] = useState(600);
   const [quoteToast, setQuoteToast] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(false);
-  const [jumperValue, setJumperValue] = useState(String(initialPage));
+  const [showPageJumper, setShowPageJumper] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [pageAnim, setPageAnim] = useState<'none' | 'slide-next' | 'slide-prev'>('none');
   const [screenshotBlocked, setScreenshotBlocked] = useState(false);
@@ -691,7 +696,6 @@ export default function BookReader({
     setPageAnim(dir === 'next' ? 'slide-next' : 'slide-prev');
     setTimeout(() => {
       setCurrentPage(page);
-      setJumperValue(String(page));
       onPageChange?.(page);
       setPageAnim('none');
     }, 175); // half of 0.35s animation — page changes at peak of flip
@@ -788,7 +792,7 @@ export default function BookReader({
               <button
                 onClick={() => isLtr ? goTo(currentPage - 1, 'prev') : goTo(currentPage + 1, 'next')}
                 disabled={isLtr ? currentPage <= 1 : currentPage >= numPages}
-                aria-label={isLtr ? 'السابق' : 'التالي'}
+                aria-label={isLtr ? 'Previous' : 'Next'}
                 className={`flex items-center justify-center gap-1 px-3 h-9 rounded-xl font-bold text-xs transition disabled:opacity-30 ${
                   isLtr
                     ? (dm ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')
@@ -798,26 +802,44 @@ export default function BookReader({
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                 </svg>
-                <span className="hidden sm:inline">{isLtr ? 'السابق' : 'التالي'}</span>
+                <span className="hidden sm:inline">{isEnUI ? (isLtr ? 'Previous' : 'Next') : (isLtr ? 'السابق' : 'التالي')}</span>
               </button>
 
-              {/* Page counter */}
-              <div className={`text-xs font-bold tabular-nums px-1 ${dm ? 'text-gray-300' : 'text-gray-600'}`}>
-                {currentPage} <span className={dm ? 'text-gray-600' : 'text-gray-300'}>/</span> {numPages || '…'}
-              </div>
+              {/* Page counter — click to jump */}
+              {showPageJumper ? (
+                <input
+                  type="number" min={1} max={numPages}
+                  defaultValue={currentPage}
+                  autoFocus
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { const v = parseInt((e.target as HTMLInputElement).value); if (v >= 1 && v <= numPages) goTo(v); setShowPageJumper(false); }
+                    if (e.key === 'Escape') setShowPageJumper(false);
+                  }}
+                  onBlur={e => { const v = parseInt(e.target.value); if (v >= 1 && v <= numPages) goTo(v); setShowPageJumper(false); }}
+                  className={`w-16 text-center border rounded-lg px-1 py-1 text-xs outline-none focus:border-[#F5C518] ${dm ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-800'}`}
+                />
+              ) : (
+                <button
+                  onClick={() => setShowPageJumper(true)}
+                  title="اضغط للانتقال لصفحة"
+                  className={`text-xs font-bold tabular-nums px-2 py-1 rounded-lg hover:opacity-70 transition ${dm ? 'text-gray-300' : 'text-gray-600'}`}
+                >
+                  {currentPage} <span className={dm ? 'text-gray-600' : 'text-gray-300'}>/</span> {numPages || '…'}
+                </button>
+              )}
 
               {/* Right arrow */}
               <button
                 onClick={() => isLtr ? goTo(currentPage + 1, 'next') : goTo(currentPage - 1, 'prev')}
                 disabled={isLtr ? currentPage >= numPages : currentPage <= 1}
-                aria-label={isLtr ? 'التالي' : 'السابق'}
+                aria-label={isLtr ? 'Next' : 'Previous'}
                 className={`flex items-center justify-center gap-1 px-3 h-9 rounded-xl font-bold text-xs transition disabled:opacity-30 ${
                   isLtr
                     ? (dm ? 'bg-[#F5C518] text-[#1a1a2e] hover:bg-amber-400' : 'bg-[#F5C518] text-[#1a1a2e] hover:bg-amber-400')
                     : (dm ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')
                 }`}
               >
-                <span className="hidden sm:inline">{isLtr ? 'التالي' : 'السابق'}</span>
+                <span className="hidden sm:inline">{isEnUI ? (isLtr ? 'Next' : 'Previous') : (isLtr ? 'التالي' : 'السابق')}</span>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>
@@ -854,7 +876,7 @@ export default function BookReader({
                 {/* Bookmark */}
                 <button
                   onClick={() => { if (isCurrentPageBookmarked) { setShowBookmarkPanel(true); } else { setShowAddBookmark(true); } }}
-                  aria-label={isCurrentPageBookmarked ? 'عرض العلامات' : 'حفظ الصفحة'}
+                  aria-label={isCurrentPageBookmarked ? 'قائمة العلامات' : 'حفظ الصفحة'}
                   className={`${btnCls} relative ${isCurrentPageBookmarked ? 'text-[#F5C518]' : ''}`}
                 >
                   <svg className="w-4 h-4" fill={isCurrentPageBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -864,14 +886,8 @@ export default function BookReader({
                     <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#F5C518] text-[#1a1a2e] text-[9px] font-black rounded-full flex items-center justify-center">{bookmarks.length}</span>
                   )}
                 </button>
-                {/* Bookmark list */}
-                <button onClick={() => setShowBookmarkPanel(true)} aria-label="قائمة العلامات" className={btnCls}>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                  </svg>
-                </button>
                 {/* Music — desktop only */}
-                {bgmUrl && <AmbientMusicButton playing={bgmPlaying} onToggle={toggleBgm} dm={dm} />}
+                {bgmUrl && <AmbientMusicButton playing={bgmPlaying} onToggle={toggleBgm} dm={dm} isLtr={isLtr} />}
                 {/* Fullscreen */}
                 <button onClick={toggleFullscreen} aria-label={isFullscreen ? 'خروج ملء الشاشة' : 'ملء الشاشة'} className={btnCls}>
                   {isFullscreen ? (
@@ -929,7 +945,7 @@ export default function BookReader({
               {/* Bookmark */}
               <button
                 onClick={() => { if (isCurrentPageBookmarked) { setShowBookmarkPanel(true); } else { setShowAddBookmark(true); } }}
-                aria-label={isCurrentPageBookmarked ? 'عرض العلامات' : 'حفظ الصفحة'}
+                aria-label={isCurrentPageBookmarked ? 'قائمة العلامات' : 'حفظ الصفحة'}
                 className={`${btnCls} relative ${isCurrentPageBookmarked ? 'text-[#F5C518]' : ''}`}
               >
                 <svg className="w-4 h-4" fill={isCurrentPageBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -940,15 +956,8 @@ export default function BookReader({
                 )}
               </button>
 
-              {/* Bookmark list */}
-              <button onClick={() => setShowBookmarkPanel(true)} aria-label="قائمة العلامات" className={btnCls}>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                </svg>
-              </button>
-
               {/* Music */}
-              {bgmUrl && <AmbientMusicButton playing={bgmPlaying} onToggle={toggleBgm} dm={dm} />}
+              {bgmUrl && <AmbientMusicButton playing={bgmPlaying} onToggle={toggleBgm} dm={dm} isLtr={isLtr} />}
 
               {/* Fullscreen */}
               <button onClick={toggleFullscreen} aria-label={isFullscreen ? 'خروج ملء الشاشة' : 'ملء الشاشة'} className={btnCls}>
@@ -997,7 +1006,7 @@ export default function BookReader({
         >
           <div className="relative">
             {showWarning && !isLocked && (
-              <FreePageWarning remaining={pagesLeft} bookId={bookId} />
+              <FreePageWarning isLtr={isLtr} remaining={pagesLeft} bookId={bookId} />
             )}
 
             {/* Page with simple slide animation */}
@@ -1051,25 +1060,6 @@ export default function BookReader({
           </div>
         </div>
 
-        {/* ── Footer: page jumper ── */}
-        {numPages > 0 && toolbarVisible && (
-          <div className={`px-4 py-2.5 border-t flex items-center justify-between gap-3 transition-all duration-300 ${dm ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
-            <div className="flex items-center gap-2">
-              <span className={`text-xs ${dm ? 'text-gray-500' : 'text-gray-400'}`}>انتقل لصفحة:</span>
-              <input
-                type="number" min={1} max={numPages} value={jumperValue}
-                onChange={e => setJumperValue(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { const v = parseInt(jumperValue); if (v >= 1 && v <= numPages) goTo(v); } }}
-                onBlur={() => { const v = parseInt(jumperValue); if (!v || v < 1 || v > numPages) setJumperValue(String(currentPage)); }}
-                className={`w-16 text-center border rounded-lg px-1 py-1 text-sm outline-none focus:border-[#F5C518] ${dm ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-800'}`}
-              />
-            </div>
-            <p className={`text-[10px] hidden sm:block ${dm ? 'text-gray-700' : 'text-gray-300'}`}>
-              اضغط المنتصف لإخفاء/إظهار شريط الأدوات
-            </p>
-          </div>
-        )}
-
         {/* Quote toast */}
         {quoteToast && (
           <QuoteToast text={quoteToast} bookTitle={bookTitle} coverUrl={coverUrl} onClose={() => setQuoteToast(null)} />
@@ -1082,6 +1072,7 @@ export default function BookReader({
       {/* Bookmark Panel */}
       {showBookmarkPanel && (
         <BookmarkPanel
+          isLtr={isLtr}
           bookmarks={bookmarks}
           currentPage={currentPage}
           onJump={page => goTo(page)}
@@ -1094,6 +1085,7 @@ export default function BookReader({
       {/* Add Bookmark Modal */}
       {showAddBookmark && (
         <AddBookmarkModal
+          isLtr={isLtr}
           page={currentPage}
           onSave={addBookmark}
           onClose={() => setShowAddBookmark(false)}

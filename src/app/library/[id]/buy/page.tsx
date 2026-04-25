@@ -1,4 +1,5 @@
 'use client';
+import { useLang } from '@/context/LanguageContext';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -67,8 +68,8 @@ export default function BookBuyPage({ params }: { params: Promise<{ id: string }
       <div className="min-h-screen flex items-center justify-center text-center px-4">
         <div>
           <p className="text-2xl mb-4">📚</p>
-          <p className="text-gray-600 font-bold">الكتاب غير موجود</p>
-          <Link href="/library" className="mt-4 inline-block text-[#F5C518] font-bold underline">العودة للمكتبة</Link>
+          <p className="text-gray-600 font-bold">{isEn ? 'Book not found' : 'الكتاب غير موجود'}</p>
+          <Link href="/library" className="mt-4 inline-block text-[#F5C518] font-bold underline">{isEn ? 'Back to Library' : 'العودة للمكتبة'}</Link>
         </div>
       </div>
     );
@@ -89,7 +90,7 @@ export default function BookBuyPage({ params }: { params: Promise<{ id: string }
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h1 className="text-2xl font-black text-gray-900 mb-2">تم تفعيل وصولك! 🎉</h1>
+            <h1 className="text-2xl font-black text-gray-900 mb-2">{isEn ? 'Access Activated! 🎉' : 'تم تفعيل وصولك! 🎉'}</h1>
             <p className="text-gray-500 text-sm leading-relaxed">
               طلبك رقم <span className="font-black text-gray-900">#{orderId}</span> تم تأكيده بنجاح.
               <br />
@@ -151,7 +152,7 @@ export default function BookBuyPage({ params }: { params: Promise<{ id: string }
             </div>
           )}
           <div>
-            <p className="text-xs text-gray-400 font-semibold mb-1">الكتاب الرقمي</p>
+            <p className="text-xs text-gray-400 font-semibold mb-1">{isEn ? 'Digital Book' : 'الكتاب الرقمي'}</p>
             <h1 className="text-lg font-black text-gray-900 leading-tight">{book.title}</h1>
             {book.author && <p className="text-sm text-gray-500 mt-0.5">{book.author}</p>}
           </div>
@@ -159,7 +160,7 @@ export default function BookBuyPage({ params }: { params: Promise<{ id: string }
 
         {/* Price */}
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <span className="text-gray-500 text-sm">سعر الكتاب</span>
+          <span className="text-gray-500 text-sm">{isEn ? 'Book Price' : 'سعر الكتاب'}</span>
           <div className="text-left">
             <span className="text-3xl font-black text-[#1a1a2e]">${priceUsd.toFixed(2)}</span>
             <p className="text-xs text-gray-400 mt-0.5">USD</p>
@@ -169,15 +170,15 @@ export default function BookBuyPage({ params }: { params: Promise<{ id: string }
         {/* User info */}
         <div className="px-6 pt-5">
           <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3 text-xs text-gray-600 mb-4">
-            <p className="font-bold text-gray-700 mb-1">بياناتك:</p>
-            <p>الاسم: <span className="font-black text-gray-900">{user?.name}</span></p>
-            <p>الإيميل: <span className="font-black text-gray-900">{user?.email}</span></p>
+            <p className="font-bold text-gray-700 mb-1">{isEn ? 'Your Details:' : 'بياناتك:'}</p>
+            <p>{isEn ? 'Name: ' : 'الاسم: '}<span className="font-black text-gray-900">{user?.name}</span></p>
+            <p>{isEn ? 'Email: ' : 'الإيميل: '}<span className="font-black text-gray-900">{user?.email}</span></p>
           </div>
         </div>
 
         {/* Payment */}
         <div className="px-6 pb-6">
-          <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-3">اختر طريقة الدفع</p>
+          <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-3">{isEn ? 'Choose Payment Method' : 'اختر طريقة الدفع'}</p>
           <PayPalBookButton
             createEndpoint={`/api/books/${book.id}/paypal-create`}
             captureEndpoint={`/api/books/${book.id}/paypal-capture`}

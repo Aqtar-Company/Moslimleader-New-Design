@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useLang } from '@/context/LanguageContext';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 
@@ -38,13 +39,15 @@ interface Order {
   items: OrderItem[];
 }
 
-const PAY_LABELS: Record<string, string> = {
-  cod: 'الدفع عند الاستلام',
-  card: 'بطاقة ائتمان (PayPal)',
-  paypal: 'PayPal',
-  vodafone: 'Vodafone Cash',
-  instapay: 'InstaPay',
-};
+function getPayLabels(t: (k: string) => string): Record<string, string> {
+  return {
+    cod: t('invoice.pay.cod'),
+    card: t('invoice.pay.card'),
+    paypal: 'PayPal',
+    vodafone: 'Vodafone Cash',
+    instapay: 'InstaPay',
+  };
+}
 
 function fmt(n: number, currency: string) {
   return `${Math.round(n * 100) / 100} ${currency}`;
@@ -52,6 +55,7 @@ function fmt(n: number, currency: string) {
 
 export default function InvoicePage() {
   const { orderId } = useParams<{ orderId: string }>();
+  const { t, lang } = useLang();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -63,9 +67,9 @@ export default function InvoicePage() {
       .then(r => r.json())
       .then(d => {
         if (d.order) setOrder(d.order);
-        else setError('الطلب غير موجود أو غير مصرح لك بعرضه');
+        else setError(t('invoice.notfound'));
       })
-      .catch(() => setError('حدث خطأ في تحميل الطلب'))
+      .catch(() => setError(t('invoice.error')))
       .finally(() => setLoading(false));
   }, [orderId]);
 
@@ -76,7 +80,7 @@ export default function InvoicePage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">جاري تحميل الفاتورة...</p>
+          <p className="text-gray-500 text-sm">{t('invoice.loading')}</p>
         </div>
       </div>
     );
@@ -151,7 +155,7 @@ export default function InvoicePage() {
               className="h-12 w-auto mx-auto mb-4"
               unoptimized
             />
-            <p className="text-[#F5C518] text-xs font-bold tracking-widest uppercase mb-1">فاتورة الطلب</p>
+            <p className="text-[#F5C518] text-xs font-bold tracking-widest uppercase mb-1">{t('invoice.title')}</p>
             <p className="text-white text-2xl font-black font-mono">#{orderNum}</p>
           </div>
 
@@ -192,7 +196,7 @@ export default function InvoicePage() {
           <div className="px-8 pb-6">
             <div className="border border-gray-100 rounded-2xl overflow-hidden">
               <div className="flex justify-between px-5 py-3 text-sm text-gray-500 border-b border-gray-100">
-                <span>المجموع الفرعي</span>
+                <span>{t('invoice.subtotal')}</span>
                 <span className="font-semibold text-gray-900">{fmt(subtotal, order.currency)}</span>
               </div>
               {order.discount > 0 && (
@@ -202,13 +206,13 @@ export default function InvoicePage() {
                 </div>
               )}
               <div className="flex justify-between px-5 py-3 text-sm text-gray-500 border-b border-gray-100">
-                <span>🚚 الشحن</span>
+                <span>{t('invoice.shipping')}</span>
                 <span className="font-semibold text-gray-900">
-                  {order.shippingCost > 0 ? fmt(order.shippingCost, order.currency) : 'مجاني'}
+                  {order.shippingCost > 0 ? fmt(order.shippingCost, order.currency) : t('invoice.free')}
                 </span>
               </div>
               <div className="flex justify-between px-5 py-4 bg-gray-50">
-                <span className="text-base font-black text-gray-900">💰 الإجمالي</span>
+                <span className="text-base font-black text-gray-900">{t('invoice.total')}</span>
                 <span className="text-xl font-black text-gray-900">{fmt(order.total, order.currency)}</span>
               </div>
             </div>
@@ -217,12 +221,12 @@ export default function InvoicePage() {
           {/* Payment + Address */}
           <div className="px-8 pb-6 grid grid-cols-2 gap-4">
             <div className="bg-gray-50 rounded-2xl border border-gray-100 p-4">
-              <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">👤 بيانات العميل</p>
+              <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">{t('invoice.customer')}</p>
               <p className="text-sm font-bold text-gray-900">{fullName || '—'}</p>
               {addr.phone && <p className="text-xs text-gray-500 font-mono mt-1" dir="ltr">📱 {addr.phone}</p>}
             </div>
             <div className="bg-gray-50 rounded-2xl border border-gray-100 p-4">
-              <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">📍 عنوان الشحن</p>
+              <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">{t('invoice.address')}</p>
               <p className="text-xs text-gray-600 leading-relaxed">{addressLine || '—'}</p>
             </div>
           </div>
@@ -230,8 +234,8 @@ export default function InvoicePage() {
           {/* Payment method */}
           <div className="px-8 pb-6">
             <div className="bg-gray-50 rounded-2xl border border-gray-100 px-5 py-3 flex justify-between items-center">
-              <span className="text-xs font-black text-gray-400 uppercase tracking-wide">وسيلة الدفع</span>
-              <span className="text-sm font-bold text-gray-900">{PAY_LABELS[order.paymentMethod] || order.paymentMethod}</span>
+              <span className="text-xs font-black text-gray-400 uppercase tracking-wide">{t('invoice.payment')}</span>
+              <span className="text-sm font-bold text-gray-900">{getPayLabels(t)[order.paymentMethod] || order.paymentMethod}</span>
             </div>
           </div>
 
@@ -239,7 +243,7 @@ export default function InvoicePage() {
           {order.notes && (
             <div className="px-8 pb-6">
               <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-4">
-                <p className="text-xs font-black text-amber-700 mb-1">📝 ملاحظات</p>
+                <p className="text-xs font-black text-amber-700 mb-1">{t('invoice.notes')}</p>
                 <p className="text-sm text-amber-800">{order.notes}</p>
               </div>
             </div>
@@ -247,8 +251,8 @@ export default function InvoicePage() {
 
           {/* Footer */}
           <div className="bg-gradient-to-l from-[#1a1a2e] to-[#2d1060] px-8 py-5 text-center">
-            <p className="text-white/50 text-xs mb-1">moslimleader.com — نظام إدارة الطلبات</p>
-            <p className="text-[#F5C518] text-sm font-bold">جزاك الله خيرًا 🤍</p>
+            <p className="text-white/50 text-xs mb-1">{`moslimleader.com — ${t('invoice.footer')}`}</p>
+            <p className="text-[#F5C518] text-sm font-bold">{t('invoice.thanks')} 🤍</p>
           </div>
 
         </div>

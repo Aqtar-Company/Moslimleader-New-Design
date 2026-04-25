@@ -64,90 +64,14 @@ interface BookSeriesData {
 type SectionTab = 'books' | 'stories';
 type LangFilter = 'ar' | 'en' | 'ur' | 'id' | 'bn' | 'hi' | 'de' | 'fr' | null;
 
-const LANG_OPTIONS: { id: Exclude<LangFilter, null>; label: string; labelEn: string; flag: React.ReactNode }[] = [
-  {
-    id: 'ar', label: 'عربي', labelEn: 'Arabic',
-    flag: (
-      <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 15" fill="none">
-        <rect width="20" height="15" rx="2" fill="#006C35"/>
-        <rect y="5" width="20" height="5" fill="white"/>
-        <rect y="10" width="20" height="5" fill="black"/>
-      </svg>
-    ),
-  },
-  {
-    id: 'en', label: 'إنجليزي', labelEn: 'English',
-    flag: (
-      <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 15" fill="none">
-        <rect width="20" height="15" rx="2" fill="#012169"/>
-        <path d="M0 0l20 15M20 0L0 15" stroke="white" strokeWidth="3"/>
-        <path d="M0 0l20 15M20 0L0 15" stroke="#C8102E" strokeWidth="1.5"/>
-        <path d="M10 0v15M0 7.5h20" stroke="white" strokeWidth="5"/>
-        <path d="M10 0v15M0 7.5h20" stroke="#C8102E" strokeWidth="3"/>
-      </svg>
-    ),
-  },
-  {
-    id: 'ur', label: 'اردو', labelEn: 'Urdu',
-    flag: (
-      <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 15" fill="none">
-        <rect width="20" height="15" rx="2" fill="#01411C"/>
-        <rect width="5" height="15" rx="2" fill="white"/>
-        <circle cx="12" cy="7.5" r="3.5" fill="none" stroke="white" strokeWidth="1.2"/>
-        <circle cx="13" cy="7.5" r="3.5" fill="#01411C"/>
-        <path d="M14.5 5.5 L15.5 6" stroke="white" strokeWidth="0.8" strokeLinecap="round"/>
-      </svg>
-    ),
-  },
-  {
-    id: 'id', label: 'Indonesia', labelEn: 'Indonesian',
-    flag: (
-      <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 15" fill="none">
-        <rect width="20" height="15" rx="2" fill="white"/>
-        <rect width="20" height="7.5" rx="2" fill="#CE1126"/>
-      </svg>
-    ),
-  },
-  {
-    id: 'bn', label: 'বাংলা', labelEn: 'Bengali',
-    flag: (
-      <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 15" fill="none">
-        <rect width="20" height="15" rx="2" fill="#006A4E"/>
-        <circle cx="9" cy="7.5" r="4" fill="#F42A41"/>
-      </svg>
-    ),
-  },
-  {
-    id: 'hi', label: 'هندي', labelEn: 'Hindi',
-    flag: (
-      <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 15" fill="none">
-        <rect width="20" height="15" rx="2" fill="#138808"/>
-        <rect width="20" height="5" rx="2" fill="#FF9933"/>
-        <rect y="5" width="20" height="5" fill="white"/>
-        <circle cx="10" cy="7.5" r="2" fill="none" stroke="#000080" strokeWidth="0.8"/>
-      </svg>
-    ),
-  },
-  {
-    id: 'de', label: 'ألماني', labelEn: 'German',
-    flag: (
-      <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 15" fill="none">
-        <rect width="20" height="15" rx="2" fill="#FFCE00"/>
-        <rect width="20" height="5" rx="2" fill="#000000"/>
-        <rect y="5" width="20" height="5" fill="#DD0000"/>
-      </svg>
-    ),
-  },
-  {
-    id: 'fr', label: 'فرنساوي', labelEn: 'French',
-    flag: (
-      <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 15" fill="none">
-        <rect width="20" height="15" rx="2" fill="#ED2939"/>
-        <rect width="7" height="15" rx="2" fill="#002395"/>
-        <rect x="7" width="6" height="15" fill="white"/>
-      </svg>
-    ),
-  },
+const LANG_OPTIONS: { id: Exclude<LangFilter, null>; label: string; labelEn: string }[] = [
+  { id: 'ar', label: 'عربي',      labelEn: 'Arabic'     },
+  { id: 'en', label: 'إنجليزي',   labelEn: 'English'    },
+  { id: 'ur', label: 'اردو',      labelEn: 'Urdu'       },
+  { id: 'id', label: 'Indonesia', labelEn: 'Indonesian' },
+  { id: 'bn', label: 'বাংলা',     labelEn: 'Bengali'    },
+  { id: 'de', label: 'ألماني',    labelEn: 'German'     },
+  { id: 'fr', label: 'فرنساوي',   labelEn: 'French'     },
 ];
 
 const TABS: { id: SectionTab; ar: string; en: string; icon: React.ReactNode }[] = [
@@ -244,8 +168,17 @@ export default function LibraryPage() {
     <div className="min-h-screen bg-gray-50" dir={isEn ? 'ltr' : 'rtl'}>
 
       {/* ── Hero ── */}
-      <div className="bg-[#1a1a2e] pt-28 pb-10 px-4">
-        <div className="max-w-4xl mx-auto text-center mb-8">
+      <div
+        className="relative pt-28 pb-10 px-4 overflow-hidden"
+        style={{
+          backgroundImage: 'url(/library-hero.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center top',
+        }}
+      >
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-[#0d0d1a]/70" />
+        <div className="relative z-10 max-w-4xl mx-auto text-center mb-8">
           <p className="text-[#F5C518] font-bold text-sm tracking-widest mb-3 uppercase">
             {isEn ? 'Digital Library' : 'المكتبة الرقمية'}
           </p>
@@ -254,13 +187,13 @@ export default function LibraryPage() {
           </h1>
           <p className="text-gray-400 text-sm max-w-md mx-auto">
             {isEn
-              ? 'Curated books in leadership, self-development, and Islamic thought'
-              : 'كتب منتقاة في القيادة، التطوير الذاتي، والفكر الإسلامي'}
+              ? 'Educational & cultural content to build tomorrow\'s leaders | Righteous & reformers'
+              : 'محتوى تربوي وثقافي لبناء قادة الغد | صالحون مصلحون'}
           </p>
         </div>
 
         {/* Search */}
-        <div className="max-w-lg mx-auto">
+        <div className="relative z-10 max-w-lg mx-auto">
           <div className="relative">
             <span className={`absolute ${isEn ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none`}>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -359,7 +292,6 @@ export default function LibraryPage() {
                         : 'text-gray-300 hover:bg-white/10'
                     }`}
                   >
-                    {opt.flag}
                     {isEn ? opt.labelEn : opt.label}
                     {activeLang === opt.id && (
                       <svg className="w-3.5 h-3.5 ms-auto" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">

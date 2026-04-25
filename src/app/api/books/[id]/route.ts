@@ -34,11 +34,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
     // Check if current user has access
     let hasAccess = false;
+    let lastPage = 1;
     if (auth) {
       const access = await prisma.bookAccess.findUnique({
         where: { userId_bookId: { userId: auth.userId, bookId: id } },
+        select: { id: true, lastPage: true },
       });
       hasAccess = !!access;
+      lastPage = access?.lastPage ?? 1;
     }
     // buyCount = number of paid accesses
     const buyCount = (book as any)._count?.accesses ?? 0;
@@ -94,7 +97,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       }
     }
 
-    return NextResponse.json({ book, hasAccess, viewCount, buyCount, seriesBooks, seriesName, seriesNameEn, seriesSeriesId, seriesPrice, seriesPriceUSD });
+    return NextResponse.json({ book, hasAccess, lastPage, viewCount, buyCount, seriesBooks, seriesName, seriesNameEn, seriesSeriesId, seriesPrice, seriesPriceUSD });
   } catch (err) {
     console.error('[books/:id GET]', err);
     return NextResponse.json({ error: 'حدث خطأ في الخادم' }, { status: 500 });

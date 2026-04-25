@@ -277,12 +277,7 @@ model BookAccessLog {
   book        Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
   userId      String?
   ipAddress   String?
-  userAgent   String?
-  country     String?
-  city        String?
-  region      String?
-  latitude    Float?
-  longitude   Float?
+  userAgent   String?  @db.Text
   accessedAt  DateTime @default(now())
   @@index([bookId])
   @@index([userId])
@@ -294,7 +289,7 @@ model BookDevice {
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   fingerprint String
-  userAgent   String?
+  userAgent   String?  @db.Text
   ipAddress   String?
   lastSeen    DateTime @default(now())
   createdAt   DateTime @default(now())

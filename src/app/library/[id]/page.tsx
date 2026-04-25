@@ -214,13 +214,14 @@ function BookPageInner() {
       .finally(() => setLoading(false));
   }, [id, user, searchParams]);
 
-  // Legal overlay auto-dismiss countdown
+  // Legal overlay auto-dismiss countdown — starts only after book finishes loading
   useEffect(() => {
+    if (loading) return;
     if (!showLegal) return;
     if (legalCountdown <= 0) { setShowLegal(false); return; }
     const timer = setTimeout(() => setLegalCountdown(c => c - 1), 1000);
     return () => clearTimeout(timer);
-  }, [showLegal, legalCountdown]);
+  }, [loading, showLegal, legalCountdown]);
 
   // Auto-hide share message after 6 seconds
   useEffect(() => {

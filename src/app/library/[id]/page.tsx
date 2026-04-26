@@ -291,27 +291,32 @@ function BookPageInner() {
 
   const legalOverlayJsx = showLegal ? (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/75 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6" dir="rtl">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6" dir={isEn ? 'ltr' : 'rtl'}>
         <div className="flex flex-col items-center text-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-2xl">🔒</div>
-          <h3 className="font-black text-amber-700 text-sm">⚠️ تنبيه قانوني: حقوق الملكية الفكرية</h3>
-          <p className="text-gray-600 text-xs leading-relaxed">عند فتح هذا الكتاب يقوم النظام بتسجيل عنوان IP الخاص بك، نوع جهازك، وموقعك الجغرافي بشكل تلقائي. أي نسخ أو توزيع غير مصرح به يُعدّ جريمة قانونية وستُستخدم البيانات كدليل أمام المحاكم.</p>
-          {/* Cloudflare Turnstile */}
+          <h3 className="font-black text-amber-700 text-sm">
+            {isEn ? '⚠️ Legal Notice: Intellectual Property Rights' : '⚠️ تنبيه قانوني: حقوق الملكية الفكرية'}
+          </h3>
+          <p className="text-gray-600 text-xs leading-relaxed">
+            {isEn
+              ? 'By opening this book, the system automatically records your IP address, device type, and geographic location. Any unauthorized copying or distribution is a legal violation and the recorded data will be used as evidence in court.'
+              : 'عند فتح هذا الكتاب يقوم النظام بتسجيل عنوان IP الخاص بك، نوع جهازك، وموقعك الجغرافي بشكل تلقائي. أي نسخ أو توزيع غير مصرح به يُعدّ جريمة قانونية وستُستخدم البيانات كدليل أمام المحاكم.'}
+          </p>
           {!isVerified ? (
             <div className="flex flex-col items-center gap-2">
               <Turnstile
                 siteKey="0x4AAAAAACzKEGf-IQ39WfSB"
                 onSuccess={() => setIsVerified(true)}
-                options={{ language: 'ar', theme: 'light' }}
+                options={{ language: isEn ? 'en' : 'ar', theme: 'light' }}
               />
               <p className="text-xs text-gray-400 flex items-center gap-1">
                 <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
-                محمي بواسطة Cloudflare
+                {isEn ? 'Protected by Cloudflare' : 'محمي بواسطة Cloudflare'}
               </p>
             </div>
           ) : (
             <div className="w-full space-y-2">
-              <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+              <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden" dir="ltr">
                 <div
                   className="h-full bg-green-500 rounded-full transition-all duration-1000 ease-linear"
                   style={{ width: `${((10 - legalCountdown) / 10) * 100}%` }}
@@ -319,7 +324,7 @@ function BookPageInner() {
               </div>
               <div className="flex items-center justify-center gap-2 text-green-600">
                 <div className="w-3 h-3 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-                <p className="text-sm font-bold">جاري فتح الكتاب...</p>
+                <p className="text-sm font-bold">{isEn ? 'Opening the book...' : 'جاري فتح الكتاب...'}</p>
               </div>
             </div>
           )}
@@ -330,7 +335,7 @@ function BookPageInner() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 pt-20" dir="rtl">
+      <div className="min-h-screen bg-gray-50 pt-20" dir={isEn ? 'ltr' : 'rtl'}>
         {legalOverlayJsx}
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="w-10 h-10 border-2 border-[#F5C518] border-t-transparent rounded-full animate-spin" />
@@ -361,7 +366,7 @@ function BookPageInner() {
         )}
         {hasAccess && (
           <div className="absolute top-3 right-3 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full">
-            ✓ وصول كامل
+            {isEn ? '✓ Full Access' : '✓ وصول كامل'}
           </div>
         )}
       </div>
@@ -369,8 +374,8 @@ function BookPageInner() {
       {/* Info card */}
       <div className="bg-white rounded-2xl p-5 shadow-sm space-y-4">
         <div>
-          <h1 className="font-black text-gray-900 text-xl leading-tight">{book.title}</h1>
-          {book.author && <p className="text-gray-500 text-sm mt-1">{book.author}</p>}
+          <h1 className="font-black text-gray-900 text-xl leading-tight">{isEn && (book as any).titleEn ? (book as any).titleEn : book.title}</h1>
+          {book.author && <p className="text-gray-500 text-sm mt-1">{isEn && (book as any).authorEn ? (book as any).authorEn : book.author}</p>}
           {book.category && (
             <span className="inline-block mt-2 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold px-3 py-1 rounded-full">
               {book.category}
@@ -378,30 +383,30 @@ function BookPageInner() {
           )}
           {book.minAge != null && (
             <span className="inline-block mt-2 ms-2 bg-orange-50 text-orange-700 border border-orange-200 text-xs font-bold px-3 py-1 rounded-full">
-              {formatAgeLabel(book.minAge, book.maxAge ?? null, book.needsParentalGuide ?? false, 'ar')}
+              {formatAgeLabel(book.minAge, book.maxAge ?? null, book.needsParentalGuide ?? false, isEn ? 'en' : 'ar')}
             </span>
           )}
         </div>
 
-        <p className="text-gray-600 text-sm leading-relaxed">{book.description}</p>
+        <p className="text-gray-600 text-sm leading-relaxed">{isEn && (book as any).descriptionEn ? (book as any).descriptionEn : book.description}</p>
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-2 py-3 border-t border-gray-100">
           <div className="text-center">
             <p className="font-black text-gray-900 text-lg">{book.totalPages || '—'}</p>
-            <p className="text-gray-400 text-[11px]">صفحة</p>
+            <p className="text-gray-400 text-[11px]">{isEn ? 'pages' : 'صفحة'}</p>
           </div>
           <div className="text-center">
             <p className="font-black text-green-600 text-lg">{book.freePages}</p>
-            <p className="text-gray-400 text-[11px]">مجانية</p>
+            <p className="text-gray-400 text-[11px]">{isEn ? 'free' : 'مجانية'}</p>
           </div>
           <div className="text-center">
             <p className="font-black text-gray-900 text-lg">{buyCount ?? book._count.accesses}</p>
-            <p className="text-gray-400 text-[11px]">مشتري</p>
+            <p className="text-gray-400 text-[11px]">{isEn ? 'buyers' : 'مشتري'}</p>
           </div>
           <div className="text-center">
             <p className="font-black text-blue-600 text-lg">{viewCount ?? 0}</p>
-            <p className="text-gray-400 text-[11px]">زائر</p>
+            <p className="text-gray-400 text-[11px]">{isEn ? 'views' : 'زائر'}</p>
           </div>
         </div>
 
@@ -409,7 +414,7 @@ function BookPageInner() {
         {!hasAccess && book.price > 0 && (
           <div className="space-y-3">
             <div className="text-center">
-              <p className="text-gray-400 text-xs mb-1">سعر النسخة الرقمية</p>
+              <p className="text-gray-400 text-xs mb-1">{isEn ? 'Digital Edition Price' : 'سعر النسخة الرقمية'}</p>
               <p className="font-black text-[#1a1a2e] text-3xl">
                 {displayBookPrice(book)}
               </p>
@@ -419,29 +424,28 @@ function BookPageInner() {
                 href={`/library/${id}/buy`}
                 className="block w-full bg-[#F5C518] hover:bg-amber-400 active:bg-amber-500 text-[#1a1a2e] font-black py-3.5 rounded-xl text-center text-base transition shadow-md shadow-amber-200"
               >
-                اشترِ النسخة الرقمية الآن
+                {isEn ? 'Buy Digital Edition' : 'اشترِ النسخة الرقمية الآن'}
               </Link>
             ) : (
               <Link
                 href={`/auth?redirect=/library/${id}`}
                 className="block w-full bg-[#1a1a2e] hover:bg-[#2a2a4e] text-white font-black py-3.5 rounded-xl text-center text-base transition"
               >
-                سجّل دخولك للشراء
+                {isEn ? 'Sign in to Purchase' : 'سجّل دخولك للشراء'}
               </Link>
             )}
-            {/* Paper version button — only show if book has a paper version */}
             {book.paperProductSlug && (
               <Link
                 href={`/shop/${book.paperProductSlug}`}
                 className="block w-full bg-white hover:bg-gray-50 border-2 border-[#1a1a2e] text-[#1a1a2e] font-black py-3 rounded-xl text-center text-base transition"
               >
-                📦 اشترِ النسخة الورقية
+                {isEn ? '📦 Buy Paper Edition' : '📦 اشترِ النسخة الورقية'}
               </Link>
             )}
             <div className="flex justify-center gap-3 text-[11px] text-gray-400">
-              <span>✓ دفع آمن</span>
+              <span>{isEn ? '✓ Secure Payment' : '✓ دفع آمن'}</span>
               <span>•</span>
-              <span>✓ وصول فوري</span>
+              <span>{isEn ? '✓ Instant Access' : '✓ وصول فوري'}</span>
             </div>
           </div>
         )}
@@ -449,7 +453,7 @@ function BookPageInner() {
         {hasAccess && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-2">
             <span className="text-green-600 text-lg">✓</span>
-            <p className="text-green-700 text-sm font-bold">لديك وصول كامل لهذا الكتاب</p>
+            <p className="text-green-700 text-sm font-bold">{isEn ? 'You have full access to this book' : 'لديك وصول كامل لهذا الكتاب'}</p>
           </div>
         )}
 
@@ -463,14 +467,16 @@ function BookPageInner() {
             {shareLoading
               ? <span className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
               : '🎁'}
-            شارك الكتاب مع صديق
+            {isEn ? 'Share with a friend' : 'شارك الكتاب مع صديق'}
           </button>
         )}
 
         {/* Referral note */}
         {book.enableReferral && hasAccess && (
           <p className="text-xs text-gray-400 text-center bg-gray-50 rounded-xl px-3 py-2">
-            لو صديقك اشترى عن طريقك — تحصل على خصم {book.referralDiscount}% على كتابك الجاي 🎉
+            {isEn
+              ? `If your friend buys through your link — you get ${book.referralDiscount}% off your next book 🎉`
+              : `لو صديقك اشترى عن طريقك — تحصل على خصم ${book.referralDiscount}% على كتابك الجاي 🎉`}
           </p>
         )}
       </div>
@@ -478,7 +484,7 @@ function BookPageInner() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20" dir="rtl">
+    <div className="min-h-screen bg-gray-50 pt-20" dir={isEn ? 'ltr' : 'rtl'}>
 
       {/* ── Legal notice overlay — 5-second auto-dismiss ── */}
       {legalOverlayJsx}
@@ -505,7 +511,7 @@ function BookPageInner() {
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-gray-400 mb-5">
           <Link href="/library" className="hover:text-gray-600 transition flex items-center gap-1">
-            <span>←</span> المكتبة
+            <span>←</span> {isEn ? 'Library' : 'المكتبة'}
           </Link>
           <span>/</span>
           <span className="text-gray-700 font-semibold line-clamp-1">{book.title}</span>
@@ -577,13 +583,13 @@ function BookPageInner() {
               onClick={() => setMobileTab('reader')}
               className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition ${mobileTab === 'reader' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}
             >
-              📖 القارئ
+              {isEn ? '📖 Reader' : '📖 القارئ'}
             </button>
             <button
               onClick={() => setMobileTab('info')}
               className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition ${mobileTab === 'info' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}
             >
-              ℹ️ معلومات
+              {isEn ? 'ℹ️ Info' : 'ℹ️ معلومات'}
             </button>
           </div>
         </div>
@@ -611,11 +617,11 @@ function BookPageInner() {
                 <p className="text-sm font-bold text-gray-700 line-clamp-1">{book.title}</p>
                 {!hasAccess ? (
                   <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full font-semibold shrink-0">
-                    {book.freePages} صفحة مجانية
+                    {book.freePages} {isEn ? 'free pages' : 'صفحة مجانية'}
                   </span>
                 ) : (
                   <span className="text-xs text-green-600 bg-green-50 border border-green-200 px-3 py-1 rounded-full font-semibold shrink-0">
-                    وصول كامل ✓
+                    {isEn ? 'Full Access ✓' : 'وصول كامل ✓'}
                   </span>
                 )}
               </div>
@@ -643,7 +649,7 @@ function BookPageInner() {
               ) : (
                 <div className="p-16 text-center text-gray-400">
                   <p className="text-5xl mb-4">📚</p>
-                  <p className="font-semibold">ملف الكتاب قيد الرفع</p>
+                  <p className="font-semibold">{isEn ? 'Book file is being uploaded' : 'ملف الكتاب قيد الرفع'}</p>
                 </div>
               )}
 

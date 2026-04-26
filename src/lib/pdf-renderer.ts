@@ -1,30 +1,53 @@
-// Server-only: render PDF pages to PNG images using pdfjs-dist + @napi-rs/canvas.
-// Pages are cached in memory after first render so navigation is fast.
+// Server-only: render PDF pages to PNG using ghostscript (primary) or pdfjs fallback.
+// ghostscript handles Arabic/embedded fonts correctly; pdfjs may show boxes for non-Latin text.
 import 'server-only';
 import path from 'path';
-import { readFile } from 'fs/promises';
+import os from 'os';
+import { readFile, unlink } from 'fs/promises';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+
+const execFileAsync = promisify(execFile);
 
 // "bookId:pageNum" → PNG buffer
 const pageCache = new Map<string, Buffer>();
 // bookId → total page count
 const countCache = new Map<string, number>();
 
-async function loadPdf(filePath: string) {
-  // Dynamic import required — pdfjs-dist v5 is ESM-only (.mjs)
+// ── Ghostscript renderer (most reliable for Arabic/embedded fonts) ─────────────
+async function renderWithGhostscript(pdfPath: string, pageNum: number): Promise<Buffer> {
+  const outputFile = path.join(os.tmpdir(), `ml-${Date.now()}-${pageNum}.png`);
+  try {
+    await execFileAsync('gs', [
+      '-dNOPAUSE',
+      '-dBATCH',
+      '-dSAFER',
+      '-sDEVICE=pngalpha',
+      '-r180',
+      `-dFirstPage=${pageNum}`,
+      `-dLastPage=${pageNum}`,
+      `-sOutputFile=${outputFile}`,
+      pdfPath,
+    ], { timeout: 30000 });
+    return await readFile(outputFile);
+  } finally {
+    try { await unlink(outputFile); } catch {}
+  }
+}
+
+// ── pdfjs + @napi-rs/canvas fallback ──────────────────────────────────────────
+async function renderWithPdfjs(pdfPath: string, pageNum: number): Promise<Buffer> {
   const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
-  const fileBuffer = await readFile(filePath);
+  const fileBuffer = await readFile(pdfPath);
   const data = new Uint8Array(fileBuffer);
 
-  // Point to the actual worker file so pdfjs can set up its fake-worker correctly in Node.js
   const workerPath = path.join(process.cwd(), 'node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs');
   pdfjsLib.GlobalWorkerOptions.workerSrc = `file://${workerPath}`;
 
-  // cMapUrl: required for Arabic/CJK character mapping — without this, chars render as boxes
   const cMapUrl = `file://${path.join(process.cwd(), 'node_modules/pdfjs-dist/cmaps')}/`;
-  // standardFontDataUrl: fallback fonts when PDF doesn't embed its own
   const standardFontDataUrl = `file://${path.join(process.cwd(), 'node_modules/pdfjs-dist/standard_fonts')}/`;
 
-  return pdfjsLib.getDocument({
+  const pdf = await pdfjsLib.getDocument({
     data,
     cMapUrl,
     cMapPacked: true,
@@ -32,38 +55,64 @@ async function loadPdf(filePath: string) {
     disableFontFace: false,
     useSystemFonts: true,
   }).promise;
+
+  const page = await pdf.getPage(pageNum);
+  const viewport = page.getViewport({ scale: 2.0 });
+
+  const { createCanvas } = await import('@napi-rs/canvas');
+  const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
+  const context = canvas.getContext('2d');
+  await page.render({ canvasContext: context, viewport }).promise;
+
+  const buffer: Buffer = canvas.toBuffer('image/png');
+  await pdf.destroy();
+  return buffer;
 }
 
+// ── Page count via ghostscript ─────────────────────────────────────────────────
+async function getPageCountWithGhostscript(pdfPath: string): Promise<number> {
+  const { stdout } = await execFileAsync('gs', [
+    '-dNOPAUSE', '-dBATCH', '-dSAFER', '-dNODISPLAY',
+    '-c', `(${pdfPath}) (r) file runpdfbegin pdfpagecount = quit`,
+  ], { timeout: 15000 });
+  const count = parseInt(stdout.trim(), 10);
+  if (isNaN(count) || count < 1) throw new Error('gs page count failed');
+  return count;
+}
+
+async function getPageCountWithPdfjs(pdfPath: string): Promise<number> {
+  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const fileBuffer = await readFile(pdfPath);
+  const data = new Uint8Array(fileBuffer);
+  const workerPath = path.join(process.cwd(), 'node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `file://${workerPath}`;
+  const pdf = await pdfjsLib.getDocument({ data }).promise;
+  const count = pdf.numPages;
+  await pdf.destroy();
+  return count;
+}
+
+// ── Public API ─────────────────────────────────────────────────────────────────
 export async function renderPdfPage(
   bookId: string,
   bookFilePath: string,
   pageNum: number,
-  scale = 2.0,
 ): Promise<Buffer> {
   const cacheKey = `${bookId}:${pageNum}`;
   const cached = pageCache.get(cacheKey);
   if (cached) return cached;
 
   const fullPath = path.join(process.cwd(), 'private', 'books', bookFilePath);
-  const pdf = await loadPdf(fullPath);
 
-  if (pageNum < 1 || pageNum > pdf.numPages) {
-    throw new Error(`Page ${pageNum} out of range (1–${pdf.numPages})`);
+  let buffer: Buffer;
+  try {
+    buffer = await renderWithGhostscript(fullPath, pageNum);
+  } catch (err) {
+    console.warn('[pdf-renderer] ghostscript failed, falling back to pdfjs:', (err as Error).message);
+    buffer = await renderWithPdfjs(fullPath, pageNum);
   }
 
-  const page = await pdf.getPage(pageNum);
-  const viewport = page.getViewport({ scale });
-
-  const { createCanvas } = await import('@napi-rs/canvas');
-  const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
-  const context = canvas.getContext('2d');
-
-  await page.render({ canvasContext: context, viewport }).promise;
-
-  const buffer: Buffer = canvas.toBuffer('image/png');
   pageCache.set(cacheKey, buffer);
-
-  await pdf.destroy();
   return buffer;
 }
 
@@ -72,9 +121,14 @@ export async function getPdfPageCount(bookId: string, bookFilePath: string): Pro
   if (cached !== undefined) return cached;
 
   const fullPath = path.join(process.cwd(), 'private', 'books', bookFilePath);
-  const pdf = await loadPdf(fullPath);
-  const count: number = pdf.numPages;
+
+  let count: number;
+  try {
+    count = await getPageCountWithGhostscript(fullPath);
+  } catch {
+    count = await getPageCountWithPdfjs(fullPath);
+  }
+
   countCache.set(bookId, count);
-  await pdf.destroy();
   return count;
 }

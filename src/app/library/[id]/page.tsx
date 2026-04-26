@@ -7,6 +7,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
+import { useLang } from '@/context/LanguageContext';
 import { resolvePrice } from '@/lib/geo-pricing';
 import { formatAgeLabel } from '@/lib/book-age';
 import { Turnstile } from '@marsidev/react-turnstile';
@@ -127,6 +128,8 @@ function BookPageInner() {
   const { id } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const { user } = useAuth();
+  const { lang } = useLang();
+  const isEn = lang === 'en';
   const { zone, countryCode, formatPrice } = useRegionalPricing();
 
   // Resolve book price based on user's region
@@ -160,7 +163,6 @@ function BookPageInner() {
   const [seriesSeriesId, setSeriesSeriesId] = useState<string | null>(null);
   const [seriesPrice, setSeriesPrice] = useState<number | null>(null);
   const [seriesPriceUSD, setSeriesPriceUSD] = useState<number | null>(null);
-  const isEn = false; // Arabic-first; series names shown in Arabic by default
 
   useEffect(() => {
     fetch(`/api/books/${id}`, { credentials: 'include' })

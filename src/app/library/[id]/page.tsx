@@ -642,6 +642,7 @@ function BookPageInner() {
                     bookTitle={book.title}
                     coverUrl={book.cover}
                     bookLanguage={(book as any).language === 'en' ? 'en' : (book as any).language === 'both' ? 'both' : 'ar'}
+                    uiLang={isEn ? 'en' : 'ar'}
                     bgmUrl={(book as any).bgmUrl || undefined}
                     promoVideoUrl={(book as any).promoVideoUrl || undefined}
                   />

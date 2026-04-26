@@ -847,7 +847,7 @@ export default function BookReader({
 
               {/* Progress bar */}
               {numPages > 0 && (
-                <div className="flex-1 mx-1 min-w-0">
+                <div className="flex-1 mx-1 min-w-0" dir="ltr">
                   <div className={`h-2 rounded-full overflow-hidden ${dm ? 'bg-gray-700' : 'bg-gray-200'}`}>
                     <div className="h-full bg-[#F5C518] rounded-full transition-all duration-300"
                       style={{ width: `${(currentPage / numPages) * 100}%` }} />

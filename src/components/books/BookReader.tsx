@@ -1,11 +1,6 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
-import 'react-pdf/dist/Page/AnnotationLayer.css';
-import 'react-pdf/dist/Page/TextLayer.css';
-
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface BookReaderProps {
   bookId: string;
@@ -480,6 +475,7 @@ export default function BookReader({
 
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState(initialPage);
+  const [pageLoading, setPageLoading] = useState(true);
   const [pageWidth, setPageWidth] = useState(600);
   const [quoteToast, setQuoteToast] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(false);
@@ -550,6 +546,17 @@ export default function BookReader({
   const toolbarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
+
+  // Fetch total page count from server
+  useEffect(() => {
+    fetch(`/api/books/${bookId}/pages`)
+      .then(r => r.json())
+      .then(d => { if (d.total) setNumPages(d.total); })
+      .catch(() => {});
+  }, [bookId]);
+
+  // Reset loading state when page changes
+  useEffect(() => { setPageLoading(true); }, [currentPage]);
 
   // Load bookmarks from localStorage
   useEffect(() => {
@@ -1012,38 +1019,37 @@ export default function BookReader({
             {/* Page with simple slide animation */}
             <div style={{ ...pageAnimStyle, overflow: 'hidden', borderRadius: '0.75rem' }}>
               <div style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center top', transition: 'transform 0.25s ease', display: 'inline-block' }}>
-                <Document
-                  file={`/api/books/${bookId}/file`}
-                  onLoadSuccess={({ numPages: n }) => setNumPages(n)}
-                  loading={
-                    <div className="flex items-center justify-center py-24 px-12">
-                      <div className="text-center">
-                        <div className="w-10 h-10 border-2 border-[#F5C518] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                        <p className={`text-xs ${dm ? 'text-gray-500' : 'text-gray-400'}`}>جارٍ تحميل الكتاب…</p>
+                {!isLocked ? (
+                  <div className="relative" style={{ width: pageWidth }}>
+                    {/* Loading spinner — shown while image fetches */}
+                    {pageLoading && (
+                      <div className="absolute inset-0 flex items-center justify-center"
+                        style={{ minHeight: Math.round(pageWidth * 1.41), zIndex: 5 }}>
+                        <div className="text-center">
+                          <div className="w-10 h-10 border-2 border-[#F5C518] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                          <p className={`text-xs ${dm ? 'text-gray-500' : 'text-gray-400'}`}>
+                            {isEnUI ? 'Loading…' : 'جارٍ التحميل…'}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  }
-                  error={
-                    <div className="text-center py-20 px-8">
-                      <div className="flex justify-center mb-3">
-                        <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-                        </svg>
-                      </div>
-                      <p className={`text-sm font-semibold mb-2 ${dm ? 'text-gray-400' : 'text-gray-500'}`}>تعذّر تحميل الكتاب</p>
-                      <button onClick={() => window.location.reload()} className="text-xs text-[#F5C518] underline">حاول مرة أخرى</button>
-                    </div>
-                  }
-                >
-                  {!isLocked && (
-                    <Page
-                      pageNumber={currentPage}
+                    )}
+                    {/* Page rendered server-side as PNG — no PDF reaches the browser */}
+                    <img
+                      key={`${bookId}-${currentPage}`}
+                      src={`/api/books/${bookId}/page/${currentPage}`}
+                      alt={`Page ${currentPage}`}
                       width={pageWidth}
-                      renderAnnotationLayer={false}
-                      className={`shadow-xl rounded-xl overflow-hidden ${dm ? 'brightness-90' : ''}`}
+                      draggable={false}
+                      onContextMenu={e => e.preventDefault()}
+                      onLoad={() => setPageLoading(false)}
+                      onError={() => setPageLoading(false)}
+                      className={`shadow-xl rounded-xl block select-none ${dm ? 'brightness-90' : ''}`}
+                      style={{ userSelect: 'none', WebkitUserSelect: 'none', visibility: pageLoading ? 'hidden' : 'visible' }}
                     />
-                  )}
-                </Document>
+                  </div>
+                ) : (
+                  <div style={{ width: pageWidth, height: Math.round(pageWidth * 1.41) }} />
+                )}
               </div>
             </div>
 

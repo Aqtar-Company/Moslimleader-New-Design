@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Keep heavy native/ESM packages out of webpack bundle — loaded by Node.js at runtime
+  serverExternalPackages: ['pdfjs-dist', '@napi-rs/canvas'],
   compress: true,
   poweredByHeader: false,
   generateBuildId: async () => process.env.BUILD_ID || `build-${Date.now()}`,

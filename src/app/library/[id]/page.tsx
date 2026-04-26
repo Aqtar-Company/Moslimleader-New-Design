@@ -293,13 +293,6 @@ function BookPageInner() {
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/75 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6" dir="rtl">
         <div className="flex flex-col items-center text-center gap-4">
-          {/* Loading status */}
-          {loading && (
-            <div className="flex items-center gap-3 w-full bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-              <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin shrink-0" />
-              <p className="text-green-700 font-bold text-sm">جاري تحميل الكتاب...</p>
-            </div>
-          )}
           <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-2xl">🔒</div>
           <h3 className="font-black text-amber-700 text-sm">⚠️ تنبيه قانوني: حقوق الملكية الفكرية</h3>
           <p className="text-gray-600 text-xs leading-relaxed">عند فتح هذا الكتاب يقوم النظام بتسجيل عنوان IP الخاص بك، نوع جهازك، وموقعك الجغرافي بشكل تلقائي. أي نسخ أو توزيع غير مصرح به يُعدّ جريمة قانونية وستُستخدم البيانات كدليل أمام المحاكم.</p>
@@ -318,13 +311,16 @@ function BookPageInner() {
             </div>
           ) : (
             <div className="w-full space-y-2">
-              <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+              <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                 <div
-                  className="h-full bg-amber-400 rounded-full transition-all duration-1000 ease-linear"
+                  className="h-full bg-green-500 rounded-full transition-all duration-1000 ease-linear"
                   style={{ width: `${((10 - legalCountdown) / 10) * 100}%` }}
                 />
               </div>
-              <p className="text-gray-400 text-xs">سيُغلق خلال {legalCountdown}s</p>
+              <div className="flex items-center justify-center gap-2 text-green-600">
+                <div className="w-3 h-3 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm font-bold">جاري فتح الكتاب...</p>
+              </div>
             </div>
           )}
         </div>

@@ -1,7 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Keep heavy native/ESM packages out of webpack bundle — loaded by Node.js at runtime
-  serverExternalPackages: ['pdfjs-dist', '@napi-rs/canvas'],
   compress: true,
   poweredByHeader: false,
   generateBuildId: async () => process.env.BUILD_ID || `build-${Date.now()}`,
@@ -23,6 +21,8 @@ const nextConfig = {
   },
   typescript: { ignoreBuildErrors: true },
   experimental: {
+    // Keep native/ESM packages out of webpack — Node.js loads them at runtime
+    serverComponentsExternalPackages: ['pdfjs-dist', '@napi-rs/canvas'],
     optimizePackageImports: [
       'lucide-react',
       '@marsidev/react-turnstile',

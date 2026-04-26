@@ -5,13 +5,14 @@ Full-stack e-commerce platform for physical products and digital books, built wi
 ## Features
 
 - **Physical store** — product catalog, cart, checkout, PayPal + bank transfer
-- **Digital library** — PDF books with Cloudflare Turnstile protection, legal overlay, reading progress, device fingerprinting
+- **Digital library** — PDF books with Cloudflare Turnstile protection, legal overlay, image-based viewer, device fingerprinting
 - **Book series** — bundle multiple books under a series with combined pricing
 - **Regional pricing** — automatic pricing in EGP / SAR / USD based on user location
 - **Coupons** — discount codes with usage limits
 - **User accounts** — registration, login, Google OAuth, order history
 - **Admin panel** — full management of products, orders, books, users, shipping, pricing
 - **Bilingual** — Arabic (RTL) and English (LTR) with a single language toggle
+- **Copyright protection** — PDF pages served as server-rendered images; no PDF file ever reaches the browser
 
 ## Tech Stack
 
@@ -23,9 +24,9 @@ Full-stack e-commerce platform for physical products and digital books, built wi
 | Styling | Tailwind CSS |
 | Payments | PayPal SDK + manual bank transfer |
 | Email | Nodemailer (Titan SMTP) |
-| PDF | react-pdf + PDF.js |
+| PDF rendering | pdftoppm (poppler-utils) → ghostscript → pdfjs fallback |
 | Bot protection | Cloudflare Turnstile |
-| Process manager | PM2 |
+| Process manager | PM2 on CentOS/RHEL 9 |
 
 ## Getting Started
 
@@ -36,6 +37,7 @@ Full-stack e-commerce platform for physical products and digital books, built wi
 - Titan SMTP credentials (or any SMTP)
 - Cloudflare Turnstile keys
 - PayPal app credentials
+- System packages: `yum install -y poppler-utils ghostscript`
 
 ### Install
 
@@ -79,9 +81,8 @@ npm run dev
 
 ```bash
 npm run build
-npm start
-# or with PM2:
-pm2 start ecosystem.config.js
+pm2 restart 1 --update-env
+pm2 save
 ```
 
 ## Project Structure
@@ -97,6 +98,14 @@ private/
 public/
   covers/       # Book cover images — NOT committed to git
 ```
+
+## PDF Security
+
+Books are protected at two levels:
+1. `/api/books/[id]/file` — server truncates PDF to free pages for non-subscribers (`pdf-lib`)
+2. `/api/books/[id]/page/[num]` — pages served as PNG images rendered server-side; no PDF reaches the browser
+
+Rendering stack: `pdftoppm` → `ghostscript` → `pdfjs+canvas` (fallback)
 
 > See `CLAUDE.md` for detailed developer context including deployment, conventions, and known issues.
 

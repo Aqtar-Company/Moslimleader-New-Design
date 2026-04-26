@@ -8,6 +8,7 @@
 - **Language:** TypeScript
 - **Payments:** PayPal SDK + manual bank transfer
 - **Email:** Nodemailer via Titan SMTP
+- **OS:** CentOS/RHEL 9 — use `yum`/`dnf`, NOT `apt-get`
 
 ## Project Structure
 
@@ -25,7 +26,7 @@ src/
     invoice/[orderId]/              # Invoice page
     library/                        # Digital library
       page.tsx                      # Book listing
-      [id]/page.tsx                 # Book reader (Turnstile + legal overlay + PDF)
+      [id]/page.tsx                 # Book reader (Turnstile + legal overlay + image viewer)
       [id]/buy/page.tsx             # Book purchase page
       series/[seriesId]/page.tsx    # Series detail
       series/[seriesId]/buy/        # Series purchase
@@ -47,7 +48,7 @@ src/
     api/                            # All API routes (force-dynamic)
   components/
     layout/               # Header, Footer, MobileMenu
-    books/                # BookReader (PDF viewer, progress, dark mode)
+    books/                # BookReader (image-based viewer, progress, dark mode)
     product/              # ProductCard
     ui/                   # Toast, etc.
   context/
@@ -70,6 +71,7 @@ src/
     admin-config.ts       # Admin constants
     admin-storage.ts      # Admin file storage helpers
     book-age.ts           # Book "new" badge logic
+    pdf-renderer.ts       # Server-side PDF→PNG renderer (pdftoppm → gs → pdfjs)
 private/
   books/                  # PDF files (gitignored — copy manually to server)
 public/
@@ -83,10 +85,12 @@ public/
 - **`isEn` pattern:** `const { lang, isRtl, t } = useLang(); const isEn = lang === 'en';` — never hardcode `const isEn = false`
 - **Prices:** regional pricing — Egypt (EGP), Saudi (SAR), International (USD) — `src/context/RegionalPricingContext.tsx`
 - **Admin:** no middleware — each admin page checks `user.role === 'admin'` via `getAuthUser()`
-- **Book files:** PDFs in `private/books/`, served via `/api/books/[id]/file` (streaming + range support)
+- **Book files:** PDFs in `private/books/`, served via `/api/books/[id]/file` (truncated server-side for non-subscribers)
+- **Book pages:** rendered server-side as PNG via `/api/books/[id]/page/[num]` — NO PDF reaches the browser
 - **Book covers:** `public/covers/` (uploaded via admin)
 - **Email:** all transactional email uses Titan SMTP via env vars (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`)
 - **API routes:** all must have `export const dynamic = 'force-dynamic'` at top
+- **Server OS:** CentOS/RHEL 9 — system packages use `yum install` not `apt-get`
 
 ## Environment Variables (required)
 
@@ -110,15 +114,17 @@ GOOGLE_CLIENT_SECRET=
 
 - **URL:** https://moslimleader.com
 - **Path:** `/home/moslimleader.com/app`
+- **OS:** CentOS/RHEL 9 (use `yum`/`dnf` for packages)
 - **PM2:** process id `1`, name `moslimleader` — restart with `pm2 restart 1 --update-env`
 - **Node:** PM2 fork mode, port 3000, Nginx reverse proxy on 80/443
 - **SSL:** Let's Encrypt via Nginx
+- **Required system packages:** `ghostscript`, `poppler-utils` (for PDF rendering)
 
 ## Deploy
 
 ```bash
 cd /home/moslimleader.com/app
-git pull origin main
+git pull origin claude/update-amin-profile-pic-idc8t   # or main after merge
 npm run build
 pm2 restart 1 --update-env
 pm2 save
@@ -164,6 +170,11 @@ scp book.pdf root@SERVER_IP:/home/moslimleader.com/app/private/books/<bookId>.pd
 scp library-hero.jpg root@SERVER_IP:/home/moslimleader.com/app/public/library-hero.jpg
 ```
 
+### Install system PDF tools (CentOS/RHEL)
+```bash
+yum install -y poppler-utils ghostscript
+```
+
 ## Book Reader Flow
 
 1. User opens `/library/[id]`
@@ -172,10 +183,33 @@ scp library-hero.jpg root@SERVER_IP:/home/moslimleader.com/app/public/library-he
    - **Cloudflare Turnstile** widget (site key: `0x4AAAAAACzKEGf-IQ39WfSB`)
 3. After Turnstile verified → **10-second green countdown** starts with progress bar (always fills left→right via `dir="ltr"`)
 4. Countdown text: "جاري فتح الكتاب..." / "Opening the book..."
-5. Overlay closes → **BookReader** (PDF) visible underneath
-6. Background tracking: IP, device fingerprint, geolocation logged via `/api/books/[id]/track`
-7. Session ping every 90s via `/api/books/[id]/session` to detect concurrent logins
-8. Reading progress saved via `/api/books/[id]/progress`
+5. Overlay closes → **BookReader** visible underneath
+6. Pages fetched one-by-one as PNG images from `/api/books/[id]/page/[num]`
+7. Background tracking: IP, device fingerprint, geolocation logged via `/api/books/[id]/track`
+8. Session ping every 90s via `/api/books/[id]/session` to detect concurrent logins
+9. Reading progress saved via `/api/books/[id]/progress`
+
+## PDF Security Architecture
+
+Books are protected from download at two levels:
+
+**Level 1 — `/api/books/[id]/file`:**
+- Subscribers: full PDF served (for legacy use only)
+- Non-subscribers: PDF truncated server-side to `freePages` using `pdf-lib`
+- No client-side page limit that can be bypassed
+
+**Level 2 — Image-based viewer (primary):**
+- BookReader fetches pages as PNG images: `/api/books/[id]/page/[num]`
+- The PDF file never reaches the browser — only one rendered image at a time
+- `<img draggable={false}>` + right-click blocked + CSS user-select:none
+- Pages rendered server-side by `src/lib/pdf-renderer.ts`
+
+**PDF Renderer (`src/lib/pdf-renderer.ts`):**
+- Priority 1: `pdftoppm` (poppler-utils) — best Arabic font support
+- Priority 2: `ghostscript` — reliable fallback
+- Priority 3: `pdfjs-dist` + `@napi-rs/canvas` — last resort (may show boxes for Arabic)
+- In-memory cache: rendered pages cached after first request (fast navigation)
+- Requires system packages: `yum install -y poppler-utils ghostscript`
 
 ## Book Access Control
 
@@ -193,3 +227,22 @@ scp library-hero.jpg root@SERVER_IP:/home/moslimleader.com/app/public/library-he
 - **`isEn = false` bug:** never hardcode this — always use `const isEn = lang === 'en'` from `useLang()`
 - **Progress bar direction:** always wrap in `dir="ltr"` so it fills left→right regardless of page language
 - **`uiLang` prop:** BookReader accepts `uiLang="ar"|"en"` — must be passed from the page or buttons stay Arabic
+- **`serverExternalPackages` is Next.js 15+ only** — in Next.js 14 use `experimental.serverComponentsExternalPackages`
+- **pdfjs in Node.js needs system tools** — pdfjs+canvas cannot render Arabic embedded fonts; use pdftoppm/gs instead
+- **Server is CentOS/RHEL** — use `yum install` not `apt-get`
+- **`BookAccessLog` schema** includes: `country`, `city`, `region`, `latitude`, `longitude` — all nullable
+
+## Bugs Fixed (Reference)
+
+| Bug | Root Cause | Fix |
+|-----|-----------|-----|
+| Library page never shows English | `const isEn = false` hardcoded | Use `const isEn = lang === 'en'` from `useLang()` |
+| BookReader buttons stay Arabic | `uiLang` prop not passed to `<BookReader>` | Pass `uiLang={isEn ? 'en' : 'ar'}` |
+| Progress bar fills wrong direction | No `dir="ltr"` wrapper | Add `dir="ltr"` to progress bar container |
+| PDF full download via DevTools | Full PDF sent to browser; client-side limit only | Serve pages as PNG images; truncate PDF server-side with `pdf-lib` |
+| Arabic text shows as boxes | `pdfjs` + `@napi-rs/canvas` can't render embedded Arabic fonts | Use `pdftoppm` (poppler-utils) for server-side rendering |
+| `BookAccessLog` Prisma error | `country/city/region/lat/lon` fields missing from schema | Added fields + ran `prisma db push` |
+| pdfjs fake worker error | `GlobalWorkerOptions.workerSrc = ''` is falsy → throws | Set to `file://` path; better: use pdftoppm instead |
+| `serverExternalPackages` warning | Next.js 14 uses `experimental.serverComponentsExternalPackages` | Moved to correct config location |
+| Merge conflict on server | `git merge` after local commits diverged from remote | `git reset --hard origin/<branch>` then rebuild |
+| SMTP hardcoded localhost | Old `nodemailer` config used `localhost:25` | Updated to use `SMTP_HOST/PORT/USER/PASS` env vars |

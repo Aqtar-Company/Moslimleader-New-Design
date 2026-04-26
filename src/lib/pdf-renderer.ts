@@ -10,8 +10,8 @@ const pageCache = new Map<string, Buffer>();
 const countCache = new Map<string, number>();
 
 async function loadPdf(filePath: string) {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const pdfjsLib = require('pdfjs-dist/legacy/build/pdf.mjs');
+  // Dynamic import required — pdfjs-dist v5 is ESM-only (.mjs)
+  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
   const fileBuffer = await readFile(filePath);
   const data = new Uint8Array(fileBuffer);
   // Disable worker — not needed in Node.js server environment
@@ -39,9 +39,7 @@ export async function renderPdfPage(
   const page = await pdf.getPage(pageNum);
   const viewport = page.getViewport({ scale });
 
-  // @napi-rs/canvas provides the canvas factory pdfjs uses internally in Node.js
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { createCanvas } = require('@napi-rs/canvas');
+  const { createCanvas } = await import('@napi-rs/canvas');
   const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
   const context = canvas.getContext('2d');
 

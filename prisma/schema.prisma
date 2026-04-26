@@ -278,6 +278,11 @@ model BookAccessLog {
   userId      String?
   ipAddress   String?
   userAgent   String?  @db.Text
+  country     String?
+  city        String?
+  region      String?
+  latitude    Float?
+  longitude   Float?
   accessedAt  DateTime @default(now())
   @@index([bookId])
   @@index([userId])

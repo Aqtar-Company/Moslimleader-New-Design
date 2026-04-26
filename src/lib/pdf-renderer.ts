@@ -14,8 +14,9 @@ async function loadPdf(filePath: string) {
   const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
   const fileBuffer = await readFile(filePath);
   const data = new Uint8Array(fileBuffer);
-  // Disable worker — not needed in Node.js server environment
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+  // Point to the actual worker file so pdfjs can set up its fake-worker correctly in Node.js
+  const workerPath = path.join(process.cwd(), 'node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `file://${workerPath}`;
   return pdfjsLib.getDocument({ data, disableFontFace: false }).promise;
 }
 

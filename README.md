@@ -1,36 +1,105 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Moslim Leader — Digital Store & Library
+
+Full-stack e-commerce platform for physical products and digital books, built with Next.js 14.
+
+## Features
+
+- **Physical store** — product catalog, cart, checkout, PayPal + bank transfer
+- **Digital library** — PDF books with Cloudflare Turnstile protection, legal overlay, reading progress, device fingerprinting
+- **Book series** — bundle multiple books under a series with combined pricing
+- **Regional pricing** — automatic pricing in EGP / SAR / USD based on user location
+- **Coupons** — discount codes with usage limits
+- **User accounts** — registration, login, Google OAuth, order history
+- **Admin panel** — full management of products, orders, books, users, shipping, pricing
+- **Bilingual** — Arabic (RTL) and English (LTR) with a single language toggle
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 14 (App Router) |
+| Database | MySQL + Prisma ORM |
+| Auth | JWT (httpOnly cookie) + Google OAuth |
+| Styling | Tailwind CSS |
+| Payments | PayPal SDK + manual bank transfer |
+| Email | Nodemailer (Titan SMTP) |
+| PDF | react-pdf + PDF.js |
+| Bot protection | Cloudflare Turnstile |
+| Process manager | PM2 |
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+
+- MySQL database
+- Titan SMTP credentials (or any SMTP)
+- Cloudflare Turnstile keys
+- PayPal app credentials
+
+### Install
+
+```bash
+npm install
+```
+
+### Configure
+
+Copy `.env.example` to `.env.local` and fill in all values:
+
+```env
+DATABASE_URL=mysql://user:pass@localhost:3306/moslimleader
+JWT_SECRET=your-secret-here
+SMTP_HOST=smtp.titan.email
+SMTP_PORT=465
+SMTP_USER=noreply@yourdomain.com
+SMTP_PASS=
+PAYPAL_CLIENT_ID=
+PAYPAL_CLIENT_SECRET=
+PAYPAL_MODE=sandbox
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=
+TURNSTILE_SECRET_KEY=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+```
+
+### Database
+
+```bash
+npx prisma db push
+```
+
+### Development
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Production Build
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build
+npm start
+# or with PM2:
+pm2 start ecosystem.config.js
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Project Structure
 
-## Learn More
+```
+src/
+  app/          # Pages and API routes (Next.js App Router)
+  components/   # Reusable UI components
+  context/      # React contexts (Auth, Cart, Lang, Pricing, Wishlist)
+  lib/          # Utilities (JWT, Prisma, email, PDF, PayPal, shipping)
+private/
+  books/        # PDF files — NOT committed to git, copy manually to server
+public/
+  covers/       # Book cover images — NOT committed to git
+```
 
-To learn more about Next.js, take a look at the following resources:
+> See `CLAUDE.md` for detailed developer context including deployment, conventions, and known issues.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## License
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Private — all rights reserved. Not open source.

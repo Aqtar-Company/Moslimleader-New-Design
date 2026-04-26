@@ -14,10 +14,24 @@ async function loadPdf(filePath: string) {
   const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
   const fileBuffer = await readFile(filePath);
   const data = new Uint8Array(fileBuffer);
+
   // Point to the actual worker file so pdfjs can set up its fake-worker correctly in Node.js
   const workerPath = path.join(process.cwd(), 'node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs');
   pdfjsLib.GlobalWorkerOptions.workerSrc = `file://${workerPath}`;
-  return pdfjsLib.getDocument({ data, disableFontFace: false }).promise;
+
+  // cMapUrl: required for Arabic/CJK character mapping — without this, chars render as boxes
+  const cMapUrl = `file://${path.join(process.cwd(), 'node_modules/pdfjs-dist/cmaps')}/`;
+  // standardFontDataUrl: fallback fonts when PDF doesn't embed its own
+  const standardFontDataUrl = `file://${path.join(process.cwd(), 'node_modules/pdfjs-dist/standard_fonts')}/`;
+
+  return pdfjsLib.getDocument({
+    data,
+    cMapUrl,
+    cMapPacked: true,
+    standardFontDataUrl,
+    disableFontFace: false,
+    useSystemFonts: true,
+  }).promise;
 }
 
 export async function renderPdfPage(

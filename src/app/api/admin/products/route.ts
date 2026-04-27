@@ -11,21 +11,30 @@ async function requireAdmin() {
   return auth;
 }
 
-// In-memory cache to speed up repeated admin page loads (5 seconds TTL)
+// In-memory cache to speed up repeated admin page loads (60 second TTL)
 // Admin edits invalidate the cache explicitly via PUT/POST/DELETE
 let cache: { data: unknown; expiresAt: number } | null = null;
-const CACHE_TTL_MS = 5_000;
+const CACHE_TTL_MS = 60_000;
 
 export function invalidateAdminProductsCache() {
   cache = null;
 }
 
-// Strips heavy fields not needed by list/pricing views — reduces payload by ~90%
-function stripHeavyFields(p: unknown) {
-  const { description, descriptionEn, shortDescription, shortDescriptionEn, reviews, videos, ...rest } =
-    p as Record<string, unknown>;
-  void description; void descriptionEn; void shortDescription; void shortDescriptionEn; void reviews; void videos;
-  return rest;
+// Returns only fields needed for the admin list/pricing table views
+function toListItem(p: unknown) {
+  const q = p as Record<string, unknown>;
+  return {
+    id: q.id,
+    slug: q.slug,
+    name: q.name,
+    nameEn: q.nameEn,
+    category: q.category,
+    price: q.price,
+    priceUsd: q.priceUsd,
+    inStock: q.inStock,
+    isAdded: q.isAdded,
+    images: Array.isArray(q.images) ? q.images.slice(0, 1) : [],
+  };
 }
 
 // GET /api/admin/products — returns all DB products (source='admin') + static products merged with overrides
@@ -39,7 +48,7 @@ export async function GET(req: NextRequest) {
       const data = cache.data as { products: unknown[] };
       const lite = req.nextUrl.searchParams.get('lite') === 'true';
       if (lite) {
-        const stripped = data.products.map(stripHeavyFields);
+        const stripped = data.products.map(toListItem);
         return NextResponse.json({ products: stripped });
       }
       return NextResponse.json(data);
@@ -70,7 +79,7 @@ export async function GET(req: NextRequest) {
 
     const lite = req.nextUrl.searchParams.get('lite') === 'true';
     if (lite) {
-      return NextResponse.json({ products: payload.products.map(stripHeavyFields) });
+      return NextResponse.json({ products: payload.products.map(toListItem) });
     }
     return NextResponse.json(payload);
   } catch (err) {

@@ -39,6 +39,7 @@ export default function ProductsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
+    setLoading(true);
     try {
       const [prodRes, catRes] = await Promise.all([
         fetch('/api/admin/products?lite=true', { credentials: 'include', cache: 'no-store' }),
@@ -480,7 +481,11 @@ export default function ProductsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {products.map(p => (
+              {loading ? (
+                <tr><td colSpan={5} className="text-center py-10 text-gray-400 text-sm">جارٍ تحميل المنتجات...</td></tr>
+              ) : products.length === 0 ? (
+                <tr><td colSpan={5} className="text-center py-10 text-gray-400 text-sm">لا توجد منتجات</td></tr>
+              ) : products.map(p => (
                 <tr key={p.id} className="hover:bg-gray-50 transition">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">

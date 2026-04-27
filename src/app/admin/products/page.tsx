@@ -77,7 +77,7 @@ export default function ProductsPage() {
         uploaded.push(data.url);
       }
     }
-    if (uploaded.length) setFormImages(prev => [...prev, ...uploaded].slice(0, 8));
+    if (uploaded.length) setFormImages(prev => [...uploaded, ...prev].slice(0, 8));
   };
 
   const handleDrop = async (e: React.DragEvent) => {
@@ -392,11 +392,14 @@ export default function ProductsPage() {
             </div>
             {formImages.length > 0 && (
               <div className="space-y-3">
-                <p className="text-xs text-gray-500">{formImages.length} صورة</p>
+                <p className="text-xs text-gray-500">{formImages.length} صورة — الصورة الأولى هي الرئيسية (البريفيو)</p>
                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                   {formImages.map((img, i) => (
                     <div key={i} className="relative group">
-                      <img src={img} alt={`img-${i}`} className="w-full h-20 object-cover rounded-lg border border-gray-200" />
+                      <img src={img} alt={`img-${i}`} className={`w-full h-20 object-cover rounded-lg border-2 ${i === 0 ? 'border-[#F5C518]' : 'border-gray-200'}`} />
+                      {i === 0 && (
+                        <span className="absolute top-1 right-1 text-[9px] bg-[#F5C518] text-gray-900 font-bold px-1 py-0.5 rounded leading-none">رئيسية</span>
+                      )}
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 rounded-lg flex items-center justify-center gap-1 transition">
                         {i > 0 && <button onClick={() => moveImage(i, i - 1)} className="text-white text-xs bg-gray-700 px-1 py-0.5 rounded">←</button>}
                         {i < formImages.length - 1 && <button onClick={() => moveImage(i, i + 1)} className="text-white text-xs bg-gray-700 px-1 py-0.5 rounded">→</button>}

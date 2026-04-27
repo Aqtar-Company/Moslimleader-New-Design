@@ -210,17 +210,19 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                   {product.variants.map(v => (
                     <button
                       key={v.id}
-                      onClick={() => { setSelectedVariant(v); setMainImg(v.imageIndex); }}
+                      onClick={() => { setSelectedVariant(v); if (v.imageIndex >= 0) setMainImg(v.imageIndex); }}
                       className={`flex items-center gap-2 px-3 py-2 rounded-xl border-2 transition ${
                         selectedVariant?.id === v.id
                           ? 'border-purple-600 bg-purple-50 text-purple-700 ring-2 ring-purple-200'
                           : 'border-gray-200 hover:border-gray-400 text-gray-700'
                       }`}
                     >
-                      {/* Color swatch from image */}
-                      <span className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-gray-200">
-                        <Image src={product.images[v.imageIndex]} alt={v.name} fill className="object-cover" unoptimized />
-                      </span>
+                      {/* Color swatch from image — only if variant has an assigned image */}
+                      {v.imageIndex >= 0 && product.images[v.imageIndex] && (
+                        <span className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-gray-200">
+                          <Image src={product.images[v.imageIndex]} alt={v.name} fill className="object-cover" unoptimized />
+                        </span>
+                      )}
                       <span className="text-sm font-bold">
                         {isRtl ? v.name : (v.nameEn || v.name)}
                       </span>

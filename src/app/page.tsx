@@ -89,12 +89,11 @@ function ShopContent() {
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [search, setSearch] = useState('');
 
-  // Show static products immediately for fast render
+  // Show static products immediately for fast image render
   const [allProducts, setAllProducts] = useState<Product[]>(products);
   const [displayCategories, setDisplayCategories] = useState(categories);
 
-  // priceLoading=true means prices are still being fetched from DB
-  // Products show immediately but price shows a skeleton until API responds
+  // priceLoading=true: prices + inStock are still loading — product images show right away
   const [priceLoading, setPriceLoading] = useState(true);
 
   useEffect(() => {
@@ -118,10 +117,9 @@ function ShopContent() {
           .map(c => ({ id: c, name: c, count: fetched.filter(p => p.category === c).length }));
 
         setDisplayCategories([...staticUpdated, ...customEntries]);
-        // Prices are fresh from DB — remove skeleton only after data is set
         setPriceLoading(false);
       } catch {
-        // API failed — retry once after 3 seconds, keep skeleton until then
+        // API failed — retry once after 3 seconds
         setTimeout(async () => {
           try {
             const res2 = await fetch(`/api/products?_t=${Date.now()}`, { cache: 'no-store' });
@@ -189,7 +187,7 @@ function ShopContent() {
         {filtered.length} {t('shop.results')}
       </p>
 
-      {/* Grid — products show immediately, only price has skeleton */}
+      {/* Grid — images show immediately, price+stock show after API */}
       {filtered.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
           {filtered.map(product => (

@@ -22,6 +22,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'بيانات الدخول غير صحيحة' }, { status: 401 });
     }
 
+    if (!user.emailVerified) {
+      return NextResponse.json(
+        { error: 'يرجى تأكيد بريدك الإلكتروني أولاً. تحقق من صندوق الوارد.', needsVerification: true, email: user.email },
+        { status: 403 },
+      );
+    }
+
     const token = await signToken({ userId: user.id, email: user.email, role: user.role });
     const res = NextResponse.json({
       user: {

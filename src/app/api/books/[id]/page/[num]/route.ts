@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { renderPdfPage } from '@/lib/pdf-renderer';
+import { burnWatermark } from '@/lib/watermark';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 type Params = { params: Promise<{ id: string; num: string }> };
 
@@ -16,6 +18,23 @@ export async function GET(req: NextRequest, { params }: Params) {
     }
 
     const auth = await getAuthUser();
+
+    // ── Rate limiting ────────────────────────────────────────────────────────
+    // 20 pages per minute — covers normal reading (~1-3 pages/min) with headroom
+    const rateLimitKey = auth
+      ? `user:${auth.userId}`
+      : `ip:${req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'}`;
+
+    const { allowed, retryAfterMs } = checkRateLimit(rateLimitKey, 20, 60_000);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'طلبات كثيرة جداً، يرجى الانتظار لحظة ثم المتابعة.' },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(Math.ceil(retryAfterMs / 1000)) },
+        },
+      );
+    }
 
     const book = await prisma.book.findUnique({
       where: { id: bookId },
@@ -39,19 +58,37 @@ export async function GET(req: NextRequest, { params }: Params) {
       hasFullAccess = !!access;
     }
 
-    // Enforce free page limit — deny page requests beyond allowed count
-    const allowed = hasFullAccess ? Infinity : book.freePages;
-    if (pageNum > allowed) {
+    // Enforce free page limit
+    const allowed2 = hasFullAccess ? Infinity : book.freePages;
+    if (pageNum > allowed2) {
       return NextResponse.json({ error: 'غير مصرح — اشترِ الكتاب للوصول الكامل' }, { status: 403 });
     }
 
+    // Render page (cached clean PNG)
     const pngBuffer = await renderPdfPage(bookId, book.filePath, pageNum);
 
-    return new NextResponse(pngBuffer, {
+    // ── Watermark ────────────────────────────────────────────────────────────
+    // Burn user identity into the image server-side so leaked screenshots are traceable
+    let finalBuffer = pngBuffer;
+    if (auth) {
+      const now = new Date();
+      const dateStr = now.toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+      const user = await prisma.user.findUnique({
+        where: { id: auth.userId },
+        select: { name: true },
+      });
+      finalBuffer = await burnWatermark(pngBuffer, [
+        user?.name ?? '',
+        auth.email,
+        dateStr,
+      ]);
+    }
+
+    return new NextResponse(finalBuffer, {
       headers: {
         'Content-Type': 'image/png',
-        // Private caching: fast for the same user, re-validated if auth changes
-        'Cache-Control': 'private, max-age=3600',
+        // No shared cache — each user gets a unique watermarked image
+        'Cache-Control': auth ? 'private, no-store' : 'public, max-age=60',
         'X-Has-Access': String(hasFullAccess),
         'X-Free-Pages': String(book.freePages),
       },

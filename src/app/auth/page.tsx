@@ -18,6 +18,7 @@ function AuthContent() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
+  const [verifyEmail, setVerifyEmail] = useState(''); // set when user needs email verification
   const isRtl = lang === 'ar';
 
   async function handleSubmit(e: React.FormEvent) {
@@ -57,6 +58,7 @@ function AuthContent() {
       result = await signUp(form.name, form.email, form.password, form.phone);
     }
     setLoading(false);
+    if (result.needsVerification) { setVerifyEmail(result.email || form.email); return; }
     if (result.error) { setError(result.error); return; }
     router.push(redirect);
   }
@@ -73,8 +75,42 @@ function AuthContent() {
       <div className="flex-1 flex items-center justify-center px-6 py-12 bg-white">
         <div className="w-full max-w-md">
 
-          {/* ── FORGOT PASSWORD MODE ── */}
-          {mode === 'forgot' ? (
+          {/* ── EMAIL VERIFICATION PENDING ── */}
+          {verifyEmail ? (
+            <div className="text-center">
+              <div className="text-6xl mb-4">📧</div>
+              <h2 className="text-2xl font-black text-gray-900 mb-2">
+                {isRtl ? 'تحقق من بريدك الإلكتروني' : 'Check your email'}
+              </h2>
+              <p className="text-gray-500 text-sm mb-1">
+                {isRtl ? 'أرسلنا رابط التحقق إلى:' : 'We sent a verification link to:'}
+              </p>
+              <p className="font-semibold text-gray-800 mb-5" dir="ltr">{verifyEmail}</p>
+              <p className="text-gray-400 text-xs mb-6">
+                {isRtl
+                  ? 'افتح الرابط لتفعيل حسابك. إذا لم يصل، تحقق من مجلد الرسائل غير المرغوب فيها.'
+                  : "Open the link to activate your account. If it didn't arrive, check your spam folder."}
+              </p>
+              <button
+                onClick={async () => {
+                  await fetch('/api/auth/resend-verification', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: verifyEmail }),
+                  });
+                }}
+                className="text-sm text-gray-500 hover:text-gray-700 underline block mb-3 mx-auto"
+              >
+                {isRtl ? 'إعادة إرسال الرابط' : 'Resend verification link'}
+              </button>
+              <button
+                onClick={() => { setVerifyEmail(''); setMode('signin'); setError(''); }}
+                className="text-xs text-gray-400 hover:text-gray-600 underline"
+              >
+                {isRtl ? 'العودة لتسجيل الدخول' : 'Back to sign in'}
+              </button>
+            </div>
+          ) : mode === 'forgot' ? (
             <>
               {forgotSent ? (
                 <div className="text-center">

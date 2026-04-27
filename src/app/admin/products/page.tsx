@@ -13,14 +13,6 @@ interface VariantDraft {
 
 type MergedProduct = Product & { isAdded?: boolean };
 
-function readFileAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 const EMPTY_FORM = {
   slug: '', name: '', nameEn: '', shortDescription: '', shortDescriptionEn: '',
@@ -73,8 +65,18 @@ export default function ProductsPage() {
   const processFiles = async (files: FileList | File[]) => {
     const arr = Array.from(files).filter(f => f.type.startsWith('image/'));
     if (!arr.length) return;
-    const results = await Promise.all(arr.map(readFileAsDataURL));
-    setFormImages(prev => [...prev, ...results].slice(0, 8));
+    // Upload each image to server immediately — avoids large base64 in request body
+    const uploaded: string[] = [];
+    for (const file of arr) {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/admin/products/upload-image', { method: 'POST', credentials: 'include', body: fd });
+      if (res.ok) {
+        const data = await res.json();
+        uploaded.push(data.url);
+      }
+    }
+    if (uploaded.length) setFormImages(prev => [...prev, ...uploaded].slice(0, 8));
   };
 
   const handleDrop = async (e: React.DragEvent) => {
@@ -159,7 +161,7 @@ export default function ProductsPage() {
         category: fullP.category,
         tags: fullP.tags || [],
         images: fullP.images || [],
-        inStock: fullP.inStock || true,
+        inStock: fullP.inStock ?? true,
         weight: fullP.weight || 0,
       });
       setFormTags((fullP.tags || []).join(', '));
@@ -199,7 +201,7 @@ export default function ProductsPage() {
     setSaving(true);
 
     const builtVariants: ProductVariant[] = variants
-      .filter(v => v.name && v.imageIndex >= 0)
+      .filter(v => v.name)
       .map(v => ({ id: v.id, name: v.name, nameEn: v.nameEn || undefined, imageIndex: v.imageIndex }));
 
     const parsedTags = formTags.split(',').map(t => t.trim()).filter(Boolean);
@@ -223,26 +225,43 @@ export default function ProductsPage() {
       variants: builtVariants.length > 0 ? builtVariants : undefined,
     };
 
+    let saveOk = false;
     if (editingId) {
       const editingProduct = products.find(p => p.id === editingId);
-      await fetch(`/api/admin/products/${editingId}`, {
+      const res = await fetch(`/api/admin/products/${editingId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ ...payload, isAdded: editingProduct?.isAdded ?? false }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(`فشل الحفظ: ${err.error ?? res.status}`);
+        setSaving(false);
+        return;
+      }
+      saveOk = true;
     } else {
-      await fetch('/api/admin/products', {
+      const res = await fetch('/api/admin/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(payload),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(`فشل الحفظ: ${err.error ?? res.status}`);
+        setSaving(false);
+        return;
+      }
+      saveOk = true;
     }
 
-    resetForm();
+    if (saveOk) {
+      resetForm();
+      await load();
+    }
     setSaving(false);
-    await load();
   };
 
   const saveCategories = async (cats: string[]) => {

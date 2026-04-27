@@ -21,7 +21,7 @@ export default function RegionalPricingPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/products', { credentials: 'include', cache: 'no-store' });
+      const res = await fetch('/api/admin/products?lite=true', { credentials: 'include', cache: 'no-store' });
       const data = await res.json();
       setProducts(data.products ?? []);
     } catch {

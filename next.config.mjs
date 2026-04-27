@@ -64,9 +64,9 @@ const nextConfig = {
         source: '/(.*\\.(?:jpg|jpeg|png|gif|webp|svg|ico))',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' }],
       },
-      // No cache for HTML pages
+      // No cache for HTML pages (exclude image/font/asset files so their cache headers are not overridden)
       {
-        source: '/((?!_next/static|_next/image|api).*)',
+        source: '/((?!_next/static|_next/image|api|.*\\.(?:jpg|jpeg|png|gif|webp|svg|ico|avif|woff|woff2|ttf|eot)).*)',
         headers: [
           { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate, max-age=0' },
           { key: 'Pragma', value: 'no-cache' },

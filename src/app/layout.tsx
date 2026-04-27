@@ -12,6 +12,7 @@ import WhatsAppButton from '@/components/WhatsAppButton';
 import { ToastProvider } from '@/components/ui/Toast';
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://moslimleader.com'),
   title: 'مسلم ليدر | Moslim Leader',
   description: 'معاً نبني قادة الغد — منتجات تربوية وتعليمية للأطفال والأسرة',
   icons: {

@@ -21,6 +21,8 @@ const nextConfig = {
   },
   typescript: { ignoreBuildErrors: true },
   experimental: {
+    // Keep native/ESM packages out of webpack — Node.js loads them at runtime
+    serverComponentsExternalPackages: ['pdfjs-dist', '@napi-rs/canvas'],
     optimizePackageImports: [
       'lucide-react',
       '@marsidev/react-turnstile',

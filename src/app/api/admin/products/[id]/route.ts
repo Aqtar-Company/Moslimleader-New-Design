@@ -3,12 +3,42 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { invalidateAdminProductsCache } from '../route';
-
+import { products as staticProducts } from '@/lib/products';
 
 async function requireAdmin() {
   const auth = await getAuthUser();
   if (!auth || auth.role !== 'admin') return null;
   return auth;
+}
+
+// GET /api/admin/products/[id] — fetch single product with full data (for edit form)
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const auth = await requireAdmin();
+    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+
+    const { id } = await params;
+
+    // Try DB product first
+    const dbProduct = await prisma.product.findUnique({ where: { id } });
+    if (dbProduct) {
+      return NextResponse.json({ product: { ...dbProduct, isAdded: true } });
+    }
+
+    // Fall back to static product + overrides
+    const staticProduct = staticProducts.find(p => p.id === id);
+    if (!staticProduct) {
+      return NextResponse.json({ error: 'المنتج غير موجود' }, { status: 404 });
+    }
+
+    const overrideSetting = await prisma.setting.findUnique({ where: { key: 'product-overrides' } });
+    const overrides = ((overrideSetting?.value ?? {}) as Record<string, Record<string, unknown>>)[id] ?? {};
+
+    return NextResponse.json({ product: { ...staticProduct, ...overrides, isAdded: false } });
+  } catch (err) {
+    console.error('[admin products GET/:id]', err);
+    return NextResponse.json({ error: 'حدث خطأ في الخادم' }, { status: 500 });
+  }
 }
 
 // PUT /api/admin/products/[id] — update product (DB product) or save override (static)

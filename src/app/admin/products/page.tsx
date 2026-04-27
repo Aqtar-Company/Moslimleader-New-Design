@@ -49,7 +49,7 @@ export default function ProductsPage() {
   const load = useCallback(async () => {
     try {
       const [prodRes, catRes] = await Promise.all([
-        fetch('/api/admin/products', { credentials: 'include', cache: 'no-store' }),
+        fetch('/api/admin/products?lite=true', { credentials: 'include', cache: 'no-store' }),
         fetch('/api/admin/settings?key=categories-added', { credentials: 'include', cache: 'no-store' }),
       ]);
       const prodData = await prodRes.json();
@@ -136,32 +136,42 @@ export default function ProductsPage() {
     setProducts(prev => prev.filter(x => x.id !== p.id));
   };
 
-  const startEdit = (p: MergedProduct) => {
-    setEditingId(p.id);
-    setForm({
-      slug: p.slug,
-      name: p.name,
-      nameEn: p.nameEn || '',
-      shortDescription: p.shortDescription,
-      shortDescriptionEn: p.shortDescriptionEn || '',
-      description: p.description,
-      descriptionEn: p.descriptionEn || '',
-      price: p.price,
-      priceUsd: p.priceUsd || 0,
-      videoUrl: p.videoUrl || '',
-      category: p.category,
-      tags: p.tags,
-      images: p.images,
-      inStock: p.inStock,
-      weight: p.weight,
-    });
-    setFormTags(p.tags.join(', '));
-    setFormImages([...p.images]);
-    setVariants(
-      p.variants?.map(v => ({ id: v.id, name: v.name, nameEn: v.nameEn || '', imageIndex: v.imageIndex })) ?? []
-    );
-    setShowForm(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const startEdit = async (p: MergedProduct) => {
+    setLoading(true);
+    try {
+      // Fetch full product data (with descriptions) from API
+      const res = await fetch(`/api/admin/products/${p.id}`, { credentials: 'include' });
+      const data = await res.json();
+      const fullP = data.product as MergedProduct;
+
+      setEditingId(fullP.id);
+      setForm({
+        slug: fullP.slug,
+        name: fullP.name,
+        nameEn: fullP.nameEn || '',
+        shortDescription: fullP.shortDescription || '',
+        shortDescriptionEn: fullP.shortDescriptionEn || '',
+        description: fullP.description || '',
+        descriptionEn: fullP.descriptionEn || '',
+        price: fullP.price,
+        priceUsd: fullP.priceUsd || 0,
+        videoUrl: fullP.videoUrl || '',
+        category: fullP.category,
+        tags: fullP.tags || [],
+        images: fullP.images || [],
+        inStock: fullP.inStock || true,
+        weight: fullP.weight || 0,
+      });
+      setFormTags((fullP.tags || []).join(', '));
+      setFormImages([...(fullP.images || [])]);
+      setVariants(
+        fullP.variants?.map(v => ({ id: v.id, name: v.name, nameEn: v.nameEn || '', imageIndex: v.imageIndex })) ?? []
+      );
+      setShowForm(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const addVariant = () => setVariants(v => [...v, { id: `v-${Date.now()}`, name: '', nameEn: '', imageIndex: -1 }]);
@@ -275,101 +285,165 @@ export default function ProductsPage() {
       </div>
 
       {showForm && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-6">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-6 max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-4 sticky top-0 bg-white">
             <h2 className="font-bold text-gray-900">{editingId ? 'تعديل المنتج' : 'إضافة منتج جديد'}</h2>
             <button onClick={resetForm} className="text-gray-400 hover:text-gray-600 text-sm">إغلاق</button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">الاسم (عربي) *</label>
-              <input
-                value={form.name}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">الاسم (إنجليزي)</label>
-              <input
-                value={form.nameEn || ''}
-                onChange={e => setForm(f => ({ ...f, nameEn: e.target.value }))}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400"
-                dir="ltr"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">Slug (للرابط) *</label>
-              <input
-                value={form.slug}
-                onChange={e => setForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, '-') }))}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400 font-mono"
-                dir="ltr"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">الفئة *</label>
-              <select
-                value={form.category}
-                onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400 bg-white"
-              >
-                <option value="">— اختر فئة —</option>
-                {allCategoryNames.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">سعر مصر (ج.م) *</label>
-              <input
-                type="number"
-                value={form.price || ''}
-                onChange={e => setForm(f => ({ ...f, price: +e.target.value }))}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400"
-                min="0"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">سعر دولي (USD) 🌍</label>
-              <input
-                type="number"
-                step="0.01"
-                value={form.priceUsd || ''}
-                onChange={e => setForm(f => ({ ...f, priceUsd: +e.target.value }))}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400"
-                min="0"
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-gray-600 mb-1">رابط الفيديو التعريفي (YouTube) 🎥</label>
-              <input
-                type="url"
-                value={form.videoUrl || ''}
-                onChange={e => setForm(f => ({ ...f, videoUrl: e.target.value }))}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400 font-mono"
-                placeholder="https://www.youtube.com/watch?v=..."
-                dir="ltr"
-              />
+          {/* ── Basic Info ── */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-bold text-gray-900">المعلومات الأساسية</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">الاسم (عربي) *</label>
+                <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">الاسم (إنجليزي)</label>
+                <input value={form.nameEn || ''} onChange={e => setForm(f => ({ ...f, nameEn: e.target.value }))} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400" dir="ltr" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Slug (للرابط) *</label>
+                <input value={form.slug} onChange={e => setForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, '-') }))} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400 font-mono" dir="ltr" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">الفئة *</label>
+                <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400 bg-white">
+                  <option value="">— اختر فئة —</option>
+                  {allCategoryNames.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
             </div>
           </div>
 
-          <div className="flex gap-3 pt-4 border-t border-gray-100">
-            <button
-              onClick={handleSubmit}
-              disabled={saving}
-              className="bg-[#1a1a2e] text-white font-bold px-6 py-2.5 rounded-xl text-sm hover:bg-[#2a2a4e] transition disabled:opacity-50"
+          {/* ── Pricing ── */}
+          <div className="space-y-4 pt-4 border-t border-gray-100">
+            <h3 className="text-sm font-bold text-gray-900">التسعير</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">سعر مصر (ج.م) *</label>
+                <input type="number" value={form.price || ''} onChange={e => setForm(f => ({ ...f, price: +e.target.value }))} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400" min="0" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">سعر دولي (USD) 🌍</label>
+                <input type="number" step="0.01" value={form.priceUsd || ''} onChange={e => setForm(f => ({ ...f, priceUsd: +e.target.value }))} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400" min="0" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">الوزن (غرام)</label>
+                <input type="number" value={form.weight || ''} onChange={e => setForm(f => ({ ...f, weight: +e.target.value }))} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400" min="0" />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Descriptions ── */}
+          <div className="space-y-4 pt-4 border-t border-gray-100">
+            <h3 className="text-sm font-bold text-gray-900">الوصف</h3>
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">الوصف القصير (عربي)</label>
+                <textarea value={form.shortDescription || ''} onChange={e => setForm(f => ({ ...f, shortDescription: e.target.value }))} rows={2} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">الوصف القصير (إنجليزي)</label>
+                <textarea value={form.shortDescriptionEn || ''} onChange={e => setForm(f => ({ ...f, shortDescriptionEn: e.target.value }))} rows={2} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400" dir="ltr" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">الوصف الكامل (عربي - يدعم HTML)</label>
+                <textarea value={form.description || ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={4} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400 font-mono text-xs" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">الوصف الكامل (إنجليزي - يدعم HTML)</label>
+                <textarea value={form.descriptionEn || ''} onChange={e => setForm(f => ({ ...f, descriptionEn: e.target.value }))} rows={4} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400 font-mono text-xs" dir="ltr" />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Images ── */}
+          <div className="space-y-4 pt-4 border-t border-gray-100">
+            <h3 className="text-sm font-bold text-gray-900">الصور *</h3>
+            <div
+              onDrop={handleDrop} onDragOver={e => { e.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)}
+              className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition ${isDragging ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}
+              onClick={() => fileInputRef.current?.click()}
             >
+              <p className="text-sm text-gray-600">اسحب الصور هنا أو اضغط لاختيار</p>
+              <input ref={fileInputRef} type="file" multiple accept="image/*" onChange={handleFileInput} className="hidden" />
+            </div>
+            {formImages.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">{formImages.length} صورة</p>
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                  {formImages.map((img, i) => (
+                    <div key={i} className="relative group">
+                      <img src={img} alt={`img-${i}`} className="w-full h-20 object-cover rounded-lg border border-gray-200" />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 rounded-lg flex items-center justify-center gap-1 transition">
+                        {i > 0 && <button onClick={() => moveImage(i, i - 1)} className="text-white text-xs bg-gray-700 px-1 py-0.5 rounded">←</button>}
+                        {i < formImages.length - 1 && <button onClick={() => moveImage(i, i + 1)} className="text-white text-xs bg-gray-700 px-1 py-0.5 rounded">→</button>}
+                        <button onClick={() => removeImage(i)} className="text-white text-xs bg-red-600 px-2 py-0.5 rounded">✕</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Stock & Video ── */}
+          <div className="space-y-4 pt-4 border-t border-gray-100">
+            <h3 className="text-sm font-bold text-gray-900">خيارات أخرى</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex items-center gap-3">
+                <input type="checkbox" checked={form.inStock} onChange={e => setForm(f => ({ ...f, inStock: e.target.checked }))} className="rounded border-gray-200" />
+                <label className="text-sm font-semibold text-gray-600">متوفر في المخزون</label>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">رابط فيديو YouTube 🎥</label>
+                <input type="url" value={form.videoUrl || ''} onChange={e => setForm(f => ({ ...f, videoUrl: e.target.value }))} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400 font-mono" placeholder="https://www.youtube.com/watch?v=..." dir="ltr" />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Variants/Models ── */}
+          <div className="space-y-4 pt-4 border-t border-gray-100">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-900">الموديلات/الأنواع</h3>
+              <button onClick={addVariant} className="text-xs bg-blue-50 text-blue-600 font-semibold px-3 py-1.5 rounded-lg hover:bg-blue-100 transition">+ إضافة موديل</button>
+            </div>
+            {variants.length > 0 && (
+              <div className="space-y-3">
+                {variants.map(v => (
+                  <div key={v.id} className="border border-gray-200 rounded-lg p-4 space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">اسم الموديل (عربي)</label>
+                        <input value={v.name} onChange={e => updateVariant(v.id, { name: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-gray-400" placeholder="مثل: أحمر كبير" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">اسم الموديل (إنجليزي)</label>
+                        <input value={v.nameEn} onChange={e => updateVariant(v.id, { nameEn: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-gray-400" placeholder="e.g. Red Large" dir="ltr" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">صورة الموديل</label>
+                      <select value={v.imageIndex} onChange={e => updateVariant(v.id, { imageIndex: +e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-gray-400 bg-white">
+                        <option value={-1}>— اختر صورة —</option>
+                        {formImages.map((_, idx) => <option key={idx} value={idx}>الصورة {idx + 1}</option>)}
+                      </select>
+                    </div>
+                    <button onClick={() => removeVariant(v.id)} className="text-xs text-red-600 font-semibold hover:bg-red-50 px-3 py-1.5 rounded-lg transition">حذف الموديل</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── Submit ── */}
+          <div className="flex gap-3 pt-4 border-t border-gray-100 sticky bottom-0 bg-white">
+            <button onClick={handleSubmit} disabled={saving} className="bg-[#1a1a2e] text-white font-bold px-6 py-2.5 rounded-xl text-sm hover:bg-[#2a2a4e] transition disabled:opacity-50">
               {saving ? 'جارٍ الحفظ...' : '💾 حفظ المنتج'}
             </button>
-            <button onClick={resetForm} className="border border-gray-200 text-gray-600 font-semibold px-6 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">
-              إلغاء
-            </button>
+            <button onClick={resetForm} className="border border-gray-200 text-gray-600 font-semibold px-6 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">إلغاء</button>
           </div>
         </div>
       )}

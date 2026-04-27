@@ -171,7 +171,7 @@ export default function LibraryPage() {
       <div
         className="relative pt-28 pb-10 px-4 overflow-hidden"
         style={{
-          backgroundImage: 'url(/library-hero.jpg)',
+          backgroundImage: 'url(/library-hero.jpg), url(/reading-boy-hero.png)',
           backgroundSize: 'cover',
           backgroundPosition: 'center top',
         }}

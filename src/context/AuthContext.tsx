@@ -25,8 +25,8 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error?: string }>;
-  signUp: (name: string, email: string, password: string, phone?: string) => Promise<{ error?: string }>;
+  signIn: (email: string, password: string) => Promise<{ error?: string; needsVerification?: boolean; email?: string }>;
+  signUp: (name: string, email: string, password: string, phone?: string) => Promise<{ error?: string; needsVerification?: boolean; email?: string }>;
   signOut: () => void;
   updateUser: (data: Partial<User>) => Promise<void>;
 }
@@ -61,7 +61,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
-      if (!res.ok) return { error: data.error ?? 'بيانات الدخول غير صحيحة' };
+      if (!res.ok) {
+        if (data.needsVerification) return { error: data.error, needsVerification: true, email: data.email };
+        return { error: data.error ?? 'بيانات الدخول غير صحيحة' };
+      }
       setUser(data.user);
       return {};
     } catch {
@@ -79,6 +82,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       const data = await res.json();
       if (!res.ok) return { error: data.error ?? 'فشل إنشاء الحساب' };
+      // 201 with needsVerification = email sent, not logged in yet
+      if (data.needsVerification) return { needsVerification: true, email: data.email };
       setUser(data.user);
       return {};
     } catch {

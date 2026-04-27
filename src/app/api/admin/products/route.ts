@@ -20,15 +20,29 @@ export function invalidateAdminProductsCache() {
   cache = null;
 }
 
+// Strips heavy fields not needed by list/pricing views — reduces payload by ~90%
+function stripHeavyFields(p: unknown) {
+  const { description, descriptionEn, shortDescription, shortDescriptionEn, reviews, videos, ...rest } =
+    p as Record<string, unknown>;
+  void description; void descriptionEn; void shortDescription; void shortDescriptionEn; void reviews; void videos;
+  return rest;
+}
+
 // GET /api/admin/products — returns all DB products (source='admin') + static products merged with overrides
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const auth = await requireAdmin();
     if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
     // Serve from cache if fresh
     if (cache && Date.now() < cache.expiresAt) {
-      return NextResponse.json(cache.data);
+      const data = cache.data as { products: unknown[] };
+      const lite = req.nextUrl.searchParams.get('lite') === 'true';
+      if (lite) {
+        const stripped = data.products.map(stripHeavyFields);
+        return NextResponse.json({ products: stripped });
+      }
+      return NextResponse.json(data);
     }
 
     // Parallelize DB queries
@@ -54,6 +68,10 @@ export async function GET() {
     const payload = { products: [...mergedStatic, ...adminProducts] };
     cache = { data: payload, expiresAt: Date.now() + CACHE_TTL_MS };
 
+    const lite = req.nextUrl.searchParams.get('lite') === 'true';
+    if (lite) {
+      return NextResponse.json({ products: payload.products.map(stripHeavyFields) });
+    }
     return NextResponse.json(payload);
   } catch (err) {
     console.error('[admin products GET]', err);

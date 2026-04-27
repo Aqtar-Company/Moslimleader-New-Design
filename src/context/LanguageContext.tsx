@@ -161,7 +161,7 @@ const translations = {
     'product.related': 'منتجات ذات صلة',
     'product.share': 'شارك المنتج',
     'product.share.copy': 'نسخ الرابط',
-    'product.share.copied': '✓ تم النسخ!',
+    'product.share.copied': 'تم النسخ!',
     // Review form
     'review.write': 'اكتب تقييمك',
     'review.name': 'الاسم',
@@ -431,7 +431,7 @@ const translations = {
     'product.related': 'Related Products',
     'product.share': 'Share Product',
     'product.share.copy': 'Copy Link',
-    'product.share.copied': '✓ Copied!',
+    'product.share.copied': 'Copied!',
     // Review form
     'review.write': 'Write a Review',
     'review.name': 'Name',

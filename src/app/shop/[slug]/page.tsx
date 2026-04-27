@@ -52,7 +52,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     if (!product) throw new Error('not found');
 
     const title = product.name || 'منتج';
-    const description = product.shortDescription || product.description?.replace(/<[^>]+>/g, '').slice(0, 160) || 'منتج من متجر مسلم ليدر';
+    const rawDesc = product.shortDescription || product.description?.replace(/<[^>]+>/g, '').slice(0, 160) || '';
+    const description = rawDesc ? rawDesc : 'منتج إسلامي تربوي من متجر مسلم ليدر';
     const rawImage = product.images?.[0] || '';
     const imageUrl = rawImage.startsWith('http') ? rawImage : rawImage ? `${baseUrl}${rawImage}` : `${baseUrl}/logo.png`;
     const url = `${baseUrl}/shop/${slug}`;
@@ -60,17 +61,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return {
       title: `${title} | مسلم ليدر`,
       description,
+      metadataBase: new URL(baseUrl),
       openGraph: {
-        title,
+        title: `${title} | مسلم ليدر`,
         description,
         url,
         siteName: 'مسلم ليدر',
         images: [
           {
             url: imageUrl,
-            width: 800,
-            height: 800,
+            secureUrl: imageUrl,
+            width: 1200,
+            height: 1200,
             alt: title,
+            type: 'image/jpeg',
           },
         ],
         type: 'website',
@@ -78,9 +82,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       },
       twitter: {
         card: 'summary_large_image',
-        title,
+        title: `${title} | مسلم ليدر`,
         description,
         images: [imageUrl],
+        site: '@moslimleader',
       },
     };
   } catch {

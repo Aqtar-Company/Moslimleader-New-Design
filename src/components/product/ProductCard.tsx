@@ -35,7 +35,7 @@ export default function ProductCard({ product, priceLoading = false }: { product
           quality={75}
           className="object-cover hover:scale-105 transition-transform duration-300"
         />
-        {!product.inStock && (
+        {!product.inStock && !priceLoading && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
             <span className="bg-white text-gray-800 text-xs font-bold px-3 py-1 rounded-full">{t('product.outOfStock')}</span>
           </div>
@@ -69,7 +69,7 @@ export default function ProductCard({ product, priceLoading = false }: { product
             <span className="text-gray-900 font-bold text-sm sm:text-lg shrink-0">{formatPrice(priceResult)}</span>
           )}
           <button
-            disabled={!product.inStock || added || priceLoading}
+            disabled={(!product.inStock && !priceLoading) || added || priceLoading}
             onClick={() => {
               if (!product.inStock || priceLoading) return;
               addItem(product);
@@ -80,12 +80,14 @@ export default function ProductCard({ product, priceLoading = false }: { product
             className={`text-white text-xs sm:text-sm font-semibold px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all whitespace-nowrap shrink-0 ${
               added
                 ? 'bg-green-500 scale-95'
-                : product.inStock && !priceLoading
-                  ? 'bg-purple-700 hover:bg-purple-800 active:scale-95'
-                  : 'bg-gray-300 cursor-not-allowed'
+                : priceLoading
+                  ? 'bg-gray-300 cursor-not-allowed'
+                  : product.inStock
+                    ? 'bg-purple-700 hover:bg-purple-800 active:scale-95'
+                    : 'bg-gray-300 cursor-not-allowed'
             }`}
           >
-            {added ? t('product.added') : product.inStock ? t('product.addToCart') : t('product.unavailable')}
+            {added ? t('product.added') : priceLoading ? <span className="h-4 w-16 bg-gray-400 rounded inline-block animate-pulse" /> : product.inStock ? t('product.addToCart') : t('product.unavailable')}
           </button>
         </div>
       </div>

@@ -81,23 +81,6 @@ function FadeInSection({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ── Product skeleton card ────────────────────────────────── */
-function ProductSkeleton() {
-  return (
-    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-      <div className="aspect-square bg-gray-200 animate-pulse" />
-      <div className="p-4 space-y-2">
-        <div className="h-4 bg-gray-200 rounded-lg animate-pulse" />
-        <div className="h-3 bg-gray-200 rounded-lg w-3/4 animate-pulse" />
-        <div className="flex items-center justify-between mt-3 gap-2">
-          <div className="h-6 w-16 bg-gray-200 rounded-lg animate-pulse" />
-          <div className="h-8 w-24 bg-gray-200 rounded-xl animate-pulse" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ── Shop content ───────────────────────────────────────────── */
 function ShopContent() {
   const searchParams = useSearchParams();
@@ -106,10 +89,12 @@ function ShopContent() {
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [search, setSearch] = useState('');
 
-  // Start empty — show skeleton until fresh data arrives from API
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  // Show static products immediately for fast image render
+  const [allProducts, setAllProducts] = useState<Product[]>(products);
   const [displayCategories, setDisplayCategories] = useState(categories);
-  const [loading, setLoading] = useState(true);
+
+  // priceLoading=true: prices + inStock are still loading — product images show right away
+  const [priceLoading, setPriceLoading] = useState(true);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -132,19 +117,17 @@ function ShopContent() {
           .map(c => ({ id: c, name: c, count: fetched.filter(p => p.category === c).length }));
 
         setDisplayCategories([...staticUpdated, ...customEntries]);
-        setLoading(false);
+        setPriceLoading(false);
       } catch {
-        // API failed — retry once after 3 seconds, fallback to static
+        // API failed — retry once after 3 seconds
         setTimeout(async () => {
           try {
             const res2 = await fetch(`/api/products?_t=${Date.now()}`, { cache: 'no-store' });
             const data2 = await res2.json();
             const fetched2: Product[] = data2.products ?? [];
-            setAllProducts(fetched2.length > 0 ? fetched2 : products);
-          } catch {
-            setAllProducts(products);
-          } finally {
-            setLoading(false);
+            if (fetched2.length > 0) setAllProducts(fetched2);
+          } catch { /* ignore */ } finally {
+            setPriceLoading(false);
           }
         }, 3000);
       }
@@ -200,21 +183,15 @@ function ShopContent() {
       </div>
 
       {/* Results count */}
-      {!loading && (
-        <p className="text-gray-500 text-sm mb-6">
-          {filtered.length} {t('shop.results')}
-        </p>
-      )}
+      <p className="text-gray-500 text-sm mb-6">
+        {filtered.length} {t('shop.results')}
+      </p>
 
-      {/* Grid */}
-      {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-          {Array.from({ length: 8 }).map((_, i) => <ProductSkeleton key={i} />)}
-        </div>
-      ) : filtered.length > 0 ? (
+      {/* Grid — images show immediately, price+stock show after API */}
+      {filtered.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
           {filtered.map(product => (
-            <ProductCard key={product.id} product={product} priceLoading={false} />
+            <ProductCard key={product.id} product={product} priceLoading={priceLoading} />
           ))}
         </div>
       ) : (

@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { useState, Suspense, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { products, categories } from '@/lib/products';
+import { categories } from '@/lib/products';
 import { Product } from '@/types';
 import ProductCard from '@/components/product/ProductCard';
 import { useLang } from '@/context/LanguageContext';
@@ -89,19 +89,16 @@ function ShopContent() {
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [search, setSearch] = useState('');
 
-  // Show static products immediately for fast image render
-  const [allProducts, setAllProducts] = useState<Product[]>(products);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [displayCategories, setDisplayCategories] = useState(categories);
-
-  // priceLoading=true: prices + inStock are still loading — product images show right away
-  const [priceLoading, setPriceLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         const res = await fetch(`/api/products?_t=${Date.now()}`, { signal: AbortSignal.timeout(8000), cache: 'no-store' });
         const data = await res.json();
-        const fetched: Product[] = data.products ?? products;
+        const fetched: Product[] = data.products ?? [];
         setAllProducts(fetched);
 
         // Build category counts from fetched products
@@ -117,7 +114,6 @@ function ShopContent() {
           .map(c => ({ id: c, name: c, count: fetched.filter(p => p.category === c).length }));
 
         setDisplayCategories([...staticUpdated, ...customEntries]);
-        setPriceLoading(false);
       } catch {
         // API failed — retry once after 3 seconds
         setTimeout(async () => {
@@ -126,10 +122,10 @@ function ShopContent() {
             const data2 = await res2.json();
             const fetched2: Product[] = data2.products ?? [];
             if (fetched2.length > 0) setAllProducts(fetched2);
-          } catch { /* ignore */ } finally {
-            setPriceLoading(false);
-          }
+          } catch { /* ignore */ }
         }, 3000);
+      } finally {
+        setLoading(false);
       }
     };
     fetchProducts();
@@ -183,15 +179,34 @@ function ShopContent() {
       </div>
 
       {/* Results count */}
-      <p className="text-gray-500 text-sm mb-6">
-        {filtered.length} {t('shop.results')}
-      </p>
+      {!loading && (
+        <p className="text-gray-500 text-sm mb-6">
+          {filtered.length} {t('shop.results')}
+        </p>
+      )}
 
-      {/* Grid — images show immediately, price+stock show after API */}
-      {filtered.length > 0 ? (
+      {/* Grid */}
+      {loading ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col animate-pulse">
+              <div className="aspect-square bg-gray-200" />
+              <div className="p-4 flex flex-col gap-3 flex-1">
+                <div className="h-4 bg-gray-200 rounded w-3/4" />
+                <div className="h-3 bg-gray-200 rounded w-full" />
+                <div className="h-3 bg-gray-200 rounded w-2/3" />
+                <div className="mt-auto pt-2 flex items-center justify-between gap-2">
+                  <div className="h-6 w-16 bg-gray-200 rounded" />
+                  <div className="h-9 w-24 bg-gray-200 rounded-xl" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : filtered.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
           {filtered.map(product => (
-            <ProductCard key={product.id} product={product} priceLoading={priceLoading} />
+            <ProductCard key={product.id} product={product} />
           ))}
         </div>
       ) : (

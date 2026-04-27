@@ -36,6 +36,7 @@ export default function ProductsPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [uploadingCount, setUploadingCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -66,15 +67,19 @@ export default function ProductsPage() {
   const processFiles = async (files: FileList | File[]) => {
     const arr = Array.from(files).filter(f => f.type.startsWith('image/'));
     if (!arr.length) return;
-    // Upload each image to server immediately — avoids large base64 in request body
+    setUploadingCount(arr.length);
     const uploaded: string[] = [];
     for (const file of arr) {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch('/api/admin/products/upload-image', { method: 'POST', credentials: 'include', body: fd });
-      if (res.ok) {
-        const data = await res.json();
-        uploaded.push(data.url);
+      try {
+        const res = await fetch('/api/admin/products/upload-image', { method: 'POST', credentials: 'include', body: fd });
+        if (res.ok) {
+          const data = await res.json();
+          uploaded.push(data.url);
+        }
+      } finally {
+        setUploadingCount(prev => Math.max(0, prev - 1));
       }
     }
     if (uploaded.length) setFormImages(prev => [...uploaded, ...prev].slice(0, 8));
@@ -384,10 +389,22 @@ export default function ProductsPage() {
             <h3 className="text-sm font-bold text-gray-900">الصور *</h3>
             <div
               onDrop={handleDrop} onDragOver={e => { e.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)}
-              className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition ${isDragging ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}
-              onClick={() => fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition ${isDragging ? 'border-blue-400 bg-blue-50' : uploadingCount > 0 ? 'border-amber-400 bg-amber-50' : 'border-gray-300 hover:border-gray-400'}`}
+              onClick={() => !uploadingCount && fileInputRef.current?.click()}
             >
-              <p className="text-sm text-gray-600">اسحب الصور هنا أو اضغط لاختيار</p>
+              {uploadingCount > 0 ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-center gap-2 text-amber-700">
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                    <span className="text-sm font-semibold">جارٍ رفع {uploadingCount} صورة...</span>
+                  </div>
+                  <div className="w-full bg-amber-200 rounded-full h-1.5">
+                    <div className="bg-amber-500 h-1.5 rounded-full animate-pulse" style={{ width: '60%' }} />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-600">اسحب الصور هنا أو اضغط لاختيار</p>
+              )}
               <input ref={fileInputRef} type="file" multiple accept="image/*" onChange={handleFileInput} className="hidden" />
             </div>
             {formImages.length > 0 && (
@@ -417,8 +434,16 @@ export default function ProductsPage() {
             <h3 className="text-sm font-bold text-gray-900">خيارات أخرى</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex items-center gap-3">
-                <input type="checkbox" checked={form.inStock} onChange={e => setForm(f => ({ ...f, inStock: e.target.checked }))} className="rounded border-gray-200" />
-                <label className="text-sm font-semibold text-gray-600">متوفر في المخزون</label>
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, inStock: !f.inStock }))}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none ${form.inStock ? 'bg-green-500' : 'bg-gray-300'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${form.inStock ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+                <span className={`text-sm font-semibold ${form.inStock ? 'text-green-700' : 'text-gray-400'}`}>
+                  {form.inStock ? 'متوفر في المخزون' : 'غير متوفر'}
+                </span>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">رابط فيديو YouTube 🎥</label>
@@ -448,11 +473,40 @@ export default function ProductsPage() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1">صورة الموديل</label>
-                      <select value={v.imageIndex} onChange={e => updateVariant(v.id, { imageIndex: +e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-gray-400 bg-white">
-                        <option value={-1}>— اختر صورة —</option>
-                        {formImages.map((_, idx) => <option key={idx} value={idx}>الصورة {idx + 1}</option>)}
-                      </select>
+                      <label className="block text-xs font-semibold text-gray-600 mb-2">
+                        صورة الموديل
+                        {v.imageIndex >= 0 && <span className="text-blue-600 font-normal mr-1">(الصورة {v.imageIndex + 1})</span>}
+                      </label>
+                      {formImages.length === 0 ? (
+                        <p className="text-xs text-gray-400">أضف صوراً للمنتج أولاً</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => updateVariant(v.id, { imageIndex: -1 })}
+                            title="بدون صورة"
+                            className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center text-lg transition ${v.imageIndex === -1 ? 'border-gray-500 bg-gray-100' : 'border-gray-200 hover:border-gray-400'}`}
+                          >
+                            ✕
+                          </button>
+                          {formImages.map((img, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => updateVariant(v.id, { imageIndex: idx })}
+                              title={`الصورة ${idx + 1}`}
+                              className={`relative w-12 h-12 rounded-lg border-2 overflow-hidden transition ${v.imageIndex === idx ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200 hover:border-gray-400'}`}
+                            >
+                              <img src={img} alt="" className="w-full h-full object-cover" />
+                              {v.imageIndex === idx && (
+                                <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
+                                  <span className="text-white text-xs font-bold bg-blue-500 rounded-full w-4 h-4 flex items-center justify-center">✓</span>
+                                </div>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <button onClick={() => removeVariant(v.id)} className="text-xs text-red-600 font-semibold hover:bg-red-50 px-3 py-1.5 rounded-lg transition">حذف الموديل</button>
                   </div>
@@ -533,13 +587,22 @@ export default function ProductsPage() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <button onClick={() => toggleStock(p)} className={`px-2 py-1 rounded-full text-[10px] font-bold ${p.inStock ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                      {p.inStock ? 'متوفر' : 'نفذ'}
-                    </button>
+                    <div className="flex flex-col items-center gap-1">
+                      <button
+                        onClick={() => toggleStock(p)}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${p.inStock ? 'bg-green-500' : 'bg-gray-300'}`}
+                      >
+                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform duration-200 ${p.inStock ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                      </button>
+                      <span className={`text-[9px] font-bold ${p.inStock ? 'text-green-600' : 'text-gray-400'}`}>{p.inStock ? 'متوفر' : 'نفذ'}</span>
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-2">
-                      <button onClick={() => startEdit(p)} className="text-blue-500 font-bold text-xs hover:bg-blue-50 px-2 py-1 rounded-lg">تعديل</button>
+                      <button onClick={() => startEdit(p)} className="flex items-center gap-1 bg-blue-50 text-blue-600 font-bold text-xs hover:bg-blue-100 px-2.5 py-1.5 rounded-lg border border-blue-100 transition">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/></svg>
+                        تعديل
+                      </button>
                       <a href="/admin/regional-pricing" className="text-purple-500 text-xs">🌍</a>
                       {p.isAdded && <button onClick={() => handleDelete(p)} className="text-red-400 font-bold text-xs hover:bg-red-50 px-2 py-1 rounded-lg">حذف</button>}
                     </div>

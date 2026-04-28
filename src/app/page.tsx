@@ -128,9 +128,8 @@ function ShopContent() {
   const [search, setSearch] = useState('');
 
   const cached = getCachedProducts();
-  const [allProducts, setAllProducts] = useState<Product[]>(cached || []);
+  const [allProducts, setAllProducts] = useState<Product[]>(cached || products);
   const [displayCategories, setDisplayCategories] = useState(cached ? buildCategories(cached) : categories);
-  const [loading, setLoading] = useState(!cached);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -143,10 +142,7 @@ function ShopContent() {
           setDisplayCategories(buildCategories(fetched));
           cacheProducts(fetched);
         }
-        setLoading(false);
-      } catch {
-        setLoading(false);
-      }
+      } catch {}
     };
     fetchProducts();
   }, []);
@@ -178,53 +174,33 @@ function ShopContent() {
         </div>
       </div>
 
-      {/* Category filter — hidden while loading */}
-      {!loading && (
-        <div className="flex flex-wrap gap-2 justify-center mb-10">
-          {displayCategories.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              className={`flex items-center gap-2 px-5 py-2 rounded-full border-2 font-semibold text-sm transition ${
-                activeCategory === cat.id
-                  ? 'bg-gray-900 border-gray-900 text-white'
-                  : 'border-gray-200 hover:border-gray-900 text-gray-700'
-              }`}
-            >
-              {t(`cat.${cat.id}` as Parameters<typeof t>[0]) || cat.name}
-              <span className={`text-xs font-bold px-1.5 rounded-full ${activeCategory === cat.id ? 'bg-white text-gray-900' : 'bg-gray-100'}`}>
-                {cat.count}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Category filter */}
+      <div className="flex flex-wrap gap-2 justify-center mb-10">
+        {displayCategories.map(cat => (
+          <button
+            key={cat.id}
+            onClick={() => setActiveCategory(cat.id)}
+            className={`flex items-center gap-2 px-5 py-2 rounded-full border-2 font-semibold text-sm transition ${
+              activeCategory === cat.id
+                ? 'bg-gray-900 border-gray-900 text-white'
+                : 'border-gray-200 hover:border-gray-900 text-gray-700'
+            }`}
+          >
+            {t(`cat.${cat.id}` as Parameters<typeof t>[0]) || cat.name}
+            <span className={`text-xs font-bold px-1.5 rounded-full ${activeCategory === cat.id ? 'bg-white text-gray-900' : 'bg-gray-100'}`}>
+              {cat.count}
+            </span>
+          </button>
+        ))}
+      </div>
 
-      {/* Results count — hidden while loading */}
-      {!loading && (
-        <p className="text-gray-500 text-sm mb-6">
-          {filtered.length} {t('shop.results')}
-        </p>
-      )}
+      {/* Results count */}
+      <p className="text-gray-500 text-sm mb-6">
+        {filtered.length} {t('shop.results')}
+      </p>
 
       {/* Grid */}
-      {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
-              <div className="aspect-square bg-gray-200" />
-              <div className="p-4 space-y-3">
-                <div className="h-4 bg-gray-200 rounded w-3/4" />
-                <div className="h-3 bg-gray-100 rounded w-full" />
-                <div className="flex justify-between items-center pt-2">
-                  <div className="h-5 bg-gray-200 rounded w-16" />
-                  <div className="h-8 bg-gray-200 rounded-xl w-20" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : filtered.length > 0 ? (
+      {filtered.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
           {filtered.map(product => (
             <ProductCard key={product.id} product={product} priceLoading={false} />

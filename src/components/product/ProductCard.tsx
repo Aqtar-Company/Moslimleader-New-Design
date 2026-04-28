@@ -30,18 +30,14 @@ export default function ProductCard({ product, priceLoading = false }: { product
     <div className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 overflow-hidden flex flex-col">
       {/* Image */}
       <Link href={`/shop/${product.slug}`} target="_blank" rel="noopener noreferrer" className="block relative aspect-square overflow-hidden bg-gray-50">
-        {priceLoading ? (
-          <div className="absolute inset-0 bg-gray-200 animate-pulse" />
-        ) : (
-          <Image
-            src={product.images[0]}
-            alt={displayName}
-            fill
-            sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            quality={75}
-            className="object-cover hover:scale-105 transition-transform duration-300"
-          />
-        )}
+        <Image
+          src={product.images[0]}
+          alt={displayName}
+          fill
+          sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          quality={75}
+          className="object-cover hover:scale-105 transition-transform duration-300"
+        />
         {!product.inStock && !priceLoading && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
             <span className="bg-white text-gray-800 text-xs font-bold px-3 py-1 rounded-full">{t('product.outOfStock')}</span>

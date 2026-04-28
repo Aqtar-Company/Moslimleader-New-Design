@@ -31,7 +31,7 @@ export default function ProductCard({ product, priceLoading = false }: { product
       {/* Image */}
       <Link href={`/shop/${product.slug}`} target="_blank" rel="noopener noreferrer" className="block relative aspect-square overflow-hidden bg-gray-50">
         <Image
-          src={product.images[0]}
+          src={product.images?.[0] || '/logo.png'}
           alt={displayName}
           fill
           sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"

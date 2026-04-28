@@ -135,14 +135,19 @@ function ShopContent() {
     const fetchProducts = async () => {
       try {
         const res = await fetch(`/api/products?_t=${Date.now()}`, { signal: AbortSignal.timeout(8000), cache: 'no-store' });
+        if (!res.ok) throw new Error(`API ${res.status}`);
         const data = await res.json();
-        const fetched: Product[] = data.products ?? [];
+        const fetched: Product[] = (data.products ?? []).filter(
+          (p: Product) => p.images && p.images.length > 0
+        );
         if (fetched.length > 0) {
           setAllProducts(fetched);
           setDisplayCategories(buildCategories(fetched));
           cacheProducts(fetched);
         }
-      } catch {}
+      } catch (err) {
+        console.error('[home fetch]', err);
+      }
     };
     fetchProducts();
   }, []);

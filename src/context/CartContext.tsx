@@ -130,23 +130,20 @@ async function apiClearCart() {
   await fetch('/api/cart', { method: 'DELETE', credentials: 'include' });
 }
 
-// Refresh prices in cart items from the latest products API
+// Refresh cart items from the latest products API (prices, images, names, etc.)
 async function refreshCartPrices(items: CartItem[]): Promise<CartItem[]> {
   try {
     const res = await fetch('/api/products', { cache: 'no-store' });
     if (!res.ok) return items;
     const data = await res.json();
-    const productsMap: Record<string, { price: number; priceUsd: number }> = {};
-    (data.products ?? []).forEach((p: { id: string; price: number; priceUsd: number }) => {
-      productsMap[p.id] = { price: p.price, priceUsd: p.priceUsd ?? 0 };
+    const productsMap: Record<string, Product> = {};
+    (data.products ?? []).forEach((p: Product) => {
+      productsMap[p.id] = p;
     });
     return items.map(item => {
       const fresh = productsMap[item.product.id];
       if (!fresh) return item;
-      return {
-        ...item,
-        product: { ...item.product, price: fresh.price, priceUsd: fresh.priceUsd },
-      };
+      return { ...item, product: fresh };
     });
   } catch {
     return items;

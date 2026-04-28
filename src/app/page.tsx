@@ -132,24 +132,24 @@ function ShopContent() {
   const [displayCategories, setDisplayCategories] = useState(cached ? buildCategories(cached) : categories);
 
   useEffect(() => {
+    let cancelled = false;
     const fetchProducts = async () => {
       try {
-        const res = await fetch(`/api/products?_t=${Date.now()}`, { signal: AbortSignal.timeout(8000), cache: 'no-store' });
-        if (!res.ok) throw new Error(`API ${res.status}`);
+        const res = await fetch(`/api/products?_t=${Date.now()}`, { cache: 'no-store' });
+        if (cancelled || !res.ok) return;
         const data = await res.json();
         const fetched: Product[] = (data.products ?? []).filter(
           (p: Product) => p.images && p.images.length > 0
         );
-        if (fetched.length > 0) {
+        if (!cancelled && fetched.length > 0) {
           setAllProducts(fetched);
           setDisplayCategories(buildCategories(fetched));
           cacheProducts(fetched);
         }
-      } catch (err) {
-        console.error('[home fetch]', err);
-      }
+      } catch {}
     };
     fetchProducts();
+    return () => { cancelled = true; };
   }, []);
 
   const filtered = allProducts.filter(p => {

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Product } from '@/types';
 import { useCart } from '@/context/CartContext';
@@ -16,7 +17,9 @@ export default function ProductCard({ product, priceLoading = false }: { product
   const { t, isRtl } = useLang();
   const { getProductPrice, formatPrice } = useRegionalPricing();
   const { addToast } = useToast();
+  const router = useRouter();
   const [added, setAdded] = useState(false);
+  const hasVariants = (product.variants && product.variants.length > 0) || (product.images && product.images.length > 1 && ['bags', 'mugs', 'notebooks'].includes(product.subcategory || ''));
 
   const displayName = isRtl ? product.name : (product.nameEn || product.name);
   const displayShortDesc = isRtl ? product.shortDescription : (product.shortDescriptionEn || product.shortDescription);
@@ -72,6 +75,10 @@ export default function ProductCard({ product, priceLoading = false }: { product
             disabled={(!product.inStock && !priceLoading) || added || priceLoading}
             onClick={() => {
               if (!product.inStock || priceLoading) return;
+              if (hasVariants) {
+                router.push(`/shop/${product.slug}`);
+                return;
+              }
               addItem(product);
               addToast(`✓ أُضيف "${displayName}" للسلة`, 'success');
               setAdded(true);
@@ -87,7 +94,7 @@ export default function ProductCard({ product, priceLoading = false }: { product
                     : 'bg-gray-300 cursor-not-allowed'
             }`}
           >
-            {added ? t('product.added') : priceLoading ? <span className="h-4 w-16 bg-gray-400 rounded inline-block animate-pulse" /> : product.inStock ? t('product.addToCart') : t('product.unavailable')}
+            {added ? t('product.added') : priceLoading ? <span className="h-4 w-16 bg-gray-400 rounded inline-block animate-pulse" /> : product.inStock ? (hasVariants ? (isRtl ? 'اختر الموديل' : 'Choose Model') : t('product.addToCart')) : t('product.unavailable')}
           </button>
         </div>
       </div>

@@ -6,6 +6,9 @@ interface Coupon {
   code: string;
   discount: number;
   isActive: boolean;
+  showBanner?: boolean;
+  bannerText?: string;
+  bannerColor?: string;
 }
 
 export default function CouponsPage() {
@@ -133,12 +136,13 @@ export default function CouponsPage() {
                 <th className="px-6 py-3.5 text-right">كود الكوبون</th>
                 <th className="px-6 py-3.5 text-right">نسبة الخصم</th>
                 <th className="px-6 py-3.5 text-right">قيمة الخصم (على طلب 500 ج)</th>
+                <th className="px-6 py-3.5 text-center">بانر</th>
                 <th className="px-6 py-3.5 text-center">حذف</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {coupons.map(({ code: c, discount: p }) => (
-                <tr key={c} className="hover:bg-gray-50 transition">
+              {coupons.map(({ code: c, discount: p, showBanner }) => (
+                <tr key={c} className={`hover:bg-gray-50 transition ${showBanner ? 'bg-amber-50' : ''}`}>
                   <td className="px-6 py-4">
                     <span className="font-mono font-black text-gray-900 bg-gray-100 px-3 py-1.5 rounded-lg text-sm tracking-wider">{c}</span>
                   </td>
@@ -147,6 +151,22 @@ export default function CouponsPage() {
                   </td>
                   <td className="px-6 py-4 text-gray-500 text-sm">
                     وفّر {Math.round(500 * p / 100)} ج.م على طلب بـ 500 ج
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <button
+                      onClick={async () => {
+                        await fetch('/api/admin/coupons', {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          credentials: 'include',
+                          body: JSON.stringify({ code: c, showBanner: !showBanner }),
+                        });
+                        await load();
+                      }}
+                      className={`text-xs font-bold px-3 py-1.5 rounded-lg transition ${showBanner ? 'bg-amber-400 text-gray-900' : 'bg-gray-100 text-gray-500 hover:bg-amber-100'}`}
+                    >
+                      {showBanner ? '✦ ظاهر' : 'عرض'}
+                    </button>
                   </td>
                   <td className="px-6 py-4 text-center">
                     <button

@@ -129,10 +129,13 @@ model ShippingRate {
 }
 
 model Coupon {
-  code      String   @id
-  discount  Float
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  code        String   @id
+  discount    Float
+  isActive    Boolean  @default(true)
+  showBanner  Boolean  @default(false)
+  bannerText  String?
+  bannerColor String?
+  createdAt   DateTime @default(now())
 }
 
 model Review {

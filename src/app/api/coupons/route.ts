@@ -8,11 +8,13 @@ export async function GET() {
   try {
     const coupons = await prisma.coupon.findMany({
       where: { isActive: true },
-      select: { code: true, discount: true },
+      select: { code: true, discount: true, showBanner: true, bannerText: true, bannerColor: true },
     });
 
+    const banner = coupons.find(c => c.showBanner) || null;
+
     return NextResponse.json(
-      { coupons },
+      { coupons, banner },
       {
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',

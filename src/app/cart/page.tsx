@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useCart } from '@/context/CartContext';
 import { useLang } from '@/context/LanguageContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
@@ -16,6 +16,23 @@ export default function CartPage() {
   const [couponInput, setCouponInput] = useState('');
   const [couponError, setCouponError] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const couponTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    if (coupon) return;
+    const code = couponInput.trim();
+    if (code.length < 3) return;
+    clearTimeout(couponTimer.current);
+    couponTimer.current = setTimeout(async () => {
+      const ok = await applyCoupon(code);
+      if (ok) {
+        setCouponError(false);
+        setCouponInput('');
+        addToast('✓ كوبون مفعّل!', 'success');
+      }
+    }, 600);
+    return () => clearTimeout(couponTimer.current);
+  }, [couponInput, coupon, applyCoupon, addToast]);
 
   if (items.length === 0) {
     return (

@@ -30,18 +30,64 @@ export async function POST(req: NextRequest) {
     const auth = await requireAdmin();
     if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
-    const { code, discount } = await req.json();
+    const { code, discount, showBanner, bannerText, bannerColor } = await req.json();
     if (!code || !discount) return NextResponse.json({ error: 'code و discount مطلوبان' }, { status: 400 });
+
+    if (showBanner) {
+      await prisma.coupon.updateMany({ where: { showBanner: true }, data: { showBanner: false } });
+    }
 
     const coupon = await prisma.coupon.upsert({
       where: { code: code.toUpperCase().trim() },
-      create: { code: code.toUpperCase().trim(), discount: Number(discount), isActive: true },
-      update: { discount: Number(discount), isActive: true },
+      create: {
+        code: code.toUpperCase().trim(),
+        discount: Number(discount),
+        isActive: true,
+        showBanner: showBanner || false,
+        bannerText: bannerText || null,
+        bannerColor: bannerColor || null,
+      },
+      update: {
+        discount: Number(discount),
+        isActive: true,
+        showBanner: showBanner ?? undefined,
+        bannerText: bannerText ?? undefined,
+        bannerColor: bannerColor ?? undefined,
+      },
     });
 
     return NextResponse.json({ coupon });
   } catch (err) {
     console.error('[admin coupons POST]', err);
+    return NextResponse.json({ error: 'حدث خطأ في الخادم' }, { status: 500 });
+  }
+}
+
+// PUT /api/admin/coupons — toggle banner on a coupon
+export async function PUT(req: NextRequest) {
+  try {
+    const auth = await requireAdmin();
+    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+
+    const { code, showBanner, bannerText, bannerColor } = await req.json();
+    if (!code) return NextResponse.json({ error: 'code مطلوب' }, { status: 400 });
+
+    if (showBanner) {
+      await prisma.coupon.updateMany({ where: { showBanner: true }, data: { showBanner: false } });
+    }
+
+    const coupon = await prisma.coupon.update({
+      where: { code },
+      data: {
+        showBanner: showBanner ?? false,
+        bannerText: bannerText ?? null,
+        bannerColor: bannerColor ?? null,
+      },
+    });
+
+    return NextResponse.json({ coupon });
+  } catch (err) {
+    console.error('[admin coupons PUT]', err);
     return NextResponse.json({ error: 'حدث خطأ في الخادم' }, { status: 500 });
   }
 }

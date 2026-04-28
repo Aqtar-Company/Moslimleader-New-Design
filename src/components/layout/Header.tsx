@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useLang } from '@/context/LanguageContext';
@@ -15,9 +15,31 @@ export default function Header() {
   const { totalItems } = useCart();
   const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [banner, setBanner] = useState<{ code: string; discount: number; bannerText?: string; bannerColor?: string } | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/coupons', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => { if (d.banner) setBanner(d.banner); })
+      .catch(() => {});
+  }, []);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
+      {banner && !bannerDismissed && (
+        <div
+          className="relative text-center py-2 px-4 text-sm font-bold"
+          style={{ background: banner.bannerColor || '#F5C518', color: banner.bannerColor === '#1a1a1a' ? '#fff' : '#1a1a1a' }}
+        >
+          <span>{banner.bannerText || `استخدم كود ${banner.code} واحصل على خصم ${banner.discount}%`}</span>
+          <span className="mx-2 bg-black/20 text-white px-2 py-0.5 rounded-full text-xs font-black tracking-wider">{banner.code}</span>
+          <button
+            onClick={() => setBannerDismissed(true)}
+            className="absolute left-3 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100 transition text-lg leading-none"
+          >×</button>
+        </div>
+      )}
       <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
       <nav className="bg-gradient-to-b from-[#1a0f00]/80 to-transparent backdrop-blur-sm" style={{ WebkitBackdropFilter: 'blur(8px)', backdropFilter: 'blur(8px)' }}>
         <div className="max-w-6xl mx-auto px-4 h-20 grid grid-cols-3 items-center">

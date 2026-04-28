@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { useState, Suspense, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { categories } from '@/lib/products';
+import { products as staticProducts, categories } from '@/lib/products';
 import { Product } from '@/types';
 import ProductCard from '@/components/product/ProductCard';
 import { useLang } from '@/context/LanguageContext';
@@ -94,38 +94,41 @@ function ShopContent() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    function applyProducts(fetched: Product[]) {
+      setAllProducts(fetched);
+      const staticUpdated = categories.map(cat =>
+        cat.id === 'all'
+          ? { ...cat, count: fetched.length }
+          : { ...cat, count: fetched.filter(p => p.category === cat.id).length }
+      );
+      const existingIds = new Set(categories.map(c => c.id));
+      const customEntries = fetched
+        .map(p => p.category)
+        .filter((c, i, arr) => !existingIds.has(c) && arr.indexOf(c) === i)
+        .map(c => ({ id: c, name: c, count: fetched.filter(p => p.category === c).length }));
+      setDisplayCategories([...staticUpdated, ...customEntries]);
+    }
+
     const fetchProducts = async () => {
       try {
         const res = await fetch(`/api/products?_t=${Date.now()}`, { signal: AbortSignal.timeout(8000), cache: 'no-store' });
         const data = await res.json();
         const fetched: Product[] = data.products ?? [];
-        setAllProducts(fetched);
-
-        // Build category counts from fetched products
-        const staticUpdated = categories.map(cat =>
-          cat.id === 'all'
-            ? { ...cat, count: fetched.length }
-            : { ...cat, count: fetched.filter(p => p.category === cat.id).length }
-        );
-        const existingIds = new Set(categories.map(c => c.id));
-        const customEntries = fetched
-          .map(p => p.category)
-          .filter((c, i, arr) => !existingIds.has(c) && arr.indexOf(c) === i)
-          .map(c => ({ id: c, name: c, count: fetched.filter(p => p.category === c).length }));
-
-        setDisplayCategories([...staticUpdated, ...customEntries]);
+        applyProducts(fetched.length > 0 ? fetched : staticProducts);
+        setLoading(false);
       } catch {
-        // API failed — retry once after 3 seconds
+        // API failed — show static products immediately so page isn't empty
+        applyProducts(staticProducts);
+        setLoading(false);
+        // Retry after 3 seconds for fresh data
         setTimeout(async () => {
           try {
             const res2 = await fetch(`/api/products?_t=${Date.now()}`, { cache: 'no-store' });
             const data2 = await res2.json();
             const fetched2: Product[] = data2.products ?? [];
-            if (fetched2.length > 0) setAllProducts(fetched2);
+            if (fetched2.length > 0) applyProducts(fetched2);
           } catch { /* ignore */ }
         }, 3000);
-      } finally {
-        setLoading(false);
       }
     };
     fetchProducts();

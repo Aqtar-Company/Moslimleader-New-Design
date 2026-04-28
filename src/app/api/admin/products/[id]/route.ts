@@ -107,7 +107,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 }
 
-// DELETE /api/admin/products/[id] — delete admin-added product from DB
+// DELETE /api/admin/products/[id] — delete product (admin or static)
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = await requireAdmin();
@@ -115,13 +115,24 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const { id } = await params;
 
-    // Only admin-source products can be deleted
     const product = await prisma.product.findUnique({ where: { id } });
-    if (!product || product.source !== 'admin') {
-      return NextResponse.json({ error: 'لا يمكن حذف المنتج' }, { status: 400 });
+
+    if (product && product.source === 'admin') {
+      await prisma.product.delete({ where: { id } });
+    } else {
+      // Static product: mark as deleted in overrides
+      const overrideSetting = await prisma.setting.findUnique({ where: { key: 'product-overrides' } });
+      const existing = (overrideSetting?.value ?? {}) as Record<string, Record<string, unknown>>;
+      const updated = { ...existing, [id]: { ...(existing[id] ?? {}), _deleted: true } };
+      await prisma.setting.upsert({
+        where: { key: 'product-overrides' },
+        create: { key: 'product-overrides', value: updated as object, updatedAt: new Date() },
+        update: { value: updated as object, updatedAt: new Date() },
+      });
+      // Also delete DB seeded copy if exists
+      try { await prisma.product.deleteMany({ where: { id, source: 'static' } }); } catch {}
     }
 
-    await prisma.product.delete({ where: { id } });
     invalidateAdminProductsCache();
     return NextResponse.json({ ok: true });
   } catch (err) {

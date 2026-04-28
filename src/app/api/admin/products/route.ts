@@ -65,12 +65,10 @@ export async function GET(req: NextRequest) {
 
     const overrides: Record<string, Record<string, unknown>> = (overrideSetting?.value as Record<string, Record<string, unknown>>) ?? {};
 
-    // Merge static products with overrides
-    const mergedStatic = staticProducts.map(p => ({
-      ...p,
-      ...(overrides[p.id] ?? {}),
-      isAdded: false,
-    }));
+    // Merge static products with overrides, exclude deleted
+    const mergedStatic = staticProducts
+      .map(p => ({ ...p, ...(overrides[p.id] ?? {}), isAdded: false }))
+      .filter(p => !(p as Record<string, unknown>)._deleted);
 
     const adminProducts = dbProducts.map((p: (typeof dbProducts)[number]) => ({ ...p, isAdded: true }));
 

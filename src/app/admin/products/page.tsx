@@ -138,8 +138,7 @@ export default function ProductsPage() {
   };
 
   const handleDelete = async (p: MergedProduct) => {
-    if (!p.isAdded) return;
-    if (!confirm(`حذف "${p.name}"؟`)) return;
+    if (!confirm(`هل أنت متأكد من حذف "${p.name}"؟\n\nلا يمكن التراجع عن هذا الإجراء.`)) return;
     await fetch(`/api/admin/products/${p.id}`, { method: 'DELETE', credentials: 'include' });
     setProducts(prev => prev.filter(x => x.id !== p.id));
   };
@@ -606,11 +605,7 @@ export default function ProductsPage() {
                         تعديل
                       </button>
                       <a href="/admin/regional-pricing" className="text-purple-500 text-xs">🌍</a>
-                      {p.isAdded ? (
-                        <button onClick={() => handleDelete(p)} className="text-red-400 font-bold text-xs hover:bg-red-50 px-2 py-1 rounded-lg">حذف</button>
-                      ) : (
-                        <button onClick={() => toggleStock(p)} className="text-gray-400 font-bold text-xs hover:bg-gray-100 px-2 py-1 rounded-lg">{p.inStock ? 'إخفاء' : 'إظهار'}</button>
-                      )}
+                      <button onClick={() => handleDelete(p)} className="text-red-400 font-bold text-xs hover:bg-red-50 px-2 py-1 rounded-lg">حذف</button>
                     </div>
                   </td>
                 </tr>

@@ -39,8 +39,9 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Merge all products: static (with overrides) + DB-added
-    let allProducts: unknown[] = [...staticWithOverrides, ...dbProducts];
+    // Merge all products: static (with overrides, excluding deleted) + DB-added
+    const activeStatic = staticWithOverrides.filter(p => !(p as Record<string, unknown>)._deleted);
+    let allProducts: unknown[] = [...activeStatic, ...dbProducts];
 
     // Apply filters
     if (category) allProducts = allProducts.filter((p: unknown) => (p as { category: string }).category === category);

@@ -6,10 +6,16 @@ import ShopPageClient from './ShopPageClient';
 
 async function getProducts(): Promise<Product[]> {
   try {
-    const [dbProducts, overrideSetting] = await Promise.all([
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), 3000)
+    );
+
+    const query = Promise.all([
       prisma.product.findMany({ where: { source: 'admin' }, orderBy: { createdAt: 'desc' } }),
       prisma.setting.findUnique({ where: { key: 'product-overrides' } }),
     ]);
+
+    const [dbProducts, overrideSetting] = await Promise.race([query, timeout]);
 
     const overrides = (overrideSetting?.value as Record<string, Record<string, unknown>>) ?? {};
 

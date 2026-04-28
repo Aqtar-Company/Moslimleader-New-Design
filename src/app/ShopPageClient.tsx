@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { useState, Suspense, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { categories } from '@/lib/products';
@@ -231,6 +232,20 @@ export default function ShopPageClient({ serverProducts }: { serverProducts: Pro
           <p className="text-white/80 mt-3 text-base sm:text-lg md:text-xl max-w-xl drop-shadow">
             {t('home.hero.subtitle')}
           </p>
+
+          {/* Digital Library CTA */}
+          <Link
+            href="/library"
+            className="mt-6 inline-flex items-center gap-2 bg-[#F5C518] hover:bg-amber-400 text-[#1a1a2e] font-bold px-6 py-3 rounded-xl transition-all hover:scale-105 shadow-lg"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+            </svg>
+            {isRtl ? 'اكتشف المكتبة الرقمية' : 'Explore Digital Library'}
+            <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none animate-pulse">
+              {isRtl ? 'جديد' : 'NEW'}
+            </span>
+          </Link>
         </div>
 
         {/* scroll indicator */}

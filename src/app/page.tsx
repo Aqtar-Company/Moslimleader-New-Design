@@ -82,6 +82,36 @@ function FadeInSection({ children }: { children: React.ReactNode }) {
 }
 
 /* ── Shop content ───────────────────────────────────────────── */
+const PRODUCTS_CACHE_KEY = 'ml-products-cache';
+
+function getCachedProducts(): Product[] | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(PRODUCTS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+  } catch { return null; }
+}
+
+function cacheProducts(items: Product[]) {
+  try { localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(items)); } catch {}
+}
+
+function buildCategories(fetched: Product[]) {
+  const staticUpdated = categories.map(cat =>
+    cat.id === 'all'
+      ? { ...cat, count: fetched.length }
+      : { ...cat, count: fetched.filter(p => p.category === cat.id).length }
+  );
+  const existingIds = new Set(categories.map(c => c.id));
+  const customEntries = fetched
+    .map(p => p.category)
+    .filter((c, i, arr) => !existingIds.has(c) && arr.indexOf(c) === i)
+    .map(c => ({ id: c, name: c, count: fetched.filter(p => p.category === c).length }));
+  return [...staticUpdated, ...customEntries];
+}
+
 function ShopContent() {
   const searchParams = useSearchParams();
   const { t, isRtl } = useLang();
@@ -89,12 +119,11 @@ function ShopContent() {
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [search, setSearch] = useState('');
 
-  // Show static products immediately for fast image render
-  const [allProducts, setAllProducts] = useState<Product[]>(products);
-  const [displayCategories, setDisplayCategories] = useState(categories);
-
-  // priceLoading=true: prices + inStock are still loading — product images show right away
-  const [priceLoading, setPriceLoading] = useState(true);
+  const cached = getCachedProducts();
+  const initialProducts = cached || products;
+  const [allProducts, setAllProducts] = useState<Product[]>(initialProducts);
+  const [displayCategories, setDisplayCategories] = useState(cached ? buildCategories(cached) : categories);
+  const [priceLoading, setPriceLoading] = useState(!cached);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -103,29 +132,20 @@ function ShopContent() {
         const data = await res.json();
         const fetched: Product[] = data.products ?? products;
         setAllProducts(fetched);
-
-        // Build category counts from fetched products
-        const staticUpdated = categories.map(cat =>
-          cat.id === 'all'
-            ? { ...cat, count: fetched.length }
-            : { ...cat, count: fetched.filter(p => p.category === cat.id).length }
-        );
-        const existingIds = new Set(categories.map(c => c.id));
-        const customEntries = fetched
-          .map(p => p.category)
-          .filter((c, i, arr) => !existingIds.has(c) && arr.indexOf(c) === i)
-          .map(c => ({ id: c, name: c, count: fetched.filter(p => p.category === c).length }));
-
-        setDisplayCategories([...staticUpdated, ...customEntries]);
+        setDisplayCategories(buildCategories(fetched));
+        cacheProducts(fetched);
         setPriceLoading(false);
       } catch {
-        // API failed — retry once after 3 seconds
         setTimeout(async () => {
           try {
             const res2 = await fetch(`/api/products?_t=${Date.now()}`, { cache: 'no-store' });
             const data2 = await res2.json();
             const fetched2: Product[] = data2.products ?? [];
-            if (fetched2.length > 0) setAllProducts(fetched2);
+            if (fetched2.length > 0) {
+              setAllProducts(fetched2);
+              setDisplayCategories(buildCategories(fetched2));
+              cacheProducts(fetched2);
+            }
           } catch { /* ignore */ } finally {
             setPriceLoading(false);
           }

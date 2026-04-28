@@ -137,10 +137,13 @@ export default function ProductsPage() {
     setEditingPrice(null);
   };
 
-  const handleDelete = async (p: MergedProduct) => {
-    if (!confirm(`هل أنت متأكد من حذف "${p.name}"؟\n\nلا يمكن التراجع عن هذا الإجراء.`)) return;
-    await fetch(`/api/admin/products/${p.id}`, { method: 'DELETE', credentials: 'include' });
-    setProducts(prev => prev.filter(x => x.id !== p.id));
+  const [deleteTarget, setDeleteTarget] = useState<MergedProduct | null>(null);
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    await fetch(`/api/admin/products/${deleteTarget.id}`, { method: 'DELETE', credentials: 'include' });
+    setProducts(prev => prev.filter(x => x.id !== deleteTarget.id));
+    setDeleteTarget(null);
   };
 
   const startEdit = async (p: MergedProduct) => {
@@ -295,6 +298,36 @@ export default function ProductsPage() {
 
   return (
     <div className="space-y-5" dir="rtl">
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setDeleteTarget(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center" onClick={e => e.stopPropagation()}>
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-black text-gray-900 mb-2">حذف المنتج</h3>
+            <p className="text-gray-500 text-sm mb-1">هل أنت متأكد من حذف</p>
+            <p className="font-bold text-gray-900 mb-1">&quot;{deleteTarget.name}&quot;</p>
+            <p className="text-red-500 text-xs mb-6">لا يمكن التراجع عن هذا الإجراء</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl transition text-sm"
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition text-sm"
+              >
+                حذف نهائياً
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-black text-gray-900">إدارة المنتجات</h1>
@@ -605,7 +638,7 @@ export default function ProductsPage() {
                         تعديل
                       </button>
                       <a href="/admin/regional-pricing" className="text-purple-500 text-xs">🌍</a>
-                      <button onClick={() => handleDelete(p)} className="text-red-400 font-bold text-xs hover:bg-red-50 px-2 py-1 rounded-lg">حذف</button>
+                      <button onClick={() => setDeleteTarget(p)} className="text-red-400 font-bold text-xs hover:bg-red-50 px-2 py-1 rounded-lg">حذف</button>
                     </div>
                   </td>
                 </tr>

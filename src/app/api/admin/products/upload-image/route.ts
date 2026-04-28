@@ -4,6 +4,7 @@ import { getAuthUser } from '@/lib/jwt';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import sharp from 'sharp';
 
 async function requireAdmin() {
   const auth = await getAuthUser();
@@ -12,8 +13,7 @@ async function requireAdmin() {
 }
 
 // POST /api/admin/products/upload-image
-// FormData: file (image)
-// Returns: { url: '/products/uuid.jpg' }
+// Compresses and converts to WebP, max 1200px wide
 export async function POST(req: NextRequest) {
   try {
     const auth = await requireAdmin();
@@ -27,15 +27,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'يجب أن يكون الملف صورة' }, { status: 400 });
     }
 
-    const ALLOWED = ['jpg', 'jpeg', 'png', 'webp', 'avif', 'gif'];
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-    if (!ALLOWED.includes(ext)) {
-      return NextResponse.json({ error: 'امتداد غير مدعوم' }, { status: 400 });
-    }
-
-    // Max 8MB per image
-    if (file.size > 8 * 1024 * 1024) {
-      return NextResponse.json({ error: 'الصورة أكبر من 8MB' }, { status: 400 });
+    if (file.size > 10 * 1024 * 1024) {
+      return NextResponse.json({ error: 'الصورة أكبر من 10MB' }, { status: 400 });
     }
 
     const bytes = await file.arrayBuffer();
@@ -44,10 +37,23 @@ export async function POST(req: NextRequest) {
     const dir = path.join(process.cwd(), 'public', 'products');
     await mkdir(dir, { recursive: true });
 
-    const filename = `${randomUUID()}.${ext}`;
-    await writeFile(path.join(dir, filename), buffer);
+    const filename = `${randomUUID()}.webp`;
 
-    return NextResponse.json({ url: `/products/${filename}` });
+    const optimized = await sharp(buffer)
+      .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
+
+    await writeFile(path.join(dir, filename), optimized);
+
+    const savedKB = Math.round((buffer.length - optimized.length) / 1024);
+
+    return NextResponse.json({
+      url: `/products/${filename}`,
+      originalSize: `${Math.round(buffer.length / 1024)}KB`,
+      optimizedSize: `${Math.round(optimized.length / 1024)}KB`,
+      saved: savedKB > 0 ? `${savedKB}KB` : '0KB',
+    });
   } catch (err) {
     console.error('[admin products upload-image]', err);
     return NextResponse.json({ error: 'فشل رفع الصورة' }, { status: 500 });

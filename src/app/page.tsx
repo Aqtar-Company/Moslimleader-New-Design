@@ -178,30 +178,34 @@ function ShopContent() {
         </div>
       </div>
 
-      {/* Category filter */}
-      <div className="flex flex-wrap gap-2 justify-center mb-10">
-        {displayCategories.map(cat => (
-          <button
-            key={cat.id}
-            onClick={() => setActiveCategory(cat.id)}
-            className={`flex items-center gap-2 px-5 py-2 rounded-full border-2 font-semibold text-sm transition ${
-              activeCategory === cat.id
-                ? 'bg-gray-900 border-gray-900 text-white'
-                : 'border-gray-200 hover:border-gray-900 text-gray-700'
-            }`}
-          >
-            {t(`cat.${cat.id}` as Parameters<typeof t>[0]) || cat.name}
-            <span className={`text-xs font-bold px-1.5 rounded-full ${activeCategory === cat.id ? 'bg-white text-gray-900' : 'bg-gray-100'}`}>
-              {cat.count}
-            </span>
-          </button>
-        ))}
-      </div>
+      {/* Category filter — hidden while loading */}
+      {!loading && (
+        <div className="flex flex-wrap gap-2 justify-center mb-10">
+          {displayCategories.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={`flex items-center gap-2 px-5 py-2 rounded-full border-2 font-semibold text-sm transition ${
+                activeCategory === cat.id
+                  ? 'bg-gray-900 border-gray-900 text-white'
+                  : 'border-gray-200 hover:border-gray-900 text-gray-700'
+              }`}
+            >
+              {t(`cat.${cat.id}` as Parameters<typeof t>[0]) || cat.name}
+              <span className={`text-xs font-bold px-1.5 rounded-full ${activeCategory === cat.id ? 'bg-white text-gray-900' : 'bg-gray-100'}`}>
+                {cat.count}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
 
-      {/* Results count */}
-      <p className="text-gray-500 text-sm mb-6">
-        {filtered.length} {t('shop.results')}
-      </p>
+      {/* Results count — hidden while loading */}
+      {!loading && (
+        <p className="text-gray-500 text-sm mb-6">
+          {filtered.length} {t('shop.results')}
+        </p>
+      )}
 
       {/* Grid */}
       {loading ? (

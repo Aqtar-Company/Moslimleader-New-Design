@@ -128,23 +128,24 @@ function ShopContent() {
   const [search, setSearch] = useState('');
 
   const cached = getCachedProducts();
-  const initialProducts = cached || products;
-  const [allProducts, setAllProducts] = useState<Product[]>(initialProducts);
+  const [allProducts, setAllProducts] = useState<Product[]>(cached || []);
   const [displayCategories, setDisplayCategories] = useState(cached ? buildCategories(cached) : categories);
-  const [priceLoading, setPriceLoading] = useState(!cached);
+  const [loading, setLoading] = useState(!cached);
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         const res = await fetch(`/api/products?_t=${Date.now()}`, { signal: AbortSignal.timeout(8000), cache: 'no-store' });
         const data = await res.json();
-        const fetched: Product[] = data.products ?? products;
-        setAllProducts(fetched);
-        setDisplayCategories(buildCategories(fetched));
-        cacheProducts(fetched);
-        setPriceLoading(false);
+        const fetched: Product[] = data.products ?? [];
+        if (fetched.length > 0) {
+          setAllProducts(fetched);
+          setDisplayCategories(buildCategories(fetched));
+          cacheProducts(fetched);
+        }
+        setLoading(false);
       } catch {
-        setPriceLoading(false);
+        setLoading(false);
       }
     };
     fetchProducts();
@@ -203,10 +204,26 @@ function ShopContent() {
       </p>
 
       {/* Grid */}
-      {filtered.length > 0 ? (
+      {loading ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
+              <div className="aspect-square bg-gray-200" />
+              <div className="p-4 space-y-3">
+                <div className="h-4 bg-gray-200 rounded w-3/4" />
+                <div className="h-3 bg-gray-100 rounded w-full" />
+                <div className="flex justify-between items-center pt-2">
+                  <div className="h-5 bg-gray-200 rounded w-16" />
+                  <div className="h-8 bg-gray-200 rounded-xl w-20" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : filtered.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
           {filtered.map(product => (
-            <ProductCard key={product.id} product={product} priceLoading={priceLoading} />
+            <ProductCard key={product.id} product={product} priceLoading={false} />
           ))}
         </div>
       ) : (

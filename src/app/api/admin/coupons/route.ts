@@ -72,17 +72,20 @@ export async function PUT(req: NextRequest) {
     const { code, showBanner, bannerText, bannerColor } = await req.json();
     if (!code) return NextResponse.json({ error: 'code مطلوب' }, { status: 400 });
 
-    if (showBanner) {
-      await prisma.coupon.updateMany({ where: { showBanner: true }, data: { showBanner: false } });
-    }
+    const normalizedCode = code.toUpperCase().trim();
 
-    const coupon = await prisma.coupon.update({
-      where: { code },
-      data: {
-        showBanner: showBanner ?? false,
-        bannerText: bannerText ?? null,
-        bannerColor: bannerColor ?? null,
-      },
+    const coupon = await prisma.$transaction(async (tx) => {
+      if (showBanner) {
+        await tx.coupon.updateMany({ where: { showBanner: true }, data: { showBanner: false } });
+      }
+      return tx.coupon.update({
+        where: { code: normalizedCode },
+        data: {
+          showBanner: showBanner ?? false,
+          bannerText: bannerText ?? null,
+          bannerColor: bannerColor ?? null,
+        },
+      });
     });
 
     return NextResponse.json({ coupon });

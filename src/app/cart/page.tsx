@@ -21,16 +21,19 @@ export default function CartPage() {
   useEffect(() => {
     if (coupon) return;
     const code = couponInput.trim();
-    if (code.length < 3) return;
+    if (code.length < 3) { setCouponError(false); return; }
     clearTimeout(couponTimer.current);
     couponTimer.current = setTimeout(async () => {
+      if (couponInput.trim() !== code) return;
       const ok = await applyCoupon(code);
       if (ok) {
         setCouponError(false);
         setCouponInput('');
         addToast('✓ كوبون مفعّل!', 'success');
+      } else if (code.length >= 4) {
+        setCouponError(true);
       }
-    }, 600);
+    }, 800);
     return () => clearTimeout(couponTimer.current);
   }, [couponInput, coupon, applyCoupon, addToast]);
 

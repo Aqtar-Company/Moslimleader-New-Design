@@ -29,14 +29,15 @@ export default function Header() {
     <header className="fixed top-0 left-0 right-0 z-50">
       {banner && !bannerDismissed && (
         <div
-          className="relative text-center py-2 px-4 text-sm font-bold"
-          style={{ background: banner.bannerColor || '#F5C518', color: banner.bannerColor === '#1a1a1a' ? '#fff' : '#1a1a1a' }}
+          className="relative text-center py-2 px-8 text-sm font-bold"
+          style={{ background: banner.bannerColor || '#F5C518', color: (banner.bannerColor || '').toLowerCase() === '#1a1a1a' ? '#fff' : '#1a1a1a' }}
         >
           <span>{banner.bannerText || `استخدم كود ${banner.code} واحصل على خصم ${banner.discount}%`}</span>
           <span className="mx-2 bg-black/20 text-white px-2 py-0.5 rounded-full text-xs font-black tracking-wider">{banner.code}</span>
           <button
             onClick={() => setBannerDismissed(true)}
             className="absolute left-3 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100 transition text-lg leading-none"
+            aria-label="إغلاق"
           >×</button>
         </div>
       )}

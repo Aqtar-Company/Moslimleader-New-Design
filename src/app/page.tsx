@@ -82,7 +82,7 @@ function FadeInSection({ children }: { children: React.ReactNode }) {
 }
 
 /* ── Shop content ───────────────────────────────────────────── */
-const PRODUCTS_CACHE_KEY = 'ml-products-cache';
+const PRODUCTS_CACHE_KEY = 'ml-products-v2';
 
 function getCachedProducts(): Product[] | null {
   if (typeof window === 'undefined') return null;
@@ -90,12 +90,19 @@ function getCachedProducts(): Product[] | null {
     const raw = localStorage.getItem(PRODUCTS_CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+    if (!parsed[0].id || !parsed[0].name) return null;
+    return parsed;
   } catch { return null; }
 }
 
 function cacheProducts(items: Product[]) {
-  try { localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(items)); } catch {}
+  try {
+    const json = JSON.stringify(items);
+    if (json.length > 2_000_000) return;
+    localStorage.removeItem('ml-products-cache');
+    localStorage.setItem(PRODUCTS_CACHE_KEY, json);
+  } catch {}
 }
 
 function buildCategories(fetched: Product[]) {

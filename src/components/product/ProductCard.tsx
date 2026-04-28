@@ -19,7 +19,7 @@ export default function ProductCard({ product, priceLoading = false }: { product
   const { addToast } = useToast();
   const router = useRouter();
   const [added, setAdded] = useState(false);
-  const hasVariants = (product.variants && product.variants.length > 0) || (product.images && product.images.length > 1 && ['bags', 'mugs', 'notebooks'].includes(product.subcategory || ''));
+  const hasVariants = product.variants && product.variants.length > 0;
 
   const displayName = isRtl ? product.name : (product.nameEn || product.name);
   const displayShortDesc = isRtl ? product.shortDescription : (product.shortDescriptionEn || product.shortDescription);

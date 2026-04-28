@@ -22,6 +22,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     // Try DB product first
     const dbProduct = await prisma.product.findUnique({ where: { id } });
     if (dbProduct) {
+      if (dbProduct.source === 'static') {
+        const overrideSetting = await prisma.setting.findUnique({ where: { key: 'product-overrides' } });
+        const overrides = ((overrideSetting?.value ?? {}) as Record<string, Record<string, unknown>>)[id] ?? {};
+        return NextResponse.json({ product: { ...dbProduct, ...overrides, isAdded: false } });
+      }
       return NextResponse.json({ product: { ...dbProduct, isAdded: true } });
     }
 

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
+import { invalidatePublicProductsCache } from '@/lib/product-cache';
 
 
 async function requireAdmin() {
@@ -120,8 +121,9 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Invalidate cache so next GET returns fresh data
+    // Invalidate both admin and public caches
     invalidateAdminProductsCache();
+    invalidatePublicProductsCache();
 
     return NextResponse.json({ product });
   } catch (err) {

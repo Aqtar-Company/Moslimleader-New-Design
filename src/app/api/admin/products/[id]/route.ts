@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { invalidateAdminProductsCache } from '../route';
+import { invalidatePublicProductsCache } from '@/lib/product-cache';
 import { products as staticProducts } from '@/lib/products';
 
 async function requireAdmin() {
@@ -65,7 +66,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           updatedAt: new Date(),
         },
       });
-      invalidateAdminProductsCache();
+      invalidateAdminProductsCache(); invalidatePublicProductsCache();
       return NextResponse.json({ product });
     } else {
       // Save override for static product in Setting table
@@ -79,7 +80,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         update: { value: updated as object, updatedAt: new Date() },
       });
 
-      invalidateAdminProductsCache();
+      invalidateAdminProductsCache(); invalidatePublicProductsCache();
       return NextResponse.json({ ok: true });
     }
   } catch (err) {

@@ -62,6 +62,9 @@ model Product {
   orderItems OrderItem[]
   cartItems  CartItem[]
   reviews    Review[]
+
+  @@index([source])
+  @@index([category])
 }
 
 model Order {

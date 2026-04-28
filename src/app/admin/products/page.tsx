@@ -548,7 +548,7 @@ export default function ProductsPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
-                        {p.images[0] && <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />}
+                        {p.images?.[0] ? <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).src = '/logo.png'; }} /> : <div className="w-full h-full flex items-center justify-center text-gray-300 text-lg">📷</div>}
                       </div>
                       <p className="font-bold text-gray-900 text-xs">{p.name}</p>
                     </div>
@@ -606,7 +606,11 @@ export default function ProductsPage() {
                         تعديل
                       </button>
                       <a href="/admin/regional-pricing" className="text-purple-500 text-xs">🌍</a>
-                      {p.isAdded && <button onClick={() => handleDelete(p)} className="text-red-400 font-bold text-xs hover:bg-red-50 px-2 py-1 rounded-lg">حذف</button>}
+                      {p.isAdded ? (
+                        <button onClick={() => handleDelete(p)} className="text-red-400 font-bold text-xs hover:bg-red-50 px-2 py-1 rounded-lg">حذف</button>
+                      ) : (
+                        <button onClick={() => toggleStock(p)} className="text-gray-400 font-bold text-xs hover:bg-gray-100 px-2 py-1 rounded-lg">{p.inStock ? 'إخفاء' : 'إظهار'}</button>
+                      )}
                     </div>
                   </td>
                 </tr>

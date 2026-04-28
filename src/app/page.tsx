@@ -111,7 +111,10 @@ function ShopContent() {
 
     const fetchProducts = async () => {
       try {
-        const res = await fetch(`/api/products?_t=${Date.now()}`, { signal: AbortSignal.timeout(8000), cache: 'no-store' });
+        const controller = new AbortController();
+        const tid = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(`/api/products?_t=${Date.now()}`, { signal: controller.signal, cache: 'no-store' });
+        clearTimeout(tid);
         const data = await res.json();
         const fetched: Product[] = data.products ?? [];
         applyProducts(fetched.length > 0 ? fetched : staticProducts);

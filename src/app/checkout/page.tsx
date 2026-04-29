@@ -1258,7 +1258,7 @@ export default function CheckoutPage() {
                        // Auto-save address for PayPal orders too
                        if (user) {
                          try {
-                           const govObj2 = EGYPT_GOVERNORATES.find(g => g.id === address.governorate);
+                           const govObj2 = governorates.find((g: { id: string }) => g.id === address.governorate);
                            const countryObj2 = COUNTRIES.find(c => c.code === address.country);
                            const newAddr2 = {
                              id: selectedSavedAddressId ?? `addr_${Date.now()}`,

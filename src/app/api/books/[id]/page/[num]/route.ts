@@ -84,7 +84,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       ]);
     }
 
-    return new NextResponse(finalBuffer, {
+    return new NextResponse(finalBuffer as unknown as BodyInit, {
       headers: {
         'Content-Type': 'image/png',
         // No shared cache — each user gets a unique watermarked image

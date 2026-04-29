@@ -3,14 +3,13 @@ import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useLang } from '@/context/LanguageContext';
-import { useAuth } from '@/context/AuthContext';
+
 
 function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token') || '';
   const { lang } = useLang();
-  const { refreshUser } = useAuth();
   const isRtl = lang === 'ar';
 
   const [password, setPassword] = useState('');
@@ -49,8 +48,7 @@ function ResetPasswordContent() {
         return;
       }
       setSuccess(true);
-      await refreshUser?.();
-      setTimeout(() => router.push('/'), 2000);
+      setTimeout(() => router.push('/auth'), 2000);
     } catch {
       setError(isRtl ? 'حدث خطأ في الاتصال' : 'Connection error');
     } finally {

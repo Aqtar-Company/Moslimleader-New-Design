@@ -51,7 +51,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // Full access — send complete PDF
     if (hasFullAccess) {
-      return new NextResponse(buffer, {
+      return new NextResponse(buffer as unknown as BodyInit, {
         headers: {
           'Content-Type': 'application/pdf',
           'Content-Disposition': 'inline',
@@ -81,7 +81,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const truncated = Buffer.from(await pdfDoc.save());
 
-    return new NextResponse(truncated, {
+    return new NextResponse(truncated as unknown as BodyInit, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': 'inline',

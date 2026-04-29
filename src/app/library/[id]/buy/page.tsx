@@ -26,6 +26,8 @@ export default function BookBuyPage({ params }: { params: Promise<{ id: string }
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const { addToast } = useToast();
+  const { lang } = useLang();
+  const isEn = lang === 'en';
 
   useEffect(() => {
     // Support both Next.js 14 (plain object) and Next.js 15 (Promise) params

@@ -47,6 +47,8 @@ src/
       regional-pricing/             # Regional price overrides
       settings/                     # Site-wide settings
     api/                            # All API routes (force-dynamic)
+      orders/guest-notify/          # Guest order email notification (no auth, rate-limited)
+      admin/orders/resend-emails/   # Admin: resend email for all DB orders (one-time recovery)
     error.tsx                       # Error boundary (auto-reload on stale Server Action)
     global-error.tsx                # Global error boundary
   components/
@@ -286,3 +288,4 @@ Books are protected from download at two levels:
 | Home page flash of old images | Client-side initial state from stale `products.ts` | SSR: `page.tsx` fetches products from DB with overrides |
 | SMTP hardcoded localhost | Old `nodemailer` config used `localhost:25` | Updated to use `SMTP_HOST/PORT/USER/PASS` env vars |
 | Gmail password exposed in code | Forgot-password had hardcoded Gmail app password | Replaced with local postfix / Titan SMTP via env vars |
+| Guest orders don't send email | `if (user)` skipped API call + email for guests | Added `/api/orders/guest-notify` endpoint + `else` in checkout |

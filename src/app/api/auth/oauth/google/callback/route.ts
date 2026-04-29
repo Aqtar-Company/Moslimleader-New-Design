@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
     });
 
     // Create JWT token and set cookie using shared makeAuthCookie (consistent cookie name)
-    const token = await signToken({ userId: user.id, email: user.email, role: user.role });
+    const token = await signToken({ userId: user.id, email: user.email, role: user.role, name: user.name });
     const response = NextResponse.redirect(`${baseUrl}/`);
     response.cookies.set(makeAuthCookie(token));
 

@@ -44,18 +44,15 @@ export async function POST(
   let latitude: number | null = null;
   let longitude: number | null = null;
 
-  const isPrivateIp = (ip: string) =>
-    ip === '0.0.0.0' ||
-    ip === '127.0.0.1' ||
-    ip.startsWith('192.168.') ||
-    ip.startsWith('10.') ||
-    ip.startsWith('172.16.') ||
-    ip.startsWith('172.17.') ||
-    ip.startsWith('172.18.') ||
-    ip.startsWith('172.19.') ||
-    ip.startsWith('172.2') ||
-    ip.startsWith('172.30.') ||
-    ip.startsWith('172.31.');
+  const isPrivateIp = (ip: string) => {
+    if (ip === '0.0.0.0' || ip === '127.0.0.1' || ip.startsWith('192.168.') || ip.startsWith('10.')) return true;
+    const parts = ip.split('.');
+    if (parts[0] === '172') {
+      const second = parseInt(parts[1], 10);
+      if (second >= 16 && second <= 31) return true;
+    }
+    return false;
+  };
 
   try {
     if (ipAddress && !isPrivateIp(ipAddress)) {

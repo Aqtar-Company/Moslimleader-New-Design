@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
 
     // Admin accounts get logged in immediately; customers must verify email first
     if (isAdmin) {
-      const token = await signToken({ userId: user.id, email: user.email, role: user.role });
+      const token = await signToken({ userId: user.id, email: user.email, role: user.role, name: user.name });
       const res = NextResponse.json({
         user: { id: user.id, name: user.name, email: user.email, phone: user.phone, savedAddresses: [] },
       });

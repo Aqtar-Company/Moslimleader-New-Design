@@ -6,7 +6,7 @@ import { getAuthUser } from '@/lib/jwt';
 // GET /api/admin/devices?userId=xxx — list devices for a user
 export async function GET(req: NextRequest) {
   const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!auth || auth.role !== 'admin') return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
   const userId = req.nextUrl.searchParams.get('userId');
   if (!userId) return NextResponse.json({ error: 'userId required' }, { status: 400 });
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
 // DELETE /api/admin/devices?userId=xxx — reset all devices for a user
 export async function DELETE(req: NextRequest) {
   const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!auth || auth.role !== 'admin') return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
   const userId = req.nextUrl.searchParams.get('userId');
   if (!userId) return NextResponse.json({ error: 'userId required' }, { status: 400 });

@@ -5,9 +5,16 @@ import { prisma } from '@/lib/prisma';
 import { readFile } from 'fs/promises';
 import path from 'path';
 import { PDFDocument } from 'pdf-lib';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+    const { allowed } = checkRateLimit(`book-file:${ip}`, 10, 60 * 1000);
+    if (!allowed) {
+      return NextResponse.json({ error: 'طلبات كثيرة، حاول لاحقاً' }, { status: 429 });
+    }
+
     const { id } = await params;
     const auth = await getAuthUser();
 

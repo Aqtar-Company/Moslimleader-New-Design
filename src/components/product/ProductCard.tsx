@@ -80,7 +80,7 @@ export default function ProductCard({ product, priceLoading = false }: { product
                 return;
               }
               addItem(product);
-              addToast(`✓ أُضيف "${displayName}" للسلة`, 'success');
+              addToast(isRtl ? `✓ أُضيف "${displayName}" للسلة` : `✓ "${displayName}" added to cart`, 'success');
               setAdded(true);
               setTimeout(() => setAdded(false), 1500);
             }}

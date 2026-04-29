@@ -55,6 +55,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'عنوان الشارع غير صحيح' }, { status: 400 });
     }
 
+    // Batch-fetch all products in one query
+    const productIds = items.map((it: any) => String(it.productId));
+    const dbProductsList = await prisma.product.findMany({
+      where: { OR: [{ id: { in: productIds } }, { slug: { in: productIds } }] },
+    });
+    const dbProductMap = new Map(dbProductsList.flatMap(p => [[p.id, p], [p.slug, p]]));
+
     let totalUsd = 0;
     const resolvedItems: any[] = [];
     for (const item of items) {
@@ -63,9 +70,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'كمية غير صحيحة' }, { status: 400 });
       }
 
-      let dbProduct = await prisma.product.findFirst({
-        where: { OR: [{ id: String(item.productId) }, { slug: String(item.productId) }] },
-      });
+      let dbProduct = dbProductMap.get(String(item.productId)) ?? null;
 
       if (!dbProduct) {
         const sp = staticProducts.find(p => p.id === item.productId || p.slug === item.productId);

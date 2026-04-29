@@ -57,7 +57,15 @@ export async function PUT(
     }
 
     const { slug } = await params;
-    const data = await req.json();
+    const body = await req.json();
+    const ALLOWED = [
+      'name', 'nameEn', 'description', 'descriptionEn', 'shortDescription', 'shortDescriptionEn',
+      'price', 'priceUsd', 'category', 'subcategory', 'tags', 'images', 'variants',
+      'inStock', 'featured', 'videos', 'weight',
+    ];
+    const data: Record<string, unknown> = {};
+    for (const k of ALLOWED) if (k in body) data[k] = body[k];
+
     const product = await prisma.product.update({ where: { slug }, data });
     return NextResponse.json({ product });
   } catch (err) {

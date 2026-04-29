@@ -513,7 +513,7 @@ export default function CheckoutPage() {
 
     setOrderPlaced(true);
     } catch {
-      addToast('حدث خطأ، حاول مرة أخرى', 'error');
+      addToast(isRtl ? 'حدث خطأ، حاول مرة أخرى' : 'An error occurred, please try again', 'error');
     } finally {
       setIsSubmitting(false);
     }

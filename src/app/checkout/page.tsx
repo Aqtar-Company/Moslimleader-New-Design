@@ -448,10 +448,32 @@ export default function CheckoutPage() {
         const orderData = await orderRes.json();
         if (orderData.order?.id) setCreatedOrderId(orderData.order.id);
       } catch { /* DB failure shouldn't block order confirmation */ }
+    } else {
+      // Guest: send admin email notification (no DB save — userId required)
+      try {
+        await fetch('/api/orders/guest-notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderNumber,
+            items: items.map(item => ({
+              productName: item.product.name,
+              productImage: item.product.images?.[0] ?? null,
+              quantity: item.quantity,
+              unitPrice: getProductPrice(item.product).price,
+            })),
+            total: total - discount + shippingCost,
+            shippingCost,
+            discount,
+            couponCode: coupon?.code ?? null,
+            paymentMethod: payMethod,
+            currency,
+            shippingAddress: address,
+            notes: address.notes,
+          }),
+        });
+      } catch { /* email failure shouldn't block order confirmation */ }
     }
-
-    // Email notification is now sent server-side from /api/orders
-    // (HTML template with logo, product images, totals breakdown — see src/lib/order-email.ts)
 
     // Auto-save address to user account if logged in and user opted in
     if (user && (saveAddressChecked || selectedSavedAddressId)) {

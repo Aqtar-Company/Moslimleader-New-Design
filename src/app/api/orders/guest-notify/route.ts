@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'لا توجد منتجات' }, { status: 400 });
     }
-    if (!paymentMethod || !['cod', 'vodafone', 'instapay'].includes(paymentMethod)) {
+    if (!paymentMethod || !['cod', 'card', 'vodafone', 'instapay'].includes(paymentMethod)) {
       return NextResponse.json({ error: 'طريقة دفع غير صحيحة' }, { status: 400 });
     }
     if (typeof total !== 'number' || total <= 0) {

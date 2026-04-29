@@ -49,12 +49,24 @@ const WishlistContext = createContext<WishlistContextValue | null>(null);
 async function resolveIds(ids: string[]): Promise<Product[]> {
   if (ids.length === 0) return [];
   const items: Product[] = [];
+  const missing: string[] = [];
   for (const id of ids) {
     const found = staticProducts.find(p => p.id === id);
-    if (found) {
-      items.push(found);
-    }
-    // DB products could be fetched from /api/products if needed
+    if (found) items.push(found);
+    else missing.push(id);
+  }
+  if (missing.length > 0) {
+    try {
+      const res = await fetch('/api/products');
+      if (res.ok) {
+        const data = await res.json();
+        const all: Product[] = data.products ?? [];
+        for (const id of missing) {
+          const p = all.find((pr: Product) => pr.id === id);
+          if (p) items.push(p);
+        }
+      }
+    } catch {}
   }
   return items;
 }

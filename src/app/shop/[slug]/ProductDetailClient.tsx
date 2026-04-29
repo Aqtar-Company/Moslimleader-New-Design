@@ -66,7 +66,13 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   const displayShortDesc = isRtl ? product.shortDescription : (product.shortDescriptionEn || product.shortDescription);
   const displayDescription = isRtl ? product.description : (product.descriptionEn || product.description);
 
-  const related = products
+  const [allProducts, setAllProducts] = useState(products);
+  useEffect(() => {
+    fetch('/api/products').then(r => r.json()).then(d => {
+      if (Array.isArray(d.products) && d.products.length > 0) setAllProducts(d.products);
+    }).catch(() => {});
+  }, []);
+  const related = allProducts
     .filter(p => p.category === product.category && p.id !== product.id)
     .slice(0, 4);
 

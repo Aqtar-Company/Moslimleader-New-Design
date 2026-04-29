@@ -49,6 +49,13 @@ export async function POST(req: NextRequest) {
     const discountCurrency: string = String(body?.discountCurrency || 'USD').toUpperCase();
     const shippingCurrency: string = String(body?.shippingCurrency || 'USD').toUpperCase();
 
+    // Batch-fetch all products in one query instead of N+1
+    const productIds = items.map((it: any) => String(it.productId));
+    const dbProducts = await prisma.product.findMany({
+      where: { OR: [{ id: { in: productIds } }, { slug: { in: productIds } }] },
+    });
+    const dbMap = new Map(dbProducts.flatMap(p => [[p.id, p], [p.slug, p]]));
+
     let totalUsd = 0;
     for (const item of items) {
       const qty = Number(item?.quantity);
@@ -56,11 +63,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'كمية غير صحيحة' }, { status: 400 });
       }
 
-      const dbProduct = await prisma.product.findFirst({
-        where: { OR: [{ id: String(item.productId) }, { slug: String(item.productId) }] },
-      });
+      const pid = String(item.productId);
+      const dbProduct = dbMap.get(pid) ?? null;
       const staticP: any = !dbProduct
-        ? staticProducts.find(p => p.id === item.productId || p.slug === item.productId)
+        ? staticProducts.find(p => p.id === pid || p.slug === pid)
         : null;
       const product: any = dbProduct || staticP;
 

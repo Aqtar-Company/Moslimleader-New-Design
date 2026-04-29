@@ -24,6 +24,10 @@ export async function POST(
       return NextResponse.json({ error: 'انتهت صلاحية هذا الرابط' }, { status: 410 });
     }
 
+    if (link.usedCount >= 5) {
+      return NextResponse.json({ error: 'تم استخدام هذا الرابط الحد الأقصى من المرات' }, { status: 410 });
+    }
+
     // Don't grant access to the person who created the link (they already have it)
     if (link.createdBy !== auth.userId) {
       await prisma.$transaction([

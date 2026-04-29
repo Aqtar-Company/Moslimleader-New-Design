@@ -4,7 +4,18 @@
  * Only runs in the browser — returns html as-is during SSR (build-time data is trusted).
  */
 export function sanitizeHtml(html: string): string {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return html;
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return html
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, '')
+      .replace(/<object\b[^>]*>[\s\S]*?<\/object>/gi, '')
+      .replace(/<embed\b[^>]*\/?>/gi, '')
+      .replace(/<form\b[^>]*>[\s\S]*?<\/form>/gi, '')
+      .replace(/\bon\w+\s*=\s*"[^"]*"/gi, '')
+      .replace(/\bon\w+\s*=\s*'[^']*'/gi, '')
+      .replace(/href\s*=\s*"javascript:[^"]*"/gi, '')
+      .replace(/href\s*=\s*'javascript:[^']*'/gi, '');
+  }
   const doc = document.implementation.createHTMLDocument('');
   doc.body.innerHTML = html;
 

@@ -15,11 +15,13 @@ export async function POST() {
     }
 
     const orders = await prisma.order.findMany({
+      where: { createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } },
       include: {
         items: true,
         user: { select: { name: true, email: true, phone: true } },
       },
       orderBy: { createdAt: 'desc' },
+      take: 100,
     });
 
     let sent = 0;

@@ -35,7 +35,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Calculate USD price server-side
     const priceUsd = book.priceUSD && book.priceUSD > 0
       ? Number(book.priceUSD)
-      : Number(book.price) * 0.10; // fallback: 10% of EGP
+      : Number(book.price) / 50; // fallback: 1 USD ≈ 50 EGP
 
     if (!Number.isFinite(priceUsd) || priceUsd <= 0) {
       return NextResponse.json({ error: 'خطأ في سعر الكتاب' }, { status: 400 });

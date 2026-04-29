@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
 
     const { ids } = await req.json();
     if (!Array.isArray(ids)) return NextResponse.json({ error: 'ids يجب أن يكون مصفوفة' }, { status: 400 });
+    if (ids.length > 100) return NextResponse.json({ error: 'الحد الأقصى 100 منتج' }, { status: 400 });
 
     await prisma.user.update({
       where: { id: auth.userId },

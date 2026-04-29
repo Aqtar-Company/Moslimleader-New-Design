@@ -35,11 +35,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (series.seriesPriceUSD && series.seriesPriceUSD > 0) {
       priceUsd = Number(series.seriesPriceUSD);
     } else if (series.seriesPrice && series.seriesPrice > 0) {
-      priceUsd = Number(series.seriesPrice) * 0.10;
+      priceUsd = Number(series.seriesPrice) / 50;
     } else {
       // Sum individual book prices in USD
       priceUsd = series.books.reduce((sum, b) => {
-        const bookUsd = b.priceUSD && b.priceUSD > 0 ? Number(b.priceUSD) : Number(b.price) * 0.10;
+        const bookUsd = b.priceUSD && b.priceUSD > 0 ? Number(b.priceUSD) : Number(b.price) / 50;
         return sum + bookUsd;
       }, 0);
     }

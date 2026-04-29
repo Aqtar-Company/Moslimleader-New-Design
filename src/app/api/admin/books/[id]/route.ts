@@ -20,20 +20,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const body = await req.json();
 
-    let book;
-    try {
-      book = await prisma.book.update({
-        where: { id },
-        data: { ...body, updatedAt: new Date() },
-      });
-    } catch {
-      // Fallback: remove age fields if columns don't exist yet
-      const { minAge: _a, maxAge: _b, needsParentalGuide: _c, ...safeBody } = body;
-      book = await prisma.book.update({
-        where: { id },
-        data: { ...safeBody, updatedAt: new Date() },
-      });
-    }
+    const ALLOWED = [
+      'title', 'titleEn', 'description', 'descriptionEn', 'author', 'authorEn',
+      'cover', 'price', 'priceUSD', 'freePages', 'totalPages', 'isPublished',
+      'language', 'filePath', 'seriesId', 'seriesOrder',
+      'minAge', 'maxAge', 'needsParentalGuide',
+    ];
+    const data: Record<string, unknown> = { updatedAt: new Date() };
+    for (const k of ALLOWED) if (k in body) data[k] = body[k];
+
+    const book = await prisma.book.update({ where: { id }, data });
 
     return NextResponse.json({ book });
   } catch (err) {

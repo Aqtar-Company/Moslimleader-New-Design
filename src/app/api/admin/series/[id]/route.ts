@@ -42,10 +42,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const body = await req.json();
 
-    const series = await prisma.bookSeries.update({
-      where: { id },
-      data: { ...body, updatedAt: new Date() },
-    });
+    const ALLOWED = ['title', 'titleEn', 'description', 'descriptionEn', 'cover', 'price', 'priceUSD', 'isPublished'];
+    const data: Record<string, unknown> = { updatedAt: new Date() };
+    for (const k of ALLOWED) if (k in body) data[k] = body[k];
+
+    const series = await prisma.bookSeries.update({ where: { id }, data });
 
     return NextResponse.json({ series });
   } catch (err) {

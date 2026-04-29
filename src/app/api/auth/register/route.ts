@@ -5,12 +5,19 @@ import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import { prisma } from '@/lib/prisma';
 import { signToken, makeAuthCookie } from '@/lib/jwt';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 // Email regex — basic RFC 5322 subset
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+    const { allowed } = checkRateLimit(`register:${ip}`, 5, 60 * 60 * 1000);
+    if (!allowed) {
+      return NextResponse.json({ error: 'محاولات كثيرة، حاول لاحقاً' }, { status: 429 });
+    }
+
     const body = await req.json();
     const name     = typeof body.name     === 'string' ? body.name.trim()     : '';
     const email    = typeof body.email    === 'string' ? body.email.trim()    : '';

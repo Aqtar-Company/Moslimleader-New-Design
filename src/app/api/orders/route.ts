@@ -103,24 +103,45 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        const serverPrice = dbProduct?.price ?? item.unitPrice;
         return {
           productId: dbProduct?.id ?? item.productId,
           quantity: item.quantity,
           selectedModel: item.selectedModel ?? null,
-          unitPrice: item.unitPrice,
-          productName: item.productName,
+          unitPrice: serverPrice,
+          productName: dbProduct?.name ?? item.productName,
           productImage: item.productImage ?? null,
         };
       })
     );
 
+    // Server-side price verification
+    const verifiedSubtotal = resolvedItems.reduce(
+      (s, it) => s + it.unitPrice * it.quantity, 0
+    );
+
+    // Verify coupon discount server-side
+    let verifiedDiscount = 0;
+    if (couponCode) {
+      const couponSetting = await prisma.setting.findUnique({ where: { key: 'coupons' } });
+      const coupons = (couponSetting?.value ?? []) as { code: string; pct: number; active?: boolean }[];
+      const matched = coupons.find(
+        c => c.code?.toLowerCase() === couponCode.toLowerCase() && c.active !== false
+      );
+      if (matched) {
+        verifiedDiscount = Math.round(verifiedSubtotal * matched.pct / 100);
+      }
+    }
+
+    const verifiedTotal = verifiedSubtotal - verifiedDiscount + (shippingCost ?? 0);
+
     const order = await prisma.order.create({
       data: {
         userId: auth.userId,
         status: paymentMethod === 'paypal' && paypalOrderId ? 'paid' : 'pending',
-        total: total ?? 0,
+        total: verifiedTotal,
         shippingCost: shippingCost ?? 0,
-        discount: discount ?? 0,
+        discount: verifiedDiscount,
         couponCode: couponCode ?? null,
         paymentMethod,
         paypalOrderId: paypalOrderId ?? null,

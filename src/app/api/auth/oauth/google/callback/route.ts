@@ -60,11 +60,16 @@ export async function GET(req: NextRequest) {
         data: {
           name: googleUser.name || emailKey.split('@')[0],
           email: emailKey,
-          passwordHash: '', // No password for OAuth users
+          passwordHash: '',
+          emailVerified: true,
           role,
           savedAddresses: [],
         },
       });
+    }
+
+    if (!user.emailVerified) {
+      await prisma.user.update({ where: { id: user.id }, data: { emailVerified: true } });
     }
 
     // Link OAuth account

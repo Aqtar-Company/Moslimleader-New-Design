@@ -84,6 +84,9 @@ export async function POST(req: NextRequest) {
 
     const { productId, quantity = 1, selectedModel } = await req.json();
     if (!productId) return NextResponse.json({ error: 'productId مطلوب' }, { status: 400 });
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+      return NextResponse.json({ error: 'الكمية غير صحيحة' }, { status: 400 });
+    }
 
     // Ensure product exists in DB (seed static product if needed)
     const dbProduct = await ensureProductInDb(String(productId));

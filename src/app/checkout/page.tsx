@@ -416,9 +416,10 @@ export default function CheckoutPage() {
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-    // Capture snapshot BEFORE clearing cart
-    setSnapshot({ items: [...items], total, discount, shippingCost, shippingCurrency, currency });
-    clear();
+    // Capture snapshot and items BEFORE any async work
+    const orderItems = [...items];
+    setSnapshot({ items: orderItems, total, discount, shippingCost, shippingCurrency, currency });
+
     // Save order to database via API
     if (user) {
       try {
@@ -427,7 +428,7 @@ export default function CheckoutPage() {
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({
-            items: items.map(item => ({
+            items: orderItems.map(item => ({
               productId: item.product.id,
               quantity: item.quantity,
               selectedModel: item.selectedModel,
@@ -456,7 +457,7 @@ export default function CheckoutPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             orderNumber,
-            items: items.map(item => ({
+            items: orderItems.map(item => ({
               productName: item.product.name,
               productImage: item.product.images?.[0] ?? null,
               quantity: item.quantity,
@@ -474,6 +475,9 @@ export default function CheckoutPage() {
         });
       } catch { /* email failure shouldn't block order confirmation */ }
     }
+
+    // Clear cart only AFTER order was submitted successfully
+    clear();
 
     // Auto-save address to user account if logged in and user opted in
     if (user && (saveAddressChecked || selectedSavedAddressId)) {

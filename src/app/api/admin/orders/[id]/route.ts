@@ -18,6 +18,11 @@ export async function PUT(
     const { id } = await params;
     const { status } = await req.json();
 
+    const VALID_STATUSES = ['pending', 'paid', 'shipped', 'delivered', 'cancelled', 'payment_failed'];
+    if (!status || !VALID_STATUSES.includes(status)) {
+      return NextResponse.json({ error: 'حالة غير صحيحة' }, { status: 400 });
+    }
+
     const order = await prisma.order.update({
       where: { id },
       data: { status },

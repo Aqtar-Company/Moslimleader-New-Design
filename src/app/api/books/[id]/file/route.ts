@@ -64,15 +64,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // No full access — truncate to freePages server-side
     // This prevents downloading the full PDF via DevTools / direct URL
-    const allowed = Math.max(book.freePages, 0);
+    const allowedPages = Math.max(book.freePages, 0);
 
-    if (allowed === 0) {
+    if (allowedPages === 0) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
     }
 
     const pdfDoc = await PDFDocument.load(buffer);
     const totalPages = pdfDoc.getPageCount();
-    const pagesToKeep = Math.min(allowed, totalPages);
+    const pagesToKeep = Math.min(allowedPages, totalPages);
 
     // Remove all pages beyond the allowed count
     for (let i = totalPages - 1; i >= pagesToKeep; i--) {

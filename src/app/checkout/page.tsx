@@ -220,6 +220,20 @@ export default function CheckoutPage() {
   const [orderNumber] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
   const { addToast } = useToast();
 
+  // Shipping rates from DB (overrides hardcoded rates)
+  const [dbShippingRates, setDbShippingRates] = useState<Record<string, number>>({});
+  useEffect(() => {
+    fetch('/api/shipping-rates')
+      .then(r => r.json())
+      .then(d => {
+        const map: Record<string, number> = {};
+        (d.rates ?? []).forEach((r: { id: string; rate: number }) => { map[r.id] = r.rate; });
+        setDbShippingRates(map);
+      })
+      .catch(() => {});
+  }, []);
+  const getDbShipping = (govId: string) => dbShippingRates[govId] ?? getShipping(govId);
+
   // Snapshot captured before cart is cleared — used in success page
   const [snapshot, setSnapshot] = useState<{
     items: typeof items;
@@ -288,12 +302,12 @@ export default function CheckoutPage() {
   // Case: international user shipping to Egypt — use local EGP shipping rate, convert to their currency
   const intlUserShippingToEgypt = shippingType === 'international' && address.country === 'EG' && !isUserFromEgypt;
   if (shippingType === 'local' && address.governorate) {
-    shippingCost = getShipping(address.governorate);
+    shippingCost = getDbShipping(address.governorate);
     shippingCurrency = 'ج.م';
     shippingCurrencyEn = 'EGP';
   } else if (intlUserShippingToEgypt && address.governorate) {
     // Egypt delivery: get EGP rate, convert to user's country currency
-    const egpShipping = getShipping(address.governorate);
+    const egpShipping = getDbShipping(address.governorate);
     const userCurr = originCountryCode ? COUNTRY_CURRENCIES[originCountryCode] : null;
     if (userCurr && userCurr.currencyEn !== 'EGP') {
       // EGP → USD → user currency  (1 USD ≈ 50 EGP)
@@ -954,7 +968,7 @@ export default function CheckoutPage() {
                       <option value="">{isRtl ? 'اختر المحافظة' : 'Select'}</option>
                       {governorates.map(g => (
                         <option key={g.id} value={g.id}>
-                          {isRtl ? g.name : g.nameEn} — {g.shipping} {L.currency}
+                          {isRtl ? g.name : g.nameEn} — {getDbShipping(g.id)} {L.currency}
                         </option>
                       ))}
                     </select>

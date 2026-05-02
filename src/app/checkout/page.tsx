@@ -448,7 +448,7 @@ export default function CheckoutPage() {
               selectedModel: item.selectedModel,
               unitPrice: getProductPrice(item.product).price,
               productName: item.product.name,
-              productImage: item.product.images?.[0] ?? null,
+              productImage: item.product.images?.[item.selectedModel ?? 0] ?? null,
             })),
             total: total - discount + shippingCost,
             shippingCost,
@@ -473,7 +473,7 @@ export default function CheckoutPage() {
             orderNumber,
             items: orderItems.map(item => ({
               productName: item.product.name,
-              productImage: item.product.images?.[0] ?? null,
+              productImage: item.product.images?.[item.selectedModel ?? 0] ?? null,
               quantity: item.quantity,
               unitPrice: getProductPrice(item.product).price,
             })),
@@ -1255,7 +1255,7 @@ export default function CheckoutPage() {
                       selectedModel: item.selectedModel,
                       unitPrice: getProductPrice(item.product).price,
                       productName: item.product.name,
-                      productImage: item.product.images?.[0] ?? undefined,
+                      productImage: item.product.images?.[item.selectedModel ?? 0] ?? undefined,
                     }))}
                     shippingCost={shippingCost}
                     shippingCurrency={shippingCurrencyEn}

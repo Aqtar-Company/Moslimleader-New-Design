@@ -181,6 +181,9 @@ export default function InvoicePage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-gray-900 truncate">{item.productName}</p>
+                      {item.selectedModel !== null && item.selectedModel !== undefined && (
+                        <p className="text-[10px] text-purple-600 font-bold">موديل {item.selectedModel + 1}</p>
+                      )}
                       <p className="text-xs text-gray-400 font-mono mt-0.5">
                         {fmt(item.unitPrice, order.currency)} × {item.quantity}
                       </p>

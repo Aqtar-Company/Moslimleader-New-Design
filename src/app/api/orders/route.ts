@@ -175,11 +175,12 @@ export async function POST(req: NextRequest) {
       await sendOrderEmails({
         orderId: order.id,
         orderNumber: order.id.slice(-6).toUpperCase(),
-        items: order.items.map((it: { productName: string; productImage: string | null; quantity: number; unitPrice: number }) => ({
+        items: order.items.map((it: { productName: string; productImage: string | null; quantity: number; unitPrice: number; selectedModel?: number | null }) => ({
           productName: it.productName,
           productImage: it.productImage,
           quantity: it.quantity,
           unitPrice: it.unitPrice,
+          selectedModel: it.selectedModel,
         })),
         subtotal,
         discount: order.discount ?? 0,

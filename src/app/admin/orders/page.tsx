@@ -145,7 +145,7 @@ function InvoiceDetail({ order }: { order: DbOrder }) {
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-gray-900 text-sm leading-snug truncate">{item.productName}</p>
                     {item.selectedModel !== null && item.selectedModel !== undefined && (
-                      <p className="text-[10px] text-purple-600 font-bold mt-0.5">موديل {item.selectedModel}</p>
+                      <p className="text-[10px] text-purple-600 font-bold mt-0.5">موديل {item.selectedModel + 1}</p>
                     )}
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className="text-[11px] text-gray-500 font-mono">{formatPrice(item.unitPrice, order.currency)}</span>

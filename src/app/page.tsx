@@ -128,9 +128,8 @@ function ShopContent() {
   const [search, setSearch] = useState('');
 
   const cached = getCachedProducts();
-  const [allProducts, setAllProducts] = useState<Product[]>(cached || []);
+  const [allProducts, setAllProducts] = useState<Product[]>(cached || products);
   const [displayCategories, setDisplayCategories] = useState(cached ? buildCategories(cached) : categories);
-  const [productsLoading, setProductsLoading] = useState(!cached);
 
   useEffect(() => {
     let cancelled = false;
@@ -148,7 +147,6 @@ function ShopContent() {
           cacheProducts(fetched);
         }
       } catch {}
-      if (!cancelled) setProductsLoading(false);
     };
     fetchProducts();
     return () => { cancelled = true; };
@@ -207,19 +205,7 @@ function ShopContent() {
       </p>
 
       {/* Grid */}
-      {productsLoading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
-              <div className="aspect-square bg-gray-200" />
-              <div className="p-4 space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-3/4" />
-                <div className="h-3 bg-gray-100 rounded w-1/2" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : filtered.length > 0 ? (
+      {filtered.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
           {filtered.map(product => (
             <ProductCard key={product.id} product={product} priceLoading={false} />

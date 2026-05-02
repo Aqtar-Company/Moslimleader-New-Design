@@ -21,7 +21,12 @@ export default function ProductCard({ product, priceLoading = false, modelIndex 
   const [added, setAdded] = useState(false);
   const hasVariants = product.variants && product.variants.length > 0;
 
-  const displayName = isRtl ? product.name : (product.nameEn || product.name);
+  const baseName = isRtl ? product.name : (product.nameEn || product.name);
+  const matchedVariant = modelIndex !== undefined
+    ? product.variants?.find(v => v.imageIndex === modelIndex)
+    : undefined;
+  const variantLabel = matchedVariant ? (isRtl ? matchedVariant.name : (matchedVariant.nameEn || matchedVariant.name)) : '';
+  const displayName = variantLabel ? `${baseName} — ${variantLabel}` : baseName;
   const displayShortDesc = isRtl ? product.shortDescription : (product.shortDescriptionEn || product.shortDescription);
   const wishlisted = isWishlisted(product.id);
   const priceResult = getProductPrice(product);

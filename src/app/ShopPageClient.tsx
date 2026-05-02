@@ -92,6 +92,41 @@ function buildCategories(fetched: Product[]) {
   return [...staticUpdated, ...customEntries];
 }
 
+const MODEL_SLUGS_WITH_COVER = ['masek', 'ml-pin'];
+const MODEL_SLUGS_NO_COVER = ['ml-bag'];
+const MODEL_CATEGORIES = ['مجات', 'مفكرات'];
+
+function hasModels(p: Product): boolean {
+  return MODEL_SLUGS_NO_COVER.includes(p.slug) ||
+    MODEL_SLUGS_WITH_COVER.includes(p.slug) ||
+    MODEL_CATEGORIES.includes(p.category);
+}
+
+function getModelOffset(p: Product): number {
+  return MODEL_SLUGS_NO_COVER.includes(p.slug) ? 0 : 1;
+}
+
+interface DisplayItem {
+  product: Product;
+  modelIndex?: number;
+  key: string;
+}
+
+function expandProducts(products: Product[]): DisplayItem[] {
+  const items: DisplayItem[] = [];
+  for (const p of products) {
+    if (hasModels(p) && p.images && p.images.length > 1) {
+      const offset = getModelOffset(p);
+      for (let i = offset; i < p.images.length; i++) {
+        items.push({ product: p, modelIndex: i, key: `${p.id}-m${i}` });
+      }
+    } else {
+      items.push({ product: p, key: p.id });
+    }
+  }
+  return items;
+}
+
 export default function ShopPageClient({ products }: { products: Product[] }) {
   const searchParams = useSearchParams();
   const { t, lang } = useLang();
@@ -191,8 +226,8 @@ export default function ShopPageClient({ products }: { products: Product[] }) {
 
           {filtered.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-              {filtered.map(product => (
-                <ProductCard key={product.id} product={product} priceLoading={false} />
+              {expandProducts(filtered).map(item => (
+                <ProductCard key={item.key} product={item.product} modelIndex={item.modelIndex} priceLoading={false} />
               ))}
             </div>
           ) : (

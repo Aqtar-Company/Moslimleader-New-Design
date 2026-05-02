@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Review } from '@/types';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { products } from '@/lib/products';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
@@ -20,10 +21,14 @@ const MODEL_SLUGS_WITH_COVER = ['masek', 'ml-pin'];
 const MODEL_SLUGS_NO_COVER = ['ml-bag'];
 
 export default function ProductDetailClient({ product }: { product: Product }) {
-  const [mainImg, setMainImg] = useState(0);
+  const searchParams = useSearchParams();
+  const modelParam = searchParams.get('model');
+  const initialModel = modelParam !== null ? parseInt(modelParam, 10) : undefined;
+
+  const [mainImg, setMainImg] = useState(initialModel ?? 0);
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<number | undefined>(undefined);
+  const [selectedModel, setSelectedModel] = useState<number | undefined>(initialModel);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   // Share
   const [copied, setCopied] = useState(false);

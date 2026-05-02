@@ -11,7 +11,7 @@ import { useLang } from '@/context/LanguageContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import { useToast } from '@/components/ui/Toast';
 
-export default function ProductCard({ product, priceLoading = false }: { product: Product; priceLoading?: boolean }) {
+export default function ProductCard({ product, priceLoading = false, modelIndex }: { product: Product; priceLoading?: boolean; modelIndex?: number }) {
   const { addItem } = useCart();
   const { isWishlisted, toggle } = useWishlist();
   const { t, isRtl } = useLang();
@@ -25,13 +25,15 @@ export default function ProductCard({ product, priceLoading = false }: { product
   const displayShortDesc = isRtl ? product.shortDescription : (product.shortDescriptionEn || product.shortDescription);
   const wishlisted = isWishlisted(product.id);
   const priceResult = getProductPrice(product);
+  const displayImage = product.images?.[modelIndex ?? 0] || '/logo.png';
+  const href = modelIndex !== undefined ? `/shop/${product.slug}?model=${modelIndex}` : `/shop/${product.slug}`;
 
   return (
     <div className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 overflow-hidden flex flex-col">
       {/* Image */}
-      <Link href={`/shop/${product.slug}`} target="_blank" rel="noopener noreferrer" className="block relative aspect-square overflow-hidden bg-gray-50">
+      <Link href={href} target="_blank" rel="noopener noreferrer" className="block relative aspect-square overflow-hidden bg-gray-50">
         <Image
-          src={product.images?.[0] || '/logo.png'}
+          src={displayImage}
           alt={displayName}
           fill
           sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
@@ -57,7 +59,7 @@ export default function ProductCard({ product, priceLoading = false }: { product
 
       {/* Info */}
       <div className="p-4 flex flex-col gap-2 flex-1">
-        <Link href={`/shop/${product.slug}`} target="_blank" rel="noopener noreferrer">
+        <Link href={href} target="_blank" rel="noopener noreferrer">
           <h3 className="font-bold text-gray-900 text-base leading-snug hover:text-purple-700 transition line-clamp-2">
             {displayName}
           </h3>
@@ -76,10 +78,10 @@ export default function ProductCard({ product, priceLoading = false }: { product
             onClick={() => {
               if (!product.inStock || priceLoading) return;
               if (hasVariants) {
-                router.push(`/shop/${product.slug}`);
+                router.push(href);
                 return;
               }
-              addItem(product);
+              addItem(product, modelIndex);
               addToast(isRtl ? `✓ أُضيف "${displayName}" للسلة` : `✓ "${displayName}" added to cart`, 'success');
               setAdded(true);
               setTimeout(() => setAdded(false), 1500);

@@ -37,7 +37,6 @@ export interface Product {
   videoUrl?: string | null;
   weight: number; // grams
   reviews?: Review[];
-  homeModels?: number[]; // image indices to show as separate cards on home page
 }
 
 export interface Category {

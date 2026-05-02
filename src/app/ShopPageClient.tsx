@@ -101,11 +101,10 @@ interface DisplayItem {
 function expandProducts(products: Product[]): DisplayItem[] {
   const items: DisplayItem[] = [];
   for (const p of products) {
-    const hm = (p as Record<string, unknown>).homeModels as number[] | undefined;
-    if (hm && hm.length > 0 && p.images && p.images.length > 1) {
-      for (const idx of hm) {
-        if (idx < p.images.length) {
-          items.push({ product: p, modelIndex: idx, key: `${p.id}-m${idx}` });
+    if (p.variants && p.variants.length > 0 && p.images && p.images.length > 1) {
+      for (const v of p.variants) {
+        if (v.imageIndex < p.images.length) {
+          items.push({ product: p, modelIndex: v.imageIndex, key: `${p.id}-v${v.id}` });
         }
       }
     } else {

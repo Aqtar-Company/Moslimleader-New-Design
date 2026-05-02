@@ -747,7 +747,7 @@ export const products: Product[] = [
       `${BASE}/2024/10/Girls-Bag-1.webp`,
       `${BASE}/2024/10/Girls-Bag-2.webp`,
     ],
-    inStock: false,
+    inStock: true,
     weight: 400,
   },
   {

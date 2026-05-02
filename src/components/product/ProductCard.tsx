@@ -25,7 +25,10 @@ export default function ProductCard({ product, priceLoading = false, modelIndex 
   const displayShortDesc = isRtl ? product.shortDescription : (product.shortDescriptionEn || product.shortDescription);
   const wishlisted = isWishlisted(product.id);
   const priceResult = getProductPrice(product);
-  const displayImage = product.images?.[modelIndex ?? 0] || '/logo.png';
+  const fullImage = product.images?.[modelIndex ?? 0] || '/logo.png';
+  const displayImage = fullImage.includes('/products/') && !fullImage.includes('-thumb.')
+    ? fullImage.replace('.webp', '-thumb.webp')
+    : fullImage;
   const href = modelIndex !== undefined ? `/shop/${product.slug}?model=${modelIndex}` : `/shop/${product.slug}`;
 
   return (

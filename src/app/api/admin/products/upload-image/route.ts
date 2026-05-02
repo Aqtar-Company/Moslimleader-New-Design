@@ -37,19 +37,31 @@ export async function POST(req: NextRequest) {
     const dir = path.join(process.cwd(), 'public', 'products');
     await mkdir(dir, { recursive: true });
 
-    const filename = `${randomUUID()}.webp`;
+    const uid = randomUUID();
+    const filename = `${uid}.webp`;
+    const thumbFilename = `${uid}-thumb.webp`;
 
-    const optimized = await sharp(buffer)
-      .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
-      .webp({ quality: 80 })
-      .toBuffer();
+    const [optimized, thumbnail] = await Promise.all([
+      sharp(buffer)
+        .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 75 })
+        .toBuffer(),
+      sharp(buffer)
+        .resize(400, 400, { fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 65 })
+        .toBuffer(),
+    ]);
 
-    await writeFile(path.join(dir, filename), optimized);
+    await Promise.all([
+      writeFile(path.join(dir, filename), optimized),
+      writeFile(path.join(dir, thumbFilename), thumbnail),
+    ]);
 
     const savedKB = Math.round((buffer.length - optimized.length) / 1024);
 
     return NextResponse.json({
       url: `/products/${filename}`,
+      thumbUrl: `/products/${thumbFilename}`,
       originalSize: `${Math.round(buffer.length / 1024)}KB`,
       optimizedSize: `${Math.round(optimized.length / 1024)}KB`,
       saved: savedKB > 0 ? `${savedKB}KB` : '0KB',

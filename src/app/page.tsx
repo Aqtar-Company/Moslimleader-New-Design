@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
 import { Product } from '@/types';
 import ShopPageClient from './ShopPageClient';
+import HomeLoading from './loading';
 
 async function getProducts(): Promise<Product[]> {
   try {
@@ -44,7 +45,7 @@ export default async function Page() {
   const products = await getProducts();
 
   return (
-    <Suspense>
+    <Suspense fallback={<HomeLoading />}>
       <ShopPageClient products={products} />
     </Suspense>
   );

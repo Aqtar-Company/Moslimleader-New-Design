@@ -33,6 +33,7 @@ export default function ProductsPage() {
   const [formTags, setFormTags] = useState('');
   const [formImages, setFormImages] = useState<string[]>([]);
   const [variants, setVariants] = useState<VariantDraft[]>([]);
+  const [homeModels, setHomeModels] = useState<number[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -177,6 +178,7 @@ export default function ProductsPage() {
       setVariants(
         fullP.variants?.map(v => ({ id: v.id, name: v.name, nameEn: v.nameEn || '', imageIndex: v.imageIndex })) ?? []
       );
+      setHomeModels((fullP as Record<string, unknown>).homeModels as number[] ?? []);
       setShowForm(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
@@ -193,6 +195,7 @@ export default function ProductsPage() {
     setFormTags('');
     setFormImages([]);
     setVariants([]);
+    setHomeModels([]);
     setEditingId(null);
     setShowForm(false);
   };
@@ -231,6 +234,7 @@ export default function ProductsPage() {
       tags: parsedTags,
       images: formImages,
       variants: builtVariants.length > 0 ? builtVariants : undefined,
+      homeModels: homeModels.length > 0 ? homeModels : undefined,
     };
 
     let saveOk = false;
@@ -460,6 +464,37 @@ export default function ProductsPage() {
               </div>
             )}
           </div>
+
+          {/* ── Home Models ── */}
+          {formImages.length > 1 && (
+            <div className="space-y-3 pt-4 border-t border-gray-100">
+              <h3 className="text-sm font-bold text-gray-900">موديلات الهوم <span className="text-gray-400 font-normal">(اختياري)</span></h3>
+              <p className="text-xs text-gray-500">اضغط على الصور اللي عايزها تظهر كموديلات مستقلة في صفحة المنتجات. لو ما اخترتش حاجة، المنتج هيظهر كارت واحد.</p>
+              <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                {formImages.map((img, i) => {
+                  const selected = homeModels.includes(i);
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setHomeModels(prev => selected ? prev.filter(x => x !== i) : [...prev, i])}
+                      className={`relative rounded-lg overflow-hidden border-3 transition ${selected ? 'border-[#F5C518] ring-2 ring-[#F5C518]/30' : 'border-gray-200 opacity-60 hover:opacity-100'}`}
+                    >
+                      <img src={img} alt={`model-${i}`} className="w-full h-20 object-cover" />
+                      {selected && (
+                        <div className="absolute top-1 right-1 w-5 h-5 bg-[#F5C518] rounded-full flex items-center justify-center">
+                          <svg className="w-3 h-3 text-gray-900" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {homeModels.length > 0 && (
+                <p className="text-xs text-[#F5C518] font-bold">{homeModels.length} موديل مختار — هيظهروا كـ {homeModels.length} كارت في الهوم</p>
+              )}
+            </div>
+          )}
 
           {/* ── Stock & Video ── */}
           <div className="space-y-4 pt-4 border-t border-gray-100">

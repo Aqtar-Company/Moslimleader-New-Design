@@ -43,15 +43,24 @@ interface DbOrder {
   items: OrderItem[];
 }
 
-const STATUSES = ['قيد التجهيز', 'تم الشحن', 'تم التسليم', 'ملغي'];
+const STATUSES = ['pending', 'paid', 'shipped', 'delivered', 'cancelled'];
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'قيد التجهيز',
+  paid: 'تم الدفع',
+  shipped: 'تم الشحن',
+  delivered: 'تم التسليم',
+  cancelled: 'ملغي',
+  payment_failed: 'فشل الدفع',
+};
 
 const STATUS_COLORS: Record<string, string> = {
-  'قيد التجهيز': 'bg-amber-100 text-amber-700',
-  'تم الشحن':    'bg-blue-100 text-blue-700',
-  'تم التسليم':  'bg-green-100 text-green-700',
-  'ملغي':        'bg-red-100 text-red-700',
-  'pending':     'bg-amber-100 text-amber-700',
-  'paid':        'bg-emerald-100 text-emerald-700',
+  pending:     'bg-amber-100 text-amber-700',
+  paid:        'bg-emerald-100 text-emerald-700',
+  shipped:     'bg-blue-100 text-blue-700',
+  delivered:   'bg-green-100 text-green-700',
+  cancelled:   'bg-red-100 text-red-700',
+  payment_failed: 'bg-red-100 text-red-700',
 };
 
 const PAY_METHOD_LABELS: Record<string, { ar: string; icon: string }> = {
@@ -62,13 +71,8 @@ const PAY_METHOD_LABELS: Record<string, { ar: string; icon: string }> = {
   instapay: { ar: 'InstaPay', icon: '⚡' },
 };
 
-function normalizeStatus(s: string): string {
-  if (s === 'pending' || s === 'processing') return 'قيد التجهيز';
-  if (s === 'paid') return 'قيد التجهيز';
-  if (s === 'shipped') return 'تم الشحن';
-  if (s === 'delivered') return 'تم التسليم';
-  if (s === 'cancelled') return 'ملغي';
-  return s;
+function statusLabel(s: string): string {
+  return STATUS_LABELS[s] || s;
 }
 
 function formatPrice(n: number, currency: string) {
@@ -116,7 +120,7 @@ function InvoiceDetail({ order }: { order: DbOrder }) {
             <p className="text-xs text-gray-700 font-semibold">{orderDate}</p>
           </div>
           <span className={`text-[11px] font-bold px-3 py-1.5 rounded-full ${STATUS_COLORS[order.status] || 'bg-gray-100 text-gray-600'}`}>
-            {order.status}
+            {statusLabel(order.status)}
           </span>
         </div>
 
@@ -262,7 +266,7 @@ export default function OrdersPage() {
     try {
       const res = await fetch('/api/admin/orders', { credentials: 'include', cache: 'no-store' });
       const { orders: raw }: { orders: DbOrder[] } = await res.json();
-      setOrders((raw ?? []).map(o => ({ ...o, status: normalizeStatus(o.status) })));
+      setOrders(raw ?? []);
     } catch {}
     setLoading(false);
   }, []);
@@ -297,7 +301,7 @@ export default function OrdersPage() {
     return matchFilter && matchSearch;
   });
 
-  const totalRevenue = filtered.filter(o => o.status !== 'ملغي').reduce((s, o) => s + o.total, 0);
+  const totalRevenue = filtered.filter(o => o.status !== 'cancelled').reduce((s, o) => s + o.total, 0);
 
   if (loading) return (
     <div className="flex items-center justify-center h-40">
@@ -324,7 +328,7 @@ export default function OrdersPage() {
           {['all', ...STATUSES].map(s => (
             <button key={s} onClick={() => setFilter(s)}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${filter === s ? 'bg-[#1a1a2e] text-white border-[#1a1a2e]' : 'border-gray-200 text-gray-600 hover:border-gray-400'}`}>
-              {s === 'all' ? 'الكل' : s}
+              {s === 'all' ? 'الكل' : statusLabel(s)}
             </button>
           ))}
         </div>
@@ -382,12 +386,12 @@ export default function OrdersPage() {
                           )}
                         </td>
                         <td className="px-5 py-3.5">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${STATUS_COLORS[o.status] || 'bg-gray-100 text-gray-600'}`}>{o.status}</span>
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${STATUS_COLORS[o.status] || 'bg-gray-100 text-gray-600'}`}>{statusLabel(o.status)}</span>
                         </td>
                         <td className="px-5 py-3.5" onClick={e => e.stopPropagation()}>
                           <select value={o.status} onChange={e => handleStatus(o, e.target.value)}
                             className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-gray-400 bg-white cursor-pointer">
-                            {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                            {STATUSES.map(s => <option key={s} value={s}>{statusLabel(s)}</option>)}
                           </select>
                         </td>
                       </tr>

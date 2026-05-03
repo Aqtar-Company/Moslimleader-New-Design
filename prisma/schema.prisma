@@ -21,6 +21,8 @@ model User {
   role           String   @default("customer")
   savedAddresses Json?
   wishlistIds    Json?
+  marketingOptIn Boolean  @default(true)
+  marketingToken String?  @unique
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -31,6 +33,51 @@ model User {
   oauthAccounts OAuthAccount[]
   bookOrders    BookOrder[]
   devices       BookDevice[]
+  campaignRecipients CampaignRecipient[]
+}
+
+model Campaign {
+  id              String   @id @default(cuid())
+  name            String
+  channel         String   @default("email") // email | whatsapp (placeholder)
+  segmentKey      String   @default("all")   // matches segments in /api/admin/customers
+  segmentFilters  Json?    // { boughtProduct?, notBoughtProduct?, governorate? }
+  subject         String
+  bodyHtml        String   @db.LongText
+  couponCode      String?  // optional coupon to attach (uses existing Coupon table)
+  status          String   @default("draft") // draft | sending | sent | failed
+  recipientCount  Int      @default(0)
+  sentCount       Int      @default(0)
+  openedCount     Int      @default(0)
+  clickedCount    Int      @default(0)
+  conversionCount Int      @default(0)
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  recipients CampaignRecipient[]
+  @@index([status])
+}
+
+model CampaignRecipient {
+  id          String   @id @default(cuid())
+  campaignId  String
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email       String
+  status      String   @default("queued") // queued | sent | failed | bounced
+  errorMessage String? @db.Text
+  sentAt      DateTime?
+  openedAt    DateTime?
+  clickedAt   DateTime?
+  orderId     String?  // attribution if a conversion happened
+  createdAt   DateTime @default(now())
+
+  @@unique([campaignId, userId])
+  @@index([campaignId])
+  @@index([userId])
 }
 
 model Product {

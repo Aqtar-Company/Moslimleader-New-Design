@@ -12,6 +12,7 @@ const NAV = [
   { href: '/admin/coupons',           label: 'الكوبونات',       icon: '🎟️' },
   { href: '/admin/users',             label: 'إدارة المستخدمين', icon: '👤' },
   { href: '/admin/customers',         label: 'قاعدة العملاء',    icon: '👥' },
+  { href: '/admin/campaigns',         label: 'حملات التسويق',    icon: '📢' },
   { href: '/admin/reviews',           label: 'التقييمات',       icon: '⭐' },
   { href: '/admin/shipping',          label: 'الشحن المحلي',    icon: '🚚' },
   { href: '/admin/shipments',         label: 'شحنات بوسطة',     icon: '📮' },

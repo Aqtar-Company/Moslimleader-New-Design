@@ -4,17 +4,21 @@
 const BASE_URL = process.env.BOSTA_API_URL || 'https://app.bosta.co/api/v2';
 const TOKEN = process.env.BOSTA_API_TOKEN || '';
 
-export interface BostaAddress {
+export interface BostaReceiver {
   firstName: string;
   lastName: string;
   phone: string;
   secondPhone?: string;
   email?: string;
-  city: string;        // Bosta city name (English)
+}
+
+export interface BostaAddress {
+  city: string;            // Bosta city name (English)
   zone?: string;
   district?: string;
-  street: string;
-  building?: string;
+  firstLine: string;       // street / address line 1
+  secondLine?: string;
+  buildingNumber?: string;
   floor?: string;
   apartment?: string;
 }
@@ -24,6 +28,7 @@ export interface CreateDeliveryInput {
   specs: { packageType: string; size?: string; packageDetails?: { itemsCount?: number; description?: string } };
   notes?: string;
   cod?: number;                // cash-on-delivery amount (EGP)
+  receiver: BostaReceiver;
   dropOffAddress: BostaAddress;
   businessReference?: string;  // your order id
 }

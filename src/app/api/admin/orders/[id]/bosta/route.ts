@@ -45,6 +45,15 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     const itemsCount = order.items.reduce((s, it) => s + it.quantity, 0);
     const description = order.items.map(it => `${it.productName} ×${it.quantity}`).join(' | ').slice(0, 250);
 
+    const phone = (addr.phone || '').replace(/\s+/g, '');
+    const fallbackName = (order.user?.name || 'Customer').trim().split(/\s+/);
+    const firstName = (addr.firstName || fallbackName[0] || 'Customer').trim();
+    const lastName = (addr.lastName || fallbackName.slice(1).join(' ') || '-').trim() || '-';
+
+    if (!phone) {
+      return NextResponse.json({ error: 'رقم الهاتف مطلوب لإنشاء شحنة بوسطة' }, { status: 400 });
+    }
+
     const delivery = await createDelivery({
       type: 10,
       specs: {
@@ -55,17 +64,19 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       cod,
       notes: order.notes ?? undefined,
       businessReference: order.id,
-      dropOffAddress: {
-        firstName: addr.firstName || order.user?.name || 'Customer',
-        lastName: addr.lastName || '-',
-        phone: (addr.phone || '').replace(/\s+/g, ''),
+      receiver: {
+        firstName,
+        lastName,
+        phone,
         secondPhone: addr.whatsappNumber && addr.whatsappNumber !== addr.phone ? addr.whatsappNumber : undefined,
         email: addr.email || order.user?.email,
+      },
+      dropOffAddress: {
         city: bostaCityFromGovernorate(addr.governorateId || addr.governorate),
         zone: addr.region || undefined,
         district: addr.city || undefined,
-        street: addr.street || '-',
-        building: addr.building || undefined,
+        firstLine: addr.street || '-',
+        buildingNumber: addr.building || undefined,
         floor: addr.floor || undefined,
         apartment: addr.apartment || undefined,
       },

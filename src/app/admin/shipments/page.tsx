@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 interface Shipment {
   id: string;
@@ -42,11 +43,13 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function ShipmentsPage() {
   const { addToast } = useToast();
+  const confirm = useConfirm();
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -74,6 +77,34 @@ export default function ShipmentsPage() {
       addToast('فشل التحديث', 'error');
     }
     setRefreshingId(null);
+  };
+
+  const cancelOnBosta = async (s: Shipment) => {
+    const ok = await confirm({
+      title: 'إلغاء الشحنة من بوسطة',
+      message: 'هيتم إلغاء الشحنة من بوسطة فقط، والأوردر هيرجع لـ "قيد التجهيز" عشان تقدر تشحنه بشركة تانية. مش هيتلغى الأوردر.',
+      confirmLabel: 'إلغاء من بوسطة',
+      cancelLabel: 'تراجع',
+      tone: 'danger',
+      icon: '🚫',
+    });
+    if (!ok) return;
+    setCancellingId(s.id);
+    try {
+      const res = await fetch(`/api/admin/shipments/${s.id}/cancel`, { method: 'POST', credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) {
+        addToast(data.error || 'فشل الإلغاء', 'error', 6000);
+      } else {
+        setShipments(prev => prev.map(x => x.id === s.id
+          ? { ...x, status: 'cancelled', order: { ...x.order, status: 'pending' } }
+          : x));
+        addToast('تم إلغاء الشحنة من بوسطة. الأوردر رجع لـ "قيد التجهيز"', 'success', 5000);
+      }
+    } catch {
+      addToast('فشل الإلغاء', 'error');
+    }
+    setCancellingId(null);
   };
 
   const filtered = shipments.filter(s => {
@@ -190,6 +221,16 @@ export default function ShipmentsPage() {
                         >
                           {refreshingId === s.id ? '...' : 'تحديث'}
                         </button>
+                        {s.status !== 'cancelled' && s.bostaDeliveryId && (
+                          <button
+                            onClick={() => cancelOnBosta(s)}
+                            disabled={cancellingId === s.id}
+                            className="text-xs font-bold text-red-600 hover:text-red-700 disabled:opacity-50"
+                            title="إلغاء من بوسطة فقط (الأوردر يبقى)"
+                          >
+                            {cancellingId === s.id ? '...' : 'إلغاء بوسطة'}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

@@ -109,6 +109,18 @@ export async function getDelivery(deliveryId: string): Promise<BostaDelivery> {
   return bostaFetch<BostaDelivery>(`/deliveries/${deliveryId}`);
 }
 
+// Track by AWB / tracking number — this is the public-business endpoint that
+// reliably returns the latest state. Use this for status refresh.
+export async function trackByNumber(trackingNumber: string): Promise<{
+  state?: { value?: string; code?: number };
+  TrackingNumber?: string;
+  trackingNumber?: string;
+  CurrentStatus?: { state?: string; code?: number; timestamp?: string };
+  TransitEvents?: Array<{ state?: string; timestamp?: string; hub?: string }>;
+}> {
+  return bostaFetch(`/deliveries/business/track/${trackingNumber}`);
+}
+
 export async function trackDelivery(trackingNumber: string): Promise<unknown> {
   return bostaFetch<unknown>(`/deliveries/business/track/${trackingNumber}`);
 }

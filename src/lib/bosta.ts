@@ -126,9 +126,32 @@ export async function trackDelivery(trackingNumber: string): Promise<unknown> {
 }
 
 // Terminate (cancel) a delivery on Bosta. Only succeeds if the package
-// hasn't been picked up yet.
+// hasn't been picked up yet. Bosta v2 doesn't document a single canonical
+// path for this — different tenants land on different routes — so we try
+// the known shapes in order until one accepts the request.
 export async function cancelDelivery(deliveryId: string): Promise<void> {
-  await bostaFetch<unknown>(`/deliveries/${deliveryId}`, { method: 'DELETE' });
+  const attempts: Array<{ method: string; path: string }> = [
+    { method: 'DELETE', path: `/deliveries/business/${deliveryId}` },
+    { method: 'PUT',    path: `/deliveries/${deliveryId}/terminate` },
+    { method: 'PATCH',  path: `/deliveries/${deliveryId}/terminate` },
+    { method: 'DELETE', path: `/deliveries/${deliveryId}` },
+  ];
+  let lastError: unknown = null;
+  for (const { method, path } of attempts) {
+    try {
+      await bostaFetch<unknown>(path, { method });
+      return;
+    } catch (err) {
+      lastError = err;
+      const msg = err instanceof Error ? err.message : '';
+      // 404 / Cannot METHOD = wrong route; keep trying. Anything else (auth,
+      // business rule like "already picked up") is a real error — surface it.
+      if (!/404|Cannot (DELETE|PUT|PATCH|GET|POST)/i.test(msg)) {
+        throw err;
+      }
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('Bosta: لم نعثر على endpoint إلغاء صالح');
 }
 
 // In-memory cache for the cities list (24h TTL).

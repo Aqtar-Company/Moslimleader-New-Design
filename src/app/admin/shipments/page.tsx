@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 interface Shipment {
   id: string;
@@ -40,11 +42,14 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function ShipmentsPage() {
+  const { addToast } = useToast();
+  const confirm = useConfirm();
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -64,13 +69,42 @@ export default function ShipmentsPage() {
       const data = await res.json();
       if (data.shipment) {
         setShipments(prev => prev.map(s => s.id === id ? { ...s, ...data.shipment } : s));
+        addToast('تم تحديث حالة الشحنة', 'success');
       } else if (data.error) {
-        alert(data.error);
+        addToast(data.error, 'error');
       }
     } catch {
-      alert('فشل التحديث');
+      addToast('فشل التحديث', 'error');
     }
     setRefreshingId(null);
+  };
+
+  const cancelOnBosta = async (s: Shipment) => {
+    const ok = await confirm({
+      title: 'إلغاء الشحنة من بوسطة',
+      message: 'هيتم إلغاء الشحنة من بوسطة فقط، والأوردر هيرجع لـ "قيد التجهيز" عشان تقدر تشحنه بشركة تانية. مش هيتلغى الأوردر.',
+      confirmLabel: 'إلغاء من بوسطة',
+      cancelLabel: 'تراجع',
+      tone: 'danger',
+      icon: '🚫',
+    });
+    if (!ok) return;
+    setCancellingId(s.id);
+    try {
+      const res = await fetch(`/api/admin/shipments/${s.id}/cancel`, { method: 'POST', credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) {
+        addToast(data.error || 'فشل الإلغاء', 'error', 6000);
+      } else {
+        setShipments(prev => prev.map(x => x.id === s.id
+          ? { ...x, status: 'cancelled', order: { ...x.order, status: 'pending' } }
+          : x));
+        addToast('تم إلغاء الشحنة من بوسطة. الأوردر رجع لـ "قيد التجهيز"', 'success', 5000);
+      }
+    } catch {
+      addToast('فشل الإلغاء', 'error');
+    }
+    setCancellingId(null);
   };
 
   const filtered = shipments.filter(s => {
@@ -93,9 +127,24 @@ export default function ShipmentsPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-black text-gray-900">شحنات بوسطة</h1>
-        <p className="text-sm text-gray-500 mt-0.5">{shipments.length} شحنة</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-xl font-black text-gray-900">شحنات بوسطة</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{shipments.length} شحنة</p>
+        </div>
+        <button
+          onClick={async () => {
+            try {
+              const res = await fetch('/api/admin/bosta/ping', { credentials: 'include' });
+              const data = await res.json();
+              if (data.ok) addToast(`✓ التوكن شغال — ${data.baseUrl}`, 'success', 5000);
+              else addToast(data.error || 'فشل الاتصال', 'error', 6000);
+            } catch {
+              addToast('فشل الاتصال ببوسطة', 'error');
+            }
+          }}
+          className="px-3 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
+        >🔌 اختبار الاتصال</button>
       </div>
 
       <div className="flex flex-wrap gap-3 items-center">
@@ -160,7 +209,7 @@ export default function ShipmentsPage() {
                       <div className="flex gap-2 items-center">
                         {s.trackingNumber && (
                           <a
-                            href={`https://bosta.co/track-shipment/${s.trackingNumber}`}
+                            href={`https://bosta.co/en/track-shipment/${s.trackingNumber}`}
                             target="_blank" rel="noreferrer"
                             className="text-xs font-bold text-blue-600 hover:underline"
                           >تتبع</a>
@@ -172,6 +221,16 @@ export default function ShipmentsPage() {
                         >
                           {refreshingId === s.id ? '...' : 'تحديث'}
                         </button>
+                        {s.status !== 'cancelled' && s.bostaDeliveryId && (
+                          <button
+                            onClick={() => cancelOnBosta(s)}
+                            disabled={cancellingId === s.id}
+                            className="text-xs font-bold text-red-600 hover:text-red-700 disabled:opacity-50"
+                            title="إلغاء من بوسطة فقط (الأوردر يبقى)"
+                          >
+                            {cancellingId === s.id ? '...' : 'إلغاء بوسطة'}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

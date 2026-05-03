@@ -13,6 +13,7 @@ const NAV = [
   { href: '/admin/users',             label: 'العملاء',         icon: '👥' },
   { href: '/admin/reviews',           label: 'التقييمات',       icon: '⭐' },
   { href: '/admin/shipping',          label: 'الشحن المحلي',    icon: '🚚' },
+  { href: '/admin/shipments',         label: 'شحنات بوسطة',     icon: '📮' },
   { href: '/admin/intl-shipping',     label: 'الشحن الدولي',    icon: '✈️' },
   { href: '/admin/payment-methods',   label: 'وسائل الدفع',     icon: '💳' },
   { href: '/admin/books',             label: 'المكتبة الرقمية', icon: '📚' },

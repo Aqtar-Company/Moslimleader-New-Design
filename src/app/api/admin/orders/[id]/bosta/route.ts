@@ -58,7 +58,6 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       type: 10,
       specs: {
         packageType: 'Parcel',
-        size: 'Normal',
         packageDetails: { itemsCount, description },
       },
       cod,

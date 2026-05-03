@@ -26,6 +26,14 @@ interface ShippingAddress {
   notes?: string;
 }
 
+interface Shipment {
+  id: string;
+  trackingNumber: string | null;
+  bostaDeliveryId: string | null;
+  status: string;
+  state: string | null;
+}
+
 interface DbOrder {
   id: string;
   status: string;
@@ -41,6 +49,7 @@ interface DbOrder {
   createdAt: string;
   user: { id: string; name: string; email: string };
   items: OrderItem[];
+  shipment: Shipment | null;
 }
 
 const STATUSES = ['pending', 'paid', 'shipped', 'delivered', 'cancelled'];
@@ -282,6 +291,25 @@ export default function OrdersPage() {
     });
   };
 
+  const handleCreateBosta = async (order: DbOrder) => {
+    if (order.shipment?.bostaDeliveryId) {
+      alert('شحنة بوسطة موجودة بالفعل');
+      return;
+    }
+    if (!confirm(`إنشاء شحنة بوسطة للطلب #${order.id.slice(-6).toUpperCase()}؟`)) return;
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/bosta`, { method: 'POST', credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'فشل إنشاء الشحنة');
+        return;
+      }
+      setOrders(prev => prev.map(o => o.id === order.id ? { ...o, shipment: data.shipment, status: o.status === 'pending' || o.status === 'paid' ? 'shipped' : o.status } : o));
+    } catch {
+      alert('فشل إنشاء الشحنة');
+    }
+  };
+
   const handleStatus = async (order: DbOrder, status: string) => {
     setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status } : o));
     await fetch(`/api/admin/orders/${order.id}`, {
@@ -354,6 +382,7 @@ export default function OrdersPage() {
                   <th className="px-5 py-3.5 text-right">التاريخ</th>
                   <th className="px-5 py-3.5 text-right">المبلغ</th>
                   <th className="px-5 py-3.5 text-right">الحالة</th>
+                  <th className="px-5 py-3.5 text-right">الشحن</th>
                   <th className="px-5 py-3.5 text-right">تغيير الحالة</th>
                 </tr>
               </thead>
@@ -389,6 +418,25 @@ export default function OrdersPage() {
                           <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${STATUS_COLORS[o.status] || 'bg-gray-100 text-gray-600'}`}>{statusLabel(o.status)}</span>
                         </td>
                         <td className="px-5 py-3.5" onClick={e => e.stopPropagation()}>
+                          {o.shipment?.trackingNumber ? (
+                            <div className="flex flex-col gap-0.5">
+                              <a
+                                href={`https://bosta.co/track-shipment/${o.shipment.trackingNumber}`}
+                                target="_blank" rel="noreferrer"
+                                className="text-xs font-mono font-bold text-blue-600 hover:underline"
+                              >{o.shipment.trackingNumber}</a>
+                              {o.shipment.state && (
+                                <span className="text-[10px] text-gray-500">{o.shipment.state}</span>
+                              )}
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleCreateBosta(o)}
+                              className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-500 text-white hover:bg-amber-600 transition"
+                            >📮 شحن بوسطة</button>
+                          )}
+                        </td>
+                        <td className="px-5 py-3.5" onClick={e => e.stopPropagation()}>
                           <select value={o.status} onChange={e => handleStatus(o, e.target.value)}
                             className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-gray-400 bg-white cursor-pointer">
                             {STATUSES.map(s => <option key={s} value={s}>{statusLabel(s)}</option>)}
@@ -397,7 +445,7 @@ export default function OrdersPage() {
                       </tr>
                       {isOpen && (
                         <tr>
-                          <td colSpan={7} className="p-0">
+                          <td colSpan={8} className="p-0">
                             <InvoiceDetail order={o} />
                           </td>
                         </tr>

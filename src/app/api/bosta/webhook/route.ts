@@ -31,9 +31,18 @@ interface BostaWebhookPayload {
   state?: { value?: string; code?: number };
 }
 
+// Reject webhooks whose signed timestamp is older than this — protects against
+// captured-and-replayed status updates (e.g. replaying an old "delivered" event
+// after a refund to muddy the order state).
+const REPLAY_WINDOW_MS = 5 * 60 * 1000;
+
 export async function POST(req: NextRequest) {
   const raw = await req.text();
-  const signature = req.headers.get('x-bosta-signature') || req.headers.get('x-signature');
+  // Try the documented header names — Bosta tenants vary
+  const signature =
+    req.headers.get('x-bosta-signature') ||
+    req.headers.get('bosta-signature') ||
+    req.headers.get('x-signature');
 
   const ok = await verifyWebhookSignature(raw, signature);
   if (!ok) {
@@ -44,6 +53,20 @@ export async function POST(req: NextRequest) {
   let payload: BostaWebhookPayload;
   try { payload = JSON.parse(raw); } catch {
     return NextResponse.json({ error: 'invalid json' }, { status: 400 });
+  }
+
+  // Replay protection. We accept the timestamp from any of the common shapes
+  // Bosta tenants use: top-level `timestamp`, `data.timestamp`, or a header.
+  const tsRaw = (payload as { timestamp?: string | number }).timestamp
+    ?? (payload.data as { timestamp?: string | number } | undefined)?.timestamp
+    ?? req.headers.get('x-bosta-timestamp')
+    ?? req.headers.get('x-timestamp');
+  if (tsRaw) {
+    const tsMs = typeof tsRaw === 'number' ? tsRaw : Date.parse(String(tsRaw));
+    if (Number.isFinite(tsMs) && Math.abs(Date.now() - tsMs) > REPLAY_WINDOW_MS) {
+      console.warn('[bosta webhook] stale timestamp — possible replay', { tsRaw });
+      return NextResponse.json({ error: 'stale webhook' }, { status: 401 });
+    }
   }
 
   const data = payload.data || payload;

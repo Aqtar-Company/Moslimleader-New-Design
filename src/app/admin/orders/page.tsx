@@ -322,28 +322,53 @@ export default function OrdersPage() {
     }
   };
 
-  const handleStatus = async (order: DbOrder, status: string) => {
+  const handleStatus = async (order: DbOrder, status: string, force = false) => {
+    const previousStatus = order.status;
     setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status } : o));
     try {
       const res = await fetch(`/api/admin/orders/${order.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, force }),
       });
       const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        // Bosta cancel refused — let admin force-cancel the order anyway
+        if (data.shipmentCancel?.requiresForce) {
+          const goAhead = await confirm({
+            title: 'بوسطة رفضت إلغاء الشحنة',
+            message: `${data.shipmentCancel.error}\n\nهل تريد إلغاء الأوردر عندنا فقط (الشحنة هتفضل في طريقها للعميل)؟`,
+            confirmLabel: 'إلغاء الأوردر فقط',
+            cancelLabel: 'تراجع',
+            tone: 'danger',
+            icon: '⚠️',
+          });
+          if (goAhead) {
+            await handleStatus(order, status, true);
+          } else {
+            // Roll back the optimistic update
+            setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: previousStatus } : o));
+          }
+          return;
+        }
+        addToast(data.error || 'فشل تحديث حالة الطلب', 'error');
+        setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: previousStatus } : o));
+        return;
+      }
+
       if (status === 'cancelled' && order.shipment?.bostaDeliveryId) {
         if (data.shipmentCancel?.ok) {
-          addToast('تم إلغاء الشحنة من بوسطة', 'success');
+          addToast('تم إلغاء الأوردر والشحنة من بوسطة', 'success');
           setOrders(prev => prev.map(o => o.id === order.id
             ? { ...o, shipment: o.shipment ? { ...o.shipment, status: 'cancelled' } : o.shipment }
             : o));
-        } else if (data.shipmentCancel?.error) {
-          addToast(`الأوردر اتلغى لكن بوسطة رفضت: ${data.shipmentCancel.error}`, 'warning', 7000);
         }
       }
     } catch {
       addToast('فشل تحديث حالة الطلب', 'error');
+      setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: previousStatus } : o));
     }
   };
 

@@ -17,7 +17,9 @@ export async function PUT(
     }
 
     const { id } = await params;
-    const { status } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const status = body?.status as string | undefined;
+    const force = body?.force === true;
 
     const VALID_STATUSES = ['pending', 'paid', 'shipped', 'delivered', 'cancelled', 'payment_failed'];
     if (!status || !VALID_STATUSES.includes(status)) {
@@ -32,13 +34,13 @@ export async function PUT(
       return NextResponse.json({ error: 'الطلب غير موجود' }, { status: 404 });
     }
 
-    const order = await prisma.order.update({
-      where: { id },
-      data: { status },
-    });
-
     let shipmentCancel: { ok: boolean; error?: string } | undefined;
 
+    // Cancel-flow: try Bosta FIRST. Only flip the order to "cancelled" once we
+    // know the package is actually halted (or the admin explicitly says
+    // `force: true` after seeing the error). Otherwise we risk an
+    // already-cancelled order whose package is still on its way to the
+    // customer.
     if (
       status === 'cancelled' &&
       existing.shipment?.bostaDeliveryId &&
@@ -58,9 +60,22 @@ export async function PUT(
       } catch (err) {
         const message = err instanceof Error ? err.message : 'فشل إلغاء الشحنة من بوسطة';
         console.error('[admin order cancel → bosta]', err);
+        if (!force) {
+          // Refuse to cancel the order; admin can confirm-and-force in a
+          // second click after reading the Bosta error.
+          return NextResponse.json({
+            error: `لم يتم إلغاء الأوردر — بوسطة رفضت الإلغاء: ${message}`,
+            shipmentCancel: { ok: false, error: message, requiresForce: true },
+          }, { status: 409 });
+        }
         shipmentCancel = { ok: false, error: message };
       }
     }
+
+    const order = await prisma.order.update({
+      where: { id },
+      data: { status },
+    });
 
     return NextResponse.json({ order, shipmentCancel });
   } catch (err) {

@@ -131,6 +131,15 @@ export async function trackDelivery(trackingNumber: string): Promise<unknown> {
 // the known shapes in order until one accepts the request. Some tenants
 // also crash with a 500 reading `_id` from req.body, so we always send a
 // body for the methods that accept one.
+// Parse the HTTP status from a `bostaFetch` error message of the form
+// "Bosta 404: ...". Returns null when the format doesn't match (e.g. network
+// error before a response).
+function parseBostaStatus(err: unknown): number | null {
+  const msg = err instanceof Error ? err.message : '';
+  const m = msg.match(/^Bosta (\d{3}):/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
 export async function cancelDelivery(deliveryId: string): Promise<void> {
   const body = JSON.stringify({ deliveryId, _id: deliveryId, reason: 'admin_cancelled' });
   const attempts: Array<{ method: string; path: string; withBody: boolean }> = [
@@ -140,8 +149,6 @@ export async function cancelDelivery(deliveryId: string): Promise<void> {
     { method: 'DELETE', path: `/deliveries/business/${deliveryId}`,   withBody: false },
     { method: 'DELETE', path: `/deliveries/${deliveryId}`,            withBody: true  },
   ];
-  // Soft-failure regex — keep trying the next attempt for these.
-  const softFail = /\b(404|405)\b|Cannot (DELETE|PUT|PATCH|GET|POST)|reading '_id'|deliveryId is required/i;
   let lastError: unknown = null;
   for (const { method, path, withBody } of attempts) {
     try {
@@ -149,11 +156,12 @@ export async function cancelDelivery(deliveryId: string): Promise<void> {
       return;
     } catch (err) {
       lastError = err;
-      const msg = err instanceof Error ? err.message : '';
-      if (!softFail.test(msg)) {
-        // Real business error (e.g. "delivery already picked up") — surface it.
-        throw err;
-      }
+      const status = parseBostaStatus(err);
+      // 404 (route absent) and 405 (method not allowed) → keep trying the next
+      // shape. Anything else (4xx business rule like "already picked up", 401
+      // auth, 5xx server error) is real and must surface to the admin.
+      if (status === 404 || status === 405) continue;
+      throw err;
     }
   }
   throw lastError instanceof Error ? lastError : new Error('Bosta: لم نعثر على endpoint إلغاء صالح');
@@ -188,16 +196,17 @@ export async function bostaCityIdFromGovernorate(governorateId?: string | null):
   }
 }
 
-// Normalize an Egyptian phone number to the 11-digit `01xxxxxxxxx` shape Bosta expects.
-// Returns null if the input can't be coerced into a valid Egyptian mobile.
+// Normalize an Egyptian phone number to the 11-digit `01xxxxxxxxx` shape Bosta
+// expects. Egypt has four mobile prefixes today: 010, 011, 012, 015. Anything
+// else (landlines, neighbour countries, malformed input) returns null so the
+// admin gets a clear validation error instead of a Bosta rejection.
 export function normalizeEgyptPhone(input?: string | null): string | null {
   if (!input) return null;
   let digits = input.replace(/\D+/g, '');
   if (digits.startsWith('0020')) digits = digits.slice(4);
   else if (digits.startsWith('20') && digits.length > 11) digits = digits.slice(2);
-  if (digits.length === 10 && digits.startsWith('1')) digits = '0' + digits;
-  if (digits.length === 11 && /^01[0-2,5]\d{8}$/.test(digits)) return digits;
-  if (digits.length === 11 && digits.startsWith('01')) return digits;
+  if (digits.length === 10 && /^1[0125]\d{8}$/.test(digits)) digits = '0' + digits;
+  if (digits.length === 11 && /^01[0125]\d{8}$/.test(digits)) return digits;
   return null;
 }
 

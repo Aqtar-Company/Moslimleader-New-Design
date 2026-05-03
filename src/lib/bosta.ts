@@ -164,31 +164,44 @@ interface DeliveriesPage {
   hasMore?: boolean;
 }
 
-// List deliveries page-by-page. Bosta tenants vary on the exact path & shape
-// so we try the common variants and normalise the response.
+// List deliveries page-by-page. Bosta's business listing is `POST
+// /deliveries/search` with a JSON body in v2 — but tenants vary, so we try
+// the common variants and normalise the response.
 export async function listDeliveries(page: number, limit = 50): Promise<{
   items: BostaListDelivery[];
   hasMore: boolean;
 }> {
-  const candidates = [
-    `/deliveries?page=${page}&limit=${limit}`,
-    `/deliveries/business?page=${page}&limit=${limit}`,
-    `/deliveries/search?page=${page}&limit=${limit}`,
+  type Attempt = { method: 'GET' | 'POST'; path: string; body?: string };
+  const searchBody = JSON.stringify({
+    pageNumber: page - 1,
+    pageLimit: limit,
+    page: page - 1,
+    limit,
+    sortBy: { createdAt: -1 },
+  });
+  const candidates: Attempt[] = [
+    { method: 'POST', path: `/deliveries/search`,           body: searchBody },
+    { method: 'POST', path: `/deliveries/business/search`,  body: searchBody },
+    { method: 'GET',  path: `/deliveries?page=${page}&limit=${limit}` },
+    { method: 'GET',  path: `/deliveries/business?page=${page}&limit=${limit}` },
+    { method: 'GET',  path: `/deliveries/business/list?page=${page}&limit=${limit}` },
   ];
   let lastError: unknown = null;
-  for (const path of candidates) {
+  for (const c of candidates) {
     try {
-      const res = await bostaFetch<DeliveriesPage | BostaListDelivery[]>(path);
+      const init: RequestInit = { method: c.method };
+      if (c.body) init.body = c.body;
+      const res = await bostaFetch<DeliveriesPage | BostaListDelivery[]>(c.path, init);
       const items: BostaListDelivery[] = Array.isArray(res)
         ? res
         : res?.list || res?.deliveries || res?.data || [];
-      const hasMore = items.length === limit
+      const total = (res as DeliveriesPage)?.count ?? (res as DeliveriesPage)?.total;
+      const hasMore = items.length >= limit
         || (typeof (res as DeliveriesPage)?.hasMore === 'boolean' && !!(res as DeliveriesPage).hasMore)
-        || (typeof (res as DeliveriesPage)?.total === 'number' && page * limit < ((res as DeliveriesPage).total ?? 0));
+        || (typeof total === 'number' && page * limit < total);
       return { items, hasMore };
     } catch (err) {
       lastError = err;
-      // If 404/405 → next path, anything else → real error
       const msg = err instanceof Error ? err.message : '';
       const m = msg.match(/^Bosta (\d{3}):/);
       const status = m ? parseInt(m[1], 10) : null;

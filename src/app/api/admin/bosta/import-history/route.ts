@@ -72,7 +72,15 @@ export async function POST(req: NextRequest) {
 
       try {
         for (let page = 1; page <= maxPages; page++) {
-          const { items, hasMore } = await listDeliveries(page, pageSize);
+          let pageResult: { items: BostaListDelivery[]; hasMore: boolean };
+          try {
+            pageResult = await listDeliveries(page, pageSize);
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'unknown';
+            send({ type: 'log', message: `❌ فشل سحب الصفحة ${page}: ${message.slice(0, 300)}` });
+            break;
+          }
+          const { items, hasMore } = pageResult;
           if (items.length === 0) {
             send({ type: 'log', message: `صفحة ${page} فارغة، إيقاف.` });
             break;

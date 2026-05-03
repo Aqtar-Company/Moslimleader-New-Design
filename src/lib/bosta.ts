@@ -128,25 +128,30 @@ export async function trackDelivery(trackingNumber: string): Promise<unknown> {
 // Terminate (cancel) a delivery on Bosta. Only succeeds if the package
 // hasn't been picked up yet. Bosta v2 doesn't document a single canonical
 // path for this — different tenants land on different routes — so we try
-// the known shapes in order until one accepts the request.
+// the known shapes in order until one accepts the request. Some tenants
+// also crash with a 500 reading `_id` from req.body, so we always send a
+// body for the methods that accept one.
 export async function cancelDelivery(deliveryId: string): Promise<void> {
-  const attempts: Array<{ method: string; path: string }> = [
-    { method: 'DELETE', path: `/deliveries/business/${deliveryId}` },
-    { method: 'PUT',    path: `/deliveries/${deliveryId}/terminate` },
-    { method: 'PATCH',  path: `/deliveries/${deliveryId}/terminate` },
-    { method: 'DELETE', path: `/deliveries/${deliveryId}` },
+  const body = JSON.stringify({ deliveryId, _id: deliveryId, reason: 'admin_cancelled' });
+  const attempts: Array<{ method: string; path: string; withBody: boolean }> = [
+    { method: 'POST',   path: `/deliveries/terminate`,                withBody: true  },
+    { method: 'PUT',    path: `/deliveries/${deliveryId}/terminate`,  withBody: true  },
+    { method: 'PATCH',  path: `/deliveries/${deliveryId}/terminate`,  withBody: true  },
+    { method: 'DELETE', path: `/deliveries/business/${deliveryId}`,   withBody: false },
+    { method: 'DELETE', path: `/deliveries/${deliveryId}`,            withBody: true  },
   ];
+  // Soft-failure regex — keep trying the next attempt for these.
+  const softFail = /\b(404|405)\b|Cannot (DELETE|PUT|PATCH|GET|POST)|reading '_id'|deliveryId is required/i;
   let lastError: unknown = null;
-  for (const { method, path } of attempts) {
+  for (const { method, path, withBody } of attempts) {
     try {
-      await bostaFetch<unknown>(path, { method });
+      await bostaFetch<unknown>(path, withBody ? { method, body } : { method });
       return;
     } catch (err) {
       lastError = err;
       const msg = err instanceof Error ? err.message : '';
-      // 404 / Cannot METHOD = wrong route; keep trying. Anything else (auth,
-      // business rule like "already picked up") is a real error — surface it.
-      if (!/404|Cannot (DELETE|PUT|PATCH|GET|POST)/i.test(msg)) {
+      if (!softFail.test(msg)) {
+        // Real business error (e.g. "delivery already picked up") — surface it.
         throw err;
       }
     }

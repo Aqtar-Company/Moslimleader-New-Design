@@ -125,6 +125,79 @@ export async function trackDelivery(trackingNumber: string): Promise<unknown> {
   return bostaFetch<unknown>(`/deliveries/business/track/${trackingNumber}`);
 }
 
+export interface BostaListDelivery {
+  _id: string;
+  trackingNumber: string;
+  state?: { value?: string; code?: number };
+  cod?: number;
+  businessReference?: string;
+  createdAt?: string;
+  receiver?: {
+    firstName?: string;
+    lastName?: string;
+    fullName?: string;
+    phone?: string;
+    secondPhone?: string;
+    email?: string;
+  };
+  dropOffAddress?: {
+    city?: { name?: string; nameAr?: string };
+    cityName?: string;
+    zone?: { name?: string; nameAr?: string };
+    district?: { name?: string; nameAr?: string };
+    firstLine?: string;
+    secondLine?: string;
+    buildingNumber?: string;
+    floor?: string;
+    apartment?: string;
+  };
+  cityName?: string;
+  pickupAddress?: unknown;
+}
+
+interface DeliveriesPage {
+  list?: BostaListDelivery[];
+  deliveries?: BostaListDelivery[];
+  data?: BostaListDelivery[];
+  count?: number;
+  total?: number;
+  hasMore?: boolean;
+}
+
+// List deliveries page-by-page. Bosta tenants vary on the exact path & shape
+// so we try the common variants and normalise the response.
+export async function listDeliveries(page: number, limit = 50): Promise<{
+  items: BostaListDelivery[];
+  hasMore: boolean;
+}> {
+  const candidates = [
+    `/deliveries?page=${page}&limit=${limit}`,
+    `/deliveries/business?page=${page}&limit=${limit}`,
+    `/deliveries/search?page=${page}&limit=${limit}`,
+  ];
+  let lastError: unknown = null;
+  for (const path of candidates) {
+    try {
+      const res = await bostaFetch<DeliveriesPage | BostaListDelivery[]>(path);
+      const items: BostaListDelivery[] = Array.isArray(res)
+        ? res
+        : res?.list || res?.deliveries || res?.data || [];
+      const hasMore = items.length === limit
+        || (typeof (res as DeliveriesPage)?.hasMore === 'boolean' && !!(res as DeliveriesPage).hasMore)
+        || (typeof (res as DeliveriesPage)?.total === 'number' && page * limit < ((res as DeliveriesPage).total ?? 0));
+      return { items, hasMore };
+    } catch (err) {
+      lastError = err;
+      // If 404/405 → next path, anything else → real error
+      const msg = err instanceof Error ? err.message : '';
+      const m = msg.match(/^Bosta (\d{3}):/);
+      const status = m ? parseInt(m[1], 10) : null;
+      if (status !== 404 && status !== 405) throw err;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('Bosta: لم نعثر على endpoint listing صالح');
+}
+
 // Terminate (cancel) a delivery on Bosta. Only succeeds if the package
 // hasn't been picked up yet. Bosta v2 doesn't document a single canonical
 // path for this — different tenants land on different routes — so we try

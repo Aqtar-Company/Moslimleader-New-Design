@@ -324,12 +324,27 @@ export default function OrdersPage() {
 
   const handleStatus = async (order: DbOrder, status: string) => {
     setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status } : o));
-    await fetch(`/api/admin/orders/${order.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ status }),
-    });
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (status === 'cancelled' && order.shipment?.bostaDeliveryId) {
+        if (data.shipmentCancel?.ok) {
+          addToast('تم إلغاء الشحنة من بوسطة', 'success');
+          setOrders(prev => prev.map(o => o.id === order.id
+            ? { ...o, shipment: o.shipment ? { ...o.shipment, status: 'cancelled' } : o.shipment }
+            : o));
+        } else if (data.shipmentCancel?.error) {
+          addToast(`الأوردر اتلغى لكن بوسطة رفضت: ${data.shipmentCancel.error}`, 'warning', 7000);
+        }
+      }
+    } catch {
+      addToast('فشل تحديث حالة الطلب', 'error');
+    }
   };
 
   const filtered = orders.filter(o => {
@@ -433,7 +448,7 @@ export default function OrdersPage() {
                           {o.shipment?.trackingNumber ? (
                             <div className="flex flex-col gap-0.5">
                               <a
-                                href={`https://bosta.co/track-shipment/${o.shipment.trackingNumber}`}
+                                href={`https://bosta.co/en/track-shipment/${o.shipment.trackingNumber}`}
                                 target="_blank" rel="noreferrer"
                                 className="text-xs font-mono font-bold text-blue-600 hover:underline"
                               >{o.shipment.trackingNumber}</a>

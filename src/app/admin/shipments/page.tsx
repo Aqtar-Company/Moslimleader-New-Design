@@ -178,7 +178,7 @@ export default function ShipmentsPage() {
                       <div className="flex gap-2 items-center">
                         {s.trackingNumber && (
                           <a
-                            href={`https://bosta.co/track-shipment/${s.trackingNumber}`}
+                            href={`https://bosta.co/en/track-shipment/${s.trackingNumber}`}
                             target="_blank" rel="noreferrer"
                             className="text-xs font-bold text-blue-600 hover:underline"
                           >تتبع</a>

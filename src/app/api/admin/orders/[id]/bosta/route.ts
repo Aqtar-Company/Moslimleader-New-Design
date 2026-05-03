@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
-import { createDelivery, bostaCityFromGovernorate } from '@/lib/bosta';
+import { createDelivery, bostaCityFromGovernorate, bostaCityIdFromGovernorate, normalizeEgyptPhone } from '@/lib/bosta';
 
 interface ShippingAddress {
   firstName?: string;
@@ -41,18 +41,31 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     }
 
     const addr = (order.shippingAddress as unknown as ShippingAddress) || {};
+
+    // Bosta only delivers within Egypt.
+    if (addr.country && addr.country !== 'EG') {
+      return NextResponse.json({ error: 'بوسطة يدعم الشحن داخل مصر فقط' }, { status: 400 });
+    }
+    const govId = addr.governorateId || addr.governorate;
+    if (!govId) {
+      return NextResponse.json({ error: 'محافظة الشحن مطلوبة' }, { status: 400 });
+    }
+
+    const phone = normalizeEgyptPhone(addr.phone);
+    if (!phone) {
+      return NextResponse.json({ error: 'رقم الهاتف غير صحيح — لازم يكون رقم مصري بصيغة 01xxxxxxxxx' }, { status: 400 });
+    }
+    const secondPhone = normalizeEgyptPhone(addr.whatsappNumber);
+
     const cod = order.paymentMethod === 'cod' ? Math.round(order.total) : 0;
     const itemsCount = order.items.reduce((s, it) => s + it.quantity, 0);
     const description = order.items.map(it => `${it.productName} ×${it.quantity}`).join(' | ').slice(0, 250);
 
-    const phone = (addr.phone || '').replace(/\s+/g, '');
     const fallbackName = (order.user?.name || 'Customer').trim().split(/\s+/);
     const firstName = (addr.firstName || fallbackName[0] || 'Customer').trim();
     const lastName = (addr.lastName || fallbackName.slice(1).join(' ') || '-').trim() || '-';
 
-    if (!phone) {
-      return NextResponse.json({ error: 'رقم الهاتف مطلوب لإنشاء شحنة بوسطة' }, { status: 400 });
-    }
+    const cityId = await bostaCityIdFromGovernorate(govId);
 
     const delivery = await createDelivery({
       type: 10,
@@ -67,11 +80,12 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         firstName,
         lastName,
         phone,
-        secondPhone: addr.whatsappNumber && addr.whatsappNumber !== addr.phone ? addr.whatsappNumber : undefined,
+        secondPhone: secondPhone && secondPhone !== phone ? secondPhone : undefined,
         email: addr.email || order.user?.email,
       },
       dropOffAddress: {
-        city: bostaCityFromGovernorate(addr.governorateId || addr.governorate),
+        cityId: cityId || undefined,
+        city: cityId ? undefined : bostaCityFromGovernorate(govId),
         zone: addr.region || undefined,
         district: addr.city || undefined,
         firstLine: addr.street || '-',

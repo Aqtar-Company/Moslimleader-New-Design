@@ -23,9 +23,12 @@ export interface BostaReceiver {
 }
 
 export interface BostaAddress {
-  city: string;            // Bosta city name (English)
+  cityId?: string;         // Bosta city _id (preferred)
+  city?: string;           // Bosta city name (fallback)
   zone?: string;
+  zoneId?: string;
   district?: string;
+  districtId?: string;
   firstLine: string;       // street / address line 1
   secondLine?: string;
   buildingNumber?: string;
@@ -108,6 +111,60 @@ export async function getDelivery(deliveryId: string): Promise<BostaDelivery> {
 
 export async function trackDelivery(trackingNumber: string): Promise<unknown> {
   return bostaFetch<unknown>(`/deliveries/business/track/${trackingNumber}`);
+}
+
+// Terminate (cancel) a delivery on Bosta. Only succeeds if the package
+// hasn't been picked up yet.
+export async function cancelDelivery(deliveryId: string): Promise<void> {
+  await bostaFetch<unknown>(`/deliveries/${deliveryId}`, { method: 'DELETE' });
+}
+
+// In-memory cache for the cities list (24h TTL).
+interface BostaCity { _id: string; name: string; nameAr?: string }
+let citiesCache: { at: number; list: BostaCity[] } | null = null;
+const CITIES_TTL_MS = 24 * 60 * 60 * 1000;
+
+export async function getBostaCities(): Promise<BostaCity[]> {
+  if (citiesCache && Date.now() - citiesCache.at < CITIES_TTL_MS) return citiesCache.list;
+  const list = await bostaFetch<BostaCity[]>('/cities');
+  citiesCache = { at: Date.now(), list: Array.isArray(list) ? list : [] };
+  return citiesCache.list;
+}
+
+export async function bostaCityIdFromGovernorate(governorateId?: string | null): Promise<string | null> {
+  if (!governorateId) return null;
+  const target = (GOVERNORATE_TO_BOSTA[governorateId] || governorateId).toLowerCase();
+  try {
+    const cities = await getBostaCities();
+    const match = cities.find(c =>
+      c.name?.toLowerCase() === target ||
+      c.nameAr?.toLowerCase() === target ||
+      c.name?.toLowerCase().includes(target),
+    );
+    return match?._id || null;
+  } catch (err) {
+    console.error('[bosta cities lookup]', err);
+    return null;
+  }
+}
+
+// Normalize an Egyptian phone number to the 11-digit `01xxxxxxxxx` shape Bosta expects.
+// Returns null if the input can't be coerced into a valid Egyptian mobile.
+export function normalizeEgyptPhone(input?: string | null): string | null {
+  if (!input) return null;
+  let digits = input.replace(/\D+/g, '');
+  if (digits.startsWith('0020')) digits = digits.slice(4);
+  else if (digits.startsWith('20') && digits.length > 11) digits = digits.slice(2);
+  if (digits.length === 10 && digits.startsWith('1')) digits = '0' + digits;
+  if (digits.length === 11 && /^01[0-2,5]\d{8}$/.test(digits)) return digits;
+  if (digits.length === 11 && digits.startsWith('01')) return digits;
+  return null;
+}
+
+// Build the public tracking URL. Configurable via BOSTA_TRACKING_URL with `{tn}` placeholder.
+export function bostaTrackingUrl(trackingNumber: string): string {
+  const tpl = (process.env.BOSTA_TRACKING_URL || '').trim() || 'https://bosta.co/en/track-shipment/{tn}';
+  return tpl.replace('{tn}', encodeURIComponent(trackingNumber));
 }
 
 // Map our Egyptian governorate ids to Bosta city names (English).

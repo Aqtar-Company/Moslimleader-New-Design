@@ -99,7 +99,31 @@ export default function ShipmentsPage() {
       const res = await fetch(`/api/admin/shipments/${s.id}/cancel`, { method: 'POST', credentials: 'include' });
       const data = await res.json();
       if (!res.ok) {
-        addToast(data.error || 'فشل الإلغاء', 'error', 6000);
+        // Bosta API failed. Offer to mark as cancelled here only.
+        if (data.canForceLocal) {
+          const goLocal = await confirm({
+            title: 'بوسطة رفضت الإلغاء التلقائي',
+            message: `${data.error}\n\nهل تريد تعليم الشحنة كملغية عندنا فقط؟ هتحتاج تلغيها يدويًا من dashboard بوسطة.`,
+            confirmLabel: 'علّمها ملغية محليًا',
+            cancelLabel: 'تراجع',
+            tone: 'danger',
+            icon: '⚠️',
+          });
+          if (goLocal) {
+            const localRes = await fetch(`/api/admin/shipments/${s.id}/cancel?localOnly=1`, { method: 'POST', credentials: 'include' });
+            const localData = await localRes.json();
+            if (!localRes.ok) {
+              addToast(localData.error || 'فشل العملية', 'error');
+            } else {
+              setShipments(prev => prev.map(x => x.id === s.id
+                ? { ...x, status: 'cancelled', order: { ...x.order, status: 'pending' } }
+                : x));
+              addToast('تم تعليم الشحنة كملغية محليًا. لا تنسَ إلغاءها من dashboard بوسطة.', 'warning', 7000);
+            }
+          }
+        } else {
+          addToast(data.error || 'فشل الإلغاء', 'error', 6000);
+        }
       } else {
         setShipments(prev => prev.map(x => x.id === s.id
           ? { ...x, status: 'cancelled', order: { ...x.order, status: 'pending' } }

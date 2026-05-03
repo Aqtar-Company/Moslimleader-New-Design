@@ -21,11 +21,22 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'الشحنة ملغاة بالفعل' }, { status: 400 });
     }
 
-    try {
-      await cancelDelivery(shipment.bostaDeliveryId);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'فشل إلغاء الشحنة من بوسطة';
-      return NextResponse.json({ error: message }, { status: 502 });
+    const url = new URL(_req.url);
+    const localOnly = url.searchParams.get('localOnly') === '1';
+
+    if (!localOnly) {
+      try {
+        await cancelDelivery(shipment.bostaDeliveryId, shipment.trackingNumber);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'فشل إلغاء الشحنة من بوسطة';
+        // Tell the caller they can retry with localOnly=1 to mark as
+        // cancelled here without notifying Bosta (admin will cancel
+        // manually from Bosta dashboard).
+        return NextResponse.json({
+          error: message,
+          canForceLocal: true,
+        }, { status: 502 });
+      }
     }
 
     const prevHistory = Array.isArray(shipment.history) ? (shipment.history as unknown[]) : [];

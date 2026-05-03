@@ -213,15 +213,28 @@ function parseBostaStatus(err: unknown): number | null {
   return m ? parseInt(m[1], 10) : null;
 }
 
-export async function cancelDelivery(deliveryId: string): Promise<void> {
-  const body = JSON.stringify({ deliveryId, _id: deliveryId, reason: 'admin_cancelled' });
+export async function cancelDelivery(deliveryId: string, trackingNumber?: string | null): Promise<void> {
+  const body = JSON.stringify({
+    deliveryId,
+    _id: deliveryId,
+    trackingNumber: trackingNumber || undefined,
+    reason: 'admin_cancelled',
+  });
   const attempts: Array<{ method: string; path: string; withBody: boolean }> = [
-    { method: 'POST',   path: `/deliveries/terminate`,                withBody: true  },
-    { method: 'PUT',    path: `/deliveries/${deliveryId}/terminate`,  withBody: true  },
-    { method: 'PATCH',  path: `/deliveries/${deliveryId}/terminate`,  withBody: true  },
-    { method: 'DELETE', path: `/deliveries/business/${deliveryId}`,   withBody: false },
-    { method: 'DELETE', path: `/deliveries/${deliveryId}`,            withBody: true  },
+    { method: 'POST',   path: `/deliveries/terminate`,                           withBody: true  },
+    { method: 'PUT',    path: `/deliveries/${deliveryId}/terminate`,             withBody: true  },
+    { method: 'PATCH',  path: `/deliveries/${deliveryId}/terminate`,             withBody: true  },
+    { method: 'DELETE', path: `/deliveries/business/${deliveryId}`,              withBody: false },
+    { method: 'DELETE', path: `/deliveries/${deliveryId}`,                       withBody: true  },
   ];
+  // Also try the tracking-number path variants — some Bosta tenants only
+  // accept the AWB, not the internal _id.
+  if (trackingNumber) {
+    attempts.push(
+      { method: 'PUT',    path: `/deliveries/business/track/${trackingNumber}/terminate`, withBody: true  },
+      { method: 'DELETE', path: `/deliveries/business/track/${trackingNumber}`,           withBody: false },
+    );
+  }
   let lastError: unknown = null;
   for (const { method, path, withBody } of attempts) {
     try {
@@ -230,10 +243,15 @@ export async function cancelDelivery(deliveryId: string): Promise<void> {
     } catch (err) {
       lastError = err;
       const status = parseBostaStatus(err);
-      // 404 (route absent) and 405 (method not allowed) → keep trying the next
-      // shape. Anything else (4xx business rule like "already picked up", 401
-      // auth, 5xx server error) is real and must surface to the admin.
-      if (status === 404 || status === 405) continue;
+      const msg = err instanceof Error ? err.message : '';
+      // 404/405 → wrong route, keep trying. Also Bosta's 500 reading '_id'
+      // is a documented internal-handler crash, not a "real" rejection — we
+      // treat it as a missed route and keep trying.
+      const isRoute404Or500 =
+        status === 404 ||
+        status === 405 ||
+        (status === 500 && /reading '_id'/.test(msg));
+      if (isRoute404Or500) continue;
       throw err;
     }
   }

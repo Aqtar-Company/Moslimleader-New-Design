@@ -47,7 +47,7 @@ export async function PUT(
       existing.shipment.status !== 'cancelled'
     ) {
       try {
-        await cancelDelivery(existing.shipment.bostaDeliveryId);
+        await cancelDelivery(existing.shipment.bostaDeliveryId, existing.shipment.trackingNumber);
         const prevHistory = Array.isArray(existing.shipment.history) ? (existing.shipment.history as unknown[]) : [];
         await prisma.shipment.update({
           where: { id: existing.shipment.id },

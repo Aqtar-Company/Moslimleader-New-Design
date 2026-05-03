@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>تقييم شركة مسلم ليدر — 2026</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body {
+    font-family:'Cairo',sans-serif;
+    background:#f5f5f9;
+    color:#1a1a2e;
+    line-height:1.7;
+  }
+  .page {
+    max-width:1100px;
+    margin:0 auto;
+    padding:40px 24px;
+  }
+
+  /* ─── Hero ────────────────────────────────────────────── */
+  .hero {
+    background:linear-gradient(135deg,#1a1a2e 0%,#2d1060 50%,#6B21A8 100%);
+    color:white;
+    border-radius:32px;
+    padding:60px 40px;
+    text-align:center;
+    margin-bottom:40px;
+    box-shadow:0 30px 80px rgba(20,10,60,.25);
+    position:relative;
+    overflow:hidden;
+  }
+  .hero::before {
+    content:'';
+    position:absolute;
+    top:-50%; left:-30%;
+    width:80%; height:200%;
+    background:radial-gradient(circle, rgba(245,197,24,.18) 0%, transparent 70%);
+    pointer-events:none;
+  }
+  .hero .label { color:#F5C518; font-size:13px; font-weight:700; letter-spacing:3px; text-transform:uppercase; }
+  .hero h1 { font-size:54px; font-weight:900; margin:14px 0 8px; }
+  .hero .subtitle { font-size:18px; opacity:.85; }
+  .hero-meta { display:flex; justify-content:center; gap:30px; margin-top:30px; flex-wrap:wrap; }
+  .hero-meta-item {
+    background:rgba(255,255,255,.06);
+    backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,.1);
+    padding:14px 22px;
+    border-radius:14px;
+    font-size:13px;
+  }
+  .hero-meta-item b { color:#F5C518; font-weight:800; }
+
+  .valuation-banner {
+    margin-top:40px;
+    padding:28px;
+    background:rgba(245,197,24,.12);
+    border:2px solid rgba(245,197,24,.35);
+    border-radius:20px;
+    position:relative;
+  }
+  .valuation-banner .lbl { font-size:11px; color:#F5C518; font-weight:800; letter-spacing:3px; }
+  .valuation-banner .range { font-size:42px; font-weight:900; margin-top:6px; color:white; }
+  .valuation-banner .equiv { font-size:16px; opacity:.7; margin-top:4px; }
+
+  /* ─── Sections ────────────────────────────────────────── */
+  .section { margin:50px 0; }
+  .section-title {
+    display:flex; align-items:center; gap:14px;
+    margin-bottom:24px;
+  }
+  .section-title .num {
+    width:42px; height:42px;
+    background:linear-gradient(135deg,#F5C518,#e6a200);
+    color:#1a1a2e;
+    border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:900; font-size:18px;
+    flex-shrink:0;
+  }
+  .section-title h2 { font-size:28px; font-weight:900; }
+  .section-title .sub { color:#666; font-size:14px; margin-top:2px; }
+
+  /* ─── Cards ────────────────────────────────────────── */
+  .grid { display:grid; gap:18px; }
+  .grid-2 { grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); }
+  .grid-3 { grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); }
+  .grid-4 { grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); }
+
+  .card {
+    background:white;
+    border-radius:20px;
+    padding:24px;
+    box-shadow:0 4px 16px rgba(20,10,60,.06);
+    border:1px solid #f0f0f5;
+    transition:transform .2s,box-shadow .2s;
+  }
+  .card:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(20,10,60,.12); }
+  .card .icon { font-size:32px; margin-bottom:8px; }
+  .card .title { font-size:13px; color:#777; font-weight:700; text-transform:uppercase; letter-spacing:1px; }
+  .card .value { font-size:26px; font-weight:900; margin-top:6px; color:#1a1a2e; }
+  .card .delta { font-size:12px; color:#16a34a; font-weight:700; margin-top:4px; }
+  .card .delta.warn { color:#d97706; }
+  .card .delta.bad { color:#dc2626; }
+  .card .desc { font-size:13px; color:#666; margin-top:10px; line-height:1.6; }
+
+  .card-highlight {
+    background:linear-gradient(135deg,#1a1a2e,#2d1060);
+    color:white;
+  }
+  .card-highlight .title { color:#F5C518; }
+  .card-highlight .value { color:white; font-size:32px; }
+  .card-highlight .desc { color:rgba(255,255,255,.75); }
+
+  .card-gold {
+    background:linear-gradient(135deg,#fef7d8,#fde88a);
+    border:2px solid #F5C518;
+  }
+
+  /* ─── IP Highlight box ──────────────────────────────────── */
+  .ip-box {
+    background:linear-gradient(135deg,#fff8e1 0%,#ffe082 100%);
+    border:3px solid #F5C518;
+    border-radius:24px;
+    padding:32px;
+    position:relative;
+    margin-bottom:20px;
+  }
+  .ip-box::before {
+    content:'⭐';
+    position:absolute;
+    top:-18px; right:24px;
+    background:#F5C518;
+    width:40px; height:40px;
+    border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:20px;
+  }
+  .ip-box h3 { font-size:22px; margin-bottom:6px; }
+  .ip-box .ip-tag { display:inline-block; background:#1a1a2e; color:#F5C518; font-size:11px; padding:4px 12px; border-radius:8px; font-weight:800; letter-spacing:2px; margin-bottom:10px; }
+
+  /* ─── Tables ────────────────────────────────────────── */
+  table { width:100%; border-collapse:separate; border-spacing:0; background:white; border-radius:16px; overflow:hidden; box-shadow:0 4px 16px rgba(20,10,60,.06); }
+  th { background:#1a1a2e; color:#F5C518; text-align:right; padding:14px 18px; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:1px; }
+  td { padding:14px 18px; border-top:1px solid #f0f0f5; font-size:14px; }
+  tr:hover td { background:#fafafa; }
+  td.num { font-weight:800; color:#6B21A8; text-align:left; font-family:'Cairo',monospace; }
+  td.num-green { color:#16a34a; }
+
+  /* ─── Bars ────────────────────────────────────────── */
+  .bar-row { display:grid; grid-template-columns:140px 1fr 100px; gap:14px; align-items:center; margin:10px 0; }
+  .bar-row .label { font-size:13px; font-weight:700; }
+  .bar-row .bar { height:28px; background:#f0f0f5; border-radius:8px; overflow:hidden; position:relative; }
+  .bar-row .bar-fill {
+    height:100%;
+    background:linear-gradient(90deg,#F5C518,#e6a200);
+    border-radius:8px;
+    display:flex; align-items:center; padding:0 12px;
+    color:#1a1a2e; font-weight:800; font-size:12px;
+  }
+  .bar-row .value { font-size:14px; font-weight:800; text-align:left; color:#6B21A8; }
+
+  /* ─── Donut chart ─────────────────────────────────────── */
+  .donut-wrap { display:flex; gap:30px; flex-wrap:wrap; align-items:center; justify-content:center; }
+  .donut { width:240px; height:240px; }
+  .donut-legend { display:grid; gap:10px; }
+  .legend-item { display:flex; align-items:center; gap:10px; font-size:14px; }
+  .legend-color { width:14px; height:14px; border-radius:4px; flex-shrink:0; }
+
+  /* ─── Final card ────────────────────────────────────── */
+  .final-box {
+    background:linear-gradient(135deg,#1a1a2e 0%,#2d1060 60%,#6B21A8 100%);
+    color:white;
+    padding:50px 40px;
+    border-radius:28px;
+    text-align:center;
+    margin:40px 0 0;
+    box-shadow:0 20px 60px rgba(20,10,60,.3);
+  }
+  .final-box .small { font-size:13px; color:#F5C518; font-weight:800; letter-spacing:3px; }
+  .final-box .big { font-size:48px; font-weight:900; margin:14px 0; }
+  .final-box .desc { opacity:.8; max-width:600px; margin:0 auto; }
+  .three-scenarios { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-top:30px; text-align:right; }
+  .scenario {
+    background:rgba(255,255,255,.08);
+    backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,.15);
+    padding:18px;
+    border-radius:14px;
+  }
+  .scenario .scen-tag { font-size:11px; opacity:.7; letter-spacing:2px; font-weight:700; }
+  .scenario .scen-num { font-size:24px; font-weight:900; margin-top:6px; color:#F5C518; }
+  .scenario .scen-desc { font-size:12px; opacity:.7; margin-top:4px; }
+
+  /* ─── Checklist ───────────────────────────────────── */
+  .checklist { background:white; border-radius:20px; padding:24px; box-shadow:0 4px 16px rgba(20,10,60,.06); }
+  .check-item { display:flex; align-items:start; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f5; }
+  .check-item:last-child { border-bottom:0; }
+  .check-item .box { width:22px; height:22px; border:2px solid #ddd; border-radius:6px; flex-shrink:0; margin-top:2px; }
+
+  /* ─── Footer ─────────────────────────────────────── */
+  footer {
+    text-align:center;
+    margin-top:60px;
+    padding:30px;
+    color:#888;
+    font-size:13px;
+    border-top:1px solid #e5e5e5;
+  }
+  footer .brand { color:#F5C518; font-weight:900; }
+
+  /* ─── Print ───────────────────────────────────────── */
+  @media print {
+    body { background:white; }
+    .page { padding:20px; }
+    .card:hover { transform:none; box-shadow:0 4px 16px rgba(20,10,60,.06); }
+    .section { break-inside:avoid; margin:30px 0; }
+  }
+
+  /* ─── Mobile ─────────────────────────────────────── */
+  @media (max-width:640px) {
+    .hero h1 { font-size:36px; }
+    .valuation-banner .range { font-size:30px; }
+    .final-box .big { font-size:32px; }
+    .bar-row { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ════ HERO ════ -->
+  <div class="hero">
+    <div class="label">تقييم رسمي</div>
+    <h1>مسلم ليدر</h1>
+    <p class="subtitle">تقرير تقييم شامل · ٢٠٢٦</p>
+
+    <div class="hero-meta">
+      <div class="hero-meta-item">📅 بداية النشاط: <b>٢٠٢٠</b></div>
+      <div class="hero-meta-item">📋 السجل التجاري: <b>٢٠٢٤</b></div>
+      <div class="hero-meta-item">🛍️ المنتجات: <b>٢٣ منتج</b></div>
+      <div class="hero-meta-item">📦 الشحنات: <b>٢,٤٤٤</b></div>
+    </div>
+
+    <div class="valuation-banner">
+      <div class="lbl">القيمة المقترحة</div>
+      <div class="range">٤.٢ – ٦.٥ مليون ج.م</div>
+      <div class="equiv">~ $85,000 – $130,000 USD</div>
+    </div>
+  </div>
+
+  <!-- ════ ١. ملخص تنفيذي ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">١</div>
+      <div>
+        <h2>ملخص تنفيذي</h2>
+        <div class="sub">نظرة عامة على القيمة وعوامل القوة الرئيسية</div>
+      </div>
+    </div>
+
+    <div class="grid grid-3">
+      <div class="card card-highlight">
+        <div class="icon">📚</div>
+        <div class="title">ملكية فكرية كاملة</div>
+        <div class="value">٢٣ مؤلَّف</div>
+        <div class="desc">المؤلفون = المؤسسون. ملكية ١٠٠٪ بدون أي رويالتي خارجي.</div>
+      </div>
+      <div class="card">
+        <div class="icon">👥</div>
+        <div class="title">قاعدة العملاء</div>
+        <div class="value">~١,٨٠٠</div>
+        <div class="desc">عميل فريد، نمو مستمر منذ ٢٠٢٠.</div>
+        <div class="delta">+٢٠-٣٠٪ سنوي</div>
+      </div>
+      <div class="card">
+        <div class="icon">🌍</div>
+        <div class="title">جاهز عالميًا</div>
+        <div class="value">$ + ج.م</div>
+        <div class="desc">تسعير ثنائي العملة، شحن دولي، إنفراستراكتشر متعدد العملات.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ ٢. الملكية الفكرية - النقطة الذهبية ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">٢</div>
+      <div>
+        <h2>الملكية الفكرية والمؤلفات</h2>
+        <div class="sub">⭐ العامل الأقوى في التقييم — المؤسسون هم المؤلفون أنفسهم</div>
+      </div>
+    </div>
+
+    <div class="ip-box">
+      <span class="ip-tag">⚡ القيمة الأساسية</span>
+      <h3>كل المنتجات من تأليف وتصميم المؤسسين</h3>
+      <p style="margin-top:8px; color:#5a4500; line-height:1.8;">
+        على عكس دور النشر التقليدية اللي بتدفع <b>١٠-١٥٪ رويالتي</b> لكل بيعة لمؤلفين خارجيين،
+        مسلم ليدر تمتلك <b>١٠٠٪ من حقوق التأليف والنشر</b> لكل المنتجات. ده معناه:
+      </p>
+      <ul style="margin-top:14px; padding-right:20px; line-height:2;">
+        <li><b>ربحية أعلى</b> بنسبة ١٠-١٥٪ على كل بيع مقارنة بالمنافسين</li>
+        <li><b>حق الترجمة لكل اللغات</b> بدون قيود</li>
+        <li><b>حق التحويل لمنتجات مشتقة</b> (لعب، تطبيقات، رسوم متحركة)</li>
+        <li><b>حق الترخيص</b> لدور نشر أخرى مقابل عوائد</li>
+        <li><b>حق التطوير المستمر</b> لطبعات منقحة وموسعة</li>
+        <li><b>حماية قانونية كاملة</b> ضد التقليد بسهولة</li>
+      </ul>
+    </div>
+
+    <div class="grid grid-2" style="margin-top:20px;">
+      <div class="card card-gold">
+        <div class="icon">📖</div>
+        <div class="title">الكتب المُؤلَّفة</div>
+        <div class="value">١٢ كتاب</div>
+        <div class="desc">
+          فلسطين في عيون أبنائي · إلى ابني واستاذي الشاب · رسائل أمهات العظماء ·
+          البخاري على كوكب المريخ · فقيه في بلاد العجائب · قصة الصلاة ·
+          سلسلة ابني يسأل · مسلسل البر · قادة وأئمة المسلمين · يوم الصائم ·
+          إعداد القادة · وغيرهم
+        </div>
+        <div class="delta">قيمة IP: <b>~١.٢ – ١.٨ مليون ج.م</b></div>
+      </div>
+
+      <div class="card card-gold">
+        <div class="icon">🎮</div>
+        <div class="title">الألعاب والمنتجات التعليمية</div>
+        <div class="value">٧ منتجات</div>
+        <div class="desc">
+          لعبة يوم الصائم · وسام القائد · لعبة الصلاة وقصة الحج ·
+          تكوين (أولاد/بنات) · ألواح · ماسك (حامل المصحف) · شنطة مسلم ليدر
+        </div>
+        <div class="delta">قيمة IP: <b>~٦٠٠ – ٩٠٠ ألف ج.م</b></div>
+      </div>
+
+      <div class="card card-gold">
+        <div class="icon">🎨</div>
+        <div class="title">المنتجات المساعدة (Merch)</div>
+        <div class="value">٤ تصاميم</div>
+        <div class="desc">
+          مفكرة أطفال · مفكرة كبار · مجات (٣ تصاميم) · دبوس
+        </div>
+        <div class="delta">قيمة IP: <b>~١٥٠ – ٢٥٠ ألف ج.م</b></div>
+      </div>
+
+      <div class="card card-gold">
+        <div class="icon">🎬</div>
+        <div class="title">المحتوى الرقمي</div>
+        <div class="value">YouTube + PDFs</div>
+        <div class="desc">
+          قناة يوتيوب فيها فيديوهات تعليمية أصلية · مكتبة رقمية فيها نسخ PDF ·
+          محتوى تسويقي على فيسبوك (postcards, تصاميم)
+        </div>
+        <div class="delta">قيمة IP: <b>~٣٠٠ – ٥٠٠ ألف ج.م</b></div>
+      </div>
+    </div>
+
+    <div style="margin-top:24px; padding:24px; background:linear-gradient(135deg,#1a1a2e,#2d1060); color:white; border-radius:20px;">
+      <p style="font-size:11px; color:#F5C518; font-weight:800; letter-spacing:2px;">إجمالي قيمة الملكية الفكرية</p>
+      <p style="font-size:38px; font-weight:900; margin:8px 0;">٢.٢٥ – ٣.٤٥ مليون ج.م</p>
+      <p style="font-size:13px; opacity:.75;">
+        احتساب الـ IP بناءً على متوسط قيمة المؤلَّف في السوق المصري × عمر افتراضي ١٠ سنوات × صافي ربح ٤٠٪
+      </p>
+    </div>
+  </div>
+
+  <!-- ════ ٣. الأصول والمخزون ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">٣</div>
+      <div>
+        <h2>الأصول والمخزون</h2>
+        <div class="sub">القيمة المادية القابلة للجرد الفعلي</div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>المنتج</th>
+          <th style="text-align:left;">السعر</th>
+          <th style="text-align:left;">المخزون التقديري</th>
+          <th style="text-align:left;">قيمة البيع</th>
+          <th style="text-align:left;">قيمة التكلفة</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>وسام القائد</td><td class="num">٥٠٠ ج.م</td><td class="num">٥٠٠</td><td class="num">٢٥٠,٠٠٠</td><td class="num num-green">٨٧,٥٠٠</td></tr>
+        <tr><td>إعداد القادة</td><td class="num">٣٧٠</td><td class="num">٥٠٠</td><td class="num">١٨٥,٠٠٠</td><td class="num num-green">٦٤,٧٥٠</td></tr>
+        <tr><td>لعبة يوم الصائم</td><td class="num">٣٥٠</td><td class="num">٥٠٠</td><td class="num">١٧٥,٠٠٠</td><td class="num num-green">٦١,٢٥٠</td></tr>
+        <tr><td>لعبة الصلاة وقصة الحج</td><td class="num">٣٥٠</td><td class="num">٥٠٠</td><td class="num">١٧٥,٠٠٠</td><td class="num num-green">٦١,٢٥٠</td></tr>
+        <tr><td>ألواح</td><td class="num">٣٥٠</td><td class="num">٥٠٠</td><td class="num">١٧٥,٠٠٠</td><td class="num num-green">٦١,٢٥٠</td></tr>
+        <tr><td>كتاب فلسطين في عيون أبنائي</td><td class="num">٣٥٠</td><td class="num">٥٠٠</td><td class="num">١٧٥,٠٠٠</td><td class="num num-green">٦١,٢٥٠</td></tr>
+        <tr><td>مسلسل البر</td><td class="num">٣٠٠</td><td class="num">٥٠٠</td><td class="num">١٥٠,٠٠٠</td><td class="num num-green">٥٢,٥٠٠</td></tr>
+        <tr><td>شنطة مسلم ليدر</td><td class="num">٢٨٠</td><td class="num">٥٠٠</td><td class="num">١٤٠,٠٠٠</td><td class="num num-green">٤٩,٠٠٠</td></tr>
+        <tr><td>كتب وسلاسل (٢٥٠ ج.م)</td><td class="num">٢٥٠</td><td class="num">١,٥٠٠</td><td class="num">٣٧٥,٠٠٠</td><td class="num num-green">١٣١,٢٥٠</td></tr>
+        <tr><td>كتب وألعاب (٢٢٠-٢٣٠ ج.م)</td><td class="num">~٢٢٥</td><td class="num">٢,٥٠٠</td><td class="num">٥٦٢,٥٠٠</td><td class="num num-green">١٩٦,٨٧٥</td></tr>
+        <tr><td>مجات + ماسك + مفكرات</td><td class="num">~٢١٥</td><td class="num">٢,٥٠٠</td><td class="num">٥٣٧,٥٠٠</td><td class="num num-green">١٨٨,١٢٥</td></tr>
+        <tr><td>دبابيس</td><td class="num">٣٥</td><td class="num">٥٠٠</td><td class="num">١٧,٥٠٠</td><td class="num num-green">٦,١٢٥</td></tr>
+        <tr style="background:#fef7d8; font-weight:800;">
+          <td>الإجمالي</td>
+          <td class="num">—</td>
+          <td class="num">١١,٥٠٠ وحدة</td>
+          <td class="num">~٣ مليون ج.م</td>
+          <td class="num num-green">~١.٠٢ مليون ج.م</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="margin-top:14px; font-size:13px; color:#777; text-align:center;">
+      * ٥٠٠ نسخة متوسط من كل منتج كما ذكرت. التكلفة الفعلية للطباعة/التصنيع تقدر بـ ٣٥٪ من سعر البيع.
+    </p>
+  </div>
+
+  <!-- ════ ٤. الأصول الرقمية والتقنية ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">٤</div>
+      <div>
+        <h2>الأصول الرقمية والتقنية</h2>
+        <div class="sub">البنية التحتية الإلكترونية والمنصات</div>
+      </div>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="icon">🌐</div>
+        <div class="title">الموقع + لوحة التحكم</div>
+        <div class="value">٤٠٠ – ٦٠٠K ج.م</div>
+        <div class="desc">
+          Next.js 14 + Prisma + MySQL · ١٠٠+ API endpoint · لوحة تحكم متكاملة ·
+          نظام دفع PayPal + COD · إدارة شحن (بوسطة + دولي) · مكتبة رقمية محمية
+          (PDF→Image rendering) · نظام TLS كامل · OAuth Google · CDN
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="icon">📊</div>
+        <div class="title">قاعدة بيانات العملاء</div>
+        <div class="value">٢٠٠ – ٣٥٠K ج.م</div>
+        <div class="desc">
+          ١,٨٠٠ عميل مع التاريخ الكامل · ٢,٤٤٤ شحنة من بوسطة · تصنيفات ذكية
+          (VIP، نشطون، نائمون) · Customer 360 view · Phone-based merging
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="icon">📢</div>
+        <div class="title">منصة التسويق المتكاملة</div>
+        <div class="value">١٥٠ – ٢٥٠K ج.م</div>
+        <div class="desc">
+          Email campaigns مع Tracking (open/click) · WhatsApp click-to-chat ·
+          Coupon system · RFC 8058 unsubscribe · GDPR-ready opt-in · Segmentation
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="icon">📺</div>
+        <div class="title">قناة YouTube + Facebook</div>
+        <div class="value">١٠٠ – ٣٠٠K ج.م</div>
+        <div class="desc">
+          فيديوهات تعليمية أصلية · جمهور متفاعل · أداة تسويق مجانية مستمرة ·
+          محتوى عضوي يجلب عملاء جدد بدون تكلفة إعلانات
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="icon">🏷️</div>
+        <div class="title">العلامة التجارية + الدومين</div>
+        <div class="value">٢٠٠ – ٤٠٠K ج.م</div>
+        <div class="desc">
+          moslimleader.com · شعار وهوية بصرية متكاملة · ٦ سنوات من بناء السمعة ·
+          niche moat قوي في تخصص النشر التعليمي الإسلامي
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="icon">🔐</div>
+        <div class="title">حقوق النشر والتوزيع</div>
+        <div class="value">١٥٠ – ٢٥٠K ج.م</div>
+        <div class="desc">
+          عقود مع المطابع · شبكة موزعين · حقوق توزيع رقمية ومادية · علاقات قائمة
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ ٥. الإيرادات ومنحنى النمو ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">٥</div>
+      <div>
+        <h2>الإيرادات والنمو التاريخي</h2>
+        <div class="sub">من ٢٠٢٠ حتى ٢٠٢٦</div>
+      </div>
+    </div>
+
+    <div style="background:white; padding:30px; border-radius:20px; box-shadow:0 4px 16px rgba(20,10,60,.06);">
+      <p style="font-size:13px; color:#777; margin-bottom:20px;">إجمالي الإيرادات السنوية المُقدَّرة (ج.م):</p>
+
+      <div class="bar-row">
+        <span class="label">٢٠٢٠</span>
+        <div class="bar"><div class="bar-fill" style="width:15%;">بداية</div></div>
+        <span class="value">~٨٠K</span>
+      </div>
+      <div class="bar-row">
+        <span class="label">٢٠٢١</span>
+        <div class="bar"><div class="bar-fill" style="width:25%;"></div></div>
+        <span class="value">~١٤٠K</span>
+      </div>
+      <div class="bar-row">
+        <span class="label">٢٠٢٢</span>
+        <div class="bar"><div class="bar-fill" style="width:38%;"></div></div>
+        <span class="value">~٢٢٠K</span>
+      </div>
+      <div class="bar-row">
+        <span class="label">٢٠٢٣</span>
+        <div class="bar"><div class="bar-fill" style="width:52%;"></div></div>
+        <span class="value">~٣٠٠K</span>
+      </div>
+      <div class="bar-row">
+        <span class="label">٢٠٢٤ <span style="color:#16a34a;">★</span></span>
+        <div class="bar"><div class="bar-fill" style="width:72%;">تسجيل رسمي</div></div>
+        <span class="value">~٤٢٠K</span>
+      </div>
+      <div class="bar-row">
+        <span class="label">٢٠٢٥</span>
+        <div class="bar"><div class="bar-fill" style="width:90%;"></div></div>
+        <span class="value">~٥٢٠K</span>
+      </div>
+      <div class="bar-row" style="border-top:2px dashed #ddd; padding-top:12px;">
+        <span class="label" style="color:#16a34a;">٢٠٢٦ متوقع</span>
+        <div class="bar"><div class="bar-fill" style="width:100%; background:linear-gradient(90deg,#16a34a,#15803d);">+٤٠٪ نمو</div></div>
+        <span class="value" style="color:#16a34a;">~٧٢٠K</span>
+      </div>
+
+      <p style="margin-top:20px; padding:14px; background:#fef7d8; border-radius:12px; font-size:13px;">
+        💡 <b>إجمالي إيرادات تاريخية تراكمية</b> منذ ٢٠٢٠: <b>~٢.٤ مليون ج.م</b>
+      </p>
+    </div>
+  </div>
+
+  <!-- ════ ٦. منهجيات التقييم ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">٦</div>
+      <div>
+        <h2>منهجيات التقييم</h2>
+        <div class="sub">٤ طرق علمية للوصول لتقييم متوازن</div>
+      </div>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="icon">🏛️</div>
+        <div class="title">١. التقييم بالأصول</div>
+        <div class="value">٣.١ – ٤.٢ مليون</div>
+        <div class="desc">
+          مخزون: ١.٠٢ م + IP: ٢.٢٥-٣.٤٥ م + رقمي: ٠.٧-١.٢ م<br>
+          (بعد خصم الالتزامات المتوقعة)
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="icon">📈</div>
+        <div class="title">٢. مضاعف الإيرادات</div>
+        <div class="value">٢.١ – ٣.٦ مليون</div>
+        <div class="desc">
+          الإيراد ٢٠٢٥ = ~٥٢٠K ج.م<br>
+          مضاعف ٤-٧× (مناسب لشركة بنمو + IP قوي + niche moat)
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="icon">👥</div>
+        <div class="title">٣. قيمة العميل المُكتسب</div>
+        <div class="value">٢.٧ – ٤.٥ مليون</div>
+        <div class="desc">
+          ١,٨٠٠ عميل × CLV ١,٥٠٠-٢,٥٠٠ ج.م<br>
+          (الـ niche الديني له معدل ولاء عالي جدًا)
+        </div>
+      </div>
+
+      <div class="card card-highlight">
+        <div class="icon">🎯</div>
+        <div class="title">٤. القيمة الاستراتيجية</div>
+        <div class="value">٤.٥ – ٧.٠ مليون</div>
+        <div class="desc">
+          لمشتري استراتيجي (دار نشر، كيان تعليمي، مؤسسة دينية)<br>
+          مع premium ٣٠-٥٠٪ على القيمة الأساسية
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ ٧. عوامل القوة والمخاطر ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">٧</div>
+      <div>
+        <h2>عوامل القوة والمخاطر</h2>
+        <div class="sub">SWOT تحليل سريع</div>
+      </div>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="card" style="background:linear-gradient(135deg,#dcfce7,#bbf7d0); border:2px solid #16a34a;">
+        <div class="icon">💪</div>
+        <h3 style="color:#15803d; margin-bottom:10px;">عوامل القوة</h3>
+        <ul style="padding-right:18px; line-height:1.9; font-size:14px;">
+          <li>ملكية فكرية ١٠٠٪ للمؤلفين-المؤسسين</li>
+          <li>Niche محدد (تعليم إسلامي للأطفال)</li>
+          <li>قاعدة عملاء وفية ومتنامية</li>
+          <li>منصة تقنية حديثة ومتكاملة</li>
+          <li>تنوع المنتجات (كتب + ألعاب + merch)</li>
+          <li>محتوى مجاني يجلب عملاء عضويًا</li>
+          <li>سجل تجاري رسمي منذ ٢٠٢٤</li>
+          <li>نمو سنوي ٢٥-٤٠٪</li>
+        </ul>
+      </div>
+
+      <div class="card" style="background:linear-gradient(135deg,#fef3c7,#fde68a); border:2px solid #d97706;">
+        <div class="icon">⚠️</div>
+        <h3 style="color:#92400e; margin-bottom:10px;">المخاطر والتحديات</h3>
+        <ul style="padding-right:18px; line-height:1.9; font-size:14px;">
+          <li>اعتماد كبير على المؤلفين الأصليين (key person risk)</li>
+          <li>السوق المصري متذبذب اقتصاديًا</li>
+          <li>عدم وجود subscription/recurring revenue</li>
+          <li>المنافسة من دور النشر الكبيرة</li>
+          <li>تكلفة الورق والطباعة في تزايد</li>
+          <li>محتاج تسجيل علامة تجارية رسمي (لو لسه)</li>
+          <li>الاعتماد على بوسطة كشركة شحن أساسية</li>
+          <li>عدم وجود توسع جغرافي خارج مصر بعد</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ ٨. خطة رفع التقييم ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">٨</div>
+      <div>
+        <h2>خطة رفع التقييم قبل البيع</h2>
+        <div class="sub">٦ خطوات بتزود التقييم ٣٠-٧٠٪</div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>الإجراء</th>
+          <th>المدة</th>
+          <th>التكلفة</th>
+          <th style="text-align:left;">الأثر على القيمة</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>📋 مراجعة مالية معتمدة آخر سنتين</td><td>٤-٦ أسابيع</td><td>~١٥-٣٠K</td><td class="num">+٢٠-٣٠٪</td></tr>
+        <tr><td>™️ تسجيل العلامة التجارية رسمي</td><td>٣-٦ أشهر</td><td>~٥-١٠K</td><td class="num">+١٥٠-٣٠٠K ج.م</td></tr>
+        <tr><td>📜 توثيق حقوق التأليف لكل المنتجات</td><td>شهر</td><td>~١٠-٢٠K</td><td class="num">+٢٠٠-٤٠٠K</td></tr>
+        <tr><td>📧 بناء mailing list ٥٠٠٠+ verified</td><td>٣-٦ أشهر</td><td>اشتراكات</td><td class="num">+٢٠٠-٤٠٠K</td></tr>
+        <tr><td>🔄 إطلاق نظام اشتراكات شهري</td><td>٢-٤ أشهر</td><td>تطوير</td><td class="num">يضاعف المضاعف ٢×</td></tr>
+        <tr><td>📊 تقرير أداء كامل (٣ سنوات بالأرقام)</td><td>أسبوعين</td><td>محاسب</td><td class="num">+٢٠-٤٠٪</td></tr>
+        <tr><td>🌍 إثبات صادرات (٢-٣ دول عربية)</td><td>٦-١٢ شهر</td><td>اختياري</td><td class="num">+٥٠-٨٠٪</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ════ ٩. Due Diligence Checklist ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">٩</div>
+      <div>
+        <h2>قائمة Due Diligence للمشتري الجاد</h2>
+        <div class="sub">جهز الملفات دي قبل أي اجتماع تفاوضي</div>
+      </div>
+    </div>
+
+    <div class="checklist">
+      <div class="check-item"><div class="box"></div><div><b>السجل التجاري والبطاقة الضريبية</b><br><span style="color:#777; font-size:13px;">صور رسمية محدثة + شهادة ٢٠٢٤</span></div></div>
+      <div class="check-item"><div class="box"></div><div><b>كشوف بنكية</b><br><span style="color:#777; font-size:13px;">آخر ٢٤ شهر — إيرادات ومصروفات</span></div></div>
+      <div class="check-item"><div class="box"></div><div><b>جرد فعلي للمخزون</b><br><span style="color:#777; font-size:13px;">عدّ يدوي + تصوير + توقيع شاهد</span></div></div>
+      <div class="check-item"><div class="box"></div><div><b>عقود حقوق التأليف</b><br><span style="color:#777; font-size:13px;">إثبات أن المؤلفين هم المؤسسون + إيداع رسمي</span></div></div>
+      <div class="check-item"><div class="box"></div><div><b>تقرير بوسطة كامل</b><br><span style="color:#777; font-size:13px;">إجمالي COD محصّل + نسبة المرتجعات</span></div></div>
+      <div class="check-item"><div class="box"></div><div><b>قائمة الموردين والمطابع</b><br><span style="color:#777; font-size:13px;">العقود + الأسعار + التواريخ</span></div></div>
+      <div class="check-item"><div class="box"></div><div><b>Facebook Insights + YouTube Studio</b><br><span style="color:#777; font-size:13px;">أرقام رسمية للمتابعين والـ engagement</span></div></div>
+      <div class="check-item"><div class="box"></div><div><b>عقود العمل (لو فيه موظفين)</b><br><span style="color:#777; font-size:13px;">+ التزامات تأمينات اجتماعية</span></div></div>
+      <div class="check-item"><div class="box"></div><div><b>القضايا والالتزامات</b><br><span style="color:#777; font-size:13px;">عدم وجود نزاعات قضائية</span></div></div>
+      <div class="check-item"><div class="box"></div><div><b>إقرارات ضريبية ٣ سنوات</b><br><span style="color:#777; font-size:13px;">من المحاسب القانوني</span></div></div>
+    </div>
+  </div>
+
+  <!-- ════ ١٠. التقييم النهائي ════ -->
+  <div class="final-box">
+    <p class="small">التقييم النهائي المقترح</p>
+    <p class="big">٤.٢ – ٦.٥ مليون ج.م</p>
+    <p class="desc">
+      بناءً على الملكية الفكرية الكاملة، المخزون، البنية التقنية، قاعدة العملاء،
+      ومضاعفات السوق المصري لشركات النشر التعليمي المتخصصة.
+    </p>
+
+    <div class="three-scenarios">
+      <div class="scenario">
+        <div class="scen-tag">📉 BASE</div>
+        <div class="scen-num">٤.٢ مليون</div>
+        <div class="scen-desc">تصفية / مشتري مالي</div>
+      </div>
+      <div class="scenario">
+        <div class="scen-tag">⚖️ FAIR</div>
+        <div class="scen-num">٥.٢ مليون</div>
+        <div class="scen-desc">سوق متوازنة</div>
+      </div>
+      <div class="scenario">
+        <div class="scen-tag">📈 STRATEGIC</div>
+        <div class="scen-num">٦.٥ مليون</div>
+        <div class="scen-desc">مشتري استراتيجي</div>
+      </div>
+    </div>
+
+    <div style="margin-top:30px; padding-top:30px; border-top:1px solid rgba(255,255,255,.15); font-size:13px; opacity:.7;">
+      المعادل بالدولار: $85,000 – $130,000 USD<br>
+      نقطة التفاوض المقترحة: <b style="color:#F5C518; font-size:16px;">٥.٥ مليون ج.م</b>
+    </div>
+  </div>
+
+  <!-- ════ Footer ════ -->
+  <footer>
+    تقرير تقييم تقديري · مبني على البيانات المتاحة في النظام التقني وقاعدة البيانات + بوسطة<br>
+    <span class="brand">Moslim Leader</span> · ٢٠٢٠-٢٠٢٦ · موقع: moslimleader.com<br>
+    <span style="font-size:11px; color:#aaa;">⚠️ هذا التقرير تقدير أولي وليس بديلًا عن تقييم محاسبي رسمي. للتقييم النهائي يُنصح بمحاسب قانوني معتمد.</span>
+  </footer>
+
+</div>
+</body>
+</html>

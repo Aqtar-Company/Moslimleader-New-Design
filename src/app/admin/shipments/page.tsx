@@ -96,9 +96,24 @@ export default function ShipmentsPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-black text-gray-900">شحنات بوسطة</h1>
-        <p className="text-sm text-gray-500 mt-0.5">{shipments.length} شحنة</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-xl font-black text-gray-900">شحنات بوسطة</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{shipments.length} شحنة</p>
+        </div>
+        <button
+          onClick={async () => {
+            try {
+              const res = await fetch('/api/admin/bosta/ping', { credentials: 'include' });
+              const data = await res.json();
+              if (data.ok) addToast(`✓ التوكن شغال — ${data.baseUrl}`, 'success', 5000);
+              else addToast(data.error || 'فشل الاتصال', 'error', 6000);
+            } catch {
+              addToast('فشل الاتصال ببوسطة', 'error');
+            }
+          }}
+          className="px-3 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
+        >🔌 اختبار الاتصال</button>
       </div>
 
       <div className="flex flex-wrap gap-3 items-center">

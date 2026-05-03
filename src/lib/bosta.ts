@@ -1,8 +1,18 @@
 // Bosta shipping API client.
 // Docs: https://developer.bosta.co — uses raw token in Authorization header.
 
-const BASE_URL = process.env.BOSTA_API_URL || 'https://app.bosta.co/api/v2';
-const TOKEN = process.env.BOSTA_API_TOKEN || '';
+function getBaseUrl(): string {
+  const raw = (process.env.BOSTA_API_URL || '').trim();
+  if (raw) return raw.replace(/\/+$/, '');
+  // Use staging when token clearly looks like a staging key, otherwise production.
+  const tok = (process.env.BOSTA_API_TOKEN || '').trim();
+  if (/staging|sandbox|stg/i.test(tok)) return 'https://stg-app.bosta.co/api/v2';
+  return 'https://app.bosta.co/api/v2';
+}
+
+function getToken(): string {
+  return (process.env.BOSTA_API_TOKEN || '').trim();
+}
 
 export interface BostaReceiver {
   firstName: string;
@@ -47,12 +57,14 @@ interface BostaResponse<T> {
 }
 
 async function bostaFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-  if (!TOKEN) throw new Error('BOSTA_API_TOKEN is not configured');
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const token = getToken();
+  if (!token) throw new Error('BOSTA_API_TOKEN is not configured');
+  const url = `${getBaseUrl()}${path}`;
+  const res = await fetch(url, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: TOKEN,
+      Authorization: token,
       ...(init.headers || {}),
     },
     cache: 'no-store',
@@ -61,11 +73,26 @@ async function bostaFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   let body: BostaResponse<T> | T | undefined;
   try { body = text ? JSON.parse(text) : undefined; } catch { body = undefined; }
   if (!res.ok) {
-    const msg = (body as BostaResponse<T>)?.message || `Bosta API error ${res.status}`;
-    throw new Error(msg);
+    const wrapped = body as BostaResponse<T> & { errors?: Array<{ message?: string }> };
+    const detailed =
+      wrapped?.message ||
+      wrapped?.errors?.map(e => e?.message).filter(Boolean).join('; ') ||
+      text?.slice(0, 200) ||
+      `Bosta API error ${res.status}`;
+    console.error('[bosta]', { url, status: res.status, body: text?.slice(0, 500) });
+    throw new Error(`Bosta ${res.status}: ${detailed}`);
   }
   const wrapped = body as BostaResponse<T>;
   return (wrapped?.data ?? body) as T;
+}
+
+// Lightweight diagnostic — fetches the cities list, which requires a valid token.
+export async function pingBosta(): Promise<{ ok: true; baseUrl: string; tokenPrefix: string }> {
+  const token = getToken();
+  if (!token) throw new Error('BOSTA_API_TOKEN is not configured');
+  const baseUrl = getBaseUrl();
+  await bostaFetch('/cities');
+  return { ok: true, baseUrl, tokenPrefix: token.slice(0, 6) + '…' };
 }
 
 export async function createDelivery(input: CreateDeliveryInput): Promise<BostaDelivery> {

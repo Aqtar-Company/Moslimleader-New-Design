@@ -177,7 +177,7 @@ export async function listDeliveries(page: number, limit = 50): Promise<{
     pageLimit: limit,
     page: page - 1,
     limit,
-    sortBy: { createdAt: -1 },
+    sortBy: '-createdAt',
   });
   const candidates: Attempt[] = [
     { method: 'POST', path: `/deliveries/search`,           body: searchBody },

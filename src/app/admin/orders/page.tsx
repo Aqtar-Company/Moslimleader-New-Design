@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback, Fragment } from 'react';
 import Image from 'next/image';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 interface OrderItem {
   id: string;
@@ -265,6 +267,8 @@ function InvoiceDetail({ order }: { order: DbOrder }) {
 }
 
 export default function OrdersPage() {
+  const { addToast } = useToast();
+  const confirm = useConfirm();
   const [orders, setOrders] = useState<DbOrder[]>([]);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
@@ -293,20 +297,28 @@ export default function OrdersPage() {
 
   const handleCreateBosta = async (order: DbOrder) => {
     if (order.shipment?.bostaDeliveryId) {
-      alert('شحنة بوسطة موجودة بالفعل');
+      addToast('شحنة بوسطة موجودة بالفعل', 'warning');
       return;
     }
-    if (!confirm(`إنشاء شحنة بوسطة للطلب #${order.id.slice(-6).toUpperCase()}؟`)) return;
+    const ok = await confirm({
+      title: 'إنشاء شحنة بوسطة',
+      message: `سيتم إنشاء شحنة جديدة للطلب #${order.id.slice(-6).toUpperCase()} وإرسال البيانات إلى بوسطة.`,
+      confirmLabel: 'إنشاء الشحنة',
+      cancelLabel: 'إلغاء',
+      icon: '📮',
+    });
+    if (!ok) return;
     try {
       const res = await fetch(`/api/admin/orders/${order.id}/bosta`, { method: 'POST', credentials: 'include' });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || 'فشل إنشاء الشحنة');
+        addToast(data.error || 'فشل إنشاء الشحنة', 'error');
         return;
       }
       setOrders(prev => prev.map(o => o.id === order.id ? { ...o, shipment: data.shipment, status: o.status === 'pending' || o.status === 'paid' ? 'shipped' : o.status } : o));
+      addToast('تم إنشاء الشحنة بنجاح', 'success');
     } catch {
-      alert('فشل إنشاء الشحنة');
+      addToast('فشل إنشاء الشحنة', 'error');
     }
   };
 

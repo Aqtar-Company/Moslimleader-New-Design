@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useToast } from '@/components/ui/Toast';
 
 interface Shipment {
   id: string;
@@ -40,6 +41,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function ShipmentsPage() {
+  const { addToast } = useToast();
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -64,11 +66,12 @@ export default function ShipmentsPage() {
       const data = await res.json();
       if (data.shipment) {
         setShipments(prev => prev.map(s => s.id === id ? { ...s, ...data.shipment } : s));
+        addToast('تم تحديث حالة الشحنة', 'success');
       } else if (data.error) {
-        alert(data.error);
+        addToast(data.error, 'error');
       }
     } catch {
-      alert('فشل التحديث');
+      addToast('فشل التحديث', 'error');
     }
     setRefreshingId(null);
   };

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/Toast';
 import { toIntlPhone, whatsappLink } from '@/lib/phone';
+import { PaginationFooter } from '@/components/admin/PaginationFooter';
 
 interface CustomerSummary {
   id: string;
@@ -62,29 +63,36 @@ export default function CustomersPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
   const [bulkMessage, setBulkMessage] = useState(
     'مرحبًا 👋\nمن Moslim Leader، عندنا منتج جديد ممكن يعجبك. تحب أبعتلك التفاصيل؟',
   );
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (limitOverride?: number) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ segment, sort });
+      const effectiveLimit = limitOverride ?? pageSize;
+      const params = new URLSearchParams({ segment, sort, limit: String(effectiveLimit), offset: '0' });
       if (search.trim()) params.set('q', search.trim());
       const res = await fetch(`/api/admin/customers?${params}`, { credentials: 'include', cache: 'no-store' });
       const data = await res.json();
       setCustomers(data.customers ?? []);
       setCounts(data.counts ?? {});
+      setTotal(data.total ?? (data.customers?.length ?? 0));
+      if (limitOverride) setPageSize(limitOverride);
     } catch {
       addToast('فشل تحميل العملاء', 'error');
     }
     setLoading(false);
-  }, [segment, sort, search, addToast]);
+  }, [segment, sort, search, pageSize, addToast]);
 
   useEffect(() => {
-    const t = setTimeout(load, search ? 300 : 0);
+    setPageSize(50); // reset page size on filter/search change
+    const t = setTimeout(() => load(50), search ? 300 : 0);
     return () => clearTimeout(t);
-  }, [load, search]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [segment, sort, search]);
 
   const totalSpend = useMemo(() => customers.reduce((s, c) => s + c.totalSpend, 0), [customers]);
 
@@ -270,6 +278,14 @@ export default function CustomersPage() {
           )}
         </div>
       )}
+
+      <PaginationFooter
+        shown={customers.length}
+        total={total}
+        loading={loading}
+        onLoadMore={() => load(pageSize + 50)}
+        onLoadAll={() => load(total)}
+      />
 
       {/* Bulk WhatsApp modal */}
       {bulkOpen && (

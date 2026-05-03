@@ -28,23 +28,16 @@ interface ShippingAddr {
   phone?: string;
 }
 
-// GET /api/admin/customers — aggregated customers with segment filters
-export async function GET(req: NextRequest) {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-  }
+// Module-level cache so paginated re-fetches don't re-aggregate every time.
+// 5-minute TTL is plenty for an admin browsing customers; a fresh import or
+// new order shows up on next refresh.
+interface AggregatedCache { at: number; list: CustomerSummary[]; totalProducts: number }
+let aggCache: AggregatedCache | null = null;
+const AGG_TTL_MS = 5 * 60 * 1000;
 
-  const url = new URL(req.url);
-  const segment = url.searchParams.get('segment') || 'all';
-  const productFilter = url.searchParams.get('boughtProduct');
-  const notProductFilter = url.searchParams.get('notBoughtProduct');
-  const govFilter = url.searchParams.get('governorate');
-  const search = (url.searchParams.get('q') || '').trim().toLowerCase();
-  const sort = url.searchParams.get('sort') || 'spend';
+async function aggregate(): Promise<AggregatedCache> {
+  if (aggCache && Date.now() - aggCache.at < AGG_TTL_MS) return aggCache;
 
-  // Pull every order with items + user; aggregate in memory. Customer set is
-  // small enough on this site that one pass is fine and avoids N+1.
   const orders = await prisma.order.findMany({
     where: { status: { not: 'cancelled' } },
     include: {
@@ -87,8 +80,6 @@ export async function GET(req: NextRequest) {
       row.lastOrderAt = orderTime;
       if (!row.phone && addr?.phone) row.phone = addr.phone;
     }
-    // Orders arrive newest-first; remember the first non-null governorate we
-    // see so a missing field on the latest order falls back to the previous one.
     if (!row.lastGovernorate && addr?.governorate) {
       row.lastGovernorate = addr.governorate;
     }
@@ -98,9 +89,6 @@ export async function GET(req: NextRequest) {
     for (const it of o.items) row._productIds.add(it.productId);
   }
 
-  // Denominator for bought_all should be products visible on the storefront
-  // — ignore static-source shadow rows seeded by the cart and out-of-stock
-  // items so the segment is actually achievable.
   const totalPublishedProducts = await prisma.product.count({ where: { inStock: true } });
 
   const now = Date.now();
@@ -131,6 +119,31 @@ export async function GET(req: NextRequest) {
   const vipIds = new Set(sortedBySpend.slice(0, vipCount).map(r => r.id));
   for (const r of list) if (vipIds.has(r.id)) r.segments.push('vip');
 
+  aggCache = { at: Date.now(), list, totalProducts: totalPublishedProducts };
+  return aggCache;
+}
+
+// GET /api/admin/customers — aggregated customers with segment filters + pagination
+export async function GET(req: NextRequest) {
+  const auth = await getAuthUser();
+  if (!auth || auth.role !== 'admin') {
+    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+  }
+
+  const url = new URL(req.url);
+  const segment = url.searchParams.get('segment') || 'all';
+  const productFilter = url.searchParams.get('boughtProduct');
+  const notProductFilter = url.searchParams.get('notBoughtProduct');
+  const govFilter = url.searchParams.get('governorate');
+  const search = (url.searchParams.get('q') || '').trim().toLowerCase();
+  const sort = url.searchParams.get('sort') || 'spend';
+  const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10) || 50, 5000);
+  const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
+  const refresh = url.searchParams.get('refresh') === '1';
+  if (refresh) aggCache = null;
+
+  const { list, totalProducts } = await aggregate();
+
   // Apply filters
   let filtered = list;
   if (segment && segment !== 'all') {
@@ -153,14 +166,18 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Segment counts for the chips (computed before pagination, on the full list)
+  // Segment counts for the chips (computed on the *unfiltered* list so chips
+  // always show the true universe size).
   const counts: Record<string, number> = { all: list.length };
   for (const r of list) for (const s of r.segments) counts[s] = (counts[s] || 0) + 1;
 
-  // Sort
+  // Sort then paginate
   if (sort === 'recent') filtered.sort((a, b) => (b.lastOrderAt || '').localeCompare(a.lastOrderAt || ''));
   else if (sort === 'orders') filtered.sort((a, b) => b.orderCount - a.orderCount);
   else filtered.sort((a, b) => b.totalSpend - a.totalSpend);
 
-  return NextResponse.json({ customers: filtered, counts, totalProducts: totalPublishedProducts });
+  const total = filtered.length;
+  const page = filtered.slice(offset, offset + limit);
+
+  return NextResponse.json({ customers: page, counts, totalProducts, total });
 }

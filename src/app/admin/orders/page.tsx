@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, Fragment } from 'react';
 import Image from 'next/image';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { PaginationFooter } from '@/components/admin/PaginationFooter';
 
 interface OrderItem {
   id: string;
@@ -274,17 +275,23 @@ export default function OrdersPage() {
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [total, setTotal] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (limitOverride?: number) => {
+    setLoading(true);
     try {
-      const res = await fetch('/api/admin/orders', { credentials: 'include', cache: 'no-store' });
-      const { orders: raw }: { orders: DbOrder[] } = await res.json();
-      setOrders(raw ?? []);
+      const effectiveLimit = limitOverride ?? pageSize;
+      const res = await fetch(`/api/admin/orders?limit=${effectiveLimit}&offset=0`, { credentials: 'include', cache: 'no-store' });
+      const data: { orders: DbOrder[]; total?: number } = await res.json();
+      setOrders(data.orders ?? []);
+      setTotal(data.total ?? (data.orders?.length ?? 0));
+      if (limitOverride) setPageSize(limitOverride);
     } catch {}
     setLoading(false);
-  }, []);
+  }, [pageSize]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(50); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
   const toggleExpand = (id: string) => {
     setExpanded(prev => {
@@ -510,6 +517,14 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
+
+      <PaginationFooter
+        shown={orders.length}
+        total={total}
+        loading={loading}
+        onLoadMore={() => load(pageSize + 50)}
+        onLoadAll={() => load(total)}
+      />
     </div>
   );
 }

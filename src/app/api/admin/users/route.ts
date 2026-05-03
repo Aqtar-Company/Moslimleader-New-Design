@@ -1,28 +1,49 @@
 export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const auth = await getAuthUser();
     if (!auth || auth.role !== 'admin') {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
     }
 
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        role: true,
-        createdAt: true,
-        _count: { select: { orders: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const url = new URL(req.url);
+    const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10) || 50, 5000);
+    const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
+    const search = (url.searchParams.get('q') || '').trim();
+
+    const where = search
+      ? {
+          OR: [
+            { name: { contains: search } },
+            { email: { contains: search } },
+            { phone: { contains: search } },
+          ],
+        }
+      : undefined;
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          role: true,
+          createdAt: true,
+          _count: { select: { orders: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: offset,
+        take: limit,
+      }),
+      prisma.user.count({ where }),
+    ]);
 
     const result = users.map(u => ({
       id: u.id,
@@ -34,7 +55,7 @@ export async function GET() {
       orderCount: u._count.orders,
     }));
 
-    return NextResponse.json({ users: result });
+    return NextResponse.json({ users: result, total });
   } catch (err) {
     console.error('[admin users GET]', err);
     return NextResponse.json({ error: 'حدث خطأ في الخادم' }, { status: 500 });

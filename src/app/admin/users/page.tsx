@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { PaginationFooter } from '@/components/admin/PaginationFooter';
 
 interface DbUser {
   id: string;
@@ -32,35 +33,48 @@ export default function UsersPage() {
   const [userOrders, setUserOrders] = useState<Record<string, DbOrder[]>>({});
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
-  const [allOrders, setAllOrders] = useState<(DbOrder & { userId: string })[]>([]);
+  const [total, setTotal] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
+
+  const load = useCallback(async (limitOverride?: number) => {
+    setLoading(true);
+    try {
+      const effectiveLimit = limitOverride ?? pageSize;
+      const params = new URLSearchParams({ limit: String(effectiveLimit), offset: '0' });
+      if (search.trim()) params.set('q', search.trim());
+      const res = await fetch(`/api/admin/users?${params}`, { credentials: 'include' });
+      const data = await res.json();
+      setUsers(data.users ?? []);
+      setTotal(data.total ?? (data.users?.length ?? 0));
+      if (limitOverride) setPageSize(limitOverride);
+    } catch {}
+    setLoading(false);
+  }, [pageSize, search]);
 
   useEffect(() => {
-    async function load() {
-      const [usersRes, ordersRes] = await Promise.all([
-        fetch('/api/admin/users', { credentials: 'include' }),
-        fetch('/api/admin/orders', { credentials: 'include' }),
-      ]);
-      const { users: u } = await usersRes.json();
-      const { orders: o } = await ordersRes.json();
-      setUsers(u ?? []);
-      setAllOrders((o ?? []).map((ord: DbOrder & { user: { id: string } }) => ({ ...ord, userId: ord.user?.id })));
-      setLoading(false);
-    }
-    load();
-  }, []);
+    setPageSize(50);
+    const t = setTimeout(() => load(50), search ? 300 : 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
 
-  const handleSelect = (u: DbUser) => {
+  const handleSelect = async (u: DbUser) => {
     if (selectedId === u.id) { setSelectedId(null); return; }
     setSelectedId(u.id);
     if (!userOrders[u.id]) {
-      const orders = allOrders.filter(o => o.userId === u.id);
-      setUserOrders(prev => ({ ...prev, [u.id]: orders }));
+      try {
+        const res = await fetch(`/api/admin/customers/${u.id}`, { credentials: 'include' });
+        const data = await res.json();
+        const orders = (data.orders ?? []) as DbOrder[];
+        setUserOrders(prev => ({ ...prev, [u.id]: orders }));
+      } catch {
+        setUserOrders(prev => ({ ...prev, [u.id]: [] }));
+      }
     }
   };
 
-  const filtered = users.filter(u =>
-    !search || u.name.includes(search) || u.email.includes(search) || (u.phone && u.phone.includes(search))
-  );
+  // Server already filters by `q`; this is a no-op kept for back-compat.
+  const filtered = users;
 
   if (loading) return (
     <div className="flex items-center justify-center h-40">
@@ -161,6 +175,14 @@ export default function UsersPage() {
           </table>
         )}
       </div>
+
+      <PaginationFooter
+        shown={users.length}
+        total={total}
+        loading={loading}
+        onLoadMore={() => load(pageSize + 50)}
+        onLoadAll={() => load(total)}
+      />
     </div>
   );
 }

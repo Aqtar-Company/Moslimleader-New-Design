@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useToast } from '@/components/ui/Toast';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 interface Recipient {
   id: string;
@@ -161,7 +162,7 @@ export default function CampaignDetailPage() {
             <div
               className="prose prose-sm bg-white p-3 rounded-lg"
               // eslint-disable-next-line react/no-danger
-              dangerouslySetInnerHTML={{ __html: campaign.bodyHtml }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(campaign.bodyHtml) }}
             />
           </div>
         </div>

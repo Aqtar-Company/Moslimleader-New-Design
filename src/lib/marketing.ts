@@ -1,4 +1,5 @@
 import { prisma } from './prisma';
+import { signTrackingPayload } from './marketing-sign';
 
 export interface SegmentFilters {
   boughtProduct?: string;
@@ -115,7 +116,8 @@ export function renderTemplate(
 }
 
 // Wrap every <a href> in the body with the click-tracking redirect, and append
-// the 1×1 open-tracking pixel + unsubscribe footer.
+// the 1×1 open-tracking pixel + unsubscribe footer. URLs are HMAC-signed so
+// they can't be enumerated, replayed, or used as an open redirect.
 export function instrumentEmailHtml(
   bodyHtml: string,
   cid: string,
@@ -123,12 +125,14 @@ export function instrumentEmailHtml(
   baseUrl: string,
   unsubscribeUrl: string,
 ): string {
+  const openSig = signTrackingPayload({ cid, rid, kind: 'open' });
   const wrapped = bodyHtml.replace(/href=["']([^"']+)["']/gi, (_m, url) => {
     if (url.startsWith('mailto:') || url.startsWith('#')) return `href="${url}"`;
-    const tracked = `${baseUrl}/api/email/track/click?cid=${encodeURIComponent(cid)}&rid=${encodeURIComponent(rid)}&u=${encodeURIComponent(url)}`;
+    const sig = signTrackingPayload({ cid, rid, kind: 'click', u: url });
+    const tracked = `${baseUrl}/api/email/track/click?cid=${encodeURIComponent(cid)}&rid=${encodeURIComponent(rid)}&u=${encodeURIComponent(url)}&s=${sig}`;
     return `href="${tracked}"`;
   });
-  const pixel = `<img src="${baseUrl}/api/email/track/open?cid=${encodeURIComponent(cid)}&rid=${encodeURIComponent(rid)}" width="1" height="1" alt="" style="display:block;border:0;" />`;
+  const pixel = `<img src="${baseUrl}/api/email/track/open?cid=${encodeURIComponent(cid)}&rid=${encodeURIComponent(rid)}&s=${openSig}" width="1" height="1" alt="" style="display:block;border:0;" />`;
   const footer = `<div style="margin-top:24px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#888;text-align:center;font-family:Cairo,sans-serif;direction:rtl">
     وصلتك هذه الرسالة لأنك من عملاء Moslim Leader.
     <br><a href="${unsubscribeUrl}" style="color:#888">إلغاء الاشتراك من الحملات التسويقية</a>

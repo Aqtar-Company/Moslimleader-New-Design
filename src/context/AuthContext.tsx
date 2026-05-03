@@ -26,7 +26,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error?: string; needsVerification?: boolean; email?: string }>;
-  signUp: (name: string, email: string, password: string, phone?: string) => Promise<{ error?: string; needsVerification?: boolean; email?: string }>;
+  signUp: (name: string, email: string, password: string, phone?: string, marketingOptIn?: boolean) => Promise<{ error?: string; needsVerification?: boolean; email?: string }>;
   signOut: () => void;
   updateUser: (data: Partial<User>) => Promise<void>;
 }
@@ -72,13 +72,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUp = async (name: string, email: string, password: string, phone?: string) => {
+  const signUp = async (name: string, email: string, password: string, phone?: string, marketingOptIn?: boolean) => {
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ name, email, password, phone }),
+        body: JSON.stringify({ name, email, password, phone, marketingOptIn }),
       });
       const data = await res.json();
       if (!res.ok) return { error: data.error ?? 'فشل إنشاء الحساب' };

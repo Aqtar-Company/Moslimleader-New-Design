@@ -104,6 +104,7 @@ async function runSend(campaignId: string) {
           to: r.email,
           subject: renderedSubject,
           html: finalHtml,
+          unsubscribeUrl,
         });
         await prisma.campaignRecipient.update({
           where: { id: r.id },

@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
     const email    = typeof body.email    === 'string' ? body.email.trim()    : '';
     const password = typeof body.password === 'string' ? body.password        : '';
     const phone    = typeof body.phone    === 'string' ? body.phone.trim()    : null;
+    const marketingOptIn = body.marketingOptIn === true;
 
     // ── Input validation ──────────────────────────────────────────────────────
     if (!name || !email || !password) {
@@ -69,6 +70,7 @@ export async function POST(req: NextRequest) {
         phone: phone || null,
         role,
         savedAddresses: [],
+        marketingOptIn,
         emailVerified: isAdmin,
         verificationToken,
         verificationTokenExpiry,

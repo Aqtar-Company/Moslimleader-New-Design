@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 interface Segment { key: string; label: string; icon: string }
 
@@ -188,10 +189,12 @@ export default function NewCampaignPage() {
                   className="prose prose-sm max-w-none"
                   // eslint-disable-next-line react/no-danger
                   dangerouslySetInnerHTML={{
-                    __html: bodyHtml
-                      .replace(/\{\{firstName\}\}/g, 'أحمد')
-                      .replace(/\{\{name\}\}/g, 'أحمد محمد')
-                      .replace(/\{\{couponCode\}\}/g, couponCode || 'XXXXX'),
+                    __html: sanitizeHtml(
+                      bodyHtml
+                        .replace(/\{\{firstName\}\}/g, 'أحمد')
+                        .replace(/\{\{name\}\}/g, 'أحمد محمد')
+                        .replace(/\{\{couponCode\}\}/g, couponCode || 'XXXXX'),
+                    ),
                   }}
                 />
               </div>

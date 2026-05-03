@@ -13,7 +13,7 @@ function AuthContent() {
   const { signIn, signUp } = useAuth();
   const { lang } = useLang();
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
-  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', marketingOptIn: false });
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -55,7 +55,7 @@ function AuthContent() {
         setLoading(false);
         return;
       }
-      result = await signUp(form.name, form.email, form.password, form.phone);
+      result = await signUp(form.name, form.email, form.password, form.phone, form.marketingOptIn);
     }
     setLoading(false);
     if (result.needsVerification) { setVerifyEmail(result.email || form.email); return; }
@@ -265,6 +265,21 @@ function AuthContent() {
                       className={inputClass}
                     />
                   </div>
+                )}
+                {mode === 'signup' && (
+                  <label className="flex items-start gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={form.marketingOptIn}
+                      onChange={e => setForm(f => ({ ...f, marketingOptIn: e.target.checked }))}
+                      className="mt-1 w-4 h-4 accent-[#1a1a2e] cursor-pointer shrink-0"
+                    />
+                    <span className="text-xs text-gray-600 leading-relaxed">
+                      {isRtl
+                        ? 'أوافق على استلام عروض ومنتجات جديدة عبر البريد الإلكتروني وواتساب (اختياري)'
+                        : 'I agree to receive offers and product updates via email and WhatsApp (optional)'}
+                    </span>
+                  </label>
                 )}
                 {error && (
                   <div className="bg-red-50 border border-red-100 text-red-600 rounded-xl px-4 py-3 text-sm">

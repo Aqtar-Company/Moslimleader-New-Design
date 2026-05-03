@@ -28,6 +28,7 @@ export async function sendMarketingEmail(opts: {
   to: string;
   subject: string;
   html: string;
+  unsubscribeUrl: string;
 }) {
   const fromName = process.env.SMTP_FROM_NAME || 'Moslim Leader';
   const fromEmail = process.env.SMTP_USER || 'orders@moslimleader.com';
@@ -37,8 +38,9 @@ export async function sendMarketingEmail(opts: {
     subject: opts.subject,
     html: opts.html,
     headers: {
-      // Help Gmail/Outlook recognise these as marketing (separate Promotions tab is fine)
       'X-Campaign': 'moslimleader-marketing',
+      // RFC 8058 one-click — both headers are required for Gmail/Yahoo bulk-sender compliance
+      'List-Unsubscribe': `<${opts.unsubscribeUrl}>, <mailto:${fromEmail}?subject=unsubscribe>`,
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
     },
   });

@@ -196,19 +196,9 @@ export async function bostaCityIdFromGovernorate(governorateId?: string | null):
   }
 }
 
-// Normalize an Egyptian phone number to the 11-digit `01xxxxxxxxx` shape Bosta
-// expects. Egypt has four mobile prefixes today: 010, 011, 012, 015. Anything
-// else (landlines, neighbour countries, malformed input) returns null so the
-// admin gets a clear validation error instead of a Bosta rejection.
-export function normalizeEgyptPhone(input?: string | null): string | null {
-  if (!input) return null;
-  let digits = input.replace(/\D+/g, '');
-  if (digits.startsWith('0020')) digits = digits.slice(4);
-  else if (digits.startsWith('20') && digits.length > 11) digits = digits.slice(2);
-  if (digits.length === 10 && /^1[0125]\d{8}$/.test(digits)) digits = '0' + digits;
-  if (digits.length === 11 && /^01[0125]\d{8}$/.test(digits)) return digits;
-  return null;
-}
+// Re-exported from the shared phone helper so imports from `@/lib/bosta` keep
+// working. New code should import from `@/lib/phone` directly.
+export { normalizeEgyptPhone } from './phone';
 
 // Build the public tracking URL. Configurable via BOSTA_TRACKING_URL with `{tn}` placeholder.
 export function bostaTrackingUrl(trackingNumber: string): string {

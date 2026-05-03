@@ -65,6 +65,9 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json({ ok: true, queued: reachable.length });
 }
 
+// Exported so /resume can pick up a campaign whose process died mid-run.
+export const resumeCampaignSend = (campaignId: string) => runSend(campaignId);
+
 async function runSend(campaignId: string) {
   const baseUrl = getBaseUrl();
   let sent = 0;

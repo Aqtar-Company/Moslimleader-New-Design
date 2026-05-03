@@ -58,16 +58,18 @@ export async function resolveSegment(
     row.orderCount += 1;
     row.totalSpend += o.total;
     const ts = o.createdAt.toISOString();
+    const addr = o.shippingAddress as unknown as ShippingAddr;
     if (!row.lastOrderAt || ts > row.lastOrderAt) {
       row.lastOrderAt = ts;
-      const addr = o.shippingAddress as unknown as ShippingAddr;
-      row.lastGovernorate = addr?.governorate || null;
       if (!row.phone && addr?.phone) row.phone = addr.phone;
+    }
+    if (!row.lastGovernorate && addr?.governorate) {
+      row.lastGovernorate = addr.governorate;
     }
     for (const it of o.items) row.productIds.add(it.productId);
   }
 
-  const totalProducts = await prisma.product.count();
+  const totalProducts = await prisma.product.count({ where: { inStock: true } });
   const list = Array.from(map.values());
   const now = Date.now();
 

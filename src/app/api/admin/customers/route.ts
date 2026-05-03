@@ -82,12 +82,15 @@ export async function GET(req: NextRequest) {
     row.orderCount += 1;
     row.totalSpend += o.total;
     const orderTime = o.createdAt.toISOString();
+    const addr = o.shippingAddress as unknown as ShippingAddr;
     if (!row.lastOrderAt || orderTime > row.lastOrderAt) {
       row.lastOrderAt = orderTime;
-      const addr = o.shippingAddress as unknown as ShippingAddr;
-      row.lastGovernorate = addr?.governorate || null;
-      // Prefer phone from address if user doesn't have one
       if (!row.phone && addr?.phone) row.phone = addr.phone;
+    }
+    // Orders arrive newest-first; remember the first non-null governorate we
+    // see so a missing field on the latest order falls back to the previous one.
+    if (!row.lastGovernorate && addr?.governorate) {
+      row.lastGovernorate = addr.governorate;
     }
     if (!row.firstOrderAt || orderTime < row.firstOrderAt) {
       row.firstOrderAt = orderTime;
@@ -95,7 +98,10 @@ export async function GET(req: NextRequest) {
     for (const it of o.items) row._productIds.add(it.productId);
   }
 
-  const totalPublishedProducts = await prisma.product.count();
+  // Denominator for bought_all should be products visible on the storefront
+  // — ignore static-source shadow rows seeded by the cart and out-of-stock
+  // items so the segment is actually achievable.
+  const totalPublishedProducts = await prisma.product.count({ where: { inStock: true } });
 
   const now = Date.now();
   const list: CustomerSummary[] = [];

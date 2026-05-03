@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useToast } from '@/components/ui/Toast';
+import { toIntlPhone } from '@/lib/phone';
 
 interface ProductImage { url?: string; src?: string }
 
@@ -53,16 +54,6 @@ const STATUS_COLORS: Record<string, string> = {
   delivered:   'bg-green-100 text-green-700',
   cancelled:   'bg-red-100 text-red-700',
 };
-
-function toIntlPhone(phone: string | null): string | null {
-  if (!phone) return null;
-  let d = phone.replace(/\D+/g, '');
-  if (d.startsWith('0020')) d = d.slice(4);
-  else if (d.startsWith('20') && d.length > 11) d = d.slice(2);
-  if (d.length === 10 && d.startsWith('1')) d = '20' + d;
-  else if (d.length === 11 && d.startsWith('01')) d = '20' + d.slice(1);
-  return d.length >= 11 ? d : null;
-}
 
 function firstImage(images: unknown): string | null {
   if (!Array.isArray(images) || images.length === 0) return null;

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/Toast';
+import { toIntlPhone, whatsappLink } from '@/lib/phone';
 
 interface CustomerSummary {
   id: string;
@@ -35,22 +36,6 @@ const SORTS: Array<{ key: string; label: string }> = [
   { key: 'recent', label: 'آخر طلب' },
   { key: 'orders', label: 'عدد الطلبات' },
 ];
-
-function toIntlPhone(phone: string | null): string | null {
-  if (!phone) return null;
-  let d = phone.replace(/\D+/g, '');
-  if (d.startsWith('0020')) d = d.slice(4);
-  else if (d.startsWith('20') && d.length > 11) d = d.slice(2);
-  if (d.length === 10 && d.startsWith('1')) d = '20' + d;
-  else if (d.length === 11 && d.startsWith('01')) d = '20' + d.slice(1);
-  return d.length >= 11 ? d : null;
-}
-
-function whatsappLink(phone: string | null, message: string): string | null {
-  const intl = toIntlPhone(phone);
-  if (!intl) return null;
-  return `https://wa.me/${intl}?text=${encodeURIComponent(message)}`;
-}
 
 function formatPrice(n: number) {
   return Math.round(n).toLocaleString('en-US');

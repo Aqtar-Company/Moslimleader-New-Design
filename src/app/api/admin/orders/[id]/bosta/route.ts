@@ -57,7 +57,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     }
     const secondPhone = normalizeEgyptPhone(addr.whatsappNumber);
 
-    const cod = order.paymentMethod === 'cod' ? Math.round(order.total) : 0;
+    // Keep the full float — Bosta accepts decimals on COD, no need to lose piasters.
+    const cod = order.paymentMethod === 'cod' ? Math.round(order.total * 100) / 100 : 0;
     const itemsCount = order.items.reduce((s, it) => s + it.quantity, 0);
     const description = order.items.map(it => `${it.productName} ×${it.quantity}`).join(' | ').slice(0, 250);
 

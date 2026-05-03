@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useToast } from '@/components/ui/Toast';
@@ -67,14 +67,21 @@ export default function CampaignDetailPage() {
     setLoading(false);
   }, [id, addToast]);
 
+  // Read latest status via a ref so the polling effect can stay mounted with
+  // a single interval without leaking when status flips to `sent`/`failed`.
+  const statusRef = useRef<string | undefined>();
+  statusRef.current = campaign?.status;
+
   useEffect(() => {
     load();
+  }, [load]);
+
+  useEffect(() => {
     const interval = setInterval(() => {
-      if (campaign?.status === 'sending') load();
+      if (statusRef.current === 'sending') load();
     }, 3000);
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [load, campaign?.status]);
+  }, [load]);
 
   if (loading) return (
     <div className="flex items-center justify-center h-40">
@@ -100,7 +107,7 @@ export default function CampaignDetailPage() {
           </span>
         </div>
         {campaign.status === 'sending' && (
-          <div className="mt-4">
+          <div className="mt-4 space-y-2">
             <div className="flex items-center justify-between text-xs text-white/80 mb-1.5">
               <span>التقدم</span>
               <span>{campaign.sentCount} / {campaign.recipientCount}</span>
@@ -108,7 +115,39 @@ export default function CampaignDetailPage() {
             <div className="h-2 bg-white/10 rounded-full overflow-hidden">
               <div className="h-full bg-[#F5C518] transition-all" style={{ width: `${sendProgress}%` }} />
             </div>
+            <button
+              onClick={async () => {
+                try {
+                  const res = await fetch(`/api/admin/campaigns/${campaign.id}/resume`, { method: 'POST', credentials: 'include' });
+                  const data = await res.json();
+                  if (!res.ok) addToast(data.error || 'فشل الاستئناف', 'error');
+                  else addToast(`تم استئناف الإرسال (${data.queued} متبقي)`, 'success');
+                  load();
+                } catch {
+                  addToast('فشل الاستئناف', 'error');
+                }
+              }}
+              className="text-[10px] text-white/60 hover:text-white underline"
+            >
+              لو الإرسال عالق، اضغط هنا للاستئناف
+            </button>
           </div>
+        )}
+        {campaign.status === 'failed' && (
+          <button
+            onClick={async () => {
+              try {
+                const res = await fetch(`/api/admin/campaigns/${campaign.id}/resume`, { method: 'POST', credentials: 'include' });
+                const data = await res.json();
+                if (!res.ok) addToast(data.error || 'فشل الاستئناف', 'error');
+                else addToast(`بدأ الاستئناف (${data.queued} متبقي)`, 'success');
+                load();
+              } catch {
+                addToast('فشل الاستئناف', 'error');
+              }
+            }}
+            className="mt-3 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition"
+          >🔁 استئناف الإرسال</button>
         )}
       </div>
 

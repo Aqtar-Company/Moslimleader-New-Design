@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { Fragment, useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { useToast } from '@/components/ui/Toast';
+
+interface Variant { id?: string; name?: string; nameEn?: string; imageIndex?: number }
 
 interface Product {
   id: string;
@@ -15,6 +17,9 @@ interface Product {
   stock: number;
   category: string;
   sold: number;
+  variants?: Variant[];
+  variantStocks?: Record<string, number> | null;
+  soldByVariant?: Record<string, number>;
 }
 
 function firstImage(images: unknown): string | null {
@@ -35,6 +40,16 @@ export default function InventoryPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'low' | 'out'>('all');
   const [edits, setEdits] = useState<Record<string, number>>({});
+  const [variantEdits, setVariantEdits] = useState<Record<string, number>>({}); // key = `${productId}:${variantIndex}`
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (productId: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(productId)) next.delete(productId); else next.add(productId);
+      return next;
+    });
+  };
 
   const load = useCallback(async () => {
     try {
@@ -94,6 +109,49 @@ export default function InventoryPage() {
       const data = await res.json();
       if (!res.ok) addToast(data.error || 'فشل التعديل', 'error');
       else setProducts(prev => prev.map(p => p.id === productId ? { ...p, stock: data.product.stock } : p));
+    } catch {}
+  };
+
+  const updateVariantStock = async (productId: string, variantIndex: number, value: number) => {
+    try {
+      const res = await fetch('/api/admin/inventory', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ productId, variantIndex, stock: value }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        addToast(data.error || 'فشل التحديث', 'error');
+        return;
+      }
+      setProducts(prev => prev.map(p => p.id === productId ? {
+        ...p,
+        stock: data.product.stock,
+        variantStocks: data.product.variantStocks ?? p.variantStocks,
+      } : p));
+      setVariantEdits(prev => { const next = { ...prev }; delete next[`${productId}:${variantIndex}`]; return next; });
+      addToast('تم تحديث الموديل', 'success');
+    } catch {
+      addToast('فشل التحديث', 'error');
+    }
+  };
+
+  const adjustVariantStock = async (productId: string, variantIndex: number, delta: number) => {
+    try {
+      const res = await fetch('/api/admin/inventory', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ productId, variantIndex, delta }),
+      });
+      const data = await res.json();
+      if (!res.ok) { addToast(data.error || 'فشل التعديل', 'error'); return; }
+      setProducts(prev => prev.map(p => p.id === productId ? {
+        ...p,
+        stock: data.product.stock,
+        variantStocks: data.product.variantStocks ?? p.variantStocks,
+      } : p));
     } catch {}
   };
 
@@ -162,36 +220,60 @@ export default function InventoryPage() {
                 const isLow = p.stock > 0 && p.stock <= 50;
                 const isOut = p.stock <= 0;
                 const editValue = edits[p.id];
+                const variants = Array.isArray(p.variants) ? p.variants : [];
+                const hasVariants = variants.length > 0;
+                const isExpanded = expanded.has(p.id);
+                const imagesArr = Array.isArray(p.images) ? p.images as unknown[] : [];
                 return (
-                  <tr key={p.id} className={`hover:bg-gray-50 ${isOut ? 'bg-red-50/40' : isLow ? 'bg-amber-50/40' : ''}`}>
+                  <Fragment key={p.id}>
+                  <tr className={`hover:bg-gray-50 ${isOut ? 'bg-red-50/40' : isLow ? 'bg-amber-50/40' : ''} ${hasVariants ? 'cursor-pointer' : ''}`} onClick={hasVariants ? () => toggleExpand(p.id) : undefined}>
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-3">
+                        {hasVariants && (
+                          <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-transform ${isExpanded ? 'rotate-180 bg-[#F5C518] text-[#1a1a2e]' : 'bg-gray-100 text-gray-500'}`}>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        )}
                         <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-100 shrink-0">
                           {img ? <Image src={img} alt={p.name} fill className="object-cover" unoptimized /> : <div className="w-full h-full flex items-center justify-center text-gray-300 text-lg">📦</div>}
                         </div>
                         <div>
                           <p className="font-bold text-gray-900 text-sm">{p.name}</p>
-                          <p className="text-[11px] text-gray-400">{p.category}</p>
+                          <p className="text-[11px] text-gray-400">
+                            {p.category}
+                            {hasVariants && <span className="ms-2 text-purple-600 font-bold">· {variants.length} موديلات</span>}
+                          </p>
                         </div>
                       </div>
                     </td>
                     <td className="px-3 py-3 text-xs font-bold">{p.price.toLocaleString('en-US')} <span className="text-[10px] text-gray-400">ج.م</span></td>
                     <td className="px-3 py-3 text-xs font-bold text-blue-700">{p.sold.toLocaleString('en-US')}</td>
-                    <td className="px-3 py-3">
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => adjustStock(p.id, -1)} className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-red-100 hover:text-red-700 text-gray-700 font-bold text-sm">−</button>
-                        <input
-                          type="number"
-                          value={editValue !== undefined ? editValue : p.stock}
-                          onChange={e => setEdits(prev => ({ ...prev, [p.id]: Number(e.target.value) }))}
-                          className={`w-20 border rounded-lg px-2 py-1 text-sm text-center font-bold ${isOut ? 'border-red-300 text-red-700 bg-red-50' : isLow ? 'border-amber-300 text-amber-700 bg-amber-50' : 'border-gray-200'}`}
-                        />
-                        <button onClick={() => adjustStock(p.id, 1)} className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-emerald-100 hover:text-emerald-700 text-gray-700 font-bold text-sm">+</button>
-                      </div>
+                    <td className="px-3 py-3" onClick={e => hasVariants && e.stopPropagation()}>
+                      {hasVariants ? (
+                        <div className="text-xs">
+                          <span className={`font-black ${isOut ? 'text-red-700' : isLow ? 'text-amber-700' : 'text-gray-900'}`}>{p.stock.toLocaleString('en-US')}</span>
+                          <span className="text-[10px] text-gray-400 ms-1">إجمالي الموديلات</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => adjustStock(p.id, -1)} className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-red-100 hover:text-red-700 text-gray-700 font-bold text-sm">−</button>
+                          <input
+                            type="number"
+                            value={editValue !== undefined ? editValue : p.stock}
+                            onChange={e => setEdits(prev => ({ ...prev, [p.id]: Number(e.target.value) }))}
+                            className={`w-20 border rounded-lg px-2 py-1 text-sm text-center font-bold ${isOut ? 'border-red-300 text-red-700 bg-red-50' : isLow ? 'border-amber-300 text-amber-700 bg-amber-50' : 'border-gray-200'}`}
+                          />
+                          <button onClick={() => adjustStock(p.id, 1)} className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-emerald-100 hover:text-emerald-700 text-gray-700 font-bold text-sm">+</button>
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-3 text-xs font-black text-[#6B21A8]">{Math.round(p.stock * p.price).toLocaleString('en-US')} ج.م</td>
-                    <td className="px-3 py-3">
-                      {editValue !== undefined && editValue !== p.stock ? (
+                    <td className="px-3 py-3" onClick={e => hasVariants && e.stopPropagation()}>
+                      {hasVariants ? (
+                        <span className="text-[11px] text-gray-400">عدّل كل موديل ↓</span>
+                      ) : editValue !== undefined && editValue !== p.stock ? (
                         <button
                           onClick={() => updateStock(p.id, editValue)}
                           className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
@@ -201,6 +283,59 @@ export default function InventoryPage() {
                       )}
                     </td>
                   </tr>
+                  {hasVariants && isExpanded && variants.map((v, idx) => {
+                    const stockKey = String(idx);
+                    const vStock = (p.variantStocks?.[stockKey]) ?? 0;
+                    const vSold = (p.soldByVariant?.[stockKey]) ?? 0;
+                    const vEdit = variantEdits[`${p.id}:${idx}`];
+                    const vIsLow = vStock > 0 && vStock <= 50;
+                    const vIsOut = vStock <= 0;
+                    const vImgIdx = typeof v.imageIndex === 'number' ? v.imageIndex : 0;
+                    const vImgRaw = imagesArr[vImgIdx];
+                    const vImg = typeof vImgRaw === 'string' ? vImgRaw : (vImgRaw as { url?: string; src?: string } | undefined)?.url
+                      || (vImgRaw as { url?: string; src?: string } | undefined)?.src || img;
+                    return (
+                      <tr key={`${p.id}-v${idx}`} className={`border-r-4 ${vIsOut ? 'bg-red-50/30 border-red-300' : vIsLow ? 'bg-amber-50/30 border-amber-300' : 'bg-purple-50/20 border-purple-200'}`}>
+                        <td className="px-3 py-2 ps-12">
+                          <div className="flex items-center gap-3">
+                            <div className="relative w-9 h-9 rounded-lg overflow-hidden bg-white border border-gray-200 shrink-0">
+                              {vImg ? <Image src={vImg} alt={v.name || `موديل ${idx + 1}`} fill className="object-cover" unoptimized /> : <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm">📦</div>}
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-purple-800">↳ {v.name || `موديل ${idx + 1}`}</p>
+                              {v.nameEn && <p className="text-[10px] text-gray-400">{v.nameEn}</p>}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-[11px] text-gray-400">—</td>
+                        <td className="px-3 py-2 text-[11px] font-bold text-blue-700">{vSold.toLocaleString('en-US')}</td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => adjustVariantStock(p.id, idx, -1)} className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-red-100 hover:text-red-700 text-gray-700 font-bold text-sm">−</button>
+                            <input
+                              type="number"
+                              value={vEdit !== undefined ? vEdit : vStock}
+                              onChange={e => setVariantEdits(prev => ({ ...prev, [`${p.id}:${idx}`]: Number(e.target.value) }))}
+                              className={`w-20 border rounded-lg px-2 py-1 text-sm text-center font-bold ${vIsOut ? 'border-red-300 text-red-700 bg-red-50' : vIsLow ? 'border-amber-300 text-amber-700 bg-amber-50' : 'border-gray-200'}`}
+                            />
+                            <button onClick={() => adjustVariantStock(p.id, idx, 1)} className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-emerald-100 hover:text-emerald-700 text-gray-700 font-bold text-sm">+</button>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-[11px] font-bold text-[#6B21A8]">{Math.round(vStock * p.price).toLocaleString('en-US')} ج.م</td>
+                        <td className="px-3 py-2">
+                          {vEdit !== undefined && vEdit !== vStock ? (
+                            <button
+                              onClick={() => updateVariantStock(p.id, idx, vEdit)}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold"
+                            >حفظ</button>
+                          ) : (
+                            <span className="text-[11px] text-gray-400">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  </Fragment>
                 );
               })}
             </tbody>

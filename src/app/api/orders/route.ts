@@ -158,7 +158,7 @@ export async function POST(req: NextRequest) {
     // Decrement stock per item (best-effort; allow negative for backorders).
     try {
       const { adjustStock, decrementsFromItems } = await import('@/lib/stock');
-      await adjustStock(decrementsFromItems(resolvedItems.map(it => ({ productId: it.productId, quantity: it.quantity }))));
+      await adjustStock(decrementsFromItems(resolvedItems.map(it => ({ productId: it.productId, quantity: it.quantity, selectedModel: it.selectedModel ?? null }))));
     } catch (err) {
       console.error('[orders POST stock]', err);
     }

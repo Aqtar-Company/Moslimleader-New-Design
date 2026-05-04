@@ -84,7 +84,7 @@ export async function PUT(
       const isCancelled = status === 'cancelled';
       if (wasCancelled !== isCancelled) {
         const { adjustStock, restoresFromItems, decrementsFromItems } = await import('@/lib/stock');
-        const items = existing.items.map(it => ({ productId: it.productId, quantity: it.quantity }));
+        const items = existing.items.map(it => ({ productId: it.productId, quantity: it.quantity, selectedModel: it.selectedModel ?? null }));
         if (isCancelled) await adjustStock(restoresFromItems(items));
         else await adjustStock(decrementsFromItems(items));
       }

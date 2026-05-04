@@ -228,6 +228,8 @@ export async function POST(req: NextRequest) {
     try {
       const { adjustStock, decrementsFromItems } = await import('@/lib/stock');
       await adjustStock(decrementsFromItems(resolvedItems.map(it => ({ productId: it.productId, quantity: it.quantity }))));
+      // Manual orders don't expose variant pickers yet; per-variant stock is
+      // only tracked when the customer flow sets selectedModel.
     } catch (err) {
       console.error('[admin orders POST stock]', err);
     }

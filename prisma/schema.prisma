@@ -98,6 +98,7 @@ model Product {
   images             Json
   inStock            Boolean  @default(true)
   stock              Int      @default(500)
+  variantStocks      Json?    // { "0": 250, "1": 250 } — per-variant stock by index. Total `stock` = sum.
   featured           Boolean  @default(false)
   videos             Json?
   videoUrl           String?

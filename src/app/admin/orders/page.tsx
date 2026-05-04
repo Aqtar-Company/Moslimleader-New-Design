@@ -82,6 +82,8 @@ const PAY_METHOD_LABELS: Record<string, { ar: string; icon: string }> = {
   paypal: { ar: 'PayPal', icon: '🅿️' },
   vodafone: { ar: 'Vodafone Cash', icon: '📱' },
   instapay: { ar: 'InstaPay', icon: '⚡' },
+  bank: { ar: 'تحويل بنكي', icon: '🏦' },
+  gift: { ar: 'هدية', icon: '🎁' },
 };
 
 function statusLabel(s: string): string {
@@ -382,7 +384,10 @@ export default function OrdersPage() {
   };
 
   const filtered = orders.filter(o => {
-    const matchFilter = filter === 'all' || o.status === filter;
+    const matchFilter =
+      filter === 'all' ? true
+      : filter === 'gift' ? o.paymentMethod === 'gift'
+      : o.status === filter;
     const matchSearch = !search
       || o.id.includes(search)
       || (o.user?.name || '').includes(search)
@@ -390,7 +395,15 @@ export default function OrdersPage() {
     return matchFilter && matchSearch;
   });
 
-  const totalRevenue = filtered.filter(o => o.status !== 'cancelled').reduce((s, o) => s + o.total, 0);
+  // Gifts don't generate revenue — they're a marketing cost. Exclude them
+  // from the revenue strip so the number reflects real money in.
+  const totalRevenue = filtered
+    .filter(o => o.status !== 'cancelled' && o.paymentMethod !== 'gift')
+    .reduce((s, o) => s + o.total, 0);
+  const giftCount = filtered.filter(o => o.paymentMethod === 'gift' && o.status !== 'cancelled').length;
+  const giftCost = filtered
+    .filter(o => o.paymentMethod === 'gift' && o.status !== 'cancelled')
+    .reduce((s, o) => s + o.items.reduce((ss, it) => ss + it.unitPrice * it.quantity, 0) + o.shippingCost, 0);
 
   if (loading) return (
     <div className="flex items-center justify-center h-40">
@@ -422,18 +435,21 @@ export default function OrdersPage() {
           className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gray-400 w-full sm:w-72"
         />
         <div className="flex gap-2 flex-wrap">
-          {['all', ...STATUSES].map(s => (
+          {['all', ...STATUSES, 'gift'].map(s => (
             <button key={s} onClick={() => setFilter(s)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${filter === s ? 'bg-[#1a1a2e] text-white border-[#1a1a2e]' : 'border-gray-200 text-gray-600 hover:border-gray-400'}`}>
-              {s === 'all' ? 'الكل' : statusLabel(s)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${filter === s ? (s === 'gift' ? 'bg-pink-600 text-white border-pink-600' : 'bg-[#1a1a2e] text-white border-[#1a1a2e]') : 'border-gray-200 text-gray-600 hover:border-gray-400'}`}>
+              {s === 'all' ? 'الكل' : s === 'gift' ? '🎁 هدايا' : statusLabel(s)}
             </button>
           ))}
         </div>
       </div>
 
       {filtered.length > 0 && (
-        <div className="text-sm text-gray-500">
-          {filtered.length} طلب — إجمالي: <span className="font-bold text-gray-900">{totalRevenue.toLocaleString('en-US')} {filtered[0]?.currency || 'EGP'}</span>
+        <div className="text-sm text-gray-500 flex flex-wrap gap-x-4 gap-y-1">
+          <span>{filtered.length} طلب — إيرادات: <span className="font-bold text-gray-900">{totalRevenue.toLocaleString('en-US')} {filtered[0]?.currency || 'EGP'}</span></span>
+          {giftCount > 0 && (
+            <span className="text-pink-700">🎁 {giftCount} هدية — تكلفة: <span className="font-bold">{Math.round(giftCost).toLocaleString('en-US')} ج.م</span></span>
+          )}
         </div>
       )}
 
@@ -473,7 +489,12 @@ export default function OrdersPage() {
                         </td>
                         <td className="px-5 py-3.5 font-mono font-bold text-gray-900">#{o.id.slice(-6).toUpperCase()}</td>
                         <td className="px-5 py-3.5">
-                          <p className="font-semibold text-gray-800">{o.user?.name || 'ضيف'}</p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="font-semibold text-gray-800">{o.user?.name || 'ضيف'}</p>
+                            {o.paymentMethod === 'gift' && (
+                              <span className="text-[10px] font-black bg-pink-100 text-pink-700 px-1.5 py-0.5 rounded-md">🎁 هدية</span>
+                            )}
+                          </div>
                           <p className="text-xs text-gray-400">{o.user?.email}</p>
                         </td>
                         <td className="px-5 py-3.5 text-gray-500 text-xs">{new Date(o.createdAt).toLocaleDateString('ar-EG')}</td>

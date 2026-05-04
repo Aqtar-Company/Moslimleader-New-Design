@@ -11,6 +11,7 @@ interface ValuationData {
     sales: { totalOrders: number; validOrders: number; cancelledOrders: number; totalRevenue: number; avgOrderValue: number; unitsSold: number; byYear: Array<{ year: number; revenue: number; count: number }> };
     customers: number;
     shipments: number;
+    gifts?: { count: number; units: number; retailValue: number; shippingCost: number; totalCost: number };
     ip: { booksValue: number; productsValue: number; digitalValue: number; total: number };
     tech: { value: number };
     customerDb: { value: number };
@@ -133,6 +134,18 @@ export default function ValuationPage() {
           <KPI label="متوسط الأوردر" value={`${fmt(metrics.sales.avgOrderValue)} ج.م`} />
           <KPI label="الوحدات المباعة" value={fmt(metrics.sales.unitsSold)} />
         </div>
+
+        {metrics.gifts && metrics.gifts.count > 0 && (
+          <div className="mt-4 bg-pink-50 border border-pink-200 rounded-2xl p-4">
+            <p className="text-xs font-black text-pink-800 mb-2">🎁 الهدايا المُرسَلة (لا تُحتسب ضمن الإيرادات)</p>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <KPI label="عدد الهدايا" value={fmt(metrics.gifts.count)} />
+              <KPI label="وحدات مُهداة" value={fmt(metrics.gifts.units)} />
+              <KPI label="قيمة المنتجات (سعر بيع)" value={`${fmt(metrics.gifts.retailValue)} ج.م`} />
+              <KPI label="إجمالي تكلفة الهدايا" value={`${fmt(metrics.gifts.totalCost)} ج.م`} sub="منتجات + شحن" />
+            </div>
+          </div>
+        )}
 
         {metrics.sales.byYear.length > 0 && (
           <div className="bg-white p-5 rounded-2xl border border-gray-200 mt-4">

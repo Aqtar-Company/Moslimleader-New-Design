@@ -18,8 +18,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'كلمة السر غير صحيحة' }, { status: 401 });
   }
 
-  // Pull live data
-  const [products, books, orderAgg, orderCount, validOrderCount, customerCount, shipmentCount, sold, ordersByYear] = await Promise.all([
+  // Pull live data — gifts (paymentMethod = 'gift') are excluded from
+  // revenue/sales aggregations and reported separately as a marketing cost.
+  const NON_GIFT = { status: { not: 'cancelled' }, paymentMethod: { not: 'gift' } } as const;
+  const GIFT     = { status: { not: 'cancelled' }, paymentMethod: 'gift' } as const;
+
+  const [products, books, orderAgg, orderCount, validOrderCount, customerCount, shipmentCount, sold, ordersByYear, giftOrders, giftItemsAgg] = await Promise.all([
     prisma.product.findMany({
       select: {
         id: true, name: true, nameEn: true, slug: true, price: true, priceUsd: true,
@@ -35,25 +39,46 @@ export async function GET(req: NextRequest) {
     }),
     prisma.order.aggregate({
       _sum: { total: true },
-      where: { status: { not: 'cancelled' } },
+      where: NON_GIFT,
     }),
     prisma.order.count(),
-    prisma.order.count({ where: { status: { not: 'cancelled' } } }),
+    prisma.order.count({ where: NON_GIFT }),
     prisma.user.count({ where: { role: 'customer' } }),
     prisma.shipment.count(),
     prisma.orderItem.groupBy({
       by: ['productId'],
-      where: { order: { status: { not: 'cancelled' } } },
+      where: { order: NON_GIFT },
       _sum: { quantity: true },
     }),
     prisma.$queryRaw<Array<{ year: number; revenue: number; count: bigint }>>`
       SELECT YEAR(createdAt) as year, SUM(total) as revenue, COUNT(*) as count
       FROM \`Order\`
-      WHERE status != 'cancelled'
+      WHERE status != 'cancelled' AND paymentMethod != 'gift'
       GROUP BY YEAR(createdAt)
       ORDER BY year ASC
     `,
+    prisma.order.aggregate({
+      _count: { _all: true },
+      _sum: { shippingCost: true },
+      where: GIFT,
+    }),
+    prisma.orderItem.aggregate({
+      _sum: { quantity: true },
+      where: { order: GIFT },
+    }),
   ]);
+
+  // Cost of gifted items at retail (admin discretion — these are units we
+  // gave away, not sold). We use retail price as the headline opportunity-cost
+  // figure; the COGS share is reflected in inventoryCost below.
+  const giftItems = await prisma.orderItem.findMany({
+    where: { order: GIFT },
+    select: { quantity: true, unitPrice: true },
+  });
+  const giftItemsRetailValue = giftItems.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
+  const giftUnits = Number(giftItemsAgg._sum.quantity ?? 0);
+  const giftCount = giftOrders._count._all;
+  const giftShipping = giftOrders._sum.shippingCost ?? 0;
 
   const soldMap = new Map(sold.map(s => [s.productId, Number(s._sum.quantity ?? 0)]));
 
@@ -108,6 +133,13 @@ export async function GET(req: NextRequest) {
       },
       customers: customerCount,
       shipments: shipmentCount,
+      gifts: {
+        count: giftCount,
+        units: giftUnits,
+        retailValue: Math.round(giftItemsRetailValue),
+        shippingCost: Math.round(giftShipping),
+        totalCost: Math.round(giftItemsRetailValue + giftShipping),
+      },
       ip: {
         booksValue: ipBookValue,
         productsValue: ipProductValue,

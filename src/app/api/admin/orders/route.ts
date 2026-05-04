@@ -63,7 +63,11 @@ interface ManualOrderBody {
   paymentMethod?: string;  // cod | card | paypal | vodafone | instapay | bank
   status?: string;
   notes?: string;
-  source?: string;         // facebook | whatsapp | phone | walk-in
+  source?: string;         // facebook | whatsapp | phone | walk-in | gift
+  isGift?: boolean;
+  giftRecipient?: string;
+  giftOccasion?: string;
+  giftFreeShipping?: boolean;
 }
 
 export async function POST(req: NextRequest) {
@@ -170,9 +174,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'لم يتم العثور على أي منتج صالح' }, { status: 400 });
     }
 
-    const shippingCost = Number(body.shippingCost) || 0;
-    const discount = Number(body.discount) || 0;
-    const total = Math.max(0, subtotal - discount + shippingCost);
+    const isGift = body.isGift === true;
+    const giftFreeShipping = isGift && body.giftFreeShipping !== false;
+    const shippingCost = isGift && giftFreeShipping ? 0 : (Number(body.shippingCost) || 0);
+    const discount = isGift ? 0 : (Number(body.discount) || 0);
+    // Gifts: customer pays nothing for items; total reflects only the shipping
+    // we are charging (zero if waived). Item subtotal is recorded as a cost via
+    // the order items themselves but does NOT count towards the order total.
+    const total = isGift
+      ? shippingCost
+      : Math.max(0, subtotal - discount + shippingCost);
 
     // 3) Build the shippingAddress JSON exactly as customer-flow does.
     const shippingAddress = {
@@ -190,17 +201,23 @@ export async function POST(req: NextRequest) {
       notes: body.customer.notes || '',
     };
 
+    const giftTag = isGift
+      ? `[Gift${body.giftRecipient ? ` to: ${body.giftRecipient.trim()}` : ''}${body.giftOccasion ? ` · Occasion: ${body.giftOccasion.trim()}` : ''}]`
+      : null;
+    const sourceTag = body.source && !isGift ? `[Source: ${body.source}]` : null;
+    const composedNotes = [body.notes, giftTag, sourceTag].filter(Boolean).join(' · ') || null;
+
     const order = await prisma.order.create({
       data: {
         userId: user.id,
-        status: body.status || (body.paymentMethod === 'cod' ? 'pending' : 'paid'),
+        status: body.status || (isGift ? 'paid' : (body.paymentMethod === 'cod' ? 'pending' : 'paid')),
         total,
         shippingCost,
         discount,
-        couponCode: body.couponCode || null,
-        paymentMethod: body.paymentMethod || 'cod',
+        couponCode: isGift ? null : (body.couponCode || null),
+        paymentMethod: isGift ? 'gift' : (body.paymentMethod || 'cod'),
         shippingAddress: shippingAddress as unknown as object,
-        notes: [body.notes, body.source ? `[Source: ${body.source}]` : null].filter(Boolean).join(' · ') || null,
+        notes: composedNotes,
         currency: 'EGP',
         items: { create: resolvedItems },
       },

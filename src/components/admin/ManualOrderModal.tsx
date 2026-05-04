@@ -78,6 +78,12 @@ export function ManualOrderModal({ open, onClose, onCreated }: Props) {
   const [couponCode, setCouponCode] = useState('');
   const [productPicker, setProductPicker] = useState('');
 
+  // Gift mode
+  const [isGift, setIsGift] = useState(false);
+  const [giftRecipient, setGiftRecipient] = useState('');
+  const [giftOccasion, setGiftOccasion] = useState('');
+  const [giftFreeShipping, setGiftFreeShipping] = useState(true);
+
   useEffect(() => {
     if (!open) return;
     fetch('/api/admin/products', { credentials: 'include', cache: 'no-store' })
@@ -88,14 +94,17 @@ export function ManualOrderModal({ open, onClose, onCreated }: Props) {
 
   const govObj = useMemo(() => GOVERNORATES.find(g => g.id === governorate), [governorate]);
   const subtotal = useMemo(() => items.reduce((s, it) => s + it.unitPrice * it.quantity, 0), [items]);
-  const shippingCost = govObj?.shipping ?? 0;
-  const total = Math.max(0, subtotal - discount + shippingCost);
+  const baseShipping = govObj?.shipping ?? 0;
+  const shippingCost = isGift && giftFreeShipping ? 0 : baseShipping;
+  // For gifts the customer pays nothing for items; total = shipping (if not waived).
+  const total = isGift ? shippingCost : Math.max(0, subtotal - discount + shippingCost);
 
   const reset = () => {
     setName(''); setPhone(''); setWhatsappNumber(''); setEmail('');
     setGovernorate('cairo'); setCity(''); setStreet(''); setBuilding(''); setNotes('');
     setItems([]); setPaymentMethod('cod'); setSource('facebook');
     setDiscount(0); setCouponCode(''); setProductPicker('');
+    setIsGift(false); setGiftRecipient(''); setGiftOccasion(''); setGiftFreeShipping(true);
   };
 
   const addItem = () => {
@@ -139,8 +148,12 @@ export function ManualOrderModal({ open, onClose, onCreated }: Props) {
           shippingCost,
           discount,
           couponCode,
-          paymentMethod,
-          source,
+          paymentMethod: isGift ? 'gift' : paymentMethod,
+          source: isGift ? 'gift' : source,
+          isGift,
+          giftRecipient: isGift ? giftRecipient : undefined,
+          giftOccasion: isGift ? giftOccasion : undefined,
+          giftFreeShipping: isGift ? giftFreeShipping : undefined,
         }),
       });
       const data = await res.json();
@@ -171,7 +184,55 @@ export function ManualOrderModal({ open, onClose, onCreated }: Props) {
         </div>
 
         <div className="p-5 space-y-5 max-h-[75vh] overflow-y-auto">
+          {/* Gift toggle */}
+          <div className={`rounded-xl border p-3 ${isGift ? 'border-pink-300 bg-pink-50' : 'border-gray-200 bg-white'}`}>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isGift}
+                onChange={e => setIsGift(e.target.checked)}
+                className="w-4 h-4 accent-pink-600"
+              />
+              <span className="text-sm font-bold text-gray-800">🎁 طلب هدية (بدون مقابل مادي)</span>
+            </label>
+            {isGift && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                <div>
+                  <label className="text-[11px] font-bold text-gray-600">المُرسَل إليه (لمن الهدية؟)</label>
+                  <input
+                    value={giftRecipient}
+                    onChange={e => setGiftRecipient(e.target.value)}
+                    className={inputClass}
+                    placeholder="مثال: د. محمد عبد الله"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-gray-600">المناسبة / السبب</label>
+                  <input
+                    value={giftOccasion}
+                    onChange={e => setGiftOccasion(e.target.value)}
+                    className={inputClass}
+                    placeholder="عيد ميلاد، تكريم، علاقات عامة..."
+                  />
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer sm:col-span-2 mt-1">
+                  <input
+                    type="checkbox"
+                    checked={giftFreeShipping}
+                    onChange={e => setGiftFreeShipping(e.target.checked)}
+                    className="w-4 h-4 accent-pink-600"
+                  />
+                  <span className="text-xs font-semibold text-gray-700">شحن مجاني (الشركة تتحمل التكلفة)</span>
+                </label>
+                <p className="sm:col-span-2 text-[11px] text-pink-700 bg-white border border-pink-200 rounded-lg px-3 py-2">
+                  ملاحظة: لا يُحسب هذا الطلب ضمن الإيرادات في تقرير تقييم الشركة، لكن يتم خصم الكمية من المخزون.
+                </p>
+              </div>
+            )}
+          </div>
+
           {/* Source */}
+          {!isGift && (
           <div>
             <label className="text-xs font-bold text-gray-700 mb-1.5 block">مصدر الطلب</label>
             <div className="flex gap-2 flex-wrap">
@@ -191,6 +252,7 @@ export function ManualOrderModal({ open, onClose, onCreated }: Props) {
               ))}
             </div>
           </div>
+          )}
 
           {/* Customer */}
           <fieldset className="border border-gray-200 rounded-xl p-4">
@@ -289,46 +351,53 @@ export function ManualOrderModal({ open, onClose, onCreated }: Props) {
 
           {/* Totals + payment */}
           <fieldset className="border border-gray-200 rounded-xl p-4">
-            <legend className="text-xs font-black text-gray-700 px-2">💳 الدفع والإجمالي</legend>
+            <legend className="text-xs font-black text-gray-700 px-2">{isGift ? '🎁 إجمالي الهدية' : '💳 الدفع والإجمالي'}</legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-              <div>
-                <label className="text-[11px] font-bold text-gray-600">طريقة الدفع</label>
-                <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className={inputClass}>
-                  <option value="cod">💵 الدفع عند الاستلام</option>
-                  <option value="card">💳 بطاقة بنكية</option>
-                  <option value="paypal">🅿️ PayPal</option>
-                  <option value="vodafone">📱 Vodafone Cash</option>
-                  <option value="instapay">⚡ InstaPay</option>
-                  <option value="bank">🏦 تحويل بنكي</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-[11px] font-bold text-gray-600">كوبون (اختياري)</label>
-                <input value={couponCode} onChange={e => setCouponCode(e.target.value)} className={inputClass} placeholder="CODE" />
-              </div>
-              <div>
-                <label className="text-[11px] font-bold text-gray-600">خصم (ج.م)</label>
-                <input type="number" min={0} value={discount} onChange={e => setDiscount(Number(e.target.value) || 0)} className={inputClass} />
-              </div>
-              <div>
+              {!isGift && (
+                <>
+                  <div>
+                    <label className="text-[11px] font-bold text-gray-600">طريقة الدفع</label>
+                    <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className={inputClass}>
+                      <option value="cod">💵 الدفع عند الاستلام</option>
+                      <option value="card">💳 بطاقة بنكية</option>
+                      <option value="paypal">🅿️ PayPal</option>
+                      <option value="vodafone">📱 Vodafone Cash</option>
+                      <option value="instapay">⚡ InstaPay</option>
+                      <option value="bank">🏦 تحويل بنكي</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-gray-600">كوبون (اختياري)</label>
+                    <input value={couponCode} onChange={e => setCouponCode(e.target.value)} className={inputClass} placeholder="CODE" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-gray-600">خصم (ج.م)</label>
+                    <input type="number" min={0} value={discount} onChange={e => setDiscount(Number(e.target.value) || 0)} className={inputClass} />
+                  </div>
+                </>
+              )}
+              <div className={isGift ? 'sm:col-span-2' : ''}>
                 <label className="text-[11px] font-bold text-gray-600">ملاحظات</label>
                 <input value={notes} onChange={e => setNotes(e.target.value)} className={inputClass} placeholder="أي ملاحظة..." />
               </div>
             </div>
 
             <div className="bg-gray-50 rounded-xl p-3 space-y-1.5 text-xs">
-              <div className="flex justify-between"><span className="text-gray-600">المجموع الفرعي</span><span className="font-bold">{subtotal.toLocaleString('en-US')} ج.م</span></div>
-              {discount > 0 && <div className="flex justify-between text-green-700"><span>خصم</span><span className="font-bold">−{discount.toLocaleString('en-US')} ج.م</span></div>}
-              <div className="flex justify-between"><span className="text-gray-600">الشحن ({govObj?.name})</span><span className="font-bold">{shippingCost.toLocaleString('en-US')} ج.م</span></div>
-              <div className="flex justify-between border-t border-gray-200 pt-2 mt-2 text-base"><span className="font-black">الإجمالي</span><span className="font-black text-[#6B21A8]">{total.toLocaleString('en-US')} ج.م</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">قيمة المنتجات (تكلفة على الشركة)</span><span className="font-bold">{subtotal.toLocaleString('en-US')} ج.م</span></div>
+              {!isGift && discount > 0 && <div className="flex justify-between text-green-700"><span>خصم</span><span className="font-bold">−{discount.toLocaleString('en-US')} ج.م</span></div>}
+              <div className="flex justify-between"><span className="text-gray-600">الشحن ({govObj?.name}){isGift && giftFreeShipping ? ' — مجاني' : ''}</span><span className="font-bold">{shippingCost.toLocaleString('en-US')} ج.م</span></div>
+              <div className="flex justify-between border-t border-gray-200 pt-2 mt-2 text-base">
+                <span className="font-black">{isGift ? 'المطلوب من المستلم' : 'الإجمالي'}</span>
+                <span className={`font-black ${isGift ? 'text-pink-700' : 'text-[#6B21A8]'}`}>{total.toLocaleString('en-US')} ج.م</span>
+              </div>
             </div>
           </fieldset>
         </div>
 
         <div className="px-5 py-4 bg-gray-50 border-t flex gap-2 justify-end">
           <button onClick={onClose} disabled={submitting} className="px-4 py-2.5 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-bold transition disabled:opacity-50">إلغاء</button>
-          <button onClick={handleSubmit} disabled={submitting} className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold transition disabled:opacity-50">
-            {submitting ? '...' : 'إنشاء الطلب'}
+          <button onClick={handleSubmit} disabled={submitting} className={`px-5 py-2.5 rounded-xl text-white text-sm font-bold transition disabled:opacity-50 ${isGift ? 'bg-pink-600 hover:bg-pink-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}>
+            {submitting ? '...' : isGift ? '🎁 إرسال الهدية' : 'إنشاء الطلب'}
           </button>
         </div>
       </div>

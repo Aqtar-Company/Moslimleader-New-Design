@@ -97,6 +97,7 @@ model Product {
   tags               Json
   images             Json
   inStock            Boolean  @default(true)
+  stock              Int      @default(500)
   featured           Boolean  @default(false)
   videos             Json?
   videoUrl           String?

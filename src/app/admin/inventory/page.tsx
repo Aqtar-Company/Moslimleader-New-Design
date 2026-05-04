@@ -1,0 +1,224 @@
+'use client';
+
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import Image from 'next/image';
+import { useToast } from '@/components/ui/Toast';
+
+interface Product {
+  id: string;
+  slug: string;
+  name: string;
+  price: number;
+  priceUsd: number;
+  images: unknown;
+  inStock: boolean;
+  stock: number;
+  category: string;
+  sold: number;
+}
+
+function firstImage(images: unknown): string | null {
+  if (!Array.isArray(images) || images.length === 0) return null;
+  const first = images[0];
+  if (typeof first === 'string') return first;
+  if (typeof first === 'object' && first !== null) {
+    const o = first as { url?: string; src?: string };
+    return o.url || o.src || null;
+  }
+  return null;
+}
+
+export default function InventoryPage() {
+  const { addToast } = useToast();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<'all' | 'low' | 'out'>('all');
+  const [edits, setEdits] = useState<Record<string, number>>({});
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/inventory', { credentials: 'include', cache: 'no-store' });
+      const data = await res.json();
+      setProducts(data.products ?? []);
+    } catch {
+      addToast('فشل تحميل المخزون', 'error');
+    }
+    setLoading(false);
+  }, [addToast]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = useMemo(() => products.filter(p => {
+    if (filter === 'low' && p.stock > 50) return false;
+    if (filter === 'out' && p.stock > 0) return false;
+    if (search.trim() && !p.name.toLowerCase().includes(search.trim().toLowerCase())) return false;
+    return true;
+  }), [products, filter, search]);
+
+  const totalUnits = useMemo(() => products.reduce((s, p) => s + p.stock, 0), [products]);
+  const totalValue = useMemo(() => products.reduce((s, p) => s + p.stock * p.price, 0), [products]);
+  const totalSold  = useMemo(() => products.reduce((s, p) => s + p.sold, 0), [products]);
+  const lowCount   = useMemo(() => products.filter(p => p.stock <= 50 && p.stock > 0).length, [products]);
+  const outCount   = useMemo(() => products.filter(p => p.stock <= 0).length, [products]);
+
+  const updateStock = async (productId: string, value: number) => {
+    try {
+      const res = await fetch('/api/admin/inventory', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ productId, stock: value }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        addToast(data.error || 'فشل التحديث', 'error');
+      } else {
+        setProducts(prev => prev.map(p => p.id === productId ? { ...p, stock: data.product.stock } : p));
+        setEdits(prev => { const next = { ...prev }; delete next[productId]; return next; });
+        addToast('تم تحديث المخزون', 'success');
+      }
+    } catch {
+      addToast('فشل التحديث', 'error');
+    }
+  };
+
+  const adjustStock = async (productId: string, delta: number) => {
+    try {
+      const res = await fetch('/api/admin/inventory', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ productId, delta }),
+      });
+      const data = await res.json();
+      if (!res.ok) addToast(data.error || 'فشل التعديل', 'error');
+      else setProducts(prev => prev.map(p => p.id === productId ? { ...p, stock: data.product.stock } : p));
+    } catch {}
+  };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-40">
+      <div className="w-7 h-7 border-4 border-[#F5C518] border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-xl font-black text-gray-900">إدارة المخزون</h1>
+        <p className="text-sm text-gray-500 mt-0.5">{products.length} منتج · المخزون يقل تلقائيًا مع كل طلب</p>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <KPI icon="📦" label="إجمالي الوحدات" value={totalUnits.toLocaleString('en-US')} />
+        <KPI icon="💰" label="قيمة المخزون" value={`${Math.round(totalValue).toLocaleString('en-US')} ج.م`} />
+        <KPI icon="🛒" label="إجمالي المبيعات" value={totalSold.toLocaleString('en-US')} />
+        <KPI icon="⚠️" label="مخزون منخفض" value={String(lowCount)} tone="warn" />
+        <KPI icon="🚫" label="نفد المخزون" value={String(outCount)} tone="bad" />
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 items-center">
+        <input
+          type="text"
+          placeholder="ابحث باسم المنتج..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gray-400 w-full sm:w-72"
+        />
+        <div className="flex gap-2">
+          {[
+            { k: 'all', l: 'الكل' },
+            { k: 'low', l: 'منخفض (≤50)' },
+            { k: 'out', l: 'نافد' },
+          ].map(f => (
+            <button
+              key={f.k}
+              onClick={() => setFilter(f.k as typeof filter)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${filter === f.k ? 'bg-[#1a1a2e] text-white border-[#1a1a2e]' : 'border-gray-200 text-gray-600 hover:border-gray-400'}`}
+            >{f.l}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr className="text-xs text-gray-500 font-semibold">
+                <th className="px-3 py-3.5 text-right">المنتج</th>
+                <th className="px-3 py-3.5 text-right">السعر</th>
+                <th className="px-3 py-3.5 text-right">المباع</th>
+                <th className="px-3 py-3.5 text-right">المخزون الحالي</th>
+                <th className="px-3 py-3.5 text-right">قيمة المخزون</th>
+                <th className="px-3 py-3.5 text-right">تعديل</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filtered.map(p => {
+                const img = firstImage(p.images);
+                const isLow = p.stock > 0 && p.stock <= 50;
+                const isOut = p.stock <= 0;
+                const editValue = edits[p.id];
+                return (
+                  <tr key={p.id} className={`hover:bg-gray-50 ${isOut ? 'bg-red-50/40' : isLow ? 'bg-amber-50/40' : ''}`}>
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                          {img ? <Image src={img} alt={p.name} fill className="object-cover" unoptimized /> : <div className="w-full h-full flex items-center justify-center text-gray-300 text-lg">📦</div>}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900 text-sm">{p.name}</p>
+                          <p className="text-[11px] text-gray-400">{p.category}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-xs font-bold">{p.price.toLocaleString('en-US')} <span className="text-[10px] text-gray-400">ج.م</span></td>
+                    <td className="px-3 py-3 text-xs font-bold text-blue-700">{p.sold.toLocaleString('en-US')}</td>
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => adjustStock(p.id, -1)} className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-red-100 hover:text-red-700 text-gray-700 font-bold text-sm">−</button>
+                        <input
+                          type="number"
+                          value={editValue !== undefined ? editValue : p.stock}
+                          onChange={e => setEdits(prev => ({ ...prev, [p.id]: Number(e.target.value) }))}
+                          className={`w-20 border rounded-lg px-2 py-1 text-sm text-center font-bold ${isOut ? 'border-red-300 text-red-700 bg-red-50' : isLow ? 'border-amber-300 text-amber-700 bg-amber-50' : 'border-gray-200'}`}
+                        />
+                        <button onClick={() => adjustStock(p.id, 1)} className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-emerald-100 hover:text-emerald-700 text-gray-700 font-bold text-sm">+</button>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-xs font-black text-[#6B21A8]">{Math.round(p.stock * p.price).toLocaleString('en-US')} ج.م</td>
+                    <td className="px-3 py-3">
+                      {editValue !== undefined && editValue !== p.stock ? (
+                        <button
+                          onClick={() => updateStock(p.id, editValue)}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
+                        >حفظ</button>
+                      ) : (
+                        <span className="text-[11px] text-gray-400">—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KPI({ icon, label, value, tone }: { icon: string; label: string; value: string; tone?: 'warn' | 'bad' }) {
+  const toneClass = tone === 'bad' ? 'border-red-200 bg-red-50' : tone === 'warn' ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-white';
+  const valueClass = tone === 'bad' ? 'text-red-700' : tone === 'warn' ? 'text-amber-700' : 'text-gray-900';
+  return (
+    <div className={`border rounded-2xl p-4 ${toneClass}`}>
+      <p className="text-xl mb-1">{icon}</p>
+      <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">{label}</p>
+      <p className={`text-lg font-black mt-1 ${valueClass}`}>{value}</p>
+    </div>
+  );
+}

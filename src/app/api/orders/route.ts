@@ -155,6 +155,14 @@ export async function POST(req: NextRequest) {
       include: { items: true },
     });
 
+    // Decrement stock per item (best-effort; allow negative for backorders).
+    try {
+      const { adjustStock, decrementsFromItems } = await import('@/lib/stock');
+      await adjustStock(decrementsFromItems(resolvedItems.map(it => ({ productId: it.productId, quantity: it.quantity }))));
+    } catch (err) {
+      console.error('[orders POST stock]', err);
+    }
+
     // Clear server cart after successful order
     const cart = await prisma.cart.findUnique({ where: { userId: auth.userId } });
     if (cart) {

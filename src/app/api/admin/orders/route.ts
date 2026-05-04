@@ -207,6 +207,14 @@ export async function POST(req: NextRequest) {
       include: { items: true, user: { select: { id: true, name: true, email: true } } },
     });
 
+    // Decrement stock for the items (best-effort).
+    try {
+      const { adjustStock, decrementsFromItems } = await import('@/lib/stock');
+      await adjustStock(decrementsFromItems(resolvedItems.map(it => ({ productId: it.productId, quantity: it.quantity }))));
+    } catch (err) {
+      console.error('[admin orders POST stock]', err);
+    }
+
     return NextResponse.json({ order }, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'حدث خطأ في الخادم';

@@ -28,7 +28,7 @@ export async function PUT(
 
     const existing = await prisma.order.findUnique({
       where: { id },
-      include: { shipment: true },
+      include: { shipment: true, items: true },
     });
     if (!existing) {
       return NextResponse.json({ error: 'الطلب غير موجود' }, { status: 404 });
@@ -76,6 +76,21 @@ export async function PUT(
       where: { id },
       data: { status },
     });
+
+    // Stock side-effect: restore stock when an order moves into 'cancelled',
+    // decrement again if it moves OUT of 'cancelled' back to a live status.
+    try {
+      const wasCancelled = existing.status === 'cancelled';
+      const isCancelled = status === 'cancelled';
+      if (wasCancelled !== isCancelled) {
+        const { adjustStock, restoresFromItems, decrementsFromItems } = await import('@/lib/stock');
+        const items = existing.items.map(it => ({ productId: it.productId, quantity: it.quantity }));
+        if (isCancelled) await adjustStock(restoresFromItems(items));
+        else await adjustStock(decrementsFromItems(items));
+      }
+    } catch (err) {
+      console.error('[admin order PUT stock]', err);
+    }
 
     return NextResponse.json({ order, shipmentCancel });
   } catch (err) {

@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { PaginationFooter } from '@/components/admin/PaginationFooter';
+import { ManualOrderModal } from '@/components/admin/ManualOrderModal';
 
 interface OrderItem {
   id: string;
@@ -275,6 +276,7 @@ export default function OrdersPage() {
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [manualOpen, setManualOpen] = useState(false);
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(50);
 
@@ -398,9 +400,17 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-black text-gray-900">الطلبات</h1>
-        <p className="text-sm text-gray-500 mt-0.5">{orders.length} طلب إجمالاً</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-xl font-black text-gray-900">الطلبات</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{total || orders.length} طلب إجمالاً</p>
+        </div>
+        <button
+          onClick={() => setManualOpen(true)}
+          className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold flex items-center gap-2 transition shadow-sm"
+        >
+          <span>+</span> طلب يدوي (فيسبوك / واتساب / تليفون)
+        </button>
       </div>
 
       <div className="flex flex-wrap gap-3 items-center">
@@ -524,6 +534,12 @@ export default function OrdersPage() {
         loading={loading}
         onLoadMore={() => load(pageSize + 50)}
         onLoadAll={() => load(total)}
+      />
+
+      <ManualOrderModal
+        open={manualOpen}
+        onClose={() => setManualOpen(false)}
+        onCreated={() => load(pageSize)}
       />
     </div>
   );

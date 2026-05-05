@@ -121,7 +121,8 @@ export async function POST(req: NextRequest) {
     }
 
     // 2) Resolve items: ensure each Product exists in the DB (seed from static if needed).
-    const resolvedItems = [];
+    interface ResolvedItem { productId: string; productName: string; productImage: string | null; quantity: number; unitPrice: number; selectedModel: number | null }
+    const resolvedItems: ResolvedItem[] = [];
     let subtotal = 0;
     for (const it of body.items) {
       if (!it.productId || !it.quantity || it.quantity < 1) continue;
@@ -238,32 +239,40 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const order = await prisma.order.create({
-      data: {
-        userId: user.id,
-        status: body.status || (isGift ? 'paid' : (body.paymentMethod === 'cod' ? 'pending' : 'paid')),
-        total,
-        shippingCost,
-        discount,
-        couponCode: isGift ? null : (body.couponCode || null),
-        paymentMethod: isGift ? 'gift' : (body.paymentMethod || 'cod'),
-        shippingAddress: shippingAddress as unknown as object,
-        notes: composedNotes,
-        currency: 'EGP',
-        items: { create: resolvedItems },
-      },
-      include: { items: true, user: { select: { id: true, name: true, email: true } } },
-    });
-
-    // Decrement stock for the items atomically + write StockMovement log.
+    // Order create + stock decrement in one transaction. Race-induced
+    // shortage rolls back the order; admin sees a 409 with which line failed.
+    const { adjustStock, decrementsFromItems, InsufficientStockError } = await import('@/lib/stock');
+    let order;
     try {
-      const { adjustStock, decrementsFromItems } = await import('@/lib/stock');
-      await adjustStock(
-        decrementsFromItems(resolvedItems.map(it => ({ productId: it.productId, quantity: it.quantity, selectedModel: it.selectedModel ?? null }))),
-        { reason: 'order_created', orderId: order.id, adminId: auth.userId },
-      );
+      order = await prisma.$transaction(async tx => {
+        const created = await tx.order.create({
+          data: {
+            userId: user.id,
+            status: body.status || (isGift ? 'paid' : (body.paymentMethod === 'cod' ? 'pending' : 'paid')),
+            total,
+            shippingCost,
+            discount,
+            couponCode: isGift ? null : (body.couponCode || null),
+            paymentMethod: isGift ? 'gift' : (body.paymentMethod || 'cod'),
+            shippingAddress: shippingAddress as unknown as object,
+            notes: composedNotes,
+            currency: 'EGP',
+            items: { create: resolvedItems },
+          },
+          include: { items: true, user: { select: { id: true, name: true, email: true } } },
+        });
+        await adjustStock(
+          decrementsFromItems(resolvedItems.map(it => ({ productId: it.productId, quantity: it.quantity, selectedModel: it.selectedModel ?? null }))),
+          { reason: 'order_created', orderId: created.id, adminId: auth.userId },
+          tx,
+        );
+        return created;
+      });
     } catch (err) {
-      console.error('[admin orders POST stock]', err);
+      if (err instanceof InsufficientStockError) {
+        return NextResponse.json({ error: err.message }, { status: 409 });
+      }
+      throw err;
     }
 
     return NextResponse.json({ order }, { status: 201 });

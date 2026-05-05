@@ -148,37 +148,43 @@ export async function POST(req: NextRequest) {
 
     const verifiedTotal = verifiedSubtotal - verifiedDiscount + (shippingCost ?? 0);
 
-    const order = await prisma.order.create({
-      data: {
-        userId: auth.userId,
-        status: paymentMethod === 'paypal' && paypalOrderId ? 'paid' : 'pending',
-        total: verifiedTotal,
-        shippingCost: shippingCost ?? 0,
-        discount: verifiedDiscount,
-        couponCode: couponCode ?? null,
-        paymentMethod,
-        paypalOrderId: paypalOrderId ?? null,
-        shippingAddress,
-        notes: notes ?? null,
-        currency: currency ?? 'EGP',
-        items: {
-          create: resolvedItems,
-        },
-      },
-      include: { items: true },
-    });
-
-    // Decrement stock atomically + write StockMovement audit rows.
-    // Pre-flight already validated availability, but the same transaction
-    // re-checks under load to defend against races.
+    // Order create + stock decrement run in ONE transaction so we can
+    // never end up with an order whose stock wasn't decremented (or
+    // vice-versa). InsufficientStockError thrown by adjustStock rolls
+    // back the order create automatically; we surface 409 to the client.
+    const { adjustStock, decrementsFromItems, InsufficientStockError } = await import('@/lib/stock');
+    let order;
     try {
-      const { adjustStock, decrementsFromItems } = await import('@/lib/stock');
-      await adjustStock(
-        decrementsFromItems(resolvedItems.map(it => ({ productId: it.productId, quantity: it.quantity, selectedModel: it.selectedModel ?? null }))),
-        { reason: 'order_created', orderId: order.id },
-      );
+      order = await prisma.$transaction(async tx => {
+        const created = await tx.order.create({
+          data: {
+            userId: auth.userId,
+            status: paymentMethod === 'paypal' && paypalOrderId ? 'paid' : 'pending',
+            total: verifiedTotal,
+            shippingCost: shippingCost ?? 0,
+            discount: verifiedDiscount,
+            couponCode: couponCode ?? null,
+            paymentMethod,
+            paypalOrderId: paypalOrderId ?? null,
+            shippingAddress,
+            notes: notes ?? null,
+            currency: currency ?? 'EGP',
+            items: { create: resolvedItems },
+          },
+          include: { items: true },
+        });
+        await adjustStock(
+          decrementsFromItems(resolvedItems.map(it => ({ productId: it.productId, quantity: it.quantity, selectedModel: it.selectedModel ?? null }))),
+          { reason: 'order_created', orderId: created.id },
+          tx,
+        );
+        return created;
+      });
     } catch (err) {
-      console.error('[orders POST stock]', err);
+      if (err instanceof InsufficientStockError) {
+        return NextResponse.json({ error: err.message }, { status: 409 });
+      }
+      throw err;
     }
 
     // Clear server cart after successful order

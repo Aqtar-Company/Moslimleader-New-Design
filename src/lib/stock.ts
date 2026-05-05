@@ -58,12 +58,17 @@ export class InsufficientStockError extends Error {
 
 interface VariantShape { id?: string; name?: string; nameEn?: string }
 
+type TxClient = Prisma.TransactionClient;
+
 // Atomic stock adjustment + audit log. Validation, Product update, and
 // StockMovement insert all run inside ONE interactive Prisma transaction
-// so concurrent orders cannot oversell.
+// so concurrent orders cannot oversell. Pass `outerTx` to enlist this
+// adjustment in the same transaction as `prisma.order.create` so the
+// order and its decrement either both commit or both roll back.
 export async function adjustStock(
   items: StockAdjustItem[],
   options: StockAdjustOptions,
+  outerTx?: TxClient,
 ): Promise<void> {
   if (items.length === 0) return;
   const filtered = items.filter(it => it.productId && it.delta);
@@ -80,12 +85,22 @@ export async function adjustStock(
 
   const enforce = options.enforceNonNegative ?? (options.reason === 'order_created');
 
-  await prisma.$transaction(async tx => {
+  const run = async (tx: TxClient) => {
     for (const [productId, lines] of byProduct.entries()) {
-      // Read current stock + variantStocks INSIDE the transaction so the
-      // subsequent update is based on a fresh snapshot. MySQL's REPEATABLE
-      // READ + the conditional updateMany below give us oversell-safety
-      // without an explicit row lock.
+      // Per-product row lock — defends against the variant-JSON
+      // lost-update race where two concurrent transactions both pass
+      // the aggregate stock guard but each writes its own snapshot of
+      // variantStocks back. With FOR UPDATE the second transaction
+      // blocks until ours commits and then reads the fresh JSON.
+      try {
+        await tx.$queryRaw`SELECT id FROM Product WHERE id = ${productId} FOR UPDATE`;
+      } catch (err) {
+        // Some MySQL setups (e.g. running outside InnoDB) reject FOR UPDATE.
+        // Log and fall back to the aggregate guard below — better than
+        // failing every order.
+        console.error('[adjustStock FOR UPDATE]', err);
+      }
+
       const product = await tx.product.findUnique({
         where: { id: productId },
         select: { id: true, name: true, stock: true, variantStocks: true, variants: true },
@@ -96,16 +111,23 @@ export async function adjustStock(
         continue;
       }
 
-      const variantStocks = (product.variantStocks ?? null) as Record<string, number> | null;
+      const variantStocksRaw = (product.variantStocks ?? null) as Record<string, number> | null;
       const variants = (product.variants ?? []) as unknown as VariantShape[];
-      const hasVariants = variantStocks && Object.keys(variantStocks).length > 0;
+      // A product "has variants" whenever its catalogue defines them —
+      // even if the per-variant counter map hasn't been initialised yet.
+      // Otherwise a fresh variant product silently drops `selectedModel`
+      // until an admin opens the inventory page for the first time.
+      const hasVariants = Array.isArray(variants) && variants.length > 0;
+      const variantStocks: Record<string, number> | null = hasVariants
+        ? { ...(variantStocksRaw ?? Object.fromEntries(variants.map((_, i) => [String(i), 0]))) }
+        : null;
 
       const totalDelta = lines.reduce((s, l) => s + l.delta, 0);
       const newStock = product.stock + totalDelta;
 
-      // Per-variant accounting.
-      const nextVariantStocks: Record<string, number> | null = hasVariants
-        ? { ...(variantStocks as Record<string, number>) }
+      // Per-variant accounting — clone so we can compare before/after.
+      const nextVariantStocks: Record<string, number> | null = variantStocks
+        ? { ...variantStocks }
         : null;
       if (nextVariantStocks) {
         for (const l of lines) {
@@ -182,7 +204,10 @@ export async function adjustStock(
         });
       }
     }
-  });
+  };
+
+  if (outerTx) return run(outerTx);
+  await prisma.$transaction(run);
 }
 
 export function decrementsFromItems(

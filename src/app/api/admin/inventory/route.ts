@@ -109,6 +109,12 @@ export async function PUT(req: NextRequest) {
     const totalStock = Object.values(nextMap).reduce((s, n) => s + (Number.isFinite(n) ? n : 0), 0);
     data.variantStocks = nextMap;
     data.stock = totalStock;
+  } else if (hasVariants && (typeof body.stock === 'number' || typeof body.delta === 'number')) {
+    // Variant products MUST be edited per model; aggregate edits would
+    // desync `stock` from `sum(variantStocks)`.
+    return NextResponse.json({
+      error: 'هذا المنتج له موديلات — حدّث المخزون من شاشة الموديلات',
+    }, { status: 400 });
   } else {
     if (typeof body.stock === 'number') data.stock = Math.max(0, Math.floor(body.stock));
     else if (typeof body.delta === 'number') {

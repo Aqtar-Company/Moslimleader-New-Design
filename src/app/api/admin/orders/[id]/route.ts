@@ -72,27 +72,31 @@ export async function PUT(
       }
     }
 
-    const order = await prisma.order.update({
-      where: { id },
-      data: { status },
-    });
-
-    // Stock side-effect: restore stock when an order moves into 'cancelled',
-    // decrement again if it moves OUT of 'cancelled' back to a live status.
+    // Status flip + stock side-effect run in ONE transaction. If
+    // un-cancelling fails because stock is now 0, the status flip is
+    // rolled back and the admin sees a 409 with the Arabic message.
+    const wasCancelled = existing.status === 'cancelled';
+    const isCancelled = status === 'cancelled';
+    const { adjustStock, restoresFromItems, decrementsFromItems, InsufficientStockError } = await import('@/lib/stock');
+    let order;
     try {
-      const wasCancelled = existing.status === 'cancelled';
-      const isCancelled = status === 'cancelled';
-      if (wasCancelled !== isCancelled) {
-        const { adjustStock, restoresFromItems, decrementsFromItems } = await import('@/lib/stock');
-        const items = existing.items.map(it => ({ productId: it.productId, quantity: it.quantity, selectedModel: it.selectedModel ?? null }));
-        if (isCancelled) {
-          await adjustStock(restoresFromItems(items), { reason: 'order_cancelled', orderId: id, adminId: auth.userId });
-        } else {
-          await adjustStock(decrementsFromItems(items), { reason: 'order_uncancelled', orderId: id, adminId: auth.userId });
+      order = await prisma.$transaction(async tx => {
+        const updated = await tx.order.update({ where: { id }, data: { status } });
+        if (wasCancelled !== isCancelled) {
+          const items = existing.items.map(it => ({ productId: it.productId, quantity: it.quantity, selectedModel: it.selectedModel ?? null }));
+          if (isCancelled) {
+            await adjustStock(restoresFromItems(items), { reason: 'order_cancelled', orderId: id, adminId: auth.userId }, tx);
+          } else {
+            await adjustStock(decrementsFromItems(items), { reason: 'order_uncancelled', orderId: id, adminId: auth.userId }, tx);
+          }
         }
-      }
+        return updated;
+      });
     } catch (err) {
-      console.error('[admin order PUT stock]', err);
+      if (err instanceof InsufficientStockError) {
+        return NextResponse.json({ error: err.message }, { status: 409 });
+      }
+      throw err;
     }
 
     return NextResponse.json({ order, shipmentCancel });

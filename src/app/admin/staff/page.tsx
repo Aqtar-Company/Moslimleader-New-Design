@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
-import { PERMISSIONS, PERMISSION_GROUPS, type Permission } from '@/lib/permissions';
+import { PERMISSIONS, PERMISSION_GROUPS, type Permission } from '@/lib/permissions-shared';
 
 interface Staff {
   id: string;

@@ -1,36 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getAuthUser, type JwtPayload } from './jwt';
 import { prisma } from './prisma';
+import { PERMISSIONS, type Permission } from './permissions-shared';
 
-// Catalogue of all admin permission keys. Each /admin/* feature has at
-// least a read flag; mutating features additionally have a write flag.
-export const PERMISSIONS = [
-  'orders.read', 'orders.write',
-  'shipments.read', 'shipments.write',
-  'inventory.read', 'inventory.write',
-  'products.read', 'products.write',
-  'customers.read', 'customers.write',
-  'campaigns.read', 'campaigns.write',
-  'coupons.read', 'coupons.write',
-  'reviews.read', 'reviews.write',
-  'books.read', 'books.write',
-  'shipping.read', 'shipping.write',
-  'payment-methods.read', 'payment-methods.write',
-  'valuation.read',
-  'settings.read', 'settings.write',
-] as const;
-
-export type Permission = (typeof PERMISSIONS)[number];
-
-// Display labels (Arabic) for the staff UI checkbox grid.
-export const PERMISSION_GROUPS: Array<{ label: string; perms: Permission[] }> = [
-  { label: 'الطلبات والشحن', perms: ['orders.read', 'orders.write', 'shipments.read', 'shipments.write'] },
-  { label: 'المنتجات والمخزون', perms: ['products.read', 'products.write', 'inventory.read', 'inventory.write'] },
-  { label: 'العملاء والتسويق', perms: ['customers.read', 'customers.write', 'campaigns.read', 'campaigns.write', 'coupons.read', 'coupons.write', 'reviews.read', 'reviews.write'] },
-  { label: 'المكتبة', perms: ['books.read', 'books.write'] },
-  { label: 'الإعدادات', perms: ['shipping.read', 'shipping.write', 'payment-methods.read', 'payment-methods.write', 'settings.read', 'settings.write'] },
-  { label: 'مالي', perms: ['valuation.read'] },
-];
+// Re-export the shared catalogue so existing server code that imports
+// from '@/lib/permissions' keeps working.
+export { PERMISSIONS, PERMISSION_GROUPS, type Permission } from './permissions-shared';
 
 export interface AuthedUser extends JwtPayload {
   permissions: Permission[];

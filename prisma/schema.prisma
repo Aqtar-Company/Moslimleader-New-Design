@@ -19,6 +19,10 @@ model User {
   verificationTokenExpiry DateTime?
   phone          String?
   role           String   @default("customer")
+  // For role='staff' users: array of permission keys (e.g. ['orders.read',
+  // 'inventory.write']). Null/empty = no admin access. Super-admins
+  // (role='admin') bypass this and have implicit access to everything.
+  permissions    Json?
   savedAddresses Json?
   wishlistIds    Json?
   marketingOptIn Boolean  @default(false)

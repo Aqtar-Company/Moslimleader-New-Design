@@ -4,24 +4,35 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-const NAV = [
-  { href: '/admin/dashboard',         label: 'الرئيسية',       icon: '📊' },
-  { href: '/admin/orders',            label: 'الطلبات',         icon: '📦' },
-  { href: '/admin/products',          label: 'المنتجات',        icon: '🛍️' },
-  { href: '/admin/inventory',         label: 'المخزون',         icon: '📦' },
-  { href: '/admin/valuation',         label: 'تقييم الشركة',    icon: '💎' },
-  { href: '/admin/regional-pricing',  label: 'التسعير الإقليمي', icon: '🌍' },
-  { href: '/admin/coupons',           label: 'الكوبونات',       icon: '🎟️' },
-  { href: '/admin/users',             label: 'إدارة المستخدمين', icon: '👤' },
-  { href: '/admin/customers',         label: 'قاعدة العملاء',    icon: '👥' },
-  { href: '/admin/campaigns',         label: 'حملات التسويق',    icon: '📢' },
-  { href: '/admin/reviews',           label: 'التقييمات',       icon: '⭐' },
-  { href: '/admin/shipping',          label: 'الشحن المحلي',    icon: '🚚' },
-  { href: '/admin/shipments',         label: 'شحنات بوسطة',     icon: '📮' },
-  { href: '/admin/intl-shipping',     label: 'الشحن الدولي',    icon: '✈️' },
-  { href: '/admin/payment-methods',   label: 'وسائل الدفع',     icon: '💳' },
-  { href: '/admin/books',             label: 'المكتبة الرقمية', icon: '📚' },
-  { href: '/admin/series',            label: 'السلاسل',         icon: '📖' },
+// Each nav item declares which permission(s) gate it. `requireAny: []` means
+// the link is visible to any signed-in admin/staff (e.g. dashboard). Items
+// with `superAdminOnly: true` only show for role='admin' (you).
+type NavItem = {
+  href: string;
+  label: string;
+  icon: string;
+  requireAny?: string[];
+  superAdminOnly?: boolean;
+};
+const NAV: NavItem[] = [
+  { href: '/admin/dashboard',         label: 'الرئيسية',         icon: '📊', requireAny: [] },
+  { href: '/admin/orders',            label: 'الطلبات',           icon: '📦', requireAny: ['orders.read'] },
+  { href: '/admin/products',          label: 'المنتجات',          icon: '🛍️', requireAny: ['products.read'] },
+  { href: '/admin/inventory',         label: 'المخزون',           icon: '📦', requireAny: ['inventory.read'] },
+  { href: '/admin/valuation',         label: 'تقييم الشركة',      icon: '💎', requireAny: ['valuation.read'] },
+  { href: '/admin/regional-pricing',  label: 'التسعير الإقليمي', icon: '🌍', requireAny: ['products.write', 'settings.write'] },
+  { href: '/admin/coupons',           label: 'الكوبونات',         icon: '🎟️', requireAny: ['coupons.read'] },
+  { href: '/admin/users',             label: 'إدارة المستخدمين', icon: '👤', superAdminOnly: true },
+  { href: '/admin/staff',             label: 'صلاحيات المساعدين', icon: '🛡️', superAdminOnly: true },
+  { href: '/admin/customers',         label: 'قاعدة العملاء',     icon: '👥', requireAny: ['customers.read'] },
+  { href: '/admin/campaigns',         label: 'حملات التسويق',     icon: '📢', requireAny: ['campaigns.read'] },
+  { href: '/admin/reviews',           label: 'التقييمات',         icon: '⭐', requireAny: ['reviews.read'] },
+  { href: '/admin/shipping',          label: 'الشحن المحلي',      icon: '🚚', requireAny: ['shipping.read'] },
+  { href: '/admin/shipments',         label: 'شحنات بوسطة',       icon: '📮', requireAny: ['shipments.read'] },
+  { href: '/admin/intl-shipping',     label: 'الشحن الدولي',      icon: '✈️', requireAny: ['shipping.read'] },
+  { href: '/admin/payment-methods',   label: 'وسائل الدفع',       icon: '💳', requireAny: ['payment-methods.read'] },
+  { href: '/admin/books',             label: 'المكتبة الرقمية',   icon: '📚', requireAny: ['books.read'] },
+  { href: '/admin/series',            label: 'السلاسل',           icon: '📖', requireAny: ['books.read'] },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -30,18 +41,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const isAdminLike = user?.role === 'admin' || user?.role === 'staff';
+  const isSuperAdmin = user?.role === 'admin';
+  const userPerms = user?.permissions ?? [];
   useEffect(() => {
     if (isLoading) return;
     if (!user) {
       router.replace('/auth?redirect=' + pathname);
       return;
     }
-    if (user.role !== 'admin') {
+    if (!isAdminLike) {
       router.replace('/');
     }
-  }, [user, isLoading, router, pathname]);
+  }, [user, isLoading, isAdminLike, router, pathname]);
 
-  if (isLoading || !user || user.role !== 'admin') {
+  if (isLoading || !user || !isAdminLike) {
     return (
       <div className="fixed inset-0 z-50 bg-[#1a1a2e] flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-[#F5C518] border-t-transparent rounded-full animate-spin" />
@@ -70,7 +84,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Navigation */}
         <nav className="flex-1 py-4 overflow-y-auto">
-          {NAV.map(item => {
+          {NAV.filter(item => {
+            if (item.superAdminOnly) return isSuperAdmin;
+            if (!item.requireAny || item.requireAny.length === 0) return true;
+            if (isSuperAdmin) return true;
+            return item.requireAny.some(p => userPerms.includes(p));
+          }).map(item => {
             const active = pathname === item.href || pathname.startsWith(item.href + '/');
             return (
               <Link
@@ -119,7 +138,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {user.name.charAt(0)}
             </div>
             <span className="text-sm font-semibold text-gray-700 hidden sm:block">{user.name}</span>
-            <span className="text-xs text-gray-400 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full hidden sm:block">أدمن</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full border hidden sm:block ${isSuperAdmin ? 'text-amber-700 bg-amber-50 border-amber-200' : 'text-blue-700 bg-blue-50 border-blue-200'}`}>{isSuperAdmin ? 'أدمن' : 'مساعد'}</span>
           </div>
         </header>
 

@@ -1,16 +1,13 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
+import { requirePerm } from '@/lib/permissions';
 
 // GET /api/admin/valuation — live company valuation report.
-// Password-gated via header `x-valuation-password`. Default password is
-// 'Ibrahim@1987'; can be overridden by env VALUATION_PASSWORD.
+// Requires `valuation.read` permission, then password-gated.
 export async function GET(req: NextRequest) {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-  }
+  const guard = await requirePerm('valuation.read');
+  if ('response' in guard) return guard.response;
 
   const expected = process.env.VALUATION_PASSWORD || 'Ibrahim@1987';
   const provided = req.headers.get('x-valuation-password') || new URL(req.url).searchParams.get('password') || '';

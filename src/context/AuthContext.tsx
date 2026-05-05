@@ -19,6 +19,7 @@ export interface User {
   email: string;
   phone?: string;
   role?: string;
+  permissions?: string[];
   savedAddresses?: Address[];
 }
 

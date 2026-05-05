@@ -11,6 +11,10 @@ export async function GET() {
     const user = await prisma.user.findUnique({ where: { id: auth.userId } });
     if (!user) return NextResponse.json({ user: null }, { status: 401 });
 
+    // Expose permissions only when the user is staff/admin so customers
+    // can't probe the catalogue.
+    const isAdminLike = user.role === 'admin' || user.role === 'staff';
+    const permissions = isAdminLike ? ((user.permissions as unknown[] | null) ?? []) : [];
     return NextResponse.json({
       user: {
         id: user.id,
@@ -19,6 +23,7 @@ export async function GET() {
         phone: user.phone,
         savedAddresses: (user.savedAddresses as unknown[]) ?? [],
         role: user.role,
+        permissions,
       },
     });
   } catch (err) {

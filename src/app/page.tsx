@@ -6,50 +6,61 @@ import { products as staticProducts } from '@/lib/products';
 import { Product } from '@/types';
 import { getMergedStaticProducts } from '@/lib/product-overrides';
 import ShopPageClient from './ShopPageClient';
-import HomeLoading from './loading';
 
-const SSR_BUDGET_MS = 3000;
-
-// Fetch the full home-page product list within a strict 3-second budget.
-// On timeout or DB error, we fall back to the cached overrides (if any)
-// and finally to the raw static catalogue, so the page always renders
-// fast — never blocking on a slow DB.
-async function getProducts(): Promise<Product[]> {
-  const dbProductsP = prisma.product
-    .findMany({ where: { source: 'admin' }, orderBy: { createdAt: 'desc' } })
-    .catch(err => {
-      console.error('[home dbProducts]', err);
-      return [] as Awaited<ReturnType<typeof prisma.product.findMany>>;
-    });
-  const mergedStaticP = getMergedStaticProducts().catch(err => {
-    console.error('[home mergedStatic]', err);
-    return staticProducts;
-  });
-
-  const timeout = new Promise<'timeout'>(resolve =>
-    setTimeout(() => resolve('timeout'), SSR_BUDGET_MS),
+function ProductsSkeleton() {
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-10">
+      <div className="mb-8 max-w-md mx-auto">
+        <div className="h-12 bg-gray-100 rounded-xl animate-pulse" />
+      </div>
+      <div className="flex gap-2 justify-center mb-10">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="h-10 w-24 bg-gray-100 rounded-full animate-pulse" />
+        ))}
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="aspect-square bg-gray-100 animate-pulse" />
+            <div className="p-4 space-y-3">
+              <div className="h-4 bg-gray-100 rounded w-3/4 animate-pulse" />
+              <div className="h-3 bg-gray-50 rounded w-1/2 animate-pulse" />
+              <div className="flex justify-between pt-2">
+                <div className="h-5 bg-gray-100 rounded w-16 animate-pulse" />
+                <div className="h-8 bg-purple-100 rounded-xl w-20 animate-pulse" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
-  const work = Promise.all([mergedStaticP, dbProductsP]).then(([m, d]) => ({
-    merged: m,
-    db: d,
-  }));
-
-  const result = await Promise.race([work, timeout]);
-  if (result === 'timeout') {
-    console.error('[home getProducts] SSR exceeded 3s budget — falling back');
-    // Helper has its own warm cache; use it. If empty, use raw statics.
-    const merged = await getMergedStaticProducts().catch(() => staticProducts);
-    return merged as Product[];
-  }
-  return [...result.merged, ...result.db] as Product[];
 }
 
-export default async function Page() {
-  const products = await getProducts();
+async function ProductsSection() {
+  let products: Product[];
+  try {
+    const [merged, dbProducts] = await Promise.all([
+      getMergedStaticProducts().catch(() => staticProducts),
+      prisma.product.findMany({ where: { source: 'admin' }, orderBy: { createdAt: 'desc' } }).catch(() => []),
+    ]);
+    products = [...merged, ...dbProducts] as Product[];
+  } catch (err) {
+    console.error('[home getProducts]', err);
+    products = staticProducts;
+  }
 
+  return <ShopPageClient products={products} heroOnly={false} />;
+}
+
+export default function Page() {
   return (
-    <Suspense fallback={<HomeLoading />}>
-      <ShopPageClient products={products} />
-    </Suspense>
+    <>
+      <ShopPageClient products={[]} heroOnly={true} />
+      <Suspense fallback={<ProductsSkeleton />}>
+        {/* @ts-expect-error async server component */}
+        <ProductsSection />
+      </Suspense>
+    </>
   );
 }

@@ -192,7 +192,7 @@ export default function AccountPage() {
           <p className="text-sm text-gray-500 mt-1">{user.email}</p>
         </div>
         <div className="flex items-center gap-2">
-          {user.role === 'admin' && (
+          {(user.role === 'admin' || user.role === 'staff') && (
             <Link
               href="/admin/dashboard"
               className="text-sm font-bold bg-[#F5C518] hover:bg-amber-400 text-[#1a1a2e] rounded-xl px-4 py-2 transition flex items-center gap-1.5"

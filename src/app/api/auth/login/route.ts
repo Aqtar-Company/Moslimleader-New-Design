@@ -37,6 +37,8 @@ export async function POST(req: NextRequest) {
     }
 
     const token = await signToken({ userId: user.id, email: user.email, role: user.role, name: user.name });
+    const isAdminLike = user.role === 'admin' || user.role === 'staff';
+    const permissions = isAdminLike ? ((user.permissions as unknown[] | null) ?? []) : [];
     const res = NextResponse.json({
       user: {
         id: user.id,
@@ -44,6 +46,7 @@ export async function POST(req: NextRequest) {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        permissions,
         savedAddresses: (user.savedAddresses as unknown[]) ?? [],
       },
     });

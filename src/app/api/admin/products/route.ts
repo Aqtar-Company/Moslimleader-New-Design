@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
-import { products as staticProducts } from '@/lib/products';
+import { getMergedStaticProducts, invalidateOverridesCache } from '@/lib/product-overrides';
 
 
 async function requireAdmin() {
@@ -18,6 +18,7 @@ const CACHE_TTL_MS = 60_000;
 
 export function invalidateAdminProductsCache() {
   cache = null;
+  invalidateOverridesCache();
 }
 
 // Returns only fields needed for the admin list/pricing table views
@@ -54,25 +55,20 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(data);
     }
 
-    // Parallelize DB queries
-    const [dbProducts, overrideSetting] = await Promise.all([
+    // Parallelize DB queries — use the shared helper for static merging
+    // so prices stay aligned with /api/products and the home page.
+    const [dbProducts, mergedStatic] = await Promise.all([
       prisma.product.findMany({
         where: { source: 'admin' },
         orderBy: { createdAt: 'desc' },
       }),
-      prisma.setting.findUnique({ where: { key: 'product-overrides' } }),
+      getMergedStaticProducts(),
     ]);
 
-    const overrides: Record<string, Record<string, unknown>> = (overrideSetting?.value as Record<string, Record<string, unknown>>) ?? {};
-
-    // Merge static products with overrides, exclude deleted
-    const mergedStatic = staticProducts
-      .map(p => ({ ...p, ...(overrides[p.id] ?? {}), isAdded: false }))
-      .filter(p => !(p as Record<string, unknown>)._deleted);
-
+    const mergedStaticTagged = mergedStatic.map(p => ({ ...p, isAdded: false }));
     const adminProducts = dbProducts.map((p: (typeof dbProducts)[number]) => ({ ...p, isAdded: true }));
 
-    const payload = { products: [...mergedStatic, ...adminProducts] };
+    const payload = { products: [...mergedStaticTagged, ...adminProducts] };
     cache = { data: payload, expiresAt: Date.now() + CACHE_TTL_MS };
 
     const lite = req.nextUrl.searchParams.get('lite') === 'true';

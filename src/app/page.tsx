@@ -4,41 +4,44 @@ import { Suspense } from 'react';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
 import { Product } from '@/types';
+import { getMergedStaticProducts } from '@/lib/product-overrides';
 import ShopPageClient from './ShopPageClient';
 import HomeLoading from './loading';
 
+const SSR_BUDGET_MS = 3000;
+
+// Fetch the full home-page product list within a strict 3-second budget.
+// On timeout or DB error, we fall back to the cached overrides (if any)
+// and finally to the raw static catalogue, so the page always renders
+// fast — never blocking on a slow DB.
 async function getProducts(): Promise<Product[]> {
-  try {
-    const overrideSetting = await prisma.setting.findUnique({ where: { key: 'product-overrides' } });
-    const overrides = (overrideSetting?.value ?? {}) as Record<string, Record<string, unknown>>;
-
-    const staticWithOverrides = staticProducts.map(p => {
-      const override = overrides[p.id] ?? {};
-      const merged = { ...p, ...override };
-      const regional = (merged as { regionalPricing?: { price_usd_manual?: number; price_egp_manual?: number } }).regionalPricing;
-      const hasExplicitPriceUsd = override.priceUsd !== undefined && (override.priceUsd as number) > 0;
-      if (!hasExplicitPriceUsd && (!merged.priceUsd || (merged.priceUsd as number) === 0) && regional?.price_usd_manual) {
-        (merged as Record<string, unknown>).priceUsd = regional.price_usd_manual;
-      }
-      const hasExplicitPrice = override.price !== undefined && (override.price as number) > 0;
-      if (!hasExplicitPrice && regional?.price_egp_manual && regional.price_egp_manual > 0) {
-        (merged as Record<string, unknown>).price = regional.price_egp_manual;
-      }
-      return merged;
+  const dbProductsP = prisma.product
+    .findMany({ where: { source: 'admin' }, orderBy: { createdAt: 'desc' } })
+    .catch(err => {
+      console.error('[home dbProducts]', err);
+      return [] as Awaited<ReturnType<typeof prisma.product.findMany>>;
     });
-
-    const activeStatic = staticWithOverrides.filter(p => !(p as Record<string, unknown>)._deleted);
-
-    const dbProducts = await prisma.product.findMany({
-      where: { source: 'admin' },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    return [...activeStatic, ...dbProducts] as Product[];
-  } catch (err) {
-    console.error('[home getProducts]', err);
+  const mergedStaticP = getMergedStaticProducts().catch(err => {
+    console.error('[home mergedStatic]', err);
     return staticProducts;
+  });
+
+  const timeout = new Promise<'timeout'>(resolve =>
+    setTimeout(() => resolve('timeout'), SSR_BUDGET_MS),
+  );
+  const work = Promise.all([mergedStaticP, dbProductsP]).then(([m, d]) => ({
+    merged: m,
+    db: d,
+  }));
+
+  const result = await Promise.race([work, timeout]);
+  if (result === 'timeout') {
+    console.error('[home getProducts] SSR exceeded 3s budget — falling back');
+    // Helper has its own warm cache; use it. If empty, use raw statics.
+    const merged = await getMergedStaticProducts().catch(() => staticProducts);
+    return merged as Product[];
   }
+  return [...result.merged, ...result.db] as Product[];
 }
 
 export default async function Page() {

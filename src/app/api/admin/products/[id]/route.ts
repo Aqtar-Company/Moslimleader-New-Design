@@ -4,6 +4,7 @@ import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { invalidateAdminProductsCache } from '../route';
 import { products as staticProducts } from '@/lib/products';
+import { loadStaticOverrides, applyOverride } from '@/lib/product-overrides';
 
 async function requireAdmin() {
   const auth = await getAuthUser();
@@ -19,27 +20,29 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     const { id } = await params;
 
-    // Try DB product first
+    // Try DB product first. Static-sourced rows go through the shared
+    // override helper so the edit form sees the same prices the public
+    // pages see.
     const dbProduct = await prisma.product.findUnique({ where: { id } });
     if (dbProduct) {
       if (dbProduct.source === 'static') {
-        const overrideSetting = await prisma.setting.findUnique({ where: { key: 'product-overrides' } });
-        const overrides = ((overrideSetting?.value ?? {}) as Record<string, Record<string, unknown>>)[id] ?? {};
-        return NextResponse.json({ product: { ...dbProduct, ...overrides, isAdded: false } });
+        const overrides = await loadStaticOverrides();
+        const merged = applyOverride(dbProduct as unknown as import('@/types').Product, overrides[id]);
+        if (!merged) return NextResponse.json({ error: 'المنتج غير موجود' }, { status: 404 });
+        return NextResponse.json({ product: { ...merged, isAdded: false } });
       }
       return NextResponse.json({ product: { ...dbProduct, isAdded: true } });
     }
 
-    // Fall back to static product + overrides
+    // Fall back to pure static lookup with overrides applied.
     const staticProduct = staticProducts.find(p => p.id === id);
     if (!staticProduct) {
       return NextResponse.json({ error: 'المنتج غير موجود' }, { status: 404 });
     }
-
-    const overrideSetting = await prisma.setting.findUnique({ where: { key: 'product-overrides' } });
-    const overrides = ((overrideSetting?.value ?? {}) as Record<string, Record<string, unknown>>)[id] ?? {};
-
-    return NextResponse.json({ product: { ...staticProduct, ...overrides, isAdded: false } });
+    const overrides = await loadStaticOverrides();
+    const merged = applyOverride(staticProduct, overrides[id]);
+    if (!merged) return NextResponse.json({ error: 'المنتج غير موجود' }, { status: 404 });
+    return NextResponse.json({ product: { ...merged, isAdded: false } });
   } catch (err) {
     console.error('[admin products GET/:id]', err);
     return NextResponse.json({ error: 'حدث خطأ في الخادم' }, { status: 500 });

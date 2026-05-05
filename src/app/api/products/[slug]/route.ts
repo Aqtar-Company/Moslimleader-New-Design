@@ -1,8 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { products as staticProducts } from '@/lib/products';
-
+import { applyOverride, getMergedStaticProduct, loadStaticOverrides } from '@/lib/product-overrides';
 
 export async function GET(
   _req: NextRequest,
@@ -11,32 +10,23 @@ export async function GET(
   try {
     const { slug } = await params;
 
-    // Load admin overrides
-    let overrides: Record<string, Record<string, unknown>> = {};
-    try {
-      const overrideSetting = await prisma.setting.findUnique({ where: { key: 'product-overrides' } });
-      overrides = (overrideSetting?.value as Record<string, Record<string, unknown>>) ?? {};
-    } catch {}
-
-    // Try DB product first
-    const product = await prisma.product.findUnique({ where: { slug } });
-    if (product) {
-      // Static-sourced products in DB may have stale prices — apply overrides
-      if (product.source === 'static') {
-        const override = overrides[product.id];
-        if (override && Object.keys(override).length > 0) {
-          return NextResponse.json({ product: { ...product, ...override }, source: 'static' });
-        }
+    // Try DB row first (handles admin-created products + the seeded copy
+    // of static products). For static-sourced rows, apply overrides via
+    // the shared helper so prices stay consistent with the home/list pages.
+    const dbProduct = await prisma.product.findUnique({ where: { slug } });
+    if (dbProduct) {
+      if (dbProduct.source === 'static') {
+        const overrides = await loadStaticOverrides();
+        const merged = applyOverride(dbProduct as unknown as import('@/types').Product, overrides[dbProduct.id]);
+        if (!merged) return NextResponse.json({ error: 'المنتج غير موجود' }, { status: 404 });
+        return NextResponse.json({ product: merged, source: 'static' });
       }
-      return NextResponse.json({ product });
+      return NextResponse.json({ product: dbProduct });
     }
 
-    // Fallback to pure static products
-    const staticProduct = staticProducts.find(p => p.slug === slug);
-    if (staticProduct) {
-      const productWithOverrides = { ...staticProduct, ...(overrides[staticProduct.id] ?? {}) };
-      return NextResponse.json({ product: productWithOverrides, source: 'static' });
-    }
+    // No DB row — fall back to pure static lookup with overrides applied.
+    const staticMerged = await getMergedStaticProduct(slug);
+    if (staticMerged) return NextResponse.json({ product: staticMerged, source: 'static' });
 
     return NextResponse.json({ error: 'المنتج غير موجود' }, { status: 404 });
   } catch (err) {

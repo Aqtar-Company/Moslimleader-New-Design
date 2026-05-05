@@ -2,7 +2,8 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
-
+import { getMergedStaticProducts } from '@/lib/product-overrides';
+import type { Product } from '@/types';
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,54 +12,35 @@ export async function GET(req: NextRequest) {
     const featured = searchParams.get('featured');
     const search = searchParams.get('q');
 
-    // Get overrides for static products
-    const overrideSetting = await prisma.setting.findUnique({ where: { key: 'product-overrides' } });
-    const overrides: Record<string, Record<string, unknown>> = (overrideSetting?.value as Record<string, Record<string, unknown>>) ?? {};
+    const [mergedStatic, dbProducts] = await Promise.all([
+      getMergedStaticProducts(),
+      prisma.product.findMany({ where: { source: 'admin' }, orderBy: { createdAt: 'desc' } }),
+    ]);
 
-    // Static products with overrides applied
-    const staticWithOverrides = staticProducts.map(p => {
-      const override = overrides[p.id] ?? {};
-      const merged = { ...p, ...override };
-      // Resolve priceUsd: explicit override > regionalPricing.price_usd_manual > static
-      const regional = (merged as { regionalPricing?: { price_usd_manual?: number; price_egp_manual?: number } }).regionalPricing;
-      const hasExplicitPriceUsd = override.priceUsd !== undefined && (override.priceUsd as number) > 0;
-      if (!hasExplicitPriceUsd && (!merged.priceUsd || (merged.priceUsd as number) === 0) && regional?.price_usd_manual) {
-        (merged as Record<string, unknown>).priceUsd = regional.price_usd_manual;
-      }
-      // Resolve price (EGP): explicit override price takes priority over regionalPricing.price_egp_manual
-      const hasExplicitPrice = override.price !== undefined && (override.price as number) > 0;
-      if (!hasExplicitPrice && regional?.price_egp_manual && regional.price_egp_manual > 0) {
-        (merged as Record<string, unknown>).price = regional.price_egp_manual;
-      }
-      return merged;
-    });
+    let allProducts: Product[] = [...mergedStatic, ...(dbProducts as unknown as Product[])];
 
-    // DB-added products (admin-added)
-    const dbProducts = await prisma.product.findMany({
-      where: { source: 'admin' },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    // Merge all products: static (with overrides, excluding deleted) + DB-added
-    const activeStatic = staticWithOverrides.filter(p => !(p as Record<string, unknown>)._deleted);
-    let allProducts: unknown[] = [...activeStatic, ...dbProducts];
-
-    // Apply filters
-    if (category) allProducts = allProducts.filter((p: unknown) => (p as { category: string }).category === category);
-    if (featured === 'true') allProducts = allProducts.filter((p: unknown) => (p as { featured?: boolean }).featured);
+    if (category) allProducts = allProducts.filter(p => p.category === category);
+    if (featured === 'true') allProducts = allProducts.filter(p => p.featured);
     if (search) {
       const q = search.toLowerCase();
-      allProducts = allProducts.filter((p: unknown) => {
-        const prod = p as { name: string; nameEn?: string };
-        return prod.name.toLowerCase().includes(q) || (prod.nameEn ?? '').toLowerCase().includes(q);
-      });
+      allProducts = allProducts.filter(p =>
+        p.name.toLowerCase().includes(q) || (p.nameEn ?? '').toLowerCase().includes(q),
+      );
     }
 
-    const _r = NextResponse.json({ products: allProducts }); _r.headers.set('Cache-Control','no-store,no-cache'); return _r;
+    const res = NextResponse.json({ products: allProducts });
+    res.headers.set('Cache-Control', 'no-store, no-cache');
+    return res;
   } catch (err) {
     console.error('[products GET]', err);
-    // Fallback to static products on DB error
-    return NextResponse.json({ products: staticProducts, source: 'static-fallback' });
+    // DB blew up. The helper's warm cache may still let us serve customised
+    // statics; if it's cold too, drop to raw statics (best we can do).
+    try {
+      const fallback = await getMergedStaticProducts();
+      return NextResponse.json({ products: fallback, source: 'static-fallback' });
+    } catch {
+      return NextResponse.json({ products: staticProducts, source: 'static-fallback' });
+    }
   }
 }
 

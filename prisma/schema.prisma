@@ -153,6 +153,10 @@ model Order {
   shippingAddress Json
   notes           String?  @db.Text
   currency        String   @default("EGP")
+  // External reference for idempotent imports (e.g. ML-WA-123 from the
+  // historical WhatsApp orders import). Null for organic orders.
+  externalOrderId String?  @unique
+  source          String?  // whatsapp_cleaned_ready | manual | etc. — null for organic
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

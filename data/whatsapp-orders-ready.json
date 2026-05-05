@@ -1,0 +1,1 @@
+{"_note":"Replace this file with the cleaned WhatsApp orders JSON. The importer reads `customers` + `orders` from this object. Source: Moslim_Leader_Orders_READY.xlsx. The actual large payload was provided via the import command — if missing on the server, the operator should paste the cleaned JSON here before running the importer."}

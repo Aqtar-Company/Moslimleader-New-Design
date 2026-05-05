@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireSuperAdmin, PERMISSIONS, type Permission } from '@/lib/permissions';
+import { logActionSafe } from '@/lib/audit-log';
 
 // PUT /api/admin/staff/[id] — replace permissions for a staff user.
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -17,10 +18,19 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!target) return NextResponse.json({ error: 'الحساب غير موجود' }, { status: 404 });
   if (target.role === 'admin') return NextResponse.json({ error: 'لا يمكن تعديل صلاحيات الأدمن الرئيسي من هنا' }, { status: 400 });
 
+  const before = (target.permissions as unknown[] | null) ?? [];
   const updated = await prisma.user.update({
     where: { id },
     data: { permissions: cleanPerms as unknown as object },
     select: { id: true, name: true, email: true, phone: true, role: true, permissions: true, createdAt: true },
+  });
+  await logActionSafe({
+    actor: auth.user,
+    action: 'staff.update-perms',
+    entity: 'User',
+    entityId: id,
+    before: { permissions: before },
+    after: { permissions: cleanPerms },
   });
   return NextResponse.json({
     staff: { ...updated, permissions: (updated.permissions as unknown[] | null) ?? [] },
@@ -40,6 +50,13 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   await prisma.user.update({
     where: { id },
     data: { role: 'customer', permissions: [] as unknown as object },
+  });
+  await logActionSafe({
+    actor: auth.user,
+    action: 'staff.revoke',
+    entity: 'User',
+    entityId: id,
+    before: { email: target.email, role: target.role, permissions: target.permissions },
   });
   return NextResponse.json({ ok: true });
 }

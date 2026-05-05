@@ -13,7 +13,7 @@ import PayPalCheckoutButton from '@/components/PayPalCheckoutButton';
 import { governorates, getShipping } from '@/lib/shipping';
 import {
   COUNTRIES,
-  getIntlShippingConfig,
+  fetchIntlShippingConfig,
   calculateIntlShipping,
   DEFAULT_CONFIG,
   IntlShippingConfig,
@@ -244,9 +244,13 @@ export default function CheckoutPage() {
     currency: string;
   } | null>(null);
 
-  // Load intl config
+  // Load intl config from the server (it's stored in the Setting row,
+  // not in the browser — staff edits in /admin/intl-shipping reach
+  // customers immediately after the 30s server cache).
   useEffect(() => {
-    setIntlConfig(getIntlShippingConfig());
+    let cancelled = false;
+    fetchIntlShippingConfig().then(c => { if (!cancelled) setIntlConfig(c); });
+    return () => { cancelled = true; };
   }, []);
 
   // Pre-fill from first saved address if user has one

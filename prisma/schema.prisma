@@ -421,3 +421,28 @@ model BookSession {
   @@index([userId, bookId])
   @@index([lastPing])
 }
+
+// Append-only audit log of every admin/staff write action. Used to surface
+// "who did what and when" to the super-admin and to attribute write
+// operations across the app. Failure to log is non-fatal — logActionSafe()
+// in src/lib/audit-log.ts swallows errors so a logging blip can never
+// break the underlying business operation.
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?  // null for system / unauthenticated events
+  actorRole   String?  // 'admin' | 'staff' | null
+  actorName   String?  // denormalized for display when User is later deleted
+  actorEmail  String?
+  action      String   // e.g. 'intl-shipping.update', 'order.create', 'staff.add'
+  entity      String?  // e.g. 'Setting', 'Order', 'Coupon'
+  entityId    String?
+  before      Json?
+  after       Json?
+  metadata    Json?    // free-form extras (ip, route, etc.)
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([entity, entityId])
+  @@index([action, createdAt])
+}

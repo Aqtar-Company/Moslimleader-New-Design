@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireSuperAdmin, PERMISSIONS, type Permission } from '@/lib/permissions';
+import { logActionSafe } from '@/lib/audit-log';
 
 // GET /api/admin/staff — list current staff (role='staff') + super-admins.
 export async function GET() {
@@ -50,6 +51,15 @@ export async function POST(req: NextRequest) {
     },
     select: { id: true, name: true, email: true, phone: true, role: true, permissions: true, createdAt: true },
   });
+
+  await logActionSafe({
+    actor: auth.user,
+    action: 'staff.add',
+    entity: 'User',
+    entityId: updated.id,
+    after: { email: updated.email, name: updated.name, permissions: cleanPerms },
+  });
+
   return NextResponse.json({
     staff: { ...updated, permissions: (updated.permissions as unknown[] | null) ?? [] },
   });

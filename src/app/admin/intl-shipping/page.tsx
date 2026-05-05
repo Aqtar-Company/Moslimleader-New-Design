@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   COUNTRIES, DEFAULT_BLOCKED, DEFAULT_CONFIG,
   IntlShippingConfig, ShippingZone, WeightBracket, ZonePricing,
-  getIntlShippingConfig, saveIntlShippingConfig, calculateIntlShipping,
+  fetchIntlShippingConfig, saveIntlShippingConfigRemote, calculateIntlShipping,
 } from '@/lib/intl-shipping';
 
 // ── Toggle ─────────────────────────────────────────────────────────────────────
@@ -35,21 +35,34 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 
 export default function IntlShippingPage() {
   const [cfg, setCfg] = useState<IntlShippingConfig>(DEFAULT_CONFIG);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'prices' | 'countries' | 'settings' | 'preview'>('prices');
 
   // Preview tool state
   const [previewCountry, setPreviewCountry] = useState('');
   const [previewWeight, setPreviewWeight] = useState('');
 
-  const load = useCallback(() => {
-    setCfg(getIntlShippingConfig());
+  const load = useCallback(async () => {
+    setLoading(true);
+    const c = await fetchIntlShippingConfig();
+    setCfg(c);
+    setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
-  function save() {
-    saveIntlShippingConfig(cfg);
+  async function save() {
+    setSaving(true);
+    setSaveError(null);
+    const res = await saveIntlShippingConfigRemote(cfg);
+    setSaving(false);
+    if (!res.ok) {
+      setSaveError(res.error || 'فشل الحفظ');
+      return;
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   }
@@ -147,14 +160,24 @@ export default function IntlShippingPage() {
             {cfg.enabled ? '✅ الشحن مفعّل' : '⛔ الشحن مغلق'}
           </span>
           <Toggle on={cfg.enabled} onChange={v => setCfg(c => ({ ...c, enabled: v }))} />
-          <button onClick={save}
-            className={`px-5 py-2.5 rounded-xl font-black text-sm transition ${
+          <button onClick={save} disabled={saving || loading}
+            className={`px-5 py-2.5 rounded-xl font-black text-sm transition disabled:opacity-50 ${
               saved ? 'bg-green-500 text-white' : 'bg-[#F5C518] hover:bg-amber-400 text-gray-900'
             }`}>
-            {saved ? '✓ تم الحفظ' : '💾 حفظ'}
+            {saving ? '...' : saved ? '✓ تم الحفظ' : '💾 حفظ'}
           </button>
         </div>
       </div>
+      {saveError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-4 py-2 rounded-xl">
+          ⚠️ {saveError}
+        </div>
+      )}
+      {loading && (
+        <div className="bg-gray-50 border border-gray-200 text-gray-500 text-xs px-4 py-2 rounded-xl">
+          جاري تحميل الإعدادات…
+        </div>
+      )}
 
       {/* Zone overview */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -451,11 +474,11 @@ export default function IntlShippingPage() {
 
       {/* Save bar */}
       <div className="flex justify-end pt-2">
-        <button onClick={save}
-          className={`px-8 py-3 rounded-xl font-black text-sm transition ${
+        <button onClick={save} disabled={saving || loading}
+          className={`px-8 py-3 rounded-xl font-black text-sm transition disabled:opacity-50 ${
             saved ? 'bg-green-500 text-white' : 'bg-[#F5C518] hover:bg-amber-400 text-gray-900'
           }`}>
-          {saved ? '✓ تم الحفظ بنجاح' : '💾 حفظ كل الإعدادات'}
+          {saving ? '...' : saved ? '✓ تم الحفظ بنجاح' : '💾 حفظ كل الإعدادات'}
         </button>
       </div>
     </div>

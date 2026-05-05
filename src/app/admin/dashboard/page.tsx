@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import RecentStaffActivity from './RecentStaffActivity';
 import Link from 'next/link';
 import { getCoupons, getAddedProducts, getProductOverrides } from '@/lib/admin-storage';
 import { products as staticProducts } from '@/lib/products';
@@ -43,6 +45,8 @@ function normalizeStatus(s: string): string {
 }
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'admin';
   const [stats, setStats] = useState<Stats | null>(null);
   const [error, setError] = useState('');
 
@@ -193,6 +197,8 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {isSuperAdmin && <RecentStaffActivity />}
     </div>
   );
 }

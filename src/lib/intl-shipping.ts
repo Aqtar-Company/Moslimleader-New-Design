@@ -293,8 +293,15 @@ export function getZoneForCountry(code: string): ShippingZone {
 }
 
 // ── Storage ───────────────────────────────────────────────────────────────────
+//
+// Source of truth is the `Setting` row with key='intl-shipping'. The legacy
+// implementation kept this in the browser's localStorage which meant the
+// admin's toggle had no effect on customers and was un-auditable. Now:
+//   - Public read: GET /api/intl-shipping (cached server-side)
+//   - Admin write: PUT /api/admin/intl-shipping (gated on shipping.write)
+//   - Both ends pipe through this module so the data shape stays canonical.
 
-const STORAGE_KEY = 'ml-intl-v2';
+export const SETTING_KEY = 'intl-shipping';
 
 export const DEFAULT_CONFIG: IntlShippingConfig = {
   enabled: true,
@@ -305,31 +312,51 @@ export const DEFAULT_CONFIG: IntlShippingConfig = {
   overweightMessage: 'سيتم تحديد تكلفة الشحن بعد مراجعة الطلب',
 };
 
-export function getIntlShippingConfig(): IntlShippingConfig {
+// Merge a partial saved config with the defaults so newly-added defaults
+// (new countries, new brackets) flow through without an explicit migration.
+export function mergeWithDefaults(saved: Partial<IntlShippingConfig> | null | undefined): IntlShippingConfig {
+  if (!saved) return structuredClone(DEFAULT_CONFIG);
+  return {
+    enabled:           saved.enabled          ?? DEFAULT_CONFIG.enabled,
+    brackets:          saved.brackets?.length  ? saved.brackets  : DEFAULT_CONFIG.brackets,
+    zones:             saved.zones?.length     ? saved.zones     : DEFAULT_CONFIG.zones,
+    blockedCountries:  saved.blockedCountries  ?? DEFAULT_CONFIG.blockedCountries,
+    handlingFee:       saved.handlingFee       ?? DEFAULT_CONFIG.handlingFee,
+    overweightMessage: saved.overweightMessage || DEFAULT_CONFIG.overweightMessage,
+  };
+}
+
+// Browser helper: fetch the live config from the public read endpoint.
+// Returns DEFAULT_CONFIG on failure so checkout never hard-fails on a
+// network blip.
+export async function fetchIntlShippingConfig(): Promise<IntlShippingConfig> {
   if (typeof window === 'undefined') return structuredClone(DEFAULT_CONFIG);
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return structuredClone(DEFAULT_CONFIG);
-    const saved = JSON.parse(raw) as Partial<IntlShippingConfig>;
-    // Merge to pick up any new defaults added in code updates
-    return {
-      enabled:          saved.enabled          ?? DEFAULT_CONFIG.enabled,
-      brackets:         saved.brackets?.length  ? saved.brackets  : DEFAULT_CONFIG.brackets,
-      zones:            saved.zones?.length      ? saved.zones     : DEFAULT_CONFIG.zones,
-      blockedCountries: saved.blockedCountries   ?? DEFAULT_CONFIG.blockedCountries,
-      handlingFee:      saved.handlingFee        ?? DEFAULT_CONFIG.handlingFee,
-      overweightMessage: saved.overweightMessage || DEFAULT_CONFIG.overweightMessage,
-    };
+    const res = await fetch('/api/intl-shipping', { cache: 'no-store', credentials: 'include' });
+    if (!res.ok) return structuredClone(DEFAULT_CONFIG);
+    const data = await res.json();
+    return mergeWithDefaults(data?.config);
   } catch {
     return structuredClone(DEFAULT_CONFIG);
   }
 }
 
-export function saveIntlShippingConfig(config: IntlShippingConfig): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-  // Notify other tabs / components
-  window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY }));
+// Browser helper used by the admin page. Hits the gated write endpoint.
+export async function saveIntlShippingConfigRemote(config: IntlShippingConfig): Promise<{ ok: boolean; error?: string }> {
+  if (typeof window === 'undefined') return { ok: false, error: 'browser-only' };
+  try {
+    const res = await fetch('/api/admin/intl-shipping', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ config }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: data.error || 'save failed' };
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'save failed' };
+  }
 }
 
 // ── Price Calculation ─────────────────────────────────────────────────────────
@@ -339,7 +366,10 @@ export function calculateIntlShipping(
   countryCode: string,
   config?: IntlShippingConfig,
 ): ShippingCalcResult {
-  const cfg = config ?? getIntlShippingConfig();
+  // Callers must pass a config — no implicit fallback to a browser store
+  // (the legacy localStorage-only path is gone). DEFAULT_CONFIG keeps the
+  // calculator usable in tests and synchronous SSR helpers.
+  const cfg = config ?? structuredClone(DEFAULT_CONFIG);
   const code = countryCode.toUpperCase();
 
   if (!cfg.enabled) {

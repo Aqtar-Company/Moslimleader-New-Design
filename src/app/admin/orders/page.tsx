@@ -518,6 +518,12 @@ export default function OrdersPage() {
                               {o.shipment.state && (
                                 <span className="text-[10px] text-gray-500">{o.shipment.state}</span>
                               )}
+                              <a
+                                href={`/api/admin/shipments/${o.shipment.id}/awb`}
+                                target="_blank" rel="noreferrer"
+                                className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 hover:underline"
+                                title="حمّل بوليصة الشحن من بوسطة"
+                              >📄 بوليصة</a>
                             </div>
                           ) : (
                             <button

@@ -109,6 +109,60 @@ export async function getDelivery(deliveryId: string): Promise<BostaDelivery> {
   return bostaFetch<BostaDelivery>(`/deliveries/${deliveryId}`);
 }
 
+// Fetch the Bosta AWB (airway bill / بوليصة الشحن). Bosta tenants vary:
+// some return a PDF binary, others a JSON envelope with a temporary URL.
+// Try the documented paths in order, accept whichever responds 2xx.
+export async function getDeliveryAwb(
+  deliveryId: string,
+): Promise<{ kind: 'pdf'; pdf: Buffer } | { kind: 'url'; url: string }> {
+  const token = getToken();
+  if (!token) throw new Error('BOSTA_API_TOKEN is not configured');
+  const baseUrl = getBaseUrl();
+  const candidates = [
+    `/deliveries/${deliveryId}/awb`,
+    `/deliveries/business/${deliveryId}/awb`,
+    `/deliveries/awb/${deliveryId}`,
+  ];
+  let lastErr: { status: number; body: string } | null = null;
+  for (const path of candidates) {
+    const res = await fetch(`${baseUrl}${path}`, {
+      method: 'GET',
+      headers: { Authorization: token, Accept: 'application/pdf, application/json' },
+      cache: 'no-store',
+    });
+    if (!res.ok) {
+      lastErr = { status: res.status, body: (await res.text()).slice(0, 300) };
+      if (res.status === 404 || res.status === 405) continue;
+      // Real error — surface it with the original status.
+      throw new Error(`Bosta ${res.status}: ${lastErr.body || 'AWB unavailable'}`);
+    }
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    if (ct.includes('application/pdf')) {
+      const ab = await res.arrayBuffer();
+      return { kind: 'pdf', pdf: Buffer.from(ab) };
+    }
+    // JSON envelope — look for a URL field.
+    const json = await res.json().catch(() => null) as
+      | { data?: { url?: string; awb?: string; pdf?: string } | string; url?: string; awb?: string }
+      | null;
+    const dataObj = typeof json?.data === 'object' ? json?.data : undefined;
+    const url =
+      (typeof json?.data === 'string' ? json.data : undefined) ||
+      dataObj?.url ||
+      dataObj?.awb ||
+      json?.url ||
+      json?.awb;
+    if (typeof url === 'string' && url) return { kind: 'url', url };
+    // Some tenants base64-encode the PDF in `data.pdf`.
+    const b64 = dataObj?.pdf;
+    if (typeof b64 === 'string' && b64.length > 100) {
+      return { kind: 'pdf', pdf: Buffer.from(b64, 'base64') };
+    }
+    lastErr = { status: 200, body: 'unrecognised AWB response shape' };
+  }
+  throw new Error(lastErr ? `Bosta ${lastErr.status}: ${lastErr.body}` : 'Bosta: تعذر جلب البوليصة');
+}
+
 // Track by AWB / tracking number — this is the public-business endpoint that
 // reliably returns the latest state. Use this for status refresh.
 export async function trackByNumber(trackingNumber: string): Promise<{
@@ -226,49 +280,66 @@ function parseBostaStatus(err: unknown): number | null {
   return m ? parseInt(m[1], 10) : null;
 }
 
+export interface BostaCancelAttempt { method: string; path: string; status: number | null; message: string }
+
+export class BostaCancelError extends Error {
+  attemptLog: BostaCancelAttempt[];
+  constructor(message: string, attemptLog: BostaCancelAttempt[]) {
+    super(message);
+    this.name = 'BostaCancelError';
+    this.attemptLog = attemptLog;
+  }
+}
+
 export async function cancelDelivery(deliveryId: string, trackingNumber?: string | null): Promise<void> {
-  const body = JSON.stringify({
-    deliveryId,
-    _id: deliveryId,
-    trackingNumber: trackingNumber || undefined,
-    reason: 'admin_cancelled',
-  });
-  const attempts: Array<{ method: string; path: string; withBody: boolean }> = [
-    { method: 'POST',   path: `/deliveries/terminate`,                           withBody: true  },
-    { method: 'PUT',    path: `/deliveries/${deliveryId}/terminate`,             withBody: true  },
-    { method: 'PATCH',  path: `/deliveries/${deliveryId}/terminate`,             withBody: true  },
-    { method: 'DELETE', path: `/deliveries/business/${deliveryId}`,              withBody: false },
-    { method: 'DELETE', path: `/deliveries/${deliveryId}`,                       withBody: true  },
+  const reasonBody = JSON.stringify({ reason: 'admin_cancelled' });
+  const terminateBody = JSON.stringify({ deliveryId, reason: 'admin_cancelled' });
+  // Documented Bosta v2 terminate is `DELETE /deliveries/{id}` with NO body —
+  // sending a body crashes some tenants' handler on `req.body._id`. Order:
+  // documented endpoint first, then known fallbacks.
+  const attempts: Array<{ method: string; path: string; body?: string }> = [
+    { method: 'DELETE', path: `/deliveries/${deliveryId}` },
+    { method: 'DELETE', path: `/deliveries/business/${deliveryId}` },
+    { method: 'POST',   path: `/deliveries/terminate`,                body: terminateBody },
+    { method: 'PUT',    path: `/deliveries/${deliveryId}/terminate`,  body: reasonBody },
+    { method: 'PATCH',  path: `/deliveries/${deliveryId}/terminate`,  body: reasonBody },
   ];
-  // Also try the tracking-number path variants — some Bosta tenants only
-  // accept the AWB, not the internal _id.
   if (trackingNumber) {
     attempts.push(
-      { method: 'PUT',    path: `/deliveries/business/track/${trackingNumber}/terminate`, withBody: true  },
-      { method: 'DELETE', path: `/deliveries/business/track/${trackingNumber}`,           withBody: false },
+      { method: 'DELETE', path: `/deliveries/business/track/${trackingNumber}` },
+      { method: 'PUT',    path: `/deliveries/business/track/${trackingNumber}/terminate`, body: reasonBody },
     );
   }
-  let lastError: unknown = null;
-  for (const { method, path, withBody } of attempts) {
+  const attemptLog: BostaCancelAttempt[] = [];
+  let firstRealError: { status: number; message: string } | null = null;
+  for (const a of attempts) {
     try {
-      await bostaFetch<unknown>(path, withBody ? { method, body } : { method });
+      const init: RequestInit = { method: a.method };
+      if (a.body) init.body = a.body;
+      await bostaFetch<unknown>(a.path, init);
+      attemptLog.push({ method: a.method, path: a.path, status: 200, message: 'ok' });
+      console.error('[bosta cancel chain]', { deliveryId, trackingNumber, attemptLog });
       return;
     } catch (err) {
-      lastError = err;
       const status = parseBostaStatus(err);
-      const msg = err instanceof Error ? err.message : '';
-      // 404/405 → wrong route, keep trying. Also Bosta's 500 reading '_id'
-      // is a documented internal-handler crash, not a "real" rejection — we
-      // treat it as a missed route and keep trying.
-      const isRoute404Or500 =
+      const msg = err instanceof Error ? err.message : String(err);
+      attemptLog.push({ method: a.method, path: a.path, status, message: msg });
+      // 404/405 = wrong route. 500 with `_id` = documented Bosta handler bug
+      // when our body shape doesn't match. Both → keep trying.
+      const isSoftMiss =
         status === 404 ||
         status === 405 ||
         (status === 500 && /reading '_id'/.test(msg));
-      if (isRoute404Or500) continue;
-      throw err;
+      if (isSoftMiss) continue;
+      // The first informative 4xx/5xx — capture it but keep trying so we
+      // don't bail on a single tenant-specific quirk.
+      if (!firstRealError && status !== null) firstRealError = { status, message: msg };
     }
   }
-  throw lastError instanceof Error ? lastError : new Error('Bosta: لم نعثر على endpoint إلغاء صالح');
+  console.error('[bosta cancel chain]', { deliveryId, trackingNumber, attemptLog });
+  const message = firstRealError?.message
+    || 'Bosta: لم نعثر على endpoint إلغاء صالح — راجع لوج السيرفر';
+  throw new BostaCancelError(message, attemptLog);
 }
 
 // In-memory cache for the cities list (24h TTL).

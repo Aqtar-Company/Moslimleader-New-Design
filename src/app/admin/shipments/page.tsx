@@ -317,6 +317,14 @@ export default function ShipmentsPage() {
                             className="text-xs font-bold text-blue-600 hover:underline"
                           >تتبع</a>
                         )}
+                        {s.bostaDeliveryId && (
+                          <a
+                            href={`/api/admin/shipments/${s.id}/awb`}
+                            target="_blank" rel="noreferrer"
+                            className="text-xs font-bold text-emerald-600 hover:underline"
+                            title="حمّل بوليصة الشحن من بوسطة"
+                          >📄 بوليصة</a>
+                        )}
                         <button
                           onClick={() => refresh(s.id)}
                           disabled={refreshingId === s.id}

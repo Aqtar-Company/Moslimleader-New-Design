@@ -59,13 +59,13 @@ export async function PUT(
         shipmentCancel = { ok: true };
       } catch (err) {
         const message = err instanceof Error ? err.message : 'فشل إلغاء الشحنة من بوسطة';
+        const attemptLog = (err as { attemptLog?: unknown }).attemptLog;
         console.error('[admin order cancel → bosta]', err);
         if (!force) {
-          // Refuse to cancel the order; admin can confirm-and-force in a
-          // second click after reading the Bosta error.
           return NextResponse.json({
             error: `لم يتم إلغاء الأوردر — بوسطة رفضت الإلغاء: ${message}`,
             shipmentCancel: { ok: false, error: message, requiresForce: true },
+            ...(attemptLog ? { debug: { attemptLog } } : {}),
           }, { status: 409 });
         }
         shipmentCancel = { ok: false, error: message };

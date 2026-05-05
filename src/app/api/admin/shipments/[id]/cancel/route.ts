@@ -29,12 +29,14 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         await cancelDelivery(shipment.bostaDeliveryId, shipment.trackingNumber);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'فشل إلغاء الشحنة من بوسطة';
+        const attemptLog = (err as { attemptLog?: unknown }).attemptLog;
         // Tell the caller they can retry with localOnly=1 to mark as
         // cancelled here without notifying Bosta (admin will cancel
         // manually from Bosta dashboard).
         return NextResponse.json({
           error: message,
           canForceLocal: true,
+          ...(attemptLog ? { debug: { attemptLog } } : {}),
         }, { status: 502 });
       }
     }

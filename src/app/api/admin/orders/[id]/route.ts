@@ -85,8 +85,11 @@ export async function PUT(
       if (wasCancelled !== isCancelled) {
         const { adjustStock, restoresFromItems, decrementsFromItems } = await import('@/lib/stock');
         const items = existing.items.map(it => ({ productId: it.productId, quantity: it.quantity, selectedModel: it.selectedModel ?? null }));
-        if (isCancelled) await adjustStock(restoresFromItems(items));
-        else await adjustStock(decrementsFromItems(items));
+        if (isCancelled) {
+          await adjustStock(restoresFromItems(items), { reason: 'order_cancelled', orderId: id, adminId: auth.userId });
+        } else {
+          await adjustStock(decrementsFromItems(items), { reason: 'order_uncancelled', orderId: id, adminId: auth.userId });
+        }
       }
     } catch (err) {
       console.error('[admin order PUT stock]', err);

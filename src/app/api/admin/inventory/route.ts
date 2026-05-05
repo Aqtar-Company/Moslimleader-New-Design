@@ -117,13 +117,64 @@ export async function PUT(req: NextRequest) {
   }
   if (typeof body.inStock === 'boolean') data.inStock = body.inStock;
 
-  const updated = await prisma.product.update({
-    where: { id: body.productId },
-    data,
-    select: {
-      id: true, slug: true, name: true, price: true, priceUsd: true, images: true,
-      inStock: true, stock: true, category: true, variants: true, variantStocks: true,
-    },
+  // Update + audit log inside one transaction. Computes the delta from
+  // before/after so manual sets ("stock=42") are logged with the right
+  // sign and absolute change.
+  const updated = await prisma.$transaction(async tx => {
+    const next = await tx.product.update({
+      where: { id: body.productId },
+      data,
+      select: {
+        id: true, slug: true, name: true, price: true, priceUsd: true, images: true,
+        inStock: true, stock: true, category: true, variants: true, variantStocks: true,
+      },
+    });
+
+    // Log movement only when stock or a variant stock actually changed.
+    const stockBefore = product.stock ?? 0;
+    const stockAfter = next.stock;
+    if (typeof body.variantIndex === 'number' && hasVariants) {
+      const beforeMap = (product.variantStocks ?? {}) as Record<string, number>;
+      const afterMap = (next.variantStocks ?? {}) as Record<string, number>;
+      const key = String(body.variantIndex);
+      const variantBefore = beforeMap[key] ?? 0;
+      const variantAfter = afterMap[key] ?? 0;
+      const delta = variantAfter - variantBefore;
+      if (delta !== 0) {
+        await tx.stockMovement.create({
+          data: {
+            productId: body.productId,
+            variantIndex: body.variantIndex,
+            delta,
+            reason: 'manual_adjustment',
+            adminId: auth.userId,
+            stockBefore,
+            stockAfter,
+            variantStockBefore: variantBefore,
+            variantStockAfter: variantAfter,
+          },
+        });
+      }
+    } else {
+      const delta = stockAfter - stockBefore;
+      if (delta !== 0) {
+        await tx.stockMovement.create({
+          data: {
+            productId: body.productId,
+            variantIndex: null,
+            delta,
+            reason: 'manual_adjustment',
+            adminId: auth.userId,
+            stockBefore,
+            stockAfter,
+            variantStockBefore: null,
+            variantStockAfter: null,
+          },
+        });
+      }
+    }
+    return next;
   });
+
   return NextResponse.json({ product: updated });
 }

@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
 // POST /api/admin/orders — create a manual order (e.g. from Facebook DM).
 // Finds-or-creates a User by email/phone, links them as the order owner so
 // they show up in the customer DB and are reachable by campaigns.
-interface ManualOrderItem { productId: string; quantity: number; unitPrice: number; productName?: string }
+interface ManualOrderItem { productId: string; quantity: number; unitPrice: number; productName?: string; selectedModel?: number | null }
 interface ManualOrderBody {
   customer: {
     name: string;
@@ -161,12 +161,31 @@ export async function POST(req: NextRequest) {
       const productImage = Array.isArray(dbProduct.images) && dbProduct.images.length > 0
         ? (typeof dbProduct.images[0] === 'string' ? dbProduct.images[0] as string : null)
         : null;
+      // Variant validation — if this product has variants/variantStocks,
+      // the admin MUST pick one so per-model stock stays accurate.
+      const variants = (dbProduct.variants ?? []) as unknown as Array<{ name?: string }>;
+      const hasVariants = Array.isArray(variants) && variants.length > 0;
+      let selectedModel: number | null = null;
+      if (typeof it.selectedModel === 'number') {
+        if (!hasVariants) {
+          return NextResponse.json({ error: `المنتج "${dbProduct.name}" لا يحتوي على موديلات` }, { status: 400 });
+        }
+        if (it.selectedModel < 0 || it.selectedModel >= variants.length) {
+          return NextResponse.json({ error: `موديل غير صحيح للمنتج "${dbProduct.name}"` }, { status: 400 });
+        }
+        selectedModel = it.selectedModel;
+      } else if (hasVariants) {
+        return NextResponse.json({
+          error: `المنتج "${dbProduct.name}" له موديلات — اختار الموديل قبل ما تكمل`,
+        }, { status: 400 });
+      }
       resolvedItems.push({
         productId: dbProduct.id,
         productName: it.productName || dbProduct.name,
         productImage,
         quantity: Math.max(1, Math.floor(it.quantity)),
         unitPrice,
+        selectedModel,
       });
       subtotal += unitPrice * it.quantity;
     }
@@ -207,6 +226,18 @@ export async function POST(req: NextRequest) {
     const sourceTag = body.source && !isGift ? `[Source: ${body.source}]` : null;
     const composedNotes = [body.notes, giftTag, sourceTag].filter(Boolean).join(' · ') || null;
 
+    // Pre-flight stock validation — refuse the order with a friendly
+    // Arabic message if any line would push stock below zero.
+    {
+      const { validateStockAvailability } = await import('@/lib/stock');
+      const shortage = await validateStockAvailability(
+        resolvedItems.map(it => ({ productId: it.productId, quantity: it.quantity, selectedModel: it.selectedModel ?? null })),
+      );
+      if (shortage) {
+        return NextResponse.json({ error: shortage.message }, { status: 409 });
+      }
+    }
+
     const order = await prisma.order.create({
       data: {
         userId: user.id,
@@ -224,12 +255,13 @@ export async function POST(req: NextRequest) {
       include: { items: true, user: { select: { id: true, name: true, email: true } } },
     });
 
-    // Decrement stock for the items (best-effort).
+    // Decrement stock for the items atomically + write StockMovement log.
     try {
       const { adjustStock, decrementsFromItems } = await import('@/lib/stock');
-      await adjustStock(decrementsFromItems(resolvedItems.map(it => ({ productId: it.productId, quantity: it.quantity }))));
-      // Manual orders don't expose variant pickers yet; per-variant stock is
-      // only tracked when the customer flow sets selectedModel.
+      await adjustStock(
+        decrementsFromItems(resolvedItems.map(it => ({ productId: it.productId, quantity: it.quantity, selectedModel: it.selectedModel ?? null }))),
+        { reason: 'order_created', orderId: order.id, adminId: auth.userId },
+      );
     } catch (err) {
       console.error('[admin orders POST stock]', err);
     }

@@ -115,6 +115,19 @@ export async function POST(req: NextRequest) {
       })
     );
 
+    // Pre-flight stock check — fail fast with a friendly Arabic error
+    // before we create the order so the customer never sees "your order
+    // was placed then we ran out".
+    {
+      const { validateStockAvailability } = await import('@/lib/stock');
+      const shortage = await validateStockAvailability(
+        resolvedItems.map(it => ({ productId: it.productId, quantity: it.quantity, selectedModel: it.selectedModel ?? null })),
+      );
+      if (shortage) {
+        return NextResponse.json({ error: shortage.message }, { status: 409 });
+      }
+    }
+
     // Server-side price verification
     const verifiedSubtotal = resolvedItems.reduce(
       (s, it) => s + it.unitPrice * it.quantity, 0
@@ -155,10 +168,15 @@ export async function POST(req: NextRequest) {
       include: { items: true },
     });
 
-    // Decrement stock per item (best-effort; allow negative for backorders).
+    // Decrement stock atomically + write StockMovement audit rows.
+    // Pre-flight already validated availability, but the same transaction
+    // re-checks under load to defend against races.
     try {
       const { adjustStock, decrementsFromItems } = await import('@/lib/stock');
-      await adjustStock(decrementsFromItems(resolvedItems.map(it => ({ productId: it.productId, quantity: it.quantity, selectedModel: it.selectedModel ?? null }))));
+      await adjustStock(
+        decrementsFromItems(resolvedItems.map(it => ({ productId: it.productId, quantity: it.quantity, selectedModel: it.selectedModel ?? null }))),
+        { reason: 'order_created', orderId: order.id },
+      );
     } catch (err) {
       console.error('[orders POST stock]', err);
     }

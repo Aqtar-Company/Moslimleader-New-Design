@@ -111,6 +111,32 @@ model Product {
   orderItems OrderItem[]
   cartItems  CartItem[]
   reviews    Review[]
+  stockMovements StockMovement[]
+}
+
+// Append-only audit log of every stock change. Written inside the same
+// transaction as the corresponding Product update so the log is always
+// in sync with the actual stock figures.
+model StockMovement {
+  id                  String   @id @default(cuid())
+  productId           String
+  variantIndex        Int?     // null when product has no variants
+  delta               Int      // negative for decrement, positive for restore
+  reason              String   // order_created | order_cancelled | order_uncancelled | manual_adjustment
+  orderId             String?
+  adminId             String?
+  stockBefore         Int
+  stockAfter          Int
+  variantStockBefore  Int?
+  variantStockAfter   Int?
+  note                String?  @db.Text
+  createdAt           DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, createdAt])
+  @@index([orderId])
+  @@index([reason, createdAt])
 }
 
 model Order {

@@ -3,12 +3,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 
+interface ProductVariant { id?: string; name?: string; nameEn?: string }
 interface Product {
   id: string;
   name: string;
   price: number;
   images?: unknown;
   inStock?: boolean;
+  variants?: ProductVariant[];
+  variantStocks?: Record<string, number> | null;
+  stock?: number;
 }
 
 interface LineItem {
@@ -16,7 +20,11 @@ interface LineItem {
   name: string;
   unitPrice: number;
   quantity: number;
+  selectedModel: number | null;       // required (number) when product has variants
+  variantOptions?: ProductVariant[];  // cached for the dropdown
 }
+
+const lineKey = (it: LineItem) => `${it.productId}::${it.selectedModel ?? '-'}`;
 
 const GOVERNORATES: Array<{ id: string; name: string; shipping: number }> = [
   { id: 'cairo', name: 'القاهرة', shipping: 50 },
@@ -111,30 +119,67 @@ export function ManualOrderModal({ open, onClose, onCreated }: Props) {
     if (!productPicker) return;
     const p = products.find(p => p.id === productPicker);
     if (!p) return;
+    const variants = Array.isArray(p.variants) ? p.variants : [];
+    const hasVariants = variants.length > 0;
     setItems(prev => {
-      const existing = prev.find(it => it.productId === p.id);
-      if (existing) return prev.map(it => it.productId === p.id ? { ...it, quantity: it.quantity + 1 } : it);
-      return [...prev, { productId: p.id, name: p.name, unitPrice: p.price, quantity: 1 }];
+      // For variant-less products, merge into the existing line.
+      if (!hasVariants) {
+        const existing = prev.find(it => it.productId === p.id && it.selectedModel === null);
+        if (existing) {
+          return prev.map(it => it === existing ? { ...it, quantity: it.quantity + 1 } : it);
+        }
+      }
+      // For variant products, always start a fresh line — admin picks the
+      // model, then we'll merge on (productId, selectedModel) afterwards.
+      return [...prev, {
+        productId: p.id,
+        name: p.name,
+        unitPrice: p.price,
+        quantity: 1,
+        selectedModel: null,
+        variantOptions: hasVariants ? variants : undefined,
+      }];
     });
     setProductPicker('');
   };
 
-  const updateQty = (productId: string, qty: number) => {
+  const updateQty = (key: string, qty: number) => {
     if (qty < 1) {
-      setItems(prev => prev.filter(it => it.productId !== productId));
+      setItems(prev => prev.filter(it => lineKey(it) !== key));
     } else {
-      setItems(prev => prev.map(it => it.productId === productId ? { ...it, quantity: qty } : it));
+      setItems(prev => prev.map(it => lineKey(it) === key ? { ...it, quantity: qty } : it));
     }
   };
 
-  const updatePrice = (productId: string, price: number) => {
-    setItems(prev => prev.map(it => it.productId === productId ? { ...it, unitPrice: Math.max(0, price) } : it));
+  const updatePrice = (key: string, price: number) => {
+    setItems(prev => prev.map(it => lineKey(it) === key ? { ...it, unitPrice: Math.max(0, price) } : it));
+  };
+
+  const updateVariant = (key: string, modelIdx: number) => {
+    setItems(prev => {
+      const target = prev.find(it => lineKey(it) === key);
+      if (!target) return prev;
+      // If a line for the same (productId, modelIdx) already exists, merge
+      // quantities and drop the current line.
+      const merged = prev.find(it => it !== target && it.productId === target.productId && it.selectedModel === modelIdx);
+      if (merged) {
+        return prev
+          .filter(it => it !== target)
+          .map(it => it === merged ? { ...it, quantity: it.quantity + target.quantity } : it);
+      }
+      return prev.map(it => it === target ? { ...it, selectedModel: modelIdx } : it);
+    });
   };
 
   const handleSubmit = async () => {
     if (!name.trim()) { addToast('اسم العميل مطلوب', 'warning'); return; }
     if (!phone.trim()) { addToast('رقم التليفون مطلوب', 'warning'); return; }
     if (items.length === 0) { addToast('اختار منتج واحد على الأقل', 'warning'); return; }
+    const missingVariant = items.find(it => Array.isArray(it.variantOptions) && it.variantOptions.length > 0 && it.selectedModel === null);
+    if (missingVariant) {
+      addToast(`اختار الموديل لـ "${missingVariant.name}"`, 'warning');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -144,7 +189,13 @@ export function ManualOrderModal({ open, onClose, onCreated }: Props) {
         credentials: 'include',
         body: JSON.stringify({
           customer: { name, phone, whatsappNumber, email, governorate, city, street, building, notes },
-          items: items.map(it => ({ productId: it.productId, quantity: it.quantity, unitPrice: it.unitPrice, productName: it.name })),
+          items: items.map(it => ({
+            productId: it.productId,
+            quantity: it.quantity,
+            unitPrice: it.unitPrice,
+            productName: it.name,
+            selectedModel: it.selectedModel,
+          })),
           shippingCost,
           discount,
           couponCode,
@@ -321,30 +372,49 @@ export function ManualOrderModal({ open, onClose, onCreated }: Props) {
               <p className="text-xs text-gray-400 py-3 text-center">لم تضف أي منتجات بعد</p>
             ) : (
               <div className="space-y-2">
-                {items.map(it => (
-                  <div key={it.productId} className="flex items-center gap-2 p-2 bg-gray-50 rounded-xl">
-                    <span className="text-xs font-bold text-gray-800 flex-1 truncate">{it.name}</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={it.unitPrice}
-                      onChange={e => updatePrice(it.productId, Number(e.target.value))}
-                      className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-xs text-center"
-                      title="السعر"
-                    />
-                    <span className="text-[10px] text-gray-400">ج.م ×</span>
-                    <input
-                      type="number"
-                      min={1}
-                      value={it.quantity}
-                      onChange={e => updateQty(it.productId, Number(e.target.value))}
-                      className="w-14 border border-gray-200 rounded-lg px-2 py-1 text-xs text-center"
-                      title="الكمية"
-                    />
-                    <span className="text-xs font-black text-[#6B21A8] w-20 text-left">{(it.unitPrice * it.quantity).toLocaleString('en-US')}</span>
-                    <button type="button" onClick={() => updateQty(it.productId, 0)} className="text-red-600 text-sm hover:text-red-700">×</button>
-                  </div>
-                ))}
+                {items.map(it => {
+                  const key = lineKey(it);
+                  const hasVariants = Array.isArray(it.variantOptions) && it.variantOptions.length > 0;
+                  const needsVariant = hasVariants && it.selectedModel === null;
+                  return (
+                    <div key={key} className={`flex items-center gap-2 p-2 rounded-xl ${needsVariant ? 'bg-amber-50 ring-1 ring-amber-300' : 'bg-gray-50'}`}>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-gray-800 truncate">{it.name}</p>
+                        {hasVariants && (
+                          <select
+                            value={it.selectedModel ?? ''}
+                            onChange={e => updateVariant(key, Number(e.target.value))}
+                            className={`mt-1 w-full text-[11px] rounded-lg px-2 py-1 outline-none ${needsVariant ? 'border-amber-400 text-amber-700 font-bold' : 'border border-gray-200 text-gray-700'}`}
+                          >
+                            <option value="" disabled>اختار الموديل…</option>
+                            {it.variantOptions!.map((v, i) => (
+                              <option key={i} value={i}>{v.name || `موديل ${i + 1}`}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                      <input
+                        type="number"
+                        min={0}
+                        value={it.unitPrice}
+                        onChange={e => updatePrice(key, Number(e.target.value))}
+                        className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-xs text-center"
+                        title="السعر"
+                      />
+                      <span className="text-[10px] text-gray-400">ج.م ×</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={it.quantity}
+                        onChange={e => updateQty(key, Number(e.target.value))}
+                        className="w-14 border border-gray-200 rounded-lg px-2 py-1 text-xs text-center"
+                        title="الكمية"
+                      />
+                      <span className="text-xs font-black text-[#6B21A8] w-20 text-left">{(it.unitPrice * it.quantity).toLocaleString('en-US')}</span>
+                      <button type="button" onClick={() => updateQty(key, 0)} className="text-red-600 text-sm hover:text-red-700">×</button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </fieldset>

@@ -246,9 +246,12 @@ export default function CustomerDetailPage() {
                       <p className="text-[10px] text-gray-500">{formatPrice(p.price)} ج.م</p>
                     </div>
                     <button
-                      onClick={() => setWaMessage(`مرحبًا ${customer.name.split(' ')[0]} 👋\nشوف منتجنا "${p.name}" — ممكن يعجبك جدًا.`)}
+                      onClick={() => {
+                        const url = `https://moslimleader.com/shop/${p.slug}`;
+                        setWaMessage(`مرحبًا ${customer.name.split(' ')[0]} 👋\nشوف منتجنا "${p.name}" — ممكن يعجبك جدًا.\n${url}`);
+                      }}
                       className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700"
-                      title="رشّح هذا المنتج"
+                      title="رشّح هذا المنتج مع اللينك"
                     >رشح</button>
                   </div>
                 );

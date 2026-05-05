@@ -1,19 +1,14 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
-
-async function requireAdmin() {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') return null;
-  return auth;
-}
+import { requirePerm, type Permission } from '@/lib/permissions';
+import { logActionSafe } from '@/lib/audit-log';
 
 // GET /api/admin/books
 export async function GET() {
   try {
-    const auth = await requireAdmin();
-    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    const guard = await requirePerm(['books.read', 'books.write'] as Permission[]);
+    if ('response' in guard) return guard.response;
 
     const books = await prisma.book.findMany({
       orderBy: { createdAt: 'desc' },
@@ -30,8 +25,9 @@ export async function GET() {
 // POST /api/admin/books — create book record (file uploaded separately)
 export async function POST(req: NextRequest) {
   try {
-    const auth = await requireAdmin();
-    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    const guard = await requirePerm('books.write');
+    if ('response' in guard) return guard.response;
+    const auth = guard.user;
 
     const body = await req.json();
     const {
@@ -82,6 +78,14 @@ export async function POST(req: NextRequest) {
       // Fallback if age columns don't exist yet
       book = await prisma.book.create({ data: baseData });
     }
+
+    await logActionSafe({
+      actor: auth,
+      action: 'book.create',
+      entity: 'Book',
+      entityId: book.id,
+      after: { title: book.title, price: book.price, section: book.section },
+    });
 
     return NextResponse.json({ book });
   } catch (err) {

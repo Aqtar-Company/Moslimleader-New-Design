@@ -1,8 +1,9 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { cancelDelivery } from '@/lib/bosta';
+import { requirePerm } from '@/lib/permissions';
+import { logActionSafe } from '@/lib/audit-log';
 
 
 // PUT /api/admin/orders/[id] — update order status
@@ -11,10 +12,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await getAuthUser();
-    if (!auth || auth.role !== 'admin') {
-      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-    }
+    const guard = await requirePerm('orders.write');
+    if ('response' in guard) return guard.response;
+    const auth = guard.user;
 
     const { id } = await params;
     const body = await req.json().catch(() => ({}));
@@ -98,6 +98,15 @@ export async function PUT(
       }
       throw err;
     }
+
+    await logActionSafe({
+      actor: auth,
+      action: 'order.update-status',
+      entity: 'Order',
+      entityId: id,
+      before: { status: existing.status },
+      after: { status, shipmentCancel: shipmentCancel?.ok ?? null },
+    });
 
     return NextResponse.json({ order, shipmentCancel });
   } catch (err) {

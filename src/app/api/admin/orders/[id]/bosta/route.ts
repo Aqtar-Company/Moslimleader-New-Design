@@ -1,8 +1,9 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { createDelivery, bostaCityFromGovernorate, bostaCityIdFromGovernorate, normalizeEgyptPhone } from '@/lib/bosta';
+import { requirePerm } from '@/lib/permissions';
+import { logActionSafe } from '@/lib/audit-log';
 
 interface ShippingAddress {
   firstName?: string;
@@ -25,10 +26,9 @@ interface ShippingAddress {
 // POST /api/admin/orders/[id]/bosta — create a Bosta shipment for the order
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await getAuthUser();
-    if (!auth || auth.role !== 'admin') {
-      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-    }
+    const guard = await requirePerm('shipments.write');
+    if ('response' in guard) return guard.response;
+    const auth = guard.user;
 
     const { id } = await params;
     const order = await prisma.order.findUnique({
@@ -122,6 +122,18 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     if (order.status === 'pending' || order.status === 'paid') {
       await prisma.order.update({ where: { id: order.id }, data: { status: 'shipped' } });
     }
+
+    await logActionSafe({
+      actor: auth,
+      action: 'shipment.bosta-create',
+      entity: 'Shipment',
+      entityId: shipment.id,
+      after: {
+        orderId: order.id,
+        trackingNumber: shipment.trackingNumber,
+        cod: shipment.cod,
+      },
+    });
 
     return NextResponse.json({ shipment });
   } catch (err) {

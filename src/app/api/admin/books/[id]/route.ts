@@ -1,21 +1,17 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { unlink } from 'fs/promises';
 import path from 'path';
-
-async function requireAdmin() {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') return null;
-  return auth;
-}
+import { requirePerm } from '@/lib/permissions';
+import { logActionSafe } from '@/lib/audit-log';
 
 // PUT /api/admin/books/[id]
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requireAdmin();
-    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    const guard = await requirePerm('books.write');
+    if ('response' in guard) return guard.response;
+    const auth = guard.user;
 
     const { id } = await params;
     const body = await req.json();
@@ -31,6 +27,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const book = await prisma.book.update({ where: { id }, data });
 
+    await logActionSafe({
+      actor: auth,
+      action: 'book.update',
+      entity: 'Book',
+      entityId: id,
+      metadata: { fields: Object.keys(data).filter(k => k !== 'updatedAt'), title: book.title },
+    });
+
     return NextResponse.json({ book });
   } catch (err) {
     console.error('[admin books PUT]', err);
@@ -41,8 +45,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 // DELETE /api/admin/books/[id]
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requireAdmin();
-    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    const guard = await requirePerm('books.write');
+    if ('response' in guard) return guard.response;
+    const auth = guard.user;
 
     const { id } = await params;
     const book = await prisma.book.findUnique({ where: { id } });
@@ -56,6 +61,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     await prisma.book.delete({ where: { id } });
+    await logActionSafe({
+      actor: auth,
+      action: 'book.delete',
+      entity: 'Book',
+      entityId: id,
+      before: { title: book.title },
+    });
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[admin books DELETE]', err);

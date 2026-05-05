@@ -1,8 +1,9 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
+import { requireSuperAdmin } from '@/lib/permissions';
+import { logActionSafe } from '@/lib/audit-log';
 import { resolveSegment, renderTemplate, instrumentEmailHtml, type SegmentFilters } from '@/lib/marketing';
 import { sendMarketingEmail, getBaseUrl } from '@/lib/marketing-mailer';
 
@@ -17,12 +18,13 @@ async function ensureMarketingToken(userId: string): Promise<string> {
   return token;
 }
 
-// POST /api/admin/campaigns/[id]/send — fire-and-forget background sender
+// POST /api/admin/campaigns/[id]/send — fire-and-forget background sender.
+// Super-admin only — campaign sends cost real money (per-recipient SMTP)
+// and brand reputation; the staff write perm is intentionally not enough.
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-  }
+  const guard = await requireSuperAdmin();
+  if ('response' in guard) return guard.response;
+  const auth = guard.user;
   const { id } = await params;
   const campaign = await prisma.campaign.findUnique({ where: { id } });
   if (!campaign) return NextResponse.json({ error: 'الحملة غير موجودة' }, { status: 404 });
@@ -61,6 +63,14 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   // Fire-and-forget loop. We rely on PM2 fork mode keeping the process alive.
   void runSend(id);
+
+  await logActionSafe({
+    actor: auth,
+    action: 'campaign.send',
+    entity: 'Campaign',
+    entityId: campaign.id,
+    metadata: { name: campaign.name, queued: reachable.length },
+  });
 
   return NextResponse.json({ ok: true, queued: reachable.length });
 }

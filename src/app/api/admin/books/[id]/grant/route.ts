@@ -1,19 +1,14 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
-
-async function requireAdmin() {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') return null;
-  return auth;
-}
+import { requirePerm, type Permission } from '@/lib/permissions';
+import { logActionSafe } from '@/lib/audit-log';
 
 // GET /api/admin/books/[id]/grant — list all accesses for this book
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requireAdmin();
-    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    const guard = await requirePerm(['books.read', 'books.write'] as Permission[]);
+    if ('response' in guard) return guard.response;
 
     const { id: bookId } = await params;
     const accesses = await prisma.bookAccess.findMany({
@@ -32,8 +27,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 // POST /api/admin/books/[id]/grant — { email } or { userId }
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requireAdmin();
-    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    const guard = await requirePerm('books.write');
+    if ('response' in guard) return guard.response;
+    const auth = guard.user;
 
     const { id: bookId } = await params;
     const { email, userId: directUserId } = await req.json();
@@ -52,6 +48,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       update: { grantedAt: new Date() },
     });
 
+    await logActionSafe({
+      actor: auth,
+      action: 'book.grant',
+      entity: 'Book',
+      entityId: bookId,
+      metadata: { userId, email },
+    });
+
     return NextResponse.json({ access });
   } catch (err) {
     console.error('[admin books grant]', err);
@@ -62,8 +66,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 // DELETE /api/admin/books/[id]/grant?userId=xxx — revoke access
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requireAdmin();
-    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    const guard = await requirePerm('books.write');
+    if ('response' in guard) return guard.response;
+    const auth = guard.user;
 
     const { id: bookId } = await params;
     let userId = req.nextUrl.searchParams.get('userId');
@@ -73,6 +78,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     if (!userId) return NextResponse.json({ error: 'userId مطلوب' }, { status: 400 });
 
     await prisma.bookAccess.deleteMany({ where: { userId, bookId } });
+    await logActionSafe({
+      actor: auth,
+      action: 'book.grant',
+      entity: 'Book',
+      entityId: bookId,
+      metadata: { kind: 'revoke', userId },
+    });
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[admin books revoke]', err);

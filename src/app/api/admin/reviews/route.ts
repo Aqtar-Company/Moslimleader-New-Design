@@ -1,21 +1,15 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
-
-
-async function requireAdmin() {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') return null;
-  return auth;
-}
+import { requirePerm, type Permission } from '@/lib/permissions';
+import { logActionSafe } from '@/lib/audit-log';
 
 // GET /api/admin/reviews — all reviews from DB + hardcoded from static products
 export async function GET() {
   try {
-    const auth = await requireAdmin();
-    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    const guard = await requirePerm(['reviews.read', 'reviews.write'] as Permission[]);
+    if ('response' in guard) return guard.response;
 
     const dbReviews = await prisma.review.findMany({
       include: { product: { select: { name: true } } },
@@ -61,13 +55,21 @@ export async function GET() {
 // DELETE /api/admin/reviews?id=xxx
 export async function DELETE(req: NextRequest) {
   try {
-    const auth = await requireAdmin();
-    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    const guard = await requirePerm('reviews.write');
+    if ('response' in guard) return guard.response;
+    const auth = guard.user;
 
     const id = req.nextUrl.searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'id مطلوب' }, { status: 400 });
 
     await prisma.review.delete({ where: { id } });
+    await logActionSafe({
+      actor: auth,
+      action: 'review.moderate',
+      entity: 'Review',
+      entityId: id,
+      metadata: { kind: 'delete' },
+    });
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[admin reviews DELETE]', err);

@@ -1,15 +1,9 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { getMergedStaticProducts, invalidateOverridesCache } from '@/lib/product-overrides';
-
-
-async function requireAdmin() {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') return null;
-  return auth;
-}
+import { requirePerm, type Permission } from '@/lib/permissions';
+import { logActionSafe } from '@/lib/audit-log';
 
 // In-memory cache to speed up repeated admin page loads (60 second TTL)
 // Admin edits invalidate the cache explicitly via PUT/POST/DELETE
@@ -41,8 +35,8 @@ function toListItem(p: unknown) {
 // GET /api/admin/products — returns all DB products (source='admin') + static products merged with overrides
 export async function GET(req: NextRequest) {
   try {
-    const auth = await requireAdmin();
-    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    const guard = await requirePerm(['products.read', 'products.write'] as Permission[]);
+    if ('response' in guard) return guard.response;
 
     // Serve from cache if fresh
     if (cache && Date.now() < cache.expiresAt) {
@@ -85,8 +79,9 @@ export async function GET(req: NextRequest) {
 // POST /api/admin/products — add new product to DB
 export async function POST(req: NextRequest) {
   try {
-    const auth = await requireAdmin();
-    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    const guard = await requirePerm('products.write');
+    if ('response' in guard) return guard.response;
+    const auth = guard.user;
 
     const body = await req.json();
     const { slug, name, nameEn, shortDescription, shortDescriptionEn,
@@ -116,6 +111,14 @@ export async function POST(req: NextRequest) {
 
     // Invalidate cache so next GET returns fresh data
     invalidateAdminProductsCache();
+
+    await logActionSafe({
+      actor: auth,
+      action: 'product.create',
+      entity: 'Product',
+      entityId: product.id,
+      after: { slug: product.slug, name: product.name, price: product.price, category: product.category },
+    });
 
     return NextResponse.json({ product });
   } catch (err) {

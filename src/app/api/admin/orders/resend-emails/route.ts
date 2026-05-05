@@ -1,18 +1,13 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { sendOrderNotificationEmail } from '@/lib/order-email';
+import { requireSuperAdmin } from '@/lib/permissions';
 
 export async function POST() {
   try {
-    const auth = await getAuthUser();
-    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
-
-    const adminUser = await prisma.user.findUnique({ where: { id: auth.userId } });
-    if (adminUser?.role !== 'admin') {
-      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-    }
+    const guard = await requireSuperAdmin();
+    if ('response' in guard) return guard.response;
 
     const orders = await prisma.order.findMany({
       where: { createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } },

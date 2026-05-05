@@ -1,14 +1,14 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { resolveSegment, type SegmentFilters } from '@/lib/marketing';
+import { requirePerm, type Permission } from '@/lib/permissions';
+import { logActionSafe } from '@/lib/audit-log';
 
 export async function GET() {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-  }
+  const guard = await requirePerm(['campaigns.read', 'campaigns.write'] as Permission[]);
+  if ('response' in guard) return guard.response;
+
   const campaigns = await prisma.campaign.findMany({
     orderBy: { createdAt: 'desc' },
     select: {
@@ -22,10 +22,10 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-  }
+  const guard = await requirePerm('campaigns.write');
+  if ('response' in guard) return guard.response;
+  const auth = guard.user;
+
   const body = await req.json();
   const { name, segmentKey, segmentFilters, subject, bodyHtml, couponCode } = body as {
     name?: string;
@@ -55,7 +55,16 @@ export async function POST(req: NextRequest) {
       couponCode: couponCode?.trim() || null,
       status: 'draft',
       recipientCount: reachable.length,
+      createdByUserId: auth.userId,
     },
+  });
+
+  await logActionSafe({
+    actor: auth,
+    action: 'campaign.create',
+    entity: 'Campaign',
+    entityId: campaign.id,
+    after: { name: campaign.name, recipientCount: campaign.recipientCount, segmentKey: campaign.segmentKey },
   });
 
   return NextResponse.json({ campaign });

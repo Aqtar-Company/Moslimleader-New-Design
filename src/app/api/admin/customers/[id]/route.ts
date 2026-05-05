@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
+import { requirePerm } from '@/lib/permissions';
 
 interface ShippingAddr {
   firstName?: string; lastName?: string; phone?: string; whatsappNumber?: string;
@@ -11,10 +11,8 @@ interface ShippingAddr {
 
 // GET /api/admin/customers/[id] — full customer 360
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-  }
+  const guard = await requirePerm('customers.read');
+  if ('response' in guard) return guard.response;
 
   const { id } = await params;
   const user = await prisma.user.findUnique({

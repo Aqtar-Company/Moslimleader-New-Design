@@ -1,10 +1,11 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest } from 'next/server';
 import { randomBytes } from 'crypto';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { listDeliveries, type BostaListDelivery } from '@/lib/bosta';
 import { normalizeEgyptPhone } from '@/lib/phone';
+import { requireSuperAdmin } from '@/lib/permissions';
+import { logActionSafe } from '@/lib/audit-log';
 
 interface ImportProgress {
   type: 'page' | 'log' | 'done' | 'error';
@@ -51,10 +52,14 @@ function bostaToShippingAddress(d: BostaListDelivery) {
 // /admin/customers and /admin/shipments. Idempotent — re-running only adds
 // what's missing (keyed by Bosta delivery _id).
 export async function POST(req: NextRequest) {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') {
-    return new Response(JSON.stringify({ error: 'غير مصرح' }), { status: 403 });
-  }
+  const guard = await requireSuperAdmin();
+  if ('response' in guard) return guard.response;
+  const auth = guard.user;
+  await logActionSafe({
+    actor: auth,
+    action: 'shipment.bosta-import-history',
+    metadata: { startedAt: new Date().toISOString() },
+  });
 
   const body = await req.json().catch(() => ({}));
   const maxPages = Math.min(typeof body.maxPages === 'number' ? body.maxPages : 200, 500);

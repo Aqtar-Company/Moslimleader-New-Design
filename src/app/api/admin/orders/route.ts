@@ -1,18 +1,17 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
 import { normalizeEgyptPhone } from '@/lib/phone';
+import { requirePerm } from '@/lib/permissions';
+import { logActionSafe } from '@/lib/audit-log';
 
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = await getAuthUser();
-    if (!auth || auth.role !== 'admin') {
-      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-    }
+    const guard = await requirePerm('orders.read');
+    if ('response' in guard) return guard.response;
 
     const url = new URL(req.url);
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10) || 50, 5000);
@@ -72,10 +71,9 @@ interface ManualOrderBody {
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = await getAuthUser();
-    if (!auth || auth.role !== 'admin') {
-      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-    }
+    const guard = await requirePerm('orders.write');
+    if ('response' in guard) return guard.response;
+    const auth = guard.user;
     const body = (await req.json()) as ManualOrderBody;
 
     if (!body?.customer?.name?.trim() || !body.customer.phone?.trim()) {
@@ -257,6 +255,9 @@ export async function POST(req: NextRequest) {
             shippingAddress: shippingAddress as unknown as object,
             notes: composedNotes,
             currency: 'EGP',
+            // Stamp who placed the manual order so the audit can re-resolve
+            // attribution months later even if the AuditLog row is purged.
+            createdByUserId: auth.userId,
             items: { create: resolvedItems },
           },
           include: { items: true, user: { select: { id: true, name: true, email: true } } },
@@ -274,6 +275,19 @@ export async function POST(req: NextRequest) {
       }
       throw err;
     }
+
+    await logActionSafe({
+      actor: auth,
+      action: 'order.create-manual',
+      entity: 'Order',
+      entityId: order.id,
+      after: {
+        total: order.total,
+        paymentMethod: order.paymentMethod,
+        itemCount: resolvedItems.length,
+        customerEmail: order.user.email,
+      },
+    });
 
     return NextResponse.json({ order }, { status: 201 });
   } catch (err) {

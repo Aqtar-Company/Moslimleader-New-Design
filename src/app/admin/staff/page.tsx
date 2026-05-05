@@ -13,6 +13,20 @@ interface Staff {
   role: string;
   permissions: string[];
   createdAt: string;
+  lastLoginAt?: string | null;
+}
+
+function timeAgoAr(iso: string | null | undefined): string {
+  if (!iso) return 'لم يدخل بعد';
+  const t = new Date(iso).getTime();
+  const diff = Date.now() - t;
+  const m = Math.floor(diff / 60_000);
+  if (m < 1) return 'الآن';
+  if (m < 60) return `منذ ${m} دقيقة`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `منذ ${h} ساعة`;
+  const d = Math.floor(h / 24);
+  return `منذ ${d} يوم`;
 }
 
 const PERM_LABELS: Record<Permission, string> = {
@@ -123,6 +137,26 @@ export default function StaffPage() {
     setAdding(false);
   };
 
+  const forceLogout = async (s: Staff) => {
+    const ok = await confirm({
+      title: 'فرض تسجيل خروج',
+      message: `هتفصل ${s.name} (${s.email}) من جلساتهم الحالية. صلاحياتهم تفضل زي ما هي، بس هيحتاجوا يسجّلوا دخول من جديد. ده مفيد لو لاب توبهم اتسرق.`,
+      confirmLabel: 'فرض الخروج',
+      cancelLabel: 'تراجع',
+      tone: 'danger',
+      icon: '🔒',
+    });
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/admin/staff/${s.id}/force-logout`, { method: 'POST', credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'failed');
+      addToast('تم فرض تسجيل الخروج', 'success');
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'فشل', 'error');
+    }
+  };
+
   const revoke = async (s: Staff) => {
     const ok = await confirm({
       title: 'إلغاء صلاحيات المساعد',
@@ -203,9 +237,10 @@ export default function StaffPage() {
                     </p>
                     <p className="text-xs text-gray-500" dir="ltr">{s.email}</p>
                     {s.phone && <p className="text-[11px] text-gray-400 font-mono mt-0.5" dir="ltr">{s.phone}</p>}
+                    <p className="text-[10px] text-gray-400 mt-1">آخر دخول: {timeAgoAr(s.lastLoginAt)}</p>
                   </div>
                   {s.role === 'staff' && (
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       {editing?.id === s.id ? (
                         <>
                           <button onClick={saveEdit} disabled={saving} className="text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50">{saving ? '...' : 'حفظ'}</button>
@@ -214,6 +249,7 @@ export default function StaffPage() {
                       ) : (
                         <>
                           <button onClick={() => startEdit(s)} className="text-xs font-bold px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">تعديل</button>
+                          <button onClick={() => forceLogout(s)} className="text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700" title="فرض تسجيل خروج بدون إلغاء الصلاحيات">🔒 خروج</button>
                           <button onClick={() => revoke(s)} className="text-xs font-bold px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700">إلغاء الصلاحيات</button>
                         </>
                       )}

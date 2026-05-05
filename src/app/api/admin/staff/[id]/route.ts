@@ -47,9 +47,15 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!target) return NextResponse.json({ error: 'الحساب غير موجود' }, { status: 404 });
   if (target.role === 'admin') return NextResponse.json({ error: 'لا يمكن إلغاء الأدمن الرئيسي' }, { status: 400 });
 
+  // Bump tokenVersion so the revoked staff's existing cookie is invalidated
+  // on the next request (otherwise their JWT stays valid for ~30 days).
   await prisma.user.update({
     where: { id },
-    data: { role: 'customer', permissions: [] as unknown as object },
+    data: {
+      role: 'customer',
+      permissions: [] as unknown as object,
+      tokenVersion: { increment: 1 },
+    },
   });
   await logActionSafe({
     actor: auth.user,

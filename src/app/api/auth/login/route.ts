@@ -36,7 +36,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const token = await signToken({ userId: user.id, email: user.email, role: user.role, name: user.name });
+    // Stamp last login + carry token version so a future revoke can invalidate this cookie.
+    prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    }).catch(err => console.error('[login lastLoginAt]', err));
+
+    const token = await signToken({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+      tokenVersion: user.tokenVersion,
+    });
     const isAdminLike = user.role === 'admin' || user.role === 'staff';
     const permissions = isAdminLike ? ((user.permissions as unknown[] | null) ?? []) : [];
     const res = NextResponse.json({

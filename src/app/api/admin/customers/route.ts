@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
+import { requirePerm } from '@/lib/permissions';
 
 export interface CustomerSummary {
   id: string;
@@ -125,9 +125,10 @@ async function aggregate(): Promise<AggregatedCache> {
 
 // GET /api/admin/customers — aggregated customers with segment filters + pagination
 export async function GET(req: NextRequest) {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+  const guard = await requirePerm('customers.read');
+  if ('response' in guard) {
+    // Preserve the request-level interface (return JSON 403 instead of NextResponse).
+    return guard.response;
   }
 
   const url = new URL(req.url);

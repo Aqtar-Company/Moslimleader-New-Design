@@ -1,23 +1,17 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import sharp from 'sharp';
-
-async function requireAdmin() {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') return null;
-  return auth;
-}
+import { requirePerm } from '@/lib/permissions';
 
 // POST /api/admin/products/upload-image
 // Compresses and converts to WebP, max 1200px wide
 export async function POST(req: NextRequest) {
   try {
-    const auth = await requireAdmin();
-    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    const guard = await requirePerm('products.write');
+    if ('response' in guard) return guard.response;
 
     const formData = await req.formData();
     const file = formData.get('file') as File;

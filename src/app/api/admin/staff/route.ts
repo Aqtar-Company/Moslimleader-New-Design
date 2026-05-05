@@ -13,7 +13,7 @@ export async function GET() {
     where: { role: { in: ['admin', 'staff'] } },
     select: {
       id: true, name: true, email: true, phone: true,
-      role: true, permissions: true, createdAt: true,
+      role: true, permissions: true, createdAt: true, lastLoginAt: true,
     },
     orderBy: [{ role: 'asc' }, { createdAt: 'desc' }],
   });

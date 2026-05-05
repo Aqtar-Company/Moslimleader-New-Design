@@ -1,16 +1,15 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
+import { requirePerm, type Permission } from '@/lib/permissions';
+import { logActionSafe } from '@/lib/audit-log';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
 
 interface VariantShape { id?: string; name?: string; nameEn?: string; imageIndex?: number }
 
 export async function GET() {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-  }
+  const guard = await requirePerm(['inventory.read', 'inventory.write'] as Permission[]);
+  if ('response' in guard) return guard.response;
   const products = await prisma.product.findMany({
     select: {
       id: true, slug: true, name: true, price: true, priceUsd: true,
@@ -64,10 +63,9 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-  }
+  const guard = await requirePerm('inventory.write');
+  if ('response' in guard) return guard.response;
+  const auth = guard.user;
   const body = await req.json() as {
     productId: string;
     stock?: number;
@@ -180,6 +178,16 @@ export async function PUT(req: NextRequest) {
       }
     }
     return next;
+  });
+
+  await logActionSafe({
+    actor: auth,
+    action: 'inventory.adjust',
+    entity: 'Product',
+    entityId: body.productId,
+    before: { stock: product.stock },
+    after: { stock: updated.stock, variantStocks: updated.variantStocks },
+    metadata: { variantIndex: body.variantIndex ?? null, mode: typeof body.stock === 'number' ? 'set' : 'delta' },
   });
 
   return NextResponse.json({ product: updated });

@@ -1,13 +1,13 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
+import { requirePerm, type Permission } from '@/lib/permissions';
+import { logActionSafe } from '@/lib/audit-log';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-  }
+  const guard = await requirePerm(['campaigns.read', 'campaigns.write'] as Permission[]);
+  if ('response' in guard) return guard.response;
+
   const { id } = await params;
   const campaign = await prisma.campaign.findUnique({
     where: { id },
@@ -28,10 +28,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-  }
+  const guard = await requirePerm('campaigns.write');
+  if ('response' in guard) return guard.response;
+  const auth = guard.user;
+
   const { id } = await params;
   const campaign = await prisma.campaign.findUnique({ where: { id } });
   if (!campaign) return NextResponse.json({ error: 'الحملة غير موجودة' }, { status: 404 });
@@ -39,5 +39,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: 'لا يمكن حذف حملة قيد الإرسال' }, { status: 400 });
   }
   await prisma.campaign.delete({ where: { id } });
+  await logActionSafe({
+    actor: auth,
+    action: 'campaign.update',
+    entity: 'Campaign',
+    entityId: id,
+    metadata: { kind: 'delete', name: campaign.name },
+  });
   return NextResponse.json({ ok: true });
 }

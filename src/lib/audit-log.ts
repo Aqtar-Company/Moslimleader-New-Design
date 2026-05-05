@@ -23,6 +23,7 @@ export const AUDIT_ACTIONS = {
   'order.delete': 'حذف أوردر',
   'shipment.bosta-create': 'إنشاء شحنة بوسطة',
   'shipment.bosta-cancel': 'إلغاء شحنة بوسطة',
+  'shipment.bosta-import-history': 'استيراد تاريخ شحنات بوسطة',
   // Customers
   'customer.update': 'تعديل عميل',
   'customer.delete': 'حذف عميل',
@@ -31,15 +32,23 @@ export const AUDIT_ACTIONS = {
   'coupon.update': 'تعديل كوبون',
   'coupon.delete': 'حذف كوبون',
   'campaign.create': 'إنشاء حملة',
+  'campaign.update': 'تعديل حملة',
   'campaign.send': 'إرسال حملة',
+  'review.moderate': 'مراجعة تقييم',
   // Library
   'book.create': 'إضافة كتاب',
   'book.update': 'تعديل كتاب',
   'book.delete': 'حذف كتاب',
+  'book.grant': 'منح وصول لكتاب',
+  'series.create': 'إنشاء سلسلة',
+  'series.update': 'تعديل سلسلة',
+  'series.delete': 'حذف سلسلة',
   // Staff management
   'staff.add': 'إضافة مساعد',
   'staff.update-perms': 'تعديل صلاحيات مساعد',
   'staff.revoke': 'إلغاء مساعد',
+  'staff.force-logout': 'فرض تسجيل خروج المساعد',
+  'user.devices-reset': 'إعادة ضبط أجهزة مستخدم',
 } as const;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;

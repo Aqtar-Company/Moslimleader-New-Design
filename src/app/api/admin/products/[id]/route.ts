@@ -1,22 +1,17 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { invalidateAdminProductsCache } from '../route';
 import { products as staticProducts } from '@/lib/products';
 import { loadStaticOverrides, applyOverride } from '@/lib/product-overrides';
-
-async function requireAdmin() {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') return null;
-  return auth;
-}
+import { requirePerm, type Permission } from '@/lib/permissions';
+import { logActionSafe } from '@/lib/audit-log';
 
 // GET /api/admin/products/[id] — fetch single product with full data (for edit form)
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requireAdmin();
-    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    const guard = await requirePerm(['products.read', 'products.write'] as Permission[]);
+    if ('response' in guard) return guard.response;
 
     const { id } = await params;
 
@@ -52,8 +47,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 // PUT /api/admin/products/[id] — update product (DB product) or save override (static)
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requireAdmin();
-    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    const guard = await requirePerm('products.write');
+    if ('response' in guard) return guard.response;
+    const auth = guard.user;
 
     const { id } = await params;
     const body = await req.json();
@@ -74,6 +70,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         },
       });
       invalidateAdminProductsCache();
+      await logActionSafe({
+        actor: auth,
+        action: 'product.update',
+        entity: 'Product',
+        entityId: id,
+        after: { name: product.name, price: product.price },
+      });
       return NextResponse.json({ product });
     } else {
       // Save override for static product in Setting table
@@ -102,6 +105,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       }
 
       invalidateAdminProductsCache();
+      await logActionSafe({
+        actor: auth,
+        action: 'product.update',
+        entity: 'Product',
+        entityId: id,
+        metadata: { kind: 'static-override', fields: Object.keys(data) },
+      });
       return NextResponse.json({ ok: true });
     }
   } catch (err) {
@@ -113,8 +123,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 // DELETE /api/admin/products/[id] — delete product (admin or static)
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requireAdmin();
-    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    const guard = await requirePerm('products.write');
+    if ('response' in guard) return guard.response;
+    const auth = guard.user;
 
     const { id } = await params;
 
@@ -137,6 +148,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     invalidateAdminProductsCache();
+    await logActionSafe({
+      actor: auth,
+      action: 'product.delete',
+      entity: 'Product',
+      entityId: id,
+      before: product ? { name: product.name, source: product.source } : null,
+    });
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[admin products DELETE]', err);

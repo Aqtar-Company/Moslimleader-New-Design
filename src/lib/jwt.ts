@@ -22,6 +22,10 @@ export interface JwtPayload {
   email: string;
   role: string;
   name?: string;
+  // Token version snapshot at sign-time. Compared against User.tokenVersion
+  // during verify (for admin/staff only) so that revoking a staff member or
+  // explicitly forcing logout invalidates their cookie immediately.
+  tokenVersion?: number;
 }
 
 export async function signToken(payload: JwtPayload): Promise<string> {
@@ -35,7 +39,29 @@ export async function signToken(payload: JwtPayload): Promise<string> {
 export async function verifyToken(token: string): Promise<JwtPayload | null> {
   try {
     const { payload } = await jwtVerify(token, getSecret());
-    return payload as unknown as JwtPayload;
+    const claim = payload as unknown as JwtPayload;
+    // Enforce tokenVersion only for admin/staff to keep customer page
+    // loads fast (no DB hit on every render). The cost: a customer who
+    // is later promoted to staff keeps their old cookie until they
+    // sign in again — acceptable for the promote flow.
+    if (claim.role === 'admin' || claim.role === 'staff') {
+      try {
+        // Lazy import so the JWT lib stays bundle-safe on the edge runtime
+        // (verifyToken is reached from middleware too in some setups).
+        const { prisma } = await import('./prisma');
+        const user = await prisma.user.findUnique({
+          where: { id: claim.userId },
+          select: { tokenVersion: true, role: true },
+        });
+        if (!user) return null;
+        const carried = claim.tokenVersion ?? 0;
+        if (carried < user.tokenVersion) return null;
+      } catch (err) {
+        // DB blip: don't lock everyone out — fall through with the JWT claim.
+        console.error('[verifyToken tokenVersion]', err);
+      }
+    }
+    return claim;
   } catch {
     return null;
   }

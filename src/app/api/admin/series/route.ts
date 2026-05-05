@@ -1,19 +1,14 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
-
-async function requireAdmin() {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') return null;
-  return auth;
-}
+import { requirePerm, type Permission } from '@/lib/permissions';
+import { logActionSafe } from '@/lib/audit-log';
 
 // GET /api/admin/series — list all series with book count
 export async function GET() {
   try {
-    const auth = await requireAdmin();
-    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    const guard = await requirePerm(['books.read', 'books.write'] as Permission[]);
+    if ('response' in guard) return guard.response;
 
     const series = await prisma.bookSeries.findMany({
       orderBy: { createdAt: 'asc' },
@@ -35,8 +30,9 @@ export async function GET() {
 // POST /api/admin/series — create new series
 export async function POST(req: NextRequest) {
   try {
-    const auth = await requireAdmin();
-    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    const guard = await requirePerm('books.write');
+    if ('response' in guard) return guard.response;
+    const auth = guard.user;
 
     const body = await req.json();
     const { name, nameEn, slug, description, descriptionEn, cover, seriesPrice, seriesPriceUSD, language, isPublished } = body;
@@ -60,10 +56,18 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    await logActionSafe({
+      actor: auth,
+      action: 'series.create',
+      entity: 'BookSeries',
+      entityId: series.id,
+      after: { name: series.name, slug: series.slug },
+    });
+
     return NextResponse.json({ series });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[admin series POST]', err);
-    if (err.code === 'P2002') {
+    if ((err as { code?: string }).code === 'P2002') {
       return NextResponse.json({ error: 'هذا الـ slug مستخدم بالفعل' }, { status: 400 });
     }
     return NextResponse.json({ error: 'حدث خطأ في الخادم' }, { status: 500 });

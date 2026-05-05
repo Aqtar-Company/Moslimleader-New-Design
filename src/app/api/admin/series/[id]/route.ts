@@ -1,19 +1,14 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
-
-async function requireAdmin() {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') return null;
-  return auth;
-}
+import { requirePerm, type Permission } from '@/lib/permissions';
+import { logActionSafe } from '@/lib/audit-log';
 
 // GET /api/admin/series/[id]
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requireAdmin();
-    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    const guard = await requirePerm(['books.read', 'books.write'] as Permission[]);
+    if ('response' in guard) return guard.response;
     const { id } = await params;
 
     const series = await prisma.bookSeries.findUnique({
@@ -37,8 +32,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 // PUT /api/admin/series/[id] — update series info
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requireAdmin();
-    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    const guard = await requirePerm('books.write');
+    if ('response' in guard) return guard.response;
+    const auth = guard.user;
     const { id } = await params;
     const body = await req.json();
 
@@ -47,6 +43,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     for (const k of ALLOWED) if (k in body) data[k] = body[k];
 
     const series = await prisma.bookSeries.update({ where: { id }, data });
+
+    await logActionSafe({
+      actor: auth,
+      action: 'series.update',
+      entity: 'BookSeries',
+      entityId: id,
+      metadata: { fields: Object.keys(data).filter(k => k !== 'updatedAt') },
+    });
 
     return NextResponse.json({ series });
   } catch (err) {
@@ -58,8 +62,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 // DELETE /api/admin/series/[id] — delete series (unlinks books, doesn't delete them)
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requireAdmin();
-    if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    const guard = await requirePerm('books.write');
+    if ('response' in guard) return guard.response;
+    const auth = guard.user;
     const { id } = await params;
 
     // Unlink all books from this series first
@@ -69,6 +74,12 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     });
 
     await prisma.bookSeries.delete({ where: { id } });
+    await logActionSafe({
+      actor: auth,
+      action: 'series.delete',
+      entity: 'BookSeries',
+      entityId: id,
+    });
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[admin series DELETE]', err);

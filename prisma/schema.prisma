@@ -23,6 +23,11 @@ model User {
   // 'inventory.write']). Null/empty = no admin access. Super-admins
   // (role='admin') bypass this and have implicit access to everything.
   permissions    Json?
+  // Bumped on staff revoke / explicit force-logout. JWT carries the
+  // version it was signed with; verifyToken rejects when the User row's
+  // current version is higher → forces re-login.
+  tokenVersion   Int      @default(0)
+  lastLoginAt    DateTime?
   savedAddresses Json?
   wishlistIds    Json?
   marketingOptIn Boolean  @default(false)
@@ -57,6 +62,8 @@ model Campaign {
   conversionCount Int      @default(0)
   startedAt       DateTime?
   finishedAt      DateTime?
+  // Attribution: which admin/staff created the campaign.
+  createdByUserId String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -161,6 +168,9 @@ model Order {
   // historical WhatsApp orders import). Null for organic orders.
   externalOrderId String?  @unique
   source          String?  // whatsapp_cleaned_ready | manual | etc. — null for organic
+  // Attribution: which admin/staff created this order (manual orders).
+  // Null for customer self-checkout.
+  createdByUserId String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -232,13 +242,16 @@ model ShippingRate {
 }
 
 model Coupon {
-  code        String   @id
-  discount    Float
-  isActive    Boolean  @default(true)
-  showBanner  Boolean  @default(false)
-  bannerText  String?
-  bannerColor String?
-  createdAt   DateTime @default(now())
+  code              String   @id
+  discount          Float
+  isActive          Boolean  @default(true)
+  showBanner        Boolean  @default(false)
+  bannerText        String?
+  bannerColor       String?
+  // Attribution: which admin/staff created/edited this coupon.
+  createdByUserId   String?
+  lastEditedByUserId String?
+  createdAt         DateTime @default(now())
 }
 
 model Review {

@@ -1,17 +1,15 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { resumeCampaignSend } from '../send/route';
+import { requireSuperAdmin } from '@/lib/permissions';
 
 // POST /api/admin/campaigns/[id]/resume — pick up a campaign that was stuck in
 // `sending` (e.g. PM2 restarted mid-run) and continue with whatever recipients
-// are still `queued`.
+// are still `queued`. Super-admin only (same rationale as /send).
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await getAuthUser();
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-  }
+  const guard = await requireSuperAdmin();
+  if ('response' in guard) return guard.response;
   const { id } = await params;
   const campaign = await prisma.campaign.findUnique({ where: { id } });
   if (!campaign) return NextResponse.json({ error: 'الحملة غير موجودة' }, { status: 404 });

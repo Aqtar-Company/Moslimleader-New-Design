@@ -1,17 +1,17 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { cancelDelivery } from '@/lib/bosta';
+import { requirePerm } from '@/lib/permissions';
+import { logActionSafe } from '@/lib/audit-log';
 
 // POST /api/admin/shipments/[id]/cancel — cancel the Bosta shipment only
 // (the order itself stays untouched, so admin can reship via another courier).
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await getAuthUser();
-    if (!auth || auth.role !== 'admin') {
-      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-    }
+    const guard = await requirePerm('shipments.write');
+    if ('response' in guard) return guard.response;
+    const auth = guard.user;
     const { id } = await params;
     const shipment = await prisma.shipment.findUnique({ where: { id } });
     if (!shipment?.bostaDeliveryId) {
@@ -57,6 +57,14 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         data: { status: 'pending' },
       });
     }
+
+    await logActionSafe({
+      actor: auth,
+      action: 'shipment.bosta-cancel',
+      entity: 'Shipment',
+      entityId: id,
+      metadata: { localOnly, trackingNumber: shipment.trackingNumber },
+    });
 
     return NextResponse.json({ shipment: updated });
   } catch (err) {

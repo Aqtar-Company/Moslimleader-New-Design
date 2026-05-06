@@ -34,10 +34,19 @@ const STATUS_COLORS: Record<string, string> = {
   'pending':     'bg-amber-100 text-amber-700',
 };
 
-const STATUSES = ['قيد التجهيز', 'تم الشحن', 'تم التسليم', 'ملغي'];
+const STATUSES = ['قيد التجهيز', 'تم الدفع', 'تم الشحن', 'تم التسليم', 'ملغي'];
+
+const STATUS_COLORS_DASH: Record<string, string> = {
+  'قيد التجهيز': 'bg-amber-100 text-amber-700',
+  'تم الدفع':    'bg-emerald-100 text-emerald-700',
+  'تم الشحن':    'bg-blue-100 text-blue-700',
+  'تم التسليم':  'bg-green-100 text-green-700',
+  'ملغي':        'bg-red-100 text-red-600',
+};
 
 function normalizeStatus(s: string): string {
   if (s === 'pending' || s === 'processing') return 'قيد التجهيز';
+  if (s === 'paid') return 'تم الدفع';
   if (s === 'shipped') return 'تم الشحن';
   if (s === 'delivered') return 'تم التسليم';
   if (s === 'cancelled') return 'ملغي';
@@ -77,11 +86,11 @@ export default function DashboardPage() {
 
         const orders = (rawOrders ?? []).map(o => ({ ...o, status: normalizeStatus(o.status) }));
 
-        const byStatus: Record<string, number> = { 'قيد التجهيز': 0, 'تم الشحن': 0, 'تم التسليم': 0, 'ملغي': 0 };
+        const byStatus: Record<string, number> = { 'قيد التجهيز': 0, 'تم الدفع': 0, 'تم الشحن': 0, 'تم التسليم': 0, 'ملغي': 0 };
         orders.forEach(o => { if (byStatus[o.status] !== undefined) byStatus[o.status]++; });
 
         const confirmedRevenue = orders.filter(o => o.status === 'تم التسليم').reduce((s, o) => s + o.total, 0);
-        const pendingRevenue   = orders.filter(o => o.status === 'قيد التجهيز' || o.status === 'تم الشحن').reduce((s, o) => s + o.total, 0);
+        const pendingRevenue   = orders.filter(o => o.status === 'قيد التجهيز' || o.status === 'تم الدفع' || o.status === 'تم الشحن').reduce((s, o) => s + o.total, 0);
 
         setStats({
           totalOrders: orders.length,

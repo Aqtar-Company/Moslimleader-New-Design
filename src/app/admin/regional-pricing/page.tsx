@@ -3,29 +3,65 @@
 import { useEffect, useState, useCallback } from 'react';
 import { products as staticProducts } from '@/lib/products';
 import { Product } from '@/types';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { adminFetch, adminJson, ForbiddenError } from '@/lib/admin-fetch';
+import ForbiddenState from '@/components/admin/ForbiddenState';
 
 type MergedProduct = Product & { isAdded?: boolean };
 
+// Run an array of tasks with at most `limit` in flight at once. Avoids
+// the rate-limit fan-out on bulk price edits (was firing N parallel PUTs).
+async function runWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T, index: number) => Promise<R>,
+): Promise<{ result: R | null; error: Error | null; item: T }[]> {
+  const out: { result: R | null; error: Error | null; item: T }[] = new Array(items.length);
+  let cursor = 0;
+  const runners = Array(Math.min(limit, items.length)).fill(0).map(async () => {
+    while (true) {
+      const i = cursor++;
+      if (i >= items.length) return;
+      try {
+        const r = await worker(items[i], i);
+        out[i] = { result: r, error: null, item: items[i] };
+      } catch (err) {
+        out[i] = { result: null, error: err as Error, item: items[i] };
+      }
+    }
+  });
+  await Promise.all(runners);
+  return out;
+}
+
 export default function RegionalPricingPage() {
+  const { addToast } = useToast();
+  const confirm = useConfirm();
   const [products, setProducts] = useState<MergedProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
   const [search, setSearch] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
-  
+  const [savingRowId, setSavingRowId] = useState<string | null>(null);
+
   // Bulk pricing states
   const [bulkEgpPercent, setBulkEgpPercent] = useState<number>(0);
   const [bulkUsdPercent, setBulkUsdPercent] = useState<number>(0);
   const [bulkApplying, setBulkApplying] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/products?lite=true', { credentials: 'include', cache: 'no-store' });
+      const res = await adminFetch('/api/admin/products?lite=true');
       const data = await res.json();
       setProducts(data.products ?? []);
-    } catch {
-      setProducts(staticProducts as MergedProduct[]);
+      setForbidden(false);
+    } catch (err) {
+      if (err instanceof ForbiddenError) setForbidden(true);
+      else setProducts(staticProducts as MergedProduct[]);
     } finally {
       setLoading(false);
     }
@@ -40,58 +76,76 @@ export default function RegionalPricingPage() {
   const updatePrice = async (id: string, field: 'price' | 'priceUsd', value: number) => {
     const product = products.find(p => p.id === id);
     if (!product) return;
+    if (savingRowId === id) return;
 
+    setSavingRowId(id);
     try {
-      await fetch(`/api/admin/products/${id}`, {
+      await adminJson(`/api/admin/products/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ [field]: value, isAdded: product.isAdded ?? false }),
       });
-      
       setProducts(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
       setSavedId(id);
       setTimeout(() => setSavedId(null), 2000);
     } catch (err) {
-      alert('فشل في حفظ السعر');
+      addToast(err instanceof Error ? err.message : 'فشل في حفظ السعر', 'error');
+    } finally {
+      setSavingRowId(null);
     }
   };
 
   const applyBulkIncrease = async (type: 'egp' | 'usd') => {
     const percent = type === 'egp' ? bulkEgpPercent : bulkUsdPercent;
     if (percent === 0) return;
-    
+
     const label = type === 'egp' ? 'المصري (ج.م)' : 'الدولي (USD)';
-    if (!confirm(`هل أنت متأكد من زيادة السعر ${label} لجميع المنتجات بنسبة ${percent}%؟`)) return;
+    const ok = await confirm({
+      title: 'زيادة جماعية',
+      message: `زيادة السعر ${label} لكل المنتجات (${products.length}) بنسبة ${percent}%؟`,
+      confirmLabel: 'تطبيق',
+      cancelLabel: 'تراجع',
+      tone: 'danger',
+      icon: '💰',
+    });
+    if (!ok) return;
 
     setBulkApplying(true);
+    setBulkProgress({ done: 0, total: products.length });
     try {
-      const promises = products.map(p => {
+      // Limit to 4 concurrent PUTs so we don't trip middleware rate-limits.
+      let done = 0;
+      const results = await runWithConcurrency(products, 4, async (p) => {
         const currentPrice = type === 'egp' ? p.price : p.priceUsd;
         const newPrice = Math.round(currentPrice * (1 + percent / 100) * 100) / 100;
         const field = type === 'egp' ? 'price' : 'priceUsd';
-        
-        return fetch(`/api/admin/products/${p.id}`, {
+        await adminJson(`/api/admin/products/${p.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({ [field]: newPrice, isAdded: p.isAdded ?? false }),
         });
+        setBulkProgress({ done: ++done, total: products.length });
+        return p.id;
       });
 
-      await Promise.all(promises);
+      const failed = results.filter(r => r.error);
       await load();
-      alert('تم تحديث جميع الأسعار بنجاح');
+      if (failed.length === 0) {
+        addToast(`تم تحديث ${results.length} منتج بنجاح`, 'success');
+      } else {
+        addToast(`نجح ${results.length - failed.length} وفشل ${failed.length} — راجع المنتجات اللي ما اتغيّرتش`, 'warning', 6000);
+      }
       if (type === 'egp') setBulkEgpPercent(0);
       else setBulkUsdPercent(0);
     } catch (err) {
-      alert('حدث خطأ أثناء التحديث الجماعي');
+      addToast(err instanceof Error ? err.message : 'حدث خطأ أثناء التحديث الجماعي', 'error');
     } finally {
       setBulkApplying(false);
+      setBulkProgress(null);
     }
   };
 
   const currentProduct = products.find(p => p.id === editingId);
+
+  if (forbidden) return <ForbiddenState requiredPerm="products.write" />;
 
   return (
     <div className="space-y-5" dir="rtl">
@@ -99,6 +153,12 @@ export default function RegionalPricingPage() {
         <h1 className="text-xl font-black text-gray-900">إدارة تسعير المنتجات</h1>
         <p className="text-sm text-gray-500 mt-0.5">تحكم في سعر الجنيه والدولار لكل منتج أو طبق زيادة جماعية</p>
       </div>
+
+      {bulkApplying && bulkProgress && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 text-xs font-bold text-amber-800">
+          ⏳ جاري التطبيق… {bulkProgress.done} / {bulkProgress.total}
+        </div>
+      )}
 
       {/* Bulk actions - Improved Layout */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -225,11 +285,12 @@ export default function RegionalPricingPage() {
                       }}
                       className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#F5C518]"
                     />
-                    <button 
+                    <button
                       onClick={() => updatePrice(currentProduct.id, 'price', currentProduct.price)}
-                      className="bg-[#1a1a2e] text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-[#2a2a4e] transition"
+                      disabled={savingRowId === currentProduct.id}
+                      className="bg-[#1a1a2e] text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-[#2a2a4e] transition disabled:opacity-50"
                     >
-                      حفظ
+                      {savingRowId === currentProduct.id ? '...' : 'حفظ'}
                     </button>
                   </div>
                 </div>
@@ -249,11 +310,12 @@ export default function RegionalPricingPage() {
                       }}
                       className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#F5C518]"
                     />
-                    <button 
+                    <button
                       onClick={() => updatePrice(currentProduct.id, 'priceUsd', currentProduct.priceUsd)}
-                      className="bg-[#F5C518] text-gray-900 px-4 py-2 rounded-xl text-xs font-bold hover:bg-amber-400 transition"
+                      disabled={savingRowId === currentProduct.id}
+                      className="bg-[#F5C518] text-gray-900 px-4 py-2 rounded-xl text-xs font-bold hover:bg-amber-400 transition disabled:opacity-50"
                     >
-                      حفظ
+                      {savingRowId === currentProduct.id ? '...' : 'حفظ'}
                     </button>
                   </div>
                 </div>

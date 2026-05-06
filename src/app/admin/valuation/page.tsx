@@ -21,7 +21,7 @@ interface ValuationData {
   books: Array<{ id: string; title: string; titleEn: string | null; price: number; priceUSD: number | null; isPublished: boolean; language: string | null }>;
 }
 
-const fmt = (n: number) => n.toLocaleString('en-US');
+const fmt = (n: number) => n.toLocaleString('ar-EG');
 
 export default function ValuationPage() {
   const { addToast } = useToast();

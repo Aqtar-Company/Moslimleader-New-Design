@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import RecentStaffActivity from './RecentStaffActivity';
 import Link from 'next/link';
-import { getCoupons, getAddedProducts, getProductOverrides } from '@/lib/admin-storage';
-import { products as staticProducts } from '@/lib/products';
+import { adminFetch, ForbiddenError } from '@/lib/admin-fetch';
+import ForbiddenState from '@/components/admin/ForbiddenState';
 
 interface DbOrder {
   id: string;
@@ -49,26 +49,33 @@ export default function DashboardPage() {
   const isSuperAdmin = user?.role === 'admin';
   const [stats, setStats] = useState<Stats | null>(null);
   const [error, setError] = useState('');
+  const [forbidden, setForbidden] = useState(false);
 
   useEffect(() => {
+    const ac = new AbortController();
     async function load() {
       try {
-        const [ordersRes, usersRes] = await Promise.all([
-          fetch('/api/admin/orders', { credentials: 'include' }),
-          fetch('/api/admin/users', { credentials: 'include' }),
+        // KPIs come straight from the DB-backed admin endpoints. The legacy
+        // version of this page sourced coupons/products from localStorage
+        // helpers that were emptied by the localStorage→DB migration —
+        // those reads now happen via /api/admin/coupons and /api/admin/products.
+        const [ordersRes, usersRes, couponsRes, productsRes] = await Promise.all([
+          adminFetch('/api/admin/orders', { signal: ac.signal }),
+          adminFetch('/api/admin/users', { signal: ac.signal }),
+          // Forbidden errors on coupons/products are tolerated — they're
+          // optional widgets. Still propagates 403 from orders/users
+          // (the page is useless without those).
+          adminFetch('/api/admin/coupons', { signal: ac.signal }).catch(() => null),
+          adminFetch('/api/admin/products?lite=true', { signal: ac.signal }).catch(() => null),
         ]);
         const { orders: rawOrders }: { orders: DbOrder[] } = await ordersRes.json();
         const { users }: { users: { id: string }[] } = await usersRes.json();
+        const couponsData = couponsRes ? await couponsRes.json().catch(() => ({})) : {};
+        const productsData = productsRes ? await productsRes.json().catch(() => ({})) : {};
+        const coupons: { isActive?: boolean }[] = couponsData?.coupons ?? [];
+        const products: { inStock?: boolean }[] = productsData?.products ?? [];
 
         const orders = (rawOrders ?? []).map(o => ({ ...o, status: normalizeStatus(o.status) }));
-
-        const coupons = getCoupons();
-        const overrides = getProductOverrides();
-        const addedProds = getAddedProducts();
-        const allProducts = [
-          ...staticProducts.map(p => ({ ...p, inStock: overrides[p.id]?.inStock ?? p.inStock })),
-          ...addedProds,
-        ];
 
         const byStatus: Record<string, number> = { 'قيد التجهيز': 0, 'تم الشحن': 0, 'تم التسليم': 0, 'ملغي': 0 };
         orders.forEach(o => { if (byStatus[o.status] !== undefined) byStatus[o.status]++; });
@@ -81,8 +88,8 @@ export default function DashboardPage() {
           confirmedRevenue,
           pendingRevenue,
           totalUsers: (users ?? []).length,
-          activeCoupons: Object.keys(coupons).length,
-          outOfStock: allProducts.filter(p => !p.inStock).length,
+          activeCoupons: coupons.filter(c => c.isActive !== false).length,
+          outOfStock: products.filter(p => p.inStock === false).length,
           byStatus,
           recentOrders: orders.slice(0, 6).map(o => ({
             id: o.id,
@@ -92,13 +99,17 @@ export default function DashboardPage() {
             status: o.status,
           })),
         });
-      } catch {
-        setError('فشل تحميل الإحصائيات');
+      } catch (err) {
+        if (ac.signal.aborted) return;
+        if (err instanceof ForbiddenError) setForbidden(true);
+        else setError('فشل تحميل الإحصائيات');
       }
     }
     load();
+    return () => ac.abort();
   }, []);
 
+  if (forbidden) return <ForbiddenState requiredPerm="orders.read" />;
   if (error) return <div className="text-red-500 p-6">{error}</div>;
 
   if (!stats) return (
@@ -109,8 +120,8 @@ export default function DashboardPage() {
 
   const topCards = [
     { label: 'إجمالي الطلبات',     value: stats.totalOrders, sub: `${stats.byStatus['ملغي']} ملغي`, icon: '📦', color: 'bg-blue-50 border-blue-200',   link: '/admin/orders' },
-    { label: 'إيرادات مؤكدة',      value: stats.confirmedRevenue.toLocaleString('ar-EG') + ' ج', sub: 'طلبات تم تسليمها', icon: '✅', color: 'bg-green-50 border-green-200', link: '/admin/orders' },
-    { label: 'إيرادات قيد التنفيذ', value: stats.pendingRevenue.toLocaleString('ar-EG') + ' ج',   sub: 'تجهيز + شحن',      icon: '🚚', color: 'bg-amber-50 border-amber-200', link: '/admin/orders' },
+    { label: 'إيرادات مؤكدة',      value: stats.confirmedRevenue.toLocaleString('ar-EG') + ' ج.م', sub: 'طلبات تم تسليمها', icon: '✅', color: 'bg-green-50 border-green-200', link: '/admin/orders' },
+    { label: 'إيرادات قيد التنفيذ', value: stats.pendingRevenue.toLocaleString('ar-EG') + ' ج.م',   sub: 'تجهيز + شحن',      icon: '🚚', color: 'bg-amber-50 border-amber-200', link: '/admin/orders' },
     { label: 'العملاء المسجلين',   value: stats.totalUsers, sub: `${stats.activeCoupons} كوبون نشط`, icon: '👥', color: 'bg-purple-50 border-purple-200', link: '/admin/users' },
   ];
 
@@ -186,7 +197,7 @@ export default function DashboardPage() {
                     <td className="px-5 py-3 font-mono font-bold text-gray-900">#{o.id.slice(-6)}</td>
                     <td className="px-5 py-3 text-gray-700">{o.userName}</td>
                     <td className="px-5 py-3 text-gray-500">{o.date}</td>
-                    <td className={`px-5 py-3 font-semibold ${o.status === 'ملغي' ? 'line-through text-gray-400' : 'text-gray-900'}`}>{o.total.toLocaleString('ar-EG')} ج</td>
+                    <td className={`px-5 py-3 font-semibold ${o.status === 'ملغي' ? 'line-through text-gray-400' : 'text-gray-900'}`}>{o.total.toLocaleString('ar-EG')} ج.م</td>
                     <td className="px-5 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-bold ${STATUS_COLORS[o.status] || 'bg-gray-100 text-gray-600'}`}>{o.status}</span>
                     </td>

@@ -170,9 +170,9 @@ export default function InventoryPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <KPI icon="📦" label="إجمالي الوحدات" value={totalUnits.toLocaleString('en-US')} />
-        <KPI icon="💰" label="قيمة المخزون" value={`${Math.round(totalValue).toLocaleString('en-US')} ج.م`} />
-        <KPI icon="🛒" label="إجمالي المبيعات" value={totalSold.toLocaleString('en-US')} />
+        <KPI icon="📦" label="إجمالي الوحدات" value={totalUnits.toLocaleString('ar-EG')} />
+        <KPI icon="💰" label="قيمة المخزون" value={`${Math.round(totalValue).toLocaleString('ar-EG')} ج.م`} />
+        <KPI icon="🛒" label="إجمالي المبيعات" value={totalSold.toLocaleString('ar-EG')} />
         <KPI icon="⚠️" label="مخزون منخفض" value={String(lowCount)} tone="warn" />
         <KPI icon="🚫" label="نفد المخزون" value={String(outCount)} tone="bad" />
       </div>
@@ -248,12 +248,12 @@ export default function InventoryPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-xs font-bold">{p.price.toLocaleString('en-US')} <span className="text-[10px] text-gray-400">ج.م</span></td>
-                    <td className="px-3 py-3 text-xs font-bold text-blue-700">{p.sold.toLocaleString('en-US')}</td>
+                    <td className="px-3 py-3 text-xs font-bold">{p.price.toLocaleString('ar-EG')} <span className="text-[10px] text-gray-400">ج.م</span></td>
+                    <td className="px-3 py-3 text-xs font-bold text-blue-700">{p.sold.toLocaleString('ar-EG')}</td>
                     <td className="px-3 py-3" onClick={e => hasVariants && e.stopPropagation()}>
                       {hasVariants ? (
                         <div className="text-xs">
-                          <span className={`font-black ${isOut ? 'text-red-700' : isLow ? 'text-amber-700' : 'text-gray-900'}`}>{p.stock.toLocaleString('en-US')}</span>
+                          <span className={`font-black ${isOut ? 'text-red-700' : isLow ? 'text-amber-700' : 'text-gray-900'}`}>{p.stock.toLocaleString('ar-EG')}</span>
                           <span className="text-[10px] text-gray-400 ms-1">إجمالي الموديلات</span>
                         </div>
                       ) : (
@@ -269,7 +269,7 @@ export default function InventoryPage() {
                         </div>
                       )}
                     </td>
-                    <td className="px-3 py-3 text-xs font-black text-[#6B21A8]">{Math.round(p.stock * p.price).toLocaleString('en-US')} ج.م</td>
+                    <td className="px-3 py-3 text-xs font-black text-[#6B21A8]">{Math.round(p.stock * p.price).toLocaleString('ar-EG')} ج.م</td>
                     <td className="px-3 py-3" onClick={e => hasVariants && e.stopPropagation()}>
                       {hasVariants ? (
                         <span className="text-[11px] text-gray-400">عدّل كل موديل ↓</span>
@@ -308,7 +308,7 @@ export default function InventoryPage() {
                           </div>
                         </td>
                         <td className="px-3 py-2 text-[11px] text-gray-400">—</td>
-                        <td className="px-3 py-2 text-[11px] font-bold text-blue-700">{vSold.toLocaleString('en-US')}</td>
+                        <td className="px-3 py-2 text-[11px] font-bold text-blue-700">{vSold.toLocaleString('ar-EG')}</td>
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-1">
                             <button onClick={() => adjustVariantStock(p.id, idx, -1)} className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-red-100 hover:text-red-700 text-gray-700 font-bold text-sm">−</button>
@@ -321,7 +321,7 @@ export default function InventoryPage() {
                             <button onClick={() => adjustVariantStock(p.id, idx, 1)} className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-emerald-100 hover:text-emerald-700 text-gray-700 font-bold text-sm">+</button>
                           </div>
                         </td>
-                        <td className="px-3 py-2 text-[11px] font-bold text-[#6B21A8]">{Math.round(vStock * p.price).toLocaleString('en-US')} ج.م</td>
+                        <td className="px-3 py-2 text-[11px] font-bold text-[#6B21A8]">{Math.round(vStock * p.price).toLocaleString('ar-EG')} ج.م</td>
                         <td className="px-3 py-2">
                           {vEdit !== undefined && vEdit !== vStock ? (
                             <button

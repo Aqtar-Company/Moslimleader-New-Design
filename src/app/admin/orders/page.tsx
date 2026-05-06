@@ -92,7 +92,7 @@ function statusLabel(s: string): string {
 
 function formatPrice(n: number, currency: string) {
   const rounded = Math.round(n * 100) / 100;
-  return `${rounded.toLocaleString('en-US')} ${currency}`;
+  return `${rounded.toLocaleString('ar-EG')} ${currency}`;
 }
 
 function buildAddressLine(addr: ShippingAddress): string {
@@ -446,9 +446,9 @@ export default function OrdersPage() {
 
       {filtered.length > 0 && (
         <div className="text-sm text-gray-500 flex flex-wrap gap-x-4 gap-y-1">
-          <span>{filtered.length} طلب — إيرادات: <span className="font-bold text-gray-900">{totalRevenue.toLocaleString('en-US')} {filtered[0]?.currency || 'EGP'}</span></span>
+          <span>{filtered.length} طلب — إيرادات: <span className="font-bold text-gray-900">{totalRevenue.toLocaleString('ar-EG')} {filtered[0]?.currency || 'EGP'}</span></span>
           {giftCount > 0 && (
-            <span className="text-pink-700">🎁 {giftCount} هدية — تكلفة: <span className="font-bold">{Math.round(giftCost).toLocaleString('en-US')} ج.م</span></span>
+            <span className="text-pink-700">🎁 {giftCount} هدية — تكلفة: <span className="font-bold">{Math.round(giftCost).toLocaleString('ar-EG')} ج.م</span></span>
           )}
         </div>
       )}
@@ -499,7 +499,7 @@ export default function OrdersPage() {
                         </td>
                         <td className="px-5 py-3.5 text-gray-500 text-xs">{new Date(o.createdAt).toLocaleDateString('ar-EG')}</td>
                         <td className="px-5 py-3.5">
-                          <p className="font-bold text-gray-900">{o.total.toLocaleString('en-US')} <span className="text-[10px] text-gray-400">{o.currency}</span></p>
+                          <p className="font-bold text-gray-900">{o.total.toLocaleString('ar-EG')} <span className="text-[10px] text-gray-400">{o.currency}</span></p>
                           {o.items?.length > 0 && (
                             <p className="text-[10px] text-gray-400">{o.items.length} منتج</p>
                           )}

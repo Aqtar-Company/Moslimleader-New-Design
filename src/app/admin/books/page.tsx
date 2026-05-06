@@ -3,6 +3,10 @@
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { formatAgeLabel } from '@/lib/book-age';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { adminFetch, adminJson, ForbiddenError } from '@/lib/admin-fetch';
+import ForbiddenState from '@/components/admin/ForbiddenState';
 
 interface Book {
   id: string;
@@ -72,14 +76,19 @@ const emptyForm = {
 };
 
 export default function AdminBooksPage() {
+  const { addToast } = useToast();
+  const confirm = useConfirm();
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editBook, setEditBook] = useState<Book | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
   const [isOpenEnded, setIsOpenEnded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  // Tracks the book id currently being toggled/deleted so rapid clicks coalesce.
+  const [mutatingBookId, setMutatingBookId] = useState<string | null>(null);
 
   // Upload
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -103,9 +112,13 @@ export default function AdminBooksPage() {
 
   const loadBooks = () => {
     setLoading(true);
-    fetch('/api/admin/books', { credentials: 'include' })
+    adminFetch('/api/admin/books')
       .then(r => r.json())
-      .then(d => setBooks(d.books ?? []))
+      .then(d => { setBooks(d.books ?? []); setForbidden(false); })
+      .catch(err => {
+        if (err instanceof ForbiddenError) setForbidden(true);
+        else addToast('فشل تحميل الكتب', 'error');
+      })
       .finally(() => setLoading(false));
   };
 
@@ -156,9 +169,9 @@ export default function AdminBooksPage() {
       minAge: b.minAge ?? '',
       maxAge: b.maxAge ?? '',
       needsParentalGuide: b.needsParentalGuide ?? false,
-      paperProductSlug: (b as any).paperProductSlug || '',
-      bgmUrl: (b as any).bgmUrl || '',
-      promoVideoUrl: (b as any).promoVideoUrl || '',
+      paperProductSlug: b.paperProductSlug || '',
+      bgmUrl: b.bgmUrl || '',
+      promoVideoUrl: b.promoVideoUrl || '',
     });
     setIsOpenEnded(b.minAge != null && b.maxAge == null);
     setUploadedPdfPath('');
@@ -224,19 +237,43 @@ export default function AdminBooksPage() {
   };
 
   const handleDelete = async (id: string, title: string) => {
-    if (!confirm(`حذف "${title}"؟`)) return;
-    await fetch(`/api/admin/books/${id}`, { method: 'DELETE', credentials: 'include' });
-    loadBooks();
+    const ok = await confirm({
+      title: 'حذف الكتاب',
+      message: `حذف "${title}"؟ كل بيانات الوصول هتتشال.`,
+      confirmLabel: 'حذف',
+      cancelLabel: 'تراجع',
+      tone: 'danger',
+      icon: '🗑️',
+    });
+    if (!ok || mutatingBookId === id) return;
+    setMutatingBookId(id);
+    try {
+      await adminJson(`/api/admin/books/${id}`, { method: 'DELETE' });
+      addToast('تم حذف الكتاب', 'success');
+      loadBooks();
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'فشل الحذف', 'error');
+    } finally {
+      setMutatingBookId(null);
+    }
   };
 
   const togglePublish = async (b: Book) => {
-    await fetch(`/api/admin/books/${b.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ isPublished: !b.isPublished }),
-    });
-    loadBooks();
+    if (mutatingBookId === b.id) return;
+    setMutatingBookId(b.id);
+    try {
+      await adminJson(`/api/admin/books/${b.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ isPublished: !b.isPublished }),
+      });
+      // Optimistic local update so the toggle flips instantly even
+      // before loadBooks returns.
+      setBooks(prev => prev.map(x => x.id === b.id ? { ...x, isPublished: !x.isPublished } : x));
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'فشل التحديث', 'error');
+    } finally {
+      setMutatingBookId(null);
+    }
   };
 
   const openAccess = (bookId: string) => {
@@ -244,37 +281,44 @@ export default function AdminBooksPage() {
     setGrantEmail('');
     setGrantMsg('');
     setAccessLoading(true);
-    fetch(`/api/admin/books/${bookId}/grant`, { credentials: 'include' })
+    adminFetch(`/api/admin/books/${bookId}/grant`)
       .then(r => r.json())
       .then(d => setAccesses(d.accesses ?? []))
+      .catch(() => addToast('فشل تحميل قائمة الوصول', 'error'))
       .finally(() => setAccessLoading(false));
   };
 
   const handleGrant = async () => {
     if (!grantEmail.trim() || !accessBookId) return;
+    if (grantLoading) return;
     setGrantLoading(true);
     setGrantMsg('');
-    const res = await fetch(`/api/admin/books/${accessBookId}/grant`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ email: grantEmail.trim() }),
-    });
-    const data = await res.json();
-    setGrantMsg(res.ok ? '✓ تم منح الوصول' : (data.error || 'خطأ'));
-    if (res.ok) { setGrantEmail(''); openAccess(accessBookId); }
-    setGrantLoading(false);
+    try {
+      await adminJson(`/api/admin/books/${accessBookId}/grant`, {
+        method: 'POST',
+        body: JSON.stringify({ email: grantEmail.trim() }),
+      });
+      setGrantMsg('✓ تم منح الوصول');
+      setGrantEmail('');
+      openAccess(accessBookId);
+    } catch (err) {
+      setGrantMsg(err instanceof Error ? err.message : 'خطأ');
+    } finally {
+      setGrantLoading(false);
+    }
   };
 
   const handleRevoke = async (userId: string) => {
     if (!accessBookId) return;
-    await fetch(`/api/admin/books/${accessBookId}/grant`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ userId }),
-    });
-    openAccess(accessBookId);
+    try {
+      await adminJson(`/api/admin/books/${accessBookId}/grant`, {
+        method: 'DELETE',
+        body: JSON.stringify({ userId }),
+      });
+      openAccess(accessBookId);
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'فشل إلغاء الوصول', 'error');
+    }
   };
 
   const accessBook = books.find(b => b.id === accessBookId);
@@ -291,6 +335,8 @@ export default function AdminBooksPage() {
       <span className="text-sm text-gray-700">{label}</span>
     </label>
   );
+
+  if (forbidden) return <ForbiddenState requiredPerm="books.read" />;
 
   return (
     <div dir="rtl">
@@ -350,7 +396,7 @@ export default function AdminBooksPage() {
                       </div>
                     </td>
                     <td className="px-5 py-4 font-bold text-gray-900">
-                      {b.price === 0 ? 'مجاني' : `${b.price.toLocaleString('ar-EG')} ج`}
+                      {b.price === 0 ? 'مجاني' : `${b.price.toLocaleString('ar-EG')} ج.م`}
                     </td>
                     <td className="px-5 py-4 text-gray-600">{b.freePages} صفحة</td>
                     <td className="px-5 py-4">
@@ -364,7 +410,8 @@ export default function AdminBooksPage() {
                     <td className="px-5 py-4">
                       <button
                         onClick={() => togglePublish(b)}
-                        className={`text-xs font-bold px-3 py-1 rounded-full transition ${
+                        disabled={mutatingBookId === b.id}
+                        className={`text-xs font-bold px-3 py-1 rounded-full transition disabled:opacity-50 ${
                           b.isPublished
                             ? 'bg-green-100 text-green-700 hover:bg-red-100 hover:text-red-700'
                             : 'bg-gray-100 text-gray-500 hover:bg-green-100 hover:text-green-700'
@@ -389,7 +436,8 @@ export default function AdminBooksPage() {
                         </button>
                         <button
                           onClick={() => handleDelete(b.id, b.title)}
-                          className="text-xs bg-red-50 hover:bg-red-100 text-red-600 font-bold px-3 py-1.5 rounded-lg transition"
+                          disabled={mutatingBookId === b.id}
+                          className="text-xs bg-red-50 hover:bg-red-100 text-red-600 font-bold px-3 py-1.5 rounded-lg transition disabled:opacity-50"
                         >
                           حذف
                         </button>
@@ -573,7 +621,7 @@ export default function AdminBooksPage() {
                     />
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-blue-600">$</span>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">اتركه فارغاً للحساب التلقائي (10% من سعر الجنيه)</p>
+                  <p className="text-xs text-gray-400 mt-1">اتركه فارغاً للحساب التلقائي (سعر الجنيه ÷ 50)</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -675,7 +723,7 @@ export default function AdminBooksPage() {
                   <label className="text-xs font-bold text-gray-500 mb-1 block">Slug المنتج الورقي (مثال: fakih-in-wonderland-book)</label>
                   <input
                     type="text"
-                    value={(form as any).paperProductSlug || ''}
+                    value={form.paperProductSlug || ''}
                     onChange={e => setForm(prev => ({ ...prev, paperProductSlug: e.target.value }))}
                     className={inputCls}
                     dir="ltr"
@@ -703,7 +751,7 @@ export default function AdminBooksPage() {
                           ✕ إلغاء الملف
                         </button>
                       )}
-                      {(form as any).bgmUrl && !audioFile && (
+                      {form.bgmUrl && !audioFile && (
                         <span className="text-xs text-green-600 font-bold flex items-center gap-1">
                           ✓ موسيقى محفوظة
                           <button type="button" onClick={() => setForm(prev => ({ ...prev, bgmUrl: '' }))}
@@ -712,13 +760,13 @@ export default function AdminBooksPage() {
                       )}
                     </div>
                     <p className="text-xs text-gray-400 mt-1">أو أدخل رابط مباشر للملف (سيستبدل الملف المرفوع):</p>
-                    <input type="text" value={(form as any).bgmUrl || ''} dir="ltr"
+                    <input type="text" value={form.bgmUrl || ''} dir="ltr"
                       onChange={e => { setAudioFile(null); setForm(prev => ({ ...prev, bgmUrl: e.target.value })); }}
                       className={inputCls} placeholder="https://... أو /audio/filename.mp3" />
                   </div>
                   <div>
                     <label className="text-xs font-bold text-gray-500 mb-1 block">رابط فيديو البرومو (YouTube)</label>
-                    <input type="text" value={(form as any).promoVideoUrl || ''} dir="ltr"
+                    <input type="text" value={form.promoVideoUrl || ''} dir="ltr"
                       onChange={e => setForm(prev => ({ ...prev, promoVideoUrl: e.target.value }))}
                       className={inputCls} placeholder="https://www.youtube.com/watch?v=..." />
                     <p className="text-xs text-gray-400 mt-1">سيظهر كبطاقة صغيرة أثناء القراءة (مرة واحدة فقط)</p>

@@ -3,6 +3,9 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { products as staticProducts, categories as staticCategories } from '@/lib/products';
 import { Product, ProductVariant } from '@/types';
+import { useToast } from '@/components/ui/Toast';
+import { adminFetch, adminJson, ForbiddenError } from '@/lib/admin-fetch';
+import ForbiddenState from '@/components/admin/ForbiddenState';
 
 interface VariantDraft {
   id: string;
@@ -21,6 +24,7 @@ const EMPTY_FORM = {
 };
 
 export default function ProductsPage() {
+  const { addToast } = useToast();
   const [products, setProducts] = useState<MergedProduct[]>([]);
   const [addedCats, setAddedCats] = useState<string[]>([]);
   const [newCatInput, setNewCatInput] = useState('');
@@ -37,21 +41,29 @@ export default function ProductsPage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [uploadingCount, setUploadingCount] = useState(0);
+  // Track which row is currently being mutated for quick edits — collapses
+  // double-clicks on save/toggle/delete into a single PUT.
+  const [mutatingId, setMutatingId] = useState<string | null>(null);
+  const [forbidden, setForbidden] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const [prodRes, catRes] = await Promise.all([
-        fetch('/api/admin/products?lite=true', { credentials: 'include', cache: 'no-store' }),
-        fetch('/api/admin/settings?key=categories-added', { credentials: 'include', cache: 'no-store' }),
+        adminFetch('/api/admin/products?lite=true'),
+        // categories-added is a non-public Setting key — staff hits 403,
+        // which is fine, the page still loads with the static categories.
+        adminFetch('/api/admin/settings?key=categories-added').catch(() => null),
       ]);
       const prodData = await prodRes.json();
-      const catData = await catRes.json();
+      const catData = catRes ? await catRes.json().catch(() => ({})) : {};
       setProducts(prodData.products ?? []);
       setAddedCats(Array.isArray(catData.value) ? catData.value : []);
-    } catch {
-      setProducts(staticProducts as MergedProduct[]);
+      setForbidden(false);
+    } catch (err) {
+      if (err instanceof ForbiddenError) setForbidden(true);
+      else setProducts(staticProducts as MergedProduct[]);
     } finally {
       setLoading(false);
     }
@@ -108,42 +120,62 @@ export default function ProductsPage() {
   };
 
   const toggleStock = async (p: MergedProduct) => {
-    await fetch(`/api/admin/products/${p.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ inStock: !p.inStock, isAdded: p.isAdded ?? false }),
-    });
-    setProducts(prev => prev.map(x => x.id === p.id ? { ...x, inStock: !x.inStock } : x));
+    if (mutatingId === p.id) return;
+    setMutatingId(p.id);
+    try {
+      await adminJson(`/api/admin/products/${p.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ inStock: !p.inStock, isAdded: p.isAdded ?? false }),
+      });
+      setProducts(prev => prev.map(x => x.id === p.id ? { ...x, inStock: !x.inStock } : x));
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'فشل تحديث المخزون', 'error');
+    } finally {
+      setMutatingId(null);
+    }
   };
 
   const saveQuickPrice = async (p: MergedProduct) => {
     const egpVal = parseFloat(priceVal);
     const usdVal = parseFloat(priceUsdVal);
     if (isNaN(egpVal) || egpVal <= 0) { setEditingPrice(null); return; }
+    if (mutatingId === p.id) return;
 
-    await fetch(`/api/admin/products/${p.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ 
-        price: egpVal, 
-        priceUsd: isNaN(usdVal) ? 0 : usdVal,
-        isAdded: p.isAdded ?? false 
-      }),
-    });
-    
-    setProducts(prev => prev.map(x => x.id === p.id ? { ...x, price: egpVal, priceUsd: isNaN(usdVal) ? 0 : usdVal } : x));
-    setEditingPrice(null);
+    setMutatingId(p.id);
+    try {
+      await adminJson(`/api/admin/products/${p.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          price: egpVal,
+          priceUsd: isNaN(usdVal) ? 0 : usdVal,
+          isAdded: p.isAdded ?? false,
+        }),
+      });
+      setProducts(prev => prev.map(x => x.id === p.id ? { ...x, price: egpVal, priceUsd: isNaN(usdVal) ? 0 : usdVal } : x));
+      setEditingPrice(null);
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'فشل حفظ السعر', 'error');
+    } finally {
+      setMutatingId(null);
+    }
   };
 
   const [deleteTarget, setDeleteTarget] = useState<MergedProduct | null>(null);
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
-    await fetch(`/api/admin/products/${deleteTarget.id}`, { method: 'DELETE', credentials: 'include' });
-    setProducts(prev => prev.filter(x => x.id !== deleteTarget.id));
-    setDeleteTarget(null);
+    if (mutatingId === deleteTarget.id) return;
+    setMutatingId(deleteTarget.id);
+    try {
+      await adminJson(`/api/admin/products/${deleteTarget.id}`, { method: 'DELETE' });
+      setProducts(prev => prev.filter(x => x.id !== deleteTarget.id));
+      setDeleteTarget(null);
+      addToast('تم الحذف', 'success');
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'فشل الحذف', 'error');
+    } finally {
+      setMutatingId(null);
+    }
   };
 
   const startEdit = async (p: MergedProduct) => {
@@ -199,11 +231,12 @@ export default function ProductsPage() {
 
   const handleSubmit = async () => {
     if (!form.name || !form.slug || !form.price || !form.category) {
-      alert('يرجى ملء الحقول المطلوبة: الاسم، الـ Slug، السعر، الفئة');
+      addToast('يرجى ملء الحقول المطلوبة: الاسم، الـ Slug، السعر، الفئة', 'warning');
+      return;
       return;
     }
     if (formImages.length === 0) {
-      alert('يرجى إضافة صورة واحدة على الأقل');
+      addToast('يرجى إضافة صورة واحدة على الأقل', 'warning');
       return;
     }
     setSaving(true);
@@ -244,7 +277,7 @@ export default function ProductsPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert(`فشل الحفظ: ${err.error ?? res.status}`);
+        addToast(`فشل الحفظ: ${err.error ?? res.status}`, 'error');
         setSaving(false);
         return;
       }
@@ -258,7 +291,7 @@ export default function ProductsPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert(`فشل الحفظ: ${err.error ?? res.status}`);
+        addToast(`فشل الحفظ: ${err.error ?? res.status}`, 'error');
         setSaving(false);
         return;
       }
@@ -296,6 +329,8 @@ export default function ProductsPage() {
     await saveCategories(updated);
   };
 
+  if (forbidden) return <ForbiddenState requiredPerm="products.read" />;
+
   return (
     <div className="space-y-5" dir="rtl">
       {/* Delete confirmation modal */}
@@ -320,9 +355,10 @@ export default function ProductsPage() {
               </button>
               <button
                 onClick={confirmDelete}
-                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition text-sm"
+                disabled={mutatingId === deleteTarget?.id}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition text-sm disabled:opacity-50"
               >
-                حذف نهائياً
+                {mutatingId === deleteTarget?.id ? 'جارٍ الحذف...' : 'حذف نهائياً'}
               </button>
             </div>
           </div>
@@ -604,7 +640,7 @@ export default function ProductsPage() {
                           placeholder="USD"
                         />
                         <div className="flex gap-1">
-                          <button onClick={() => saveQuickPrice(p)} className="text-green-600 font-bold text-[10px]">حفظ</button>
+                          <button onClick={() => saveQuickPrice(p)} disabled={mutatingId === p.id} className="text-green-600 font-bold text-[10px] disabled:opacity-50">حفظ</button>
                           <button onClick={() => setEditingPrice(null)} className="text-gray-400 text-[10px]">إلغاء</button>
                         </div>
                       </div>
@@ -624,7 +660,8 @@ export default function ProductsPage() {
                       <button
                         dir="ltr"
                         onClick={() => toggleStock(p)}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${p.inStock ? 'bg-green-500' : 'bg-gray-300'}`}
+                        disabled={mutatingId === p.id}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 disabled:opacity-50 ${p.inStock ? 'bg-green-500' : 'bg-gray-300'}`}
                       >
                         <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform duration-200 ${p.inStock ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
                       </button>
@@ -637,8 +674,8 @@ export default function ProductsPage() {
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/></svg>
                         تعديل
                       </button>
-                      <a href="/admin/regional-pricing" className="text-purple-500 text-xs">🌍</a>
-                      <button onClick={() => setDeleteTarget(p)} className="text-red-400 font-bold text-xs hover:bg-red-50 px-2 py-1 rounded-lg">حذف</button>
+                      <a href="/admin/regional-pricing" title="التسعير الإقليمي" aria-label="التسعير الإقليمي" className="text-purple-500 text-xs">🌍</a>
+                      <button onClick={() => setDeleteTarget(p)} disabled={mutatingId === p.id} className="text-red-400 font-bold text-xs hover:bg-red-50 px-2 py-1 rounded-lg disabled:opacity-50">حذف</button>
                     </div>
                   </td>
                 </tr>

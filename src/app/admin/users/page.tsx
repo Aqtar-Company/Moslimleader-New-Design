@@ -2,6 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { PaginationFooter } from '@/components/admin/PaginationFooter';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { adminFetch, adminJson, ForbiddenError } from '@/lib/admin-fetch';
+import ForbiddenState from '@/components/admin/ForbiddenState';
 
 interface DbUser {
   id: string;
@@ -28,13 +32,17 @@ function normalizeStatus(s: string): string {
 }
 
 export default function UsersPage() {
+  const { addToast } = useToast();
+  const confirm = useConfirm();
   const [users, setUsers] = useState<DbUser[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [userOrders, setUserOrders] = useState<Record<string, DbOrder[]>>({});
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(50);
+  const [resettingId, setResettingId] = useState<string | null>(null);
 
   const load = useCallback(async (limitOverride?: number) => {
     setLoading(true);
@@ -42,14 +50,18 @@ export default function UsersPage() {
       const effectiveLimit = limitOverride ?? pageSize;
       const params = new URLSearchParams({ limit: String(effectiveLimit), offset: '0' });
       if (search.trim()) params.set('q', search.trim());
-      const res = await fetch(`/api/admin/users?${params}`, { credentials: 'include' });
+      const res = await adminFetch(`/api/admin/users?${params}`);
       const data = await res.json();
       setUsers(data.users ?? []);
       setTotal(data.total ?? (data.users?.length ?? 0));
       if (limitOverride) setPageSize(limitOverride);
-    } catch {}
+      setForbidden(false);
+    } catch (err) {
+      if (err instanceof ForbiddenError) setForbidden(true);
+      else addToast('فشل تحميل المستخدمين', 'error');
+    }
     setLoading(false);
-  }, [pageSize, search]);
+  }, [pageSize, search, addToast]);
 
   useEffect(() => {
     setPageSize(50);
@@ -76,6 +88,7 @@ export default function UsersPage() {
   // Server already filters by `q`; this is a no-op kept for back-compat.
   const filtered = users;
 
+  if (forbidden) return <ForbiddenState message="إدارة المستخدمين متاحة للأدمن الرئيسي فقط" />;
   if (loading) return (
     <div className="flex items-center justify-center h-40">
       <div className="w-7 h-7 border-4 border-[#F5C518] border-t-transparent rounded-full animate-spin" />
@@ -131,10 +144,25 @@ export default function UsersPage() {
                     </td>
                     <td className="px-5 py-3.5 text-center">
                       <button
+                        disabled={resettingId === u.id}
                         onClick={async () => {
-                          if (confirm(`إعادة تعيين أجهزة ${u.name}؟`)) {
-                            const res = await fetch(`/api/admin/devices?userId=${u.id}`, { method: 'DELETE', credentials: 'include' });
-                            if (res.ok) alert('تم إعادة تعيين الأجهزة بنجاح');
+                          const ok = await confirm({
+                            title: 'إعادة تعيين الأجهزة',
+                            message: `إعادة تعيين أجهزة ${u.name}؟ هتلغي كل الأجهزة المسجّلة وهيحتاج يسجّل دخول من جديد على كل جهاز.`,
+                            confirmLabel: 'إعادة تعيين',
+                            cancelLabel: 'تراجع',
+                            tone: 'danger',
+                            icon: '🔌',
+                          });
+                          if (!ok) return;
+                          setResettingId(u.id);
+                          try {
+                            await adminJson(`/api/admin/devices?userId=${u.id}`, { method: 'DELETE' });
+                            addToast('تم إعادة تعيين الأجهزة بنجاح', 'success');
+                          } catch (err) {
+                            addToast(err instanceof Error ? err.message : 'فشل إعادة التعيين', 'error');
+                          } finally {
+                            setResettingId(null);
                           }
                         }}
                         className="text-xs font-bold px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition"

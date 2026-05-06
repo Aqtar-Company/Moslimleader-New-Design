@@ -1,6 +1,10 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { adminFetch, adminJson, ForbiddenError } from '@/lib/admin-fetch';
+import ForbiddenState from '@/components/admin/ForbiddenState';
 
 interface AdminReview {
   id: string;
@@ -16,32 +20,55 @@ interface AdminReview {
 const STARS = [1, 2, 3, 4, 5];
 
 export default function ReviewsPage() {
+  const { addToast } = useToast();
+  const confirm = useConfirm();
   const [reviews, setReviews] = useState<AdminReview[]>([]);
   const [filterRating, setFilterRating] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
+  const [mutatingId, setMutatingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/reviews', { credentials: 'include' });
+      const res = await adminFetch('/api/admin/reviews');
       const data = await res.json();
       setReviews(data.reviews ?? []);
-    } catch {
-      // ignore
+      setForbidden(false);
+    } catch (err) {
+      if (err instanceof ForbiddenError) setForbidden(true);
+      else addToast('فشل تحميل التقييمات', 'error');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [addToast]);
 
   useEffect(() => { load(); }, [load]);
 
   const handleDelete = async (r: AdminReview) => {
     if (r.isHardcoded) {
-      alert('لا يمكن حذف التقييمات الأصلية للمنتج');
+      addToast('لا يمكن حذف التقييمات الأصلية للمنتج', 'warning');
       return;
     }
-    if (!confirm(`حذف تقييم "${r.author}"؟`)) return;
-    await fetch(`/api/admin/reviews?id=${r.id}`, { method: 'DELETE', credentials: 'include' });
-    await load();
+    const ok = await confirm({
+      title: 'حذف التقييم',
+      message: `حذف تقييم "${r.author}"؟`,
+      confirmLabel: 'حذف',
+      cancelLabel: 'تراجع',
+      tone: 'danger',
+      icon: '🗑️',
+    });
+    if (!ok) return;
+    if (mutatingId === r.id) return;
+    setMutatingId(r.id);
+    try {
+      await adminJson(`/api/admin/reviews?id=${r.id}`, { method: 'DELETE' });
+      addToast('تم حذف التقييم', 'success');
+      await load();
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'فشل الحذف', 'error');
+    } finally {
+      setMutatingId(null);
+    }
   };
 
   const filtered = filterRating === 0 ? reviews : reviews.filter(r => r.rating === filterRating);
@@ -49,6 +76,8 @@ export default function ReviewsPage() {
   const avgRating = reviews.length > 0
     ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
     : '—';
+
+  if (forbidden) return <ForbiddenState requiredPerm="reviews.read" />;
 
   return (
     <div className="space-y-5">
@@ -114,7 +143,8 @@ export default function ReviewsPage() {
                   {!r.isHardcoded && (
                     <button
                       onClick={() => handleDelete(r)}
-                      className="text-red-400 hover:text-red-600 text-xs font-bold shrink-0 hover:bg-red-50 px-2 py-1 rounded-lg transition"
+                      disabled={mutatingId === r.id}
+                      className="text-red-400 hover:text-red-600 text-xs font-bold shrink-0 hover:bg-red-50 px-2 py-1 rounded-lg transition disabled:opacity-50"
                     >
                       حذف
                     </button>

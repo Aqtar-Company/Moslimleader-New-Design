@@ -39,7 +39,7 @@ const SORTS: Array<{ key: string; label: string }> = [
 ];
 
 function formatPrice(n: number) {
-  return Math.round(n).toLocaleString('en-US');
+  return Math.round(n).toLocaleString('ar-EG');
 }
 
 function timeAgoAr(iso: string | null): string {

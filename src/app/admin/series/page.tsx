@@ -1,6 +1,10 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { adminFetch, adminJson, ForbiddenError } from '@/lib/admin-fetch';
+import ForbiddenState from '@/components/admin/ForbiddenState';
 
 interface SeriesBook {
   id: string;
@@ -53,20 +57,24 @@ const emptyForm = {
 };
 
 export default function AdminSeriesPage() {
+  const { addToast } = useToast();
+  const confirm = useConfirm();
   const [series, setSeries] = useState<BookSeries[]>([]);
   const [allBooks, setAllBooks] = useState<AllBook[]>([]);
   const [loading, setLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [expandedSeries, setExpandedSeries] = useState<string | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
+  // Track which book row is currently being mutated so rapid clicks coalesce.
+  const [mutatingBookId, setMutatingBookId] = useState<string | null>(null);
   const coverRef = useRef<HTMLInputElement>(null);
 
-  // Book assignment state
-  const [assignSeriesId, setAssignSeriesId] = useState<string | null>(null);
-  const [bookOrders, setBookOrders] = useState<Record<string, { seriesId: string; order: number }>>({});
+  // Map bookId → last-saved order so onBlur fires PUT only when value changed.
+  const lastOrderRef = useRef<Record<string, number>>({});
 
   const inputCls = 'w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F5C518]/50 bg-white';
 
@@ -74,20 +82,20 @@ export default function AdminSeriesPage() {
     setLoading(true);
     try {
       const [sr, br] = await Promise.all([
-        fetch('/api/admin/series').then(r => r.json()),
-        fetch('/api/admin/books').then(r => r.json()),
+        adminJson<{ series: BookSeries[] }>('/api/admin/series'),
+        adminJson<{ books: AllBook[] }>('/api/admin/books'),
       ]);
       setSeries(sr.series || []);
       setAllBooks(br.books || []);
-
-      // Build bookOrders map
-      const orders: Record<string, { seriesId: string; order: number }> = {};
+      // Reset the order memo so onBlur diffs against the latest snapshot.
+      lastOrderRef.current = {};
       (br.books || []).forEach((b: AllBook) => {
-        if (b.seriesId) {
-          orders[b.id] = { seriesId: b.seriesId, order: b.seriesOrder || 1 };
-        }
+        if (b.seriesId) lastOrderRef.current[b.id] = b.seriesOrder || 1;
       });
-      setBookOrders(orders);
+      setForbidden(false);
+    } catch (err) {
+      if (err instanceof ForbiddenError) setForbidden(true);
+      else addToast('فشل تحميل السلاسل', 'error');
     } finally {
       setLoading(false);
     }
@@ -95,17 +103,22 @@ export default function AdminSeriesPage() {
 
   useEffect(() => { load(); }, []);
 
+  // Upload returns { path: string, type: string }. The legacy code read d.url
+  // (wrong field name) so cover uploads silently saved an empty string.
   const uploadFile = async (file: File): Promise<string> => {
     const fd = new FormData();
     fd.append('file', file);
     fd.append('type', 'cover');
-    const r = await fetch('/api/admin/books/upload', { method: 'POST', body: fd });
-    const d = await r.json();
-    return d.url || '';
+    const r = await adminFetch('/api/admin/books/upload', { method: 'POST', body: fd });
+    const d = await r.json().catch(() => ({}));
+    return (d.path as string) || '';
   };
 
   const handleSave = async () => {
-    if (!form.name || !form.slug) return alert('الاسم والـ slug مطلوبان');
+    if (!form.name || !form.slug) {
+      addToast('الاسم والـ slug مطلوبان', 'warning');
+      return;
+    }
     setSaving(true);
     try {
       let coverUrl = form.cover;
@@ -122,15 +135,16 @@ export default function AdminSeriesPage() {
 
       const url = editId ? `/api/admin/series/${editId}` : '/api/admin/series';
       const method = editId ? 'PUT' : 'POST';
-      const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      const d = await r.json();
-      if (!r.ok) return alert(d.error || 'حدث خطأ');
+      await adminJson(url, { method, body: JSON.stringify(body) });
+      addToast(editId ? 'تم حفظ التعديلات' : 'تم إنشاء السلسلة', 'success');
 
       setShowForm(false);
       setEditId(null);
       setForm(emptyForm);
       setCoverFile(null);
       await load();
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'حدث خطأ', 'error');
     } finally {
       setSaving(false);
     }
@@ -155,23 +169,54 @@ export default function AdminSeriesPage() {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`حذف سلسلة "${name}"؟ الكتب لن تُحذف لكن ستُفصل عن السلسلة.`)) return;
-    await fetch(`/api/admin/series/${id}`, { method: 'DELETE' });
-    await load();
+    const ok = await confirm({
+      title: 'حذف السلسلة',
+      message: `حذف سلسلة "${name}"؟ الكتب لن تُحذف لكن ستُفصل عن السلسلة.`,
+      confirmLabel: 'حذف',
+      cancelLabel: 'تراجع',
+      tone: 'danger',
+      icon: '🗑️',
+    });
+    if (!ok) return;
+    try {
+      await adminJson(`/api/admin/series/${id}`, { method: 'DELETE' });
+      addToast('تم حذف السلسلة', 'success');
+      await load();
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'فشل الحذف', 'error');
+    }
   };
 
-  // Assign/unassign a book to a series
+  // Assign/unassign a book to a series. Tracks `mutatingBookId` so
+  // rapid clicks on the same row don't fire duplicate PUTs.
   const handleAssignBook = async (bookId: string, seriesId: string | null, order: number) => {
-    await fetch(`/api/admin/books/${bookId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ seriesId: seriesId || null, seriesOrder: seriesId ? order : null }),
-    });
-    await load();
+    if (mutatingBookId === bookId) return;
+    setMutatingBookId(bookId);
+    try {
+      await adminJson(`/api/admin/books/${bookId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ seriesId: seriesId || null, seriesOrder: seriesId ? order : null }),
+      });
+      lastOrderRef.current[bookId] = order;
+      await load();
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'فشل التحديث', 'error');
+    } finally {
+      setMutatingBookId(null);
+    }
+  };
+
+  // onBlur PUT only when value actually changed (avoids spurious writes
+  // on every focus-out, even from accidental tabbing).
+  const handleOrderBlur = (bookId: string, seriesId: string, value: string) => {
+    const next = parseInt(value, 10) || 1;
+    if (lastOrderRef.current[bookId] === next) return;
+    handleAssignBook(bookId, seriesId, next);
   };
 
   const getSeriesName = (id: string) => series.find(s => s.id === id)?.name || '';
 
+  if (forbidden) return <ForbiddenState requiredPerm="books.read" />;
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 border-4 border-[#F5C518] border-t-transparent rounded-full animate-spin" />
@@ -359,13 +404,15 @@ export default function AdminSeriesPage() {
                           type="number"
                           min={1}
                           defaultValue={b.seriesOrder || 1}
-                          className="w-14 px-2 py-1 border border-gray-200 rounded-lg text-xs text-center"
-                          onBlur={e => handleAssignBook(b.id, s.id, parseInt(e.target.value) || 1)}
+                          disabled={mutatingBookId === b.id}
+                          className="w-14 px-2 py-1 border border-gray-200 rounded-lg text-xs text-center disabled:opacity-50"
+                          onBlur={e => handleOrderBlur(b.id, s.id, e.target.value)}
                           title="رقم الجزء"
                         />
                         <button
                           onClick={() => handleAssignBook(b.id, null, 0)}
-                          className="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 text-xs font-black flex items-center justify-center transition"
+                          disabled={mutatingBookId === b.id}
+                          className="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 text-xs font-black flex items-center justify-center transition disabled:opacity-50"
                           title="إزالة من السلسلة"
                         >✕</button>
                       </div>
@@ -386,7 +433,8 @@ export default function AdminSeriesPage() {
                             const nextOrder = s.books.length + 1;
                             handleAssignBook(b.id, s.id, nextOrder);
                           }}
-                          className="flex items-center gap-2 p-2 rounded-xl border border-gray-200 hover:border-[#F5C518] hover:bg-amber-50 transition text-right"
+                          disabled={mutatingBookId === b.id}
+                          className="flex items-center gap-2 p-2 rounded-xl border border-gray-200 hover:border-[#F5C518] hover:bg-amber-50 transition text-right disabled:opacity-50"
                         >
                           {b.cover && (
                             <div className="w-8 h-10 rounded overflow-hidden shrink-0 bg-gray-100">

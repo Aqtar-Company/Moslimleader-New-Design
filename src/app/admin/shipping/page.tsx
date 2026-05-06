@@ -2,6 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { governorates } from '@/lib/shipping';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { adminFetch, adminJson } from '@/lib/admin-fetch';
 
 interface RateRow {
   id: string;
@@ -12,10 +15,13 @@ interface RateRow {
 }
 
 export default function ShippingPage() {
+  const { addToast } = useToast();
+  const confirm = useConfirm();
   const [rates, setRates] = useState<RateRow[]>([]);
   const [editing, setEditing] = useState<string | null>(null);
   const [editVal, setEditVal] = useState('');
   const [saved, setSaved] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -67,18 +73,37 @@ export default function ShippingPage() {
   };
 
   const resetAll = async () => {
-    if (!confirm('إعادة تعيين جميع أسعار الشحن للقيم الافتراضية؟')) return;
-    await Promise.all(
-      governorates.map(g =>
-        fetch('/api/shipping-rates', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ governorateId: g.id, rate: g.shipping }),
-        })
-      )
-    );
+    const ok = await confirm({
+      title: 'إعادة تعيين الأسعار',
+      message: `إعادة تعيين أسعار الشحن لكل المحافظات (${governorates.length}) للقيم الافتراضية؟`,
+      confirmLabel: 'إعادة تعيين',
+      cancelLabel: 'تراجع',
+      tone: 'danger',
+      icon: '🔄',
+    });
+    if (!ok) return;
+    setResetting(true);
+    let failed = 0;
+    // Limit to 4 concurrent PUTs so we don't trip the middleware rate-limit.
+    const queue = [...governorates];
+    const workers = Array(Math.min(4, queue.length)).fill(0).map(async () => {
+      while (queue.length) {
+        const g = queue.shift()!;
+        try {
+          await adminJson('/api/shipping-rates', {
+            method: 'PUT',
+            body: JSON.stringify({ governorateId: g.id, rate: g.shipping }),
+          });
+        } catch {
+          failed++;
+        }
+      }
+    });
+    await Promise.all(workers);
     await load();
+    setResetting(false);
+    if (failed === 0) addToast('تم إعادة تعيين كل المحافظات', 'success');
+    else addToast(`تم — لكن فشل ${failed} محافظة`, 'warning');
   };
 
   return (
@@ -92,9 +117,10 @@ export default function ShippingPage() {
           {saved && <span className="text-green-600 text-sm font-semibold">✓ تم الحفظ</span>}
           <button
             onClick={resetAll}
-            className="border border-gray-200 text-gray-500 hover:text-red-600 hover:border-red-200 font-semibold px-4 py-2 rounded-xl text-sm transition"
+            disabled={resetting}
+            className="border border-gray-200 text-gray-500 hover:text-red-600 hover:border-red-200 font-semibold px-4 py-2 rounded-xl text-sm transition disabled:opacity-50"
           >
-            إعادة تعيين
+            {resetting ? 'جاري الإعادة...' : 'إعادة تعيين'}
           </button>
         </div>
       </div>

@@ -1,6 +1,10 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { adminFetch, adminJson, ForbiddenError } from '@/lib/admin-fetch';
+import ForbiddenState from '@/components/admin/ForbiddenState';
 
 interface Coupon {
   code: string;
@@ -12,20 +16,26 @@ interface Coupon {
 }
 
 export default function CouponsPage() {
+  const { addToast } = useToast();
+  const confirm = useConfirm();
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [code, setCode] = useState('');
   const [pct, setPct] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
+  const [mutatingCode, setMutatingCode] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/coupons', { credentials: 'include' });
+      const res = await adminFetch('/api/admin/coupons');
       const data = await res.json();
       setCoupons(data.coupons ?? []);
-    } catch {
-      setError('تعذّر تحميل الكوبونات');
+      setForbidden(false);
+    } catch (err) {
+      if (err instanceof ForbiddenError) setForbidden(true);
+      else setError('تعذّر تحميل الكوبونات');
     } finally {
       setLoading(false);
     }
@@ -61,13 +71,29 @@ export default function CouponsPage() {
   };
 
   const handleDelete = async (c: string) => {
-    if (!confirm(`حذف كوبون "${c}"؟`)) return;
-    await fetch(`/api/admin/coupons?code=${encodeURIComponent(c)}`, {
-      method: 'DELETE',
-      credentials: 'include',
+    const ok = await confirm({
+      title: 'حذف الكوبون',
+      message: `حذف كوبون "${c}"؟`,
+      confirmLabel: 'حذف',
+      cancelLabel: 'تراجع',
+      tone: 'danger',
+      icon: '🗑️',
     });
-    await load();
+    if (!ok) return;
+    if (mutatingCode === c) return;
+    setMutatingCode(c);
+    try {
+      await adminJson(`/api/admin/coupons?code=${encodeURIComponent(c)}`, { method: 'DELETE' });
+      addToast('تم حذف الكوبون', 'success');
+      await load();
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'فشل الحذف', 'error');
+    } finally {
+      setMutatingCode(null);
+    }
   };
+
+  if (forbidden) return <ForbiddenState requiredPerm="coupons.read" />;
 
   return (
     <div className="space-y-6">

@@ -11,6 +11,11 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  const pathname = req.nextUrl.pathname;
+  if (pathname.includes('/webhook') || pathname.includes('/track/')) {
+    return NextResponse.next();
+  }
+
   const origin = req.headers.get('origin');
   if (origin && !ALLOWED_ORIGINS.includes(origin)) {
     return NextResponse.json({ error: 'Origin not allowed' }, { status: 403 });

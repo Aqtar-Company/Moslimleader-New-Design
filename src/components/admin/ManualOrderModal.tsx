@@ -26,34 +26,11 @@ interface LineItem {
 
 const lineKey = (it: LineItem) => `${it.productId}::${it.selectedModel ?? '-'}`;
 
-const GOVERNORATES: Array<{ id: string; name: string; shipping: number }> = [
+const FALLBACK_GOVS: Array<{ id: string; name: string; shipping: number }> = [
   { id: 'cairo', name: 'القاهرة', shipping: 50 },
   { id: 'giza', name: 'الجيزة', shipping: 50 },
   { id: 'qalyubia', name: 'القليوبية', shipping: 55 },
   { id: 'alexandria', name: 'الإسكندرية', shipping: 65 },
-  { id: 'sharqia', name: 'الشرقية', shipping: 65 },
-  { id: 'dakahlia', name: 'الدقهلية', shipping: 65 },
-  { id: 'gharbia', name: 'الغربية', shipping: 65 },
-  { id: 'monufia', name: 'المنوفية', shipping: 65 },
-  { id: 'suez', name: 'السويس', shipping: 65 },
-  { id: 'ismailia', name: 'الإسماعيلية', shipping: 65 },
-  { id: 'port-said', name: 'بورسعيد', shipping: 65 },
-  { id: 'beheira', name: 'البحيرة', shipping: 70 },
-  { id: 'damietta', name: 'دمياط', shipping: 70 },
-  { id: 'kafr-sheikh', name: 'كفر الشيخ', shipping: 70 },
-  { id: 'fayoum', name: 'الفيوم', shipping: 70 },
-  { id: 'beni-suef', name: 'بني سويف', shipping: 80 },
-  { id: 'minya', name: 'المنيا', shipping: 80 },
-  { id: 'asyut', name: 'أسيوط', shipping: 85 },
-  { id: 'sohag', name: 'سوهاج', shipping: 85 },
-  { id: 'qena', name: 'قنا', shipping: 90 },
-  { id: 'luxor', name: 'الأقصر', shipping: 90 },
-  { id: 'aswan', name: 'أسوان', shipping: 95 },
-  { id: 'red-sea', name: 'البحر الأحمر', shipping: 95 },
-  { id: 'north-sinai', name: 'شمال سيناء', shipping: 95 },
-  { id: 'south-sinai', name: 'جنوب سيناء', shipping: 100 },
-  { id: 'matruh', name: 'مطروح', shipping: 100 },
-  { id: 'new-valley', name: 'الوادي الجديد', shipping: 100 },
 ];
 
 interface Props {
@@ -65,6 +42,20 @@ interface Props {
 export function ManualOrderModal({ open, onClose, onCreated }: Props) {
   const { addToast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
+  const [govs, setGovs] = useState(FALLBACK_GOVS);
+
+  useEffect(() => {
+    if (!open) return;
+    fetch('/api/shipping-rates', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => {
+        const rates: Array<{ id: string; name: string; rate: number }> = d.rates ?? [];
+        if (rates.length > 0) {
+          setGovs(rates.map(r => ({ id: r.id, name: r.name, shipping: r.rate })));
+        }
+      })
+      .catch(() => {});
+  }, [open]);
   const [submitting, setSubmitting] = useState(false);
 
   // Customer fields
@@ -100,7 +91,7 @@ export function ManualOrderModal({ open, onClose, onCreated }: Props) {
       .catch(() => {});
   }, [open]);
 
-  const govObj = useMemo(() => GOVERNORATES.find(g => g.id === governorate), [governorate]);
+  const govObj = useMemo(() => govs.find(g => g.id === governorate), [governorate]);
   const subtotal = useMemo(() => items.reduce((s, it) => s + it.unitPrice * it.quantity, 0), [items]);
   const baseShipping = govObj?.shipping ?? 0;
   const shippingCost = isGift && giftFreeShipping ? 0 : baseShipping;
@@ -335,7 +326,7 @@ export function ManualOrderModal({ open, onClose, onCreated }: Props) {
               <div>
                 <label className="text-[11px] font-bold text-gray-600">المحافظة</label>
                 <select value={governorate} onChange={e => setGovernorate(e.target.value)} className={inputClass}>
-                  {GOVERNORATES.map(g => (
+                  {govs.map(g => (
                     <option key={g.id} value={g.id}>{g.name} (شحن {g.shipping} ج.م)</option>
                   ))}
                 </select>

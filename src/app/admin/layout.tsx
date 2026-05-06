@@ -20,7 +20,7 @@ const NAV: NavItem[] = [
   { href: '/admin/products',          label: 'المنتجات',          icon: '🛍️', requireAny: ['products.read'] },
   { href: '/admin/inventory',         label: 'المخزون',           icon: '📦', requireAny: ['inventory.read'] },
   { href: '/admin/valuation',         label: 'تقييم الشركة',      icon: '💎', requireAny: ['valuation.read'] },
-  { href: '/admin/regional-pricing',  label: 'التسعير الإقليمي', icon: '🌍', requireAny: ['products.write', 'settings.write'] },
+  { href: '/admin/regional-pricing',  label: 'التسعير الإقليمي', icon: '🌍', requireAny: ['products.write'] },
   { href: '/admin/coupons',           label: 'الكوبونات',         icon: '🎟️', requireAny: ['coupons.read'] },
   { href: '/admin/users',             label: 'إدارة المستخدمين', icon: '👤', superAdminOnly: true },
   { href: '/admin/staff',             label: 'صلاحيات المساعدين', icon: '🛡️', superAdminOnly: true },

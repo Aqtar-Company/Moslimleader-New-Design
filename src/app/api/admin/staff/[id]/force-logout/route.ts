@@ -18,6 +18,12 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   if (target.id === guard.user.userId) {
     return NextResponse.json({ error: 'لا يمكنك تسجيل خروج نفسك من هنا' }, { status: 400 });
   }
+  // Match the revoke policy: a super-admin should not be able to boot
+  // another super-admin without an explicit demote first. This prevents
+  // accidental lock-out and matches the DELETE handler in route.ts.
+  if (target.role === 'admin') {
+    return NextResponse.json({ error: 'لا يمكن فرض خروج أدمن رئيسي من هنا' }, { status: 400 });
+  }
 
   await prisma.user.update({
     where: { id },

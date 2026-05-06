@@ -3,11 +3,21 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendOrderNotificationEmail } from '@/lib/order-email';
 import { requireSuperAdmin } from '@/lib/permissions';
+import { logActionSafe } from '@/lib/audit-log';
 
 export async function POST() {
   try {
     const guard = await requireSuperAdmin();
     if ('response' in guard) return guard.response;
+    const auth = guard.user;
+    await logActionSafe({
+      actor: auth,
+      // Bulk recovery operation — log the trigger so anyone investigating
+      // a wave of "duplicate order email" complaints can attribute it.
+      action: 'order.update-status',
+      entity: 'Order',
+      metadata: { kind: 'resend-emails-bulk', startedAt: new Date().toISOString() },
+    });
 
     const orders = await prisma.order.findMany({
       where: { createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } },

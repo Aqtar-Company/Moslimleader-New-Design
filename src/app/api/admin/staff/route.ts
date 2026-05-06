@@ -43,11 +43,16 @@ export async function POST(req: NextRequest) {
   if (!target) return NextResponse.json({ error: 'مفيش حساب بهذا الإيميل — لازم يسجّل عضوية أولاً' }, { status: 404 });
   if (target.role === 'admin') return NextResponse.json({ error: 'هذا الحساب أدمن رئيسي بالفعل' }, { status: 400 });
 
+  // Bump tokenVersion so the user's existing customer-cookie is invalidated:
+  // their old JWT carries `role:'customer'` which bypasses the verifyToken
+  // version-check entirely, so without this they'd keep a stale role claim
+  // for up to 30 days. Force re-login on promote.
   const updated = await prisma.user.update({
     where: { id: target.id },
     data: {
       role: 'staff',
       permissions: cleanPerms as unknown as object,
+      tokenVersion: { increment: 1 },
     },
     select: { id: true, name: true, email: true, phone: true, role: true, permissions: true, createdAt: true },
   });

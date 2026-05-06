@@ -3,8 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requirePerm } from '@/lib/permissions';
 import { logActionSafe } from '@/lib/audit-log';
-import { SETTING_KEY, mergeWithDefaults, type IntlShippingConfig } from '@/lib/intl-shipping';
-import { invalidateIntlShippingCache } from '../../intl-shipping/route';
+import { SETTING_KEY, mergeWithDefaults, invalidateIntlShippingCache, type IntlShippingConfig } from '@/lib/intl-shipping';
 
 // GET /api/admin/intl-shipping — admin read (uses same Setting row as the
 // public endpoint; just gated on shipping.read so staff with that perm

@@ -4,7 +4,10 @@ import { prisma } from '@/lib/prisma';
 import { trackByNumber } from '@/lib/bosta';
 import { requirePerm } from '@/lib/permissions';
 
-// POST /api/admin/shipments/[id]/refresh — re-fetch latest status from Bosta
+// POST /api/admin/shipments/[id]/refresh — re-fetch latest status from Bosta.
+// Intentionally NOT audit-logged: this is a polling operation (the user
+// just clicked "refresh" to see the latest tracking state). Logging it
+// would flood the recent-activity widget without surfacing real changes.
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const guard = await requirePerm('shipments.read');

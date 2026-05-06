@@ -1,19 +1,14 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getMergedStaticProducts, invalidateOverridesCache } from '@/lib/product-overrides';
+import { getMergedStaticProducts } from '@/lib/product-overrides';
 import { requirePerm, type Permission } from '@/lib/permissions';
 import { logActionSafe } from '@/lib/audit-log';
-
-// In-memory cache to speed up repeated admin page loads (60 second TTL)
-// Admin edits invalidate the cache explicitly via PUT/POST/DELETE
-let cache: { data: unknown; expiresAt: number } | null = null;
-const CACHE_TTL_MS = 60_000;
-
-export function invalidateAdminProductsCache() {
-  cache = null;
-  invalidateOverridesCache();
-}
+import {
+  getAdminProductsCache,
+  setAdminProductsCache,
+  invalidateAdminProductsCache,
+} from '@/lib/admin-products-cache';
 
 // Returns only fields needed for the admin list/pricing table views
 function toListItem(p: unknown) {
@@ -39,14 +34,14 @@ export async function GET(req: NextRequest) {
     if ('response' in guard) return guard.response;
 
     // Serve from cache if fresh
-    if (cache && Date.now() < cache.expiresAt) {
-      const data = cache.data as { products: unknown[] };
+    const cached = getAdminProductsCache() as { products: unknown[] } | null;
+    if (cached) {
       const lite = req.nextUrl.searchParams.get('lite') === 'true';
       if (lite) {
-        const stripped = data.products.map(toListItem);
+        const stripped = cached.products.map(toListItem);
         return NextResponse.json({ products: stripped });
       }
-      return NextResponse.json(data);
+      return NextResponse.json(cached);
     }
 
     // Parallelize DB queries — use the shared helper for static merging
@@ -63,7 +58,7 @@ export async function GET(req: NextRequest) {
     const adminProducts = dbProducts.map((p: (typeof dbProducts)[number]) => ({ ...p, isAdded: true }));
 
     const payload = { products: [...mergedStaticTagged, ...adminProducts] };
-    cache = { data: payload, expiresAt: Date.now() + CACHE_TTL_MS };
+    setAdminProductsCache(payload);
 
     const lite = req.nextUrl.searchParams.get('lite') === 'true';
     if (lite) {

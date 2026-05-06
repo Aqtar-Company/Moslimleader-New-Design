@@ -248,9 +248,9 @@ export default function StaffPage() {
                         </>
                       ) : (
                         <>
-                          <button onClick={() => startEdit(s)} className="text-xs font-bold px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">تعديل</button>
-                          <button onClick={() => forceLogout(s)} className="text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700" title="فرض تسجيل خروج بدون إلغاء الصلاحيات">🔒 خروج</button>
-                          <button onClick={() => revoke(s)} className="text-xs font-bold px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700">إلغاء الصلاحيات</button>
+                          <button onClick={() => startEdit(s)} disabled={saving || adding} className="text-xs font-bold px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-50">تعديل</button>
+                          <button onClick={() => forceLogout(s)} disabled={saving || adding} className="text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 disabled:opacity-50" title="فرض تسجيل خروج بدون إلغاء الصلاحيات">🔒 خروج</button>
+                          <button onClick={() => revoke(s)} disabled={saving || adding} className="text-xs font-bold px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 disabled:opacity-50">إلغاء الصلاحيات</button>
                         </>
                       )}
                     </div>

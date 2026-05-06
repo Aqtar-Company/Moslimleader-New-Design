@@ -40,14 +40,16 @@ export async function verifyToken(token: string): Promise<JwtPayload | null> {
   try {
     const { payload } = await jwtVerify(token, getSecret());
     const claim = payload as unknown as JwtPayload;
-    // Enforce tokenVersion only for admin/staff to keep customer page
-    // loads fast (no DB hit on every render). The cost: a customer who
-    // is later promoted to staff keeps their old cookie until they
-    // sign in again — acceptable for the promote flow.
+    // Enforce tokenVersion only for admin/staff JWTs to keep customer
+    // page loads fast (no DB hit on every render). Promoted customers
+    // are still safe — admin gates always re-fetch role/perms from DB
+    // via getAuthUserWithPerms / /api/auth/me, so a stale customer
+    // cookie can't impersonate a staff cookie. The tokenVersion bump
+    // on promote is defensive: it ensures that once the user signs in
+    // again with a fresh staff cookie, any old admin tab is also
+    // invalidated.
     if (claim.role === 'admin' || claim.role === 'staff') {
       try {
-        // Lazy import so the JWT lib stays bundle-safe on the edge runtime
-        // (verifyToken is reached from middleware too in some setups).
         const { prisma } = await import('./prisma');
         const user = await prisma.user.findUnique({
           where: { id: claim.userId },

@@ -241,7 +241,7 @@ export const COUNTRIES: Country[] = [
   { code: 'MN', nameAr: 'منغوليا',                    nameEn: 'Mongolia',              zone: 'asia' },
   { code: 'KZ', nameAr: 'كازاخستان',                  nameEn: 'Kazakhstan',            zone: 'asia' },
   { code: 'UZ', nameAr: 'أوزبكستان',                  nameEn: 'Uzbekistan',            zone: 'asia' },
-  { code: 'AZ', nameAr: 'أذربيجان',                   nameEn: 'Azerbaijan',            zone: 'asia' },
+  // (AZ Azerbaijan listed once above under europe — getCountry returns the first match.)
   // blocked asia
   { code: 'AF', nameAr: 'أفغانستان',                  nameEn: 'Afghanistan',           zone: 'asia', blockedByDefault: true },
   { code: 'KP', nameAr: 'كوريا الشمالية',              nameEn: 'North Korea',           zone: 'asia', blockedByDefault: true },
@@ -314,6 +314,28 @@ export const DEFAULT_CONFIG: IntlShippingConfig = {
 
 // Merge a partial saved config with the defaults so newly-added defaults
 // (new countries, new brackets) flow through without an explicit migration.
+// Server-side cache for the live config. Lives here (not in a route
+// file) so non-route callers can invalidate it after a write. 30s TTL
+// is enough to soak admin-page hot reload without making staff edits
+// take ages to propagate to the public checkout.
+const INTL_CACHE_TTL_MS = 30_000;
+let intlCache: { value: IntlShippingConfig; expiresAt: number } | null = null;
+
+export function invalidateIntlShippingCache(): void {
+  intlCache = null;
+}
+
+export async function getCachedIntlShippingConfig(): Promise<IntlShippingConfig> {
+  if (intlCache && Date.now() < intlCache.expiresAt) return intlCache.value;
+  // Lazy import prisma — this lib is also bundled into the client via
+  // `fetchIntlShippingConfig` etc., and prisma must not appear there.
+  const { prisma } = await import('./prisma');
+  const row = await prisma.setting.findUnique({ where: { key: SETTING_KEY } });
+  const config = mergeWithDefaults((row?.value ?? null) as Partial<IntlShippingConfig> | null);
+  intlCache = { value: config, expiresAt: Date.now() + INTL_CACHE_TTL_MS };
+  return config;
+}
+
 export function mergeWithDefaults(saved: Partial<IntlShippingConfig> | null | undefined): IntlShippingConfig {
   if (!saved) return structuredClone(DEFAULT_CONFIG);
   return {

@@ -1,15 +1,22 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireSuperAdmin } from '@/lib/permissions';
+import { requirePerm, requireSuperAdmin, type Permission } from '@/lib/permissions';
 import { logActionSafe } from '@/lib/audit-log';
 
 // Public-readable settings (no auth needed for GET).
 const PUBLIC_KEYS = ['payment-methods'];
 
-// GET /api/admin/settings?key=xxx — super-admin only for non-public keys.
-// Site-wide secrets like Bosta token live here, so we explicitly do NOT
-// open this up under settings.read for staff.
+// Per-key write gating. Most settings are super-admin-only because they
+// hold secrets (Bosta token, regional pricing rules, site flags) — but
+// a few admin-panel surfaces should be writable by staff with the right
+// granular permission. Add an entry here, NOT a new endpoint.
+const KEY_WRITE_PERM: Record<string, Permission | 'superAdmin'> = {
+  'payment-methods': 'payment-methods.write',
+  // Everything else falls through to superAdmin.
+};
+
+// GET /api/admin/settings?key=xxx
 export async function GET(req: NextRequest) {
   try {
     const key = req.nextUrl.searchParams.get('key');
@@ -28,15 +35,19 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// PUT /api/admin/settings — { key, value }. Super-admin only (writes secrets).
+// PUT /api/admin/settings — { key, value }. Per-key gating per
+// KEY_WRITE_PERM above; defaults to super-admin.
 export async function PUT(req: NextRequest) {
   try {
-    const guard = await requireSuperAdmin();
-    if ('response' in guard) return guard.response;
-    const auth = guard.user;
-
     const { key, value } = await req.json();
     if (!key) return NextResponse.json({ error: 'key مطلوب' }, { status: 400 });
+
+    const required = KEY_WRITE_PERM[key];
+    const guard = required && required !== 'superAdmin'
+      ? await requirePerm(required)
+      : await requireSuperAdmin();
+    if ('response' in guard) return guard.response;
+    const auth = guard.user;
 
     const setting = await prisma.setting.upsert({
       where: { key },

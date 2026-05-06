@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { invalidateAdminProductsCache } from '../route';
+import { invalidateAdminProductsCache } from '@/lib/admin-products-cache';
 import { products as staticProducts } from '@/lib/products';
 import { loadStaticOverrides, applyOverride } from '@/lib/product-overrides';
 import { requirePerm, type Permission } from '@/lib/permissions';
@@ -95,9 +95,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       if (seededProduct) {
         const dbSafe = { ...data };
         delete dbSafe.id; delete dbSafe.slug; delete dbSafe.source;
-        if (dbSafe.images) dbSafe.images = dbSafe.images;
-        if (dbSafe.tags) dbSafe.tags = dbSafe.tags;
-        if (dbSafe.variants) dbSafe.variants = dbSafe.variants;
         await prisma.product.update({
           where: { id },
           data: { ...dbSafe, updatedAt: new Date() },

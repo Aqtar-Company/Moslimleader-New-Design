@@ -49,6 +49,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'بيانات الطلب غير مكتملة' }, { status: 400 });
     }
 
+    const VALID_PAY = ['cod', 'card', 'vodafone', 'instapay', 'paypal', 'bank', 'gift'];
+    if (!VALID_PAY.includes(paymentMethod)) {
+      return NextResponse.json({ error: 'طريقة دفع غير صحيحة' }, { status: 400 });
+    }
+
     // Resolve productId for each item (handle static products which have string IDs)
     const resolvedItems = await Promise.all(
       items.map(async (item: {
@@ -110,7 +115,7 @@ export async function POST(req: NextRequest) {
           selectedModel: item.selectedModel ?? null,
           unitPrice: serverPrice,
           productName: dbProduct?.name ?? item.productName,
-          productImage: item.productImage ?? null,
+          productImage: (item.productImage && /^(\/|https?:\/\/)/.test(item.productImage)) ? item.productImage : null,
         };
       })
     );

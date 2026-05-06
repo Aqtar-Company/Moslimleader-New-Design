@@ -439,6 +439,7 @@ export default function CheckoutPage() {
     setSnapshot({ items: orderItems, total, discount, shippingCost, shippingCurrency, currency });
 
     // Save order to database via API
+    let orderOk = false;
     if (user) {
       try {
         const orderRes = await fetch('/api/orders', {
@@ -464,13 +465,22 @@ export default function CheckoutPage() {
             currency,
           }),
         });
+        if (!orderRes.ok) {
+          const err = await orderRes.json().catch(() => ({}));
+          throw new Error(err.error || 'فشل إنشاء الطلب');
+        }
         const orderData = await orderRes.json();
         if (orderData.order?.id) setCreatedOrderId(orderData.order.id);
-      } catch { /* DB failure shouldn't block order confirmation */ }
+        orderOk = true;
+      } catch (err) {
+        addToast(isRtl ? (err instanceof Error ? err.message : 'حدث خطأ في إنشاء الطلب') : 'Order creation failed', 'error');
+        setIsSubmitting(false);
+        return;
+      }
     } else {
       // Guest: send admin email notification (no DB save — userId required)
       try {
-        await fetch('/api/orders/guest-notify', {
+        const guestRes = await fetch('/api/orders/guest-notify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -491,11 +501,18 @@ export default function CheckoutPage() {
             notes: address.notes,
           }),
         });
-      } catch { /* email failure shouldn't block order confirmation */ }
+        orderOk = guestRes.ok;
+        if (!orderOk) {
+          addToast(isRtl ? 'حدث خطأ في إرسال الطلب' : 'Failed to send order', 'error');
+        }
+      } catch {
+        addToast(isRtl ? 'حدث خطأ في الاتصال' : 'Connection error', 'error');
+      }
+      orderOk = true;
     }
 
     // Clear cart only AFTER order was submitted successfully
-    clear();
+    if (orderOk) clear();
 
     // Auto-save address to user account if logged in and user opted in
     if (user && (saveAddressChecked || selectedSavedAddressId)) {
@@ -1270,7 +1287,8 @@ export default function CheckoutPage() {
                     shippingAddress={address}
                     notes={address.notes}
                     onSuccess={(paypalOrderDbId) => {
-                       setSnapshot({ items: [...items], total, discount, shippingCost, shippingCurrency, currency });
+                       const snapItems = [...items];
+                       setSnapshot({ items: snapItems, total, discount, shippingCost, shippingCurrency, currency });
                        if (paypalOrderDbId) setCreatedOrderId(paypalOrderDbId);
                        clear();
                        // Auto-save address for PayPal orders too

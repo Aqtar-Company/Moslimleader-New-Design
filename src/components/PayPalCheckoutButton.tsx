@@ -57,6 +57,7 @@ export default function PayPalCheckoutButton({
           shippingCurrency,
           discountUsd: discount,
           discountCurrency,
+          couponCode,
         }),
       });
       const data = await res.json();
@@ -71,10 +72,13 @@ export default function PayPalCheckoutButton({
   const onApprove = async (data: { orderID: string }) => {
     setProcessing(true);
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
       const res = await fetch('/api/paypal/capture-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        signal: controller.signal,
         body: JSON.stringify({
           paypalOrderId: data.orderID,
           items,
@@ -87,6 +91,7 @@ export default function PayPalCheckoutButton({
           notes,
         }),
       });
+      clearTimeout(timeout);
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || 'Payment capture failed');
       onSuccess(result.orderId);

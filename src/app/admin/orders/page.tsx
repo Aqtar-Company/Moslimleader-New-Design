@@ -457,7 +457,44 @@ export default function OrdersPage() {
         {filtered.length === 0 ? (
           <div className="py-16 text-center text-gray-400"><p className="text-4xl mb-3">📭</p><p className="font-semibold">لا توجد طلبات</p></div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Mobile card view */}
+          <div className="block lg:hidden divide-y divide-gray-100">
+            {filtered.map(o => {
+              const isOpen = expanded.has(o.id);
+              return (
+                <Fragment key={o.id}>
+                  <div className="p-4 space-y-2" onClick={() => toggleExpand(o.id)}>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-mono font-bold text-gray-900 text-sm">#{o.id.slice(-6).toUpperCase()}</p>
+                        <p className="text-xs text-gray-600 mt-0.5">{o.user?.name || 'ضيف'}</p>
+                      </div>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${STATUS_COLORS[o.status] || 'bg-gray-100 text-gray-600'}`}>{statusLabel(o.status)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-500">{new Date(o.createdAt).toLocaleDateString('ar-EG')} · {o.items?.length || 0} منتج</span>
+                      <span className="font-bold text-gray-900 text-sm">{o.total.toLocaleString('ar-EG')} {o.currency}</span>
+                    </div>
+                    <div className="flex gap-2 items-center pt-1" onClick={e => e.stopPropagation()}>
+                      <select value={o.status} onChange={e => handleStatus(o, e.target.value)}
+                        className="border border-gray-200 rounded-lg px-3 py-2 text-xs outline-none bg-white flex-1">
+                        {STATUSES.map(s => <option key={s} value={s}>{statusLabel(s)}</option>)}
+                      </select>
+                      {o.shipment?.trackingNumber && (
+                        <a href={`https://bosta.co/en/track-shipment/${o.shipment.trackingNumber}`}
+                          target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-600">تتبع</a>
+                      )}
+                    </div>
+                  </div>
+                  {isOpen && <InvoiceDetail order={o} />}
+                </Fragment>
+              );
+            })}
+          </div>
+
+          {/* Desktop table view */}
+          <div className="hidden lg:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr className="text-xs text-gray-500 font-semibold">
@@ -552,6 +589,7 @@ export default function OrdersPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 

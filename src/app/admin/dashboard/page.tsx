@@ -150,7 +150,7 @@ export default function DashboardPage() {
         {topCards.map(c => (
           <Link key={c.label} href={c.link} className={`${c.color} border rounded-2xl p-4 hover:shadow-md transition block`}>
             <div className="text-2xl mb-2">{c.icon}</div>
-            <div className="text-xl font-black text-gray-900 leading-tight">{c.value}</div>
+            <div className="text-base sm:text-xl font-black text-gray-900 leading-tight truncate">{c.value}</div>
             <div className="text-xs font-semibold text-gray-600 mt-1">{c.label}</div>
             <div className="text-xs text-gray-400 mt-0.5">{c.sub}</div>
           </Link>

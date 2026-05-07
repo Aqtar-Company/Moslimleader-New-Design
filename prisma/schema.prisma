@@ -64,6 +64,18 @@ model Campaign {
   finishedAt      DateTime?
   // Attribution: which admin/staff created the campaign.
   createdByUserId String?
+  // ---- Daily-drip + plain-text editor ----
+  // bodyText is the new authoritative source for the message; bodyHtml
+  // is derived from it at send time via renderPlainTextEmail() so the
+  // assistant doesn't have to write HTML. Legacy campaigns whose
+  // bodyText is null still send via the legacy bodyHtml path.
+  bodyText        String?  @db.LongText
+  ctaLabel        String?
+  ctaUrl          String?
+  // dailyLimit recipients per "send-daily-batch" click — defaults to 5
+  // so the inbox doesn't look algorithmic. Drops to 0 to disable drip.
+  dailyLimit      Int      @default(5)
+  lastBatchAt     DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

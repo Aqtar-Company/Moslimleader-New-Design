@@ -27,16 +27,21 @@ export async function POST(req: NextRequest) {
   const auth = guard.user;
 
   const body = await req.json();
-  const { name, segmentKey, segmentFilters, subject, bodyHtml, couponCode } = body as {
+  const { name, segmentKey, segmentFilters, subject, bodyText, bodyHtml, couponCode, ctaLabel, ctaUrl, dailyLimit } = body as {
     name?: string;
     segmentKey?: string;
     segmentFilters?: SegmentFilters;
     subject?: string;
-    bodyHtml?: string;
+    bodyText?: string;     // new authoritative field
+    bodyHtml?: string;     // legacy / pre-rendered (still accepted)
     couponCode?: string | null;
+    ctaLabel?: string | null;
+    ctaUrl?: string | null;
+    dailyLimit?: number;
   };
 
-  if (!name?.trim() || !subject?.trim() || !bodyHtml?.trim()) {
+  // Either bodyText (new flow) or bodyHtml (legacy) must be present.
+  if (!name?.trim() || !subject?.trim() || (!bodyText?.trim() && !bodyHtml?.trim())) {
     return NextResponse.json({ error: 'الاسم، الموضوع، والمحتوى مطلوبين' }, { status: 400 });
   }
 
@@ -51,8 +56,15 @@ export async function POST(req: NextRequest) {
       segmentKey: segmentKey || 'all',
       segmentFilters: segmentFilters as object | undefined,
       subject: subject.trim(),
-      bodyHtml,
+      // bodyText is the source of truth when present; bodyHtml stays for
+      // already-saved campaigns and as a non-null placeholder until the
+      // send loop renders it.
+      bodyText: bodyText?.trim() || null,
+      bodyHtml: bodyHtml?.trim() || (bodyText?.trim() ?? ''),
       couponCode: couponCode?.trim() || null,
+      ctaLabel: ctaLabel?.trim() || null,
+      ctaUrl: ctaUrl?.trim() || null,
+      dailyLimit: typeof dailyLimit === 'number' && dailyLimit > 0 ? Math.min(50, Math.floor(dailyLimit)) : 5,
       status: 'draft',
       recipientCount: reachable.length,
       createdByUserId: auth.userId,

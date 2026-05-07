@@ -6,6 +6,7 @@ import { requireSuperAdmin } from '@/lib/permissions';
 import { logActionSafe } from '@/lib/audit-log';
 import { resolveSegment, renderTemplate, instrumentEmailHtml, type SegmentFilters } from '@/lib/marketing';
 import { sendMarketingEmail, getBaseUrl } from '@/lib/marketing-mailer';
+import { renderPlainTextEmail } from '@/lib/email-template';
 
 // Sleep helper for rate-limiting between sends.
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
@@ -97,13 +98,23 @@ async function runSend(campaignId: string) {
         const token = await ensureMarketingToken(r.userId);
         const unsubscribeUrl = `${baseUrl}/api/email/unsubscribe?token=${token}`;
         const firstName = (r.user.name || '').split(/\s+/)[0] || r.user.name || '';
-        const renderedBody = renderTemplate(campaign.bodyHtml, {
-          name: r.user.name || '',
-          firstName,
-          email: r.email,
-          couponCode: campaign.couponCode || undefined,
-          unsubscribeUrl,
-        });
+        // Prefer the new plain-text path (bodyText → branded email).
+        // Legacy campaigns (bodyText null) keep using the old template.
+        const renderedBody = campaign.bodyText
+          ? renderPlainTextEmail({
+              bodyText: campaign.bodyText,
+              firstName,
+              couponCode: campaign.couponCode,
+              ctaLabel: campaign.ctaLabel,
+              ctaUrl: campaign.ctaUrl,
+            })
+          : renderTemplate(campaign.bodyHtml, {
+              name: r.user.name || '',
+              firstName,
+              email: r.email,
+              couponCode: campaign.couponCode || undefined,
+              unsubscribeUrl,
+            });
         const renderedSubject = renderTemplate(campaign.subject, {
           name: r.user.name || '',
           firstName,

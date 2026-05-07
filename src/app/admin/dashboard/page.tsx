@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import RecentStaffActivity from './RecentStaffActivity';
 import Link from 'next/link';
-import { adminFetch, ForbiddenError } from '@/lib/admin-fetch';
-import ForbiddenState from '@/components/admin/ForbiddenState';
+import { adminFetch } from '@/lib/admin-fetch';
 
 interface DbOrder {
   id: string;
@@ -16,12 +15,12 @@ interface DbOrder {
 }
 
 interface Stats {
-  totalOrders: number;
-  confirmedRevenue: number;
-  pendingRevenue: number;
-  totalUsers: number;
-  activeCoupons: number;
-  outOfStock: number;
+  totalOrders: number | null;
+  confirmedRevenue: number | null;
+  pendingRevenue: number | null;
+  totalUsers: number | null;
+  activeCoupons: number | null;
+  outOfStock: number | null;
   byStatus: Record<string, number>;
   recentOrders: { id: string; userName: string; date: string; total: number; status: string }[];
 }
@@ -57,69 +56,57 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'admin';
   const [stats, setStats] = useState<Stats | null>(null);
-  const [error, setError] = useState('');
-  const [forbidden, setForbidden] = useState(false);
 
   useEffect(() => {
     const ac = new AbortController();
     async function load() {
-      try {
-        // KPIs come straight from the DB-backed admin endpoints. The legacy
-        // version of this page sourced coupons/products from localStorage
-        // helpers that were emptied by the localStorage→DB migration —
-        // those reads now happen via /api/admin/coupons and /api/admin/products.
-        const [ordersRes, usersRes, couponsRes, productsRes] = await Promise.all([
-          adminFetch('/api/admin/orders', { signal: ac.signal }),
-          adminFetch('/api/admin/users', { signal: ac.signal }),
-          // Forbidden errors on coupons/products are tolerated — they're
-          // optional widgets. Still propagates 403 from orders/users
-          // (the page is useless without those).
-          adminFetch('/api/admin/coupons', { signal: ac.signal }).catch(() => null),
-          adminFetch('/api/admin/products?lite=true', { signal: ac.signal }).catch(() => null),
-        ]);
-        const { orders: rawOrders }: { orders: DbOrder[] } = await ordersRes.json();
-        const { users }: { users: { id: string }[] } = await usersRes.json();
-        const couponsData = couponsRes ? await couponsRes.json().catch(() => ({})) : {};
-        const productsData = productsRes ? await productsRes.json().catch(() => ({})) : {};
-        const coupons: { isActive?: boolean }[] = couponsData?.coupons ?? [];
-        const products: { inStock?: boolean }[] = productsData?.products ?? [];
+      // Each fetch is tolerated — a staff member with only one admin perm
+      // (e.g. inventory.read) should still see the dashboard, just with
+      // empty cards for the data they can't read. Without this, the
+      // first 403 used to short-circuit and lock everyone out of /admin.
+      const safe = (path: string) =>
+        adminFetch(path, { signal: ac.signal })
+          .then(r => r.json())
+          .catch(() => null);
 
-        const orders = (rawOrders ?? []).map(o => ({ ...o, status: normalizeStatus(o.status) }));
+      const [ordersData, usersData, couponsData, productsData] = await Promise.all([
+        safe('/api/admin/orders'),
+        safe('/api/admin/users'),         // super-admin only — null for staff
+        safe('/api/admin/coupons'),       // needs coupons.read
+        safe('/api/admin/products?lite=true'),
+      ]);
+      if (ac.signal.aborted) return;
 
-        const byStatus: Record<string, number> = { 'قيد التجهيز': 0, 'تم الدفع': 0, 'تم الشحن': 0, 'تم التسليم': 0, 'ملغي': 0 };
-        orders.forEach(o => { if (byStatus[o.status] !== undefined) byStatus[o.status]++; });
+      const rawOrders: DbOrder[] | null = ordersData?.orders ?? null;
+      const orders = rawOrders ? rawOrders.map(o => ({ ...o, status: normalizeStatus(o.status) })) : null;
 
-        const confirmedRevenue = orders.filter(o => o.status === 'تم التسليم').reduce((s, o) => s + o.total, 0);
-        const pendingRevenue   = orders.filter(o => o.status === 'قيد التجهيز' || o.status === 'تم الدفع' || o.status === 'تم الشحن').reduce((s, o) => s + o.total, 0);
+      const byStatus: Record<string, number> = { 'قيد التجهيز': 0, 'تم الدفع': 0, 'تم الشحن': 0, 'تم التسليم': 0, 'ملغي': 0 };
+      orders?.forEach(o => { if (byStatus[o.status] !== undefined) byStatus[o.status]++; });
 
-        setStats({
-          totalOrders: orders.length,
-          confirmedRevenue,
-          pendingRevenue,
-          totalUsers: (users ?? []).length,
-          activeCoupons: coupons.filter(c => c.isActive !== false).length,
-          outOfStock: products.filter(p => p.inStock === false).length,
-          byStatus,
-          recentOrders: orders.slice(0, 6).map(o => ({
-            id: o.id,
-            userName: o.user?.name ?? '—',
-            date: new Date(o.createdAt).toLocaleDateString('ar-EG'),
-            total: o.total,
-            status: o.status,
-          })),
-        });
-      } catch (err) {
-        if (ac.signal.aborted) return;
-        if (err instanceof ForbiddenError) setForbidden(true);
-        else setError('فشل تحميل الإحصائيات');
-      }
+      setStats({
+        totalOrders: orders ? orders.length : null,
+        confirmedRevenue: orders ? orders.filter(o => o.status === 'تم التسليم').reduce((s, o) => s + o.total, 0) : null,
+        pendingRevenue: orders ? orders.filter(o => o.status === 'قيد التجهيز' || o.status === 'تم الدفع' || o.status === 'تم الشحن').reduce((s, o) => s + o.total, 0) : null,
+        totalUsers: usersData?.users?.length ?? null,
+        activeCoupons: couponsData?.coupons
+          ? (couponsData.coupons as { isActive?: boolean }[]).filter(c => c.isActive !== false).length
+          : null,
+        outOfStock: productsData?.products
+          ? (productsData.products as { inStock?: boolean }[]).filter(p => p.inStock === false).length
+          : null,
+        byStatus,
+        recentOrders: (orders ?? []).slice(0, 6).map(o => ({
+          id: o.id,
+          userName: o.user?.name ?? '—',
+          date: new Date(o.createdAt).toLocaleDateString('ar-EG'),
+          total: o.total,
+          status: o.status,
+        })),
+      });
     }
     load();
     return () => ac.abort();
   }, []);
-
-  if (forbidden) return <ForbiddenState requiredPerm="orders.read" />;
-  if (error) return <div className="text-red-500 p-6">{error}</div>;
 
   if (!stats) return (
     <div className="flex items-center justify-center h-40">
@@ -127,14 +114,26 @@ export default function DashboardPage() {
     </div>
   );
 
-  const topCards = [
-    { label: 'إجمالي الطلبات',     value: stats.totalOrders, sub: `${stats.byStatus['ملغي']} ملغي`, icon: '📦', color: 'bg-blue-50 border-blue-200',   link: '/admin/orders' },
-    { label: 'إيرادات مؤكدة',      value: stats.confirmedRevenue.toLocaleString('ar-EG') + ' ج.م', sub: 'طلبات تم تسليمها', icon: '✅', color: 'bg-green-50 border-green-200', link: '/admin/orders' },
-    { label: 'إيرادات قيد التنفيذ', value: stats.pendingRevenue.toLocaleString('ar-EG') + ' ج.م',   sub: 'تجهيز + شحن',      icon: '🚚', color: 'bg-amber-50 border-amber-200', link: '/admin/orders' },
-    { label: 'العملاء المسجلين',   value: stats.totalUsers, sub: `${stats.activeCoupons} كوبون نشط`, icon: '👥', color: 'bg-purple-50 border-purple-200', link: '/admin/users' },
-  ];
+  // Render '—' for KPIs the user doesn't have access to. Hides the
+  // super-admin-only "Users" card entirely for staff so the layout
+  // doesn't show a dead tile.
+  const fmt = (n: number | null) => n === null ? '—' : n.toLocaleString('ar-EG');
+  const fmtMoney = (n: number | null) => n === null ? '—' : n.toLocaleString('ar-EG') + ' ج.م';
 
-  const totalRevenue = stats.confirmedRevenue + stats.pendingRevenue;
+  const topCards: Array<{ label: string; value: string | number; sub: string; icon: string; color: string; link: string }> = [
+    { label: 'إجمالي الطلبات',     value: fmt(stats.totalOrders), sub: `${stats.byStatus['ملغي']} ملغي`, icon: '📦', color: 'bg-blue-50 border-blue-200',   link: '/admin/orders' },
+    { label: 'إيرادات مؤكدة',      value: fmtMoney(stats.confirmedRevenue), sub: 'طلبات تم تسليمها', icon: '✅', color: 'bg-green-50 border-green-200', link: '/admin/orders' },
+    { label: 'إيرادات قيد التنفيذ', value: fmtMoney(stats.pendingRevenue),   sub: 'تجهيز + شحن',      icon: '🚚', color: 'bg-amber-50 border-amber-200', link: '/admin/orders' },
+  ];
+  if (stats.totalUsers !== null) {
+    topCards.push({
+      label: 'العملاء المسجلين', value: fmt(stats.totalUsers),
+      sub: stats.activeCoupons !== null ? `${stats.activeCoupons} كوبون نشط` : '—',
+      icon: '👥', color: 'bg-purple-50 border-purple-200', link: '/admin/users',
+    });
+  }
+
+  const totalRevenue = (stats.confirmedRevenue ?? 0) + (stats.pendingRevenue ?? 0);
 
   return (
     <div className="space-y-6">
@@ -143,7 +142,7 @@ export default function DashboardPage() {
         <p className="text-sm text-gray-500 mt-0.5">نظرة عامة على أداء المتجر</p>
       </div>
 
-      {stats.outOfStock > 0 && (
+      {(stats.outOfStock ?? 0) > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
           <span className="text-lg">⚠️</span>
           <div className="flex-1">
@@ -154,7 +153,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className={`grid grid-cols-2 ${topCards.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
         {topCards.map(c => (
           <Link key={c.label} href={c.link} className={`${c.color} border rounded-2xl p-4 hover:shadow-md transition block`}>
             <div className="text-2xl mb-2">{c.icon}</div>

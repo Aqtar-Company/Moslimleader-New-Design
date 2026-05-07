@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { adminFetch, adminJson } from '@/lib/admin-fetch';
 import { sanitizeHtml } from '@/lib/sanitize';
 
 interface Recipient {
@@ -23,8 +25,13 @@ interface Campaign {
   channel: string;
   segmentKey: string;
   subject: string;
+  bodyText: string | null;
   bodyHtml: string;
   couponCode: string | null;
+  ctaLabel: string | null;
+  ctaUrl: string | null;
+  dailyLimit: number;
+  lastBatchAt: string | null;
   status: string;
   recipientCount: number;
   sentCount: number;
@@ -35,6 +42,19 @@ interface Campaign {
   finishedAt: string | null;
   createdAt: string;
   recipients: Recipient[];
+}
+
+function timeAgoAr(iso: string | null): string {
+  if (!iso) return 'لم تُرسل بعد';
+  const t = new Date(iso).getTime();
+  const diff = Date.now() - t;
+  const m = Math.floor(diff / 60_000);
+  if (m < 1) return 'الآن';
+  if (m < 60) return `منذ ${m} دقيقة`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `منذ ${h} ساعة`;
+  const d = Math.floor(h / 24);
+  return `منذ ${d} يوم`;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -49,23 +69,53 @@ function pct(n: number, total: number) {
 export default function CampaignDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { addToast } = useToast();
+  const confirm = useConfirm();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sendingBatch, setSendingBatch] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/admin/campaigns/${id}`, { credentials: 'include', cache: 'no-store' });
+      const res = await adminFetch(`/api/admin/campaigns/${id}`);
       const data = await res.json();
-      if (!res.ok) {
-        addToast(data.error || 'فشل التحميل', 'error');
-        return;
-      }
       setCampaign(data.campaign);
-    } catch {
-      addToast('فشل التحميل', 'error');
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'فشل التحميل', 'error');
     }
     setLoading(false);
   }, [id, addToast]);
+
+  const sendDailyBatch = async () => {
+    if (!campaign) return;
+    const ok = await confirm({
+      title: 'إرسال دفعة اليوم',
+      message: `هتبعت ${campaign.dailyLimit} رسالة للمستلمين اللي لسه ما اتبعتلهمش. كرر مرة كل يوم.`,
+      confirmLabel: `أرسل ${campaign.dailyLimit}`,
+      cancelLabel: 'إلغاء',
+      icon: '📨',
+    });
+    if (!ok) return;
+    setSendingBatch(true);
+    try {
+      const data = await adminJson<{ sent: number; failed: number; queuedRemaining: number; finished: boolean }>(
+        `/api/admin/campaigns/${id}/send-daily-batch`,
+        { method: 'POST' },
+      );
+      if (data.finished) {
+        addToast('خلصت الحملة! كل المستلمين اتبعتلهم.', 'success', 6000);
+      } else if (data.sent === 0) {
+        addToast('مفيش مستلمين متبقين', 'warning');
+      } else {
+        const failedNote = data.failed ? ` (فشل ${data.failed})` : '';
+        addToast(`تم إرسال ${data.sent} رسالة${failedNote} · المتبقي ${data.queuedRemaining}`, 'success', 5000);
+      }
+      await load();
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'فشل الإرسال', 'error');
+    } finally {
+      setSendingBatch(false);
+    }
+  };
 
   // Read latest status via a ref so the polling effect can stay mounted with
   // a single interval without leaking when status flips to `sent`/`failed`.
@@ -91,6 +141,8 @@ export default function CampaignDetailPage() {
   if (!campaign) return null;
 
   const sendProgress = pct(campaign.sentCount, campaign.recipientCount);
+  const queuedRemaining = campaign.recipients.filter(r => r.status === 'queued').length;
+  const canDailyBatch = campaign.status !== 'sent' && campaign.dailyLimit > 0;
 
   return (
     <div className="space-y-5">
@@ -106,6 +158,39 @@ export default function CampaignDetailPage() {
             {STATUS_LABELS[campaign.status] || campaign.status}
           </span>
         </div>
+
+        {/* Daily-drip control + progress strip */}
+        {canDailyBatch && (
+          <div className="mt-5 pt-5 border-t border-white/10">
+            <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+              <div>
+                <p className="text-xs font-bold text-[#F5C518] uppercase tracking-wide">دفعة يومية</p>
+                <p className="text-[11px] text-white/60 mt-0.5">آخر دفعة: {timeAgoAr(campaign.lastBatchAt)}</p>
+              </div>
+              <button
+                onClick={sendDailyBatch}
+                disabled={sendingBatch || queuedRemaining === 0}
+                className="px-4 py-2.5 rounded-xl bg-[#F5C518] hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-[#1a1a2e] text-sm font-black transition shadow-sm"
+              >
+                {sendingBatch ? '⏳ جاري الإرسال...' : queuedRemaining === 0 ? '✓ خلص الجمهور' : `📨 أرسل ${Math.min(campaign.dailyLimit, queuedRemaining)} اليوم`}
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-[10px]">
+              <div className="bg-white/5 rounded-lg px-3 py-2 border border-white/10">
+                <p className="text-white/50">اتبعتوا</p>
+                <p className="text-white font-black text-base mt-0.5">{campaign.sentCount}</p>
+              </div>
+              <div className="bg-white/5 rounded-lg px-3 py-2 border border-white/10">
+                <p className="text-white/50">المتبقي</p>
+                <p className="text-white font-black text-base mt-0.5">{queuedRemaining}</p>
+              </div>
+              <div className="bg-white/5 rounded-lg px-3 py-2 border border-white/10">
+                <p className="text-white/50">الإجمالي</p>
+                <p className="text-white font-black text-base mt-0.5">{campaign.recipientCount}</p>
+              </div>
+            </div>
+          </div>
+        )}
         {campaign.status === 'sending' && (
           <div className="mt-4 space-y-2">
             <div className="flex items-center justify-between text-xs text-white/80 mb-1.5">

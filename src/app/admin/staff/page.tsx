@@ -56,7 +56,7 @@ const PERM_LABELS: Record<Permission, string> = {
   'payment-methods.read': 'عرض وسائل الدفع',
   'payment-methods.write': 'تعديل وسائل الدفع',
   'valuation.read': 'تقييم الشركة (مالي)',
-  'valuation.write': 'تعديل افتراضات التقييم',
+  'valuation.write': 'تعديل افتراضات التقييم (يحتاج كلمة سر التقييم كمان)',
   'settings.read': 'عرض الإعدادات',
   'settings.write': 'تعديل الإعدادات',
 };

@@ -49,6 +49,8 @@ export const AUDIT_ACTIONS = {
   'staff.revoke': 'إلغاء مساعد',
   'staff.force-logout': 'فرض تسجيل خروج المساعد',
   'user.devices-reset': 'إعادة ضبط أجهزة مستخدم',
+  // Valuation
+  'valuation.assumptions-update': 'تعديل افتراضات التقييم',
 } as const;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;

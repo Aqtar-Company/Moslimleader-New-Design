@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/context/AuthContext';
 
@@ -97,7 +97,20 @@ export default function ValuationPage() {
       });
       const d = await res.json();
       if (!res.ok) { addToast(d.error || 'فشل الحفظ', 'error'); return; }
-      addToast('تم حفظ الافتراضات', 'success');
+      // Surface clamping/rejection so the user knows the saved value differs
+      // from what they typed (the server clamps out-of-range numbers rather
+      // than silently dropping them, which is misleading).
+      const clamped: Array<{ field: string; from: number; to: number }> = d.clamped || [];
+      const rejected: string[] = d.rejected || [];
+      if (clamped.length) {
+        addToast(`تم تعديل ${clamped.length} قيمة لتدخل في النطاق المسموح`, 'warning', 6000);
+      }
+      if (rejected.length) {
+        addToast(`تم تجاهل ${rejected.length} قيمة غير صالحة`, 'warning', 6000);
+      }
+      if (!clamped.length && !rejected.length) {
+        addToast('تم حفظ الافتراضات', 'success');
+      }
       setEditingAssumptions(false);
       reload();
     } catch {
@@ -382,31 +395,41 @@ function AssumptionsTable({ assumptions, defaults }: { assumptions: Assumptions;
   );
 }
 
-function AssumptionsForm({ initial, defaults, onSave, onCancel }: { initial: Assumptions; defaults: Assumptions; onSave: (next: Assumptions) => void; onCancel: () => void }) {
-  const [v, setV] = useState<Assumptions>(initial);
-  const set = (k: keyof Assumptions, val: number) => setV(prev => ({ ...prev, [k]: val }));
-  const Field = ({ k, label, step = 1, min = 0, max }: { k: keyof Assumptions; label: string; step?: number; min?: number; max?: number }) => (
+// Defined at module scope so it isn't remounted on every keystroke (which
+// caused the input to lose focus mid-type when nested inside the form body).
+function AssumptionsField({
+  k, label, value, defaultValue, step = 1, min = 0, max, onChange,
+}: {
+  k: keyof Assumptions; label: string; value: number; defaultValue: number;
+  step?: number; min?: number; max?: number; onChange: (k: keyof Assumptions, v: number) => void;
+}) {
+  return (
     <div>
-      <label className="block text-[10px] text-gray-500 font-bold mb-1">{label} <span className="text-gray-400">(افتراضي: {defaults[k]})</span></label>
+      <label className="block text-[10px] text-gray-500 font-bold mb-1">{label} <span className="text-gray-400">(افتراضي: {defaultValue})</span></label>
       <input
-        type="number" step={step} min={min} max={max} value={v[k]}
-        onChange={e => set(k, Number(e.target.value))}
+        type="number" step={step} min={min} max={max} value={value}
+        onChange={e => onChange(k, Number(e.target.value))}
         className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#F5C518]"
       />
     </div>
   );
+}
+
+function AssumptionsForm({ initial, defaults, onSave, onCancel }: { initial: Assumptions; defaults: Assumptions; onSave: (next: Assumptions) => void; onCancel: () => void }) {
+  const [v, setV] = useState<Assumptions>(initial);
+  const set = (k: keyof Assumptions, val: number) => setV(prev => ({ ...prev, [k]: val }));
   return (
     <div className="space-y-4 print:hidden">
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        <Field k="cogsRatio" label="نسبة COGS (0–1)" step={0.01} max={1} />
-        <Field k="fairMultiplier" label="مضاعف عادل" step={0.05} min={1} />
-        <Field k="strategicMultiplier" label="مضاعف استراتيجي" step={0.05} min={1} />
-        <Field k="ipBookValue" label="قيمة كل كتاب (ج.م)" step={1000} />
-        <Field k="ipProductValue" label="قيمة كل منتج (ج.م)" step={1000} />
-        <Field k="ipDigitalValue" label="قيمة المحتوى الرقمي (ج.م)" step={10000} />
-        <Field k="techValue" label="قيمة المنصة (ج.م)" step={10000} />
-        <Field k="customerDbValue" label="قيمة كل عميل (ج.م)" step={10} />
-        <Field k="activeWindowDays" label="نافذة النشاط (يوم)" step={1} min={1} />
+        <AssumptionsField k="cogsRatio" label="نسبة COGS (0–1)" step={0.01} max={1} value={v.cogsRatio} defaultValue={defaults.cogsRatio} onChange={set} />
+        <AssumptionsField k="fairMultiplier" label="مضاعف عادل" step={0.05} min={1} value={v.fairMultiplier} defaultValue={defaults.fairMultiplier} onChange={set} />
+        <AssumptionsField k="strategicMultiplier" label="مضاعف استراتيجي" step={0.05} min={1} value={v.strategicMultiplier} defaultValue={defaults.strategicMultiplier} onChange={set} />
+        <AssumptionsField k="ipBookValue" label="قيمة كل كتاب (ج.م)" step={1000} value={v.ipBookValue} defaultValue={defaults.ipBookValue} onChange={set} />
+        <AssumptionsField k="ipProductValue" label="قيمة كل منتج (ج.م)" step={1000} value={v.ipProductValue} defaultValue={defaults.ipProductValue} onChange={set} />
+        <AssumptionsField k="ipDigitalValue" label="قيمة المحتوى الرقمي (ج.م)" step={10000} value={v.ipDigitalValue} defaultValue={defaults.ipDigitalValue} onChange={set} />
+        <AssumptionsField k="techValue" label="قيمة المنصة (ج.م)" step={10000} value={v.techValue} defaultValue={defaults.techValue} onChange={set} />
+        <AssumptionsField k="customerDbValue" label="قيمة كل عميل (ج.م)" step={10} value={v.customerDbValue} defaultValue={defaults.customerDbValue} onChange={set} />
+        <AssumptionsField k="activeWindowDays" label="نافذة النشاط (يوم)" step={1} min={1} value={v.activeWindowDays} defaultValue={defaults.activeWindowDays} onChange={set} />
       </div>
       <div className="flex gap-2 justify-end">
         <button onClick={onCancel} className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold">إلغاء</button>
@@ -498,7 +521,7 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
           <KPI label="إجمالي القطع في المخزن" value={fmt(metrics.products.inventoryUnits)} hint="مجموع Product.stock عبر كل المنتجات." />
           <KPI label="قيمة المخزون (سعر بيع)" value={`${fmt(metrics.products.inventoryValueRetail)} ج.م`} hint="مجموع stock × price. سعر البيع، مش التكلفة." />
           <KPI label="تكلفة المخزون التقديرية" value={`${fmt(metrics.products.inventoryValueCost)} ج.م`} sub={`${pct(data.assumptions.cogsRatio)} من سعر البيع`} hint="افتراض داخلي — التكلفة الفعلية لكل منتج غير مخزَّنة في النظام." />
-          <KPI label="منتجات نفذت" value={String(metrics.products.outOfStockCount)} tone={metrics.products.outOfStockCount > 0 ? 'bad' : 'ok'} hint="Product.stock = 0. تقدر تجمَّعها من المخزون." />
+          <KPI label="منتجات نفذت" value={String(metrics.products.outOfStockCount)} tone={metrics.products.outOfStockCount > 0 ? 'bad' : 'ok'} hint="منتجات بـ Product.stock ≤ 0. تقدر تجمَّعها من تبويب المخزون." />
         </div>
       </Section>
 
@@ -772,8 +795,20 @@ function YearlyChart({ data }: { data: Array<{ key: string; revenue: number; cou
 
 function Tooltip({ text, dark }: { text: string; dark?: boolean }) {
   const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  // On mobile, tap-to-toggle is the only interaction. Without this listener
+  // a tooltip stays open until the user taps the same icon again, which
+  // looks broken when scrolling through a long report.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
   return (
-    <span className="relative print:hidden">
+    <span ref={ref} className="relative print:hidden">
       <button
         type="button"
         onClick={() => setOpen(v => !v)}

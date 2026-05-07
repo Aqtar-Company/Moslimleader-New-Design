@@ -41,28 +41,54 @@ export async function getValuationAssumptions(): Promise<ValuationAssumptions> {
   }
 }
 
-export async function saveValuationAssumptions(input: Partial<ValuationAssumptions>): Promise<ValuationAssumptions> {
+export interface SaveAssumptionsResult {
+  saved: ValuationAssumptions;
+  rejected: string[];      // fields the client sent that were dropped (wrong type / NaN)
+  clamped: Array<{ field: keyof ValuationAssumptions; from: number; to: number }>;
+}
+
+export async function saveValuationAssumptions(input: Partial<ValuationAssumptions>): Promise<SaveAssumptionsResult> {
   const current = await getValuationAssumptions();
-  const merged: ValuationAssumptions = { ...current, ...sanitize(input) };
+  const { sanitized, rejected, clamped } = sanitize(input);
+  const merged: ValuationAssumptions = { ...current, ...sanitized };
   await prisma.setting.upsert({
     where: { key: KEY },
     create: { key: KEY, value: JSON.stringify(merged) },
     update: { value: JSON.stringify(merged) },
   });
-  return merged;
+  return { saved: merged, rejected, clamped };
 }
 
-function sanitize(input: Partial<ValuationAssumptions>): Partial<ValuationAssumptions> {
-  const out: Partial<ValuationAssumptions> = {};
-  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : undefined);
-  if (num(input.cogsRatio) !== undefined && input.cogsRatio! <= 1) out.cogsRatio = input.cogsRatio;
-  if (num(input.ipBookValue) !== undefined) out.ipBookValue = input.ipBookValue;
-  if (num(input.ipProductValue) !== undefined) out.ipProductValue = input.ipProductValue;
-  if (num(input.ipDigitalValue) !== undefined) out.ipDigitalValue = input.ipDigitalValue;
-  if (num(input.techValue) !== undefined) out.techValue = input.techValue;
-  if (num(input.customerDbValue) !== undefined) out.customerDbValue = input.customerDbValue;
-  if (num(input.fairMultiplier) !== undefined && input.fairMultiplier! >= 1) out.fairMultiplier = input.fairMultiplier;
-  if (num(input.strategicMultiplier) !== undefined && input.strategicMultiplier! >= 1) out.strategicMultiplier = input.strategicMultiplier;
-  if (num(input.activeWindowDays) !== undefined && input.activeWindowDays! >= 1) out.activeWindowDays = Math.floor(input.activeWindowDays!);
-  return out;
+// Clamp out-of-range numerics to the legal interval and report what we
+// adjusted so the caller can surface a warning to the user. Bad types
+// (NaN, strings, etc) are dropped and surfaced in `rejected`.
+function sanitize(input: Partial<ValuationAssumptions>): {
+  sanitized: Partial<ValuationAssumptions>;
+  rejected: string[];
+  clamped: Array<{ field: keyof ValuationAssumptions; from: number; to: number }>;
+} {
+  const sanitized: Partial<ValuationAssumptions> = {};
+  const rejected: string[] = [];
+  const clamped: Array<{ field: keyof ValuationAssumptions; from: number; to: number }> = [];
+  const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+  const take = (key: keyof ValuationAssumptions, min: number, max: number, integer = false) => {
+    const v = input[key];
+    if (v === undefined) return;
+    if (!isNum(v)) { rejected.push(String(key)); return; }
+    let next = v;
+    if (next < min) { clamped.push({ field: key, from: next, to: min }); next = min; }
+    if (next > max) { clamped.push({ field: key, from: next, to: max }); next = max; }
+    if (integer) next = Math.floor(next);
+    sanitized[key] = next as never;
+  };
+  take('cogsRatio', 0, 1);
+  take('ipBookValue', 0, 100_000_000);
+  take('ipProductValue', 0, 100_000_000);
+  take('ipDigitalValue', 0, 100_000_000);
+  take('techValue', 0, 100_000_000);
+  take('customerDbValue', 0, 1_000_000);
+  take('fairMultiplier', 1, 10);
+  take('strategicMultiplier', 1, 20);
+  take('activeWindowDays', 1, 3650, true);
+  return { sanitized, rejected, clamped };
 }

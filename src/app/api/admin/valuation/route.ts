@@ -8,11 +8,18 @@ import {
   DEFAULT_VALUATION_ASSUMPTIONS,
   type ValuationAssumptions,
 } from '@/lib/valuation-assumptions';
+import { logActionSafe } from '@/lib/audit-log';
 
 // Password gate that protects both GET and PUT. The page asks for the
 // password once and replays it on every request via x-valuation-password.
+// Fail-closed: if VALUATION_PASSWORD isn't configured we refuse rather than
+// fall back to an in-repo default. The previous fallback was a real secret
+// in plaintext and effectively neutralised the password gate.
 function checkPassword(req: NextRequest): NextResponse | null {
-  const expected = process.env.VALUATION_PASSWORD || 'Ibrahim@1987';
+  const expected = process.env.VALUATION_PASSWORD;
+  if (!expected) {
+    return NextResponse.json({ error: 'VALUATION_PASSWORD غير مضبوطة في إعدادات الخادم' }, { status: 500 });
+  }
   const provided = req.headers.get('x-valuation-password') || new URL(req.url).searchParams.get('password') || '';
   if (provided !== expected) {
     return NextResponse.json({ error: 'كلمة السر غير صحيحة' }, { status: 401 });
@@ -165,13 +172,25 @@ export async function GET(req: NextRequest) {
   const activeRatio  = customerCount > 0 ? activeBuyers / customerCount : 0;
 
   // Month-over-month growth from the last 12 months (last vs prior month).
-  // Returns 0 if either month is missing or zero — the UI suppresses the
-  // growth pill in that case rather than showing infinity.
-  const monthly = ordersByMonth.map(r => ({
-    ym: r.ym,
+  // The SQL groups by month and only emits rows for months that had orders.
+  // The chart label says "آخر 12 شهر" so we backfill empty months with zeros
+  // here — otherwise a sales gap looks like the data ends. Months are listed
+  // from oldest to newest so the chart reads left → right.
+  const monthlyMap = new Map<string, { revenue: number; count: number }>();
+  ordersByMonth.forEach(r => monthlyMap.set(r.ym, {
     revenue: Math.round(Number(r.revenue) || 0),
     count: Number(r.count),
   }));
+  const monthly: Array<{ ym: string; revenue: number; count: number }> = [];
+  const cursor = new Date();
+  cursor.setDate(1);
+  cursor.setMonth(cursor.getMonth() - 11);
+  for (let i = 0; i < 12; i++) {
+    const ym = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
+    const hit = monthlyMap.get(ym);
+    monthly.push({ ym, revenue: hit?.revenue ?? 0, count: hit?.count ?? 0 });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
   const lastMonth = monthly[monthly.length - 1];
   const prevMonth = monthly[monthly.length - 2];
   const momRevenueGrowth = (lastMonth && prevMonth && prevMonth.revenue > 0)
@@ -283,7 +302,8 @@ export async function GET(req: NextRequest) {
 
 // PUT /api/admin/valuation — update tunable assumptions. Same auth gate
 // as GET. Body is a partial ValuationAssumptions object; unknown fields
-// are ignored and out-of-range values fall back to the existing value.
+// are dropped and out-of-range values are clamped to the legal interval
+// (the caller is told which fields were adjusted).
 export async function PUT(req: NextRequest) {
   const guard = await requirePerm('valuation.write');
   if ('response' in guard) return guard.response;
@@ -297,6 +317,19 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: 'Body غير صالح' }, { status: 400 });
   }
 
-  const saved = await saveValuationAssumptions(body || {});
-  return NextResponse.json({ ok: true, assumptions: saved });
+  // Snapshot the previous assumptions so the audit log can record a diff.
+  const before = await getValuationAssumptions();
+  const { saved, rejected, clamped } = await saveValuationAssumptions(body || {});
+
+  await logActionSafe({
+    actor: guard.user,
+    action: 'valuation.assumptions-update',
+    entity: 'Setting',
+    entityId: 'valuation-assumptions',
+    before,
+    after: saved,
+    metadata: { rejected, clamped },
+  });
+
+  return NextResponse.json({ ok: true, assumptions: saved, rejected, clamped });
 }

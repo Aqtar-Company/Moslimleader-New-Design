@@ -14,7 +14,7 @@ export const PERMISSIONS = [
   'books.read', 'books.write',
   'shipping.read', 'shipping.write',
   'payment-methods.read', 'payment-methods.write',
-  'valuation.read',
+  'valuation.read', 'valuation.write',
   'settings.read', 'settings.write',
 ] as const;
 
@@ -26,5 +26,5 @@ export const PERMISSION_GROUPS: Array<{ label: string; perms: Permission[] }> = 
   { label: 'العملاء والتسويق', perms: ['customers.read', 'customers.write', 'campaigns.read', 'campaigns.write', 'coupons.read', 'coupons.write', 'reviews.read', 'reviews.write'] },
   { label: 'المكتبة', perms: ['books.read', 'books.write'] },
   { label: 'الإعدادات', perms: ['shipping.read', 'shipping.write', 'payment-methods.read', 'payment-methods.write', 'settings.read', 'settings.write'] },
-  { label: 'مالي', perms: ['valuation.read'] },
+  { label: 'مالي', perms: ['valuation.read', 'valuation.write'] },
 ];

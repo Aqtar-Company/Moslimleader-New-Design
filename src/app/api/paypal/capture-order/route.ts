@@ -7,6 +7,7 @@ import { products as staticProducts } from '@/lib/products';
 import { sendOrderEmails } from '@/lib/order-email';
 import { egpToUsd, toUsd } from '@/lib/currency';
 import { attributeOrderToCampaign } from '@/lib/campaign-attribution';
+import { logActionSafe } from '@/lib/audit-log';
 
 export async function POST(req: NextRequest) {
   try {
@@ -156,6 +157,34 @@ export async function POST(req: NextRequest) {
         },
         include: { items: true },
       });
+
+      // Decrement stock inside the same transaction. If the customer paid but
+      // stock raced out (extremely rare given pre-validation in create-order),
+      // we DO NOT roll back — PayPal already captured the money. Log the
+      // shortage so admin can hand-resolve from /admin/inventory.
+      try {
+        const { adjustStock, decrementsFromItems } = await import('@/lib/stock');
+        await adjustStock(
+          decrementsFromItems(resolvedItems.map(it => ({
+            productId: it.productId,
+            quantity: it.quantity,
+            selectedModel: it.selectedModel ?? null,
+          }))),
+          { reason: 'order_created', orderId: created.id },
+          tx,
+        );
+      } catch (err) {
+        console.error('[paypal] Stock decrement failed POST-payment — manual reconciliation required', {
+          orderId: created.id, paypalOrderId, err: err instanceof Error ? err.message : err,
+        });
+        await logActionSafe({
+          actor: { userId: auth.userId, role: 'customer', email: auth.email ?? '' },
+          action: 'order.create-manual',
+          entity: 'Order',
+          entityId: created.id,
+          metadata: { paypalOrderId, stockShortage: true, error: err instanceof Error ? err.message : String(err) },
+        });
+      }
 
       const cart = await tx.cart.findUnique({ where: { userId: auth.userId } });
       if (cart) {

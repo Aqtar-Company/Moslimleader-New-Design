@@ -66,6 +66,19 @@ export async function POST(req: NextRequest) {
       totalUsd += unitUsd * qty;
     }
 
+    // Pre-validate stock BEFORE PayPal collects payment. Capture is the next
+    // hop and will decrement; if we let an over-sold cart reach PayPal, the
+    // customer gets charged for items we can't ship.
+    const { validateStockAvailability } = await import('@/lib/stock');
+    const stockErr = await validateStockAvailability(items.map((it: any) => ({
+      productId: String(it.productId),
+      quantity: Number(it.quantity),
+      selectedModel: typeof it.selectedModel === 'number' ? it.selectedModel : null,
+    })));
+    if (stockErr) {
+      return NextResponse.json({ error: stockErr.message }, { status: 409 });
+    }
+
     // Convert shipping from local currency to USD
     const rawShipping = Math.max(0, Number(body?.shippingUsd) || 0);
     const shippingUsd = Math.min(500, toUsd(rawShipping, shippingCurrency));

@@ -26,7 +26,7 @@ interface ValuationData {
     sales: {
       totalOrders: number; validOrders: number; cancelledOrders: number; cancelledRevenue: number;
       totalRevenue: number; totalShipping: number; totalDiscount: number; revenueExShipping: number;
-      avgOrderValue: number; avgOrderValueExShipping: number; unitsSold: number;
+      avgOrderValue: number; avgOrderValueExShipping: number; unitsSold: number; unitsSoldLive: number;
       byYear: Array<{ year: number; revenue: number; count: number }>;
       byMonth: Array<{ ym: string; revenue: number; count: number }>;
       momRevenueGrowth: number | null;
@@ -39,7 +39,7 @@ interface ValuationData {
     customerDb: { value: number; perCustomer: number };
   };
   valuation: { base: number; fair: number; strategic: number; fairMultiplier: number; strategicMultiplier: number };
-  products: Array<{ id: string; name: string; nameEn: string | null; slug: string; price: number; priceUsd: number; category: string; stock: number; sold: number; stockValue: number }>;
+  products: Array<{ id: string; name: string; nameEn: string | null; slug: string; price: number; priceUsd: number; category: string; stock: number; sold: number; soldLive: number; stockValue: number }>;
   books: Array<{ id: string; title: string; titleEn: string | null; price: number; priceUSD: number | null; isPublished: boolean; language: string | null }>;
 }
 
@@ -453,7 +453,8 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
           <KPI label="إجمالي الإيرادات" value={`${fmt(metrics.sales.totalRevenue)} ج.م`} hint="مجموع Order.total لكل الطلبات غير الملغية وغير الهدايا. شامل الشحن وقبل خصم تكلفة المنتج." />
           <KPI label="إيراد بدون الشحن" value={`${fmt(metrics.sales.revenueExShipping)} ج.م`} hint="الإيراد بعد طرح إجمالي تكلفة الشحن — أصدق مؤشر لقيمة المنتج للعميل." />
           <KPI label="عدد الطلبات الصحيحة" value={fmt(metrics.sales.validOrders)} sub={`+ ${metrics.sales.cancelledOrders} ملغي`} hint="طلبات بحالة غير 'cancelled' و طريقة دفع غير 'gift'. الملغي معروض جنبه للعلم." />
-          <KPI label="إجمالي القطع المباعة" value={fmt(metrics.sales.unitsSold)} hint="مجموع OrderItem.quantity من الطلبات الصحيحة. ده عدد القطع، مش عدد المنتجات المختلفة." />
+          <KPI label="إجمالي القطع المباعة (شامل الاستيراد)" value={fmt(metrics.sales.unitsSold)} hint="مجموع OrderItem.quantity من الطلبات الصحيحة، شامل الطلبات اللي اتستوردت من واتساب وبوسطة (طلبات تاريخية اتشحنت قبل وجود النظام)." />
+          <KPI label="منها بالنظام (Live)" value={fmt(metrics.sales.unitsSoldLive)} hint="القطع اللي اتباعت من خلال النظام مباشرة (Checkout / PayPal / إدخال أدمن). الفرق بين الرقمين = قطع تاريخية لم تخصم من المخزون الحالي." />
           <KPI label="متوسط الطلب (شامل الشحن)" value={`${fmt(metrics.sales.avgOrderValue)} ج.م`} hint="إجمالي الإيرادات ÷ عدد الطلبات الصحيحة. شامل الشحن — مش متوسط قيمة المنتج لوحده." />
           <KPI label="متوسط الطلب (بدون شحن)" value={`${fmt(metrics.sales.avgOrderValueExShipping)} ج.م`} hint="إيراد بدون الشحن ÷ عدد الطلبات. أنسب لتقدير AOV الحقيقي." />
           <KPI label="إجمالي الشحن" value={`${fmt(metrics.sales.totalShipping)} ج.م`} hint="مجموع shippingCost. تُعتبَر تكلفة عملية وليست إيرادًا." />
@@ -552,7 +553,8 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
                   <th className="px-3 py-3 text-right">الفئة</th>
                   <th className="px-3 py-3 text-right">السعر</th>
                   <th className="px-3 py-3 text-right">$</th>
-                  <th className="px-3 py-3 text-right">قطع مباعة</th>
+                  <th className="px-3 py-3 text-right" title="إجمالي ما اتباع — شامل الاستيراد التاريخي">قطع مباعة (إجمالي)</th>
+                  <th className="px-3 py-3 text-right" title="من خلال النظام فقط — اللي خصمت من المخزون الحالي">منها بالنظام</th>
                   <th className="px-3 py-3 text-right">المخزون</th>
                   <th className="px-3 py-3 text-right">قيمة المخزون</th>
                 </tr>
@@ -568,6 +570,7 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
                     <td className="px-3 py-2.5 font-bold">{fmt(p.price)}</td>
                     <td className="px-3 py-2.5 text-gray-500">${p.priceUsd}</td>
                     <td className="px-3 py-2.5 font-bold text-blue-700">{p.sold}</td>
+                    <td className={`px-3 py-2.5 font-bold ${p.sold !== p.soldLive ? 'text-amber-700' : 'text-blue-700'}`}>{p.soldLive}</td>
                     <td className="px-3 py-2.5 font-bold">{p.stock}</td>
                     <td className="px-3 py-2.5 font-black text-[#6B21A8]">{fmt(p.stockValue)}</td>
                   </tr>

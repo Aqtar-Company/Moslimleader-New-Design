@@ -43,6 +43,17 @@ export async function GET(req: NextRequest) {
   const NON_GIFT = { status: { not: 'cancelled' }, paymentMethod: { not: 'gift' } } as const;
   const GIFT     = { status: { not: 'cancelled' }, paymentMethod: 'gift' } as const;
   const CANCELLED = { status: 'cancelled' } as const;
+  // 'Live' = orders that flowed through the live system (customer checkout,
+  // PayPal, admin manual). Excludes historical imports whose stock was
+  // already decremented before the system existed (or never tracked at all).
+  // Without this filter, soldLifetime drifts above real-world inventory loss.
+  const IMPORT_SOURCES = ['whatsapp_cleaned_ready'];
+  const IMPORT_PAYMENT_METHODS = ['bosta-historical'];
+  const NON_GIFT_LIVE = {
+    status: { not: 'cancelled' },
+    paymentMethod: { notIn: ['gift', ...IMPORT_PAYMENT_METHODS] },
+    OR: [{ source: null }, { source: { notIn: IMPORT_SOURCES } }],
+  };
 
   const activeSince = new Date();
   activeSince.setDate(activeSince.getDate() - assumptions.activeWindowDays);
@@ -51,7 +62,7 @@ export async function GET(req: NextRequest) {
     products, books,
     orderAgg, orderCount, validOrderCount,
     customerCount, shipmentCount,
-    sold, ordersByYear, ordersByMonth,
+    sold, soldLive, ordersByYear, ordersByMonth,
     giftOrders, giftItemsAgg,
     cancelledAgg,
     activeBuyersRaw, repeatBuyersRaw, totalBuyersRaw,
@@ -80,6 +91,11 @@ export async function GET(req: NextRequest) {
     prisma.orderItem.groupBy({
       by: ['productId'],
       where: { order: NON_GIFT },
+      _sum: { quantity: true },
+    }),
+    prisma.orderItem.groupBy({
+      by: ['productId'],
+      where: { order: NON_GIFT_LIVE },
       _sum: { quantity: true },
     }),
     prisma.$queryRaw<Array<{ year: number; revenue: number; count: bigint }>>`
@@ -155,6 +171,7 @@ export async function GET(req: NextRequest) {
   const giftShipping = giftOrders._sum.shippingCost ?? 0;
 
   const soldMap = new Map(sold.map(s => [s.productId, Number(s._sum.quantity ?? 0)]));
+  const soldLiveMap = new Map(soldLive.map(s => [s.productId, Number(s._sum?.quantity ?? 0)]));
 
   // Aggregate metrics
   const inventoryUnits = products.reduce((s, p) => s + p.stock, 0);
@@ -242,6 +259,7 @@ export async function GET(req: NextRequest) {
         avgOrderValue: validOrderCount ? Math.round(totalRevenue / validOrderCount) : 0,
         avgOrderValueExShipping: validOrderCount ? Math.round(revenueExShipping / validOrderCount) : 0,
         unitsSold: Array.from(soldMap.values()).reduce((s, n) => s + n, 0),
+        unitsSoldLive: Array.from(soldLiveMap.values()).reduce((s, n) => s + n, 0),
         byYear: ordersByYear.map(r => ({
           year: r.year,
           revenue: Math.round(Number(r.revenue) || 0),
@@ -294,6 +312,7 @@ export async function GET(req: NextRequest) {
     products: products.map(p => ({
       ...p,
       sold: soldMap.get(p.id) ?? 0,
+      soldLive: soldLiveMap.get(p.id) ?? 0,
       stockValue: Math.round(p.stock * p.price),
     })),
     books,

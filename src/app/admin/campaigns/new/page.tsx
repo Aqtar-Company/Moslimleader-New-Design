@@ -62,7 +62,11 @@ export default function NewCampaignPage() {
     try {
       const res = await adminFetch(`/api/admin/customers?segment=${segmentKey}`);
       const data = await res.json();
-      setAudienceCount((data.customers ?? []).filter((c: { email: string }) => c.email).length);
+      // Mirror the send-eligibility filter from /send-daily-batch — only
+      // opted-in customers with an email actually receive the campaign.
+      setAudienceCount(
+        (data.customers ?? []).filter((c: { email: string; marketingOptIn?: boolean }) => c.email && c.marketingOptIn === true).length,
+      );
     } catch (err) {
       if (err instanceof ForbiddenError) setForbidden(true);
     }

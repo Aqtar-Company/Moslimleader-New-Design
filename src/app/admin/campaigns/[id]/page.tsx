@@ -71,6 +71,7 @@ export default function CampaignDetailPage() {
   const { addToast } = useToast();
   const confirm = useConfirm();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [counts, setCounts] = useState<{ queued: number; sent: number; failed: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [sendingBatch, setSendingBatch] = useState(false);
 
@@ -79,6 +80,7 @@ export default function CampaignDetailPage() {
       const res = await adminFetch(`/api/admin/campaigns/${id}`);
       const data = await res.json();
       setCampaign(data.campaign);
+      setCounts(data.counts ?? null);
     } catch (err) {
       addToast(err instanceof Error ? err.message : 'فشل التحميل', 'error');
     }
@@ -141,7 +143,9 @@ export default function CampaignDetailPage() {
   if (!campaign) return null;
 
   const sendProgress = pct(campaign.sentCount, campaign.recipientCount);
-  const queuedRemaining = campaign.recipients.filter(r => r.status === 'queued').length;
+  // Server-computed — the recipients array is truncated to 200 so we can't
+  // infer queuedRemaining from it for large campaigns.
+  const queuedRemaining = counts?.queued ?? campaign.recipients.filter(r => r.status === 'queued').length;
   const canDailyBatch = campaign.status !== 'sent' && campaign.dailyLimit > 0;
 
   return (

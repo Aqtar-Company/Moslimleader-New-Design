@@ -18,13 +18,27 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           openedAt: true, clickedAt: true, errorMessage: true,
           user: { select: { id: true, name: true } },
         },
-        orderBy: { sentAt: 'desc' },
+        // Order by status so queued rows appear first in the truncated slice;
+        // sent ones still listed via secondary createdAt sort. Without this
+        // big campaigns (>200 recipients) hide every queued row behind sent
+        // ones and the detail page falsely renders "خلص الجمهور".
+        orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
         take: 200,
       },
     },
   });
   if (!campaign) return NextResponse.json({ error: 'الحملة غير موجودة' }, { status: 404 });
-  return NextResponse.json({ campaign });
+  // Server-computed counters so the UI doesn't infer them from the truncated
+  // recipients array (which would lie for any campaign > 200 recipients).
+  const [queuedCount, sentCount, failedCount] = await Promise.all([
+    prisma.campaignRecipient.count({ where: { campaignId: id, status: 'queued' } }),
+    prisma.campaignRecipient.count({ where: { campaignId: id, status: 'sent' } }),
+    prisma.campaignRecipient.count({ where: { campaignId: id, status: 'failed' } }),
+  ]);
+  return NextResponse.json({
+    campaign,
+    counts: { queued: queuedCount, sent: sentCount, failed: failedCount },
+  });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

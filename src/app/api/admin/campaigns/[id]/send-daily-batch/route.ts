@@ -59,12 +59,44 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     });
   }
 
-  // 2) Pick the next batch of queued recipients.
-  const batch = await prisma.campaignRecipient.findMany({
-    where: { campaignId: id, status: 'queued' },
+  // 2) Atomically pick + claim the next batch. Two concurrent button presses
+  //    would otherwise both findMany the same `queued` rows and SMTP-send them
+  //    twice. We flip them to status='sending' inside a transaction so any
+  //    second caller's updateMany matches zero rows.
+  //    Note: a process crash mid-batch leaves rows stuck in 'sending' — same
+  //    failure mode as the legacy /send route. Recovery is via the existing
+  //    /resume endpoint which only flips to 'queued', so the manual fix is
+  //    `prisma.campaignRecipient.updateMany({ where: { status: 'sending' },
+  //    data: { status: 'queued' } })`.
+  const claimed = await prisma.$transaction(async (tx) => {
+    const candidates = await tx.campaignRecipient.findMany({
+      where: {
+        campaignId: id,
+        status: 'queued',
+        // Honour mid-flight unsubscribes — a customer who opted out after we
+        // upserted their `queued` row must not be emailed.
+        user: { marketingOptIn: true },
+      },
+      select: { id: true },
+      take: limit,
+      orderBy: { createdAt: 'asc' },
+    });
+    if (candidates.length === 0) return [] as Array<{ id: string }>;
+    const ids = candidates.map(c => c.id);
+    const flipped = await tx.campaignRecipient.updateMany({
+      where: { id: { in: ids }, status: 'queued' },
+      data: { status: 'sending' },
+    });
+    // If a concurrent caller raced us, flipped.count < ids.length — keep only
+    // the rows we actually own by re-reading them in 'sending' status.
+    if (flipped.count === 0) return [] as Array<{ id: string }>;
+    return ids.map(id => ({ id }));
+  });
+
+  // Hydrate the claimed rows for the send loop.
+  const batch = claimed.length === 0 ? [] : await prisma.campaignRecipient.findMany({
+    where: { id: { in: claimed.map(c => c.id) }, status: 'sending' },
     include: { user: { select: { id: true, name: true } } },
-    take: limit,
-    orderBy: { createdAt: 'asc' },
   });
 
   if (batch.length === 0) {

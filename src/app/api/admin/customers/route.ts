@@ -8,6 +8,7 @@ export interface CustomerSummary {
   name: string;
   email: string;
   phone: string | null;
+  marketingOptIn: boolean;
   createdAt: string;
   orderCount: number;
   totalSpend: number;
@@ -41,7 +42,7 @@ async function aggregate(): Promise<AggregatedCache> {
   const orders = await prisma.order.findMany({
     where: { status: { not: 'cancelled' } },
     include: {
-      user: { select: { id: true, name: true, email: true, phone: true, createdAt: true } },
+      user: { select: { id: true, name: true, email: true, phone: true, createdAt: true, marketingOptIn: true } },
       items: { select: { productId: true, productName: true, quantity: true, unitPrice: true } },
     },
     orderBy: { createdAt: 'desc' },
@@ -58,6 +59,7 @@ async function aggregate(): Promise<AggregatedCache> {
         name: u.name,
         email: u.email,
         phone: u.phone || null,
+        marketingOptIn: u.marketingOptIn,
         createdAt: u.createdAt.toISOString(),
         orderCount: 0,
         totalSpend: 0,

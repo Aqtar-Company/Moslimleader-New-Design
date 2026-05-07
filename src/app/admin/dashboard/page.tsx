@@ -27,6 +27,7 @@ interface Stats {
 
 const STATUS_COLORS: Record<string, string> = {
   'قيد التجهيز': 'bg-amber-100 text-amber-700',
+  'تم الدفع':    'bg-emerald-100 text-emerald-700',
   'تم الشحن':    'bg-blue-100 text-blue-700',
   'تم التسليم':  'bg-green-100 text-green-700',
   'ملغي':        'bg-red-100 text-red-600',
@@ -34,14 +35,6 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const STATUSES = ['قيد التجهيز', 'تم الدفع', 'تم الشحن', 'تم التسليم', 'ملغي'];
-
-const STATUS_COLORS_DASH: Record<string, string> = {
-  'قيد التجهيز': 'bg-amber-100 text-amber-700',
-  'تم الدفع':    'bg-emerald-100 text-emerald-700',
-  'تم الشحن':    'bg-blue-100 text-blue-700',
-  'تم التسليم':  'bg-green-100 text-green-700',
-  'ملغي':        'bg-red-100 text-red-600',
-};
 
 function normalizeStatus(s: string): string {
   if (s === 'pending' || s === 'processing') return 'قيد التجهيز';

@@ -21,7 +21,7 @@ interface ValuationData {
   assumptions: Assumptions;
   defaults: Assumptions;
   metrics: {
-    products: { total: number; inStockCount: number; outOfStockCount: number; inventoryUnits: number; inventoryValueRetail: number; inventoryValueCost: number };
+    products: { total: number; inStockCount: number; outOfStockCount: number; inventoryUnits: number; inventoryValueRetail: number; inventoryValueCost: number; inventoryValueCostFromBatches: number; inventoryValueCostHeuristic: number; productsWithBatches: number; productsWithoutBatches: number };
     books: { total: number; published: number; languages: string[] };
     sales: {
       totalOrders: number; validOrders: number; cancelledOrders: number; cancelledRevenue: number;
@@ -33,6 +33,8 @@ interface ValuationData {
     };
     customers: { total: number; wholesale: number; buyers: number; active: number; activeWindowDays: number; activeRatio: number; repeatBuyers: number; repeatRate: number; avgRevenuePerBuyer: number };
     shipments: number;
+    production?: { batchesCount: number; unitsProduced: number; totalSpend: number };
+    suppliers?: { total: number; active: number; transactionCount: number; netLiabilities: number };
     gifts?: { count: number; units: number; retailValue: number; shippingCost: number; totalCost: number };
     ip: { booksValue: number; productsValue: number; digitalValue: number; total: number; perBook: number; perProduct: number; booksCount: number; productsCount: number };
     tech: { value: number };
@@ -210,7 +212,7 @@ export default function ValuationPage() {
       </div>
 
       {/* Gaps section — front and centre because the valuation is incomplete without these */}
-      <GapsSection metrics={metrics} />
+      <GapsSection metrics={metrics} assumptions={assumptions} />
 
       {/* Methodology — what's in the formula and what assumptions feed it */}
       <MethodologySection
@@ -272,14 +274,23 @@ export default function ValuationPage() {
 // Top-level sections
 // ==========================================================================
 
-function GapsSection({ metrics }: { metrics: ValuationData['metrics'] }) {
+function GapsSection({ metrics, assumptions }: { metrics: ValuationData['metrics']; assumptions: Assumptions }) {
   // Build a punch list of measurable gaps. Each entry surfaces what we
   // *don't* know and therefore can't price. This is intentionally
   // prominent — a buyer would ask all of these on day one of due diligence.
   const gaps: Array<{ severity: 'high' | 'medium' | 'low'; label: string; detail: string }> = [];
 
   gaps.push({ severity: 'high', label: 'صافي الربح غير محسوب', detail: 'النظام لا يخزن تكلفة المنتج الفعلية (COGS) ولا تكلفة التسويق ولا المرتبات. كل الأرقام إيرادات، مش أرباح.' });
-  gaps.push({ severity: 'high', label: 'تكلفة المخزون تقديرية', detail: `قيمة تكلفة المخزون محسوبة بنسبة 35% من سعر البيع كافتراض. التكلفة الفعلية لكل منتج غير مسجَّلة في قاعدة البيانات.` });
+  if (metrics.products.productsWithoutBatches > 0) {
+    const sev = metrics.products.productsWithBatches === 0 ? 'high' : 'medium';
+    gaps.push({
+      severity: sev,
+      label: metrics.products.productsWithBatches === 0 ? 'تكلفة المخزون تقديرية' : 'بعض المنتجات بدون باتشات',
+      detail: metrics.products.productsWithBatches === 0
+        ? `لم تُسجَّل أي باتشات إنتاج بعد. تكلفة المخزون محسوبة بنسبة ${pct(assumptions.cogsRatio)} من سعر البيع كافتراض. سجل باتشات الإنتاج من قسم 🏭 الإنتاج لجعل الرقم فعلياً.`
+        : `${metrics.products.productsWithoutBatches} منتج بدون باتشات إنتاج بعد، تكلفتها لسه تقديرية (${pct(assumptions.cogsRatio)} من سعر البيع). ${metrics.products.productsWithBatches} منتج بقت محسوبة بمتوسط مرجح من الباتشات.`,
+    });
+  }
   gaps.push({ severity: 'high', label: 'قيمة الملكية الفكرية بالعدد', detail: `كل كتاب = ${fmt(metrics.ip.perBook)} ج.م و كل منتج = ${fmt(metrics.ip.perProduct)} ج.م بصرف النظر عن المبيعات الفعلية. كتاب بـ 0 مبيعات يُحتسب بنفس قيمة الـ bestseller.` });
   if (metrics.customers.buyers === 0) {
     gaps.push({ severity: 'high', label: 'لا توجد مبيعات بعد', detail: 'مفيش عميل واحد اشترى لسه — تقدير "قيمة قاعدة العملاء" مبني على الحسابات المسجَّلة فقط، مش المشترين الفعليين.' });
@@ -444,7 +455,7 @@ function AssumptionsForm({ initial, defaults, onSave, onCancel }: { initial: Ass
 // ==========================================================================
 
 function DetailedView({ data, products, books }: { data: ValuationData; products: ValuationData['products']; books: ValuationData['books'] }) {
-  const { metrics } = data;
+  const { metrics, assumptions } = data;
   return (
     <>
       {/* Sales */}
@@ -518,14 +529,42 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
       </Section>
 
       {/* Inventory */}
-      <Section icon="📦" title="المخزون" subtitle="من جدول Product — كل الأرقام بسعر البيع، التكلفة تقديرية">
+      <Section icon="📦" title="المخزون" subtitle="القيم بسعر البيع، التكلفة من باتشات الإنتاج (مع fallback تقديري)">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <KPI label="إجمالي القطع في المخزن" value={fmt(metrics.products.inventoryUnits)} hint="مجموع Product.stock عبر كل المنتجات." />
           <KPI label="قيمة المخزون (سعر بيع)" value={`${fmt(metrics.products.inventoryValueRetail)} ج.م`} hint="مجموع stock × price. سعر البيع، مش التكلفة." />
-          <KPI label="تكلفة المخزون التقديرية" value={`${fmt(metrics.products.inventoryValueCost)} ج.م`} sub={`${pct(data.assumptions.cogsRatio)} من سعر البيع`} hint="افتراض داخلي — التكلفة الفعلية لكل منتج غير مخزَّنة في النظام." />
+          <KPI label="التكلفة الفعلية (من الباتشات)" value={`${fmt(metrics.products.inventoryValueCostFromBatches)} ج.م`} sub={`${metrics.products.productsWithBatches} منتج له باتشات + ${metrics.products.productsWithoutBatches} بدون`} hint="متوسط مرجح من ProductionBatch لكل منتج. المنتجات اللي مفيش لها باتشات بتاخد التكلفة التقديرية بدلاً منها." />
+          <KPI label="التكلفة التقديرية (للمقارنة)" value={`${fmt(metrics.products.inventoryValueCostHeuristic)} ج.م`} sub={`${pct(assumptions.cogsRatio)} من سعر البيع`} hint="رقم مرجعي للمقارنة فقط — هذا ما كان يستخدمه التقييم قبل وجود الباتشات." />
           <KPI label="منتجات نفذت" value={String(metrics.products.outOfStockCount)} tone={metrics.products.outOfStockCount > 0 ? 'bad' : 'ok'} hint="منتجات بـ Product.stock ≤ 0. تقدر تجمَّعها من تبويب المخزون." />
         </div>
       </Section>
+
+      {/* Production batches */}
+      {metrics.production && (
+        <Section icon="🏭" title="الإنتاج" subtitle="باتشات تنفيذ المنتجات — التكلفة الفعلية وقت الإنتاج">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <KPI label="عدد الباتشات" value={fmt(metrics.production.batchesCount)} hint="إجمالي صفوف ProductionBatch." />
+            <KPI label="إجمالي القطع المنتَجة" value={fmt(metrics.production.unitsProduced)} hint="مجموع quantity من كل الباتشات. يدخل في حساب متوسط التكلفة." />
+            <KPI label="إجمالي تكلفة الإنتاج" value={`${fmt(metrics.production.totalSpend)} ج.م`} hint="مجموع totalCost من كل الباتشات. لا يحسم منه ما اتسدد للموردين." />
+          </div>
+        </Section>
+      )}
+
+      {/* Suppliers */}
+      {metrics.suppliers && (
+        <Section icon="🤝" title="الموردون" subtitle="الذمم الجارية — يُحسم ما نحن مدينون به من القيمة الأساسية">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <KPI label="موردون نشطون" value={`${fmt(metrics.suppliers.active)} / ${fmt(metrics.suppliers.total)}`} hint="Supplier.isActive = true." />
+            <KPI label="عدد المعاملات" value={fmt(metrics.suppliers.transactionCount)} hint="فواتير + دفعات + مرتجعات. Supplier transactions table." />
+            <KPI
+              label={metrics.suppliers.netLiabilities >= 0 ? 'نحن مدينون' : 'هم مدينون لنا'}
+              value={`${fmt(Math.abs(metrics.suppliers.netLiabilities))} ج.م`}
+              tone={metrics.suppliers.netLiabilities > 0 ? 'bad' : 'ok'}
+              hint="الرصيد الصافي عبر كل الموردين. الذمم الموجبة (نحن مدينون) تُحسم من القيمة الأساسية للشركة."
+            />
+          </div>
+        </Section>
+      )}
 
       {/* IP */}
       <Section icon="📚" title="الملكية الفكرية" subtitle="قيمة تقديرية مبنية على العدد، مش على المبيعات الفعلية">

@@ -159,6 +159,46 @@ export async function GET(req: NextRequest) {
     `,
   ]);
 
+  // Production batches → weighted-average unit cost per product. Used to
+  // compute the "real" inventory cost instead of the old `retail × cogsRatio`
+  // heuristic. Products with no batches fall back to the heuristic so the
+  // headline number is never empty.
+  const batchAgg = await prisma.productionBatch.groupBy({
+    by: ['productId'],
+    _sum: { quantity: true, totalCost: true },
+  });
+  const avgCostByProduct = new Map<string, number>();
+  for (const b of batchAgg) {
+    const q = Number(b._sum.quantity ?? 0);
+    const c = Number(b._sum.totalCost ?? 0);
+    if (q > 0) avgCostByProduct.set(b.productId, c / q);
+  }
+
+  // Supplier liabilities (positive = we owe). Computed from transactions:
+  // SUM(invoice) - SUM(payment+credit-note). A liability reduces baseValue
+  // because anyone buying the company today inherits the debt.
+  const supplierAgg = await prisma.supplierTransaction.groupBy({
+    by: ['kind'],
+    _sum: { amount: true },
+  });
+  let supplierLiabilities = 0;
+  for (const r of supplierAgg) {
+    const amt = Number(r._sum.amount ?? 0);
+    if (r.kind === 'invoice') supplierLiabilities += amt;
+    else supplierLiabilities -= amt;
+  }
+  // Round once at the boundary to keep the response clean.
+  supplierLiabilities = Math.round(supplierLiabilities * 100) / 100;
+
+  // Production stats for the dedicated section on the valuation page.
+  const [supplierCount, activeSupplierCount, totalBatchCount, batchSpendAgg, supplierTxnCount] = await Promise.all([
+    prisma.supplier.count(),
+    prisma.supplier.count({ where: { isActive: true } }),
+    prisma.productionBatch.count(),
+    prisma.productionBatch.aggregate({ _sum: { quantity: true, totalCost: true } }),
+    prisma.supplierTransaction.count(),
+  ]);
+
   // Cost of gifted items at retail (admin discretion — these are units we
   // gave away, not sold). We use retail price as the headline opportunity-cost
   // figure; the COGS share is reflected in inventoryCost below.
@@ -177,7 +217,23 @@ export async function GET(req: NextRequest) {
   // Aggregate metrics
   const inventoryUnits = products.reduce((s, p) => s + p.stock, 0);
   const inventoryValue = products.reduce((s, p) => s + p.stock * p.price, 0);
-  const inventoryCost  = inventoryValue * assumptions.cogsRatio;
+  // Inventory cost — weighted-average COGS from batches per product, with
+  // a fallback to `retail × cogsRatio` for products that have never had a
+  // batch recorded. The two numbers are emitted side-by-side so the user
+  // can compare the heuristic against the real one.
+  const inventoryCostHeuristic = inventoryValue * assumptions.cogsRatio;
+  let inventoryCostFromBatches = 0;
+  let productsWithBatches = 0;
+  for (const p of products) {
+    const avg = avgCostByProduct.get(p.id);
+    if (avg !== undefined && avg > 0) {
+      inventoryCostFromBatches += p.stock * avg;
+      productsWithBatches++;
+    } else {
+      inventoryCostFromBatches += p.stock * p.price * assumptions.cogsRatio;
+    }
+  }
+  const inventoryCost = inventoryCostFromBatches;
   const totalRevenue   = orderAgg._sum.total ?? 0;
   const totalShipping  = orderAgg._sum.shippingCost ?? 0;
   const totalDiscount  = orderAgg._sum.discount ?? 0;
@@ -226,7 +282,9 @@ export async function GET(req: NextRequest) {
   const customerDbValue   = Math.round(customerCount * assumptions.customerDbValue);
 
   // Final valuation buckets
-  const baseValue        = inventoryCost + ipTotal + techValue + customerDbValue;
+  // Supplier liabilities are deducted because any buyer of the company
+  // inherits the debt; surfacing it here keeps the headline honest.
+  const baseValue        = inventoryCost + ipTotal + techValue + customerDbValue - Math.max(0, supplierLiabilities);
   const fairValue        = baseValue * assumptions.fairMultiplier;
   const strategicValue   = baseValue * assumptions.strategicMultiplier;
 
@@ -242,6 +300,10 @@ export async function GET(req: NextRequest) {
         inventoryUnits,
         inventoryValueRetail: Math.round(inventoryValue),
         inventoryValueCost: Math.round(inventoryCost),
+        inventoryValueCostFromBatches: Math.round(inventoryCostFromBatches),
+        inventoryValueCostHeuristic: Math.round(inventoryCostHeuristic),
+        productsWithBatches,
+        productsWithoutBatches: products.length - productsWithBatches,
       },
       books: {
         total: books.length,
@@ -281,6 +343,19 @@ export async function GET(req: NextRequest) {
         avgRevenuePerBuyer: totalBuyers > 0 ? Math.round(totalRevenue / totalBuyers) : 0,
       },
       shipments: shipmentCount,
+      production: {
+        batchesCount: totalBatchCount,
+        unitsProduced: Number(batchSpendAgg._sum.quantity ?? 0),
+        totalSpend: Math.round(Number(batchSpendAgg._sum.totalCost ?? 0)),
+      },
+      suppliers: {
+        total: supplierCount,
+        active: activeSupplierCount,
+        transactionCount: supplierTxnCount,
+        // Positive = we owe them (a company-buyer would inherit it).
+        // Negative = they owe us (small upside, ignored from baseValue).
+        netLiabilities: supplierLiabilities,
+      },
       gifts: {
         count: giftCount,
         units: giftUnits,

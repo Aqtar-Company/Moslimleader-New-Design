@@ -2,32 +2,59 @@
 
 import { useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
+import { useAuth } from '@/context/AuthContext';
+
+interface Assumptions {
+  cogsRatio: number;
+  ipBookValue: number;
+  ipProductValue: number;
+  ipDigitalValue: number;
+  techValue: number;
+  customerDbValue: number;
+  fairMultiplier: number;
+  strategicMultiplier: number;
+  activeWindowDays: number;
+}
 
 interface ValuationData {
   generatedAt: string;
+  assumptions: Assumptions;
+  defaults: Assumptions;
   metrics: {
     products: { total: number; inStockCount: number; outOfStockCount: number; inventoryUnits: number; inventoryValueRetail: number; inventoryValueCost: number };
     books: { total: number; published: number; languages: string[] };
-    sales: { totalOrders: number; validOrders: number; cancelledOrders: number; totalRevenue: number; avgOrderValue: number; unitsSold: number; byYear: Array<{ year: number; revenue: number; count: number }> };
-    customers: number;
+    sales: {
+      totalOrders: number; validOrders: number; cancelledOrders: number; cancelledRevenue: number;
+      totalRevenue: number; totalShipping: number; totalDiscount: number; revenueExShipping: number;
+      avgOrderValue: number; avgOrderValueExShipping: number; unitsSold: number;
+      byYear: Array<{ year: number; revenue: number; count: number }>;
+      byMonth: Array<{ ym: string; revenue: number; count: number }>;
+      momRevenueGrowth: number | null;
+    };
+    customers: { total: number; buyers: number; active: number; activeWindowDays: number; activeRatio: number; repeatBuyers: number; repeatRate: number; avgRevenuePerBuyer: number };
     shipments: number;
     gifts?: { count: number; units: number; retailValue: number; shippingCost: number; totalCost: number };
-    ip: { booksValue: number; productsValue: number; digitalValue: number; total: number };
+    ip: { booksValue: number; productsValue: number; digitalValue: number; total: number; perBook: number; perProduct: number; booksCount: number; productsCount: number };
     tech: { value: number };
-    customerDb: { value: number };
+    customerDb: { value: number; perCustomer: number };
   };
-  valuation: { base: number; fair: number; strategic: number };
+  valuation: { base: number; fair: number; strategic: number; fairMultiplier: number; strategicMultiplier: number };
   products: Array<{ id: string; name: string; nameEn: string | null; slug: string; price: number; priceUsd: number; category: string; stock: number; sold: number; stockValue: number }>;
   books: Array<{ id: string; title: string; titleEn: string | null; price: number; priceUSD: number | null; isPublished: boolean; language: string | null }>;
 }
 
 const fmt = (n: number) => n.toLocaleString('ar-EG');
+const pct = (n: number) => `${(n * 100).toLocaleString('ar-EG', { maximumFractionDigits: 1 })}%`;
 
 export default function ValuationPage() {
   const { addToast } = useToast();
+  const { user } = useAuth();
+  const canEdit = user?.role === 'admin' || (user?.permissions ?? []).includes('valuation.write');
   const [password, setPassword] = useState('');
   const [data, setData] = useState<ValuationData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [view, setView] = useState<'detailed' | 'investor'>('detailed');
+  const [editingAssumptions, setEditingAssumptions] = useState(false);
 
   const generate = async () => {
     if (!password) { addToast('أدخل كلمة السر', 'warning'); return; }
@@ -48,14 +75,44 @@ export default function ValuationPage() {
     setLoading(false);
   };
 
+  const reload = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/admin/valuation?password=${encodeURIComponent(password)}`, {
+        credentials: 'include', cache: 'no-store',
+      });
+      const d = await res.json();
+      if (res.ok) setData(d);
+    } catch { /* ignore */ }
+    setLoading(false);
+  };
+
+  const saveAssumptions = async (next: Assumptions) => {
+    try {
+      const res = await fetch(`/api/admin/valuation?password=${encodeURIComponent(password)}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(next),
+      });
+      const d = await res.json();
+      if (!res.ok) { addToast(d.error || 'فشل الحفظ', 'error'); return; }
+      addToast('تم حفظ الافتراضات', 'success');
+      setEditingAssumptions(false);
+      reload();
+    } catch {
+      addToast('فشل الحفظ', 'error');
+    }
+  };
+
   if (!data) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex items-center justify-center min-h-[60vh] px-4">
         <div className="bg-white rounded-2xl shadow-lg max-w-md w-full p-8 border border-gray-200">
           <div className="text-center mb-6">
             <div className="w-16 h-16 bg-gradient-to-br from-[#F5C518] to-[#e6a200] rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl">📊</div>
             <h1 className="text-2xl font-black text-gray-900">تقييم الشركة</h1>
-            <p className="text-sm text-gray-500 mt-2">تقرير محدّث مباشرة من قاعدة البيانات</p>
+            <p className="text-sm text-gray-500 mt-2">تقرير محدَّث مباشرة من قاعدة البيانات</p>
           </div>
           <div className="space-y-4">
             <div>
@@ -84,110 +141,363 @@ export default function ValuationPage() {
     );
   }
 
-  const { metrics, valuation, products, books } = data;
+  const { metrics, valuation, products, books, assumptions } = data;
 
   return (
     <div className="space-y-6 print:bg-white" dir="rtl">
       {/* Action bar */}
       <div className="flex items-center justify-between gap-3 flex-wrap print:hidden">
-        <div>
+        <div className="flex items-center gap-2 flex-wrap">
           <p className="text-xs text-gray-500">تم التوليد: {new Date(data.generatedAt).toLocaleString('ar-EG')}</p>
+          <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
+            <button onClick={() => setView('detailed')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${view === 'detailed' ? 'bg-white shadow-sm text-[#1a1a2e]' : 'text-gray-500'}`}>📊 تفصيلي</button>
+            <button onClick={() => setView('investor')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${view === 'investor' ? 'bg-white shadow-sm text-[#1a1a2e]' : 'text-gray-500'}`}>🤝 عرض المستثمر</button>
+          </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => window.print()} className="px-4 py-2 rounded-xl bg-[#1a1a2e] hover:bg-[#2d1060] text-white text-xs font-bold transition">🖨️ طباعة / تصدير PDF</button>
+          <button onClick={() => window.print()} className="px-4 py-2 rounded-xl bg-[#1a1a2e] hover:bg-[#2d1060] text-white text-xs font-bold transition">🖨️ طباعة / PDF</button>
           <button onClick={() => { setData(null); setPassword(''); }} className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold transition">🔒 إغلاق</button>
         </div>
       </div>
 
-      {/* Hero */}
-      <div className="rounded-3xl p-10 text-white text-center" style={{ background: 'linear-gradient(135deg,#1a1a2e 0%,#2d1060 50%,#6B21A8 100%)' }}>
-        <p className="text-xs text-[#F5C518] font-bold tracking-[3px] uppercase">تقييم محدّث</p>
-        <h1 className="text-5xl font-black mt-3">مسلم ليدر</h1>
-        <p className="text-white/70 mt-2">{new Date(data.generatedAt).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+      {/* Hero — balanced (fair) value is the headline. Strategic is a conditional bonus. */}
+      <div className="rounded-3xl p-6 sm:p-10 text-white text-center" style={{ background: 'linear-gradient(135deg,#1a1a2e 0%,#2d1060 50%,#6B21A8 100%)' }}>
+        <p className="text-xs text-[#F5C518] font-bold tracking-[3px] uppercase">تقدير داخلي — قيد المراجعة</p>
+        <h1 className="text-4xl sm:text-5xl font-black mt-3">مسلم ليدر</h1>
+        <p className="text-white/70 mt-2 text-sm">{new Date(data.generatedAt).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-8">
-          <Stat label="منتجات" value={String(metrics.products.total)} />
-          <Stat label="كتب رقمية" value={String(metrics.books.total)} />
-          <Stat label="عملاء" value={fmt(metrics.customers)} />
-          <Stat label="شحنات" value={fmt(metrics.shipments)} />
+          <Stat label="منتجات (نوع)" value={String(metrics.products.total)} hint="عدد أنواع المنتجات في الكتالوج (مش عدد القطع)." />
+          <Stat label="كتب رقمية" value={String(metrics.books.total)} hint="إجمالي عناوين المكتبة، شامل غير المنشور." />
+          <Stat label="عملاء مسجَّلين" value={fmt(metrics.customers.total)} hint="إجمالي حسابات العملاء — مش عدد المشترين." />
+          <Stat label="شحنات (Bosta)" value={fmt(metrics.shipments)} hint="إجمالي صفوف Shipment، شامل الملغية." />
         </div>
 
         <div className="mt-8 pt-8 border-t border-white/10">
-          <p className="text-[#F5C518] text-xs font-bold tracking-widest">التقييم النهائي</p>
-          <p className="text-5xl font-black mt-3">{fmt(valuation.fair)} <span className="text-xl">ج.م</span></p>
-          <p className="text-white/60 text-sm mt-1">قيمة عادلة (Fair Market Value)</p>
+          <p className="text-[#F5C518] text-xs font-bold tracking-widest">القيمة المتوازنة (المرشَّحة)</p>
+          <p className="text-4xl sm:text-5xl font-black mt-3">{fmt(valuation.fair)} <span className="text-xl">ج.م</span></p>
+          <p className="text-white/60 text-xs sm:text-sm mt-2 max-w-md mx-auto">قيمة سوقية مفترضة (Base × {valuation.fairMultiplier}). تقدير داخلي يعتمد على الافتراضات الموضّحة أدناه — يحتاج مراجعة محاسب قبل الاستخدام في تفاوض رسمي.</p>
         </div>
       </div>
 
-      {/* 3 scenarios */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <ScenarioCard label="الحد الأدنى" value={valuation.base} desc="تصفية / مشتري مالي" tone="base" />
-        <ScenarioCard label="القيمة العادلة" value={valuation.fair} desc="سوق متوازنة" tone="fair" />
-        <ScenarioCard label="القيمة الاستراتيجية" value={valuation.strategic} desc="مشتري استراتيجي" tone="strategic" />
+      {/* Gaps section — front and centre because the valuation is incomplete without these */}
+      <GapsSection metrics={metrics} />
+
+      {/* Methodology — what's in the formula and what assumptions feed it */}
+      <MethodologySection
+        assumptions={assumptions}
+        defaults={data.defaults}
+        canEdit={canEdit}
+        editing={editingAssumptions}
+        onEditToggle={() => setEditingAssumptions(v => !v)}
+        onSave={saveAssumptions}
+      />
+
+      {/* Three scenarios — balanced is highlighted, strategic carries a conditional caveat */}
+      <Section icon="💎" title="نطاقات التقييم" subtitle="ثلاثة سيناريوهات بناءً على نوع المشتري ومدى استكمال البيانات">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <ScenarioCard
+            label="الحد الأدنى"
+            value={valuation.base}
+            desc="تصفية / مشتري مالي يقيّم الأصول فقط"
+            tone="base"
+            multiplier="× 1.0 (Base)"
+            condition="يفترض بيع المخزون بنصف القيمة + احتساب الـ IP بالعدد فقط."
+          />
+          <ScenarioCard
+            label="القيمة المتوازنة ✦"
+            value={valuation.fair}
+            desc="سوق متوازنة — المرشَّحة كأرضية تفاوض"
+            tone="fair"
+            multiplier={`× ${valuation.fairMultiplier}`}
+            condition="يفترض استمرار النشاط الحالي بدون نمو غير عادي."
+            highlighted
+          />
+          <ScenarioCard
+            label="القيمة الاستراتيجية"
+            value={valuation.strategic}
+            desc="مشتري استراتيجي مع تكامل توزيع/براند"
+            tone="strategic"
+            multiplier={`× ${valuation.strategicMultiplier}`}
+            condition="مشروط: يحتاج بيانات ربحية مكتملة + مخزون مُقيَّم + ملكية فكرية موثَّقة + مشتري بحاجة استراتيجية فعلية. لا يُستخدم كرقم رئيسي."
+          />
+        </div>
+      </Section>
+
+      {view === 'investor' ? <InvestorView data={data} /> : <DetailedView data={data} products={products} books={books} />}
+
+      {/* Disclaimer */}
+      <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 text-amber-900 text-xs leading-relaxed">
+        <p className="font-black mb-1.5">⚠️ إخلاء مسؤولية</p>
+        <p>هذا التقييم تقديري داخلي مبني على البيانات المتاحة داخل النظام، ولا يمثل تقييمًا ماليًا رسميًا. يجب مراجعته بواسطة محاسب أو مستشار مالي قبل استخدامه في بيع حصص أو التفاوض مع مستثمر. لا يتم احتساب الأرباح الصافية أو تكلفة العمليات أو الالتزامات المالية في هذه الأرقام.</p>
       </div>
 
-      {/* Sales section */}
-      <Section icon="💰" title="المبيعات والإيرادات">
+      <div className="text-center py-6 text-[10px] text-gray-400 border-t border-gray-200">
+        تقرير مولَّد آليًا · مسلم ليدر · {new Date(data.generatedAt).toLocaleDateString('ar-EG')}
+      </div>
+    </div>
+  );
+}
+
+// ==========================================================================
+// Top-level sections
+// ==========================================================================
+
+function GapsSection({ metrics }: { metrics: ValuationData['metrics'] }) {
+  // Build a punch list of measurable gaps. Each entry surfaces what we
+  // *don't* know and therefore can't price. This is intentionally
+  // prominent — a buyer would ask all of these on day one of due diligence.
+  const gaps: Array<{ severity: 'high' | 'medium' | 'low'; label: string; detail: string }> = [];
+
+  gaps.push({ severity: 'high', label: 'صافي الربح غير محسوب', detail: 'النظام لا يخزن تكلفة المنتج الفعلية (COGS) ولا تكلفة التسويق ولا المرتبات. كل الأرقام إيرادات، مش أرباح.' });
+  gaps.push({ severity: 'high', label: 'تكلفة المخزون تقديرية', detail: `قيمة تكلفة المخزون محسوبة بنسبة 35% من سعر البيع كافتراض. التكلفة الفعلية لكل منتج غير مسجَّلة في قاعدة البيانات.` });
+  gaps.push({ severity: 'high', label: 'قيمة الملكية الفكرية بالعدد', detail: `كل كتاب = ${fmt(metrics.ip.perBook)} ج.م و كل منتج = ${fmt(metrics.ip.perProduct)} ج.م بصرف النظر عن المبيعات الفعلية. كتاب بـ 0 مبيعات يُحتسب بنفس قيمة الـ bestseller.` });
+  if (metrics.customers.buyers === 0) {
+    gaps.push({ severity: 'high', label: 'لا توجد مبيعات بعد', detail: 'مفيش عميل واحد اشترى لسه — تقدير "قيمة قاعدة العملاء" مبني على الحسابات المسجَّلة فقط، مش المشترين الفعليين.' });
+  }
+  if (metrics.sales.byMonth.length < 3) {
+    gaps.push({ severity: 'medium', label: 'لا يوجد تاريخ مبيعات كافٍ', detail: `عدد الشهور التي بها مبيعات: ${metrics.sales.byMonth.length}. يحتاج 12+ شهر لرسم اتجاه نمو موثوق.` });
+  }
+  if (metrics.customers.repeatBuyers === 0 && metrics.customers.buyers > 0) {
+    gaps.push({ severity: 'medium', label: 'معدل تكرار الشراء = 0%', detail: 'مفيش عميل واحد اشترى مرتين. ده يحدّ من قيمة الـ LTV ويزوّد المخاطرة لأي مستثمر.' });
+  }
+  gaps.push({ severity: 'medium', label: 'المرتجعات غير منفصلة', detail: `الإلغاءات الحالية: ${metrics.sales.cancelledOrders} طلب بقيمة ${fmt(metrics.sales.cancelledRevenue)} ج.م. لكن لا يوجد جدول منفصل للمرتجعات بعد التسليم (RMA).` });
+  gaps.push({ severity: 'low', label: 'مؤشرات البراند غير موثَّقة', detail: 'متابعون السوشيال، NPS، انطباع البراند — كل دي مش متخزَّنة في النظام، فالقيمة الرقمية للبراند تقديرية.' });
+  gaps.push({ severity: 'low', label: 'شبكة التوزيع', detail: 'لا يوجد تتبّع لشركاء التوزيع أو المنافذ الفعلية في النظام.' });
+  gaps.push({ severity: 'low', label: 'الالتزامات المالية', detail: 'الديون والقروض والمستحقات غير مدخلة. التقييم الحالي يفترض صفر التزامات.' });
+
+  const tone = (s: 'high' | 'medium' | 'low') =>
+    s === 'high' ? { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', dot: 'bg-red-500' }
+    : s === 'medium' ? { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', dot: 'bg-amber-500' }
+    : { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-600', dot: 'bg-gray-400' };
+
+  return (
+    <Section icon="⚠️" title="الفجوات المطلوبة قبل اعتماد التقييم" subtitle="ما الذي ينقص النظام لتصبح الأرقام قابلة للاعتماد عليها في تفاوض جاد">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {gaps.map((g, i) => {
+          const t = tone(g.severity);
+          return (
+            <div key={i} className={`${t.bg} ${t.border} border rounded-2xl p-4`}>
+              <div className="flex items-start gap-2">
+                <span className={`${t.dot} w-2 h-2 rounded-full mt-1.5 shrink-0`} />
+                <div className="flex-1">
+                  <p className={`text-sm font-black ${t.text}`}>{g.label}</p>
+                  <p className="text-xs text-gray-700 mt-1 leading-relaxed">{g.detail}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Section>
+  );
+}
+
+function MethodologySection({ assumptions, defaults, canEdit, editing, onEditToggle, onSave }: {
+  assumptions: Assumptions;
+  defaults: Assumptions;
+  canEdit: boolean;
+  editing: boolean;
+  onEditToggle: () => void;
+  onSave: (next: Assumptions) => void;
+}) {
+  return (
+    <Section icon="📐" title="منهجية التقييم" subtitle="الافتراضات اللي تُغذي الأرقام الرئيسية — تقدر تعدّلها لو في بيانات أحدث">
+      <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <p className="text-xs text-gray-700 leading-relaxed flex-1 min-w-[260px]">
+            <strong>القيمة الأساسية</strong> = تكلفة المخزون + قيمة الملكية الفكرية + قيمة المنصة التقنية + قيمة قاعدة العملاء.
+            القيمة المتوازنة = القيمة الأساسية × <strong>{assumptions.fairMultiplier}</strong>.
+            القيمة الاستراتيجية = القيمة الأساسية × <strong>{assumptions.strategicMultiplier}</strong>.
+          </p>
+          {canEdit && !editing && (
+            <button onClick={onEditToggle} className="px-3 py-1.5 rounded-lg bg-[#1a1a2e] text-white text-xs font-bold hover:bg-[#2d1060] transition print:hidden">✏️ تعديل الافتراضات</button>
+          )}
+        </div>
+
+        {editing
+          ? <AssumptionsForm initial={assumptions} defaults={defaults} onSave={onSave} onCancel={onEditToggle} />
+          : <AssumptionsTable assumptions={assumptions} defaults={defaults} />}
+      </div>
+    </Section>
+  );
+}
+
+function AssumptionsTable({ assumptions, defaults }: { assumptions: Assumptions; defaults: Assumptions }) {
+  const rows: Array<{ key: keyof Assumptions; label: string; format: (n: number) => string; explain: string }> = [
+    { key: 'cogsRatio', label: 'نسبة تكلفة المخزون من سعر البيع', format: n => pct(n), explain: 'المنتجات بتكلَّف الشركة هذه النسبة من سعرها قبل الربح. القيمة الافتراضية 35%.' },
+    { key: 'ipBookValue', label: 'قيمة كل كتاب مؤلَّف (IP)', format: n => `${fmt(n)} ج.م`, explain: 'تقدير لقيمة حقوق نشر/ترجمة/audiobook لكل كتاب. مش مرتبط بمبيعات الكتاب الفعلية.' },
+    { key: 'ipProductValue', label: 'قيمة كل منتج إبداعي (IP)', format: n => `${fmt(n)} ج.م`, explain: 'تقدير لقيمة التصميم/البراند الخاص بكل منتج. مش مرتبط بمبيعات المنتج الفعلية.' },
+    { key: 'ipDigitalValue', label: 'قيمة المحتوى الرقمي (يوتيوب + PDFs + براند)', format: n => `${fmt(n)} ج.م`, explain: 'رقم ثابت بيعكس قيمة قنوات السوشيال + الـ PDFs + قيمة البراند ككل.' },
+    { key: 'techValue', label: 'قيمة المنصة التقنية', format: n => `${fmt(n)} ج.م`, explain: 'تكلفة بناء النظام (admin + checkout + integrations) لو حد محتاج يبنيه من الصفر.' },
+    { key: 'customerDbValue', label: 'قيمة كل عميل في القاعدة', format: n => `${fmt(n)} ج.م`, explain: 'قيمة قاعدة بيانات العميل الواحد كأصل قابل لإعادة الاستخدام (تسويق، إعادة استهداف).' },
+    { key: 'fairMultiplier', label: 'مضاعف القيمة المتوازنة', format: n => `× ${n}`, explain: 'القيمة الأساسية تُضرَب في هذا الرقم لتعكس القيمة السوقية المتوازنة.' },
+    { key: 'strategicMultiplier', label: 'مضاعف القيمة الاستراتيجية', format: n => `× ${n}`, explain: 'لمشتري بحاجة استراتيجية فعلية. أعلى من المتوازنة لأنه يضيف قيمة تكاملية.' },
+    { key: 'activeWindowDays', label: 'نافذة العميل النشط (أيام)', format: n => `${n} يوم`, explain: 'عميل عمله طلب صحيح خلال هذه النافذة يُحتسب نشطًا.' },
+  ];
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead className="bg-gray-50">
+          <tr className="text-gray-500">
+            <th className="px-3 py-2 text-right font-bold">الافتراض</th>
+            <th className="px-3 py-2 text-right font-bold">القيمة الحالية</th>
+            <th className="px-3 py-2 text-right font-bold">الافتراضي</th>
+            <th className="px-3 py-2 text-right font-bold">شرح</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {rows.map(r => {
+            const cur = assumptions[r.key];
+            const def = defaults[r.key];
+            const drift = cur !== def;
+            return (
+              <tr key={r.key}>
+                <td className="px-3 py-2.5 font-bold text-gray-800">{r.label}</td>
+                <td className={`px-3 py-2.5 font-black ${drift ? 'text-amber-700' : 'text-gray-900'}`}>{r.format(cur)} {drift && <span className="text-[9px] font-bold ml-1">⚙️ معدَّل</span>}</td>
+                <td className="px-3 py-2.5 text-gray-500">{r.format(def)}</td>
+                <td className="px-3 py-2.5 text-gray-600 leading-relaxed">{r.explain}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function AssumptionsForm({ initial, defaults, onSave, onCancel }: { initial: Assumptions; defaults: Assumptions; onSave: (next: Assumptions) => void; onCancel: () => void }) {
+  const [v, setV] = useState<Assumptions>(initial);
+  const set = (k: keyof Assumptions, val: number) => setV(prev => ({ ...prev, [k]: val }));
+  const Field = ({ k, label, step = 1, min = 0, max }: { k: keyof Assumptions; label: string; step?: number; min?: number; max?: number }) => (
+    <div>
+      <label className="block text-[10px] text-gray-500 font-bold mb-1">{label} <span className="text-gray-400">(افتراضي: {defaults[k]})</span></label>
+      <input
+        type="number" step={step} min={min} max={max} value={v[k]}
+        onChange={e => set(k, Number(e.target.value))}
+        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#F5C518]"
+      />
+    </div>
+  );
+  return (
+    <div className="space-y-4 print:hidden">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        <Field k="cogsRatio" label="نسبة COGS (0–1)" step={0.01} max={1} />
+        <Field k="fairMultiplier" label="مضاعف عادل" step={0.05} min={1} />
+        <Field k="strategicMultiplier" label="مضاعف استراتيجي" step={0.05} min={1} />
+        <Field k="ipBookValue" label="قيمة كل كتاب (ج.م)" step={1000} />
+        <Field k="ipProductValue" label="قيمة كل منتج (ج.م)" step={1000} />
+        <Field k="ipDigitalValue" label="قيمة المحتوى الرقمي (ج.م)" step={10000} />
+        <Field k="techValue" label="قيمة المنصة (ج.م)" step={10000} />
+        <Field k="customerDbValue" label="قيمة كل عميل (ج.م)" step={10} />
+        <Field k="activeWindowDays" label="نافذة النشاط (يوم)" step={1} min={1} />
+      </div>
+      <div className="flex gap-2 justify-end">
+        <button onClick={onCancel} className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold">إلغاء</button>
+        <button onClick={() => onSave(v)} className="px-4 py-2 rounded-xl bg-[#1a1a2e] hover:bg-[#2d1060] text-white text-xs font-bold">💾 حفظ الافتراضات</button>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================================================
+// Detailed (default) view
+// ==========================================================================
+
+function DetailedView({ data, products, books }: { data: ValuationData; products: ValuationData['products']; books: ValuationData['books'] }) {
+  const { metrics } = data;
+  return (
+    <>
+      {/* Sales */}
+      <Section icon="💰" title="المبيعات والإيرادات" subtitle="من جدول Order — استبعاد الملغية والهدايا">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <KPI label="إجمالي الإيرادات" value={`${fmt(metrics.sales.totalRevenue)} ج.م`} />
-          <KPI label="عدد الأوردرات" value={fmt(metrics.sales.validOrders)} sub={`+ ${metrics.sales.cancelledOrders} ملغي`} />
-          <KPI label="متوسط الأوردر" value={`${fmt(metrics.sales.avgOrderValue)} ج.م`} />
-          <KPI label="الوحدات المباعة" value={fmt(metrics.sales.unitsSold)} />
+          <KPI label="إجمالي الإيرادات" value={`${fmt(metrics.sales.totalRevenue)} ج.م`} hint="مجموع Order.total لكل الطلبات غير الملغية وغير الهدايا. شامل الشحن وقبل خصم تكلفة المنتج." />
+          <KPI label="إيراد بدون الشحن" value={`${fmt(metrics.sales.revenueExShipping)} ج.م`} hint="الإيراد بعد طرح إجمالي تكلفة الشحن — أصدق مؤشر لقيمة المنتج للعميل." />
+          <KPI label="عدد الطلبات الصحيحة" value={fmt(metrics.sales.validOrders)} sub={`+ ${metrics.sales.cancelledOrders} ملغي`} hint="طلبات بحالة غير 'cancelled' و طريقة دفع غير 'gift'. الملغي معروض جنبه للعلم." />
+          <KPI label="إجمالي القطع المباعة" value={fmt(metrics.sales.unitsSold)} hint="مجموع OrderItem.quantity من الطلبات الصحيحة. ده عدد القطع، مش عدد المنتجات المختلفة." />
+          <KPI label="متوسط الطلب (شامل الشحن)" value={`${fmt(metrics.sales.avgOrderValue)} ج.م`} hint="إجمالي الإيرادات ÷ عدد الطلبات الصحيحة. شامل الشحن — مش متوسط قيمة المنتج لوحده." />
+          <KPI label="متوسط الطلب (بدون شحن)" value={`${fmt(metrics.sales.avgOrderValueExShipping)} ج.م`} hint="إيراد بدون الشحن ÷ عدد الطلبات. أنسب لتقدير AOV الحقيقي." />
+          <KPI label="إجمالي الشحن" value={`${fmt(metrics.sales.totalShipping)} ج.م`} hint="مجموع shippingCost. تُعتبَر تكلفة عملية وليست إيرادًا." />
+          <KPI label="إجمالي الخصومات" value={`${fmt(metrics.sales.totalDiscount)} ج.م`} hint="مجموع discount المطبَّق على الطلبات الصحيحة." />
         </div>
+
+        {metrics.sales.cancelledOrders > 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mt-4">
+            <p className="text-xs font-black text-red-800">🚫 الطلبات الملغية</p>
+            <div className="grid grid-cols-2 gap-3 mt-2">
+              <KPI label="عدد الإلغاءات" value={fmt(metrics.sales.cancelledOrders)} hint="Order.status = 'cancelled'." />
+              <KPI label="قيمة الإلغاءات" value={`${fmt(metrics.sales.cancelledRevenue)} ج.م`} hint="مجموع total للطلبات الملغية. مفيش جدول منفصل للمرتجعات بعد التسليم." />
+            </div>
+          </div>
+        )}
 
         {metrics.gifts && metrics.gifts.count > 0 && (
-          <div className="mt-4 bg-pink-50 border border-pink-200 rounded-2xl p-4">
-            <p className="text-xs font-black text-pink-800 mb-2">🎁 الهدايا المُرسَلة (لا تُحتسب ضمن الإيرادات)</p>
+          <div className="bg-pink-50 border border-pink-200 rounded-2xl p-4 mt-4">
+            <p className="text-xs font-black text-pink-800 mb-2">🎁 الهدايا (لا تُحتسب ضمن الإيرادات)</p>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <KPI label="عدد الهدايا" value={fmt(metrics.gifts.count)} />
-              <KPI label="وحدات مُهداة" value={fmt(metrics.gifts.units)} />
-              <KPI label="قيمة المنتجات (سعر بيع)" value={`${fmt(metrics.gifts.retailValue)} ج.م`} />
-              <KPI label="إجمالي تكلفة الهدايا" value={`${fmt(metrics.gifts.totalCost)} ج.م`} sub="منتجات + شحن" />
+              <KPI label="عدد الهدايا" value={fmt(metrics.gifts.count)} hint="Order.paymentMethod = 'gift'." />
+              <KPI label="قطع مُهداة" value={fmt(metrics.gifts.units)} hint="مجموع OrderItem.quantity للهدايا." />
+              <KPI label="قيمة المنتجات (سعر بيع)" value={`${fmt(metrics.gifts.retailValue)} ج.م`} hint="بسعر البيع وليس التكلفة — تقدير لقيمة الفرصة الضائعة." />
+              <KPI label="إجمالي تكلفة الهدايا" value={`${fmt(metrics.gifts.totalCost)} ج.م`} sub="منتجات + شحن" hint="قيمة المنتجات بالسعر + إجمالي شحن الهدايا." />
             </div>
+          </div>
+        )}
+
+        {metrics.sales.byMonth.length > 0 && (
+          <div className="bg-white p-5 rounded-2xl border border-gray-200 mt-4">
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <p className="text-xs font-bold text-gray-700">إيرادات آخر 12 شهر</p>
+              {metrics.sales.momRevenueGrowth !== null && (
+                <span className={`text-[11px] font-black px-2 py-1 rounded-lg ${metrics.sales.momRevenueGrowth >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                  {metrics.sales.momRevenueGrowth >= 0 ? '↗' : '↘'} نمو شهري: {pct(metrics.sales.momRevenueGrowth)}
+                </span>
+              )}
+            </div>
+            <YearlyChart data={metrics.sales.byMonth.map(m => ({ key: m.ym, revenue: m.revenue, count: m.count }))} />
           </div>
         )}
 
         {metrics.sales.byYear.length > 0 && (
           <div className="bg-white p-5 rounded-2xl border border-gray-200 mt-4">
             <p className="text-xs font-bold text-gray-700 mb-3">الإيرادات السنوية</p>
-            <div className="space-y-2">
-              {metrics.sales.byYear.map(y => {
-                const max = Math.max(...metrics.sales.byYear.map(x => x.revenue));
-                const pct = max > 0 ? (y.revenue / max) * 100 : 0;
-                return (
-                  <div key={y.year} className="grid grid-cols-[60px_1fr_140px] gap-3 items-center">
-                    <span className="text-sm font-bold">{y.year}</span>
-                    <div className="bg-gray-100 rounded-lg h-7 overflow-hidden">
-                      <div className="h-full rounded-lg flex items-center px-3 text-xs font-bold text-[#1a1a2e]" style={{ width: `${pct}%`, background: 'linear-gradient(90deg,#F5C518,#e6a200)' }}>{y.count} أوردر</div>
-                    </div>
-                    <span className="text-sm font-black text-[#6B21A8] text-left">{fmt(y.revenue)} ج.م</span>
-                  </div>
-                );
-              })}
-            </div>
+            <YearlyChart data={metrics.sales.byYear.map(y => ({ key: String(y.year), revenue: y.revenue, count: y.count }))} />
           </div>
         )}
       </Section>
 
-      {/* Inventory section */}
-      <Section icon="📦" title="المخزون">
+      {/* Customers */}
+      <Section icon="👥" title="العملاء" subtitle="فصل المسجَّلين عن المشترين الفعليين">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <KPI label="إجمالي الوحدات" value={fmt(metrics.products.inventoryUnits)} />
-          <KPI label="قيمة بيع المخزون" value={`${fmt(metrics.products.inventoryValueRetail)} ج.م`} />
-          <KPI label="قيمة تكلفة المخزون" value={`${fmt(metrics.products.inventoryValueCost)} ج.م`} sub="35% COGS" />
-          <KPI label="نفد المخزون" value={String(metrics.products.outOfStockCount)} tone={metrics.products.outOfStockCount > 0 ? 'bad' : 'ok'} />
+          <KPI label="مسجَّلين (إجمالي)" value={fmt(metrics.customers.total)} hint="User.role = 'customer'. شامل اللي ما اشتروش." />
+          <KPI label="مشترين (≥ طلب واحد)" value={fmt(metrics.customers.buyers)} hint="عملاء عملوا طلب صحيح واحد على الأقل في تاريخ النظام." />
+          <KPI label="نشطين" value={fmt(metrics.customers.active)} sub={`آخر ${metrics.customers.activeWindowDays} يوم — ${pct(metrics.customers.activeRatio)} من المسجَّلين`} hint="عمل طلب صحيح خلال نافذة النشاط الحالية." />
+          <KPI label="مشترين متكررين" value={fmt(metrics.customers.repeatBuyers)} sub={`${pct(metrics.customers.repeatRate)} من المشترين`} hint="عملوا طلبين أو أكثر في حياتهم. مؤشر قوي للولاء." />
+          <KPI label="متوسط الإيراد لكل مشتري" value={`${fmt(metrics.customers.avgRevenuePerBuyer)} ج.م`} hint="إجمالي الإيرادات ÷ عدد المشترين الفعليين. تقدير LTV التاريخي." />
         </div>
       </Section>
 
-      {/* IP section */}
-      <Section icon="📚" title="الملكية الفكرية" subtitle="المؤلفات والمحتوى الأصلي">
+      {/* Inventory */}
+      <Section icon="📦" title="المخزون" subtitle="من جدول Product — كل الأرقام بسعر البيع، التكلفة تقديرية">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <KPI label="إجمالي القطع في المخزن" value={fmt(metrics.products.inventoryUnits)} hint="مجموع Product.stock عبر كل المنتجات." />
+          <KPI label="قيمة المخزون (سعر بيع)" value={`${fmt(metrics.products.inventoryValueRetail)} ج.م`} hint="مجموع stock × price. سعر البيع، مش التكلفة." />
+          <KPI label="تكلفة المخزون التقديرية" value={`${fmt(metrics.products.inventoryValueCost)} ج.م`} sub={`${pct(data.assumptions.cogsRatio)} من سعر البيع`} hint="افتراض داخلي — التكلفة الفعلية لكل منتج غير مخزَّنة في النظام." />
+          <KPI label="منتجات نفذت" value={String(metrics.products.outOfStockCount)} tone={metrics.products.outOfStockCount > 0 ? 'bad' : 'ok'} hint="Product.stock = 0. تقدر تجمَّعها من المخزون." />
+        </div>
+      </Section>
+
+      {/* IP */}
+      <Section icon="📚" title="الملكية الفكرية" subtitle="قيمة تقديرية مبنية على العدد، مش على المبيعات الفعلية">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          <IPCard icon="📖" label="الكتب المؤلَّفة" value={metrics.ip.booksValue} count={metrics.books.total} />
-          <IPCard icon="🎮" label="المنتجات الإبداعية" value={metrics.ip.productsValue} count={metrics.products.total} />
-          <IPCard icon="🎬" label="المحتوى الرقمي" value={metrics.ip.digitalValue} count={null} />
+          <IPCard icon="📖" label="الكتب المؤلَّفة" value={metrics.ip.booksValue} count={metrics.ip.booksCount} per={metrics.ip.perBook} />
+          <IPCard icon="🎮" label="المنتجات الإبداعية" value={metrics.ip.productsValue} count={metrics.ip.productsCount} per={metrics.ip.perProduct} />
+          <IPCard icon="🎬" label="المحتوى الرقمي" value={metrics.ip.digitalValue} count={null} per={null} />
         </div>
         <div className="bg-gradient-to-br from-amber-50 to-amber-100 border-2 border-[#F5C518] rounded-2xl p-5 mt-4">
-          <p className="text-xs text-amber-900 font-bold">إجمالي قيمة الملكية الفكرية</p>
+          <p className="text-xs text-amber-900 font-bold flex items-center gap-2">
+            إجمالي قيمة الملكية الفكرية
+            <Tooltip text="الرقم ده قيمة افتراضية بناءً على العدد والمعدَّلات في قسم المنهجية. مش مرتبط بمبيعات الكتاب أو المنتج الفعلية. لازم يتراجع لما تكون فيه بيانات مبيعات حقيقية." />
+          </p>
           <p className="text-3xl font-black text-[#1a1a2e] mt-1">{fmt(metrics.ip.total)} ج.م</p>
         </div>
       </Section>
@@ -203,7 +513,7 @@ export default function ValuationPage() {
                   <th className="px-3 py-3 text-right">الفئة</th>
                   <th className="px-3 py-3 text-right">السعر</th>
                   <th className="px-3 py-3 text-right">$</th>
-                  <th className="px-3 py-3 text-right">المباع</th>
+                  <th className="px-3 py-3 text-right">قطع مباعة</th>
                   <th className="px-3 py-3 text-right">المخزون</th>
                   <th className="px-3 py-3 text-right">قيمة المخزون</th>
                 </tr>
@@ -229,7 +539,6 @@ export default function ValuationPage() {
         </div>
       </Section>
 
-      {/* Books table */}
       {books.length > 0 && (
         <Section icon="📕" title="الكتب الرقمية والمكتبة">
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
@@ -265,36 +574,119 @@ export default function ValuationPage() {
           </div>
         </Section>
       )}
+    </>
+  );
+}
 
-      {/* Footer */}
-      <div className="text-center py-8 text-xs text-gray-400 border-t border-gray-200">
-        <p>تقرير تقييم محدَّث مباشرة من قاعدة البيانات · مسلم ليدر</p>
-        <p className="mt-1">⚠️ تقدير أولي — للتقييم النهائي يُنصح بمحاسب قانوني معتمد.</p>
-      </div>
+// ==========================================================================
+// Investor view — concise narrative
+// ==========================================================================
+
+function InvestorView({ data }: { data: ValuationData }) {
+  const { metrics, valuation } = data;
+  const range = { low: valuation.base, high: valuation.fair };
+  return (
+    <div className="space-y-6">
+      <Section icon="🏢" title="نبذة عن الشركة">
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 text-sm leading-relaxed text-gray-700">
+          <p>مسلم ليدر — منصة عربية لبيع الكتب والمنتجات الإبداعية المؤلَّفة، مع مكتبة رقمية ومحتوى متعدد القنوات. النظام يُدير الكتالوج، الطلبات، الشحن، التسويق، والمحاسبة الداخلية تحت سقف واحد.</p>
+        </div>
+      </Section>
+
+      <Section icon="📈" title="مؤشرات الأداء الرئيسية">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <KPI label="إيرادات تاريخية" value={`${fmt(metrics.sales.totalRevenue)} ج.م`} hint="إجمالي Order.total باستثناء الإلغاءات والهدايا." />
+          <KPI label="عدد الطلبات الصحيحة" value={fmt(metrics.sales.validOrders)} />
+          <KPI label="مشترين فعليين" value={fmt(metrics.customers.buyers)} sub={`${pct(metrics.customers.activeRatio)} نشطين`} />
+          <KPI label="معدل تكرار الشراء" value={pct(metrics.customers.repeatRate)} hint="نسبة المشترين اللي عملوا طلبين أو أكثر." />
+        </div>
+      </Section>
+
+      <Section icon="💪" title="نقاط القوة">
+        <ul className="bg-white border border-gray-200 rounded-2xl p-5 space-y-2 text-sm text-gray-700 list-disc pr-5">
+          <li>براند مؤسَّس + متابعون على السوشيال + قنوات يوتيوب نشطة.</li>
+          <li>{metrics.books.total} كتاب مؤلَّف + {metrics.products.total} منتج إبداعي = ملكية فكرية ضخمة.</li>
+          <li>منصة تقنية متكاملة (متجر + مكتبة + إدارة) مبنية في البيت.</li>
+          <li>قاعدة عملاء {fmt(metrics.customers.total)} حساب مسجَّل قابلة لإعادة الاستهداف.</li>
+        </ul>
+      </Section>
+
+      <Section icon="🚀" title="فرص النمو">
+        <ul className="bg-white border border-gray-200 rounded-2xl p-5 space-y-2 text-sm text-gray-700 list-disc pr-5">
+          <li>التوسع في الأسواق العربية الخارجية (السعودية، الإمارات).</li>
+          <li>تحويل الكتب لـ audiobooks وفيديوهات تعليمية مدفوعة.</li>
+          <li>اشتراكات شهرية للمكتبة الرقمية.</li>
+          <li>شراكات توزيع مع مكتبات تقليدية في مصر.</li>
+          <li>منتجات تعليمية للأطفال والمدارس.</li>
+        </ul>
+      </Section>
+
+      <Section icon="⚖️" title="المخاطر والفجوات">
+        <ul className="bg-white border border-gray-200 rounded-2xl p-5 space-y-2 text-sm text-gray-700 list-disc pr-5">
+          <li>صافي الربح غير محسوب — التقييم على مستوى الإيرادات والأصول فقط.</li>
+          <li>تكلفة المنتج الفعلية غير مخزَّنة، فالـ COGS تقديري.</li>
+          <li>{metrics.customers.repeatBuyers === 0 ? 'مفيش بيانات تكرار شراء بعد.' : `معدل تكرار الشراء ${pct(metrics.customers.repeatRate)} — يحتاج تحسين.`}</li>
+          <li>قيمة الـ IP مبنية على العدد، مش على مبيعات/طلب فعلي.</li>
+          <li>مفيش تتبّع لشبكة التوزيع أو شراكات خارجية في النظام.</li>
+        </ul>
+      </Section>
+
+      <Section icon="📐" title="منهجية التقييم المُقترحة">
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 text-sm leading-relaxed text-gray-700 space-y-3">
+          <p>التقييم مبني على تجميع أربعة مكوّنات: تكلفة المخزون + قيمة الملكية الفكرية + قيمة المنصة التقنية + قيمة قاعدة العملاء.</p>
+          <p>الأرقام تُمثّل ثلاثة سيناريوهات: الحد الأدنى (تصفية)، المتوازنة (سوق طبيعية)، الاستراتيجية (مشتري بحاجة استراتيجية).</p>
+          <p className="text-xs text-amber-700 font-bold">⚠️ القيمة الاستراتيجية مشروطة باكتمال بيانات الربحية والنمو والمخزون والملكية الفكرية، وبوجود مشتري استراتيجي فعلي. لا تُستخدم كمرجع رئيسي قبل اكتمال هذه الشروط.</p>
+        </div>
+      </Section>
+
+      <Section icon="💎" title="نطاق التقييم المقترح">
+        <div className="bg-gradient-to-br from-[#1a1a2e] to-[#2d1060] text-white rounded-3xl p-8 text-center">
+          <p className="text-xs text-[#F5C518] font-bold tracking-widest">نطاق التقييم</p>
+          <p className="text-3xl sm:text-5xl font-black mt-3">
+            {fmt(range.low)} <span className="text-lg text-white/60">إلى</span> {fmt(range.high)}
+          </p>
+          <p className="text-white/70 text-sm mt-2">جنيه مصري</p>
+          <p className="text-white/50 text-xs mt-4 max-w-md mx-auto">القيمة الفعلية في النطاق ده مرتبطة بنتائج العناية الواجبة (Due Diligence) واكتمال البيانات المالية.</p>
+        </div>
+      </Section>
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+// ==========================================================================
+// Reusable UI bits
+// ==========================================================================
+
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="bg-white/8 backdrop-blur border border-white/15 rounded-xl p-3" style={{ backgroundColor: 'rgba(255,255,255,.08)' }}>
-      <p className="text-[10px] text-white/60 font-bold tracking-widest">{label}</p>
+    <div className="bg-white/8 backdrop-blur border border-white/15 rounded-xl p-3 relative" style={{ backgroundColor: 'rgba(255,255,255,.08)' }}>
+      <div className="flex items-start justify-between gap-1">
+        <p className="text-[10px] text-white/60 font-bold tracking-widest text-right flex-1">{label}</p>
+        {hint && <Tooltip text={hint} dark />}
+      </div>
       <p className="text-2xl font-black text-[#F5C518] mt-1">{value}</p>
     </div>
   );
 }
 
-function ScenarioCard({ label, value, desc, tone }: { label: string; value: number; desc: string; tone: 'base' | 'fair' | 'strategic' }) {
+function ScenarioCard({ label, value, desc, tone, multiplier, condition, highlighted }: {
+  label: string; value: number; desc: string;
+  tone: 'base' | 'fair' | 'strategic';
+  multiplier: string; condition: string; highlighted?: boolean;
+}) {
   const colors = {
-    base: { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700' },
-    fair: { bg: 'bg-amber-50', border: 'border-[#F5C518]', text: 'text-amber-800' },
-    strategic: { bg: 'bg-emerald-50', border: 'border-emerald-400', text: 'text-emerald-800' },
+    base: { bg: 'bg-gray-50', border: 'border-gray-200', accent: 'text-gray-600' },
+    fair: { bg: 'bg-amber-50', border: 'border-[#F5C518]', accent: 'text-amber-800' },
+    strategic: { bg: 'bg-emerald-50', border: 'border-emerald-300', accent: 'text-emerald-700' },
   }[tone];
   return (
-    <div className={`${colors.bg} border-2 ${colors.border} rounded-2xl p-5`}>
-      <p className={`text-[10px] ${colors.text} font-bold tracking-widest`}>{label}</p>
+    <div className={`${colors.bg} ${highlighted ? 'border-4' : 'border-2'} ${colors.border} rounded-2xl p-5 relative`}>
+      {highlighted && <span className="absolute -top-2 right-4 bg-[#F5C518] text-[#1a1a2e] text-[10px] font-black px-2 py-0.5 rounded-full">★ المرشَّحة</span>}
+      <p className={`text-[10px] ${colors.accent} font-bold tracking-widest`}>{label}</p>
       <p className="text-3xl font-black mt-1">{fmt(value)} <span className="text-sm">ج.م</span></p>
-      <p className="text-xs text-gray-600 mt-2">{desc}</p>
+      <p className="text-[10px] text-gray-500 mt-1 font-bold">{multiplier}</p>
+      <p className="text-xs text-gray-700 mt-2">{desc}</p>
+      <p className="text-[11px] text-gray-500 mt-2 leading-relaxed border-t border-gray-200 pt-2">{condition}</p>
     </div>
   );
 }
@@ -303,9 +695,9 @@ function Section({ icon, title, subtitle, children }: { icon: string; title: str
   return (
     <section className="space-y-4">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-gradient-to-br from-[#F5C518] to-[#e6a200] rounded-xl flex items-center justify-center text-xl">{icon}</div>
-        <div>
-          <h2 className="text-lg font-black text-gray-900">{title}</h2>
+        <div className="w-10 h-10 bg-gradient-to-br from-[#F5C518] to-[#e6a200] rounded-xl flex items-center justify-center text-xl shrink-0">{icon}</div>
+        <div className="min-w-0">
+          <h2 className="text-base sm:text-lg font-black text-gray-900">{title}</h2>
           {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
         </div>
       </div>
@@ -314,23 +706,67 @@ function Section({ icon, title, subtitle, children }: { icon: string; title: str
   );
 }
 
-function KPI({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'ok' | 'bad' }) {
+function KPI({ label, value, sub, tone, hint }: { label: string; value: string; sub?: string; tone?: 'ok' | 'bad'; hint?: string }) {
   return (
-    <div className={`bg-white border rounded-2xl p-4 ${tone === 'bad' ? 'border-red-300' : 'border-gray-200'}`}>
-      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{label}</p>
+    <div className={`bg-white border rounded-2xl p-4 relative ${tone === 'bad' ? 'border-red-300' : 'border-gray-200'}`}>
+      <div className="flex items-start justify-between gap-1">
+        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider flex-1">{label}</p>
+        {hint && <Tooltip text={hint} />}
+      </div>
       <p className={`text-xl font-black mt-1 ${tone === 'bad' ? 'text-red-700' : 'text-gray-900'}`}>{value}</p>
       {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
     </div>
   );
 }
 
-function IPCard({ icon, label, value, count }: { icon: string; label: string; value: number; count: number | null }) {
+function IPCard({ icon, label, value, count, per }: { icon: string; label: string; value: number; count: number | null; per: number | null }) {
   return (
     <div className="bg-white border border-gray-200 rounded-2xl p-5">
       <p className="text-2xl mb-2">{icon}</p>
       <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{label}</p>
-      {count !== null && <p className="text-sm text-gray-600 mt-1">{count} عنصر</p>}
+      {count !== null && <p className="text-sm text-gray-600 mt-1">{count} عنصر {per !== null && <>× {fmt(per)} ج.م</>}</p>}
       <p className="text-2xl font-black text-[#1a1a2e] mt-2">{fmt(value)} <span className="text-sm">ج.م</span></p>
     </div>
+  );
+}
+
+function YearlyChart({ data }: { data: Array<{ key: string; revenue: number; count: number }> }) {
+  const max = Math.max(...data.map(d => d.revenue), 1);
+  return (
+    <div className="space-y-2">
+      {data.map(d => {
+        const pctW = (d.revenue / max) * 100;
+        return (
+          <div key={d.key} className="grid grid-cols-[70px_1fr_140px] gap-3 items-center">
+            <span className="text-xs font-bold text-gray-700">{d.key}</span>
+            <div className="bg-gray-100 rounded-lg h-6 overflow-hidden" dir="ltr">
+              <div className="h-full rounded-lg flex items-center px-2 text-[10px] font-bold text-[#1a1a2e]" style={{ width: `${pctW}%`, background: 'linear-gradient(90deg,#F5C518,#e6a200)' }}>{d.count}</div>
+            </div>
+            <span className="text-xs font-black text-[#6B21A8] text-left">{fmt(d.revenue)} ج.م</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Tooltip({ text, dark }: { text: string; dark?: boolean }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative print:hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        className={`w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center transition shrink-0 ${dark ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}
+        aria-label="شرح"
+      >i</button>
+      {open && (
+        <span className="absolute z-30 top-full left-0 mt-1.5 w-56 bg-[#1a1a2e] text-white text-[10px] leading-relaxed font-normal rounded-lg p-2.5 shadow-xl pointer-events-none">
+          {text}
+        </span>
+      )}
+    </span>
   );
 }

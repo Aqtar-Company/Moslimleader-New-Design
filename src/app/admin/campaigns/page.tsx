@@ -127,6 +127,7 @@ export default function CampaignsPage() {
                   <th className="px-5 py-3.5 text-right">المرسل</th>
                   <th className="px-5 py-3.5 text-right">الفتح</th>
                   <th className="px-5 py-3.5 text-right">النقر</th>
+                  <th className="px-5 py-3.5 text-right">تحويلات</th>
                   <th className="px-5 py-3.5 text-right">الكوبون</th>
                   <th className="px-5 py-3.5 text-right">الحالة</th>
                   <th className="px-5 py-3.5 text-right">إجراءات</th>
@@ -156,6 +157,10 @@ export default function CampaignsPage() {
                     <td className="px-5 py-3.5">
                       <span className="font-bold text-blue-700">{c.clickedCount}</span>
                       <span className="text-[10px] text-gray-400 mr-1">({pct(c.clickedCount, c.sentCount)})</span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className="font-bold text-fuchsia-700">{c.conversionCount}</span>
+                      <span className="text-[10px] text-gray-400 mr-1">({pct(c.conversionCount, c.sentCount)})</span>
                     </td>
                     <td className="px-5 py-3.5 text-xs">
                       {c.couponCode ? (

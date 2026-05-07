@@ -53,7 +53,7 @@ model Campaign {
   segmentFilters  Json?    // { boughtProduct?, notBoughtProduct?, governorate? }
   subject         String
   bodyHtml        String   @db.LongText
-  couponCode      String?  // optional coupon to attach (uses existing Coupon table)
+  couponCode      String?  @unique // optional coupon to attach; unique so an order's coupon maps to at most one campaign for conversion attribution
   status          String   @default("draft") // draft | sending | sent | failed
   recipientCount  Int      @default(0)
   sentCount       Int      @default(0)

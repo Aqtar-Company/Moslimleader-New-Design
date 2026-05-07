@@ -4,6 +4,7 @@ import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
 import { sendOrderEmails } from '@/lib/order-email';
+import { attributeOrderToCampaign } from '@/lib/campaign-attribution';
 
 
 // GET /api/orders — list current user's orders
@@ -191,6 +192,9 @@ export async function POST(req: NextRequest) {
       }
       throw err;
     }
+
+    // Best-effort campaign attribution by coupon code (never blocks the order).
+    await attributeOrderToCampaign({ orderId: order.id, couponCode: order.couponCode, userId: auth.userId });
 
     // Clear server cart after successful order
     const cart = await prisma.cart.findUnique({ where: { userId: auth.userId } });

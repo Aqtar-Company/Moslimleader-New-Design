@@ -6,6 +6,7 @@ import { products as staticProducts } from '@/lib/products';
 import { normalizeEgyptPhone } from '@/lib/phone';
 import { requirePerm } from '@/lib/permissions';
 import { logActionSafe } from '@/lib/audit-log';
+import { attributeOrderToCampaign } from '@/lib/campaign-attribution';
 
 
 export async function GET(req: NextRequest) {
@@ -275,6 +276,10 @@ export async function POST(req: NextRequest) {
       }
       throw err;
     }
+
+    // Best-effort campaign attribution by coupon code (never blocks the order).
+    // Attributed against the customer the order was placed FOR, not the staff member.
+    await attributeOrderToCampaign({ orderId: order.id, couponCode: order.couponCode, userId: user.id });
 
     await logActionSafe({
       actor: auth,

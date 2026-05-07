@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
 import { sendOrderEmails } from '@/lib/order-email';
 import { egpToUsd, toUsd } from '@/lib/currency';
+import { attributeOrderToCampaign } from '@/lib/campaign-attribution';
 
 export async function POST(req: NextRequest) {
   try {
@@ -163,6 +164,9 @@ export async function POST(req: NextRequest) {
 
       return created;
     });
+
+    // Best-effort campaign attribution by coupon code (never blocks the order).
+    await attributeOrderToCampaign({ orderId: order.id, couponCode: order.couponCode, userId: auth.userId });
 
     // Send order notification email to admin (async, non-blocking)
     try {

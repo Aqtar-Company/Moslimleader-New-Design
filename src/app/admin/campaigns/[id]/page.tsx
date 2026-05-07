@@ -222,11 +222,12 @@ export default function CampaignDetailPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <KPI icon="👥" label="المستلمون" value={String(campaign.recipientCount)} />
         <KPI icon="✅" label="تم الإرسال" value={String(campaign.sentCount)} sub={`${pct(campaign.sentCount, campaign.recipientCount)}%`} />
         <KPI icon="👁️" label="فتح الرسالة" value={String(campaign.openedCount)} sub={`${pct(campaign.openedCount, campaign.sentCount)}%`} />
         <KPI icon="🖱️" label="نقر" value={String(campaign.clickedCount)} sub={`${pct(campaign.clickedCount, campaign.sentCount)}%`} />
+        <KPI icon="🛒" label="تحويلات" value={String(campaign.conversionCount)} sub={`${pct(campaign.conversionCount, campaign.sentCount)}%`} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">

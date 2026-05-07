@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requirePerm } from '@/lib/permissions';
 import { logActionSafe } from '@/lib/audit-log';
+import { invalidateCustomersCache } from '@/lib/customers-cache';
 
 interface ShippingAddr {
   firstName?: string; lastName?: string; phone?: string; whatsappNumber?: string;
@@ -122,6 +123,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!before) return NextResponse.json({ error: 'العميل غير موجود' }, { status: 404 });
 
   const updated = await prisma.user.update({ where: { id }, data, select: { id: true, isWholesale: true } });
+  invalidateCustomersCache();
   await logActionSafe({
     actor: guard.user, action: 'customer.update', entity: 'User', entityId: id,
     before, after: updated,

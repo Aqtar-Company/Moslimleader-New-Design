@@ -2,25 +2,8 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requirePerm } from '@/lib/permissions';
-
-export interface CustomerSummary {
-  id: string;
-  name: string;
-  email: string;
-  phone: string | null;
-  marketingOptIn: boolean;
-  isWholesale: boolean;
-  createdAt: string;
-  orderCount: number;
-  totalSpend: number;
-  avgOrder: number;
-  lastOrderAt: string | null;
-  firstOrderAt: string | null;
-  daysSinceLastOrder: number | null;
-  productIds: string[];
-  lastGovernorate: string | null;
-  segments: string[];
-}
+import type { CustomerSummary } from '@/lib/customers-cache';
+import { getCustomersCache, setCustomersCache, invalidateCustomersCache } from '@/lib/customers-cache';
 
 interface ShippingAddr {
   governorate?: string;
@@ -30,15 +13,13 @@ interface ShippingAddr {
   phone?: string;
 }
 
-// Module-level cache so paginated re-fetches don't re-aggregate every time.
-// 5-minute TTL is plenty for an admin browsing customers; a fresh import or
-// new order shows up on next refresh.
-interface AggregatedCache { at: number; list: CustomerSummary[]; totalProducts: number }
-let aggCache: AggregatedCache | null = null;
-const AGG_TTL_MS = 5 * 60 * 1000;
+// The cache itself lives in src/lib/customers-cache.ts so a sibling route
+// (the wholesale-toggle PATCH at /api/admin/customers/[id]) can invalidate
+// it without exporting non-handler functions from this route module.
 
-async function aggregate(): Promise<AggregatedCache> {
-  if (aggCache && Date.now() - aggCache.at < AGG_TTL_MS) return aggCache;
+async function aggregate(): Promise<{ list: CustomerSummary[]; totalProducts: number }> {
+  const cached = getCustomersCache();
+  if (cached) return cached;
 
   const orders = await prisma.order.findMany({
     where: { status: { not: 'cancelled' } },
@@ -124,8 +105,9 @@ async function aggregate(): Promise<AggregatedCache> {
   const vipIds = new Set(sortedBySpend.slice(0, vipCount).map(r => r.id));
   for (const r of list) if (vipIds.has(r.id)) r.segments.push('vip');
 
-  aggCache = { at: Date.now(), list, totalProducts: totalPublishedProducts };
-  return aggCache;
+  const next = { at: Date.now(), list, totalProducts: totalPublishedProducts };
+  setCustomersCache(next);
+  return next;
 }
 
 // GET /api/admin/customers — aggregated customers with segment filters + pagination
@@ -146,7 +128,7 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10) || 50, 5000);
   const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
   const refresh = url.searchParams.get('refresh') === '1';
-  if (refresh) aggCache = null;
+  if (refresh) invalidateCustomersCache();
 
   const { list, totalProducts } = await aggregate();
 

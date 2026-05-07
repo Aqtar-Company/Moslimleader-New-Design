@@ -6,6 +6,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useToast } from '@/components/ui/Toast';
 import { toIntlPhone } from '@/lib/phone';
+import Spinner from '@/components/admin/Spinner';
+import { adminFetch, ForbiddenError } from '@/lib/admin-fetch';
+import ForbiddenState from '@/components/admin/ForbiddenState';
 
 interface ProductImage { url?: string; src?: string }
 
@@ -91,10 +94,11 @@ export default function CustomerDetailPage() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [waMessage, setWaMessage] = useState('');
+  const [forbidden, setForbidden] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/admin/customers/${id}`, { credentials: 'include', cache: 'no-store' });
+      const res = await adminFetch(`/api/admin/customers/${id}`);
       if (!res.ok) throw new Error('failed');
       const data = await res.json();
       setCustomer(data.customer);
@@ -104,19 +108,17 @@ export default function CustomerDetailPage() {
       setOrders(data.orders);
       const firstName = (data.customer.name as string).split(' ')[0];
       setWaMessage(`مرحبًا ${firstName} 👋\nمن Moslim Leader.\n\nعندنا منتج جديد ممكن يعجبك، تحب أبعتلك التفاصيل؟`);
-    } catch {
-      addToast('فشل تحميل بيانات العميل', 'error');
+    } catch (err) {
+      if (err instanceof ForbiddenError) setForbidden(true);
+      else addToast('فشل تحميل بيانات العميل', 'error');
     }
     setLoading(false);
   }, [id, addToast]);
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-40">
-      <div className="w-7 h-7 border-4 border-[#F5C518] border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  if (forbidden) return <ForbiddenState requiredPerm="customers.read" />;
+  if (loading) return <Spinner />;
   if (!customer || !metrics) return <div className="text-center text-gray-400 py-16">العميل غير موجود</div>;
 
   const intl = toIntlPhone(customer.phone);

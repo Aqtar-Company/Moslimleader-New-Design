@@ -256,7 +256,7 @@ export default function CheckoutPage() {
   // Pre-fill from first saved address if user has one
   useEffect(() => {
     if (user?.savedAddresses && user.savedAddresses.length > 0) {
-      const first = user.savedAddresses[0] as Record<string, unknown>;
+      const first = user.savedAddresses[0] as unknown as Record<string, unknown>;
       setSelectedSavedAddressId((first.id as string) ?? null);
       setAddress(prev => ({
         ...prev,
@@ -782,7 +782,7 @@ export default function CheckoutPage() {
                     {isRtl ? 'عناوينك المحفوظة' : 'Your Saved Addresses'}
                   </p>
                   <div className="flex flex-col gap-2">
-                    {(user.savedAddresses as Record<string, unknown>[]).map((addr) => (
+                    {(user.savedAddresses as unknown as Record<string, unknown>[]).map((addr) => (
                       <button
                         key={addr.id as string}
                         type="button"

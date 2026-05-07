@@ -1,26 +1,5 @@
-import nodemailer from 'nodemailer';
-
 import { generateInvoicePdf } from './invoice-pdf';
-
-// ─── SMTP Transporter ─────────────────────────────────────────────────────────
-// Primary: port 465 (SSL). Fallback: port 587 (STARTTLS) if 465 fails.
-function createTransporter() {
-  const host = process.env.SMTP_HOST || 'smtp.titan.email';
-  const port = parseInt(process.env.SMTP_PORT || '465', 10);
-  const user = process.env.SMTP_USER || 'orders@moslimleader.com';
-  const pass = process.env.SMTP_PASS || '';
-
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465, // true for 465 (SSL), false for 587 (STARTTLS)
-    auth: { user, pass },
-    tls: { rejectUnauthorized: false },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
-  });
-}
+import { getTransporter } from './smtp';
 
 interface OrderEmailItem {
   productName: string;
@@ -340,7 +319,7 @@ export function buildOrderEmailHtml(data: OrderEmailData): string {
 
 export async function sendOrderNotificationEmail(data: OrderEmailData): Promise<void> {
   try {
-    const transporter = createTransporter();
+    const transporter = getTransporter();
     const html = buildOrderEmailHtml(data);
 
     // Try to generate PDF invoice attachment
@@ -382,7 +361,7 @@ export async function sendOrderNotificationEmail(data: OrderEmailData): Promise<
 export async function sendCustomerOrderEmail(data: OrderEmailData): Promise<void> {
   if (!data.customerEmail || data.customerEmail === '—') return;
   try {
-    const transporter = createTransporter();
+    const transporter = getTransporter();
     const html = buildOrderEmailHtml(data);
     await transporter.sendMail({
       from: `"Moslim Leader" <${process.env.SMTP_USER || 'orders@moslimleader.com'}>`,

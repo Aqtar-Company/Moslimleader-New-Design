@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { products as staticProducts } from '@/lib/products';
-import { getAddedProducts, getProductOverrides, applyOverride } from '@/lib/admin-storage';
 import { useLang } from '@/context/LanguageContext';
 import { Product } from '@/types';
 
@@ -109,15 +107,20 @@ export default function AmeenChat() {
   const { lang } = useLang();
   const isEn = lang === 'en';
 
-  // Load products from localStorage
+  // Load products from the public products API (DB + admin overrides applied
+  // server-side). Replaces the legacy localStorage path now that admin-storage
+  // is gone — the API source mirrors what every shop page sees.
   useEffect(() => {
-    const overrides = getProductOverrides();
-    const added = getAddedProducts();
-    const merged = [
-      ...staticProducts.map(p => overrides[p.id] ? applyOverride(p, overrides[p.id]) : p),
-      ...added,
-    ];
-    setAllProducts(merged);
+    let cancelled = false;
+    fetch('/api/products', { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : { products: [] })
+      .then(data => {
+        if (cancelled) return;
+        const list = Array.isArray(data?.products) ? (data.products as Product[]) : [];
+        setAllProducts(list);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
   }, []);
 
   // Auto-scroll to bottom on new message

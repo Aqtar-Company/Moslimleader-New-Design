@@ -5,18 +5,7 @@ import { capturePayPalOrder } from '@/lib/paypal';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
 import { sendOrderEmails } from '@/lib/order-email';
-import { COUNTRY_CURRENCIES } from '@/lib/geo-pricing';
-
-const EGP_TO_USD = 1 / 50;
-
-function toUsd(amount: number, currencyEn: string): number {
-  if (!amount || amount <= 0) return 0;
-  if (currencyEn === 'USD') return amount;
-  if (currencyEn === 'EGP') return amount * EGP_TO_USD;
-  const entry = Object.values(COUNTRY_CURRENCIES).find(c => c.currencyEn === currencyEn);
-  if (entry && entry.usdRate > 0) return amount / entry.usdRate;
-  return amount;
-}
+import { EGP_TO_USD, toUsd } from '@/lib/currency';
 
 export async function POST(req: NextRequest) {
   try {

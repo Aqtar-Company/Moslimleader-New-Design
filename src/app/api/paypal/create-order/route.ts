@@ -4,28 +4,7 @@ import { getAuthUser } from '@/lib/jwt';
 import { createPayPalOrder } from '@/lib/paypal';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
-import { COUNTRY_CURRENCIES } from '@/lib/geo-pricing';
-
-const EGP_TO_USD = 1 / 50;
-
-/**
- * Convert a local-currency amount to USD.
- * - If currencyEn is 'USD' or unknown → amount is already USD
- * - If currencyEn is 'EGP' → use EGP_TO_USD rate
- * - Otherwise → divide by the country's usdRate (1 USD = X local)
- */
-function toUsd(amount: number, currencyEn: string): number {
-  if (!amount || amount <= 0) return 0;
-  if (currencyEn === 'USD') return amount;
-  if (currencyEn === 'EGP') return amount * EGP_TO_USD;
-  // Find the currency in COUNTRY_CURRENCIES
-  const entry = Object.values(COUNTRY_CURRENCIES).find(c => c.currencyEn === currencyEn);
-  if (entry && entry.usdRate > 0) {
-    return amount / entry.usdRate;
-  }
-  // Unknown currency — treat as USD (safe fallback)
-  return amount;
-}
+import { EGP_TO_USD, toUsd } from '@/lib/currency';
 
 export async function POST(req: NextRequest) {
   try {

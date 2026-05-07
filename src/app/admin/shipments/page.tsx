@@ -3,6 +3,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
+import Spinner from '@/components/admin/Spinner';
+import { adminFetch, ForbiddenError } from '@/lib/admin-fetch';
+import ForbiddenState from '@/components/admin/ForbiddenState';
 
 interface Shipment {
   id: string;
@@ -55,13 +58,16 @@ export default function ShipmentsPage() {
   const [importStats, setImportStats] = useState({ totalSeen: 0, imported: 0, linked: 0, skipped: 0 });
   const [importing, setImporting] = useState(false);
   const [importDone, setImportDone] = useState(false);
+  const [forbidden, setForbidden] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/shipments', { credentials: 'include', cache: 'no-store' });
+      const res = await adminFetch('/api/admin/shipments');
       const data = await res.json();
       setShipments(data.shipments ?? []);
-    } catch {}
+    } catch (err) {
+      if (err instanceof ForbiddenError) setForbidden(true);
+    }
     setLoading(false);
   }, []);
 
@@ -70,7 +76,7 @@ export default function ShipmentsPage() {
   const refresh = async (id: string) => {
     setRefreshingId(id);
     try {
-      const res = await fetch(`/api/admin/shipments/${id}/refresh`, { method: 'POST', credentials: 'include' });
+      const res = await adminFetch(`/api/admin/shipments/${id}/refresh`, { method: 'POST' });
       const data = await res.json();
       if (data.shipment) {
         setShipments(prev => prev.map(s => s.id === id ? { ...s, ...data.shipment } : s));
@@ -96,7 +102,7 @@ export default function ShipmentsPage() {
     if (!ok) return;
     setCancellingId(s.id);
     try {
-      const res = await fetch(`/api/admin/shipments/${s.id}/cancel`, { method: 'POST', credentials: 'include' });
+      const res = await adminFetch(`/api/admin/shipments/${s.id}/cancel`, { method: 'POST' });
       const data = await res.json();
       if (!res.ok) {
         // Bosta API failed. Offer to mark as cancelled here only.
@@ -110,7 +116,7 @@ export default function ShipmentsPage() {
             icon: '⚠️',
           });
           if (goLocal) {
-            const localRes = await fetch(`/api/admin/shipments/${s.id}/cancel?localOnly=1`, { method: 'POST', credentials: 'include' });
+            const localRes = await adminFetch(`/api/admin/shipments/${s.id}/cancel?localOnly=1`, { method: 'POST' });
             const localData = await localRes.json();
             if (!localRes.ok) {
               addToast(localData.error || 'فشل العملية', 'error');
@@ -151,10 +157,8 @@ export default function ShipmentsPage() {
     setImporting(true);
     setImportDone(false);
     try {
-      const res = await fetch('/api/admin/bosta/import-history', {
+      const res = await adminFetch('/api/admin/bosta/import-history', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ maxPages: 200, pageSize: 50 }),
       });
       if (!res.ok || !res.body) {
@@ -216,11 +220,8 @@ export default function ShipmentsPage() {
     return matchFilter && matchSearch;
   });
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-40">
-      <div className="w-7 h-7 border-4 border-[#F5C518] border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  if (forbidden) return <ForbiddenState requiredPerm="shipments.read" />;
+  if (loading) return <Spinner />;
 
   return (
     <div className="space-y-5">
@@ -237,7 +238,7 @@ export default function ShipmentsPage() {
           <button
             onClick={async () => {
               try {
-                const res = await fetch('/api/admin/bosta/ping', { credentials: 'include' });
+                const res = await adminFetch('/api/admin/bosta/ping');
                 const data = await res.json();
                 if (data.ok) addToast(`✓ التوكن شغال — ${data.baseUrl}`, 'success', 5000);
                 else addToast(data.error || 'فشل الاتصال', 'error', 6000);
@@ -386,7 +387,7 @@ export default function ShipmentsPage() {
 
               {importing && (
                 <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-                  <div className="w-4 h-4 border-2 border-[#F5C518] border-t-transparent rounded-full animate-spin" />
+                  <Spinner size="sm" inline />
                   <span>جاري السحب من بوسطة...</span>
                 </div>
               )}

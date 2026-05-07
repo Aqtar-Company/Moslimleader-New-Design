@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { createPayPalOrder } from '@/lib/paypal';
+import { EGP_TO_USD } from '@/lib/currency';
 
 // POST /api/series/[id]/paypal-create — create a PayPal order for a full series
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -35,11 +36,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (series.seriesPriceUSD && series.seriesPriceUSD > 0) {
       priceUsd = Number(series.seriesPriceUSD);
     } else if (series.seriesPrice && series.seriesPrice > 0) {
-      priceUsd = Number(series.seriesPrice) / 50;
+      priceUsd = Number(series.seriesPrice) * EGP_TO_USD;
     } else {
       // Sum individual book prices in USD
       priceUsd = series.books.reduce((sum, b) => {
-        const bookUsd = b.priceUSD && b.priceUSD > 0 ? Number(b.priceUSD) : Number(b.price) / 50;
+        const bookUsd = b.priceUSD && b.priceUSD > 0 ? Number(b.priceUSD) : Number(b.price) * EGP_TO_USD;
         return sum + bookUsd;
       }, 0);
     }

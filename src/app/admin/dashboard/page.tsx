@@ -5,6 +5,9 @@ import { useAuth } from '@/context/AuthContext';
 import RecentStaffActivity from './RecentStaffActivity';
 import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
+import { STATUS_COLORS, STATUSES, normalizeStatus } from '@/lib/admin-status';
+import Spinner from '@/components/admin/Spinner';
+import StatusPill from '@/components/admin/StatusPill';
 
 interface DbOrder {
   id: string;
@@ -23,26 +26,6 @@ interface Stats {
   outOfStock: number | null;
   byStatus: Record<string, number>;
   recentOrders: { id: string; userName: string; date: string; total: number; status: string }[];
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  'قيد التجهيز': 'bg-amber-100 text-amber-700',
-  'تم الدفع':    'bg-emerald-100 text-emerald-700',
-  'تم الشحن':    'bg-blue-100 text-blue-700',
-  'تم التسليم':  'bg-green-100 text-green-700',
-  'ملغي':        'bg-red-100 text-red-600',
-  'pending':     'bg-amber-100 text-amber-700',
-};
-
-const STATUSES = ['قيد التجهيز', 'تم الدفع', 'تم الشحن', 'تم التسليم', 'ملغي'];
-
-function normalizeStatus(s: string): string {
-  if (s === 'pending' || s === 'processing') return 'قيد التجهيز';
-  if (s === 'paid') return 'تم الدفع';
-  if (s === 'shipped') return 'تم الشحن';
-  if (s === 'delivered') return 'تم التسليم';
-  if (s === 'cancelled') return 'ملغي';
-  return s;
 }
 
 export default function DashboardPage() {
@@ -101,11 +84,7 @@ export default function DashboardPage() {
     return () => ac.abort();
   }, []);
 
-  if (!stats) return (
-    <div className="flex items-center justify-center h-40">
-      <div className="w-7 h-7 border-4 border-[#F5C518] border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  if (!stats) return <Spinner />;
 
   // Render '—' for KPIs the user doesn't have access to. Hides the
   // super-admin-only "Users" card entirely for staff so the layout
@@ -200,7 +179,7 @@ export default function DashboardPage() {
                     <td className="px-5 py-3 text-gray-500">{o.date}</td>
                     <td className={`px-5 py-3 font-semibold ${o.status === 'ملغي' ? 'line-through text-gray-400' : 'text-gray-900'}`}>{o.total.toLocaleString('ar-EG')} ج.م</td>
                     <td className="px-5 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${STATUS_COLORS[o.status] || 'bg-gray-100 text-gray-600'}`}>{o.status}</span>
+                      <StatusPill status={o.status} />
                     </td>
                   </tr>
                 ))}

@@ -5,6 +5,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { adminFetch, adminJson, ForbiddenError } from '@/lib/admin-fetch';
 import ForbiddenState from '@/components/admin/ForbiddenState';
+import Spinner from '@/components/admin/Spinner';
 
 interface SeriesBook {
   id: string;

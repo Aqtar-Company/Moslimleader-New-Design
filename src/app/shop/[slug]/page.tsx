@@ -1,45 +1,30 @@
 export const dynamic = 'force-dynamic';
 import type { Metadata } from 'next';
-import { products as staticProducts } from '@/lib/products';
 import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
 import ProductDetailClient from './ProductDetailClient';
 import { Product } from '@/types';
+import { applyOverride, getMergedStaticProduct, loadStaticOverrides } from '@/lib/product-overrides';
 
 type Props = { params: Promise<{ slug: string }> };
 
 // ── Helper: resolve product (DB first, then static + overrides) ──
 async function resolveProduct(slug: string): Promise<Product | null> {
-  // Load admin overrides once (applies to both DB-seeded and pure static products)
-  let overrides: Record<string, Record<string, unknown>> = {};
-  try {
-    const overrideSetting = await prisma.setting.findUnique({ where: { key: 'product-overrides' } });
-    overrides = (overrideSetting?.value as Record<string, Record<string, unknown>>) ?? {};
-  } catch {}
-
   try {
     const dbProduct = await prisma.product.findUnique({ where: { slug } });
     if (dbProduct) {
       // Static-sourced products in DB may have stale prices — apply overrides
+      // via the shared helper so the detail page mirrors home + list pages.
       if (dbProduct.source === 'static') {
-        const override = overrides[dbProduct.id];
-        if (override && Object.keys(override).length > 0) {
-          return { ...dbProduct, ...override } as unknown as Product;
-        }
+        const overrides = await loadStaticOverrides();
+        const merged = applyOverride(dbProduct as unknown as Product, overrides[dbProduct.id]);
+        return merged;
       }
       return dbProduct as unknown as Product;
     }
   } catch {}
 
-  const staticProduct = staticProducts.find(p => p.slug === slug);
-  if (!staticProduct) return null;
-
-  const override = overrides[staticProduct.id];
-  if (override && Object.keys(override).length > 0) {
-    return { ...staticProduct, ...override } as Product;
-  }
-
-  return staticProduct;
+  return getMergedStaticProduct(slug);
 }
 
 // ── Open Graph / Twitter metadata for social sharing ──

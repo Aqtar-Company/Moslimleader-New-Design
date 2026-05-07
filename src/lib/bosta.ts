@@ -371,10 +371,6 @@ export async function bostaCityIdFromGovernorate(governorateId?: string | null):
   }
 }
 
-// Re-exported from the shared phone helper so imports from `@/lib/bosta` keep
-// working. New code should import from `@/lib/phone` directly.
-export { normalizeEgyptPhone } from './phone';
-
 // Build the public tracking URL. Configurable via BOSTA_TRACKING_URL with `{tn}` placeholder.
 export function bostaTrackingUrl(trackingNumber: string): string {
   const tpl = (process.env.BOSTA_TRACKING_URL || '').trim() || 'https://bosta.co/en/track-shipment/{tn}';

@@ -3,6 +3,9 @@
 import { Fragment, useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { useToast } from '@/components/ui/Toast';
+import Spinner from '@/components/admin/Spinner';
+import { adminFetch, ForbiddenError } from '@/lib/admin-fetch';
+import ForbiddenState from '@/components/admin/ForbiddenState';
 
 interface Variant { id?: string; name?: string; nameEn?: string; imageIndex?: number }
 
@@ -42,6 +45,7 @@ export default function InventoryPage() {
   const [edits, setEdits] = useState<Record<string, number>>({});
   const [variantEdits, setVariantEdits] = useState<Record<string, number>>({}); // key = `${productId}:${variantIndex}`
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [forbidden, setForbidden] = useState(false);
 
   const toggleExpand = (productId: string) => {
     setExpanded(prev => {
@@ -53,11 +57,12 @@ export default function InventoryPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/inventory', { credentials: 'include', cache: 'no-store' });
+      const res = await adminFetch('/api/admin/inventory');
       const data = await res.json();
       setProducts(data.products ?? []);
-    } catch {
-      addToast('فشل تحميل المخزون', 'error');
+    } catch (err) {
+      if (err instanceof ForbiddenError) setForbidden(true);
+      else addToast('فشل تحميل المخزون', 'error');
     }
     setLoading(false);
   }, [addToast]);
@@ -79,10 +84,8 @@ export default function InventoryPage() {
 
   const updateStock = async (productId: string, value: number) => {
     try {
-      const res = await fetch('/api/admin/inventory', {
+      const res = await adminFetch('/api/admin/inventory', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ productId, stock: value }),
       });
       const data = await res.json();
@@ -100,10 +103,8 @@ export default function InventoryPage() {
 
   const adjustStock = async (productId: string, delta: number) => {
     try {
-      const res = await fetch('/api/admin/inventory', {
+      const res = await adminFetch('/api/admin/inventory', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ productId, delta }),
       });
       const data = await res.json();
@@ -114,10 +115,8 @@ export default function InventoryPage() {
 
   const updateVariantStock = async (productId: string, variantIndex: number, value: number) => {
     try {
-      const res = await fetch('/api/admin/inventory', {
+      const res = await adminFetch('/api/admin/inventory', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ productId, variantIndex, stock: value }),
       });
       const data = await res.json();
@@ -139,10 +138,8 @@ export default function InventoryPage() {
 
   const adjustVariantStock = async (productId: string, variantIndex: number, delta: number) => {
     try {
-      const res = await fetch('/api/admin/inventory', {
+      const res = await adminFetch('/api/admin/inventory', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ productId, variantIndex, delta }),
       });
       const data = await res.json();
@@ -155,11 +152,8 @@ export default function InventoryPage() {
     } catch {}
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-40">
-      <div className="w-7 h-7 border-4 border-[#F5C518] border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  if (forbidden) return <ForbiddenState requiredPerm="inventory.read" />;
+  if (loading) return <Spinner />;
 
   return (
     <div className="space-y-5">

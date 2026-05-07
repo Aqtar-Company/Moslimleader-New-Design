@@ -4,6 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { PERMISSIONS, PERMISSION_GROUPS, type Permission } from '@/lib/permissions-shared';
+import Spinner from '@/components/admin/Spinner';
+import { adminFetch, ForbiddenError } from '@/lib/admin-fetch';
+import ForbiddenState from '@/components/admin/ForbiddenState';
 
 interface Staff {
   id: string;
@@ -67,16 +70,18 @@ export default function StaffPage() {
   const [newEmail, setNewEmail] = useState('');
   const [newPerms, setNewPerms] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
+  const [forbidden, setForbidden] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/staff', { credentials: 'include', cache: 'no-store' });
+      const res = await adminFetch('/api/admin/staff');
       if (!res.ok) throw new Error('failed');
       const data = await res.json();
       setStaff(data.staff ?? []);
-    } catch {
-      addToast('فشل تحميل المساعدين', 'error');
+    } catch (err) {
+      if (err instanceof ForbiddenError) setForbidden(true);
+      else addToast('فشل تحميل المساعدين', 'error');
     }
     setLoading(false);
   }, [addToast]);
@@ -98,10 +103,8 @@ export default function StaffPage() {
     if (!editing) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/admin/staff/${editing.id}`, {
+      const res = await adminFetch(`/api/admin/staff/${editing.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ permissions: Array.from(editing.perms) }),
       });
       const data = await res.json();
@@ -119,10 +122,8 @@ export default function StaffPage() {
     if (!newEmail.trim()) { addToast('اكتب الإيميل', 'warning'); return; }
     setAdding(true);
     try {
-      const res = await fetch('/api/admin/staff', {
+      const res = await adminFetch('/api/admin/staff', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ email: newEmail.trim(), permissions: Array.from(newPerms) }),
       });
       const data = await res.json();
@@ -148,7 +149,7 @@ export default function StaffPage() {
     });
     if (!ok) return;
     try {
-      const res = await fetch(`/api/admin/staff/${s.id}/force-logout`, { method: 'POST', credentials: 'include' });
+      const res = await adminFetch(`/api/admin/staff/${s.id}/force-logout`, { method: 'POST' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'failed');
       addToast('تم فرض تسجيل الخروج', 'success');
@@ -168,7 +169,7 @@ export default function StaffPage() {
     });
     if (!ok) return;
     try {
-      const res = await fetch(`/api/admin/staff/${s.id}`, { method: 'DELETE', credentials: 'include' });
+      const res = await adminFetch(`/api/admin/staff/${s.id}`, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'failed');
       setStaff(prev => prev.filter(x => x.id !== s.id));
@@ -177,6 +178,8 @@ export default function StaffPage() {
       addToast(err instanceof Error ? err.message : 'فشل الإلغاء', 'error');
     }
   };
+
+  if (forbidden) return <ForbiddenState message="إدارة المساعدين متاحة للأدمن الرئيسي فقط" />;
 
   return (
     <div className="space-y-5">
@@ -222,7 +225,7 @@ export default function StaffPage() {
           <h2 className="text-sm font-black text-gray-900">المساعدون الحاليون ({staff.filter(s => s.role === 'staff').length})</h2>
         </div>
         {loading ? (
-          <div className="p-8 text-center"><div className="inline-block w-7 h-7 border-4 border-[#F5C518] border-t-transparent rounded-full animate-spin" /></div>
+          <div className="p-8 text-center"><Spinner inline /></div>
         ) : staff.length === 0 ? (
           <p className="p-8 text-xs text-gray-400 text-center">مفيش مساعدين بعد</p>
         ) : (

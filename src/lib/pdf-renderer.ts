@@ -86,8 +86,16 @@ async function renderWithPdfjs(pdfPath: string, pageNum: number): Promise<Buffer
 
   const { createCanvas } = await import('@napi-rs/canvas');
   const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
-  const context = canvas.getContext('2d');
-  await page.render({ canvasContext: context, viewport }).promise;
+  // Cast at the boundary: pdfjs only invokes the subset of CanvasRenderingContext2D
+  // that @napi-rs/canvas implements (drawFocusIfNeeded etc. are never called).
+  // The render-params type also requires `canvas` in newer pdfjs builds — pass
+  // both. We cast the whole object to bypass DOM Canvas vs SK canvas mismatch.
+  const context = canvas.getContext('2d') as unknown as CanvasRenderingContext2D;
+  await page.render({
+    canvasContext: context,
+    canvas: canvas as unknown as HTMLCanvasElement,
+    viewport,
+  }).promise;
 
   const buffer: Buffer = canvas.toBuffer('image/png');
   await pdf.destroy();

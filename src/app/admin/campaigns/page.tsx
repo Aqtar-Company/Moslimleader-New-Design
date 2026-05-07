@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { STATUS_LABELS } from '@/lib/admin-status';
+import Spinner from '@/components/admin/Spinner';
 
 interface Campaign {
   id: string;
@@ -21,13 +23,6 @@ interface Campaign {
   createdAt: string;
   finishedAt: string | null;
 }
-
-const STATUS_LABELS: Record<string, string> = {
-  draft:   'مسودة',
-  sending: 'قيد الإرسال',
-  sent:    'تم الإرسال',
-  failed:  'فشلت',
-};
 
 const STATUS_COLORS: Record<string, string> = {
   draft:   'bg-gray-100 text-gray-700',
@@ -112,9 +107,7 @@ export default function CampaignsPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-40">
-          <div className="w-7 h-7 border-4 border-[#F5C518] border-t-transparent rounded-full animate-spin" />
-        </div>
+        <Spinner />
       ) : campaigns.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-200 py-16 text-center text-gray-400">
           <p className="text-4xl mb-3">📭</p>

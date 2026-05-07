@@ -6,6 +6,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { adminFetch, adminJson, ForbiddenError } from '@/lib/admin-fetch';
 import ForbiddenState from '@/components/admin/ForbiddenState';
+import Spinner from '@/components/admin/Spinner';
 
 interface DbUser {
   id: string;
@@ -89,11 +90,7 @@ export default function UsersPage() {
   const filtered = users;
 
   if (forbidden) return <ForbiddenState message="إدارة المستخدمين متاحة للأدمن الرئيسي فقط" />;
-  if (loading) return (
-    <div className="flex items-center justify-center h-40">
-      <div className="w-7 h-7 border-4 border-[#F5C518] border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  if (loading) return <Spinner />;
 
   return (
     <div className="space-y-5">

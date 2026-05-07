@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { adminFetch, ForbiddenError } from '@/lib/admin-fetch';
+import ForbiddenState from '@/components/admin/ForbiddenState';
 
 type PaymentMethodId = 'cod' | 'card' | 'paypal' | 'vodafone' | 'instapay';
 
@@ -25,14 +27,17 @@ export default function PaymentMethodsPage() {
   const [methods, setMethods] = useState<PaymentMethodConfig[]>(DEFAULT_METHODS);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
 
   useEffect(() => {
-    fetch('/api/admin/settings?key=payment-methods', { credentials: 'include' })
+    adminFetch('/api/admin/settings?key=payment-methods')
       .then(r => r.json())
       .then(d => {
         if (Array.isArray(d.value)) setMethods(d.value);
       })
-      .catch(() => {})
+      .catch(err => {
+        if (err instanceof ForbiddenError) setForbidden(true);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -42,10 +47,8 @@ export default function PaymentMethodsPage() {
   }
 
   async function handleSave() {
-    const res = await fetch('/api/admin/settings', {
+    const res = await adminFetch('/api/admin/settings', {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify({ key: 'payment-methods', value: methods }),
     });
     if (res.ok) {
@@ -56,6 +59,7 @@ export default function PaymentMethodsPage() {
 
   const enabledCount = methods.filter(m => m.enabled).length;
 
+  if (forbidden) return <ForbiddenState requiredPerm="settings.read" />;
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32">

@@ -1,28 +1,4 @@
-import nodemailer, { Transporter } from 'nodemailer';
-
-let cached: Transporter | null = null;
-
-function getTransporter(): Transporter {
-  if (cached) return cached;
-  const host = process.env.SMTP_HOST || 'smtp.titan.email';
-  const port = parseInt(process.env.SMTP_PORT || '465', 10);
-  const user = process.env.SMTP_USER || 'orders@moslimleader.com';
-  const pass = process.env.SMTP_PASS || '';
-  cached = nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: { user, pass },
-    tls: { rejectUnauthorized: false },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
-    pool: true,        // reuse connections for bulk sends
-    maxConnections: 3,
-    maxMessages: 50,
-  });
-  return cached;
-}
+import { getTransporter } from './smtp';
 
 export async function sendMarketingEmail(opts: {
   to: string;

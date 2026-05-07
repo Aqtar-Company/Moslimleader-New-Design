@@ -6,6 +6,9 @@ import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { PaginationFooter } from '@/components/admin/PaginationFooter';
 import { ManualOrderModal } from '@/components/admin/ManualOrderModal';
+import Spinner from '@/components/admin/Spinner';
+import { adminFetch, ForbiddenError } from '@/lib/admin-fetch';
+import ForbiddenState from '@/components/admin/ForbiddenState';
 
 interface OrderItem {
   id: string;
@@ -281,17 +284,20 @@ export default function OrdersPage() {
   const [manualOpen, setManualOpen] = useState(false);
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(50);
+  const [forbidden, setForbidden] = useState(false);
 
   const load = useCallback(async (limitOverride?: number) => {
     setLoading(true);
     try {
       const effectiveLimit = limitOverride ?? pageSize;
-      const res = await fetch(`/api/admin/orders?limit=${effectiveLimit}&offset=0`, { credentials: 'include', cache: 'no-store' });
+      const res = await adminFetch(`/api/admin/orders?limit=${effectiveLimit}&offset=0`);
       const data: { orders: DbOrder[]; total?: number } = await res.json();
       setOrders(data.orders ?? []);
       setTotal(data.total ?? (data.orders?.length ?? 0));
       if (limitOverride) setPageSize(limitOverride);
-    } catch {}
+    } catch (err) {
+      if (err instanceof ForbiddenError) setForbidden(true);
+    }
     setLoading(false);
   }, [pageSize]);
 
@@ -320,7 +326,7 @@ export default function OrdersPage() {
     });
     if (!ok) return;
     try {
-      const res = await fetch(`/api/admin/orders/${order.id}/bosta`, { method: 'POST', credentials: 'include' });
+      const res = await adminFetch(`/api/admin/orders/${order.id}/bosta`, { method: 'POST' });
       const data = await res.json();
       if (!res.ok) {
         addToast(data.error || 'فشل إنشاء الشحنة', 'error');
@@ -337,10 +343,8 @@ export default function OrdersPage() {
     const previousStatus = order.status;
     setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status } : o));
     try {
-      const res = await fetch(`/api/admin/orders/${order.id}`, {
+      const res = await adminFetch(`/api/admin/orders/${order.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ status, force }),
       });
       const data = await res.json().catch(() => ({}));
@@ -405,11 +409,8 @@ export default function OrdersPage() {
     .filter(o => o.paymentMethod === 'gift' && o.status !== 'cancelled')
     .reduce((s, o) => s + o.items.reduce((ss, it) => ss + it.unitPrice * it.quantity, 0) + o.shippingCost, 0);
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-40">
-      <div className="w-7 h-7 border-4 border-[#F5C518] border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  if (forbidden) return <ForbiddenState requiredPerm="orders.read" />;
+  if (loading) return <Spinner />;
 
   return (
     <div className="space-y-5">

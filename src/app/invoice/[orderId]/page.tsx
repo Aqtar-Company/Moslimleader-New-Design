@@ -238,7 +238,7 @@ export default function InvoicePage() {
           <div className="px-8 pb-6">
             <div className="bg-gray-50 rounded-2xl border border-gray-100 px-5 py-3 flex justify-between items-center">
               <span className="text-xs font-black text-gray-400 uppercase tracking-wide">{t('invoice.payment')}</span>
-              <span className="text-sm font-bold text-gray-900">{getPayLabels(t)[order.paymentMethod] || order.paymentMethod}</span>
+              <span className="text-sm font-bold text-gray-900">{getPayLabels(t as (k: string) => string)[order.paymentMethod] || order.paymentMethod}</span>
             </div>
           </div>
 

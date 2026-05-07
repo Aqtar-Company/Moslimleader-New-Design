@@ -51,10 +51,8 @@ export default function CouponsPage() {
     if (isNaN(p) || p < 1 || p > 100) { setError('نسبة الخصم يجب أن تكون بين 1 و 100'); return; }
     if (coupons.some(x => x.code === c)) { setError('هذا الكود موجود بالفعل'); return; }
 
-    const res = await fetch('/api/admin/coupons', {
+    const res = await adminFetch('/api/admin/coupons', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify({ code: c, discount: p }),
     });
 
@@ -181,10 +179,8 @@ export default function CouponsPage() {
                   <td className="px-6 py-4 text-center">
                     <button
                       onClick={async () => {
-                        await fetch('/api/admin/coupons', {
+                        await adminFetch('/api/admin/coupons', {
                           method: 'PUT',
-                          headers: { 'Content-Type': 'application/json' },
-                          credentials: 'include',
                           body: JSON.stringify({ code: c, showBanner: !showBanner }),
                         });
                         await load();

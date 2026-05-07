@@ -7,6 +7,9 @@ import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { adminFetch, adminJson } from '@/lib/admin-fetch';
 import { sanitizeHtml } from '@/lib/sanitize';
+import { timeAgoAr } from '@/lib/format';
+import { STATUS_LABELS } from '@/lib/admin-status';
+import Spinner from '@/components/admin/Spinner';
 
 interface Recipient {
   id: string;
@@ -43,23 +46,6 @@ interface Campaign {
   createdAt: string;
   recipients: Recipient[];
 }
-
-function timeAgoAr(iso: string | null): string {
-  if (!iso) return 'لم تُرسل بعد';
-  const t = new Date(iso).getTime();
-  const diff = Date.now() - t;
-  const m = Math.floor(diff / 60_000);
-  if (m < 1) return 'الآن';
-  if (m < 60) return `منذ ${m} دقيقة`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `منذ ${h} ساعة`;
-  const d = Math.floor(h / 24);
-  return `منذ ${d} يوم`;
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  draft: 'مسودة', sending: 'قيد الإرسال', sent: 'تم الإرسال', failed: 'فشلت',
-};
 
 function pct(n: number, total: number) {
   if (!total) return 0;
@@ -135,11 +121,7 @@ export default function CampaignDetailPage() {
     return () => clearInterval(interval);
   }, [load]);
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-40">
-      <div className="w-7 h-7 border-4 border-[#F5C518] border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  if (loading) return <Spinner />;
   if (!campaign) return null;
 
   const sendProgress = pct(campaign.sentCount, campaign.recipientCount);

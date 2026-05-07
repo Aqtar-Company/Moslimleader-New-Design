@@ -18,7 +18,7 @@ interface PayPalCheckoutButtonProps {
   discountCurrency?: string;  // ISO code e.g. 'SAR', 'EGP', 'USD'
   couponCode?: string;
   currency: string;
-  shippingAddress: Record<string, unknown>;
+  shippingAddress: object;
   notes?: string;
   onSuccess: (orderId: string) => void;
   onError: (message: string) => void;

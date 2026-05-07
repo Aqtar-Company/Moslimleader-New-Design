@@ -102,11 +102,12 @@ export default function LibraryPage() {
   const isEn = lang === 'en';
   const { zone, countryCode, formatPrice } = useRegionalPricing();
 
-  // Helper: resolve and format book price based on user region
+  // Helper: resolve and format book price based on user region.
+  // resolvePrice now takes (egp, usd, zone, countryCode) — the legacy
+  // regional-pricing object form was removed.
   const getBookPrice = (book: { price: number; priceUSD?: number }) => {
     if (book.price === 0) return isEn ? 'Free' : 'مجاني';
-    const pricing = book.priceUSD ? { price_usd_manual: book.priceUSD } : null;
-    return formatPrice(resolvePrice(book.price, zone, pricing, countryCode));
+    return formatPrice(resolvePrice(book.price, book.priceUSD ?? 0, zone, countryCode));
   };
 
   const [books, setBooks] = useState<Book[]>([]);
@@ -394,7 +395,7 @@ export default function LibraryPage() {
                             <div className="shrink-0 text-right">
                               <p className="text-gray-400 text-xs">{isEn ? 'Full series' : 'السلسلة كاملة'}</p>
                               <p className="text-[#F5C518] font-black text-lg">
-                                {formatPrice(resolvePrice(series.seriesPrice ?? 0, zone, { price_egp_manual: series.seriesPrice, price_usd_manual: series.seriesPriceUSD }, countryCode))}
+                                {formatPrice(resolvePrice(series.seriesPrice ?? 0, series.seriesPriceUSD ?? 0, zone, countryCode))}
                               </p>
                             </div>
                           )}

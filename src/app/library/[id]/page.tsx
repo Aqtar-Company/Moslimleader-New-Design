@@ -132,10 +132,11 @@ function BookPageInner() {
   const isEn = lang === 'en';
   const { zone, countryCode, formatPrice } = useRegionalPricing();
 
-  // Resolve book price based on user's region
+  // Resolve book price based on user's region. resolvePrice now takes
+  // explicit (egp, usd) rather than the legacy regional-pricing object,
+  // so pass the manual-USD override when available.
   const resolvedBookPrice = (book: BookData) => {
-    const pricing = book.priceUSD ? { price_usd_manual: book.priceUSD } : null;
-    return resolvePrice(book.price, zone, pricing, countryCode);
+    return resolvePrice(book.price, book.priceUSD ?? 0, zone, countryCode);
   };
 
   // Format book price for display using the shared formatter
@@ -685,7 +686,7 @@ function BookPageInner() {
                 className="shrink-0 flex flex-col items-center bg-[#F5C518] hover:bg-amber-400 active:bg-amber-500 text-[#1a1a2e] font-black rounded-2xl px-4 py-2.5 transition shadow-lg shadow-black/20 text-center"
               >
                 <span className="text-lg leading-tight">
-                  {formatPrice(resolvePrice(seriesPrice ?? 0, zone, { price_egp_manual: seriesPrice ?? 0, price_usd_manual: seriesPriceUSD ?? undefined }, countryCode))}
+                  {formatPrice(resolvePrice(seriesPrice ?? 0, seriesPriceUSD ?? 0, zone, countryCode))}
                 </span>
                 <span className="text-[10px] font-bold mt-0.5">شراء السلسلة كاملة →</span>
               </Link>

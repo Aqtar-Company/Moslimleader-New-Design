@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { createDelivery, bostaCityFromGovernorate, bostaCityIdFromGovernorate, normalizeEgyptPhone } from '@/lib/bosta';
+import { createDelivery, bostaCityFromGovernorate, bostaCityIdFromGovernorate } from '@/lib/bosta';
+import { normalizeEgyptPhone } from '@/lib/phone';
 import { requirePerm } from '@/lib/permissions';
 import { logActionSafe } from '@/lib/audit-log';
 

@@ -1,23 +1,10 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { randomBytes } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { requireSuperAdmin } from '@/lib/permissions';
 import { logActionSafe } from '@/lib/audit-log';
-import { resolveSegment, renderTemplate, instrumentEmailHtml, type SegmentFilters } from '@/lib/marketing';
-import { sendMarketingEmail, getBaseUrl } from '@/lib/marketing-mailer';
-import { renderPlainTextEmail } from '@/lib/email-template';
-
-// Sleep helper for rate-limiting between sends.
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
-
-async function ensureMarketingToken(userId: string): Promise<string> {
-  const u = await prisma.user.findUnique({ where: { id: userId }, select: { marketingToken: true } });
-  if (u?.marketingToken) return u.marketingToken;
-  const token = randomBytes(24).toString('hex');
-  await prisma.user.update({ where: { id: userId }, data: { marketingToken: token } });
-  return token;
-}
+import { resolveSegment, type SegmentFilters } from '@/lib/marketing';
+import { runSend } from '@/lib/campaign-runner';
 
 // POST /api/admin/campaigns/[id]/send — fire-and-forget background sender.
 // Super-admin only — campaign sends cost real money (per-recipient SMTP)
@@ -74,89 +61,4 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   });
 
   return NextResponse.json({ ok: true, queued: reachable.length });
-}
-
-// Exported so /resume can pick up a campaign whose process died mid-run.
-export const resumeCampaignSend = (campaignId: string) => runSend(campaignId);
-
-async function runSend(campaignId: string) {
-  const baseUrl = getBaseUrl();
-  let sent = 0;
-  let failed = 0;
-
-  try {
-    const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
-    if (!campaign) return;
-
-    const recipients = await prisma.campaignRecipient.findMany({
-      where: { campaignId, status: 'queued' },
-      include: { user: { select: { id: true, name: true } } },
-    });
-
-    for (const r of recipients) {
-      try {
-        const token = await ensureMarketingToken(r.userId);
-        const unsubscribeUrl = `${baseUrl}/api/email/unsubscribe?token=${token}`;
-        const firstName = (r.user.name || '').split(/\s+/)[0] || r.user.name || '';
-        // Prefer the new plain-text path (bodyText → branded email).
-        // Legacy campaigns (bodyText null) keep using the old template.
-        const renderedBody = campaign.bodyText
-          ? renderPlainTextEmail({
-              bodyText: campaign.bodyText,
-              firstName,
-              couponCode: campaign.couponCode,
-              ctaLabel: campaign.ctaLabel,
-              ctaUrl: campaign.ctaUrl,
-            })
-          : renderTemplate(campaign.bodyHtml, {
-              name: r.user.name || '',
-              firstName,
-              email: r.email,
-              couponCode: campaign.couponCode || undefined,
-              unsubscribeUrl,
-            });
-        const renderedSubject = renderTemplate(campaign.subject, {
-          name: r.user.name || '',
-          firstName,
-          email: r.email,
-          couponCode: campaign.couponCode || undefined,
-          unsubscribeUrl,
-        });
-        const finalHtml = instrumentEmailHtml(renderedBody, campaignId, r.id, baseUrl, unsubscribeUrl);
-
-        await sendMarketingEmail({
-          to: r.email,
-          subject: renderedSubject,
-          html: finalHtml,
-          unsubscribeUrl,
-        });
-        await prisma.campaignRecipient.update({
-          where: { id: r.id },
-          data: { status: 'sent', sentAt: new Date() },
-        });
-        sent += 1;
-        await prisma.campaign.update({ where: { id: campaignId }, data: { sentCount: { increment: 1 } } });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'unknown error';
-        await prisma.campaignRecipient.update({
-          where: { id: r.id },
-          data: { status: 'failed', errorMessage: message.slice(0, 500) },
-        });
-        failed += 1;
-      }
-      // ~30/min throttle for Titan SMTP
-      await sleep(2000);
-    }
-
-    await prisma.campaign.update({
-      where: { id: campaignId },
-      data: { status: failed === recipients.length ? 'failed' : 'sent', finishedAt: new Date() },
-    });
-  } catch (err) {
-    console.error('[campaign send loop]', err);
-    await prisma.campaign.update({
-      where: { id: campaignId },
-      data: { status: 'failed', finishedAt: new Date() },
-    });
-  }
 }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useToast } from '@/components/ui/Toast';
 import { toIntlPhone, whatsappLink } from '@/lib/phone';
 import { PaginationFooter } from '@/components/admin/PaginationFooter';
+import Spinner from '@/components/admin/Spinner';
 
 interface CustomerSummary {
   id: string;
@@ -180,9 +181,7 @@ export default function CustomersPage() {
 
       {/* Table */}
       {loading ? (
-        <div className="flex items-center justify-center h-40">
-          <div className="w-7 h-7 border-4 border-[#F5C518] border-t-transparent rounded-full animate-spin" />
-        </div>
+        <Spinner />
       ) : (
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
           {customers.length === 0 ? (

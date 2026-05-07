@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Spinner from '@/components/admin/Spinner';
 
 interface AuditEntry {
   id: string;
@@ -63,7 +64,7 @@ export default function RecentStaffActivity() {
         >تحديث</button>
       </div>
       {loading ? (
-        <div className="p-8 text-center"><div className="inline-block w-6 h-6 border-4 border-[#F5C518] border-t-transparent rounded-full animate-spin" /></div>
+        <div className="p-8 text-center"><Spinner inline size="sm" /></div>
       ) : error ? (
         <p className="p-6 text-xs text-red-500 text-center">{error}</p>
       ) : entries.length === 0 ? (

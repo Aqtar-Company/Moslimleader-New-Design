@@ -16,6 +16,8 @@ export const PERMISSIONS = [
   'payment-methods.read', 'payment-methods.write',
   'valuation.read', 'valuation.write',
   'settings.read', 'settings.write',
+  'suppliers.read', 'suppliers.write',
+  'production.read', 'production.write',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -27,4 +29,5 @@ export const PERMISSION_GROUPS: Array<{ label: string; perms: Permission[] }> = 
   { label: 'المكتبة', perms: ['books.read', 'books.write'] },
   { label: 'الإعدادات', perms: ['shipping.read', 'shipping.write', 'payment-methods.read', 'payment-methods.write', 'settings.read', 'settings.write'] },
   { label: 'مالي', perms: ['valuation.read', 'valuation.write'] },
+  { label: 'الموردون والإنتاج', perms: ['suppliers.read', 'suppliers.write', 'production.read', 'production.write'] },
 ];

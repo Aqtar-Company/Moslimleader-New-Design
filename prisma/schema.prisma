@@ -138,6 +138,7 @@ model Product {
   cartItems  CartItem[]
   reviews    Review[]
   stockMovements StockMovement[]
+  productionBatches ProductionBatch[]
 }
 
 // Append-only audit log of every stock change. Written inside the same
@@ -163,6 +164,71 @@ model StockMovement {
   @@index([productId, createdAt])
   @@index([orderId])
   @@index([reason, createdAt])
+}
+
+// Suppliers we buy production inputs from (paper, supervision, manufacturing,
+// etc.). Each supplier has a ledger of transactions; the live balance is
+// computed at read-time as SUM(invoice) - SUM(payment) - SUM(credit-note).
+// Soft-delete via isActive — hard delete is blocked by the FK on transactions.
+model Supplier {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  type         String   // 'paper' | 'supervision' | 'manufacturing' | 'other'
+  contactPhone String?
+  contactEmail String?
+  notes        String?  @db.Text
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  transactions SupplierTransaction[]
+  batches      ProductionBatch[]
+  @@index([type])
+  @@index([isActive])
+}
+
+// Two-way ledger row.
+// 'invoice'     = we owe them more (created automatically by a batch, or
+//                 manually for non-batch costs).
+// 'payment'     = we paid them (reduces the balance).
+// 'credit-note' = they owe us back (refund / quality return).
+model SupplierTransaction {
+  id                String   @id @default(cuid())
+  supplierId        String
+  supplier          Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  kind              String
+  amount            Float
+  description       String?
+  productionBatchId String?  // set when the row was auto-created from a batch
+  createdByUserId   String?
+  createdAt         DateTime @default(now())
+  @@index([supplierId, createdAt])
+  @@index([productionBatchId])
+}
+
+// One manufacturing run of a product. Each batch carries its own unit cost
+// (which drifts over time) so the valuation page can compute a true
+// weighted-average COGS instead of the old 35% heuristic.
+//
+// Creating a batch atomically: increments Product.stock (or variantStocks),
+// writes a StockMovement (reason='batch_created'), and — if supplierId is
+// set — writes a SupplierTransaction (kind='invoice') so the supplier
+// balance reflects the new debt automatically.
+model ProductionBatch {
+  id              String    @id @default(cuid())
+  productId       String
+  product         Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  supplierId      String?
+  supplier        Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  variantIndex    Int?      // null if the batch contributes to top-level stock
+  quantity        Int
+  unitCost        Float
+  totalCost       Float     // denormalised = quantity × unitCost
+  batchDate       DateTime  @default(now())
+  notes           String?   @db.Text
+  createdByUserId String?
+  createdAt       DateTime  @default(now())
+  @@index([productId, batchDate])
+  @@index([supplierId])
 }
 
 model Order {

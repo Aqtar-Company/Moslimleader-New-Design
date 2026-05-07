@@ -51,6 +51,14 @@ export const AUDIT_ACTIONS = {
   'user.devices-reset': 'إعادة ضبط أجهزة مستخدم',
   // Valuation
   'valuation.assumptions-update': 'تعديل افتراضات التقييم',
+  // Suppliers & production
+  'supplier.create': 'إضافة مورد',
+  'supplier.update': 'تعديل مورد',
+  'supplier.delete': 'حذف مورد',
+  'supplier.transaction-add': 'إضافة معاملة مورد',
+  'supplier.transaction-delete': 'حذف معاملة مورد',
+  'production.batch-create': 'تسجيل باتش إنتاج',
+  'production.batch-update': 'تعديل باتش إنتاج',
 } as const;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;

@@ -5,7 +5,7 @@ import { capturePayPalOrder } from '@/lib/paypal';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
 import { sendOrderEmails } from '@/lib/order-email';
-import { EGP_TO_USD, toUsd } from '@/lib/currency';
+import { egpToUsd, toUsd } from '@/lib/currency';
 
 export async function POST(req: NextRequest) {
   try {
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
 
       const unitUsd = dbProduct.priceUsd && dbProduct.priceUsd > 0
         ? Number(dbProduct.priceUsd)
-        : Number(dbProduct.price) * EGP_TO_USD;
+        : egpToUsd(Number(dbProduct.price));
 
       totalUsd += unitUsd * qty;
 

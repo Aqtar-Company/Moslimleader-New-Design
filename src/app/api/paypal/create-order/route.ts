@@ -4,7 +4,7 @@ import { getAuthUser } from '@/lib/jwt';
 import { createPayPalOrder } from '@/lib/paypal';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
-import { EGP_TO_USD, toUsd } from '@/lib/currency';
+import { egpToUsd, toUsd } from '@/lib/currency';
 
 export async function POST(req: NextRequest) {
   try {
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
       const unitUsd = product.priceUsd && product.priceUsd > 0
         ? Number(product.priceUsd)
-        : Number(product.price) * EGP_TO_USD;
+        : egpToUsd(Number(product.price));
 
       if (!Number.isFinite(unitUsd) || unitUsd <= 0) {
         return NextResponse.json({ error: 'خطأ في سعر المنتج' }, { status: 400 });

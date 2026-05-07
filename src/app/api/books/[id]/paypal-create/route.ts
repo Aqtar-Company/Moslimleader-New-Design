@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { createPayPalOrder } from '@/lib/paypal';
-import { EGP_TO_USD } from '@/lib/currency';
+import { egpToUsd } from '@/lib/currency';
 
 // POST /api/books/[id]/paypal-create — create a PayPal order for a single book
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Calculate USD price server-side
     const priceUsd = book.priceUSD && book.priceUSD > 0
       ? Number(book.priceUSD)
-      : Number(book.price) * EGP_TO_USD; // fallback: 1 USD ≈ 50 EGP
+      : egpToUsd(Number(book.price));
 
     if (!Number.isFinite(priceUsd) || priceUsd <= 0) {
       return NextResponse.json({ error: 'خطأ في سعر الكتاب' }, { status: 400 });

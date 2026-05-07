@@ -144,19 +144,35 @@ export default function ValuationPage() {
   const { metrics, valuation, products, books, assumptions } = data;
 
   return (
-    <div className="space-y-6 print:bg-white" dir="rtl">
-      {/* Action bar */}
-      <div className="flex items-center justify-between gap-3 flex-wrap print:hidden">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-xs text-gray-500">تم التوليد: {new Date(data.generatedAt).toLocaleString('ar-EG')}</p>
+    <div className="space-y-6 print:bg-white print:space-y-4" dir="rtl">
+      {/* Print stylesheet — keeps gradients, blocks page breaks inside cards,
+          forces a clean A4-friendly margin. The printable view should look
+          like a polished investor handout, not a Chrome screenshot. */}
+      <style jsx global>{`
+        @media print {
+          @page { size: A4; margin: 14mm 10mm; }
+          html, body { background: #fff !important; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .valuation-section { break-inside: avoid; page-break-inside: avoid; }
+          .valuation-page-break { break-before: page; page-break-before: page; }
+          /* Stop tooltips from popping in the print stream */
+          [aria-label="شرح"] { display: none !important; }
+        }
+      `}</style>
+
+      {/* Action bar — sticky on mobile so the controls stay reachable while
+          scrolling through a long report */}
+      <div className="flex items-center justify-between gap-2 flex-wrap print:hidden sticky top-0 z-20 bg-gray-50/95 backdrop-blur -mx-4 px-4 py-3 -mt-2 sm:static sm:bg-transparent sm:backdrop-blur-none sm:mx-0 sm:px-0 sm:py-0 sm:mt-0">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <p className="text-[10px] sm:text-xs text-gray-500 truncate">تم التوليد: {new Date(data.generatedAt).toLocaleString('ar-EG')}</p>
           <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
-            <button onClick={() => setView('detailed')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${view === 'detailed' ? 'bg-white shadow-sm text-[#1a1a2e]' : 'text-gray-500'}`}>📊 تفصيلي</button>
-            <button onClick={() => setView('investor')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${view === 'investor' ? 'bg-white shadow-sm text-[#1a1a2e]' : 'text-gray-500'}`}>🤝 عرض المستثمر</button>
+            <button onClick={() => setView('detailed')} className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition ${view === 'detailed' ? 'bg-white shadow-sm text-[#1a1a2e]' : 'text-gray-500'}`}>📊 تفصيلي</button>
+            <button onClick={() => setView('investor')} className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition ${view === 'investor' ? 'bg-white shadow-sm text-[#1a1a2e]' : 'text-gray-500'}`}>🤝 المستثمر</button>
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => window.print()} className="px-4 py-2 rounded-xl bg-[#1a1a2e] hover:bg-[#2d1060] text-white text-xs font-bold transition">🖨️ طباعة / PDF</button>
-          <button onClick={() => { setData(null); setPassword(''); }} className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold transition">🔒 إغلاق</button>
+          <button onClick={() => window.print()} title="استخدم 'حفظ كـ PDF' في نافذة الطباعة" className="px-3 sm:px-4 py-2 rounded-xl bg-[#1a1a2e] hover:bg-[#2d1060] text-white text-[11px] sm:text-xs font-bold transition">⬇️ تحميل PDF</button>
+          <button onClick={() => { setData(null); setPassword(''); }} className="px-3 sm:px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] sm:text-xs font-bold transition">🔒 إغلاق</button>
         </div>
       </div>
 
@@ -587,7 +603,7 @@ function InvestorView({ data }: { data: ValuationData }) {
   const range = { low: valuation.base, high: valuation.fair };
   return (
     <div className="space-y-6">
-      <Section icon="🏢" title="نبذة عن الشركة">
+      <Section icon="🏢" title="نبذة عن الشركة" breakBefore>
         <div className="bg-white border border-gray-200 rounded-2xl p-5 text-sm leading-relaxed text-gray-700">
           <p>مسلم ليدر — منصة عربية لبيع الكتب والمنتجات الإبداعية المؤلَّفة، مع مكتبة رقمية ومحتوى متعدد القنوات. النظام يُدير الكتالوج، الطلبات، الشحن، التسويق، والمحاسبة الداخلية تحت سقف واحد.</p>
         </div>
@@ -691,9 +707,9 @@ function ScenarioCard({ label, value, desc, tone, multiplier, condition, highlig
   );
 }
 
-function Section({ icon, title, subtitle, children }: { icon: string; title: string; subtitle?: string; children: React.ReactNode }) {
+function Section({ icon, title, subtitle, children, breakBefore }: { icon: string; title: string; subtitle?: string; children: React.ReactNode; breakBefore?: boolean }) {
   return (
-    <section className="space-y-4">
+    <section className={`space-y-4 valuation-section ${breakBefore ? 'valuation-page-break' : ''}`}>
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 bg-gradient-to-br from-[#F5C518] to-[#e6a200] rounded-xl flex items-center justify-center text-xl shrink-0">{icon}</div>
         <div className="min-w-0">
@@ -733,16 +749,20 @@ function IPCard({ icon, label, value, count, per }: { icon: string; label: strin
 function YearlyChart({ data }: { data: Array<{ key: string; revenue: number; count: number }> }) {
   const max = Math.max(...data.map(d => d.revenue), 1);
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {data.map(d => {
         const pctW = (d.revenue / max) * 100;
         return (
-          <div key={d.key} className="grid grid-cols-[70px_1fr_140px] gap-3 items-center">
-            <span className="text-xs font-bold text-gray-700">{d.key}</span>
-            <div className="bg-gray-100 rounded-lg h-6 overflow-hidden" dir="ltr">
-              <div className="h-full rounded-lg flex items-center px-2 text-[10px] font-bold text-[#1a1a2e]" style={{ width: `${pctW}%`, background: 'linear-gradient(90deg,#F5C518,#e6a200)' }}>{d.count}</div>
+          <div key={d.key} className="space-y-1">
+            {/* Header: key + revenue. On mobile this sits above the bar so the
+                value is always visible even when the bar is short. */}
+            <div className="flex items-center justify-between text-[11px] font-bold">
+              <span className="text-gray-700">{d.key}</span>
+              <span className="text-[#6B21A8]">{fmt(d.revenue)} ج.م</span>
             </div>
-            <span className="text-xs font-black text-[#6B21A8] text-left">{fmt(d.revenue)} ج.م</span>
+            <div className="bg-gray-100 rounded-lg h-5 overflow-hidden" dir="ltr">
+              <div className="h-full rounded-lg flex items-center px-2 text-[10px] font-bold text-[#1a1a2e] whitespace-nowrap" style={{ width: `${Math.max(pctW, 8)}%`, background: 'linear-gradient(90deg,#F5C518,#e6a200)' }}>{d.count} {d.count === 1 ? 'طلب' : 'طلب'}</div>
+            </div>
           </div>
         );
       })}

@@ -30,15 +30,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'السلسلة غير متاحة' }, { status: 404 });
     }
 
-    // Calculate USD price server-side
-    // Prefer series-level price if set, otherwise sum of books
+    // Pricing rule: international/PayPal must always prefer the manually
+    // stored USD price over a derived EGP→USD conversion. The EGP price is
+    // subsidized for Egypt and is not a valid international price.
+    //   1. seriesPriceUSD (manual bundle price, if set) wins.
+    //   2. Otherwise sum each book's stored priceUSD; books missing a USD
+    //      price fall back to egpToUsd(book.price) individually.
+    // The previous middle branch — egpToUsd(series.seriesPrice) — was a
+    // pricing bug: it ignored each book's correct USD price whenever the
+    // series-level seriesPriceUSD happened to be unset.
     let priceUsd: number;
     if (series.seriesPriceUSD && series.seriesPriceUSD > 0) {
       priceUsd = Number(series.seriesPriceUSD);
-    } else if (series.seriesPrice && series.seriesPrice > 0) {
-      priceUsd = egpToUsd(Number(series.seriesPrice));
     } else {
-      // Sum individual book prices in USD
       priceUsd = series.books.reduce((sum, b) => {
         const bookUsd = b.priceUSD && b.priceUSD > 0 ? Number(b.priceUSD) : egpToUsd(Number(b.price));
         return sum + bookUsd;

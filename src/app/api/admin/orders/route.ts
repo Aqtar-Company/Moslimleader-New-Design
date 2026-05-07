@@ -251,7 +251,7 @@ export async function POST(req: NextRequest) {
             total,
             shippingCost,
             discount,
-            couponCode: isGift ? null : (body.couponCode || null),
+            couponCode: isGift ? null : ((body.couponCode || '').trim().toUpperCase() || null),
             paymentMethod: isGift ? 'gift' : (body.paymentMethod || 'cod'),
             shippingAddress: shippingAddress as unknown as object,
             notes: composedNotes,

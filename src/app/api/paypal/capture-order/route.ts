@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
           total: expectedUsd,
           shippingCost: shippingUsd,
           discount: discountUsd,
-          couponCode: body?.couponCode || null,
+          couponCode: (body?.couponCode || '').trim().toUpperCase() || null,
           paymentMethod: 'paypal',
           paypalOrderId,
           shippingAddress,

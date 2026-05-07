@@ -169,7 +169,7 @@ export async function POST(req: NextRequest) {
             total: verifiedTotal,
             shippingCost: shippingCost ?? 0,
             discount: verifiedDiscount,
-            couponCode: couponCode ?? null,
+            couponCode: couponCode?.trim().toUpperCase() || null,
             paymentMethod,
             paypalOrderId: paypalOrderId ?? null,
             shippingAddress,

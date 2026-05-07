@@ -21,15 +21,9 @@ export async function attributeOrderToCampaign(args: {
     const campaign = await prisma.campaign.findUnique({ where: { couponCode: code } });
     if (!campaign) return;
 
-    const recipient = await prisma.campaignRecipient.findFirst({
-      where: { campaignId: campaign.id, userId, orderId: null },
-      select: { id: true },
-    });
-    if (!recipient) return;
-
     await prisma.$transaction(async (tx) => {
       const updated = await tx.campaignRecipient.updateMany({
-        where: { id: recipient.id, orderId: null },
+        where: { campaignId: campaign.id, userId, orderId: null },
         data: { orderId },
       });
       if (updated.count > 0) {

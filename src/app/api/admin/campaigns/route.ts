@@ -61,7 +61,10 @@ export async function POST(req: NextRequest) {
       // send loop renders it.
       bodyText: bodyText?.trim() || null,
       bodyHtml: bodyHtml?.trim() || (bodyText?.trim() ?? ''),
-      couponCode: couponCode?.trim() || null,
+      // Normalize to UPPERCASE so order.couponCode (also normalized at write)
+      // matches the campaign for conversion attribution regardless of how the
+      // admin or customer typed it.
+      couponCode: couponCode?.trim().toUpperCase() || null,
       ctaLabel: ctaLabel?.trim() || null,
       ctaUrl: ctaUrl?.trim() || null,
       dailyLimit: typeof dailyLimit === 'number' && dailyLimit > 0 ? Math.min(50, Math.floor(dailyLimit)) : 5,

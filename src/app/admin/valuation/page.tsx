@@ -31,7 +31,7 @@ interface ValuationData {
       byMonth: Array<{ ym: string; revenue: number; count: number }>;
       momRevenueGrowth: number | null;
     };
-    customers: { total: number; buyers: number; active: number; activeWindowDays: number; activeRatio: number; repeatBuyers: number; repeatRate: number; avgRevenuePerBuyer: number };
+    customers: { total: number; wholesale: number; buyers: number; active: number; activeWindowDays: number; activeRatio: number; repeatBuyers: number; repeatRate: number; avgRevenuePerBuyer: number };
     shipments: number;
     gifts?: { count: number; units: number; retailValue: number; shippingCost: number; totalCost: number };
     ip: { booksValue: number; productsValue: number; digitalValue: number; total: number; perBook: number; perProduct: number; booksCount: number; productsCount: number };
@@ -513,6 +513,7 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
           <KPI label="نشطين" value={fmt(metrics.customers.active)} sub={`آخر ${metrics.customers.activeWindowDays} يوم — ${pct(metrics.customers.activeRatio)} من المسجَّلين`} hint="عمل طلب صحيح خلال نافذة النشاط الحالية." />
           <KPI label="مشترين متكررين" value={fmt(metrics.customers.repeatBuyers)} sub={`${pct(metrics.customers.repeatRate)} من المشترين`} hint="عملوا طلبين أو أكثر في حياتهم. مؤشر قوي للولاء." />
           <KPI label="متوسط الإيراد لكل مشتري" value={`${fmt(metrics.customers.avgRevenuePerBuyer)} ج.م`} hint="إجمالي الإيرادات ÷ عدد المشترين الفعليين. تقدير LTV التاريخي." />
+          <KPI label="تجار جملة" value={fmt(metrics.customers.wholesale)} hint="عملاء معلَّمين كتجار جملة. تُدار العلامة من صفحة العميل." />
         </div>
       </Section>
 

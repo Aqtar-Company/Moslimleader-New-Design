@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
   const [
     products, books,
     orderAgg, orderCount, validOrderCount,
-    customerCount, shipmentCount,
+    customerCount, wholesaleCount, shipmentCount,
     sold, soldLive, ordersByYear, ordersByMonth,
     giftOrders, giftItemsAgg,
     cancelledAgg,
@@ -87,6 +87,7 @@ export async function GET(req: NextRequest) {
     prisma.order.count(),
     prisma.order.count({ where: NON_GIFT }),
     prisma.user.count({ where: { role: 'customer' } }),
+    prisma.user.count({ where: { role: 'customer', isWholesale: true } }),
     prisma.shipment.count(),
     prisma.orderItem.groupBy({
       by: ['productId'],
@@ -270,6 +271,7 @@ export async function GET(req: NextRequest) {
       },
       customers: {
         total: customerCount,
+        wholesale: wholesaleCount,
         buyers: totalBuyers,
         active: activeBuyers,
         activeWindowDays: assumptions.activeWindowDays,

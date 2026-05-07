@@ -20,6 +20,7 @@ interface Customer {
   createdAt: string;
   lastGovernorate: string | null;
   lastAddr: { street?: string; building?: string; city?: string; region?: string; governorate?: string; country?: string } | null;
+  isWholesale: boolean;
 }
 
 interface Metrics {
@@ -154,11 +155,40 @@ export default function CustomerDetailPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            {customer.isWholesale && <span className="bg-blue-500/20 text-blue-200 border border-blue-400/30 text-xs font-bold px-2.5 py-1 rounded-full">🏪 تاجر جملة</span>}
             {isVIP && <span className="bg-amber-500/20 text-amber-200 border border-amber-400/30 text-xs font-bold px-2.5 py-1 rounded-full">👑 VIP</span>}
             {isDormant && <span className="bg-rose-500/20 text-rose-200 border border-rose-400/30 text-xs font-bold px-2.5 py-1 rounded-full">💤 نائم</span>}
             {!isDormant && metrics.orderCount >= 2 && <span className="bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 text-xs font-bold px-2.5 py-1 rounded-full">🔁 متكرر</span>}
             {metrics.orderCount === 1 && <span className="bg-purple-500/20 text-purple-200 border border-purple-400/30 text-xs font-bold px-2.5 py-1 rounded-full">🆕 مرة واحدة</span>}
           </div>
+        </div>
+
+        {/* Wholesale toggle — gated by customers.write on the server side. */}
+        <div className="mt-5 pt-5 border-t border-white/10 flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-xs font-bold text-[#F5C518] uppercase tracking-wide">حالة العميل</p>
+            <p className="text-[11px] text-white/60 mt-0.5">العملاء المعلَّمين كتجار جملة يظهرون في تبويب منفصل وتُحسب أعدادهم في صفحة التقييم.</p>
+          </div>
+          <button
+            onClick={async () => {
+              const next = !customer.isWholesale;
+              try {
+                const res = await adminFetch(`/api/admin/customers/${id}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ isWholesale: next }),
+                });
+                if (!res.ok) throw new Error('failed');
+                setCustomer({ ...customer, isWholesale: next });
+                addToast(next ? 'تم تعليم العميل كتاجر جملة' : 'تم إلغاء علامة الجملة', 'success');
+              } catch {
+                addToast('فشل التعديل', 'error');
+              }
+            }}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition ${customer.isWholesale ? 'bg-[#F5C518] text-[#1a1a2e] hover:bg-amber-400' : 'bg-white/10 text-white border border-white/20 hover:bg-white/20'}`}
+          >
+            {customer.isWholesale ? '🏪 تاجر جملة — اضغط لإلغاء' : '🏪 ضع علامة كتاجر جملة'}
+          </button>
         </div>
       </div>
 

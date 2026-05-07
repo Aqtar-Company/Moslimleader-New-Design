@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requirePerm } from '@/lib/permissions';
+import { logActionSafe } from '@/lib/audit-log';
 
 interface ShippingAddr {
   firstName?: string; lastName?: string; phone?: string; whatsappNumber?: string;
@@ -17,7 +18,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const user = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, name: true, email: true, phone: true, createdAt: true, savedAddresses: true },
+    select: { id: true, name: true, email: true, phone: true, createdAt: true, savedAddresses: true, isWholesale: true },
   });
   if (!user) return NextResponse.json({ error: 'العميل غير موجود' }, { status: 404 });
 
@@ -100,4 +101,30 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       shipmentStatus: o.shipment?.status ?? null,
     })),
   });
+}
+
+// PATCH /api/admin/customers/[id] — toggle metadata flags on a customer.
+// Currently exposes only `isWholesale`; extend with care — full edits go
+// through the more general customer-edit flow elsewhere.
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requirePerm('customers.write');
+  if ('response' in guard) return guard.response;
+
+  const { id } = await params;
+  let body: { isWholesale?: boolean };
+  try { body = await req.json(); } catch { return NextResponse.json({ error: 'Body غير صالح' }, { status: 400 }); }
+
+  const data: { isWholesale?: boolean } = {};
+  if (typeof body.isWholesale === 'boolean') data.isWholesale = body.isWholesale;
+  if (Object.keys(data).length === 0) return NextResponse.json({ error: 'لا يوجد تعديل' }, { status: 400 });
+
+  const before = await prisma.user.findUnique({ where: { id }, select: { id: true, isWholesale: true } });
+  if (!before) return NextResponse.json({ error: 'العميل غير موجود' }, { status: 404 });
+
+  const updated = await prisma.user.update({ where: { id }, data, select: { id: true, isWholesale: true } });
+  await logActionSafe({
+    actor: guard.user, action: 'customer.update', entity: 'User', entityId: id,
+    before, after: updated,
+  });
+  return NextResponse.json({ ok: true, user: updated });
 }

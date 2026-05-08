@@ -20,6 +20,7 @@ const NAV: NavItem[] = [
   { href: '/admin/products',          label: 'المنتجات',          icon: '🛍️', requireAny: ['products.read'] },
   { href: '/admin/inventory',         label: 'المخزون',           icon: '📦', requireAny: ['inventory.read'] },
   { href: '/admin/inventory/movements', label: 'سجل المخزون',     icon: '🧾', requireAny: ['inventory.read'] },
+  { href: '/admin/reports/sales-by-product', label: 'توزيع المبيعات', icon: '📊', requireAny: ['valuation.read'] },
   { href: '/admin/production',        label: 'باتشات الإنتاج',    icon: '🏭', requireAny: ['production.read'] },
   { href: '/admin/suppliers',         label: 'الموردون',          icon: '🤝', requireAny: ['suppliers.read'] },
   { href: '/admin/valuation',         label: 'تقييم الشركة',      icon: '💎', requireAny: ['valuation.read'] },

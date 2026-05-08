@@ -17,6 +17,7 @@ interface Row {
   variantIndex: number | null;
   variantName: string | null;
   currentStock: number;
+  soldUnits: number;
   batchedQuantity: number;
   uncoveredQuantity: number;
   alreadySeeded: boolean;
@@ -144,8 +145,8 @@ export default function SeedStockWizard() {
       <div className="bg-gradient-to-l from-[#1a1a2e] to-[#2d1060] rounded-2xl p-6 text-white">
         <h1 className="text-xl font-black flex items-center gap-2">🌱 تسعير المخزون الافتتاحي</h1>
         <p className="text-white/70 text-sm mt-2 max-w-2xl leading-relaxed">
-          المخزون اللي كان موجود قبل ما تبدأ تسجل باتشات إنتاج محتاج تكلفة وحدة. الصفحة دي بتعمل باتش افتتاحي لكل منتج محتاج تسعير
-          — <strong className="text-[#F5C518]">من غير ما يزود المخزون</strong> ومن غير ما يعمل قيد على أي مورد.
+          نُسعّر القطع <strong className="text-[#F5C518]">الموجودة في المخزون</strong> + القطع <strong className="text-[#F5C518]">اللي اتباعت قبل كده تاريخياً</strong>،
+          لأن الاتنين كان لهم تكلفة فعلية. الصفحة بتعمل باتش افتتاحي بدون أي تأثير على المخزون أو رصيد الموردين.
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-5">
           <Stat label="إجمالي السطور" value={String(rows.length)} />
@@ -179,6 +180,7 @@ export default function SeedStockWizard() {
                     <th className="px-3 py-3 text-right">المنتج</th>
                     <th className="px-3 py-3 text-right">الموديل</th>
                     <th className="px-3 py-3 text-right">المخزون</th>
+                    <th className="px-3 py-3 text-right">مباع تاريخياً</th>
                     <th className="px-3 py-3 text-right">مغطّى ببتشات</th>
                     <th className="px-3 py-3 text-right">يحتاج تسعير</th>
                     <th className="px-3 py-3 text-right">تكلفة الوحدة</th>
@@ -204,6 +206,7 @@ export default function SeedStockWizard() {
                         </td>
                         <td className="px-3 py-2.5 text-gray-600">{r.variantName || '—'}</td>
                         <td className="px-3 py-2.5 font-bold">{fmt(r.currentStock)}</td>
+                        <td className="px-3 py-2.5 text-purple-700 font-bold">{fmt(r.soldUnits)}</td>
                         <td className="px-3 py-2.5 text-gray-600">{fmt(r.batchedQuantity)}</td>
                         <td className="px-3 py-2.5 font-black text-blue-700">{fmt(r.uncoveredQuantity)}</td>
                         <td className="px-3 py-2.5">

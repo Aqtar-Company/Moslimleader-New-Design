@@ -4,6 +4,7 @@ import { requirePerm, type Permission } from '@/lib/permissions';
 import { logActionSafe } from '@/lib/audit-log';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
+import { NON_GIFT } from '@/lib/order-filters';
 
 interface VariantShape { id?: string; name?: string; nameEn?: string; imageIndex?: number }
 
@@ -34,9 +35,13 @@ export async function GET() {
 
   // Aggregate sold-counts per (productId, selectedModel) so the inventory page
   // can show real demand per variant alongside available stock.
+  // Aligned with /admin/valuation: exclude gifts (marketing cost, not a
+  // sale). Imports are KEPT here because the inventory page is about
+  // demand signal — knowing a product moved 200 units historically is
+  // useful even if the system didn't track the deduction at the time.
   const soldRows = await prisma.orderItem.groupBy({
     by: ['productId', 'selectedModel'],
-    where: { order: { status: { not: 'cancelled' } } },
+    where: { order: NON_GIFT },
     _sum: { quantity: true },
   });
   const soldTotal = new Map<string, number>();

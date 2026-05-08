@@ -22,7 +22,7 @@ export async function GET() {
   const assumptions = await getValuationAssumptions();
   const cogs = assumptions.cogsRatio;
 
-  const [products, batchAgg, seedFlags] = await Promise.all([
+  const [products, batchAgg, seedFlags, soldAgg] = await Promise.all([
     prisma.product.findMany({
       select: { id: true, name: true, slug: true, price: true, stock: true, variantStocks: true, variants: true },
       orderBy: { name: 'asc' },
@@ -35,6 +35,15 @@ export async function GET() {
       where: { isOpeningBalance: true },
       select: { productId: true, variantIndex: true },
     }),
+    // Lifetime sold per (product, variant). We need this so a product
+    // that's stock=0 today but had historical sales (and zero batches)
+    // still surfaces — its cost basis matters for COGS even though
+    // there's nothing left to sell.
+    prisma.orderItem.groupBy({
+      by: ['productId', 'selectedModel'],
+      where: { order: { status: { not: 'cancelled' }, paymentMethod: { not: 'gift' } } },
+      _sum: { quantity: true },
+    }),
   ]);
 
   // Build lookup maps once so the row builder below stays cheap.
@@ -45,11 +54,15 @@ export async function GET() {
     batchedMap.set(batchedKey(b.productId, b.variantIndex), Number(b._sum.quantity ?? 0));
   }
   const seededSet = new Set<string>(seedFlags.map(s => batchedKey(s.productId, s.variantIndex)));
+  const soldMap = new Map<string, number>();
+  for (const s of soldAgg) {
+    soldMap.set(batchedKey(s.productId, s.selectedModel), Number(s._sum.quantity ?? 0));
+  }
 
   const rows: Array<{
     productId: string; productName: string; productSlug: string; productPrice: number;
     variantIndex: number | null; variantName: string | null;
-    currentStock: number; batchedQuantity: number; uncoveredQuantity: number;
+    currentStock: number; soldUnits: number; batchedQuantity: number; uncoveredQuantity: number;
     alreadySeeded: boolean; suggestedUnitCost: number;
   }> = [];
 
@@ -59,29 +72,34 @@ export async function GET() {
     const suggested = Math.round(p.price * cogs * 100) / 100;
 
     if (hasVariants) {
-      // Emit one row per variant. Skip variants with stock=0.
+      // Emit one row per variant. Skip ONLY when the variant has zero
+      // stock AND zero historical sales — nothing to price.
       const variantStocks = (p.variantStocks ?? {}) as Record<string, number>;
       for (let idx = 0; idx < variants.length; idx++) {
         const stock = variantStocks[String(idx)] ?? 0;
-        if (stock <= 0) continue;
+        const sold = soldMap.get(batchedKey(p.id, idx)) ?? 0;
+        const accountable = stock + sold;
+        if (accountable <= 0) continue;
         const batched = batchedMap.get(batchedKey(p.id, idx)) ?? 0;
         rows.push({
           productId: p.id, productName: p.name, productSlug: p.slug, productPrice: p.price,
           variantIndex: idx, variantName: variants[idx]?.name ?? `موديل ${idx + 1}`,
-          currentStock: stock, batchedQuantity: batched,
-          uncoveredQuantity: Math.max(0, stock - batched),
+          currentStock: stock, soldUnits: sold, batchedQuantity: batched,
+          uncoveredQuantity: Math.max(0, accountable - batched),
           alreadySeeded: seededSet.has(batchedKey(p.id, idx)),
           suggestedUnitCost: suggested,
         });
       }
     } else {
-      if (p.stock <= 0) continue;
+      const sold = soldMap.get(batchedKey(p.id, null)) ?? 0;
+      const accountable = p.stock + sold;
+      if (accountable <= 0) continue;
       const batched = batchedMap.get(batchedKey(p.id, null)) ?? 0;
       rows.push({
         productId: p.id, productName: p.name, productSlug: p.slug, productPrice: p.price,
         variantIndex: null, variantName: null,
-        currentStock: p.stock, batchedQuantity: batched,
-        uncoveredQuantity: Math.max(0, p.stock - batched),
+        currentStock: p.stock, soldUnits: sold, batchedQuantity: batched,
+        uncoveredQuantity: Math.max(0, accountable - batched),
         alreadySeeded: seededSet.has(batchedKey(p.id, null)),
         suggestedUnitCost: suggested,
       });
@@ -146,12 +164,26 @@ export async function POST(req: NextRequest) {
         ? product.stock
         : ((product.variantStocks as Record<string, number> | null)?.[String(variantIndex)] ?? 0);
 
-      const batchedAgg = await tx.productionBatch.aggregate({
-        where: { productId, variantIndex },
-        _sum: { quantity: true },
-      });
+      const [batchedAgg, soldAgg] = await Promise.all([
+        tx.productionBatch.aggregate({
+          where: { productId, variantIndex },
+          _sum: { quantity: true },
+        }),
+        // Re-read sold quantity inside the transaction so concurrent
+        // orders changing the count are reflected in the validation.
+        tx.orderItem.aggregate({
+          where: {
+            productId, selectedModel: variantIndex,
+            order: { status: { not: 'cancelled' }, paymentMethod: { not: 'gift' } },
+          },
+          _sum: { quantity: true },
+        }),
+      ]);
       const batched = Number(batchedAgg._sum.quantity ?? 0);
-      const uncovered = Math.max(0, currentStock - batched);
+      const sold = Number(soldAgg._sum.quantity ?? 0);
+      // Total units that need a cost basis = current stock + everything
+      // ever sold (which left the warehouse but had a cost too).
+      const uncovered = Math.max(0, currentStock + sold - batched);
 
       if (quantity > uncovered) {
         errors.push({

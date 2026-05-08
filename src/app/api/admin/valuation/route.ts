@@ -168,10 +168,12 @@ export async function GET(req: NextRequest) {
     _sum: { quantity: true, totalCost: true },
   });
   const avgCostByProduct = new Map<string, number>();
+  const batchUnitsByProduct = new Map<string, number>();
   for (const b of batchAgg) {
     const q = Number(b._sum.quantity ?? 0);
     const c = Number(b._sum.totalCost ?? 0);
     if (q > 0) avgCostByProduct.set(b.productId, c / q);
+    batchUnitsByProduct.set(b.productId, q);
   }
 
   // Supplier liabilities (positive = we owe). Computed from transactions:
@@ -397,6 +399,7 @@ export async function GET(req: NextRequest) {
       ...p,
       sold: soldMap.get(p.id) ?? 0,
       soldLive: soldLiveMap.get(p.id) ?? 0,
+      productionBatchUnits: batchUnitsByProduct.get(p.id) ?? 0,
       stockValue: Math.round(p.stock * p.price),
     })),
     books,

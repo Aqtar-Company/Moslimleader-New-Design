@@ -41,7 +41,7 @@ interface ValuationData {
     customerDb: { value: number; perCustomer: number };
   };
   valuation: { base: number; fair: number; strategic: number; fairMultiplier: number; strategicMultiplier: number };
-  products: Array<{ id: string; name: string; nameEn: string | null; slug: string; price: number; priceUsd: number; category: string; stock: number; sold: number; soldLive: number; stockValue: number }>;
+  products: Array<{ id: string; name: string; nameEn: string | null; slug: string; price: number; priceUsd: number; category: string; stock: number; sold: number; soldLive: number; productionBatchUnits: number; stockValue: number }>;
   books: Array<{ id: string; title: string; titleEn: string | null; price: number; priceUSD: number | null; isPublished: boolean; language: string | null }>;
 }
 
@@ -609,7 +609,16 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
                 {products.map(p => (
                   <tr key={p.id} className={p.stock <= 0 ? 'bg-red-50/40' : p.stock <= 50 ? 'bg-amber-50/40' : ''}>
                     <td className="px-3 py-2.5">
-                      <p className="font-bold text-gray-900">{p.name}</p>
+                      <p className="font-bold text-gray-900 flex items-center gap-1.5 flex-wrap">
+                        {p.name}
+                        {p.sold > 0 && p.productionBatchUnits === 0 && (
+                          <a
+                            href={`/admin/production/seed-stock`}
+                            className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-black hover:bg-red-200 transition print:hidden"
+                            title="هذا المنتج اتباع منه بدون أي باتش إنتاج — يحتاج تسعير افتتاحي"
+                          >🟥 محتاج تسعير</a>
+                        )}
+                      </p>
                       {p.nameEn && <p className="text-[10px] text-gray-400">{p.nameEn}</p>}
                     </td>
                     <td className="px-3 py-2.5 text-gray-600">{p.category}</td>

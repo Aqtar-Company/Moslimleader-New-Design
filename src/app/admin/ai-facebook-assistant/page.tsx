@@ -30,6 +30,7 @@ interface ConversationEvent {
   aiModel: string | null;
   sendStatus: string | null;
   sendError: string | null;
+  leadStatus: 'hot' | 'warm' | 'cold' | null;
   createdAt: string;
 }
 
@@ -38,12 +39,20 @@ interface Conversation {
   kind: 'message' | 'comment' | 'postback' | string;
   psid: string;
   userName: string | null;
+  userGender: 'male' | 'female' | 'unknown' | null;
   lastAt: string;
   eventCount: number;
+  leadStatus: 'hot' | 'warm' | 'cold' | null;
   commentId: string | null;
   postId: string | null;
   events: ConversationEvent[];
 }
+
+const LEAD_BADGE: Record<string, { icon: string; label: string; cls: string }> = {
+  hot:  { icon: '🔥', label: 'جاهز للشراء', cls: 'bg-red-100 text-red-700 border-red-200' },
+  warm: { icon: '🟡', label: 'مهتم',       cls: 'bg-amber-100 text-amber-700 border-amber-200' },
+  cold: { icon: '⚪', label: 'استفسار',    cls: 'bg-gray-100 text-gray-600 border-gray-200' },
+};
 
 interface IntegrationStatus {
   hasOpenAiKey: boolean;
@@ -74,6 +83,44 @@ export default function AIFacebookAssistantPage() {
   const [testReply, setTestReply] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
 
+  // Knowledge base — live context the bot uses + admin-curated FAQs.
+  const [kbStats, setKbStats] = useState<null | {
+    productCount: number; bookCount: number; seriesCount: number;
+    shippingZoneCount: number; couponCount: number; faqCount: number;
+    builtAt: string; approxChars: number;
+  }>(null);
+  const [kbPreview, setKbPreview] = useState('');
+  const [kbPreviewOpen, setKbPreviewOpen] = useState(false);
+  const [faqs, setFaqs] = useState('');
+  const [savingFaqs, setSavingFaqs] = useState(false);
+
+  const loadKnowledge = async () => {
+    try {
+      const res = await adminFetch('/api/admin/ai-facebook-assistant/knowledge');
+      if (!res.ok) return;
+      const d = await res.json();
+      setKbStats(d.context?.stats ?? null);
+      setKbPreview(d.context?.text ?? '');
+      setFaqs(d.faqs ?? '');
+    } catch { /* ignore */ }
+  };
+
+  const saveFaqs = async () => {
+    setSavingFaqs(true);
+    try {
+      const res = await adminFetch('/api/admin/ai-facebook-assistant/knowledge', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ faqs }),
+      });
+      const d = await res.json();
+      if (!res.ok) { addToast(d.error || 'فشل الحفظ', 'error'); setSavingFaqs(false); return; }
+      addToast('تم تحديث المعرفة الإضافية', 'success');
+      loadKnowledge();
+    } catch { addToast('فشل الحفظ', 'error'); }
+    setSavingFaqs(false);
+  };
+
   // Manual reply — tracks the active conversation by its compound key
   // (kind + psid) since one user can have BOTH a message thread and a
   // comment thread.
@@ -81,6 +128,7 @@ export default function AIFacebookAssistantPage() {
   const [manualReply, setManualReply] = useState('');
   const [sending, setSending] = useState(false);
   const [filter, setFilter] = useState<'all' | 'message' | 'comment'>('all');
+  const [leadFilter, setLeadFilter] = useState<'all' | 'hot' | 'warm'>('all');
 
   const load = async () => {
     setLoading(true);
@@ -102,7 +150,7 @@ export default function AIFacebookAssistantPage() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { load(); loadKnowledge(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
   const saveSettings = async () => {
     setSaving(true);
@@ -172,9 +220,11 @@ export default function AIFacebookAssistantPage() {
 
   const filteredConversations = useMemo(() => {
     if (!data) return [];
-    if (filter === 'all') return data.conversations;
-    return data.conversations.filter(c => c.kind === filter);
-  }, [data, filter]);
+    let out = data.conversations;
+    if (filter !== 'all') out = out.filter(c => c.kind === filter);
+    if (leadFilter !== 'all') out = out.filter(c => c.leadStatus === leadFilter);
+    return out;
+  }, [data, filter, leadFilter]);
 
   if (forbidden) return <ForbiddenState requiredPerm="settings.read" />;
   if (loading || !data) return <Spinner />;
@@ -323,6 +373,59 @@ export default function AIFacebookAssistantPage() {
         </div>
       </div>
 
+      {/* Knowledge base — what the bot KNOWS */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h2 className="text-base font-black text-gray-900">📚 المعرفة المتاحة للبوت</h2>
+          <button onClick={loadKnowledge} className="text-xs text-blue-700 hover:underline font-bold">🔄 تحديث</button>
+        </div>
+        <p className="text-[11px] text-gray-500 leading-relaxed">
+          البوت بياخد معاه — في كل رد — قائمة بكل المنتجات والكتب وأسعار الشحن من الموقع، عشان يرد بأسعار حقيقية محدّثة.
+          الداتا بتتجدّد كل 5 دقائق تلقائياً.
+        </p>
+        {kbStats && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            <KbStat label="منتجات" value={kbStats.productCount} />
+            <KbStat label="كتب" value={kbStats.bookCount} />
+            <KbStat label="سلاسل" value={kbStats.seriesCount} />
+            <KbStat label="مناطق شحن" value={kbStats.shippingZoneCount} />
+            <KbStat label="كوبونات" value={kbStats.couponCount} />
+            <KbStat label="أسئلة شائعة" value={kbStats.faqCount} />
+          </div>
+        )}
+        <button
+          onClick={() => setKbPreviewOpen(o => !o)}
+          className="text-xs text-blue-700 hover:underline font-bold"
+        >
+          {kbPreviewOpen ? '▴ إخفاء' : '▾ عرض'} الـ context الكامل اللي بيدخل البوت ({kbStats?.approxChars ?? 0} حرف)
+        </button>
+        {kbPreviewOpen && (
+          <pre className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-[10px] leading-relaxed max-h-[300px] overflow-y-auto whitespace-pre-wrap font-mono" dir="rtl">
+            {kbPreview}
+          </pre>
+        )}
+
+        <Field label="معلومات إضافية / أسئلة شائعة (يمكن لحضرتك تضيفها — البوت هياخدها معاه)" hint="اكتب هنا أي حاجة عاوز البوت يعرفها: سياسة الإرجاع، أوقات العمل، أسعار خاصة، تخفيضات، ساعات الرد، إلخ. الكتابة Markdown.">
+          <textarea
+            value={faqs}
+            onChange={e => setFaqs(e.target.value)}
+            rows={5}
+            placeholder={'مثال:\n- سياسة الإرجاع: متاح خلال 14 يوم.\n- ساعات العمل: 9 صباحاً – 9 مساءً.\n- توصيل مجاني للطلبات فوق 500 ج.م.'}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono"
+            dir="rtl"
+          />
+        </Field>
+        <div className="flex justify-end">
+          <button
+            onClick={saveFaqs}
+            disabled={savingFaqs}
+            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition disabled:opacity-50"
+          >
+            {savingFaqs ? '...جاري الحفظ' : '💾 حفظ المعرفة'}
+          </button>
+        </div>
+      </div>
+
       {/* Test message */}
       <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
         <h2 className="text-base font-black text-gray-900">🧪 اختبار البوت</h2>
@@ -378,6 +481,20 @@ export default function AIFacebookAssistantPage() {
                   {f.label} <span className="opacity-70">({f.count})</span>
                 </button>
               ))}
+              <span className="w-px bg-gray-200 mx-1" />
+              {([
+                { k: 'all',  label: 'كل التصنيفات', count: data.conversations.length },
+                { k: 'hot',  label: '🔥 جاهز يشتري',  count: data.conversations.filter(c => c.leadStatus === 'hot').length },
+                { k: 'warm', label: '🟡 مهتم',        count: data.conversations.filter(c => c.leadStatus === 'warm').length },
+              ] as const).map(f => (
+                <button
+                  key={'lead-' + f.k}
+                  onClick={() => { setLeadFilter(f.k); setActiveKey(null); }}
+                  className={`px-3 py-1 rounded-lg text-[11px] font-bold border transition ${leadFilter === f.k ? 'bg-red-600 text-white border-red-600' : 'border-gray-200 text-gray-600 bg-white hover:border-gray-400'}`}
+                >
+                  {f.label} <span className="opacity-70">({f.count})</span>
+                </button>
+              ))}
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 min-h-[400px]">
             {/* Conversation list */}
@@ -389,14 +506,25 @@ export default function AIFacebookAssistantPage() {
                   className={`w-full text-right p-3 border-b border-gray-100 hover:bg-gray-50 transition ${activeKey === c.key ? 'bg-blue-50' : ''}`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-bold text-gray-900 truncate flex-1">{c.userName ?? `User ${c.psid.slice(-6)}`}</p>
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0 ${c.kind === 'comment' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                      {c.kind === 'comment' ? '🗨️ تعليق' : '💬 رسالة'}
-                    </span>
+                    <p className="text-sm font-bold text-gray-900 truncate flex-1">
+                      {c.userGender === 'female' ? '♀️ ' : c.userGender === 'male' ? '♂️ ' : ''}
+                      {c.userName ?? `User ${c.psid.slice(-6)}`}
+                    </p>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {c.leadStatus && (
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold border ${LEAD_BADGE[c.leadStatus].cls}`}>
+                          {LEAD_BADGE[c.leadStatus].icon}
+                        </span>
+                      )}
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${c.kind === 'comment' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                        {c.kind === 'comment' ? '🗨️' : '💬'}
+                      </span>
+                    </div>
                   </div>
                   <p className="text-[11px] text-gray-500 mt-1 truncate">{c.events[0]?.text ?? '—'}</p>
                   <p className="text-[10px] text-gray-400 mt-1">
                     {fmtDateTime(c.lastAt)} · {c.eventCount} رسالة
+                    {c.leadStatus && <span className="mr-2 font-bold">· {LEAD_BADGE[c.leadStatus].label}</span>}
                   </p>
                 </button>
               ))}
@@ -463,6 +591,15 @@ export default function AIFacebookAssistantPage() {
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function KbStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 text-center">
+      <p className="text-[9px] text-gray-500 font-bold tracking-widest">{label}</p>
+      <p className="text-lg font-black text-gray-900">{value}</p>
     </div>
   );
 }

@@ -42,6 +42,8 @@ export async function GET() {
         aiTokens: true,
         sendStatus: true,
         sendError: true,
+        leadStatus: true,
+        userGender: true,
         createdAt: true,
       },
     }),
@@ -57,21 +59,32 @@ export async function GET() {
     if (list) list.push(e);
     else conversationsMap.set(key, [e]);
   }
+  // Roll up the "hottest" lead status across all events in a thread
+  // — HOT > WARM > COLD. Lets the inbox sort by intent at a glance.
+  const LEAD_RANK: Record<string, number> = { hot: 3, warm: 2, cold: 1 };
   const conversations = Array.from(conversationsMap.entries())
     .map(([key, events]) => {
       const [kind, psid] = key.split(':');
       const incoming = events.find(e => e.direction === 'incoming');
       const senderObj = incoming?.sender as { name?: string } | null | undefined;
-      // For comment threads, expose the most recent commentId so the
-      // UI can target it when sending a manual reply.
       const lastIncomingComment = events.find(e => e.direction === 'incoming' && e.kind === 'comment');
+      let topLead: 'hot' | 'warm' | 'cold' | null = null;
+      let topRank = 0;
+      for (const e of events) {
+        if (!e.leadStatus) continue;
+        const rank = LEAD_RANK[e.leadStatus] ?? 0;
+        if (rank > topRank) { topRank = rank; topLead = e.leadStatus as 'hot' | 'warm' | 'cold'; }
+      }
+      const userGender = events.find(e => e.userGender)?.userGender ?? null;
       return {
         key,
         kind,
         psid,
         userName: senderObj?.name ?? null,
+        userGender,
         lastAt: events[0].createdAt.toISOString(),
         eventCount: events.length,
+        leadStatus: topLead,
         commentId: lastIncomingComment?.commentId ?? null,
         postId: lastIncomingComment?.postId ?? null,
         events: events.map(e => ({
@@ -84,11 +97,18 @@ export async function GET() {
           aiModel: e.aiModel,
           sendStatus: e.sendStatus,
           sendError: e.sendError,
+          leadStatus: e.leadStatus,
           createdAt: e.createdAt.toISOString(),
         })),
       };
     })
-    .sort((a, b) => b.lastAt.localeCompare(a.lastAt));
+    .sort((a, b) => {
+      // Sort: HOT leads first, then WARM, then by recency.
+      const aRank = a.leadStatus ? LEAD_RANK[a.leadStatus] ?? 0 : 0;
+      const bRank = b.leadStatus ? LEAD_RANK[b.leadStatus] ?? 0 : 0;
+      if (aRank !== bRank) return bRank - aRank;
+      return b.lastAt.localeCompare(a.lastAt);
+    });
 
   // Status flags so the UI can show "missing token" warnings up front.
   const hasOpenAiKey = !!process.env.OPENAI_API_KEY;

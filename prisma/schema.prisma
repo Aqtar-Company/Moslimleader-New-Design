@@ -751,9 +751,20 @@ model FacebookEvent {
   // For outgoing-*: did Facebook accept the send call?
   sendStatus      String?  // 'sent' | 'failed' | null
   sendError       String?  @db.Text
+  // Lead classification appended by the bot ('hot' | 'warm' | 'cold').
+  // Only set on outgoing-auto rows where the AI flagged conversion
+  // intent in the user's message (asked price, gave phone, said
+  // wants-to-buy, etc.). The conversation's "hottest" event status
+  // is rolled up into the inbox card.
+  leadStatus      String?
+  // Detected gender of the user this event is associated with —
+  // 'male' | 'female' | 'unknown'. Stored once per incoming event so
+  // the inbox can render the correct grammar in admin previews.
+  userGender      String?
   createdAt       DateTime @default(now())
   @@index([psid, createdAt])
   @@index([direction, createdAt])
   @@index([kind, createdAt])
+  @@index([leadStatus, createdAt])
   @@index([createdAt])
 }

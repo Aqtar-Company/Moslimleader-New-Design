@@ -6,9 +6,14 @@ import {
   verifyFacebookSignature,
   callAi,
   sendFacebookReply,
+  sendTypingIndicator,
+  humanizeDelay,
   replyToComment,
   shouldAutoReply,
+  extractLeadTag,
 } from '@/lib/ai-facebook-assistant';
+import { buildAssistantContext } from '@/lib/assistant-knowledge';
+import { detectGenderFromName, genderDirective } from '@/lib/gender-detector';
 
 // Facebook / Instagram webhook endpoint — handles BOTH:
 //   • Messenger DMs (entry.messaging[])
@@ -150,6 +155,10 @@ interface IncomingMessageInput {
 }
 
 async function handleIncomingMessage(input: IncomingMessageInput) {
+  // Detect gender from the FB-supplied display name (best-effort).
+  const senderName = (input.sender as { name?: string } | null)?.name ?? null;
+  const userGender = detectGenderFromName(senderName);
+
   let stored;
   try {
     stored = await prisma.facebookEvent.create({
@@ -161,6 +170,7 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
         sender: input.sender ?? undefined,
         recipient: input.recipient ?? undefined,
         rawPayload: input.rawPayload,
+        userGender,
       },
     });
   } catch (err) {
@@ -170,6 +180,12 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
 
   const settings = await getAssistantSettings();
   if (!shouldAutoReply(input.text, settings)) return;
+
+  // Show "typing..." dots immediately — user sees activity within
+  // ~200ms instead of waiting in silence for the AI to think.
+  // Fire-and-forget — don't await; we don't want a slow Send API
+  // call to delay the actual reply.
+  void sendTypingIndicator(input.psid, true);
 
   const recent = await prisma.facebookEvent.findMany({
     where: {
@@ -188,17 +204,26 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
       content: r.text,
     }));
 
-  let aiText: string;
+  // Build enriched prompt: settings prompt + gender directive +
+  // live site knowledge (RAG-lite). Same payload the bot sees on
+  // every turn so it has fresh data + correct grammar.
+  const context = await buildAssistantContext();
+  const enrichedPrompt =
+    `${settings.systemPrompt}\n\n` +
+    `## معلومات عن العميل:\n${genderDirective(userGender)}\n\n` +
+    `---\n\n${context.text}`;
+
+  let rawAiText: string;
   let aiTokens = 0;
   try {
     const result = await callAi(settings.provider, {
-      systemPrompt: settings.systemPrompt,
+      systemPrompt: enrichedPrompt,
       userMessage: input.text,
       history,
       model: settings.model,
       maxTokens: settings.maxTokens,
     });
-    aiText = result.text;
+    rawAiText = result.text;
     aiTokens = result.totalTokens;
   } catch (err) {
     await prisma.facebookEvent.create({
@@ -210,10 +235,19 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
         aiModel: settings.model,
         sendStatus: 'failed',
         sendError: err instanceof Error ? err.message : String(err),
+        userGender,
       },
     }).catch(() => {/* swallow */});
     return;
   }
+
+  // Strip the [[LEAD:...]] tag before sending to the user, but keep
+  // the parsed status for the inbox view.
+  const { cleanText: aiText, leadStatus } = extractLeadTag(rawAiText);
+
+  // Humanise: pause briefly before sending so it feels like a real
+  // person typing. Uses reply length to scale the delay.
+  await new Promise(resolve => setTimeout(resolve, humanizeDelay(aiText)));
 
   const sendResult = await sendFacebookReply(input.psid, aiText);
   await prisma.facebookEvent.create({
@@ -226,6 +260,8 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
       aiTokens,
       sendStatus: sendResult.ok ? 'sent' : 'failed',
       sendError: sendResult.ok ? null : sendResult.error ?? 'unknown',
+      leadStatus,
+      userGender,
     },
   }).catch(err => {
     console.error('[fb-webhook] failed to persist message reply', err);
@@ -242,6 +278,8 @@ interface IncomingCommentInput {
 }
 
 async function handleIncomingComment(input: IncomingCommentInput) {
+  const userGender = detectGenderFromName(input.commenterName);
+
   let stored;
   try {
     stored = await prisma.facebookEvent.create({
@@ -254,6 +292,7 @@ async function handleIncomingComment(input: IncomingCommentInput) {
         postId: input.postId,
         sender: input.commenterName ? { id: input.commenterId, name: input.commenterName } : { id: input.commenterId },
         rawPayload: input.rawPayload,
+        userGender,
       },
     });
   } catch (err) {
@@ -264,21 +303,23 @@ async function handleIncomingComment(input: IncomingCommentInput) {
   const settings = await getAssistantSettings();
   if (!shouldAutoReply(input.text, settings)) return;
 
-  // Comments don't get conversation history (each comment is
-  // independent and public). Just call the model with the prompt
-  // + the user's comment text.
-  let aiText: string;
+  // Same RAG context + gender directive as DM handler — comments
+  // benefit from the same product/price knowledge.
+  const context = await buildAssistantContext();
+  let rawAiText: string;
   let aiTokens = 0;
   try {
     const result = await callAi(settings.provider, {
       systemPrompt:
         settings.systemPrompt +
-        '\n\nملاحظة: هذا تعليق على بوست عام، الرد سيظهر للجميع. خلِّ الرد قصير جداً (جملة-جملتين كحد أقصى) ومهذّب.',
+        '\n\n## ملاحظة هامة:\nهذا **تعليق على بوست عام** — الرد سيظهر للجميع. خلِّ الرد قصيراً جداً (جملة-جملتين كحد أقصى)، ومهذّب، واطلب من العميل المتابعة في رسالة خاصة عشان يطلب أو يستفسر بالتفاصيل.' +
+        `\n\n## معلومات عن العميل:\n${genderDirective(userGender)}` +
+        '\n\n---\n\n' + context.text,
       userMessage: input.text,
       model: settings.model,
       maxTokens: Math.min(settings.maxTokens, 200),
     });
-    aiText = result.text;
+    rawAiText = result.text;
     aiTokens = result.totalTokens;
   } catch (err) {
     await prisma.facebookEvent.create({
@@ -292,10 +333,18 @@ async function handleIncomingComment(input: IncomingCommentInput) {
         aiModel: settings.model,
         sendStatus: 'failed',
         sendError: err instanceof Error ? err.message : String(err),
+        userGender,
       },
     }).catch(() => {/* swallow */});
     return;
   }
+
+  const { cleanText: aiText, leadStatus } = extractLeadTag(rawAiText);
+
+  // Brief humanizing delay on comments too — Facebook's anti-spam
+  // throttle treats instant replies suspiciously, and feels less
+  // robotic to the audience.
+  await new Promise(resolve => setTimeout(resolve, humanizeDelay(aiText)));
 
   const sendResult = await replyToComment(input.commentId, aiText);
   await prisma.facebookEvent.create({
@@ -310,6 +359,8 @@ async function handleIncomingComment(input: IncomingCommentInput) {
       aiTokens,
       sendStatus: sendResult.ok ? 'sent' : 'failed',
       sendError: sendResult.ok ? null : sendResult.error ?? 'unknown',
+      leadStatus,
+      userGender,
     },
   }).catch(err => {
     console.error('[fb-webhook] failed to persist comment reply', err);

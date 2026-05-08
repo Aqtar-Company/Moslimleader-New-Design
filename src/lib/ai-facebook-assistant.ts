@@ -33,18 +33,37 @@ export interface AssistantSettings {
 
 const DEFAULT_SYSTEM_PROMPT = `أنت المساعد الذكي لمتجر "مسلم ليدر" — متجر تربوي إسلامي للأطفال يبيع كتب وألعاب وحقائب مدرسية ومنتجات تعليمية.
 
-قواعد لازم تلتزم بها في كل رد:
+دورك ليس مجرد رد على الأسئلة — أنت **بائع استشاري** هدفك الأهم:
+أ) فهم احتياج العميل بدقة (عدد الأطفال، أعمارهم، اهتماماتهم).
+ب) ترشيح منتجات محددة من المتجر تناسبهم بالضبط.
+ج) دفع المحادثة لإغلاق الطلب (الحصول على رقم تواصل أو تأكيد الشراء).
 
-1. تكلم بالعربية المصرية الواضحة، بأسلوب راقي ودافئ يناسب الأمهات.
-2. ابدأ كل رد بترحيب قصير "أهلاً بكِ في مسلم ليدر 🌟" أو "السلام عليكِ".
-3. لو السؤال عن منتج معين، أجب بمعلومات عامة + اقترح زيارة الموقع: https://moslimleader.com
-4. لو السؤال عن سعر — قل: "تقدري تشوفي السعر الحالي على صفحة المنتج في الموقع، الأسعار بتتحدث باستمرار."
-5. لو السؤال عن الشحن — قل: "بنشحن لكل محافظات مصر خلال 2-5 أيام عمل، التفاصيل موجودة في صفحة الشحن."
-6. لو السؤال نصيحة تربوية، أعطِ إجابة قصيرة (2-3 جمل) واقترح كتاب مناسب من المتجر.
-7. لو السؤال طلب تواصل بشري — قل: "لو حابة تتواصلي مع فريقنا مباشرة، ابعتيلنا واتساب على الرقم الموجود في صفحة 'تواصل'."
-8. لا تخترعي أسعار أو منتجات ليست موجودة. لا تعدي بمنتجات معينة.
-9. ردك يكون قصير: 2-4 جمل، حد أقصى.
-10. اختم بـ "في خدمتك دايماً 🤍" أو "نتشرف بخدمتك".`;
+أسلوب المحادثة:
+1. ابدأ بترحيب قصير دافئ.
+2. **اسأل عن الأطفال أولاً** قبل أن ترشّح أي منتج: "كم طفل عندك؟ وما أعمارهم؟ وأكثر شيء بيحبوه؟". لا تتجاوز هذه الخطوة.
+3. بعد ما تعرف الأعمار، رشّح **منتج واحد أو اثنين بالحد الأقصى** من القائمة المذكورة في الـ context — اذكر الاسم والسعر والرابط بالضبط.
+4. اختم برسالة محفّزة لإغلاق الطلب: "تحبي تطلبيها دلوقتي؟ ابعتيلي رقمك والعنوان وأنا هرتبلك الطلب."
+5. كل رد لا يتعدى 4-5 جمل قصيرة. لا تكتب فقرات طويلة.
+6. لا تخترع أبداً منتج أو سعر غير موجود في الـ context. لو السؤال عن منتج غير متوفر، قل: "مش متوفر حالياً، بس عندنا [بدائل من القائمة]".
+
+قواعد متابعة:
+- لو العميل أعطاك رقم تليفون أو عنوان: قل "تمام، فريقنا هيتواصل معك للتأكيد خلال ساعة" واطلب تأكيد المنتج المراد.
+- لو طلب التواصل بفريق بشري: قل "لو حابة، ابعتي على واتساب الرقم الظاهر في صفحة الموقع."
+- لو السؤال نصيحة تربوية: أعطِ نصيحة قصيرة جداً (جملة-جملتين) واربطها بكتاب من المكتبة لو فيه واحد مناسب.
+
+⚠️ بروتوكول التصنيف الإلزامي (System):
+في **آخر سطر من كل رد** أضف وسم تصنيف مخفي بالشكل الآتي بالظبط (سيتم إزالته قبل إرسال الرد للعميل، استخدمه دائماً):
+
+[[LEAD:HOT]]   إذا كان العميل: أعطاك رقم تليفون، أو عنوان، أو قال صراحة "أوكي هطلب" / "ابعتي" / "اتواصلوا معايا".
+[[LEAD:WARM]]  إذا كان العميل: سأل عن سعر منتج محدد، عن توفّر، عن الشحن، عن الحجم/المقاس، أو فاوض على السعر.
+[[LEAD:COLD]]  أي حالة أخرى: تحية، سؤال عام، استفسار تربوي بدون نية شراء.
+
+مثال على الرد الصحيح:
+"أهلاً بكِ في مسلم ليدر 🌟
+عندك كم طفل وأعمارهم كام؟ عشان أرشّحلك المناسب لكل واحد فيهم.
+[[LEAD:COLD]]"
+
+ابدأ الآن.`;
 
 const DEFAULTS: AssistantSettings = {
   enabled: false,
@@ -280,6 +299,39 @@ export async function sendFacebookReply(recipientPsid: string, text: string): Pr
   }
 }
 
+// Toggle the "is typing..." dots in Messenger. Called BEFORE the AI
+// runs so the user sees activity within a fraction of a second
+// (otherwise they sit watching nothing for 1-3s while the model
+// generates). Typing auto-clears when the next message goes out or
+// after ~20 seconds.
+export async function sendTypingIndicator(recipientPsid: string, on: boolean): Promise<void> {
+  const pageToken = process.env.FB_PAGE_ACCESS_TOKEN;
+  if (!pageToken || pageToken === 'PENDING') return;
+  const url = `https://graph.facebook.com/v21.0/me/messages?access_token=${encodeURIComponent(pageToken)}`;
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recipient: { id: recipientPsid },
+        sender_action: on ? 'typing_on' : 'typing_off',
+      }),
+    });
+  } catch {
+    // Typing indicator is cosmetic — never fail a reply because of it.
+  }
+}
+
+// Compute a human-like delay (ms) based on reply length. Roughly
+// mirrors a person typing ~60 wpm, capped at 6 seconds so the user
+// doesn't wait too long. Used after the AI returns to make the bot
+// feel less robotic.
+export function humanizeDelay(replyText: string): number {
+  const words = replyText.split(/\s+/).length;
+  const ms = Math.min(6000, Math.max(1500, words * 80));
+  return ms;
+}
+
 // Reply to a Page comment via Graph API. Different endpoint than
 // Messenger DMs — comments are public, posted as a child of the
 // original comment so the user's notification chains correctly.
@@ -306,6 +358,24 @@ export async function replyToComment(commentId: string, text: string): Promise<F
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
+}
+
+// Parse the [[LEAD:HOT|WARM|COLD]] tag the bot appends to every reply.
+// Returns the cleaned text (tag stripped) plus the lead status. The
+// tag format is enforced by the system prompt; if the model forgets
+// to add one, we default to 'cold'.
+export function extractLeadTag(rawText: string): { cleanText: string; leadStatus: 'hot' | 'warm' | 'cold' } {
+  // Match [[LEAD:HOT]] / [[LEAD:WARM]] / [[LEAD:COLD]] anywhere — tolerate
+  // whitespace + Arabic punctuation around it.
+  const re = /\[\[\s*LEAD\s*:\s*(HOT|WARM|COLD)\s*\]\]/i;
+  const match = rawText.match(re);
+  const status = (match?.[1]?.toLowerCase() ?? 'cold') as 'hot' | 'warm' | 'cold';
+  // Strip the tag AND any trailing whitespace/newlines it left behind.
+  const cleaned = rawText
+    .replace(re, '')
+    .replace(/\s+$/u, '')
+    .trim();
+  return { cleanText: cleaned, leadStatus: status };
 }
 
 // Decide whether to auto-reply to an incoming message based on

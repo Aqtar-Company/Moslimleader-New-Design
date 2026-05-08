@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/permissions';
 import { getAssistantSettings, callAi } from '@/lib/ai-facebook-assistant';
+import { buildAssistantContext } from '@/lib/assistant-knowledge';
 
 // Test the assistant — admin sends a message, we run it through the
 // SAME prompt + model the production webhook would use, and return
@@ -19,14 +20,20 @@ export async function POST(req: NextRequest) {
   if (!message) return NextResponse.json({ error: 'الرسالة مطلوبة' }, { status: 400 });
 
   const settings = await getAssistantSettings();
+  const context = await buildAssistantContext();
   try {
     const result = await callAi(settings.provider, {
-      systemPrompt: settings.systemPrompt,
+      systemPrompt: `${settings.systemPrompt}\n\n---\n\n${context.text}`,
       userMessage: message,
       model: settings.model,
       maxTokens: settings.maxTokens,
     });
-    return NextResponse.json({ ok: true, reply: result.text, tokens: result.totalTokens });
+    return NextResponse.json({
+      ok: true,
+      reply: result.text,
+      tokens: result.totalTokens,
+      contextStats: context.stats,
+    });
   } catch (err) {
     return NextResponse.json({
       ok: false,

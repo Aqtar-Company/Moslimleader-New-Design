@@ -207,8 +207,8 @@ export default function InventoryPage() {
       </div>
 
       {/* Mobile card list — compact view of products with quick +/- buttons.
-          Variant products link out to the desktop view for per-variant
-          editing (too cramped to do well on a small screen). */}
+          Variant products expand to show each model with its own controls,
+          so every edit doable on desktop is doable on mobile. */}
       <div className="block lg:hidden space-y-2">
         {filtered.map(p => {
           const img = firstImage(p.images);
@@ -216,8 +216,10 @@ export default function InventoryPage() {
           const isOut = p.stock <= 0;
           const variants = Array.isArray(p.variants) ? p.variants : [];
           const hasVariants = variants.length > 0;
+          const isExpanded = expanded.has(p.id);
           const editValue = edits[p.id];
           const totalValue = p.price * p.stock;
+          const imagesArr = Array.isArray(p.images) ? p.images as unknown[] : [];
           return (
             <div key={p.id} className={`bg-white rounded-xl border p-3 ${isOut ? 'border-red-200 bg-red-50/30' : isLow ? 'border-amber-200 bg-amber-50/30' : 'border-gray-200'}`}>
               <div className="flex items-start gap-3">
@@ -237,9 +239,15 @@ export default function InventoryPage() {
 
               <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2 flex-wrap">
                 {hasVariants ? (
-                  <p className="text-[11px] text-purple-700 font-bold">
-                    🎨 {variants.length} موديلات — حرّر من شاشة سطح المكتب
-                  </p>
+                  <button
+                    onClick={() => toggleExpand(p.id)}
+                    className="flex-1 flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-800 text-[11px] font-bold transition"
+                  >
+                    <span>🎨 {variants.length} موديلات — اضغط لتعديل</span>
+                    <svg className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
                 ) : (
                   <>
                     <button onClick={() => adjustStock(p.id, -10)} className="w-9 h-9 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 font-black text-sm">−10</button>
@@ -259,6 +267,60 @@ export default function InventoryPage() {
                 )}
                 <Link href={`/admin/inventory/movements?productId=${p.id}`} className="ms-auto text-[10px] text-blue-700 hover:underline">🧾 السجل</Link>
               </div>
+
+              {/* Expandable variants for mobile — same controls as desktop. */}
+              {hasVariants && isExpanded && (
+                <div className="mt-3 pt-3 border-t border-purple-100 space-y-2">
+                  {variants.map((v, idx) => {
+                    const stockKey = String(idx);
+                    const vStock = (p.variantStocks?.[stockKey]) ?? 0;
+                    const vSold = (p.soldByVariant?.[stockKey]) ?? 0;
+                    const vEdit = variantEdits[`${p.id}:${idx}`];
+                    const vIsLow = vStock > 0 && vStock <= 50;
+                    const vIsOut = vStock <= 0;
+                    const vImgIdx = typeof v.imageIndex === 'number' ? v.imageIndex : 0;
+                    const vImgRaw = imagesArr[vImgIdx];
+                    const vImg = typeof vImgRaw === 'string' ? vImgRaw : (vImgRaw as { url?: string; src?: string } | undefined)?.url
+                      || (vImgRaw as { url?: string; src?: string } | undefined)?.src || img;
+                    return (
+                      <div key={`${p.id}-v${idx}`} className={`rounded-lg p-2.5 border-r-4 ${vIsOut ? 'bg-red-50/40 border-red-300' : vIsLow ? 'bg-amber-50/40 border-amber-300' : 'bg-purple-50/30 border-purple-300'}`}>
+                        <div className="flex items-center gap-2.5">
+                          <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-white border border-gray-200 shrink-0">
+                            {vImg ? <Image src={vImg} alt={v.name || `موديل ${idx + 1}`} fill className="object-cover" unoptimized /> : <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm">📦</div>}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-purple-800 truncate">↳ {v.name || `موديل ${idx + 1}`}</p>
+                            <p className="text-[10px] text-gray-500 mt-0.5">مباع: {vSold.toLocaleString('en-US')} · قيمة: {Math.round(vStock * p.price).toLocaleString('en-US')} ج.م</p>
+                          </div>
+                          <div className="text-left shrink-0">
+                            <p className="text-[9px] text-gray-500">المخزون</p>
+                            <p className={`text-base font-black leading-none ${vIsOut ? 'text-red-700' : vIsLow ? 'text-amber-700' : 'text-gray-900'}`}>{vStock.toLocaleString('en-US')}</p>
+                          </div>
+                        </div>
+
+                        <div className="mt-2 pt-2 border-t border-purple-100 flex items-center gap-1.5 flex-wrap">
+                          <button onClick={() => adjustVariantStock(p.id, idx, -10)} className="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 font-black text-[11px]">−10</button>
+                          <button onClick={() => adjustVariantStock(p.id, idx, -1)} className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-100 hover:text-red-700 text-gray-700 font-black text-sm">−</button>
+                          <input
+                            type="number"
+                            value={vEdit !== undefined ? vEdit : vStock}
+                            onChange={e => setVariantEdits(prev => ({ ...prev, [`${p.id}:${idx}`]: Number(e.target.value) }))}
+                            className={`flex-1 min-w-[70px] border rounded-lg px-2 py-1.5 text-sm text-center font-bold ${vIsOut ? 'border-red-300 text-red-700 bg-red-50' : vIsLow ? 'border-amber-300 text-amber-700 bg-amber-50' : 'border-gray-200'}`}
+                          />
+                          <button onClick={() => adjustVariantStock(p.id, idx, 1)} className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-emerald-100 hover:text-emerald-700 text-gray-700 font-black text-sm">+</button>
+                          <button onClick={() => adjustVariantStock(p.id, idx, 10)} className="w-8 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-black text-[11px]">+10</button>
+                          {vEdit !== undefined && vEdit !== vStock && (
+                            <button
+                              onClick={() => updateVariantStock(p.id, idx, vEdit)}
+                              className="px-3 py-1.5 rounded-lg bg-[#F5C518] hover:bg-amber-400 text-[#1a1a2e] text-[11px] font-black"
+                            >حفظ</button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })}

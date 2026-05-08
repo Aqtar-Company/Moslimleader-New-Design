@@ -8,13 +8,10 @@ import { applyOverride, getMergedStaticProduct, loadStaticOverrides } from '@/li
 
 type Props = { params: Promise<{ slug: string }> };
 
-// ── Helper: resolve product (DB first, then static + overrides) ──
 async function resolveProduct(slug: string): Promise<Product | null> {
   try {
     const dbProduct = await prisma.product.findUnique({ where: { slug } });
     if (dbProduct) {
-      // Static-sourced products in DB may have stale prices — apply overrides
-      // via the shared helper so the detail page mirrors home + list pages.
       if (dbProduct.source === 'static') {
         const overrides = await loadStaticOverrides();
         const merged = applyOverride(dbProduct as unknown as Product, overrides[dbProduct.id]);
@@ -27,7 +24,6 @@ async function resolveProduct(slug: string): Promise<Product | null> {
   return getMergedStaticProduct(slug);
 }
 
-// ── Open Graph / Twitter metadata for social sharing ──
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://moslimleader.com';
@@ -85,5 +81,29 @@ export default async function ProductPage({ params }: Props) {
   const { slug } = await params;
   const product = await resolveProduct(slug);
   if (!product) notFound();
-  return <ProductDetailClient product={product} />;
+
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://moslimleader.com';
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    description: product.shortDescription || product.description?.replace(/<[^>]+>/g, '').slice(0, 200),
+    image: product.images?.[0]?.startsWith('http') ? product.images[0] : `${baseUrl}${product.images?.[0] || '/logo.png'}`,
+    url: `${baseUrl}/shop/${product.slug}`,
+    brand: { '@type': 'Brand', name: 'Moslim Leader' },
+    offers: {
+      '@type': 'Offer',
+      price: product.priceUsd || (product.price / 50),
+      priceCurrency: 'USD',
+      availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      url: `${baseUrl}/shop/${product.slug}`,
+    },
+  };
+
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <ProductDetailClient product={product} />
+    </>
+  );
 }

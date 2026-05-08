@@ -14,6 +14,7 @@ import { effectiveStock } from '@/lib/inventory-value';
 import { getPayrollSummary } from '@/lib/team-payroll';
 import { getRoyaltyAccrualFromContext } from '@/lib/royalties';
 import { getPartnerCapTable } from '@/lib/partners';
+import { EGP_TO_USD } from '@/lib/currency';
 
 // In-memory cache for the valuation payload. The full report makes
 // ~25 aggregations and is not real-time-critical (the underlying
@@ -319,7 +320,12 @@ export async function GET() {
   const ipTotal           = ipBookValue + ipProductValue + ipDigitalValue;
 
   const techValue         = assumptions.techValue;
-  const customerDbValue   = Math.round(customerCount * assumptions.customerDbValue);
+  // Goodwill on the customer database — applied to REAL BUYERS only,
+  // not to every signup. Previously this multiplied by `customerCount`
+  // (every registered user, including zero-order tire-kickers) which
+  // overstated baseValue. The "per customer" assumption represents
+  // the LTV of someone who has actually transacted.
+  const customerDbValue   = Math.round(totalBuyers * assumptions.customerDbValue);
   // Wholesale customers and active suppliers are real assets too: a
   // wholesale buyer represents recurring bulk revenue, and an active
   // supplier represents vetted production capacity. Both are tunable
@@ -345,6 +351,7 @@ export async function GET() {
     payroll,
     ttmItems,
     customerSpendRows,
+    customerSpendRowsTtm,
     productRevenueRows,
     currencyAgg,
     orderGovs,
@@ -371,6 +378,19 @@ export async function GET() {
       SELECT userId, SUM(total) AS spend
       FROM \`Order\`
       WHERE status != 'cancelled' AND paymentMethod != 'gift' AND userId IS NOT NULL
+      GROUP BY userId
+      ORDER BY spend DESC
+      LIMIT 10
+    `,
+    // TTM equivalent — used by the "lose top-10 customers" scenario
+    // so the stress applies a TTM share to TTM revenue, not a
+    // lifetime share to TTM revenue. Mixing timeframes was previous
+    // behaviour and produced misleading deltas (M2 audit finding).
+    prisma.$queryRaw<Array<{ userId: string | null; spend: number }>>`
+      SELECT userId, SUM(total) AS spend
+      FROM \`Order\`
+      WHERE status != 'cancelled' AND paymentMethod != 'gift' AND userId IS NOT NULL
+        AND createdAt >= ${ttmStart}
       GROUP BY userId
       ORDER BY spend DESC
       LIMIT 10
@@ -411,8 +431,16 @@ export async function GET() {
     }),
     prisma.setting.findUnique({ where: { key: 'valuation-assumptions' } }),
     totalReceivables(),
+    // Active AND not-yet-expired royalty agreements. Owner may forget
+    // to deactivate after `endDate` passes; we treat past-expiry as
+    // automatically inactive so the accrual stops on its own. The
+    // /admin/ip page surfaces them either way; only the valuation
+    // accrual is filtered here.
     prisma.royaltyAgreement.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        OR: [{ endDate: null }, { endDate: { gte: new Date() } }],
+      },
       select: { id: true, payeeName: true, percentage: true, productIds: true },
     }),
   ]);
@@ -460,6 +488,10 @@ export async function GET() {
   // ─────────────────────────────────────────────────────────────────
   const top10CustomerSpend = customerSpendRows.reduce((s, r) => s + Number(r.spend), 0);
   const customerConcentration = totalRevenue > 0 ? top10CustomerSpend / totalRevenue : 0;
+  // TTM-only concentration — used in the churn sensitivity so the
+  // stress applies a TTM share to TTM revenue (M2 audit fix).
+  const top10CustomerSpendTtm = customerSpendRowsTtm.reduce((s, r) => s + Number(r.spend), 0);
+  const customerConcentrationTtm = ttmRevenue > 0 ? top10CustomerSpendTtm / ttmRevenue : 0;
 
   // Top 5 products by revenue — discount-aware via OrderItem.unitPrice.
   const top5ProductRevenue = productRevenueRows.reduce((s, r) => s + Number(r.revenue), 0);
@@ -468,8 +500,17 @@ export async function GET() {
   // Currency split: % of orders by currency (USD PayPal vs EGP local).
   const usdAgg = currencyAgg.find(c => c.currency === 'USD');
   const egpAgg = currencyAgg.find(c => c.currency === 'EGP');
-  const usdRevenueShare = totalRevenue > 0
-    ? Number(usdAgg?._sum.total ?? 0) / totalRevenue
+  // Order.total is stored in the order's NATIVE currency (EGP for COD,
+  // USD for PayPal). To compare like-with-like we convert USD totals to
+  // EGP using the canonical 1/50 rate from src/lib/currency.ts. Without
+  // this, the share figure mixed two unit systems and produced a
+  // meaninglessly small ratio.
+  const USD_TO_EGP = 1 / EGP_TO_USD; // 50
+  const usdRevenueEgp = Number(usdAgg?._sum.total ?? 0) * USD_TO_EGP;
+  const egpRevenue    = Number(egpAgg?._sum.total ?? 0);
+  const totalRevenueEgpEquivalent = usdRevenueEgp + egpRevenue;
+  const usdRevenueShare = totalRevenueEgpEquivalent > 0
+    ? usdRevenueEgp / totalRevenueEgpEquivalent
     : 0;
 
   // Geographic concentration — top 3 governorates' share of total
@@ -572,12 +613,21 @@ export async function GET() {
   });
   const totalAccruedRoyalties = royaltyAccrual.totalAccrued;
 
+  // Bad-debt provision on receivables. SME accounting practice: an
+  // unprovisioned AR figure overstates baseValue because aged
+  // invoices routinely lose 10–30% to non-collection. We net the
+  // provision off the receivables that flow into baseValue, but the
+  // headline (gross) figure is still surfaced separately so the owner
+  // can see what's collectible vs what's discounted.
+  const receivablesProvision = Math.max(0, customerReceivables) * assumptions.receivablesProvisionRate;
+  const customerReceivablesNet = Math.max(0, customerReceivables - receivablesProvision);
+
   // Supplier liabilities are deducted because any buyer of the company
   // inherits the debt; surfacing it here keeps the headline honest.
   // Receivables work the opposite way — they ADD to baseValue.
   const baseValue        = inventoryCost + ipTotal + techValue + customerDbValue
                          + wholesaleValue + supplierRelationshipsValue
-                         + customerReceivables
+                         + customerReceivablesNet
                          - Math.max(0, supplierLiabilities)
                          - Math.max(0, totalAccruedRoyalties);
   const fairValue        = baseValue * assumptions.fairMultiplier;
@@ -624,7 +674,7 @@ export async function GET() {
     const liab = supplierLiabilities + (overrides.extraSupplierLiabilities ?? 0);
     return inv + ipTotal + techValue + customerDbValue
          + wholesaleValue + supplierRelationshipsValue
-         + customerReceivables
+         + customerReceivablesNet
          - Math.max(0, liab)
          - Math.max(0, totalAccruedRoyalties);
   };
@@ -633,7 +683,11 @@ export async function GET() {
   // Top-10 customer churn: simulate losing top-10 customers' lifetime
   // revenue contribution. We translate it to a market-multiple impact
   // (we don't have ARR; this is a one-time revenue hit proxy).
-  const ttmCustomerLoss = ttmRevenue * customerConcentration; // assume top-10 share is recurring
+  // Use the TTM-only concentration so the scenario is "what if we
+  // lose the customers who actually drove last year's revenue" — not
+  // "lifetime ratio applied to last year". Lifetime concentration is
+  // still surfaced in the Concentration Risk card for audit purposes.
+  const ttmCustomerLoss = ttmRevenue * customerConcentrationTtm;
   const stressMarketLow_loss  = Math.max(0, (ttmRevenue - ttmCustomerLoss)) * assumptions.revenueMultipleLow;
   const stressMarketHigh_loss = Math.max(0, (ttmRevenue - ttmCustomerLoss)) * assumptions.revenueMultipleHigh;
   // Currency stress: 10% EGP devaluation against USD shrinks the EGP
@@ -759,10 +813,20 @@ export async function GET() {
         productsCount: products.length,
       },
       tech: { value: techValue },
-      customerDb: { value: customerDbValue, perCustomer: assumptions.customerDbValue },
+      customerDb: {
+        value: customerDbValue,
+        perCustomer: assumptions.customerDbValue,
+        appliedTo: totalBuyers,
+        registeredCount: customerCount,
+      },
       wholesale: { value: wholesaleValue, perCustomer: assumptions.wholesaleCustomerValue, count: wholesaleCount },
       supplierRelationships: { value: supplierRelationshipsValue, perSupplier: assumptions.supplierRelationshipValue, count: activeSupplierCount },
-      customerReceivables: { value: Math.round(customerReceivables) },
+      customerReceivables: {
+        value: Math.round(customerReceivables),                 // gross AR
+        provisionRate: assumptions.receivablesProvisionRate,
+        provision: Math.round(receivablesProvision),
+        netValue: Math.round(customerReceivablesNet),           // what flows into baseValue
+      },
       // Royalty / IP accruals — TTM-based amounts owed to rights-holders
       // for their percentage of profit on linked products. Subtracts
       // from baseValue. Managed at /admin/ip.
@@ -821,6 +885,7 @@ export async function GET() {
       // customers" questions every buyer asks first.
       concentration: {
         top10CustomersRevenueShare: customerConcentration,
+        top10CustomersRevenueShareTtm: customerConcentrationTtm,
         top5ProductsRevenueShare: productConcentration,
         top3GovernoratesShare: top3GovShare,
         topGovernorates: topGovs.map(([name, spend]) => ({ name, spend: Math.round(spend) })),

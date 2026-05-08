@@ -204,7 +204,7 @@ export default function BostaOrphansPage() {
     if (changed > 0) addToast(`جاهز لتأكيد ${changed} طلب عالي الثقة — اضغط "حفظ"`, 'success');
   };
 
-  if (forbidden) return <ForbiddenState requiredPerm="valuation.read" />;
+  if (forbidden) return <ForbiddenState requiredPerm="inventory.read" />;
   if (loading) return <Spinner />;
 
   return (

@@ -117,7 +117,11 @@ function extractDescription(payload: unknown): string | null {
 }
 
 export async function GET(req: NextRequest) {
-  const guard = await requirePerm('valuation.read');
+  // Bosta backfill is fundamentally an inventory-data-cleanup task, not
+  // a valuation feature — gate it on inventory permissions so an
+  // assistant doesn't need access to confidential financial reports
+  // just to fix order items.
+  const guard = await requirePerm('inventory.read');
   if ('response' in guard) return guard.response;
 
   const limit = Math.min(Number(req.nextUrl.searchParams.get('limit') ?? '200') || 200, 500);
@@ -228,7 +232,7 @@ export async function GET(req: NextRequest) {
 // FINE — the admin saw the discrepancy in the UI and made a call.
 // (Common reason: prices changed since the order shipped.)
 export async function POST(req: NextRequest) {
-  const guard = await requirePerm('valuation.write');
+  const guard = await requirePerm('inventory.write');
   if ('response' in guard) return guard.response;
 
   let body: { entries?: Array<{ orderId: string; items: Array<{ productId: string; quantity: number; unitPrice?: number }> }> };

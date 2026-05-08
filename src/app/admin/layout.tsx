@@ -39,7 +39,7 @@ const NAV: NavItem[] = [
   { href: '/admin/reviews',           label: 'التقييمات',         icon: '⭐', requireAny: ['reviews.read'] },
   // —— Reports ——
   { href: '/admin/reports/sales-by-product', label: 'توزيع المبيعات', icon: '📊', requireAny: ['valuation.read'] },
-  { href: '/admin/reports/bosta-orphans',    label: 'Backfill بوسطة',  icon: '📦', requireAny: ['valuation.read'] },
+  { href: '/admin/reports/bosta-orphans',    label: 'Backfill بوسطة',  icon: '📦', requireAny: ['inventory.read'] },
   // —— Configuration ——
   { href: '/admin/shipping',          label: 'الشحن المحلي',      icon: '🚚', requireAny: ['shipping.read'] },
   { href: '/admin/intl-shipping',     label: 'الشحن الدولي',      icon: '✈️', requireAny: ['shipping.read'] },

@@ -67,26 +67,56 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex bg-gray-100" dir="rtl">
+    <div className="admin-shell fixed inset-0 z-50 flex bg-gray-100" dir="rtl">
+      {/* Print fix: the admin shell is `position: fixed; overflow: hidden`
+          for the screen layout, which clips print output to a single page.
+          In print mode we strip the constraints so the browser can flow
+          the report across as many pages as it needs. */}
+      <style jsx global>{`
+        @media print {
+          .admin-shell {
+            position: static !important;
+            inset: auto !important;
+            height: auto !important;
+            overflow: visible !important;
+            display: block !important;
+            background: #fff !important;
+          }
+          .admin-shell aside, .admin-shell .admin-topbar { display: none !important; }
+          .admin-shell .admin-main-wrap, .admin-shell main {
+            overflow: visible !important;
+            height: auto !important;
+            padding: 0 !important;
+          }
+        }
+        /* Slim scrollbar for the desktop sidebar so the glass panel
+           doesn't look chunky when the nav overflows. */
+        .admin-sidebar-nav::-webkit-scrollbar { width: 4px; }
+        .admin-sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+        .admin-sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+        .admin-sidebar-nav { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.12) transparent; }
+      `}</style>
+
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar — solid on mobile drawer (readability over a backdrop),
+          glass on desktop (subtle depth without dominating the page). */}
       <aside className={`
         fixed top-0 right-0 h-full w-64 max-w-[85vw] bg-[#1a1a2e] z-50 flex flex-col transition-transform duration-300
-        lg:static lg:translate-x-0
+        lg:static lg:translate-x-0 lg:w-52 lg:bg-[#1a1a2e]/75 lg:backdrop-blur-xl lg:border-l lg:border-white/10 lg:shadow-xl
         ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
       `}>
         {/* Logo */}
-        <div className="px-6 py-5 border-b border-white/10">
-          <p className="text-[#F5C518] font-black text-lg leading-tight">Moslim Leader</p>
-          <p className="text-white/50 text-xs mt-0.5">لوحة التحكم</p>
+        <div className="px-6 py-5 border-b border-white/10 lg:px-4 lg:py-3.5">
+          <p className="text-[#F5C518] font-black text-lg leading-tight lg:text-base">Moslim Leader</p>
+          <p className="text-white/50 text-xs mt-0.5 lg:text-[10px]">لوحة التحكم</p>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-4 overflow-y-auto">
+        <nav className="flex-1 py-4 overflow-y-auto admin-sidebar-nav lg:py-2">
           {NAV.filter(item => {
             if (item.superAdminOnly) return isSuperAdmin;
             if (!item.requireAny || item.requireAny.length === 0) return true;
@@ -99,13 +129,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 key={item.href}
                 href={item.href}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-6 py-3 text-sm font-semibold transition-all ${
+                className={`flex items-center gap-3 px-6 py-3 text-sm font-semibold transition-all lg:gap-2 lg:px-3.5 lg:py-2 lg:text-[12.5px] ${
                   active
                     ? 'bg-[#F5C518]/15 text-[#F5C518] border-l-0 border-r-4 border-[#F5C518]'
                     : 'text-white/70 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <span className="text-base">{item.icon}</span>
+                <span className="text-base lg:text-sm">{item.icon}</span>
                 {item.label}
               </Link>
             );
@@ -113,13 +143,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
 
         {/* Bottom: store link + logout */}
-        <div className="px-4 py-4 border-t border-white/10 space-y-2">
-          <Link href="/" className="flex items-center gap-2 px-3 py-2 rounded-lg text-white/60 hover:text-white text-xs transition">
+        <div className="px-4 py-4 border-t border-white/10 space-y-2 lg:px-2.5 lg:py-2.5 lg:space-y-1">
+          <Link href="/" className="flex items-center gap-2 px-3 py-2 rounded-lg text-white/60 hover:text-white text-xs transition lg:px-2 lg:py-1.5 lg:text-[11px]">
             <span>🏠</span> العودة للمتجر
           </Link>
           <button
             onClick={() => { signOut(); router.push('/'); }}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-white/5 text-xs transition"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-white/5 text-xs transition lg:px-2 lg:py-1.5 lg:text-[11px]"
           >
             <span>🚪</span> تسجيل الخروج
           </button>
@@ -127,9 +157,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="admin-main-wrap flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0">
+        <header className="admin-topbar bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0">
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden w-11 h-11 flex items-center justify-center rounded-xl border border-gray-200 text-gray-600"

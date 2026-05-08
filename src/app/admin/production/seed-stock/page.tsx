@@ -142,6 +142,34 @@ export default function SeedStockWizard() {
     <div className="space-y-5" dir="rtl">
       <Link href="/admin/production" className="text-xs text-gray-500 hover:text-gray-900">← العودة لباتشات الإنتاج</Link>
 
+      {/* Sticky save bar — always visible while the user fills the table.
+          Without this, users typed prices and walked away thinking they
+          had saved (the bottom button is far below the fold for long
+          tables). The bar follows the viewport so the action is always
+          one click away. */}
+      {summary.count > 0 && (
+        <div className="sticky top-2 z-30 bg-emerald-600 text-white rounded-2xl shadow-lg shadow-emerald-200 px-5 py-3 flex items-center justify-between gap-3 flex-wrap border-2 border-emerald-700">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">⚠️</span>
+            <div>
+              <p className="text-sm font-black">
+                لديك <span className="bg-white/25 px-2 py-0.5 rounded">{summary.count}</span> سطر بأسعار غير محفوظة
+              </p>
+              <p className="text-[11px] text-emerald-50 mt-0.5">
+                إجمالي: <strong>{fmt(summary.totalCost)} ج.م</strong> — اضغط الزرار لحفظها كباتشات افتتاحية
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={submit}
+            disabled={submitting}
+            className="px-5 py-2.5 rounded-xl bg-white hover:bg-emerald-50 text-emerald-700 text-sm font-black transition disabled:opacity-50 shadow shrink-0"
+          >
+            {submitting ? '...جاري الحفظ' : '💾 حفظ كل الأسعار الآن'}
+          </button>
+        </div>
+      )}
+
       <div className="bg-gradient-to-l from-[#1a1a2e] to-[#2d1060] rounded-2xl p-6 text-white">
         <h1 className="text-xl font-black flex items-center gap-2">🌱 تسعير المخزون الافتتاحي</h1>
         <p className="text-white/70 text-sm mt-2 max-w-2xl leading-relaxed">

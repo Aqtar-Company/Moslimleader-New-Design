@@ -134,9 +134,14 @@ export default function ProductionPage() {
           <h1 className="text-xl font-black text-gray-900">باتشات الإنتاج</h1>
           <p className="text-sm text-gray-500 mt-0.5">سجل دفعات التنفيذ مع المورد والتكلفة الفعلية</p>
         </div>
-        <button onClick={() => setShowForm(v => !v)} className="px-4 py-2 rounded-xl bg-[#1a1a2e] hover:bg-[#2d1060] text-white text-xs font-bold transition">
-          {showForm ? '✕ إلغاء' : '+ سجّل باتش جديد'}
-        </button>
+        <div className="flex gap-2 flex-wrap">
+          <Link href="/admin/production/seed-stock" className="px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition">
+            🌱 تسعير المخزون الافتتاحي
+          </Link>
+          <button onClick={() => setShowForm(v => !v)} className="px-4 py-2 rounded-xl bg-[#1a1a2e] hover:bg-[#2d1060] text-white text-xs font-bold transition">
+            {showForm ? '✕ إلغاء' : '+ سجّل باتش جديد'}
+          </button>
+        </div>
       </div>
 
       {/* KPIs */}

@@ -21,7 +21,7 @@ interface ValuationData {
   assumptions: Assumptions;
   defaults: Assumptions;
   metrics: {
-    products: { total: number; inStockCount: number; outOfStockCount: number; inventoryUnits: number; inventoryValueRetail: number; inventoryValueCost: number; inventoryValueCostFromBatches: number; inventoryValueCostHeuristic: number; productsWithBatches: number; productsWithoutBatches: number };
+    products: { total: number; inStockCount: number; outOfStockCount: number; inventoryUnits: number; inventoryValueRetail: number; inventoryValueCost: number; inventoryValueCostFromBatches: number; inventoryValueCostHeuristic: number; productsWithBatches: number; productsWithoutBatches: number; productsOpeningBalanceSeeded: number };
     books: { total: number; published: number; languages: string[] };
     sales: {
       totalOrders: number; validOrders: number; cancelledOrders: number; cancelledRevenue: number;
@@ -537,6 +537,9 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
           <KPI label="التكلفة التقديرية (للمقارنة)" value={`${fmt(metrics.products.inventoryValueCostHeuristic)} ج.م`} sub={`${pct(assumptions.cogsRatio)} من سعر البيع`} hint="رقم مرجعي للمقارنة فقط — هذا ما كان يستخدمه التقييم قبل وجود الباتشات." />
           <KPI label="منتجات نفذت" value={String(metrics.products.outOfStockCount)} tone={metrics.products.outOfStockCount > 0 ? 'bad' : 'ok'} hint="منتجات بـ Product.stock ≤ 0. تقدر تجمَّعها من تبويب المخزون." />
         </div>
+        {metrics.products.productsOpeningBalanceSeeded > 0 && (
+          <p className="text-[11px] text-emerald-700 mt-2">🌱 {metrics.products.productsOpeningBalanceSeeded} منتج تم تسعيره افتتاحياً (مخزون قديم اتسجل بتكلفته الفعلية).</p>
+        )}
       </Section>
 
       {/* Production batches */}

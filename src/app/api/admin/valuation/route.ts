@@ -191,13 +191,19 @@ export async function GET(req: NextRequest) {
   supplierLiabilities = Math.round(supplierLiabilities * 100) / 100;
 
   // Production stats for the dedicated section on the valuation page.
-  const [supplierCount, activeSupplierCount, totalBatchCount, batchSpendAgg, supplierTxnCount] = await Promise.all([
+  const [supplierCount, activeSupplierCount, totalBatchCount, batchSpendAgg, supplierTxnCount, openingBalanceProducts] = await Promise.all([
     prisma.supplier.count(),
     prisma.supplier.count({ where: { isActive: true } }),
     prisma.productionBatch.count(),
     prisma.productionBatch.aggregate({ _sum: { quantity: true, totalCost: true } }),
     prisma.supplierTransaction.count(),
+    prisma.productionBatch.findMany({
+      where: { isOpeningBalance: true },
+      distinct: ['productId'],
+      select: { productId: true },
+    }),
   ]);
+  const openingBalanceSeededCount = openingBalanceProducts.length;
 
   // Cost of gifted items at retail (admin discretion — these are units we
   // gave away, not sold). We use retail price as the headline opportunity-cost
@@ -304,6 +310,7 @@ export async function GET(req: NextRequest) {
         inventoryValueCostHeuristic: Math.round(inventoryCostHeuristic),
         productsWithBatches,
         productsWithoutBatches: products.length - productsWithBatches,
+        productsOpeningBalanceSeeded: openingBalanceSeededCount,
       },
       books: {
         total: books.length,

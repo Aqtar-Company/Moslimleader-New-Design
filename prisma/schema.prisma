@@ -225,6 +225,13 @@ model ProductionBatch {
   totalCost       Float     // denormalised = quantity × unitCost
   batchDate       DateTime  @default(now())
   notes           String?   @db.Text
+  // Marks rows seeded by the legacy-stock wizard. Seed batches record the
+  // historical unit cost WITHOUT incrementing Product.stock (the units
+  // already exist in inventory) and without posting a SupplierTransaction
+  // (the legacy stock was paid for long before the system started). The
+  // valuation page treats them identically to regular batches when
+  // computing weighted-average COGS.
+  isOpeningBalance Boolean  @default(false)
   createdByUserId String?
   createdAt       DateTime  @default(now())
   @@index([productId, batchDate])

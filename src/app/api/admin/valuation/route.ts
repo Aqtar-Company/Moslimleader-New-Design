@@ -10,6 +10,7 @@ import {
 } from '@/lib/valuation-assumptions';
 import { logActionSafe } from '@/lib/audit-log';
 import { totalReceivables } from '@/lib/customer-receivables';
+import { effectiveStock } from '@/lib/inventory-value';
 
 // GET /api/admin/valuation — live company valuation report.
 // Gated solely on the `valuation.read` permission. The previous double
@@ -55,7 +56,7 @@ export async function GET() {
     prisma.product.findMany({
       select: {
         id: true, name: true, nameEn: true, slug: true, price: true, priceUsd: true,
-        category: true, inStock: true, stock: true,
+        category: true, inStock: true, stock: true, variantStocks: true,
       },
       orderBy: { name: 'asc' },
     }),
@@ -207,9 +208,11 @@ export async function GET() {
   const soldMap = new Map(sold.map(s => [s.productId, Number(s._sum.quantity ?? 0)]));
   const soldLiveMap = new Map(soldLive.map(s => [s.productId, Number(s._sum?.quantity ?? 0)]));
 
-  // Aggregate metrics
-  const inventoryUnits = products.reduce((s, p) => s + p.stock, 0);
-  const inventoryValue = products.reduce((s, p) => s + p.stock * p.price, 0);
+  // Aggregate metrics — variant-aware via effectiveStock so this matches
+  // /admin/inventory and /admin/zakat (single source of truth in
+  // src/lib/inventory-value.ts).
+  const inventoryUnits = products.reduce((s, p) => s + effectiveStock(p), 0);
+  const inventoryValue = products.reduce((s, p) => s + effectiveStock(p) * p.price, 0);
   // Inventory cost — weighted-average COGS from batches per product, with
   // a fallback to `retail × cogsRatio` for products that have never had a
   // batch recorded. The two numbers are emitted side-by-side so the user
@@ -218,12 +221,13 @@ export async function GET() {
   let inventoryCostFromBatches = 0;
   let productsWithBatches = 0;
   for (const p of products) {
+    const stock = effectiveStock(p);
     const avg = avgCostByProduct.get(p.id);
     if (avg !== undefined && avg > 0) {
-      inventoryCostFromBatches += p.stock * avg;
+      inventoryCostFromBatches += stock * avg;
       productsWithBatches++;
     } else {
-      inventoryCostFromBatches += p.stock * p.price * assumptions.cogsRatio;
+      inventoryCostFromBatches += stock * p.price * assumptions.cogsRatio;
     }
   }
   const inventoryCost = inventoryCostFromBatches;
@@ -434,17 +438,18 @@ export async function GET() {
   let staleInventoryCost = 0;
   let staleInventoryRetail = 0;
   for (const p of products) {
-    if (p.stock <= 0) continue;
+    const stock = effectiveStock(p);
+    if (stock <= 0) continue;
     const lastAt = lastSaleMap.get(p.id);
     const isStale = !lastAt || lastAt.getTime() < staleCutoff;
     if (!isStale) continue;
     staleProductCount++;
-    staleUnits += p.stock;
-    staleInventoryRetail += p.stock * p.price;
+    staleUnits += stock;
+    staleInventoryRetail += stock * p.price;
     const avg = avgCostByProduct.get(p.id);
     staleInventoryCost += avg !== undefined && avg > 0
-      ? p.stock * avg
-      : p.stock * p.price * assumptions.cogsRatio;
+      ? stock * avg
+      : stock * p.price * assumptions.cogsRatio;
   }
   const inventoryCostAfterWriteDown = Math.max(0, inventoryCost - staleInventoryCost);
 
@@ -569,8 +574,8 @@ export async function GET() {
     metrics: {
       products: {
         total: products.length,
-        inStockCount: products.filter(p => p.stock > 0).length,
-        outOfStockCount: products.filter(p => p.stock <= 0).length,
+        inStockCount: products.filter(p => effectiveStock(p) > 0).length,
+        outOfStockCount: products.filter(p => effectiveStock(p) <= 0).length,
         inventoryUnits,
         inventoryValueRetail: Math.round(inventoryValue),
         inventoryValueCost: Math.round(inventoryCost),
@@ -733,7 +738,8 @@ export async function GET() {
       sold: soldMap.get(p.id) ?? 0,
       soldLive: soldLiveMap.get(p.id) ?? 0,
       productionBatchUnits: batchUnitsByProduct.get(p.id) ?? 0,
-      stockValue: Math.round(p.stock * p.price),
+      stock: effectiveStock(p),
+      stockValue: Math.round(effectiveStock(p) * p.price),
     })),
     books,
   });

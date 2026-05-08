@@ -44,6 +44,7 @@ interface Computation {
   zakatDue: boolean;
   comparison: Array<{ method: ValuationMethod; inventory: number; pool: number; zakat: number }>;
   items: Array<{ productId: string; productName: string; quantity: number; unitValue: number; totalValue: number }>;
+  inventorySummary: { units: number; valueRetail: number; productsCount: number; inStockProductCount: number };
 }
 
 interface GoldPriceState {
@@ -302,6 +303,20 @@ export default function ZakatPage() {
               sub={!computation.zakatDue ? 'لا تجب — الوعاء تحت النصاب' : undefined}
             />
             <Tile label="عدد المنتجات في الـ snapshot" value={fmt(computation.items.length)} />
+          </div>
+
+          {/* Sanity check — same data the inventory page is showing.
+              If these two numbers ever disagree, that's a sync bug
+              between the pages. */}
+          <div className="bg-white border border-gray-200 rounded-xl p-3 text-[11px] text-gray-700 leading-relaxed">
+            🔗 <strong>مرجع من صفحة المخزون</strong> (لازم يطابق):
+            <span className="mx-2 text-gray-900 font-bold">{fmt(computation.inventorySummary.valueRetail)} ج.م</span>
+            بسعر التجزئة على
+            <span className="mx-1 text-gray-900 font-bold">{fmt(computation.inventorySummary.units)}</span>
+            قطعة في
+            <span className="mx-1 text-gray-900 font-bold">{fmt(computation.inventorySummary.inStockProductCount)}</span>
+            من <span className="mx-1 text-gray-900 font-bold">{fmt(computation.inventorySummary.productsCount)}</span> منتج.
+            <Link href="/admin/inventory" className="text-blue-700 hover:underline mx-1">افتح المخزون ↗</Link>
           </div>
 
           {/* Comparison table */}

@@ -2,6 +2,7 @@ import { prisma } from './prisma';
 import { totalReceivables } from './customer-receivables';
 import { NON_GIFT } from './order-filters';
 import { getGoldPriceState, NISAB_GRAMS, type GoldPriceState } from './gold-price';
+import { effectiveStock, getInventoryValueSummary } from './inventory-value';
 
 // The Zakat-on-trade-goods compute engine. Pure read of inventory +
 // orders + receivables + supplier liabilities. No side effects so it
@@ -40,6 +41,11 @@ export interface ZakatComputation {
   zakatDue: boolean;                 // pool ≥ nisab (always true when gold price missing — conservative)
   // Per-method comparison for the UI table.
   comparison: Array<{ method: ValuationMethod; inventory: number; pool: number; zakat: number }>;
+  // Sanity check: total units + retail value as computed by the
+  // canonical inventory helper. The 'inventoryValueRetail' above
+  // should equal `inventorySummary.valueRetail` exactly — if they
+  // ever drift, that's a bug worth flagging on the page.
+  inventorySummary: { units: number; valueRetail: number; productsCount: number; inStockProductCount: number };
 }
 
 export interface ZakatComputeInput {
@@ -87,8 +93,12 @@ async function getAvgActualPrices(windowDays: number): Promise<Map<string, numbe
 }
 
 export async function computeZakat(input: ZakatComputeInput): Promise<ZakatComputation> {
+  // Pull variantStocks too — single source of truth for "how many units
+  // do we hold?" lives in src/lib/inventory-value.ts. Reading both here
+  // means a variant product whose top-level `stock` has drifted from
+  // the variant map will still show the correct count.
   const products = await prisma.product.findMany({
-    select: { id: true, name: true, price: true, wholesalePrice: true, stock: true },
+    select: { id: true, name: true, price: true, wholesalePrice: true, stock: true, variantStocks: true },
   });
 
   const window = input.avgActualWindowDays ?? 90;
@@ -103,18 +113,19 @@ export async function computeZakat(input: ZakatComputeInput): Promise<ZakatCompu
   const items: ZakatItem[] = [];
 
   for (const p of products) {
-    if (p.stock <= 0) continue;
+    const stock = effectiveStock(p);
+    if (stock <= 0) continue;
     const retailUnit = p.price;
     const wholesaleUnit = p.wholesalePrice ?? p.price * WHOLESALE_FALLBACK_RATIO;
     const avgActualUnit = avgActualMap.get(p.id) ?? p.price;
     const manualUnit = input.manualValuation?.[p.id];
 
-    invRetail += p.stock * retailUnit;
-    invWholesale += p.stock * wholesaleUnit;
-    invAvgActual += p.stock * avgActualUnit;
+    invRetail += stock * retailUnit;
+    invWholesale += stock * wholesaleUnit;
+    invAvgActual += stock * avgActualUnit;
     if (manualUnit !== undefined && Number.isFinite(manualUnit) && manualUnit >= 0) {
       if (invManual === null) invManual = 0;
-      invManual += p.stock * manualUnit;
+      invManual += stock * manualUnit;
     }
 
     // Per-item snapshot row reflecting the CHOSEN method.
@@ -127,9 +138,9 @@ export async function computeZakat(input: ZakatComputeInput): Promise<ZakatCompu
     }
     items.push({
       productId: p.id, productName: p.name,
-      quantity: p.stock,
+      quantity: stock,
       unitValue: Math.round(unitValue * 100) / 100,
-      totalValue: Math.round(p.stock * unitValue * 100) / 100,
+      totalValue: Math.round(stock * unitValue * 100) / 100,
       valuationMethod: input.method,
     });
   }
@@ -145,10 +156,11 @@ export async function computeZakat(input: ZakatComputeInput): Promise<ZakatCompu
     input.method === 'avg-actual' ? invAvgActual :
                                     (invManual ?? invRetail);
 
-  const [receivables, liabilities, goldPrice] = await Promise.all([
+  const [receivables, liabilities, goldPrice, inventorySummary] = await Promise.all([
     totalReceivables(),
     getSupplierLiabilities(),
     getGoldPriceState(),
+    getInventoryValueSummary(),
   ]);
 
   const cashOnHand = Math.max(0, Number(input.cashOnHand) || 0);
@@ -186,6 +198,7 @@ export async function computeZakat(input: ZakatComputeInput): Promise<ZakatCompu
       comparisonFor('avg-actual', invAvgActual),
       comparisonFor('manual', invManual ?? invRetail),
     ],
+    inventorySummary,
   };
 }
 

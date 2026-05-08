@@ -77,8 +77,18 @@ export default function InventoryPage() {
     return true;
   }), [products, filter, search]);
 
-  const totalUnits = useMemo(() => products.reduce((s, p) => s + p.stock, 0), [products]);
-  const totalValue = useMemo(() => products.reduce((s, p) => s + p.stock * p.price, 0), [products]);
+  // Variant-aware totals — use effectiveStock so this matches /admin/zakat
+  // and /admin/valuation. See src/lib/inventory-value.ts for the helper.
+  // Floor negative stock values at 0 (a corrupt count shouldn't depress
+  // the total value figure).
+  const effectiveStock = (p: { stock: number; variantStocks?: Record<string, number> | null }) => {
+    if (p.variantStocks && Object.keys(p.variantStocks).length > 0) {
+      return Math.max(0, Object.values(p.variantStocks).reduce((s, n) => s + (Number.isFinite(n) ? Number(n) : 0), 0));
+    }
+    return Math.max(0, p.stock || 0);
+  };
+  const totalUnits = useMemo(() => products.reduce((s, p) => s + effectiveStock(p), 0), [products]);
+  const totalValue = useMemo(() => products.reduce((s, p) => s + effectiveStock(p) * p.price, 0), [products]);
   const totalSold  = useMemo(() => products.reduce((s, p) => s + p.sold, 0), [products]);
   const lowCount   = useMemo(() => products.filter(p => p.stock <= 50 && p.stock > 0).length, [products]);
   const outCount   = useMemo(() => products.filter(p => p.stock <= 0).length, [products]);

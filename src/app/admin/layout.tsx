@@ -14,29 +14,40 @@ type NavItem = {
   requireAny?: string[];
   superAdminOnly?: boolean;
 };
+// Order: frequently-used daily ops at the top, then catalog &
+// fulfilment, then customers/marketing, then reports, then config.
+// Super-admin items (assistants management, valuation) live at the
+// very bottom because they're rarely touched.
 const NAV: NavItem[] = [
+  // —— Daily ops ——
   { href: '/admin/dashboard',         label: 'الرئيسية',         icon: '📊', requireAny: [] },
   { href: '/admin/orders',            label: 'الطلبات',           icon: '📦', requireAny: ['orders.read'] },
-  { href: '/admin/products',          label: 'المنتجات',          icon: '🛍️', requireAny: ['products.read'] },
-  { href: '/admin/inventory',         label: 'المخزون',           icon: '📦', requireAny: ['inventory.read'] },
-  { href: '/admin/inventory/movements', label: 'سجل المخزون',     icon: '🧾', requireAny: ['inventory.read'] },
-  { href: '/admin/reports/sales-by-product', label: 'توزيع المبيعات', icon: '📊', requireAny: ['valuation.read'] },
-  { href: '/admin/production',        label: 'باتشات الإنتاج',    icon: '🏭', requireAny: ['production.read'] },
-  { href: '/admin/suppliers',         label: 'الموردون',          icon: '🤝', requireAny: ['suppliers.read'] },
-  { href: '/admin/valuation',         label: 'تقييم الشركة',      icon: '💎', requireAny: ['valuation.read'] },
-  { href: '/admin/regional-pricing',  label: 'التسعير الإقليمي', icon: '🌍', requireAny: ['products.write'] },
-  { href: '/admin/coupons',           label: 'الكوبونات',         icon: '🎟️', requireAny: ['coupons.read'] },
-  { href: '/admin/users',             label: 'إدارة المستخدمين', icon: '👤', superAdminOnly: true },
-  { href: '/admin/staff',             label: 'صلاحيات المساعدين', icon: '🛡️', superAdminOnly: true },
-  { href: '/admin/customers',         label: 'قاعدة العملاء',     icon: '👥', requireAny: ['customers.read'] },
-  { href: '/admin/campaigns',         label: 'حملات التسويق',     icon: '📢', requireAny: ['campaigns.read'] },
-  { href: '/admin/reviews',           label: 'التقييمات',         icon: '⭐', requireAny: ['reviews.read'] },
-  { href: '/admin/shipping',          label: 'الشحن المحلي',      icon: '🚚', requireAny: ['shipping.read'] },
   { href: '/admin/shipments',         label: 'شحنات بوسطة',       icon: '📮', requireAny: ['shipments.read'] },
-  { href: '/admin/intl-shipping',     label: 'الشحن الدولي',      icon: '✈️', requireAny: ['shipping.read'] },
-  { href: '/admin/payment-methods',   label: 'وسائل الدفع',       icon: '💳', requireAny: ['payment-methods.read'] },
+  { href: '/admin/inventory',         label: 'المخزون',           icon: '📥', requireAny: ['inventory.read'] },
+  { href: '/admin/inventory/movements', label: 'سجل المخزون',     icon: '🧾', requireAny: ['inventory.read'] },
+  // —— Catalogue ——
+  { href: '/admin/products',          label: 'المنتجات',          icon: '🛍️', requireAny: ['products.read'] },
   { href: '/admin/books',             label: 'المكتبة الرقمية',   icon: '📚', requireAny: ['books.read'] },
   { href: '/admin/series',            label: 'السلاسل',           icon: '📖', requireAny: ['books.read'] },
+  // —— Production & sourcing ——
+  { href: '/admin/production',        label: 'باتشات الإنتاج',    icon: '🏭', requireAny: ['production.read'] },
+  { href: '/admin/suppliers',         label: 'الموردون',          icon: '🤝', requireAny: ['suppliers.read'] },
+  // —— Customers & marketing ——
+  { href: '/admin/customers',         label: 'قاعدة العملاء',     icon: '👥', requireAny: ['customers.read'] },
+  { href: '/admin/campaigns',         label: 'حملات التسويق',     icon: '📢', requireAny: ['campaigns.read'] },
+  { href: '/admin/coupons',           label: 'الكوبونات',         icon: '🎟️', requireAny: ['coupons.read'] },
+  { href: '/admin/reviews',           label: 'التقييمات',         icon: '⭐', requireAny: ['reviews.read'] },
+  // —— Reports ——
+  { href: '/admin/reports/sales-by-product', label: 'توزيع المبيعات', icon: '📊', requireAny: ['valuation.read'] },
+  // —— Configuration ——
+  { href: '/admin/shipping',          label: 'الشحن المحلي',      icon: '🚚', requireAny: ['shipping.read'] },
+  { href: '/admin/intl-shipping',     label: 'الشحن الدولي',      icon: '✈️', requireAny: ['shipping.read'] },
+  { href: '/admin/payment-methods',   label: 'وسائل الدفع',       icon: '💳', requireAny: ['payment-methods.read'] },
+  { href: '/admin/regional-pricing',  label: 'التسعير الإقليمي', icon: '🌍', requireAny: ['products.write'] },
+  { href: '/admin/users',             label: 'إدارة المستخدمين', icon: '👤', superAdminOnly: true },
+  // —— Pinned to bottom by user request ——
+  { href: '/admin/staff',             label: 'صلاحيات المساعدين', icon: '🛡️', superAdminOnly: true },
+  { href: '/admin/valuation',         label: 'تقييم الشركة',      icon: '💎', requireAny: ['valuation.read'] },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -107,7 +118,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           glass on desktop (subtle depth without dominating the page). */}
       <aside className={`
         fixed top-0 right-0 h-full w-64 max-w-[85vw] bg-[#1a1a2e] z-50 flex flex-col transition-transform duration-300
-        lg:static lg:translate-x-0 lg:w-52 lg:bg-[#1a1a2e]/75 lg:backdrop-blur-xl lg:border-l lg:border-white/10 lg:shadow-xl
+        lg:static lg:translate-x-0 lg:w-52 lg:bg-[#0f0f1e]/92 lg:backdrop-blur-xl lg:border-l lg:border-white/15 lg:shadow-xl
         ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
       `}>
         {/* Logo */}
@@ -132,8 +143,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 onClick={() => setSidebarOpen(false)}
                 className={`flex items-center gap-3 px-6 py-3 text-sm font-semibold transition-all lg:gap-2 lg:px-3.5 lg:py-2 lg:text-[12.5px] ${
                   active
-                    ? 'bg-[#F5C518]/15 text-[#F5C518] border-l-0 border-r-4 border-[#F5C518]'
-                    : 'text-white/70 hover:text-white hover:bg-white/5'
+                    ? 'bg-[#F5C518]/20 text-[#F5C518] border-l-0 border-r-4 border-[#F5C518]'
+                    : 'text-white/85 hover:text-white hover:bg-white/10'
                 }`}
               >
                 <span className="text-base lg:text-sm">{item.icon}</span>
@@ -145,12 +156,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Bottom: store link + logout */}
         <div className="px-4 py-4 border-t border-white/10 space-y-2 lg:px-2.5 lg:py-2.5 lg:space-y-1">
-          <Link href="/" className="flex items-center gap-2 px-3 py-2 rounded-lg text-white/60 hover:text-white text-xs transition lg:px-2 lg:py-1.5 lg:text-[11px]">
+          <Link href="/" className="flex items-center gap-2 px-3 py-2 rounded-lg text-white/75 hover:text-white hover:bg-white/10 text-xs transition lg:px-2 lg:py-1.5 lg:text-[11px]">
             <span>🏠</span> العودة للمتجر
           </Link>
           <button
             onClick={() => { signOut(); router.push('/'); }}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-white/5 text-xs transition lg:px-2 lg:py-1.5 lg:text-[11px]"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-300 hover:text-red-200 hover:bg-white/10 text-xs transition lg:px-2 lg:py-1.5 lg:text-[11px]"
           >
             <span>🚪</span> تسجيل الخروج
           </button>

@@ -39,8 +39,21 @@ interface Computation {
   liabilities: number;
   zakatPool: number;
   zakatAmount: number;
+  goldPrice: { pricePerGram24K: number; source: string; enteredAt: string; daysOld: number; isStale: boolean; nisabValue: number } | null;
+  nisabValue: number | null;
+  zakatDue: boolean;
   comparison: Array<{ method: ValuationMethod; inventory: number; pool: number; zakat: number }>;
   items: Array<{ productId: string; productName: string; quantity: number; unitValue: number; totalValue: number }>;
+}
+
+interface GoldPriceState {
+  pricePerGram24K: number;
+  source: string;
+  enteredAt: string;
+  daysOld: number;
+  isStale: boolean;
+  nisabValue: number;
+  note?: string;
 }
 
 interface TodayInfo {
@@ -195,6 +208,10 @@ export default function ZakatPage() {
         )}
       </div>
 
+      {/* Gold price + nisab — must be configured first because the
+          nisab gates whether Zakat is due at all. */}
+      <GoldPriceCard />
+
       {/* Calculator */}
       <section className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4">
         <div>
@@ -251,11 +268,39 @@ export default function ZakatPage() {
 
       {/* Live preview */}
       {summary && computation && (
-        <section className="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-5 space-y-4">
+        <section className={`border-2 rounded-2xl p-5 space-y-4 ${computation.zakatDue ? 'bg-emerald-50 border-emerald-300' : 'bg-blue-50 border-blue-300'}`}>
+          {/* Nisab gate banner — shows whether Zakat is obligatory at all */}
+          {computation.nisabValue !== null && (
+            <div className={`rounded-xl p-3 ${computation.zakatDue ? 'bg-emerald-100 border border-emerald-300' : 'bg-blue-100 border border-blue-300'}`}>
+              <p className={`text-sm font-black ${computation.zakatDue ? 'text-emerald-900' : 'text-blue-900'}`}>
+                {computation.zakatDue
+                  ? `✅ الوعاء (${fmt(summary.pool)}) يتجاوز النصاب (${fmt(computation.nisabValue)}) — تجب الزكاة بنسبة 2.5%`
+                  : `ℹ️ الوعاء (${fmt(summary.pool)}) أقل من النصاب (${fmt(computation.nisabValue)}) — لا تجب الزكاة هذا العام`}
+              </p>
+              {computation.goldPrice && (
+                <p className={`text-[11px] mt-1 ${computation.zakatDue ? 'text-emerald-700' : 'text-blue-700'}`}>
+                  بناءً على سعر الذهب 24K: {fmt(computation.goldPrice.pricePerGram24K)} ج.م/جرام × 85 جم
+                  ({computation.goldPrice.source === 'manual' ? 'يدوي' : computation.goldPrice.source})
+                </p>
+              )}
+            </div>
+          )}
+          {computation.nisabValue === null && (
+            <div className="bg-amber-100 border border-amber-300 rounded-xl p-3">
+              <p className="text-sm font-bold text-amber-900">
+                ⚠️ سعر الذهب غير محدد — الزكاة هتتحسب بدون فحص النصاب. أدخل سعر الذهب في الكارت أعلاه قبل الحفظ.
+              </p>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <Tile label="قيمة المخزون" value={fmtMoney(summary.inventory)} sub={`بطريقة "${METHOD_LABELS[method]}"`} />
             <Tile label="الوعاء الزكوي" value={fmtMoney(summary.pool)} sub={`= ${fmt(summary.inventory)} + نقدية ${fmt(computation.cashOnHand)} + ذمم ${fmt(computation.receivables)} − التزامات ${fmt(computation.liabilities)}`} />
-            <Tile label="قيمة الزكاة (2.5%)" value={fmtMoney(summary.amount)} highlight />
+            <Tile
+              label={computation.zakatDue ? 'قيمة الزكاة (2.5%)' : 'قيمة الزكاة'}
+              value={fmtMoney(summary.amount)}
+              highlight={computation.zakatDue}
+              sub={!computation.zakatDue ? 'لا تجب — الوعاء تحت النصاب' : undefined}
+            />
             <Tile label="عدد المنتجات في الـ snapshot" value={fmt(computation.items.length)} />
           </div>
 
@@ -343,6 +388,194 @@ export default function ZakatPage() {
         ⚠️ هذا الحساب تقديري لإدارة زكاة عروض التجارة، ويراعى مراجعة أهل العلم في الحالات الخاصة (تكاليف، عملات، ديون مشكوك في تحصيلها...).
       </div>
     </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Gold price card — manual entry (primary) + international suggestion.
+// The Egyptian local market carries a premium over international spot,
+// so we prioritize what the admin types from شعبة الذهب and treat the
+// goldprice.org fetch as a starting suggestion only.
+// ────────────────────────────────────────────────────────────────────
+function GoldPriceCard() {
+  const { addToast } = useToast();
+  const [state, setState] = useState<GoldPriceState | null>(null);
+  const [suggestion, setSuggestion] = useState<{ pricePerGram24K: number; source: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [draftNote, setDraftNote] = useState('');
+  const [fetchingSuggestion, setFetchingSuggestion] = useState(false);
+
+  const load = async (withSuggestion = false) => {
+    setLoading(true);
+    try {
+      const res = await adminFetch(`/api/admin/zakat/gold-price${withSuggestion ? '?suggest=1' : ''}`);
+      if (!res.ok) throw new Error('failed');
+      const data = await res.json();
+      setState(data.state);
+      if (data.suggestion) setSuggestion(data.suggestion);
+    } catch { /* ignore */ }
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const fetchSuggestion = async () => {
+    setFetchingSuggestion(true);
+    await load(true);
+    setFetchingSuggestion(false);
+    if (!suggestion) {
+      // load() refreshed `suggestion` in state; if still null, the
+      // upstream failed.
+      addToast('فشل الجلب من goldprice.org — أدخل السعر يدوياً', 'warning');
+    }
+  };
+
+  const save = async () => {
+    const price = Number(draft);
+    if (!Number.isFinite(price) || price <= 0) { addToast('السعر غير صحيح', 'warning'); return; }
+    try {
+      const res = await adminFetch('/api/admin/zakat/gold-price', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pricePerGram24K: price, note: draftNote }),
+      });
+      const d = await res.json();
+      if (!res.ok) { addToast(d.error || 'فشل الحفظ', 'error'); return; }
+      addToast('تم حفظ سعر الذهب', 'success');
+      setEditing(false);
+      setDraft('');
+      setDraftNote('');
+      load();
+    } catch {
+      addToast('فشل الحفظ', 'error');
+    }
+  };
+
+  if (loading) return null;
+
+  return (
+    <section className={`rounded-2xl p-5 space-y-3 ${state?.isStale ? 'bg-amber-50 border-2 border-amber-300' : 'bg-yellow-50 border-2 border-yellow-300'}`}>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-base font-black text-gray-900 flex items-center gap-2">🟡 سعر الذهب 24 (السوق المحلي)</h2>
+          <p className="text-[11px] text-gray-600 mt-0.5">السعر اللي بناءً عليه يُحسب نصاب الزكاة (85 جرام × سعر الجرام).</p>
+        </div>
+        <button
+          onClick={() => { setEditing(v => !v); if (!editing && state) setDraft(String(state.pricePerGram24K)); }}
+          className="px-3 py-1.5 rounded-lg bg-[#1a1a2e] hover:bg-[#2d1060] text-white text-[11px] font-bold transition"
+        >
+          {editing ? '✕ إلغاء' : state ? '✏️ تحديث السعر' : '+ إدخال السعر'}
+        </button>
+      </div>
+
+      {state ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="bg-white rounded-xl border border-yellow-200 p-3">
+            <p className="text-[10px] text-gray-500 font-bold tracking-widest">سعر الجرام (24K)</p>
+            <p className="text-2xl font-black text-yellow-700 mt-1" dir="ltr">{fmt(state.pricePerGram24K)} ج.م</p>
+            <p className="text-[10px] text-gray-400 mt-1">
+              المصدر: <strong>{state.source === 'manual' ? 'يدوي (شعبة الذهب)' : state.source}</strong>
+              {' · '}
+              <span className={state.isStale ? 'text-red-700 font-bold' : ''}>
+                من {state.daysOld === 0 ? 'اليوم' : `${state.daysOld} يوم`}
+                {state.isStale && ' ⚠️ قديم'}
+              </span>
+            </p>
+          </div>
+          <div className="bg-white rounded-xl border border-yellow-200 p-3">
+            <p className="text-[10px] text-gray-500 font-bold tracking-widest">قيمة النصاب (85 جم)</p>
+            <p className="text-2xl font-black text-emerald-700 mt-1" dir="ltr">{fmt(state.nisabValue)} ج.م</p>
+            <p className="text-[10px] text-gray-400 mt-1">الحد الأدنى للوعاء الذي تجب فيه الزكاة.</p>
+          </div>
+          {state.note && (
+            <div className="bg-white rounded-xl border border-yellow-200 p-3">
+              <p className="text-[10px] text-gray-500 font-bold tracking-widest">ملاحظة</p>
+              <p className="text-[11px] text-gray-700 mt-1 leading-relaxed">{state.note}</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="bg-white border border-yellow-300 rounded-xl p-3 text-[11px] text-amber-900">
+          لم يتم إدخال سعر الذهب بعد. الزكاة هتتحسب بدون فحص النصاب — اضغط <strong>إدخال السعر</strong>.
+        </div>
+      )}
+
+      {state?.isStale && !editing && (
+        <div className="bg-red-50 border border-red-300 rounded-xl p-3 text-[11px] text-red-900">
+          ⚠️ السعر المحفوظ عمره {state.daysOld} يوم. أسعار الذهب بتتغير يومياً — حدّث السعر قبل حفظ snapshot.
+        </div>
+      )}
+
+      {editing && (
+        <div className="bg-white rounded-xl border border-yellow-300 p-4 space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div>
+              <label className="block text-[10px] text-gray-500 font-bold mb-1">سعر الجرام 24K (ج.م)</label>
+              <input
+                type="number" min="0" step="0.01"
+                value={draft} onChange={e => setDraft(e.target.value)}
+                placeholder="مثال: 4500"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" dir="ltr"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-[10px] text-gray-500 font-bold mb-1">ملاحظة / مصدر السعر</label>
+              <input
+                value={draftNote} onChange={e => setDraftNote(e.target.value)}
+                placeholder="مثال: شعبة الذهب — 26/05/2026"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+
+          {/* International spot fetch as a starting suggestion */}
+          <div className="bg-yellow-50 rounded-lg p-3">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <p className="text-[11px] font-bold text-amber-900">💡 سعر دولي (نقطة بداية فقط)</p>
+                <p className="text-[10px] text-amber-800 mt-0.5">
+                  السوق المحلي المصري عادة أعلى من الدولي بنسبة 5–15%. استخدم السعر المحلي اللي بتأكدت منه.
+                </p>
+              </div>
+              <button
+                onClick={fetchSuggestion}
+                disabled={fetchingSuggestion}
+                className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold transition disabled:opacity-50"
+              >
+                {fetchingSuggestion ? '...جاري الجلب' : '🌍 جلب السعر الدولي'}
+              </button>
+            </div>
+            {suggestion && (
+              <div className="mt-2 flex items-center justify-between gap-2 bg-white rounded-lg p-2">
+                <p className="text-xs text-gray-700">
+                  <strong dir="ltr">{fmt(suggestion.pricePerGram24K)} ج.م/جرام</strong>
+                  <span className="text-[10px] text-gray-400 mx-1">من {suggestion.source}</span>
+                </p>
+                <button
+                  onClick={() => setDraft(String(suggestion.pricePerGram24K))}
+                  className="px-2 py-1 rounded bg-amber-100 hover:bg-amber-200 text-amber-800 text-[10px] font-bold"
+                >
+                  استخدم كقاعدة
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <button onClick={save} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition">💾 حفظ السعر</button>
+          </div>
+
+          <p className="text-[10px] text-gray-500 leading-relaxed">
+            🔗 المصادر المصرية الموثوقة لأسعار الذهب:
+            {' '}<a href="https://isgold.eg" target="_blank" rel="noreferrer" className="text-blue-700 hover:underline">شعبة الذهب المصرية</a>،
+            {' '}<a href="https://www.cibeg.com" target="_blank" rel="noreferrer" className="text-blue-700 hover:underline">البنك التجاري الدولي</a>،
+            {' '}<a href="https://www.gold-price.net/en/egypt" target="_blank" rel="noreferrer" className="text-blue-700 hover:underline">gold-price.net/Egypt</a>.
+          </p>
+        </div>
+      )}
+    </section>
   );
 }
 

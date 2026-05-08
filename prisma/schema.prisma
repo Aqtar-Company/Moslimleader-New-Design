@@ -248,6 +248,13 @@ model ZakatSnapshot {
   liabilities              Float    @default(0)
   zakatPool                Float
   zakatAmount              Float
+  // Gold-based nisab snapshot. Captured at save time so a future audit
+  // can see what gold price was used and whether Zakat was due.
+  goldPricePerGram24K      Float?   // EGP per gram of 24K gold at snapshot time
+  goldPriceSource          String?  // 'manual' | 'goldprice.org' | etc.
+  nisabGrams               Float?   @default(85)
+  nisabValue               Float?   // = nisabGrams × goldPricePerGram24K
+  zakatDue                 Boolean? @default(true) // false when pool < nisab
   paymentStatus            String   @default("unpaid") // 'unpaid' | 'paid'
   paymentDate              DateTime?
   notes                    String?  @db.Text

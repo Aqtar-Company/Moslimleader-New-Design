@@ -1,6 +1,7 @@
 import { prisma } from './prisma';
 import { totalReceivables } from './customer-receivables';
 import { NON_GIFT } from './order-filters';
+import { getGoldPriceState, NISAB_GRAMS, type GoldPriceState } from './gold-price';
 
 // The Zakat-on-trade-goods compute engine. Pure read of inventory +
 // orders + receivables + supplier liabilities. No side effects so it
@@ -31,6 +32,12 @@ export interface ZakatComputation {
   liabilities: number;
   zakatPool: number;
   zakatAmount: number;
+  // Nisab gate — Zakat is only obligatory when the pool reaches the
+  // value of 85g of pure gold. We capture the price + nisab + dueness
+  // in the snapshot so future audits can see why a year was skipped.
+  goldPrice: GoldPriceState | null;
+  nisabValue: number | null;        // null when no gold price configured
+  zakatDue: boolean;                 // pool ≥ nisab (always true when gold price missing — conservative)
   // Per-method comparison for the UI table.
   comparison: Array<{ method: ValuationMethod; inventory: number; pool: number; zakat: number }>;
 }
@@ -138,14 +145,20 @@ export async function computeZakat(input: ZakatComputeInput): Promise<ZakatCompu
     input.method === 'avg-actual' ? invAvgActual :
                                     (invManual ?? invRetail);
 
-  const [receivables, liabilities] = await Promise.all([
+  const [receivables, liabilities, goldPrice] = await Promise.all([
     totalReceivables(),
     getSupplierLiabilities(),
+    getGoldPriceState(),
   ]);
 
   const cashOnHand = Math.max(0, Number(input.cashOnHand) || 0);
   const zakatPool = Math.max(0, inventoryValueUsed + cashOnHand + receivables - liabilities);
-  const zakatAmount = zakatPool * ZAKAT_RATE;
+  const nisabValue = goldPrice ? Math.round(goldPrice.pricePerGram24K * NISAB_GRAMS * 100) / 100 : null;
+  // If gold price isn't configured we conservatively mark zakatDue=true
+  // (admin can read the disclaimer and decide). The snapshot persists
+  // the dueness flag and the price used.
+  const zakatDue = nisabValue === null ? true : zakatPool >= nisabValue;
+  const zakatAmount = zakatDue ? zakatPool * ZAKAT_RATE : 0;
 
   const comparisonFor = (method: ValuationMethod, inv: number) => {
     const pool = Math.max(0, inv + cashOnHand + receivables - liabilities);
@@ -164,6 +177,9 @@ export async function computeZakat(input: ZakatComputeInput): Promise<ZakatCompu
     liabilities: Math.round(liabilities),
     zakatPool: Math.round(zakatPool),
     zakatAmount: Math.round(zakatAmount),
+    goldPrice,
+    nisabValue,
+    zakatDue,
     comparison: [
       comparisonFor('retail', invRetail),
       comparisonFor('wholesale', invWholesale),

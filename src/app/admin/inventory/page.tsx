@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useToast } from '@/components/ui/Toast';
 import Spinner from '@/components/admin/Spinner';
 import { adminFetch, ForbiddenError } from '@/lib/admin-fetch';
@@ -239,6 +240,13 @@ export default function InventoryPage() {
                             {p.category}
                             {hasVariants && <span className="ms-2 text-purple-600 font-bold">· {variants.length} موديلات</span>}
                           </p>
+                          <Link
+                            href={`/admin/inventory/movements?productId=${p.id}`}
+                            className="text-[10px] text-blue-700 hover:underline mt-0.5 inline-block"
+                            title="سجل تغيّرات المخزون لهذا المنتج"
+                          >
+                            🧾 السجل
+                          </Link>
                         </div>
                       </div>
                     </td>

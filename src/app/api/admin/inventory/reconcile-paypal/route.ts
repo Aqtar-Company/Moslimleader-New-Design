@@ -48,7 +48,11 @@ async function findOrphans(): Promise<OrphanItem[]> {
     LEFT JOIN StockMovement sm
       ON sm.orderId = o.id
      AND sm.productId = oi.productId
-     AND sm.reason = 'order_created'
+     -- Treat both order_created (the regular path) AND a previous
+     -- manual_adjustment carrying the same orderId (an earlier run of
+     -- this very endpoint) as "already reconciled". Without the latter,
+     -- repeated POSTs would re-decrement the same orders.
+     AND sm.reason IN ('order_created', 'manual_adjustment')
     WHERE o.paymentMethod = 'paypal'
       AND o.status = 'paid'
       AND sm.id IS NULL

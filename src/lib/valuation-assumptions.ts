@@ -11,6 +11,8 @@ export interface ValuationAssumptions {
   ipDigitalValue: number;     // EGP flat — YouTube + PDFs + brand
   techValue: number;          // EGP — platform + admin + integrations
   customerDbValue: number;    // EGP per registered customer
+  wholesaleCustomerValue: number;     // EGP per wholesale customer — they buy in bulk, repeatedly; worth far more than a retail one
+  supplierRelationshipValue: number;  // EGP per ACTIVE supplier — established sourcing relationships have switching cost
   fairMultiplier: number;     // base × this = balanced market value
   strategicMultiplier: number;// base × this = strategic-buyer value
   activeWindowDays: number;   // a customer is "active" if they placed a valid order within this many days
@@ -23,6 +25,13 @@ export const DEFAULT_VALUATION_ASSUMPTIONS: ValuationAssumptions = {
   ipDigitalValue: 350000,
   techValue: 800000,
   customerDbValue: 200,
+  // A wholesale customer typically reorders in case-quantities; even at
+  // a conservative AOV × LTV estimate the relationship is worth a few
+  // multiples of a retail buyer. 5,000 EGP is the floor.
+  wholesaleCustomerValue: 5000,
+  // An active supplier represents a vetted, negotiated capacity — the
+  // cost of finding + onboarding a replacement is the lower bound here.
+  supplierRelationshipValue: 2000,
   fairMultiplier: 1.25,
   strategicMultiplier: 1.55,
   activeWindowDays: 90,
@@ -87,6 +96,8 @@ function sanitize(input: Partial<ValuationAssumptions>): {
   take('ipDigitalValue', 0, 100_000_000);
   take('techValue', 0, 100_000_000);
   take('customerDbValue', 0, 1_000_000);
+  take('wholesaleCustomerValue', 0, 10_000_000);
+  take('supplierRelationshipValue', 0, 10_000_000);
   take('fairMultiplier', 1, 10);
   take('strategicMultiplier', 1, 20);
   take('activeWindowDays', 1, 3650, true);

@@ -1,5 +1,6 @@
 import { prisma } from './prisma';
 import { signTrackingPayload } from './marketing-sign';
+import { IMPORT_SOURCES, IMPORT_PAYMENT_METHODS } from './order-filters';
 
 export interface SegmentFilters {
   boughtProduct?: string;
@@ -15,6 +16,8 @@ interface AggRow {
   phone: string | null;
   marketingOptIn: boolean;
   isWholesale: boolean;
+  hasImport: boolean;
+  hasLive: boolean;
   orderCount: number;
   totalSpend: number;
   lastOrderAt: string | null;
@@ -49,6 +52,8 @@ export async function resolveSegment(
         phone: o.user.phone || null,
         marketingOptIn: o.user.marketingOptIn,
         isWholesale: o.user.isWholesale,
+        hasImport: false,
+        hasLive: false,
         orderCount: 0,
         totalSpend: 0,
         lastOrderAt: null,
@@ -59,6 +64,10 @@ export async function resolveSegment(
     }
     row.orderCount += 1;
     row.totalSpend += o.total;
+    const isImport = (o.source !== null && (IMPORT_SOURCES as readonly string[]).includes(o.source))
+                  || (IMPORT_PAYMENT_METHODS as readonly string[]).includes(o.paymentMethod);
+    if (isImport) row.hasImport = true;
+    else if (o.paymentMethod !== 'gift') row.hasLive = true;
     const ts = o.createdAt.toISOString();
     const addr = o.shippingAddress as unknown as ShippingAddr;
     if (!row.lastOrderAt || ts > row.lastOrderAt) {
@@ -94,6 +103,7 @@ export async function resolveSegment(
         case 'single':     return r.orderCount === 1;
         case 'bought_all': return totalProducts > 0 && r.productIds.size >= totalProducts;
         case 'wholesale':  return r.isWholesale;
+        case 'converted':  return r.hasImport && r.hasLive;
         default:           return true;
       }
     })();

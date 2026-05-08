@@ -288,11 +288,19 @@ export async function GET(req: NextRequest) {
 
   const techValue         = assumptions.techValue;
   const customerDbValue   = Math.round(customerCount * assumptions.customerDbValue);
+  // Wholesale customers and active suppliers are real assets too: a
+  // wholesale buyer represents recurring bulk revenue, and an active
+  // supplier represents vetted production capacity. Both are tunable
+  // in /admin/valuation's assumptions editor.
+  const wholesaleValue              = Math.round(wholesaleCount * assumptions.wholesaleCustomerValue);
+  const supplierRelationshipsValue  = Math.round(activeSupplierCount * assumptions.supplierRelationshipValue);
 
   // Final valuation buckets
   // Supplier liabilities are deducted because any buyer of the company
   // inherits the debt; surfacing it here keeps the headline honest.
-  const baseValue        = inventoryCost + ipTotal + techValue + customerDbValue - Math.max(0, supplierLiabilities);
+  const baseValue        = inventoryCost + ipTotal + techValue + customerDbValue
+                         + wholesaleValue + supplierRelationshipsValue
+                         - Math.max(0, supplierLiabilities);
   const fairValue        = baseValue * assumptions.fairMultiplier;
   const strategicValue   = baseValue * assumptions.strategicMultiplier;
 
@@ -386,6 +394,8 @@ export async function GET(req: NextRequest) {
       },
       tech: { value: techValue },
       customerDb: { value: customerDbValue, perCustomer: assumptions.customerDbValue },
+      wholesale: { value: wholesaleValue, perCustomer: assumptions.wholesaleCustomerValue, count: wholesaleCount },
+      supplierRelationships: { value: supplierRelationshipsValue, perSupplier: assumptions.supplierRelationshipValue, count: activeSupplierCount },
     },
     valuation: {
       base: Math.round(baseValue),

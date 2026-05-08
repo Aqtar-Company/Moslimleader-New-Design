@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { requirePerm } from '@/lib/permissions';
 import type { CustomerSummary } from '@/lib/customers-cache';
 import { getCustomersCache, setCustomersCache, invalidateCustomersCache } from '@/lib/customers-cache';
+import { IMPORT_SOURCES, IMPORT_PAYMENT_METHODS } from '@/lib/order-filters';
 
 interface ShippingAddr {
   governorate?: string;
@@ -30,7 +31,7 @@ async function aggregate(): Promise<{ list: CustomerSummary[]; totalProducts: nu
     orderBy: { createdAt: 'desc' },
   });
 
-  const map = new Map<string, CustomerSummary & { _productIds: Set<string> }>();
+  const map = new Map<string, CustomerSummary & { _productIds: Set<string>; _hasImport: boolean; _hasLive: boolean }>();
   for (const o of orders) {
     const u = o.user;
     if (!u) continue;
@@ -52,6 +53,8 @@ async function aggregate(): Promise<{ list: CustomerSummary[]; totalProducts: nu
         daysSinceLastOrder: null,
         productIds: [],
         _productIds: new Set<string>(),
+        _hasImport: false,
+        _hasLive: false,
         lastGovernorate: null,
         segments: [],
       };
@@ -59,6 +62,13 @@ async function aggregate(): Promise<{ list: CustomerSummary[]; totalProducts: nu
     }
     row.orderCount += 1;
     row.totalSpend += o.total;
+    // Tag the order as import vs live so we can derive the "converted"
+    // segment (a customer who appears in BOTH sources is the warmest
+    // re-engagement target — they already trust us across two channels).
+    const isImport = (o.source !== null && (IMPORT_SOURCES as readonly string[]).includes(o.source))
+                  || (IMPORT_PAYMENT_METHODS as readonly string[]).includes(o.paymentMethod);
+    if (isImport) row._hasImport = true;
+    else if (o.paymentMethod !== 'gift') row._hasLive = true;
     const orderTime = o.createdAt.toISOString();
     const addr = o.shippingAddress as unknown as ShippingAddr;
     if (!row.lastOrderAt || orderTime > row.lastOrderAt) {
@@ -94,8 +104,15 @@ async function aggregate(): Promise<{ list: CustomerSummary[]; totalProducts: nu
     if (totalPublishedProducts > 0 && row.productIds.length >= totalPublishedProducts) {
       segments.push('bought_all');
     }
+    // Imported→live converters: customers who appeared in the historical
+    // imports AND came back through the live system. Highest-intent
+    // re-engagement audience.
+    if (row._hasImport && row._hasLive) segments.push('converted');
     row.segments = segments;
-    delete (row as Partial<typeof row & { _productIds?: unknown }>)._productIds;
+    const rowAny = row as Partial<typeof row & { _productIds?: unknown; _hasImport?: unknown; _hasLive?: unknown }>;
+    delete rowAny._productIds;
+    delete rowAny._hasImport;
+    delete rowAny._hasLive;
     list.push(row);
   }
 

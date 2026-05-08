@@ -32,6 +32,7 @@ const SEGMENTS: Array<{ key: string; label: string; icon: string; tone: string }
   { key: 'dormant',    label: 'نائمون',         icon: '💤', tone: 'bg-rose-100 text-rose-700' },
   { key: 'bought_all', label: 'اشتروا كل المنتجات', icon: '✨', tone: 'bg-fuchsia-100 text-fuchsia-700' },
   { key: 'wholesale',  label: 'تجار جملة',         icon: '🏪', tone: 'bg-blue-100 text-blue-700' },
+  { key: 'converted',  label: 'اتحوّل من استيراد', icon: '🔄', tone: 'bg-amber-100 text-amber-700' },
 ];
 
 const SORTS: Array<{ key: string; label: string }> = [

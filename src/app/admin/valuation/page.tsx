@@ -11,6 +11,8 @@ interface Assumptions {
   ipDigitalValue: number;
   techValue: number;
   customerDbValue: number;
+  wholesaleCustomerValue: number;
+  supplierRelationshipValue: number;
   fairMultiplier: number;
   strategicMultiplier: number;
   activeWindowDays: number;
@@ -39,6 +41,8 @@ interface ValuationData {
     ip: { booksValue: number; productsValue: number; digitalValue: number; total: number; perBook: number; perProduct: number; booksCount: number; productsCount: number };
     tech: { value: number };
     customerDb: { value: number; perCustomer: number };
+    wholesale: { value: number; perCustomer: number; count: number };
+    supplierRelationships: { value: number; perSupplier: number; count: number };
   };
   valuation: { base: number; fair: number; strategic: number; fairMultiplier: number; strategicMultiplier: number };
   products: Array<{ id: string; name: string; nameEn: string | null; slug: string; price: number; priceUsd: number; category: string; stock: number; sold: number; soldLive: number; productionBatchUnits: number; stockValue: number }>;
@@ -349,7 +353,7 @@ function MethodologySection({ assumptions, defaults, canEdit, editing, onEditTog
       <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <p className="text-xs text-gray-700 leading-relaxed flex-1 min-w-[260px]">
-            <strong>القيمة الأساسية</strong> = تكلفة المخزون + قيمة الملكية الفكرية + قيمة المنصة التقنية + قيمة قاعدة العملاء.
+            <strong>القيمة الأساسية</strong> = تكلفة المخزون + قيمة الملكية الفكرية + قيمة المنصة التقنية + قيمة قاعدة العملاء + قيمة تجار الجملة + قيمة علاقات الموردين − ديون الموردين.
             القيمة المتوازنة = القيمة الأساسية × <strong>{assumptions.fairMultiplier}</strong>.
             القيمة الاستراتيجية = القيمة الأساسية × <strong>{assumptions.strategicMultiplier}</strong>.
           </p>
@@ -374,6 +378,8 @@ function AssumptionsTable({ assumptions, defaults }: { assumptions: Assumptions;
     { key: 'ipDigitalValue', label: 'قيمة المحتوى الرقمي (يوتيوب + PDFs + براند)', format: n => `${fmt(n)} ج.م`, explain: 'رقم ثابت بيعكس قيمة قنوات السوشيال + الـ PDFs + قيمة البراند ككل.' },
     { key: 'techValue', label: 'قيمة المنصة التقنية', format: n => `${fmt(n)} ج.م`, explain: 'تكلفة بناء النظام (admin + checkout + integrations) لو حد محتاج يبنيه من الصفر.' },
     { key: 'customerDbValue', label: 'قيمة كل عميل في القاعدة', format: n => `${fmt(n)} ج.م`, explain: 'قيمة قاعدة بيانات العميل الواحد كأصل قابل لإعادة الاستخدام (تسويق، إعادة استهداف).' },
+    { key: 'wholesaleCustomerValue', label: 'قيمة كل تاجر جملة', format: n => `${fmt(n)} ج.م`, explain: 'تاجر الجملة يُمثّل علاقة بيع متكرر بكميات كبيرة، بقيمة أعلى بكثير من العميل العادي.' },
+    { key: 'supplierRelationshipValue', label: 'قيمة كل علاقة مع مورد', format: n => `${fmt(n)} ج.م`, explain: 'العلاقات الموثَّقة مع موردين موثوقين أصل تشغيلي حقيقي — تكلفة استبداله بأقل تقدير.' },
     { key: 'fairMultiplier', label: 'مضاعف القيمة المتوازنة', format: n => `× ${n}`, explain: 'القيمة الأساسية تُضرَب في هذا الرقم لتعكس القيمة السوقية المتوازنة.' },
     { key: 'strategicMultiplier', label: 'مضاعف القيمة الاستراتيجية', format: n => `× ${n}`, explain: 'لمشتري بحاجة استراتيجية فعلية. أعلى من المتوازنة لأنه يضيف قيمة تكاملية.' },
     { key: 'activeWindowDays', label: 'نافذة العميل النشط (أيام)', format: n => `${n} يوم`, explain: 'عميل عمله طلب صحيح خلال هذه النافذة يُحتسب نشطًا.' },
@@ -443,6 +449,8 @@ function AssumptionsForm({ initial, defaults, onSave, onCancel }: { initial: Ass
         <AssumptionsField k="ipDigitalValue" label="قيمة المحتوى الرقمي (ج.م)" step={10000} value={v.ipDigitalValue} defaultValue={defaults.ipDigitalValue} onChange={set} />
         <AssumptionsField k="techValue" label="قيمة المنصة (ج.م)" step={10000} value={v.techValue} defaultValue={defaults.techValue} onChange={set} />
         <AssumptionsField k="customerDbValue" label="قيمة كل عميل (ج.م)" step={10} value={v.customerDbValue} defaultValue={defaults.customerDbValue} onChange={set} />
+        <AssumptionsField k="wholesaleCustomerValue" label="قيمة كل تاجر جملة (ج.م)" step={500} value={v.wholesaleCustomerValue} defaultValue={defaults.wholesaleCustomerValue} onChange={set} />
+        <AssumptionsField k="supplierRelationshipValue" label="قيمة كل مورد نشط (ج.م)" step={500} value={v.supplierRelationshipValue} defaultValue={defaults.supplierRelationshipValue} onChange={set} />
         <AssumptionsField k="activeWindowDays" label="نافذة النشاط (يوم)" step={1} min={1} value={v.activeWindowDays} defaultValue={defaults.activeWindowDays} onChange={set} />
       </div>
       <div className="flex gap-2 justify-end">
@@ -527,7 +535,12 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
           <KPI label="نشطين" value={fmt(metrics.customers.active)} sub={`آخر ${metrics.customers.activeWindowDays} يوم — ${pct(metrics.customers.activeRatio)} من المسجَّلين`} hint="عمل طلب صحيح خلال نافذة النشاط الحالية." />
           <KPI label="مشترين متكررين" value={fmt(metrics.customers.repeatBuyers)} sub={`${pct(metrics.customers.repeatRate)} من المشترين`} hint="عملوا طلبين أو أكثر في حياتهم. مؤشر قوي للولاء." />
           <KPI label="متوسط الإيراد لكل مشتري" value={`${fmt(metrics.customers.avgRevenuePerBuyer)} ج.م`} hint="إجمالي الإيرادات ÷ عدد المشترين الفعليين. تقدير LTV التاريخي." />
-          <KPI label="تجار جملة" value={fmt(metrics.customers.wholesale)} hint="عملاء معلَّمين كتجار جملة. تُدار العلامة من صفحة العميل." />
+          <KPI
+            label="تجار جملة"
+            value={fmt(metrics.customers.wholesale)}
+            sub={`قيمتهم في التقييم: ${fmt(metrics.wholesale.value)} ج.م`}
+            hint={`كل تاجر جملة بـ ${fmt(metrics.wholesale.perCustomer)} ج.م. الرقم قابل للتعديل من الافتراضات.`}
+          />
         </div>
       </Section>
 
@@ -559,9 +572,16 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
       {/* Suppliers */}
       {metrics.suppliers && (
         <Section icon="🤝" title="الموردون" subtitle="الذمم الجارية — يُحسم ما نحن مدينون به من القيمة الأساسية">
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <KPI label="موردون نشطون" value={`${fmt(metrics.suppliers.active)} / ${fmt(metrics.suppliers.total)}`} hint="Supplier.isActive = true." />
             <KPI label="عدد المعاملات" value={fmt(metrics.suppliers.transactionCount)} hint="فواتير + دفعات + مرتجعات. Supplier transactions table." />
+            <KPI
+              label="قيمة العلاقات في التقييم"
+              value={`${fmt(metrics.supplierRelationships.value)} ج.م`}
+              tone="ok"
+              sub={`${fmt(metrics.supplierRelationships.count)} مورد × ${fmt(metrics.supplierRelationships.perSupplier)} ج.م`}
+              hint="العلاقات الموثَّقة مع موردين موثوقين تُضاف للقيمة الأساسية للشركة. الرقم قابل للتعديل من الافتراضات."
+            />
             <KPI
               label={metrics.suppliers.netLiabilities >= 0 ? 'نحن مدينون' : 'هم مدينون لنا'}
               value={`${fmt(Math.abs(metrics.suppliers.netLiabilities))} ج.م`}

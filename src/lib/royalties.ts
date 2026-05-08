@@ -194,3 +194,69 @@ export async function getRoyaltyAccrualSummary(): Promise<{
     topAccruals: top,
   };
 }
+
+// Context-passing version used by the valuation route. The route
+// already loads `ttmItems` (TTM OrderItem rows) and `avgCostByProduct`
+// (per-product weighted-avg cost from production batches); passing
+// them in lets us compute royalty accruals WITHOUT re-querying the
+// database. Same gross-profit definition the route uses for
+// ttmGrossProfit, so the two figures stay consistent.
+//
+// The route also provides the active agreements list (lightweight
+// select) so this helper is purely synchronous.
+export interface RoyaltyContextInput {
+  ttmItems: Array<{ productId: string; quantity: number; unitPrice: number }>;
+  avgCostByProduct: Map<string, number>;
+  cogsRatio: number;
+  agreements: Array<{
+    id: string;
+    payeeName: string;
+    percentage: number;
+    productIds: unknown;
+  }>;
+}
+
+export function getRoyaltyAccrualFromContext(input: RoyaltyContextInput): {
+  totalAccrued: number;
+  agreementsActive: number;
+  topAccruals: Array<{ payeeName: string; amountAccrued: number }>;
+} {
+  // Per-product TTM gross profit, computed once across all items.
+  const grossProfitByProduct = new Map<string, number>();
+  for (const it of input.ttmItems) {
+    const lineRevenue = it.unitPrice * it.quantity;
+    const avg = input.avgCostByProduct.get(it.productId);
+    const lineCost = avg !== undefined && avg > 0
+      ? avg * it.quantity
+      : lineRevenue * input.cogsRatio;
+    const line = lineRevenue - lineCost;
+    grossProfitByProduct.set(
+      it.productId,
+      (grossProfitByProduct.get(it.productId) ?? 0) + line,
+    );
+  }
+
+  const enriched = input.agreements.map(a => {
+    const ids = Array.isArray(a.productIds)
+      ? (a.productIds as unknown[]).filter((x): x is string => typeof x === 'string')
+      : [];
+    const ttmGp = ids.reduce(
+      (s, id) => s + (grossProfitByProduct.get(id) ?? 0),
+      0,
+    );
+    const amountAccrued = Math.max(0, ttmGp * (a.percentage / 100));
+    return { payeeName: a.payeeName, amountAccrued: round2(amountAccrued) };
+  });
+
+  const totalAccrued = enriched.reduce((s, a) => s + a.amountAccrued, 0);
+  const top = enriched
+    .filter(a => a.amountAccrued > 0)
+    .sort((a, b) => b.amountAccrued - a.amountAccrued)
+    .slice(0, 5);
+
+  return {
+    totalAccrued: round2(totalAccrued),
+    agreementsActive: input.agreements.length,
+    topAccruals: top,
+  };
+}

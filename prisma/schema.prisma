@@ -47,6 +47,9 @@ model User {
   devices       BookDevice[]
   customerTransactions CustomerTransaction[]
   campaignRecipients CampaignRecipient[]
+
+  @@index([role])
+  @@index([isWholesale])
 }
 
 model Campaign {
@@ -143,6 +146,9 @@ model Product {
   reviews    Review[]
   stockMovements StockMovement[]
   productionBatches ProductionBatch[]
+
+  @@index([source])
+  @@index([inStock])
 }
 
 // Append-only audit log of every stock change. Written inside the same
@@ -387,6 +393,7 @@ model ProductionBatch {
   createdAt       DateTime  @default(now())
   @@index([productId, batchDate])
   @@index([supplierId])
+  @@index([isOpeningBalance])
 }
 
 model Order {
@@ -415,6 +422,16 @@ model Order {
 
   items    OrderItem[]
   shipment Shipment?
+
+  // Indexes for the admin panel — every list/aggregate filters on
+  // some combination of createdAt, status, userId, paymentMethod,
+  // source. Without these the valuation route alone full-scans the
+  // table 15+ times per request.
+  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([userId])
+  @@index([paymentMethod])
+  @@index([source])
 }
 
 model Shipment {

@@ -9,6 +9,7 @@ import {
   type ValuationAssumptions,
 } from '@/lib/valuation-assumptions';
 import { logActionSafe } from '@/lib/audit-log';
+import { totalReceivables } from '@/lib/customer-receivables';
 
 // Password gate that protects both GET and PUT. The page asks for the
 // password once and replays it on every request via x-valuation-password.
@@ -502,10 +503,16 @@ export async function GET(req: NextRequest) {
   const assumptionsUpdatedAt = assumptionsRow?.updatedAt?.toISOString() ?? null;
 
   // Final valuation buckets
+  // Customer receivables — outstanding balances wholesale dealers (or
+  // retail credit cases) owe us. Real assets that any buyer inherits.
+  const customerReceivables = await totalReceivables();
+
   // Supplier liabilities are deducted because any buyer of the company
   // inherits the debt; surfacing it here keeps the headline honest.
+  // Receivables work the opposite way — they ADD to baseValue.
   const baseValue        = inventoryCost + ipTotal + techValue + customerDbValue
                          + wholesaleValue + supplierRelationshipsValue
+                         + customerReceivables
                          - Math.max(0, supplierLiabilities);
   const fairValue        = baseValue * assumptions.fairMultiplier;
   const strategicValue   = baseValue * assumptions.strategicMultiplier;
@@ -663,6 +670,7 @@ export async function GET(req: NextRequest) {
       customerDb: { value: customerDbValue, perCustomer: assumptions.customerDbValue },
       wholesale: { value: wholesaleValue, perCustomer: assumptions.wholesaleCustomerValue, count: wholesaleCount },
       supplierRelationships: { value: supplierRelationshipsValue, perSupplier: assumptions.supplierRelationshipValue, count: activeSupplierCount },
+      customerReceivables: { value: Math.round(customerReceivables) },
       // Trailing-twelve-month (TTM) financial performance — revenue,
       // gross margin, AOV, growth. The single most important section
       // for any real M&A conversation.

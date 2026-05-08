@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import ReceivablesPanel from './ReceivablesPanel';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -340,6 +341,10 @@ export default function CustomerDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Receivables / accounts-payable panel — visible for ALL customers
+          (retail credit happens too) but most useful for wholesale dealers. */}
+      <ReceivablesPanel customerId={customer.id} />
     </div>
   );
 }

@@ -57,6 +57,10 @@ export const AUDIT_ACTIONS = {
   'supplier.delete': 'حذف مورد',
   'supplier.transaction-add': 'إضافة معاملة مورد',
   'supplier.transaction-delete': 'حذف معاملة مورد',
+  'customer.transaction-add': 'إضافة معاملة عميل',
+  'customer.transaction-delete': 'حذف معاملة عميل',
+  'zakat.snapshot-create': 'إنشاء snapshot زكاة',
+  'zakat.snapshot-update': 'تحديث حالة دفع الزكاة',
   'production.batch-create': 'تسجيل باتش إنتاج',
   'production.batch-update': 'تعديل باتش إنتاج',
 } as const;

@@ -48,6 +48,7 @@ const NAV: NavItem[] = [
   { href: '/admin/users',             label: 'إدارة المستخدمين', icon: '👤', superAdminOnly: true },
   // —— Pinned to bottom by user request ——
   { href: '/admin/staff',             label: 'صلاحيات المساعدين', icon: '🛡️', superAdminOnly: true },
+  { href: '/admin/zakat',             label: 'حساب الزكاة',       icon: '🌙', requireAny: ['zakat.read'] },
   { href: '/admin/valuation',         label: 'تقييم الشركة',      icon: '💎', requireAny: ['valuation.read'] },
 ];
 
@@ -190,8 +191,63 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <ZakatReminderBanner userPerms={userPerms} isSuperAdmin={isSuperAdmin} />
           {children}
         </main>
+      </div>
+    </div>
+  );
+}
+
+// Show a thin amber banner across the top of every admin page when
+// 1 Dhul-Hijjah is within the next 7 days. The check runs client-side
+// so the banner appears even when the user navigates between routes
+// without a full reload. Self-dismissable per session.
+function ZakatReminderBanner({ userPerms, isSuperAdmin }: { userPerms: string[]; isSuperAdmin: boolean }) {
+  const [days, setDays] = useState<number | null>(null);
+  const [dismissed, setDismissed] = useState(false);
+
+  // Only users with zakat.read should see the reminder. We check the
+  // permission client-side; the API is gated server-side anyway.
+  const canSeeZakat = isSuperAdmin || userPerms.includes('zakat.read');
+
+  useEffect(() => {
+    if (!canSeeZakat) return;
+    if (typeof window !== 'undefined' && sessionStorage.getItem('zakat-banner-dismissed') === '1') {
+      setDismissed(true);
+      return;
+    }
+    // Fetch the days-until from the API (it's the source of truth for
+    // Hijri arithmetic — the JS engine on the client can disagree with
+    // the server depending on locale data).
+    fetch('/api/admin/zakat', { credentials: 'include', cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d?.today?.daysUntilDhulHijjah1 !== undefined) setDays(d.today.daysUntilDhulHijjah1);
+      })
+      .catch(() => {/* swallow — banner is best-effort */});
+  }, [canSeeZakat]);
+
+  if (!canSeeZakat || dismissed || days === null || days > 7) return null;
+
+  return (
+    <div className="bg-amber-50 border border-amber-300 rounded-xl px-4 py-2.5 mb-4 flex items-center justify-between gap-3 flex-wrap" dir="rtl">
+      <p className="text-xs text-amber-900 font-bold flex items-center gap-2">
+        <span className="text-base">🌙</span>
+        {days === 0
+          ? 'اليوم 1 ذو الحجة — موعد حساب زكاة عروض التجارة السنوية.'
+          : `تبقى ${days} ${days === 1 ? 'يوم' : 'أيام'} على موعد حساب زكاة عروض التجارة السنوية.`}
+      </p>
+      <div className="flex gap-2">
+        <Link href="/admin/zakat" className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition">
+          🧮 احسب الآن
+        </Link>
+        <button
+          onClick={() => { sessionStorage.setItem('zakat-banner-dismissed', '1'); setDismissed(true); }}
+          className="px-2 py-1 rounded-lg text-amber-700 hover:bg-amber-100 text-[11px] font-bold transition"
+        >
+          ✕
+        </button>
       </div>
     </div>
   );

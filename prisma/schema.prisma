@@ -45,6 +45,7 @@ model User {
   oauthAccounts OAuthAccount[]
   bookOrders    BookOrder[]
   devices       BookDevice[]
+  customerTransactions CustomerTransaction[]
   campaignRecipients CampaignRecipient[]
 }
 
@@ -117,6 +118,9 @@ model Product {
   descriptionEn      String?  @db.LongText
   price              Float
   priceUsd           Float    @default(0)
+  // Optional wholesale price for the Zakat valuation engine. When null,
+  // the calculator falls back to retail × 0.85 as the wholesale proxy.
+  wholesalePrice     Float?
   category           String
   subcategory        String?
   variants           Json?
@@ -203,6 +207,69 @@ model SupplierTransaction {
   createdAt         DateTime @default(now())
   @@index([supplierId, createdAt])
   @@index([productionBatchId])
+}
+
+// Customer accounts-receivable ledger — mirrors SupplierTransaction but
+// on the OTHER side: a positive balance means the customer (typically a
+// wholesale dealer) owes us money. Used by the valuation page (positive
+// receivables add to baseValue) and by the Zakat calculator (collectible
+// debts are part of the Zakat pool).
+model CustomerTransaction {
+  id              String   @id @default(cuid())
+  customerId      String
+  customer        User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  kind            String   // 'invoice' | 'payment' | 'credit-note'
+  amount          Float
+  description     String?  @db.Text
+  orderId         String?  // optional link to the originating Order (for invoice kind)
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+  @@index([customerId, createdAt])
+  @@index([orderId])
+}
+
+// Annual Zakat-on-trade-goods snapshot. One row per Hijri year, immutable
+// after save (only paymentStatus / paymentDate / notes can be patched).
+// All four valuation methods are stored alongside the chosen one so a
+// future audit can see why the admin picked their method.
+model ZakatSnapshot {
+  id                       String   @id @default(cuid())
+  hijriYear                String   @unique // e.g. "1446"
+  hijriDateLabel           String   // "1 ذو الحجة 1446"
+  gregorianDate            DateTime
+  inventoryValuationMethod String   // 'retail' | 'wholesale' | 'avg-actual' | 'manual'
+  inventoryValueRetail     Float
+  inventoryValueWholesale  Float
+  inventoryValueAvgActual  Float
+  inventoryValueManual     Float?
+  inventoryValueUsed       Float
+  cashOnHand               Float    @default(0)
+  receivables              Float    @default(0)
+  liabilities              Float    @default(0)
+  zakatPool                Float
+  zakatAmount              Float
+  paymentStatus            String   @default("unpaid") // 'unpaid' | 'paid'
+  paymentDate              DateTime?
+  notes                    String?  @db.Text
+  createdByUserId          String?
+  createdAt                DateTime @default(now())
+  items                    ZakatSnapshotItem[]
+  @@index([gregorianDate])
+}
+
+// Per-product breakdown captured at snapshot time. Names are
+// denormalized so a future product rename doesn't rewrite history.
+model ZakatSnapshotItem {
+  id              String        @id @default(cuid())
+  snapshotId      String
+  snapshot        ZakatSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  productId       String
+  productName     String
+  quantity        Int
+  unitValue       Float
+  totalValue      Float
+  valuationMethod String
+  @@index([snapshotId])
 }
 
 // One manufacturing run of a product. Each batch carries its own unit cost

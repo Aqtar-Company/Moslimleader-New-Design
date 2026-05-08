@@ -46,6 +46,7 @@ interface ValuationData {
     customerDb: { value: number; perCustomer: number };
     wholesale: { value: number; perCustomer: number; count: number };
     supplierRelationships: { value: number; perSupplier: number; count: number };
+    customerReceivables: { value: number };
     financial: {
       ttmRevenue: number; priorTtmRevenue: number; yoyRevenueGrowth: number | null;
       grossProfit: number; grossMargin: number; aov: number; discountBurn: number;
@@ -1089,6 +1090,24 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
               tone={metrics.suppliers.netLiabilities > 0 ? 'bad' : 'ok'}
               hint="الرصيد الصافي عبر كل الموردين. الذمم الموجبة (نحن مدينون) تُحسم من القيمة الأساسية للشركة."
             />
+          </div>
+        </Section>
+      )}
+
+      {/* Customer receivables (AR) — wholesale dealers + retail credit. */}
+      {metrics.customerReceivables.value > 0 && (
+        <Section icon="📒" title="الذمم المدينة (مستحق التحصيل)" subtitle="فلوس مستحقة لنا من تجار الجملة وحالات بيع آجل">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <FinKPI
+              label="إجمالي الذمم المدينة"
+              value={`${fmt(metrics.customerReceivables.value)} ج.م`}
+              tone="good"
+              hint="مجموع الأرصدة الموجبة عبر كل العملاء. أصل قابل للتحصيل، يُضاف للقيمة الأساسية للشركة."
+            />
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-[11px] text-emerald-900 leading-relaxed">
+              💡 الذمم المدينة تُضاف لـ <strong>baseValue</strong> لأنها أصل (نتوقع تحصيلها). نراجع الأرصدة من صفحة كل عميل في
+              <span className="text-blue-700"> /admin/customers</span>.
+            </div>
           </div>
         </Section>
       )}

@@ -61,6 +61,8 @@ const PERM_LABELS: Record<Permission, string> = {
   'suppliers.write': 'إدارة الموردين والمعاملات',
   'production.read': 'عرض باتشات الإنتاج',
   'production.write': 'تسجيل باتشات إنتاج',
+  'zakat.read': 'عرض حاسبة الزكاة',
+  'zakat.write': 'حفظ snapshots الزكاة + اعتماد الدفع',
   'settings.read': 'عرض الإعدادات',
   'settings.write': 'تعديل الإعدادات',
 };

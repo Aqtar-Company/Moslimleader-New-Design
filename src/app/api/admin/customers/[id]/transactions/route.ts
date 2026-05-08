@@ -7,9 +7,11 @@ import { invalidateCustomersCache } from '@/lib/customers-cache';
 import { CUSTOMER_TRANSACTION_KINDS, type CustomerTransactionKind, getCustomerBalance } from '@/lib/customer-receivables';
 
 // GET — list a customer's ledger entries newest first, plus the running
-// balance. Cheap query (indexed on customerId).
+// balance. Cheap query (indexed on customerId). Gated on wholesale.read
+// because the ledger lives behind the new /admin/wholesale tab; the
+// customers tab is back to marketing-only.
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await requirePerm('customers.read');
+  const guard = await requirePerm('wholesale.read');
   if ('response' in guard) return guard.response;
   const { id } = await params;
 
@@ -27,7 +29,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 // POST — record a new manual transaction (invoice / payment / credit-note).
 // Customer.id is verified before insert so we don't get orphan rows.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await requirePerm('customers.write');
+  const guard = await requirePerm('wholesale.write');
   if ('response' in guard) return guard.response;
   const { id } = await params;
 

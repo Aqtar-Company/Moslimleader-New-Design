@@ -8,7 +8,7 @@ import { invalidateCustomersCache } from '@/lib/customers-cache';
 // DELETE — remove a single transaction. Customer balance recomputes
 // automatically on next read since it's not stored.
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string; txnId: string }> }) {
-  const guard = await requirePerm('customers.write');
+  const guard = await requirePerm('wholesale.write');
   if ('response' in guard) return guard.response;
   const { id, txnId } = await params;
 

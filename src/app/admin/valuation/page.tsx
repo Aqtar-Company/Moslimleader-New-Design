@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/context/AuthContext';
+import Spinner from '@/components/admin/Spinner';
+import ForbiddenState from '@/components/admin/ForbiddenState';
 
 interface Assumptions {
   cogsRatio: number;
@@ -99,46 +101,32 @@ export default function ValuationPage() {
   const { addToast } = useToast();
   const { user } = useAuth();
   const canEdit = user?.role === 'admin' || (user?.permissions ?? []).includes('valuation.write');
-  const [password, setPassword] = useState('');
   const [data, setData] = useState<ValuationData | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'detailed' | 'investor'>('detailed');
   const [editingAssumptions, setEditingAssumptions] = useState(false);
+  const [forbidden, setForbidden] = useState(false);
 
-  const generate = async () => {
-    if (!password) { addToast('أدخل كلمة السر', 'warning'); return; }
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/admin/valuation?password=${encodeURIComponent(password)}`, {
-        credentials: 'include', cache: 'no-store',
-      });
-      const d = await res.json();
-      if (!res.ok) {
-        addToast(d.error || 'فشل التوليد', 'error');
-      } else {
-        setData(d);
-      }
-    } catch {
-      addToast('فشل التوليد', 'error');
-    }
-    setLoading(false);
-  };
-
+  // Auto-load on mount — the report is now gated solely on the
+  // valuation.read permission, so any user who can reach this page
+  // can see the numbers without re-typing a separate password.
   const reload = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/valuation?password=${encodeURIComponent(password)}`, {
-        credentials: 'include', cache: 'no-store',
-      });
+      const res = await fetch(`/api/admin/valuation`, { credentials: 'include', cache: 'no-store' });
+      if (res.status === 403) { setForbidden(true); setLoading(false); return; }
       const d = await res.json();
       if (res.ok) setData(d);
-    } catch { /* ignore */ }
+      else addToast(d.error || 'فشل التوليد', 'error');
+    } catch { addToast('فشل التوليد', 'error'); }
     setLoading(false);
   };
 
+  useEffect(() => { reload(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+
   const saveAssumptions = async (next: Assumptions) => {
     try {
-      const res = await fetch(`/api/admin/valuation?password=${encodeURIComponent(password)}`, {
+      const res = await fetch(`/api/admin/valuation`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -167,41 +155,8 @@ export default function ValuationPage() {
     }
   };
 
-  if (!data) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh] px-4">
-        <div className="bg-white rounded-2xl shadow-lg max-w-md w-full p-8 border border-gray-200">
-          <div className="text-center mb-6">
-            <div className="w-16 h-16 bg-gradient-to-br from-[#F5C518] to-[#e6a200] rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl">📊</div>
-            <h1 className="text-2xl font-black text-gray-900">تقييم الشركة</h1>
-            <p className="text-sm text-gray-500 mt-2">تقرير محدَّث مباشرة من قاعدة البيانات</p>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-600 mb-1.5">كلمة السر للوصول</label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && generate()}
-                placeholder="•••••••••••"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#F5C518] focus:ring-2 focus:ring-[#F5C518]/20"
-                dir="ltr"
-              />
-            </div>
-            <button
-              onClick={generate}
-              disabled={loading || !password}
-              className="w-full px-4 py-3 rounded-xl bg-[#1a1a2e] hover:bg-[#2d1060] text-white text-sm font-bold transition disabled:opacity-50"
-            >
-              {loading ? '...جاري التوليد' : '📊 توليد التقرير'}
-            </button>
-          </div>
-          <p className="text-[10px] text-gray-400 mt-6 text-center">⚠️ التقرير يحتوي على بيانات مالية حساسة. كلمة السر محصورة في صاحب الشركة.</p>
-        </div>
-      </div>
-    );
-  }
+  if (forbidden) return <ForbiddenState requiredPerm="valuation.read" />;
+  if (loading || !data) return <Spinner />;
 
   const { metrics, valuation, products, books, assumptions } = data;
 
@@ -263,7 +218,7 @@ export default function ValuationPage() {
         </div>
         <div className="flex gap-2">
           <button onClick={() => window.print()} title="استخدم 'حفظ كـ PDF' في نافذة الطباعة" className="px-3 sm:px-4 py-2 rounded-xl bg-[#1a1a2e] hover:bg-[#2d1060] text-white text-[11px] sm:text-xs font-bold transition">⬇️ تحميل PDF</button>
-          <button onClick={() => { setData(null); setPassword(''); }} className="px-3 sm:px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] sm:text-xs font-bold transition">🔒 إغلاق</button>
+          <button onClick={() => reload()} className="px-3 sm:px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] sm:text-xs font-bold transition">🔄 تحديث</button>
         </div>
       </div>
 

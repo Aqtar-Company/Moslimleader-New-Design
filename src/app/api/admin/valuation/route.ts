@@ -11,30 +11,14 @@ import {
 import { logActionSafe } from '@/lib/audit-log';
 import { totalReceivables } from '@/lib/customer-receivables';
 
-// Password gate that protects both GET and PUT. The page asks for the
-// password once and replays it on every request via x-valuation-password.
-// Fail-closed: if VALUATION_PASSWORD isn't configured we refuse rather than
-// fall back to an in-repo default. The previous fallback was a real secret
-// in plaintext and effectively neutralised the password gate.
-function checkPassword(req: NextRequest): NextResponse | null {
-  const expected = process.env.VALUATION_PASSWORD;
-  if (!expected) {
-    return NextResponse.json({ error: 'VALUATION_PASSWORD غير مضبوطة في إعدادات الخادم' }, { status: 500 });
-  }
-  const provided = req.headers.get('x-valuation-password') || new URL(req.url).searchParams.get('password') || '';
-  if (provided !== expected) {
-    return NextResponse.json({ error: 'كلمة السر غير صحيحة' }, { status: 401 });
-  }
-  return null;
-}
-
 // GET /api/admin/valuation — live company valuation report.
-// Requires `valuation.read` permission, then password-gated.
-export async function GET(req: NextRequest) {
+// Gated solely on the `valuation.read` permission. The previous double
+// gate (perm + standalone password) was redundant: an admin who has
+// the perm shouldn't need to remember a separate password, and an
+// assistant without the perm couldn't reach this endpoint anyway.
+export async function GET() {
   const guard = await requirePerm('valuation.read');
   if ('response' in guard) return guard.response;
-  const pw = checkPassword(req);
-  if (pw) return pw;
 
   const assumptions = await getValuationAssumptions();
 
@@ -762,8 +746,6 @@ export async function GET(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const guard = await requirePerm('valuation.write');
   if ('response' in guard) return guard.response;
-  const pw = checkPassword(req);
-  if (pw) return pw;
 
   let body: Partial<ValuationAssumptions>;
   try {

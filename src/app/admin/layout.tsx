@@ -37,6 +37,7 @@ const NAV: NavItem[] = [
   { href: '/admin/wholesale',         label: 'تجار الجملة',       icon: '🏪', requireAny: ['wholesale.read'] },
   { href: '/admin/team',              label: 'الفريق والرواتب',   icon: '💼', requireAny: ['team.read'] },
   { href: '/admin/campaigns',         label: 'حملات التسويق',     icon: '📢', requireAny: ['campaigns.read'] },
+  { href: '/admin/ai-facebook-assistant', label: 'مساعد فيسبوك AI', icon: '🤖', superAdminOnly: true },
   { href: '/admin/coupons',           label: 'الكوبونات',         icon: '🎟️', requireAny: ['coupons.read'] },
   { href: '/admin/reviews',           label: 'التقييمات',         icon: '⭐', requireAny: ['reviews.read'] },
   // —— Reports ——

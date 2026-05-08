@@ -627,6 +627,59 @@ model BookSession {
 // operations across the app. Failure to log is non-fatal — logActionSafe()
 // in src/lib/audit-log.ts swallows errors so a logging blip can never
 // break the underlying business operation.
+// ─── AI Facebook Assistant ────────────────────────────────────────────────────
+
+// A conversation thread from a Facebook Page (Messenger DM or post comment).
+// One row per sender so all messages to/from the same person are grouped.
+model FacebookConversation {
+  id          String   @id @default(cuid())
+  senderId    String   // Meta PSID or user-scoped ID
+  senderName  String?
+  source      String   @default("messenger") // messenger | comment
+  postId      String?  // set for comment threads
+  status      String   @default("open")      // open | closed
+  messages    FacebookMessage[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([senderId])
+  @@index([status, createdAt])
+}
+
+// A single incoming message (or comment) plus the AI draft/reply state.
+model FacebookMessage {
+  id             String               @id @default(cuid())
+  conversationId String
+  conversation   FacebookConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  messageId      String               @unique // Meta message/comment ID — prevents duplicate processing
+  direction      String               @default("incoming") // incoming | outgoing
+  text           String               @db.Text
+  source         String               @default("messenger") // messenger | comment
+  relatedProduct String?              // product name detected in message
+  aiIntent       String?              // price | availability | shipping | complaint | order | discount | other
+  aiReply        String?              @db.Text
+  status         String               @default("draft") // draft | sent | escalated | ignored | failed
+  metaResponse   String?              @db.Text // raw Graph API response/error on send
+  createdAt      DateTime             @default(now())
+  sentAt         DateTime?
+
+  @@index([conversationId])
+  @@index([status, createdAt])
+}
+
+// Raw webhook events from Meta — stored before processing to enable dedup
+// and replay. Mark processed=true once the event has been handled.
+model FacebookWebhookEvent {
+  id        String   @id @default(cuid())
+  eventId   String   @unique // composite key built from sender+timestamp or Meta message_id
+  eventType String   // message | comment
+  payload   String   @db.LongText
+  processed Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([processed, createdAt])
+}
+
 model AuditLog {
   id          String   @id @default(cuid())
   actorUserId String?  // null for system / unauthenticated events

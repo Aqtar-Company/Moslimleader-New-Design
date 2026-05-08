@@ -195,6 +195,7 @@ export default function SalesByProductPage() {
         <EmptyState message="مفيش منتجات مطابقة" icon="📊" />
       ) : (
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+          <p className="lg:hidden text-[10px] text-gray-500 px-3 py-2 bg-gray-50 border-b border-gray-200">↔️ اسحب الجدول جانبياً لرؤية كل الأعمدة</p>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead className="bg-gray-50 text-[10px] text-gray-500 font-bold uppercase tracking-wider">

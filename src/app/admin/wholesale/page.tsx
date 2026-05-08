@@ -71,9 +71,9 @@ export default function WholesalePage() {
   return (
     <div className="space-y-5" dir="rtl">
       {/* Hero */}
-      <div className="bg-gradient-to-l from-blue-700 via-indigo-700 to-[#1a1a2e] rounded-2xl p-6 text-white">
-        <h1 className="text-xl font-black flex items-center gap-2">🏪 تجار الجملة — العرض التشغيلي</h1>
-        <p className="text-white/70 text-sm mt-2 max-w-2xl leading-relaxed">
+      <div className="bg-gradient-to-l from-blue-700 via-indigo-700 to-[#1a1a2e] rounded-2xl p-4 sm:p-6 text-white">
+        <h1 className="text-lg sm:text-xl font-black flex items-center gap-2">🏪 تجار الجملة — العرض التشغيلي</h1>
+        <p className="text-white/85 text-xs sm:text-sm mt-2 max-w-2xl leading-relaxed">
           صفحة مخصصة للحسابات والمعاملات المالية مع تجار الجملة. للتسويق وإدارة العلامة، استخدم
           <Link href="/admin/customers" className="text-[#F5C518] hover:underline mx-1">قاعدة العملاء</Link>
           مع فلتر "تاجر جملة".
@@ -121,6 +121,7 @@ export default function WholesalePage() {
         />
       ) : (
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+          <p className="lg:hidden text-[10px] text-gray-500 px-3 py-2 bg-gray-50 border-b border-gray-200">↔️ اسحب جانبياً لرؤية كل الأعمدة</p>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead className="bg-gray-50 text-[10px] text-gray-500 font-bold uppercase tracking-wider">

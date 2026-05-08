@@ -532,7 +532,7 @@ export default function OrdersPage() {
               <button
                 key={s}
                 onClick={() => { setFilter(s); if (s !== 'paid') setPaymentMethodFilter(''); }}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 ${isActive ? activeCls : inactiveCls} ${isPaid ? 'text-[13px]' : ''}`}
+                className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold border transition flex items-center gap-1 sm:gap-1.5 ${isActive ? activeCls : inactiveCls} ${isPaid ? 'sm:text-[13px]' : ''}`}
               >
                 <span>{label}</span>
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${isActive ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'}`}>

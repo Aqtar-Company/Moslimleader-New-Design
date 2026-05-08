@@ -206,7 +206,65 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      {/* Mobile card list — compact view of products with quick +/- buttons.
+          Variant products link out to the desktop view for per-variant
+          editing (too cramped to do well on a small screen). */}
+      <div className="block lg:hidden space-y-2">
+        {filtered.map(p => {
+          const img = firstImage(p.images);
+          const isLow = p.stock > 0 && p.stock <= 50;
+          const isOut = p.stock <= 0;
+          const variants = Array.isArray(p.variants) ? p.variants : [];
+          const hasVariants = variants.length > 0;
+          const editValue = edits[p.id];
+          const totalValue = p.price * p.stock;
+          return (
+            <div key={p.id} className={`bg-white rounded-xl border p-3 ${isOut ? 'border-red-200 bg-red-50/30' : isLow ? 'border-amber-200 bg-amber-50/30' : 'border-gray-200'}`}>
+              <div className="flex items-start gap-3">
+                <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                  {img ? <Image src={img} alt={p.name} fill className="object-cover" unoptimized /> : <div className="w-full h-full flex items-center justify-center text-gray-300 text-lg">📦</div>}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-gray-900 text-sm leading-tight">{p.name}</p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">{p.category} · {p.price.toLocaleString('en-US')} ج.م</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">قيمة إجمالية: {Math.round(totalValue).toLocaleString('en-US')} ج.م · مباع: {p.sold.toLocaleString('en-US')}</p>
+                </div>
+                <div className="text-left shrink-0">
+                  <p className="text-[10px] text-gray-500">المخزون</p>
+                  <p className={`text-2xl font-black leading-none ${isOut ? 'text-red-700' : isLow ? 'text-amber-700' : 'text-gray-900'}`}>{p.stock.toLocaleString('en-US')}</p>
+                </div>
+              </div>
+
+              <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2 flex-wrap">
+                {hasVariants ? (
+                  <p className="text-[11px] text-purple-700 font-bold">
+                    🎨 {variants.length} موديلات — حرّر من شاشة سطح المكتب
+                  </p>
+                ) : (
+                  <>
+                    <button onClick={() => adjustStock(p.id, -10)} className="w-9 h-9 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 font-black text-sm">−10</button>
+                    <button onClick={() => adjustStock(p.id, -1)} className="w-9 h-9 rounded-lg bg-gray-100 hover:bg-red-100 hover:text-red-700 text-gray-700 font-black text-base">−</button>
+                    <input
+                      type="number"
+                      value={editValue !== undefined ? editValue : p.stock}
+                      onChange={e => setEdits(prev => ({ ...prev, [p.id]: Number(e.target.value) }))}
+                      className={`flex-1 min-w-[80px] border rounded-lg px-2 py-1.5 text-sm text-center font-bold ${isOut ? 'border-red-300 text-red-700 bg-red-50' : isLow ? 'border-amber-300 text-amber-700 bg-amber-50' : 'border-gray-200'}`}
+                    />
+                    <button onClick={() => adjustStock(p.id, 1)} className="w-9 h-9 rounded-lg bg-gray-100 hover:bg-emerald-100 hover:text-emerald-700 text-gray-700 font-black text-base">+</button>
+                    <button onClick={() => adjustStock(p.id, 10)} className="w-9 h-9 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-black text-sm">+10</button>
+                    {editValue !== undefined && editValue !== p.stock && (
+                      <button onClick={() => updateStock(p.id, editValue)} className="px-3 py-1.5 rounded-lg bg-[#F5C518] text-[#1a1a2e] text-[11px] font-black">حفظ</button>
+                    )}
+                  </>
+                )}
+                <Link href={`/admin/inventory/movements?productId=${p.id}`} className="ms-auto text-[10px] text-blue-700 hover:underline">🧾 السجل</Link>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden hidden lg:block">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">

@@ -192,6 +192,8 @@ export default function CustomersPage() {
               <p className="font-semibold">لا يوجد عملاء بهذا التصنيف</p>
             </div>
           ) : (
+            <>
+            <p className="lg:hidden text-[10px] text-gray-500 px-3 py-2 bg-gray-50 border-b border-gray-200">↔️ اسحب الجدول جانبياً لرؤية كل الأعمدة</p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-100">
@@ -276,6 +278,7 @@ export default function CustomersPage() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
       )}

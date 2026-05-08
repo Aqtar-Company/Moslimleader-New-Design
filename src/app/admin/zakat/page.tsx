@@ -339,9 +339,9 @@ export default function ZakatPage() {
                         {METHOD_LABELS[c.method]}
                         {isChosen && <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.5 rounded mr-1">المختارة</span>}
                       </td>
-                      <td className="px-3 py-2" dir="ltr">{fmtMoney(c.inventory)}</td>
-                      <td className="px-3 py-2" dir="ltr">{fmtMoney(c.pool)}</td>
-                      <td className="px-3 py-2 font-black text-emerald-700" dir="ltr">{fmtMoney(c.zakat)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(c.inventory)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(c.pool)}</td>
+                      <td className="px-3 py-2 font-black text-emerald-700 text-right tabular-nums">{fmtMoney(c.zakat)}</td>
                     </tr>
                   );
                 })}
@@ -376,10 +376,10 @@ export default function ZakatPage() {
                   return (
                     <tr key={s.id} className="hover:bg-gray-50">
                       <td className="px-3 py-2.5 font-black">{s.hijriYear}<p className="text-[10px] text-gray-500 font-normal">{s.hijriDateLabel}</p></td>
-                      <td className="px-3 py-2.5 font-mono text-[10px]" dir="ltr">{fmtDate(s.gregorianDate)}</td>
+                      <td className="px-3 py-2.5 font-mono text-[10px] text-right">{fmtDate(s.gregorianDate)}</td>
                       <td className="px-3 py-2.5 text-[11px]">{METHOD_LABELS[s.inventoryValuationMethod as ValuationMethod] ?? s.inventoryValuationMethod}</td>
-                      <td className="px-3 py-2.5" dir="ltr">{fmtMoney(s.zakatPool)}</td>
-                      <td className="px-3 py-2.5 font-black text-emerald-700" dir="ltr">{fmtMoney(s.zakatAmount)}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">{fmtMoney(s.zakatPool)}</td>
+                      <td className="px-3 py-2.5 font-black text-emerald-700 text-right tabular-nums">{fmtMoney(s.zakatAmount)}</td>
                       <td className="px-3 py-2.5">
                         <button
                           onClick={() => togglePayment(s)}

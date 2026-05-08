@@ -144,7 +144,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 key={item.href}
                 href={item.href}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-6 py-3 text-sm font-semibold transition-all lg:gap-2 lg:px-3.5 lg:py-2 lg:text-[12.5px] ${
+                className={`flex items-center gap-2.5 px-5 py-2.5 text-[13px] font-semibold transition-all lg:gap-2 lg:px-3.5 lg:py-2 lg:text-[12.5px] ${
                   active
                     ? 'bg-[#F5C518]/20 text-[#F5C518] border-l-0 border-r-4 border-[#F5C518]'
                     : 'text-white/85 hover:text-white hover:bg-white/10'

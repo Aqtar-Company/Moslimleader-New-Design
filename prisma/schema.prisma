@@ -279,6 +279,31 @@ model ZakatSnapshotItem {
   @@index([snapshotId])
 }
 
+// Team / payroll directory. Captures the people working with the
+// company along with their compensation so the valuation report can
+// finally compute a real OpEx instead of disclosing 'untracked'. Roles
+// are free-text-ish (an enum-like predefined set + 'other' fallback)
+// to keep the page simple while still reporting cleanly.
+model Employee {
+  id              String   @id @default(cuid())
+  name            String
+  role            String   // see TEAM_ROLES in src/lib/team-roles.ts
+  customRole      String?  // populated when role = 'other'
+  employmentType  String   // 'full-time' | 'part-time' | 'consultant' | 'contractor'
+  monthlySalary   Float    @default(0) // EGP — net cost to company per month
+  startDate       DateTime
+  endDate         DateTime?
+  isActive        Boolean  @default(true)
+  notes           String?  @db.Text
+  contactPhone    String?
+  contactEmail    String?
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@index([isActive])
+  @@index([role])
+}
+
 // One manufacturing run of a product. Each batch carries its own unit cost
 // (which drifts over time) so the valuation page can compute a true
 // weighted-average COGS instead of the old 35% heuristic.

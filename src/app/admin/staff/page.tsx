@@ -65,6 +65,8 @@ const PERM_LABELS: Record<Permission, string> = {
   'zakat.write': 'حفظ snapshots الزكاة + اعتماد الدفع',
   'wholesale.read': 'عرض تجار الجملة (المنتجات والذمم)',
   'wholesale.write': 'تسجيل معاملات مالية لتجار الجملة',
+  'team.read': 'عرض دليل الفريق والرواتب',
+  'team.write': 'إضافة وتعديل وحذف بيانات الموظفين',
   'settings.read': 'عرض الإعدادات',
   'settings.write': 'تعديل الإعدادات',
 };

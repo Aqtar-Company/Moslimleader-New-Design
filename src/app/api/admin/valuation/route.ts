@@ -11,6 +11,7 @@ import {
 import { logActionSafe } from '@/lib/audit-log';
 import { totalReceivables } from '@/lib/customer-receivables';
 import { effectiveStock } from '@/lib/inventory-value';
+import { getPayrollSummary } from '@/lib/team-payroll';
 
 // GET /api/admin/valuation — live company valuation report.
 // Gated solely on the `valuation.read` permission. The previous double
@@ -310,6 +311,12 @@ export async function GET() {
   // Products without batches use the cogsRatio fallback for the cost
   // half — the partial-actual / partial-heuristic nature is disclosed
   // separately in the Data Quality section.
+  // Payroll — fetched here so the EBITDA approximation a few lines
+  // below can subtract it from gross profit. The directory lives at
+  // /admin/team; getPayrollSummary applies PAYROLL_FACTORS so a
+  // consultant isn't counted at full weight.
+  const payroll = await getPayrollSummary();
+
   const ttmItems = await prisma.orderItem.findMany({
     where: {
       order: { ...NON_GIFT, createdAt: { gte: new Date(Date.now() - 365 * 86400000) } },
@@ -333,6 +340,13 @@ export async function GET() {
   const discountBurn = totalRevenue + totalDiscount > 0
     ? totalDiscount / (totalRevenue + totalDiscount)
     : 0;
+
+  // EBITDA approximation: gross profit minus the annualised payroll
+  // (using the adjusted figure so consultants aren't counted at full
+  // weight). This still misses rent + marketing + utilities, so we
+  // disclose it as 'EBITDA partial' rather than 'EBITDA'.
+  const ebitdaPartial = ttmGrossProfit - payroll.annualPayrollAdjusted;
+  const ebitdaPartialMargin = ttmRevenueFromItems > 0 ? ebitdaPartial / ttmRevenueFromItems : 0;
 
   // ─────────────────────────────────────────────────────────────────
   // Concentration risk — the "what if we lose our top 5 customers"
@@ -671,6 +685,14 @@ export async function GET() {
         grossMargin: ttmGrossMargin,
         aov: Math.round(aov),
         discountBurn,
+        // Payroll-aware partial EBITDA. Real EBITDA also subtracts
+        // rent/marketing/utilities — those aren't tracked, so this
+        // is labelled "partial" on the page.
+        annualPayroll: payroll.annualPayrollAdjusted,
+        annualPayrollNominal: payroll.annualPayrollNominal,
+        ebitdaPartial: Math.round(ebitdaPartial),
+        ebitdaPartialMargin,
+        headcount: payroll.headcount,
         // Disclosure: what fraction of COGS came from real batches vs
         // the cogsRatio fallback. The page surfaces this so readers
         // know how solid the gross margin number is.
@@ -712,7 +734,9 @@ export async function GET() {
         productsCostedFromBatches: productsWithBatches,
         productsCostedFromHeuristic: productsWithoutBatches,
         bostaOrphanCount,
-        opexTracked: false,
+        opexTracked: payroll.headcount > 0, // payroll is now tracked; rent/marketing still aren't
+        opexHeadcount: payroll.headcount,
+        opexAnnualPayroll: payroll.annualPayrollAdjusted,
         assumptionsUpdatedAt,
       },
     },

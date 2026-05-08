@@ -61,6 +61,9 @@ export const AUDIT_ACTIONS = {
   'customer.transaction-delete': 'حذف معاملة عميل',
   'zakat.snapshot-create': 'إنشاء snapshot زكاة',
   'zakat.snapshot-update': 'تحديث حالة دفع الزكاة',
+  'team.create': 'إضافة موظف',
+  'team.update': 'تعديل بيانات موظف',
+  'team.delete': 'حذف موظف',
   'production.batch-create': 'تسجيل باتش إنتاج',
   'production.batch-update': 'تعديل باتش إنتاج',
 } as const;

@@ -52,6 +52,8 @@ interface ValuationData {
     financial: {
       ttmRevenue: number; priorTtmRevenue: number; yoyRevenueGrowth: number | null;
       grossProfit: number; grossMargin: number; aov: number; discountBurn: number;
+      annualPayroll: number; annualPayrollNominal: number;
+      ebitdaPartial: number; ebitdaPartialMargin: number; headcount: number;
       productsCostedFromBatches: number; productsCostedFromHeuristic: number;
     };
     concentration: {
@@ -65,6 +67,7 @@ interface ValuationData {
     dataQuality: {
       productsCostedFromBatches: number; productsCostedFromHeuristic: number;
       bostaOrphanCount: number; opexTracked: boolean;
+      opexHeadcount: number; opexAnnualPayroll: number;
       assumptionsUpdatedAt: string | null;
     };
     inventoryHealth: {
@@ -364,8 +367,10 @@ function FinancialSection({ metrics }: { metrics: ValuationData['metrics'] }) {
     : f.yoyRevenueGrowth >= 0 ? 'good' : 'bad';
   const marginTone = f.grossMargin >= 0.4 ? 'good'
     : f.grossMargin >= 0.2 ? 'neutral' : 'bad';
+  const ebitdaTone = f.ebitdaPartial > 0 ? 'good' : f.ebitdaPartial < 0 ? 'bad' : 'neutral';
+  const hasPayroll = f.headcount > 0;
   return (
-    <Section icon="📈" title="الأداء المالي" subtitle="إيرادات آخر 12 شهر، هامش الربح الإجمالي، معدل النمو السنوي">
+    <Section icon="📈" title="الأداء المالي" subtitle="إيرادات آخر 12 شهر، هامش الربح الإجمالي، تقدير EBITDA بعد الرواتب">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <FinKPI label="إيرادات آخر 12 شهر (TTM)" value={`${fmt(f.ttmRevenue)} ج.م`} hint="مجموع Order.total لآخر 12 شهر، باستثناء الملغي والهدايا." />
         <FinKPI
@@ -374,8 +379,22 @@ function FinancialSection({ metrics }: { metrics: ValuationData['metrics'] }) {
           tone={yoyTone}
           hint={`مقارنة TTM (${fmt(f.ttmRevenue)}) بآخر 12 شهر سابقة (${fmt(f.priorTtmRevenue)}).`}
         />
-        <FinKPI label="هامش الربح الإجمالي" value={pct(f.grossMargin)} tone={marginTone} sub={`${fmt(f.grossProfit)} ج.م ربح إجمالي`} hint="إيرادات OrderItem ناقص تكلفة الباتش المرجَّحة. المنتجات بدون باتشات تستخدم نسبة 35% كاحتياطي." />
+        <FinKPI label="هامش الربح الإجمالي" value={pct(f.grossMargin)} tone={marginTone} sub={`${fmt(f.grossProfit)} ج.م ربح إجمالي`} hint="إيرادات OrderItem ناقص تكلفة الباتش المرجَّحة." />
         <FinKPI label="متوسط قيمة الطلب (AOV)" value={`${fmt(f.aov)} ج.م`} hint="إجمالي الإيرادات ÷ عدد الطلبات الصحيحة." />
+        <FinKPI
+          label="رواتب سنوية"
+          value={hasPayroll ? `${fmt(f.annualPayroll)} ج.م` : '—'}
+          tone={hasPayroll ? 'neutral' : undefined}
+          sub={hasPayroll ? `${fmt(f.headcount)} عضو · معدّل بمعاملات الاستشاريين` : 'لم يُسجَّل أي عضو في /admin/team'}
+          hint="إجمالي الرواتب السنوية من دليل الفريق. تُخصم من الربح الإجمالي لتقدير EBITDA الجزئي."
+        />
+        <FinKPI
+          label="EBITDA الجزئي"
+          value={hasPayroll ? `${fmt(f.ebitdaPartial)} ج.م` : '—'}
+          tone={hasPayroll ? ebitdaTone : undefined}
+          sub={hasPayroll ? `هامش ${pct(f.ebitdaPartialMargin)}` : 'يحتاج تسجيل الفريق أولاً'}
+          hint="ربح إجمالي ناقص الرواتب السنوية. أقرب رقم لـ EBITDA الحقيقي بدون تتبع الإيجار + التسويق."
+        />
         <FinKPI label="نسبة الخصومات من البيع" value={pct(f.discountBurn)} hint="إجمالي الخصومات ÷ (الإيرادات + الخصومات). يقلل من الهامش الفعلي." />
         <FinKPI
           label="منتجات بتكلفة فعلية"
@@ -384,12 +403,14 @@ function FinancialSection({ metrics }: { metrics: ValuationData['metrics'] }) {
           hint="منتجات لها باتشات إنتاج فعلية تستخدم تكلفتها الحقيقية. الباقي يستخدم نسبة افتراضية."
         />
       </div>
-      {/* EBITDA disclosure — we don't track OpEx, say so directly */}
       <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 mt-4">
         <p className="text-[11px] text-amber-900 leading-relaxed">
-          ⚠️ <strong>EBITDA / صافي الربح غير محسوب.</strong> النظام لا يتتبّع المصروفات التشغيلية (الرواتب، الإيجار، التسويق، الشحن المركزي).
-          هامش الربح الإجمالي الموضّح ({pct(f.grossMargin)}) لا يعكس صافي ربحية الشركة. للحصول على EBITDA حقيقي يجب جمع المصروفات
-          من سجلات خارج النظام وخصمها من إجمالي الربح.
+          ⚠️ <strong>EBITDA المعروض جزئي.</strong>{' '}
+          {hasPayroll
+            ? 'الرواتب الآن مدمجة في الحساب من دليل الفريق، لكن النظام لا يتتبع الإيجار أو التسويق أو المرافق. EBITDA الجزئي يساعد في تقدير الربحية، لكن EBITDA الحقيقي يتطلب جمع هذه المصروفات يدوياً.'
+            : 'لإظهار EBITDA الجزئي، أضف الفريق والاستشاريين في '}
+          {!hasPayroll && <Link href="/admin/team" className="underline font-bold">/admin/team</Link>}
+          {!hasPayroll && '.'}
         </p>
       </div>
     </Section>

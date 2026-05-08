@@ -211,6 +211,9 @@ export default function ValuationPage() {
         </div>
       </div>
 
+      {/* Reconcile pre-fix PayPal orders — only renders when orphans exist */}
+      <PaypalReconcileBanner onDone={reload} />
+
       {/* Gaps section — front and centre because the valuation is incomplete without these */}
       <GapsSection metrics={metrics} assumptions={assumptions} />
 
@@ -869,5 +872,65 @@ function Tooltip({ text, dark }: { text: string; dark?: boolean }) {
         </span>
       )}
     </span>
+  );
+}
+
+// Surfaces the count of paid PayPal orders that never decremented stock
+// (because they were captured before the stock-decrement fix shipped). The
+// banner only renders when orphans exist, so it disappears after one click.
+function PaypalReconcileBanner({ onDone }: { onDone: () => void }) {
+  const { addToast } = useToast();
+  const [info, setInfo] = useState<{ orderCount: number; totalUnits: number } | null>(null);
+  const [running, setRunning] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/inventory/reconcile-paypal', { credentials: 'include', cache: 'no-store' });
+        if (!res.ok) return; // silently skip — this is a cleanup feature
+        const d = await res.json();
+        if (d.totalUnits > 0) setInfo({ orderCount: d.orderCount, totalUnits: d.totalUnits });
+      } catch { /* ignore */ }
+    })();
+  }, []);
+
+  if (!info) return null;
+
+  const reconcile = async () => {
+    if (running) return;
+    setRunning(true);
+    try {
+      const res = await fetch('/api/admin/inventory/reconcile-paypal', { method: 'POST', credentials: 'include' });
+      const d = await res.json();
+      if (!res.ok) { addToast(d.error || 'فشل التسوية', 'error'); setRunning(false); return; }
+      addToast(`تمت تسوية ${d.reconciled} سطر من ${d.orderCount} طلب`, 'success', 6000);
+      setInfo(null);
+      onDone();
+    } catch {
+      addToast('فشل التسوية', 'error');
+      setRunning(false);
+    }
+  };
+
+  return (
+    <div className="bg-red-50 border-2 border-red-300 rounded-2xl p-5 print:hidden">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex-1 min-w-[220px]">
+          <p className="text-sm font-black text-red-800">⚠️ مخزون يحتاج تسوية</p>
+          <p className="text-xs text-red-700 mt-1.5 leading-relaxed">
+            <strong>{info.totalUnits}</strong> قطعة من <strong>{info.orderCount}</strong> طلب PayPal اتسجلت كمبيعات قبل ما يتم إصلاح خصم المخزون من PayPal.
+            دلوقتي بتطلع كـ "مباع" في التقييم بس مش مخصومة من المخزون. اضغط الزرار لخصمها مرة واحدة.
+            هتتسجل في سجل تعديلات المخزون كـ <code>manual_adjustment</code> مع رقم الطلب.
+          </p>
+        </div>
+        <button
+          onClick={reconcile}
+          disabled={running}
+          className="px-4 py-2 rounded-xl bg-red-700 hover:bg-red-800 text-white text-xs font-black transition disabled:opacity-50 shrink-0"
+        >
+          {running ? '...جاري التسوية' : '🔧 تسوية المخزون'}
+        </button>
+      </div>
+    </div>
   );
 }

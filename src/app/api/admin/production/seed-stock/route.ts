@@ -161,6 +161,21 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
+      // Idempotency: refuse to seed twice for the same scope. The wizard's
+      // GET marks already-seeded rows so the UI auto-skips them, but a user
+      // could still un-skip; this is the server-side guard.
+      const existingSeed = await tx.productionBatch.findFirst({
+        where: { productId, variantIndex, isOpeningBalance: true },
+        select: { id: true },
+      });
+      if (existingSeed) {
+        errors.push({
+          productId, variantIndex,
+          error: 'هذا المنتج تم تسعيره افتتاحياً سابقاً. لإعادة التسعير سجّل باتش عادي بقيمة سالبة.',
+        });
+        continue;
+      }
+
       const totalCost = Math.round(quantity * unitCost * 100) / 100;
       const batch = await tx.productionBatch.create({
         data: {

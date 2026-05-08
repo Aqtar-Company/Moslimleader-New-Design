@@ -14,6 +14,7 @@ interface AggRow {
   email: string;
   phone: string | null;
   marketingOptIn: boolean;
+  isWholesale: boolean;
   orderCount: number;
   totalSpend: number;
   lastOrderAt: string | null;
@@ -31,7 +32,7 @@ export async function resolveSegment(
   const orders = await prisma.order.findMany({
     where: { status: { not: 'cancelled' } },
     include: {
-      user: { select: { id: true, email: true, phone: true, marketingOptIn: true } },
+      user: { select: { id: true, email: true, phone: true, marketingOptIn: true, isWholesale: true } },
       items: { select: { productId: true } },
     },
     orderBy: { createdAt: 'desc' },
@@ -47,6 +48,7 @@ export async function resolveSegment(
         email: o.user.email,
         phone: o.user.phone || null,
         marketingOptIn: o.user.marketingOptIn,
+        isWholesale: o.user.isWholesale,
         orderCount: 0,
         totalSpend: 0,
         lastOrderAt: null,
@@ -91,6 +93,7 @@ export async function resolveSegment(
         case 'repeat':     return r.orderCount >= 2;
         case 'single':     return r.orderCount === 1;
         case 'bought_all': return totalProducts > 0 && r.productIds.size >= totalProducts;
+        case 'wholesale':  return r.isWholesale;
         default:           return true;
       }
     })();

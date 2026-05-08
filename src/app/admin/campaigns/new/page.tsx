@@ -17,6 +17,7 @@ const SEGMENTS: Segment[] = [
   { key: 'single',     label: 'مرة واحدة',           icon: '🆕' },
   { key: 'dormant',    label: 'نائمون',              icon: '💤' },
   { key: 'bought_all', label: 'اشتروا كل المنتجات',  icon: '✨' },
+  { key: 'wholesale',  label: 'تجار جملة',           icon: '🏪' },
 ];
 
 const DEFAULT_BODY = `مرحبًا {{firstName}} 👋

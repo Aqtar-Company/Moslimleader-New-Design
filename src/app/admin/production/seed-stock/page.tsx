@@ -148,6 +148,11 @@ export default function SeedStockWizard() {
           نُسعّر القطع <strong className="text-[#F5C518]">الموجودة في المخزون</strong> + القطع <strong className="text-[#F5C518]">اللي اتباعت قبل كده تاريخياً</strong>،
           لأن الاتنين كان لهم تكلفة فعلية. الصفحة بتعمل باتش افتتاحي بدون أي تأثير على المخزون أو رصيد الموردين.
         </p>
+        <p className="text-[11px] text-white/50 mt-1.5 max-w-2xl">
+          💡 لو الكميات اللي محتاجة تسعير جاية من دفعات إنتاج فعلية مش مسجلة، الأفضل تسجلها كـ
+          <Link href="/admin/production" className="text-[#F5C518] hover:underline mx-1">باتش إنتاج عادي</Link>
+          الأول — هيقلل الأرقام هنا تلقائياً.
+        </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-5">
           <Stat label="إجمالي السطور" value={String(rows.length)} />
           <Stat label="محتاج تسعير" value={String(needsSeedingCount)} highlight />

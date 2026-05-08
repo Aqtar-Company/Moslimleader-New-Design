@@ -130,22 +130,27 @@ async function summaryResponse() {
 
 async function drilldownResponse(productId: string) {
   // For the drill-down panel: every order that contains this product.
-  // We pull just the OrderItem + parent Order summary so the response
-  // stays small (could be 100s of rows for a popular product).
-  const items = await prisma.orderItem.findMany({
-    where: { productId, order: { status: { not: 'cancelled' } } },
-    include: {
-      order: {
-        select: {
-          id: true, status: true, paymentMethod: true, source: true,
-          createdAt: true, currency: true,
-          user: { select: { id: true, name: true, email: true } },
+  // Capped at 500 rows because a few popular products could otherwise
+  // ship a multi-MB payload; we surface the true total separately so
+  // the UI can show a "showing 500 of N" banner if needed.
+  const where = { productId, order: { status: { not: 'cancelled' } } } as const;
+  const [items, total] = await Promise.all([
+    prisma.orderItem.findMany({
+      where,
+      include: {
+        order: {
+          select: {
+            id: true, status: true, paymentMethod: true, source: true,
+            createdAt: true, currency: true,
+            user: { select: { id: true, name: true, email: true } },
+          },
         },
       },
-    },
-    orderBy: { order: { createdAt: 'desc' } },
-    take: 500,
-  });
+      orderBy: { order: { createdAt: 'desc' } },
+      take: 500,
+    }),
+    prisma.orderItem.count({ where }),
+  ]);
 
   const orders = items.map(it => ({
     orderItemId: it.id,
@@ -162,7 +167,7 @@ async function drilldownResponse(productId: string) {
     selectedModel: it.selectedModel,
   }));
 
-  return NextResponse.json({ productId, orders, total: orders.length });
+  return NextResponse.json({ productId, orders, total, truncated: total > orders.length });
 }
 
 function mapBy(rows: Array<{ productId: string; _sum: { quantity: number | null } }>): Map<string, number> {

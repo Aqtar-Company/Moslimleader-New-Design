@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { adminFetch, ForbiddenError } from '@/lib/admin-fetch';
 import Spinner from '@/components/admin/Spinner';
@@ -218,9 +218,8 @@ export default function SalesByProductPage() {
                   const orders = drilldown[r.productId];
                   const isOrdersLoading = drilldownLoading.has(r.productId);
                   return (
-                    <>
+                    <Fragment key={r.productId}>
                       <tr
-                        key={r.productId}
                         className={`cursor-pointer transition ${isOpen ? 'bg-amber-50' : 'hover:bg-gray-50'}`}
                         onClick={() => toggleExpand(r.productId)}
                       >
@@ -311,7 +310,7 @@ export default function SalesByProductPage() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   );
                 })}
               </tbody>

@@ -295,6 +295,150 @@ export async function GET(req: NextRequest) {
   const wholesaleValue              = Math.round(wholesaleCount * assumptions.wholesaleCustomerValue);
   const supplierRelationshipsValue  = Math.round(activeSupplierCount * assumptions.supplierRelationshipValue);
 
+  // ─────────────────────────────────────────────────────────────────
+  // Financial performance — the "is the business making money?" view.
+  // Real M&A starts here. We compute trailing-twelve-month (TTM)
+  // revenue, prior-12-month revenue (for YoY growth), gross margin
+  // from actual COGS where available, and average order value. None
+  // of these change the asset-based number; they sit alongside it.
+  // ─────────────────────────────────────────────────────────────────
+  const ttmRevenue = monthly.reduce((s, m) => s + m.revenue, 0);
+  const priorYearAgg = await prisma.$queryRaw<Array<{ revenue: number }>>`
+    SELECT COALESCE(SUM(total), 0) AS revenue
+    FROM \`Order\`
+    WHERE status != 'cancelled' AND paymentMethod != 'gift'
+      AND createdAt >= DATE_SUB(CURDATE(), INTERVAL 24 MONTH)
+      AND createdAt <  DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+  `;
+  const priorTtmRevenue = Number(priorYearAgg[0]?.revenue ?? 0);
+  const yoyRevenueGrowth = priorTtmRevenue > 0
+    ? (ttmRevenue - priorTtmRevenue) / priorTtmRevenue
+    : null;
+
+  // Gross margin: TTM revenue minus weighted-avg cost per item shipped.
+  // We sum (OrderItem.unitPrice × qty) − (avgCostByProduct[p] × qty)
+  // across all non-gift, non-cancelled OrderItems in the TTM window.
+  // Products without batches use the cogsRatio fallback for the cost
+  // half — the partial-actual / partial-heuristic nature is disclosed
+  // separately in the Data Quality section.
+  const ttmItems = await prisma.orderItem.findMany({
+    where: {
+      order: { ...NON_GIFT, createdAt: { gte: new Date(Date.now() - 365 * 86400000) } },
+    },
+    select: { productId: true, quantity: true, unitPrice: true },
+  });
+  let ttmRevenueFromItems = 0;
+  let ttmCogs = 0;
+  for (const it of ttmItems) {
+    const lineRevenue = it.unitPrice * it.quantity;
+    ttmRevenueFromItems += lineRevenue;
+    const avg = avgCostByProduct.get(it.productId);
+    const lineCost = avg !== undefined && avg > 0
+      ? avg * it.quantity
+      : lineRevenue * assumptions.cogsRatio;
+    ttmCogs += lineCost;
+  }
+  const ttmGrossProfit = ttmRevenueFromItems - ttmCogs;
+  const ttmGrossMargin = ttmRevenueFromItems > 0 ? ttmGrossProfit / ttmRevenueFromItems : 0;
+  const aov = orderCount > 0 ? totalRevenue / orderCount : 0;
+  const discountBurn = totalRevenue + totalDiscount > 0
+    ? totalDiscount / (totalRevenue + totalDiscount)
+    : 0;
+
+  // ─────────────────────────────────────────────────────────────────
+  // Concentration risk — the "what if we lose our top 5 customers"
+  // questions every buyer asks. Computed against full lifetime
+  // non-cancelled non-gift revenue so historical imports count too.
+  // ─────────────────────────────────────────────────────────────────
+  const customerSpendRows = await prisma.$queryRaw<Array<{ userId: string | null; spend: number }>>`
+    SELECT userId, SUM(total) AS spend
+    FROM \`Order\`
+    WHERE status != 'cancelled' AND paymentMethod != 'gift' AND userId IS NOT NULL
+    GROUP BY userId
+    ORDER BY spend DESC
+    LIMIT 10
+  `;
+  const top10CustomerSpend = customerSpendRows.reduce((s, r) => s + Number(r.spend), 0);
+  const customerConcentration = totalRevenue > 0 ? top10CustomerSpend / totalRevenue : 0;
+
+  // Top 5 products by revenue. We use OrderItem unitPrice × qty so
+  // discounts and promo prices are reflected correctly.
+  const productRevenueRows = await prisma.$queryRaw<Array<{ productId: string; revenue: number }>>`
+    SELECT oi.productId, SUM(oi.unitPrice * oi.quantity) AS revenue
+    FROM OrderItem oi
+    JOIN \`Order\` o ON o.id = oi.orderId
+    WHERE o.status != 'cancelled' AND o.paymentMethod != 'gift'
+    GROUP BY oi.productId
+    ORDER BY revenue DESC
+    LIMIT 5
+  `;
+  const top5ProductRevenue = productRevenueRows.reduce((s, r) => s + Number(r.revenue), 0);
+  const productConcentration = totalRevenue > 0 ? top5ProductRevenue / totalRevenue : 0;
+
+  // Currency split: % of orders by currency (matters for owners
+  // dealing with USD PayPal vs EGP local).
+  const currencyAgg = await prisma.order.groupBy({
+    by: ['currency'],
+    where: NON_GIFT,
+    _count: { _all: true },
+    _sum: { total: true },
+  });
+  const usdAgg = currencyAgg.find(c => c.currency === 'USD');
+  const egpAgg = currencyAgg.find(c => c.currency === 'EGP');
+  const usdRevenueShare = totalRevenue > 0
+    ? Number(usdAgg?._sum.total ?? 0) / totalRevenue
+    : 0;
+
+  // Geographic concentration — top 3 governorates' share of total
+  // orders. shippingAddress is JSON so we read every order and
+  // tally in JS. This is bounded by the order count, which we
+  // already keep paged in the existing flow.
+  const orderGovs = await prisma.order.findMany({
+    where: NON_GIFT,
+    select: { shippingAddress: true, total: true },
+    take: 5000, // cap so the report stays snappy on huge datasets
+  });
+  const govSpend = new Map<string, number>();
+  let govSpendTotal = 0;
+  for (const o of orderGovs) {
+    const addr = o.shippingAddress as { governorate?: string } | null;
+    const g = addr?.governorate?.trim();
+    if (!g) continue;
+    govSpend.set(g, (govSpend.get(g) ?? 0) + o.total);
+    govSpendTotal += o.total;
+  }
+  const topGovs = Array.from(govSpend.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+  const top3GovShare = govSpendTotal > 0
+    ? topGovs.reduce((s, [, v]) => s + v, 0) / govSpendTotal
+    : 0;
+
+  // Supplier concentration — top supplier's share of total batch spend.
+  const supplierSpendRows = await prisma.productionBatch.groupBy({
+    by: ['supplierId'],
+    _sum: { totalCost: true },
+  });
+  const totalBatchSpend = supplierSpendRows.reduce((s, r) => s + Number(r._sum.totalCost ?? 0), 0);
+  const topSupplierSpend = supplierSpendRows
+    .filter(r => r.supplierId !== null)
+    .sort((a, b) => Number(b._sum.totalCost ?? 0) - Number(a._sum.totalCost ?? 0))[0];
+  const supplierConcentration = totalBatchSpend > 0 && topSupplierSpend
+    ? Number(topSupplierSpend._sum.totalCost ?? 0) / totalBatchSpend
+    : 0;
+
+  // ─────────────────────────────────────────────────────────────────
+  // Data quality counters — surfaces what's heuristic vs. data-driven
+  // so the reader can calibrate confidence. Numbers feed into the
+  // Disclosures section on the page.
+  // ─────────────────────────────────────────────────────────────────
+  const bostaOrphanCount = await prisma.order.count({
+    where: { paymentMethod: 'bosta-historical', items: { none: {} } },
+  });
+  const productsWithoutBatches = products.length - productsWithBatches;
+  const assumptionsRow = await prisma.setting.findUnique({ where: { key: 'valuation-assumptions' } });
+  const assumptionsUpdatedAt = assumptionsRow?.updatedAt?.toISOString() ?? null;
+
   // Final valuation buckets
   // Supplier liabilities are deducted because any buyer of the company
   // inherits the debt; surfacing it here keeps the headline honest.
@@ -303,6 +447,19 @@ export async function GET(req: NextRequest) {
                          - Math.max(0, supplierLiabilities);
   const fairValue        = baseValue * assumptions.fairMultiplier;
   const strategicValue   = baseValue * assumptions.strategicMultiplier;
+
+  // Market-approach valuation band — TTM revenue × industry-typical
+  // multiplier. Range allows the reader to see the spread between a
+  // commodity (low end) and a high-growth/high-margin (high end)
+  // valuation. Reported alongside, NOT replacing, the asset-based
+  // number — the reader picks based on context.
+  const marketLow  = Math.round(ttmRevenue * assumptions.revenueMultipleLow);
+  const marketHigh = Math.round(ttmRevenue * assumptions.revenueMultipleHigh);
+  // Reconciled range = union of asset-based floor and market-approach
+  // band. The midpoint is what we suggest as the "headline" estimate.
+  const reconciledLow  = Math.min(baseValue, marketLow);
+  const reconciledHigh = Math.max(strategicValue, marketHigh);
+  const reconciledMid  = (reconciledLow + reconciledHigh) / 2;
 
   return NextResponse.json({
     generatedAt: new Date().toISOString(),
@@ -396,6 +553,43 @@ export async function GET(req: NextRequest) {
       customerDb: { value: customerDbValue, perCustomer: assumptions.customerDbValue },
       wholesale: { value: wholesaleValue, perCustomer: assumptions.wholesaleCustomerValue, count: wholesaleCount },
       supplierRelationships: { value: supplierRelationshipsValue, perSupplier: assumptions.supplierRelationshipValue, count: activeSupplierCount },
+      // Trailing-twelve-month (TTM) financial performance — revenue,
+      // gross margin, AOV, growth. The single most important section
+      // for any real M&A conversation.
+      financial: {
+        ttmRevenue: Math.round(ttmRevenue),
+        priorTtmRevenue: Math.round(priorTtmRevenue),
+        yoyRevenueGrowth, // null when no prior-year baseline
+        grossProfit: Math.round(ttmGrossProfit),
+        grossMargin: ttmGrossMargin,
+        aov: Math.round(aov),
+        discountBurn,
+        // Disclosure: what fraction of COGS came from real batches vs
+        // the cogsRatio fallback. The page surfaces this so readers
+        // know how solid the gross margin number is.
+        productsCostedFromBatches: productsWithBatches,
+        productsCostedFromHeuristic: productsWithoutBatches,
+      },
+      // Concentration risk — the "what if we lose our top 5
+      // customers" questions every buyer asks first.
+      concentration: {
+        top10CustomersRevenueShare: customerConcentration,
+        top5ProductsRevenueShare: productConcentration,
+        top3GovernoratesShare: top3GovShare,
+        topGovernorates: topGovs.map(([name, spend]) => ({ name, spend: Math.round(spend) })),
+        usdRevenueShare,
+        topSupplierShare: supplierConcentration,
+      },
+      // Data quality flags — every gap the reader should weigh against
+      // the headline figure. Surfaced as an explicit Disclosures
+      // section on the page.
+      dataQuality: {
+        productsCostedFromBatches: productsWithBatches,
+        productsCostedFromHeuristic: productsWithoutBatches,
+        bostaOrphanCount,
+        opexTracked: false,
+        assumptionsUpdatedAt,
+      },
     },
     valuation: {
       base: Math.round(baseValue),
@@ -404,6 +598,15 @@ export async function GET(req: NextRequest) {
       // Expose the multipliers so the UI can show them next to each scenario.
       fairMultiplier: assumptions.fairMultiplier,
       strategicMultiplier: assumptions.strategicMultiplier,
+      // Market approach (revenue × industry multiple).
+      marketLow,
+      marketHigh,
+      revenueMultipleLow: assumptions.revenueMultipleLow,
+      revenueMultipleHigh: assumptions.revenueMultipleHigh,
+      // Reconciled "professional" valuation range.
+      reconciledLow: Math.round(reconciledLow),
+      reconciledHigh: Math.round(reconciledHigh),
+      reconciledMid: Math.round(reconciledMid),
     },
     products: products.map(p => ({
       ...p,

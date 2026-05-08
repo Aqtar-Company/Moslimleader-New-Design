@@ -15,6 +15,11 @@ export interface ValuationAssumptions {
   supplierRelationshipValue: number;  // EGP per ACTIVE supplier — established sourcing relationships have switching cost
   fairMultiplier: number;     // base × this = balanced market value
   strategicMultiplier: number;// base × this = strategic-buyer value
+  // Market-approach multipliers applied to TTM revenue. Egyptian SME
+  // e-commerce typically trades 1.5x–3.0x annual revenue; high-margin
+  // / high-growth pushes toward the upper bound.
+  revenueMultipleLow: number;
+  revenueMultipleHigh: number;
   activeWindowDays: number;   // a customer is "active" if they placed a valid order within this many days
 }
 
@@ -34,6 +39,8 @@ export const DEFAULT_VALUATION_ASSUMPTIONS: ValuationAssumptions = {
   supplierRelationshipValue: 2000,
   fairMultiplier: 1.25,
   strategicMultiplier: 1.55,
+  revenueMultipleLow: 1.5,
+  revenueMultipleHigh: 3.0,
   activeWindowDays: 90,
 };
 
@@ -100,6 +107,8 @@ function sanitize(input: Partial<ValuationAssumptions>): {
   take('supplierRelationshipValue', 0, 10_000_000);
   take('fairMultiplier', 1, 10);
   take('strategicMultiplier', 1, 20);
+  take('revenueMultipleLow', 0, 20);
+  take('revenueMultipleHigh', 0, 20);
   take('activeWindowDays', 1, 3650, true);
   return { sanitized, rejected, clamped };
 }

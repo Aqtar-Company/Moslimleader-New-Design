@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/context/AuthContext';
 
@@ -15,6 +16,8 @@ interface Assumptions {
   supplierRelationshipValue: number;
   fairMultiplier: number;
   strategicMultiplier: number;
+  revenueMultipleLow: number;
+  revenueMultipleHigh: number;
   activeWindowDays: number;
 }
 
@@ -43,8 +46,32 @@ interface ValuationData {
     customerDb: { value: number; perCustomer: number };
     wholesale: { value: number; perCustomer: number; count: number };
     supplierRelationships: { value: number; perSupplier: number; count: number };
+    financial: {
+      ttmRevenue: number; priorTtmRevenue: number; yoyRevenueGrowth: number | null;
+      grossProfit: number; grossMargin: number; aov: number; discountBurn: number;
+      productsCostedFromBatches: number; productsCostedFromHeuristic: number;
+    };
+    concentration: {
+      top10CustomersRevenueShare: number;
+      top5ProductsRevenueShare: number;
+      top3GovernoratesShare: number;
+      topGovernorates: Array<{ name: string; spend: number }>;
+      usdRevenueShare: number;
+      topSupplierShare: number;
+    };
+    dataQuality: {
+      productsCostedFromBatches: number; productsCostedFromHeuristic: number;
+      bostaOrphanCount: number; opexTracked: boolean;
+      assumptionsUpdatedAt: string | null;
+    };
   };
-  valuation: { base: number; fair: number; strategic: number; fairMultiplier: number; strategicMultiplier: number };
+  valuation: {
+    base: number; fair: number; strategic: number;
+    fairMultiplier: number; strategicMultiplier: number;
+    marketLow: number; marketHigh: number;
+    revenueMultipleLow: number; revenueMultipleHigh: number;
+    reconciledLow: number; reconciledHigh: number; reconciledMid: number;
+  };
   products: Array<{ id: string; name: string; nameEn: string | null; slug: string; price: number; priceUsd: number; category: string; stock: number; sold: number; soldLive: number; productionBatchUnits: number; stockValue: number }>;
   books: Array<{ id: string; title: string; titleEn: string | null; price: number; priceUSD: number | null; isPublished: boolean; language: string | null }>;
 }
@@ -209,14 +236,50 @@ export default function ValuationPage() {
         </div>
 
         <div className="mt-8 pt-8 border-t border-white/10">
-          <p className="text-[#F5C518] text-xs font-bold tracking-widest">القيمة المتوازنة (المرشَّحة)</p>
-          <p className="text-4xl sm:text-5xl font-black mt-3">{fmt(valuation.fair)} <span className="text-xl">ج.م</span></p>
-          <p className="text-white/60 text-xs sm:text-sm mt-2 max-w-md mx-auto">قيمة سوقية مفترضة (Base × {valuation.fairMultiplier}). تقدير داخلي يعتمد على الافتراضات الموضّحة أدناه — يحتاج مراجعة محاسب قبل الاستخدام في تفاوض رسمي.</p>
+          <p className="text-[#F5C518] text-xs font-bold tracking-widest">نطاق التقييم المُسوّى (Reconciled Range)</p>
+          <p className="text-3xl sm:text-5xl font-black mt-3">
+            {fmt(valuation.reconciledLow)} <span className="text-lg sm:text-xl text-white/60 mx-2">–</span> {fmt(valuation.reconciledHigh)}
+            <span className="text-base sm:text-xl text-white/60 mx-2">ج.م</span>
+          </p>
+          <p className="text-white/70 text-xs sm:text-sm mt-2">المتوسط المقترح: <strong className="text-[#F5C518]">{fmt(valuation.reconciledMid)} ج.م</strong></p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-5 max-w-3xl mx-auto text-[11px] sm:text-xs">
+            <div className="bg-white/5 rounded-lg px-3 py-2 border border-white/10">
+              <p className="text-white/50">منهج الأصول (Asset)</p>
+              <p className="text-white font-bold mt-0.5">{fmt(valuation.base)} – {fmt(valuation.strategic)} ج.م</p>
+            </div>
+            <div className="bg-white/5 rounded-lg px-3 py-2 border border-white/10">
+              <p className="text-white/50">منهج مضاعف الإيرادات (Market)</p>
+              <p className="text-white font-bold mt-0.5">{fmt(valuation.marketLow)} – {fmt(valuation.marketHigh)} ج.م</p>
+              <p className="text-white/40 text-[10px] mt-0.5">الإيرادات السنوية × {valuation.revenueMultipleLow}–{valuation.revenueMultipleHigh}</p>
+            </div>
+            <div className="bg-white/5 rounded-lg px-3 py-2 border border-white/10">
+              <p className="text-white/50">الإيرادات السنوية (TTM)</p>
+              <p className="text-white font-bold mt-0.5">{fmt(metrics.financial.ttmRevenue)} ج.م</p>
+              {metrics.financial.yoyRevenueGrowth !== null && (
+                <p className={`text-[10px] mt-0.5 ${metrics.financial.yoyRevenueGrowth >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                  {metrics.financial.yoyRevenueGrowth >= 0 ? '▲' : '▼'} {pct(Math.abs(metrics.financial.yoyRevenueGrowth))} YoY
+                </p>
+              )}
+            </div>
+          </div>
+          <p className="text-white/40 text-[10px] sm:text-xs mt-4 max-w-md mx-auto">⚠️ تقدير داخلي — يحتاج عناية واجبة (due diligence) قبل التفاوض الرسمي.</p>
         </div>
       </div>
 
       {/* Reconcile pre-fix PayPal orders — only renders when orphans exist */}
       <PaypalReconcileBanner onDone={reload} />
+
+      {/* Financial performance — the most important section for any
+          real M&A conversation. TTM revenue, gross margin, growth. */}
+      <FinancialSection metrics={metrics} />
+
+      {/* Concentration risk — what fraction of revenue depends on a
+          handful of customers, products, governorates, or suppliers. */}
+      <ConcentrationSection metrics={metrics} />
+
+      {/* Data quality / disclosures — every gap the reader should
+          weigh against the headline figure. Honesty > false precision. */}
+      <DataQualitySection metrics={metrics} />
 
       {/* Gaps section — front and centre because the valuation is incomplete without these */}
       <GapsSection metrics={metrics} assumptions={assumptions} />
@@ -280,6 +343,173 @@ export default function ValuationPage() {
 // ==========================================================================
 // Top-level sections
 // ==========================================================================
+
+// ────────────────────────────────────────────────────────────────────────────
+// Financial Performance — TTM revenue, margin, growth. The single most
+// important section for an M&A conversation. EBITDA is openly disclosed
+// as untracked (the system doesn't capture OpEx); we tell the reader.
+// ────────────────────────────────────────────────────────────────────────────
+function FinancialSection({ metrics }: { metrics: ValuationData['metrics'] }) {
+  const f = metrics.financial;
+  const yoyTone = f.yoyRevenueGrowth === null ? 'neutral'
+    : f.yoyRevenueGrowth >= 0 ? 'good' : 'bad';
+  const marginTone = f.grossMargin >= 0.4 ? 'good'
+    : f.grossMargin >= 0.2 ? 'neutral' : 'bad';
+  return (
+    <Section icon="📈" title="الأداء المالي" subtitle="إيرادات آخر 12 شهر، هامش الربح الإجمالي، معدل النمو السنوي">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <FinKPI label="إيرادات آخر 12 شهر (TTM)" value={`${fmt(f.ttmRevenue)} ج.م`} hint="مجموع Order.total لآخر 12 شهر، باستثناء الملغي والهدايا." />
+        <FinKPI
+          label="معدل النمو السنوي (YoY)"
+          value={f.yoyRevenueGrowth === null ? '—' : `${f.yoyRevenueGrowth >= 0 ? '▲' : '▼'} ${pct(Math.abs(f.yoyRevenueGrowth))}`}
+          tone={yoyTone}
+          hint={`مقارنة TTM (${fmt(f.ttmRevenue)}) بآخر 12 شهر سابقة (${fmt(f.priorTtmRevenue)}).`}
+        />
+        <FinKPI label="هامش الربح الإجمالي" value={pct(f.grossMargin)} tone={marginTone} sub={`${fmt(f.grossProfit)} ج.م ربح إجمالي`} hint="إيرادات OrderItem ناقص تكلفة الباتش المرجَّحة. المنتجات بدون باتشات تستخدم نسبة 35% كاحتياطي." />
+        <FinKPI label="متوسط قيمة الطلب (AOV)" value={`${fmt(f.aov)} ج.م`} hint="إجمالي الإيرادات ÷ عدد الطلبات الصحيحة." />
+        <FinKPI label="نسبة الخصومات من البيع" value={pct(f.discountBurn)} hint="إجمالي الخصومات ÷ (الإيرادات + الخصومات). يقلل من الهامش الفعلي." />
+        <FinKPI
+          label="منتجات بتكلفة فعلية"
+          value={`${fmt(f.productsCostedFromBatches)} / ${fmt(f.productsCostedFromBatches + f.productsCostedFromHeuristic)}`}
+          tone={f.productsCostedFromHeuristic === 0 ? 'good' : 'neutral'}
+          hint="منتجات لها باتشات إنتاج فعلية تستخدم تكلفتها الحقيقية. الباقي يستخدم نسبة افتراضية."
+        />
+      </div>
+      {/* EBITDA disclosure — we don't track OpEx, say so directly */}
+      <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 mt-4">
+        <p className="text-[11px] text-amber-900 leading-relaxed">
+          ⚠️ <strong>EBITDA / صافي الربح غير محسوب.</strong> النظام لا يتتبّع المصروفات التشغيلية (الرواتب، الإيجار، التسويق، الشحن المركزي).
+          هامش الربح الإجمالي الموضّح ({pct(f.grossMargin)}) لا يعكس صافي ربحية الشركة. للحصول على EBITDA حقيقي يجب جمع المصروفات
+          من سجلات خارج النظام وخصمها من إجمالي الربح.
+        </p>
+      </div>
+    </Section>
+  );
+}
+
+function FinKPI({ label, value, sub, hint, tone }: { label: string; value: string; sub?: string; hint?: string; tone?: 'good' | 'bad' | 'neutral' }) {
+  const cls = tone === 'good' ? 'text-emerald-700' : tone === 'bad' ? 'text-red-700' : 'text-gray-900';
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-3">
+      <p className="text-[10px] text-gray-500 font-bold tracking-widest flex items-center gap-1">
+        {label}
+        {hint && <Tooltip text={hint} />}
+      </p>
+      <p className={`text-xl font-black mt-1 ${cls}`}>{value}</p>
+      {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Concentration risk — buyer's first questions: "what if your top 5
+// customers leave?", "what if your top supplier raises prices?"
+// ────────────────────────────────────────────────────────────────────────────
+function ConcentrationSection({ metrics }: { metrics: ValuationData['metrics'] }) {
+  const c = metrics.concentration;
+  const flag = (share: number, threshold: number): 'good' | 'bad' | 'neutral' =>
+    share === 0 ? 'neutral' : share > threshold ? 'bad' : 'good';
+  return (
+    <Section icon="⚠️" title="تحليل المخاطر المركّزة" subtitle="ما هي نسبة الإيرادات التي تعتمد على عدد قليل من العملاء/المنتجات/الموردين؟">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <FinKPI
+          label="تركّز العملاء (أعلى 10)"
+          value={pct(c.top10CustomersRevenueShare)}
+          tone={flag(c.top10CustomersRevenueShare, 0.4)}
+          hint="حصة أعلى 10 عملاء من إجمالي الإيرادات. أعلى من 40% = خطر تركّز عالي."
+        />
+        <FinKPI
+          label="تركّز المنتجات (أعلى 5)"
+          value={pct(c.top5ProductsRevenueShare)}
+          tone={flag(c.top5ProductsRevenueShare, 0.6)}
+          hint="حصة أعلى 5 منتجات من الإيرادات. الاعتماد الكبير على منتج واحد = خطر."
+        />
+        <FinKPI
+          label="تركّز جغرافي (أعلى 3 محافظات)"
+          value={pct(c.top3GovernoratesShare)}
+          sub={c.topGovernorates.length > 0 ? c.topGovernorates.map(g => g.name).join(' · ') : undefined}
+          tone={flag(c.top3GovernoratesShare, 0.7)}
+          hint="حصة أعلى 3 محافظات من إجمالي إنفاق الطلبات. التركيز الشديد = خطر تنويع."
+        />
+        <FinKPI
+          label="حصة العملة الأجنبية (USD)"
+          value={pct(c.usdRevenueShare)}
+          hint="نسبة الإيرادات بالدولار (PayPal). تعرّض لمخاطر سعر الصرف."
+        />
+        <FinKPI
+          label="تركّز الموردين (الأكبر)"
+          value={pct(c.topSupplierShare)}
+          tone={flag(c.topSupplierShare, 0.5)}
+          hint="حصة أكبر مورد من إجمالي تكلفة الإنتاج. أعلى من 50% = خطر فقدان مورد رئيسي."
+        />
+      </div>
+      <p className="text-[10px] text-gray-500 mt-3 leading-relaxed">
+        الحدود المرجعية تعكس الممارسة الصناعية: العملاء &lt;40%، المنتجات &lt;60%، الجغرافيا &lt;70%، المورد الواحد &lt;50%.
+        تجاوز هذه الحدود يخفض التقييم لأن المشتري يخصم لمخاطر فقدان الإيراد.
+      </p>
+    </Section>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Data quality / disclosures — explicit list of what's heuristic vs.
+// data-driven. A professional report tells the reader where to be
+// skeptical instead of pretending precision it doesn't have.
+// ────────────────────────────────────────────────────────────────────────────
+function DataQualitySection({ metrics }: { metrics: ValuationData['metrics'] }) {
+  const q = metrics.dataQuality;
+  const totalProducts = q.productsCostedFromBatches + q.productsCostedFromHeuristic;
+  const batchCoverage = totalProducts > 0 ? q.productsCostedFromBatches / totalProducts : 0;
+  return (
+    <section className="bg-red-50 border-2 border-red-300 rounded-2xl p-5 valuation-section">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xl">🔍</span>
+        <h2 className="text-base font-black text-red-900">جودة البيانات والإفصاحات (Data Quality)</h2>
+      </div>
+      <p className="text-[11px] text-red-800 mb-3">قراءة شفّافة للقارئ: ما الذي يستند إلى بيانات حقيقية، وما الذي يعتمد على افتراض؟</p>
+      <ul className="space-y-2 text-xs text-red-900">
+        <li className="flex items-start gap-2">
+          <span>📦</span>
+          <span>
+            <strong>{fmt(q.productsCostedFromBatches)}</strong> من <strong>{fmt(totalProducts)}</strong> منتج لها تكلفة فعلية من باتشات الإنتاج ({pct(batchCoverage)}).
+            الباقي ({fmt(q.productsCostedFromHeuristic)}) يستخدم نسبة COGS افتراضية 35% — هامش الربح الموضّح يعكس مزيج البيانات الحقيقية والاحتياطية.
+          </span>
+        </li>
+        {q.bostaOrphanCount > 0 && (
+          <li className="flex items-start gap-2">
+            <span>📋</span>
+            <span>
+              <strong>{fmt(q.bostaOrphanCount)}</strong> طلب بوسطة مستورد بدون عناصر منتج (OrderItems).
+              هذه الطلبات لا تظهر في تقرير المبيعات أو هامش الربح.{' '}
+              <Link href="/admin/reports/bosta-orphans" className="underline font-bold">إصلاح الآن</Link>
+            </span>
+          </li>
+        )}
+        <li className="flex items-start gap-2">
+          <span>💰</span>
+          <span>
+            <strong>المصروفات التشغيلية غير مسجَّلة</strong> في النظام (رواتب، إيجار، تسويق، شحن مركزي).
+            تقدير EBITDA يتطلب جمع هذه الأرقام يدوياً من سجلات خارج النظام.
+          </span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span>📅</span>
+          <span>
+            آخر تحديث للافتراضات: <strong>{q.assumptionsUpdatedAt ? new Date(q.assumptionsUpdatedAt).toLocaleDateString('en-GB') : 'القيم الافتراضية (لم يتم التعديل بعد)'}</strong>.
+            افتراضات الـ IP وقيمة العميل والمنصة تقديرات داخلية تحتاج مراجعة احترافية لكل صفقة.
+          </span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span>📐</span>
+          <span>
+            <strong>منهجية التقييم:</strong> النطاق المُسوَّى يجمع منهج الأصول (asset floor) مع منهج مضاعف الإيرادات (market band).
+            لا يوجد منهج DCF (income approach) لأن صافي الربح غير محسوب. عند التفاوض الرسمي، يجب إضافة منهج DCF بعد جمع المصروفات.
+          </span>
+        </li>
+      </ul>
+    </section>
+  );
+}
 
 function GapsSection({ metrics, assumptions }: { metrics: ValuationData['metrics']; assumptions: Assumptions }) {
   // Build a punch list of measurable gaps. Each entry surfaces what we
@@ -380,6 +610,8 @@ function AssumptionsTable({ assumptions, defaults }: { assumptions: Assumptions;
     { key: 'customerDbValue', label: 'قيمة كل عميل في القاعدة', format: n => `${fmt(n)} ج.م`, explain: 'قيمة قاعدة بيانات العميل الواحد كأصل قابل لإعادة الاستخدام (تسويق، إعادة استهداف).' },
     { key: 'wholesaleCustomerValue', label: 'قيمة كل تاجر جملة', format: n => `${fmt(n)} ج.م`, explain: 'تاجر الجملة يُمثّل علاقة بيع متكرر بكميات كبيرة، بقيمة أعلى بكثير من العميل العادي.' },
     { key: 'supplierRelationshipValue', label: 'قيمة كل علاقة مع مورد', format: n => `${fmt(n)} ج.م`, explain: 'العلاقات الموثَّقة مع موردين موثوقين أصل تشغيلي حقيقي — تكلفة استبداله بأقل تقدير.' },
+    { key: 'revenueMultipleLow', label: 'مضاعف الإيرادات (الحد الأدنى)', format: n => `× ${n}`, explain: 'مضاعف TTM للحد الأدنى لقيمة السوق. التجارة الإلكترونية المصرية الصغيرة تتراوح 1.5–3.0×.' },
+    { key: 'revenueMultipleHigh', label: 'مضاعف الإيرادات (الحد الأعلى)', format: n => `× ${n}`, explain: 'مضاعف TTM للحد الأعلى — للشركات عالية الهامش أو سريعة النمو أو ذات IP محمي.' },
     { key: 'fairMultiplier', label: 'مضاعف القيمة المتوازنة', format: n => `× ${n}`, explain: 'القيمة الأساسية تُضرَب في هذا الرقم لتعكس القيمة السوقية المتوازنة.' },
     { key: 'strategicMultiplier', label: 'مضاعف القيمة الاستراتيجية', format: n => `× ${n}`, explain: 'لمشتري بحاجة استراتيجية فعلية. أعلى من المتوازنة لأنه يضيف قيمة تكاملية.' },
     { key: 'activeWindowDays', label: 'نافذة العميل النشط (أيام)', format: n => `${n} يوم`, explain: 'عميل عمله طلب صحيح خلال هذه النافذة يُحتسب نشطًا.' },
@@ -442,6 +674,8 @@ function AssumptionsForm({ initial, defaults, onSave, onCancel }: { initial: Ass
     <div className="space-y-4 print:hidden">
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <AssumptionsField k="cogsRatio" label="نسبة COGS (0–1)" step={0.01} max={1} value={v.cogsRatio} defaultValue={defaults.cogsRatio} onChange={set} />
+        <AssumptionsField k="revenueMultipleLow" label="مضاعف الإيرادات (أدنى)" step={0.1} min={0} value={v.revenueMultipleLow} defaultValue={defaults.revenueMultipleLow} onChange={set} />
+        <AssumptionsField k="revenueMultipleHigh" label="مضاعف الإيرادات (أعلى)" step={0.1} min={0} value={v.revenueMultipleHigh} defaultValue={defaults.revenueMultipleHigh} onChange={set} />
         <AssumptionsField k="fairMultiplier" label="مضاعف عادل" step={0.05} min={1} value={v.fairMultiplier} defaultValue={defaults.fairMultiplier} onChange={set} />
         <AssumptionsField k="strategicMultiplier" label="مضاعف استراتيجي" step={0.05} min={1} value={v.strategicMultiplier} defaultValue={defaults.strategicMultiplier} onChange={set} />
         <AssumptionsField k="ipBookValue" label="قيمة كل كتاب (ج.م)" step={1000} value={v.ipBookValue} defaultValue={defaults.ipBookValue} onChange={set} />

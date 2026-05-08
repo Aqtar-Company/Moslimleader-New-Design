@@ -137,7 +137,15 @@ export async function getAssistantSettings(): Promise<AssistantSettings> {
     const row = await prisma.setting.findUnique({ where: { key: SETTINGS_KEY } });
     if (!row?.value) return DEFAULTS;
     const parsed = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
-    return { ...DEFAULTS, ...parsed };
+    // Defensive merge: a Setting saved BEFORE the apiKeys field
+    // existed will spread `apiKeys: undefined` over DEFAULTS.apiKeys,
+    // wiping the empty-object default. Force apiKeys to always be an
+    // object so downstream `settings.apiKeys.openai` never throws.
+    const merged = { ...DEFAULTS, ...parsed } as AssistantSettings;
+    if (!merged.apiKeys || typeof merged.apiKeys !== 'object') {
+      merged.apiKeys = {};
+    }
+    return merged;
   } catch {
     return DEFAULTS;
   }

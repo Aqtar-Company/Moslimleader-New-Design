@@ -124,12 +124,13 @@ export async function GET() {
   // Strip the actual key values out of `settings` before returning —
   // even an admin shouldn't get the plaintext key in a JSON response.
   // We surface only "configured?" booleans per provider.
+  const safeKeys = settings.apiKeys ?? {};
   const settingsSafe = {
     ...settings,
     apiKeys: {
-      openai:    !!settings.apiKeys.openai,
-      gemini:    !!settings.apiKeys.gemini,
-      anthropic: !!settings.apiKeys.anthropic,
+      openai:    !!safeKeys.openai,
+      gemini:    !!safeKeys.gemini,
+      anthropic: !!safeKeys.anthropic,
     },
   };
 

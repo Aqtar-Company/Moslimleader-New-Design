@@ -184,18 +184,28 @@ export default function AIFacebookAssistantPage() {
     setLoading(true);
     try {
       const res = await adminFetch('/api/admin/ai-facebook-assistant');
-      if (!res.ok) throw new Error('failed');
+      if (!res.ok) {
+        // Surface the actual status / error body so a deploy issue
+        // doesn't hide behind a generic "load failed" toast.
+        const txt = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status}: ${txt.slice(0, 200) || 'no body'}`);
+      }
       const d = await res.json();
       setData(d);
       setEnabled(d.settings.enabled);
-      setSystemPrompt(d.settings.systemPrompt);
+      setSystemPrompt(d.settings.systemPrompt ?? '');
       setProvider(d.settings.provider ?? 'gemini');
-      setModel(d.settings.model);
-      setMaxTokens(d.settings.maxTokens);
+      setModel(d.settings.model ?? 'gemini-1.5-flash');
+      setMaxTokens(d.settings.maxTokens ?? 300);
       setTriggerKeywordsRaw((d.settings.triggerKeywords ?? []).join(', '));
     } catch (err) {
       if (err instanceof ForbiddenError) setForbidden(true);
-      else addToast('فشل التحميل', 'error');
+      else {
+        const msg = err instanceof Error ? err.message : 'فشل التحميل';
+        addToast(`فشل التحميل: ${msg}`, 'error', 8000);
+        // eslint-disable-next-line no-console
+        console.error('[ai-facebook-assistant] load failed', err);
+      }
     }
     setLoading(false);
   };
@@ -376,7 +386,9 @@ export default function AIFacebookAssistantPage() {
           </div>
           {(['gemini', 'openai', 'anthropic'] as AiProvider[]).map(p => {
             const info = PROVIDER_INFO[p];
-            const isConfigured = data.settings.apiKeys[p];
+            // apiKeys may be undefined on a fresh install — fall back
+            // to false rather than throwing.
+            const isConfigured = !!(data.settings.apiKeys && data.settings.apiKeys[p]);
             const isActive = provider === p;
             return (
               <div key={p} className={`bg-white border rounded-lg p-3 ${isActive ? 'border-blue-300 ring-1 ring-blue-200' : 'border-gray-200'}`}>

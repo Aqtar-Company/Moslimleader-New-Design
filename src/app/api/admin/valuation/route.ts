@@ -12,6 +12,8 @@ import { logActionSafe } from '@/lib/audit-log';
 import { totalReceivables } from '@/lib/customer-receivables';
 import { effectiveStock } from '@/lib/inventory-value';
 import { getPayrollSummary } from '@/lib/team-payroll';
+import { getRoyaltyAccrualSummary } from '@/lib/royalties';
+import { getPartnerCapTable } from '@/lib/partners';
 
 // GET /api/admin/valuation — live company valuation report.
 // Gated solely on the `valuation.read` permission. The previous double
@@ -510,13 +512,20 @@ export async function GET() {
   // retail credit cases) owe us. Real assets that any buyer inherits.
   const customerReceivables = await totalReceivables();
 
+  // Royalty accruals — IP-rights holders' share of TTM gross profit
+  // that hasn't been paid out yet. Treated as a short-term liability
+  // (subtracts from baseValue) just like supplier debt.
+  const royaltyAccrual = await getRoyaltyAccrualSummary();
+  const totalAccruedRoyalties = royaltyAccrual.totalAccrued;
+
   // Supplier liabilities are deducted because any buyer of the company
   // inherits the debt; surfacing it here keeps the headline honest.
   // Receivables work the opposite way — they ADD to baseValue.
   const baseValue        = inventoryCost + ipTotal + techValue + customerDbValue
                          + wholesaleValue + supplierRelationshipsValue
                          + customerReceivables
-                         - Math.max(0, supplierLiabilities);
+                         - Math.max(0, supplierLiabilities)
+                         - Math.max(0, totalAccruedRoyalties);
   const fairValue        = baseValue * assumptions.fairMultiplier;
   const strategicValue   = baseValue * assumptions.strategicMultiplier;
 
@@ -532,6 +541,12 @@ export async function GET() {
   const reconciledLow  = Math.min(baseValue, marketLow);
   const reconciledHigh = Math.max(strategicValue, marketHigh);
   const reconciledMid  = (reconciledLow + reconciledHigh) / 2;
+
+  // Partners cap-table — each active stakeholder's monetary share of
+  // the reconciled midpoint. Surfaced alongside the headline number so
+  // the owner can see "if I sell at the midpoint, what does each
+  // partner walk away with?"
+  const capTable = await getPartnerCapTable(reconciledMid);
 
   // ─────────────────────────────────────────────────────────────────
   // Sensitivity analysis — how does the headline midpoint change
@@ -674,6 +689,29 @@ export async function GET() {
       wholesale: { value: wholesaleValue, perCustomer: assumptions.wholesaleCustomerValue, count: wholesaleCount },
       supplierRelationships: { value: supplierRelationshipsValue, perSupplier: assumptions.supplierRelationshipValue, count: activeSupplierCount },
       customerReceivables: { value: Math.round(customerReceivables) },
+      // Royalty / IP accruals — TTM-based amounts owed to rights-holders
+      // for their percentage of profit on linked products. Subtracts
+      // from baseValue. Managed at /admin/ip.
+      royalties: {
+        totalAccrued: Math.round(totalAccruedRoyalties),
+        agreementsActive: royaltyAccrual.agreementsActive,
+        topAccruals: royaltyAccrual.topAccruals.map(t => ({
+          payeeName: t.payeeName,
+          amountAccrued: Math.round(t.amountAccrued),
+        })),
+      },
+      // Partners / equity holders — managed at /admin/partners. Each
+      // active partner's share of reconciledMid is surfaced so the
+      // report can render a cap-table view.
+      partners: {
+        activeCount: capTable.summary.activeCount,
+        totalCount: capTable.summary.totalCount,
+        totalStakePercentage: capTable.summary.totalStakePercentage,
+        remainingCompanyShare: capTable.summary.remainingCompanyShare,
+        totalCapitalContribution: Math.round(capTable.summary.totalCapitalContribution),
+        isOverCommitted: capTable.summary.isOverCommitted,
+        rows: capTable.rows,
+      },
       // Trailing-twelve-month (TTM) financial performance — revenue,
       // gross margin, AOV, growth. The single most important section
       // for any real M&A conversation.

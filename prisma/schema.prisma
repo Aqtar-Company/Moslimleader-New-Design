@@ -304,6 +304,58 @@ model Employee {
   @@index([role])
 }
 
+// Royalty / intellectual-property agreement. A rights-holder (typically
+// the author) earns a percentage of the gross profit of specific
+// products for a defined period. Distinct from Employee — a person who
+// is both a manager and an author would have one row in each table.
+//
+// productIds is a JSON array of Product.id strings. Kept simple
+// (no junction table) because royalties usually span a small fixed set
+// of products. The percentage is applied to TTM gross profit (revenue
+// minus weighted-avg COGS) of those products.
+//
+// lastPaidAt is a manual marker the owner toggles after issuing
+// payment. v1 does not track per-payment history — phase 2 could add
+// a RoyaltyPayment ledger if multi-payment audit becomes useful.
+model RoyaltyAgreement {
+  id              String    @id @default(cuid())
+  payeeName       String
+  contactPhone    String?
+  contactEmail    String?
+  percentage      Float     // 0–100, applied to gross profit (not revenue)
+  productIds      Json      // string[] of Product.id
+  startDate       DateTime
+  endDate         DateTime?
+  isActive        Boolean   @default(true)
+  lastPaidAt      DateTime?
+  notes           String?   @db.Text
+  createdByUserId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  @@index([isActive])
+}
+
+// Partners and investors — equity stakeholders, neither salaried nor
+// royalty-based. Their stake informs the cap-table view in the
+// valuation report (each partner's share of reconciledMid).
+model Partner {
+  id                  String    @id @default(cuid())
+  name                String
+  type                String    // 'founder' | 'investor' | 'silent-partner' | 'other'
+  stakePercentage     Float     // 0–100
+  capitalContribution Float     @default(0) // EGP put in (informational)
+  joinDate            DateTime
+  exitDate            DateTime?
+  isActive            Boolean   @default(true)
+  contactPhone        String?
+  contactEmail        String?
+  notes               String?   @db.Text
+  createdByUserId     String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  @@index([isActive])
+}
+
 // One manufacturing run of a product. Each batch carries its own unit cost
 // (which drifts over time) so the valuation page can compute a true
 // weighted-average COGS instead of the old 35% heuristic.

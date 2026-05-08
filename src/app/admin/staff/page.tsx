@@ -67,6 +67,10 @@ const PERM_LABELS: Record<Permission, string> = {
   'wholesale.write': 'تسجيل معاملات مالية لتجار الجملة',
   'team.read': 'عرض دليل الفريق والرواتب',
   'team.write': 'إضافة وتعديل وحذف بيانات الموظفين',
+  'ip.read': 'عرض اتفاقيات الملكية الفكرية',
+  'ip.write': 'إدارة اتفاقيات الملكية الفكرية',
+  'partners.read': 'عرض الشركاء والمستثمرين',
+  'partners.write': 'إدارة بيانات الشركاء والمستثمرين',
   'settings.read': 'عرض الإعدادات',
   'settings.write': 'تعديل الإعدادات',
 };

@@ -49,6 +49,20 @@ interface ValuationData {
     wholesale: { value: number; perCustomer: number; count: number };
     supplierRelationships: { value: number; perSupplier: number; count: number };
     customerReceivables: { value: number };
+    royalties: {
+      totalAccrued: number;
+      agreementsActive: number;
+      topAccruals: Array<{ payeeName: string; amountAccrued: number }>;
+    };
+    partners: {
+      activeCount: number;
+      totalCount: number;
+      totalStakePercentage: number;
+      remainingCompanyShare: number;
+      totalCapitalContribution: number;
+      isOverCommitted: boolean;
+      rows: Array<{ id: string; name: string; type: string; stakePercentage: number; shareValue: number }>;
+    };
     financial: {
       ttmRevenue: number; priorTtmRevenue: number; yoyRevenueGrowth: number | null;
       grossProfit: number; grossMargin: number; aov: number; discountBurn: number;
@@ -1084,6 +1098,87 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
               💡 الذمم المدينة تُضاف لـ <strong>baseValue</strong> لأنها أصل (نتوقع تحصيلها). نراجع الأرصدة من صفحة كل عميل في
               <span className="text-blue-700"> /admin/customers</span>.
             </div>
+          </div>
+        </Section>
+      )}
+
+      {/* Royalty / IP accruals — owed to rights-holders, subtract from baseValue. */}
+      {metrics.royalties.agreementsActive > 0 && (
+        <Section icon="📚" title="حقوق الملكية الفكرية المستحقة" subtitle="مستحقات مؤلفين وأصحاب حقوق على نسبة من الربح — تُحسم من القيمة الأساسية">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <KPI
+              label="اتفاقيات نشطة"
+              value={fmt(metrics.royalties.agreementsActive)}
+              hint="عدد اتفاقيات الملكية الفكرية النشطة في /admin/ip."
+            />
+            <KPI
+              label="إجمالي مستحق الدفع"
+              value={`${fmt(metrics.royalties.totalAccrued)} ج.م`}
+              tone="bad"
+              hint="مجموع نسب الأرباح المستحقة على آخر 12 شهر. تُحسم من القيمة الأساسية للشركة كالتزام قائم."
+            />
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-900 leading-relaxed col-span-2 lg:col-span-1">
+              💡 يدخل كالتزام في <strong>baseValue</strong>. يقل تلقائياً بعد تسجيل دفعة في{' '}
+              <a href="/admin/ip" className="text-blue-700 hover:underline">/admin/ip</a>.
+            </div>
+          </div>
+          {metrics.royalties.topAccruals.length > 0 && (
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mt-3">
+              <table className="w-full text-xs">
+                <thead className="bg-amber-50">
+                  <tr>
+                    <th className="px-3 py-2 text-right text-amber-900">المستحق</th>
+                    <th className="px-3 py-2 text-right text-amber-900">المبلغ المستحق</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {metrics.royalties.topAccruals.map((t, i) => (
+                    <tr key={i}>
+                      <td className="px-3 py-2 font-bold text-gray-800">{t.payeeName}</td>
+                      <td className="px-3 py-2 font-black text-amber-700">{fmt(t.amountAccrued)} ج.م</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Section>
+      )}
+
+      {/* Partners / equity cap-table — share of reconciledMid. */}
+      {metrics.partners.activeCount > 0 && (
+        <Section icon="🤝" title="الشركاء والمستثمرون (Cap Table)" subtitle="حصة كل شريك من القيمة المعتمدة (الوسط الموفَّق)">
+          {metrics.partners.isOverCommitted && (
+            <div className="bg-red-50 border-2 border-red-300 rounded-xl px-4 py-2.5 text-[11px] text-red-900 mb-3">
+              ⚠️ مجموع نسب الشركاء النشطين تجاوز 100%. راجع البيانات في{' '}
+              <a href="/admin/partners" className="text-blue-700 hover:underline">/admin/partners</a>.
+            </div>
+          )}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+            <KPI label="عدد الشركاء" value={fmt(metrics.partners.activeCount)} sub={`من إجمالي ${fmt(metrics.partners.totalCount)}`} />
+            <KPI label="مجموع الحصص" value={`${metrics.partners.totalStakePercentage.toFixed(2)}%`} tone={metrics.partners.isOverCommitted ? 'bad' : 'ok'} />
+            <KPI label="حصة الشركة" value={`${metrics.partners.remainingCompanyShare.toFixed(2)}%`} sub="غير موزَّعة" />
+            <KPI label="رأس المال المساهم" value={`${fmt(metrics.partners.totalCapitalContribution)} ج.م`} hint="إجمالي ما تم ضخه نقداً من الشركاء (إعلامي فقط — لا يُضاف للقيمة لأنه مُجسَّد بالفعل في الأصول)." />
+          </div>
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <table className="w-full text-xs">
+              <thead className="bg-emerald-50">
+                <tr>
+                  <th className="px-3 py-2 text-right text-emerald-900">الشريك</th>
+                  <th className="px-3 py-2 text-right text-emerald-900">النسبة</th>
+                  <th className="px-3 py-2 text-right text-emerald-900">حصته من القيمة (الوسط)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {metrics.partners.rows.map(r => (
+                  <tr key={r.id}>
+                    <td className="px-3 py-2 font-bold text-gray-800">{r.name}</td>
+                    <td className="px-3 py-2 font-black text-gray-900">{r.stakePercentage}%</td>
+                    <td className="px-3 py-2 font-black text-emerald-700">{fmt(r.shareValue)} ج.م</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Section>
       )}

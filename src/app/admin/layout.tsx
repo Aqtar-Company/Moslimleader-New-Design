@@ -53,6 +53,7 @@ const NAV: NavItem[] = [
   // —— Pinned to bottom by user request ——
   { href: '/admin/staff',             label: 'صلاحيات المساعدين', icon: '🛡️', superAdminOnly: true },
   { href: '/admin/zakat',             label: 'حساب الزكاة',       icon: '🌙', requireAny: ['zakat.read'] },
+  { href: '/admin/accounting',        label: 'المحاسبة',          icon: '🧮', requireAny: ['valuation.read'] },
   { href: '/admin/valuation',         label: 'تقييم الشركة',      icon: '💎', requireAny: ['valuation.read'] },
 ];
 

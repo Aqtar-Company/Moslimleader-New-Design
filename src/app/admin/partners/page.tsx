@@ -83,6 +83,13 @@ export default function PartnersPage() {
   const [form, setForm] = useState<FormState | null>(null);
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState<'active' | 'all' | 'inactive'>('active');
+  // Map of partnerId → EGP share value, fetched from /api/admin/accounting
+  // (the cap-table block). Lets each partner card show "حصته من القيمة"
+  // without forcing the user to navigate to /admin/valuation. The
+  // accounting endpoint is gated on `valuation.read` — staff without
+  // that perm just won't see the column.
+  const [shareValueById, setShareValueById] = useState<Map<string, number>>(new Map());
+  const [shareValueIsApprox, setShareValueIsApprox] = useState(true);
 
   const load = async () => {
     setLoading(true);
@@ -96,6 +103,20 @@ export default function PartnersPage() {
       if (err instanceof ForbiddenError) setForbidden(true);
       else addToast('فشل التحميل', 'error');
     }
+    // Best-effort fetch for cap-table share values. A 403 (staff without
+    // valuation.read) is fine — the cards just don't show the EGP column.
+    try {
+      const r2 = await adminFetch('/api/admin/accounting?period=ttm');
+      if (r2.ok) {
+        const d2 = await r2.json();
+        const map = new Map<string, number>();
+        for (const row of (d2.partners?.rows ?? []) as Array<{ id: string; shareValue: number }>) {
+          map.set(row.id, row.shareValue);
+        }
+        setShareValueById(map);
+        setShareValueIsApprox(!!d2.partners?.reconciledMidIsApprox);
+      }
+    } catch { /* ignore */ }
     setLoading(false);
   };
 
@@ -279,6 +300,25 @@ export default function PartnersPage() {
                     <p className="font-bold text-gray-700">{fmtMoney(p.capitalContribution)}</p>
                   </div>
                 </div>
+
+                {/* Share value in EGP — fetched from /api/admin/accounting.
+                    Hidden when the user lacks valuation.read or when the
+                    cap-table is over-committed (Σ stake > 100%, in which
+                    case the share figure is mathematically inconsistent).
+                    Only rendered for active partners since exit-date
+                    holders shouldn't see "your share = X EGP". */}
+                {p.isActive && shareValueById.has(p.id) && summary && !summary.isOverCommitted && (
+                  <div className="mt-2 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2">
+                    <p className="text-[10px] text-purple-700 font-bold flex items-center justify-between gap-1">
+                      <span>حصة هذا الشريك من قيمة الشركة {shareValueIsApprox && '(تقريبية)'}</span>
+                    </p>
+                    <p className="font-black text-purple-900 text-base mt-0.5">{fmtMoney(shareValueById.get(p.id) ?? 0)}</p>
+                    <p className="text-[9px] text-purple-600 mt-0.5">
+                      محسوبة من مضاعف الإيراد آخر 12 شهر · القيمة الكاملة في{' '}
+                      <Link href="/admin/valuation" className="underline">تقييم الشركة</Link>
+                    </p>
+                  </div>
+                )}
 
                 {p.exitDate && (
                   <p className="text-[10px] text-gray-500 mt-2 font-bold">

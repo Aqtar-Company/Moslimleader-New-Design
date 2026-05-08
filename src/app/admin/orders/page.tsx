@@ -95,7 +95,7 @@ function statusLabel(s: string): string {
 
 function formatPrice(n: number, currency: string) {
   const rounded = Math.round(n * 100) / 100;
-  return `${rounded.toLocaleString('ar-EG')} ${currency}`;
+  return `${rounded.toLocaleString('en-US')} ${currency}`;
 }
 
 function buildAddressLine(addr: ShippingAddress): string {
@@ -109,7 +109,7 @@ function InvoiceDetail({ order }: { order: DbOrder }) {
   const subtotal = order.items.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
   const payInfo = PAY_METHOD_LABELS[order.paymentMethod] || { ar: order.paymentMethod, icon: '💰' };
   const fullName = `${order.shippingAddress?.firstName ?? ''} ${order.shippingAddress?.lastName ?? ''}`.trim() || order.user?.name || 'ضيف';
-  const orderDate = new Date(order.createdAt).toLocaleString('ar-EG', {
+  const orderDate = new Date(order.createdAt).toLocaleString('en-GB', {
     year: 'numeric', month: 'long', day: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
@@ -447,9 +447,9 @@ export default function OrdersPage() {
 
       {filtered.length > 0 && (
         <div className="text-sm text-gray-500 flex flex-wrap gap-x-4 gap-y-1">
-          <span>{filtered.length} طلب — إيرادات: <span className="font-bold text-gray-900">{totalRevenue.toLocaleString('ar-EG')} {filtered[0]?.currency || 'EGP'}</span></span>
+          <span>{filtered.length} طلب — إيرادات: <span className="font-bold text-gray-900">{totalRevenue.toLocaleString('en-US')} {filtered[0]?.currency || 'EGP'}</span></span>
           {giftCount > 0 && (
-            <span className="text-pink-700">🎁 {giftCount} هدية — تكلفة: <span className="font-bold">{Math.round(giftCost).toLocaleString('ar-EG')} ج.م</span></span>
+            <span className="text-pink-700">🎁 {giftCount} هدية — تكلفة: <span className="font-bold">{Math.round(giftCost).toLocaleString('en-US')} ج.م</span></span>
           )}
         </div>
       )}
@@ -474,8 +474,8 @@ export default function OrdersPage() {
                       <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${STATUS_COLORS[o.status] || 'bg-gray-100 text-gray-600'}`}>{statusLabel(o.status)}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-500">{new Date(o.createdAt).toLocaleDateString('ar-EG')} · {o.items?.length || 0} منتج</span>
-                      <span className="font-bold text-gray-900 text-sm">{o.total.toLocaleString('ar-EG')} {o.currency}</span>
+                      <span className="text-gray-500">{new Date(o.createdAt).toLocaleDateString('en-GB')} · {o.items?.length || 0} منتج</span>
+                      <span className="font-bold text-gray-900 text-sm">{o.total.toLocaleString('en-US')} {o.currency}</span>
                     </div>
                     <div className="flex gap-2 items-center pt-1" onClick={e => e.stopPropagation()}>
                       <select value={o.status} onChange={e => handleStatus(o, e.target.value)}
@@ -535,9 +535,9 @@ export default function OrdersPage() {
                           </div>
                           <p className="text-xs text-gray-400">{o.user?.email}</p>
                         </td>
-                        <td className="px-5 py-3.5 text-gray-500 text-xs">{new Date(o.createdAt).toLocaleDateString('ar-EG')}</td>
+                        <td className="px-5 py-3.5 text-gray-500 text-xs">{new Date(o.createdAt).toLocaleDateString('en-GB')}</td>
                         <td className="px-5 py-3.5">
-                          <p className="font-bold text-gray-900">{o.total.toLocaleString('ar-EG')} <span className="text-[10px] text-gray-400">{o.currency}</span></p>
+                          <p className="font-bold text-gray-900">{o.total.toLocaleString('en-US')} <span className="text-[10px] text-gray-400">{o.currency}</span></p>
                           {o.items?.length > 0 && (
                             <p className="text-[10px] text-gray-400">{o.items.length} منتج</p>
                           )}

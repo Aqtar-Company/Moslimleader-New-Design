@@ -29,7 +29,7 @@ const TYPE_LABELS: Record<string, string> = {
   other: '📦 أخرى',
 };
 
-const fmt = (n: number) => n.toLocaleString('ar-EG');
+const fmt = (n: number) => n.toLocaleString('en-US');
 
 export default function SuppliersPage() {
   const { addToast } = useToast();

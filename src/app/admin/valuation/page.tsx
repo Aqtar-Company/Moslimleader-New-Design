@@ -45,8 +45,8 @@ interface ValuationData {
   books: Array<{ id: string; title: string; titleEn: string | null; price: number; priceUSD: number | null; isPublished: boolean; language: string | null }>;
 }
 
-const fmt = (n: number) => n.toLocaleString('ar-EG');
-const pct = (n: number) => `${(n * 100).toLocaleString('ar-EG', { maximumFractionDigits: 1 })}%`;
+const fmt = (n: number) => n.toLocaleString('en-US');
+const pct = (n: number) => `${(n * 100).toLocaleString('en-US', { maximumFractionDigits: 1 })}%`;
 
 export default function ValuationPage() {
   const { addToast } = useToast();
@@ -179,7 +179,7 @@ export default function ValuationPage() {
           scrolling through a long report */}
       <div className="flex items-center justify-between gap-2 flex-wrap print:hidden sticky top-0 z-20 bg-gray-50/95 backdrop-blur -mx-4 px-4 py-3 -mt-2 sm:static sm:bg-transparent sm:backdrop-blur-none sm:mx-0 sm:px-0 sm:py-0 sm:mt-0">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
-          <p className="text-[10px] sm:text-xs text-gray-500 truncate">تم التوليد: {new Date(data.generatedAt).toLocaleString('ar-EG')}</p>
+          <p className="text-[10px] sm:text-xs text-gray-500 truncate">تم التوليد: {new Date(data.generatedAt).toLocaleString('en-GB')}</p>
           <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
             <button onClick={() => setView('detailed')} className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition ${view === 'detailed' ? 'bg-white shadow-sm text-[#1a1a2e]' : 'text-gray-500'}`}>📊 تفصيلي</button>
             <button onClick={() => setView('investor')} className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition ${view === 'investor' ? 'bg-white shadow-sm text-[#1a1a2e]' : 'text-gray-500'}`}>🤝 المستثمر</button>
@@ -195,7 +195,7 @@ export default function ValuationPage() {
       <div className="rounded-3xl p-6 sm:p-10 text-white text-center" style={{ background: 'linear-gradient(135deg,#1a1a2e 0%,#2d1060 50%,#6B21A8 100%)' }}>
         <p className="text-xs text-[#F5C518] font-bold tracking-[3px] uppercase">تقدير داخلي — قيد المراجعة</p>
         <h1 className="text-4xl sm:text-5xl font-black mt-3">مسلم ليدر</h1>
-        <p className="text-white/70 mt-2 text-sm">{new Date(data.generatedAt).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        <p className="text-white/70 mt-2 text-sm">{new Date(data.generatedAt).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-8">
           <Stat label="منتجات (نوع)" value={String(metrics.products.total)} hint="عدد أنواع المنتجات في الكتالوج (مش عدد القطع)." />
@@ -267,7 +267,7 @@ export default function ValuationPage() {
       </div>
 
       <div className="text-center py-6 text-[10px] text-gray-400 border-t border-gray-200">
-        تقرير مولَّد آليًا · مسلم ليدر · {new Date(data.generatedAt).toLocaleDateString('ar-EG')}
+        تقرير مولَّد آليًا · مسلم ليدر · {new Date(data.generatedAt).toLocaleDateString('en-GB')}
       </div>
     </div>
   );

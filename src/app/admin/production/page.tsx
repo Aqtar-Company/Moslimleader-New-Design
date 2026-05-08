@@ -27,7 +27,7 @@ interface Batch {
   notes: string | null;
 }
 
-const fmt = (n: number) => n.toLocaleString('ar-EG');
+const fmt = (n: number) => n.toLocaleString('en-US');
 
 export default function ProductionPage() {
   const sp = useSearchParams();
@@ -223,7 +223,7 @@ export default function ProductionPage() {
               <tbody className="divide-y divide-gray-100">
                 {batches.map(b => (
                   <tr key={b.id}>
-                    <td className="px-3 py-2.5 text-gray-600">{new Date(b.batchDate).toLocaleDateString('ar-EG')}</td>
+                    <td className="px-3 py-2.5 text-gray-600">{new Date(b.batchDate).toLocaleDateString('en-GB')}</td>
                     <td className="px-3 py-2.5 font-bold text-gray-900">{b.productName}</td>
                     <td className="px-3 py-2.5 text-gray-600">{b.variantName || '—'}</td>
                     <td className="px-3 py-2.5">

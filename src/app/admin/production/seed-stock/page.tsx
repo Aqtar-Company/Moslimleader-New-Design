@@ -28,7 +28,7 @@ interface DraftEntry {
   skip: boolean;
 }
 
-const fmt = (n: number) => n.toLocaleString('ar-EG');
+const fmt = (n: number) => n.toLocaleString('en-US');
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 const rowKey = (r: Row) => `${r.productId}::${r.variantIndex === null ? '_' : r.variantIndex}`;

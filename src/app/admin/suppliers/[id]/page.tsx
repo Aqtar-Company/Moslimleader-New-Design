@@ -44,7 +44,7 @@ const KIND_LABELS: Record<string, { label: string; tone: string }> = {
   'credit-note': { label: 'مرتجع',  tone: 'bg-blue-100 text-blue-700' },
 };
 
-const fmt = (n: number) => n.toLocaleString('ar-EG');
+const fmt = (n: number) => n.toLocaleString('en-US');
 
 export default function SupplierDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -186,7 +186,7 @@ export default function SupplierDetailPage() {
                   const k = KIND_LABELS[t.kind] || { label: t.kind, tone: 'bg-gray-100 text-gray-700' };
                   return (
                     <tr key={t.id}>
-                      <td className="px-3 py-2.5 text-gray-600">{new Date(t.createdAt).toLocaleDateString('ar-EG')}</td>
+                      <td className="px-3 py-2.5 text-gray-600">{new Date(t.createdAt).toLocaleDateString('en-GB')}</td>
                       <td className="px-3 py-2.5"><span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${k.tone}`}>{k.label}</span></td>
                       <td className="px-3 py-2.5 font-black">{fmt(t.amount)} ج.م</td>
                       <td className="px-3 py-2.5 text-gray-700">{t.description || '—'}</td>

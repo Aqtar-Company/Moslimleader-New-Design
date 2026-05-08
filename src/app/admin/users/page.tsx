@@ -179,8 +179,8 @@ export default function UsersPage() {
                             {(userOrders[u.id] ?? []).map(o => (
                               <div key={o.id} className="flex items-center justify-between bg-white rounded-xl border border-gray-100 px-4 py-3 text-sm">
                                 <span className="font-mono font-bold text-gray-700">#{o.id.slice(-6)}</span>
-                                <span className="text-gray-500 text-xs">{new Date(o.createdAt).toLocaleDateString('ar-EG')}</span>
-                                <span className="font-bold text-gray-900">{o.total.toLocaleString('ar-EG')} ج</span>
+                                <span className="text-gray-500 text-xs">{new Date(o.createdAt).toLocaleDateString('en-GB')}</span>
+                                <span className="font-bold text-gray-900">{o.total.toLocaleString('en-US')} ج</span>
                                 <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                                   normalizeStatus(o.status) === 'تم التسليم' ? 'bg-green-100 text-green-700' :
                                   normalizeStatus(o.status) === 'تم الشحن'   ? 'bg-blue-100 text-blue-700' :

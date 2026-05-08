@@ -71,7 +71,7 @@ function firstImage(images: unknown): string | null {
 }
 
 function formatPrice(n: number) {
-  return Math.round(n).toLocaleString('ar-EG');
+  return Math.round(n).toLocaleString('en-US');
 }
 
 function timeAgoAr(iso: string | null): string {
@@ -315,7 +315,7 @@ export default function CustomerDetailPage() {
                 {orders.map(o => (
                   <tr key={o.id} className="hover:bg-gray-50">
                     <td className="px-3 py-2.5 font-mono font-bold text-gray-900">#{o.id.slice(-6).toUpperCase()}</td>
-                    <td className="px-3 py-2.5 text-xs text-gray-500">{new Date(o.createdAt).toLocaleDateString('ar-EG')}</td>
+                    <td className="px-3 py-2.5 text-xs text-gray-500">{new Date(o.createdAt).toLocaleDateString('en-GB')}</td>
                     <td className="px-3 py-2.5 text-xs">{o.itemCount}</td>
                     <td className="px-3 py-2.5 font-bold">{formatPrice(o.total)} <span className="text-[10px] text-gray-400">{o.currency}</span></td>
                     <td className="px-3 py-2.5">

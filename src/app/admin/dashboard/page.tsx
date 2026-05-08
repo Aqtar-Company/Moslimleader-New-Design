@@ -74,7 +74,7 @@ export default function DashboardPage() {
         recentOrders: (orders ?? []).slice(0, 6).map(o => ({
           id: o.id,
           userName: o.user?.name ?? '—',
-          date: new Date(o.createdAt).toLocaleDateString('ar-EG'),
+          date: new Date(o.createdAt).toLocaleDateString('en-GB'),
           total: o.total,
           status: o.status,
         })),
@@ -89,8 +89,8 @@ export default function DashboardPage() {
   // Render '—' for KPIs the user doesn't have access to. Hides the
   // super-admin-only "Users" card entirely for staff so the layout
   // doesn't show a dead tile.
-  const fmt = (n: number | null) => n === null ? '—' : n.toLocaleString('ar-EG');
-  const fmtMoney = (n: number | null) => n === null ? '—' : n.toLocaleString('ar-EG') + ' ج.م';
+  const fmt = (n: number | null) => n === null ? '—' : n.toLocaleString('en-US');
+  const fmtMoney = (n: number | null) => n === null ? '—' : n.toLocaleString('en-US') + ' ج.م';
 
   const topCards: Array<{ label: string; value: string | number; sub: string; icon: string; color: string; link: string }> = [
     { label: 'إجمالي الطلبات',     value: fmt(stats.totalOrders), sub: `${stats.byStatus['ملغي']} ملغي`, icon: '📦', color: 'bg-blue-50 border-blue-200',   link: '/admin/orders' },
@@ -139,7 +139,7 @@ export default function DashboardPage() {
       <div className="bg-white rounded-2xl border border-gray-200 p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-bold text-gray-900 text-sm">توزيع الطلبات بالحالة</h2>
-          <span className="text-xs text-gray-400">إجمالي الإيرادات: <span className="font-bold text-gray-700">{totalRevenue.toLocaleString('ar-EG')} ج.م</span></span>
+          <span className="text-xs text-gray-400">إجمالي الإيرادات: <span className="font-bold text-gray-700">{totalRevenue.toLocaleString('en-US')} ج.م</span></span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {STATUSES.map(s => (
@@ -177,7 +177,7 @@ export default function DashboardPage() {
                     <td className="px-5 py-3 font-mono font-bold text-gray-900">#{o.id.slice(-6)}</td>
                     <td className="px-5 py-3 text-gray-700">{o.userName}</td>
                     <td className="px-5 py-3 text-gray-500">{o.date}</td>
-                    <td className={`px-5 py-3 font-semibold ${o.status === 'ملغي' ? 'line-through text-gray-400' : 'text-gray-900'}`}>{o.total.toLocaleString('ar-EG')} ج.م</td>
+                    <td className={`px-5 py-3 font-semibold ${o.status === 'ملغي' ? 'line-through text-gray-400' : 'text-gray-900'}`}>{o.total.toLocaleString('en-US')} ج.م</td>
                     <td className="px-5 py-3">
                       <StatusPill status={o.status} />
                     </td>

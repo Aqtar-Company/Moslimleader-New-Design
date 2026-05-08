@@ -22,5 +22,5 @@ export function timeAgoAr(iso: string | null | undefined): string {
 // trailing currency string. Defaults to `ج.م` for pages that always
 // render in EGP; pass an explicit `currency` for invoices/regional UIs.
 export function formatPrice(n: number, currency = 'ج.م'): string {
-  return `${n.toLocaleString('ar-EG')} ${currency}`;
+  return `${n.toLocaleString('en-US')} ${currency}`;
 }

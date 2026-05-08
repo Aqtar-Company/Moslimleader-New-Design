@@ -396,7 +396,7 @@ export default function AdminBooksPage() {
                       </div>
                     </td>
                     <td className="px-5 py-4 font-bold text-gray-900">
-                      {b.price === 0 ? 'مجاني' : `${b.price.toLocaleString('ar-EG')} ج.م`}
+                      {b.price === 0 ? 'مجاني' : `${b.price.toLocaleString('en-US')} ج.م`}
                     </td>
                     <td className="px-5 py-4 text-gray-600">{b.freePages} صفحة</td>
                     <td className="px-5 py-4">
@@ -872,7 +872,7 @@ export default function AdminBooksPage() {
                     <div key={a.user.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition">
                       <div>
                         <p className="font-bold text-gray-900 text-sm">{a.user.name}</p>
-                        <p className="text-xs text-gray-400">{a.user.email} · ص{a.lastPage} · {new Date(a.grantedAt).toLocaleDateString('ar-EG')}</p>
+                        <p className="text-xs text-gray-400">{a.user.email} · ص{a.lastPage} · {new Date(a.grantedAt).toLocaleDateString('en-GB')}</p>
                       </div>
                       <button
                         onClick={() => handleRevoke(a.user.id)}

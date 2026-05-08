@@ -211,13 +211,42 @@ export default function ValuationPage() {
           like a polished investor handout, not a Chrome screenshot. */}
       <style jsx global>{`
         @media print {
-          @page { size: A4; margin: 14mm 10mm; }
+          /* A4 with footer space for the running header strip + page
+             numbers; @page-counter on most browsers fills (n) of (m).
+             We also stamp a faint watermark on every page so a leaked
+             screenshot of the PDF carries its "internal estimate" tag. */
+          @page {
+            size: A4;
+            margin: 18mm 12mm 22mm 12mm;
+            @bottom-center {
+              content: "مسلم ليدر — تقدير داخلي للتقييم — صفحة " counter(page) " من " counter(pages);
+              font-family: -apple-system, system-ui, sans-serif;
+              font-size: 9px;
+              color: #999;
+            }
+          }
           html, body { background: #fff !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .valuation-section { break-inside: avoid; page-break-inside: avoid; }
           .valuation-page-break { break-before: page; page-break-before: page; }
           /* Stop tooltips from popping in the print stream */
           [aria-label="شرح"] { display: none !important; }
+          /* Diagonal watermark behind every page — kept low-opacity so
+             it doesn't fight the data, but clearly marks the document
+             as a draft for review. */
+          body::before {
+            content: "تقدير داخلي — قيد المراجعة";
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            font-size: 60pt;
+            color: rgba(245, 197, 24, 0.08);
+            font-weight: 900;
+            z-index: -1;
+            pointer-events: none;
+            white-space: nowrap;
+          }
         }
       `}</style>
 
@@ -782,21 +811,61 @@ function MethodologySection({ assumptions, defaults, canEdit, editing, onEditTog
   );
 }
 
+// Each assumption is footnoted with its BASIS — the source category
+// behind the number. A real M&A reviewer wants to know "where did this
+// come from?" before they trust it. Three categories:
+//   - heuristic: pure judgement, owner's estimate. Lowest defensibility.
+//   - industry: anchored in a published industry norm or benchmark range.
+//   - data: derived from actual figures inside the system.
+type AssumptionBasis = 'heuristic' | 'industry' | 'data';
+
+const BASIS_META: Record<AssumptionBasis, { label: string; tone: string; tooltip: string }> = {
+  heuristic: { label: 'تقدير', tone: 'bg-red-100 text-red-700', tooltip: 'حكم شخصي بدون مرجع رقمي. يحتاج مراجعة احترافية في كل صفقة.' },
+  industry:  { label: 'مرجعية صناعية', tone: 'bg-amber-100 text-amber-700', tooltip: 'مأخوذ من نطاق متعارف عليه في الصناعة. أكثر دفاعية من التقدير، لكن لا يزال يتطلب تخصيص.' },
+  data:      { label: 'مبني على بيانات', tone: 'bg-emerald-100 text-emerald-700', tooltip: 'مشتق من أرقام فعلية في النظام (مبيعات، تكاليف، طلبات).' },
+};
+
 function AssumptionsTable({ assumptions, defaults }: { assumptions: Assumptions; defaults: Assumptions }) {
-  const rows: Array<{ key: keyof Assumptions; label: string; format: (n: number) => string; explain: string }> = [
-    { key: 'cogsRatio', label: 'نسبة تكلفة المخزون من سعر البيع', format: n => pct(n), explain: 'المنتجات بتكلَّف الشركة هذه النسبة من سعرها قبل الربح. القيمة الافتراضية 35%.' },
-    { key: 'ipBookValue', label: 'قيمة كل كتاب مؤلَّف (IP)', format: n => `${fmt(n)} ج.م`, explain: 'تقدير لقيمة حقوق نشر/ترجمة/audiobook لكل كتاب. مش مرتبط بمبيعات الكتاب الفعلية.' },
-    { key: 'ipProductValue', label: 'قيمة كل منتج إبداعي (IP)', format: n => `${fmt(n)} ج.م`, explain: 'تقدير لقيمة التصميم/البراند الخاص بكل منتج. مش مرتبط بمبيعات المنتج الفعلية.' },
-    { key: 'ipDigitalValue', label: 'قيمة المحتوى الرقمي (يوتيوب + PDFs + براند)', format: n => `${fmt(n)} ج.م`, explain: 'رقم ثابت بيعكس قيمة قنوات السوشيال + الـ PDFs + قيمة البراند ككل.' },
-    { key: 'techValue', label: 'قيمة المنصة التقنية', format: n => `${fmt(n)} ج.م`, explain: 'تكلفة بناء النظام (admin + checkout + integrations) لو حد محتاج يبنيه من الصفر.' },
-    { key: 'customerDbValue', label: 'قيمة كل عميل في القاعدة', format: n => `${fmt(n)} ج.م`, explain: 'قيمة قاعدة بيانات العميل الواحد كأصل قابل لإعادة الاستخدام (تسويق، إعادة استهداف).' },
-    { key: 'wholesaleCustomerValue', label: 'قيمة كل تاجر جملة', format: n => `${fmt(n)} ج.م`, explain: 'تاجر الجملة يُمثّل علاقة بيع متكرر بكميات كبيرة، بقيمة أعلى بكثير من العميل العادي.' },
-    { key: 'supplierRelationshipValue', label: 'قيمة كل علاقة مع مورد', format: n => `${fmt(n)} ج.م`, explain: 'العلاقات الموثَّقة مع موردين موثوقين أصل تشغيلي حقيقي — تكلفة استبداله بأقل تقدير.' },
-    { key: 'revenueMultipleLow', label: 'مضاعف الإيرادات (الحد الأدنى)', format: n => `× ${n}`, explain: 'مضاعف TTM للحد الأدنى لقيمة السوق. التجارة الإلكترونية المصرية الصغيرة تتراوح 1.5–3.0×.' },
-    { key: 'revenueMultipleHigh', label: 'مضاعف الإيرادات (الحد الأعلى)', format: n => `× ${n}`, explain: 'مضاعف TTM للحد الأعلى — للشركات عالية الهامش أو سريعة النمو أو ذات IP محمي.' },
-    { key: 'fairMultiplier', label: 'مضاعف القيمة المتوازنة', format: n => `× ${n}`, explain: 'القيمة الأساسية تُضرَب في هذا الرقم لتعكس القيمة السوقية المتوازنة.' },
-    { key: 'strategicMultiplier', label: 'مضاعف القيمة الاستراتيجية', format: n => `× ${n}`, explain: 'لمشتري بحاجة استراتيجية فعلية. أعلى من المتوازنة لأنه يضيف قيمة تكاملية.' },
-    { key: 'activeWindowDays', label: 'نافذة العميل النشط (أيام)', format: n => `${n} يوم`, explain: 'عميل عمله طلب صحيح خلال هذه النافذة يُحتسب نشطًا.' },
+  const rows: Array<{ key: keyof Assumptions; label: string; format: (n: number) => string; explain: string; basis: AssumptionBasis; footnote: string }> = [
+    { key: 'cogsRatio', label: 'نسبة تكلفة المخزون من سعر البيع', format: n => pct(n), basis: 'industry',
+      explain: 'المنتجات بتكلَّف الشركة هذه النسبة من سعرها قبل الربح.',
+      footnote: 'هامش بيع التجزئة العادي 50–70%، فالـ COGS بين 30–50%. الافتراضي 35% يقابل هامش 65% (متوازن لكتب أطفال + ألعاب تعليمية).' },
+    { key: 'ipBookValue', label: 'قيمة كل كتاب مؤلَّف (IP)', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
+      explain: 'تقدير لقيمة حقوق نشر/ترجمة/audiobook لكل كتاب.',
+      footnote: 'تقدير شخصي. الأنسب احترافياً: استخدام relief-from-royalty (3–5% من إيرادات الكتاب التراكمية) — يحتاج تطوير لاحق.' },
+    { key: 'ipProductValue', label: 'قيمة كل منتج إبداعي (IP)', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
+      explain: 'تقدير لقيمة التصميم/البراند الخاص بكل منتج.',
+      footnote: 'تقدير موحَّد لكل المنتجات — لا يميز بين البِست-سيلر والمنتج الراكد. حد أدنى للمناقشة، ليس رقماً نهائياً.' },
+    { key: 'ipDigitalValue', label: 'قيمة المحتوى الرقمي', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
+      explain: 'يوتيوب + PDFs + قيمة البراند ككل.',
+      footnote: 'رقم ثابت — لا يعكس عدد المشتركين أو معدل التفاعل. للتحسين: ربطه بعدد المتابعين × LTV لكل متابع.' },
+    { key: 'techValue', label: 'قيمة المنصة التقنية', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
+      explain: 'تكلفة بناء النظام لو حد محتاج يبنيه من الصفر.',
+      footnote: 'تقدير cost-to-rebuild. للتدقيق: عرض سعر فعلي من شركة تطوير، أو تكلفة مهندس × أشهر العمل.' },
+    { key: 'customerDbValue', label: 'قيمة كل عميل', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
+      explain: 'قيمة العميل الواحد في القاعدة كأصل تسويقي.',
+      footnote: 'موحَّد لكل العملاء — لا يميز عميل اشترى مرة عن عميل متكرر. الأنسب: AOV × معدل التكرار × عامل خصم. اللي عنده طلبين+ يساوي 5–10× اللي عنده طلب واحد.' },
+    { key: 'wholesaleCustomerValue', label: 'قيمة كل تاجر جملة', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
+      explain: 'علاقة بيع متكرر بكميات كبيرة.',
+      footnote: 'يجب مقارنته بإيرادات تاجر الجملة الفعلية × عدد سنوات الاستمرار المتوقعة. للنشاط الحالي: الافتراضي 5,000 يعكس 1–2 طلب جملة سنوي.' },
+    { key: 'supplierRelationshipValue', label: 'قيمة كل علاقة مع مورد', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
+      explain: 'تكلفة العثور على مورد بديل وموثوقيته.',
+      footnote: 'لا يعكس حجم تعامل المورد. مورد بـ 60% من الإنتاج له قيمة مختلفة جداً عن مورد بـ 5%.' },
+    { key: 'revenueMultipleLow', label: 'مضاعف الإيرادات — الحد الأدنى', format: n => `× ${n}`, basis: 'industry',
+      explain: 'مضاعف TTM للحد الأدنى لقيمة السوق.',
+      footnote: 'التجارة الإلكترونية المصرية الصغيرة تتراوح 1.5–3.0×. الحد الأدنى للشركات الناضجة بدون نمو واضح أو دفاعية IP.' },
+    { key: 'revenueMultipleHigh', label: 'مضاعف الإيرادات — الحد الأعلى', format: n => `× ${n}`, basis: 'industry',
+      explain: 'مضاعف TTM للحد الأعلى لقيمة السوق.',
+      footnote: 'للشركات عالية الهامش (>40%)، سريعة النمو (>30% سنوياً)، أو ذات IP محمي. الحد الأعلى ربما 4× في حالات استثنائية.' },
+    { key: 'fairMultiplier', label: 'مضاعف القيمة المتوازنة', format: n => `× ${n}`, basis: 'heuristic',
+      explain: 'القيمة الأساسية تُضرَب في هذا الرقم.',
+      footnote: 'احترافياً، تطبيق مضاعف على الأصول غير قياسي. الاحترافي: استخدام مضاعفات الإيرادات أو الأرباح بدلاً من الأصول.' },
+    { key: 'strategicMultiplier', label: 'مضاعف القيمة الاستراتيجية', format: n => `× ${n}`, basis: 'heuristic',
+      explain: 'لمشتري بحاجة استراتيجية فعلية.',
+      footnote: 'يفترض وجود مشتري استراتيجي ينتفع بالعلامة أو القناة. القيمة الفعلية تظهر فقط عند وجود مشتري حقيقي يعرض السعر.' },
+    { key: 'activeWindowDays', label: 'نافذة العميل النشط (أيام)', format: n => `${n} يوم`, basis: 'industry',
+      explain: 'عميل بطلب صحيح خلال النافذة يُحتسب نشطًا.',
+      footnote: 'الصناعة بتستخدم 90 يوم لـ B2C عام، 180 يوم لـ B2B. التعديل يؤثر على نسبة "العملاء النشطين" المعروضة.' },
   ];
   return (
     <div className="overflow-x-auto">
@@ -806,7 +875,8 @@ function AssumptionsTable({ assumptions, defaults }: { assumptions: Assumptions;
             <th className="px-3 py-2 text-right font-bold">الافتراض</th>
             <th className="px-3 py-2 text-right font-bold">القيمة الحالية</th>
             <th className="px-3 py-2 text-right font-bold">الافتراضي</th>
-            <th className="px-3 py-2 text-right font-bold">شرح</th>
+            <th className="px-3 py-2 text-right font-bold">المرجعية</th>
+            <th className="px-3 py-2 text-right font-bold">شرح وحاشية</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
@@ -814,17 +884,32 @@ function AssumptionsTable({ assumptions, defaults }: { assumptions: Assumptions;
             const cur = assumptions[r.key];
             const def = defaults[r.key];
             const drift = cur !== def;
+            const meta = BASIS_META[r.basis];
             return (
               <tr key={r.key}>
                 <td className="px-3 py-2.5 font-bold text-gray-800">{r.label}</td>
                 <td className={`px-3 py-2.5 font-black ${drift ? 'text-amber-700' : 'text-gray-900'}`}>{r.format(cur)} {drift && <span className="text-[9px] font-bold ml-1">⚙️ معدَّل</span>}</td>
                 <td className="px-3 py-2.5 text-gray-500">{r.format(def)}</td>
-                <td className="px-3 py-2.5 text-gray-600 leading-relaxed">{r.explain}</td>
+                <td className="px-3 py-2.5">
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${meta.tone}`} title={meta.tooltip}>{meta.label}</span>
+                </td>
+                <td className="px-3 py-2.5 text-gray-700 leading-relaxed max-w-md">
+                  <p className="text-gray-800">{r.explain}</p>
+                  <p className="text-[10px] text-gray-500 mt-1 italic">{r.footnote}</p>
+                </td>
               </tr>
             );
           })}
         </tbody>
       </table>
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mt-3 text-[10px] text-gray-700 leading-relaxed">
+        <p className="font-bold text-gray-900 mb-1">ملاحظة على الافتراضات:</p>
+        <p>
+          الافتراضات المُصنَّفة <span className="bg-red-100 text-red-700 px-1 rounded font-bold">تقدير</span> تحتاج عناية واجبة في كل صفقة فعلية —
+          لا تعتمد عليها كرقم نهائي. الأرقام <span className="bg-amber-100 text-amber-700 px-1 rounded font-bold">مرجعية صناعية</span> أكثر دفاعية لكنها لا تزال
+          نطاقات يجب تكييفها حسب خصوصية الشركة. الهدف من التقرير عرض الأرقام بصراحة، مش إخفاء عدم اليقين.
+        </p>
+      </div>
     </div>
   );
 }

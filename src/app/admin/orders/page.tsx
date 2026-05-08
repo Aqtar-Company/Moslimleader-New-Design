@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback, Fragment } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef, Fragment } from 'react';
 import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { PaginationFooter } from '@/components/admin/PaginationFooter';
@@ -87,6 +88,18 @@ const PAY_METHOD_LABELS: Record<string, { ar: string; icon: string }> = {
   instapay: { ar: 'InstaPay', icon: '⚡' },
   bank: { ar: 'تحويل بنكي', icon: '🏦' },
   gift: { ar: 'هدية', icon: '🎁' },
+};
+
+// Sub-filter shown only when status='paid' is active. Order matches the
+// most-frequent first (PayPal/Visa) so the user reaches them quickest.
+const PAYMENT_METHOD_FILTERS = ['paypal', 'card', 'bank', 'instapay', 'vodafone'] as const;
+
+// Currency code → background tone. EGP gets a neutral chip so it doesn't
+// distract; USD/SAR get a colour so PayPal/foreign orders pop visually.
+const CURRENCY_CHIP: Record<string, string> = {
+  EGP: 'bg-gray-100 text-gray-700',
+  USD: 'bg-amber-100 text-amber-800',
+  SAR: 'bg-blue-100 text-blue-800',
 };
 
 function statusLabel(s: string): string {
@@ -276,8 +289,11 @@ function InvoiceDetail({ order }: { order: DbOrder }) {
 export default function OrdersPage() {
   const { addToast } = useToast();
   const confirm = useConfirm();
+  const sp = useSearchParams();
+  const highlightId = sp.get('highlight');
   const [orders, setOrders] = useState<DbOrder[]>([]);
   const [filter, setFilter] = useState('all');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('');
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -285,6 +301,8 @@ export default function OrdersPage() {
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(50);
   const [forbidden, setForbidden] = useState(false);
+  const [pulsedId, setPulsedId] = useState<string | null>(null);
+  const highlightAppliedRef = useRef(false);
 
   const load = useCallback(async (limitOverride?: number) => {
     setLoading(true);
@@ -392,12 +410,63 @@ export default function OrdersPage() {
       filter === 'all' ? true
       : filter === 'gift' ? o.paymentMethod === 'gift'
       : o.status === filter;
+    // Payment-method sub-filter only applies when the main filter is 'paid';
+    // it has no meaning on pending/shipped/etc. so we ignore it there.
+    const matchPayMethod = filter !== 'paid' || !paymentMethodFilter || o.paymentMethod === paymentMethodFilter;
     const matchSearch = !search
       || o.id.includes(search)
       || (o.user?.name || '').includes(search)
       || (o.user?.email || '').includes(search);
-    return matchFilter && matchSearch;
+    return matchFilter && matchPayMethod && matchSearch;
   });
+
+  // Per-status counts for the filter chip badges. Computed against the
+  // full loaded set, not the currently-filtered set, so they don't change
+  // as the user clicks around.
+  const statusCounts = useMemo(() => {
+    const c: Record<string, number> = { all: orders.length, gift: 0 };
+    for (const s of STATUSES) c[s] = 0;
+    for (const o of orders) {
+      if (o.status in c) c[o.status]++;
+      if (o.paymentMethod === 'gift') c.gift++;
+    }
+    return c;
+  }, [orders]);
+
+  // Per-payment-method counts among PAID orders only — feeds both the
+  // sub-filter chip badges and the KPI strip.
+  const paidPaymentCounts = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const o of orders) {
+      if (o.status !== 'paid') continue;
+      c[o.paymentMethod] = (c[o.paymentMethod] ?? 0) + 1;
+    }
+    return c;
+  }, [orders]);
+
+  // Honor `?highlight=<orderId>` from the stock-movements audit log. We
+  // only run this once after the orders list lands and only if the order
+  // exists in the loaded page; otherwise we can't scroll to it.
+  useEffect(() => {
+    if (!highlightId || highlightAppliedRef.current || orders.length === 0) return;
+    const target = orders.find(o => o.id === highlightId);
+    if (!target) return;
+    highlightAppliedRef.current = true;
+    // If the active filter would hide the target row, switch back to 'all'
+    // so it's actually in the DOM.
+    if (filter !== 'all' && filter !== 'gift' && target.status !== filter) {
+      setFilter('all');
+    }
+    // Defer scroll to the next tick so the DOM has the row mounted.
+    setTimeout(() => {
+      const el = document.getElementById(`order-row-${highlightId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setPulsedId(highlightId);
+        setTimeout(() => setPulsedId(null), 2500);
+      }
+    }, 80);
+  }, [highlightId, orders, filter]);
 
   // Gifts don't generate revenue — they're a marketing cost. Exclude them
   // from the revenue strip so the number reflects real money in.
@@ -427,22 +496,82 @@ export default function OrdersPage() {
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-3 items-center">
-        <input
-          type="text"
-          placeholder="ابحث برقم الطلب أو اسم العميل..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gray-400 w-full sm:w-72"
-        />
-        <div className="flex gap-2 flex-wrap">
-          {['all', ...STATUSES, 'gift'].map(s => (
-            <button key={s} onClick={() => setFilter(s)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${filter === s ? (s === 'gift' ? 'bg-pink-600 text-white border-pink-600' : 'bg-[#1a1a2e] text-white border-[#1a1a2e]') : 'border-gray-200 text-gray-600 hover:border-gray-400'}`}>
-              {s === 'all' ? 'الكل' : s === 'gift' ? '🎁 هدايا' : statusLabel(s)}
-            </button>
-          ))}
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-3 items-center">
+          <input
+            type="text"
+            placeholder="ابحث برقم الطلب أو اسم العميل..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gray-400 w-full sm:w-72"
+          />
         </div>
+        <div className="flex gap-2 flex-wrap items-center">
+          {/* "تم الدفع" is given a distinct emerald style + slightly larger
+              hit area because it's the most-asked-for filter; everything
+              else uses the existing dark navy tone. */}
+          {(['all', ...STATUSES, 'gift'] as const).map(s => {
+            const isPaid = s === 'paid';
+            const isActive = filter === s;
+            const inactiveCls = isPaid
+              ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+              : s === 'gift'
+                ? 'border-pink-200 bg-pink-50 text-pink-700 hover:bg-pink-100'
+                : 'border-gray-200 text-gray-600 hover:border-gray-400 bg-white';
+            const activeCls = isPaid
+              ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-200'
+              : s === 'gift'
+                ? 'bg-pink-600 text-white border-pink-600'
+                : 'bg-[#1a1a2e] text-white border-[#1a1a2e]';
+            const label = s === 'all' ? '📋 الكل'
+              : s === 'gift' ? '🎁 هدايا'
+              : isPaid ? '💰 تم الدفع'
+              : statusLabel(s);
+            const count = statusCounts[s] ?? 0;
+            return (
+              <button
+                key={s}
+                onClick={() => { setFilter(s); if (s !== 'paid') setPaymentMethodFilter(''); }}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 ${isActive ? activeCls : inactiveCls} ${isPaid ? 'text-[13px]' : ''}`}
+              >
+                <span>{label}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${isActive ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                  {count.toLocaleString('en-US')}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Payment-method sub-filter — only renders for paid orders. */}
+        {filter === 'paid' && (
+          <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-2.5 flex flex-wrap gap-2 items-center">
+            <span className="text-[10px] text-emerald-700 font-bold tracking-widest pe-1">وسيلة الدفع:</span>
+            <button
+              onClick={() => setPaymentMethodFilter('')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${paymentMethodFilter === '' ? 'bg-emerald-600 text-white' : 'bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-100'}`}
+            >
+              الكل ({(paidPaymentCounts && Object.values(paidPaymentCounts).reduce((s, n) => s + n, 0)).toLocaleString('en-US')})
+            </button>
+            {PAYMENT_METHOD_FILTERS.map(m => {
+              const info = PAY_METHOD_LABELS[m];
+              const count = paidPaymentCounts[m] ?? 0;
+              if (count === 0) return null; // hide methods with zero paid orders
+              const isActive = paymentMethodFilter === m;
+              return (
+                <button
+                  key={m}
+                  onClick={() => setPaymentMethodFilter(isActive ? '' : m)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition flex items-center gap-1 ${isActive ? 'bg-emerald-600 text-white' : 'bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-100'}`}
+                >
+                  <span>{info.icon}</span>
+                  <span>{info.ar}</span>
+                  <span className={`px-1 rounded text-[10px] ${isActive ? 'bg-white/20' : 'bg-emerald-100'}`}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {filtered.length > 0 && (
@@ -451,6 +580,32 @@ export default function OrdersPage() {
           {giftCount > 0 && (
             <span className="text-pink-700">🎁 {giftCount} هدية — تكلفة: <span className="font-bold">{Math.round(giftCost).toLocaleString('en-US')} ج.م</span></span>
           )}
+        </div>
+      )}
+
+      {/* Per-payment-method counts among paid orders. Helps the user
+          eyeball "which channels brought money in this view" without
+          clicking through filters. */}
+      {Object.keys(paidPaymentCounts).length > 0 && (
+        <div className="bg-emerald-50/50 border border-emerald-200 rounded-2xl p-3 flex flex-wrap gap-2 items-center">
+          <span className="text-[10px] text-emerald-700 font-bold tracking-widest pe-1">💰 المدفوع بحسب الوسيلة:</span>
+          {Object.entries(paidPaymentCounts)
+            .sort(([, a], [, b]) => b - a)
+            .map(([method, count]) => {
+              const info = PAY_METHOD_LABELS[method] || { ar: method, icon: '💰' };
+              return (
+                <button
+                  key={method}
+                  onClick={() => { setFilter('paid'); setPaymentMethodFilter(method); }}
+                  className="bg-white border border-emerald-200 rounded-lg px-2.5 py-1 flex items-center gap-1.5 hover:bg-emerald-100 transition"
+                  title="اعرض الطلبات المدفوعة بهذه الوسيلة"
+                >
+                  <span>{info.icon}</span>
+                  <span className="text-[11px] font-bold text-emerald-900">{info.ar}</span>
+                  <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">{count.toLocaleString('en-US')}</span>
+                </button>
+              );
+            })}
         </div>
       )}
 
@@ -463,9 +618,12 @@ export default function OrdersPage() {
           <div className="block lg:hidden divide-y divide-gray-100">
             {filtered.map(o => {
               const isOpen = expanded.has(o.id);
+              const isPulsed = pulsedId === o.id;
+              const payInfo = PAY_METHOD_LABELS[o.paymentMethod] || { ar: o.paymentMethod, icon: '💰' };
+              const currencyChip = CURRENCY_CHIP[o.currency] || 'bg-gray-100 text-gray-700';
               return (
                 <Fragment key={o.id}>
-                  <div className="p-4 space-y-2" onClick={() => toggleExpand(o.id)}>
+                  <div id={`order-row-${o.id}`} className={`p-4 space-y-2 transition ${isPulsed ? 'bg-yellow-100 ring-2 ring-yellow-400 ring-inset' : ''}`} onClick={() => toggleExpand(o.id)}>
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="font-mono font-bold text-gray-900 text-sm">#{o.id.slice(-6).toUpperCase()}</p>
@@ -475,7 +633,15 @@ export default function OrdersPage() {
                     </div>
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-gray-500">{new Date(o.createdAt).toLocaleDateString('en-GB')} · {o.items?.length || 0} منتج</span>
-                      <span className="font-bold text-gray-900 text-sm">{o.total.toLocaleString('en-US')} {o.currency}</span>
+                      <span className="font-bold text-gray-900 text-sm flex items-center gap-1">
+                        {o.total.toLocaleString('en-US')}
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${currencyChip}`}>{o.currency}</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[11px] text-gray-700">
+                      <span>{payInfo.icon}</span>
+                      <span className="font-bold">{payInfo.ar}</span>
+                      {o.paymentMethod === 'paypal' && <span className="text-[10px] text-amber-700">— تم التحصيل بالـ {o.currency}</span>}
                     </div>
                     <div className="flex gap-2 items-center pt-1" onClick={e => e.stopPropagation()}>
                       <select value={o.status} onChange={e => handleStatus(o, e.target.value)}
@@ -504,6 +670,7 @@ export default function OrdersPage() {
                   <th className="px-5 py-3.5 text-right">العميل</th>
                   <th className="px-5 py-3.5 text-right">التاريخ</th>
                   <th className="px-5 py-3.5 text-right">المبلغ</th>
+                  <th className="px-5 py-3.5 text-right">وسيلة الدفع</th>
                   <th className="px-5 py-3.5 text-right">الحالة</th>
                   <th className="px-5 py-3.5 text-right">الشحن</th>
                   <th className="px-5 py-3.5 text-right">تغيير الحالة</th>
@@ -512,11 +679,15 @@ export default function OrdersPage() {
               <tbody className="divide-y divide-gray-50">
                 {filtered.map(o => {
                   const isOpen = expanded.has(o.id);
+                  const isPulsed = pulsedId === o.id;
+                  const payInfo = PAY_METHOD_LABELS[o.paymentMethod] || { ar: o.paymentMethod, icon: '💰' };
+                  const currencyChip = CURRENCY_CHIP[o.currency] || 'bg-gray-100 text-gray-700';
                   return (
                     <Fragment key={o.id}>
                       <tr
+                        id={`order-row-${o.id}`}
                         onClick={() => toggleExpand(o.id)}
-                        className={`cursor-pointer transition ${isOpen ? 'bg-amber-50/50' : 'hover:bg-gray-50'}`}
+                        className={`cursor-pointer transition ${isPulsed ? 'bg-yellow-100 ring-2 ring-yellow-400' : isOpen ? 'bg-amber-50/50' : 'hover:bg-gray-50'}`}
                       >
                         <td className="px-3 py-3.5 text-center">
                           <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-transform mx-auto ${isOpen ? 'rotate-180 bg-[#F5C518] text-[#1a1a2e]' : 'bg-gray-100 text-gray-500'}`}>
@@ -537,9 +708,19 @@ export default function OrdersPage() {
                         </td>
                         <td className="px-5 py-3.5 text-gray-500 text-xs">{new Date(o.createdAt).toLocaleDateString('en-GB')}</td>
                         <td className="px-5 py-3.5">
-                          <p className="font-bold text-gray-900">{o.total.toLocaleString('en-US')} <span className="text-[10px] text-gray-400">{o.currency}</span></p>
+                          <p className="font-bold text-gray-900">{o.total.toLocaleString('en-US')}</p>
+                          <span className={`inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold ${currencyChip}`}>{o.currency}</span>
                           {o.items?.length > 0 && (
-                            <p className="text-[10px] text-gray-400">{o.items.length} منتج</p>
+                            <p className="text-[10px] text-gray-400 mt-0.5">{o.items.length} منتج</p>
+                          )}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-base leading-none">{payInfo.icon}</span>
+                            <span className="text-xs font-bold text-gray-800">{payInfo.ar}</span>
+                          </div>
+                          {o.paymentMethod === 'paypal' && (
+                            <p className="text-[10px] text-amber-700 mt-0.5">تم التحصيل بالـ {o.currency}</p>
                           )}
                         </td>
                         <td className="px-5 py-3.5">
@@ -579,7 +760,7 @@ export default function OrdersPage() {
                       </tr>
                       {isOpen && (
                         <tr>
-                          <td colSpan={8} className="p-0">
+                          <td colSpan={9} className="p-0">
                             <InvoiceDetail order={o} />
                           </td>
                         </tr>

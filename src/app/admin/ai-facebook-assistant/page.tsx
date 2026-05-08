@@ -8,9 +8,12 @@ import Spinner from '@/components/admin/Spinner';
 import EmptyState from '@/components/admin/EmptyState';
 import ForbiddenState from '@/components/admin/ForbiddenState';
 
+type AiProvider = 'openai' | 'gemini';
+
 interface Settings {
   enabled: boolean;
   systemPrompt: string;
+  provider: AiProvider;
   model: string;
   triggerKeywords: string[];
   maxTokens: number;
@@ -19,8 +22,11 @@ interface Settings {
 
 interface ConversationEvent {
   id: string;
+  kind: 'message' | 'comment' | 'postback' | string;
   direction: 'incoming' | 'outgoing-auto' | 'outgoing-manual' | string;
   text: string;
+  commentId: string | null;
+  postId: string | null;
   aiModel: string | null;
   sendStatus: string | null;
   sendError: string | null;
@@ -28,15 +34,20 @@ interface ConversationEvent {
 }
 
 interface Conversation {
+  key: string;
+  kind: 'message' | 'comment' | 'postback' | string;
   psid: string;
   userName: string | null;
   lastAt: string;
   eventCount: number;
+  commentId: string | null;
+  postId: string | null;
   events: ConversationEvent[];
 }
 
 interface IntegrationStatus {
   hasOpenAiKey: boolean;
+  hasGeminiKey: boolean;
   hasPageToken: boolean;
   hasAppSecret: boolean;
 }
@@ -52,7 +63,8 @@ export default function AIFacebookAssistantPage() {
   // Settings form
   const [enabled, setEnabled] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState('');
-  const [model, setModel] = useState('gpt-4o-mini');
+  const [provider, setProvider] = useState<AiProvider>('gemini');
+  const [model, setModel] = useState('gemini-1.5-flash');
   const [maxTokens, setMaxTokens] = useState(300);
   const [triggerKeywordsRaw, setTriggerKeywordsRaw] = useState('');
   const [saving, setSaving] = useState(false);
@@ -62,10 +74,13 @@ export default function AIFacebookAssistantPage() {
   const [testReply, setTestReply] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
 
-  // Manual reply
-  const [activePsid, setActivePsid] = useState<string | null>(null);
+  // Manual reply — tracks the active conversation by its compound key
+  // (kind + psid) since one user can have BOTH a message thread and a
+  // comment thread.
+  const [activeKey, setActiveKey] = useState<string | null>(null);
   const [manualReply, setManualReply] = useState('');
   const [sending, setSending] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'message' | 'comment'>('all');
 
   const load = async () => {
     setLoading(true);
@@ -76,6 +91,7 @@ export default function AIFacebookAssistantPage() {
       setData(d);
       setEnabled(d.settings.enabled);
       setSystemPrompt(d.settings.systemPrompt);
+      setProvider(d.settings.provider ?? 'gemini');
       setModel(d.settings.model);
       setMaxTokens(d.settings.maxTokens);
       setTriggerKeywordsRaw((d.settings.triggerKeywords ?? []).join(', '));
@@ -98,7 +114,7 @@ export default function AIFacebookAssistantPage() {
       const res = await adminFetch('/api/admin/ai-facebook-assistant', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled, systemPrompt, model, maxTokens, triggerKeywords }),
+        body: JSON.stringify({ enabled, systemPrompt, provider, model, maxTokens, triggerKeywords }),
       });
       const d = await res.json();
       if (!res.ok) { addToast(d.error || 'فشل الحفظ', 'error'); setSaving(false); return; }
@@ -125,13 +141,20 @@ export default function AIFacebookAssistantPage() {
   };
 
   const sendManual = async () => {
-    if (!activePsid || !manualReply.trim()) return;
+    if (!activeConversation || !manualReply.trim()) return;
     setSending(true);
     try {
       const res = await adminFetch('/api/admin/ai-facebook-assistant/reply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ psid: activePsid, text: manualReply }),
+        body: JSON.stringify({
+          psid: activeConversation.psid,
+          text: manualReply,
+          // Comment thread → reply via Graph API on the comment id.
+          // Message thread → reply via Send API on the psid.
+          commentId: activeConversation.kind === 'comment' ? activeConversation.commentId : undefined,
+          postId: activeConversation.kind === 'comment' ? activeConversation.postId : undefined,
+        }),
       });
       const d = await res.json();
       if (!res.ok) { addToast(d.error || 'فشل الإرسال', 'error'); setSending(false); return; }
@@ -143,15 +166,22 @@ export default function AIFacebookAssistantPage() {
   };
 
   const activeConversation = useMemo(
-    () => data?.conversations.find(c => c.psid === activePsid) ?? null,
-    [data, activePsid],
+    () => data?.conversations.find(c => c.key === activeKey) ?? null,
+    [data, activeKey],
   );
+
+  const filteredConversations = useMemo(() => {
+    if (!data) return [];
+    if (filter === 'all') return data.conversations;
+    return data.conversations.filter(c => c.kind === filter);
+  }, [data, filter]);
 
   if (forbidden) return <ForbiddenState requiredPerm="settings.read" />;
   if (loading || !data) return <Spinner />;
 
   const status = data.integrationStatus;
-  const allReady = status.hasOpenAiKey && status.hasPageToken && status.hasAppSecret;
+  const hasAiKey = provider === 'openai' ? status.hasOpenAiKey : status.hasGeminiKey;
+  const allReady = hasAiKey && status.hasPageToken && status.hasAppSecret;
 
   return (
     <div className="space-y-5" dir="rtl">
@@ -177,8 +207,9 @@ export default function AIFacebookAssistantPage() {
         </div>
 
         {/* Integration status */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-5">
-          <StatusBadge label="OPENAI_API_KEY" ok={status.hasOpenAiKey} />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-5">
+          <StatusBadge label="GEMINI_API_KEY" ok={status.hasGeminiKey} hint="مجاني — ai.google.dev" />
+          <StatusBadge label="OPENAI_API_KEY" ok={status.hasOpenAiKey} hint="مدفوع — platform.openai.com" />
           <StatusBadge label="FB_PAGE_ACCESS_TOKEN" ok={status.hasPageToken} />
           <StatusBadge label="FB_APP_SECRET" ok={status.hasAppSecret} />
         </div>
@@ -220,17 +251,43 @@ export default function AIFacebookAssistantPage() {
           <p className="text-[10px] text-gray-400 mt-1">{systemPrompt.length} حرف</p>
         </Field>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Field label="موديل OpenAI">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <Field label="مزوّد الـ AI">
+            <select
+              value={provider}
+              onChange={e => {
+                const p = e.target.value as AiProvider;
+                setProvider(p);
+                // Auto-pick a sensible default model for the chosen provider.
+                setModel(p === 'gemini' ? 'gemini-1.5-flash' : 'gpt-4o-mini');
+              }}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+            >
+              <option value="gemini">Google Gemini (مجاني 🆓)</option>
+              <option value="openai">OpenAI (مدفوع)</option>
+            </select>
+          </Field>
+          <Field label="الموديل">
             <select
               value={model}
               onChange={e => setModel(e.target.value)}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
             >
-              <option value="gpt-4o-mini">gpt-4o-mini (أرخص)</option>
-              <option value="gpt-4o">gpt-4o (أفضل جودة)</option>
-              <option value="gpt-4-turbo">gpt-4-turbo</option>
-              <option value="gpt-3.5-turbo">gpt-3.5-turbo (الأرخص)</option>
+              {provider === 'gemini' ? (
+                <>
+                  <option value="gemini-1.5-flash">gemini-1.5-flash (مجاني، أسرع)</option>
+                  <option value="gemini-1.5-flash-8b">gemini-1.5-flash-8b (مجاني، الأرخص)</option>
+                  <option value="gemini-1.5-pro">gemini-1.5-pro (أفضل جودة)</option>
+                  <option value="gemini-2.0-flash-exp">gemini-2.0-flash-exp (تجريبي)</option>
+                </>
+              ) : (
+                <>
+                  <option value="gpt-4o-mini">gpt-4o-mini (الأرخص)</option>
+                  <option value="gpt-4o">gpt-4o (أفضل جودة)</option>
+                  <option value="gpt-4-turbo">gpt-4-turbo</option>
+                  <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+                </>
+              )}
             </select>
           </Field>
           <Field label="حد أقصى للرد (tokens)">
@@ -279,7 +336,7 @@ export default function AIFacebookAssistantPage() {
         <div className="flex gap-2 justify-end">
           <button
             onClick={runTest}
-            disabled={testing || !status.hasOpenAiKey}
+            disabled={testing || !hasAiKey}
             className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black transition disabled:opacity-50"
           >
             {testing ? '...جاري الاختبار' : '🤖 جرّب'}
@@ -305,16 +362,38 @@ export default function AIFacebookAssistantPage() {
             icon="💬"
           />
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 min-h-[400px]">
+          <>
+            {/* Filter chips: chat / comments / all */}
+            <div className="px-4 pt-3 pb-2 flex gap-2 flex-wrap border-b border-gray-100">
+              {([
+                { k: 'all',     label: 'الكل', count: data.conversations.length },
+                { k: 'message', label: '💬 رسائل', count: data.conversations.filter(c => c.kind === 'message').length },
+                { k: 'comment', label: '🗨️ تعليقات', count: data.conversations.filter(c => c.kind === 'comment').length },
+              ] as const).map(f => (
+                <button
+                  key={f.k}
+                  onClick={() => { setFilter(f.k); setActiveKey(null); }}
+                  className={`px-3 py-1 rounded-lg text-[11px] font-bold border transition ${filter === f.k ? 'bg-[#1a1a2e] text-white border-[#1a1a2e]' : 'border-gray-200 text-gray-600 bg-white hover:border-gray-400'}`}
+                >
+                  {f.label} <span className="opacity-70">({f.count})</span>
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 min-h-[400px]">
             {/* Conversation list */}
             <div className="lg:col-span-1 border-l border-gray-100 max-h-[500px] overflow-y-auto">
-              {data.conversations.map(c => (
+              {filteredConversations.map(c => (
                 <button
-                  key={c.psid}
-                  onClick={() => { setActivePsid(c.psid); setManualReply(''); }}
-                  className={`w-full text-right p-3 border-b border-gray-100 hover:bg-gray-50 transition ${activePsid === c.psid ? 'bg-blue-50' : ''}`}
+                  key={c.key}
+                  onClick={() => { setActiveKey(c.key); setManualReply(''); }}
+                  className={`w-full text-right p-3 border-b border-gray-100 hover:bg-gray-50 transition ${activeKey === c.key ? 'bg-blue-50' : ''}`}
                 >
-                  <p className="text-sm font-bold text-gray-900 truncate">{c.userName ?? `User ${c.psid.slice(-6)}`}</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-bold text-gray-900 truncate flex-1">{c.userName ?? `User ${c.psid.slice(-6)}`}</p>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0 ${c.kind === 'comment' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                      {c.kind === 'comment' ? '🗨️ تعليق' : '💬 رسالة'}
+                    </span>
+                  </div>
                   <p className="text-[11px] text-gray-500 mt-1 truncate">{c.events[0]?.text ?? '—'}</p>
                   <p className="text-[10px] text-gray-400 mt-1">
                     {fmtDateTime(c.lastAt)} · {c.eventCount} رسالة
@@ -337,18 +416,33 @@ export default function AIFacebookAssistantPage() {
                       value={manualReply}
                       onChange={e => setManualReply(e.target.value)}
                       rows={2}
-                      placeholder="رد يدوي من حضرتك (هينزل على Messenger كرد من الصفحة)..."
+                      placeholder={
+                        activeConversation.kind === 'comment'
+                          ? 'رد يدوي على التعليق (هيظهر للجميع في البوست)...'
+                          : 'رد يدوي على Messenger...'
+                      }
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
                     />
-                    <div className="flex gap-2 justify-between">
-                      <Link
-                        href={`https://www.facebook.com/${activeConversation.psid}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[10px] text-gray-500 hover:text-blue-700"
-                      >
-                        فتح بروفايل العميل ↗
-                      </Link>
+                    <div className="flex gap-2 justify-between flex-wrap">
+                      {activeConversation.kind === 'comment' && activeConversation.postId ? (
+                        <Link
+                          href={`https://www.facebook.com/${activeConversation.postId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-gray-500 hover:text-blue-700"
+                        >
+                          فتح البوست على فيسبوك ↗
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`https://www.facebook.com/${activeConversation.psid}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-gray-500 hover:text-blue-700"
+                        >
+                          فتح بروفايل العميل ↗
+                        </Link>
+                      )}
                       <button
                         onClick={sendManual}
                         disabled={sending || !manualReply.trim() || !status.hasPageToken}
@@ -366,17 +460,21 @@ export default function AIFacebookAssistantPage() {
               )}
             </div>
           </div>
+          </>
         )}
       </div>
     </div>
   );
 }
 
-function StatusBadge({ label, ok }: { label: string; ok: boolean }) {
+function StatusBadge({ label, ok, hint }: { label: string; ok: boolean; hint?: string }) {
   return (
     <div className={`rounded-lg px-3 py-2 border text-[11px] font-bold flex items-center gap-2 ${ok ? 'bg-emerald-500/15 border-emerald-300/30 text-emerald-200' : 'bg-red-500/15 border-red-300/30 text-red-200'}`}>
       <span>{ok ? '✅' : '❌'}</span>
-      <span dir="ltr" className="truncate">{label}</span>
+      <div className="min-w-0 flex-1">
+        <span dir="ltr" className="truncate block">{label}</span>
+        {hint && <span className="text-[9px] opacity-70 block" dir="rtl">{hint}</span>}
+      </div>
     </div>
   );
 }

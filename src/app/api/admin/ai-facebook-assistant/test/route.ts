@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/permissions';
-import { getAssistantSettings, callOpenAI } from '@/lib/ai-facebook-assistant';
+import { getAssistantSettings, callAi } from '@/lib/ai-facebook-assistant';
 
 // Test the assistant — admin sends a message, we run it through the
 // SAME prompt + model the production webhook would use, and return
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
 
   const settings = await getAssistantSettings();
   try {
-    const result = await callOpenAI({
+    const result = await callAi(settings.provider, {
       systemPrompt: settings.systemPrompt,
       userMessage: message,
       model: settings.model,

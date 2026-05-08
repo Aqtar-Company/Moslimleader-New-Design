@@ -11,9 +11,14 @@ import { prisma } from './prisma';
 // - /api/facebook/webhook (POST handler) — auto-reply path
 // - /api/admin/ai-facebook-assistant — admin UI
 
+export type AiProvider = 'openai' | 'gemini';
+
 export interface AssistantSettings {
   enabled: boolean;
   systemPrompt: string;
+  // Which AI provider to call. 'gemini' uses Google's free tier
+  // (GEMINI_API_KEY); 'openai' uses OPENAI_API_KEY (paid).
+  provider: AiProvider;
   model: string;
   // Optional restriction: only auto-reply if the message contains
   // certain keywords (asks about products / prices / shipping, etc).
@@ -44,7 +49,9 @@ const DEFAULT_SYSTEM_PROMPT = `أنت المساعد الذكي لمتجر "مس
 const DEFAULTS: AssistantSettings = {
   enabled: false,
   systemPrompt: DEFAULT_SYSTEM_PROMPT,
-  model: 'gpt-4o-mini',
+  // Default to Gemini (free tier) so the bot works without paid setup.
+  provider: 'gemini',
+  model: 'gemini-1.5-flash',
   triggerKeywords: [],
   maxTokens: 300,
   updatedAt: new Date(0).toISOString(),
@@ -65,11 +72,16 @@ export async function getAssistantSettings(): Promise<AssistantSettings> {
 
 export async function saveAssistantSettings(input: Partial<AssistantSettings>): Promise<AssistantSettings> {
   const current = await getAssistantSettings();
+  const provider: AiProvider =
+    input.provider === 'openai' || input.provider === 'gemini'
+      ? input.provider
+      : current.provider;
   const next: AssistantSettings = {
     enabled: typeof input.enabled === 'boolean' ? input.enabled : current.enabled,
     systemPrompt: typeof input.systemPrompt === 'string' && input.systemPrompt.trim()
       ? input.systemPrompt.trim()
       : current.systemPrompt,
+    provider,
     model: typeof input.model === 'string' && input.model.trim() ? input.model.trim() : current.model,
     triggerKeywords: Array.isArray(input.triggerKeywords)
       ? input.triggerKeywords.filter(k => typeof k === 'string' && k.trim().length > 0).map(k => k.trim())
@@ -108,9 +120,9 @@ export function verifyFacebookSignature(rawBody: string, signature: string | nul
   return crypto.timingSafeEqual(a, b);
 }
 
-// ─────────── OpenAI ───────────
+// ─────────── AI providers ───────────
 
-export interface OpenAiCallInput {
+export interface AiCallInput {
   systemPrompt: string;
   userMessage: string;
   /** Last few turns from the same user, oldest first. */
@@ -119,15 +131,29 @@ export interface OpenAiCallInput {
   maxTokens: number;
 }
 
-export interface OpenAiCallResult {
+export interface AiCallResult {
   text: string;
   totalTokens: number;
+}
+
+// Backward-compatible aliases — older code imports these names.
+export type OpenAiCallInput = AiCallInput;
+export type OpenAiCallResult = AiCallResult;
+
+// Provider-agnostic entry point. The webhook + admin endpoints call
+// this so adding a new provider is a one-line switch case below.
+export async function callAi(provider: AiProvider, input: AiCallInput): Promise<AiCallResult> {
+  switch (provider) {
+    case 'gemini': return callGemini(input);
+    case 'openai':
+    default:       return callOpenAI(input);
+  }
 }
 
 // Direct fetch to OpenAI Chat Completions endpoint — no SDK needed.
 // Works with any OpenAI-compatible provider (Azure OpenAI, Together,
 // etc.) by setting OPENAI_BASE_URL.
-export async function callOpenAI(input: OpenAiCallInput): Promise<OpenAiCallResult> {
+export async function callOpenAI(input: AiCallInput): Promise<AiCallResult> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error('OPENAI_API_KEY غير مهيّأ في متغيرات البيئة');
@@ -168,6 +194,55 @@ export async function callOpenAI(input: OpenAiCallInput): Promise<OpenAiCallResu
   return { text, totalTokens };
 }
 
+// Google Gemini via the public Generative Language API. The free
+// tier is the reason we default to this — `gemini-1.5-flash` allows
+// 15 RPM / 1M tokens/day at no cost. Get a key at https://ai.google.dev.
+export async function callGemini(input: AiCallInput): Promise<AiCallResult> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY غير مهيّأ في متغيرات البيئة');
+  }
+
+  // Gemini uses an alternating-roles format. Convert our generic
+  // history (user/assistant) into Gemini's (user/model) shape.
+  const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+  for (const turn of input.history ?? []) {
+    contents.push({
+      role: turn.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: turn.content }],
+    });
+  }
+  contents.push({ role: 'user', parts: [{ text: input.userMessage }] });
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(input.model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: input.systemPrompt }] },
+      contents,
+      generationConfig: {
+        maxOutputTokens: input.maxTokens,
+        temperature: 0.7,
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`Gemini ${res.status}: ${errText.slice(0, 300)}`);
+  }
+  const data = await res.json() as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    usageMetadata?: { totalTokenCount?: number };
+  };
+  const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text ?? '').join('').trim() ?? '';
+  const totalTokens = data?.usageMetadata?.totalTokenCount ?? 0;
+  if (!text) throw new Error('Gemini returned empty response');
+  return { text, totalTokens };
+}
+
 // ─────────── Facebook Send API ───────────
 
 export interface FacebookSendResult {
@@ -200,6 +275,34 @@ export async function sendFacebookReply(recipientPsid: string, text: string): Pr
       return { ok: false, error: JSON.stringify(data).slice(0, 300) };
     }
     return { ok: true, messageId: (data as { message_id?: string }).message_id };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+// Reply to a Page comment via Graph API. Different endpoint than
+// Messenger DMs — comments are public, posted as a child of the
+// original comment so the user's notification chains correctly.
+// Required permissions: `pages_manage_engagement` (production) +
+// `pages_read_engagement`.
+export async function replyToComment(commentId: string, text: string): Promise<FacebookSendResult> {
+  const pageToken = process.env.FB_PAGE_ACCESS_TOKEN;
+  if (!pageToken || pageToken === 'PENDING') {
+    return { ok: false, error: 'FB_PAGE_ACCESS_TOKEN غير مهيّأ' };
+  }
+  const safeText = text.slice(0, 7990); // FB allows 8000 chars on comments
+  const url = `https://graph.facebook.com/v21.0/${encodeURIComponent(commentId)}/comments?access_token=${encodeURIComponent(pageToken)}`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: safeText }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, error: JSON.stringify(data).slice(0, 300) };
+    }
+    return { ok: true, messageId: (data as { id?: string }).id };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }

@@ -722,15 +722,22 @@ model AuditLog {
 // The /admin/ai-facebook-assistant page renders this as a chat view.
 model FacebookEvent {
   id              String   @id @default(cuid())
-  // Conversation identifier — Messenger PSID (Page-scoped User ID).
-  // All messages from one user share the same psid so we can render
-  // them as a thread.
+  // Conversation identifier — Messenger PSID or commenter user-id
+  // (for comments). Same field for both so the inbox can group all
+  // events from one person regardless of channel.
   psid            String
+  // 'message' = Messenger DM; 'comment' = Page feed comment;
+  // 'postback' = button click in Messenger.
+  kind            String   @default("message")
   // 'incoming' = from user → page; 'outgoing-auto' = AI reply;
   // 'outgoing-manual' = admin replied via the dashboard.
   direction       String
   // Free-text body. For postback events we store the payload here too.
   text            String   @db.Text
+  // For comments: the comment's FB id (used to POST a reply) and the
+  // parent post id. Null for Messenger events.
+  commentId       String?
+  postId          String?
   // Senders/recipients are JSON so we can capture display names + ids
   // when Facebook supplies them (User Profile API can backfill later).
   sender          Json?
@@ -747,5 +754,6 @@ model FacebookEvent {
   createdAt       DateTime @default(now())
   @@index([psid, createdAt])
   @@index([direction, createdAt])
+  @@index([kind, createdAt])
   @@index([createdAt])
 }

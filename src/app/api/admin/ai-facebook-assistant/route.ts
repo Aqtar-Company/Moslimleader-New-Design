@@ -32,8 +32,11 @@ export async function GET() {
       select: {
         id: true,
         psid: true,
+        kind: true,
         direction: true,
         text: true,
+        commentId: true,
+        postId: true,
         sender: true,
         aiModel: true,
         aiTokens: true,
@@ -44,29 +47,40 @@ export async function GET() {
     }),
   ]);
 
-  // Group by psid so the UI can render each user as a thread.
+  // Group by `psid + kind` so a user who messages AND comments shows
+  // up as TWO separate threads (different reply mechanism per kind).
   type EventRow = (typeof recent)[number];
   const conversationsMap = new Map<string, EventRow[]>();
   for (const e of recent) {
-    const list = conversationsMap.get(e.psid);
+    const key = `${e.kind}:${e.psid}`;
+    const list = conversationsMap.get(key);
     if (list) list.push(e);
-    else conversationsMap.set(e.psid, [e]);
+    else conversationsMap.set(key, [e]);
   }
   const conversations = Array.from(conversationsMap.entries())
-    .map(([psid, events]) => {
-      // Pull the user's display name from the most recent incoming
-      // event (Facebook supplies a `sender.name` only sometimes).
+    .map(([key, events]) => {
+      const [kind, psid] = key.split(':');
       const incoming = events.find(e => e.direction === 'incoming');
       const senderObj = incoming?.sender as { name?: string } | null | undefined;
+      // For comment threads, expose the most recent commentId so the
+      // UI can target it when sending a manual reply.
+      const lastIncomingComment = events.find(e => e.direction === 'incoming' && e.kind === 'comment');
       return {
+        key,
+        kind,
         psid,
         userName: senderObj?.name ?? null,
         lastAt: events[0].createdAt.toISOString(),
         eventCount: events.length,
+        commentId: lastIncomingComment?.commentId ?? null,
+        postId: lastIncomingComment?.postId ?? null,
         events: events.map(e => ({
           id: e.id,
+          kind: e.kind,
           direction: e.direction,
           text: e.text,
+          commentId: e.commentId,
+          postId: e.postId,
           aiModel: e.aiModel,
           sendStatus: e.sendStatus,
           sendError: e.sendError,
@@ -78,6 +92,7 @@ export async function GET() {
 
   // Status flags so the UI can show "missing token" warnings up front.
   const hasOpenAiKey = !!process.env.OPENAI_API_KEY;
+  const hasGeminiKey = !!process.env.GEMINI_API_KEY;
   const hasPageToken =
     !!process.env.FB_PAGE_ACCESS_TOKEN && process.env.FB_PAGE_ACCESS_TOKEN !== 'PENDING';
   const hasAppSecret =
@@ -88,6 +103,7 @@ export async function GET() {
     conversations,
     integrationStatus: {
       hasOpenAiKey,
+      hasGeminiKey,
       hasPageToken,
       hasAppSecret,
     },

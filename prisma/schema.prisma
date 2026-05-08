@@ -141,6 +141,13 @@ model Product {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
+  // Optional age range — used by the FB AI assistant to filter the
+  // catalogue to age-appropriate items when a buyer says "my kid
+  // is 5". Products without these still appear under "all ages".
+  minAge       Int?
+  maxAge       Int?
+  ageCategory  String?   // 'toddler' | 'preschool' | 'primary' | 'tween' | 'teen'
+
   orderItems OrderItem[]
   cartItems  CartItem[]
   reviews    Review[]
@@ -149,6 +156,7 @@ model Product {
 
   @@index([source])
   @@index([inStock])
+  @@index([minAge, maxAge])
 }
 
 // Append-only audit log of every stock change. Written inside the same
@@ -761,10 +769,29 @@ model FacebookEvent {
   // 'male' | 'female' | 'unknown'. Stored once per incoming event so
   // the inbox can render the correct grammar in admin previews.
   userGender      String?
+  // ─── Sales-conversion fields (populated by conversation-extractor) ───
+  // Buyer signals captured from incoming messages: name, phone,
+  // address, governorate, kids' ages. The extractor merges these
+  // into a per-psid profile (Setting `fb-profile:<psid>`) so the
+  // bot has them across turns; we also store them per-event for
+  // reporting + audit.
+  customerName    String?
+  customerPhone   String?
+  customerAddress String?  @db.Text
+  customerGov     String?
+  // Kids' ages as JSON array, e.g. [3, 5, 7]. Used to filter the
+  // catalogue context to age-appropriate items only.
+  kidAges         Json?
+  // Detected intent class for the analytics funnel:
+  //   'price-question' | 'shipping-question' | 'ready-to-buy'
+  //   | 'objection' | 'general' | null
+  intentSignal    String?
   createdAt       DateTime @default(now())
   @@index([psid, createdAt])
   @@index([direction, createdAt])
   @@index([kind, createdAt])
   @@index([leadStatus, createdAt])
+  @@index([customerPhone])
+  @@index([intentSignal, createdAt])
   @@index([createdAt])
 }

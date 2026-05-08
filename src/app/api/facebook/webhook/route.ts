@@ -14,6 +14,36 @@ import {
 } from '@/lib/ai-facebook-assistant';
 import { buildAssistantContext } from '@/lib/assistant-knowledge';
 import { detectGenderFromName, genderDirective } from '@/lib/gender-detector';
+import {
+  extractFromMessage,
+  updateProfile,
+  renderProfileForPrompt,
+} from '@/lib/conversation-extractor';
+
+// Helper: is the conversation HOT enough that we want a longer
+// history window? Looks for any HOT event from this psid in the
+// last 30 minutes (mid-close window).
+async function isRecentlyHot(psid: string): Promise<boolean> {
+  const since = new Date(Date.now() - 30 * 60 * 1000);
+  const hit = await prisma.facebookEvent.findFirst({
+    where: { psid, leadStatus: 'hot', createdAt: { gte: since } },
+    select: { id: true },
+  });
+  return !!hit;
+}
+
+// Per-conversation mute toggle. The admin clicks "🤐 إيقاف الرد"
+// on a thread and we set Setting `mute-psid-<psid>` to '1'. We
+// check this at the top of the message handler so manual replies
+// still flow but auto-reply is suppressed.
+async function isPsidMuted(psid: string): Promise<boolean> {
+  try {
+    const row = await prisma.setting.findUnique({
+      where: { key: `mute-psid-${psid}` },
+    });
+    return !!row?.value;
+  } catch { return false; }
+}
 
 // Facebook / Instagram webhook endpoint — handles BOTH:
 //   • Messenger DMs (entry.messaging[])
@@ -159,6 +189,15 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
   const senderName = (input.sender as { name?: string } | null)?.name ?? null;
   const userGender = detectGenderFromName(senderName);
 
+  // Extract any structured signals (phone, address, kids' ages,
+  // intent) from the incoming text BEFORE we persist, so the row
+  // captures everything in one write.
+  const extracted = extractFromMessage(input.text);
+  // Seed the profile with the FB-supplied display name on first
+  // contact so the bot can use "يا فاطمة" right away.
+  if (!extracted.name && senderName) extracted.name = senderName.split(/\s+/)[0];
+  const mergedProfile = await updateProfile(input.psid, extracted);
+
   let stored;
   try {
     stored = await prisma.facebookEvent.create({
@@ -171,6 +210,16 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
         recipient: input.recipient ?? undefined,
         rawPayload: input.rawPayload,
         userGender,
+        // Per-event snapshot of what we extracted from THIS message
+        // (the merged profile is reachable separately via Setting).
+        customerName:    extracted.name        ?? null,
+        customerPhone:   extracted.phone       ?? null,
+        customerAddress: extracted.address     ?? null,
+        customerGov:     extracted.governorate ?? null,
+        kidAges:         extracted.kidAges && extracted.kidAges.length > 0
+                           ? extracted.kidAges as unknown as object
+                           : undefined,
+        intentSignal:    extracted.intentSignal ?? null,
       },
     });
   } catch (err) {
@@ -180,6 +229,9 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
 
   const settings = await getAssistantSettings();
   if (!shouldAutoReply(input.text, settings)) return;
+  // Per-conversation mute — admin can pause auto-reply on a
+  // delicate thread without disabling the bot globally.
+  if (await isPsidMuted(input.psid)) return;
 
   // Show "typing..." dots immediately — user sees activity within
   // ~200ms instead of waiting in silence for the AI to think.
@@ -187,6 +239,10 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
   // call to delay the actual reply.
   void sendTypingIndicator(input.psid, true);
 
+  // History scaling: HOT mid-close conversations need more
+  // context (20 turns) so the bot doesn't lose track of what was
+  // already agreed; cold traffic stays at 6 to keep tokens cheap.
+  const historyTake = (await isRecentlyHot(input.psid)) ? 20 : 6;
   const recent = await prisma.facebookEvent.findMany({
     where: {
       psid: input.psid,
@@ -194,7 +250,7 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
       id: { not: stored.id },
     },
     orderBy: { createdAt: 'desc' },
-    take: 6,
+    take: historyTake,
     select: { direction: true, text: true },
   });
   const history = recent
@@ -205,12 +261,15 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
     }));
 
   // Build enriched prompt: settings prompt + gender directive +
-  // live site knowledge (RAG-lite). Same payload the bot sees on
-  // every turn so it has fresh data + correct grammar.
+  // accumulated customer profile + live site knowledge (RAG-lite).
+  // The profile block tells the bot what we already know so it
+  // doesn't re-ask the buyer's name / phone / kid ages.
   const context = await buildAssistantContext();
+  const profileBlock = renderProfileForPrompt(mergedProfile);
   const enrichedPrompt =
     `${settings.systemPrompt}\n\n` +
     `## معلومات عن العميل:\n${genderDirective(userGender)}\n\n` +
+    (profileBlock ? `${profileBlock}\n\n` : '') +
     `---\n\n${context.text}`;
 
   let rawAiText: string;
@@ -226,6 +285,7 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
     rawAiText = result.text;
     aiTokens = result.totalTokens;
   } catch (err) {
+    // Persist the failure for the admin's audit trail …
     await prisma.facebookEvent.create({
       data: {
         psid: input.psid,
@@ -238,12 +298,25 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
         userGender,
       },
     }).catch(() => {/* swallow */});
+    // … AND send a graceful "back in a minute" so the user isn't
+    // left in silence. Mark the conversation as needs-attention so
+    // the admin sees a 🛎️ chip on the inbox card.
+    await sendFacebookReply(
+      input.psid,
+      'عذراً، حصل تأخر بسيط من جانبنا — هرد عليكِ في دقايق إن شاء الله 🙏',
+    ).catch(() => {/* swallow */});
+    await prisma.setting.upsert({
+      where: { key: `needs-attention:${input.psid}` },
+      create: { key: `needs-attention:${input.psid}`, value: new Date().toISOString() },
+      update: { value: new Date().toISOString() },
+    }).catch(() => {/* swallow */});
     return;
   }
 
-  // Strip the [[LEAD:...]] tag before sending to the user, but keep
-  // the parsed status for the inbox view.
-  const { cleanText: aiText, leadStatus } = extractLeadTag(rawAiText);
+  // Strip the [[LEAD:...]] and [[INTENT:...]] tags before sending
+  // to the user, but keep the parsed values for the inbox view +
+  // analytics funnel.
+  const { cleanText: aiText, leadStatus, intent } = extractLeadTag(rawAiText);
 
   // Humanise: pause briefly before sending so it feels like a real
   // person typing. Uses reply length to scale the delay.
@@ -261,6 +334,7 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
       sendStatus: sendResult.ok ? 'sent' : 'failed',
       sendError: sendResult.ok ? null : sendResult.error ?? 'unknown',
       leadStatus,
+      intentSignal: intent,
       userGender,
     },
   }).catch(err => {
@@ -339,7 +413,7 @@ async function handleIncomingComment(input: IncomingCommentInput) {
     return;
   }
 
-  const { cleanText: aiText, leadStatus } = extractLeadTag(rawAiText);
+  const { cleanText: aiText, leadStatus, intent } = extractLeadTag(rawAiText);
 
   // Brief humanizing delay on comments too — Facebook's anti-spam
   // throttle treats instant replies suspiciously, and feels less
@@ -357,6 +431,7 @@ async function handleIncomingComment(input: IncomingCommentInput) {
       postId: input.postId,
       aiModel: settings.model,
       aiTokens,
+      intentSignal: intent,
       sendStatus: sendResult.ok ? 'sent' : 'failed',
       sendError: sendResult.ok ? null : sendResult.error ?? 'unknown',
       leadStatus,

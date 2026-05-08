@@ -44,6 +44,13 @@ export async function GET() {
         sendError: true,
         leadStatus: true,
         userGender: true,
+        // Sales-conversion fields (extracted by conversation-extractor).
+        customerName: true,
+        customerPhone: true,
+        customerAddress: true,
+        customerGov: true,
+        kidAges: true,
+        intentSignal: true,
         createdAt: true,
       },
     }),
@@ -62,6 +69,23 @@ export async function GET() {
   // Roll up the "hottest" lead status across all events in a thread
   // — HOT > WARM > COLD. Lets the inbox sort by intent at a glance.
   const LEAD_RANK: Record<string, number> = { hot: 3, warm: 2, cold: 1 };
+  // Pull "needs-attention" flags (set when AI errored out) so the
+  // inbox can render the 🛎️ chip on affected conversations.
+  const needsAttentionRows = await prisma.setting.findMany({
+    where: { key: { startsWith: 'needs-attention:' } },
+    select: { key: true, value: true },
+  }).catch(() => []);
+  const needsAttentionMap = new Map<string, string>();
+  for (const r of needsAttentionRows) {
+    const psid = r.key.slice('needs-attention:'.length);
+    needsAttentionMap.set(psid, typeof r.value === 'string' ? r.value : '');
+  }
+  const muteRows = await prisma.setting.findMany({
+    where: { key: { startsWith: 'mute-psid-' } },
+    select: { key: true },
+  }).catch(() => []);
+  const mutedPsids = new Set(muteRows.map(r => r.key.slice('mute-psid-'.length)));
+
   const conversations = Array.from(conversationsMap.entries())
     .map(([key, events]) => {
       const [kind, psid] = key.split(':');
@@ -76,17 +100,47 @@ export async function GET() {
         if (rank > topRank) { topRank = rank; topLead = e.leadStatus as 'hot' | 'warm' | 'cold'; }
       }
       const userGender = events.find(e => e.userGender)?.userGender ?? null;
+      // Build a per-conversation "extracted profile" by walking
+      // events newest-first and taking the first non-null value
+      // for each field. This mirrors what the bot sees on every
+      // turn (the per-psid Setting profile) but keeps the UI
+      // self-contained.
+      let customerName    : string | null = null;
+      let customerPhone   : string | null = null;
+      let customerAddress : string | null = null;
+      let customerGov     : string | null = null;
+      let kidAges         : number[] = [];
+      let lastIntent      : string | null = null;
+      for (const e of events) {
+        if (!customerName    && e.customerName)    customerName    = e.customerName;
+        if (!customerPhone   && e.customerPhone)   customerPhone   = e.customerPhone;
+        if (!customerAddress && e.customerAddress) customerAddress = e.customerAddress;
+        if (!customerGov     && e.customerGov)     customerGov     = e.customerGov;
+        if (kidAges.length === 0 && Array.isArray(e.kidAges)) kidAges = e.kidAges as number[];
+        if (!lastIntent      && e.intentSignal)    lastIntent      = e.intentSignal;
+      }
       return {
         key,
         kind,
         psid,
-        userName: senderObj?.name ?? null,
+        userName: senderObj?.name ?? customerName ?? null,
         userGender,
         lastAt: events[0].createdAt.toISOString(),
         eventCount: events.length,
         leadStatus: topLead,
         commentId: lastIncomingComment?.commentId ?? null,
         postId: lastIncomingComment?.postId ?? null,
+        muted: mutedPsids.has(psid),
+        needsAttention: needsAttentionMap.has(psid),
+        // Extracted buyer profile rolled up from the thread.
+        profile: {
+          name: customerName,
+          phone: customerPhone,
+          address: customerAddress,
+          governorate: customerGov,
+          kidAges,
+          lastIntent,
+        },
         events: events.map(e => ({
           id: e.id,
           kind: e.kind,

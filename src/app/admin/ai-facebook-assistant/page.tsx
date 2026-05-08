@@ -77,6 +77,15 @@ interface ConversationEvent {
   createdAt: string;
 }
 
+interface ConversationProfile {
+  name: string | null;
+  phone: string | null;
+  address: string | null;
+  governorate: string | null;
+  kidAges: number[];
+  lastIntent: string | null;
+}
+
 interface Conversation {
   key: string;
   kind: 'message' | 'comment' | 'postback' | string;
@@ -88,6 +97,9 @@ interface Conversation {
   leadStatus: 'hot' | 'warm' | 'cold' | null;
   commentId: string | null;
   postId: string | null;
+  muted: boolean;
+  needsAttention: boolean;
+  profile: ConversationProfile;
   events: ConversationEvent[];
 }
 
@@ -580,6 +592,9 @@ export default function AIFacebookAssistantPage() {
         )}
       </div>
 
+      {/* Conversion analytics — last 30 days */}
+      <AnalyticsCard />
+
       {/* Inbox */}
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
@@ -661,6 +676,11 @@ export default function AIFacebookAssistantPage() {
             <div className="lg:col-span-2 flex flex-col max-h-[500px]">
               {activeConversation ? (
                 <>
+                  <ConversationActionBar
+                    conversation={activeConversation}
+                    onRefresh={load}
+                    addToast={addToast}
+                  />
                   <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-50">
                     {[...activeConversation.events].reverse().map(e => (
                       <MessageBubble key={e.id} event={e} />
@@ -774,6 +794,457 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
       <label className="block text-[11px] text-gray-700 font-bold mb-1">{label}</label>
       {children}
       {hint && <p className="text-[10px] text-gray-500 mt-1 leading-relaxed">{hint}</p>}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Conversation action bar — shows above the message thread when a
+// conversation is selected. Surfaces:
+//   • Extracted profile (name, phone, governorate, kid ages)
+//   • 📦 Create Order (opens the modal)
+//   • 📞 WhatsApp link (when phone is extracted)
+//   • 🤐 Mute / 🔔 Unmute auto-reply for this thread
+//   • 🛎️ "Needs attention" pill when AI errored
+// ──────────────────────────────────────────────────────────────────
+function ConversationActionBar({
+  conversation,
+  onRefresh,
+  addToast,
+}: {
+  conversation: Conversation;
+  onRefresh: () => void;
+  addToast: (msg: string, kind?: 'success' | 'error' | 'warning' | 'info', duration?: number) => void;
+}) {
+  const [creating, setCreating] = useState(false);
+  const [muting, setMuting] = useState(false);
+  const p = conversation.profile;
+
+  const toggleMute = async () => {
+    setMuting(true);
+    try {
+      const res = await adminFetch('/api/admin/ai-facebook-assistant/mute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ psid: conversation.psid, mute: !conversation.muted }),
+      });
+      const d = await res.json();
+      if (!res.ok) { addToast(d.error || 'فشل', 'error'); setMuting(false); return; }
+      addToast(conversation.muted ? 'تم استئناف الرد التلقائي' : 'تم إيقاف الرد التلقائي على هذه المحادثة', 'success');
+      onRefresh();
+    } catch { addToast('فشل', 'error'); }
+    setMuting(false);
+  };
+
+  // wa.me deep link — uses E.164 (Egypt: +20<...>).
+  const waUrl = p.phone
+    ? `https://wa.me/2${p.phone.replace(/^0/, '')}?text=${encodeURIComponent(
+        `أهلاً ${p.name ?? ''} 🌹 من فريق مسلم ليدر — متابعة لرسالتك`
+      )}`
+    : null;
+
+  return (
+    <>
+      <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5">
+        <div className="flex items-start justify-between gap-2 flex-wrap">
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-bold text-amber-900 mb-1">
+              👤 ما نعرفه عن العميل:
+            </p>
+            <div className="flex items-center gap-2 flex-wrap text-[10px]">
+              {p.name        && <Pill label={`👤 ${p.name}`} />}
+              {p.phone       && <Pill label={`📞 ${p.phone}`} tone="emerald" />}
+              {p.governorate && <Pill label={`📍 ${p.governorate}`} />}
+              {p.address     && <Pill label={`🏠 ${p.address.slice(0, 40)}${p.address.length > 40 ? '…' : ''}`} />}
+              {p.kidAges.length > 0 && <Pill label={`👶 أعمار: ${p.kidAges.join('، ')}`} />}
+              {!p.name && !p.phone && !p.address && !p.governorate && p.kidAges.length === 0 && (
+                <span className="text-amber-700 italic">— لم يتم استخراج بيانات بعد —</span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+            {conversation.needsAttention && (
+              <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold">
+                🛎️ يحتاج تدخّلك
+              </span>
+            )}
+            {conversation.muted && (
+              <span className="text-[10px] bg-gray-200 text-gray-700 px-2 py-0.5 rounded font-bold">
+                🤐 الرد متوقف
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap mt-2">
+          <button
+            onClick={() => setCreating(true)}
+            disabled={!p.phone || conversation.kind !== 'message'}
+            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black transition disabled:opacity-50 disabled:cursor-not-allowed"
+            title={!p.phone ? 'الموبايل مش موجود — اطلبه من العميل أولاً' : ''}
+          >
+            📦 إنشاء طلب
+          </button>
+          {waUrl && (
+            <a
+              href={waUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white text-[11px] font-black transition"
+            >
+              📞 واتساب
+            </a>
+          )}
+          <button
+            onClick={toggleMute}
+            disabled={muting}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-black transition ${conversation.muted ? 'bg-gray-200 hover:bg-gray-300 text-gray-800' : 'bg-amber-200 hover:bg-amber-300 text-amber-900'} disabled:opacity-50`}
+            title={conversation.muted ? 'استأنف الرد التلقائي' : 'أوقف الرد التلقائي على هذه المحادثة فقط'}
+          >
+            {conversation.muted ? '🔔 استأنف الرد' : '🤐 أوقف الرد'}
+          </button>
+        </div>
+      </div>
+
+      {creating && (
+        <CreateOrderModal
+          conversation={conversation}
+          onClose={() => setCreating(false)}
+          onCreated={() => { setCreating(false); onRefresh(); }}
+          addToast={addToast}
+        />
+      )}
+    </>
+  );
+}
+
+function Pill({ label, tone }: { label: string; tone?: 'emerald' | 'amber' }) {
+  const cls = tone === 'emerald'
+    ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+    : 'bg-white text-amber-900 border-amber-200';
+  return (
+    <span className={`px-2 py-0.5 rounded border font-bold ${cls}`}>{label}</span>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Create-Order modal — pre-filled from the conversation profile.
+// Pulls the catalogue from /api/admin/products so the admin picks
+// real product ids; computes total client-side for display only
+// (server re-validates).
+// ──────────────────────────────────────────────────────────────────
+interface CatalogProduct { id: string; name: string; price: number; category: string }
+
+function CreateOrderModal({
+  conversation,
+  onClose,
+  onCreated,
+  addToast,
+}: {
+  conversation: Conversation;
+  onClose: () => void;
+  onCreated: () => void;
+  addToast: (msg: string, kind?: 'success' | 'error' | 'warning' | 'info', duration?: number) => void;
+}) {
+  const p = conversation.profile;
+  const [name, setName] = useState(p.name ?? conversation.userName ?? '');
+  const [phone, setPhone] = useState(p.phone ?? '');
+  const [address, setAddress] = useState(p.address ?? '');
+  const [governorate, setGovernorate] = useState(p.governorate ?? 'القاهرة');
+  const [productSearch, setProductSearch] = useState('');
+  const [productList, setProductList] = useState<CatalogProduct[]>([]);
+  const [items, setItems] = useState<Array<{ productId: string; quantity: number }>>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    adminFetch('/api/admin/products?lite=true')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!alive || !d?.products) return;
+        const list: CatalogProduct[] = d.products.map((x: { id: string; name: string; price: number; category?: string }) => ({
+          id: x.id, name: x.name, price: x.price, category: x.category ?? '',
+        }));
+        setProductList(list);
+      })
+      .catch(() => {/* ignore */});
+    return () => { alive = false; };
+  }, []);
+
+  const filteredProducts = useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    if (!q) return productList.slice(0, 30);
+    return productList.filter(p =>
+      p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)
+    ).slice(0, 30);
+  }, [productList, productSearch]);
+
+  const productMap = useMemo(() => new Map(productList.map(p => [p.id, p])), [productList]);
+
+  const subtotal = items.reduce((s, it) => {
+    const p = productMap.get(it.productId);
+    return s + (p ? p.price * it.quantity : 0);
+  }, 0);
+
+  const addItem = (productId: string) => {
+    setItems(prev => {
+      const existing = prev.find(i => i.productId === productId);
+      if (existing) return prev.map(i => i.productId === productId ? { ...i, quantity: i.quantity + 1 } : i);
+      return [...prev, { productId, quantity: 1 }];
+    });
+  };
+
+  const removeItem = (productId: string) => {
+    setItems(prev => prev.filter(i => i.productId !== productId));
+  };
+
+  const submit = async () => {
+    if (!name.trim() || !phone.trim() || !address.trim() || !governorate.trim()) {
+      addToast('املأ كل البيانات الأساسية', 'warning');
+      return;
+    }
+    if (items.length === 0) { addToast('اختر منتج واحد على الأقل', 'warning'); return; }
+    setSubmitting(true);
+    try {
+      const res = await adminFetch('/api/admin/ai-facebook-assistant/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          psid: conversation.psid,
+          name, phone, address, governorate,
+          items,
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) { addToast(d.error || 'فشل إنشاء الطلب', 'error'); setSubmitting(false); return; }
+      addToast(`✅ تم إنشاء الطلب #${d.orderId.slice(-8)} بإجمالي ${d.total} ج.م`, 'success', 6000);
+      onCreated();
+    } catch { addToast('فشل إنشاء الطلب', 'error'); }
+    setSubmitting(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()} dir="rtl">
+        <div className="p-5 space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-base font-black text-gray-900">📦 إنشاء طلب من المحادثة</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="الاسم *">
+              <input value={name} onChange={e => setName(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+            </Field>
+            <Field label="الموبايل *">
+              <input value={phone} onChange={e => setPhone(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" dir="ltr" />
+            </Field>
+            <Field label="المحافظة *">
+              <input value={governorate} onChange={e => setGovernorate(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+            </Field>
+            <Field label="العنوان *">
+              <input value={address} onChange={e => setAddress(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+            </Field>
+          </div>
+
+          <Field label={`المنتجات (${items.length} مختار)`}>
+            <input
+              value={productSearch}
+              onChange={e => setProductSearch(e.target.value)}
+              placeholder="🔍 ابحث عن منتج..."
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mb-2"
+            />
+            <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-1 bg-gray-50">
+              {filteredProducts.length === 0 && <p className="text-[11px] text-gray-500 text-center py-3">لا منتجات مطابقة</p>}
+              {filteredProducts.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => addItem(p.id)}
+                  className="w-full text-right flex items-center justify-between gap-2 bg-white px-2 py-1.5 rounded hover:bg-emerald-50 text-[11px]"
+                >
+                  <span className="text-gray-800">{p.name}</span>
+                  <span className="font-bold text-gray-700 shrink-0">{Math.round(p.price)} ج.م</span>
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          {items.length > 0 && (
+            <div className="border border-gray-200 rounded-lg p-3 bg-emerald-50/50">
+              <p className="text-[11px] font-bold text-gray-700 mb-2">العناصر المحددة:</p>
+              <div className="space-y-1.5">
+                {items.map(it => {
+                  const prod = productMap.get(it.productId);
+                  if (!prod) return null;
+                  return (
+                    <div key={it.productId} className="flex items-center gap-2 text-[11px]">
+                      <span className="flex-1 font-bold text-gray-800">{prod.name}</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={99}
+                        value={it.quantity}
+                        onChange={e => {
+                          const q = Math.max(1, Math.min(99, Number(e.target.value) || 1));
+                          setItems(prev => prev.map(i => i.productId === it.productId ? { ...i, quantity: q } : i));
+                        }}
+                        className="w-14 border border-gray-200 rounded px-2 py-1 text-center"
+                      />
+                      <span className="w-20 text-left font-bold text-emerald-700">{Math.round(prod.price * it.quantity)} ج.م</span>
+                      <button onClick={() => removeItem(it.productId)} className="text-red-600 hover:text-red-800 px-1">🗑️</button>
+                    </div>
+                  );
+                })}
+                <div className="border-t border-gray-200 pt-2 flex justify-between font-black text-gray-900">
+                  <span>المجموع الفرعي</span>
+                  <span>{Math.round(subtotal)} ج.م</span>
+                </div>
+                <p className="text-[10px] text-gray-500 text-left">+ الشحن (يحسب على السيرفر حسب المحافظة)</p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
+            <button onClick={onClose} className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold">إلغاء</button>
+            <button
+              onClick={submit}
+              disabled={submitting}
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition disabled:opacity-50"
+            >
+              {submitting ? '...جاري الإنشاء' : '✅ إنشاء الطلب'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Conversion analytics card — sits above the inbox. Pulls from
+// /api/admin/ai-facebook-assistant/analytics. Shows:
+//   • Funnel: messages → bot replies → HOT → orders
+//   • Conversion rate
+//   • Intent breakdown (price / shipping / ready / objection / general)
+//   • Top products by mentions vs orders
+// ──────────────────────────────────────────────────────────────────
+interface AnalyticsPayload {
+  windowDays: number;
+  funnel: {
+    incomingMessages: number;
+    botReplies: number;
+    replyRate: number;
+    hotLeads: number;
+    warmLeads: number;
+    coldLeads: number;
+    ordersCreated: number;
+    revenueEgp: number;
+    conversionRate: number;
+  };
+  intentBreakdown: Record<string, number>;
+  topProducts: Array<{ id: string; name: string; mentions: number; orders: number }>;
+  generatedAt: string;
+}
+
+function AnalyticsCard() {
+  const [data, setData] = useState<AnalyticsPayload | null>(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let alive = true;
+    adminFetch('/api/admin/ai-facebook-assistant/analytics')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (alive && d) { setData(d); setLoading(false); } })
+      .catch(() => alive && setLoading(false));
+    return () => { alive = false; };
+  }, []);
+
+  if (loading || !data) {
+    return (
+      <div className="bg-white border border-gray-200 rounded-2xl p-5 text-[11px] text-gray-500">
+        جاري تحميل تحليلات التحويل...
+      </div>
+    );
+  }
+  const f = data.funnel;
+  const intentLabel: Record<string, string> = {
+    'price-question':    '💰 سعر',
+    'shipping-question': '🚚 شحن',
+    'ready-to-buy':      '🔥 جاهز يطلب',
+    'objection':         '🛡️ اعتراض',
+    'general':           '💬 عام',
+  };
+  return (
+    <div className="bg-gradient-to-l from-emerald-50 via-white to-amber-50 border-2 border-emerald-200 rounded-2xl p-5 space-y-4">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h2 className="text-base font-black text-gray-900">
+          📊 لوحة التحويل (آخر {data.windowDays} يوم)
+        </h2>
+        <span className="text-[10px] text-gray-500">
+          آخر تحديث: {fmtDateTime(data.generatedAt)}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+        <FunnelStat label="رسائل واردة" value={f.incomingMessages} />
+        <FunnelStat label="ردود البوت" value={f.botReplies} sub={`${(f.replyRate * 100).toFixed(0)}%`} />
+        <FunnelStat label="🟡 مهتمون" value={f.warmLeads} tone="amber" />
+        <FunnelStat label="🔥 جاهزون" value={f.hotLeads} tone="red" />
+        <FunnelStat label="📦 طلبات أُنشئت" value={f.ordersCreated} tone="emerald" sub={`${(f.conversionRate * 100).toFixed(0)}% من HOT`} />
+        <FunnelStat label="💵 إيرادات" value={`${f.revenueEgp.toLocaleString('en-US')} ج.م`} tone="emerald" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="bg-white border border-gray-200 rounded-xl p-3">
+          <p className="text-[11px] font-bold text-gray-700 mb-2">🎯 توزيع نوايا العملاء</p>
+          <div className="space-y-1.5">
+            {Object.entries(intentLabel).map(([key, label]) => {
+              const count = data.intentBreakdown[key] ?? 0;
+              const total = Object.values(data.intentBreakdown).reduce((s, n) => s + n, 0);
+              const pct = total > 0 ? (count / total) * 100 : 0;
+              return (
+                <div key={key} className="flex items-center gap-2 text-[11px]">
+                  <span className="w-24 text-gray-700 shrink-0">{label}</span>
+                  <div className="flex-1 bg-gray-100 rounded h-4 overflow-hidden" dir="ltr">
+                    <div className="h-full bg-blue-500" style={{ width: `${Math.max(pct, 2)}%` }} />
+                  </div>
+                  <span className="w-10 text-left font-bold text-gray-700">{count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-xl p-3">
+          <p className="text-[11px] font-bold text-gray-700 mb-2">🏆 المنتجات الأكثر ذكراً</p>
+          {data.topProducts.length === 0 ? (
+            <p className="text-[11px] text-gray-400 italic">لا توجد بيانات بعد</p>
+          ) : (
+            <ol className="space-y-1.5">
+              {data.topProducts.map((p, idx) => (
+                <li key={p.id} className="flex items-center gap-2 text-[11px]">
+                  <span className="w-5 text-center text-gray-400 font-bold">{idx + 1}.</span>
+                  <span className="flex-1 text-gray-800 truncate">{p.name}</span>
+                  <span className="text-blue-700 font-bold shrink-0">{p.mentions} ذكر</span>
+                  {p.orders > 0 && (
+                    <span className="text-emerald-700 font-bold shrink-0">+ {p.orders} طلب</span>
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FunnelStat({ label, value, sub, tone }: { label: string; value: number | string; sub?: string; tone?: 'amber' | 'red' | 'emerald' }) {
+  const cls = tone === 'red' ? 'text-red-700' : tone === 'amber' ? 'text-amber-700' : tone === 'emerald' ? 'text-emerald-700' : 'text-gray-900';
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-2 text-center">
+      <p className="text-[9px] text-gray-500 font-bold tracking-widest">{label}</p>
+      <p className={`text-base font-black mt-0.5 ${cls}`}>{value}</p>
+      {sub && <p className="text-[9px] text-gray-400 mt-0.5">{sub}</p>}
     </div>
   );
 }

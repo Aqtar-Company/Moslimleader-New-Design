@@ -52,6 +52,10 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
       select: {
         id: true, slug: true, name: true, nameEn: true, price: true,
         category: true, source: true, shortDescription: true,
+        // Sales context fields: age range (B1), stock level (B3),
+        // review aggregate (B3 social proof).
+        minAge: true, maxAge: true, ageCategory: true,
+        stock: true, variantStocks: true,
       },
       orderBy: { name: 'asc' },
       take: 200,
@@ -80,7 +84,17 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
 
   // Merge static-product overrides so prices in the context match
   // what the customer sees on the site.
-  let products: Array<Pick<Product, 'name' | 'slug' | 'category' | 'price'> & { shortDescription?: string }> = [];
+  type ContextProduct = Pick<Product, 'name' | 'slug' | 'category' | 'price'> & {
+    id?: string;
+    shortDescription?: string;
+    minAge?: number | null;
+    maxAge?: number | null;
+    stock?: number;
+    variantStocks?: unknown;
+    reviewCount?: number;
+    avgRating?: number;
+  };
+  let products: ContextProduct[] = [];
   try {
     const overrides = await loadStaticOverrides();
     products = dbProducts.map(p => {
@@ -89,9 +103,33 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
         return merged ?? p;
       }
       return p;
-    }) as typeof products;
+    }) as ContextProduct[];
   } catch {
-    products = dbProducts as typeof products;
+    products = dbProducts as ContextProduct[];
+  }
+
+  // Pull review aggregates for social-proof context. One groupBy
+  // covers all products; products without reviews keep count=0.
+  try {
+    const reviewAgg = await prisma.review.groupBy({
+      by: ['productId'],
+      _count: { _all: true },
+      _avg: { rating: true },
+      where: { approved: true },
+    });
+    const reviewMap = new Map(reviewAgg.map(r => [
+      r.productId,
+      { count: r._count._all, avg: Number(r._avg.rating ?? 0) },
+    ]));
+    for (const p of products) {
+      const r = p.id ? reviewMap.get(p.id) : undefined;
+      if (r) {
+        p.reviewCount = r.count;
+        p.avgRating = r.avg;
+      }
+    }
+  } catch {
+    /* tolerate — reviews are optional context */
   }
 
   // Static products that aren't in the DB yet (catalogue fallback).
@@ -115,19 +153,87 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
   // Products by category for readability.
   if (products.length > 0) {
     lines.push(`### المنتجات (${products.length} منتج):`);
-    const byCategory = new Map<string, typeof products>();
-    for (const p of products) {
-      const list = byCategory.get(p.category) ?? [];
-      list.push(p);
-      byCategory.set(p.category, list);
-    }
-    for (const [cat, list] of byCategory) {
-      lines.push(`\n**${cat}:**`);
-      for (const p of list.slice(0, 30)) {
-        const short = p.shortDescription ? ` — ${p.shortDescription.slice(0, 80)}` : '';
-        lines.push(`- ${p.name}${short} | ${Math.round(p.price)} ج.م | https://moslimleader.com/shop/${p.slug}`);
+
+    // Render one product line with all sales-context signals
+    // (age range, stock scarcity, review social proof). Closure
+    // so we keep formatting in one place.
+    const renderProductLine = (p: ContextProduct): string => {
+      const short = p.shortDescription ? ` — ${p.shortDescription.slice(0, 80)}` : '';
+      const url   = `https://moslimleader.com/shop/${p.slug}`;
+      const parts: string[] = [
+        `- ${p.name}${short}`,
+        `${Math.round(p.price)} ج.م`,
+      ];
+      // Age range — explicit signal so the model can match recommendations.
+      if (p.minAge !== null && p.minAge !== undefined && p.maxAge !== null && p.maxAge !== undefined) {
+        parts.push(`عمر ${p.minAge}-${p.maxAge}`);
+      } else if (p.minAge !== null && p.minAge !== undefined) {
+        parts.push(`من عمر ${p.minAge}+`);
       }
-      if (list.length > 30) lines.push(`  ... و ${list.length - 30} منتج آخر في نفس الفئة`);
+      // Scarcity — only when low (≤5) so we don't lie about abundance.
+      const stockNum = (() => {
+        if (p.variantStocks && typeof p.variantStocks === 'object') {
+          return Object.values(p.variantStocks as Record<string, number>)
+            .reduce((s, n) => s + (Number.isFinite(n) ? Number(n) : 0), 0);
+        }
+        return typeof p.stock === 'number' ? p.stock : null;
+      })();
+      if (stockNum !== null && stockNum > 0 && stockNum <= 5) {
+        parts.push(`متبقي ${stockNum} نسخ فقط ⚡`);
+      }
+      // Social proof — review count + avg rating.
+      if (p.reviewCount && p.reviewCount > 0) {
+        parts.push(`⭐${(p.avgRating ?? 0).toFixed(1)} (${p.reviewCount} تقييم)`);
+      }
+      parts.push(url);
+      return parts.join(' | ');
+    };
+
+    // Group by AGE first (more useful for recommendations), then by
+    // category within each age band. Falls back to "كل الأعمار" for
+    // products without minAge/maxAge.
+    const ageBuckets: Array<{ label: string; matches: (p: ContextProduct) => boolean }> = [
+      { label: '👶 عمر 0-3 سنوات',  matches: p => (p.minAge ?? 0) <= 3 && (p.maxAge ?? 0) >= 0 && (p.maxAge ?? 0) <= 5 },
+      { label: '🧒 عمر 4-7 سنوات',  matches: p => (p.minAge ?? 99) <= 7 && (p.maxAge ?? 0) >= 4 },
+      { label: '🧒 عمر 8-12 سنة',   matches: p => (p.minAge ?? 99) <= 12 && (p.maxAge ?? 0) >= 8 },
+      { label: '👦 عمر 13+ سنة',    matches: p => (p.minAge ?? 0) >= 13 || (p.maxAge ?? 0) >= 13 },
+    ];
+    const noAge: ContextProduct[] = [];
+    const ageHits = new Map<string, ContextProduct[]>();
+    for (const p of products) {
+      if (p.minAge === null || p.minAge === undefined) {
+        noAge.push(p); continue;
+      }
+      let added = false;
+      for (const b of ageBuckets) {
+        if (b.matches(p)) {
+          const arr = ageHits.get(b.label) ?? [];
+          arr.push(p); ageHits.set(b.label, arr); added = true;
+        }
+      }
+      if (!added) noAge.push(p);
+    }
+
+    for (const b of ageBuckets) {
+      const list = ageHits.get(b.label);
+      if (!list || list.length === 0) continue;
+      lines.push(`\n**${b.label}:**`);
+      for (const p of list.slice(0, 20)) lines.push(renderProductLine(p));
+      if (list.length > 20) lines.push(`  ... و ${list.length - 20} منتج آخر في نفس الفئة العمرية`);
+    }
+    if (noAge.length > 0) {
+      lines.push(`\n**📚 منتجات لكل الأعمار / غير محدد العمر:**`);
+      // Inside this group, still split by category for readability.
+      const byCategory = new Map<string, ContextProduct[]>();
+      for (const p of noAge) {
+        const list = byCategory.get(p.category) ?? [];
+        list.push(p); byCategory.set(p.category, list);
+      }
+      for (const [cat, list] of byCategory) {
+        lines.push(`\n*${cat}:*`);
+        for (const p of list.slice(0, 20)) lines.push(renderProductLine(p));
+        if (list.length > 20) lines.push(`  ... و ${list.length - 20} منتج آخر في نفس الفئة`);
+      }
     }
     lines.push('');
   }

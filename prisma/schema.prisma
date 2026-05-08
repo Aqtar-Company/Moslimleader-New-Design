@@ -715,3 +715,37 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([action, createdAt])
 }
+
+// Facebook Messenger conversation log + AI reply ledger.
+// Append-only — every event coming in from /api/facebook/webhook
+// gets a row, and every outbound reply (auto or manual) gets a row.
+// The /admin/ai-facebook-assistant page renders this as a chat view.
+model FacebookEvent {
+  id              String   @id @default(cuid())
+  // Conversation identifier — Messenger PSID (Page-scoped User ID).
+  // All messages from one user share the same psid so we can render
+  // them as a thread.
+  psid            String
+  // 'incoming' = from user → page; 'outgoing-auto' = AI reply;
+  // 'outgoing-manual' = admin replied via the dashboard.
+  direction       String
+  // Free-text body. For postback events we store the payload here too.
+  text            String   @db.Text
+  // Senders/recipients are JSON so we can capture display names + ids
+  // when Facebook supplies them (User Profile API can backfill later).
+  sender          Json?
+  recipient       Json?
+  // Original raw event from Facebook for forensic audit. Truncated
+  // server-side to a sane size (we only keep the relevant block).
+  rawPayload      Json?
+  // For outgoing-auto: which AI model + how many tokens it cost.
+  aiModel         String?
+  aiTokens        Int?
+  // For outgoing-*: did Facebook accept the send call?
+  sendStatus      String?  // 'sent' | 'failed' | null
+  sendError       String?  @db.Text
+  createdAt       DateTime @default(now())
+  @@index([psid, createdAt])
+  @@index([direction, createdAt])
+  @@index([createdAt])
+}

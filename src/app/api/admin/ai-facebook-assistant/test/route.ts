@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   const settings = await getAssistantSettings();
   const context = await buildAssistantContext();
   try {
-    const result = await callAi(settings.provider, {
+    const result = await callAi(settings.provider, settings.apiKeys, {
       systemPrompt: `${settings.systemPrompt}\n\n---\n\n${context.text}`,
       userMessage: message,
       model: settings.model,

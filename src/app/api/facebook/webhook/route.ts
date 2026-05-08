@@ -216,7 +216,7 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
   let rawAiText: string;
   let aiTokens = 0;
   try {
-    const result = await callAi(settings.provider, {
+    const result = await callAi(settings.provider, settings.apiKeys, {
       systemPrompt: enrichedPrompt,
       userMessage: input.text,
       history,
@@ -309,7 +309,7 @@ async function handleIncomingComment(input: IncomingCommentInput) {
   let rawAiText: string;
   let aiTokens = 0;
   try {
-    const result = await callAi(settings.provider, {
+    const result = await callAi(settings.provider, settings.apiKeys, {
       systemPrompt:
         settings.systemPrompt +
         '\n\n## ملاحظة هامة:\nهذا **تعليق على بوست عام** — الرد سيظهر للجميع. خلِّ الرد قصيراً جداً (جملة-جملتين كحد أقصى)، ومهذّب، واطلب من العميل المتابعة في رسالة خاصة عشان يطلب أو يستفسر بالتفاصيل.' +

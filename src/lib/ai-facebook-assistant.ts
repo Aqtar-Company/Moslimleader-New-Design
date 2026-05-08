@@ -11,15 +11,69 @@ import { prisma } from './prisma';
 // - /api/facebook/webhook (POST handler) — auto-reply path
 // - /api/admin/ai-facebook-assistant — admin UI
 
-export type AiProvider = 'openai' | 'gemini';
+export type AiProvider = 'openai' | 'gemini' | 'anthropic';
+
+export const AI_PROVIDERS: ReadonlyArray<{ key: AiProvider; label: string; help: string; getKeyUrl: string; defaultModel: string; models: Array<{ id: string; label: string }> }> = [
+  {
+    key: 'gemini',
+    label: 'Google Gemini (مجاني 🆓)',
+    help: 'مجاني تماماً — 15 طلب/دقيقة + مليون token/يوم',
+    getKeyUrl: 'https://aistudio.google.com/apikey',
+    defaultModel: 'gemini-1.5-flash',
+    models: [
+      { id: 'gemini-1.5-flash',     label: 'gemini-1.5-flash (مجاني، أسرع)' },
+      { id: 'gemini-1.5-flash-8b',  label: 'gemini-1.5-flash-8b (مجاني، الأرخص)' },
+      { id: 'gemini-1.5-pro',       label: 'gemini-1.5-pro (أفضل جودة)' },
+      { id: 'gemini-2.0-flash-exp', label: 'gemini-2.0-flash-exp (تجريبي)' },
+    ],
+  },
+  {
+    key: 'openai',
+    label: 'OpenAI ChatGPT (مدفوع)',
+    help: 'مدفوع — gpt-4o-mini ≈ $0.0008 لكل رد',
+    getKeyUrl: 'https://platform.openai.com/api-keys',
+    defaultModel: 'gpt-4o-mini',
+    models: [
+      { id: 'gpt-4o-mini',  label: 'gpt-4o-mini (الأرخص)' },
+      { id: 'gpt-4o',       label: 'gpt-4o (أفضل جودة)' },
+      { id: 'gpt-4-turbo',  label: 'gpt-4-turbo' },
+      { id: 'gpt-3.5-turbo',label: 'gpt-3.5-turbo' },
+    ],
+  },
+  {
+    key: 'anthropic',
+    label: 'Anthropic Claude (مدفوع، أفضل في العربي)',
+    help: 'مدفوع — أفضل أداء في فهم النية والعربية الفصحى',
+    getKeyUrl: 'https://console.anthropic.com/settings/keys',
+    defaultModel: 'claude-haiku-4-5-20251001',
+    models: [
+      { id: 'claude-haiku-4-5-20251001',  label: 'Claude Haiku 4.5 (سريع وأرخص)' },
+      { id: 'claude-sonnet-4-6',          label: 'Claude Sonnet 4.6 (أعلى جودة)' },
+      { id: 'claude-opus-4-7',            label: 'Claude Opus 4.7 (الأقوى)' },
+    ],
+  },
+];
+
+export interface AssistantApiKeys {
+  openai?: string;
+  gemini?: string;
+  anthropic?: string;
+}
 
 export interface AssistantSettings {
   enabled: boolean;
   systemPrompt: string;
-  // Which AI provider to call. 'gemini' uses Google's free tier
-  // (GEMINI_API_KEY); 'openai' uses OPENAI_API_KEY (paid).
+  // Which AI provider to call by default. Each provider has its own
+  // API key; the active one is consulted at every webhook turn.
   provider: AiProvider;
   model: string;
+  // Per-provider API keys, stored in the DB so the owner can manage
+  // them from the admin UI without SSH-ing into the server. Each
+  // key falls back to the matching env var (OPENAI_API_KEY,
+  // GEMINI_API_KEY, ANTHROPIC_API_KEY) when not set here. NOT
+  // returned by the GET endpoint as plaintext — only "configured?"
+  // booleans surface to the UI.
+  apiKeys: AssistantApiKeys;
   // Optional restriction: only auto-reply if the message contains
   // certain keywords (asks about products / prices / shipping, etc).
   // Empty array = reply to everything when enabled.
@@ -68,9 +122,9 @@ const DEFAULT_SYSTEM_PROMPT = `أنت المساعد الذكي لمتجر "مس
 const DEFAULTS: AssistantSettings = {
   enabled: false,
   systemPrompt: DEFAULT_SYSTEM_PROMPT,
-  // Default to Gemini (free tier) so the bot works without paid setup.
   provider: 'gemini',
   model: 'gemini-1.5-flash',
+  apiKeys: {},
   triggerKeywords: [],
   maxTokens: 300,
   updatedAt: new Date(0).toISOString(),
@@ -91,10 +145,26 @@ export async function getAssistantSettings(): Promise<AssistantSettings> {
 
 export async function saveAssistantSettings(input: Partial<AssistantSettings>): Promise<AssistantSettings> {
   const current = await getAssistantSettings();
+  const VALID: AiProvider[] = ['openai', 'gemini', 'anthropic'];
   const provider: AiProvider =
-    input.provider === 'openai' || input.provider === 'gemini'
-      ? input.provider
+    typeof input.provider === 'string' && (VALID as string[]).includes(input.provider)
+      ? input.provider as AiProvider
       : current.provider;
+
+  // Merge keys instead of replacing — the UI sends only the keys
+  // the user actually changed (empty string = no change). Use the
+  // sentinel value '__CLEAR__' to delete a stored key.
+  const inKeys = (input.apiKeys ?? {}) as AssistantApiKeys;
+  const apiKeys: AssistantApiKeys = { ...current.apiKeys };
+  for (const k of ['openai', 'gemini', 'anthropic'] as const) {
+    const raw = inKeys[k];
+    if (typeof raw !== 'string') continue;
+    const trimmed = raw.trim();
+    if (trimmed === '') continue; // empty = leave as-is
+    if (trimmed === '__CLEAR__') { delete apiKeys[k]; continue; }
+    apiKeys[k] = trimmed;
+  }
+
   const next: AssistantSettings = {
     enabled: typeof input.enabled === 'boolean' ? input.enabled : current.enabled,
     systemPrompt: typeof input.systemPrompt === 'string' && input.systemPrompt.trim()
@@ -102,6 +172,7 @@ export async function saveAssistantSettings(input: Partial<AssistantSettings>): 
       : current.systemPrompt,
     provider,
     model: typeof input.model === 'string' && input.model.trim() ? input.model.trim() : current.model,
+    apiKeys,
     triggerKeywords: Array.isArray(input.triggerKeywords)
       ? input.triggerKeywords.filter(k => typeof k === 'string' && k.trim().length > 0).map(k => k.trim())
       : current.triggerKeywords,
@@ -161,21 +232,32 @@ export type OpenAiCallResult = AiCallResult;
 
 // Provider-agnostic entry point. The webhook + admin endpoints call
 // this so adding a new provider is a one-line switch case below.
-export async function callAi(provider: AiProvider, input: AiCallInput): Promise<AiCallResult> {
+//
+// Argument order (provider, keys, input) reads naturally as
+// "with THIS provider, using THESE keys, generate from THIS input".
+// `keys` is optional — providers fall back to env vars when no
+// explicit key is supplied.
+export async function callAi(
+  provider: AiProvider,
+  keys: AssistantApiKeys | undefined,
+  input: AiCallInput,
+): Promise<AiCallResult> {
+  const k = keys ?? {};
   switch (provider) {
-    case 'gemini': return callGemini(input);
+    case 'gemini':    return callGemini(input, k.gemini);
+    case 'anthropic': return callAnthropic(input, k.anthropic);
     case 'openai':
-    default:       return callOpenAI(input);
+    default:          return callOpenAI(input, k.openai);
   }
 }
 
 // Direct fetch to OpenAI Chat Completions endpoint — no SDK needed.
 // Works with any OpenAI-compatible provider (Azure OpenAI, Together,
 // etc.) by setting OPENAI_BASE_URL.
-export async function callOpenAI(input: AiCallInput): Promise<AiCallResult> {
-  const apiKey = process.env.OPENAI_API_KEY;
+export async function callOpenAI(input: AiCallInput, keyOverride?: string): Promise<AiCallResult> {
+  const apiKey = keyOverride || process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    throw new Error('OPENAI_API_KEY غير مهيّأ في متغيرات البيئة');
+    throw new Error('مفتاح OpenAI غير مُهيّأ — أضفه من صفحة المساعد أو OPENAI_API_KEY في .env');
   }
   const baseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
 
@@ -216,10 +298,10 @@ export async function callOpenAI(input: AiCallInput): Promise<AiCallResult> {
 // Google Gemini via the public Generative Language API. The free
 // tier is the reason we default to this — `gemini-1.5-flash` allows
 // 15 RPM / 1M tokens/day at no cost. Get a key at https://ai.google.dev.
-export async function callGemini(input: AiCallInput): Promise<AiCallResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
+export async function callGemini(input: AiCallInput, keyOverride?: string): Promise<AiCallResult> {
+  const apiKey = keyOverride || process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error('GEMINI_API_KEY غير مهيّأ في متغيرات البيئة');
+    throw new Error('مفتاح Gemini غير مُهيّأ — أضفه من صفحة المساعد أو GEMINI_API_KEY في .env');
   }
 
   // Gemini uses an alternating-roles format. Convert our generic
@@ -259,6 +341,58 @@ export async function callGemini(input: AiCallInput): Promise<AiCallResult> {
   const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text ?? '').join('').trim() ?? '';
   const totalTokens = data?.usageMetadata?.totalTokenCount ?? 0;
   if (!text) throw new Error('Gemini returned empty response');
+  return { text, totalTokens };
+}
+
+// Anthropic Claude — direct fetch to the Messages API. No SDK needed.
+// Best Arabic comprehension of the three providers, billed per token
+// like OpenAI. Get a key at https://console.anthropic.com/settings/keys.
+export async function callAnthropic(input: AiCallInput, keyOverride?: string): Promise<AiCallResult> {
+  const apiKey = keyOverride || process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error('مفتاح Anthropic غير مُهيّأ — أضفه من صفحة المساعد أو ANTHROPIC_API_KEY في .env');
+  }
+
+  // Anthropic expects messages to alternate user/assistant; consecutive
+  // same-role messages get rejected. Filter the history accordingly.
+  const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+  for (const turn of input.history ?? []) {
+    if (messages.length > 0 && messages[messages.length - 1].role === turn.role) continue;
+    messages.push({ role: turn.role, content: turn.content });
+  }
+  // Last message must be from the user.
+  if (messages.length > 0 && messages[messages.length - 1].role !== 'user') {
+    messages.pop();
+  }
+  messages.push({ role: 'user', content: input.userMessage });
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: input.model,
+      system: input.systemPrompt,
+      messages,
+      max_tokens: input.maxTokens,
+      temperature: 0.7,
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`Anthropic ${res.status}: ${errText.slice(0, 300)}`);
+  }
+  const data = await res.json() as {
+    content?: Array<{ type?: string; text?: string }>;
+    usage?: { input_tokens?: number; output_tokens?: number };
+  };
+  const text = data?.content?.filter(b => b.type === 'text').map(b => b.text ?? '').join('').trim() ?? '';
+  const totalTokens = (data?.usage?.input_tokens ?? 0) + (data?.usage?.output_tokens ?? 0);
+  if (!text) throw new Error('Anthropic returned empty response');
   return { text, totalTokens };
 }
 

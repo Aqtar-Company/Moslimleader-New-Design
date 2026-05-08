@@ -8,13 +8,56 @@ import Spinner from '@/components/admin/Spinner';
 import EmptyState from '@/components/admin/EmptyState';
 import ForbiddenState from '@/components/admin/ForbiddenState';
 
-type AiProvider = 'openai' | 'gemini';
+type AiProvider = 'openai' | 'gemini' | 'anthropic';
+
+// Static catalogue of providers — mirrors AI_PROVIDERS in the lib.
+// Kept here as well so the UI doesn't need a separate fetch just
+// to render the dropdowns.
+const PROVIDER_INFO: Record<AiProvider, { label: string; help: string; getKeyUrl: string; defaultModel: string; models: Array<{ id: string; label: string }> }> = {
+  gemini: {
+    label: 'Google Gemini',
+    help: 'مجاني — 15 طلب/دقيقة + مليون token/يوم',
+    getKeyUrl: 'https://aistudio.google.com/apikey',
+    defaultModel: 'gemini-1.5-flash',
+    models: [
+      { id: 'gemini-1.5-flash',     label: 'gemini-1.5-flash (مجاني، أسرع)' },
+      { id: 'gemini-1.5-flash-8b',  label: 'gemini-1.5-flash-8b (مجاني، الأرخص)' },
+      { id: 'gemini-1.5-pro',       label: 'gemini-1.5-pro (أفضل جودة)' },
+      { id: 'gemini-2.0-flash-exp', label: 'gemini-2.0-flash-exp (تجريبي)' },
+    ],
+  },
+  openai: {
+    label: 'OpenAI ChatGPT',
+    help: 'مدفوع — gpt-4o-mini ≈ $0.0008 لكل رد',
+    getKeyUrl: 'https://platform.openai.com/api-keys',
+    defaultModel: 'gpt-4o-mini',
+    models: [
+      { id: 'gpt-4o-mini',  label: 'gpt-4o-mini (الأرخص)' },
+      { id: 'gpt-4o',       label: 'gpt-4o (أفضل جودة)' },
+      { id: 'gpt-4-turbo',  label: 'gpt-4-turbo' },
+      { id: 'gpt-3.5-turbo',label: 'gpt-3.5-turbo' },
+    ],
+  },
+  anthropic: {
+    label: 'Anthropic Claude',
+    help: 'مدفوع — أفضل في العربية',
+    getKeyUrl: 'https://console.anthropic.com/settings/keys',
+    defaultModel: 'claude-haiku-4-5-20251001',
+    models: [
+      { id: 'claude-haiku-4-5-20251001',  label: 'Claude Haiku 4.5 (سريع وأرخص)' },
+      { id: 'claude-sonnet-4-6',          label: 'Claude Sonnet 4.6 (أعلى جودة)' },
+      { id: 'claude-opus-4-7',            label: 'Claude Opus 4.7 (الأقوى)' },
+    ],
+  },
+};
 
 interface Settings {
   enabled: boolean;
   systemPrompt: string;
   provider: AiProvider;
   model: string;
+  // GET returns booleans (existence), PUT accepts strings.
+  apiKeys: { openai: boolean; gemini: boolean; anthropic: boolean };
   triggerKeywords: string[];
   maxTokens: number;
   updatedAt: string;
@@ -57,6 +100,7 @@ const LEAD_BADGE: Record<string, { icon: string; label: string; cls: string }> =
 interface IntegrationStatus {
   hasOpenAiKey: boolean;
   hasGeminiKey: boolean;
+  hasAnthropicKey: boolean;
   hasPageToken: boolean;
   hasAppSecret: boolean;
 }
@@ -77,6 +121,12 @@ export default function AIFacebookAssistantPage() {
   const [maxTokens, setMaxTokens] = useState(300);
   const [triggerKeywordsRaw, setTriggerKeywordsRaw] = useState('');
   const [saving, setSaving] = useState(false);
+  // Per-provider key inputs. Empty string = "leave existing key as
+  // is". The save handler only sends a non-empty string when the
+  // admin actually typed something.
+  const [keyInputs, setKeyInputs] = useState<Record<AiProvider, string>>({
+    openai: '', gemini: '', anthropic: '',
+  });
 
   // Test message
   const [testMessage, setTestMessage] = useState('السلام عليكم، عاوز أعرف أحدث الكتب');
@@ -159,14 +209,23 @@ export default function AIFacebookAssistantPage() {
         .split(/[,،]/g)
         .map(s => s.trim())
         .filter(Boolean);
+      // Only send key fields the user actually filled in. Empty
+      // strings mean "no change" — the server treats them that way.
+      const apiKeys: Record<string, string> = {};
+      for (const k of ['openai', 'gemini', 'anthropic'] as const) {
+        if (keyInputs[k] && keyInputs[k].trim()) apiKeys[k] = keyInputs[k].trim();
+      }
       const res = await adminFetch('/api/admin/ai-facebook-assistant', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled, systemPrompt, provider, model, maxTokens, triggerKeywords }),
+        body: JSON.stringify({ enabled, systemPrompt, provider, model, maxTokens, triggerKeywords, apiKeys }),
       });
       const d = await res.json();
       if (!res.ok) { addToast(d.error || 'فشل الحفظ', 'error'); setSaving(false); return; }
       addToast('تم الحفظ', 'success');
+      // Clear key inputs after save — keys are now persisted; the
+      // "مفتاح مُهيّأ" badge confirms it.
+      setKeyInputs({ openai: '', gemini: '', anthropic: '' });
       load();
     } catch { addToast('فشل الحفظ', 'error'); }
     setSaving(false);
@@ -230,7 +289,10 @@ export default function AIFacebookAssistantPage() {
   if (loading || !data) return <Spinner />;
 
   const status = data.integrationStatus;
-  const hasAiKey = provider === 'openai' ? status.hasOpenAiKey : status.hasGeminiKey;
+  const hasAiKey =
+    provider === 'openai'    ? status.hasOpenAiKey :
+    provider === 'anthropic' ? status.hasAnthropicKey :
+                               status.hasGeminiKey;
   const allReady = hasAiKey && status.hasPageToken && status.hasAppSecret;
 
   return (
@@ -257,10 +319,11 @@ export default function AIFacebookAssistantPage() {
         </div>
 
         {/* Integration status */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-5">
-          <StatusBadge label="GEMINI_API_KEY" ok={status.hasGeminiKey} hint="مجاني — ai.google.dev" />
-          <StatusBadge label="OPENAI_API_KEY" ok={status.hasOpenAiKey} hint="مدفوع — platform.openai.com" />
-          <StatusBadge label="FB_PAGE_ACCESS_TOKEN" ok={status.hasPageToken} />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mt-5">
+          <StatusBadge label="Gemini" ok={status.hasGeminiKey} hint="مجاني" />
+          <StatusBadge label="ChatGPT" ok={status.hasOpenAiKey} hint="مدفوع" />
+          <StatusBadge label="Claude" ok={status.hasAnthropicKey} hint="مدفوع" />
+          <StatusBadge label="FB_PAGE_TOKEN" ok={status.hasPageToken} />
           <StatusBadge label="FB_APP_SECRET" ok={status.hasAppSecret} />
         </div>
         {!allReady && (
@@ -301,20 +364,84 @@ export default function AIFacebookAssistantPage() {
           <p className="text-[10px] text-gray-400 mt-1">{systemPrompt.length} حرف</p>
         </Field>
 
+        {/* API Keys — per provider. Stored in DB so the owner can
+            manage them without SSH. Empty input = "no change". */}
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+          <div>
+            <h3 className="text-sm font-black text-amber-900">🔑 مفاتيح API للمزوّدين</h3>
+            <p className="text-[11px] text-amber-800 mt-1 leading-relaxed">
+              ضع المفتاح هنا، اضغط حفظ — البوت هياخده فوراً بدون أي إعداد على السيرفر. المفتاح بيتخزّن في قاعدة البيانات بشكل آمن.
+              لو سيبت الخانة فاضية، المفتاح القديم بيفضل زي ما هو.
+            </p>
+          </div>
+          {(['gemini', 'openai', 'anthropic'] as AiProvider[]).map(p => {
+            const info = PROVIDER_INFO[p];
+            const isConfigured = data.settings.apiKeys[p];
+            const isActive = provider === p;
+            return (
+              <div key={p} className={`bg-white border rounded-lg p-3 ${isActive ? 'border-blue-300 ring-1 ring-blue-200' : 'border-gray-200'}`}>
+                <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-gray-900">{info.label}</span>
+                    {isActive && <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold">نشط</span>}
+                    {isConfigured
+                      ? <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">✅ مفتاح مُهيّأ</span>
+                      : <span className="text-[9px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-bold">— لا يوجد مفتاح</span>}
+                  </div>
+                  <a
+                    href={info.getKeyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] text-blue-700 hover:underline font-bold"
+                  >
+                    احصل على مفتاح ↗
+                  </a>
+                </div>
+                <p className="text-[10px] text-gray-500 mb-2">{info.help}</p>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={keyInputs[p]}
+                    onChange={e => setKeyInputs(prev => ({ ...prev, [p]: e.target.value }))}
+                    placeholder={isConfigured ? '•••••••• (سيب فاضي عشان تحتفظ بالمفتاح القديم)' : 'الصق المفتاح هنا...'}
+                    autoComplete="new-password"
+                    dir="ltr"
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono"
+                  />
+                  {isConfigured && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm(`حذف مفتاح ${info.label}؟`)) {
+                          setKeyInputs(prev => ({ ...prev, [p]: '__CLEAR__' }));
+                          addToast(`سيتم حذف مفتاح ${info.label} عند الحفظ`, 'warning');
+                        }
+                      }}
+                      className="px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold transition shrink-0"
+                    >
+                      🗑️ حذف
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <Field label="مزوّد الـ AI">
+          <Field label="مزوّد الـ AI النشط">
             <select
               value={provider}
               onChange={e => {
                 const p = e.target.value as AiProvider;
                 setProvider(p);
-                // Auto-pick a sensible default model for the chosen provider.
-                setModel(p === 'gemini' ? 'gemini-1.5-flash' : 'gpt-4o-mini');
+                setModel(PROVIDER_INFO[p].defaultModel);
               }}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
             >
               <option value="gemini">Google Gemini (مجاني 🆓)</option>
-              <option value="openai">OpenAI (مدفوع)</option>
+              <option value="openai">OpenAI ChatGPT (مدفوع)</option>
+              <option value="anthropic">Anthropic Claude (مدفوع)</option>
             </select>
           </Field>
           <Field label="الموديل">
@@ -323,21 +450,9 @@ export default function AIFacebookAssistantPage() {
               onChange={e => setModel(e.target.value)}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
             >
-              {provider === 'gemini' ? (
-                <>
-                  <option value="gemini-1.5-flash">gemini-1.5-flash (مجاني، أسرع)</option>
-                  <option value="gemini-1.5-flash-8b">gemini-1.5-flash-8b (مجاني، الأرخص)</option>
-                  <option value="gemini-1.5-pro">gemini-1.5-pro (أفضل جودة)</option>
-                  <option value="gemini-2.0-flash-exp">gemini-2.0-flash-exp (تجريبي)</option>
-                </>
-              ) : (
-                <>
-                  <option value="gpt-4o-mini">gpt-4o-mini (الأرخص)</option>
-                  <option value="gpt-4o">gpt-4o (أفضل جودة)</option>
-                  <option value="gpt-4-turbo">gpt-4-turbo</option>
-                  <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
-                </>
-              )}
+              {PROVIDER_INFO[provider].models.map(m => (
+                <option key={m.id} value={m.id}>{m.label}</option>
+              ))}
             </select>
           </Field>
           <Field label="حد أقصى للرد (tokens)">

@@ -110,20 +110,36 @@ export async function GET() {
       return b.lastAt.localeCompare(a.lastAt);
     });
 
-  // Status flags so the UI can show "missing token" warnings up front.
-  const hasOpenAiKey = !!process.env.OPENAI_API_KEY;
-  const hasGeminiKey = !!process.env.GEMINI_API_KEY;
+  // Status flags so the UI can show "missing token" warnings up
+  // front. Each key is "present" if EITHER the admin-stored key OR
+  // the env var is set — the runtime path uses the same fallback.
+  const hasOpenAiKey   = !!(settings.apiKeys.openai    || process.env.OPENAI_API_KEY);
+  const hasGeminiKey   = !!(settings.apiKeys.gemini    || process.env.GEMINI_API_KEY);
+  const hasAnthropicKey = !!(settings.apiKeys.anthropic || process.env.ANTHROPIC_API_KEY);
   const hasPageToken =
     !!process.env.FB_PAGE_ACCESS_TOKEN && process.env.FB_PAGE_ACCESS_TOKEN !== 'PENDING';
   const hasAppSecret =
     !!(process.env.FB_APP_SECRET || process.env.FACEBOOK_APP_SECRET);
 
+  // Strip the actual key values out of `settings` before returning —
+  // even an admin shouldn't get the plaintext key in a JSON response.
+  // We surface only "configured?" booleans per provider.
+  const settingsSafe = {
+    ...settings,
+    apiKeys: {
+      openai:    !!settings.apiKeys.openai,
+      gemini:    !!settings.apiKeys.gemini,
+      anthropic: !!settings.apiKeys.anthropic,
+    },
+  };
+
   return NextResponse.json({
-    settings,
+    settings: settingsSafe,
     conversations,
     integrationStatus: {
       hasOpenAiKey,
       hasGeminiKey,
+      hasAnthropicKey,
       hasPageToken,
       hasAppSecret,
     },

@@ -428,6 +428,68 @@ export async function GET(req: NextRequest) {
     : 0;
 
   // ─────────────────────────────────────────────────────────────────
+  // Slow-mover inventory health — products with stock-on-hand that
+  // haven't sold in 12 months are write-down candidates. A real buyer
+  // discounts these to scrap value; an honest report flags them.
+  // ─────────────────────────────────────────────────────────────────
+  const lastSaleRows = await prisma.$queryRaw<Array<{ productId: string; lastAt: Date | null }>>`
+    SELECT oi.productId AS productId, MAX(o.createdAt) AS lastAt
+    FROM OrderItem oi
+    JOIN \`Order\` o ON o.id = oi.orderId
+    WHERE o.status != 'cancelled'
+    GROUP BY oi.productId
+  `;
+  const lastSaleMap = new Map<string, Date | null>(
+    lastSaleRows.map(r => [r.productId, r.lastAt ? new Date(r.lastAt) : null])
+  );
+  const STALE_DAYS = 365;
+  const staleCutoff = Date.now() - STALE_DAYS * 86400000;
+  let staleProductCount = 0;
+  let staleUnits = 0;
+  let staleInventoryCost = 0;
+  let staleInventoryRetail = 0;
+  for (const p of products) {
+    if (p.stock <= 0) continue;
+    const lastAt = lastSaleMap.get(p.id);
+    const isStale = !lastAt || lastAt.getTime() < staleCutoff;
+    if (!isStale) continue;
+    staleProductCount++;
+    staleUnits += p.stock;
+    staleInventoryRetail += p.stock * p.price;
+    const avg = avgCostByProduct.get(p.id);
+    staleInventoryCost += avg !== undefined && avg > 0
+      ? p.stock * avg
+      : p.stock * p.price * assumptions.cogsRatio;
+  }
+  const inventoryCostAfterWriteDown = Math.max(0, inventoryCost - staleInventoryCost);
+
+  // ─────────────────────────────────────────────────────────────────
+  // Per-supplier concentration matrix — the top suppliers by total
+  // batch spend, with their % share. Surfaces "if we lose Supplier X
+  // we lose Y% of our production capacity."
+  // ─────────────────────────────────────────────────────────────────
+  const supplierIds = supplierSpendRows
+    .map(r => r.supplierId)
+    .filter((id): id is string => !!id);
+  const supplierNameRows = supplierIds.length > 0
+    ? await prisma.supplier.findMany({
+        where: { id: { in: supplierIds } },
+        select: { id: true, name: true },
+      })
+    : [];
+  const supplierNameMap = new Map(supplierNameRows.map(s => [s.id, s.name]));
+  const supplierMatrix = supplierSpendRows
+    .filter(r => r.supplierId !== null)
+    .map(r => ({
+      supplierId: r.supplierId as string,
+      supplierName: supplierNameMap.get(r.supplierId as string) ?? '— غير معروف —',
+      spend: Math.round(Number(r._sum.totalCost ?? 0)),
+      share: totalBatchSpend > 0 ? Number(r._sum.totalCost ?? 0) / totalBatchSpend : 0,
+    }))
+    .sort((a, b) => b.spend - a.spend)
+    .slice(0, 5);
+
+  // ─────────────────────────────────────────────────────────────────
   // Data quality counters — surfaces what's heuristic vs. data-driven
   // so the reader can calibrate confidence. Numbers feed into the
   // Disclosures section on the page.
@@ -460,6 +522,54 @@ export async function GET(req: NextRequest) {
   const reconciledLow  = Math.min(baseValue, marketLow);
   const reconciledHigh = Math.max(strategicValue, marketHigh);
   const reconciledMid  = (reconciledLow + reconciledHigh) / 2;
+
+  // ─────────────────────────────────────────────────────────────────
+  // Sensitivity analysis — how does the headline midpoint change
+  // under common stresses? A real M&A report shows this so the buyer
+  // can see where the number is fragile.
+  // ─────────────────────────────────────────────────────────────────
+  const recomputeBase = (overrides: { extraCogs?: number; extraSupplierLiabilities?: number }) => {
+    const inv = inventoryCost + (overrides.extraCogs ?? 0);
+    const liab = supplierLiabilities + (overrides.extraSupplierLiabilities ?? 0);
+    return inv + ipTotal + techValue + customerDbValue
+         + wholesaleValue + supplierRelationshipsValue
+         - Math.max(0, liab);
+  };
+  const stressBaseCogsUp  = recomputeBase({ extraCogs: inventoryValue * 0.05 });
+  const stressBaseCogsDown = recomputeBase({ extraCogs: -inventoryValue * 0.05 });
+  // Top-10 customer churn: simulate losing top-10 customers' lifetime
+  // revenue contribution. We translate it to a market-multiple impact
+  // (we don't have ARR; this is a one-time revenue hit proxy).
+  const ttmCustomerLoss = ttmRevenue * customerConcentration; // assume top-10 share is recurring
+  const stressMarketLow_loss  = Math.max(0, (ttmRevenue - ttmCustomerLoss)) * assumptions.revenueMultipleLow;
+  const stressMarketHigh_loss = Math.max(0, (ttmRevenue - ttmCustomerLoss)) * assumptions.revenueMultipleHigh;
+  // Currency stress: 10% EGP devaluation against USD shrinks the EGP
+  // value of USD revenue. Approximate the impact as "10% of USD share".
+  const usdShareImpact = ttmRevenue * usdRevenueShare * 0.10;
+  // Stale inventory write-down: full hit on the asset side.
+  const stressBaseStaleWriteDown = baseValue - staleInventoryCost;
+  const sensitivity = {
+    cogsUp5pct:   { delta: Math.round(stressBaseCogsUp - baseValue),   newBase: Math.round(stressBaseCogsUp) },
+    cogsDown5pct: { delta: Math.round(stressBaseCogsDown - baseValue), newBase: Math.round(stressBaseCogsDown) },
+    multipleDown05x: {
+      delta: Math.round(ttmRevenue * (assumptions.revenueMultipleHigh - 0.5) - marketHigh),
+      newMarketHigh: Math.round(ttmRevenue * Math.max(0, assumptions.revenueMultipleHigh - 0.5)),
+    },
+    top10ChurnLoss: {
+      revenueLost: Math.round(ttmCustomerLoss),
+      newMarketLow:  Math.round(stressMarketLow_loss),
+      newMarketHigh: Math.round(stressMarketHigh_loss),
+    },
+    usdDevaluation10pct: {
+      revenueImpact: Math.round(usdShareImpact),
+      newMarketHigh: Math.round((ttmRevenue - usdShareImpact) * assumptions.revenueMultipleHigh),
+    },
+    staleWriteDown: {
+      delta: Math.round(stressBaseStaleWriteDown - baseValue),
+      newBase: Math.round(stressBaseStaleWriteDown),
+      itemsAffected: staleProductCount,
+    },
+  };
 
   return NextResponse.json({
     generatedAt: new Date().toISOString(),
@@ -580,6 +690,24 @@ export async function GET(req: NextRequest) {
         usdRevenueShare,
         topSupplierShare: supplierConcentration,
       },
+      // Inventory health: products that haven't sold in 12 months
+      // are write-down candidates. Helps the buyer adjust for slow
+      // movers / obsolete stock.
+      inventoryHealth: {
+        staleProductCount,
+        staleUnits,
+        staleInventoryRetail: Math.round(staleInventoryRetail),
+        staleInventoryCost: Math.round(staleInventoryCost),
+        inventoryCostBeforeWriteDown: Math.round(inventoryCost),
+        inventoryCostAfterWriteDown: Math.round(inventoryCostAfterWriteDown),
+        staleDaysThreshold: STALE_DAYS,
+      },
+      // Per-supplier matrix: top 5 by spend with shares.
+      supplierMatrix,
+      // Sensitivity scenarios: shows the buyer where the number is
+      // fragile under common stresses (COGS up, multiple down,
+      // customer churn, currency move, slow-mover write-off).
+      sensitivity,
       // Data quality flags — every gap the reader should weigh against
       // the headline figure. Surfaced as an explicit Disclosures
       // section on the page.

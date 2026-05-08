@@ -64,6 +64,21 @@ interface ValuationData {
       bostaOrphanCount: number; opexTracked: boolean;
       assumptionsUpdatedAt: string | null;
     };
+    inventoryHealth: {
+      staleProductCount: number; staleUnits: number;
+      staleInventoryRetail: number; staleInventoryCost: number;
+      inventoryCostBeforeWriteDown: number; inventoryCostAfterWriteDown: number;
+      staleDaysThreshold: number;
+    };
+    supplierMatrix: Array<{ supplierId: string; supplierName: string; spend: number; share: number }>;
+    sensitivity: {
+      cogsUp5pct:   { delta: number; newBase: number };
+      cogsDown5pct: { delta: number; newBase: number };
+      multipleDown05x: { delta: number; newMarketHigh: number };
+      top10ChurnLoss: { revenueLost: number; newMarketLow: number; newMarketHigh: number };
+      usdDevaluation10pct: { revenueImpact: number; newMarketHigh: number };
+      staleWriteDown: { delta: number; newBase: number; itemsAffected: number };
+    };
   };
   valuation: {
     base: number; fair: number; strategic: number;
@@ -276,6 +291,15 @@ export default function ValuationPage() {
       {/* Concentration risk — what fraction of revenue depends on a
           handful of customers, products, governorates, or suppliers. */}
       <ConcentrationSection metrics={metrics} />
+
+      {/* Inventory health — slow-movers that should be written down. */}
+      <InventoryHealthSection metrics={metrics} />
+
+      {/* Per-supplier matrix — top 5 suppliers + their share. */}
+      {metrics.supplierMatrix.length > 0 && <SupplierMatrixSection metrics={metrics} />}
+
+      {/* Sensitivity analysis — how does the headline move under stress? */}
+      <SensitivitySection metrics={metrics} valuation={valuation} />
 
       {/* Data quality / disclosures — every gap the reader should
           weigh against the headline figure. Honesty > false precision. */}
@@ -508,6 +532,164 @@ function DataQualitySection({ metrics }: { metrics: ValuationData['metrics'] }) 
         </li>
       </ul>
     </section>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Inventory health — products with stock-on-hand that haven't sold in
+// 365 days. Standard write-down candidates. We show the impact on
+// inventory cost so the reader sees the realistic asset value.
+// ────────────────────────────────────────────────────────────────────────────
+function InventoryHealthSection({ metrics }: { metrics: ValuationData['metrics'] }) {
+  const h = metrics.inventoryHealth;
+  if (h.staleProductCount === 0) {
+    return (
+      <Section icon="🏷️" title="صحة المخزون" subtitle="منتجات مخزَّنة بدون مبيعات لفترة طويلة (مرشَّحة لشطب القيمة)">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-3">
+          <span className="text-2xl">✅</span>
+          <p className="text-xs text-emerald-900">كل المنتجات اللي عندها مخزون باعت خلال آخر سنة. ما فيش مرشحات لشطب القيمة.</p>
+        </div>
+      </Section>
+    );
+  }
+  return (
+    <Section icon="🏷️" title="صحة المخزون" subtitle={`منتجات بدون مبيعات لمدة ${h.staleDaysThreshold} يوم — مرشَّحة لشطب القيمة`}>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <FinKPI label="منتجات راكدة" value={fmt(h.staleProductCount)} tone="bad" hint="منتجات لها مخزون لكن مفيش مبيعات لها خلال 12 شهر." />
+        <FinKPI label="قطع راكدة" value={fmt(h.staleUnits)} tone="bad" hint="إجمالي وحدات المخزون من المنتجات الراكدة." />
+        <FinKPI label="القيمة بسعر البيع" value={`${fmt(h.staleInventoryRetail)} ج.م`} hint="القيمة لو اتباعت بأسعار التجزئة الحالية — افتراض متفائل." />
+        <FinKPI label="تكلفة الشطب المقترحة" value={`${fmt(h.staleInventoryCost)} ج.م`} tone="bad" hint="تكلفة الإنتاج المرجَّحة للقطع الراكدة. خصمها من تكلفة المخزون يعطي رقم أكثر واقعية." />
+      </div>
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-4 text-[11px] text-amber-900 leading-relaxed">
+        💡 <strong>تكلفة المخزون قبل الشطب:</strong> {fmt(h.inventoryCostBeforeWriteDown)} ج.م &nbsp;→&nbsp;
+        <strong>بعد الشطب:</strong> {fmt(h.inventoryCostAfterWriteDown)} ج.م.
+        المشتري المحتمل سيخصم القطع الراكدة من قيمة الأصول؛ التقرير يعرض الرقمين عشان يتم التفاوض على رقم منطقي.
+      </div>
+    </Section>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Supplier matrix — top 5 by total batch spend with %. Surfaces
+// concentration: "if our top supplier raises prices, what's the
+// revenue at risk?"
+// ────────────────────────────────────────────────────────────────────────────
+function SupplierMatrixSection({ metrics }: { metrics: ValuationData['metrics'] }) {
+  const m = metrics.supplierMatrix;
+  return (
+    <Section icon="🤝" title="مصفوفة الموردين" subtitle="أكبر 5 موردين حسب إنفاق الإنتاج وحصة كل منهم">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <table className="w-full text-xs">
+          <thead className="bg-gray-50 text-[10px] text-gray-500 font-bold uppercase">
+            <tr>
+              <th className="px-3 py-2 text-right">المورد</th>
+              <th className="px-3 py-2 text-right">إجمالي الإنفاق</th>
+              <th className="px-3 py-2 text-right">الحصة</th>
+              <th className="px-3 py-2 text-right">المخاطر</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {m.map(s => {
+              const tone = s.share > 0.5 ? 'bg-red-100 text-red-800' : s.share > 0.3 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800';
+              const flag = s.share > 0.5 ? '⚠️ خطر مرتفع' : s.share > 0.3 ? '⚠️ متوسط' : '✓ مقبول';
+              return (
+                <tr key={s.supplierId}>
+                  <td className="px-3 py-2 font-bold text-gray-900">{s.supplierName}</td>
+                  <td className="px-3 py-2 font-bold" dir="ltr">{fmt(s.spend)} ج.م</td>
+                  <td className="px-3 py-2 font-bold">{pct(s.share)}</td>
+                  <td className="px-3 py-2"><span className={`px-2 py-0.5 rounded text-[10px] font-bold ${tone}`}>{flag}</span></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-[10px] text-gray-500 mt-2">حد المخاطر المرتفعة عند 50% — بمعنى إن نصف الإنتاج معتمد على مورد واحد. الحد المتوسط 30%.</p>
+    </Section>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Sensitivity analysis — how the headline number moves under common
+// stresses. Shows the buyer the reasonable downside and lets the
+// owner test scenarios before negotiations.
+// ────────────────────────────────────────────────────────────────────────────
+function SensitivitySection({ metrics, valuation }: { metrics: ValuationData['metrics']; valuation: ValuationData['valuation'] }) {
+  const s = metrics.sensitivity;
+  const scenarios = [
+    {
+      label: 'COGS أعلى بـ 5%',
+      desc: 'لو ارتفعت تكاليف الإنتاج 5% (تضخم أو زيادة سعر مورد)',
+      impact: s.cogsUp5pct.delta,
+      newValue: `قاعدة جديدة: ${fmt(s.cogsUp5pct.newBase)} ج.م`,
+      tone: 'bad' as const,
+    },
+    {
+      label: 'COGS أقل بـ 5%',
+      desc: 'لو نزلت تكاليف الإنتاج 5% (تفاوض ناجح)',
+      impact: s.cogsDown5pct.delta,
+      newValue: `قاعدة جديدة: ${fmt(s.cogsDown5pct.newBase)} ج.م`,
+      tone: 'good' as const,
+    },
+    {
+      label: 'مضاعف الإيرادات يقل ½×',
+      desc: 'لو السوق صعّب الشروط ونزل المضاعف من الحد الأعلى نصف نقطة',
+      impact: s.multipleDown05x.delta,
+      newValue: `حد أعلى جديد: ${fmt(s.multipleDown05x.newMarketHigh)} ج.م`,
+      tone: 'bad' as const,
+    },
+    {
+      label: 'فقدان أعلى 10 عملاء',
+      desc: `لو خسرت أعلى 10 عملاء وما رجعوش (افتراض ${fmt(s.top10ChurnLoss.revenueLost)} ج.م إيرادات سنوية)`,
+      impact: s.top10ChurnLoss.newMarketHigh - valuation.marketHigh,
+      newValue: `نطاق سوقي جديد: ${fmt(s.top10ChurnLoss.newMarketLow)} – ${fmt(s.top10ChurnLoss.newMarketHigh)}`,
+      tone: 'bad' as const,
+    },
+    {
+      label: 'تراجع الجنيه 10% أمام الدولار',
+      desc: `تأثر إيرادات PayPal بالدولار (نسبة ${pct(metrics.concentration.usdRevenueShare)} من الإيرادات)`,
+      impact: s.usdDevaluation10pct.newMarketHigh - valuation.marketHigh,
+      newValue: `حد أعلى سوقي: ${fmt(s.usdDevaluation10pct.newMarketHigh)} ج.م`,
+      tone: 'bad' as const,
+    },
+    {
+      label: 'شطب المخزون الراكد',
+      desc: `${s.staleWriteDown.itemsAffected} منتج بدون مبيعات لسنة — لو شطبت قيمتهم`,
+      impact: s.staleWriteDown.delta,
+      newValue: `قاعدة جديدة: ${fmt(s.staleWriteDown.newBase)} ج.م`,
+      tone: 'bad' as const,
+    },
+  ];
+  return (
+    <Section icon="🧮" title="تحليل الحساسية" subtitle="كيف تتغير القيمة تحت ضغوط شائعة (للتفاوض المسؤول)">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <table className="w-full text-xs">
+          <thead className="bg-gray-50 text-[10px] text-gray-500 font-bold uppercase">
+            <tr>
+              <th className="px-3 py-2 text-right">السيناريو</th>
+              <th className="px-3 py-2 text-right">الوصف</th>
+              <th className="px-3 py-2 text-right">الأثر</th>
+              <th className="px-3 py-2 text-right">القيمة الجديدة</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {scenarios.map((sc, i) => {
+              const sign = sc.impact >= 0 ? '+' : '';
+              const tone = sc.impact > 0 ? 'text-emerald-700' : sc.impact < 0 ? 'text-red-700' : 'text-gray-500';
+              return (
+                <tr key={i}>
+                  <td className="px-3 py-2.5 font-bold text-gray-900">{sc.label}</td>
+                  <td className="px-3 py-2.5 text-[10px] text-gray-600 max-w-[280px]">{sc.desc}</td>
+                  <td className={`px-3 py-2.5 font-black ${tone}`} dir="ltr">{sign}{fmt(sc.impact)} ج.م</td>
+                  <td className="px-3 py-2.5 text-[10px] text-gray-600">{sc.newValue}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-[10px] text-gray-500 mt-2">القيمة الحالية المرشَّحة (المتوسط): <strong className="text-gray-800">{fmt(valuation.reconciledMid)} ج.م</strong>. كل سيناريو يعرض الأثر منفرداً، مش مجتمعاً.</p>
+    </Section>
   );
 }
 

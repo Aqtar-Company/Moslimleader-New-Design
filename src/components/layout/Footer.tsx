@@ -98,6 +98,9 @@ export default function Footer() {
               { href: '/', ar: 'الرئيسية', en: 'Home' },
               { href: '/library', ar: 'المكتبة الرقمية', en: 'Digital Library' },
               { href: '/about', ar: 'من نحن', en: 'About' },
+              { href: '/contact', ar: 'تواصل معنا', en: 'Contact' },
+              { href: '/policy', ar: 'سياسة الخصوصية', en: 'Privacy Policy' },
+              { href: '/delete-data', ar: 'حذف البيانات', en: 'Delete My Data' },
             ].map(link => (
               <Link
                 key={link.href}

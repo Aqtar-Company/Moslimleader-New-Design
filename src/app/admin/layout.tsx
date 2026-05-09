@@ -36,7 +36,10 @@ const NAV: NavItem[] = [
   { href: '/admin/customers',         label: 'قاعدة العملاء',     icon: '👥', requireAny: ['customers.read'] },
   { href: '/admin/wholesale',         label: 'تجار الجملة',       icon: '🏪', requireAny: ['wholesale.read'] },
   { href: '/admin/team',              label: 'الفريق والرواتب',   icon: '💼', requireAny: ['team.read'] },
+  { href: '/admin/ip',                label: 'الملكية الفكرية',   icon: '📚', requireAny: ['ip.read'] },
+  { href: '/admin/partners',          label: 'الشركاء والمستثمرون', icon: '🪙', requireAny: ['partners.read'] },
   { href: '/admin/campaigns',         label: 'حملات التسويق',     icon: '📢', requireAny: ['campaigns.read'] },
+  { href: '/admin/ai-facebook-assistant', label: 'مساعد فيسبوك',     icon: '🤖', requireAny: ['settings.read'] },
   { href: '/admin/coupons',           label: 'الكوبونات',         icon: '🎟️', requireAny: ['coupons.read'] },
   { href: '/admin/reviews',           label: 'التقييمات',         icon: '⭐', requireAny: ['reviews.read'] },
   // —— Reports ——
@@ -51,6 +54,7 @@ const NAV: NavItem[] = [
   // —— Pinned to bottom by user request ——
   { href: '/admin/staff',             label: 'صلاحيات المساعدين', icon: '🛡️', superAdminOnly: true },
   { href: '/admin/zakat',             label: 'حساب الزكاة',       icon: '🌙', requireAny: ['zakat.read'] },
+  { href: '/admin/accounting',        label: 'المحاسبة',          icon: '🧮', requireAny: ['valuation.read'] },
   { href: '/admin/valuation',         label: 'تقييم الشركة',      icon: '💎', requireAny: ['valuation.read'] },
 ];
 

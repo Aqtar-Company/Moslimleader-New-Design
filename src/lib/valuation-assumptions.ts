@@ -10,7 +10,8 @@ export interface ValuationAssumptions {
   ipProductValue: number;     // EGP attributed per authored product
   ipDigitalValue: number;     // EGP flat — YouTube + PDFs + brand
   techValue: number;          // EGP — platform + admin + integrations
-  customerDbValue: number;    // EGP per registered customer
+  customerDbValue: number;    // EGP per real BUYER (customer with at least one valid order)
+  receivablesProvisionRate: number;   // 0–1, fraction of customer receivables written off as bad-debt provision
   wholesaleCustomerValue: number;     // EGP per wholesale customer — they buy in bulk, repeatedly; worth far more than a retail one
   supplierRelationshipValue: number;  // EGP per ACTIVE supplier — established sourcing relationships have switching cost
   fairMultiplier: number;     // base × this = balanced market value
@@ -30,6 +31,10 @@ export const DEFAULT_VALUATION_ASSUMPTIONS: ValuationAssumptions = {
   ipDigitalValue: 350000,
   techValue: 800000,
   customerDbValue: 200,
+  // 10% bad-debt provision is the conservative SME default in EG.
+  // Set to 0 if the owner runs strict credit control, raise to 0.20+
+  // for aged or risky books.
+  receivablesProvisionRate: 0.10,
   // A wholesale customer typically reorders in case-quantities; even at
   // a conservative AOV × LTV estimate the relationship is worth a few
   // multiples of a retail buyer. 5,000 EGP is the floor.
@@ -97,18 +102,25 @@ function sanitize(input: Partial<ValuationAssumptions>): {
     if (integer) next = Math.floor(next);
     sanitized[key] = next as never;
   };
+  // Caps tightened: previous bounds (e.g. 100M EGP per book) made
+  // typos catastrophic — an extra zero would push the headline value
+  // by an order of magnitude with no UI warning. The new ceilings are
+  // generous for a small Egyptian SME publisher but reject obvious
+  // typos. The save endpoint reports `clamped` fields back so the UI
+  // can show "تم تعديل القيمة لتقع داخل النطاق المسموح".
   take('cogsRatio', 0, 1);
-  take('ipBookValue', 0, 100_000_000);
-  take('ipProductValue', 0, 100_000_000);
-  take('ipDigitalValue', 0, 100_000_000);
-  take('techValue', 0, 100_000_000);
-  take('customerDbValue', 0, 1_000_000);
-  take('wholesaleCustomerValue', 0, 10_000_000);
-  take('supplierRelationshipValue', 0, 10_000_000);
-  take('fairMultiplier', 1, 10);
-  take('strategicMultiplier', 1, 20);
-  take('revenueMultipleLow', 0, 20);
-  take('revenueMultipleHigh', 0, 20);
+  take('ipBookValue', 0, 5_000_000);
+  take('ipProductValue', 0, 2_000_000);
+  take('ipDigitalValue', 0, 10_000_000);
+  take('techValue', 0, 5_000_000);
+  take('customerDbValue', 0, 5_000);
+  take('receivablesProvisionRate', 0, 1);
+  take('wholesaleCustomerValue', 0, 500_000);
+  take('supplierRelationshipValue', 0, 200_000);
+  take('fairMultiplier', 1, 3);
+  take('strategicMultiplier', 1, 5);
+  take('revenueMultipleLow', 0, 6);
+  take('revenueMultipleHigh', 0, 6);
   take('activeWindowDays', 1, 3650, true);
   return { sanitized, rejected, clamped };
 }

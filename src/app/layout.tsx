@@ -13,12 +13,19 @@ import { ToastProvider } from '@/components/ui/Toast';
 import { ConfirmProvider } from '@/components/ui/ConfirmDialog';
 
 export const metadata: Metadata = {
+  // titleTemplate lets child pages set just their unique title and we
+  // append the brand suffix automatically. The `default` is shown on
+  // the root path (which currently provides its own metadata in
+  // /page.tsx, so this default is mostly a safety fallback).
   title: {
     default: 'مسلم ليدر | Moslim Leader',
     template: '%s | مسلم ليدر',
   },
-  description: 'معاً نبني قادة الغد — منتجات تربوية وتعليمية للأطفال والأسرة. ألعاب إسلامية، كتب، هدايا تربوية.',
-  metadataBase: new URL('https://moslimleader.com'),
+  description: 'معاً نبني قادة الغد — منتجات تربوية وتعليمية للأطفال والأسرة',
+  // Absolute base URL for any metadata that uses relative paths
+  // (OG images, alternates). Lets product/book pages emit relative
+  // image paths and have Next.js resolve them correctly.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://moslimleader.com'),
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
@@ -45,19 +52,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="msapplication-TileColor" content="#F5C518" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'Organization',
-            name: 'Moslim Leader',
-            alternateName: 'مسلم ليدر',
-            url: 'https://moslimleader.com',
-            logo: 'https://moslimleader.com/logo.png',
-            description: 'ألعاب وهدايا إسلامية تربوية للأطفال',
-            sameAs: ['https://www.instagram.com/moslimleader', 'https://www.facebook.com/moslimleader'],
-          }) }}
-        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />

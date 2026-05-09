@@ -64,6 +64,12 @@ export const AUDIT_ACTIONS = {
   'team.create': 'إضافة موظف',
   'team.update': 'تعديل بيانات موظف',
   'team.delete': 'حذف موظف',
+  'royalty.create': 'إنشاء اتفاقية ملكية فكرية',
+  'royalty.update': 'تعديل اتفاقية ملكية فكرية',
+  'royalty.delete': 'حذف اتفاقية ملكية فكرية',
+  'partner.create': 'إضافة شريك',
+  'partner.update': 'تعديل بيانات شريك',
+  'partner.delete': 'حذف شريك',
   'production.batch-create': 'تسجيل باتش إنتاج',
   'production.batch-update': 'تعديل باتش إنتاج',
 } as const;

@@ -1,15 +1,22 @@
-import { Metadata } from 'next';
+import type { Metadata } from 'next';
+import { canonical } from '@/lib/seo';
 
+// Library list metadata. Helps Google distinguish the public catalogue
+// page (/library) from the per-book detail pages (/library/[id]).
 export const metadata: Metadata = {
-  title: 'المكتبة الرقمية — كتب إسلامية للأطفال',
-  description: 'مكتبة مسلم ليدر الرقمية — كتب تعليمية وقصص إسلامية للأطفال. اقرأ، تعلّم، وانمُ مع أطفالك.',
+  title: 'المكتبة الرقمية | كتب أطفال إسلامية مصوَّرة — مسلم ليدر',
+  description:
+    'مكتبة مسلم ليدر الرقمية — كتب أطفال إسلامية مصوَّرة وقصص هادفة بصياغة بسيطة وعصرية. تصفح صفحات مجانية لكل كتاب قبل الشراء.',
+  alternates: { canonical: canonical('/library') },
+  keywords: ['مكتبة أطفال', 'كتب أطفال إسلامية', 'قصص أطفال', 'كتب رقمية', 'مسلم ليدر'],
   openGraph: {
-    title: 'المكتبة الرقمية — مسلم ليدر',
-    description: 'كتب تعليمية وقصص إسلامية للأطفال — اقرأ مباشرة من المتصفح.',
-    url: 'https://moslimleader.com/library',
-    images: [{ url: 'https://moslimleader.com/library-hero.jpg', width: 1200, height: 630 }],
+    title: 'المكتبة الرقمية | مسلم ليدر',
+    description: 'كتب أطفال إسلامية مصوَّرة وقصص هادفة على منصة مسلم ليدر.',
+    url: canonical('/library'),
+    siteName: 'مسلم ليدر',
+    type: 'website',
+    locale: 'ar_EG',
   },
-  alternates: { canonical: 'https://moslimleader.com/library' },
 };
 
 export default function LibraryLayout({ children }: { children: React.ReactNode }) {

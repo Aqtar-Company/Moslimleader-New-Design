@@ -1,50 +1,105 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLang } from '@/context/LanguageContext';
-import { Product } from '@/types';
 
-/* ── Types ─────────────────────────────────────────────────────────────────── */
-type Gender = 'boy' | 'girl' | 'adult';
-type AgeRange = 'under5' | '5to8' | '9to12' | '13plus';
-type Step = 'welcome' | 'gender' | 'age' | 'thinking' | 'results';
+// On-site AI chat — talks to /api/ameen-chat which uses the SAME
+// settings/prompt/knowledge/lead-classification as the Facebook
+// assistant. The wizard version (gender → age → results) was
+// replaced by a free-text chat now that the AI can ask the right
+// questions itself.
 
-interface Message {
+interface ChatMessage {
   id: string;
   from: 'ameen' | 'user';
   text: string;
+  /** Timestamp for ordering / display. */
+  at: number;
+  /** Lead status returned by the API on outgoing replies. */
+  leadStatus?: 'hot' | 'warm' | 'cold' | null;
 }
 
-/* ── Recommendation logic ───────────────────────────────────────────────────── */
-const RECOMMENDATIONS: Record<Gender, Record<string, string[]>> = {
-  boy: {
-    under5:  ['pray-story', 'my-son-asks-series', 'alwah', 'feast-day-game', 'leader-medal'],
-    '5to8':  ['feast-day-game', 'leader-medal', 'puzzle-boys', 'alwah', 'pray-hajj-game', 'righteousness-series'],
-    '9to12': ['feast-day-game', 'preparing-leaders', 'masek', 'kids-notebook', 'boys-mug', 'alwah'],
-    '13plus':['bukhari-on-mars-book', 'fakih-in-wonderland-book', 'to-my-son-book', 'boys-mug', 'ml-bag', 'kids-notebook'],
-  },
-  girl: {
-    under5:  ['pray-story', 'my-son-asks-series', 'righteousness-series', 'alwah', 'feast-day-game'],
-    '5to8':  ['puzzle-girls', 'feast-day-game', 'righteousness-series', 'alwah', 'pray-hajj-game', 'leader-medal'],
-    '9to12': ['righteousness-series', 'masek', 'kids-notebook', 'girls-mug', 'puzzle-girls', 'feast-day-game'],
-    '13plus':['mothers-of-greats-book', 'bukhari-on-mars-book', 'kids-notebook', 'girls-mug', 'ml-bag', 'masek'],
-  },
-  adult: {
-    under5:  ['palestine-book', 'to-my-son-book', 'mothers-of-greats-book', 'adults-notebook', 'women-mug', 'ml-bag'],
-    '5to8':  ['palestine-book', 'to-my-son-book', 'mothers-of-greats-book', 'adults-notebook', 'women-mug', 'ml-bag'],
-    '9to12': ['palestine-book', 'to-my-son-book', 'mothers-of-greats-book', 'adults-notebook', 'women-mug', 'ml-bag'],
-    '13plus':['palestine-book', 'to-my-son-book', 'mothers-of-greats-book', 'adults-notebook', 'women-mug', 'ml-bag'],
-  },
-};
-
-function getRecommendations(gender: Gender, age: AgeRange, allProducts: Product[]): Product[] {
-  const slugs = RECOMMENDATIONS[gender]?.[age] ?? [];
-  const bySlug = Object.fromEntries(allProducts.map(p => [p.slug, p]));
-  return slugs.map(s => bySlug[s]).filter(Boolean).filter(p => p.inStock).slice(0, 6);
+interface ChatResponse {
+  ok: boolean;
+  reply?: string;
+  leadStatus?: 'hot' | 'warm' | 'cold' | null;
+  offline?: boolean;
+  skipped?: boolean;
+  error?: boolean;
 }
 
-/* ── Amin Avatar ───────────────────────────────────────────────────────────── */
+const SESSION_KEY = 'ameen-chat-session';
+const HISTORY_KEY = 'ameen-chat-history';
+const HISTORY_LIMIT = 60; // cap localStorage size
+
+function getOrCreateSessionId(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    let sid = localStorage.getItem(SESSION_KEY);
+    if (!sid) {
+      sid = (typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `s-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      localStorage.setItem(SESSION_KEY, sid);
+    }
+    return sid;
+  } catch {
+    return `s-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+}
+
+function loadHistory(): ChatMessage[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.slice(-HISTORY_LIMIT);
+  } catch { return []; }
+}
+
+function saveHistory(history: ChatMessage[]) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(
+      HISTORY_KEY,
+      JSON.stringify(history.slice(-HISTORY_LIMIT)),
+    );
+  } catch { /* quota exceeded etc — non-fatal */ }
+}
+
+// Convert plaintext URLs in the AI's reply into clickable links so
+// product recommendations actually click through. Also linkifies
+// bare moslimleader.com URLs the model emits.
+function linkify(text: string): React.ReactNode {
+  // Match http(s) URLs OR bare moslimleader.com paths.
+  const re = /\b(https?:\/\/[^\s)]+|moslimleader\.com\/[^\s)]+)/g;
+  const parts: React.ReactNode[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let i = 0;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    const raw = m[0];
+    const href = raw.startsWith('http') ? raw : `https://${raw}`;
+    parts.push(
+      <a
+        key={`l-${i++}`}
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-[#F5C518] underline underline-offset-2 hover:text-amber-300 break-all"
+      >
+        {raw.replace(/^https?:\/\//, '')}
+      </a>,
+    );
+    last = m.index + raw.length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
 function AminAvatar({ size = 48 }: { size?: number }) {
   return (
     <img
@@ -56,308 +111,267 @@ function AminAvatar({ size = 48 }: { size?: number }) {
     />
   );
 }
+
 function TypingDots() {
   return (
-    <div className="flex items-center gap-1 px-4 py-3 bg-white rounded-2xl rounded-tr-sm shadow-sm w-fit">
+    <div className="flex items-center gap-1 px-3 py-2">
       {[0, 1, 2].map(i => (
         <span
           key={i}
-          className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-          style={{ animationDelay: `${i * 0.15}s`, animationDuration: '0.8s' }}
+          className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce"
+          style={{ animationDelay: `${i * 120}ms` }}
         />
       ))}
     </div>
   );
 }
 
-/* ── Product mini-card ─────────────────────────────────────────────────────── */
-function MiniCard({ p, isEn }: { p: Product; isEn: boolean }) {
-  return (
-    <Link
-      href={`/shop/${p.slug}`}
-      className="group bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-shadow flex flex-col"
-    >
-      <div className="aspect-square overflow-hidden bg-gray-50">
-        <img
-          src={p.images[0]}
-          alt={p.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          onError={e => { (e.target as HTMLImageElement).src = '/placeholder.png'; }}
-        />
-      </div>
-      <div className="p-2.5 flex-1 flex flex-col gap-1">
-        <p className="text-xs font-bold text-gray-800 leading-tight line-clamp-2">{isEn && p.nameEn ? p.nameEn : p.name}</p>
-        <p className="text-xs font-black text-[#1a1a2e] mt-auto">{p.price.toLocaleString('ar-EG')} ج</p>
-      </div>
-    </Link>
-  );
-}
-
-/* ── Main chat component ────────────────────────────────────────────────────── */
 export default function AmeenChat() {
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<Step>('welcome');
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [gender, setGender] = useState<Gender | null>(null);
-  const [age, setAge] = useState<AgeRange | null>(null);
-  const [results, setResults] = useState<Product[]>([]);
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [showBadge, setShowBadge] = useState(true);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sessionId, setSessionId] = useState<string>('');
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const { lang } = useLang();
   const isEn = lang === 'en';
 
-  // Load products from the public products API (DB + admin overrides applied
-  // server-side). Replaces the legacy localStorage path now that admin-storage
-  // is gone — the API source mirrors what every shop page sees.
+  // ── Session + history bootstrap ──
   useEffect(() => {
-    let cancelled = false;
-    fetch('/api/products', { cache: 'no-store' })
-      .then(r => r.ok ? r.json() : { products: [] })
-      .then(data => {
-        if (cancelled) return;
-        const list = Array.isArray(data?.products) ? (data.products as Product[]) : [];
-        setAllProducts(list);
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
+    setSessionId(getOrCreateSessionId());
+    const restored = loadHistory();
+    if (restored.length > 0) {
+      setMessages(restored);
+    } else {
+      // First-visit greeting — same shape as the FB assistant's
+      // opener. Asks the qualifying question that drives the SPIN
+      // flow on the server side.
+      setMessages([{
+        id: `welcome-${Date.now()}`,
+        from: 'ameen',
+        at: Date.now(),
+        text: isEn
+          ? 'Hi! I\'m Amin, your guide at Moslim Leader 🌟\nHow many kids do you have, and how old are they? I\'ll suggest the perfect picks.'
+          : 'أهلاً بكِ في مسلم ليدر 🌟 أنا أمين، مرشدتك في المتجر.\nعندك كم طفل وأعمارهم كام؟ هرشّحلك المناسب لكل واحد فيهم.',
+      }]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-scroll to bottom on new message
+  // Persist on change.
+  useEffect(() => {
+    if (messages.length > 0) saveHistory(messages);
+  }, [messages]);
+
+  // Auto-scroll on new messages.
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, step]);
+  }, [messages, sending]);
 
-  // Initialize conversation when opened
+  // Auto-grow textarea.
   useEffect(() => {
-    if (open && messages.length === 0) {
-      setShowBadge(false);
-      setTimeout(() => {
-        addAmeenMessage(isEn ? "Hello 👋 I'm Ameen, your gift guide!" : 'مرحباً 👋 أنا أمين، مساعدك لاختيار أفضل هدية!');
-        setTimeout(() => {
-          addAmeenMessage(isEn ? 'Who are you looking for? 🎁' : 'لمن تبحث عن هدية؟ 🎁');
-          setStep('gender');
-        }, 800);
-      }, 400);
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, [input]);
+
+  // First-visit "👋" badge auto-opens after 8 seconds.
+  useEffect(() => {
+    const t = setTimeout(() => setShowBadge(false), 8000);
+    return () => clearTimeout(t);
+  }, []);
+
+  const send = useCallback(async () => {
+    const text = input.trim();
+    if (!text || sending || !sessionId) return;
+    const userMsg: ChatMessage = {
+      id: `u-${Date.now()}`,
+      from: 'user',
+      text,
+      at: Date.now(),
+    };
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
+    setSending(true);
+    try {
+      const res = await fetch('/api/ameen-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, message: text }),
+      });
+      const data = await res.json() as ChatResponse;
+      const reply = (data.reply ?? '').trim();
+      if (reply) {
+        setMessages(prev => [...prev, {
+          id: `a-${Date.now()}`,
+          from: 'ameen',
+          text: reply,
+          at: Date.now(),
+          leadStatus: data.leadStatus ?? null,
+        }]);
+      } else if (!res.ok) {
+        setMessages(prev => [...prev, {
+          id: `e-${Date.now()}`,
+          from: 'ameen',
+          text: isEn
+            ? 'Sorry, something went wrong. Please try again.'
+            : 'عذراً، حصل خطأ. حاولي مرة أخرى.',
+          at: Date.now(),
+        }]);
+      }
+    } catch {
+      setMessages(prev => [...prev, {
+        id: `e-${Date.now()}`,
+        from: 'ameen',
+        text: isEn
+          ? 'Connection issue. Please try again.'
+          : 'مشكلة في الاتصال. حاولي مرة أخرى.',
+        at: Date.now(),
+      }]);
     }
-  }, [open]);
+    setSending(false);
+    inputRef.current?.focus();
+  }, [input, sending, sessionId, isEn]);
 
-  function addAmeenMessage(text: string) {
-    setMessages(prev => [...prev, { id: Date.now().toString(), from: 'ameen', text }]);
-  }
-
-  function addUserMessage(text: string) {
-    setMessages(prev => [...prev, { id: Date.now().toString() + 'u', from: 'user', text }]);
-  }
-
-  function pickGender(g: Gender, label: string) {
-    addUserMessage(label);
-    setGender(g);
-    setStep('age');
-    if (g === 'adult') {
-      setTimeout(() => addAmeenMessage(isEn ? 'Great 😊 Let me show you our best picks for adults!' : 'ممتاز 😊 سأريك أفضل ما عندنا للكبار!'), 500);
-      setTimeout(() => {
-        setStep('thinking');
-        const recs = getRecommendations(g, '5to8', allProducts);
-        setResults(recs);
-        setTimeout(() => {
-          addAmeenMessage(isEn ? 'Found some great gifts for you! 🌟' : 'لقيتلك هدايا رائعة! 🌟');
-          setStep('results');
-        }, 1400);
-      }, 1200);
-    } else {
-      setTimeout(() => {
-        addAmeenMessage(isEn
-          ? `Great 😊 How old is ${g === 'boy' ? 'he' : 'she'}?`
-          : 'ممتاز 😊 كم عمر' + (g === 'boy' ? 'ه' : 'ها') + '؟');
-        setStep('age');
-      }, 500);
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Enter sends; Shift+Enter inserts newline.
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      send();
     }
-  }
+  };
 
-  function pickAge(a: AgeRange, label: string) {
-    addUserMessage(label);
-    setAge(a);
-    setStep('thinking');
-    setTimeout(() => {
-      const recs = getRecommendations(gender!, a, allProducts);
-      setResults(recs);
-      addAmeenMessage(isEn
-        ? `Found perfect gifts for ${gender === 'boy' ? 'him' : gender === 'girl' ? 'her' : 'them'}! 🎁`
-        : 'لقيتلك هدايا تناسب' + (gender === 'boy' ? 'ه' : gender === 'girl' ? 'ها' : '') + ' تمام! 🎁');
-      setStep('results');
-    }, 1500);
-  }
+  const reset = () => {
+    if (!confirm(isEn ? 'Start a new conversation?' : 'بدء محادثة جديدة؟')) return;
+    try {
+      localStorage.removeItem(HISTORY_KEY);
+      // Keep the same sessionId so the admin can still see the
+      // full thread; just clear the local history view.
+    } catch {/* ignore */}
+    setMessages([{
+      id: `welcome-${Date.now()}`,
+      from: 'ameen',
+      at: Date.now(),
+      text: isEn
+        ? 'Fresh start! How many kids do you have and what are their ages?'
+        : 'بداية جديدة! عندك كم طفل وأعمارهم كام؟',
+    }]);
+  };
 
-  function restart() {
-    setMessages([]);
-    setGender(null);
-    setAge(null);
-    setResults([]);
-    setStep('welcome');
-    setTimeout(() => {
-      addAmeenMessage(isEn ? 'Hello again 👋 Who are you looking for?' : 'مرحباً مجدداً 👋 لمن تبحث عن هدية؟');
-      setStep('gender');
-    }, 300);
-  }
-
-  const genderOptions = [
-    { label: isEn ? '👦 Boy' : '👦 ولد', value: 'boy' as Gender },
-    { label: isEn ? '👧 Girl' : '👧 بنت', value: 'girl' as Gender },
-    { label: isEn ? '🧑 Adult' : '🧑 شخص كبير', value: 'adult' as Gender },
-  ];
-
-  const ageOptions: { label: string; value: AgeRange }[] = [
-    { label: isEn ? '🐣 Under 5' : '🐣 أقل من 5 سنوات', value: 'under5' },
-    { label: isEn ? '🌱 5–8 yrs' : '🌱 5 - 8 سنوات', value: '5to8' },
-    { label: isEn ? '📚 9–12 yrs' : '📚 9 - 12 سنة', value: '9to12' },
-    { label: isEn ? '🚀 13+' : '🚀 13 سنة فأكثر', value: '13plus' },
-  ];
-
+  // ── Rendering ──
   return (
     <>
-      {/* ── Floating button ── */}
-      <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2" dir={isEn ? 'ltr' : 'rtl'}>
-        {!open && (
-          <div className="bg-white border border-gray-200 rounded-2xl px-3 py-1.5 text-xs font-bold text-gray-700 shadow-md animate-bounce-slow whitespace-nowrap">
-            {isEn ? 'Need help choosing?' : 'هل تريد المساعدة؟'}
-          </div>
+      {/* Floating launcher */}
+      <button
+        onClick={() => { setOpen(o => !o); setShowBadge(false); }}
+        aria-label={isEn ? 'Open Ameen chat' : 'افتح دردشة أمين'}
+        className="fixed bottom-5 left-5 z-40 w-14 h-14 rounded-full bg-[#1a1a2e] hover:bg-[#2d1060] text-white shadow-lg flex items-center justify-center transition print:hidden"
+        style={{ boxShadow: '0 6px 24px rgba(26,26,46,0.4)' }}
+      >
+        {open ? (
+          <span className="text-2xl">✕</span>
+        ) : (
+          <AminAvatar size={48} />
         )}
-        <button
-          onClick={() => setOpen(o => !o)}
-          aria-label="فتح مساعد أمين"
-          className="relative w-20 h-20 rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-110 active:scale-95 overflow-hidden"
-          style={{ background: 'linear-gradient(160deg, #1e3a6e 0%, #2d1060 100%)' }}
-        >
-          {open ? (
-            <span className="text-white font-black text-xl">✕</span>
-          ) : (
-            <AminAvatar size={62} />
-          )}
-          {showBadge && !open && (
-            <span className="absolute top-1 left-2 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse" />
-          )}
-        </button>
-      </div>
+        {showBadge && !open && (
+          <span className="absolute -top-1 -right-1 bg-[#F5C518] text-[#1a1a2e] text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center animate-bounce">
+            👋
+          </span>
+        )}
+      </button>
 
-      {/* ── Chat panel ── */}
+      {/* Chat panel */}
       {open && (
         <div
           dir={isEn ? 'ltr' : 'rtl'}
-          className="fixed bottom-28 right-6 z-40 w-[340px] sm:w-[380px] max-h-[560px] flex flex-col rounded-3xl shadow-2xl overflow-hidden border border-gray-200"
-          style={{ background: '#f8f8fc' }}
+          className="fixed bottom-24 left-5 z-40 w-[92vw] max-w-sm h-[70vh] max-h-[600px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden print:hidden"
         >
           {/* Header */}
-          <div
-            className="flex items-center gap-3 px-4 py-3 shrink-0"
-            style={{ background: 'linear-gradient(160deg, #1e3a6e 0%, #2d1060 100%)' }}
-          >
-            <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0 overflow-hidden">
-              <AminAvatar size={44} />
+          <div className="bg-gradient-to-l from-[#1a1a2e] via-[#2d1060] to-[#1a1a2e] text-white px-4 py-3 flex items-center gap-3">
+            <AminAvatar size={36} />
+            <div className="flex-1 min-w-0">
+              <p className="font-black text-sm">
+                {isEn ? 'Amin · Moslim Leader Guide' : 'أمين · مرشد مسلم ليدر'}
+              </p>
+              <p className="text-[10px] text-white/70 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                {isEn ? 'Online — replies usually within seconds' : 'متاح — الرد عادة خلال ثواني'}
+              </p>
             </div>
-            <div>
-              <p className="font-black text-white text-sm leading-tight">{isEn ? 'Ameen' : 'أمين'}</p>
-              <p className="text-white/70 text-xs">{isEn ? 'Your smart gift assistant' : 'مساعدك الذكي للهدايا'}</p>
-            </div>
-            <div className="mr-auto flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              <span className="text-white/60 text-xs">{isEn ? 'online' : 'متاح'}</span>
-            </div>
+            <button
+              onClick={reset}
+              title={isEn ? 'New conversation' : 'محادثة جديدة'}
+              className="text-white/70 hover:text-white text-[11px] font-bold px-2 py-1 rounded hover:bg-white/10"
+            >
+              ↻
+            </button>
+            <button
+              onClick={() => setOpen(false)}
+              aria-label={isEn ? 'Close' : 'إغلاق'}
+              className="text-white/70 hover:text-white text-lg w-7 h-7 flex items-center justify-center rounded hover:bg-white/10"
+            >
+              ✕
+            </button>
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 scroll-smooth">
-            {messages.map(msg => (
-              <div
-                key={msg.id}
-                className={`flex gap-2 ${msg.from === 'ameen' ? 'justify-end' : 'justify-start'}`}
-              >
-                {msg.from === 'ameen' && (
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#1e3a6e] to-[#2d1060] flex items-center justify-center shrink-0 mt-0.5 overflow-hidden">
-                    <AminAvatar size={30} />
-                  </div>
-                )}
+          <div className="flex-1 overflow-y-auto p-3 bg-gray-50 space-y-3">
+            {messages.map(m => (
+              <div key={m.id} className={`flex ${m.from === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className={`max-w-[75%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
-                    msg.from === 'ameen'
-                      ? 'bg-white text-gray-800 rounded-tr-sm'
-                      : 'text-[#1a1a2e] font-semibold rounded-tl-sm'
+                  className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ${
+                    m.from === 'user'
+                      ? 'bg-[#F5C518] text-[#1a1a2e] font-bold'
+                      : 'bg-white border border-gray-200 text-gray-900'
                   }`}
-
-                  style={msg.from === 'user' ? { background: '#F5C518' } : {}}
                 >
-                  {msg.text}
+                  {linkify(m.text)}
                 </div>
               </div>
             ))}
-
-            {/* Typing indicator */}
-            {step === 'thinking' && (
-              <div className="flex gap-2 justify-end">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#1e3a6e] to-[#2d1060] flex items-center justify-center shrink-0 mt-0.5 overflow-hidden">
-                  <AminAvatar size={30} />
+            {sending && (
+              <div className="flex justify-start">
+                <div className="bg-white border border-gray-200 rounded-2xl">
+                  <TypingDots />
                 </div>
-                <TypingDots />
               </div>
             )}
-
-            {/* Quick reply buttons */}
-            {step === 'gender' && (
-              <div className="flex flex-col gap-2 pt-1 items-end">
-                {genderOptions.map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => pickGender(opt.value, opt.label)}
-                    className="bg-white border-2 border-[#1a1a2e] text-[#1a1a2e] font-bold text-sm px-4 py-2.5 rounded-2xl hover:bg-[#1a1a2e] hover:text-white transition-all w-full text-right"
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {step === 'age' && gender !== 'adult' && (
-              <div className="flex flex-col gap-2 pt-1 items-end">
-                {ageOptions.map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => pickAge(opt.value, opt.label)}
-                    className="bg-white border-2 border-[#1a1a2e] text-[#1a1a2e] font-bold text-sm px-4 py-2.5 rounded-2xl hover:bg-[#1a1a2e] hover:text-white transition-all w-full text-right"
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Results */}
-            {step === 'results' && results.length > 0 && (
-              <div className="space-y-3 pt-1">
-                <div className="grid grid-cols-2 gap-2.5">
-                  {results.slice(0, 6).map(p => <MiniCard key={p.id} p={p} isEn={isEn} />)}
-                </div>
-                <button
-                  onClick={restart}
-                  className="w-full text-center text-xs text-gray-500 hover:text-gray-700 py-2 border border-dashed border-gray-300 rounded-xl hover:border-gray-400 transition"
-                >
-                  {isEn ? '🔄 Start over' : '🔄 ابدأ من جديد'}
-                </button>
-              </div>
-            )}
-
-            {step === 'results' && results.length === 0 && (
-              <div className="text-center py-4">
-                <p className="text-gray-500 text-sm">{isEn ? 'No available products found 😔' : 'لم أجد منتجات متاحة حالياً 😔'}</p>
-                <button
-                  onClick={restart}
-                  className="mt-2 text-xs text-[#1a1a2e] underline"
-                >
-                  {isEn ? 'Start over' : 'ابدأ من جديد'}
-                </button>
-              </div>
-            )}
-
             <div ref={bottomRef} />
+          </div>
+
+          {/* Input */}
+          <div className="border-t border-gray-200 bg-white p-2.5">
+            <div className="flex items-end gap-2">
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={onKeyDown}
+                placeholder={isEn ? 'Type your message…' : 'اكتب رسالتك…'}
+                rows={1}
+                disabled={sending}
+                className="flex-1 resize-none border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#1a1a2e] disabled:opacity-50"
+                style={{ minHeight: 38, maxHeight: 120 }}
+              />
+              <button
+                onClick={send}
+                disabled={!input.trim() || sending}
+                className="shrink-0 w-10 h-10 rounded-full bg-[#1a1a2e] hover:bg-[#2d1060] text-white flex items-center justify-center transition disabled:opacity-40"
+                aria-label={isEn ? 'Send' : 'إرسال'}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d={isEn ? 'M14 5l7 7m0 0l-7 7m7-7H3' : 'M10 19l-7-7m0 0l7-7m-7 7h18'} />
+                </svg>
+              </button>
+            </div>
+            <p className="text-[9px] text-gray-400 text-center mt-1.5">
+              {isEn
+                ? 'Powered by AI · responses guided by your store catalogue'
+                : 'مدعوم بالذكاء الاصطناعي · يستند إلى كتالوج المتجر'}
+            </p>
           </div>
         </div>
       )}

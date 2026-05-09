@@ -5,107 +5,61 @@ import { useAuth } from '@/context/AuthContext';
 import RecentStaffActivity from './RecentStaffActivity';
 import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
-import { STATUS_COLORS, STATUSES, normalizeStatus } from '@/lib/admin-status';
+import { STATUS_COLORS, STATUSES } from '@/lib/admin-status';
 import Spinner from '@/components/admin/Spinner';
 import StatusPill from '@/components/admin/StatusPill';
 
-interface DbOrder {
+interface RecentOrder {
   id: string;
   status: string;
   total: number;
   createdAt: string;
-  user: { id: string; name: string; email: string };
+  userName: string;
 }
 
-interface Stats {
-  totalOrders: number | null;
-  confirmedRevenue: number | null;
-  pendingRevenue: number | null;
-  totalUsers: number | null;
-  activeCoupons: number | null;
-  outOfStock: number | null;
+interface DashboardData {
+  totalOrders: number;
+  totalRevenue: number;
+  confirmedRevenue: number;
+  pendingRevenue: number;
+  customersCount: number | null;
+  activeCouponsCount: number | null;
+  outOfStockCount: number | null;
   byStatus: Record<string, number>;
-  recentOrders: { id: string; userName: string; date: string; total: number; status: string }[];
+  recentOrders: RecentOrder[];
 }
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'admin';
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [stats, setStats] = useState<DashboardData | null>(null);
 
   useEffect(() => {
     const ac = new AbortController();
-    async function load() {
-      // Each fetch is tolerated — a staff member with only one admin perm
-      // (e.g. inventory.read) should still see the dashboard, just with
-      // empty cards for the data they can't read. Without this, the
-      // first 403 used to short-circuit and lock everyone out of /admin.
-      const safe = (path: string) =>
-        adminFetch(path, { signal: ac.signal })
-          .then(r => r.json())
-          .catch(() => null);
-
-      const [ordersData, usersData, couponsData, productsData] = await Promise.all([
-        safe('/api/admin/orders'),
-        safe('/api/admin/users'),         // super-admin only — null for staff
-        safe('/api/admin/coupons'),       // needs coupons.read
-        safe('/api/admin/products?lite=true'),
-      ]);
-      if (ac.signal.aborted) return;
-
-      const rawOrders: DbOrder[] | null = ordersData?.orders ?? null;
-      const orders = rawOrders ? rawOrders.map(o => ({ ...o, status: normalizeStatus(o.status) })) : null;
-
-      const byStatus: Record<string, number> = { 'قيد التجهيز': 0, 'تم الدفع': 0, 'تم الشحن': 0, 'تم التسليم': 0, 'ملغي': 0 };
-      orders?.forEach(o => { if (byStatus[o.status] !== undefined) byStatus[o.status]++; });
-
-      setStats({
-        totalOrders: orders ? orders.length : null,
-        confirmedRevenue: orders ? orders.filter(o => o.status === 'تم التسليم').reduce((s, o) => s + o.total, 0) : null,
-        pendingRevenue: orders ? orders.filter(o => o.status === 'قيد التجهيز' || o.status === 'تم الدفع' || o.status === 'تم الشحن').reduce((s, o) => s + o.total, 0) : null,
-        totalUsers: usersData?.users?.length ?? null,
-        activeCoupons: couponsData?.coupons
-          ? (couponsData.coupons as { isActive?: boolean }[]).filter(c => c.isActive !== false).length
-          : null,
-        outOfStock: productsData?.products
-          ? (productsData.products as { inStock?: boolean }[]).filter(p => p.inStock === false).length
-          : null,
-        byStatus,
-        recentOrders: (orders ?? []).slice(0, 6).map(o => ({
-          id: o.id,
-          userName: o.user?.name ?? '—',
-          date: new Date(o.createdAt).toLocaleDateString('en-GB'),
-          total: o.total,
-          status: o.status,
-        })),
-      });
-    }
-    load();
+    adminFetch('/api/admin/dashboard', { signal: ac.signal })
+      .then(r => r.json())
+      .then(d => { if (!ac.signal.aborted && d && !d.error) setStats(d); })
+      .catch(() => {/* ignore — page just stays in loading state */});
     return () => ac.abort();
   }, []);
 
   if (!stats) return <Spinner />;
 
-  // Render '—' for KPIs the user doesn't have access to. Hides the
-  // super-admin-only "Users" card entirely for staff so the layout
-  // doesn't show a dead tile.
   const fmt = (n: number | null) => n === null ? '—' : n.toLocaleString('en-US');
   const fmtMoney = (n: number | null) => n === null ? '—' : n.toLocaleString('en-US') + ' ج.م';
 
-  const topCards: Array<{ label: string; value: string | number; sub: string; icon: string; color: string; link: string }> = [
-    { label: 'إجمالي الطلبات',     value: fmt(stats.totalOrders), sub: `${stats.byStatus['ملغي']} ملغي`, icon: '📦', color: 'bg-blue-50 border-blue-200',   link: '/admin/orders' },
+  const topCards: Array<{ label: string; value: string; sub: string; icon: string; color: string; link: string }> = [
+    { label: 'إجمالي الطلبات',     value: fmt(stats.totalOrders), sub: `${stats.byStatus['ملغي'] ?? 0} ملغي`, icon: '📦', color: 'bg-blue-50 border-blue-200',   link: '/admin/orders' },
     { label: 'إيرادات مؤكدة',      value: fmtMoney(stats.confirmedRevenue), sub: 'طلبات تم تسليمها', icon: '✅', color: 'bg-green-50 border-green-200', link: '/admin/orders' },
     { label: 'إيرادات قيد التنفيذ', value: fmtMoney(stats.pendingRevenue),   sub: 'تجهيز + شحن',      icon: '🚚', color: 'bg-amber-50 border-amber-200', link: '/admin/orders' },
   ];
-  if (stats.totalUsers !== null) {
+  if (stats.customersCount !== null) {
     topCards.push({
-      label: 'العملاء المسجلين', value: fmt(stats.totalUsers),
-      sub: stats.activeCoupons !== null ? `${stats.activeCoupons} كوبون نشط` : '—',
+      label: 'العملاء المسجلين', value: fmt(stats.customersCount),
+      sub: stats.activeCouponsCount !== null ? `${stats.activeCouponsCount} كوبون نشط` : '—',
       icon: '👥', color: 'bg-purple-50 border-purple-200', link: '/admin/users',
     });
   }
-
-  const totalRevenue = (stats.confirmedRevenue ?? 0) + (stats.pendingRevenue ?? 0);
 
   return (
     <div className="space-y-6">
@@ -114,11 +68,11 @@ export default function DashboardPage() {
         <p className="text-sm text-gray-500 mt-0.5">نظرة عامة على أداء المتجر</p>
       </div>
 
-      {(stats.outOfStock ?? 0) > 0 && (
+      {(stats.outOfStockCount ?? 0) > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
           <span className="text-lg">⚠️</span>
           <div className="flex-1">
-            <p className="font-semibold text-red-700 text-sm">{stats.outOfStock} منتج نفذ من المخزن</p>
+            <p className="font-semibold text-red-700 text-sm">{stats.outOfStockCount} منتج نفذ من المخزن</p>
             <p className="text-red-500 text-xs mt-0.5">تحقق من صفحة المنتجات وقم بتحديث المخزون</p>
           </div>
           <Link href="/admin/products" className="text-xs font-bold text-red-600 underline shrink-0">عرض</Link>
@@ -139,7 +93,7 @@ export default function DashboardPage() {
       <div className="bg-white rounded-2xl border border-gray-200 p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-bold text-gray-900 text-sm">توزيع الطلبات بالحالة</h2>
-          <span className="text-xs text-gray-400">إجمالي الإيرادات: <span className="font-bold text-gray-700">{totalRevenue.toLocaleString('en-US')} ج.م</span></span>
+          <span className="text-xs text-gray-400">إجمالي الإيرادات: <span className="font-bold text-gray-700">{stats.totalRevenue.toLocaleString('en-US')} ج.م</span></span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {STATUSES.map(s => (
@@ -176,7 +130,7 @@ export default function DashboardPage() {
                   <tr key={o.id} className={`hover:bg-gray-50 transition ${o.status === 'ملغي' ? 'opacity-50' : ''}`}>
                     <td className="px-5 py-3 font-mono font-bold text-gray-900">#{o.id.slice(-6)}</td>
                     <td className="px-5 py-3 text-gray-700">{o.userName}</td>
-                    <td className="px-5 py-3 text-gray-500">{o.date}</td>
+                    <td className="px-5 py-3 text-gray-500">{new Date(o.createdAt).toLocaleDateString('en-GB')}</td>
                     <td className={`px-5 py-3 font-semibold ${o.status === 'ملغي' ? 'line-through text-gray-400' : 'text-gray-900'}`}>{o.total.toLocaleString('en-US')} ج.م</td>
                     <td className="px-5 py-3">
                       <StatusPill status={o.status} />

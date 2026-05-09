@@ -59,6 +59,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (data.price !== undefined) data.price = Number(data.price);
     if (data.priceUsd !== undefined) data.priceUsd = Number(data.priceUsd);
     if (data.weight !== undefined) data.weight = Number(data.weight);
+    // Age targeting — clamp to 0-18 or null. The form sends null
+    // explicitly when the admin clicks "كل الأعمار", so we keep
+    // that signal as-is.
+    const clampAge = (v: unknown): number | null => {
+      if (v === null || v === undefined || v === '') return null;
+      const n = Number(v);
+      if (!Number.isFinite(n)) return null;
+      return Math.max(0, Math.min(18, Math.floor(n)));
+    };
+    if ('minAge' in data) data.minAge = clampAge(data.minAge);
+    if ('maxAge' in data) data.maxAge = clampAge(data.maxAge);
 
     if (isAdded) {
       // Update DB product

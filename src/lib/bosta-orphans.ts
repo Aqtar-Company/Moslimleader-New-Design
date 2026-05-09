@@ -34,17 +34,49 @@ export interface OrphanRow {
 
 export interface ProductRef { id: string; name: string; price: number }
 
-// Walk the Bosta description for "name X count" repeating pairs.
-// Bosta packs descriptions like:
-//   "ابي يسأل X 1 كتاب فلسطين في عيون ابنائي X 4 كتاب البخاري X 1 ..."
-// Each X (Latin or Arabic ×) separates a name from a count. The string
-// can end with junk like "مجموع..." which we ignore by requiring the
-// "next token after X" to parse as an integer.
+// Free-text notes that show up in the description field but aren't
+// product references — recipient instructions, fragility warnings,
+// closing times, etc. We bail on them so the single-line fallback
+// doesn't try to "match" them.
+const NOTE_HINTS = [
+  'اسم الل', 'اسم اللى', 'اسم اللي',
+  'موعد', 'الشركه', 'الشحنه',
+  'قابل للكسر',
+  'برجاء', 'يرجي', 'يرجى', 'يرجا',
+  'ملاحظ', 'ملحوظ',
+  'العنوان', 'تليفون', 'موبايل', 'محمول',
+];
+
+function looksLikeNote(s: string): boolean {
+  return NOTE_HINTS.some(h => s.includes(h));
+}
+
+// Bosta descriptions arrive in three formats. Try them in order:
+//   1. "Name:<n>  - quantity:<q>" — the website-checkout export, the
+//      most common (≈1000+ orphans). Repeated, sometimes one per line.
+//   2. "<name> X <q>" — the manual format used in early imports.
+//   3. A single bare product name with no quantity marker — common
+//      when the cashier/owner typed the description by hand. Treated
+//      as quantity = 1 unless it looks like a free-text note.
 export function parseItemsFromDescription(description: string | null): Array<{ name: string; quantity: number }> {
   if (!description) return [];
+  const items: Array<{ name: string; quantity: number }> = [];
+
+  // Format 1: Name:... - quantity:N  (website checkout export)
+  const nameQtyRe = /Name:\s*([^\n]+?)\s*-\s*quantity:\s*(\d+)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = nameQtyRe.exec(description)) !== null) {
+    const name = m[1].trim();
+    const quantity = parseInt(m[2], 10);
+    if (name && quantity > 0 && quantity <= 1000) {
+      items.push({ name, quantity });
+    }
+  }
+  if (items.length > 0) return items;
+
+  // Format 2: "<name> X <q>" repeating pairs.
   const cleaned = description.replace(/×/g, 'X');
   const tokens = cleaned.split(/\s+/).filter(Boolean);
-  const items: Array<{ name: string; quantity: number }> = [];
   let currentName: string[] = [];
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
@@ -63,7 +95,28 @@ export function parseItemsFromDescription(description: string | null): Array<{ n
     }
     currentName.push(t);
   }
-  return items;
+  if (items.length > 0) return items;
+
+  // Format 3: a single bare product name. Bail if it looks like a
+  // free-text instruction or is unreasonably long (probably notes).
+  let trimmed = description.trim().replace(/\s+/g, ' ');
+  // Drop a leading "اوردر" / "طلب" filler that occasionally precedes
+  // the actual product reference.
+  trimmed = trimmed.replace(/^(اوردر|أوردر|طلب)\s+/i, '');
+  // Leading-digit quantity: "10 مجات ..." or "10مجات ..." → qty 10.
+  let quantity = 1;
+  const leadDigit = trimmed.match(/^(\d+)\s*(.+)$/);
+  if (leadDigit) {
+    const q = parseInt(leadDigit[1], 10);
+    if (q > 0 && q <= 1000) {
+      quantity = q;
+      trimmed = leadDigit[2].trim();
+    }
+  }
+  if (trimmed.length > 0 && trimmed.length <= 120 && !looksLikeNote(trimmed)) {
+    return [{ name: trimmed, quantity }];
+  }
+  return [];
 }
 
 // Generic words that show up in many product titles and would cause
@@ -82,7 +135,11 @@ const STOPWORDS = new Set([
 const IGNORE_PATTERNS: RegExp[] = [
   /(^|\s)عبايه(\s|$)/,
   /(^|\s)جهاز(\s|$)/,
-  /(^|\s)منظم(\s|$)/, // "منظم كهربائي" — kitchen organizer, not ours
+  /(^|\s)منظم(\s|$)/,            // "منظم كهربائي" — not ours
+  /(^|\s)بوستر(\s|$)/,           // posters not in catalogue
+  /(^|\s)سيليكون(\s|$)/,         // "كيلو سيليكون مطاط + مذيب"
+  /(^|\s)مذيب(\s|$)/,
+  /(^|\s)رساله\s+ماجيستير/,      // master's thesis sample
 ];
 
 function isIgnored(parsedNorm: string): boolean {
@@ -99,26 +156,62 @@ function isIgnored(parsedNorm: string): boolean {
 //
 // NOTE: regex \b doesn't work on Arabic in JS (it's ASCII-only),
 // so word boundaries use explicit (^|\s)…(\s|$) groups.
-const ALIASES: Array<{ pattern: RegExp; productNameContains: string; reason: string }> = [
-  // Personalized mugs. Bosta records them as "مج بنت ..." / "مج ولد ..." /
-  // "مج بإسم <name>". Catalogue calls them "مجات بنات", "مجات ولاد",
-  // "مجات نساء" (plural form, breaks fuzzy substring matching).
-  { pattern: /(^|\s)ولد(\s|$)/, productNameContains: 'مجات ولاد', reason: 'mug-boy' },
-  { pattern: /(^|\s)(منتقبه|نساء|سيده|سيدات)(\s|$)/, productNameContains: 'مجات نساء', reason: 'mug-women' },
-  { pattern: /^مج(\s|$)/, productNameContains: 'مجات بنات', reason: 'mug-girl-default' },
-  // "قادة وأئمة المسلمين" — no exact product; closest is إعداد القادة.
-  { pattern: /قاده\s+و?ائمه\s+المسلمين/, productNameContains: 'إعداد القادة', reason: 'leaders' },
+// Each entry's `targets` is an ORDERED list of product-name fragments.
+// We pick the first one that actually exists in the catalogue (so we
+// ride through renames without breaking — e.g. "مفكرة أولاد" today,
+// "مفكرة أطفال" if the catalogue ever reverts).
+const ALIASES: Array<{ pattern: RegExp; targets: string[]; reason: string }> = [
+  // SPECIFIC product variants come FIRST so they win over the broad
+  // mug pattern at the bottom.
+
+  // مفكرة — owner has separate "مفكرة أولاد" / "مفكرة بنات" /
+  // "مفكرة كبار" today (older builds had only "مفكرة أطفال" — keep
+  // it as fallback so this still works on legacy data).
+  { pattern: /مفكره\s+(صغار\s+ولد|ولد|اولاد)/, targets: ['مفكرة أولاد', 'مفكرة اولاد', 'مفكرة أطفال'], reason: 'planner-boys' },
+  { pattern: /مفكره\s+(صغار\s+بنت|بنت|بنات)/, targets: ['مفكرة بنات', 'مفكرة أطفال'], reason: 'planner-girls' },
+  { pattern: /مفكره\s+(صغار|اطفال|طفل)/, targets: ['مفكرة أطفال', 'مفكرة أولاد'], reason: 'planner-kids' },
+  { pattern: /مفكره\s+(كبار|نساء|كبير|رجال)/, targets: ['مفكرة كبار'], reason: 'planner-adults' },
+  // ماسك / حامل المصحف
+  { pattern: /ماسك.*مصحف|حامل\s+المصحف/, targets: ['حامل المصحف'], reason: 'mushaf-holder' },
+  // لعبة الحج والصلاة
+  { pattern: /لعبه.*(الحج|حج).*(الصلاه|صلاه)|لعبه.*(الصلاه|صلاه).*(الحج|حج)/, targets: ['لعبة الصلاة وقصة الحج'], reason: 'hajj-prayer-game' },
+  { pattern: /لعبه\s+يوم\s+الصائم|لعبه\s+الصائم/, targets: ['لعبة يوم الصائم'], reason: 'fasting-game' },
+  // شنطة
+  { pattern: /شنطه\s+(بناتي|بنات|اولاد|ولاد|حضانه|اطفال)/, targets: ['شنطة مسلم ليدر'], reason: 'bag' },
+  // وسام
+  { pattern: /وسام/, targets: ['وسام القائد'], reason: 'medal' },
+  // Variants on existing books.
+  { pattern: /روايه\s+البخاري|^بخاري$/, targets: ['البخاري على كوكب المريخ'], reason: 'bukhari-novel' },
+  { pattern: /(^|\s)امهات\s+العظماء(\s|$)/, targets: ['رسائل أمهات العظماء'], reason: 'mothers-of-greats' },
+  // قادة وأئمة المسلمين → no exact product; closest is إعداد القادة.
+  { pattern: /قاده\s+و?ائمه\s+المسلمين/, targets: ['إعداد القادة'], reason: 'leaders' },
+
+  // Personalized mugs go LAST so the specific-product aliases above
+  // (which sometimes also contain "ولد", "بنت", etc.) win first.
+  { pattern: /(^مج\s|^مج$|(^|\s)مجات?(\s|$))/, targets: ['مجات'], reason: 'mug-prefix' },
 ];
+
+// For the mug entry we resolve to ولاد / بنات / نساء by scanning
+// gender hints in the parsed text.
+function refineMugTarget(parsedNorm: string): string {
+  if (/(^|\s)ولد(\s|$)/.test(parsedNorm)) return 'مجات ولاد';
+  if (/(منتقبه|نساء|سيده|سيدات)/.test(parsedNorm)) return 'مجات نساء';
+  return 'مجات بنات';
+}
 
 function tryAlias(parsedNorm: string, products: ProductRef[]): { product: ProductRef; score: number } | null {
   for (const a of ALIASES) {
     if (!a.pattern.test(parsedNorm)) continue;
-    const targetNorm = normaliseArabic(a.productNameContains);
-    const hit = products.find(p => {
-      const pn = normaliseArabic(p.name);
-      return pn === targetNorm || pn.includes(targetNorm) || targetNorm.includes(pn);
-    });
-    if (hit) return { product: hit, score: 0.95 };
+    // Mug entry: refine the target by gender hints in the parsed text.
+    const targets = a.reason === 'mug-prefix' ? [refineMugTarget(parsedNorm)] : a.targets;
+    for (const target of targets) {
+      const targetNorm = normaliseArabic(target);
+      const hit = products.find(p => {
+        const pn = normaliseArabic(p.name);
+        return pn === targetNorm || pn.includes(targetNorm) || targetNorm.includes(pn);
+      });
+      if (hit) return { product: hit, score: 0.95 };
+    }
   }
   return null;
 }

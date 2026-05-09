@@ -83,3 +83,10 @@ html[dir="ltr"],
 @keyframes fade-out  { from { opacity:1 } to { opacity:0 } }
 @keyframes modal-in  { from { opacity:0; transform:scale(0.92) translateY(8px) } to { opacity:1; transform:scale(1) translateY(0) } }
 @keyframes modal-out { from { opacity:1; transform:scale(1) } to { opacity:0; transform:scale(0.96) } }
+
+/* Hide the WhatsApp float on mobile while the Ameen chat is open
+   (it goes fullscreen there). On md+ the chat is a floating bubble
+   on the right and WhatsApp stays visible on the left. */
+@media (max-width: 767px) {
+  body[data-ameen-open] .wa-float { display: none !important; }
+}

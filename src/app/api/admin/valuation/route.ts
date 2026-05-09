@@ -12,6 +12,20 @@ import { logActionSafe } from '@/lib/audit-log';
 import { totalReceivables } from '@/lib/customer-receivables';
 import { effectiveStock } from '@/lib/inventory-value';
 import { getPayrollSummary } from '@/lib/team-payroll';
+import { getRoyaltyAccrualFromContext } from '@/lib/royalties';
+import { getPartnerCapTable } from '@/lib/partners';
+import { EGP_TO_USD } from '@/lib/currency';
+
+// In-memory cache for the valuation payload. The full report makes
+// ~25 aggregations and is not real-time-critical (the underlying
+// numbers don't move second-to-second). Cached responses are served
+// for 60 seconds, then the next request triggers a fresh computation.
+// PUT to /api/admin/valuation invalidates immediately so an admin
+// who tweaked assumptions sees their effect right away.
+interface CachedReport { at: number; payload: unknown }
+const CACHE_TTL_MS = 60 * 1000;
+let reportCache: CachedReport | null = null;
+function invalidateValuationCache() { reportCache = null; }
 
 // GET /api/admin/valuation — live company valuation report.
 // Gated solely on the `valuation.read` permission. The previous double
@@ -21,6 +35,10 @@ import { getPayrollSummary } from '@/lib/team-payroll';
 export async function GET() {
   const guard = await requirePerm('valuation.read');
   if ('response' in guard) return guard.response;
+
+  if (reportCache && Date.now() - reportCache.at < CACHE_TTL_MS) {
+    return NextResponse.json(reportCache.payload);
+  }
 
   const assumptions = await getValuationAssumptions();
 
@@ -44,6 +62,17 @@ export async function GET() {
 
   const activeSince = new Date();
   activeSince.setDate(activeSince.getDate() - assumptions.activeWindowDays);
+
+  // Trailing-twelve-month boundary, computed ONCE so every TTM
+  // aggregation in this request uses the exact same cutoff. Previous
+  // code mixed `Date.now() - 365*86400000` (UTC, 365 exact days) with
+  // `DATE_SUB(CURDATE(), INTERVAL 12 MONTH)` (server-tz calendar
+  // months) — under DST or month-boundary edges those would select
+  // different orders, so the royalties total and the valuation
+  // numbers wouldn't quite match. We pick the exact 365-day window
+  // and pass it to royalties as well.
+  const ttmStart      = new Date(Date.now() - 365 * 86400000);
+  const priorTtmStart = new Date(Date.now() - 730 * 86400000);
 
   const [
     products, books,
@@ -102,7 +131,7 @@ export async function GET() {
       FROM \`Order\`
       WHERE status != 'cancelled'
         AND paymentMethod != 'gift'
-        AND createdAt >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+        AND createdAt >= ${ttmStart}
       GROUP BY ym
       ORDER BY ym ASC
     `,
@@ -146,14 +175,49 @@ export async function GET() {
     `,
   ]);
 
+  // Wave-2 of independent queries: batches, supplier txns, gift items,
+  // production stats — all run in parallel since none depends on
+  // another. Previously these were sequential awaits, adding ~6 round
+  // trips of latency per request.
+  const [
+    batchAgg,
+    supplierAgg,
+    giftItems,
+    supplierCount,
+    activeSupplierCount,
+    totalBatchCount,
+    batchSpendAgg,
+    supplierTxnCount,
+    openingBalanceProducts,
+  ] = await Promise.all([
+    prisma.productionBatch.groupBy({
+      by: ['productId'],
+      _sum: { quantity: true, totalCost: true },
+    }),
+    prisma.supplierTransaction.groupBy({
+      by: ['kind'],
+      _sum: { amount: true },
+    }),
+    prisma.orderItem.findMany({
+      where: { order: GIFT },
+      select: { quantity: true, unitPrice: true },
+    }),
+    prisma.supplier.count(),
+    prisma.supplier.count({ where: { isActive: true } }),
+    prisma.productionBatch.count(),
+    prisma.productionBatch.aggregate({ _sum: { quantity: true, totalCost: true } }),
+    prisma.supplierTransaction.count(),
+    prisma.productionBatch.findMany({
+      where: { isOpeningBalance: true },
+      distinct: ['productId'],
+      select: { productId: true },
+    }),
+  ]);
+
   // Production batches → weighted-average unit cost per product. Used to
   // compute the "real" inventory cost instead of the old `retail × cogsRatio`
   // heuristic. Products with no batches fall back to the heuristic so the
   // headline number is never empty.
-  const batchAgg = await prisma.productionBatch.groupBy({
-    by: ['productId'],
-    _sum: { quantity: true, totalCost: true },
-  });
   const avgCostByProduct = new Map<string, number>();
   const batchUnitsByProduct = new Map<string, number>();
   for (const b of batchAgg) {
@@ -166,10 +230,6 @@ export async function GET() {
   // Supplier liabilities (positive = we owe). Computed from transactions:
   // SUM(invoice) - SUM(payment+credit-note). A liability reduces baseValue
   // because anyone buying the company today inherits the debt.
-  const supplierAgg = await prisma.supplierTransaction.groupBy({
-    by: ['kind'],
-    _sum: { amount: true },
-  });
   let supplierLiabilities = 0;
   for (const r of supplierAgg) {
     const amt = Number(r._sum.amount ?? 0);
@@ -179,28 +239,11 @@ export async function GET() {
   // Round once at the boundary to keep the response clean.
   supplierLiabilities = Math.round(supplierLiabilities * 100) / 100;
 
-  // Production stats for the dedicated section on the valuation page.
-  const [supplierCount, activeSupplierCount, totalBatchCount, batchSpendAgg, supplierTxnCount, openingBalanceProducts] = await Promise.all([
-    prisma.supplier.count(),
-    prisma.supplier.count({ where: { isActive: true } }),
-    prisma.productionBatch.count(),
-    prisma.productionBatch.aggregate({ _sum: { quantity: true, totalCost: true } }),
-    prisma.supplierTransaction.count(),
-    prisma.productionBatch.findMany({
-      where: { isOpeningBalance: true },
-      distinct: ['productId'],
-      select: { productId: true },
-    }),
-  ]);
   const openingBalanceSeededCount = openingBalanceProducts.length;
 
   // Cost of gifted items at retail (admin discretion — these are units we
   // gave away, not sold). We use retail price as the headline opportunity-cost
   // figure; the COGS share is reflected in inventoryCost below.
-  const giftItems = await prisma.orderItem.findMany({
-    where: { order: GIFT },
-    select: { quantity: true, unitPrice: true },
-  });
   const giftItemsRetailValue = giftItems.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
   const giftUnits = Number(giftItemsAgg._sum.quantity ?? 0);
   const giftCount = giftOrders._count._all;
@@ -277,7 +320,12 @@ export async function GET() {
   const ipTotal           = ipBookValue + ipProductValue + ipDigitalValue;
 
   const techValue         = assumptions.techValue;
-  const customerDbValue   = Math.round(customerCount * assumptions.customerDbValue);
+  // Goodwill on the customer database — applied to REAL BUYERS only,
+  // not to every signup. Previously this multiplied by `customerCount`
+  // (every registered user, including zero-order tire-kickers) which
+  // overstated baseValue. The "per customer" assumption represents
+  // the LTV of someone who has actually transacted.
+  const customerDbValue   = Math.round(totalBuyers * assumptions.customerDbValue);
   // Wholesale customers and active suppliers are real assets too: a
   // wholesale buyer represents recurring bulk revenue, and an active
   // supplier represents vetted production capacity. Both are tunable
@@ -293,13 +341,110 @@ export async function GET() {
   // of these change the asset-based number; they sit alongside it.
   // ─────────────────────────────────────────────────────────────────
   const ttmRevenue = monthly.reduce((s, m) => s + m.revenue, 0);
-  const priorYearAgg = await prisma.$queryRaw<Array<{ revenue: number }>>`
-    SELECT COALESCE(SUM(total), 0) AS revenue
-    FROM \`Order\`
-    WHERE status != 'cancelled' AND paymentMethod != 'gift'
-      AND createdAt >= DATE_SUB(CURDATE(), INTERVAL 24 MONTH)
-      AND createdAt <  DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
-  `;
+
+  // Wave-3: every remaining independent query, fired in parallel.
+  // Previously these ran sequentially adding ~10 round-trips of
+  // latency. They're listed here regardless of which "section" of
+  // the report they feed — JS post-processing happens below.
+  const [
+    priorYearAgg,
+    payroll,
+    ttmItems,
+    customerSpendRows,
+    customerSpendRowsTtm,
+    productRevenueRows,
+    currencyAgg,
+    orderGovs,
+    supplierSpendRows,
+    lastSaleRows,
+    bostaOrphanCount,
+    assumptionsRow,
+    customerReceivables,
+    royaltyAgreements,
+  ] = await Promise.all([
+    prisma.$queryRaw<Array<{ revenue: number }>>`
+      SELECT COALESCE(SUM(total), 0) AS revenue
+      FROM \`Order\`
+      WHERE status != 'cancelled' AND paymentMethod != 'gift'
+        AND createdAt >= ${priorTtmStart}
+        AND createdAt <  ${ttmStart}
+    `,
+    getPayrollSummary(),
+    prisma.orderItem.findMany({
+      where: { order: { ...NON_GIFT, createdAt: { gte: ttmStart } } },
+      select: { productId: true, quantity: true, unitPrice: true },
+    }),
+    prisma.$queryRaw<Array<{ userId: string | null; spend: number }>>`
+      SELECT userId, SUM(total) AS spend
+      FROM \`Order\`
+      WHERE status != 'cancelled' AND paymentMethod != 'gift' AND userId IS NOT NULL
+      GROUP BY userId
+      ORDER BY spend DESC
+      LIMIT 10
+    `,
+    // TTM equivalent — used by the "lose top-10 customers" scenario
+    // so the stress applies a TTM share to TTM revenue, not a
+    // lifetime share to TTM revenue. Mixing timeframes was previous
+    // behaviour and produced misleading deltas (M2 audit finding).
+    prisma.$queryRaw<Array<{ userId: string | null; spend: number }>>`
+      SELECT userId, SUM(total) AS spend
+      FROM \`Order\`
+      WHERE status != 'cancelled' AND paymentMethod != 'gift' AND userId IS NOT NULL
+        AND createdAt >= ${ttmStart}
+      GROUP BY userId
+      ORDER BY spend DESC
+      LIMIT 10
+    `,
+    prisma.$queryRaw<Array<{ productId: string; revenue: number }>>`
+      SELECT oi.productId, SUM(oi.unitPrice * oi.quantity) AS revenue
+      FROM OrderItem oi
+      JOIN \`Order\` o ON o.id = oi.orderId
+      WHERE o.status != 'cancelled' AND o.paymentMethod != 'gift'
+      GROUP BY oi.productId
+      ORDER BY revenue DESC
+      LIMIT 5
+    `,
+    prisma.order.groupBy({
+      by: ['currency'],
+      where: NON_GIFT,
+      _count: { _all: true },
+      _sum: { total: true },
+    }),
+    prisma.order.findMany({
+      where: NON_GIFT,
+      select: { shippingAddress: true, total: true },
+      take: 5000, // cap so the report stays snappy on huge datasets
+    }),
+    prisma.productionBatch.groupBy({
+      by: ['supplierId'],
+      _sum: { totalCost: true },
+    }),
+    prisma.$queryRaw<Array<{ productId: string; lastAt: Date | null }>>`
+      SELECT oi.productId AS productId, MAX(o.createdAt) AS lastAt
+      FROM OrderItem oi
+      JOIN \`Order\` o ON o.id = oi.orderId
+      WHERE o.status != 'cancelled'
+      GROUP BY oi.productId
+    `,
+    prisma.order.count({
+      where: { paymentMethod: 'bosta-historical', items: { none: {} } },
+    }),
+    prisma.setting.findUnique({ where: { key: 'valuation-assumptions' } }),
+    totalReceivables(),
+    // Active AND not-yet-expired royalty agreements. Owner may forget
+    // to deactivate after `endDate` passes; we treat past-expiry as
+    // automatically inactive so the accrual stops on its own. The
+    // /admin/ip page surfaces them either way; only the valuation
+    // accrual is filtered here.
+    prisma.royaltyAgreement.findMany({
+      where: {
+        isActive: true,
+        OR: [{ endDate: null }, { endDate: { gte: new Date() } }],
+      },
+      select: { id: true, payeeName: true, percentage: true, productIds: true },
+    }),
+  ]);
+
   const priorTtmRevenue = Number(priorYearAgg[0]?.revenue ?? 0);
   const yoyRevenueGrowth = priorTtmRevenue > 0
     ? (ttmRevenue - priorTtmRevenue) / priorTtmRevenue
@@ -311,18 +456,6 @@ export async function GET() {
   // Products without batches use the cogsRatio fallback for the cost
   // half — the partial-actual / partial-heuristic nature is disclosed
   // separately in the Data Quality section.
-  // Payroll — fetched here so the EBITDA approximation a few lines
-  // below can subtract it from gross profit. The directory lives at
-  // /admin/team; getPayrollSummary applies PAYROLL_FACTORS so a
-  // consultant isn't counted at full weight.
-  const payroll = await getPayrollSummary();
-
-  const ttmItems = await prisma.orderItem.findMany({
-    where: {
-      order: { ...NON_GIFT, createdAt: { gte: new Date(Date.now() - 365 * 86400000) } },
-    },
-    select: { productId: true, quantity: true, unitPrice: true },
-  });
   let ttmRevenueFromItems = 0;
   let ttmCogs = 0;
   for (const it of ttmItems) {
@@ -353,54 +486,36 @@ export async function GET() {
   // questions every buyer asks. Computed against full lifetime
   // non-cancelled non-gift revenue so historical imports count too.
   // ─────────────────────────────────────────────────────────────────
-  const customerSpendRows = await prisma.$queryRaw<Array<{ userId: string | null; spend: number }>>`
-    SELECT userId, SUM(total) AS spend
-    FROM \`Order\`
-    WHERE status != 'cancelled' AND paymentMethod != 'gift' AND userId IS NOT NULL
-    GROUP BY userId
-    ORDER BY spend DESC
-    LIMIT 10
-  `;
   const top10CustomerSpend = customerSpendRows.reduce((s, r) => s + Number(r.spend), 0);
   const customerConcentration = totalRevenue > 0 ? top10CustomerSpend / totalRevenue : 0;
+  // TTM-only concentration — used in the churn sensitivity so the
+  // stress applies a TTM share to TTM revenue (M2 audit fix).
+  const top10CustomerSpendTtm = customerSpendRowsTtm.reduce((s, r) => s + Number(r.spend), 0);
+  const customerConcentrationTtm = ttmRevenue > 0 ? top10CustomerSpendTtm / ttmRevenue : 0;
 
-  // Top 5 products by revenue. We use OrderItem unitPrice × qty so
-  // discounts and promo prices are reflected correctly.
-  const productRevenueRows = await prisma.$queryRaw<Array<{ productId: string; revenue: number }>>`
-    SELECT oi.productId, SUM(oi.unitPrice * oi.quantity) AS revenue
-    FROM OrderItem oi
-    JOIN \`Order\` o ON o.id = oi.orderId
-    WHERE o.status != 'cancelled' AND o.paymentMethod != 'gift'
-    GROUP BY oi.productId
-    ORDER BY revenue DESC
-    LIMIT 5
-  `;
+  // Top 5 products by revenue — discount-aware via OrderItem.unitPrice.
   const top5ProductRevenue = productRevenueRows.reduce((s, r) => s + Number(r.revenue), 0);
   const productConcentration = totalRevenue > 0 ? top5ProductRevenue / totalRevenue : 0;
 
-  // Currency split: % of orders by currency (matters for owners
-  // dealing with USD PayPal vs EGP local).
-  const currencyAgg = await prisma.order.groupBy({
-    by: ['currency'],
-    where: NON_GIFT,
-    _count: { _all: true },
-    _sum: { total: true },
-  });
+  // Currency split: % of orders by currency (USD PayPal vs EGP local).
   const usdAgg = currencyAgg.find(c => c.currency === 'USD');
   const egpAgg = currencyAgg.find(c => c.currency === 'EGP');
-  const usdRevenueShare = totalRevenue > 0
-    ? Number(usdAgg?._sum.total ?? 0) / totalRevenue
+  // Order.total is stored in the order's NATIVE currency (EGP for COD,
+  // USD for PayPal). To compare like-with-like we convert USD totals to
+  // EGP using the canonical 1/50 rate from src/lib/currency.ts. Without
+  // this, the share figure mixed two unit systems and produced a
+  // meaninglessly small ratio.
+  const USD_TO_EGP = 1 / EGP_TO_USD; // 50
+  const usdRevenueEgp = Number(usdAgg?._sum.total ?? 0) * USD_TO_EGP;
+  const egpRevenue    = Number(egpAgg?._sum.total ?? 0);
+  const totalRevenueEgpEquivalent = usdRevenueEgp + egpRevenue;
+  const usdRevenueShare = totalRevenueEgpEquivalent > 0
+    ? usdRevenueEgp / totalRevenueEgpEquivalent
     : 0;
 
   // Geographic concentration — top 3 governorates' share of total
-  // orders. shippingAddress is JSON so we read every order and
-  // tally in JS. This is bounded by the order count, which we
-  // already keep paged in the existing flow.
-  const orderGovs = await prisma.order.findMany({
-    where: NON_GIFT,
-    select: { shippingAddress: true, total: true },
-    take: 5000, // cap so the report stays snappy on huge datasets
-  });
+  // orders. shippingAddress is JSON so we tally in JS, capped at 5000
+  // rows by the query above.
   const govSpend = new Map<string, number>();
   let govSpendTotal = 0;
   for (const o of orderGovs) {
@@ -418,10 +533,6 @@ export async function GET() {
     : 0;
 
   // Supplier concentration — top supplier's share of total batch spend.
-  const supplierSpendRows = await prisma.productionBatch.groupBy({
-    by: ['supplierId'],
-    _sum: { totalCost: true },
-  });
   const totalBatchSpend = supplierSpendRows.reduce((s, r) => s + Number(r._sum.totalCost ?? 0), 0);
   const topSupplierSpend = supplierSpendRows
     .filter(r => r.supplierId !== null)
@@ -435,13 +546,6 @@ export async function GET() {
   // haven't sold in 12 months are write-down candidates. A real buyer
   // discounts these to scrap value; an honest report flags them.
   // ─────────────────────────────────────────────────────────────────
-  const lastSaleRows = await prisma.$queryRaw<Array<{ productId: string; lastAt: Date | null }>>`
-    SELECT oi.productId AS productId, MAX(o.createdAt) AS lastAt
-    FROM OrderItem oi
-    JOIN \`Order\` o ON o.id = oi.orderId
-    WHERE o.status != 'cancelled'
-    GROUP BY oi.productId
-  `;
   const lastSaleMap = new Map<string, Date | null>(
     lastSaleRows.map(r => [r.productId, r.lastAt ? new Date(r.lastAt) : null])
   );
@@ -493,30 +597,39 @@ export async function GET() {
     .sort((a, b) => b.spend - a.spend)
     .slice(0, 5);
 
-  // ─────────────────────────────────────────────────────────────────
-  // Data quality counters — surfaces what's heuristic vs. data-driven
-  // so the reader can calibrate confidence. Numbers feed into the
-  // Disclosures section on the page.
-  // ─────────────────────────────────────────────────────────────────
-  const bostaOrphanCount = await prisma.order.count({
-    where: { paymentMethod: 'bosta-historical', items: { none: {} } },
-  });
+  // Data quality counters — disclosure pile.
   const productsWithoutBatches = products.length - productsWithBatches;
-  const assumptionsRow = await prisma.setting.findUnique({ where: { key: 'valuation-assumptions' } });
   const assumptionsUpdatedAt = assumptionsRow?.updatedAt?.toISOString() ?? null;
 
-  // Final valuation buckets
-  // Customer receivables — outstanding balances wholesale dealers (or
-  // retail credit cases) owe us. Real assets that any buyer inherits.
-  const customerReceivables = await totalReceivables();
+  // Final valuation buckets — customerReceivables came from the Wave-3
+  // Promise.all up top; royalty accruals are computed below using the
+  // same TTM context (ttmItems + avgCostByProduct + cogsRatio) the
+  // valuation already loaded — see getRoyaltyAccrualFromContext.
+  const royaltyAccrual = getRoyaltyAccrualFromContext({
+    ttmItems,
+    avgCostByProduct,
+    cogsRatio: assumptions.cogsRatio,
+    agreements: royaltyAgreements,
+  });
+  const totalAccruedRoyalties = royaltyAccrual.totalAccrued;
+
+  // Bad-debt provision on receivables. SME accounting practice: an
+  // unprovisioned AR figure overstates baseValue because aged
+  // invoices routinely lose 10–30% to non-collection. We net the
+  // provision off the receivables that flow into baseValue, but the
+  // headline (gross) figure is still surfaced separately so the owner
+  // can see what's collectible vs what's discounted.
+  const receivablesProvision = Math.max(0, customerReceivables) * assumptions.receivablesProvisionRate;
+  const customerReceivablesNet = Math.max(0, customerReceivables - receivablesProvision);
 
   // Supplier liabilities are deducted because any buyer of the company
   // inherits the debt; surfacing it here keeps the headline honest.
   // Receivables work the opposite way — they ADD to baseValue.
   const baseValue        = inventoryCost + ipTotal + techValue + customerDbValue
                          + wholesaleValue + supplierRelationshipsValue
-                         + customerReceivables
-                         - Math.max(0, supplierLiabilities);
+                         + customerReceivablesNet
+                         - Math.max(0, supplierLiabilities)
+                         - Math.max(0, totalAccruedRoyalties);
   const fairValue        = baseValue * assumptions.fairMultiplier;
   const strategicValue   = baseValue * assumptions.strategicMultiplier;
 
@@ -533,37 +646,67 @@ export async function GET() {
   const reconciledHigh = Math.max(strategicValue, marketHigh);
   const reconciledMid  = (reconciledLow + reconciledHigh) / 2;
 
+  // Partners cap-table — each active stakeholder's monetary share of
+  // the reconciled midpoint. Surfaced alongside the headline number so
+  // the owner can see "if I sell at the midpoint, what does each
+  // partner walk away with?"
+  const capTable = await getPartnerCapTable(reconciledMid);
+
   // ─────────────────────────────────────────────────────────────────
   // Sensitivity analysis — how does the headline midpoint change
   // under common stresses? A real M&A report shows this so the buyer
   // can see where the number is fragile.
+  //
+  // recomputeBase MUST mirror the real baseValue formula above so
+  // (newBase − baseValue) gives a meaningful delta. Previously this
+  // helper omitted customerReceivables and totalAccruedRoyalties,
+  // which made every sensitivity delta off by a fixed amount (B1).
+  // The override accepts a full inventoryCost replacement so the
+  // staleWriteDown scenario can plug in inventoryCostAfterWriteDown
+  // without us double-counting (B2).
   // ─────────────────────────────────────────────────────────────────
-  const recomputeBase = (overrides: { extraCogs?: number; extraSupplierLiabilities?: number }) => {
-    const inv = inventoryCost + (overrides.extraCogs ?? 0);
+  const recomputeBase = (overrides: {
+    inventoryCostOverride?: number;
+    extraCogs?: number;
+    extraSupplierLiabilities?: number;
+  }) => {
+    const inv = (overrides.inventoryCostOverride ?? inventoryCost) + (overrides.extraCogs ?? 0);
     const liab = supplierLiabilities + (overrides.extraSupplierLiabilities ?? 0);
     return inv + ipTotal + techValue + customerDbValue
          + wholesaleValue + supplierRelationshipsValue
-         - Math.max(0, liab);
+         + customerReceivablesNet
+         - Math.max(0, liab)
+         - Math.max(0, totalAccruedRoyalties);
   };
-  const stressBaseCogsUp  = recomputeBase({ extraCogs: inventoryValue * 0.05 });
+  const stressBaseCogsUp   = recomputeBase({ extraCogs:  inventoryValue * 0.05 });
   const stressBaseCogsDown = recomputeBase({ extraCogs: -inventoryValue * 0.05 });
   // Top-10 customer churn: simulate losing top-10 customers' lifetime
   // revenue contribution. We translate it to a market-multiple impact
   // (we don't have ARR; this is a one-time revenue hit proxy).
-  const ttmCustomerLoss = ttmRevenue * customerConcentration; // assume top-10 share is recurring
+  // Use the TTM-only concentration so the scenario is "what if we
+  // lose the customers who actually drove last year's revenue" — not
+  // "lifetime ratio applied to last year". Lifetime concentration is
+  // still surfaced in the Concentration Risk card for audit purposes.
+  const ttmCustomerLoss = ttmRevenue * customerConcentrationTtm;
   const stressMarketLow_loss  = Math.max(0, (ttmRevenue - ttmCustomerLoss)) * assumptions.revenueMultipleLow;
   const stressMarketHigh_loss = Math.max(0, (ttmRevenue - ttmCustomerLoss)) * assumptions.revenueMultipleHigh;
   // Currency stress: 10% EGP devaluation against USD shrinks the EGP
   // value of USD revenue. Approximate the impact as "10% of USD share".
   const usdShareImpact = ttmRevenue * usdRevenueShare * 0.10;
-  // Stale inventory write-down: full hit on the asset side.
-  const stressBaseStaleWriteDown = baseValue - staleInventoryCost;
+  // Stale inventory write-down: replace inventoryCost with the post-
+  // write-down figure, so downstream IP/tech/customerDB still flow
+  // through correctly. This was previously `baseValue - staleCost`
+  // which double-discounted (stale was already inside inventoryCost).
+  const stressBaseStaleWriteDown = recomputeBase({ inventoryCostOverride: inventoryCostAfterWriteDown });
+  // Multiplier-down-by-0.5 stress: clamp the multiplier to 0 so
+  // a customer setting < 0.5 doesn't produce a negative figure.
+  const stressedMultipleHigh = Math.max(0, assumptions.revenueMultipleHigh - 0.5);
   const sensitivity = {
     cogsUp5pct:   { delta: Math.round(stressBaseCogsUp - baseValue),   newBase: Math.round(stressBaseCogsUp) },
     cogsDown5pct: { delta: Math.round(stressBaseCogsDown - baseValue), newBase: Math.round(stressBaseCogsDown) },
     multipleDown05x: {
-      delta: Math.round(ttmRevenue * (assumptions.revenueMultipleHigh - 0.5) - marketHigh),
-      newMarketHigh: Math.round(ttmRevenue * Math.max(0, assumptions.revenueMultipleHigh - 0.5)),
+      delta: Math.round(ttmRevenue * stressedMultipleHigh - marketHigh),
+      newMarketHigh: Math.round(ttmRevenue * stressedMultipleHigh),
     },
     top10ChurnLoss: {
       revenueLost: Math.round(ttmCustomerLoss),
@@ -581,7 +724,7 @@ export async function GET() {
     },
   };
 
-  return NextResponse.json({
+  const payload = {
     generatedAt: new Date().toISOString(),
     assumptions,
     defaults: DEFAULT_VALUATION_ASSUMPTIONS,
@@ -670,15 +813,54 @@ export async function GET() {
         productsCount: products.length,
       },
       tech: { value: techValue },
-      customerDb: { value: customerDbValue, perCustomer: assumptions.customerDbValue },
+      customerDb: {
+        value: customerDbValue,
+        perCustomer: assumptions.customerDbValue,
+        appliedTo: totalBuyers,
+        registeredCount: customerCount,
+      },
       wholesale: { value: wholesaleValue, perCustomer: assumptions.wholesaleCustomerValue, count: wholesaleCount },
       supplierRelationships: { value: supplierRelationshipsValue, perSupplier: assumptions.supplierRelationshipValue, count: activeSupplierCount },
-      customerReceivables: { value: Math.round(customerReceivables) },
+      customerReceivables: {
+        value: Math.round(customerReceivables),                 // gross AR
+        provisionRate: assumptions.receivablesProvisionRate,
+        provision: Math.round(receivablesProvision),
+        netValue: Math.round(customerReceivablesNet),           // what flows into baseValue
+      },
+      // Royalty / IP accruals — TTM-based amounts owed to rights-holders
+      // for their percentage of profit on linked products. Subtracts
+      // from baseValue. Managed at /admin/ip.
+      royalties: {
+        totalAccrued: Math.round(totalAccruedRoyalties),
+        agreementsActive: royaltyAccrual.agreementsActive,
+        topAccruals: royaltyAccrual.topAccruals.map(t => ({
+          payeeName: t.payeeName,
+          amountAccrued: Math.round(t.amountAccrued),
+        })),
+      },
+      // Partners / equity holders — managed at /admin/partners. Each
+      // active partner's share of reconciledMid is surfaced so the
+      // report can render a cap-table view.
+      partners: {
+        activeCount: capTable.summary.activeCount,
+        totalCount: capTable.summary.totalCount,
+        totalStakePercentage: capTable.summary.totalStakePercentage,
+        remainingCompanyShare: capTable.summary.remainingCompanyShare,
+        totalCapitalContribution: Math.round(capTable.summary.totalCapitalContribution),
+        isOverCommitted: capTable.summary.isOverCommitted,
+        rows: capTable.rows,
+      },
       // Trailing-twelve-month (TTM) financial performance — revenue,
       // gross margin, AOV, growth. The single most important section
       // for any real M&A conversation.
       financial: {
+        // ttmRevenue = SUM(Order.total) — includes shipping, post-discount.
+        // ttmRevenueFromItems = SUM(OrderItem.unitPrice × qty) — excludes
+        // shipping. The two will differ; market multiples use the first
+        // (gross), gross margin uses the second (item-level). Surfaced
+        // separately so the disclosure section can explain the gap.
         ttmRevenue: Math.round(ttmRevenue),
+        ttmRevenueFromItems: Math.round(ttmRevenueFromItems),
         priorTtmRevenue: Math.round(priorTtmRevenue),
         yoyRevenueGrowth, // null when no prior-year baseline
         grossProfit: Math.round(ttmGrossProfit),
@@ -703,6 +885,7 @@ export async function GET() {
       // customers" questions every buyer asks first.
       concentration: {
         top10CustomersRevenueShare: customerConcentration,
+        top10CustomersRevenueShareTtm: customerConcentrationTtm,
         top5ProductsRevenueShare: productConcentration,
         top3GovernoratesShare: top3GovShare,
         topGovernorates: topGovs.map(([name, spend]) => ({ name, spend: Math.round(spend) })),
@@ -766,7 +949,10 @@ export async function GET() {
       stockValue: Math.round(effectiveStock(p) * p.price),
     })),
     books,
-  });
+  };
+
+  reportCache = { at: Date.now(), payload };
+  return NextResponse.json(payload);
 }
 
 // PUT /api/admin/valuation — update tunable assumptions. Same auth gate
@@ -797,6 +983,10 @@ export async function PUT(req: NextRequest) {
     after: saved,
     metadata: { rejected, clamped },
   });
+
+  // Assumptions changed → drop the cached report so the next GET
+  // recomputes with the new figures.
+  invalidateValuationCache();
 
   return NextResponse.json({ ok: true, assumptions: saved, rejected, clamped });
 }

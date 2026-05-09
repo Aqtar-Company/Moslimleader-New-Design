@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { invalidateAdminProductsCache } from '@/lib/admin-products-cache';
+import { invalidateAssistantContext } from '@/lib/assistant-knowledge';
 import { products as staticProducts } from '@/lib/products';
 import { loadStaticOverrides, applyOverride } from '@/lib/product-overrides';
 import { requirePerm, type Permission } from '@/lib/permissions';
@@ -59,6 +60,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (data.price !== undefined) data.price = Number(data.price);
     if (data.priceUsd !== undefined) data.priceUsd = Number(data.priceUsd);
     if (data.weight !== undefined) data.weight = Number(data.weight);
+    // Age targeting — clamp to 0-18 or null. The form sends null
+    // explicitly when the admin clicks "كل الأعمار", so we keep
+    // that signal as-is.
+    const clampAge = (v: unknown): number | null => {
+      if (v === null || v === undefined || v === '') return null;
+      const n = Number(v);
+      if (!Number.isFinite(n)) return null;
+      return Math.max(0, Math.min(18, Math.floor(n)));
+    };
+    if ('minAge' in data) data.minAge = clampAge(data.minAge);
+    if ('maxAge' in data) data.maxAge = clampAge(data.maxAge);
+    if ('needsParentalGuide' in data) data.needsParentalGuide = !!data.needsParentalGuide;
 
     if (isAdded) {
       // Update DB product
@@ -70,6 +83,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         },
       });
       invalidateAdminProductsCache();
+      invalidateAssistantContext();
       await logActionSafe({
         actor: auth,
         action: 'product.update',
@@ -102,6 +116,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       }
 
       invalidateAdminProductsCache();
+      invalidateAssistantContext();
       await logActionSafe({
         actor: auth,
         action: 'product.update',
@@ -145,6 +160,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     invalidateAdminProductsCache();
+    invalidateAssistantContext();
     await logActionSafe({
       actor: auth,
       action: 'product.delete',

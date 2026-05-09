@@ -67,8 +67,16 @@ const PERM_LABELS: Record<Permission, string> = {
   'wholesale.write': 'تسجيل معاملات مالية لتجار الجملة',
   'team.read': 'عرض دليل الفريق والرواتب',
   'team.write': 'إضافة وتعديل وحذف بيانات الموظفين',
+  'ip.read': 'عرض اتفاقيات الملكية الفكرية',
+  'ip.write': 'إدارة اتفاقيات الملكية الفكرية',
+  'partners.read': 'عرض الشركاء والمستثمرين',
+  'partners.write': 'إدارة بيانات الشركاء والمستثمرين',
   'settings.read': 'عرض الإعدادات',
   'settings.write': 'تعديل الإعدادات',
+  'accounting.read': 'عرض لوحة المحاسبة (P&L، الذمم، السيولة)',
+  'accounting.write': 'تعديل أرقام المحاسبة',
+  'ai-assistant.read': 'عرض مساعد الذكاء الاصطناعي (فيسبوك + شات الموقع)',
+  'ai-assistant.write': 'إدارة مساعد الذكاء الاصطناعي والرد على المحادثات',
 };
 
 export default function StaffPage() {

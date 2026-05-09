@@ -36,12 +36,15 @@ const NAV: NavItem[] = [
   { href: '/admin/customers',         label: 'قاعدة العملاء',     icon: '👥', requireAny: ['customers.read'] },
   { href: '/admin/wholesale',         label: 'تجار الجملة',       icon: '🏪', requireAny: ['wholesale.read'] },
   { href: '/admin/team',              label: 'الفريق والرواتب',   icon: '💼', requireAny: ['team.read'] },
+  { href: '/admin/ip',                label: 'الملكية الفكرية',   icon: '📚', requireAny: ['ip.read'] },
+  { href: '/admin/partners',          label: 'الشركاء والمستثمرون', icon: '🪙', requireAny: ['partners.read'] },
   { href: '/admin/campaigns',         label: 'حملات التسويق',     icon: '📢', requireAny: ['campaigns.read'] },
+  { href: '/admin/ai-facebook-assistant', label: 'مساعد فيسبوك',     icon: '🤖', requireAny: ['settings.read', 'ai-assistant.read'] },
   { href: '/admin/coupons',           label: 'الكوبونات',         icon: '🎟️', requireAny: ['coupons.read'] },
   { href: '/admin/reviews',           label: 'التقييمات',         icon: '⭐', requireAny: ['reviews.read'] },
   // —— Reports ——
   { href: '/admin/reports/sales-by-product', label: 'توزيع المبيعات', icon: '📊', requireAny: ['valuation.read'] },
-  { href: '/admin/reports/bosta-orphans',    label: 'Backfill بوسطة',  icon: '📦', requireAny: ['inventory.read'] },
+  { href: '/admin/reports/bosta-orphans',    label: 'مطابقة طلبات بوسطة',  icon: '📦', requireAny: ['inventory.read'] },
   // —— Configuration ——
   { href: '/admin/shipping',          label: 'الشحن المحلي',      icon: '🚚', requireAny: ['shipping.read'] },
   { href: '/admin/intl-shipping',     label: 'الشحن الدولي',      icon: '✈️', requireAny: ['shipping.read'] },
@@ -51,6 +54,7 @@ const NAV: NavItem[] = [
   // —— Pinned to bottom by user request ——
   { href: '/admin/staff',             label: 'صلاحيات المساعدين', icon: '🛡️', superAdminOnly: true },
   { href: '/admin/zakat',             label: 'حساب الزكاة',       icon: '🌙', requireAny: ['zakat.read'] },
+  { href: '/admin/accounting',        label: 'المحاسبة',          icon: '🧮', requireAny: ['valuation.read', 'accounting.read'] },
   { href: '/admin/valuation',         label: 'تقييم الشركة',      icon: '💎', requireAny: ['valuation.read'] },
 ];
 
@@ -59,10 +63,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [bostaOrphansCount, setBostaOrphansCount] = useState<number | null>(null);
 
   const isAdminLike = user?.role === 'admin' || user?.role === 'staff';
   const isSuperAdmin = user?.role === 'admin';
   const userPerms = user?.permissions ?? [];
+
+  // Fetch the count of unmatched Bosta-historical orders so the sidebar
+  // can render a pending-work pill on the matching entry. Best-effort —
+  // a failure just hides the badge.
+  useEffect(() => {
+    if (!isAdminLike) return;
+    if (!isSuperAdmin && !userPerms.includes('inventory.read')) return;
+    fetch('/api/admin/reports/bosta-orphans/count', { credentials: 'include', cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (typeof d?.count === 'number') setBostaOrphansCount(d.count); })
+      .catch(() => {});
+  }, [isAdminLike, isSuperAdmin, userPerms]);
   useEffect(() => {
     if (isLoading) return;
     if (!user) {
@@ -152,7 +169,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 }`}
               >
                 <span className="text-base lg:text-sm">{item.icon}</span>
-                {item.label}
+                <span className="flex-1">{item.label}</span>
+                {item.href === '/admin/reports/bosta-orphans' && bostaOrphansCount !== null && bostaOrphansCount > 0 && (
+                  <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500 text-[#1a1a2e] text-[10px] font-black">
+                    {bostaOrphansCount}
+                  </span>
+                )}
               </Link>
             );
           })}

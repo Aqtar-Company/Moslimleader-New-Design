@@ -14,6 +14,7 @@ interface Assumptions {
   ipDigitalValue: number;
   techValue: number;
   customerDbValue: number;
+  receivablesProvisionRate: number;
   wholesaleCustomerValue: number;
   supplierRelationshipValue: number;
   fairMultiplier: number;
@@ -45,12 +46,27 @@ interface ValuationData {
     gifts?: { count: number; units: number; retailValue: number; shippingCost: number; totalCost: number };
     ip: { booksValue: number; productsValue: number; digitalValue: number; total: number; perBook: number; perProduct: number; booksCount: number; productsCount: number };
     tech: { value: number };
-    customerDb: { value: number; perCustomer: number };
+    customerDb: { value: number; perCustomer: number; appliedTo: number; registeredCount: number };
     wholesale: { value: number; perCustomer: number; count: number };
     supplierRelationships: { value: number; perSupplier: number; count: number };
-    customerReceivables: { value: number };
+    customerReceivables: { value: number; provisionRate: number; provision: number; netValue: number };
+    royalties: {
+      totalAccrued: number;
+      agreementsActive: number;
+      topAccruals: Array<{ payeeName: string; amountAccrued: number }>;
+    };
+    partners: {
+      activeCount: number;
+      totalCount: number;
+      totalStakePercentage: number;
+      remainingCompanyShare: number;
+      totalCapitalContribution: number;
+      isOverCommitted: boolean;
+      rows: Array<{ id: string; name: string; type: string; stakePercentage: number; shareValue: number }>;
+    };
     financial: {
-      ttmRevenue: number; priorTtmRevenue: number; yoyRevenueGrowth: number | null;
+      ttmRevenue: number; ttmRevenueFromItems: number;
+      priorTtmRevenue: number; yoyRevenueGrowth: number | null;
       grossProfit: number; grossMargin: number; aov: number; discountBurn: number;
       annualPayroll: number; annualPayrollNominal: number;
       ebitdaPartial: number; ebitdaPartialMargin: number; headcount: number;
@@ -58,6 +74,7 @@ interface ValuationData {
     };
     concentration: {
       top10CustomersRevenueShare: number;
+      top10CustomersRevenueShareTtm: number;
       top5ProductsRevenueShare: number;
       top3GovernoratesShare: number;
       topGovernorates: Array<{ name: string; spend: number }>;
@@ -379,8 +396,8 @@ function FinancialSection({ metrics }: { metrics: ValuationData['metrics'] }) {
           tone={yoyTone}
           hint={`مقارنة TTM (${fmt(f.ttmRevenue)}) بآخر 12 شهر سابقة (${fmt(f.priorTtmRevenue)}).`}
         />
-        <FinKPI label="هامش الربح الإجمالي" value={pct(f.grossMargin)} tone={marginTone} sub={`${fmt(f.grossProfit)} ج.م ربح إجمالي`} hint="إيرادات OrderItem ناقص تكلفة الباتش المرجَّحة." />
-        <FinKPI label="متوسط قيمة الطلب (AOV)" value={`${fmt(f.aov)} ج.م`} hint="إجمالي الإيرادات ÷ عدد الطلبات الصحيحة." />
+        <FinKPI label="هامش الربح الإجمالي (المنتجات، بدون شحن)" value={pct(f.grossMargin)} tone={marginTone} sub={`${fmt(f.grossProfit)} ج.م ربح إجمالي`} hint="(إيرادات OrderItem بدون شحن) ناقص تكلفة الباتش المرجَّحة. القاعدة هي إيراد المنتجات فقط — لو احتسبنا الشحن النسبة هتختلف." />
+        <FinKPI label="متوسط قيمة الطلب (تاريخي، شامل الشحن)" value={`${fmt(f.aov)} ج.م`} hint="إجمالي الإيرادات الكلية (شاملة الشحن، عبر تاريخ الشركة) ÷ عدد الطلبات الصحيحة. لو محتاج AOV لآخر 12 شهر فقط، بُص على إيرادات TTM ÷ عدد الطلبات في نفس الفترة." />
         <FinKPI
           label="رواتب سنوية"
           value={hasPayroll ? `${fmt(f.annualPayroll)} ج.م` : '—'}
@@ -395,7 +412,7 @@ function FinancialSection({ metrics }: { metrics: ValuationData['metrics'] }) {
           sub={hasPayroll ? `هامش ${pct(f.ebitdaPartialMargin)}` : 'يحتاج تسجيل الفريق أولاً'}
           hint="ربح إجمالي ناقص الرواتب السنوية. أقرب رقم لـ EBITDA الحقيقي بدون تتبع الإيجار + التسويق."
         />
-        <FinKPI label="نسبة الخصومات من البيع" value={pct(f.discountBurn)} hint="إجمالي الخصومات ÷ (الإيرادات + الخصومات). يقلل من الهامش الفعلي." />
+        <FinKPI label="نسبة الخصومات من البيع" value={pct(f.discountBurn)} hint="إجمالي الخصومات ÷ المبيعات الإجمالية قبل الخصم (Order.total الصافي + قيمة الخصم). يقلل من الهامش الفعلي." />
         <FinKPI
           label="منتجات بتكلفة فعلية"
           value={`${fmt(f.productsCostedFromBatches)} / ${fmt(f.productsCostedFromBatches + f.productsCostedFromHeuristic)}`}
@@ -536,6 +553,55 @@ function DataQualitySection({ metrics }: { metrics: ValuationData['metrics'] }) 
             لا يوجد منهج DCF (income approach) لأن صافي الربح غير محسوب. عند التفاوض الرسمي، يجب إضافة منهج DCF بعد جمع المصروفات.
           </span>
         </li>
+        {/* Accountant-grade disclosures — every line a buyer / bank
+            would otherwise raise as a question. Listed explicitly so
+            a reader can't accuse the report of hiding gaps. */}
+        <li className="flex items-start gap-2">
+          <span>🏦</span>
+          <span>
+            <strong>ما لا يتضمنه التقرير:</strong> النقد في الخزينة والبنوك، المسحوبات الشخصية للمالك،
+            الالتزامات الضريبية (ضريبة القيمة المضافة 14%، ضريبة الدخل، الدمغة، ضريبة كسب العمل)،
+            القروض البنكية والتسهيلات الائتمانية، المصروفات المدفوعة مقدماً، الإيرادات المؤجلة (طلبات مسبقة الدفع لم تُسلَّم بعد)،
+            والأصول الثابتة (مكاين الطباعة، الأثاث، السيارات). هذه البنود غير مُتتبَّعة في النظام —
+            لو وُجدت بأرقام جوهرية فهي تُغيّر القيمة الأساسية.
+          </span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span>📅</span>
+          <span>
+            <strong>أعمار الذمم المدينة:</strong> الذمم تُجمَع بقيمتها الإجمالية بدون تصنيف حسب التقادم (0–30 / 31–60 / 61–90 / 90+ يوم).
+            احتياطي الديون المشكوك فيها يُطبَّق بنسبة موحَّدة على الكل — لو فيه ذمم متقادمة فعلاً، الأنسب رفع نسبة الاحتياطي يدوياً.
+          </span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span>📚</span>
+          <span>
+            <strong>قيمة الملكية الفكرية:</strong> رسملة المؤلَّفات والمنتجات هنا اجتهاد إداري لأغراض تفاوضية.
+            معايير IFRS / EAS لا تسمح برسملة الملكية الفكرية المطوَّرة داخلياً ما لم تُتتبَّع تكلفة التطوير الفعلية.
+            لا تُقدَّم هذه الأرقام في قائمة المركز المالي القانونية.
+          </span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span>♻️</span>
+          <span>
+            <strong>مستحقات حقوق المؤلفين متجدّدة:</strong> الرقم الظاهر يعكس آخر 12 شهر فقط.
+            المستحقات تتراكم سنوياً ما لم تُسدَّد — ليست دفعة لمرة واحدة. الاتفاقيات المنتهية مدتها (endDate في الماضي) تُستثنى تلقائياً.
+          </span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span>👤</span>
+          <span>
+            <strong>المالك يظهر كمدير ومؤلف:</strong> الراتب الشهري في /admin/team والنسبة من الربح في /admin/ip
+            تصميم مقصود — الأول أجر إدارة، الثاني عائد على المؤلَّف. الرقمان قابلان للجمع (ليسا ازدواجاً).
+          </span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span>💱</span>
+          <span>
+            <strong>حصة الإيراد بالدولار</strong> تفترض أن قيم الطلبات (Order.total) مخزَّنة بالجنيه المصري بعد التحويل.
+            إن كانت مخزَّنة بالعملة الأصلية للطلب، النسبة بحاجة إلى تطبيق سعر صرف مرجعي قبل القسمة.
+          </span>
+        </li>
       </ul>
     </section>
   );
@@ -646,7 +712,7 @@ function SensitivitySection({ metrics, valuation }: { metrics: ValuationData['me
     },
     {
       label: 'فقدان أعلى 10 عملاء',
-      desc: `لو خسرت أعلى 10 عملاء وما رجعوش (افتراض ${fmt(s.top10ChurnLoss.revenueLost)} ج.م إيرادات سنوية)`,
+      desc: `لو خسرت أعلى 10 عملاء (حسب آخر 12 شهر) وما رجعوش — تأثير ${fmt(s.top10ChurnLoss.revenueLost)} ج.م إيرادات سنوية`,
       impact: s.top10ChurnLoss.newMarketHigh - valuation.marketHigh,
       newValue: `نطاق سوقي جديد: ${fmt(s.top10ChurnLoss.newMarketLow)} – ${fmt(s.top10ChurnLoss.newMarketHigh)}`,
       tone: 'bad' as const,
@@ -819,7 +885,7 @@ function AssumptionsTable({ assumptions, defaults }: { assumptions: Assumptions;
     { key: 'techValue', label: 'قيمة المنصة التقنية', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
       explain: 'تكلفة بناء النظام لو حد محتاج يبنيه من الصفر.',
       footnote: 'تقدير cost-to-rebuild. للتدقيق: عرض سعر فعلي من شركة تطوير، أو تكلفة مهندس × أشهر العمل.' },
-    { key: 'customerDbValue', label: 'قيمة كل عميل', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
+    { key: 'customerDbValue', label: 'قيمة كل مشترٍ فعلي', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
       explain: 'قيمة العميل الواحد في القاعدة كأصل تسويقي.',
       footnote: 'موحَّد لكل العملاء — لا يميز عميل اشترى مرة عن عميل متكرر. الأنسب: AOV × معدل التكرار × عامل خصم. اللي عنده طلبين+ يساوي 5–10× اللي عنده طلب واحد.' },
     { key: 'wholesaleCustomerValue', label: 'قيمة كل تاجر جملة', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
@@ -926,12 +992,18 @@ function AssumptionsForm({ initial, defaults, onSave, onCancel }: { initial: Ass
         <AssumptionsField k="ipProductValue" label="قيمة كل منتج (ج.م)" step={1000} value={v.ipProductValue} defaultValue={defaults.ipProductValue} onChange={set} />
         <AssumptionsField k="ipDigitalValue" label="قيمة المحتوى الرقمي (ج.م)" step={10000} value={v.ipDigitalValue} defaultValue={defaults.ipDigitalValue} onChange={set} />
         <AssumptionsField k="techValue" label="قيمة المنصة (ج.م)" step={10000} value={v.techValue} defaultValue={defaults.techValue} onChange={set} />
-        <AssumptionsField k="customerDbValue" label="قيمة كل عميل (ج.م)" step={10} value={v.customerDbValue} defaultValue={defaults.customerDbValue} onChange={set} />
+        <AssumptionsField k="customerDbValue" label="قيمة كل مشترٍ فعلي (ج.م)" step={10} value={v.customerDbValue} defaultValue={defaults.customerDbValue} onChange={set} />
+        <AssumptionsField k="receivablesProvisionRate" label="احتياطي ديون مشكوك في تحصيلها (0–1)" step={0.05} value={v.receivablesProvisionRate ?? 0.10} defaultValue={defaults.receivablesProvisionRate} onChange={set} />
         <AssumptionsField k="wholesaleCustomerValue" label="قيمة كل تاجر جملة (ج.م)" step={500} value={v.wholesaleCustomerValue} defaultValue={defaults.wholesaleCustomerValue} onChange={set} />
         <AssumptionsField k="supplierRelationshipValue" label="قيمة كل مورد نشط (ج.م)" step={500} value={v.supplierRelationshipValue} defaultValue={defaults.supplierRelationshipValue} onChange={set} />
         <AssumptionsField k="activeWindowDays" label="نافذة النشاط (يوم)" step={1} min={1} value={v.activeWindowDays} defaultValue={defaults.activeWindowDays} onChange={set} />
       </div>
-      <div className="flex gap-2 justify-end">
+      <div className="flex gap-2 justify-end flex-wrap">
+        <button
+          onClick={() => { if (confirm('استرجاع كل القيم لافتراضات النظام؟ يلزم الضغط على حفظ بعدها.')) setV(defaults); }}
+          className="px-4 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold border border-amber-200"
+          title="يرجع كل الحقول لقيمها الافتراضية. لازم اضغط حفظ بعدها."
+        >🔄 استرجاع الافتراضيات</button>
         <button onClick={onCancel} className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold">إلغاء</button>
         <button onClick={() => onSave(v)} className="px-4 py-2 rounded-xl bg-[#1a1a2e] hover:bg-[#2d1060] text-white text-xs font-bold">💾 حفظ الافتراضات</button>
       </div>
@@ -1072,18 +1144,117 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
 
       {/* Customer receivables (AR) — wholesale dealers + retail credit. */}
       {metrics.customerReceivables.value > 0 && (
-        <Section icon="📒" title="الذمم المدينة (مستحق التحصيل)" subtitle="فلوس مستحقة لنا من تجار الجملة وحالات بيع آجل">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <Section icon="📒" title="الذمم المدينة (مستحق التحصيل)" subtitle="فلوس مستحقة لنا من تجار الجملة وحالات بيع آجل، مخصوماً منها احتياطي الديون المشكوك في تحصيلها">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
             <FinKPI
-              label="إجمالي الذمم المدينة"
+              label="إجمالي الذمم (قبل الاحتياطي)"
               value={`${fmt(metrics.customerReceivables.value)} ج.م`}
               tone="good"
-              hint="مجموع الأرصدة الموجبة عبر كل العملاء. أصل قابل للتحصيل، يُضاف للقيمة الأساسية للشركة."
+              hint="مجموع الأرصدة الموجبة عبر كل العملاء. الرقم الإجمالي قبل خصم احتياطي الديون المشكوك في تحصيلها."
             />
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-[11px] text-emerald-900 leading-relaxed">
-              💡 الذمم المدينة تُضاف لـ <strong>baseValue</strong> لأنها أصل (نتوقع تحصيلها). نراجع الأرصدة من صفحة كل عميل في
-              <span className="text-blue-700"> /admin/customers</span>.
+            <FinKPI
+              label={`احتياطي ديون مشكوك فيها (${pct(metrics.customerReceivables.provisionRate)})`}
+              value={`(${fmt(metrics.customerReceivables.provision)}) ج.م`}
+              tone="bad"
+              hint="نسبة الاحتياطي قابلة للتعديل من قسم الافتراضيات. ممارسة محاسبية شائعة في SMEs المصرية: 10–20% للذمم العادية، أعلى لو فيه أعمار متقادمة."
+            />
+            <FinKPI
+              label="الصافي (يدخل القيمة الأساسية)"
+              value={`${fmt(metrics.customerReceivables.netValue)} ج.م`}
+              tone="good"
+              hint="الإجمالي بعد خصم الاحتياطي — هذا ما يُضاف فعلياً لـ baseValue. المراجعة من صفحة كل عميل في /admin/customers."
+            />
+          </div>
+        </Section>
+      )}
+
+      {/* Royalty / IP accruals — owed to rights-holders, subtract from baseValue. */}
+      {metrics.royalties.agreementsActive > 0 && (
+        <Section icon="📚" title="حقوق الملكية الفكرية المستحقة" subtitle="مستحقات مؤلفين وأصحاب حقوق على نسبة من الربح — تُحسم من القيمة الأساسية">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <KPI
+              label="اتفاقيات نشطة"
+              value={fmt(metrics.royalties.agreementsActive)}
+              hint="عدد اتفاقيات الملكية الفكرية النشطة في /admin/ip."
+            />
+            <KPI
+              label="إجمالي مستحق الدفع"
+              value={`${fmt(metrics.royalties.totalAccrued)} ج.م`}
+              tone="bad"
+              hint="مجموع نسب الأرباح المستحقة على آخر 12 شهر. تُحسم من القيمة الأساسية للشركة كالتزام قائم."
+            />
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-900 leading-relaxed col-span-2 lg:col-span-1">
+              💡 يدخل كالتزام في <strong>baseValue</strong>. يقل تلقائياً بعد تسجيل دفعة في{' '}
+              <a href="/admin/ip" className="text-blue-700 hover:underline">/admin/ip</a>.
             </div>
+          </div>
+          {metrics.royalties.topAccruals.length > 0 && (
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mt-3">
+              <table className="w-full text-xs">
+                <thead className="bg-amber-50">
+                  <tr>
+                    <th className="px-3 py-2 text-right text-amber-900">المستحق</th>
+                    <th className="px-3 py-2 text-right text-amber-900">المبلغ المستحق</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {metrics.royalties.topAccruals.map((t, i) => (
+                    <tr key={i}>
+                      <td className="px-3 py-2 font-bold text-gray-800">{t.payeeName}</td>
+                      <td className="px-3 py-2 font-black text-amber-700">{fmt(t.amountAccrued)} ج.م</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Section>
+      )}
+
+      {/* Partners / equity cap-table — share of reconciledMid. */}
+      {metrics.partners.activeCount > 0 && (
+        <Section icon="🤝" title="الشركاء والمستثمرون (Cap Table)" subtitle="حصة كل شريك من القيمة المعتمدة (الوسط الموفَّق)">
+          {metrics.partners.isOverCommitted && (
+            <div className="bg-red-50 border-2 border-red-300 rounded-xl px-4 py-2.5 text-[11px] text-red-900 mb-3">
+              ⚠️ مجموع نسب الشركاء النشطين تجاوز 100%. راجع البيانات في{' '}
+              <a href="/admin/partners" className="text-blue-700 hover:underline">/admin/partners</a>.
+            </div>
+          )}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+            <KPI label="عدد الشركاء" value={fmt(metrics.partners.activeCount)} sub={`من إجمالي ${fmt(metrics.partners.totalCount)}`} />
+            <KPI label="مجموع الحصص" value={`${metrics.partners.totalStakePercentage.toFixed(2)}%`} tone={metrics.partners.isOverCommitted ? 'bad' : 'ok'} />
+            <KPI label="حصة الشركة" value={`${metrics.partners.remainingCompanyShare.toFixed(2)}%`} sub="غير موزَّعة" />
+            <KPI label="رأس المال المساهم" value={`${fmt(metrics.partners.totalCapitalContribution)} ج.م`} hint="إجمالي ما تم ضخه نقداً من الشركاء (إعلامي فقط — لا يُضاف للقيمة لأنه مُجسَّد بالفعل في الأصول)." />
+          </div>
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <table className="w-full text-xs">
+              <thead className="bg-emerald-50">
+                <tr>
+                  <th className="px-3 py-2 text-right text-emerald-900">الشريك</th>
+                  <th className="px-3 py-2 text-right text-emerald-900">النسبة</th>
+                  <th className="px-3 py-2 text-right text-emerald-900">
+                    {metrics.partners.isOverCommitted ? 'حصته من القيمة' : 'حصته من القيمة (الوسط)'}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {metrics.partners.rows.map(r => (
+                  <tr key={r.id}>
+                    <td className="px-3 py-2 font-bold text-gray-800">{r.name}</td>
+                    <td className="px-3 py-2 font-black text-gray-900">{r.stakePercentage}%</td>
+                    {/* When the cap-table is over-committed (Σ stake > 100%)
+                        the per-partner share figure is mathematically
+                        inconsistent — the sum would exceed the company's
+                        total value. Hide the column rather than show a
+                        misleading number an over-promised stakeholder
+                        could screenshot. */}
+                    <td className="px-3 py-2 font-black text-emerald-700">
+                      {metrics.partners.isOverCommitted ? '— يلزم تصحيح الحصص أولاً —' : `${fmt(r.shareValue)} ج.م`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Section>
       )}

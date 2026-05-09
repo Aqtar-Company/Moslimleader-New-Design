@@ -47,6 +47,9 @@ model User {
   devices       BookDevice[]
   customerTransactions CustomerTransaction[]
   campaignRecipients CampaignRecipient[]
+
+  @@index([role])
+  @@index([isWholesale])
 }
 
 model Campaign {
@@ -138,11 +141,27 @@ model Product {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
+  // Optional age range — used by the FB AI assistant to filter the
+  // catalogue to age-appropriate items when a buyer says "my kid
+  // is 5". Products without these still appear under "all ages".
+  minAge       Int?
+  maxAge       Int?
+  ageCategory  String?   // 'toddler' | 'preschool' | 'primary' | 'tween' | 'teen'
+  // True when the product needs an adult to use it with the child
+  // (board game, craft kit, etc.). Surfaced as a chip on the
+  // product card and in Amin's catalogue context, mirroring the
+  // existing field on the Book model.
+  needsParentalGuide Boolean @default(false)
+
   orderItems OrderItem[]
   cartItems  CartItem[]
   reviews    Review[]
   stockMovements StockMovement[]
   productionBatches ProductionBatch[]
+
+  @@index([source])
+  @@index([inStock])
+  @@index([minAge, maxAge])
 }
 
 // Append-only audit log of every stock change. Written inside the same
@@ -304,6 +323,58 @@ model Employee {
   @@index([role])
 }
 
+// Royalty / intellectual-property agreement. A rights-holder (typically
+// the author) earns a percentage of the gross profit of specific
+// products for a defined period. Distinct from Employee — a person who
+// is both a manager and an author would have one row in each table.
+//
+// productIds is a JSON array of Product.id strings. Kept simple
+// (no junction table) because royalties usually span a small fixed set
+// of products. The percentage is applied to TTM gross profit (revenue
+// minus weighted-avg COGS) of those products.
+//
+// lastPaidAt is a manual marker the owner toggles after issuing
+// payment. v1 does not track per-payment history — phase 2 could add
+// a RoyaltyPayment ledger if multi-payment audit becomes useful.
+model RoyaltyAgreement {
+  id              String    @id @default(cuid())
+  payeeName       String
+  contactPhone    String?
+  contactEmail    String?
+  percentage      Float     // 0–100, applied to gross profit (not revenue)
+  productIds      Json      // string[] of Product.id
+  startDate       DateTime
+  endDate         DateTime?
+  isActive        Boolean   @default(true)
+  lastPaidAt      DateTime?
+  notes           String?   @db.Text
+  createdByUserId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  @@index([isActive])
+}
+
+// Partners and investors — equity stakeholders, neither salaried nor
+// royalty-based. Their stake informs the cap-table view in the
+// valuation report (each partner's share of reconciledMid).
+model Partner {
+  id                  String    @id @default(cuid())
+  name                String
+  type                String    // 'founder' | 'investor' | 'silent-partner' | 'other'
+  stakePercentage     Float     // 0–100
+  capitalContribution Float     @default(0) // EGP put in (informational)
+  joinDate            DateTime
+  exitDate            DateTime?
+  isActive            Boolean   @default(true)
+  contactPhone        String?
+  contactEmail        String?
+  notes               String?   @db.Text
+  createdByUserId     String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  @@index([isActive])
+}
+
 // One manufacturing run of a product. Each batch carries its own unit cost
 // (which drifts over time) so the valuation page can compute a true
 // weighted-average COGS instead of the old 35% heuristic.
@@ -335,6 +406,7 @@ model ProductionBatch {
   createdAt       DateTime  @default(now())
   @@index([productId, batchDate])
   @@index([supplierId])
+  @@index([isOpeningBalance])
 }
 
 model Order {
@@ -363,6 +435,16 @@ model Order {
 
   items    OrderItem[]
   shipment Shipment?
+
+  // Indexes for the admin panel — every list/aggregate filters on
+  // some combination of createdAt, status, userId, paymentMethod,
+  // source. Without these the valuation route alone full-scans the
+  // table 15+ times per request.
+  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([userId])
+  @@index([paymentMethod])
+  @@index([source])
 }
 
 model Shipment {
@@ -645,4 +727,76 @@ model AuditLog {
   @@index([actorUserId, createdAt])
   @@index([entity, entityId])
   @@index([action, createdAt])
+}
+
+// Facebook Messenger conversation log + AI reply ledger.
+// Append-only — every event coming in from /api/facebook/webhook
+// gets a row, and every outbound reply (auto or manual) gets a row.
+// The /admin/ai-facebook-assistant page renders this as a chat view.
+model FacebookEvent {
+  id              String   @id @default(cuid())
+  // Conversation identifier — Messenger PSID or commenter user-id
+  // (for comments). Same field for both so the inbox can group all
+  // events from one person regardless of channel.
+  psid            String
+  // 'message' = Messenger DM; 'comment' = Page feed comment;
+  // 'postback' = button click in Messenger.
+  kind            String   @default("message")
+  // 'incoming' = from user → page; 'outgoing-auto' = AI reply;
+  // 'outgoing-manual' = admin replied via the dashboard.
+  direction       String
+  // Free-text body. For postback events we store the payload here too.
+  text            String   @db.Text
+  // For comments: the comment's FB id (used to POST a reply) and the
+  // parent post id. Null for Messenger events.
+  commentId       String?
+  postId          String?
+  // Senders/recipients are JSON so we can capture display names + ids
+  // when Facebook supplies them (User Profile API can backfill later).
+  sender          Json?
+  recipient       Json?
+  // Original raw event from Facebook for forensic audit. Truncated
+  // server-side to a sane size (we only keep the relevant block).
+  rawPayload      Json?
+  // For outgoing-auto: which AI model + how many tokens it cost.
+  aiModel         String?
+  aiTokens        Int?
+  // For outgoing-*: did Facebook accept the send call?
+  sendStatus      String?  // 'sent' | 'failed' | null
+  sendError       String?  @db.Text
+  // Lead classification appended by the bot ('hot' | 'warm' | 'cold').
+  // Only set on outgoing-auto rows where the AI flagged conversion
+  // intent in the user's message (asked price, gave phone, said
+  // wants-to-buy, etc.). The conversation's "hottest" event status
+  // is rolled up into the inbox card.
+  leadStatus      String?
+  // Detected gender of the user this event is associated with —
+  // 'male' | 'female' | 'unknown'. Stored once per incoming event so
+  // the inbox can render the correct grammar in admin previews.
+  userGender      String?
+  // ─── Sales-conversion fields (populated by conversation-extractor) ───
+  // Buyer signals captured from incoming messages: name, phone,
+  // address, governorate, kids' ages. The extractor merges these
+  // into a per-psid profile (Setting `fb-profile:<psid>`) so the
+  // bot has them across turns; we also store them per-event for
+  // reporting + audit.
+  customerName    String?
+  customerPhone   String?
+  customerAddress String?  @db.Text
+  customerGov     String?
+  // Kids' ages as JSON array, e.g. [3, 5, 7]. Used to filter the
+  // catalogue context to age-appropriate items only.
+  kidAges         Json?
+  // Detected intent class for the analytics funnel:
+  //   'price-question' | 'shipping-question' | 'ready-to-buy'
+  //   | 'objection' | 'general' | null
+  intentSignal    String?
+  createdAt       DateTime @default(now())
+  @@index([psid, createdAt])
+  @@index([direction, createdAt])
+  @@index([kind, createdAt])
+  @@index([leadStatus, createdAt])
+  @@index([customerPhone])
+  @@index([intentSignal, createdAt])
+  @@index([createdAt])
 }

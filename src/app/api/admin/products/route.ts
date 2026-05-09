@@ -9,6 +9,7 @@ import {
   setAdminProductsCache,
   invalidateAdminProductsCache,
 } from '@/lib/admin-products-cache';
+import { invalidateAssistantContext } from '@/lib/assistant-knowledge';
 
 // Returns only fields needed for the admin list/pricing table views
 function toListItem(p: unknown) {
@@ -81,7 +82,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { slug, name, nameEn, shortDescription, shortDescriptionEn,
             description, descriptionEn, price, priceUsd, category, subcategory,
-            variants, tags, images, inStock, weight } = body;
+            variants, tags, images, inStock, weight, minAge, maxAge, needsParentalGuide } = body;
 
     if (!slug || !name || price === undefined || !category) {
       return NextResponse.json({ error: 'الحقول المطلوبة: slug, name, price, category' }, { status: 400 });
@@ -98,14 +99,21 @@ export async function POST(req: NextRequest) {
         subcategory, variants: variants ?? null,
         tags: tags ?? [], images: images ?? [],
         inStock: inStock !== false, weight: weight ?? 0,
+        // Age targeting (FB AI assistant). Clamp to 0-18 / null.
+        minAge: typeof minAge === 'number' ? Math.max(0, Math.min(18, Math.floor(minAge))) : null,
+        maxAge: typeof maxAge === 'number' ? Math.max(0, Math.min(18, Math.floor(maxAge))) : null,
+        needsParentalGuide: typeof needsParentalGuide === 'boolean' ? needsParentalGuide : false,
         videoUrl: body.videoUrl ?? null,
         source: 'admin',
         updatedAt: new Date(),
       },
     });
 
-    // Invalidate cache so next GET returns fresh data
+    // Invalidate cache so next GET returns fresh data + bust the
+    // assistant's catalogue context so Amin sees the new product
+    // immediately instead of waiting up to 5 min for TTL expiry.
     invalidateAdminProductsCache();
+    invalidateAssistantContext();
 
     await logActionSafe({
       actor: auth,

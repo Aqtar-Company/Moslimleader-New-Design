@@ -1,61 +1,85 @@
 import type { Metadata } from 'next';
+import { canonical, absUrl, bookJsonLd, SITE_URL } from '@/lib/seo';
 
 type Props = {
   params: Promise<{ id: string }>;
   children: React.ReactNode;
 };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+interface BookForSeo {
+  id: string;
+  title: string;
+  titleEn?: string | null;
+  description?: string | null;
+  cover?: string | null;
+  language?: string | null;
+  price?: number | null;
+  isPublished?: boolean;
+  author?: string | null;
+}
+
+async function fetchBook(id: string): Promise<BookForSeo | null> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://moslimleader.com';
-    const res = await fetch(`${baseUrl}/api/books/${id}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('not found');
+    const res = await fetch(`${SITE_URL}/api/books/${id}`, { cache: 'no-store' });
+    if (!res.ok) return null;
     const data = await res.json();
-    const book = data.book;
-    if (!book) throw new Error('no book');
-
-    const title = book.title || 'كتاب رقمي';
-    const description = book.description || 'اقرأ هذا الكتاب على منصة مسلم ليدر';
-    const rawCover = book.cover || '';
-    const cover = rawCover.startsWith('http') ? rawCover : rawCover ? `${baseUrl}${rawCover}` : `${baseUrl}/logo.png`;
-    const url = `${baseUrl}/library/${id}`;
-
-    return {
-      title: `${title} | مسلم ليدر`,
-      description,
-      openGraph: {
-        title,
-        description,
-        url,
-        siteName: 'مسلم ليدر',
-        images: [
-          {
-            url: cover,
-            width: 800,
-            height: 1200,
-            alt: title,
-          },
-        ],
-        type: 'book',
-        locale: 'ar_EG',
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title,
-        description,
-        images: [cover],
-      },
-    };
+    return (data?.book ?? null) as BookForSeo | null;
   } catch {
-    return {
-      title: 'كتاب رقمي | مسلم ليدر',
-      description: 'اقرأ الكتب الرقمية على منصة مسلم ليدر',
-    };
+    return null;
   }
 }
 
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const book = await fetchBook(id);
+  if (!book) {
+    return {
+      title: 'كتاب رقمي | مسلم ليدر',
+      description: 'اقرأ الكتب الرقمية الإسلامية للأطفال على منصة مسلم ليدر — كتب تربوية وقصص هادفة بصوت ورسومات راقية.',
+      alternates: { canonical: canonical(`/library/${id}`) },
+    };
+  }
+
+  const title = book.title || 'كتاب رقمي';
+  const description = (book.description || `اقرأ "${title}" على منصة مسلم ليدر — كتب رقمية إسلامية للأطفال بمحتوى هادف.`).slice(0, 160);
+  const cover = absUrl(book.cover);
+  const url = canonical(`/library/${id}`);
+
+  return {
+    title: `${title} | كتاب رقمي | مسلم ليدر`,
+    description,
+    alternates: { canonical: url },
+    keywords: [title, 'كتب أطفال إسلامية', 'كتب رقمية', 'مسلم ليدر', 'قصص أطفال'],
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: 'مسلم ليدر',
+      images: [{ url: cover, width: 800, height: 1200, alt: title }],
+      type: 'book',
+      locale: 'ar_EG',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [cover],
+    },
+  };
+}
+
 export default async function BookLayout({ params, children }: Props) {
-  await params; // ensure params is resolved
-  return <>{children}</>;
+  const { id } = await params;
+  const book = await fetchBook(id);
+  return (
+    <>
+      {book && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(bookJsonLd({ book })) }}
+        />
+      )}
+      {children}
+    </>
+  );
 }

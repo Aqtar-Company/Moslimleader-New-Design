@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requirePerm, type Permission } from '@/lib/permissions';
 import { logActionSafe } from '@/lib/audit-log';
+import { invalidateAssistantContext } from '@/lib/assistant-knowledge';
 
 // GET /api/admin/coupons
 export async function GET() {
@@ -57,6 +58,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    invalidateAssistantContext();
     await logActionSafe({
       actor: auth,
       action: existing ? 'coupon.update' : 'coupon.create',
@@ -100,6 +102,7 @@ export async function PUT(req: NextRequest) {
       });
     });
 
+    invalidateAssistantContext();
     await logActionSafe({
       actor: auth,
       action: 'coupon.update',
@@ -126,6 +129,7 @@ export async function DELETE(req: NextRequest) {
     if (!code) return NextResponse.json({ error: 'code مطلوب' }, { status: 400 });
 
     await prisma.coupon.delete({ where: { code } });
+    invalidateAssistantContext();
     await logActionSafe({
       actor: auth,
       action: 'coupon.delete',

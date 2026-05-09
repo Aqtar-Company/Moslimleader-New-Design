@@ -1,28 +1,42 @@
-import { Metadata } from 'next';
+import type { Metadata } from 'next';
 import ShopPageClient from './ShopPageClient';
+import { canonical, organizationJsonLd, websiteJsonLd, ORG_DESCRIPTION } from '@/lib/seo';
 
 export const metadata: Metadata = {
-  title: 'مسلم ليدر — ألعاب وهدايا إسلامية للأطفال | Moslim Leader',
-  description: 'متجر مسلم ليدر لألعاب الأطفال الإسلامية، هدايا تربوية، كتب تعليمية، ومنتجات تعزز الهوية الإسلامية. شحن لكل مصر والعالم العربي.',
-  keywords: ['ألعاب إسلامية', 'هدايا أطفال', 'مسلم ليدر', 'Moslim Leader', 'ألعاب تربوية', 'هدايا إسلامية', 'كتب أطفال'],
+  title: 'مسلم ليدر | متجر تربوي إسلامي للأطفال — كتب وألعاب ومنتجات راقية',
+  description:
+    'متجر مسلم ليدر — كتب أطفال إسلامية، حقائب مدرسية، ألعاب تعليمية وهدايا تربّي القيم وتغرس الانتماء. توصيل لكل محافظات مصر والوطن العربي.',
+  alternates: { canonical: canonical('/') },
+  keywords: [
+    'كتب أطفال إسلامية',
+    'حقائب مدرسية',
+    'ألعاب تعليمية للأطفال',
+    'منتجات تربوية',
+    'هدايا أطفال',
+    'مسلم ليدر',
+  ],
   openGraph: {
-    title: 'مسلم ليدر — ألعاب وهدايا إسلامية للأطفال',
-    description: 'اختياراتك اليوم تبنيه غدًا. تسوّق منتجات تربوية تعزز هوية أطفالنا المسلمين.',
-    url: 'https://moslimleader.com',
-    siteName: 'Moslim Leader',
-    locale: 'ar_EG',
+    title: 'مسلم ليدر | منتجات تربوية إسلامية للأطفال',
+    description: ORG_DESCRIPTION,
+    url: canonical('/'),
+    siteName: 'مسلم ليدر',
     type: 'website',
-    images: [{ url: 'https://moslimleader.com/family-hero.webp', width: 1200, height: 630 }],
+    locale: 'ar_EG',
   },
-  twitter: {
-    card: 'summary_large_image',
-    site: '@moslimleader',
-    title: 'مسلم ليدر — ألعاب وهدايا إسلامية للأطفال',
-    description: 'اختياراتك اليوم تبنيه غدًا. تسوّق منتجات تربوية تعزز هوية أطفالنا المسلمين.',
-  },
-  alternates: { canonical: 'https://moslimleader.com' },
 };
 
 export default function Page() {
-  return <ShopPageClient />;
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd()) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd()) }}
+      />
+      <ShopPageClient />
+    </>
+  );
 }

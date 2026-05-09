@@ -21,6 +21,11 @@ const EMPTY_FORM = {
   slug: '', name: '', nameEn: '', shortDescription: '', shortDescriptionEn: '',
   description: '', descriptionEn: '', price: 0, priceUsd: 0, videoUrl: '', category: '',
   tags: [] as string[], images: [] as string[], inStock: true, weight: 0,
+  // Age targeting — used by the FB AI assistant to recommend
+  // age-appropriate products. null = "all ages".
+  minAge: null as number | null,
+  maxAge: null as number | null,
+  needsParentalGuide: false,
 };
 
 export default function ProductsPage() {
@@ -203,6 +208,9 @@ export default function ProductsPage() {
         images: fullP.images || [],
         inStock: fullP.inStock ?? true,
         weight: fullP.weight || 0,
+        minAge: (fullP as { minAge?: number | null }).minAge ?? null,
+        maxAge: (fullP as { maxAge?: number | null }).maxAge ?? null,
+        needsParentalGuide: (fullP as { needsParentalGuide?: boolean }).needsParentalGuide ?? false,
       });
       setFormTags((fullP.tags || []).join(', '));
       setFormImages([...(fullP.images || [])]);
@@ -261,6 +269,10 @@ export default function ProductsPage() {
         category: form.category,
       inStock: form.inStock,
       weight: form.weight,
+      // Age targeting (FB AI assistant). null = "all ages".
+      minAge: form.minAge,
+      maxAge: form.maxAge,
+      needsParentalGuide: form.needsParentalGuide,
       tags: parsedTags,
       images: formImages,
       variants: builtVariants.length > 0 ? builtVariants : undefined,
@@ -406,6 +418,81 @@ export default function ProductsPage() {
                   <option value="">— اختر فئة —</option>
                   {allCategoryNames.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
+              </div>
+            </div>
+
+            {/* Age targeting — used by the FB AI assistant to recommend
+                age-appropriate products. Optional (left blank = "all ages"). */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+              <p className="text-xs font-bold text-blue-900 mb-2">
+                👶 الفئة العمرية المناسبة (للمساعد الذكي على فيسبوك)
+              </p>
+              <p className="text-[10px] text-blue-700 mb-3 leading-relaxed">
+                لما العميل يقول "ابني عمره 5 سنين" البوت بيرشّح المنتجات اللي فئتها العمرية مطابقة. سيب الخانتين فاضيين لو المنتج مناسب لكل الأعمار.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">من عمر</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={18}
+                    value={form.minAge ?? ''}
+                    onChange={e => setForm(f => ({ ...f, minAge: e.target.value === '' ? null : Math.max(0, Math.min(18, Number(e.target.value))) }))}
+                    placeholder="مثال: 4"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400 bg-white"
+                    dir="ltr"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">إلى عمر</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={18}
+                    value={form.maxAge ?? ''}
+                    onChange={e => setForm(f => ({ ...f, maxAge: e.target.value === '' ? null : Math.max(0, Math.min(18, Number(e.target.value))) }))}
+                    placeholder="مثال: 8"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400 bg-white"
+                    dir="ltr"
+                  />
+                </div>
+              </div>
+              {/* Parental-help checkbox — mirrors the field on books.
+                  Surfaces a chip on the product card so parents see
+                  it before they buy. */}
+              <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.needsParentalGuide}
+                  onChange={e => setForm(f => ({ ...f, needsParentalGuide: e.target.checked }))}
+                  className="w-4 h-4 accent-amber-500"
+                />
+                <span className="text-xs text-gray-700 font-semibold">
+                  👨‍👩‍👧 هذا المنتج يحتاج مساعدة الوالدين (مناسب للأطفال أقل من 8 سنوات بمساعدة)
+                </span>
+              </label>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                <span className="text-[10px] text-blue-700 font-bold">اختصارات:</span>
+                {[
+                  { label: '👶 رضيع 0-2', min: 0, max: 2 },
+                  { label: '🧒 حضانة 3-5', min: 3, max: 5 },
+                  { label: '🧒 ابتدائي 6-9', min: 6, max: 9 },
+                  { label: '👦 إعدادي 10-12', min: 10, max: 12 },
+                  { label: '👦 ثانوي 13+', min: 13, max: 18 },
+                ].map(preset => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, minAge: preset.min, maxAge: preset.max }))}
+                    className="text-[10px] bg-white hover:bg-blue-100 border border-blue-200 text-blue-700 px-2 py-0.5 rounded transition"
+                  >{preset.label}</button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, minAge: null, maxAge: null }))}
+                  className="text-[10px] bg-white hover:bg-gray-100 border border-gray-200 text-gray-600 px-2 py-0.5 rounded transition"
+                >🗑️ كل الأعمار</button>
               </div>
             </div>
           </div>
@@ -621,7 +708,20 @@ export default function ProductsPage() {
                       <p className="font-bold text-gray-900 text-xs">{p.name}</p>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">{p.category}</td>
+                  <td className="px-4 py-3 text-gray-500 text-xs">
+                    {p.category}
+                    {(() => {
+                      const min = (p as { minAge?: number | null }).minAge;
+                      const max = (p as { maxAge?: number | null }).maxAge;
+                      if (min !== null && min !== undefined && max !== null && max !== undefined) {
+                        return <span className="ms-1 inline-block bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold">👶 {min}-{max}</span>;
+                      }
+                      if (min !== null && min !== undefined) {
+                        return <span className="ms-1 inline-block bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold">👶 {min}+</span>;
+                      }
+                      return <span className="ms-1 inline-block bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded text-[10px]" title="ما اتحددش عمر — هيظهر في 'كل الأعمار'">— عمر؟</span>;
+                    })()}
+                  </td>
                   <td className="px-4 py-3">
                     {editingPrice === p.id ? (
                       <div className="flex flex-col gap-1">

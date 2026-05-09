@@ -24,3 +24,12 @@ export function timeAgoAr(iso: string | null | undefined): string {
 export function formatPrice(n: number, currency = 'ج.م'): string {
   return `${n.toLocaleString('en-US')} ${currency}`;
 }
+
+// Compact formatters used by the financial / accounting / valuation
+// pages. Same locale, separated to keep callers terse.
+export const fmt = (n: number) => n.toLocaleString('en-US');
+export const fmtMoney = (n: number) => `${fmt(Math.round(n))} ج.م`;
+export const pct = (n: number) =>
+  `${(n * 100).toLocaleString('en-US', { maximumFractionDigits: 1 })}%`;
+export const fmtDate = (iso: string | null | undefined) =>
+  iso ? new Date(iso).toLocaleDateString('en-GB') : '—';

@@ -13,8 +13,19 @@ import { ToastProvider } from '@/components/ui/Toast';
 import { ConfirmProvider } from '@/components/ui/ConfirmDialog';
 
 export const metadata: Metadata = {
-  title: 'مسلم ليدر | Moslim Leader',
+  // titleTemplate lets child pages set just their unique title and we
+  // append the brand suffix automatically. The `default` is shown on
+  // the root path (which currently provides its own metadata in
+  // /page.tsx, so this default is mostly a safety fallback).
+  title: {
+    default: 'مسلم ليدر | Moslim Leader',
+    template: '%s | مسلم ليدر',
+  },
   description: 'معاً نبني قادة الغد — منتجات تربوية وتعليمية للأطفال والأسرة',
+  // Absolute base URL for any metadata that uses relative paths
+  // (OG images, alternates). Lets product/book pages emit relative
+  // image paths and have Next.js resolve them correctly.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://moslimleader.com'),
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },

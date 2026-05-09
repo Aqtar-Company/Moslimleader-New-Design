@@ -31,6 +31,27 @@ interface OrphanRow {
   suggestedSum: number;
   paymentNote: string;
   confidence: number;
+  priceDriftPct: number | null;
+}
+
+interface BulkSampleMatch {
+  orderId: string;
+  customerName: string | null;
+  confidence: number;
+  priceDriftPct: number | null;
+  suggestedSum: number;
+  orderTotal: number;
+  cod: number;
+  items: Array<{ productName: string; quantity: number; unitPrice: number; matchScore: number; parsedName: string }>;
+}
+
+interface BatchSummary {
+  batchId: string;
+  createdAt: string;
+  actorName: string | null;
+  matchedCount: number;
+  errorCount: number;
+  minConfidence: number;
 }
 
 interface Product { id: string; name: string; price: number }
@@ -62,6 +83,12 @@ export default function BostaOrphansPage() {
   const [forbidden, setForbidden] = useState(false);
   const productById = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
 
+  // Bulk-match state
+  const [bulkMinConfidence, setBulkMinConfidence] = useState(0.5);
+  const [bulkPreview, setBulkPreview] = useState<{ wouldMatch: number; wouldSkip: number; sampleMatches: BulkSampleMatch[] } | null>(null);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [batches, setBatches] = useState<BatchSummary[]>([]);
+
   const load = async () => {
     setLoading(true);
     try {
@@ -92,6 +119,15 @@ export default function BostaOrphansPage() {
         const pData = await prodRes.json();
         setProducts(pData.products || []);
       }
+      // Fetch recent bulk-match batches so the undo button can target
+      // the most recent one without making the user remember the ID.
+      try {
+        const batchRes = await adminFetch('/api/admin/reports/bosta-orphans/bulk-undo');
+        if (batchRes.ok) {
+          const bData = await batchRes.json();
+          setBatches(bData.batches ?? []);
+        }
+      } catch { /* non-fatal */ }
     } catch (err) {
       if (err instanceof ForbiddenError) setForbidden(true);
       else addToast('فشل التحميل', 'error');
@@ -191,6 +227,63 @@ export default function BostaOrphansPage() {
     setSubmitting(false);
   };
 
+  const runBulkPreview = async () => {
+    setBulkRunning(true);
+    try {
+      const res = await adminFetch('/api/admin/reports/bosta-orphans/bulk-match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ minConfidence: bulkMinConfidence, dryRun: true, limit: 500 }),
+      });
+      const data = await res.json();
+      if (!res.ok) { addToast(data.error || 'فشلت المعاينة', 'error'); setBulkRunning(false); return; }
+      setBulkPreview({ wouldMatch: data.wouldMatch, wouldSkip: data.wouldSkip, sampleMatches: data.sampleMatches ?? [] });
+    } catch {
+      addToast('فشلت المعاينة', 'error');
+    }
+    setBulkRunning(false);
+  };
+
+  const runBulkCommit = async () => {
+    if (bulkRunning) return;
+    if (!confirm(`هتنفذ مطابقة جماعية لـ ${bulkPreview?.wouldMatch ?? '?'} طلب. متأكد؟`)) return;
+    setBulkRunning(true);
+    try {
+      const res = await adminFetch('/api/admin/reports/bosta-orphans/bulk-match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ minConfidence: bulkMinConfidence, dryRun: false, limit: 500 }),
+      });
+      const data = await res.json();
+      if (!res.ok) { addToast(data.error || 'فشلت المطابقة', 'error'); setBulkRunning(false); return; }
+      addToast(`اتعمل match لـ ${data.matched} طلب (batch: ${data.batchId})${data.errors?.length ? ` — ${data.errors.length} فشلوا` : ''}`, 'success', 8000);
+      setBulkPreview(null);
+      await load();
+    } catch {
+      addToast('فشلت المطابقة', 'error');
+    }
+    setBulkRunning(false);
+  };
+
+  const undoBatch = async (batchId: string) => {
+    if (!confirm(`هتلغي كل المطابقات في الدفعة ${batchId}؟ ده هيمسح الـ OrderItems اللي اتعملت.`)) return;
+    setBulkRunning(true);
+    try {
+      const res = await adminFetch('/api/admin/reports/bosta-orphans/bulk-undo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ batchId }),
+      });
+      const data = await res.json();
+      if (!res.ok) { addToast(data.error || 'فشل التراجع', 'error'); setBulkRunning(false); return; }
+      addToast(`اتمسح ${data.itemsDeleted} عنصر من ${data.affectedOrders} طلب`, 'success', 6000);
+      await load();
+    } catch {
+      addToast('فشل التراجع', 'error');
+    }
+    setBulkRunning(false);
+  };
+
   const confirmHighConfidence = () => {
     let changed = 0;
     for (const r of rows) {
@@ -228,6 +321,96 @@ export default function BostaOrphansPage() {
         <EmptyState message="مفيش طلبات بوسطة بدون منتجات — كله متعمله backfill" icon="✅" />
       ) : (
         <>
+          <div className="bg-gradient-to-l from-indigo-50 to-purple-50 border-2 border-indigo-300 rounded-2xl p-4 space-y-3">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <p className="text-sm font-black text-indigo-900">⚡ مطابقة جماعية تلقائية</p>
+                <p className="text-[11px] text-indigo-800 mt-1 leading-relaxed">
+                  هتطابق كل الطلبات اللي ثقتها ≥ <strong>{Math.round(bulkMinConfidence * 100)}%</strong> دفعة واحدة.
+                  بنتسامح مع فرق سعر ±15% (ينخفض الكريديت تدريجياً لـ ±30%) عشان الأسعار التاريخية ورسوم بوسطة.
+                  أي مطابقة بتتسجل في audit log وتقدر تتراجع عنها كاملة.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <label className="text-[10px] text-indigo-700 font-bold">حد أدنى للثقة</label>
+                <input
+                  type="range" min="0.3" max="0.9" step="0.05"
+                  value={bulkMinConfidence}
+                  onChange={e => { setBulkMinConfidence(Number(e.target.value)); setBulkPreview(null); }}
+                  disabled={bulkRunning}
+                  className="w-24"
+                />
+                <span className="text-xs font-mono font-black text-indigo-900 w-10 text-center">{Math.round(bulkMinConfidence * 100)}%</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={runBulkPreview}
+                disabled={bulkRunning}
+                className="px-4 py-2 rounded-xl bg-white hover:bg-indigo-100 text-indigo-700 text-xs font-black transition disabled:opacity-50 border border-indigo-300"
+              >
+                {bulkRunning ? '...جاري الفحص' : '👁 معاينة (dry-run)'}
+              </button>
+              {bulkPreview && bulkPreview.wouldMatch > 0 && (
+                <button
+                  onClick={runBulkCommit}
+                  disabled={bulkRunning}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black transition disabled:opacity-50"
+                >
+                  {bulkRunning ? '...جاري التنفيذ' : `⚡ نفّذ على ${fmt(bulkPreview.wouldMatch)} طلب`}
+                </button>
+              )}
+              {batches.length > 0 && (
+                <button
+                  onClick={() => undoBatch(batches[0].batchId)}
+                  disabled={bulkRunning}
+                  className="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold transition disabled:opacity-50 border border-amber-300"
+                  title={`آخر دفعة: ${batches[0].matchedCount} طلب — ${new Date(batches[0].createdAt).toLocaleString('en-GB')}`}
+                >
+                  ↩ تراجع عن آخر دفعة ({fmt(batches[0].matchedCount)})
+                </button>
+              )}
+            </div>
+
+            {bulkPreview && (
+              <div className="bg-white rounded-xl p-3 border border-indigo-200">
+                <p className="text-xs font-bold text-gray-800">
+                  المعاينة: <strong className="text-indigo-700">{fmt(bulkPreview.wouldMatch)}</strong> هيتعملهم match،
+                  و<strong className="text-gray-500">{fmt(bulkPreview.wouldSkip)}</strong> هيتخطّوا (ثقة أقل).
+                </p>
+                {bulkPreview.sampleMatches.length > 0 && (
+                  <details className="mt-2">
+                    <summary className="text-[11px] text-indigo-700 cursor-pointer hover:text-indigo-900 font-bold">
+                      عيّنة من أول {bulkPreview.sampleMatches.length} مطابقة
+                    </summary>
+                    <div className="mt-2 max-h-72 overflow-y-auto space-y-1.5">
+                      {bulkPreview.sampleMatches.map(s => (
+                        <div key={s.orderId} className="text-[10px] bg-gray-50 rounded p-2 border border-gray-200">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-mono font-bold">#{s.orderId.slice(-6).toUpperCase()}</span>
+                            <span className="text-gray-600">{s.customerName ?? 'ضيف'}</span>
+                            <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">
+                              ثقة {Math.round(s.confidence * 100)}%
+                            </span>
+                            {s.priceDriftPct !== null && (
+                              <span className={`px-1.5 py-0.5 rounded font-bold ${Math.abs(s.priceDriftPct) <= 15 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                                فرق سعر {s.priceDriftPct > 0 ? '+' : ''}{s.priceDriftPct}%
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-gray-700 mt-1">
+                            {s.items.map(i => `${i.productName} ×${i.quantity}`).join(' · ')}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </div>
+            )}
+          </div>
+
           {highConfidenceCount > 0 && (
             <div className="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-4 flex items-center justify-between gap-3 flex-wrap">
               <div>

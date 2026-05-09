@@ -73,6 +73,10 @@ const PERM_LABELS: Record<Permission, string> = {
   'partners.write': 'إدارة بيانات الشركاء والمستثمرين',
   'settings.read': 'عرض الإعدادات',
   'settings.write': 'تعديل الإعدادات',
+  'accounting.read': 'عرض لوحة المحاسبة (P&L، الذمم، السيولة)',
+  'accounting.write': 'تعديل أرقام المحاسبة',
+  'ai-assistant.read': 'عرض مساعد الذكاء الاصطناعي (فيسبوك + شات الموقع)',
+  'ai-assistant.write': 'إدارة مساعد الذكاء الاصطناعي والرد على المحادثات',
 };
 
 export default function StaffPage() {

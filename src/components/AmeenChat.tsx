@@ -264,11 +264,13 @@ export default function AmeenChat() {
   // ── Rendering ──
   return (
     <>
-      {/* Floating launcher */}
+      {/* Floating launcher — pinned to the right side of the viewport
+          regardless of locale direction so it doesn't collide with
+          WhatsApp/other floats on the left. */}
       <button
         onClick={() => { setOpen(o => !o); setShowBadge(false); }}
         aria-label={isEn ? 'Open Ameen chat' : 'افتح دردشة أمين'}
-        className="fixed bottom-5 left-5 z-40 w-14 h-14 rounded-full bg-[#1a1a2e] hover:bg-[#2d1060] text-white shadow-lg flex items-center justify-center transition print:hidden"
+        className="fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full bg-[#1a1a2e] hover:bg-[#2d1060] text-white shadow-lg flex items-center justify-center transition print:hidden"
         style={{ boxShadow: '0 6px 24px rgba(26,26,46,0.4)' }}
       >
         {open ? (
@@ -277,7 +279,7 @@ export default function AmeenChat() {
           <AminAvatar size={48} />
         )}
         {showBadge && !open && (
-          <span className="absolute -top-1 -right-1 bg-[#F5C518] text-[#1a1a2e] text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center animate-bounce">
+          <span className="absolute -top-1 -left-1 bg-[#F5C518] text-[#1a1a2e] text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center animate-bounce">
             👋
           </span>
         )}
@@ -287,7 +289,7 @@ export default function AmeenChat() {
       {open && (
         <div
           dir={isEn ? 'ltr' : 'rtl'}
-          className="fixed bottom-24 left-5 z-40 w-[92vw] max-w-sm h-[70vh] max-h-[600px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden print:hidden"
+          className="fixed bottom-24 right-5 z-40 w-[92vw] max-w-sm h-[70vh] max-h-[600px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden print:hidden"
         >
           {/* Header */}
           <div className="bg-gradient-to-l from-[#1a1a2e] via-[#2d1060] to-[#1a1a2e] text-white px-4 py-3 flex items-center gap-3">
@@ -317,24 +319,39 @@ export default function AmeenChat() {
             </button>
           </div>
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-3 bg-gray-50 space-y-3">
-            {messages.map(m => (
-              <div key={m.id} className={`flex ${m.from === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div
-                  className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ${
-                    m.from === 'user'
-                      ? 'bg-[#F5C518] text-[#1a1a2e] font-bold'
-                      : 'bg-white border border-gray-200 text-gray-900'
-                  }`}
-                >
-                  {linkify(m.text)}
+          {/* Messages — force LTR row layout so the user's bubble always
+              sits on the visual RIGHT and the assistant's on the LEFT,
+              regardless of the locale's text direction. The bubble's
+              own dir/text-align follows the page direction. */}
+          <div className="flex-1 overflow-y-auto p-3 bg-gradient-to-b from-gray-50 to-gray-100 space-y-2.5">
+            {messages.map((m, idx) => {
+              const isUser = m.from === 'user';
+              const prev = messages[idx - 1];
+              const isFirstOfRun = !prev || prev.from !== m.from;
+              return (
+                <div key={m.id} dir="ltr" className={`flex items-end gap-1.5 ${isUser ? 'justify-end' : 'justify-start'}`}>
+                  {!isUser && (
+                    <div className={`shrink-0 ${isFirstOfRun ? 'opacity-100' : 'opacity-0'}`}>
+                      <AminAvatar size={26} />
+                    </div>
+                  )}
+                  <div
+                    dir={isEn ? 'ltr' : 'rtl'}
+                    className={`max-w-[78%] px-3.5 py-2 text-sm leading-relaxed whitespace-pre-wrap shadow-sm ${
+                      isUser
+                        ? 'bg-gradient-to-br from-[#F5C518] to-[#e0b015] text-[#1a1a2e] font-bold rounded-2xl rounded-br-sm'
+                        : 'bg-white border border-gray-200 text-gray-900 rounded-2xl rounded-bl-sm'
+                    }`}
+                  >
+                    {linkify(m.text)}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {sending && (
-              <div className="flex justify-start">
-                <div className="bg-white border border-gray-200 rounded-2xl">
+              <div dir="ltr" className="flex items-end gap-1.5 justify-start">
+                <div className="shrink-0"><AminAvatar size={26} /></div>
+                <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-sm shadow-sm">
                   <TypingDots />
                 </div>
               </div>

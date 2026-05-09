@@ -13,7 +13,7 @@ import {
 // owner edit the custom FAQ markdown that gets appended.
 
 export async function GET() {
-  const guard = await requirePerm('settings.read');
+  const guard = await requirePerm(['settings.read', 'ai-assistant.read']);
   if ('response' in guard) return guard.response;
 
   const [context, faqs] = await Promise.all([
@@ -24,7 +24,7 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
-  const guard = await requirePerm('settings.write');
+  const guard = await requirePerm(['settings.write', 'ai-assistant.write']);
   if ('response' in guard) return guard.response;
 
   let body: { faqs?: string };

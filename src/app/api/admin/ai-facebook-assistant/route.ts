@@ -21,7 +21,7 @@ import {
 // don't want every staff member with a perm to flip the switch.
 
 export async function GET() {
-  const guard = await requirePerm('settings.read');
+  const guard = await requirePerm(['settings.read', 'ai-assistant.read']);
   if ('response' in guard) return guard.response;
 
   const [settings, recent] = await Promise.all([
@@ -202,7 +202,7 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
-  const guard = await requirePerm('settings.write');
+  const guard = await requirePerm(['settings.write', 'ai-assistant.write']);
   if ('response' in guard) return guard.response;
 
   let body: Partial<AssistantSettings>;

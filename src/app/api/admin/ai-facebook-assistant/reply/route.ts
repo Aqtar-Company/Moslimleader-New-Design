@@ -10,7 +10,7 @@ import { sendFacebookReply, replyToComment } from '@/lib/ai-facebook-assistant';
 // to a public comment via Graph API) or nothing (default → Messenger
 // DM via Send API).
 export async function POST(req: NextRequest) {
-  const guard = await requirePerm('settings.write');
+  const guard = await requirePerm(['settings.write', 'ai-assistant.write']);
   if ('response' in guard) return guard.response;
 
   let body: { psid?: string; text?: string; commentId?: string; postId?: string };

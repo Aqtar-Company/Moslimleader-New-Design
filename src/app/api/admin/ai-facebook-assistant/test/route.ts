@@ -9,7 +9,7 @@ import { buildAssistantContext } from '@/lib/assistant-knowledge';
 // the AI's reply WITHOUT sending it to Facebook. Lets the owner
 // sanity-check the bot's behaviour before flipping `enabled` on.
 export async function POST(req: NextRequest) {
-  const guard = await requirePerm('settings.write');
+  const guard = await requirePerm(['settings.write', 'ai-assistant.write']);
   if ('response' in guard) return guard.response;
 
   let body: { message?: string };

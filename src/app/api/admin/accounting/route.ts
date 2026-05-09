@@ -37,7 +37,7 @@ const CACHE_TTL_MS = 60_000;
 const cache = new Map<PeriodKey, { at: number; payload: unknown }>();
 
 export async function GET(req: NextRequest) {
-  const guard = await requirePerm('valuation.read');
+  const guard = await requirePerm(['valuation.read', 'accounting.read']);
   if ('response' in guard) return guard.response;
 
   const url = new URL(req.url);

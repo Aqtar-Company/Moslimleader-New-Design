@@ -8,7 +8,7 @@ import { requirePerm } from '@/lib/permissions';
 // disabling the bot globally. The webhook reads the same Setting
 // key and skips auto-reply when it exists.
 export async function POST(req: NextRequest) {
-  const guard = await requirePerm('settings.write');
+  const guard = await requirePerm(['settings.write', 'ai-assistant.write']);
   if ('response' in guard) return guard.response;
 
   let body: { psid?: string; mute?: boolean };

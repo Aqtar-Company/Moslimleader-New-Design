@@ -12,7 +12,7 @@ let cache: CachedAnalytics | null = null;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 export async function GET() {
-  const guard = await requirePerm('settings.read');
+  const guard = await requirePerm(['settings.read', 'ai-assistant.read']);
   if ('response' in guard) return guard.response;
 
   if (cache && Date.now() - cache.at < CACHE_TTL_MS) {

@@ -2,67 +2,45 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requirePerm } from '@/lib/permissions';
-import { normaliseArabic } from '@/lib/arabic-normalize';
-import { extractDescription, parseItemsFromDescription, matchProduct } from '@/lib/bosta-orphans';
+import { extractDescription, parseItemsFromDescription } from '@/lib/bosta-orphans';
 
-// Scan EVERY remaining orphan and aggregate the parsed-name patterns,
-// grouped by whether they matched a product, were intentionally
-// ignored, or fell through unmatched. Lets us see what gaps still
-// need aliases/ignores in one shot.
+// Show sample descriptions from the 1405 "parseEmpty" orphans so we
+// can see the formats Bosta used besides "X N" and extend the parser
+// accordingly. Also peek into the rawPayload of the null-description
+// ones in case the description sits under a key we don't check.
 
 export async function GET() {
-  const guard = await requirePerm('inventory.read');
-  if ('response' in guard) return guard.response;
+  const orphansGuard = await requirePerm('inventory.read');
+  if ('response' in orphansGuard) return orphansGuard.response;
 
-  const [orphans, products] = await Promise.all([
-    prisma.order.findMany({
-      where: { paymentMethod: 'bosta-historical', items: { none: {} } },
-      select: { id: true, shipment: { select: { rawPayload: true } } },
-      orderBy: { createdAt: 'desc' },
-    }),
-    prisma.product.findMany({ select: { id: true, name: true, price: true } }),
-  ]);
+  const orphans = await prisma.order.findMany({
+    where: { paymentMethod: 'bosta-historical', items: { none: {} } },
+    select: { id: true, shipment: { select: { rawPayload: true } } },
+    orderBy: { createdAt: 'desc' },
+  });
 
-  const matched: Record<string, { count: number; matchedProduct: string; score: number }> = {};
-  const unmatched: Record<string, number> = {};
-  let nullDescription = 0;
-  let parseEmpty = 0;
-  let totalParsedItems = 0;
+  const parseEmptySamples: Array<{ orderId: string; description: string }> = [];
+  const nullDescriptionSamples: Array<{ orderId: string; payloadKeys: string[]; specsKeys: string[] | null }> = [];
 
   for (const o of orphans) {
-    const description = extractDescription(o.shipment?.rawPayload);
-    if (!description) { nullDescription++; continue; }
-    const parsed = parseItemsFromDescription(description);
-    if (parsed.length === 0) { parseEmpty++; continue; }
-    for (const p of parsed) {
-      totalParsedItems++;
-      const m = matchProduct(p.name, products);
-      if (m) {
-        const k = p.name;
-        const cur = matched[k] ?? { count: 0, matchedProduct: m.product.name, score: m.score };
-        cur.count++;
-        matched[k] = cur;
-      } else {
-        unmatched[p.name] = (unmatched[p.name] ?? 0) + 1;
+    const desc = extractDescription(o.shipment?.rawPayload);
+    if (!desc) {
+      if (nullDescriptionSamples.length < 5) {
+        const p = (o.shipment?.rawPayload ?? {}) as Record<string, unknown>;
+        const specs = p.specs && typeof p.specs === 'object' ? Object.keys(p.specs as Record<string, unknown>) : null;
+        nullDescriptionSamples.push({ orderId: o.id, payloadKeys: Object.keys(p), specsKeys: specs });
       }
+      continue;
+    }
+    const parsed = parseItemsFromDescription(desc);
+    if (parsed.length === 0 && parseEmptySamples.length < 30) {
+      parseEmptySamples.push({ orderId: o.id, description: desc });
     }
   }
 
-  const matchedList = Object.entries(matched)
-    .map(([raw, v]) => ({ raw, norm: normaliseArabic(raw), ...v }))
-    .sort((a, b) => b.count - a.count);
-  const unmatchedList = Object.entries(unmatched)
-    .map(([raw, count]) => ({ raw, norm: normaliseArabic(raw), count }))
-    .sort((a, b) => b.count - a.count);
-
   return NextResponse.json({
     totalOrphans: orphans.length,
-    nullDescription,
-    parseEmpty,
-    totalParsedItems,
-    matchedPatternCount: matchedList.length,
-    unmatchedPatternCount: unmatchedList.length,
-    matched: matchedList,
-    unmatched: unmatchedList,
+    parseEmptySamples,
+    nullDescriptionSamples,
   });
 }

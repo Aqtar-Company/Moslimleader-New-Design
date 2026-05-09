@@ -157,7 +157,6 @@ export default function AmeenChat() {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordCapRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [speakingId, setSpeakingId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { lang } = useLang();
@@ -393,49 +392,6 @@ export default function AmeenChat() {
     }
   }, [sending, transcribing, isEn, sendVoice, stopRecording]);
 
-  // ── Voice output (browser TTS) ──
-  // Free, no server cost. Slight pitch lift to feel younger; the
-  // closest approximation of "child voice" without paid TTS. Tap-
-  // to-play, never autoplay (mobile autoplay restrictions + UX).
-  const speak = useCallback((id: string, text: string) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    const synth = window.speechSynthesis;
-    if (speakingId === id) {
-      synth.cancel();
-      setSpeakingId(null);
-      return;
-    }
-    synth.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = isEn ? 'en-US' : 'ar-EG';
-    u.pitch = 1.4;
-    u.rate = 0.95;
-    const voices = synth.getVoices();
-    const match = voices.find(v => v.lang.startsWith(isEn ? 'en' : 'ar'));
-    if (match) u.voice = match;
-    u.onend = () => setSpeakingId(curr => (curr === id ? null : curr));
-    u.onerror = () => setSpeakingId(curr => (curr === id ? null : curr));
-    setSpeakingId(id);
-    synth.speak(u);
-  }, [isEn, speakingId]);
-
-  // Pre-warm the voice list (Chrome populates it asynchronously).
-  useEffect(() => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    const handler = () => { /* triggers internal voice cache */ window.speechSynthesis.getVoices(); };
-    window.speechSynthesis.addEventListener?.('voiceschanged', handler);
-    handler();
-    return () => window.speechSynthesis.removeEventListener?.('voiceschanged', handler);
-  }, []);
-
-  // Stop any in-flight playback when the panel closes.
-  useEffect(() => {
-    if (!open && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      setSpeakingId(null);
-    }
-  }, [open]);
-
   // Broadcast open/close so siblings (e.g. WhatsAppButton) can hide
   // themselves on mobile while the chat is fullscreen. Body data
   // attribute is the simplest cross-component channel — no shared
@@ -575,18 +531,6 @@ export default function AmeenChat() {
                         history makes the channel switch obvious. */}
                     {isUser && m.transcribed && <span className="opacity-70 me-1">🎤</span>}
                     {linkify(m.text)}
-                    {/* 🔊 listen button on every Amin reply (browser TTS).
-                        Tap once to play, tap again to stop. Hidden on
-                        browsers without speechSynthesis. */}
-                    {!isUser && typeof window !== 'undefined' && 'speechSynthesis' in window && (
-                      <button
-                        onClick={() => speak(m.id, m.text)}
-                        aria-label={isEn ? 'Listen to reply' : 'استمع للرد'}
-                        className="block mt-1.5 text-[10px] text-gray-500 hover:text-[#1a1a2e] inline-flex items-center gap-1"
-                      >
-                        {speakingId === m.id ? '⏹' : '🔊'} <span>{speakingId === m.id ? (isEn ? 'Stop' : 'إيقاف') : (isEn ? 'Listen' : 'استمع')}</span>
-                      </button>
-                    )}
                   </div>
                 </div>
               );

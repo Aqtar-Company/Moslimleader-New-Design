@@ -43,7 +43,9 @@ const nextConfig = {
       // Referrer policy
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
       // Permissions policy — disable unused browser features
-      { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=(self "https://www.paypal.com")' },
+      // microphone=(self) so the Ameen on-site chat can record voice
+      // messages via getUserMedia. Camera + geolocation stay blocked.
+      { key: 'Permissions-Policy', value: 'camera=(), microphone=(self), geolocation=(), payment=(self "https://www.paypal.com")' },
       // HSTS — force HTTPS for 1 year
       { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
       // CSP

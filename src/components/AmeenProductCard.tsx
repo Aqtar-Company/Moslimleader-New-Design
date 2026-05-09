@@ -86,12 +86,6 @@ export default function AmeenProductCard({ slug, compact = false }: Props) {
     if (adding) return;
     setAdding(true);
     try {
-      // Variant-bearing products need the user to pick a model on
-      // the product page — we open the page instead of guessing.
-      if (hasVariants) {
-        addToast('اختاري الموديل من صفحة المنتج', 'info');
-        return;
-      }
       addItem(product as unknown as Product, undefined, 1);
       addToast(`تمت الإضافة: ${product!.name}`, 'success');
     } finally {
@@ -137,19 +131,34 @@ export default function AmeenProductCard({ slug, compact = false }: Props) {
           )}
         </div>
         <div className="mt-1.5 flex gap-1.5">
-          <button
-            onClick={onAdd}
-            disabled={adding || product.inStock === false}
-            className="flex-1 text-[10px] font-black bg-[#1a1a2e] hover:bg-[#2d1060] text-white rounded-lg px-2 py-1.5 disabled:opacity-50 transition"
-          >
-            🛒 {hasVariants ? 'اختاري الموديل' : 'أضف للسلة'}
-          </button>
-          <Link
-            href={`/shop/${slug}`}
-            className="text-[10px] font-bold text-[#1a1a2e] border border-gray-200 rounded-lg px-2 py-1.5 hover:bg-gray-50"
-          >
-            اعرض
-          </Link>
+          {/* Variant products can't add-to-cart from the chat (we'd
+              be guessing the model). Show a single full-width
+              'اعرض المنتج' button that goes straight to the product
+              page where the variant picker lives. */}
+          {hasVariants ? (
+            <Link
+              href={`/shop/${slug}`}
+              className="flex-1 text-center text-[10px] font-black bg-[#1a1a2e] hover:bg-[#2d1060] text-white rounded-lg px-2 py-1.5 transition"
+            >
+              🛍️ اعرض المنتج لاختيار الموديل
+            </Link>
+          ) : (
+            <>
+              <button
+                onClick={onAdd}
+                disabled={adding || product.inStock === false}
+                className="flex-1 text-[10px] font-black bg-[#1a1a2e] hover:bg-[#2d1060] text-white rounded-lg px-2 py-1.5 disabled:opacity-50 transition"
+              >
+                🛒 أضف للسلة
+              </button>
+              <Link
+                href={`/shop/${slug}`}
+                className="text-[10px] font-bold text-[#1a1a2e] border border-gray-200 rounded-lg px-2 py-1.5 hover:bg-gray-50"
+              >
+                اعرض
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </div>

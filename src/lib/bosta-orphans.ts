@@ -66,26 +66,69 @@ export function parseItemsFromDescription(description: string | null): Array<{ n
   return items;
 }
 
+// Generic words that show up in many product titles and would cause
+// false matches if treated as content. "كتاب الفلان" vs "كتاب العلان"
+// would otherwise score 0.5 just on the shared "كتاب" word.
+const STOPWORDS = new Set([
+  'كتاب', 'كتب', 'مجموعه', 'مجموعات', 'مسلسل', 'سلسله',
+  'قصص', 'قصه', 'قصت', 'في', 'الي', 'من', 'علي', 'عن',
+  'مع', 'هذا', 'هذه', 'ذلك', 'تلك', 'هو', 'هي',
+]);
+
+function meaningfulWords(s: string): string[] {
+  return s.split(' ').filter(w => w.length > 2 && !STOPWORDS.has(w));
+}
+
 export function matchProduct(rawName: string, products: ProductRef[]): { product: ProductRef; score: number } | null {
   const norm = normaliseArabic(rawName);
   if (!norm) return null;
+  // Strip common Bosta-description prefixes ("كتاب", "مجموعه",
+  // "مسلسل", "سلسله") that products themselves usually don't carry,
+  // so "كتاب البخاري" can match a product literally called "البخاري"
+  // and "مجموعه قصص الصلاه" can match "قصه الصلاه" via the singular
+  // form. We try BOTH the original and the stripped form and keep the
+  // best score.
+  const stripped = norm
+    .replace(/^(كتاب|كتب|مجموعه|مجموعات|مسلسل|سلسله|قصص|قصه|قصت)\s+/g, '')
+    .replace(/\s+(كتاب|كتب)$/g, '');
+  const variants = stripped !== norm ? [norm, stripped] : [norm];
+
   let best: { product: ProductRef; score: number } | null = null;
   for (const p of products) {
     const pn = normaliseArabic(p.name);
     if (!pn) continue;
-    let score = 0;
-    if (pn === norm) score = 1;
-    else if (pn.includes(norm)) score = 0.92;
-    else if (norm.includes(pn)) score = 0.88;
-    else {
-      const pnWords = pn.split(' ').filter(w => w.length > 2);
-      if (pnWords.length === 0) continue;
-      const hits = pnWords.filter(w => norm.includes(w)).length;
-      score = pnWords.length > 0 ? hits / pnWords.length : 0;
+    const pnStripped = pn.replace(/^(كتاب|كتب|مجموعه|مسلسل|سلسله)\s+/g, '');
+    const productVariants = pnStripped !== pn ? [pn, pnStripped] : [pn];
+
+    for (const v of variants) {
+      for (const pv of productVariants) {
+        let score = 0;
+        if (pv === v) score = 1;
+        else if (pv.includes(v)) score = 0.92;
+        else if (v.includes(pv)) score = 0.88;
+        else {
+          // Word-overlap, both directions: % of product words present in
+          // parsed AND % of parsed words present in product. Take max so
+          // a parsed name with extra junk words still scores well.
+          // Stopwords are excluded so "كتاب" alone doesn't link two
+          // unrelated titles.
+          const pnWords = meaningfulWords(pv);
+          const vWords = meaningfulWords(v);
+          if (pnWords.length === 0 || vWords.length === 0) continue;
+          const pnHits = pnWords.filter(w => v.includes(w)).length;
+          const vHits = vWords.filter(w => pv.includes(w)).length;
+          score = Math.max(pnHits / pnWords.length, vHits / vWords.length);
+        }
+        if (best === null || score > best.score) best = { product: p, score };
+      }
     }
-    if (best === null || score > best.score) best = { product: p, score };
   }
-  return best && best.score >= 0.5 ? best : null;
+  // Lowered threshold from 0.5 to 0.4 — owner explicitly wants
+  // approximate sales figures, not pixel-perfect attribution. With
+  // only ~23 products in the catalogue, a 0.4 threshold rarely picks
+  // the wrong one and the bulk-match audit log makes mistakes
+  // recoverable.
+  return best && best.score >= 0.4 ? best : null;
 }
 
 // Price-reconciliation score: how well does the suggested basket sum

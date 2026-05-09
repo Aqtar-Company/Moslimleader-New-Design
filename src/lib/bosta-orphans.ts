@@ -75,6 +75,20 @@ const STOPWORDS = new Set([
   'مع', 'هذا', 'هذه', 'ذلك', 'تلك', 'هو', 'هي',
 ]);
 
+// Items that occasionally show up in Bosta descriptions but are NOT
+// products we sell (returned customer goods, accidental entries,
+// etc.). Skip them outright instead of letting the fuzzy matcher
+// hallucinate an attribution.
+const IGNORE_PATTERNS: RegExp[] = [
+  /(^|\s)عبايه(\s|$)/,
+  /(^|\s)جهاز(\s|$)/,
+  /(^|\s)منظم(\s|$)/, // "منظم كهربائي" — kitchen organizer, not ours
+];
+
+function isIgnored(parsedNorm: string): boolean {
+  return IGNORE_PATTERNS.some(re => re.test(parsedNorm));
+}
+
 // Manual aliases for cases the fuzzy matcher genuinely can't reach
 // from the Bosta description text alone. The right-hand side is a
 // product-name fragment we look up in the actual catalogue (so we
@@ -116,6 +130,11 @@ function meaningfulWords(s: string): string[] {
 export function matchProduct(rawName: string, products: ProductRef[]): { product: ProductRef; score: number } | null {
   const norm = normaliseArabic(rawName);
   if (!norm) return null;
+
+  // Drop items we know aren't products (عبايه, جهاز, …) — better to
+  // leave the orphan unattributed than to mis-bind it to something
+  // unrelated.
+  if (isIgnored(norm)) return null;
 
   // Aliases run BEFORE the fuzzy logic — if an explicit pattern fires,
   // trust it over whatever the substring/word-overlap heuristic would

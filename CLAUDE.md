@@ -158,14 +158,49 @@ GOOGLE_CLIENT_SECRET=
 
 ## Deploy (manual — recommended)
 
+> **CANONICAL BRANCH:** `claude/add-bosta-shipping-wOtW6`. All current
+> work (FB AI assistant, Bosta backfill, accounting, partners, IP,
+> royalties, suppliers, production batches, zakat, valuation,
+> wholesale, etc.) lives there. **DO NOT deploy `origin/main`** — it
+> only has the legacy SEO commits and is missing the FacebookEvent
+> table; deploying from main will trigger a `prisma db push` data-loss
+> prompt. Always pull from the canonical branch until it gets merged
+> into main via a GitHub PR.
+
 ```bash
 cd /home/moslimleader.com/app
-git fetch origin main && git reset --hard origin/main
+# Always: pull the canonical branch.
+git fetch origin claude/add-bosta-shipping-wOtW6
+git reset --hard origin/claude/add-bosta-shipping-wOtW6
 npm ci
-npx prisma db push --skip-generate
+npx prisma db push --skip-generate     # If it warns about data loss → STOP and answer N.
 npm run build
 pm2 restart 1 --update-env
 pm2 save
+```
+
+### Backup before any deploy (run this first)
+
+```bash
+# DB dump + uploaded assets snapshot, kept for 30 days.
+mkdir -p /root/backups
+TS=$(date +%Y%m%d-%H%M%S)
+mysqldump --single-transaction --routines moslimleader \
+  | gzip > /root/backups/db-$TS.sql.gz
+tar czf /root/backups/assets-$TS.tar.gz \
+  -C /home/moslimleader.com/app private public/products public/covers .env 2>/dev/null
+find /root/backups -type f -mtime +30 -delete
+ls -lh /root/backups | tail
+```
+
+### Verify sync (server ↔ GitHub)
+
+```bash
+# Server's HEAD:
+git -C /home/moslimleader.com/app log --oneline -1
+# GitHub's HEAD on the canonical branch:
+git ls-remote origin claude/add-bosta-shipping-wOtW6 | awk '{print substr($1,1,7)}'
+# These two SHAs MUST match. If they don't → re-run the deploy block.
 ```
 
 > GitHub Actions CI/CD: `deploy-vps.yml` (SSH to VPS) + `main.yml` (FTP to Hostinger). VPS SSH may fail — manual deploy is more reliable.

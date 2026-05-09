@@ -16,14 +16,15 @@ type AiProvider = 'openai' | 'gemini' | 'anthropic';
 const PROVIDER_INFO: Record<AiProvider, { label: string; help: string; getKeyUrl: string; defaultModel: string; models: Array<{ id: string; label: string }> }> = {
   gemini: {
     label: 'Google Gemini',
-    help: 'مجاني — 15 طلب/دقيقة + مليون token/يوم',
+    help: 'مجاني — 15 طلب/دقيقة + 1500 طلب/يوم',
     getKeyUrl: 'https://aistudio.google.com/apikey',
-    defaultModel: 'gemini-1.5-flash',
+    defaultModel: 'gemini-2.0-flash',
     models: [
-      { id: 'gemini-1.5-flash',     label: 'gemini-1.5-flash (مجاني، أسرع)' },
-      { id: 'gemini-1.5-flash-8b',  label: 'gemini-1.5-flash-8b (مجاني، الأرخص)' },
-      { id: 'gemini-1.5-pro',       label: 'gemini-1.5-pro (أفضل جودة)' },
-      { id: 'gemini-2.0-flash-exp', label: 'gemini-2.0-flash-exp (تجريبي)' },
+      { id: 'gemini-2.0-flash',        label: 'gemini-2.0-flash (الموصى به، مجاني)' },
+      { id: 'gemini-2.0-flash-lite',   label: 'gemini-2.0-flash-lite (الأرخص، مجاني)' },
+      { id: 'gemini-2.5-flash',        label: 'gemini-2.5-flash (أحدث، مجاني)' },
+      { id: 'gemini-2.5-pro',          label: 'gemini-2.5-pro (أعلى جودة، مدفوع)' },
+      { id: 'gemini-1.5-flash-latest', label: 'gemini-1.5-flash-latest (legacy)' },
     ],
   },
   openai: {

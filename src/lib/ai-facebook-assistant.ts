@@ -17,14 +17,17 @@ export const AI_PROVIDERS: ReadonlyArray<{ key: AiProvider; label: string; help:
   {
     key: 'gemini',
     label: 'Google Gemini (مجاني 🆓)',
-    help: 'مجاني تماماً — 15 طلب/دقيقة + مليون token/يوم',
+    help: 'مجاني تماماً — 15 طلب/دقيقة + 1500 طلب/يوم',
     getKeyUrl: 'https://aistudio.google.com/apikey',
-    defaultModel: 'gemini-1.5-flash',
+    defaultModel: 'gemini-2.0-flash',
     models: [
-      { id: 'gemini-1.5-flash',     label: 'gemini-1.5-flash (مجاني، أسرع)' },
-      { id: 'gemini-1.5-flash-8b',  label: 'gemini-1.5-flash-8b (مجاني، الأرخص)' },
-      { id: 'gemini-1.5-pro',       label: 'gemini-1.5-pro (أفضل جودة)' },
-      { id: 'gemini-2.0-flash-exp', label: 'gemini-2.0-flash-exp (تجريبي)' },
+      { id: 'gemini-2.0-flash',      label: 'gemini-2.0-flash (الموصى به، مجاني)' },
+      { id: 'gemini-2.0-flash-lite', label: 'gemini-2.0-flash-lite (الأرخص، مجاني)' },
+      { id: 'gemini-2.5-flash',      label: 'gemini-2.5-flash (أحدث، مجاني)' },
+      { id: 'gemini-2.5-pro',        label: 'gemini-2.5-pro (أعلى جودة، مدفوع)' },
+      // Legacy alias kept for backward compatibility — points to whatever
+      // Google currently maps "1.5-flash" to. May 404 in some regions.
+      { id: 'gemini-1.5-flash-latest', label: 'gemini-1.5-flash-latest (legacy)' },
     ],
   },
   {
@@ -167,7 +170,7 @@ const DEFAULTS: AssistantSettings = {
   enabled: false,
   systemPrompt: DEFAULT_SYSTEM_PROMPT,
   provider: 'gemini',
-  model: 'gemini-1.5-flash',
+  model: 'gemini-2.0-flash',
   apiKeys: {},
   triggerKeywords: [],
   maxTokens: 300,

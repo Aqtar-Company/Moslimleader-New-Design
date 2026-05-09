@@ -40,42 +40,75 @@ export interface ProductRef { id: string; name: string; price: number }
 // doesn't try to "match" them.
 const NOTE_HINTS = [
   'اسم الل', 'اسم اللى', 'اسم اللي',
-  'موعد', 'الشركه', 'الشحنه',
-  'قابل للكسر',
+  'موعد', 'الشركه',
+  'قابل للكسر', 'قابل للكسرر',
   'برجاء', 'يرجي', 'يرجى', 'يرجا',
   'ملاحظ', 'ملحوظ',
   'العنوان', 'تليفون', 'موبايل', 'محمول',
+  'استلام افاد', 'بحث بعنوان', 'دكتور بجامعه',
+  'التشجير', 'افاده',
+  'مندوب الشحن', 'محتاج شركه الشحن', 'محتاجه شركه الشحن', 'يكلمها قبل', 'يكلمه قبل',
 ];
+
+// ٠-٩ Arabic-Indic digits → 0-9 ASCII so the rest of the parser
+// (which uses \d, only ASCII) sees them as numbers.
+function asciifyDigits(s: string): string {
+  return s.replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+}
 
 function looksLikeNote(s: string): boolean {
   return NOTE_HINTS.some(h => s.includes(h));
 }
 
-// Bosta descriptions arrive in three formats. Try them in order:
-//   1. "Name:<n>  - quantity:<q>" — the website-checkout export, the
-//      most common (≈1000+ orphans). Repeated, sometimes one per line.
-//   2. "<name> X <q>" — the manual format used in early imports.
-//   3. A single bare product name with no quantity marker — common
-//      when the cashier/owner typed the description by hand. Treated
-//      as quantity = 1 unless it looks like a free-text note.
+// Number-word → digit lookup for "نسختين" / "ثلاث نسخ" / etc. that
+// occasionally appear instead of a digit.
+const NUM_WORDS: Record<string, number> = {
+  'نسخه': 1, 'نسخة': 1, 'واحد': 1, 'واحده': 1, 'واحدة': 1,
+  'نسختين': 2, 'نسختان': 2, 'اثنين': 2, 'اتنين': 2, 'اثنان': 2,
+  'ثلاث': 3, 'ثلاثه': 3, 'ثلاثة': 3,
+  'اربع': 4, 'اربعه': 4, 'اربعة': 4, 'أربع': 4, 'أربعة': 4,
+  'خمس': 5, 'خمسه': 5, 'خمسة': 5,
+  'ست': 6, 'سته': 6, 'ستة': 6,
+  'سبع': 7, 'سبعه': 7, 'سبعة': 7,
+  'ثمان': 8, 'ثمانية': 8, 'تمن': 8,
+  'تسع': 9, 'تسعه': 9, 'تسعة': 9,
+  'عشر': 10, 'عشره': 10, 'عشرة': 10,
+};
+
+// Strip trailing price/note tail like " - 100 ج بدل 120 ج..." that
+// often follows a product name in free-text descriptions.
+function stripTail(name: string): string {
+  return name
+    .split(/\s+[-–]\s+/)[0]
+    .replace(/\s*\(.*?\)\s*$/, '')   // trailing parens
+    .replace(/[*]+/g, '')
+    .trim();
+}
+
+// Bosta descriptions arrive in many formats. Try them in cascade:
+//   1. "Name:<n>  - quantity:<q>"  — website checkout export
+//   2. "<name> X <q>"              — legacy manual import
+//   3. line-by-line "[عدد] N <name>" / "نسختين <name>" /
+//      free-text "<name>, <name>, …"
+//   4. single bare product name
+// First format that yields ≥1 item wins.
 export function parseItemsFromDescription(description: string | null): Array<{ name: string; quantity: number }> {
   if (!description) return [];
+  const desc = asciifyDigits(description);
   const items: Array<{ name: string; quantity: number }> = [];
 
-  // Format 1: Name:... - quantity:N  (website checkout export)
+  // Format 1: Name:... - quantity:N
   const nameQtyRe = /Name:\s*([^\n]+?)\s*-\s*quantity:\s*(\d+)/gi;
   let m: RegExpExecArray | null;
-  while ((m = nameQtyRe.exec(description)) !== null) {
+  while ((m = nameQtyRe.exec(desc)) !== null) {
     const name = m[1].trim();
     const quantity = parseInt(m[2], 10);
-    if (name && quantity > 0 && quantity <= 1000) {
-      items.push({ name, quantity });
-    }
+    if (name && quantity > 0 && quantity <= 1000) items.push({ name, quantity });
   }
   if (items.length > 0) return items;
 
-  // Format 2: "<name> X <q>" repeating pairs.
-  const cleaned = description.replace(/×/g, 'X');
+  // Format 2: "<name> X <q>" pairs.
+  const cleaned = desc.replace(/×/g, 'X');
   const tokens = cleaned.split(/\s+/).filter(Boolean);
   let currentName: string[] = [];
   for (let i = 0; i < tokens.length; i++) {
@@ -85,9 +118,7 @@ export function parseItemsFromDescription(description: string | null): Array<{ n
       if (next && /^\d+$/.test(next)) {
         const name = currentName.join(' ').trim();
         const quantity = parseInt(next, 10);
-        if (name && quantity > 0 && quantity <= 1000) {
-          items.push({ name, quantity });
-        }
+        if (name && quantity > 0 && quantity <= 1000) items.push({ name, quantity });
         currentName = [];
         i += 1;
         continue;
@@ -97,21 +128,46 @@ export function parseItemsFromDescription(description: string | null): Array<{ n
   }
   if (items.length > 0) return items;
 
-  // Format 3: a single bare product name. Bail if it looks like a
-  // free-text instruction or is unreasonably long (probably notes).
-  let trimmed = description.trim().replace(/\s+/g, ' ');
-  // Drop a leading "اوردر" / "طلب" filler that occasionally precedes
-  // the actual product reference.
+  // Format 3: split on // / \n / , and parse each segment.
+  const segments = desc.split(/\/{1,3}|\n|,/).map(s => s.trim()).filter(Boolean);
+  for (let raw of segments) {
+    raw = raw.replace(/^[*•\s]+/, '').trim();
+    if (!raw || looksLikeNote(raw)) continue;
+
+    // "عدد N من? <name>" or bare-leading "N <name>" — allow Nمن
+    // attached without space ("عدد 2من X").
+    let mm = raw.match(/^(?:عدد\s*)?(\d+)\s*(?:من\s*)?(.+)$/);
+    if (mm) {
+      const q = parseInt(mm[1], 10);
+      const name = stripTail(mm[2]);
+      if (q > 0 && q <= 1000 && name.length > 0) {
+        items.push({ name, quantity: q });
+        continue;
+      }
+    }
+    // Number-word + name: "نسختين من X" / "ثلاث نسخ X"
+    const wordMatch = raw.match(/^([^\s]+)\s+(?:نسخ[ه|ة]?\s+)?(?:من\s+)?(.+)$/);
+    if (wordMatch && NUM_WORDS[wordMatch[1]]) {
+      const q = NUM_WORDS[wordMatch[1]];
+      const name = stripTail(wordMatch[2]);
+      if (name.length > 0) { items.push({ name, quantity: q }); continue; }
+    }
+    // Plain product name (qty 1)
+    const cleanName = stripTail(raw);
+    if (cleanName.length > 0 && cleanName.length <= 120) {
+      items.push({ name: cleanName, quantity: 1 });
+    }
+  }
+  if (items.length > 0) return items;
+
+  // Format 4: single bare product name as last resort.
+  let trimmed = desc.trim().replace(/\s+/g, ' ');
   trimmed = trimmed.replace(/^(اوردر|أوردر|طلب)\s+/i, '');
-  // Leading-digit quantity: "10 مجات ..." or "10مجات ..." → qty 10.
   let quantity = 1;
   const leadDigit = trimmed.match(/^(\d+)\s*(.+)$/);
   if (leadDigit) {
     const q = parseInt(leadDigit[1], 10);
-    if (q > 0 && q <= 1000) {
-      quantity = q;
-      trimmed = leadDigit[2].trim();
-    }
+    if (q > 0 && q <= 1000) { quantity = q; trimmed = leadDigit[2].trim(); }
   }
   if (trimmed.length > 0 && trimmed.length <= 120 && !looksLikeNote(trimmed)) {
     return [{ name: trimmed, quantity }];
@@ -135,11 +191,19 @@ const STOPWORDS = new Set([
 const IGNORE_PATTERNS: RegExp[] = [
   /(^|\s)عبايه(\s|$)/,
   /(^|\s)جهاز(\s|$)/,
-  /(^|\s)منظم(\s|$)/,            // "منظم كهربائي" — not ours
+  /(^|\s)منظم(\s|$)/,
   /(^|\s)بوستر(\s|$)/,           // posters not in catalogue
-  /(^|\s)سيليكون(\s|$)/,         // "كيلو سيليكون مطاط + مذيب"
+  /(^|\s)سيليكون(\s|$)/,
   /(^|\s)مذيب(\s|$)/,
-  /(^|\s)رساله\s+ماجيستير/,      // master's thesis sample
+  /(^|\s)رساله\s+ماجيستير/,
+  /(^|\s)افاد(ه|ة)(\s|$)/,       // research papers / acceptance letters
+  /(^|\s)بحث(\s|$)/,
+  /(^|\s)تشجير/,                 // genealogy diagrams
+  /(^|\s)كاراتيه/,               // karate bag — not in catalogue
+  /(^|\s)جدول\s+هديه/,           // free schedules / gifts
+  /^هديه$/,                      // bare "هديه" line (not "X هديه")
+  /(^|\s)notes(\s|$)/i,          // "5 notes/" placeholder
+  /(^|\s)عرض\s+اركان/,           // bundle wording, not a product
 ];
 
 function isIgnored(parsedNorm: string): boolean {
@@ -164,13 +228,14 @@ const ALIASES: Array<{ pattern: RegExp; targets: string[]; reason: string }> = [
   // SPECIFIC product variants come FIRST so they win over the broad
   // mug pattern at the bottom.
 
-  // مفكرة — owner has separate "مفكرة أولاد" / "مفكرة بنات" /
-  // "مفكرة كبار" today (older builds had only "مفكرة أطفال" — keep
-  // it as fallback so this still works on legacy data).
-  { pattern: /مفكره\s+(صغار\s+ولد|ولد|اولاد)/, targets: ['مفكرة أولاد', 'مفكرة اولاد', 'مفكرة أطفال'], reason: 'planner-boys' },
-  { pattern: /مفكره\s+(صغار\s+بنت|بنت|بنات)/, targets: ['مفكرة بنات', 'مفكرة أطفال'], reason: 'planner-girls' },
-  { pattern: /مفكره\s+(صغار|اطفال|طفل)/, targets: ['مفكرة أطفال', 'مفكرة أولاد'], reason: 'planner-kids' },
-  { pattern: /مفكره\s+(كبار|نساء|كبير|رجال)/, targets: ['مفكرة كبار'], reason: 'planner-adults' },
+  // مفكرة — owner has separate "مفكرة أولاد" / "مفكرة بنات" today
+  // ("مفكرة أطفال" was an older single name — keep as fallback).
+  // Use .* between مفكره and the gender word so "مفكره اطفال بنت"
+  // routes to بنات (not أولاد by fallback chain).
+  { pattern: /مفكره.*(بنت|بنات)/, targets: ['مفكرة بنات', 'مفكرة أطفال'], reason: 'planner-girls' },
+  { pattern: /مفكره.*(ولد|اولاد)/, targets: ['مفكرة أولاد', 'مفكرة اولاد', 'مفكرة أطفال'], reason: 'planner-boys' },
+  { pattern: /مفكره.*(كبار|نساء|كبير|رجال|ام\b|ام\s)/, targets: ['مفكرة كبار'], reason: 'planner-adults' },
+  { pattern: /^مفكره(\s|$)/, targets: ['مفكرة أطفال', 'مفكرة أولاد'], reason: 'planner-default' },
   // ماسك / حامل المصحف
   { pattern: /ماسك.*مصحف|حامل\s+المصحف/, targets: ['حامل المصحف'], reason: 'mushaf-holder' },
   // لعبة الحج والصلاة
@@ -180,11 +245,19 @@ const ALIASES: Array<{ pattern: RegExp; targets: string[]; reason: string }> = [
   { pattern: /شنطه\s+(بناتي|بنات|اولاد|ولاد|حضانه|اطفال)/, targets: ['شنطة مسلم ليدر'], reason: 'bag' },
   // وسام
   { pattern: /وسام/, targets: ['وسام القائد'], reason: 'medal' },
-  // Variants on existing books.
-  { pattern: /روايه\s+البخاري|^بخاري$/, targets: ['البخاري على كوكب المريخ'], reason: 'bukhari-novel' },
-  { pattern: /(^|\s)امهات\s+العظماء(\s|$)/, targets: ['رسائل أمهات العظماء'], reason: 'mothers-of-greats' },
-  // قادة وأئمة المسلمين → no exact product; closest is إعداد القادة.
-  { pattern: /قاده\s+و?ائمه\s+المسلمين/, targets: ['إعداد القادة'], reason: 'leaders' },
+  // Variants on existing books — short forms that show up in
+  // free-text descriptions. Keyword anywhere in the parsed name.
+  { pattern: /(^|\s)(رواي(ه|ة)\s+)?البخاري(\s|$)|كوكب\s+المريخ/, targets: ['البخاري على كوكب المريخ'], reason: 'bukhari' },
+  { pattern: /(^|\s)امهات\s+العظماء(\s|$)|رسائل\s+امهات/, targets: ['رسائل أمهات العظماء'], reason: 'mothers-of-greats' },
+  { pattern: /(^|\s)فلسطين(\s|$)|عيون\s+ابنائي|عيون\s+أبنائي|كتاب\s+الاسره/, targets: ['فلسطين في عيون ابنائي'], reason: 'palestine' },
+  { pattern: /(^|\s)القاده(\s|$)|قاده\s+الاسلام|قاده\s+و?ائمه\s+المسلمين|كروت\s+القاده/, targets: ['إعداد القادة'], reason: 'leaders' },
+  { pattern: /(^|\s)الواح(\s|$)|جزء\s+عم/, targets: ['ألواح'], reason: 'looh' },
+  { pattern: /(^|\s)استاذي(\s|$)|الي\s+ابني|إلى\s+ابني/, targets: ['إلى ابني واستاذي الشاب', 'كتاب إلى ابني'], reason: 'to-my-son' },
+  { pattern: /(^|\s)قصص\s+الصلاه(\s|$)|قصه\s+الصلاه/, targets: ['قصة الصلاة'], reason: 'prayer-stories' },
+  { pattern: /(^|\s)فقيه(\s|$)|بلاد\s+العجائب/, targets: ['فقيه في بلاد العجائب'], reason: 'faqih' },
+  { pattern: /(^|\s)تكوين(\s+اولاد|\s+بنات)?(\s|$)/, targets: ['تكوين'], reason: 'tkween' },
+  { pattern: /(^|\s)دبوس(\s|$)/, targets: ['دبوس'], reason: 'pin' },
+  { pattern: /(^|\s)البر(\s|$)|مسلسل\s+البر/, targets: ['مسلسل البر'], reason: 'birr' },
 
   // Personalized mugs go LAST so the specific-product aliases above
   // (which sometimes also contain "ولد", "بنت", etc.) win first.

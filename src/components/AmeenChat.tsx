@@ -17,6 +17,10 @@ interface ChatMessage {
   at: number;
   /** Lead status returned by the API on outgoing replies. */
   leadStatus?: 'hot' | 'warm' | 'cold' | null;
+  /** True when this user bubble was a voice message that the
+   *  server transcribed — UI shows a 🎤 prefix so the history
+   *  makes the channel switch obvious. */
+  transcribed?: boolean;
 }
 
 interface ChatResponse {
@@ -26,6 +30,8 @@ interface ChatResponse {
   offline?: boolean;
   skipped?: boolean;
   error?: boolean;
+  transcript?: string;
+  error_message?: string;
 }
 
 const SESSION_KEY = 'ameen-chat-session';
@@ -141,10 +147,43 @@ export default function AmeenChat() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [sessionId, setSessionId] = useState<string>('');
+  // Visual-viewport height for the mobile panel. Updated on
+  // visualViewport.resize so the keyboard pushes the input above
+  // itself instead of off-screen. Null on desktop / SSR.
+  const [vh, setVh] = useState<number | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [recordSecs, setRecordSecs] = useState(0);
+  const [transcribing, setTranscribing] = useState(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recordCapRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { lang } = useLang();
   const isEn = lang === 'en';
+
+  // ── visualViewport: track keyboard height on mobile only ──
+  // The Tailwind `md` breakpoint is 768px. On wider screens the
+  // chat is a floating bubble with a fixed height, so we don't
+  // need the visual-viewport binding (and applying it would clip
+  // the panel to a strange height when DevTools opens).
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    const update = () => {
+      setVh(window.innerWidth < 768 ? vv.height : null);
+    };
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    window.addEventListener('resize', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, []);
 
   // ── Session + history bootstrap ──
   useEffect(() => {
@@ -173,10 +212,18 @@ export default function AmeenChat() {
     if (messages.length > 0) saveHistory(messages);
   }, [messages]);
 
-  // Auto-scroll on new messages.
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, sending]);
+  // Auto-scroll on new messages, on send, AND when the keyboard
+  // changes the viewport height. Two RAFs let the textarea/keyboard
+  // finish their layout pass before we scroll, so the last bubble
+  // doesn't end up hidden behind the keyboard.
+  const scrollToBottom = useCallback(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      });
+    });
+  }, []);
+  useEffect(() => { scrollToBottom(); }, [messages, sending, vh, scrollToBottom]);
 
   // Auto-grow textarea.
   useEffect(() => {
@@ -244,6 +291,151 @@ export default function AmeenChat() {
     inputRef.current?.focus();
   }, [input, sending, sessionId, isEn]);
 
+  // ── Voice input (Gemini STT) ──
+  // Records via MediaRecorder, uploads as multipart/form-data, the
+  // route transcribes via Gemini and the transcribed text flows
+  // through the regular reply pipeline (no special handling).
+  const sendVoice = useCallback(async (blob: Blob) => {
+    if (!sessionId) return;
+    setTranscribing(true);
+    try {
+      const form = new FormData();
+      form.append('sessionId', sessionId);
+      form.append('audio', blob, 'voice.webm');
+      const res = await fetch('/api/ameen-chat', { method: 'POST', body: form });
+      const data = await res.json() as ChatResponse & { error?: string | boolean };
+      if (!res.ok || !data.transcript) {
+        setMessages(prev => [...prev, {
+          id: `e-${Date.now()}`,
+          from: 'ameen',
+          at: Date.now(),
+          text: typeof data?.error === 'string'
+            ? data.error
+            : (isEn
+                ? 'Voice transcription failed. Please type your message.'
+                : 'تعذّر تحويل الرسالة الصوتية. اكتبيها نصّاً من فضلك.'),
+        }]);
+      } else {
+        setMessages(prev => [
+          ...prev,
+          {
+            id: `u-${Date.now()}`,
+            from: 'user',
+            text: data.transcript!,
+            at: Date.now(),
+            transcribed: true,
+          },
+          {
+            id: `a-${Date.now() + 1}`,
+            from: 'ameen',
+            text: (data.reply ?? '').trim(),
+            at: Date.now() + 1,
+            leadStatus: data.leadStatus ?? null,
+          },
+        ]);
+      }
+    } catch {
+      setMessages(prev => [...prev, {
+        id: `e-${Date.now()}`,
+        from: 'ameen',
+        at: Date.now(),
+        text: isEn ? 'Connection issue. Please try again.' : 'مشكلة في الاتصال. حاولي مرة أخرى.',
+      }]);
+    }
+    setTranscribing(false);
+  }, [sessionId, isEn]);
+
+  const stopRecording = useCallback(() => {
+    const mr = recorderRef.current;
+    if (mr && mr.state === 'recording') mr.stop();
+    if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+    if (recordCapRef.current) clearTimeout(recordCapRef.current);
+    recordTimerRef.current = null;
+    recordCapRef.current = null;
+    setRecording(false);
+    setRecordSecs(0);
+  }, []);
+
+  const startRecording = useCallback(async () => {
+    if (sending || transcribing) return;
+    if (typeof window === 'undefined' || !navigator.mediaDevices || !window.MediaRecorder) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : (MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '');
+      const mr = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+      mr.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+      mr.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(chunks, { type: mr.mimeType || 'audio/webm' });
+        if (blob.size > 0) void sendVoice(blob);
+      };
+      recorderRef.current = mr;
+      mr.start();
+      setRecording(true);
+      setRecordSecs(0);
+      recordTimerRef.current = setInterval(() => setRecordSecs(s => s + 1), 1000);
+      // 60-second hard cap.
+      recordCapRef.current = setTimeout(() => { if (mr.state === 'recording') stopRecording(); }, 60_000);
+    } catch {
+      // Permission denied or no mic — show a single feedback bubble
+      // and let the textarea remain available.
+      setMessages(prev => [...prev, {
+        id: `e-${Date.now()}`,
+        from: 'ameen',
+        at: Date.now(),
+        text: isEn
+          ? 'Microphone is not available. Please type your message.'
+          : 'الميكروفون غير متاح. اكتبي رسالتك من فضلك.',
+      }]);
+    }
+  }, [sending, transcribing, isEn, sendVoice, stopRecording]);
+
+  // ── Voice output (browser TTS) ──
+  // Free, no server cost. Slight pitch lift to feel younger; the
+  // closest approximation of "child voice" without paid TTS. Tap-
+  // to-play, never autoplay (mobile autoplay restrictions + UX).
+  const speak = useCallback((id: string, text: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const synth = window.speechSynthesis;
+    if (speakingId === id) {
+      synth.cancel();
+      setSpeakingId(null);
+      return;
+    }
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = isEn ? 'en-US' : 'ar-EG';
+    u.pitch = 1.4;
+    u.rate = 0.95;
+    const voices = synth.getVoices();
+    const match = voices.find(v => v.lang.startsWith(isEn ? 'en' : 'ar'));
+    if (match) u.voice = match;
+    u.onend = () => setSpeakingId(curr => (curr === id ? null : curr));
+    u.onerror = () => setSpeakingId(curr => (curr === id ? null : curr));
+    setSpeakingId(id);
+    synth.speak(u);
+  }, [isEn, speakingId]);
+
+  // Pre-warm the voice list (Chrome populates it asynchronously).
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const handler = () => { /* triggers internal voice cache */ window.speechSynthesis.getVoices(); };
+    window.speechSynthesis.addEventListener?.('voiceschanged', handler);
+    handler();
+    return () => window.speechSynthesis.removeEventListener?.('voiceschanged', handler);
+  }, []);
+
+  // Stop any in-flight playback when the panel closes.
+  useEffect(() => {
+    if (!open && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      setSpeakingId(null);
+    }
+  }, [open]);
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Enter sends; Shift+Enter inserts newline.
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -303,11 +495,18 @@ export default function AmeenChat() {
         )}
       </button>
 
-      {/* Chat panel */}
+      {/* Chat panel — fullscreen on mobile (so the keyboard pushes
+          the input above itself instead of hiding it), floating
+          bubble on desktop. The mobile height is bound to
+          visualViewport.height so it shrinks with the keyboard. */}
       {open && (
         <div
           dir={isEn ? 'ltr' : 'rtl'}
-          className="fixed bottom-28 right-5 md:bottom-32 md:right-10 z-40 w-[92vw] max-w-sm h-[70vh] max-h-[600px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden print:hidden"
+          className="fixed z-40 bg-white shadow-2xl flex flex-col overflow-hidden print:hidden
+                     inset-0 md:inset-auto
+                     md:bottom-32 md:right-10 md:w-[92vw] md:max-w-sm
+                     md:h-[70vh] md:max-h-[600px] md:rounded-2xl md:border md:border-gray-200"
+          style={vh != null ? { height: `${vh}px` } : undefined}
         >
           {/* Header */}
           <div className="bg-gradient-to-l from-[#1a1a2e] via-[#2d1060] to-[#1a1a2e] text-white px-4 py-3 flex items-center gap-3">
@@ -361,7 +560,22 @@ export default function AmeenChat() {
                         : 'bg-white border border-gray-200 text-gray-900 rounded-2xl rounded-bl-sm'
                     }`}
                   >
+                    {/* Tiny 🎤 prefix marks user voice messages so the
+                        history makes the channel switch obvious. */}
+                    {isUser && m.transcribed && <span className="opacity-70 me-1">🎤</span>}
                     {linkify(m.text)}
+                    {/* 🔊 listen button on every Amin reply (browser TTS).
+                        Tap once to play, tap again to stop. Hidden on
+                        browsers without speechSynthesis. */}
+                    {!isUser && typeof window !== 'undefined' && 'speechSynthesis' in window && (
+                      <button
+                        onClick={() => speak(m.id, m.text)}
+                        aria-label={isEn ? 'Listen to reply' : 'استمع للرد'}
+                        className="block mt-1.5 text-[10px] text-gray-500 hover:text-[#1a1a2e] inline-flex items-center gap-1"
+                      >
+                        {speakingId === m.id ? '⏹' : '🔊'} <span>{speakingId === m.id ? (isEn ? 'Stop' : 'إيقاف') : (isEn ? 'Listen' : 'استمع')}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -377,23 +591,60 @@ export default function AmeenChat() {
             <div ref={bottomRef} />
           </div>
 
-          {/* Input */}
-          <div className="border-t border-gray-200 bg-white p-2.5">
+          {/* Input — when recording, the textarea is replaced by a
+              live recording indicator with a stop button. The mic
+              button itself is hidden on browsers without
+              MediaRecorder so users don't see a broken affordance. */}
+          <div className="border-t border-gray-200 bg-white p-2.5" style={{ paddingBottom: 'max(0.625rem, env(safe-area-inset-bottom))' }}>
             <div className="flex items-end gap-2">
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={onKeyDown}
-                placeholder={isEn ? 'Type your message…' : 'اكتب رسالتك…'}
-                rows={1}
-                disabled={sending}
-                className="flex-1 resize-none border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#1a1a2e] disabled:opacity-50"
-                style={{ minHeight: 38, maxHeight: 120 }}
-              />
+              {recording ? (
+                <div className="flex-1 flex items-center gap-2 border border-red-300 rounded-xl px-3 py-2 bg-red-50" style={{ minHeight: 38 }}>
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-xs font-bold text-red-700 tabular-nums">
+                    {`${Math.floor(recordSecs / 60)}:${String(recordSecs % 60).padStart(2, '0')}`}
+                  </span>
+                  <span className="text-xs text-red-700/80">{isEn ? 'Recording…' : 'جاري التسجيل…'}</span>
+                </div>
+              ) : transcribing ? (
+                <div className="flex-1 flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 bg-gray-50" style={{ minHeight: 38 }}>
+                  <span className="w-3 h-3 border-2 border-[#1a1a2e] border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs text-gray-600">{isEn ? 'Transcribing…' : 'جاري تحويل الصوت…'}</span>
+                </div>
+              ) : (
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={onKeyDown}
+                  placeholder={isEn ? 'Type your message…' : 'اكتب رسالتك…'}
+                  rows={1}
+                  disabled={sending}
+                  className="flex-1 resize-none border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#1a1a2e] disabled:opacity-50"
+                  style={{ minHeight: 38, maxHeight: 120 }}
+                />
+              )}
+              {/* Mic button — only when MediaRecorder is available. */}
+              {typeof window !== 'undefined' && 'MediaRecorder' in window && navigator.mediaDevices && !input.trim() && !transcribing && (
+                <button
+                  onClick={recording ? stopRecording : startRecording}
+                  disabled={sending}
+                  className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition disabled:opacity-40 ${
+                    recording
+                      ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
+                      : 'bg-gray-100 hover:bg-gray-200 text-[#1a1a2e]'
+                  }`}
+                  aria-label={recording ? (isEn ? 'Stop recording' : 'إيقاف التسجيل') : (isEn ? 'Record voice message' : 'تسجيل رسالة صوتية')}
+                >
+                  {recording ? (
+                    <span className="w-3 h-3 rounded-sm bg-white" />
+                  ) : (
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14a3 3 0 003-3V6a3 3 0 10-6 0v5a3 3 0 003 3z"/><path d="M19 11a1 1 0 10-2 0 5 5 0 11-10 0 1 1 0 10-2 0 7 7 0 006 6.92V20H8a1 1 0 100 2h8a1 1 0 100-2h-3v-2.08A7 7 0 0019 11z"/></svg>
+                  )}
+                </button>
+              )}
               <button
                 onClick={send}
-                disabled={!input.trim() || sending}
+                disabled={!input.trim() || sending || recording || transcribing}
                 className="shrink-0 w-10 h-10 rounded-full bg-[#1a1a2e] hover:bg-[#2d1060] text-white flex items-center justify-center transition disabled:opacity-40"
                 aria-label={isEn ? 'Send' : 'إرسال'}
               >

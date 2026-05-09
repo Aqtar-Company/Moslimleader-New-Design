@@ -238,24 +238,27 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
     lines.push('');
   }
 
-  // Books.
+  // Books — include the BUY url (not just the reader page) so the
+  // model can close the sale on a digital book in one link.
   if (books.length > 0) {
-    lines.push(`### الكتب الرقمية (${books.length} كتاب):`);
+    lines.push(`### الكتب الرقمية (${books.length} كتاب) — اقترحها للأم اللي بتدوّر على هدية تربوية، كل كتاب فيه صفحات مجانية للتجربة قبل الشراء:`);
     for (const b of books.slice(0, 40)) {
       const free = b.freePages ? ` (${b.freePages} صفحة مجانية للمعاينة)` : '';
       const price = b.price ? `${Math.round(b.price)} ج.م` : 'مجاني';
-      lines.push(`- ${b.title} | ${price}${free} | https://moslimleader.com/library/${b.id}`);
+      lines.push(`- ${b.title} | ${price}${free} | معاينة: https://moslimleader.com/library/${b.id} | شراء: https://moslimleader.com/library/${b.id}/buy`);
     }
     if (books.length > 40) lines.push(`... و ${books.length - 40} كتاب آخر`);
     lines.push('');
   }
 
-  // Series.
+  // Series — include the buy url too so a multi-book bundle can be
+  // recommended in one click.
   if (seriesList.length > 0) {
     lines.push(`### السلاسل المتاحة (${seriesList.length}):`);
     for (const s of seriesList.slice(0, 20)) {
       const desc = s.description ? ` — ${s.description.slice(0, 100)}` : '';
-      lines.push(`- ${s.name}${desc} | ${s.seriesPrice ? Math.round(s.seriesPrice) + ' ج.م' : 'متاحة'}`);
+      const price = s.seriesPrice ? Math.round(s.seriesPrice) + ' ج.م' : 'متاحة';
+      lines.push(`- ${s.name}${desc} | ${price} | شراء: https://moslimleader.com/library/series/${s.id}/buy`);
     }
     lines.push('');
   }

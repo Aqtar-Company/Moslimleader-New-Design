@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { invalidateAdminProductsCache } from '@/lib/admin-products-cache';
+import { invalidateAssistantContext } from '@/lib/assistant-knowledge';
 import { products as staticProducts } from '@/lib/products';
 import { loadStaticOverrides, applyOverride } from '@/lib/product-overrides';
 import { requirePerm, type Permission } from '@/lib/permissions';
@@ -81,6 +82,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         },
       });
       invalidateAdminProductsCache();
+      invalidateAssistantContext();
       await logActionSafe({
         actor: auth,
         action: 'product.update',
@@ -113,6 +115,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       }
 
       invalidateAdminProductsCache();
+      invalidateAssistantContext();
       await logActionSafe({
         actor: auth,
         action: 'product.update',
@@ -156,6 +159,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     invalidateAdminProductsCache();
+    invalidateAssistantContext();
     await logActionSafe({
       actor: auth,
       action: 'product.delete',

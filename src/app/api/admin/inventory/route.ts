@@ -5,6 +5,7 @@ import { logActionSafe } from '@/lib/audit-log';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
 import { NON_GIFT } from '@/lib/order-filters';
+import { invalidateAssistantContext } from '@/lib/assistant-knowledge';
 
 interface VariantShape { id?: string; name?: string; nameEn?: string; imageIndex?: number }
 
@@ -184,6 +185,8 @@ export async function PUT(req: NextRequest) {
     }
     return next;
   });
+
+  invalidateAssistantContext();
 
   await logActionSafe({
     actor: auth,

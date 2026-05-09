@@ -13,6 +13,9 @@ import {
   updateProfile,
   renderProfileForPrompt,
 } from '@/lib/conversation-extractor';
+import { transcribeAudio, SttError } from '@/lib/stt';
+
+const AUDIO_MAX_BYTES = 25 * 1024 * 1024; // 25 MB cap (defensive — client caps at 60 s).
 
 // Public endpoint that powers the on-site Ameen chat. Re-uses the
 // SAME machinery as the Facebook assistant (settings, prompt,
@@ -67,9 +70,48 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Body shape can be either JSON (text message) or multipart/form-data
+  // (voice message — `audio` field with the recorded blob, plus the
+  // same metadata fields). Voice messages get transcribed via Gemini
+  // before flowing through the rest of the pipeline unchanged.
   let body: ChatBody;
-  try { body = await req.json(); }
-  catch { return NextResponse.json({ error: 'Body غير صالح' }, { status: 400 }); }
+  let transcribed = false;
+  const ct = req.headers.get('content-type') || '';
+  if (ct.startsWith('multipart/form-data')) {
+    try {
+      const form = await req.formData();
+      const audio = form.get('audio') as File | null;
+      if (!audio || audio.size === 0) {
+        return NextResponse.json({ error: 'لا يوجد مرفق صوتي' }, { status: 400 });
+      }
+      if (audio.size > AUDIO_MAX_BYTES) {
+        return NextResponse.json({ error: 'الملف الصوتي كبير جداً' }, { status: 413 });
+      }
+      let text: string;
+      try {
+        text = await transcribeAudio(audio);
+      } catch (err) {
+        const msg = err instanceof SttError && err.code === 'NO_KEY'
+          ? 'تحويل الصوت غير مفعّل حالياً. اكتبي رسالتك نصّاً من فضلك.'
+          : 'تعذّر تحويل الرسالة الصوتية، اكتبيها نصّاً من فضلك.';
+        return NextResponse.json({ error: msg }, { status: 503 });
+      }
+      body = {
+        sessionId: form.get('sessionId')?.toString() ?? '',
+        message: text,
+        name:    form.get('name')?.toString()    ?? undefined,
+        email:   form.get('email')?.toString()   ?? undefined,
+        phone:   form.get('phone')?.toString()   ?? undefined,
+        website: form.get('website')?.toString() ?? undefined,
+      };
+      transcribed = true;
+    } catch {
+      return NextResponse.json({ error: 'Body غير صالح' }, { status: 400 });
+    }
+  } else {
+    try { body = await req.json(); }
+    catch { return NextResponse.json({ error: 'Body غير صالح' }, { status: 400 }); }
+  }
 
   if (body.website && body.website.trim().length > 0) {
     return NextResponse.json({ ok: true, reply: '' }); // honeypot
@@ -243,6 +285,7 @@ export async function POST(req: NextRequest) {
     reply: aiText,
     leadStatus,
     intent,
+    transcript: transcribed ? message : undefined,
     profile: {
       name: merged.name,
       phone: merged.phone,

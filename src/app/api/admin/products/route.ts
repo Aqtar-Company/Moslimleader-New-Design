@@ -9,6 +9,7 @@ import {
   setAdminProductsCache,
   invalidateAdminProductsCache,
 } from '@/lib/admin-products-cache';
+import { invalidateAssistantContext } from '@/lib/assistant-knowledge';
 
 // Returns only fields needed for the admin list/pricing table views
 function toListItem(p: unknown) {
@@ -107,8 +108,11 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Invalidate cache so next GET returns fresh data
+    // Invalidate cache so next GET returns fresh data + bust the
+    // assistant's catalogue context so Amin sees the new product
+    // immediately instead of waiting up to 5 min for TTL expiry.
     invalidateAdminProductsCache();
+    invalidateAssistantContext();
 
     await logActionSafe({
       actor: auth,

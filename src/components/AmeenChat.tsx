@@ -436,6 +436,17 @@ export default function AmeenChat() {
     }
   }, [open]);
 
+  // Broadcast open/close so siblings (e.g. WhatsAppButton) can hide
+  // themselves on mobile while the chat is fullscreen. Body data
+  // attribute is the simplest cross-component channel — no shared
+  // context needed, no prop drilling, works for any future float.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (open) document.body.setAttribute('data-ameen-open', '1');
+    else      document.body.removeAttribute('data-ameen-open');
+    return () => document.body.removeAttribute('data-ameen-open');
+  }, [open]);
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Enter sends; Shift+Enter inserts newline.
     if (e.key === 'Enter' && !e.shiftKey) {

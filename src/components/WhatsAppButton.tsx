@@ -5,7 +5,11 @@ export default function WhatsAppButton() {
       target="_blank"
       rel="noopener noreferrer"
       title="تواصل معنا على واتساب"
-      className="fixed bottom-7 left-5 md:bottom-10 md:left-10 z-40 flex items-center justify-center w-14 h-14 rounded-full bg-[#25D366] shadow-lg hover:bg-[#20bd5a] transition-colors duration-200"
+      // `wa-float` hook lets us hide this on mobile when the Ameen
+      // chat is open (it's fullscreen on mobile, the WhatsApp button
+      // would otherwise float on top of the conversation). Desktop
+      // keeps both visible — they sit on opposite corners.
+      className="wa-float fixed bottom-7 left-5 md:bottom-10 md:left-10 z-40 flex items-center justify-center w-14 h-14 rounded-full bg-[#25D366] shadow-lg hover:bg-[#20bd5a] transition-colors duration-200"
       aria-label="تواصل معنا على واتساب"
     >
       {/* WhatsApp icon */}

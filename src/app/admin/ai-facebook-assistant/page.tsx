@@ -190,7 +190,7 @@ export default function AIFacebookAssistantPage() {
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [manualReply, setManualReply] = useState('');
   const [sending, setSending] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'message' | 'comment'>('all');
+  const [filter, setFilter] = useState<'all' | 'message' | 'comment' | 'website-chat'>('all');
   const [leadFilter, setLeadFilter] = useState<'all' | 'hot' | 'warm'>('all');
 
   const load = async () => {
@@ -613,8 +613,9 @@ export default function AIFacebookAssistantPage() {
             <div className="px-4 pt-3 pb-2 flex gap-2 flex-wrap border-b border-gray-100">
               {([
                 { k: 'all',     label: 'الكل', count: data.conversations.length },
-                { k: 'message', label: '💬 رسائل', count: data.conversations.filter(c => c.kind === 'message').length },
-                { k: 'comment', label: '🗨️ تعليقات', count: data.conversations.filter(c => c.kind === 'comment').length },
+                { k: 'message',      label: '💬 Messenger', count: data.conversations.filter(c => c.kind === 'message').length },
+                { k: 'comment',      label: '🗨️ تعليقات',   count: data.conversations.filter(c => c.kind === 'comment').length },
+                { k: 'website-chat', label: '🌐 الموقع',     count: data.conversations.filter(c => c.kind === 'website-chat').length },
               ] as const).map(f => (
                 <button
                   key={f.k}
@@ -659,8 +660,12 @@ export default function AIFacebookAssistantPage() {
                           {LEAD_BADGE[c.leadStatus].icon}
                         </span>
                       )}
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${c.kind === 'comment' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                        {c.kind === 'comment' ? '🗨️' : '💬'}
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                        c.kind === 'comment' ? 'bg-purple-100 text-purple-700'
+                        : c.kind === 'website-chat' ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {c.kind === 'comment' ? '🗨️' : c.kind === 'website-chat' ? '🌐' : '💬'}
                       </span>
                     </div>
                   </div>
@@ -880,7 +885,7 @@ function ConversationActionBar({
         <div className="flex items-center gap-2 flex-wrap mt-2">
           <button
             onClick={() => setCreating(true)}
-            disabled={!p.phone || conversation.kind !== 'message'}
+            disabled={!p.phone || (conversation.kind !== 'message' && conversation.kind !== 'website-chat')}
             className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black transition disabled:opacity-50 disabled:cursor-not-allowed"
             title={!p.phone ? 'الموبايل مش موجود — اطلبه من العميل أولاً' : ''}
           >

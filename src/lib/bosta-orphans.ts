@@ -75,6 +75,40 @@ const STOPWORDS = new Set([
   'مع', 'هذا', 'هذه', 'ذلك', 'تلك', 'هو', 'هي',
 ]);
 
+// Manual aliases for cases the fuzzy matcher genuinely can't reach
+// from the Bosta description text alone. The right-hand side is a
+// product-name fragment we look up in the actual catalogue (so we
+// don't hard-code product IDs that change between environments).
+//
+// Each entry is checked against the NORMALISED parsed name. The
+// FIRST matching entry wins — order them most-specific first.
+//
+// NOTE: regex \b doesn't work on Arabic in JS (it's ASCII-only),
+// so word boundaries use explicit (^|\s)…(\s|$) groups.
+const ALIASES: Array<{ pattern: RegExp; productNameContains: string; reason: string }> = [
+  // Personalized mugs. Bosta records them as "مج بنت ..." / "مج ولد ..." /
+  // "مج بإسم <name>". Catalogue calls them "مجات بنات", "مجات ولاد",
+  // "مجات نساء" (plural form, breaks fuzzy substring matching).
+  { pattern: /(^|\s)ولد(\s|$)/, productNameContains: 'مجات ولاد', reason: 'mug-boy' },
+  { pattern: /(^|\s)(منتقبه|نساء|سيده|سيدات)(\s|$)/, productNameContains: 'مجات نساء', reason: 'mug-women' },
+  { pattern: /^مج(\s|$)/, productNameContains: 'مجات بنات', reason: 'mug-girl-default' },
+  // "قادة وأئمة المسلمين" — no exact product; closest is إعداد القادة.
+  { pattern: /قاده\s+و?ائمه\s+المسلمين/, productNameContains: 'إعداد القادة', reason: 'leaders' },
+];
+
+function tryAlias(parsedNorm: string, products: ProductRef[]): { product: ProductRef; score: number } | null {
+  for (const a of ALIASES) {
+    if (!a.pattern.test(parsedNorm)) continue;
+    const targetNorm = normaliseArabic(a.productNameContains);
+    const hit = products.find(p => {
+      const pn = normaliseArabic(p.name);
+      return pn === targetNorm || pn.includes(targetNorm) || targetNorm.includes(pn);
+    });
+    if (hit) return { product: hit, score: 0.95 };
+  }
+  return null;
+}
+
 function meaningfulWords(s: string): string[] {
   return s.split(' ').filter(w => w.length > 2 && !STOPWORDS.has(w));
 }
@@ -82,6 +116,12 @@ function meaningfulWords(s: string): string[] {
 export function matchProduct(rawName: string, products: ProductRef[]): { product: ProductRef; score: number } | null {
   const norm = normaliseArabic(rawName);
   if (!norm) return null;
+
+  // Aliases run BEFORE the fuzzy logic — if an explicit pattern fires,
+  // trust it over whatever the substring/word-overlap heuristic would
+  // pick (which would otherwise mis-route to a closer-looking title).
+  const alias = tryAlias(norm, products);
+  if (alias) return alias;
   // Strip common Bosta-description prefixes ("كتاب", "مجموعه",
   // "مسلسل", "سلسله") that products themselves usually don't carry,
   // so "كتاب البخاري" can match a product literally called "البخاري"

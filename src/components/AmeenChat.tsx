@@ -101,12 +101,20 @@ function linkify(text: string): React.ReactNode {
 }
 
 function AminAvatar({ size = 48 }: { size?: number }) {
+  // Hints: eager + high priority so the browser keeps it warm in cache
+  // across navigations; decoding=async so the small render doesn't
+  // block paint while the 900K source decodes the first time. The
+  // long-cache header in next.config.mjs is the other half of the
+  // story — combined, the file is fetched once and reused for a year.
   return (
     <img
       src="/amin-profile.png"
       alt="أمين"
       width={size}
       height={size}
+      loading="eager"
+      decoding="async"
+      fetchPriority="high"
       style={{ width: size, height: size, objectFit: 'cover' }}
     />
   );
@@ -264,22 +272,32 @@ export default function AmeenChat() {
   // ── Rendering ──
   return (
     <>
-      {/* Floating launcher — pinned to the right side of the viewport
-          regardless of locale direction so it doesn't collide with
-          WhatsApp/other floats on the left. */}
+      {/* Floating launcher — pinned to the right (mirror of the
+          WhatsApp button on the left). Bigger than the WhatsApp puck
+          so it reads as the primary call-to-action. The yellow
+          ping-ring mirrors WhatsApp's green ring so both launchers
+          feel like a matched pair. */}
       <button
         onClick={() => { setOpen(o => !o); setShowBadge(false); }}
         aria-label={isEn ? 'Open Ameen chat' : 'افتح دردشة أمين'}
-        className="fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full bg-[#1a1a2e] hover:bg-[#2d1060] text-white shadow-lg flex items-center justify-center transition print:hidden"
-        style={{ boxShadow: '0 6px 24px rgba(26,26,46,0.4)' }}
+        className="fixed bottom-7 right-5 md:bottom-10 md:right-10 z-40 w-16 h-16 md:w-[72px] md:h-[72px] rounded-full bg-[#1a1a2e] hover:bg-[#2d1060] text-white shadow-lg flex items-center justify-center transition print:hidden"
+        style={{ boxShadow: '0 8px 28px rgba(26,26,46,0.45)' }}
       >
+        {/* Pulse rings — only visible when the panel is closed so we
+            don't compete with the open conversation. */}
+        {!open && (
+          <>
+            <span className="absolute inset-0 rounded-full bg-[#F5C518] animate-ping opacity-30 pointer-events-none" />
+            <span className="absolute inset-[-4px] rounded-full border-2 border-[#F5C518] opacity-40 animate-pulse pointer-events-none" />
+          </>
+        )}
         {open ? (
-          <span className="text-2xl">✕</span>
+          <span className="text-2xl relative z-10">✕</span>
         ) : (
-          <AminAvatar size={48} />
+          <span className="relative z-10"><AminAvatar size={56} /></span>
         )}
         {showBadge && !open && (
-          <span className="absolute -top-1 -left-1 bg-[#F5C518] text-[#1a1a2e] text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center animate-bounce">
+          <span className="absolute -top-1 -left-1 bg-[#F5C518] text-[#1a1a2e] text-[11px] font-black rounded-full w-5 h-5 flex items-center justify-center animate-bounce z-20">
             👋
           </span>
         )}
@@ -289,7 +307,7 @@ export default function AmeenChat() {
       {open && (
         <div
           dir={isEn ? 'ltr' : 'rtl'}
-          className="fixed bottom-24 right-5 z-40 w-[92vw] max-w-sm h-[70vh] max-h-[600px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden print:hidden"
+          className="fixed bottom-28 right-5 md:bottom-32 md:right-10 z-40 w-[92vw] max-w-sm h-[70vh] max-h-[600px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden print:hidden"
         >
           {/* Header */}
           <div className="bg-gradient-to-l from-[#1a1a2e] via-[#2d1060] to-[#1a1a2e] text-white px-4 py-3 flex items-center gap-3">

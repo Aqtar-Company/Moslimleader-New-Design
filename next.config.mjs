@@ -61,6 +61,15 @@ const nextConfig = {
         source: '/_next/static/:path*',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
       },
+      // Long-lived branding assets that never change between deploys —
+      // 1 year immutable so the browser never re-requests them after
+      // first load. Keeps the launcher avatar warm across visits and
+      // stops the "image flashes on every refresh" perception on slow
+      // connections.
+      {
+        source: '/(amin-profile|logo|library-hero)\\.(png|jpg|jpeg|webp)',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
       // Cache images for 1 day
       {
         source: '/(.*\\.(?:jpg|jpeg|png|gif|webp|svg|ico))',

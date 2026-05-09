@@ -85,7 +85,18 @@ export default function BostaOrphansPage() {
 
   // Bulk-match state
   const [bulkMinConfidence, setBulkMinConfidence] = useState(0.5);
-  const [bulkPreview, setBulkPreview] = useState<{ wouldMatch: number; wouldSkip: number; sampleMatches: BulkSampleMatch[] } | null>(null);
+  const [bulkPreview, setBulkPreview] = useState<{
+    wouldMatch: number;
+    wouldSkip: number;
+    sampleMatches: BulkSampleMatch[];
+    diagnostics?: {
+      noDescription: number;
+      noParsedItems: number;
+      noMatchedItems: number;
+      belowThreshold: number;
+      confidenceBuckets: Record<string, number>;
+    };
+  } | null>(null);
   const [bulkRunning, setBulkRunning] = useState(false);
   const [batches, setBatches] = useState<BatchSummary[]>([]);
 
@@ -237,7 +248,12 @@ export default function BostaOrphansPage() {
       });
       const data = await res.json();
       if (!res.ok) { addToast(data.error || 'فشلت المعاينة', 'error'); setBulkRunning(false); return; }
-      setBulkPreview({ wouldMatch: data.wouldMatch, wouldSkip: data.wouldSkip, sampleMatches: data.sampleMatches ?? [] });
+      setBulkPreview({
+        wouldMatch: data.wouldMatch,
+        wouldSkip: data.wouldSkip,
+        sampleMatches: data.sampleMatches ?? [],
+        diagnostics: data.diagnostics,
+      });
     } catch {
       addToast('فشلت المعاينة', 'error');
     }
@@ -379,6 +395,22 @@ export default function BostaOrphansPage() {
                   المعاينة: <strong className="text-indigo-700">{fmt(bulkPreview.wouldMatch)}</strong> هيتعملهم match،
                   و<strong className="text-gray-500">{fmt(bulkPreview.wouldSkip)}</strong> هيتخطّوا (ثقة أقل).
                 </p>
+                {bulkPreview.diagnostics && (
+                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
+                    <DiagBox label="مفيش وصف" value={bulkPreview.diagnostics.noDescription} tone="gray" />
+                    <DiagBox label="وصف بدون parse" value={bulkPreview.diagnostics.noParsedItems} tone="gray" />
+                    <DiagBox label="مفيش منتج اتطابق" value={bulkPreview.diagnostics.noMatchedItems} tone="amber" />
+                    <DiagBox label="تحت حد الثقة" value={bulkPreview.diagnostics.belowThreshold} tone="amber" />
+                    <div className="col-span-2 sm:col-span-4 flex items-center gap-2 text-[10px] text-gray-600">
+                      <span className="font-bold">توزيع الثقة:</span>
+                      {Object.entries(bulkPreview.diagnostics.confidenceBuckets).map(([k, v]) => (
+                        <span key={k} className="bg-gray-100 px-1.5 py-0.5 rounded font-mono">
+                          {k}%: <strong>{fmt(v)}</strong>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {bulkPreview.sampleMatches.length > 0 && (
                   <details className="mt-2">
                     <summary className="text-[11px] text-indigo-700 cursor-pointer hover:text-indigo-900 font-bold">
@@ -656,6 +688,16 @@ function ReconciliationBadge({
           ضبط الأسعار
         </button>
       )}
+    </div>
+  );
+}
+
+function DiagBox({ label, value, tone }: { label: string; value: number; tone: 'gray' | 'amber' }) {
+  const cls = tone === 'amber' ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-gray-50 border-gray-200 text-gray-700';
+  return (
+    <div className={`rounded-lg border px-2 py-1 ${cls}`}>
+      <p className="font-bold tracking-wide">{label}</p>
+      <p className="text-sm font-black mt-0.5">{fmt(value)}</p>
     </div>
   );
 }

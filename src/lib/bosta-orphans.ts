@@ -170,16 +170,20 @@ export function buildOrphanRow(
   const anchor = orderTotal > 0 ? orderTotal : cod;
 
   let confidence = 0;
-  if (parsedItems.length > 0 && suggestedItems.length === parsedItems.length) {
-    const avgMatch = totalMatchScore / suggestedItems.length;
-    confidence = avgMatch * 0.6;
+  // Confidence formula: blend of name-matching coverage and price-
+  // reconciliation. The name component (totalMatchScore / parsedItems)
+  // already encodes BOTH coverage and per-item quality — items that
+  // didn't match contribute 0 to the sum, so a 3-of-4 match with
+  // perfect quality on the 3 scores 0.75, not punished further.
+  if (parsedItems.length > 0) {
+    const nameScore = totalMatchScore / parsedItems.length;
     if (anchor > 0 && suggestedSum > 0) {
-      confidence += priceReconciliationScore(suggestedSum, anchor) * 0.4;
-    } else if (anchor === 0) {
-      confidence += 0.2;
+      confidence = nameScore * 0.6 + priceReconciliationScore(suggestedSum, anchor) * 0.4;
+    } else {
+      // No price anchor (InstaPay/free-ship) — trust names only, lightly
+      // capped so we don't auto-confirm without ANY corroborating signal.
+      confidence = nameScore * 0.85;
     }
-  } else if (suggestedItems.length > 0) {
-    confidence = (totalMatchScore / parsedItems.length) * 0.4;
   }
   confidence = Math.min(1, confidence);
 

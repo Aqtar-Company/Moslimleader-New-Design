@@ -56,12 +56,33 @@ export async function POST(req: NextRequest) {
   ]);
 
   const rows = orphans.map(o => buildOrphanRow(o, products));
+  // Eligibility: any orphan whose confidence clears the threshold AND
+  // has at least one matched item. We dropped the strict "all items
+  // must match" rule — owner explicitly wants approximate sales
+  // figures, not pixel-perfect attribution, so a partial match is
+  // better than nothing.
   const eligible = rows.filter(r =>
     r.confidence >= minConfidence
-    && r.suggestedItems.length > 0
-    && r.suggestedItems.length === r.parsedItems.length,
+    && r.suggestedItems.length > 0,
   );
   const skipped = rows.length - eligible.length;
+
+  // Diagnostic breakdown so the owner can see WHY orphans don't
+  // qualify (e.g. "200 had no parseable description" is very
+  // different from "200 fell just below the threshold").
+  const diagnostics = {
+    noDescription: rows.filter(r => !r.description).length,
+    noParsedItems: rows.filter(r => r.description && r.parsedItems.length === 0).length,
+    noMatchedItems: rows.filter(r => r.parsedItems.length > 0 && r.suggestedItems.length === 0).length,
+    belowThreshold: rows.filter(r => r.suggestedItems.length > 0 && r.confidence < minConfidence).length,
+    confidenceBuckets: {
+      '0-25': rows.filter(r => r.confidence < 0.25).length,
+      '25-50': rows.filter(r => r.confidence >= 0.25 && r.confidence < 0.5).length,
+      '50-65': rows.filter(r => r.confidence >= 0.5 && r.confidence < 0.65).length,
+      '65-80': rows.filter(r => r.confidence >= 0.65 && r.confidence < 0.8).length,
+      '80-100': rows.filter(r => r.confidence >= 0.8).length,
+    },
+  };
 
   if (dryRun) {
     return NextResponse.json({
@@ -70,6 +91,7 @@ export async function POST(req: NextRequest) {
       wouldMatch: eligible.length,
       wouldSkip: skipped,
       minConfidence,
+      diagnostics,
       sampleMatches: eligible.slice(0, 20).map(summarize),
     });
   }

@@ -25,6 +25,7 @@ const EMPTY_FORM = {
   // age-appropriate products. null = "all ages".
   minAge: null as number | null,
   maxAge: null as number | null,
+  needsParentalGuide: false,
 };
 
 export default function ProductsPage() {
@@ -209,6 +210,7 @@ export default function ProductsPage() {
         weight: fullP.weight || 0,
         minAge: (fullP as { minAge?: number | null }).minAge ?? null,
         maxAge: (fullP as { maxAge?: number | null }).maxAge ?? null,
+        needsParentalGuide: (fullP as { needsParentalGuide?: boolean }).needsParentalGuide ?? false,
       });
       setFormTags((fullP.tags || []).join(', '));
       setFormImages([...(fullP.images || [])]);
@@ -270,6 +272,7 @@ export default function ProductsPage() {
       // Age targeting (FB AI assistant). null = "all ages".
       minAge: form.minAge,
       maxAge: form.maxAge,
+      needsParentalGuide: form.needsParentalGuide,
       tags: parsedTags,
       images: formImages,
       variants: builtVariants.length > 0 ? builtVariants : undefined,
@@ -455,6 +458,20 @@ export default function ProductsPage() {
                   />
                 </div>
               </div>
+              {/* Parental-help checkbox — mirrors the field on books.
+                  Surfaces a chip on the product card so parents see
+                  it before they buy. */}
+              <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.needsParentalGuide}
+                  onChange={e => setForm(f => ({ ...f, needsParentalGuide: e.target.checked }))}
+                  className="w-4 h-4 accent-amber-500"
+                />
+                <span className="text-xs text-gray-700 font-semibold">
+                  👨‍👩‍👧 هذا المنتج يحتاج مساعدة الوالدين (مناسب للأطفال أقل من 8 سنوات بمساعدة)
+                </span>
+              </label>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 <span className="text-[10px] text-blue-700 font-bold">اختصارات:</span>
                 {[

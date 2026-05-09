@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { slug, name, nameEn, shortDescription, shortDescriptionEn,
             description, descriptionEn, price, priceUsd, category, subcategory,
-            variants, tags, images, inStock, weight, minAge, maxAge } = body;
+            variants, tags, images, inStock, weight, minAge, maxAge, needsParentalGuide } = body;
 
     if (!slug || !name || price === undefined || !category) {
       return NextResponse.json({ error: 'الحقول المطلوبة: slug, name, price, category' }, { status: 400 });
@@ -102,6 +102,7 @@ export async function POST(req: NextRequest) {
         // Age targeting (FB AI assistant). Clamp to 0-18 / null.
         minAge: typeof minAge === 'number' ? Math.max(0, Math.min(18, Math.floor(minAge))) : null,
         maxAge: typeof maxAge === 'number' ? Math.max(0, Math.min(18, Math.floor(maxAge))) : null,
+        needsParentalGuide: typeof needsParentalGuide === 'boolean' ? needsParentalGuide : false,
         videoUrl: body.videoUrl ?? null,
         source: 'admin',
         updatedAt: new Date(),

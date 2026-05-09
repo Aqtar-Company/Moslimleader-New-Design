@@ -55,6 +55,7 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
         // Sales context fields: age range (B1), stock level (B3),
         // review aggregate (B3 social proof).
         minAge: true, maxAge: true, ageCategory: true,
+        needsParentalGuide: true,
         stock: true, variantStocks: true,
       },
       orderBy: { name: 'asc' },
@@ -89,6 +90,7 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
     shortDescription?: string;
     minAge?: number | null;
     maxAge?: number | null;
+    needsParentalGuide?: boolean;
     stock?: number;
     variantStocks?: unknown;
     reviewCount?: number;
@@ -170,6 +172,7 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
       } else if (p.minAge !== null && p.minAge !== undefined) {
         parts.push(`من عمر ${p.minAge}+`);
       }
+      if (p.needsParentalGuide) parts.push('👨‍👩‍👧 يحتاج مساعدة الوالدين');
       // Scarcity — only when low (≤5) so we don't lie about abundance.
       const stockNum = (() => {
         if (p.variantStocks && typeof p.variantStocks === 'object') {

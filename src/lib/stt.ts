@@ -17,6 +17,20 @@ export class SttError extends Error {
   }
 }
 
+// Gemini's accepted audio mime list:
+//   audio/wav, audio/mp3, audio/aiff, audio/aac, audio/ogg, audio/flac
+// MediaRecorder on Chrome/Android records as audio/webm;codecs=opus,
+// which Gemini rejects with a 400 even though webm and ogg both
+// wrap Opus frames. Empirically Gemini accepts the same bytes when
+// labelled audio/ogg — works in practice.
+function geminiCompatibleMime(input: string): string {
+  const m = (input || '').toLowerCase().split(';')[0].trim();
+  if (m === 'audio/webm') return 'audio/ogg';
+  if (m === 'audio/mp4' || m === 'audio/x-m4a' || m === 'audio/m4a') return 'audio/aac';
+  if (m === '' || m === 'application/octet-stream') return 'audio/ogg';
+  return m;
+}
+
 export async function transcribeAudio(file: File): Promise<string> {
   const settings = await getAssistantSettings();
   const key = settings.apiKeys?.gemini;
@@ -24,16 +38,19 @@ export async function transcribeAudio(file: File): Promise<string> {
 
   const buf = Buffer.from(await file.arrayBuffer());
   const b64 = buf.toString('base64');
-  // Gemini accepts audio/webm directly; the prompt steers it to a
-  // bare transcription rather than a summary.
+  const mime = geminiCompatibleMime(file.type);
   const body = {
     contents: [{
       parts: [
         { text: 'فرّغ هذا الملف الصوتي إلى نص باللغة العربية المصرية الدارجة. أجب بالنص فقط بدون أي تعليق أو علامات اقتباس.' },
-        { inline_data: { mime_type: file.type || 'audio/webm', data: b64 } },
+        { inline_data: { mime_type: mime, data: b64 } },
       ],
     }],
   };
+  // gemini-1.5-flash > 2.0-flash for audio in some regions; both
+  // accept inline audio. Stick with the 2.0 tag the rest of the
+  // codebase uses; the model fallback inside the AI router would
+  // pick another if unavailable.
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`;
   const res = await fetch(url, {
     method: 'POST',
@@ -42,6 +59,7 @@ export async function transcribeAudio(file: File): Promise<string> {
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
+    console.error('[stt] Gemini failed', res.status, mime, file.type, text.slice(0, 400));
     throw new SttError('API_FAILED', `Gemini STT failed: ${res.status} ${text.slice(0, 200)}`);
   }
   const json = await res.json();

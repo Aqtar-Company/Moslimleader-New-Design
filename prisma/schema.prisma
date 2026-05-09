@@ -147,6 +147,11 @@ model Product {
   minAge       Int?
   maxAge       Int?
   ageCategory  String?   // 'toddler' | 'preschool' | 'primary' | 'tween' | 'teen'
+  // True when the product needs an adult to use it with the child
+  // (board game, craft kit, etc.). Surfaced as a chip on the
+  // product card and in Amin's catalogue context, mirroring the
+  // existing field on the Book model.
+  needsParentalGuide Boolean @default(false)
 
   orderItems OrderItem[]
   cartItems  CartItem[]

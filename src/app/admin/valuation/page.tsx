@@ -1759,34 +1759,37 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
 
 function InvestorView({ data }: { data: ValuationData }) {
   const { metrics, valuation } = data;
+  // Spreads we compute up-front so the "investor's first question"
+  // callout below can quote them. The arithmetic is intentionally
+  // honest: at TTM × multiple, payback is fair-market years; at
+  // asset value, payback is decades. An investor sees this in 10s.
+  const opMid       = Math.round((valuation.marketLow + valuation.marketHigh) / 2);
+  const assetMid    = Math.round((valuation.base + valuation.strategic) / 2);
+  const paybackYears = opMid > 0 ? Math.round(assetMid / opMid) : null;
+
   return (
     <div className="space-y-6">
-      <Section icon="🏢" title="نبذة عن الشركة" breakBefore>
-        <div className="bg-white border border-gray-200 rounded-2xl p-5 text-sm leading-relaxed text-gray-700 space-y-2">
-          <p>
-            <strong>مسلم ليدر</strong> — منصة عربية لإنتاج وبيع الكتب
-            والمنتجات الإبداعية والألعاب التعليمية للأطفال والأسر،
-            مع مكتبة رقمية وتطبيقات وحضور اجتماعي عضوي.
-          </p>
-          <p className="text-[12px] text-gray-600">
-            خلال السنوات السابقة، لم تكن مسلم ليدر في مرحلة تشغيل
-            تجاري كامل، بل في <strong>مرحلة تأسيس منظومة منتجات
-            ومحتوى وقنوات رقمية</strong> (Asset Building Phase).
-            المرحلة القادمة هي <strong>Commercial Activation</strong> —
-            تحويل هذه الأصول إلى مبيعات منتظمة من خلال إدارة نمو
-            متفرغة وتسويق منظَّم.
-          </p>
-        </div>
-      </Section>
-
-      <Section icon="📈" title="مؤشرات الأداء التراكمية">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <KPI label="إيرادات تاريخية تراكمية" value={`${fmt(metrics.sales.totalRevenue)} ج.م`} hint="إجمالي Order.total باستثناء الإلغاءات والهدايا، عبر تاريخ الشركة." />
-          <KPI label="إجمالي الطلبات الصحيحة" value={fmt(metrics.sales.validOrders)} />
-          <KPI label="إجمالي المشترين الفعليين" value={fmt(metrics.customers.buyers)} sub={`${fmt(metrics.customers.repeatBuyers)} متكررون`} />
-          <KPI label="معدل تكرار الشراء" value={pct(metrics.customers.repeatRate)} hint="نسبة المشترين اللي عملوا طلبين أو أكثر." />
-        </div>
-      </Section>
+      {/* "Investor's first question" — written from the buyer's lens
+          so the report meets the objection BEFORE the headline. An
+          investor reading the two valuation panels in isolation will
+          immediately ask "why is this 8M when it only does 150K?" —
+          we name the gap explicitly and bridge it. */}
+      <div className="bg-gradient-to-br from-red-50 via-amber-50 to-red-50 border-2 border-red-300 rounded-2xl p-5">
+        <p className="text-[11px] text-red-700 font-black tracking-widest mb-2">سؤال المستثمر الأول</p>
+        <p className="text-base font-black text-red-900 leading-relaxed">
+          &quot;لماذا أدفع <strong>{fmt(assetMid)} ج.م</strong> لشركة إيراداتها التشغيلية الحالية في حدود
+          <strong> {fmt(opMid)} ج.م</strong> سنوياً
+          {paybackYears !== null && <> (= استرداد رأس مال خلال ~{fmt(paybackYears)} سنة)</>}؟&quot;
+        </p>
+        <p className="text-[12px] text-red-800 leading-relaxed mt-3 border-r-4 border-red-400 pr-3">
+          <strong>الجواب الصادق:</strong> لا تُدفَع قيمة الأصول كثمن شراء مباشر؛ هي
+          <strong> سقف تفاوضي</strong> يعكس <em>تكلفة إعادة البناء</em> لو حاول
+          مشترٍ بناء نفس المنظومة من الصفر (موقع + مكتبة رقمية + 3 تطبيقات + ملكية
+          فكرية + قاعدة جمهور 17 ألف). الثمن الفعلي يقع بين القيمتين، ويعتمد على:
+          (أ) سرعة إعادة التفعيل التجاري، (ب) إثبات الحقوق والمبيعات لكل أصل،
+          (ج) درجة احتياج المشتري الاستراتيجي لهذه الأصول.
+        </p>
+      </div>
 
       {/* Two clearly-separated valuation panels — no blended midpoint.
           Asset method on the right, market/operational on the left,
@@ -1821,6 +1824,33 @@ function InvestorView({ data }: { data: ValuationData }) {
               ليست تقييماً مالياً معتمداً.
             </p>
           </div>
+        </div>
+      </Section>
+
+      <Section icon="🏢" title="نبذة عن الشركة" breakBefore>
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 text-sm leading-relaxed text-gray-700 space-y-2">
+          <p>
+            <strong>مسلم ليدر</strong> — منصة عربية لإنتاج وبيع الكتب
+            والمنتجات الإبداعية والألعاب التعليمية للأطفال والأسر،
+            مع مكتبة رقمية وتطبيقات وحضور اجتماعي عضوي.
+          </p>
+          <p className="text-[12px] text-gray-600">
+            خلال السنوات السابقة، لم تكن مسلم ليدر في مرحلة تشغيل
+            تجاري كامل، بل في <strong>مرحلة تأسيس منظومة منتجات
+            ومحتوى وقنوات رقمية</strong> (Asset Building Phase).
+            المرحلة القادمة هي <strong>Commercial Activation</strong> —
+            تحويل هذه الأصول إلى مبيعات منتظمة من خلال إدارة نمو
+            متفرغة وتسويق منظَّم.
+          </p>
+        </div>
+      </Section>
+
+      <Section icon="📈" title="مؤشرات الأداء التراكمية">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <KPI label="إيرادات تاريخية تراكمية" value={`${fmt(metrics.sales.totalRevenue)} ج.م`} hint="إجمالي Order.total باستثناء الإلغاءات والهدايا، عبر تاريخ الشركة." />
+          <KPI label="إجمالي الطلبات الصحيحة" value={fmt(metrics.sales.validOrders)} />
+          <KPI label="إجمالي المشترين الفعليين" value={fmt(metrics.customers.buyers)} sub={`${fmt(metrics.customers.repeatBuyers)} متكررون`} />
+          <KPI label="معدل تكرار الشراء" value={pct(metrics.customers.repeatRate)} hint="نسبة المشترين اللي عملوا طلبين أو أكثر." />
         </div>
       </Section>
 
@@ -1873,6 +1903,61 @@ function InvestorView({ data }: { data: ValuationData }) {
               : `معدل تكرار الشراء ${pct(metrics.customers.repeatRate)} — مؤشر يحتاج تحسين عبر برامج ولاء واتصالات منتظمة.`}
           </li>
         </ul>
+      </Section>
+
+      {/* Due Diligence checklist — what's NOT in this report. Listed
+          so the investor isn't surprised and the owner knows the gap
+          before getting asked. This is the single most-respected
+          section by experienced investors: it shows the report is
+          honest about what it doesn't know. */}
+      <Section icon="📋" title="قائمة العناية الواجبة (Due Diligence Checklist)" subtitle="ما الذي يحتاج المستثمر إلى رؤيته قبل اعتماد التقييم — لا يوجد داخل النظام حالياً">
+        <div className="bg-white border border-gray-200 rounded-2xl p-5">
+          <ul className="text-[12px] text-gray-700 leading-relaxed space-y-2 list-disc pr-5">
+            <li>
+              <strong>إنفاق تسويقي شهري</strong> آخر 24 شهر — لإثبات أن انخفاض
+              TTM مرتبط بانخفاض الإنفاق، وليس بانخفاض الطلب.
+            </li>
+            <li>
+              <strong>تكلفة تطوير المنتجات الجديدة</strong> (الشنطة، الكتب الأخيرة،
+              تحديث المنصة) — لتثبيت رواية &quot;مرحلة بناء أصول&quot; بأرقام
+              فعلية بدلاً من سرد.
+            </li>
+            <li>
+              <strong>CAC و LTV لكل cohort</strong> — حالياً لدينا متوسط الإيراد
+              لكل مشتري فقط، بدون تكلفة اكتسابه. مهم لاحتساب جدوى إعادة
+              التفعيل التسويقي.
+            </li>
+            <li>
+              <strong>MAU / DAU / Retention</strong> للتطبيقات الـ 3 على Google Play
+              — العدّاد الحالي &quot;100+ تحميل&quot; غير كافٍ لتقييم بمنهج الإيرادات.
+            </li>
+            <li>
+              <strong>إيرادات في حساب البنك</strong> أو كشوف PayPal/Bosta COD آخر
+              36 شهر — لتأكيد أرقام النظام من مصدر مستقل.
+            </li>
+            <li>
+              <strong>عقود ملكية فكرية / حقوق نشر / ترجمة موثَّقة</strong> — بدون
+              توثيق رسمي، قيمة الـ IP تظل تقديرية فقط.
+            </li>
+            <li>
+              <strong>قائمة بـ مصاريف ثابتة شهرية</strong> (إيجار، اشتراكات، مرافق،
+              ضرائب) — لإكمال حساب EBITDA الفعلي والمنتقَل لـ DCF.
+            </li>
+            <li>
+              <strong>إقرارات ضريبية آخر 3 سنوات</strong> + موقف الزكاة الإسلامية.
+            </li>
+            <li>
+              <strong>صفقات مقارنة (Comps)</strong> من سوق النشر / EdTech المصري —
+              لتحديد المضاعف العادل في منهج الإيرادات بناءً على معاملات
+              حقيقية بدلاً من المضاعف الافتراضي.
+            </li>
+            <li>
+              <strong>توقُّعات مالية 3 سنوات (Pro-forma)</strong> مبنية على خطة
+              الـ Commercial Activation — السيناريو الأساسي + المتفائل +
+              المتحفظ.
+            </li>
+          </ul>
+        </div>
       </Section>
 
       <Section icon="📐" title="منهجية التقييم">

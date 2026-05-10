@@ -281,6 +281,31 @@ export default function BostaOrphansPage() {
     setBulkRunning(false);
   };
 
+  const purgeNonProducts = async (dryRun: boolean) => {
+    if (bulkRunning) return;
+    if (!dryRun && !confirm('هتمسح كل طلبات الفنون / العمارة / الباكدج (Art Learn Academy) من قاعدة البيانات. ده delete نهائي. متأكد؟')) return;
+    setBulkRunning(true);
+    try {
+      const res = await adminFetch('/api/admin/reports/bosta-orphans/purge-non-products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dryRun }),
+      });
+      const data = await res.json();
+      if (!res.ok) { addToast(data.error || 'فشلت العملية', 'error'); setBulkRunning(false); return; }
+      if (data.dryRun) {
+        const total = Math.round(data.totalValue ?? 0).toLocaleString('en-US');
+        addToast(`معاينة: هيتمسح ${data.wouldDelete} طلب بقيمة ${total} ج.م — لو الرقم سليم اضغط "نفّذ المسح"`, 'success', 8000);
+      } else {
+        addToast(`اتمسح ${data.deleted} طلب`, 'success', 6000);
+        await load();
+      }
+    } catch {
+      addToast('فشلت العملية', 'error');
+    }
+    setBulkRunning(false);
+  };
+
   const undoBatch = async (batchId: string) => {
     if (!confirm(`هتلغي كل المطابقات في الدفعة ${batchId}؟ ده هيمسح الـ OrderItems اللي اتعملت.`)) return;
     setBulkRunning(true);
@@ -387,6 +412,23 @@ export default function BostaOrphansPage() {
                   ↩ تراجع عن آخر دفعة ({fmt(batches[0].matchedCount)})
                 </button>
               )}
+              <span className="w-px h-6 bg-indigo-300 mx-1" />
+              <button
+                onClick={() => purgeNonProducts(true)}
+                disabled={bulkRunning}
+                className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold transition disabled:opacity-50 border border-red-300"
+                title="معاينة طلبات Art Learn Academy / فنون / عمارة قبل الحذف"
+              >
+                👁 معاينة طلبات الفنون
+              </button>
+              <button
+                onClick={() => purgeNonProducts(false)}
+                disabled={bulkRunning}
+                className="px-3 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition disabled:opacity-50"
+                title="حذف نهائي لكل طلبات الفنون والعمارة من قاعدة البيانات"
+              >
+                🗑 حذف طلبات الفنون
+              </button>
             </div>
 
             {bulkPreview && (

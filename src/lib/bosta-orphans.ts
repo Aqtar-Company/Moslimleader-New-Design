@@ -75,14 +75,26 @@ const NUM_WORDS: Record<string, number> = {
   'عشر': 10, 'عشره': 10, 'عشرة': 10,
 };
 
-// Strip trailing price/note tail like " - 100 ج بدل 120 ج..." that
-// often follows a product name in free-text descriptions.
+// Strip trailing price/note tail like " - 100 ج بدل 120 ج..." or
+// " - ملاحظة ممكن حضرتك..." that often follows a product name in
+// free-text descriptions. We split on the first occurrence of any of:
+//   " - "        the most common product/price separator
+//   "ملاحظة"     start of a customer note
+//   "اهداء"      a personalised dedication request
+//   " ١٠٠ ج"     a price tag in EGP (digit-then-جنيه)
 function stripTail(name: string): string {
-  return name
-    .split(/\s+[-–]\s+/)[0]
-    .replace(/\s*\(.*?\)\s*$/, '')   // trailing parens
-    .replace(/[*]+/g, '')
-    .trim();
+  let n = name;
+  // Cut at the first " - " or " – " separator (price/comment).
+  n = n.split(/\s+[-–]\s+/)[0];
+  // Cut at any of the note-prefix words.
+  n = n.split(/\s+(?:ملاحظ[هة]|اهداء|إهداء|ممكن\s+حضرتك|يرجى|برجاء)/)[0];
+  // Cut just before a price tag (digit followed by " ج" / "ج.م").
+  n = n.split(/\s+\d+\s*(?:ج\.م|ج\b|جم\b|جنيه)/)[0];
+  // Trailing parenthesised aside.
+  n = n.replace(/\s*\(.*?\)\s*$/, '');
+  // Asterisks / bullet punctuation.
+  n = n.replace(/[*•]+/g, '');
+  return n.trim();
 }
 
 // Bosta descriptions arrive in many formats. Try them in cascade:
@@ -132,7 +144,7 @@ export function parseItemsFromDescription(description: string | null): Array<{ n
   const segments = desc.split(/\/{1,3}|\n|,/).map(s => s.trim()).filter(Boolean);
   for (let raw of segments) {
     raw = raw.replace(/^[*•\s]+/, '').trim();
-    if (!raw || looksLikeNote(raw)) continue;
+    if (!raw) continue;
 
     // "عدد N من? <name>" or bare-leading "N <name>" — allow Nمن
     // attached without space ("عدد 2من X").
@@ -140,7 +152,7 @@ export function parseItemsFromDescription(description: string | null): Array<{ n
     if (mm) {
       const q = parseInt(mm[1], 10);
       const name = stripTail(mm[2]);
-      if (q > 0 && q <= 1000 && name.length > 0) {
+      if (q > 0 && q <= 1000 && name.length > 0 && !looksLikeNote(name)) {
         items.push({ name, quantity: q });
         continue;
       }
@@ -150,11 +162,15 @@ export function parseItemsFromDescription(description: string | null): Array<{ n
     if (wordMatch && NUM_WORDS[wordMatch[1]]) {
       const q = NUM_WORDS[wordMatch[1]];
       const name = stripTail(wordMatch[2]);
-      if (name.length > 0) { items.push({ name, quantity: q }); continue; }
+      if (name.length > 0 && !looksLikeNote(name)) {
+        items.push({ name, quantity: q });
+        continue;
+      }
     }
-    // Plain product name (qty 1)
+    // Plain product name (qty 1) — strip price/note tail FIRST so a
+    // "X - ملاحظة Y" line still yields the X part as a product.
     const cleanName = stripTail(raw);
-    if (cleanName.length > 0 && cleanName.length <= 120) {
+    if (cleanName.length > 0 && cleanName.length <= 120 && !looksLikeNote(cleanName)) {
       items.push({ name: cleanName, quantity: 1 });
     }
   }
@@ -389,9 +405,28 @@ export function extractDescription(payload: unknown): string | null {
     p.notes,
     p.description,
     p.businessReference,
+    // Fallback: Bosta's structured `productInfo` field. Sometimes it's
+    // an array of {productName, quantity} objects, sometimes a string.
+    p.productInfo,
   ];
   for (const c of candidates) {
     if (typeof c === 'string' && c.trim()) return c.trim();
+    if (Array.isArray(c) && c.length > 0) {
+      // Render structured productInfo into the parser's
+      // "Name:X - quantity:N" format so format 1 picks it up.
+      const lines: string[] = [];
+      for (const it of c) {
+        if (it && typeof it === 'object') {
+          const r = it as Record<string, unknown>;
+          const name = r.productName ?? r.name ?? r.title;
+          const qty = r.quantity ?? r.qty ?? r.count ?? 1;
+          if (typeof name === 'string' && name.trim()) {
+            lines.push(`Name:${name.trim()} - quantity:${Number(qty) || 1}`);
+          }
+        }
+      }
+      if (lines.length > 0) return lines.join('\n');
+    }
     if (c && typeof c === 'object') {
       const obj = c as Record<string, unknown>;
       const text = obj.description ?? obj.notes ?? obj.text;

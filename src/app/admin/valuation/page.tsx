@@ -184,22 +184,15 @@ export default function ValuationPage() {
     <div className="space-y-6 print:bg-white print:space-y-4" dir="rtl">
       {/* Print stylesheet — keeps gradients, blocks page breaks inside cards,
           forces a clean A4-friendly margin. The printable view should look
-          like a polished investor handout, not a Chrome screenshot. */}
+          like a polished investor handout, not a Chrome screenshot.
+          Header/footer running strip + watermark intentionally removed
+          per owner request — the document should read clean, no
+          recurring page text fighting the data. */}
       <style jsx global>{`
         @media print {
-          /* A4 with footer space for the running header strip + page
-             numbers; @page-counter on most browsers fills (n) of (m).
-             We also stamp a faint watermark on every page so a leaked
-             screenshot of the PDF carries its "internal estimate" tag. */
           @page {
             size: A4;
-            margin: 18mm 12mm 22mm 12mm;
-            @bottom-center {
-              content: "مسلم ليدر — تقدير داخلي للتقييم — صفحة " counter(page) " من " counter(pages);
-              font-family: -apple-system, system-ui, sans-serif;
-              font-size: 9px;
-              color: #999;
-            }
+            margin: 14mm 12mm 14mm 12mm;
           }
           html, body { background: #fff !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -207,22 +200,32 @@ export default function ValuationPage() {
           .valuation-page-break { break-before: page; page-break-before: page; }
           /* Stop tooltips from popping in the print stream */
           [aria-label="شرح"] { display: none !important; }
-          /* Diagonal watermark behind every page — kept low-opacity so
-             it doesn't fight the data, but clearly marks the document
-             as a draft for review. */
-          body::before {
-            content: "تقدير داخلي — قيد المراجعة";
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-30deg);
-            font-size: 60pt;
-            color: rgba(245, 197, 24, 0.08);
-            font-weight: 900;
-            z-index: -1;
-            pointer-events: none;
-            white-space: nowrap;
+
+          /* Readability pass — the screen styling uses very small
+             fonts and pale greys that disappear on paper. Bump the
+             whole document up one notch for print and darken the
+             muted text so the data carries the page. */
+          body {
+            font-size: 12pt !important;
+            line-height: 1.45 !important;
+            color: #1a1a1a !important;
           }
+          .text-\\[9px\\], .text-\\[10px\\] { font-size: 9pt !important; }
+          .text-\\[11px\\], .text-xs { font-size: 10pt !important; }
+          .text-sm { font-size: 11pt !important; }
+          .text-base { font-size: 12pt !important; }
+          .text-lg { font-size: 14pt !important; }
+          .text-xl { font-size: 16pt !important; }
+          .text-2xl { font-size: 19pt !important; }
+          .text-3xl { font-size: 23pt !important; }
+          .text-4xl, .text-5xl { font-size: 28pt !important; }
+          /* Pale greys → readable charcoal in print */
+          .text-gray-300, .text-gray-400 { color: #4b5563 !important; }
+          .text-gray-500 { color: #374151 !important; }
+          .text-gray-600 { color: #1f2937 !important; }
+          .text-white\\/40, .text-white\\/60, .text-white\\/70 { color: rgba(255,255,255,0.92) !important; }
+          /* Make borders crisp on paper */
+          .border, .border-2 { border-color: #9ca3af !important; }
         }
       `}</style>
 

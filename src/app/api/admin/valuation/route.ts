@@ -331,8 +331,15 @@ export async function GET() {
   const ipBookTranslationValue = translationBookCount * assumptions.ipBookTranslationValue;
   const ipBookValue       = ipBookOriginalValue + ipBookTranslationValue;
   const ipProductValue    = products.length * assumptions.ipProductValue;
+  // Itemised media assets — promotional videos + product anasheed.
+  // Counts come from the assumptions editor (no separate table); the
+  // defaults are 0 so a fresh install reads zero until the owner
+  // enters real numbers.
+  const ipPromoVideoValue = assumptions.promoVideoCount * assumptions.promoVideoValue;
+  const ipAnasheedValue   = assumptions.anasheedCount  * assumptions.anasheedValue;
   const ipDigitalValue    = assumptions.ipDigitalValue;
-  const ipTotal           = ipBookValue + ipProductValue + ipDigitalValue;
+  const ipTotal           = ipBookValue + ipProductValue + ipDigitalValue
+                          + ipPromoVideoValue + ipAnasheedValue;
 
   const techValue         = assumptions.techValue;
   // Goodwill on the customer database — applied to REAL BUYERS only,
@@ -851,6 +858,12 @@ export async function GET() {
         booksTranslationCount: translationBookCount,
         productsValue: ipProductValue,
         digitalValue: ipDigitalValue,
+        promoVideoValue: ipPromoVideoValue,
+        promoVideoCount: assumptions.promoVideoCount,
+        promoVideoPerUnit: assumptions.promoVideoValue,
+        anasheedValue: ipAnasheedValue,
+        anasheedCount: assumptions.anasheedCount,
+        anasheedPerUnit: assumptions.anasheedValue,
         total: ipTotal,
         // Surface the per-unit weights so the UI can show the methodology
         // alongside the headline number.

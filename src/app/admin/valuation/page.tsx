@@ -13,6 +13,10 @@ interface Assumptions {
   ipBookTranslationValue: number;
   ipProductValue: number;
   ipDigitalValue: number;
+  promoVideoCount: number;
+  promoVideoValue: number;
+  anasheedCount: number;
+  anasheedValue: number;
   techValue: number;
   customerDbValue: number;
   receivablesProvisionRate: number;
@@ -45,7 +49,7 @@ interface ValuationData {
     production?: { batchesCount: number; unitsProduced: number; totalSpend: number };
     suppliers?: { total: number; active: number; transactionCount: number; netLiabilities: number };
     gifts?: { count: number; units: number; retailValue: number; shippingCost: number; totalCost: number };
-    ip: { booksValue: number; booksOriginalValue: number; booksTranslationValue: number; booksOriginalCount: number; booksTranslationCount: number; productsValue: number; digitalValue: number; total: number; perBook: number; perBookTranslation: number; perProduct: number; booksCount: number; productsCount: number };
+    ip: { booksValue: number; booksOriginalValue: number; booksTranslationValue: number; booksOriginalCount: number; booksTranslationCount: number; productsValue: number; digitalValue: number; promoVideoValue: number; promoVideoCount: number; promoVideoPerUnit: number; anasheedValue: number; anasheedCount: number; anasheedPerUnit: number; total: number; perBook: number; perBookTranslation: number; perProduct: number; booksCount: number; productsCount: number };
     tech: { value: number };
     customerDb: { value: number; perCustomer: number; appliedTo: number; registeredCount: number };
     wholesale: { value: number; perCustomer: number; count: number };
@@ -886,9 +890,21 @@ function AssumptionsTable({ assumptions, defaults }: { assumptions: Assumptions;
     { key: 'ipProductValue', label: 'قيمة كل منتج إبداعي (IP)', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
       explain: 'تقدير لقيمة التصميم/البراند الخاص بكل منتج.',
       footnote: 'تقدير موحَّد لكل المنتجات — لا يميز بين البِست-سيلر والمنتج الراكد. حد أدنى للمناقشة، ليس رقماً نهائياً.' },
-    { key: 'ipDigitalValue', label: 'قيمة المحتوى الرقمي', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
-      explain: 'يوتيوب + PDFs + قيمة البراند ككل.',
+    { key: 'ipDigitalValue', label: 'قيمة المحتوى الرقمي (يوتيوب + براند)', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
+      explain: 'قناة يوتيوب + قيمة البراند ككل (بدون الفيديوهات الدعائية والأناشيد — ليهم بنود منفصلة).',
       footnote: 'رقم ثابت — لا يعكس عدد المشتركين أو معدل التفاعل. للتحسين: ربطه بعدد المتابعين × LTV لكل متابع.' },
+    { key: 'promoVideoCount', label: 'عدد الفيديوهات الدعائية', format: n => fmt(n), basis: 'heuristic',
+      explain: 'إجمالي عدد الفيديوهات الدعائية المُنتَجة للمنتجات (مش متعد تلقائياً — اكتبها يدوياً).',
+      footnote: 'يحسب الفيديو مرة واحدة فقط — لو الفيديو الواحد بيدعم أكتر من منتج، عُدّه واحد.' },
+    { key: 'promoVideoValue', label: 'قيمة الفيديو الواحد (ج.م)', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
+      explain: 'تكلفة إنتاج/استبدال فيديو دعائي واحد (60-90 ث) في استوديو محترم.',
+      footnote: 'الافتراضي 5,000 ج.م — ارفعه لو الفيديوهات بكاميرا/طاقم محترف ونتيجة جودتها أعلى.' },
+    { key: 'anasheedCount', label: 'عدد أناشيد المنتجات', format: n => fmt(n), basis: 'heuristic',
+      explain: 'إجمالي الأناشيد المُنتَجة وموسيقى المنتجات.',
+      footnote: 'حق ملكية موسيقي مستقل — تختلف قيمته جذرياً لو فيه عقد لحن/توزيع/تسجيل.' },
+    { key: 'anasheedValue', label: 'قيمة النشيد الواحد (ج.م)', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
+      explain: 'تكلفة إنتاج نشيد بكلمات + لحن + تسجيل + هندسة صوت.',
+      footnote: 'الافتراضي 12,000 ج.م — لو النشيد له صوت فنان معروف أو حقوق توزيع موثَّقة، ارفع القيمة لتعكس قيمته السوقية.' },
     { key: 'techValue', label: 'قيمة المنصة التقنية', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
       explain: 'تكلفة بناء النظام لو حد محتاج يبنيه من الصفر.',
       footnote: 'تقدير cost-to-rebuild. للتدقيق: عرض سعر فعلي من شركة تطوير، أو تكلفة مهندس × أشهر العمل.' },
@@ -999,6 +1015,10 @@ function AssumptionsForm({ initial, defaults, onSave, onCancel }: { initial: Ass
         <AssumptionsField k="ipBookTranslationValue" label="قيمة الترجمة (ج.م)" step={500} value={v.ipBookTranslationValue} defaultValue={defaults.ipBookTranslationValue} onChange={set} />
         <AssumptionsField k="ipProductValue" label="قيمة كل منتج (ج.م)" step={1000} value={v.ipProductValue} defaultValue={defaults.ipProductValue} onChange={set} />
         <AssumptionsField k="ipDigitalValue" label="قيمة المحتوى الرقمي (ج.م)" step={10000} value={v.ipDigitalValue} defaultValue={defaults.ipDigitalValue} onChange={set} />
+        <AssumptionsField k="promoVideoCount" label="عدد الفيديوهات الدعائية" step={1} min={0} value={v.promoVideoCount} defaultValue={defaults.promoVideoCount} onChange={set} />
+        <AssumptionsField k="promoVideoValue" label="قيمة الفيديو الواحد (ج.م)" step={500} value={v.promoVideoValue} defaultValue={defaults.promoVideoValue} onChange={set} />
+        <AssumptionsField k="anasheedCount" label="عدد الأناشيد" step={1} min={0} value={v.anasheedCount} defaultValue={defaults.anasheedCount} onChange={set} />
+        <AssumptionsField k="anasheedValue" label="قيمة النشيد الواحد (ج.م)" step={500} value={v.anasheedValue} defaultValue={defaults.anasheedValue} onChange={set} />
         <AssumptionsField k="techValue" label="قيمة المنصة (ج.م)" step={10000} value={v.techValue} defaultValue={defaults.techValue} onChange={set} />
         <AssumptionsField k="customerDbValue" label="قيمة كل مشترٍ فعلي (ج.م)" step={10} value={v.customerDbValue} defaultValue={defaults.customerDbValue} onChange={set} />
         <AssumptionsField k="receivablesProvisionRate" label="احتياطي ديون مشكوك في تحصيلها (0–1)" step={0.05} value={v.receivablesProvisionRate ?? 0.10} defaultValue={defaults.receivablesProvisionRate} onChange={set} />
@@ -1278,7 +1298,9 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
           <IPCard icon="📖" label="الأعمال الأصلية (عربي)" value={metrics.ip.booksOriginalValue} count={metrics.ip.booksOriginalCount} per={metrics.ip.perBook} />
           <IPCard icon="🌐" label="الترجمات / الإصدارات اللغوية" value={metrics.ip.booksTranslationValue} count={metrics.ip.booksTranslationCount} per={metrics.ip.perBookTranslation} />
           <IPCard icon="🎮" label="المنتجات الإبداعية" value={metrics.ip.productsValue} count={metrics.ip.productsCount} per={metrics.ip.perProduct} />
-          <IPCard icon="🎬" label="المحتوى الرقمي (منصة + قنوات)" value={metrics.ip.digitalValue} count={null} per={null} />
+          <IPCard icon="🎥" label="فيديوهات دعائية" value={metrics.ip.promoVideoValue} count={metrics.ip.promoVideoCount} per={metrics.ip.promoVideoPerUnit} />
+          <IPCard icon="🎵" label="أناشيد المنتجات" value={metrics.ip.anasheedValue} count={metrics.ip.anasheedCount} per={metrics.ip.anasheedPerUnit} />
+          <IPCard icon="🎬" label="المحتوى الرقمي (يوتيوب + براند)" value={metrics.ip.digitalValue} count={null} per={null} />
         </div>
         <div className="bg-gradient-to-br from-amber-50 to-amber-100 border-2 border-[#F5C518] rounded-2xl p-5 mt-4">
           <p className="text-xs text-amber-900 font-bold flex items-center gap-2">

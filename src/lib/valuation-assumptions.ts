@@ -9,7 +9,15 @@ export interface ValuationAssumptions {
   ipBookValue: number;        // EGP attributed per ORIGINAL authored book (Arabic / "both")
   ipBookTranslationValue: number; // EGP per translation / non-Arabic edition — fraction of original because the IP is derivative
   ipProductValue: number;     // EGP attributed per authored product
-  ipDigitalValue: number;     // EGP flat — YouTube + PDFs + brand
+  ipDigitalValue: number;     // EGP flat — YouTube channel goodwill + brand
+  // Promotional videos and product anasheed/songs are itemisable
+  // creative assets — each one has a real production cost and
+  // independent licensing/reuse value, so we track them separately
+  // (count × per-unit) instead of bundling into ipDigitalValue.
+  promoVideoCount: number;    // # of promotional videos produced (admin-maintained)
+  promoVideoValue: number;    // EGP per promotional video
+  anasheedCount: number;      // # of product anasheed / songs produced (admin-maintained)
+  anasheedValue: number;      // EGP per nasheed
   techValue: number;          // EGP — platform + admin + integrations
   customerDbValue: number;    // EGP per real BUYER (customer with at least one valid order)
   receivablesProvisionRate: number;   // 0–1, fraction of customer receivables written off as bad-debt provision
@@ -37,6 +45,15 @@ export const DEFAULT_VALUATION_ASSUMPTIONS: ValuationAssumptions = {
   ipBookTranslationValue: 7500,
   ipProductValue: 40000,
   ipDigitalValue: 350000,
+  // Defaults are 0 — owner enters real counts in the assumptions
+  // editor. The per-unit defaults reflect a small studio production
+  // cost: a 60-90s product promo runs ~5k EGP, a custom song with
+  // mixing ~12k EGP. These ride low so an empty count doesn't move
+  // the headline silently.
+  promoVideoCount: 0,
+  promoVideoValue: 5000,
+  anasheedCount: 0,
+  anasheedValue: 12000,
   techValue: 800000,
   customerDbValue: 200,
   // 10% bad-debt provision is the conservative SME default in EG.
@@ -121,6 +138,10 @@ function sanitize(input: Partial<ValuationAssumptions>): {
   take('ipBookTranslationValue', 0, 1_000_000);
   take('ipProductValue', 0, 2_000_000);
   take('ipDigitalValue', 0, 10_000_000);
+  take('promoVideoCount', 0, 10_000, true);
+  take('promoVideoValue', 0, 200_000);
+  take('anasheedCount', 0, 10_000, true);
+  take('anasheedValue', 0, 500_000);
   take('techValue', 0, 5_000_000);
   take('customerDbValue', 0, 5_000);
   take('receivablesProvisionRate', 0, 1);

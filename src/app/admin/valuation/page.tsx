@@ -540,19 +540,20 @@ function FounderContextSection({ metrics }: { metrics: ValuationData['metrics'] 
   const activeCount = metrics.customers.active;
   const ebitda = f.ebitdaPartial;
 
-  // We only show this block when the data actually looks like a
-  // founder-bottleneck pattern: TTM is small AND (YoY < 0 OR active
-  // customers < 30). Otherwise the explanation would be misleading.
-  const looksLikeBottleneck = ttm < 200_000 && (
+  // We only show this block when the data actually looks like an
+  // asset-building / underinvestment pattern: TTM is small AND
+  // (YoY < 0 OR active customers < 30). Otherwise the framing would
+  // be misleading.
+  const looksLikeAssetBuildPhase = ttm < 200_000 && (
     (yoy !== null && yoy < 0) || activeCount < 30
   );
-  if (!looksLikeBottleneck) return null;
+  if (!looksLikeAssetBuildPhase) return null;
 
   return (
     <Section
       icon="🧭"
-      title="تفسير تراجع الأداء الأخير: مرحلة بناء أصول لا مرحلة تسويق"
-      subtitle="Founder Bottleneck & Marketing Underinvestment — قراءة مرتبة للأرقام السلبية"
+      title="تفسير الأداء الأخير: مرحلة بناء الأصول قبل مرحلة النمو"
+      subtitle="Asset Building Phase → Commercial Activation Phase — قراءة مرتبة للأرقام السلبية"
     >
       <div className="space-y-4 text-[13px] leading-relaxed text-gray-800">
         <p>
@@ -565,54 +566,67 @@ function FounderContextSection({ metrics }: { metrics: ValuationData['metrics'] 
         <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4">
           <p className="font-black text-amber-900 mb-2">⚠️ كيف لا تُقرأ هذه الأرقام</p>
           <p className="text-amber-900 text-[12px] leading-relaxed">
-            هذه الأرقام تعكس <strong>فترة تشغيل غير نشطة تسويقيًا</strong>،
-            وليس رفضًا من السوق لمنتجات مسلم ليدر. لذلك لا يصح قياس
-            القيمة على أساس آخر 12 شهر فقط، أو الاستنتاج بأن الطلب على
-            البراند ضعيف.
+            هذه الأرقام تعكس <strong>مرحلة تأسيس وبناء أصول طويلة الأجل</strong>،
+            وليست مرحلة تشغيل وتسويق كامل. لذلك لا يصح قياس قيمة الشركة على
+            أساس آخر 12 شهر فقط، أو الاستنتاج بأن السوق رفض منتجات مسلم ليدر.
           </p>
         </div>
 
         <div className="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-4">
-          <p className="font-black text-emerald-900 mb-2">✓ السياق الفعلي</p>
+          <p className="font-black text-emerald-900 mb-2">✓ ما تم بناؤه فعلاً خلال هذه المرحلة (Asset Building)</p>
           <ul className="text-emerald-900 text-[12px] leading-relaxed list-disc pr-5 space-y-1.5">
+            <li><strong>تأليف وتطوير محتوى جديد</strong> — كتب وعناوين أصلية (مثال: كتاب &quot;العقل الشجاع&quot;).</li>
+            <li><strong>الإشراف المباشر على الهوية والتصميم</strong> من المؤسس، مما خلق طابعًا بصريًا متمايزًا للبراند.</li>
+            <li><strong>تطوير منتجات مادية جديدة</strong> مثل خط الشنطة، استهلك جزءًا من التمويل المتاح للتسويق قصير الأجل.</li>
+            <li><strong>إعادة بناء الموقع الإلكتروني مرتين</strong> ثم تحديث شامل للمنصة في <strong>2026</strong> — أصل تقني متجدد.</li>
+            <li><strong>إطلاق المكتبة الإلكترونية والكتب الرقمية</strong> — قناة دخل وتوزيع مستقلة لم تكن موجودة من قبل.</li>
+            <li><strong>بناء مميزات جديدة في المنصة</strong> (نظام الكتب، الاشتراكات، التتبع، التحليلات).</li>
+            <li><strong>~17 ألف متابع عضوي على فيسبوك</strong> دون أدوات تضخيم — تثبت قبول حقيقي للبراند.</li>
+            <li><strong>مراجعات حقيقية إيجابية</strong> من العملاء على فيسبوك والموقع — مصداقية مكتسبة بمرور الوقت.</li>
             <li>
-              المؤسس كان منشغلًا بـ <strong>تأليف ومراجعة محتوى جديد</strong>
-              (مثال: كتاب &quot;العقل الشجاع&quot;) و<strong>الإشراف المباشر على
-              التصميمات والهوية البصرية</strong>، وهو ما خلق ملكية فكرية
-              جديدة لكنه قلّل وقته المتاح للتشغيل اليومي.
-            </li>
-            <li>
-              تطوير منتجات مادية جديدة (مثال: <strong>الشنطة</strong>) استهلك
-              جزءًا من التمويل المتاح، فقلّت الميزانية المتاحة للتسويق
-              قصير الأجل.
-            </li>
-            <li>
-              لم يكن هناك <strong>مدير متفرغ للمبيعات والتشغيل والتوزيع</strong>،
-              فبقيت قنوات النمو معتمدة على المؤسس بشكل كامل.
-            </li>
-            <li>
-              التاريخ التراكمي للنشاط يُظهر إيرادات تجاوزت <strong>{fmt(metrics.sales.totalRevenue)} ج.م</strong>
-              عبر <strong>{fmt(metrics.customers.buyers)}</strong> مشترٍ فعلي،
-              مما يدل على قبول السوق للبراند والمنتجات.
+              التاريخ التراكمي يثبت قبول السوق: إيرادات تجاوزت
+              <strong> {fmt(metrics.sales.totalRevenue)} ج.م</strong> عبر
+              <strong> {fmt(metrics.customers.buyers)}</strong> مشترٍ فعلي،
+              مع <strong>{fmt(metrics.customers.repeatBuyers)}</strong> مشترٍ متكرر.
             </li>
           </ul>
+        </div>
+
+        <div className="bg-purple-50 border-2 border-purple-300 rounded-2xl p-4">
+          <p className="font-black text-purple-900 mb-2">📍 الموضع الحالي على خريطة دورة حياة الشركة</p>
+          <p className="text-purple-900 text-[12px] leading-relaxed">
+            مسلم ليدر <strong>ليست متجراً تراجعت مبيعاته</strong>؛
+            هي <strong>كيان منتجات + محتوى + قاعدة جمهور + منصة جاهزة</strong>،
+            انتقل من مرحلة <strong>Asset Building</strong> (بناء الأصول) إلى عتبة مرحلة
+            <strong> Commercial Activation</strong> (التفعيل التجاري).
+            المرحلة القادمة تتطلب تحويل هذه الأصول إلى مبيعات منتظمة من خلال
+            إدارة نمو متفرغة وتسويق مستمر وتوزيع منظَّم — وليس بناء منتجات إضافية.
+          </p>
         </div>
 
         <div className="bg-blue-50 border-2 border-blue-300 rounded-2xl p-4">
-          <p className="font-black text-blue-900 mb-2">🎯 خطة إعادة التفعيل المقترحة (Turnaround)</p>
+          <p className="font-black text-blue-900 mb-2">🎯 خطة Commercial Activation المقترحة</p>
           <ul className="text-blue-900 text-[12px] leading-relaxed list-disc pr-5 space-y-1.5">
             <li>تعيين <strong>مدير تشغيل / نمو متفرغ</strong> ليتحمل المبيعات والتسويق والتوزيع.</li>
-            <li>ميزانية تسويق شهرية مرتبطة بـ <strong>روزنامة إطلاق منتجات</strong> ربع سنوية.</li>
-            <li>تفعيل قنوات التوزيع (متاجر، تجار جملة، رحلات معارض) بشكل منتظم.</li>
-            <li>تحويل دور المؤسس تدريجيًا إلى <strong>قيادة الرؤية والمحتوى والهوية</strong> فقط.</li>
+            <li>ميزانية تسويق شهرية مرتبطة بـ <strong>روزنامة إطلاق</strong> ربع سنوية للمنتجات والكتب الرقمية الموجودة بالفعل.</li>
+            <li>تحويل المتابعين العضويين على فيسبوك إلى <strong>قنوات مبيعات قابلة للقياس</strong> (Messenger flows + كتالوج + إعلانات Lookalike).</li>
+            <li>تفعيل قنوات التوزيع التقليدية: <strong>تجار جملة، معارض الكتاب، توزيع المدارس</strong>.</li>
+            <li>تحويل دور المؤسس تدريجيًا إلى <strong>قيادة الرؤية والمحتوى والهوية</strong> فقط، مع تفويض اليومي.</li>
           </ul>
         </div>
 
-        <p className="text-[11px] text-gray-500 leading-relaxed">
+        <p className="text-[11px] text-gray-500 leading-relaxed border-r-4 border-gray-300 pr-3">
           <strong>Key-Person Risk:</strong> الشركة معتمدة بشكل كبير على المؤسس
-          في التأليف والإشراف على التصميم والقرارات اليومية. هذه المخاطرة
-          يجب توضيحها لأي شريك أو مستثمر، مع خطة للتخفيف منها (تفويض،
-          توثيق العمليات، تدريب فريق ثانٍ).
+          في التأليف والإشراف على التصميم. هذه المخاطرة يجب توضيحها لأي شريك
+          أو مستثمر، مع خطة للتخفيف منها (تفويض، توثيق العمليات، تدريب فريق
+          ثانٍ، فصل دور &quot;المؤلف/المصمم&quot; عن دور &quot;المدير التنفيذي&quot;).
+        </p>
+
+        <p className="text-[11px] text-gray-500 leading-relaxed border-r-4 border-amber-300 pr-3">
+          <strong>ملاحظة على متابعي فيسبوك:</strong> الـ 17 ألف متابع عضوي مؤشر مصداقية
+          مهم لكنه <strong>لا يُحتسب كرقم تقييم منفرد</strong>. القيمة الفعلية تظهر
+          عند تحويل هذا الجمهور إلى مبيعات منتظمة. يُفضَّل إرفاق سكرين شوت
+          موثَّق لصفحة المتابعين والمراجعات في حزمة المستندات المرفقة بالتقرير.
         </p>
       </div>
     </Section>

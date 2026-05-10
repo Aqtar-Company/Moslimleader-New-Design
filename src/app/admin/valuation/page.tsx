@@ -10,8 +10,13 @@ import ForbiddenState from '@/components/admin/ForbiddenState';
 interface Assumptions {
   cogsRatio: number;
   ipBookValue: number;
+  ipBookTranslationValue: number;
   ipProductValue: number;
   ipDigitalValue: number;
+  promoVideoCount: number;
+  promoVideoValue: number;
+  anasheedCount: number;
+  anasheedValue: number;
   techValue: number;
   customerDbValue: number;
   receivablesProvisionRate: number;
@@ -44,7 +49,7 @@ interface ValuationData {
     production?: { batchesCount: number; unitsProduced: number; totalSpend: number };
     suppliers?: { total: number; active: number; transactionCount: number; netLiabilities: number };
     gifts?: { count: number; units: number; retailValue: number; shippingCost: number; totalCost: number };
-    ip: { booksValue: number; productsValue: number; digitalValue: number; total: number; perBook: number; perProduct: number; booksCount: number; productsCount: number };
+    ip: { booksValue: number; booksOriginalValue: number; booksTranslationValue: number; booksOriginalCount: number; booksTranslationCount: number; productsValue: number; digitalValue: number; promoVideoValue: number; promoVideoCount: number; promoVideoPerUnit: number; anasheedValue: number; anasheedCount: number; anasheedPerUnit: number; total: number; perBook: number; perBookTranslation: number; perProduct: number; booksCount: number; productsCount: number };
     tech: { value: number };
     customerDb: { value: number; perCustomer: number; appliedTo: number; registeredCount: number };
     wholesale: { value: number; perCustomer: number; count: number };
@@ -121,7 +126,23 @@ export default function ValuationPage() {
   const { addToast } = useToast();
   const { user } = useAuth();
   const canEdit = user?.role === 'admin' || (user?.permissions ?? []).includes('valuation.write');
-  const [data, setData] = useState<ValuationData | null>(null);
+  // Hydrate from localStorage on first paint so a revisit shows the
+  // last report instantly while we refetch in the background. The
+  // server's full computation takes a few seconds; without this the
+  // page sits on a spinner every time the admin opens it.
+  const CACHE_KEY = 'valuation-cache-v1';
+  const [data, setData] = useState<ValuationData | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = window.localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as { at: number; data: ValuationData };
+      // Older than 24h — drop it; assumptions might have shifted enough
+      // that showing the stale headline could mislead.
+      if (Date.now() - parsed.at > 24 * 60 * 60 * 1000) return null;
+      return parsed.data;
+    } catch { return null; }
+  });
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'detailed' | 'investor'>('detailed');
   const [editingAssumptions, setEditingAssumptions] = useState(false);
@@ -136,7 +157,10 @@ export default function ValuationPage() {
       const res = await fetch(`/api/admin/valuation`, { credentials: 'include', cache: 'no-store' });
       if (res.status === 403) { setForbidden(true); setLoading(false); return; }
       const d = await res.json();
-      if (res.ok) setData(d);
+      if (res.ok) {
+        setData(d);
+        try { window.localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), data: d })); } catch { /* quota — ignore */ }
+      }
       else addToast(d.error || 'فشل التوليد', 'error');
     } catch { addToast('فشل التوليد', 'error'); }
     setLoading(false);
@@ -176,7 +200,12 @@ export default function ValuationPage() {
   };
 
   if (forbidden) return <ForbiddenState requiredPerm="valuation.read" />;
-  if (loading || !data) return <Spinner />;
+  // First-ever load (no cached snapshot, no live response yet): full
+  // spinner so we don't show an empty page. Subsequent loads use the
+  // localStorage snapshot underneath while we refetch — a small
+  // "...جاري التحديث" badge in the action bar tells the user it's
+  // refreshing.
+  if (!data) return <Spinner />;
 
   const { metrics, valuation, products, books, assumptions } = data;
 
@@ -184,22 +213,15 @@ export default function ValuationPage() {
     <div className="space-y-6 print:bg-white print:space-y-4" dir="rtl">
       {/* Print stylesheet — keeps gradients, blocks page breaks inside cards,
           forces a clean A4-friendly margin. The printable view should look
-          like a polished investor handout, not a Chrome screenshot. */}
+          like a polished investor handout, not a Chrome screenshot.
+          Header/footer running strip + watermark intentionally removed
+          per owner request — the document should read clean, no
+          recurring page text fighting the data. */}
       <style jsx global>{`
         @media print {
-          /* A4 with footer space for the running header strip + page
-             numbers; @page-counter on most browsers fills (n) of (m).
-             We also stamp a faint watermark on every page so a leaked
-             screenshot of the PDF carries its "internal estimate" tag. */
           @page {
             size: A4;
-            margin: 18mm 12mm 22mm 12mm;
-            @bottom-center {
-              content: "مسلم ليدر — تقدير داخلي للتقييم — صفحة " counter(page) " من " counter(pages);
-              font-family: -apple-system, system-ui, sans-serif;
-              font-size: 9px;
-              color: #999;
-            }
+            margin: 14mm 12mm 14mm 12mm;
           }
           html, body { background: #fff !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -207,30 +229,53 @@ export default function ValuationPage() {
           .valuation-page-break { break-before: page; page-break-before: page; }
           /* Stop tooltips from popping in the print stream */
           [aria-label="شرح"] { display: none !important; }
-          /* Diagonal watermark behind every page — kept low-opacity so
-             it doesn't fight the data, but clearly marks the document
-             as a draft for review. */
-          body::before {
-            content: "تقدير داخلي — قيد المراجعة";
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-30deg);
-            font-size: 60pt;
-            color: rgba(245, 197, 24, 0.08);
-            font-weight: 900;
-            z-index: -1;
-            pointer-events: none;
-            white-space: nowrap;
+          /* Hide global site chrome that should not appear in an
+             investor-facing PDF (header, footer, WhatsApp button,
+             Ameen chat, coupon strip, mobile nav, and any banner
+             added by the admin layout). */
+          header, footer, nav,
+          [aria-label*="WhatsApp"], [aria-label*="واتساب"],
+          [class*="whatsapp"], [class*="Whatsapp"],
+          [class*="ameen"], [class*="Ameen"],
+          [class*="CouponBanner"], [class*="couponBanner"],
+          [class*="MobileMenu"], [class*="mobileMenu"]
+          { display: none !important; }
+
+          /* Readability pass — the screen styling uses very small
+             fonts and pale greys that disappear on paper. Bump the
+             whole document up one notch for print and darken the
+             muted text so the data carries the page. */
+          body {
+            font-size: 12pt !important;
+            line-height: 1.45 !important;
+            color: #1a1a1a !important;
           }
+          .text-\\[9px\\], .text-\\[10px\\] { font-size: 9pt !important; }
+          .text-\\[11px\\], .text-xs { font-size: 10pt !important; }
+          .text-sm { font-size: 11pt !important; }
+          .text-base { font-size: 12pt !important; }
+          .text-lg { font-size: 14pt !important; }
+          .text-xl { font-size: 16pt !important; }
+          .text-2xl { font-size: 19pt !important; }
+          .text-3xl { font-size: 23pt !important; }
+          .text-4xl, .text-5xl { font-size: 28pt !important; }
+          /* Pale greys → readable charcoal in print */
+          .text-gray-300, .text-gray-400 { color: #4b5563 !important; }
+          .text-gray-500 { color: #374151 !important; }
+          .text-gray-600 { color: #1f2937 !important; }
+          .text-white\\/40, .text-white\\/60, .text-white\\/70 { color: rgba(255,255,255,0.92) !important; }
+          /* Make borders crisp on paper */
+          .border, .border-2 { border-color: #9ca3af !important; }
         }
       `}</style>
 
-      {/* Action bar — sticky on mobile so the controls stay reachable while
-          scrolling through a long report */}
-      <div className="flex items-center justify-between gap-2 flex-wrap print:hidden sticky top-0 z-20 bg-gray-50/95 backdrop-blur -mx-4 px-4 py-3 -mt-2 sm:static sm:bg-transparent sm:backdrop-blur-none sm:mx-0 sm:px-0 sm:py-0 sm:mt-0">
+      {/* Action bar — flows inline with the page so it can scroll out
+          of view (was sticky before; mobile users complained the
+          floating bar was covering data). */}
+      <div className="flex items-center justify-between gap-2 flex-wrap print:hidden">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
           <p className="text-[10px] sm:text-xs text-gray-500 truncate">تم التوليد: {new Date(data.generatedAt).toLocaleString('en-GB')}</p>
+          {loading && <span className="text-[10px] text-blue-600 font-bold animate-pulse">⟳ جاري التحديث…</span>}
           <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
             <button onClick={() => setView('detailed')} className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition ${view === 'detailed' ? 'bg-white shadow-sm text-[#1a1a2e]' : 'text-gray-500'}`}>📊 تفصيلي</button>
             <button onClick={() => setView('investor')} className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition ${view === 'investor' ? 'bg-white shadow-sm text-[#1a1a2e]' : 'text-gray-500'}`}>🤝 المستثمر</button>
@@ -255,43 +300,84 @@ export default function ValuationPage() {
           <Stat label="شحنات (Bosta)" value={fmt(metrics.shipments)} hint="إجمالي صفوف Shipment، شامل الملغية." />
         </div>
 
+        {/* Owner review (plan addendum 25 + investor-readiness pass) asked
+            us to STOP averaging the asset and market methods into a
+            single "متوسط مقترح" headline — they're in different orders
+            of magnitude (TTM-based market value lives in the low six
+            figures, while asset+IP value is in the millions) and a
+            blended midpoint reads as fictional. Two separate panels
+            now: an operational value tied to TTM revenue, and an
+            asset/IP value that's an internal negotiating ceiling, not
+            a financial valuation. */}
         <div className="mt-8 pt-8 border-t border-white/10">
-          <p className="text-[#F5C518] text-xs font-bold tracking-widest">نطاق التقييم المُسوّى (Reconciled Range)</p>
-          <p className="text-3xl sm:text-5xl font-black mt-3">
-            {fmt(valuation.reconciledLow)} <span className="text-lg sm:text-xl text-white/60 mx-2">–</span> {fmt(valuation.reconciledHigh)}
-            <span className="text-base sm:text-xl text-white/60 mx-2">ج.م</span>
-          </p>
-          <p className="text-white/70 text-xs sm:text-sm mt-2">المتوسط المقترح: <strong className="text-[#F5C518]">{fmt(valuation.reconciledMid)} ج.م</strong></p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-5 max-w-3xl mx-auto text-[11px] sm:text-xs">
-            <div className="bg-white/5 rounded-lg px-3 py-2 border border-white/10">
-              <p className="text-white/50">منهج الأصول (Asset)</p>
-              <p className="text-white font-bold mt-0.5">{fmt(valuation.base)} – {fmt(valuation.strategic)} ج.م</p>
+          <p className="text-[#F5C518] text-xs font-bold tracking-widest">قيمة تفاوضية داخلية — ليست تقييمًا ماليًا معتمدًا</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 max-w-4xl mx-auto text-right">
+            <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
+              <p className="text-white/50 text-[11px] font-bold tracking-widest">١. قيمة تشغيلية (مبنية على الأداء الحالي)</p>
+              <p className="text-2xl sm:text-3xl font-black mt-2 text-white">
+                {fmt(valuation.marketLow)} <span className="text-sm text-white/60 mx-1">–</span> {fmt(valuation.marketHigh)}
+                <span className="text-sm text-white/60 mx-1">ج.م</span>
+              </p>
+              <p className="text-white/60 text-[11px] mt-2 leading-relaxed">
+                إيرادات آخر 12 شهر × مضاعف {valuation.revenueMultipleLow}–{valuation.revenueMultipleHigh}.
+                هذا المنهج يعكس الأداء التشغيلي الأخير فقط، ولا يحتسب الأصول أو الملكية الفكرية.
+              </p>
+              <p className="text-white/50 text-[10px] mt-2">
+                إيرادات TTM: <strong className="text-white">{fmt(metrics.financial.ttmRevenue)} ج.م</strong>
+                {metrics.financial.yoyRevenueGrowth !== null && (
+                  <span className={`mr-2 ${metrics.financial.yoyRevenueGrowth >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                    {metrics.financial.yoyRevenueGrowth >= 0 ? '▲' : '▼'} {pct(Math.abs(metrics.financial.yoyRevenueGrowth))} YoY
+                  </span>
+                )}
+              </p>
             </div>
-            <div className="bg-white/5 rounded-lg px-3 py-2 border border-white/10">
-              <p className="text-white/50">منهج مضاعف الإيرادات (Market)</p>
-              <p className="text-white font-bold mt-0.5">{fmt(valuation.marketLow)} – {fmt(valuation.marketHigh)} ج.م</p>
-              <p className="text-white/40 text-[10px] mt-0.5">الإيرادات السنوية × {valuation.revenueMultipleLow}–{valuation.revenueMultipleHigh}</p>
-            </div>
-            <div className="bg-white/5 rounded-lg px-3 py-2 border border-white/10">
-              <p className="text-white/50">الإيرادات السنوية (TTM)</p>
-              <p className="text-white font-bold mt-0.5">{fmt(metrics.financial.ttmRevenue)} ج.م</p>
-              {metrics.financial.yoyRevenueGrowth !== null && (
-                <p className={`text-[10px] mt-0.5 ${metrics.financial.yoyRevenueGrowth >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
-                  {metrics.financial.yoyRevenueGrowth >= 0 ? '▲' : '▼'} {pct(Math.abs(metrics.financial.yoyRevenueGrowth))} YoY
-                </p>
-              )}
+            <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
+              <p className="text-white/50 text-[11px] font-bold tracking-widest">٢. قيمة أصول وملكية فكرية (تفاوضية)</p>
+              <p className="text-2xl sm:text-3xl font-black mt-2 text-white">
+                {fmt(valuation.base)} <span className="text-sm text-white/60 mx-1">–</span> {fmt(valuation.strategic)}
+                <span className="text-sm text-white/60 mx-1">ج.م</span>
+              </p>
+              <p className="text-white/60 text-[11px] mt-2 leading-relaxed">
+                مخزون + كتب + ترجمات + منتجات + منصة + قاعدة عملاء.
+                قيمة قابلة للتفاوض فقط — تحتاج إثبات حقوق وعقود قبل اعتمادها كأرقام مالية.
+              </p>
+              <p className="text-white/50 text-[10px] mt-2">
+                لا يجوز جمع هذا الرقم مع الرقم الأيمن — منهجين مختلفين.
+              </p>
             </div>
           </div>
-          <p className="text-white/40 text-[10px] sm:text-xs mt-4 max-w-md mx-auto">⚠️ تقدير داخلي — يحتاج عناية واجبة (due diligence) قبل التفاوض الرسمي.</p>
+          <p className="text-white/40 text-[10px] sm:text-xs mt-4 max-w-2xl mx-auto leading-relaxed">
+            ⚠️ هذا المستند تقدير داخلي مبني على بيانات النظام، يُعرض على المؤسس فقط لقراءة وضع الشركة.
+            لا يصلح كتقييم رسمي قبل عناية واجبة (due diligence) ومراجعة محاسب مستقل.
+          </p>
         </div>
       </div>
 
       {/* Reconcile pre-fix PayPal orders — only renders when orphans exist */}
       <PaypalReconcileBanner onDone={reload} />
 
-      {/* Financial performance — the most important section for any
-          real M&A conversation. TTM revenue, gross margin, growth. */}
+      {/* Detailed sections only render in detailed view. Investor
+          view replaces them with a leaner narrative below — keeping
+          both visible at once made the toggle look broken (clicking
+          المستثمر just appended sections at the bottom). */}
+      {view === 'detailed' && <>
       <FinancialSection metrics={metrics} />
+
+      {/* Context note: the recent dip in TTM revenue + low active-
+          customer count is a real risk signal, but it has a
+          founder-led explanation that materially changes how a buyer
+          should read the operating numbers. Owner asked us to surface
+          this front-and-centre so the headline isn't read in
+          isolation. (Plan addendum 25 — investor-readiness pass.) */}
+      <FounderContextSection metrics={metrics} />
+
+      {/* Digital assets pipeline — apps, library, social. Listed
+          explicitly so a reader sees the multi-channel asset base,
+          but framed as "assets under development / rebuild-cost
+          basis", NOT as revenue. Owner verified counts on Google
+          Play (round 3 review): 100+ downloads each, last update
+          Nov 2023, in-app purchases on the e-book reader. */}
+      <DigitalAssetsSection />
 
       {/* Concentration risk — what fraction of revenue depends on a
           handful of customers, products, governorates, or suppliers. */}
@@ -323,11 +409,15 @@ export default function ValuationPage() {
         onSave={saveAssumptions}
       />
 
-      {/* Three scenarios — balanced is highlighted, strategic carries a conditional caveat */}
-      <Section icon="💎" title="نطاقات التقييم" subtitle="ثلاثة سيناريوهات بناءً على نوع المشتري ومدى استكمال البيانات">
+      {/* Three scenarios — all three are ASSET-method numbers (the
+          market/TTM number sits in the headline panel above). Renamed
+          to make that explicit so a reader doesn't confuse "الحد الأدنى"
+          with the lower bound of the market range — they're different
+          methods. */}
+      <Section icon="💎" title="نطاقات التقييم — منهج الأصول" subtitle="ثلاثة سيناريوهات لقيمة الأصول والملكية الفكرية فقط (منفصلة عن منهج الإيرادات أعلاه)">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <ScenarioCard
-            label="الحد الأدنى"
+            label="حد أدنى أصولي (Base)"
             value={valuation.base}
             desc="تصفية / مشتري مالي يقيّم الأصول فقط"
             tone="base"
@@ -335,16 +425,16 @@ export default function ValuationPage() {
             condition="يفترض بيع المخزون بنصف القيمة + احتساب الـ IP بالعدد فقط."
           />
           <ScenarioCard
-            label="القيمة المتوازنة ✦"
+            label="قيمة أصولية متوازنة ✦"
             value={valuation.fair}
-            desc="سوق متوازنة — المرشَّحة كأرضية تفاوض"
+            desc="سوق متوازنة — أرضية تفاوضية مبنية على الأصول والملكية الفكرية"
             tone="fair"
             multiplier={`× ${valuation.fairMultiplier}`}
-            condition="يفترض استمرار النشاط الحالي بدون نمو غير عادي."
+            condition="ليست تقييماً مالياً معتمداً. تفترض إثبات الحقوق وقابلية إعادة التشغيل."
             highlighted
           />
           <ScenarioCard
-            label="القيمة الاستراتيجية"
+            label="قيمة استراتيجية محتملة"
             value={valuation.strategic}
             desc="مشتري استراتيجي مع تكامل توزيع/براند"
             tone="strategic"
@@ -354,7 +444,13 @@ export default function ValuationPage() {
         </div>
       </Section>
 
-      {view === 'investor' ? <InvestorView data={data} /> : <DetailedView data={data} products={products} books={books} />}
+      {/* Detailed-only deep-dive (products + books tables). */}
+      <DetailedView data={data} products={products} books={books} />
+      </>}
+
+      {/* Investor view — leaner narrative replaces the full deep-dive
+          when the toggle is set to المستثمر. */}
+      {view === 'investor' && <InvestorView data={data} />}
 
       {/* Disclaimer */}
       <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 text-amber-900 text-xs leading-relaxed">
@@ -444,6 +540,241 @@ function FinKPI({ label, value, sub, hint, tone }: { label: string; value: strin
       </p>
       <p className={`text-xl font-black mt-1 ${cls}`}>{value}</p>
       {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Founder-bottleneck / marketing-underinvestment context. Without this
+// section the financial KPIs read as "company is dying"; with it they
+// read as "company is in build mode, not run mode". The framing was
+// requested by the owner after the first investor-readiness review.
+// ────────────────────────────────────────────────────────────────────────────
+function FounderContextSection({ metrics }: { metrics: ValuationData['metrics'] }) {
+  const f = metrics.financial;
+  const ttm = f.ttmRevenue;
+  const yoy = f.yoyRevenueGrowth;
+  const activeCount = metrics.customers.active;
+  const ebitda = f.ebitdaPartial;
+
+  // We only show this block when the data actually looks like an
+  // asset-building / underinvestment pattern: TTM is small AND
+  // (YoY < 0 OR active customers < 30). Otherwise the framing would
+  // be misleading.
+  const looksLikeAssetBuildPhase = ttm < 200_000 && (
+    (yoy !== null && yoy < 0) || activeCount < 30
+  );
+  if (!looksLikeAssetBuildPhase) return null;
+
+  return (
+    <Section
+      icon="🧭"
+      title="تفسير الأداء الأخير: مرحلة بناء الأصول قبل مرحلة النمو"
+      subtitle="Asset Building Phase → Commercial Activation Phase — قراءة مرتبة للأرقام السلبية"
+    >
+      <div className="space-y-4 text-[13px] leading-relaxed text-gray-800">
+        <p>
+          أرقام آخر 12 شهر تظهر إيرادات منخفضة (<strong>{fmt(ttm)} ج.م</strong>)
+          {yoy !== null && yoy < 0 && <> وانخفاض سنوي بنسبة <strong className="text-red-700">{pct(Math.abs(yoy))}</strong></>}،
+          مع <strong className="text-red-700">{fmt(activeCount)}</strong> عميل نشط فقط في آخر 90 يوم،
+          و EBITDA جزئي بقيمة <strong className={ebitda < 0 ? 'text-red-700' : 'text-emerald-700'}>{fmt(ebitda)} ج.م</strong>.
+        </p>
+
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4">
+          <p className="font-black text-amber-900 mb-2">⚠️ كيف لا تُقرأ هذه الأرقام</p>
+          <p className="text-amber-900 text-[12px] leading-relaxed">
+            هذه الأرقام تعكس <strong>مرحلة تأسيس وبناء أصول طويلة الأجل</strong>،
+            وليست مرحلة تشغيل وتسويق كامل. لذلك لا يصح قياس قيمة الشركة على
+            أساس آخر 12 شهر فقط، أو الاستنتاج بأن السوق رفض منتجات مسلم ليدر.
+          </p>
+        </div>
+
+        <div className="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-4">
+          <p className="font-black text-emerald-900 mb-2">✓ ما تم بناؤه فعلاً خلال هذه المرحلة (Asset Building)</p>
+          <ul className="text-emerald-900 text-[12px] leading-relaxed list-disc pr-5 space-y-1.5">
+            <li><strong>تأليف وتطوير محتوى جديد</strong> — كتب وعناوين أصلية (مثال: كتاب &quot;العقل الشجاع&quot;).</li>
+            <li><strong>الإشراف المباشر على الهوية والتصميم</strong> من المؤسس، مما خلق طابعًا بصريًا متمايزًا للبراند.</li>
+            <li><strong>تطوير منتجات مادية جديدة</strong> مثل خط الشنطة، استهلك جزءًا من التمويل المتاح للتسويق قصير الأجل.</li>
+            <li><strong>إعادة بناء الموقع الإلكتروني مرتين</strong> ثم تحديث شامل للمنصة في <strong>2026</strong> — أصل تقني متجدد.</li>
+            <li><strong>إطلاق المكتبة الإلكترونية والكتب الرقمية</strong> — قناة دخل وتوزيع مستقلة لم تكن موجودة من قبل.</li>
+            <li><strong>بناء مميزات جديدة في المنصة</strong> (نظام الكتب، الاشتراكات، التتبع، التحليلات).</li>
+            <li><strong>~17 ألف متابع عضوي على فيسبوك</strong> دون أدوات تضخيم — تثبت قبول حقيقي للبراند.</li>
+            <li><strong>مراجعات حقيقية إيجابية</strong> من العملاء على فيسبوك والموقع — مصداقية مكتسبة بمرور الوقت.</li>
+            <li>
+              التاريخ التراكمي يثبت قبول السوق: إيرادات تجاوزت
+              <strong> {fmt(metrics.sales.totalRevenue)} ج.م</strong> عبر
+              <strong> {fmt(metrics.customers.buyers)}</strong> مشترٍ فعلي،
+              مع <strong>{fmt(metrics.customers.repeatBuyers)}</strong> مشترٍ متكرر.
+            </li>
+          </ul>
+        </div>
+
+        <div className="bg-purple-50 border-2 border-purple-300 rounded-2xl p-4">
+          <p className="font-black text-purple-900 mb-2">📍 الموضع الحالي على خريطة دورة حياة الشركة</p>
+          <p className="text-purple-900 text-[12px] leading-relaxed">
+            مسلم ليدر <strong>ليست متجراً تراجعت مبيعاته</strong>؛
+            هي <strong>كيان منتجات + محتوى + قاعدة جمهور + منصة جاهزة</strong>،
+            انتقل من مرحلة <strong>Asset Building</strong> (بناء الأصول) إلى عتبة مرحلة
+            <strong> Commercial Activation</strong> (التفعيل التجاري).
+            المرحلة القادمة تتطلب تحويل هذه الأصول إلى مبيعات منتظمة من خلال
+            إدارة نمو متفرغة وتسويق مستمر وتوزيع منظَّم — وليس بناء منتجات إضافية.
+          </p>
+        </div>
+
+        <div className="bg-blue-50 border-2 border-blue-300 rounded-2xl p-4">
+          <p className="font-black text-blue-900 mb-2">🎯 خطة Commercial Activation المقترحة</p>
+          <ul className="text-blue-900 text-[12px] leading-relaxed list-disc pr-5 space-y-1.5">
+            <li>تعيين <strong>مدير تشغيل / نمو متفرغ</strong> ليتحمل المبيعات والتسويق والتوزيع.</li>
+            <li>ميزانية تسويق شهرية مرتبطة بـ <strong>روزنامة إطلاق</strong> ربع سنوية للمنتجات والكتب الرقمية الموجودة بالفعل.</li>
+            <li>تحويل المتابعين العضويين على فيسبوك إلى <strong>قنوات مبيعات قابلة للقياس</strong> (Messenger flows + كتالوج + إعلانات Lookalike).</li>
+            <li>تفعيل قنوات التوزيع التقليدية: <strong>تجار جملة، معارض الكتاب، توزيع المدارس</strong>.</li>
+            <li>تحويل دور المؤسس تدريجيًا إلى <strong>قيادة الرؤية والمحتوى والهوية</strong> فقط، مع تفويض اليومي.</li>
+          </ul>
+        </div>
+
+        <p className="text-[11px] text-gray-500 leading-relaxed border-r-4 border-gray-300 pr-3">
+          <strong>Key-Person Risk:</strong> الشركة معتمدة بشكل كبير على المؤسس
+          في التأليف والإشراف على التصميم. هذه المخاطرة يجب توضيحها لأي شريك
+          أو مستثمر، مع خطة للتخفيف منها (تفويض، توثيق العمليات، تدريب فريق
+          ثانٍ، فصل دور &quot;المؤلف/المصمم&quot; عن دور &quot;المدير التنفيذي&quot;).
+        </p>
+
+        <p className="text-[11px] text-gray-500 leading-relaxed border-r-4 border-amber-300 pr-3">
+          <strong>ملاحظة على متابعي فيسبوك:</strong> الـ 17 ألف متابع عضوي مؤشر مصداقية
+          مهم لكنه <strong>لا يُحتسب كرقم تقييم منفرد</strong>. القيمة الفعلية تظهر
+          عند تحويل هذا الجمهور إلى مبيعات منتظمة. يُفضَّل إرفاق سكرين شوت
+          موثَّق لصفحة المتابعين والمراجعات في حزمة المستندات المرفقة بالتقرير.
+        </p>
+      </div>
+    </Section>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Digital assets & product pipeline — Google Play apps + library +
+// social channels. Listed explicitly as "assets under development",
+// NOT as a revenue stream. Owner reviewed Google Play and confirmed
+// each app's status (~100+ downloads, last update Nov 2023).
+// Valuation guidance below explicitly cautions against monetising
+// these by headline number.
+// ────────────────────────────────────────────────────────────────────────────
+function DigitalAssetsSection() {
+  return (
+    <Section
+      icon="📱"
+      title="الأصول الرقمية وقابلية التوسع"
+      subtitle="Digital Assets & Product Pipeline — أصول قابلة لإعادة التفعيل، ليست إيرادات محققة"
+    >
+      <div className="space-y-4 text-[13px] leading-relaxed text-gray-800">
+        <p>
+          تمتلك مسلم ليدر منظومة قنوات رقمية متعددة بُنيت خلال السنوات
+          السابقة، تدعم قابلية التوسع التجاري دون الحاجة إلى بناء
+          البنية التحتية من الصفر:
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <DigitalAssetCard
+            icon="🌐"
+            title="الموقع الإلكتروني + المكتبة الرقمية"
+            details={[
+              'إعادة بناء الموقع أكثر من مرة + تحديث رئيسي في 2026',
+              'مكتبة كتب رقمية متعددة اللغات قابلة للتطوير لنموذج اشتراكات',
+              'نظام طلبات + تتبع شحنات + لوحة إدارة كاملة',
+            ]}
+          />
+          <DigitalAssetCard
+            icon="📖"
+            title="تطبيق Moslim Leader E-books (Google Play)"
+            link="https://play.google.com/store/apps/details?id=com.moslim.book"
+            details={[
+              'مُنشَر تحت Aqtar Design Solutions، 100+ تحميل',
+              'In-app purchases — قناة دفع مهيَّأة',
+              'يحتاج تطوير من PDF Reader إلى تجربة E-book تفاعلية كاملة (حفظ التقدم، اشتراكات، حماية محتوى)',
+            ]}
+          />
+          <DigitalAssetCard
+            icon="🕋"
+            title="تطبيق Hajj Story (لعبة تعليمية)"
+            link="https://play.google.com/store/apps/details?id=com.Aqtar.Hajj"
+            details={[
+              'لعبة تعليمية للأطفال بتقنية الواقع المعزز (AR)',
+              '100+ تحميل، مرتبطة بمنتج لعبة الحج المادي',
+              'نموذج تسعير قابل للتحويل إلى مدفوع / مجاني-مع-إعلانات',
+            ]}
+          />
+          <DigitalAssetCard
+            icon="🤲"
+            title="تطبيق Salat Game (لعبة تعليم الصلاة)"
+            link="https://play.google.com/store/apps/details?id=com.Aqtar.PrayGame"
+            details={[
+              'تطبيق تعليمي للأطفال — Teacher Approved من Google',
+              '100+ تحميل، مرتبط بمنتج لعبة الصلاة المادي',
+              'يدعم استراتيجية الـ "physical + digital companion product"',
+            ]}
+          />
+          <DigitalAssetCard
+            icon="📘"
+            title="صفحة فيسبوك (~17 ألف متابع عضوي)"
+            link="https://www.facebook.com/MoslimLeader/reviews"
+            details={[
+              'قاعدة متابعة عضوية حقيقية بدون أدوات تضخيم',
+              'مراجعات إيجابية موثَّقة من العملاء',
+              'قناة Messenger + كتالوج + Lookalike قابلة للتفعيل',
+            ]}
+          />
+          <DigitalAssetCard
+            icon="📚"
+            title="محتوى رقمي متعدد اللغات"
+            details={[
+              `${'127'} كتاب وعنوان إجمالي عبر اللغات (عربي + إنجليزي + ترجمات)`,
+              'قابل للتطوير إلى نموذج اشتراكات / مكتبة تعليمية مدفوعة',
+              'أساس لإطلاق B2B للمدارس / المراكز التعليمية',
+            ]}
+          />
+        </div>
+
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4">
+          <p className="font-black text-amber-900 mb-2">⚠️ كيفية احتساب هذه الأصول في التقييم</p>
+          <p className="text-amber-900 text-[12px] leading-relaxed mb-2">
+            هذه الأصول الرقمية <strong>لا تُحتسب كأرباح محققة</strong>،
+            ولا يصح إعطاؤها قيمة مالية مرتفعة لمجرد وجودها. يُقترح
+            تقدير قيمتها على أساس <strong>تكلفة إعادة البناء (Rebuild
+            Cost)</strong> — أي ما يكلِّف بناء نفس الموقع + المكتبة +
+            التطبيقات الـ 3 من الصفر.
+          </p>
+          <p className="text-amber-900 text-[12px] leading-relaxed">
+            القيمة التجارية المرفوعة (revenue-based) لا تتحقق إلا بعد
+            توفر بيانات: عدد المستخدمين النشطين، الاحتفاظ، المبيعات
+            داخل التطبيق، الاشتراكات. حتى ذلك الحين تُصنَّف على أنها
+            &quot;Digital Assets Under Development&quot;.
+          </p>
+        </div>
+
+        <div className="bg-purple-50 border-2 border-purple-300 rounded-2xl p-4">
+          <p className="font-black text-purple-900 mb-2">🎯 المسار التطويري المقترح</p>
+          <ul className="text-purple-900 text-[12px] leading-relaxed list-disc pr-5 space-y-1.5">
+            <li>تحويل تطبيق Moslim Leader E-books من <strong>PDF Reader</strong> إلى <strong>E-book تفاعلي</strong> كامل (حفظ التقدم + اشتراكات + حماية محتوى + تجربة طفل/ولي أمر).</li>
+            <li>إعادة إطلاق تطبيقات الألعاب مع <strong>تحديث محتوى + ربط مباشر</strong> بالمنتجات المادية في المتجر.</li>
+            <li>تفعيل <strong>قناة B2B</strong> (مدارس، حضانات، مراكز تعليمية) عبر منصة الاشتراكات.</li>
+            <li>تتبع <strong>active users + retention + ARPU</strong> لكل أصل رقمي ليصبح قابلاً للتقييم بمنهج الإيرادات.</li>
+          </ul>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+function DigitalAssetCard({ icon, title, link, details }: { icon: string; title: string; link?: string; details: string[] }) {
+  const titleEl = link
+    ? <a href={link} target="_blank" rel="noopener noreferrer" className="hover:underline">{title} ↗</a>
+    : title;
+  return (
+    <div className="bg-white border-2 border-gray-200 rounded-2xl p-4">
+      <p className="text-2xl">{icon}</p>
+      <p className="font-black text-gray-900 mt-1.5 leading-snug">{titleEl}</p>
+      <ul className="text-[11px] text-gray-600 mt-2 list-disc pr-4 space-y-1 leading-relaxed">
+        {details.map((d, i) => <li key={i}>{d}</li>)}
+      </ul>
     </div>
   );
 }
@@ -549,8 +880,13 @@ function DataQualitySection({ metrics }: { metrics: ValuationData['metrics'] }) 
         <li className="flex items-start gap-2">
           <span>📐</span>
           <span>
-            <strong>منهجية التقييم:</strong> النطاق المُسوَّى يجمع منهج الأصول (asset floor) مع منهج مضاعف الإيرادات (market band).
-            لا يوجد منهج DCF (income approach) لأن صافي الربح غير محسوب. عند التفاوض الرسمي، يجب إضافة منهج DCF بعد جمع المصروفات.
+            <strong>منهجية التقييم:</strong> لا يتم جمع منهج الأصول مع منهج مضاعف الإيرادات.
+            يعرض التقرير المنهجين منفصلين: منهج الإيرادات (market band) لقياس الأداء التشغيلي
+            الحالي بناءً على آخر 12 شهر، ومنهج الأصول (asset floor) لقياس قيمة المخزون والملكية
+            الفكرية والمنصة تفاوضياً. كل منهج يُقرأ في سياقه — والمتوسط بينهما لا يُحسب لأن
+            المنهجين في وحدات قياس مختلفة. لا يوجد منهج DCF (income approach) لأن صافي الربح
+            الكامل غير محسوب — عند التفاوض الرسمي، يجب إضافة منهج DCF بعد جمع كل المصروفات
+            التشغيلية.
           </span>
         </li>
         {/* Accountant-grade disclosures — every line a buyer / bank
@@ -760,7 +1096,12 @@ function SensitivitySection({ metrics, valuation }: { metrics: ValuationData['me
           </tbody>
         </table>
       </div>
-      <p className="text-[10px] text-gray-500 mt-2">القيمة الحالية المرشَّحة (المتوسط): <strong className="text-gray-800">{fmt(valuation.reconciledMid)} ج.م</strong>. كل سيناريو يعرض الأثر منفرداً، مش مجتمعاً.</p>
+      <p className="text-[10px] text-gray-500 mt-2">
+        القيمة الأصولية المتوازنة الحالية:
+        <strong className="text-gray-800 mx-1">{fmt(valuation.fair)} ج.م</strong>.
+        كل سيناريو يعرض الأثر منفرداً على منهج الأصول وحده —
+        لا يُجمع مع منهج مضاعف الإيرادات.
+      </p>
     </Section>
   );
 }
@@ -771,7 +1112,7 @@ function GapsSection({ metrics, assumptions }: { metrics: ValuationData['metrics
   // prominent — a buyer would ask all of these on day one of due diligence.
   const gaps: Array<{ severity: 'high' | 'medium' | 'low'; label: string; detail: string }> = [];
 
-  gaps.push({ severity: 'high', label: 'صافي الربح غير محسوب', detail: 'النظام لا يخزن تكلفة المنتج الفعلية (COGS) ولا تكلفة التسويق ولا المرتبات. كل الأرقام إيرادات، مش أرباح.' });
+  gaps.push({ severity: 'high', label: 'صافي الربح الكامل غير محسوب', detail: 'النظام يتتبع تكلفة المنتج الفعلية (من باتشات الإنتاج) والرواتب الجزئية، لكنه لا يتتبع كل المصروفات التشغيلية: التسويق، الإيجار، المرافق، المصروفات الإدارية، الضرائب، والاستهلاك. لذلك EBITDA المعروض جزئي وليس صافي ربح كامل.' });
   if (metrics.products.productsWithoutBatches > 0) {
     const sev = metrics.products.productsWithBatches === 0 ? 'high' : 'medium';
     gaps.push({
@@ -873,15 +1214,30 @@ function AssumptionsTable({ assumptions, defaults }: { assumptions: Assumptions;
     { key: 'cogsRatio', label: 'نسبة تكلفة المخزون من سعر البيع', format: n => pct(n), basis: 'industry',
       explain: 'المنتجات بتكلَّف الشركة هذه النسبة من سعرها قبل الربح.',
       footnote: 'هامش بيع التجزئة العادي 50–70%، فالـ COGS بين 30–50%. الافتراضي 35% يقابل هامش 65% (متوازن لكتب أطفال + ألعاب تعليمية).' },
-    { key: 'ipBookValue', label: 'قيمة كل كتاب مؤلَّف (IP)', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
-      explain: 'تقدير لقيمة حقوق نشر/ترجمة/audiobook لكل كتاب.',
-      footnote: 'تقدير شخصي. الأنسب احترافياً: استخدام relief-from-royalty (3–5% من إيرادات الكتاب التراكمية) — يحتاج تطوير لاحق.' },
+    { key: 'ipBookValue', label: 'قيمة الكتاب الأصلي (عربي)', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
+      explain: 'يطبَّق فقط على الكتب اللي لغتها "ar" أو "both" — أعمال أصلية مؤلَّفة.',
+      footnote: 'الترجمات والإصدارات اللغوية تستخدم قيمة منفصلة أقل. الأنسب احترافياً: relief-from-royalty (3–5% من إيرادات الكتاب التراكمية) — يحتاج تطوير لاحق.' },
+    { key: 'ipBookTranslationValue', label: 'قيمة الترجمة / الإصدار اللغوي', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
+      explain: 'الترجمات إصدارات مشتقة — قيمتها = تكلفة الترجمة والإخراج، مش قيمة العمل الأصلي.',
+      footnote: 'الافتراضي ~12% من قيمة الأصل. لو الترجمة لها مبيعات فعلية موثَّقة أو عقد ترخيص، ارفعها يدوياً للقيمة الفعلية.' },
     { key: 'ipProductValue', label: 'قيمة كل منتج إبداعي (IP)', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
       explain: 'تقدير لقيمة التصميم/البراند الخاص بكل منتج.',
       footnote: 'تقدير موحَّد لكل المنتجات — لا يميز بين البِست-سيلر والمنتج الراكد. حد أدنى للمناقشة، ليس رقماً نهائياً.' },
-    { key: 'ipDigitalValue', label: 'قيمة المحتوى الرقمي', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
-      explain: 'يوتيوب + PDFs + قيمة البراند ككل.',
+    { key: 'ipDigitalValue', label: 'قيمة المحتوى الرقمي (يوتيوب + براند)', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
+      explain: 'قناة يوتيوب + قيمة البراند ككل (بدون الفيديوهات الدعائية والأناشيد — ليهم بنود منفصلة).',
       footnote: 'رقم ثابت — لا يعكس عدد المشتركين أو معدل التفاعل. للتحسين: ربطه بعدد المتابعين × LTV لكل متابع.' },
+    { key: 'promoVideoCount', label: 'عدد الفيديوهات الدعائية', format: n => fmt(n), basis: 'heuristic',
+      explain: 'إجمالي عدد الفيديوهات الدعائية المُنتَجة للمنتجات (مش متعد تلقائياً — اكتبها يدوياً).',
+      footnote: 'يحسب الفيديو مرة واحدة فقط — لو الفيديو الواحد بيدعم أكتر من منتج، عُدّه واحد.' },
+    { key: 'promoVideoValue', label: 'قيمة الفيديو الواحد (ج.م)', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
+      explain: 'تكلفة إنتاج/استبدال فيديو دعائي واحد (60-90 ث) في استوديو محترم.',
+      footnote: 'الافتراضي 5,000 ج.م — ارفعه لو الفيديوهات بكاميرا/طاقم محترف ونتيجة جودتها أعلى.' },
+    { key: 'anasheedCount', label: 'عدد أناشيد المنتجات', format: n => fmt(n), basis: 'heuristic',
+      explain: 'إجمالي الأناشيد المُنتَجة وموسيقى المنتجات.',
+      footnote: 'حق ملكية موسيقي مستقل — تختلف قيمته جذرياً لو فيه عقد لحن/توزيع/تسجيل.' },
+    { key: 'anasheedValue', label: 'قيمة النشيد الواحد (ج.م)', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
+      explain: 'تكلفة إنتاج نشيد بكلمات + لحن + تسجيل + هندسة صوت.',
+      footnote: 'الافتراضي 12,000 ج.م — لو النشيد له صوت فنان معروف أو حقوق توزيع موثَّقة، ارفع القيمة لتعكس قيمته السوقية.' },
     { key: 'techValue', label: 'قيمة المنصة التقنية', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
       explain: 'تكلفة بناء النظام لو حد محتاج يبنيه من الصفر.',
       footnote: 'تقدير cost-to-rebuild. للتدقيق: عرض سعر فعلي من شركة تطوير، أو تكلفة مهندس × أشهر العمل.' },
@@ -988,9 +1344,14 @@ function AssumptionsForm({ initial, defaults, onSave, onCancel }: { initial: Ass
         <AssumptionsField k="revenueMultipleHigh" label="مضاعف الإيرادات (أعلى)" step={0.1} min={0} value={v.revenueMultipleHigh} defaultValue={defaults.revenueMultipleHigh} onChange={set} />
         <AssumptionsField k="fairMultiplier" label="مضاعف عادل" step={0.05} min={1} value={v.fairMultiplier} defaultValue={defaults.fairMultiplier} onChange={set} />
         <AssumptionsField k="strategicMultiplier" label="مضاعف استراتيجي" step={0.05} min={1} value={v.strategicMultiplier} defaultValue={defaults.strategicMultiplier} onChange={set} />
-        <AssumptionsField k="ipBookValue" label="قيمة كل كتاب (ج.م)" step={1000} value={v.ipBookValue} defaultValue={defaults.ipBookValue} onChange={set} />
+        <AssumptionsField k="ipBookValue" label="قيمة الكتاب الأصلي (ج.م)" step={1000} value={v.ipBookValue} defaultValue={defaults.ipBookValue} onChange={set} />
+        <AssumptionsField k="ipBookTranslationValue" label="قيمة الترجمة (ج.م)" step={500} value={v.ipBookTranslationValue} defaultValue={defaults.ipBookTranslationValue} onChange={set} />
         <AssumptionsField k="ipProductValue" label="قيمة كل منتج (ج.م)" step={1000} value={v.ipProductValue} defaultValue={defaults.ipProductValue} onChange={set} />
         <AssumptionsField k="ipDigitalValue" label="قيمة المحتوى الرقمي (ج.م)" step={10000} value={v.ipDigitalValue} defaultValue={defaults.ipDigitalValue} onChange={set} />
+        <AssumptionsField k="promoVideoCount" label="عدد الفيديوهات الدعائية" step={1} min={0} value={v.promoVideoCount} defaultValue={defaults.promoVideoCount} onChange={set} />
+        <AssumptionsField k="promoVideoValue" label="قيمة الفيديو الواحد (ج.م)" step={500} value={v.promoVideoValue} defaultValue={defaults.promoVideoValue} onChange={set} />
+        <AssumptionsField k="anasheedCount" label="عدد الأناشيد" step={1} min={0} value={v.anasheedCount} defaultValue={defaults.anasheedCount} onChange={set} />
+        <AssumptionsField k="anasheedValue" label="قيمة النشيد الواحد (ج.م)" step={500} value={v.anasheedValue} defaultValue={defaults.anasheedValue} onChange={set} />
         <AssumptionsField k="techValue" label="قيمة المنصة (ج.م)" step={10000} value={v.techValue} defaultValue={defaults.techValue} onChange={set} />
         <AssumptionsField k="customerDbValue" label="قيمة كل مشترٍ فعلي (ج.م)" step={10} value={v.customerDbValue} defaultValue={defaults.customerDbValue} onChange={set} />
         <AssumptionsField k="receivablesProvisionRate" label="احتياطي ديون مشكوك في تحصيلها (0–1)" step={0.05} value={v.receivablesProvisionRate ?? 0.10} defaultValue={defaults.receivablesProvisionRate} onChange={set} />
@@ -1080,10 +1441,22 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
       {/* Customers */}
       <Section icon="👥" title="العملاء" subtitle="فصل المسجَّلين عن المشترين الفعليين">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <KPI label="مسجَّلين (إجمالي)" value={fmt(metrics.customers.total)} hint="User.role = 'customer'. شامل اللي ما اشتروش." />
-          <KPI label="مشترين (≥ طلب واحد)" value={fmt(metrics.customers.buyers)} hint="عملاء عملوا طلب صحيح واحد على الأقل في تاريخ النظام." />
-          <KPI label="نشطين" value={fmt(metrics.customers.active)} sub={`آخر ${metrics.customers.activeWindowDays} يوم — ${pct(metrics.customers.activeRatio)} من المسجَّلين`} hint="عمل طلب صحيح خلال نافذة النشاط الحالية." />
-          <KPI label="مشترين متكررين" value={fmt(metrics.customers.repeatBuyers)} sub={`${pct(metrics.customers.repeatRate)} من المشترين`} hint="عملوا طلبين أو أكثر في حياتهم. مؤشر قوي للولاء." />
+          <KPI label="مسجَّلين (إجمالي)" value={fmt(metrics.customers.total)} hint="حسابات المستخدمين الكلية. شاملة اللي ما اشتروش." />
+          <KPI label="إجمالي المشترين الفعليين" value={fmt(metrics.customers.buyers)} hint="عملاء عملوا طلب صحيح واحد على الأقل في تاريخ النظام." />
+          <KPI
+            label="نشطين"
+            value={fmt(metrics.customers.active)}
+            sub={`آخر ${metrics.customers.activeWindowDays} يوم — ${pct(metrics.customers.activeRatio)} من المسجَّلين`}
+            tone={metrics.customers.active < 30 ? 'bad' : undefined}
+            hint="عمل طلب صحيح خلال نافذة النشاط الحالية. أقل من 30 يعتبر مؤشر خطر — راجع قسم 'تفسير تراجع الأداء' أعلاه."
+          />
+          <KPI label="مشترون متكررون (طلبان+)" value={fmt(metrics.customers.repeatBuyers)} sub={`${pct(metrics.customers.repeatRate)} من المشترين`} hint="عملوا طلبين أو أكثر في حياتهم. مؤشر قوي للولاء." />
+          <KPI
+            label="مشترون بطلب واحد فقط"
+            value={fmt(Math.max(0, metrics.customers.buyers - metrics.customers.repeatBuyers))}
+            sub={`${pct(metrics.customers.buyers > 0 ? 1 - metrics.customers.repeatRate : 0)} من المشترين`}
+            hint="عملوا طلباً واحداً ولم يعودوا. كلما زادت هذه النسبة، كان احتفاظ العملاء أضعف."
+          />
           <KPI label="متوسط الإيراد لكل مشتري" value={`${fmt(metrics.customers.avgRevenuePerBuyer)} ج.م`} hint="إجمالي الإيرادات ÷ عدد المشترين الفعليين. تقدير LTV التاريخي." />
           <KPI
             label="تجار جملة"
@@ -1261,10 +1634,28 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
 
       {/* IP */}
       <Section icon="📚" title="الملكية الفكرية" subtitle="قيمة تقديرية مبنية على العدد، مش على المبيعات الفعلية">
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 mb-4">
+          <p className="text-[12px] text-amber-900 leading-relaxed">
+            <strong>تنبيه:</strong> هذه قيمة تقديرية غير محاسبية تُستخدم
+            داخلياً للتفاوض فقط. لا تُعتمد كأرقام مالية رسمية إلا بعد
+            إثبات الحقوق (عقود نشر / تسجيل ملكية)، وإثبات المبيعات
+            التاريخية لكل عمل، وتقييم مستقل من محاسب أو مكتب IP.
+            معايير IFRS / EAS لا تسمح برسملة الملكية الفكرية المطوَّرة
+            داخلياً ما لم تُتتبَّع تكلفة التطوير الفعلية.
+          </p>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          <IPCard icon="📖" label="الكتب المؤلَّفة" value={metrics.ip.booksValue} count={metrics.ip.booksCount} per={metrics.ip.perBook} />
+          {/* Books split into ORIGINAL vs TRANSLATION cards. Counting
+              each language edition as a separate original work
+              inflated the headline 4-6×; the breakdown here makes the
+              derivation explicit so an investor can see what's an
+              authored work and what's a derivative localisation. */}
+          <IPCard icon="📖" label="الأعمال الأصلية (عربي)" value={metrics.ip.booksOriginalValue} count={metrics.ip.booksOriginalCount} per={metrics.ip.perBook} />
+          <IPCard icon="🌐" label="الترجمات / الإصدارات اللغوية" value={metrics.ip.booksTranslationValue} count={metrics.ip.booksTranslationCount} per={metrics.ip.perBookTranslation} />
           <IPCard icon="🎮" label="المنتجات الإبداعية" value={metrics.ip.productsValue} count={metrics.ip.productsCount} per={metrics.ip.perProduct} />
-          <IPCard icon="🎬" label="المحتوى الرقمي" value={metrics.ip.digitalValue} count={null} per={null} />
+          <IPCard icon="🎥" label="فيديوهات دعائية" value={metrics.ip.promoVideoValue} count={metrics.ip.promoVideoCount} per={metrics.ip.promoVideoPerUnit} />
+          <IPCard icon="🎵" label="أناشيد المنتجات" value={metrics.ip.anasheedValue} count={metrics.ip.anasheedCount} per={metrics.ip.anasheedPerUnit} />
+          <IPCard icon="🎬" label="المحتوى الرقمي (يوتيوب + براند)" value={metrics.ip.digitalValue} count={null} per={null} />
         </div>
         <div className="bg-gradient-to-br from-amber-50 to-amber-100 border-2 border-[#F5C518] rounded-2xl p-5 mt-4">
           <p className="text-xs text-amber-900 font-bold flex items-center gap-2">
@@ -1368,69 +1759,228 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
 
 function InvestorView({ data }: { data: ValuationData }) {
   const { metrics, valuation } = data;
-  const range = { low: valuation.base, high: valuation.fair };
+  // Spreads we compute up-front so the "investor's first question"
+  // callout below can quote them. The arithmetic is intentionally
+  // honest: at TTM × multiple, payback is fair-market years; at
+  // asset value, payback is decades. An investor sees this in 10s.
+  const opMid       = Math.round((valuation.marketLow + valuation.marketHigh) / 2);
+  const assetMid    = Math.round((valuation.base + valuation.strategic) / 2);
+  const paybackYears = opMid > 0 ? Math.round(assetMid / opMid) : null;
+
   return (
     <div className="space-y-6">
-      <Section icon="🏢" title="نبذة عن الشركة" breakBefore>
-        <div className="bg-white border border-gray-200 rounded-2xl p-5 text-sm leading-relaxed text-gray-700">
-          <p>مسلم ليدر — منصة عربية لبيع الكتب والمنتجات الإبداعية المؤلَّفة، مع مكتبة رقمية ومحتوى متعدد القنوات. النظام يُدير الكتالوج، الطلبات، الشحن، التسويق، والمحاسبة الداخلية تحت سقف واحد.</p>
+      {/* "Investor's first question" — written from the buyer's lens
+          so the report meets the objection BEFORE the headline. An
+          investor reading the two valuation panels in isolation will
+          immediately ask "why is this 8M when it only does 150K?" —
+          we name the gap explicitly and bridge it. */}
+      <div className="bg-gradient-to-br from-red-50 via-amber-50 to-red-50 border-2 border-red-300 rounded-2xl p-5">
+        <p className="text-[11px] text-red-700 font-black tracking-widest mb-2">سؤال المستثمر الأول</p>
+        <p className="text-base font-black text-red-900 leading-relaxed">
+          &quot;لماذا أدفع <strong>{fmt(assetMid)} ج.م</strong> لشركة إيراداتها التشغيلية الحالية في حدود
+          <strong> {fmt(opMid)} ج.م</strong> سنوياً
+          {paybackYears !== null && <> (= استرداد رأس مال خلال ~{fmt(paybackYears)} سنة)</>}؟&quot;
+        </p>
+        <p className="text-[12px] text-red-800 leading-relaxed mt-3 border-r-4 border-red-400 pr-3">
+          <strong>الجواب الصادق:</strong> لا تُدفَع قيمة الأصول كثمن شراء مباشر؛ هي
+          <strong> سقف تفاوضي</strong> يعكس <em>تكلفة إعادة البناء</em> لو حاول
+          مشترٍ بناء نفس المنظومة من الصفر (موقع + مكتبة رقمية + 3 تطبيقات + ملكية
+          فكرية + قاعدة جمهور 17 ألف). الثمن الفعلي يقع بين القيمتين، ويعتمد على:
+          (أ) سرعة إعادة التفعيل التجاري، (ب) إثبات الحقوق والمبيعات لكل أصل،
+          (ج) درجة احتياج المشتري الاستراتيجي لهذه الأصول.
+        </p>
+      </div>
+
+      {/* Two clearly-separated valuation panels — no blended midpoint.
+          Asset method on the right, market/operational on the left,
+          with a strong note that they're NOT additive. */}
+      <Section icon="💎" title="نطاق التقييم — منهجان منفصلان">
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-3 mb-3">
+          <p className="text-[12px] text-amber-900 leading-relaxed text-center">
+            ⚠️ <strong>المنهجان أدناه لا يُجمَعان ولا يُحسَب متوسط بينهما.</strong>{' '}
+            كل منهج يقيس بُعداً مختلفاً للقيمة وفي وحدات مختلفة.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="bg-gradient-to-br from-[#1a1a2e] to-[#2d1060] text-white rounded-3xl p-6 text-center">
+            <p className="text-[11px] text-[#F5C518] font-bold tracking-widest">١. قيمة تشغيلية</p>
+            <p className="text-2xl sm:text-3xl font-black mt-2">
+              {fmt(valuation.marketLow)} <span className="text-sm text-white/60">–</span> {fmt(valuation.marketHigh)}
+            </p>
+            <p className="text-white/70 text-[11px] mt-1">جنيه مصري</p>
+            <p className="text-white/60 text-[11px] mt-3 leading-relaxed">
+              مبنية على إيرادات آخر 12 شهر × مضاعف {valuation.revenueMultipleLow}–{valuation.revenueMultipleHigh}.
+              تعكس الأداء التشغيلي الحالي فقط.
+            </p>
+          </div>
+          <div className="bg-gradient-to-br from-[#0a3a2e] to-[#1f6045] text-white rounded-3xl p-6 text-center">
+            <p className="text-[11px] text-[#F5C518] font-bold tracking-widest">٢. قيمة أصول وملكية فكرية</p>
+            <p className="text-2xl sm:text-3xl font-black mt-2">
+              {fmt(valuation.base)} <span className="text-sm text-white/60">–</span> {fmt(valuation.strategic)}
+            </p>
+            <p className="text-white/70 text-[11px] mt-1">جنيه مصري — قيمة تفاوضية داخلية</p>
+            <p className="text-white/60 text-[11px] mt-3 leading-relaxed">
+              مخزون + كتب + ترجمات + منصة + قاعدة عملاء + تطبيقات.
+              ليست تقييماً مالياً معتمداً.
+            </p>
+          </div>
         </div>
       </Section>
 
-      <Section icon="📈" title="مؤشرات الأداء الرئيسية">
+      <Section icon="🏢" title="نبذة عن الشركة" breakBefore>
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 text-sm leading-relaxed text-gray-700 space-y-2">
+          <p>
+            <strong>مسلم ليدر</strong> — منصة عربية لإنتاج وبيع الكتب
+            والمنتجات الإبداعية والألعاب التعليمية للأطفال والأسر،
+            مع مكتبة رقمية وتطبيقات وحضور اجتماعي عضوي.
+          </p>
+          <p className="text-[12px] text-gray-600">
+            خلال السنوات السابقة، لم تكن مسلم ليدر في مرحلة تشغيل
+            تجاري كامل، بل في <strong>مرحلة تأسيس منظومة منتجات
+            ومحتوى وقنوات رقمية</strong> (Asset Building Phase).
+            المرحلة القادمة هي <strong>Commercial Activation</strong> —
+            تحويل هذه الأصول إلى مبيعات منتظمة من خلال إدارة نمو
+            متفرغة وتسويق منظَّم.
+          </p>
+        </div>
+      </Section>
+
+      <Section icon="📈" title="مؤشرات الأداء التراكمية">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <KPI label="إيرادات تاريخية" value={`${fmt(metrics.sales.totalRevenue)} ج.م`} hint="إجمالي Order.total باستثناء الإلغاءات والهدايا." />
-          <KPI label="عدد الطلبات الصحيحة" value={fmt(metrics.sales.validOrders)} />
-          <KPI label="مشترين فعليين" value={fmt(metrics.customers.buyers)} sub={`${pct(metrics.customers.activeRatio)} نشطين`} />
+          <KPI label="إيرادات تاريخية تراكمية" value={`${fmt(metrics.sales.totalRevenue)} ج.م`} hint="إجمالي Order.total باستثناء الإلغاءات والهدايا، عبر تاريخ الشركة." />
+          <KPI label="إجمالي الطلبات الصحيحة" value={fmt(metrics.sales.validOrders)} />
+          <KPI label="إجمالي المشترين الفعليين" value={fmt(metrics.customers.buyers)} sub={`${fmt(metrics.customers.repeatBuyers)} متكررون`} />
           <KPI label="معدل تكرار الشراء" value={pct(metrics.customers.repeatRate)} hint="نسبة المشترين اللي عملوا طلبين أو أكثر." />
         </div>
       </Section>
 
-      <Section icon="💪" title="نقاط القوة">
+      <Section icon="💪" title="نقاط القوة الحالية">
         <ul className="bg-white border border-gray-200 rounded-2xl p-5 space-y-2 text-sm text-gray-700 list-disc pr-5">
-          <li>براند مؤسَّس + متابعون على السوشيال + قنوات يوتيوب نشطة.</li>
-          <li>{metrics.books.total} كتاب مؤلَّف + {metrics.products.total} منتج إبداعي = ملكية فكرية ضخمة.</li>
-          <li>منصة تقنية متكاملة (متجر + مكتبة + إدارة) مبنية في البيت.</li>
-          <li>قاعدة عملاء {fmt(metrics.customers.total)} حساب مسجَّل قابلة لإعادة الاستهداف.</li>
+          <li>براند مؤسَّس + ~17 ألف متابع عضوي على فيسبوك + مراجعات إيجابية موثَّقة.</li>
+          <li>{metrics.books.total} عنوان كتاب (أصلي + ترجمات) + {metrics.products.total} منتج إبداعي = أصول ملكية فكرية متعددة.</li>
+          <li>منصة تقنية متكاملة (متجر + مكتبة + إدارة) + 3 تطبيقات على Google Play.</li>
+          <li>قاعدة عملاء {fmt(metrics.customers.buyers)} مشترٍ فعلي + {fmt(metrics.customers.repeatBuyers)} متكرر — قابلة لإعادة الاستهداف.</li>
         </ul>
       </Section>
 
-      <Section icon="🚀" title="فرص النمو">
+      <Section icon="🚀" title="فرص النمو (Commercial Activation)">
         <ul className="bg-white border border-gray-200 rounded-2xl p-5 space-y-2 text-sm text-gray-700 list-disc pr-5">
-          <li>التوسع في الأسواق العربية الخارجية (السعودية، الإمارات).</li>
-          <li>تحويل الكتب لـ audiobooks وفيديوهات تعليمية مدفوعة.</li>
-          <li>اشتراكات شهرية للمكتبة الرقمية.</li>
-          <li>شراكات توزيع مع مكتبات تقليدية في مصر.</li>
-          <li>منتجات تعليمية للأطفال والمدارس.</li>
+          <li>تعيين مدير نمو متفرغ + ميزانية تسويق شهرية + روزنامة إطلاق ربع سنوية.</li>
+          <li>تحويل تطبيق الكتب من PDF Reader إلى E-book تفاعلي + اشتراكات + حماية محتوى.</li>
+          <li>تفعيل قناة B2B للمدارس والحضانات عبر المكتبة الرقمية.</li>
+          <li>تحويل متابعي فيسبوك إلى قنوات مبيعات قابلة للقياس (Messenger flows + Lookalike).</li>
+          <li>التوسع في الأسواق العربية الخارجية (السعودية، الإمارات) عبر المكتبة الرقمية.</li>
         </ul>
       </Section>
 
       <Section icon="⚖️" title="المخاطر والفجوات">
         <ul className="bg-white border border-gray-200 rounded-2xl p-5 space-y-2 text-sm text-gray-700 list-disc pr-5">
-          <li>صافي الربح غير محسوب — التقييم على مستوى الإيرادات والأصول فقط.</li>
-          <li>تكلفة المنتج الفعلية غير مخزَّنة، فالـ COGS تقديري.</li>
-          <li>{metrics.customers.repeatBuyers === 0 ? 'مفيش بيانات تكرار شراء بعد.' : `معدل تكرار الشراء ${pct(metrics.customers.repeatRate)} — يحتاج تحسين.`}</li>
-          <li>قيمة الـ IP مبنية على العدد، مش على مبيعات/طلب فعلي.</li>
-          <li>مفيش تتبّع لشبكة التوزيع أو شراكات خارجية في النظام.</li>
+          <li>
+            <strong>Key-Person Risk:</strong> الشركة معتمدة على المؤسس في
+            التأليف والإشراف على التصميم. تحتاج خطة تفويض وفصل
+            دور &quot;المؤلف/المصمم&quot; عن دور &quot;المدير التنفيذي&quot;.
+          </li>
+          <li>
+            <strong>صافي الربح الكامل غير محسوب:</strong> النظام يتتبع تكلفة
+            المنتج (من باتشات الإنتاج) والرواتب الجزئية، لكنه لا يتتبع
+            التسويق، الإيجار، المرافق، المصروفات الإدارية، الضرائب،
+            والاستهلاك. EBITDA المعروض جزئي.
+          </li>
+          <li>
+            <strong>قيمة الملكية الفكرية تقديرية:</strong> مبنية على عدد
+            الأعمال الأصلية + الترجمات بقيم لكل وحدة، لا على مبيعات
+            مثبتة لكل عمل. تحتاج توثيق حقوق + تتبع مبيعات قبل اعتمادها
+            كأرقام مالية.
+          </li>
+          <li>
+            <strong>الأصول الرقمية تحت التطوير:</strong> التطبيقات والمكتبة
+            الرقمية تحتاج تحديث وتسويق + تتبع active users / retention /
+            ARPU قبل تقييمها بمنهج الإيرادات.
+          </li>
+          <li>
+            {metrics.customers.repeatBuyers === 0
+              ? 'مفيش بيانات تكرار شراء بعد.'
+              : `معدل تكرار الشراء ${pct(metrics.customers.repeatRate)} — مؤشر يحتاج تحسين عبر برامج ولاء واتصالات منتظمة.`}
+          </li>
         </ul>
       </Section>
 
-      <Section icon="📐" title="منهجية التقييم المُقترحة">
-        <div className="bg-white border border-gray-200 rounded-2xl p-5 text-sm leading-relaxed text-gray-700 space-y-3">
-          <p>التقييم مبني على تجميع أربعة مكوّنات: تكلفة المخزون + قيمة الملكية الفكرية + قيمة المنصة التقنية + قيمة قاعدة العملاء.</p>
-          <p>الأرقام تُمثّل ثلاثة سيناريوهات: الحد الأدنى (تصفية)، المتوازنة (سوق طبيعية)، الاستراتيجية (مشتري بحاجة استراتيجية).</p>
-          <p className="text-xs text-amber-700 font-bold">⚠️ القيمة الاستراتيجية مشروطة باكتمال بيانات الربحية والنمو والمخزون والملكية الفكرية، وبوجود مشتري استراتيجي فعلي. لا تُستخدم كمرجع رئيسي قبل اكتمال هذه الشروط.</p>
+      {/* Due Diligence checklist — what's NOT in this report. Listed
+          so the investor isn't surprised and the owner knows the gap
+          before getting asked. This is the single most-respected
+          section by experienced investors: it shows the report is
+          honest about what it doesn't know. */}
+      <Section icon="📋" title="قائمة العناية الواجبة (Due Diligence Checklist)" subtitle="ما الذي يحتاج المستثمر إلى رؤيته قبل اعتماد التقييم — لا يوجد داخل النظام حالياً">
+        <div className="bg-white border border-gray-200 rounded-2xl p-5">
+          <ul className="text-[12px] text-gray-700 leading-relaxed space-y-2 list-disc pr-5">
+            <li>
+              <strong>إنفاق تسويقي شهري</strong> آخر 24 شهر — لإثبات أن انخفاض
+              TTM مرتبط بانخفاض الإنفاق، وليس بانخفاض الطلب.
+            </li>
+            <li>
+              <strong>تكلفة تطوير المنتجات الجديدة</strong> (الشنطة، الكتب الأخيرة،
+              تحديث المنصة) — لتثبيت رواية &quot;مرحلة بناء أصول&quot; بأرقام
+              فعلية بدلاً من سرد.
+            </li>
+            <li>
+              <strong>CAC و LTV لكل cohort</strong> — حالياً لدينا متوسط الإيراد
+              لكل مشتري فقط، بدون تكلفة اكتسابه. مهم لاحتساب جدوى إعادة
+              التفعيل التسويقي.
+            </li>
+            <li>
+              <strong>MAU / DAU / Retention</strong> للتطبيقات الـ 3 على Google Play
+              — العدّاد الحالي &quot;100+ تحميل&quot; غير كافٍ لتقييم بمنهج الإيرادات.
+            </li>
+            <li>
+              <strong>إيرادات في حساب البنك</strong> أو كشوف PayPal/Bosta COD آخر
+              36 شهر — لتأكيد أرقام النظام من مصدر مستقل.
+            </li>
+            <li>
+              <strong>عقود ملكية فكرية / حقوق نشر / ترجمة موثَّقة</strong> — بدون
+              توثيق رسمي، قيمة الـ IP تظل تقديرية فقط.
+            </li>
+            <li>
+              <strong>قائمة بـ مصاريف ثابتة شهرية</strong> (إيجار، اشتراكات، مرافق،
+              ضرائب) — لإكمال حساب EBITDA الفعلي والمنتقَل لـ DCF.
+            </li>
+            <li>
+              <strong>إقرارات ضريبية آخر 3 سنوات</strong> + موقف الزكاة الإسلامية.
+            </li>
+            <li>
+              <strong>صفقات مقارنة (Comps)</strong> من سوق النشر / EdTech المصري —
+              لتحديد المضاعف العادل في منهج الإيرادات بناءً على معاملات
+              حقيقية بدلاً من المضاعف الافتراضي.
+            </li>
+            <li>
+              <strong>توقُّعات مالية 3 سنوات (Pro-forma)</strong> مبنية على خطة
+              الـ Commercial Activation — السيناريو الأساسي + المتفائل +
+              المتحفظ.
+            </li>
+          </ul>
         </div>
       </Section>
 
-      <Section icon="💎" title="نطاق التقييم المقترح">
-        <div className="bg-gradient-to-br from-[#1a1a2e] to-[#2d1060] text-white rounded-3xl p-8 text-center">
-          <p className="text-xs text-[#F5C518] font-bold tracking-widest">نطاق التقييم</p>
-          <p className="text-3xl sm:text-5xl font-black mt-3">
-            {fmt(range.low)} <span className="text-lg text-white/60">إلى</span> {fmt(range.high)}
+      <Section icon="📐" title="منهجية التقييم">
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 text-sm leading-relaxed text-gray-700 space-y-3">
+          <p>
+            <strong>منهج الإيرادات (Market):</strong> إيرادات آخر 12 شهر
+            (TTM) × مضاعف {valuation.revenueMultipleLow}–{valuation.revenueMultipleHigh}.
+            يقيس الأداء التشغيلي الحالي.
           </p>
-          <p className="text-white/70 text-sm mt-2">جنيه مصري</p>
-          <p className="text-white/50 text-xs mt-4 max-w-md mx-auto">القيمة الفعلية في النطاق ده مرتبطة بنتائج العناية الواجبة (Due Diligence) واكتمال البيانات المالية.</p>
+          <p>
+            <strong>منهج الأصول (Asset):</strong> تكلفة المخزون + قيمة
+            الملكية الفكرية (أعمال أصلية + ترجمات) + قيمة المنصة
+            التقنية + قاعدة العملاء + تجار الجملة + علاقات الموردين −
+            ديون الموردين. ثلاثة سيناريوهات: حد أدنى أصولي، قيمة
+            أصولية متوازنة، قيمة استراتيجية محتملة.
+          </p>
+          <p className="text-xs text-amber-700 font-bold">
+            ⚠️ المنهجان لا يُجمَعان. القيمة الاستراتيجية مشروطة باكتمال
+            بيانات الربحية والمخزون والملكية الفكرية، وبوجود مشتري
+            استراتيجي فعلي. لا تُستخدم كمرجع رئيسي قبل اكتمال هذه
+            الشروط ولا قبل عناية واجبة (Due Diligence) ومراجعة محاسب
+            مستقل.
+          </p>
         </div>
       </Section>
     </div>

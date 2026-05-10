@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLang } from '@/context/LanguageContext';
+import AmeenProductCard from './AmeenProductCard';
 
 // On-site AI chat — talks to /api/ameen-chat which uses the SAME
 // settings/prompt/knowledge/lead-classification as the Facebook
@@ -76,34 +77,53 @@ function saveHistory(history: ChatMessage[]) {
 }
 
 // Convert plaintext URLs in the AI's reply into clickable links so
-// product recommendations actually click through. Also linkifies
-// bare moslimleader.com URLs the model emits.
+// product recommendations actually click through. Handles three
+// forms: markdown `[text](url)`, bare https URLs, and bare
+// moslimleader.com paths.
 function linkify(text: string): React.ReactNode {
-  // Match http(s) URLs OR bare moslimleader.com paths.
-  const re = /\b(https?:\/\/[^\s)]+|moslimleader\.com\/[^\s)]+)/g;
+  // Order matters: markdown first (greedy), then bare URLs.
+  const re = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|moslimleader\.com\/[^\s)]+)\)|\b(https?:\/\/[^\s)]+|moslimleader\.com\/[^\s)]+)/g;
   const parts: React.ReactNode[] = [];
   let last = 0;
   let m: RegExpExecArray | null;
   let i = 0;
   while ((m = re.exec(text)) !== null) {
     if (m.index > last) parts.push(text.slice(last, m.index));
-    const raw = m[0];
-    const href = raw.startsWith('http') ? raw : `https://${raw}`;
+    const isMd = !!m[1];
+    const label = isMd ? m[1] : (m[3] ?? '').replace(/^https?:\/\//, '');
+    const raw   = isMd ? m[2] : m[3] ?? '';
+    const href  = raw.startsWith('http') ? raw : `https://${raw}`;
     parts.push(
       <a
         key={`l-${i++}`}
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-[#F5C518] underline underline-offset-2 hover:text-amber-300 break-all"
+        className="text-[#1a1a2e] underline underline-offset-2 hover:text-[#2d1060] break-all font-bold"
       >
-        {raw.replace(/^https?:\/\//, '')}
+        {label}
       </a>,
     );
-    last = m.index + raw.length;
+    last = m.index + m[0].length;
   }
   if (last < text.length) parts.push(text.slice(last));
   return parts;
+}
+
+// Extract product slugs from the AI reply so we can render an inline
+// card for each recommendation. Matches:
+//   moslimleader.com/shop/{slug}      → physical product
+// Books and series get a link-only fallback for now (their card UI
+// would need their own fetch path; future work).
+function extractProductSlugs(text: string): string[] {
+  const slugs = new Set<string>();
+  const re = /moslimleader\.com\/shop\/([a-z0-9-]+)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const slug = m[1].replace(/[)\].,;:!?]+$/, '');
+    if (slug) slugs.add(slug);
+  }
+  return Array.from(slugs);
 }
 
 function AminAvatar({ size = 48 }: { size?: number }) {
@@ -531,6 +551,12 @@ export default function AmeenChat() {
                         history makes the channel switch obvious. */}
                     {isUser && m.transcribed && <span className="opacity-70 me-1">🎤</span>}
                     {linkify(m.text)}
+                    {/* Inline product cards for any moslimleader.com/shop/{slug}
+                        URL the AI included. Pulls live data so price + image
+                        + stock match the catalogue. */}
+                    {!isUser && extractProductSlugs(m.text).slice(0, 3).map(slug => (
+                      <AmeenProductCard key={`${m.id}-${slug}`} slug={slug} />
+                    ))}
                   </div>
                 </div>
               );

@@ -160,34 +160,58 @@ export async function POST(req: NextRequest) {
       }, { status: 401 });
     }
 
-    // CRITICAL: Verify captured amount matches expected (anti-tampering)
+    // PayPal already moved the money at this point. Earlier code
+    // RETURNED an error on currency or amount mismatches, which left
+    // the customer charged but no order in the DB — owner ended up
+    // manually refunding (= the "reverse transaction" emails).
+    //
+    // New policy: if PayPal says CAPTURE COMPLETED, we ALWAYS persist
+    // the order with the AMOUNT PAYPAL ACTUALLY CHARGED. Mismatches
+    // are flagged in `notes` for admin review instead of failing the
+    // customer-facing flow. Better one row tagged "needs review" than
+    // a silent lost charge.
     const capture = captureResult.purchase_units?.[0]?.payments?.captures?.[0];
     const capturedAmount = Number(capture?.amount?.value || 0);
-    const capturedCurrency = capture?.amount?.currency_code;
-
+    const capturedCurrency = String(capture?.amount?.currency_code || 'USD').toUpperCase();
+    const reviewFlags: string[] = [];
     if (capturedCurrency !== 'USD') {
-      console.error('[paypal] Currency mismatch', { expected: 'USD', got: capturedCurrency, paypalOrderId });
-      return NextResponse.json({ error: 'خطأ في عملة الدفع' }, { status: 400 });
+      console.error('[paypal] Currency mismatch — saving anyway', { expected: 'USD', got: capturedCurrency, paypalOrderId });
+      reviewFlags.push(`عملة مختلفة: ${capturedCurrency}`);
     }
     if (Math.abs(capturedAmount - expectedUsd) > 0.01) {
-      console.error('[paypal] Amount mismatch', { expected: expectedUsd, captured: capturedAmount, paypalOrderId });
-      return NextResponse.json({ error: 'المبلغ المدفوع لا يطابق المطلوب' }, { status: 400 });
+      console.error('[paypal] Amount mismatch — saving anyway', { expected: expectedUsd, captured: capturedAmount, paypalOrderId });
+      reviewFlags.push(`المبلغ المتوقع ${expectedUsd} والمدفوع ${capturedAmount}`);
     }
+    // Bind the persisted order to the actual captured amount so admin
+    // dashboards reflect what PayPal really took, not what the cart
+    // showed at checkout time.
+    const persistedTotal = capturedAmount;
+
+    // Compose notes — customer's notes plus any review flag for the
+    // admin so a discrepancy never gets buried.
+    const customerNotes = (body?.notes || '').toString().trim();
+    const reviewBlock = reviewFlags.length > 0
+      ? `[يحتاج مراجعة: ${reviewFlags.join(' · ')}]`
+      : '';
+    const composedNotes = [customerNotes, reviewBlock].filter(Boolean).join(' · ') || null;
 
     const order = await prisma.$transaction(async (tx) => {
       const created = await tx.order.create({
         data: {
           userId: resolvedUserId as string,
-          status: 'paid',
-          total: expectedUsd,
+          // Tag mismatched orders with a distinct status so the admin
+          // dashboard can filter on them. Plain "paid" stays the
+          // default for clean captures.
+          status: reviewFlags.length > 0 ? 'paid-needs-review' : 'paid',
+          total: persistedTotal,
           shippingCost: shippingUsd,
           discount: discountUsd,
           couponCode: (body?.couponCode || '').trim().toUpperCase() || null,
           paymentMethod: 'paypal',
           paypalOrderId,
           shippingAddress,
-          notes: body?.notes || null,
-          currency: 'USD',
+          notes: composedNotes,
+          currency: capturedCurrency,
           items: { create: resolvedItems },
         },
         include: { items: true },
@@ -275,7 +299,12 @@ export async function POST(req: NextRequest) {
       console.error('[paypal capture-order email]', emailErr);
     }
 
-    return NextResponse.json({ orderId: order.id, status: 'paid', amountUsd: expectedUsd });
+    return NextResponse.json({
+      orderId: order.id,
+      status: order.status,
+      amountUsd: persistedTotal,
+      needsReview: reviewFlags.length > 0,
+    });
   } catch (err) {
     // Surface the underlying message to the client (the customer
     // already paid — they need to know what went wrong so they can

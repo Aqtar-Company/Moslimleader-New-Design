@@ -368,6 +368,14 @@ export default function ValuationPage() {
           isolation. (Plan addendum 25 — investor-readiness pass.) */}
       <FounderContextSection metrics={metrics} />
 
+      {/* Digital assets pipeline — apps, library, social. Listed
+          explicitly so a reader sees the multi-channel asset base,
+          but framed as "assets under development / rebuild-cost
+          basis", NOT as revenue. Owner verified counts on Google
+          Play (round 3 review): 100+ downloads each, last update
+          Nov 2023, in-app purchases on the e-book reader. */}
+      <DigitalAssetsSection />
+
       {/* Concentration risk — what fraction of revenue depends on a
           handful of customers, products, governorates, or suppliers. */}
       <ConcentrationSection metrics={metrics} />
@@ -630,6 +638,135 @@ function FounderContextSection({ metrics }: { metrics: ValuationData['metrics'] 
         </p>
       </div>
     </Section>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Digital assets & product pipeline — Google Play apps + library +
+// social channels. Listed explicitly as "assets under development",
+// NOT as a revenue stream. Owner reviewed Google Play and confirmed
+// each app's status (~100+ downloads, last update Nov 2023).
+// Valuation guidance below explicitly cautions against monetising
+// these by headline number.
+// ────────────────────────────────────────────────────────────────────────────
+function DigitalAssetsSection() {
+  return (
+    <Section
+      icon="📱"
+      title="الأصول الرقمية وقابلية التوسع"
+      subtitle="Digital Assets & Product Pipeline — أصول قابلة لإعادة التفعيل، ليست إيرادات محققة"
+    >
+      <div className="space-y-4 text-[13px] leading-relaxed text-gray-800">
+        <p>
+          تمتلك مسلم ليدر منظومة قنوات رقمية متعددة بُنيت خلال السنوات
+          السابقة، تدعم قابلية التوسع التجاري دون الحاجة إلى بناء
+          البنية التحتية من الصفر:
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <DigitalAssetCard
+            icon="🌐"
+            title="الموقع الإلكتروني + المكتبة الرقمية"
+            details={[
+              'إعادة بناء الموقع أكثر من مرة + تحديث رئيسي في 2026',
+              'مكتبة كتب رقمية متعددة اللغات قابلة للتطوير لنموذج اشتراكات',
+              'نظام طلبات + تتبع شحنات + لوحة إدارة كاملة',
+            ]}
+          />
+          <DigitalAssetCard
+            icon="📖"
+            title="تطبيق Moslim Leader E-books (Google Play)"
+            link="https://play.google.com/store/apps/details?id=com.moslim.book"
+            details={[
+              'مُنشَر تحت Aqtar Design Solutions، 100+ تحميل',
+              'In-app purchases — قناة دفع مهيَّأة',
+              'يحتاج تطوير من PDF Reader إلى تجربة E-book تفاعلية كاملة (حفظ التقدم، اشتراكات، حماية محتوى)',
+            ]}
+          />
+          <DigitalAssetCard
+            icon="🕋"
+            title="تطبيق Hajj Story (لعبة تعليمية)"
+            link="https://play.google.com/store/apps/details?id=com.Aqtar.Hajj"
+            details={[
+              'لعبة تعليمية للأطفال بتقنية الواقع المعزز (AR)',
+              '100+ تحميل، مرتبطة بمنتج لعبة الحج المادي',
+              'نموذج تسعير قابل للتحويل إلى مدفوع / مجاني-مع-إعلانات',
+            ]}
+          />
+          <DigitalAssetCard
+            icon="🤲"
+            title="تطبيق Salat Game (لعبة تعليم الصلاة)"
+            link="https://play.google.com/store/apps/details?id=com.Aqtar.PrayGame"
+            details={[
+              'تطبيق تعليمي للأطفال — Teacher Approved من Google',
+              '100+ تحميل، مرتبط بمنتج لعبة الصلاة المادي',
+              'يدعم استراتيجية الـ "physical + digital companion product"',
+            ]}
+          />
+          <DigitalAssetCard
+            icon="📘"
+            title="صفحة فيسبوك (~17 ألف متابع عضوي)"
+            link="https://www.facebook.com/MoslimLeader/reviews"
+            details={[
+              'قاعدة متابعة عضوية حقيقية بدون أدوات تضخيم',
+              'مراجعات إيجابية موثَّقة من العملاء',
+              'قناة Messenger + كتالوج + Lookalike قابلة للتفعيل',
+            ]}
+          />
+          <DigitalAssetCard
+            icon="📚"
+            title="محتوى رقمي متعدد اللغات"
+            details={[
+              `${'127'} كتاب وعنوان إجمالي عبر اللغات (عربي + إنجليزي + ترجمات)`,
+              'قابل للتطوير إلى نموذج اشتراكات / مكتبة تعليمية مدفوعة',
+              'أساس لإطلاق B2B للمدارس / المراكز التعليمية',
+            ]}
+          />
+        </div>
+
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4">
+          <p className="font-black text-amber-900 mb-2">⚠️ كيفية احتساب هذه الأصول في التقييم</p>
+          <p className="text-amber-900 text-[12px] leading-relaxed mb-2">
+            هذه الأصول الرقمية <strong>لا تُحتسب كأرباح محققة</strong>،
+            ولا يصح إعطاؤها قيمة مالية مرتفعة لمجرد وجودها. يُقترح
+            تقدير قيمتها على أساس <strong>تكلفة إعادة البناء (Rebuild
+            Cost)</strong> — أي ما يكلِّف بناء نفس الموقع + المكتبة +
+            التطبيقات الـ 3 من الصفر.
+          </p>
+          <p className="text-amber-900 text-[12px] leading-relaxed">
+            القيمة التجارية المرفوعة (revenue-based) لا تتحقق إلا بعد
+            توفر بيانات: عدد المستخدمين النشطين، الاحتفاظ، المبيعات
+            داخل التطبيق، الاشتراكات. حتى ذلك الحين تُصنَّف على أنها
+            &quot;Digital Assets Under Development&quot;.
+          </p>
+        </div>
+
+        <div className="bg-purple-50 border-2 border-purple-300 rounded-2xl p-4">
+          <p className="font-black text-purple-900 mb-2">🎯 المسار التطويري المقترح</p>
+          <ul className="text-purple-900 text-[12px] leading-relaxed list-disc pr-5 space-y-1.5">
+            <li>تحويل تطبيق Moslim Leader E-books من <strong>PDF Reader</strong> إلى <strong>E-book تفاعلي</strong> كامل (حفظ التقدم + اشتراكات + حماية محتوى + تجربة طفل/ولي أمر).</li>
+            <li>إعادة إطلاق تطبيقات الألعاب مع <strong>تحديث محتوى + ربط مباشر</strong> بالمنتجات المادية في المتجر.</li>
+            <li>تفعيل <strong>قناة B2B</strong> (مدارس، حضانات، مراكز تعليمية) عبر منصة الاشتراكات.</li>
+            <li>تتبع <strong>active users + retention + ARPU</strong> لكل أصل رقمي ليصبح قابلاً للتقييم بمنهج الإيرادات.</li>
+          </ul>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+function DigitalAssetCard({ icon, title, link, details }: { icon: string; title: string; link?: string; details: string[] }) {
+  const titleEl = link
+    ? <a href={link} target="_blank" rel="noopener noreferrer" className="hover:underline">{title} ↗</a>
+    : title;
+  return (
+    <div className="bg-white border-2 border-gray-200 rounded-2xl p-4">
+      <p className="text-2xl">{icon}</p>
+      <p className="font-black text-gray-900 mt-1.5 leading-snug">{titleEl}</p>
+      <ul className="text-[11px] text-gray-600 mt-2 list-disc pr-4 space-y-1 leading-relaxed">
+        {details.map((d, i) => <li key={i}>{d}</li>)}
+      </ul>
+    </div>
   );
 }
 

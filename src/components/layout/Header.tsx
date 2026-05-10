@@ -26,7 +26,7 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50">
+    <header className="fixed top-0 left-0 right-0 z-50 print:hidden">
       {banner && !bannerDismissed && (
         <div
           className="relative text-center py-2 px-8 text-sm font-bold"

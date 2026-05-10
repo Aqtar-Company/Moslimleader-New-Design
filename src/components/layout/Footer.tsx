@@ -68,7 +68,7 @@ export default function Footer() {
   const { t, isRtl } = useLang();
 
   return (
-    <footer className="bg-gray-950 border-t border-white/8 text-gray-400 pt-10 pb-5 mt-16" dir={isRtl ? 'rtl' : 'ltr'}>
+    <footer className="bg-gray-950 border-t border-white/8 text-gray-400 pt-10 pb-5 mt-16 print:hidden" dir={isRtl ? 'rtl' : 'ltr'}>
       <div className="max-w-6xl mx-auto px-6">
 
         {/* Top grid: Logo | Nav | Contact */}

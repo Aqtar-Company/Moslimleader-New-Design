@@ -126,7 +126,23 @@ export default function ValuationPage() {
   const { addToast } = useToast();
   const { user } = useAuth();
   const canEdit = user?.role === 'admin' || (user?.permissions ?? []).includes('valuation.write');
-  const [data, setData] = useState<ValuationData | null>(null);
+  // Hydrate from localStorage on first paint so a revisit shows the
+  // last report instantly while we refetch in the background. The
+  // server's full computation takes a few seconds; without this the
+  // page sits on a spinner every time the admin opens it.
+  const CACHE_KEY = 'valuation-cache-v1';
+  const [data, setData] = useState<ValuationData | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = window.localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as { at: number; data: ValuationData };
+      // Older than 24h — drop it; assumptions might have shifted enough
+      // that showing the stale headline could mislead.
+      if (Date.now() - parsed.at > 24 * 60 * 60 * 1000) return null;
+      return parsed.data;
+    } catch { return null; }
+  });
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'detailed' | 'investor'>('detailed');
   const [editingAssumptions, setEditingAssumptions] = useState(false);
@@ -141,7 +157,10 @@ export default function ValuationPage() {
       const res = await fetch(`/api/admin/valuation`, { credentials: 'include', cache: 'no-store' });
       if (res.status === 403) { setForbidden(true); setLoading(false); return; }
       const d = await res.json();
-      if (res.ok) setData(d);
+      if (res.ok) {
+        setData(d);
+        try { window.localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), data: d })); } catch { /* quota — ignore */ }
+      }
       else addToast(d.error || 'فشل التوليد', 'error');
     } catch { addToast('فشل التوليد', 'error'); }
     setLoading(false);
@@ -181,7 +200,12 @@ export default function ValuationPage() {
   };
 
   if (forbidden) return <ForbiddenState requiredPerm="valuation.read" />;
-  if (loading || !data) return <Spinner />;
+  // First-ever load (no cached snapshot, no live response yet): full
+  // spinner so we don't show an empty page. Subsequent loads use the
+  // localStorage snapshot underneath while we refetch — a small
+  // "...جاري التحديث" badge in the action bar tells the user it's
+  // refreshing.
+  if (!data) return <Spinner />;
 
   const { metrics, valuation, products, books, assumptions } = data;
 
@@ -234,11 +258,13 @@ export default function ValuationPage() {
         }
       `}</style>
 
-      {/* Action bar — sticky on mobile so the controls stay reachable while
-          scrolling through a long report */}
-      <div className="flex items-center justify-between gap-2 flex-wrap print:hidden sticky top-0 z-20 bg-gray-50/95 backdrop-blur -mx-4 px-4 py-3 -mt-2 sm:static sm:bg-transparent sm:backdrop-blur-none sm:mx-0 sm:px-0 sm:py-0 sm:mt-0">
+      {/* Action bar — flows inline with the page so it can scroll out
+          of view (was sticky before; mobile users complained the
+          floating bar was covering data). */}
+      <div className="flex items-center justify-between gap-2 flex-wrap print:hidden">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
           <p className="text-[10px] sm:text-xs text-gray-500 truncate">تم التوليد: {new Date(data.generatedAt).toLocaleString('en-GB')}</p>
+          {loading && <span className="text-[10px] text-blue-600 font-bold animate-pulse">⟳ جاري التحديث…</span>}
           <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
             <button onClick={() => setView('detailed')} className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition ${view === 'detailed' ? 'bg-white shadow-sm text-[#1a1a2e]' : 'text-gray-500'}`}>📊 تفصيلي</button>
             <button onClick={() => setView('investor')} className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition ${view === 'investor' ? 'bg-white shadow-sm text-[#1a1a2e]' : 'text-gray-500'}`}>🤝 المستثمر</button>

@@ -19,11 +19,11 @@ import { EGP_TO_USD } from '@/lib/currency';
 // In-memory cache for the valuation payload. The full report makes
 // ~25 aggregations and is not real-time-critical (the underlying
 // numbers don't move second-to-second). Cached responses are served
-// for 60 seconds, then the next request triggers a fresh computation.
+// for 5 minutes, then the next request triggers a fresh computation.
 // PUT to /api/admin/valuation invalidates immediately so an admin
 // who tweaked assumptions sees their effect right away.
 interface CachedReport { at: number; payload: unknown }
-const CACHE_TTL_MS = 60 * 1000;
+const CACHE_TTL_MS = 5 * 60 * 1000;
 let reportCache: CachedReport | null = null;
 function invalidateValuationCache() { reportCache = null; }
 

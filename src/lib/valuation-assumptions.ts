@@ -6,7 +6,8 @@ import { prisma } from './prisma';
 // numbers don't shift when the row is missing.
 export interface ValuationAssumptions {
   cogsRatio: number;          // fraction of retail price used as inventory cost (0–1)
-  ipBookValue: number;        // EGP attributed per authored book
+  ipBookValue: number;        // EGP attributed per ORIGINAL authored book (Arabic / "both")
+  ipBookTranslationValue: number; // EGP per translation / non-Arabic edition — fraction of original because the IP is derivative
   ipProductValue: number;     // EGP attributed per authored product
   ipDigitalValue: number;     // EGP flat — YouTube + PDFs + brand
   techValue: number;          // EGP — platform + admin + integrations
@@ -26,7 +27,14 @@ export interface ValuationAssumptions {
 
 export const DEFAULT_VALUATION_ASSUMPTIONS: ValuationAssumptions = {
   cogsRatio: 0.35,
-  ipBookValue: 120000,
+  // ipBookValue = the Arabic original (the IP we authored). Halved
+  // from the legacy 120k constant after owner review showed the old
+  // figure assumed every translated edition was a separate original
+  // work. Originals get the full per-book value below; translations
+  // pick up ipBookTranslationValue (~12% of original — covers
+  // translation+layout cost, not new IP).
+  ipBookValue: 60000,
+  ipBookTranslationValue: 7500,
   ipProductValue: 40000,
   ipDigitalValue: 350000,
   techValue: 800000,
@@ -110,6 +118,7 @@ function sanitize(input: Partial<ValuationAssumptions>): {
   // can show "تم تعديل القيمة لتقع داخل النطاق المسموح".
   take('cogsRatio', 0, 1);
   take('ipBookValue', 0, 5_000_000);
+  take('ipBookTranslationValue', 0, 1_000_000);
   take('ipProductValue', 0, 2_000_000);
   take('ipDigitalValue', 0, 10_000_000);
   take('techValue', 0, 5_000_000);

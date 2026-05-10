@@ -312,9 +312,24 @@ export async function GET() {
     ? (lastMonth.revenue - prevMonth.revenue) / prevMonth.revenue
     : null;
 
-  // IP value (per category × multiplier from market norms — see
-  // src/lib/valuation-assumptions.ts for the configurable inputs).
-  const ipBookValue       = books.length * assumptions.ipBookValue;
+  // IP value — split book IP into ORIGINAL works vs TRANSLATIONS.
+  // Counting every language edition as a separate original-IP asset
+  // overstates the headline by 4-6× for any book translated into the
+  // ar/en/de/fr/id/ur/bn/hi pipeline. Originals (Arabic / "both") get
+  // the full per-book value; translations are derivative IP and pick
+  // up ipBookTranslationValue (default ~12% of original — covers
+  // translation/layout cost, not net-new authorship).
+  const ORIGINAL_LANGUAGES = new Set(['ar', 'both', '', null]);
+  let originalBookCount = 0;
+  let translationBookCount = 0;
+  for (const b of books) {
+    const lang = (b.language ?? '').trim().toLowerCase();
+    if (!lang || ORIGINAL_LANGUAGES.has(lang)) originalBookCount++;
+    else translationBookCount++;
+  }
+  const ipBookOriginalValue    = originalBookCount * assumptions.ipBookValue;
+  const ipBookTranslationValue = translationBookCount * assumptions.ipBookTranslationValue;
+  const ipBookValue       = ipBookOriginalValue + ipBookTranslationValue;
   const ipProductValue    = products.length * assumptions.ipProductValue;
   const ipDigitalValue    = assumptions.ipDigitalValue;
   const ipTotal           = ipBookValue + ipProductValue + ipDigitalValue;
@@ -353,6 +368,7 @@ export async function GET() {
     customerSpendRows,
     customerSpendRowsTtm,
     productRevenueRows,
+    allItemRevenueRows,
     currencyAgg,
     orderGovs,
     supplierSpendRows,
@@ -403,6 +419,20 @@ export async function GET() {
       GROUP BY oi.productId
       ORDER BY revenue DESC
       LIMIT 5
+    `,
+    // Total OrderItem revenue (gross of every line item, all products).
+    // Used as the denominator for productConcentration so the ratio is
+    // computed in a SINGLE unit system (OrderItem.unitPrice × qty on
+    // both sides). Dividing the top-5 OrderItem sum by Order.total
+    // produces >100% whenever the item-level prices exceed the
+    // collected order total — typical after the Bosta backfill, which
+    // writes current catalogue unit prices against historical COD
+    // values that ran 10%+ lower (see plan addendum 25).
+    prisma.$queryRaw<Array<{ revenue: number }>>`
+      SELECT SUM(oi.unitPrice * oi.quantity) AS revenue
+      FROM OrderItem oi
+      JOIN \`Order\` o ON o.id = oi.orderId
+      WHERE o.status != 'cancelled' AND o.paymentMethod != 'gift'
     `,
     prisma.order.groupBy({
       by: ['currency'],
@@ -494,8 +524,17 @@ export async function GET() {
   const customerConcentrationTtm = ttmRevenue > 0 ? top10CustomerSpendTtm / ttmRevenue : 0;
 
   // Top 5 products by revenue — discount-aware via OrderItem.unitPrice.
+  // Concentration is computed against the TOTAL OrderItem revenue
+  // (same unit system) so the ratio can never exceed 100%. The old
+  // formula divided by Order.total which mixes pre-discount item
+  // prices with post-discount + post-shipping order totals, and after
+  // the Bosta backfill (which writes current catalogue prices against
+  // historical COD totals 10%+ lower) the ratio routinely overflowed.
   const top5ProductRevenue = productRevenueRows.reduce((s, r) => s + Number(r.revenue), 0);
-  const productConcentration = totalRevenue > 0 ? top5ProductRevenue / totalRevenue : 0;
+  const totalItemRevenue   = Number(allItemRevenueRows[0]?.revenue ?? 0);
+  const productConcentration = totalItemRevenue > 0
+    ? Math.min(1, top5ProductRevenue / totalItemRevenue)
+    : 0;
 
   // Currency split: % of orders by currency (USD PayPal vs EGP local).
   const usdAgg = currencyAgg.find(c => c.currency === 'USD');
@@ -802,12 +841,21 @@ export async function GET() {
       },
       ip: {
         booksValue: ipBookValue,
+        // Original vs translation split so the UI can spell out that
+        // a translated edition isn't the same IP asset as the Arabic
+        // original. Owner reviewed the headline and asked for this
+        // distinction explicitly — see plan addendum 25.
+        booksOriginalValue: ipBookOriginalValue,
+        booksTranslationValue: ipBookTranslationValue,
+        booksOriginalCount: originalBookCount,
+        booksTranslationCount: translationBookCount,
         productsValue: ipProductValue,
         digitalValue: ipDigitalValue,
         total: ipTotal,
         // Surface the per-unit weights so the UI can show the methodology
         // alongside the headline number.
         perBook: assumptions.ipBookValue,
+        perBookTranslation: assumptions.ipBookTranslationValue,
         perProduct: assumptions.ipProductValue,
         booksCount: books.length,
         productsCount: products.length,

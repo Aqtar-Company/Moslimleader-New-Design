@@ -10,6 +10,7 @@ import ForbiddenState from '@/components/admin/ForbiddenState';
 interface Assumptions {
   cogsRatio: number;
   ipBookValue: number;
+  ipBookTranslationValue: number;
   ipProductValue: number;
   ipDigitalValue: number;
   techValue: number;
@@ -44,7 +45,7 @@ interface ValuationData {
     production?: { batchesCount: number; unitsProduced: number; totalSpend: number };
     suppliers?: { total: number; active: number; transactionCount: number; netLiabilities: number };
     gifts?: { count: number; units: number; retailValue: number; shippingCost: number; totalCost: number };
-    ip: { booksValue: number; productsValue: number; digitalValue: number; total: number; perBook: number; perProduct: number; booksCount: number; productsCount: number };
+    ip: { booksValue: number; booksOriginalValue: number; booksTranslationValue: number; booksOriginalCount: number; booksTranslationCount: number; productsValue: number; digitalValue: number; total: number; perBook: number; perBookTranslation: number; perProduct: number; booksCount: number; productsCount: number };
     tech: { value: number };
     customerDb: { value: number; perCustomer: number; appliedTo: number; registeredCount: number };
     wholesale: { value: number; perCustomer: number; count: number };
@@ -876,9 +877,12 @@ function AssumptionsTable({ assumptions, defaults }: { assumptions: Assumptions;
     { key: 'cogsRatio', label: 'نسبة تكلفة المخزون من سعر البيع', format: n => pct(n), basis: 'industry',
       explain: 'المنتجات بتكلَّف الشركة هذه النسبة من سعرها قبل الربح.',
       footnote: 'هامش بيع التجزئة العادي 50–70%، فالـ COGS بين 30–50%. الافتراضي 35% يقابل هامش 65% (متوازن لكتب أطفال + ألعاب تعليمية).' },
-    { key: 'ipBookValue', label: 'قيمة كل كتاب مؤلَّف (IP)', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
-      explain: 'تقدير لقيمة حقوق نشر/ترجمة/audiobook لكل كتاب.',
-      footnote: 'تقدير شخصي. الأنسب احترافياً: استخدام relief-from-royalty (3–5% من إيرادات الكتاب التراكمية) — يحتاج تطوير لاحق.' },
+    { key: 'ipBookValue', label: 'قيمة الكتاب الأصلي (عربي)', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
+      explain: 'يطبَّق فقط على الكتب اللي لغتها "ar" أو "both" — أعمال أصلية مؤلَّفة.',
+      footnote: 'الترجمات والإصدارات اللغوية تستخدم قيمة منفصلة أقل. الأنسب احترافياً: relief-from-royalty (3–5% من إيرادات الكتاب التراكمية) — يحتاج تطوير لاحق.' },
+    { key: 'ipBookTranslationValue', label: 'قيمة الترجمة / الإصدار اللغوي', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
+      explain: 'الترجمات إصدارات مشتقة — قيمتها = تكلفة الترجمة والإخراج، مش قيمة العمل الأصلي.',
+      footnote: 'الافتراضي ~12% من قيمة الأصل. لو الترجمة لها مبيعات فعلية موثَّقة أو عقد ترخيص، ارفعها يدوياً للقيمة الفعلية.' },
     { key: 'ipProductValue', label: 'قيمة كل منتج إبداعي (IP)', format: n => `${fmt(n)} ج.م`, basis: 'heuristic',
       explain: 'تقدير لقيمة التصميم/البراند الخاص بكل منتج.',
       footnote: 'تقدير موحَّد لكل المنتجات — لا يميز بين البِست-سيلر والمنتج الراكد. حد أدنى للمناقشة، ليس رقماً نهائياً.' },
@@ -991,7 +995,8 @@ function AssumptionsForm({ initial, defaults, onSave, onCancel }: { initial: Ass
         <AssumptionsField k="revenueMultipleHigh" label="مضاعف الإيرادات (أعلى)" step={0.1} min={0} value={v.revenueMultipleHigh} defaultValue={defaults.revenueMultipleHigh} onChange={set} />
         <AssumptionsField k="fairMultiplier" label="مضاعف عادل" step={0.05} min={1} value={v.fairMultiplier} defaultValue={defaults.fairMultiplier} onChange={set} />
         <AssumptionsField k="strategicMultiplier" label="مضاعف استراتيجي" step={0.05} min={1} value={v.strategicMultiplier} defaultValue={defaults.strategicMultiplier} onChange={set} />
-        <AssumptionsField k="ipBookValue" label="قيمة كل كتاب (ج.م)" step={1000} value={v.ipBookValue} defaultValue={defaults.ipBookValue} onChange={set} />
+        <AssumptionsField k="ipBookValue" label="قيمة الكتاب الأصلي (ج.م)" step={1000} value={v.ipBookValue} defaultValue={defaults.ipBookValue} onChange={set} />
+        <AssumptionsField k="ipBookTranslationValue" label="قيمة الترجمة (ج.م)" step={500} value={v.ipBookTranslationValue} defaultValue={defaults.ipBookTranslationValue} onChange={set} />
         <AssumptionsField k="ipProductValue" label="قيمة كل منتج (ج.م)" step={1000} value={v.ipProductValue} defaultValue={defaults.ipProductValue} onChange={set} />
         <AssumptionsField k="ipDigitalValue" label="قيمة المحتوى الرقمي (ج.م)" step={10000} value={v.ipDigitalValue} defaultValue={defaults.ipDigitalValue} onChange={set} />
         <AssumptionsField k="techValue" label="قيمة المنصة (ج.م)" step={10000} value={v.techValue} defaultValue={defaults.techValue} onChange={set} />
@@ -1265,9 +1270,15 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
       {/* IP */}
       <Section icon="📚" title="الملكية الفكرية" subtitle="قيمة تقديرية مبنية على العدد، مش على المبيعات الفعلية">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          <IPCard icon="📖" label="الكتب المؤلَّفة" value={metrics.ip.booksValue} count={metrics.ip.booksCount} per={metrics.ip.perBook} />
+          {/* Books split into ORIGINAL vs TRANSLATION cards. Counting
+              each language edition as a separate original work
+              inflated the headline 4-6×; the breakdown here makes the
+              derivation explicit so an investor can see what's an
+              authored work and what's a derivative localisation. */}
+          <IPCard icon="📖" label="الأعمال الأصلية (عربي)" value={metrics.ip.booksOriginalValue} count={metrics.ip.booksOriginalCount} per={metrics.ip.perBook} />
+          <IPCard icon="🌐" label="الترجمات / الإصدارات اللغوية" value={metrics.ip.booksTranslationValue} count={metrics.ip.booksTranslationCount} per={metrics.ip.perBookTranslation} />
           <IPCard icon="🎮" label="المنتجات الإبداعية" value={metrics.ip.productsValue} count={metrics.ip.productsCount} per={metrics.ip.perProduct} />
-          <IPCard icon="🎬" label="المحتوى الرقمي" value={metrics.ip.digitalValue} count={null} per={null} />
+          <IPCard icon="🎬" label="المحتوى الرقمي (منصة + قنوات)" value={metrics.ip.digitalValue} count={null} per={null} />
         </div>
         <div className="bg-gradient-to-br from-amber-50 to-amber-100 border-2 border-[#F5C518] rounded-2xl p-5 mt-4">
           <p className="text-xs text-amber-900 font-bold flex items-center gap-2">

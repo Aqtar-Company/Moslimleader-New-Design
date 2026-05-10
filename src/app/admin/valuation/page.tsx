@@ -356,8 +356,11 @@ export default function ValuationPage() {
       {/* Reconcile pre-fix PayPal orders — only renders when orphans exist */}
       <PaypalReconcileBanner onDone={reload} />
 
-      {/* Financial performance — the most important section for any
-          real M&A conversation. TTM revenue, gross margin, growth. */}
+      {/* Detailed sections only render in detailed view. Investor
+          view replaces them with a leaner narrative below — keeping
+          both visible at once made the toggle look broken (clicking
+          المستثمر just appended sections at the bottom). */}
+      {view === 'detailed' && <>
       <FinancialSection metrics={metrics} />
 
       {/* Context note: the recent dip in TTM revenue + low active-
@@ -441,7 +444,13 @@ export default function ValuationPage() {
         </div>
       </Section>
 
-      {view === 'investor' ? <InvestorView data={data} /> : <DetailedView data={data} products={products} books={books} />}
+      {/* Detailed-only deep-dive (products + books tables). */}
+      <DetailedView data={data} products={products} books={books} />
+      </>}
+
+      {/* Investor view — leaner narrative replaces the full deep-dive
+          when the toggle is set to المستثمر. */}
+      {view === 'investor' && <InvestorView data={data} />}
 
       {/* Disclaimer */}
       <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 text-amber-900 text-xs leading-relaxed">
@@ -871,8 +880,13 @@ function DataQualitySection({ metrics }: { metrics: ValuationData['metrics'] }) 
         <li className="flex items-start gap-2">
           <span>📐</span>
           <span>
-            <strong>منهجية التقييم:</strong> النطاق المُسوَّى يجمع منهج الأصول (asset floor) مع منهج مضاعف الإيرادات (market band).
-            لا يوجد منهج DCF (income approach) لأن صافي الربح غير محسوب. عند التفاوض الرسمي، يجب إضافة منهج DCF بعد جمع المصروفات.
+            <strong>منهجية التقييم:</strong> لا يتم جمع منهج الأصول مع منهج مضاعف الإيرادات.
+            يعرض التقرير المنهجين منفصلين: منهج الإيرادات (market band) لقياس الأداء التشغيلي
+            الحالي بناءً على آخر 12 شهر، ومنهج الأصول (asset floor) لقياس قيمة المخزون والملكية
+            الفكرية والمنصة تفاوضياً. كل منهج يُقرأ في سياقه — والمتوسط بينهما لا يُحسب لأن
+            المنهجين في وحدات قياس مختلفة. لا يوجد منهج DCF (income approach) لأن صافي الربح
+            الكامل غير محسوب — عند التفاوض الرسمي، يجب إضافة منهج DCF بعد جمع كل المصروفات
+            التشغيلية.
           </span>
         </li>
         {/* Accountant-grade disclosures — every line a buyer / bank
@@ -1082,7 +1096,12 @@ function SensitivitySection({ metrics, valuation }: { metrics: ValuationData['me
           </tbody>
         </table>
       </div>
-      <p className="text-[10px] text-gray-500 mt-2">القيمة الحالية المرشَّحة (المتوسط): <strong className="text-gray-800">{fmt(valuation.reconciledMid)} ج.م</strong>. كل سيناريو يعرض الأثر منفرداً، مش مجتمعاً.</p>
+      <p className="text-[10px] text-gray-500 mt-2">
+        القيمة الأصولية المتوازنة الحالية:
+        <strong className="text-gray-800 mx-1">{fmt(valuation.fair)} ج.م</strong>.
+        كل سيناريو يعرض الأثر منفرداً على منهج الأصول وحده —
+        لا يُجمع مع منهج مضاعف الإيرادات.
+      </p>
     </Section>
   );
 }
@@ -1093,7 +1112,7 @@ function GapsSection({ metrics, assumptions }: { metrics: ValuationData['metrics
   // prominent — a buyer would ask all of these on day one of due diligence.
   const gaps: Array<{ severity: 'high' | 'medium' | 'low'; label: string; detail: string }> = [];
 
-  gaps.push({ severity: 'high', label: 'صافي الربح غير محسوب', detail: 'النظام لا يخزن تكلفة المنتج الفعلية (COGS) ولا تكلفة التسويق ولا المرتبات. كل الأرقام إيرادات، مش أرباح.' });
+  gaps.push({ severity: 'high', label: 'صافي الربح الكامل غير محسوب', detail: 'النظام يتتبع تكلفة المنتج الفعلية (من باتشات الإنتاج) والرواتب الجزئية، لكنه لا يتتبع كل المصروفات التشغيلية: التسويق، الإيجار، المرافق، المصروفات الإدارية، الضرائب، والاستهلاك. لذلك EBITDA المعروض جزئي وليس صافي ربح كامل.' });
   if (metrics.products.productsWithoutBatches > 0) {
     const sev = metrics.products.productsWithBatches === 0 ? 'high' : 'medium';
     gaps.push({
@@ -1422,8 +1441,8 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
       {/* Customers */}
       <Section icon="👥" title="العملاء" subtitle="فصل المسجَّلين عن المشترين الفعليين">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <KPI label="مسجَّلين (إجمالي)" value={fmt(metrics.customers.total)} hint="User.role = 'customer'. شامل اللي ما اشتروش." />
-          <KPI label="مشترين (≥ طلب واحد)" value={fmt(metrics.customers.buyers)} hint="عملاء عملوا طلب صحيح واحد على الأقل في تاريخ النظام." />
+          <KPI label="مسجَّلين (إجمالي)" value={fmt(metrics.customers.total)} hint="حسابات المستخدمين الكلية. شاملة اللي ما اشتروش." />
+          <KPI label="إجمالي المشترين الفعليين" value={fmt(metrics.customers.buyers)} hint="عملاء عملوا طلب صحيح واحد على الأقل في تاريخ النظام." />
           <KPI
             label="نشطين"
             value={fmt(metrics.customers.active)}
@@ -1431,7 +1450,13 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
             tone={metrics.customers.active < 30 ? 'bad' : undefined}
             hint="عمل طلب صحيح خلال نافذة النشاط الحالية. أقل من 30 يعتبر مؤشر خطر — راجع قسم 'تفسير تراجع الأداء' أعلاه."
           />
-          <KPI label="مشترين متكررين" value={fmt(metrics.customers.repeatBuyers)} sub={`${pct(metrics.customers.repeatRate)} من المشترين`} hint="عملوا طلبين أو أكثر في حياتهم. مؤشر قوي للولاء." />
+          <KPI label="مشترون متكررون (طلبان+)" value={fmt(metrics.customers.repeatBuyers)} sub={`${pct(metrics.customers.repeatRate)} من المشترين`} hint="عملوا طلبين أو أكثر في حياتهم. مؤشر قوي للولاء." />
+          <KPI
+            label="مشترون بطلب واحد فقط"
+            value={fmt(Math.max(0, metrics.customers.buyers - metrics.customers.repeatBuyers))}
+            sub={`${pct(metrics.customers.buyers > 0 ? 1 - metrics.customers.repeatRate : 0)} من المشترين`}
+            hint="عملوا طلباً واحداً ولم يعودوا. كلما زادت هذه النسبة، كان احتفاظ العملاء أضعف."
+          />
           <KPI label="متوسط الإيراد لكل مشتري" value={`${fmt(metrics.customers.avgRevenuePerBuyer)} ج.م`} hint="إجمالي الإيرادات ÷ عدد المشترين الفعليين. تقدير LTV التاريخي." />
           <KPI
             label="تجار جملة"
@@ -1734,69 +1759,143 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
 
 function InvestorView({ data }: { data: ValuationData }) {
   const { metrics, valuation } = data;
-  const range = { low: valuation.base, high: valuation.fair };
   return (
     <div className="space-y-6">
       <Section icon="🏢" title="نبذة عن الشركة" breakBefore>
-        <div className="bg-white border border-gray-200 rounded-2xl p-5 text-sm leading-relaxed text-gray-700">
-          <p>مسلم ليدر — منصة عربية لبيع الكتب والمنتجات الإبداعية المؤلَّفة، مع مكتبة رقمية ومحتوى متعدد القنوات. النظام يُدير الكتالوج، الطلبات، الشحن، التسويق، والمحاسبة الداخلية تحت سقف واحد.</p>
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 text-sm leading-relaxed text-gray-700 space-y-2">
+          <p>
+            <strong>مسلم ليدر</strong> — منصة عربية لإنتاج وبيع الكتب
+            والمنتجات الإبداعية والألعاب التعليمية للأطفال والأسر،
+            مع مكتبة رقمية وتطبيقات وحضور اجتماعي عضوي.
+          </p>
+          <p className="text-[12px] text-gray-600">
+            خلال السنوات السابقة، لم تكن مسلم ليدر في مرحلة تشغيل
+            تجاري كامل، بل في <strong>مرحلة تأسيس منظومة منتجات
+            ومحتوى وقنوات رقمية</strong> (Asset Building Phase).
+            المرحلة القادمة هي <strong>Commercial Activation</strong> —
+            تحويل هذه الأصول إلى مبيعات منتظمة من خلال إدارة نمو
+            متفرغة وتسويق منظَّم.
+          </p>
         </div>
       </Section>
 
-      <Section icon="📈" title="مؤشرات الأداء الرئيسية">
+      <Section icon="📈" title="مؤشرات الأداء التراكمية">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <KPI label="إيرادات تاريخية" value={`${fmt(metrics.sales.totalRevenue)} ج.م`} hint="إجمالي Order.total باستثناء الإلغاءات والهدايا." />
-          <KPI label="عدد الطلبات الصحيحة" value={fmt(metrics.sales.validOrders)} />
-          <KPI label="مشترين فعليين" value={fmt(metrics.customers.buyers)} sub={`${pct(metrics.customers.activeRatio)} نشطين`} />
+          <KPI label="إيرادات تاريخية تراكمية" value={`${fmt(metrics.sales.totalRevenue)} ج.م`} hint="إجمالي Order.total باستثناء الإلغاءات والهدايا، عبر تاريخ الشركة." />
+          <KPI label="إجمالي الطلبات الصحيحة" value={fmt(metrics.sales.validOrders)} />
+          <KPI label="إجمالي المشترين الفعليين" value={fmt(metrics.customers.buyers)} sub={`${fmt(metrics.customers.repeatBuyers)} متكررون`} />
           <KPI label="معدل تكرار الشراء" value={pct(metrics.customers.repeatRate)} hint="نسبة المشترين اللي عملوا طلبين أو أكثر." />
         </div>
       </Section>
 
-      <Section icon="💪" title="نقاط القوة">
+      {/* Two clearly-separated valuation panels — no blended midpoint.
+          Asset method on the right, market/operational on the left,
+          with a strong note that they're NOT additive. */}
+      <Section icon="💎" title="نطاق التقييم — منهجان منفصلان">
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-3 mb-3">
+          <p className="text-[12px] text-amber-900 leading-relaxed text-center">
+            ⚠️ <strong>المنهجان أدناه لا يُجمَعان ولا يُحسَب متوسط بينهما.</strong>{' '}
+            كل منهج يقيس بُعداً مختلفاً للقيمة وفي وحدات مختلفة.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="bg-gradient-to-br from-[#1a1a2e] to-[#2d1060] text-white rounded-3xl p-6 text-center">
+            <p className="text-[11px] text-[#F5C518] font-bold tracking-widest">١. قيمة تشغيلية</p>
+            <p className="text-2xl sm:text-3xl font-black mt-2">
+              {fmt(valuation.marketLow)} <span className="text-sm text-white/60">–</span> {fmt(valuation.marketHigh)}
+            </p>
+            <p className="text-white/70 text-[11px] mt-1">جنيه مصري</p>
+            <p className="text-white/60 text-[11px] mt-3 leading-relaxed">
+              مبنية على إيرادات آخر 12 شهر × مضاعف {valuation.revenueMultipleLow}–{valuation.revenueMultipleHigh}.
+              تعكس الأداء التشغيلي الحالي فقط.
+            </p>
+          </div>
+          <div className="bg-gradient-to-br from-[#0a3a2e] to-[#1f6045] text-white rounded-3xl p-6 text-center">
+            <p className="text-[11px] text-[#F5C518] font-bold tracking-widest">٢. قيمة أصول وملكية فكرية</p>
+            <p className="text-2xl sm:text-3xl font-black mt-2">
+              {fmt(valuation.base)} <span className="text-sm text-white/60">–</span> {fmt(valuation.strategic)}
+            </p>
+            <p className="text-white/70 text-[11px] mt-1">جنيه مصري — قيمة تفاوضية داخلية</p>
+            <p className="text-white/60 text-[11px] mt-3 leading-relaxed">
+              مخزون + كتب + ترجمات + منصة + قاعدة عملاء + تطبيقات.
+              ليست تقييماً مالياً معتمداً.
+            </p>
+          </div>
+        </div>
+      </Section>
+
+      <Section icon="💪" title="نقاط القوة الحالية">
         <ul className="bg-white border border-gray-200 rounded-2xl p-5 space-y-2 text-sm text-gray-700 list-disc pr-5">
-          <li>براند مؤسَّس + متابعون على السوشيال + قنوات يوتيوب نشطة.</li>
-          <li>{metrics.books.total} كتاب مؤلَّف + {metrics.products.total} منتج إبداعي = ملكية فكرية ضخمة.</li>
-          <li>منصة تقنية متكاملة (متجر + مكتبة + إدارة) مبنية في البيت.</li>
-          <li>قاعدة عملاء {fmt(metrics.customers.total)} حساب مسجَّل قابلة لإعادة الاستهداف.</li>
+          <li>براند مؤسَّس + ~17 ألف متابع عضوي على فيسبوك + مراجعات إيجابية موثَّقة.</li>
+          <li>{metrics.books.total} عنوان كتاب (أصلي + ترجمات) + {metrics.products.total} منتج إبداعي = أصول ملكية فكرية متعددة.</li>
+          <li>منصة تقنية متكاملة (متجر + مكتبة + إدارة) + 3 تطبيقات على Google Play.</li>
+          <li>قاعدة عملاء {fmt(metrics.customers.buyers)} مشترٍ فعلي + {fmt(metrics.customers.repeatBuyers)} متكرر — قابلة لإعادة الاستهداف.</li>
         </ul>
       </Section>
 
-      <Section icon="🚀" title="فرص النمو">
+      <Section icon="🚀" title="فرص النمو (Commercial Activation)">
         <ul className="bg-white border border-gray-200 rounded-2xl p-5 space-y-2 text-sm text-gray-700 list-disc pr-5">
-          <li>التوسع في الأسواق العربية الخارجية (السعودية، الإمارات).</li>
-          <li>تحويل الكتب لـ audiobooks وفيديوهات تعليمية مدفوعة.</li>
-          <li>اشتراكات شهرية للمكتبة الرقمية.</li>
-          <li>شراكات توزيع مع مكتبات تقليدية في مصر.</li>
-          <li>منتجات تعليمية للأطفال والمدارس.</li>
+          <li>تعيين مدير نمو متفرغ + ميزانية تسويق شهرية + روزنامة إطلاق ربع سنوية.</li>
+          <li>تحويل تطبيق الكتب من PDF Reader إلى E-book تفاعلي + اشتراكات + حماية محتوى.</li>
+          <li>تفعيل قناة B2B للمدارس والحضانات عبر المكتبة الرقمية.</li>
+          <li>تحويل متابعي فيسبوك إلى قنوات مبيعات قابلة للقياس (Messenger flows + Lookalike).</li>
+          <li>التوسع في الأسواق العربية الخارجية (السعودية، الإمارات) عبر المكتبة الرقمية.</li>
         </ul>
       </Section>
 
       <Section icon="⚖️" title="المخاطر والفجوات">
         <ul className="bg-white border border-gray-200 rounded-2xl p-5 space-y-2 text-sm text-gray-700 list-disc pr-5">
-          <li>صافي الربح غير محسوب — التقييم على مستوى الإيرادات والأصول فقط.</li>
-          <li>تكلفة المنتج الفعلية غير مخزَّنة، فالـ COGS تقديري.</li>
-          <li>{metrics.customers.repeatBuyers === 0 ? 'مفيش بيانات تكرار شراء بعد.' : `معدل تكرار الشراء ${pct(metrics.customers.repeatRate)} — يحتاج تحسين.`}</li>
-          <li>قيمة الـ IP مبنية على العدد، مش على مبيعات/طلب فعلي.</li>
-          <li>مفيش تتبّع لشبكة التوزيع أو شراكات خارجية في النظام.</li>
+          <li>
+            <strong>Key-Person Risk:</strong> الشركة معتمدة على المؤسس في
+            التأليف والإشراف على التصميم. تحتاج خطة تفويض وفصل
+            دور &quot;المؤلف/المصمم&quot; عن دور &quot;المدير التنفيذي&quot;.
+          </li>
+          <li>
+            <strong>صافي الربح الكامل غير محسوب:</strong> النظام يتتبع تكلفة
+            المنتج (من باتشات الإنتاج) والرواتب الجزئية، لكنه لا يتتبع
+            التسويق، الإيجار، المرافق، المصروفات الإدارية، الضرائب،
+            والاستهلاك. EBITDA المعروض جزئي.
+          </li>
+          <li>
+            <strong>قيمة الملكية الفكرية تقديرية:</strong> مبنية على عدد
+            الأعمال الأصلية + الترجمات بقيم لكل وحدة، لا على مبيعات
+            مثبتة لكل عمل. تحتاج توثيق حقوق + تتبع مبيعات قبل اعتمادها
+            كأرقام مالية.
+          </li>
+          <li>
+            <strong>الأصول الرقمية تحت التطوير:</strong> التطبيقات والمكتبة
+            الرقمية تحتاج تحديث وتسويق + تتبع active users / retention /
+            ARPU قبل تقييمها بمنهج الإيرادات.
+          </li>
+          <li>
+            {metrics.customers.repeatBuyers === 0
+              ? 'مفيش بيانات تكرار شراء بعد.'
+              : `معدل تكرار الشراء ${pct(metrics.customers.repeatRate)} — مؤشر يحتاج تحسين عبر برامج ولاء واتصالات منتظمة.`}
+          </li>
         </ul>
       </Section>
 
-      <Section icon="📐" title="منهجية التقييم المُقترحة">
+      <Section icon="📐" title="منهجية التقييم">
         <div className="bg-white border border-gray-200 rounded-2xl p-5 text-sm leading-relaxed text-gray-700 space-y-3">
-          <p>التقييم مبني على تجميع أربعة مكوّنات: تكلفة المخزون + قيمة الملكية الفكرية + قيمة المنصة التقنية + قيمة قاعدة العملاء.</p>
-          <p>الأرقام تُمثّل ثلاثة سيناريوهات: الحد الأدنى (تصفية)، المتوازنة (سوق طبيعية)، الاستراتيجية (مشتري بحاجة استراتيجية).</p>
-          <p className="text-xs text-amber-700 font-bold">⚠️ القيمة الاستراتيجية مشروطة باكتمال بيانات الربحية والنمو والمخزون والملكية الفكرية، وبوجود مشتري استراتيجي فعلي. لا تُستخدم كمرجع رئيسي قبل اكتمال هذه الشروط.</p>
-        </div>
-      </Section>
-
-      <Section icon="💎" title="نطاق التقييم المقترح">
-        <div className="bg-gradient-to-br from-[#1a1a2e] to-[#2d1060] text-white rounded-3xl p-8 text-center">
-          <p className="text-xs text-[#F5C518] font-bold tracking-widest">نطاق التقييم</p>
-          <p className="text-3xl sm:text-5xl font-black mt-3">
-            {fmt(range.low)} <span className="text-lg text-white/60">إلى</span> {fmt(range.high)}
+          <p>
+            <strong>منهج الإيرادات (Market):</strong> إيرادات آخر 12 شهر
+            (TTM) × مضاعف {valuation.revenueMultipleLow}–{valuation.revenueMultipleHigh}.
+            يقيس الأداء التشغيلي الحالي.
           </p>
-          <p className="text-white/70 text-sm mt-2">جنيه مصري</p>
-          <p className="text-white/50 text-xs mt-4 max-w-md mx-auto">القيمة الفعلية في النطاق ده مرتبطة بنتائج العناية الواجبة (Due Diligence) واكتمال البيانات المالية.</p>
+          <p>
+            <strong>منهج الأصول (Asset):</strong> تكلفة المخزون + قيمة
+            الملكية الفكرية (أعمال أصلية + ترجمات) + قيمة المنصة
+            التقنية + قاعدة العملاء + تجار الجملة + علاقات الموردين −
+            ديون الموردين. ثلاثة سيناريوهات: حد أدنى أصولي، قيمة
+            أصولية متوازنة، قيمة استراتيجية محتملة.
+          </p>
+          <p className="text-xs text-amber-700 font-bold">
+            ⚠️ المنهجان لا يُجمَعان. القيمة الاستراتيجية مشروطة باكتمال
+            بيانات الربحية والمخزون والملكية الفكرية، وبوجود مشتري
+            استراتيجي فعلي. لا تُستخدم كمرجع رئيسي قبل اكتمال هذه
+            الشروط ولا قبل عناية واجبة (Due Diligence) ومراجعة محاسب
+            مستقل.
+          </p>
         </div>
       </Section>
     </div>

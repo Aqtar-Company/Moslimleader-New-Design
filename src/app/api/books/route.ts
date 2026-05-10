@@ -2,7 +2,12 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// GET /api/books — public list of published books
+// GET /api/books — public list of published books.
+// Languages retired from the user-facing library at the owner's
+// request — filter them out at the API so even legacy DB rows stop
+// appearing on /library without needing a manual cleanup.
+const RETIRED_LANGUAGES = ['hi', 'bn'];
+
 export async function GET() {
   const baseSelect = {
     id: true, title: true, titleEn: true, cover: true,
@@ -13,10 +18,18 @@ export async function GET() {
     _count: { select: { accesses: true } },
   };
 
+  const where = {
+    isPublished: true,
+    OR: [
+      { language: null },
+      { language: { notIn: RETIRED_LANGUAGES } },
+    ],
+  };
+
   try {
     // Try with age/guidance fields first
     const books = await prisma.book.findMany({
-      where: { isPublished: true },
+      where,
       orderBy: { createdAt: 'desc' },
       select: {
         ...baseSelect,
@@ -29,7 +42,7 @@ export async function GET() {
     try {
       // Fallback: query without age fields (migration may not be applied yet)
       const books = await prisma.book.findMany({
-        where: { isPublished: true },
+        where,
         orderBy: { createdAt: 'desc' },
         select: baseSelect,
       });

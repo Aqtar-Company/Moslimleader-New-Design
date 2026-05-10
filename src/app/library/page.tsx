@@ -62,14 +62,13 @@ interface BookSeriesData {
 }
 
 type SectionTab = 'books' | 'stories';
-type LangFilter = 'ar' | 'en' | 'ur' | 'id' | 'bn' | 'hi' | 'de' | 'fr' | null;
+type LangFilter = 'ar' | 'en' | 'ur' | 'id' | 'de' | 'fr' | null;
 
 const LANG_OPTIONS: { id: Exclude<LangFilter, null>; label: string; labelEn: string }[] = [
   { id: 'ar', label: 'عربي',      labelEn: 'Arabic'     },
   { id: 'en', label: 'إنجليزي',   labelEn: 'English'    },
   { id: 'ur', label: 'اردو',      labelEn: 'Urdu'       },
   { id: 'id', label: 'Indonesia', labelEn: 'Indonesian' },
-  { id: 'bn', label: 'বাংলা',     labelEn: 'Bengali'    },
   { id: 'de', label: 'ألماني',    labelEn: 'German'     },
   { id: 'fr', label: 'فرنساوي',   labelEn: 'French'     },
 ];
@@ -498,8 +497,6 @@ export default function LibraryPage() {
                           book.language === 'en' ? 'bg-blue-600' :
                           book.language === 'ur' ? 'bg-emerald-700' :
                           book.language === 'id' ? 'bg-red-600' :
-                          book.language === 'bn' ? 'bg-green-700' :
-                          book.language === 'hi' ? 'bg-orange-600' :
                           book.language === 'de' ? 'bg-gray-800' :
                           book.language === 'fr' ? 'bg-indigo-700' :
                           book.language === 'both' ? 'bg-purple-600' :
@@ -508,8 +505,6 @@ export default function LibraryPage() {
                           {book.language === 'en' ? 'EN' :
                            book.language === 'ur' ? 'UR' :
                            book.language === 'id' ? 'ID' :
-                           book.language === 'bn' ? 'BN' :
-                           book.language === 'hi' ? 'HI' :
                            book.language === 'de' ? 'DE' :
                            book.language === 'fr' ? 'FR' :
                            book.language === 'both' ? 'AR/EN' :

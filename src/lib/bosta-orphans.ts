@@ -220,6 +220,11 @@ const IGNORE_PATTERNS: RegExp[] = [
   /^هديه$/,                      // bare "هديه" line (not "X هديه")
   /(^|\s)notes(\s|$)/i,          // "5 notes/" placeholder
   /(^|\s)عرض\s+اركان/,           // bundle wording, not a product
+  /(^|\s)رقم\s+(اخر|لخر|آخر)/,   // "رقم تليفون آخر" — note, not a product
+  /(^|\s)شهاده(\s|$)/,           // certificate of appreciation — gift line
+  /(^|\s)ورق(\s|$)/,             // bare "ورق" — too generic
+  /^[0-9"\s]+$/,                 // bare digit / quote / whitespace
+  /(^|\s)المشرق(\s|$)|ماليزيا/,  // wholesale customer (handled separately)
 ];
 
 function isIgnored(parsedNorm: string): boolean {
@@ -253,21 +258,22 @@ const ALIASES: Array<{ pattern: RegExp; targets: string[]; reason: string }> = [
   { pattern: /مفكره.*(كبار|نساء|كبير|رجال|ام\b|ام\s)/, targets: ['مفكرة كبار'], reason: 'planner-adults' },
   { pattern: /^مفكره(\s|$)/, targets: ['مفكرة أطفال', 'مفكرة أولاد'], reason: 'planner-default' },
   // ماسك / حامل المصحف
-  { pattern: /ماسك.*مصحف|حامل\s+المصحف/, targets: ['حامل المصحف'], reason: 'mushaf-holder' },
-  // لعبة الحج والصلاة
-  { pattern: /لعبه.*(الحج|حج).*(الصلاه|صلاه)|لعبه.*(الصلاه|صلاه).*(الحج|حج)/, targets: ['لعبة الصلاة وقصة الحج'], reason: 'hajj-prayer-game' },
-  { pattern: /لعبه\s+يوم\s+الصائم|لعبه\s+الصائم/, targets: ['لعبة يوم الصائم'], reason: 'fasting-game' },
+  // ماسك — "ماسك مصحف"، "ماسك اخضر"، "ماسك بينك"، "حامل المصحف"
+  { pattern: /(^|\s)ماسك(\s|$)|حامل\s+المصحف/, targets: ['حامل المصحف'], reason: 'mushaf-holder' },
+  // لعبة الحج والصلاة — also matches the bare "حج وصلاه" / "حج وصلاه خشب" variant.
+  { pattern: /لعبه.*(الحج|حج).*(الصلاه|صلاه)|لعبه.*(الصلاه|صلاه).*(الحج|حج)|^\s*(الحج|حج)\s+(و)?(الصلاه|صلاه)|^\s*(الصلاه|صلاه)\s+(و)?(الحج|حج)/, targets: ['لعبة الصلاة وقصة الحج'], reason: 'hajj-prayer-game' },
+  { pattern: /لعبه\s+يوم\s+الصائم|لعبه\s+الصائم|^\s*(الصيام|صيام|الصائم|صائم)\s*$/, targets: ['لعبة يوم الصائم'], reason: 'fasting-game' },
   // شنطة
-  { pattern: /شنطه\s+(بناتي|بنات|اولاد|ولاد|حضانه|اطفال)/, targets: ['شنطة مسلم ليدر'], reason: 'bag' },
+  { pattern: /شنطه\s+(بناتي|بنات|اولاد|ولاد|اولادي|حضانه|اطفال|ولد|بنت)/, targets: ['شنطة مسلم ليدر'], reason: 'bag' },
   // وسام
   { pattern: /وسام/, targets: ['وسام القائد'], reason: 'medal' },
   // Variants on existing books — short forms that show up in
   // free-text descriptions. Keyword anywhere in the parsed name.
-  { pattern: /(^|\s)(رواي(ه|ة)\s+)?البخاري(\s|$)|كوكب\s+المريخ/, targets: ['البخاري على كوكب المريخ'], reason: 'bukhari' },
+  { pattern: /(^|\s)(رواي(ه|ة)\s+)?(البخاري|البحاري|بخاري|بحاري)(\s|$)|كوكب\s+المريخ/, targets: ['البخاري على كوكب المريخ'], reason: 'bukhari' },
   { pattern: /(^|\s)امهات\s+العظماء(\s|$)|رسائل\s+امهات/, targets: ['رسائل أمهات العظماء'], reason: 'mothers-of-greats' },
   { pattern: /(^|\s)فلسطين(\s|$)|عيون\s+ابنائي|عيون\s+أبنائي|كتاب\s+الاسره/, targets: ['فلسطين في عيون ابنائي'], reason: 'palestine' },
   { pattern: /(^|\s)القاده(\s|$)|قاده\s+الاسلام|قاده\s+و?ائمه\s+المسلمين|كروت\s+القاده/, targets: ['إعداد القادة'], reason: 'leaders' },
-  { pattern: /(^|\s)الواح(\s|$)|جزء\s+عم/, targets: ['ألواح'], reason: 'looh' },
+  { pattern: /(^|\s)(الواح|اللواح)(\s|$)|جزء\s+عم/, targets: ['ألواح'], reason: 'looh' },
   { pattern: /(^|\s)استاذي(\s|$)|الي\s+ابني|إلى\s+ابني/, targets: ['إلى ابني واستاذي الشاب', 'كتاب إلى ابني'], reason: 'to-my-son' },
   { pattern: /(^|\s)قصص\s+الصلاه(\s|$)|قصه\s+الصلاه/, targets: ['قصة الصلاة'], reason: 'prayer-stories' },
   { pattern: /(^|\s)فقيه(\s|$)|بلاد\s+العجائب/, targets: ['فقيه في بلاد العجائب'], reason: 'faqih' },
@@ -277,7 +283,9 @@ const ALIASES: Array<{ pattern: RegExp; targets: string[]; reason: string }> = [
 
   // Personalized mugs go LAST so the specific-product aliases above
   // (which sometimes also contain "ولد", "بنت", etc.) win first.
-  { pattern: /(^مج\s|^مج$|(^|\s)مجات?(\s|$))/, targets: ['مجات'], reason: 'mug-prefix' },
+  // Accept "مج" preceded by start/space OR a digit ("1مج بنت" with no
+  // space — Bosta descriptions occasionally use this form).
+  { pattern: /(?:^|\s|\d)مج(?:ات)?(?:\s|$)/, targets: ['مجات'], reason: 'mug-prefix' },
 ];
 
 // For the mug entry we resolve to ولاد / بنات / نساء by scanning

@@ -475,7 +475,6 @@ export default function AdminBooksPage() {
                       { id: 'en', label: 'English' },
                       { id: 'ur', label: 'اردو' },
                       { id: 'id', label: 'Indonesia' },
-                      { id: 'bn', label: 'বাংলা' },
                       { id: 'de', label: 'Deutsch' },
                       { id: 'fr', label: 'Français' },
                     ] as const).map(opt => (

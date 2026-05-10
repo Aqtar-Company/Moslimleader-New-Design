@@ -478,7 +478,11 @@ export default function CheckoutPage() {
         return;
       }
     } else {
-      // Guest: send admin email notification (no DB save — userId required)
+      // Guest: post to /api/orders/guest-notify which now (a) creates
+      // a synthetic guest User keyed on phone + (b) writes a real
+      // Order row + items (so the order shows up in /admin/orders),
+      // and (c) emails the admin. Earlier this only emailed and the
+      // order was invisible to the dashboard.
       try {
         const guestRes = await fetch('/api/orders/guest-notify', {
           method: 'POST',
@@ -486,10 +490,12 @@ export default function CheckoutPage() {
           body: JSON.stringify({
             orderNumber,
             items: orderItems.map(item => ({
+              productId: item.product.id ?? item.product.slug,
               productName: item.product.name,
               productImage: item.product.images?.[item.selectedModel ?? 0] ?? null,
               quantity: item.quantity,
               unitPrice: getProductPrice(item.product).price,
+              selectedModel: item.selectedModel ?? null,
             })),
             total: total - discount + shippingCost,
             shippingCost,

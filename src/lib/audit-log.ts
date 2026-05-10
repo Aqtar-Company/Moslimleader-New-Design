@@ -24,6 +24,8 @@ export const AUDIT_ACTIONS = {
   'shipment.bosta-create': 'إنشاء شحنة بوسطة',
   'shipment.bosta-cancel': 'إلغاء شحنة بوسطة',
   'shipment.bosta-import-history': 'استيراد تاريخ شحنات بوسطة',
+  'bosta.bulk-match': 'مطابقة جماعية لطلبات بوسطة',
+  'bosta.bulk-undo': 'تراجع عن مطابقة جماعية بوسطة',
   // Customers
   'customer.update': 'تعديل عميل',
   'customer.delete': 'حذف عميل',

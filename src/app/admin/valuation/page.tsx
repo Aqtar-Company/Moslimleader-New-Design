@@ -229,6 +229,17 @@ export default function ValuationPage() {
           .valuation-page-break { break-before: page; page-break-before: page; }
           /* Stop tooltips from popping in the print stream */
           [aria-label="شرح"] { display: none !important; }
+          /* Hide global site chrome that should not appear in an
+             investor-facing PDF (header, footer, WhatsApp button,
+             Ameen chat, coupon strip, mobile nav, and any banner
+             added by the admin layout). */
+          header, footer, nav,
+          [aria-label*="WhatsApp"], [aria-label*="واتساب"],
+          [class*="whatsapp"], [class*="Whatsapp"],
+          [class*="ameen"], [class*="Ameen"],
+          [class*="CouponBanner"], [class*="couponBanner"],
+          [class*="MobileMenu"], [class*="mobileMenu"]
+          { display: none !important; }
 
           /* Readability pass — the screen styling uses very small
              fonts and pale greys that disappear on paper. Bump the
@@ -289,34 +300,56 @@ export default function ValuationPage() {
           <Stat label="شحنات (Bosta)" value={fmt(metrics.shipments)} hint="إجمالي صفوف Shipment، شامل الملغية." />
         </div>
 
+        {/* Owner review (plan addendum 25 + investor-readiness pass) asked
+            us to STOP averaging the asset and market methods into a
+            single "متوسط مقترح" headline — they're in different orders
+            of magnitude (TTM-based market value lives in the low six
+            figures, while asset+IP value is in the millions) and a
+            blended midpoint reads as fictional. Two separate panels
+            now: an operational value tied to TTM revenue, and an
+            asset/IP value that's an internal negotiating ceiling, not
+            a financial valuation. */}
         <div className="mt-8 pt-8 border-t border-white/10">
-          <p className="text-[#F5C518] text-xs font-bold tracking-widest">نطاق التقييم المُسوّى (Reconciled Range)</p>
-          <p className="text-3xl sm:text-5xl font-black mt-3">
-            {fmt(valuation.reconciledLow)} <span className="text-lg sm:text-xl text-white/60 mx-2">–</span> {fmt(valuation.reconciledHigh)}
-            <span className="text-base sm:text-xl text-white/60 mx-2">ج.م</span>
-          </p>
-          <p className="text-white/70 text-xs sm:text-sm mt-2">المتوسط المقترح: <strong className="text-[#F5C518]">{fmt(valuation.reconciledMid)} ج.م</strong></p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-5 max-w-3xl mx-auto text-[11px] sm:text-xs">
-            <div className="bg-white/5 rounded-lg px-3 py-2 border border-white/10">
-              <p className="text-white/50">منهج الأصول (Asset)</p>
-              <p className="text-white font-bold mt-0.5">{fmt(valuation.base)} – {fmt(valuation.strategic)} ج.م</p>
+          <p className="text-[#F5C518] text-xs font-bold tracking-widest">قيمة تفاوضية داخلية — ليست تقييمًا ماليًا معتمدًا</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 max-w-4xl mx-auto text-right">
+            <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
+              <p className="text-white/50 text-[11px] font-bold tracking-widest">١. قيمة تشغيلية (مبنية على الأداء الحالي)</p>
+              <p className="text-2xl sm:text-3xl font-black mt-2 text-white">
+                {fmt(valuation.marketLow)} <span className="text-sm text-white/60 mx-1">–</span> {fmt(valuation.marketHigh)}
+                <span className="text-sm text-white/60 mx-1">ج.م</span>
+              </p>
+              <p className="text-white/60 text-[11px] mt-2 leading-relaxed">
+                إيرادات آخر 12 شهر × مضاعف {valuation.revenueMultipleLow}–{valuation.revenueMultipleHigh}.
+                هذا المنهج يعكس الأداء التشغيلي الأخير فقط، ولا يحتسب الأصول أو الملكية الفكرية.
+              </p>
+              <p className="text-white/50 text-[10px] mt-2">
+                إيرادات TTM: <strong className="text-white">{fmt(metrics.financial.ttmRevenue)} ج.م</strong>
+                {metrics.financial.yoyRevenueGrowth !== null && (
+                  <span className={`mr-2 ${metrics.financial.yoyRevenueGrowth >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                    {metrics.financial.yoyRevenueGrowth >= 0 ? '▲' : '▼'} {pct(Math.abs(metrics.financial.yoyRevenueGrowth))} YoY
+                  </span>
+                )}
+              </p>
             </div>
-            <div className="bg-white/5 rounded-lg px-3 py-2 border border-white/10">
-              <p className="text-white/50">منهج مضاعف الإيرادات (Market)</p>
-              <p className="text-white font-bold mt-0.5">{fmt(valuation.marketLow)} – {fmt(valuation.marketHigh)} ج.م</p>
-              <p className="text-white/40 text-[10px] mt-0.5">الإيرادات السنوية × {valuation.revenueMultipleLow}–{valuation.revenueMultipleHigh}</p>
-            </div>
-            <div className="bg-white/5 rounded-lg px-3 py-2 border border-white/10">
-              <p className="text-white/50">الإيرادات السنوية (TTM)</p>
-              <p className="text-white font-bold mt-0.5">{fmt(metrics.financial.ttmRevenue)} ج.م</p>
-              {metrics.financial.yoyRevenueGrowth !== null && (
-                <p className={`text-[10px] mt-0.5 ${metrics.financial.yoyRevenueGrowth >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
-                  {metrics.financial.yoyRevenueGrowth >= 0 ? '▲' : '▼'} {pct(Math.abs(metrics.financial.yoyRevenueGrowth))} YoY
-                </p>
-              )}
+            <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
+              <p className="text-white/50 text-[11px] font-bold tracking-widest">٢. قيمة أصول وملكية فكرية (تفاوضية)</p>
+              <p className="text-2xl sm:text-3xl font-black mt-2 text-white">
+                {fmt(valuation.base)} <span className="text-sm text-white/60 mx-1">–</span> {fmt(valuation.strategic)}
+                <span className="text-sm text-white/60 mx-1">ج.م</span>
+              </p>
+              <p className="text-white/60 text-[11px] mt-2 leading-relaxed">
+                مخزون + كتب + ترجمات + منتجات + منصة + قاعدة عملاء.
+                قيمة قابلة للتفاوض فقط — تحتاج إثبات حقوق وعقود قبل اعتمادها كأرقام مالية.
+              </p>
+              <p className="text-white/50 text-[10px] mt-2">
+                لا يجوز جمع هذا الرقم مع الرقم الأيمن — منهجين مختلفين.
+              </p>
             </div>
           </div>
-          <p className="text-white/40 text-[10px] sm:text-xs mt-4 max-w-md mx-auto">⚠️ تقدير داخلي — يحتاج عناية واجبة (due diligence) قبل التفاوض الرسمي.</p>
+          <p className="text-white/40 text-[10px] sm:text-xs mt-4 max-w-2xl mx-auto leading-relaxed">
+            ⚠️ هذا المستند تقدير داخلي مبني على بيانات النظام، يُعرض على المؤسس فقط لقراءة وضع الشركة.
+            لا يصلح كتقييم رسمي قبل عناية واجبة (due diligence) ومراجعة محاسب مستقل.
+          </p>
         </div>
       </div>
 
@@ -326,6 +359,14 @@ export default function ValuationPage() {
       {/* Financial performance — the most important section for any
           real M&A conversation. TTM revenue, gross margin, growth. */}
       <FinancialSection metrics={metrics} />
+
+      {/* Context note: the recent dip in TTM revenue + low active-
+          customer count is a real risk signal, but it has a
+          founder-led explanation that materially changes how a buyer
+          should read the operating numbers. Owner asked us to surface
+          this front-and-centre so the headline isn't read in
+          isolation. (Plan addendum 25 — investor-readiness pass.) */}
+      <FounderContextSection metrics={metrics} />
 
       {/* Concentration risk — what fraction of revenue depends on a
           handful of customers, products, governorates, or suppliers. */}
@@ -357,11 +398,15 @@ export default function ValuationPage() {
         onSave={saveAssumptions}
       />
 
-      {/* Three scenarios — balanced is highlighted, strategic carries a conditional caveat */}
-      <Section icon="💎" title="نطاقات التقييم" subtitle="ثلاثة سيناريوهات بناءً على نوع المشتري ومدى استكمال البيانات">
+      {/* Three scenarios — all three are ASSET-method numbers (the
+          market/TTM number sits in the headline panel above). Renamed
+          to make that explicit so a reader doesn't confuse "الحد الأدنى"
+          with the lower bound of the market range — they're different
+          methods. */}
+      <Section icon="💎" title="نطاقات التقييم — منهج الأصول" subtitle="ثلاثة سيناريوهات لقيمة الأصول والملكية الفكرية فقط (منفصلة عن منهج الإيرادات أعلاه)">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <ScenarioCard
-            label="الحد الأدنى"
+            label="حد أدنى أصولي (Base)"
             value={valuation.base}
             desc="تصفية / مشتري مالي يقيّم الأصول فقط"
             tone="base"
@@ -369,16 +414,16 @@ export default function ValuationPage() {
             condition="يفترض بيع المخزون بنصف القيمة + احتساب الـ IP بالعدد فقط."
           />
           <ScenarioCard
-            label="القيمة المتوازنة ✦"
+            label="قيمة أصولية متوازنة ✦"
             value={valuation.fair}
-            desc="سوق متوازنة — المرشَّحة كأرضية تفاوض"
+            desc="سوق متوازنة — أرضية تفاوضية مبنية على الأصول والملكية الفكرية"
             tone="fair"
             multiplier={`× ${valuation.fairMultiplier}`}
-            condition="يفترض استمرار النشاط الحالي بدون نمو غير عادي."
+            condition="ليست تقييماً مالياً معتمداً. تفترض إثبات الحقوق وقابلية إعادة التشغيل."
             highlighted
           />
           <ScenarioCard
-            label="القيمة الاستراتيجية"
+            label="قيمة استراتيجية محتملة"
             value={valuation.strategic}
             desc="مشتري استراتيجي مع تكامل توزيع/براند"
             tone="strategic"
@@ -479,6 +524,98 @@ function FinKPI({ label, value, sub, hint, tone }: { label: string; value: strin
       <p className={`text-xl font-black mt-1 ${cls}`}>{value}</p>
       {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
     </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Founder-bottleneck / marketing-underinvestment context. Without this
+// section the financial KPIs read as "company is dying"; with it they
+// read as "company is in build mode, not run mode". The framing was
+// requested by the owner after the first investor-readiness review.
+// ────────────────────────────────────────────────────────────────────────────
+function FounderContextSection({ metrics }: { metrics: ValuationData['metrics'] }) {
+  const f = metrics.financial;
+  const ttm = f.ttmRevenue;
+  const yoy = f.yoyRevenueGrowth;
+  const activeCount = metrics.customers.active;
+  const ebitda = f.ebitdaPartial;
+
+  // We only show this block when the data actually looks like a
+  // founder-bottleneck pattern: TTM is small AND (YoY < 0 OR active
+  // customers < 30). Otherwise the explanation would be misleading.
+  const looksLikeBottleneck = ttm < 200_000 && (
+    (yoy !== null && yoy < 0) || activeCount < 30
+  );
+  if (!looksLikeBottleneck) return null;
+
+  return (
+    <Section
+      icon="🧭"
+      title="تفسير تراجع الأداء الأخير: مرحلة بناء أصول لا مرحلة تسويق"
+      subtitle="Founder Bottleneck & Marketing Underinvestment — قراءة مرتبة للأرقام السلبية"
+    >
+      <div className="space-y-4 text-[13px] leading-relaxed text-gray-800">
+        <p>
+          أرقام آخر 12 شهر تظهر إيرادات منخفضة (<strong>{fmt(ttm)} ج.م</strong>)
+          {yoy !== null && yoy < 0 && <> وانخفاض سنوي بنسبة <strong className="text-red-700">{pct(Math.abs(yoy))}</strong></>}،
+          مع <strong className="text-red-700">{fmt(activeCount)}</strong> عميل نشط فقط في آخر 90 يوم،
+          و EBITDA جزئي بقيمة <strong className={ebitda < 0 ? 'text-red-700' : 'text-emerald-700'}>{fmt(ebitda)} ج.م</strong>.
+        </p>
+
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4">
+          <p className="font-black text-amber-900 mb-2">⚠️ كيف لا تُقرأ هذه الأرقام</p>
+          <p className="text-amber-900 text-[12px] leading-relaxed">
+            هذه الأرقام تعكس <strong>فترة تشغيل غير نشطة تسويقيًا</strong>،
+            وليس رفضًا من السوق لمنتجات مسلم ليدر. لذلك لا يصح قياس
+            القيمة على أساس آخر 12 شهر فقط، أو الاستنتاج بأن الطلب على
+            البراند ضعيف.
+          </p>
+        </div>
+
+        <div className="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-4">
+          <p className="font-black text-emerald-900 mb-2">✓ السياق الفعلي</p>
+          <ul className="text-emerald-900 text-[12px] leading-relaxed list-disc pr-5 space-y-1.5">
+            <li>
+              المؤسس كان منشغلًا بـ <strong>تأليف ومراجعة محتوى جديد</strong>
+              (مثال: كتاب &quot;العقل الشجاع&quot;) و<strong>الإشراف المباشر على
+              التصميمات والهوية البصرية</strong>، وهو ما خلق ملكية فكرية
+              جديدة لكنه قلّل وقته المتاح للتشغيل اليومي.
+            </li>
+            <li>
+              تطوير منتجات مادية جديدة (مثال: <strong>الشنطة</strong>) استهلك
+              جزءًا من التمويل المتاح، فقلّت الميزانية المتاحة للتسويق
+              قصير الأجل.
+            </li>
+            <li>
+              لم يكن هناك <strong>مدير متفرغ للمبيعات والتشغيل والتوزيع</strong>،
+              فبقيت قنوات النمو معتمدة على المؤسس بشكل كامل.
+            </li>
+            <li>
+              التاريخ التراكمي للنشاط يُظهر إيرادات تجاوزت <strong>{fmt(metrics.sales.totalRevenue)} ج.م</strong>
+              عبر <strong>{fmt(metrics.customers.buyers)}</strong> مشترٍ فعلي،
+              مما يدل على قبول السوق للبراند والمنتجات.
+            </li>
+          </ul>
+        </div>
+
+        <div className="bg-blue-50 border-2 border-blue-300 rounded-2xl p-4">
+          <p className="font-black text-blue-900 mb-2">🎯 خطة إعادة التفعيل المقترحة (Turnaround)</p>
+          <ul className="text-blue-900 text-[12px] leading-relaxed list-disc pr-5 space-y-1.5">
+            <li>تعيين <strong>مدير تشغيل / نمو متفرغ</strong> ليتحمل المبيعات والتسويق والتوزيع.</li>
+            <li>ميزانية تسويق شهرية مرتبطة بـ <strong>روزنامة إطلاق منتجات</strong> ربع سنوية.</li>
+            <li>تفعيل قنوات التوزيع (متاجر، تجار جملة، رحلات معارض) بشكل منتظم.</li>
+            <li>تحويل دور المؤسس تدريجيًا إلى <strong>قيادة الرؤية والمحتوى والهوية</strong> فقط.</li>
+          </ul>
+        </div>
+
+        <p className="text-[11px] text-gray-500 leading-relaxed">
+          <strong>Key-Person Risk:</strong> الشركة معتمدة بشكل كبير على المؤسس
+          في التأليف والإشراف على التصميم والقرارات اليومية. هذه المخاطرة
+          يجب توضيحها لأي شريك أو مستثمر، مع خطة للتخفيف منها (تفويض،
+          توثيق العمليات، تدريب فريق ثانٍ).
+        </p>
+      </div>
+    </Section>
   );
 }
 
@@ -1136,7 +1273,13 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <KPI label="مسجَّلين (إجمالي)" value={fmt(metrics.customers.total)} hint="User.role = 'customer'. شامل اللي ما اشتروش." />
           <KPI label="مشترين (≥ طلب واحد)" value={fmt(metrics.customers.buyers)} hint="عملاء عملوا طلب صحيح واحد على الأقل في تاريخ النظام." />
-          <KPI label="نشطين" value={fmt(metrics.customers.active)} sub={`آخر ${metrics.customers.activeWindowDays} يوم — ${pct(metrics.customers.activeRatio)} من المسجَّلين`} hint="عمل طلب صحيح خلال نافذة النشاط الحالية." />
+          <KPI
+            label="نشطين"
+            value={fmt(metrics.customers.active)}
+            sub={`آخر ${metrics.customers.activeWindowDays} يوم — ${pct(metrics.customers.activeRatio)} من المسجَّلين`}
+            tone={metrics.customers.active < 30 ? 'bad' : undefined}
+            hint="عمل طلب صحيح خلال نافذة النشاط الحالية. أقل من 30 يعتبر مؤشر خطر — راجع قسم 'تفسير تراجع الأداء' أعلاه."
+          />
           <KPI label="مشترين متكررين" value={fmt(metrics.customers.repeatBuyers)} sub={`${pct(metrics.customers.repeatRate)} من المشترين`} hint="عملوا طلبين أو أكثر في حياتهم. مؤشر قوي للولاء." />
           <KPI label="متوسط الإيراد لكل مشتري" value={`${fmt(metrics.customers.avgRevenuePerBuyer)} ج.م`} hint="إجمالي الإيرادات ÷ عدد المشترين الفعليين. تقدير LTV التاريخي." />
           <KPI
@@ -1315,6 +1458,16 @@ function DetailedView({ data, products, books }: { data: ValuationData; products
 
       {/* IP */}
       <Section icon="📚" title="الملكية الفكرية" subtitle="قيمة تقديرية مبنية على العدد، مش على المبيعات الفعلية">
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 mb-4">
+          <p className="text-[12px] text-amber-900 leading-relaxed">
+            <strong>تنبيه:</strong> هذه قيمة تقديرية غير محاسبية تُستخدم
+            داخلياً للتفاوض فقط. لا تُعتمد كأرقام مالية رسمية إلا بعد
+            إثبات الحقوق (عقود نشر / تسجيل ملكية)، وإثبات المبيعات
+            التاريخية لكل عمل، وتقييم مستقل من محاسب أو مكتب IP.
+            معايير IFRS / EAS لا تسمح برسملة الملكية الفكرية المطوَّرة
+            داخلياً ما لم تُتتبَّع تكلفة التطوير الفعلية.
+          </p>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           {/* Books split into ORIGINAL vs TRANSLATION cards. Counting
               each language edition as a separate original work

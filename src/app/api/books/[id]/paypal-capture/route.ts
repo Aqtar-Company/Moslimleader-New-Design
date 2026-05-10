@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
-import { capturePayPalOrder } from '@/lib/paypal';
+import { capturePayPalOrder, PayPalCaptureError } from '@/lib/paypal';
 import { sendOrderEmails } from '@/lib/order-email';
 
 // POST /api/books/[id]/paypal-capture — capture PayPal payment, create BookOrder, grant access
@@ -127,6 +127,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     return NextResponse.json({ orderId: bookOrderId, status: 'paid', granted: true });
   } catch (err) {
+    if (err instanceof PayPalCaptureError) {
+      console.error('[books paypal-capture] paypal rejected', {
+        status: err.status, issue: err.issue, description: err.description, debugId: err.debugId,
+      });
+      const friendlyByIssue: Record<string, string> = {
+        COMPLIANCE_VIOLATION: 'فشلت المعاملة لدى PayPal بسبب قيد على حساب التاجر. لم يتم خصم أي مبلغ. برجاء المحاولة بطريقة دفع أخرى أو التواصل مع الدعم.',
+        INSTRUMENT_DECLINED: 'البطاقة مرفوضة من البنك أو PayPal. جرّب بطاقة أخرى أو تواصل مع البنك.',
+        PAYER_ACCOUNT_RESTRICTED: 'حساب المشتري على PayPal مقيَّد. حاول طريقة دفع أخرى.',
+        PAYEE_ACCOUNT_RESTRICTED: 'حساب التاجر مقيَّد حالياً — تواصل مع الدعم.',
+        TRANSACTION_REFUSED: 'تم رفض المعاملة من PayPal. جرّب بطاقة أخرى أو طريقة دفع بديلة.',
+      };
+      const friendly = err.issue && friendlyByIssue[err.issue]
+        ? friendlyByIssue[err.issue]
+        : 'تعذّر إتمام الدفع لدى PayPal. لم يتم خصم أي مبلغ. حاول طريقة دفع أخرى.';
+      return NextResponse.json({
+        error: friendly,
+        detail: err.description ?? err.issue ?? 'PayPal rejected',
+        paypalIssue: err.issue,
+        paypalDebugId: err.debugId,
+      }, { status: 400 });
+    }
     console.error('[books paypal-capture]', err);
     return NextResponse.json({ error: 'حدث خطأ في تأكيد الدفع' }, { status: 500 });
   }

@@ -66,6 +66,35 @@ export async function createPayPalOrder(amount: number, currency: string, refere
   return res.json();
 }
 
+// Custom error class so route handlers can extract the PayPal issue
+// code (e.g. COMPLIANCE_VIOLATION, INSTRUMENT_DECLINED) and surface a
+// targeted message to the customer instead of a generic 500.
+export class PayPalCaptureError extends Error {
+  status: number;
+  issue: string | null;
+  description: string | null;
+  debugId: string | null;
+  raw: string;
+  constructor(status: number, raw: string) {
+    super(`PayPal capture failed: ${status} ${raw}`);
+    this.name = 'PayPalCaptureError';
+    this.status = status;
+    this.raw = raw;
+    let issue: string | null = null;
+    let description: string | null = null;
+    let debugId: string | null = null;
+    try {
+      const j = JSON.parse(raw) as { details?: Array<{ issue?: string; description?: string }>; debug_id?: string };
+      issue = j.details?.[0]?.issue ?? null;
+      description = j.details?.[0]?.description ?? null;
+      debugId = j.debug_id ?? null;
+    } catch { /* keep raw as fallback */ }
+    this.issue = issue;
+    this.description = description;
+    this.debugId = debugId;
+  }
+}
+
 export async function capturePayPalOrder(paypalOrderId: string) {
   const token = await getAccessToken();
   const res = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders/${paypalOrderId}/capture`, {
@@ -78,7 +107,7 @@ export async function capturePayPalOrder(paypalOrderId: string) {
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`PayPal capture failed: ${res.status} ${text}`);
+    throw new PayPalCaptureError(res.status, text);
   }
 
   return res.json();

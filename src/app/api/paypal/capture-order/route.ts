@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
-import { capturePayPalOrder } from '@/lib/paypal';
+import { capturePayPalOrder, PayPalCaptureError } from '@/lib/paypal';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
 import { sendOrderEmails } from '@/lib/order-email';
@@ -306,10 +306,36 @@ export async function POST(req: NextRequest) {
       needsReview: reviewFlags.length > 0,
     });
   } catch (err) {
-    // Surface the underlying message to the client (the customer
-    // already paid — they need to know what went wrong so they can
-    // contact support with the right context). Server log keeps the
-    // full stack for debugging.
+    // Specific handling for PayPal's own rejection codes. Their risk
+    // engine rejects with COMPLIANCE_VIOLATION when the merchant
+    // account has KYC/AML/sanctions holds — the API call itself
+    // succeeded, the funds just never moved. The customer needs a
+    // friendly message + the debug_id so support can investigate
+    // with PayPal directly.
+    if (err instanceof PayPalCaptureError) {
+      console.error('[paypal capture-order] paypal rejected', {
+        status: err.status, issue: err.issue, description: err.description, debugId: err.debugId,
+      });
+      const friendlyByIssue: Record<string, string> = {
+        COMPLIANCE_VIOLATION: 'فشلت المعاملة لدى PayPal بسبب قيد على حساب التاجر. لم يتم خصم أي مبلغ. برجاء المحاولة بطريقة دفع أخرى أو التواصل مع الدعم.',
+        INSTRUMENT_DECLINED: 'البطاقة مرفوضة من البنك أو PayPal. جرّب بطاقة أخرى أو تواصل مع البنك.',
+        PAYER_ACCOUNT_RESTRICTED: 'حساب المشتري على PayPal مقيَّد. حاول طريقة دفع أخرى.',
+        PAYEE_ACCOUNT_RESTRICTED: 'حساب التاجر مقيَّد حالياً — تواصل مع الدعم.',
+        TRANSACTION_REFUSED: 'تم رفض المعاملة من PayPal. جرّب بطاقة أخرى أو طريقة دفع بديلة.',
+      };
+      const friendly = err.issue && friendlyByIssue[err.issue]
+        ? friendlyByIssue[err.issue]
+        : 'تعذّر إتمام الدفع لدى PayPal. لم يتم خصم أي مبلغ. حاول طريقة دفع أخرى.';
+      return NextResponse.json({
+        error: friendly,
+        detail: err.description ?? err.issue ?? 'PayPal rejected',
+        paypalIssue: err.issue,
+        paypalDebugId: err.debugId,
+      }, { status: 400 });
+    }
+
+    // Anything else — surface the underlying message so the customer
+    // can contact support with the right context.
     const detail = err instanceof Error ? err.message : 'unknown';
     console.error('[paypal capture-order]', err);
     return NextResponse.json({

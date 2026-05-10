@@ -158,20 +158,19 @@ GOOGLE_CLIENT_SECRET=
 
 ## Deploy (manual — recommended)
 
-> **CANONICAL BRANCH:** `claude/add-bosta-shipping-wOtW6`. All current
-> work (FB AI assistant, Bosta backfill, accounting, partners, IP,
-> royalties, suppliers, production batches, zakat, valuation,
-> wholesale, etc.) lives there. **DO NOT deploy `origin/main`** — it
-> only has the legacy SEO commits and is missing the FacebookEvent
-> table; deploying from main will trigger a `prisma db push` data-loss
-> prompt. Always pull from the canonical branch until it gets merged
-> into main via a GitHub PR.
+> **CANONICAL BRANCH:** `main`. As of plan addendum 25's final
+> alignment pass, `main` was merged with every commit from
+> `claude/add-bosta-shipping-wOtW6`, so the two now share the same
+> tip. Deploy from `main` going forward; the feature branch stays
+> around as a historical record but no longer carries unique work.
+> The schema **does** include `FacebookEvent` (the warning that used
+> to live here is obsolete after the merge).
 
 ```bash
 cd /home/moslimleader.com/app
-# Always: pull the canonical branch.
-git fetch origin claude/add-bosta-shipping-wOtW6
-git reset --hard origin/claude/add-bosta-shipping-wOtW6
+# Deploy main (now the canonical branch).
+git fetch origin main
+git reset --hard origin/main
 npm ci
 npx prisma db push --skip-generate     # If it warns about data loss → STOP and answer N.
 npm run build
@@ -198,8 +197,8 @@ ls -lh /root/backups | tail
 ```bash
 # Server's HEAD:
 git -C /home/moslimleader.com/app log --oneline -1
-# GitHub's HEAD on the canonical branch:
-git ls-remote origin claude/add-bosta-shipping-wOtW6 | awk '{print substr($1,1,7)}'
+# GitHub's HEAD on main:
+git ls-remote origin main | awk '{print substr($1,1,7)}'
 # These two SHAs MUST match. If they don't → re-run the deploy block.
 ```
 

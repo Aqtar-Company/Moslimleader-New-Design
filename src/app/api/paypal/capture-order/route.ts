@@ -11,10 +11,13 @@ import { logActionSafe } from '@/lib/audit-log';
 
 export async function POST(req: NextRequest) {
   try {
+    // Cookie-based auth is the happy path. On Safari / iOS the
+    // sameSite=none cookie occasionally drops across the PayPal
+    // popup roundtrip (ITP behaviour), so we ALSO accept a
+    // verified user identity recovered from the captured order's
+    // reference_id (set in /create-order as `${userId}-${timestamp}`).
+    // This avoids a 401 after the customer has already paid.
     const auth = await getAuthUser();
-    if (!auth) {
-      return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
-    }
 
     const body = await req.json();
     const paypalOrderId = String(body?.paypalOrderId || '');
@@ -125,6 +128,38 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Recover userId from reference_id if the auth cookie didn't
+    // make it back from the PayPal popup (Safari/iOS ITP). The
+    // reference_id was set in create-order as `${userId}-${timestamp}`
+    // and PayPal echoes it back on capture. We trust it because
+    // create-order required a valid auth cookie to set it in the
+    // first place — anyone hitting capture-order with a paypalOrderId
+    // for someone else's create-order would still bind to the
+    // ORIGINAL creator, which is the desired behaviour.
+    const referenceId = String(captureResult.purchase_units?.[0]?.reference_id || '');
+    const userIdFromReference = referenceId.split('-')[0] || null;
+
+    let resolvedUserId = auth?.userId ?? null;
+    let resolvedUserEmail = auth?.email ?? null;
+    if (!resolvedUserId && userIdFromReference) {
+      const recovered = await prisma.user.findUnique({
+        where: { id: userIdFromReference },
+        select: { id: true, email: true },
+      });
+      if (recovered) {
+        resolvedUserId = recovered.id;
+        resolvedUserEmail = recovered.email;
+      }
+    }
+
+    if (!resolvedUserId) {
+      console.error('[paypal capture-order] cannot resolve user', { paypalOrderId, referenceId, hadCookie: !!auth });
+      return NextResponse.json({
+        error: 'تعذّر تحديد المستخدم — برجاء التواصل مع الدعم وإرسال رقم العملية',
+        paypalOrderId,
+      }, { status: 401 });
+    }
+
     // CRITICAL: Verify captured amount matches expected (anti-tampering)
     const capture = captureResult.purchase_units?.[0]?.payments?.captures?.[0];
     const capturedAmount = Number(capture?.amount?.value || 0);
@@ -142,7 +177,7 @@ export async function POST(req: NextRequest) {
     const order = await prisma.$transaction(async (tx) => {
       const created = await tx.order.create({
         data: {
-          userId: auth.userId,
+          userId: resolvedUserId as string,
           status: 'paid',
           total: expectedUsd,
           shippingCost: shippingUsd,
@@ -178,7 +213,7 @@ export async function POST(req: NextRequest) {
           orderId: created.id, paypalOrderId, err: err instanceof Error ? err.message : err,
         });
         await logActionSafe({
-          actor: { userId: auth.userId, role: 'customer', email: auth.email ?? '' },
+          actor: { userId: resolvedUserId as string, role: 'customer', email: resolvedUserEmail ?? '' },
           action: 'order.create-manual',
           entity: 'Order',
           entityId: created.id,
@@ -186,7 +221,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      const cart = await tx.cart.findUnique({ where: { userId: auth.userId } });
+      const cart = await tx.cart.findUnique({ where: { userId: resolvedUserId as string } });
       if (cart) {
         await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
       }
@@ -195,12 +230,12 @@ export async function POST(req: NextRequest) {
     });
 
     // Best-effort campaign attribution by coupon code (never blocks the order).
-    await attributeOrderToCampaign({ orderId: order.id, couponCode: order.couponCode, userId: auth.userId });
+    await attributeOrderToCampaign({ orderId: order.id, couponCode: order.couponCode, userId: resolvedUserId as string });
 
     // Send order notification email to admin (async, non-blocking)
     try {
       const user = await prisma.user.findUnique({
-        where: { id: auth.userId },
+        where: { id: resolvedUserId as string },
         select: { name: true, email: true, phone: true },
       });
       const addr = (shippingAddress as Record<string, any>) || {};
@@ -242,7 +277,15 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ orderId: order.id, status: 'paid', amountUsd: expectedUsd });
   } catch (err) {
+    // Surface the underlying message to the client (the customer
+    // already paid — they need to know what went wrong so they can
+    // contact support with the right context). Server log keeps the
+    // full stack for debugging.
+    const detail = err instanceof Error ? err.message : 'unknown';
     console.error('[paypal capture-order]', err);
-    return NextResponse.json({ error: 'حدث خطأ في تأكيد الدفع' }, { status: 500 });
+    return NextResponse.json({
+      error: 'حدث خطأ في تأكيد الدفع',
+      detail,
+    }, { status: 500 });
   }
 }

@@ -93,7 +93,15 @@ export default function PayPalCheckoutButton({
       });
       clearTimeout(timeout);
       const result = await res.json();
-      if (!res.ok) throw new Error(result.error || 'Payment capture failed');
+      if (!res.ok) {
+        // Detail is the underlying server message — surfaces things
+        // like "amount mismatch" or "user not found" so support can
+        // diagnose without server logs.
+        const msg = [result.error, result.detail, result.paypalOrderId ? `(PayPal #${result.paypalOrderId})` : null]
+          .filter(Boolean)
+          .join(' — ');
+        throw new Error(msg || 'Payment capture failed');
+      }
       onSuccess(result.orderId);
     } catch (err) {
       onError(err instanceof Error ? err.message : 'حدث خطأ في تأكيد الدفع');

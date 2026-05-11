@@ -203,8 +203,8 @@ function OrderFormModal({ products: _products, selected, onClose, onRemove, onUp
             <div className="space-y-2">
               <p className="text-xs font-black text-gray-500 uppercase tracking-wider">المنتجات المختارة</p>
               {selected.map(p => {
-                const fakeProduct = { price: p.price, priceUsd: p.priceUsd } as Parameters<typeof getProductPrice>[0];
-                const unitPrice = getProductPrice(fakeProduct) as number;
+                const priceResult = getProductPrice({ price: p.price, priceUsd: p.priceUsd } as Parameters<typeof getProductPrice>[0]);
+                const totalResult = { ...priceResult, price: priceResult.price * p.quantity };
                 return (
                   <div key={p.id} className="bg-gray-50 rounded-xl px-3 py-2.5 space-y-1.5">
                     <div className="flex items-center justify-between">
@@ -217,7 +217,7 @@ function OrderFormModal({ products: _products, selected, onClose, onRemove, onUp
                         <span className="w-7 text-center text-sm font-black text-gray-800">{p.quantity}</span>
                         <button onClick={() => onUpdateQty(p.id, p.quantity + 1)} className="w-6 h-6 rounded-lg bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-black text-gray-600 transition">+</button>
                       </div>
-                      <span className="text-xs text-gray-400 font-medium">{formatPrice(unitPrice * p.quantity)}</span>
+                      <span className="text-xs text-gray-400 font-medium">{formatPrice(totalResult)}</span>
                     </div>
                   </div>
                 );

@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 100);
     const offset = Math.max(parseInt(searchParams.get('offset') ?? '0'), 0);
-    const status = searchParams.get('status') || undefined;
+    const status = searchParams.get('status') ?? undefined;
 
     const where = status ? { status } : {};
     const [leads, total] = await Promise.all([

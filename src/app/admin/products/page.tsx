@@ -247,7 +247,6 @@ export default function ProductsPage() {
     if (!form.name || !form.slug || !form.price || !form.category) {
       addToast('يرجى ملء الحقول المطلوبة: الاسم، الـ Slug، السعر، الفئة', 'warning');
       return;
-      return;
     }
     if (formImages.length === 0) {
       addToast('يرجى إضافة صورة واحدة على الأقل', 'warning');

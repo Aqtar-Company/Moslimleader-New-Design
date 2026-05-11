@@ -33,7 +33,7 @@ export interface Product {
   images: string[];
   inStock: boolean;
   stock?: number;
-  variantStocks?: Record<string, number> | null;
+  variantStocks?: Record<string, number> | null | undefined;
   featured?: boolean;
   videos?: string[];
   videoUrl?: string | null;

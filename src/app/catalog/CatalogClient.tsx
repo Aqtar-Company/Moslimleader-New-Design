@@ -204,7 +204,7 @@ function OrderFormModal({ products: _products, selected, onClose, onRemove, onUp
               <p className="text-xs font-black text-gray-500 uppercase tracking-wider">المنتجات المختارة</p>
               {selected.map(p => {
                 const fakeProduct = { price: p.price, priceUsd: p.priceUsd } as Parameters<typeof getProductPrice>[0];
-                const unitPrice = getProductPrice(fakeProduct);
+                const unitPrice = getProductPrice(fakeProduct) as number;
                 return (
                   <div key={p.id} className="bg-gray-50 rounded-xl px-3 py-2.5 space-y-1.5">
                     <div className="flex items-center justify-between">

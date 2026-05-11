@@ -29,6 +29,7 @@ const NAV: NavItem[] = [
   { href: '/admin/products',          label: 'المنتجات',          icon: '🛍️', requireAny: ['products.read'] },
   { href: '/admin/books',             label: 'المكتبة الرقمية',   icon: '📚', requireAny: ['books.read'] },
   { href: '/admin/series',            label: 'السلاسل',           icon: '📖', requireAny: ['books.read'] },
+  { href: '/admin/catalog-leads',     label: 'عملاء الكتالوج',    icon: '📋', requireAny: ['orders.read'] },
   // —— Production & sourcing ——
   { href: '/admin/production',        label: 'باتشات الإنتاج',    icon: '🏭', requireAny: ['production.read'] },
   { href: '/admin/suppliers',         label: 'الموردون',          icon: '🤝', requireAny: ['suppliers.read'] },

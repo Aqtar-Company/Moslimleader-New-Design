@@ -127,6 +127,9 @@ When admin saves a static product, BOTH the override AND the DB copy are updated
 - **Server OS:** CentOS/RHEL 9 — system packages use `yum install` not `apt-get`
 - **Coupon banner:** one coupon can have `showBanner: true` — shows as colored strip above header
 - **Variant guard:** ProductCard redirects to product page if `product.variants` exists (no direct add-to-cart)
+- **Schema-first rule:** When adding a new Prisma model that code references, the model MUST be in `schema.prisma` in the **same commit**. Code that calls `prisma.someModel` before the model is in the schema will build locally (types already generated) but crash on the server with `Property 'someModel' does not exist on type 'PrismaClient'`.
+- **`getProductPrice()` returns PriceResult, not a number:** `src/lib/geo-pricing.ts` → returns `{ price, currency, currencyEn, zone }`. For arithmetic use `.price`; for `formatPrice` spread and override: `{ ...priceResult, price: priceResult.price * qty }`. Never cast to `number`.
+- **ISR is forbidden on price/stock pages:** Pages that display prices or real-time stock must use `export const dynamic = 'force-dynamic'`. Never use `export const revalidate = N` — admin price updates are invisible to users for up to N seconds.
 
 ## Environment Variables (required)
 
@@ -171,10 +174,12 @@ cd /home/moslimleader.com/app
 # Deploy main (now the canonical branch).
 git fetch origin main
 git reset --hard origin/main
+pm2 stop 1                             # stop before npm ci — prevents stale Prisma client window
 npm ci
+npx tsc --noEmit                       # fail fast on type errors before the long build
 npx prisma db push --skip-generate     # If it warns about data loss → STOP and answer N.
-npm run build
-pm2 restart 1 --update-env
+npm run build                          # runs prisma generate internally
+pm2 start 1 --update-env
 pm2 save
 ```
 
@@ -302,6 +307,7 @@ Books are protected from download at two levels:
 - **`BookAccessLog` schema** includes: `country`, `city`, `region`, `latitude`, `longitude` — all nullable
 - **Static product overrides** — ALWAYS apply product-overrides for `source='static'` DB products (see Architecture section)
 - **SSR timeout** — `page.tsx` getProducts() has 3s timeout; falls back to static products if DB is slow
+- **`variantStocks` index shift** — Variant stocks are stored as `{"0": 5, "1": 3}` keyed by variant array index. If a variant is deleted from the middle of the array, all subsequent indices shift and stored stocks become mismatched. Admin must manually re-enter stocks after deleting a middle variant.
 
 ## Bugs Fixed (Reference)
 
@@ -337,3 +343,8 @@ Books are protected from download at two levels:
 | PayPal N+1 product queries | Each item triggered individual DB query | Batch-fetch all products in single query |
 | Book price EGP→USD inconsistent | Used `* 0.10` (1:10) instead of `/ 50` (1:50) | Fixed to consistent `/ 50` rate |
 | `isEn` undefined in book buy pages | `useLang()` imported but never called | Added `const { lang } = useLang(); const isEn = lang === 'en';` |
+| `prisma.catalogLead` crashes on deploy | `CatalogLead` model added to route but never in `schema.prisma` | Schema-first rule: model + route in same commit; then `npx prisma db push` |
+| Catalog shows stale prices after admin update | `revalidate=300` ISR cache on `/catalog/page.tsx` | Changed to `export const dynamic = 'force-dynamic'` |
+| TypeScript build error: `PriceResult` not assignable to `number` | `getProductPrice()` returns `{ price, currency, ... }` object, not a number | Use `.price` for math; spread result + override `price` for `formatPrice` |
+| `variantStocks` doesn't exist on `MergedProduct` | Field missing from `Product` interface in `src/types/index.ts` | Added `variantStocks?: Record<string, number> \| null \| undefined` |
+| Admin catalog-leads page always empty | `/api/admin/catalog-leads/route.ts` didn't exist | Created route with GET (paginated list) + PATCH (update status/orderId) |

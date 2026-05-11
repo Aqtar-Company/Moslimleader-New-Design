@@ -12,6 +12,7 @@ interface VariantDraft {
   name: string;
   nameEn: string;
   imageIndex: number;
+  stock: number;
 }
 
 type MergedProduct = Product & { isAdded?: boolean };
@@ -214,8 +215,13 @@ export default function ProductsPage() {
       });
       setFormTags((fullP.tags || []).join(', '));
       setFormImages([...(fullP.images || [])]);
+      const vs = (fullP.variantStocks ?? null) as Record<string, number> | null;
       setVariants(
-        fullP.variants?.map(v => ({ id: v.id, name: v.name, nameEn: v.nameEn || '', imageIndex: v.imageIndex })) ?? []
+        fullP.variants?.map((v, i) => ({
+          id: v.id, name: v.name, nameEn: v.nameEn || '',
+          imageIndex: v.imageIndex,
+          stock: vs?.[String(i)] ?? 0,
+        })) ?? []
       );
       setShowForm(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -224,7 +230,7 @@ export default function ProductsPage() {
     }
   };
 
-  const addVariant = () => setVariants(v => [...v, { id: `v-${Date.now()}`, name: '', nameEn: '', imageIndex: -1 }]);
+  const addVariant = () => setVariants(v => [...v, { id: `v-${Date.now()}`, name: '', nameEn: '', imageIndex: -1, stock: 0 }]);
   const updateVariant = (id: string, patch: Partial<VariantDraft>) => setVariants(v => v.map(x => x.id === id ? { ...x, ...patch } : x));
   const removeVariant = (id: string) => setVariants(v => v.filter(x => x.id !== id));
 
@@ -240,7 +246,6 @@ export default function ProductsPage() {
   const handleSubmit = async () => {
     if (!form.name || !form.slug || !form.price || !form.category) {
       addToast('يرجى ملء الحقول المطلوبة: الاسم، الـ Slug، السعر، الفئة', 'warning');
-      return;
       return;
     }
     if (formImages.length === 0) {
@@ -276,6 +281,9 @@ export default function ProductsPage() {
       tags: parsedTags,
       images: formImages,
       variants: builtVariants.length > 0 ? builtVariants : undefined,
+      variantStocks: builtVariants.length > 0
+        ? Object.fromEntries(variants.filter(v => v.name).map((v, i) => [String(i), v.stock]))
+        : undefined,
     };
 
     let saveOk = false;
@@ -618,7 +626,7 @@ export default function ProductsPage() {
               <div className="space-y-3">
                 {variants.map(v => (
                   <div key={v.id} className="border border-gray-200 rounded-lg p-4 space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
                         <label className="block text-xs font-semibold text-gray-600 mb-1">اسم الموديل (عربي)</label>
                         <input value={v.name} onChange={e => updateVariant(v.id, { name: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-gray-400" placeholder="مثل: أحمر كبير" />
@@ -626,6 +634,10 @@ export default function ProductsPage() {
                       <div>
                         <label className="block text-xs font-semibold text-gray-600 mb-1">اسم الموديل (إنجليزي)</label>
                         <input value={v.nameEn} onChange={e => updateVariant(v.id, { nameEn: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-gray-400" placeholder="e.g. Red Large" dir="ltr" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">الكمية المتاحة</label>
+                        <input type="number" min={0} value={v.stock} onChange={e => updateVariant(v.id, { stock: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-gray-400" placeholder="0" dir="ltr" />
                       </div>
                     </div>
                     <div>

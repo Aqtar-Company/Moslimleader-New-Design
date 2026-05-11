@@ -29,6 +29,7 @@ const CATALOG_STYLES = `
   @page { size: A4 portrait; margin: 0; }
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   .catalog-shell { position: static !important; overflow: visible !important; height: auto !important; }
+@keyframes progressbar { from { width: 0% } to { width: 100% } }
   .catalog-sidebar { display: none !important; }
   .catalog-topbar { display: none !important; }
   .catalog-fab { display: none !important; }
@@ -269,12 +270,16 @@ interface CardProps {
 function CatalogCard({ product, index, total, selectedVariantIds, onToggle }: CardProps) {
   const variants = (Array.isArray(product.variants) ? product.variants : []) as ProductVariant[];
   const hasVariants = variants.length > 0;
+  const variantStocks = (product.variantStocks ?? null) as Record<string, number> | null;
+  const getVariantStock = (i: number) => variantStocks ? (variantStocks[String(i)] ?? Infinity) : Infinity;
   const [activeVariantId, setActiveVariantId] = useState<string | null>(null);
   const [mainImg, setMainImg] = useState(0);
   const { isRtl } = useLang();
   const { getProductPrice, formatPrice } = useRegionalPricing();
   const priceResult = getProductPrice(product);
   const activeVariant = hasVariants ? variants.find(v => v.id === activeVariantId) ?? null : null;
+  const activeVariantIndex = hasVariants ? variants.findIndex(v => v.id === activeVariantId) : -1;
+  const selectedVariantOutOfStock = hasVariants && activeVariantIndex >= 0 && getVariantStock(activeVariantIndex) === 0;
   const variantPicked = hasVariants ? !!activeVariant : true;
   const variantIsSelected = hasVariants
     ? !!activeVariantId && selectedVariantIds.includes(activeVariantId)
@@ -372,22 +377,28 @@ function CatalogCard({ product, index, total, selectedVariantIds, onToggle }: Ca
                   )}
                 </p>
                 <div className="flex flex-wrap gap-1.5">
-                  {variants.map(v => {
+                  {variants.map((v, idx) => {
                     const picked = activeVariantId === v.id;
+                    const outOfStock = getVariantStock(idx) === 0;
                     return (
                       <button
                         key={v.id}
+                        disabled={outOfStock}
                         onClick={() => {
+                          if (outOfStock) return;
                           setActiveVariantId(v.id);
                           if (v.imageIndex >= 0) setMainImg(v.imageIndex);
                         }}
-                        className={`text-[11px] font-bold px-2.5 py-1.5 rounded-lg border-2 transition ${
-                          picked
+                        className={`text-[11px] font-bold px-2.5 py-1.5 rounded-lg border-2 transition flex flex-col items-center leading-tight ${
+                          outOfStock
+                            ? 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed line-through'
+                            : picked
                             ? 'border-[#F5C518] bg-[#FFF9E6] text-[#9a7b00]'
                             : 'border-gray-200 text-gray-600 hover:border-gray-400'
                         }`}
                       >
                         {isRtl ? v.name : (v.nameEn || v.name)}
+                        {outOfStock && <span className="text-[9px] text-red-400 no-underline not-italic font-bold" style={{ textDecoration: 'none' }}>نفذ</span>}
                       </button>
                     );
                   })}
@@ -396,17 +407,19 @@ function CatalogCard({ product, index, total, selectedVariantIds, onToggle }: Ca
             )}
 
             <button
-              onClick={() => variantPicked && onToggle(product, activeVariant)}
-              disabled={!variantPicked}
+              onClick={() => variantPicked && !selectedVariantOutOfStock && onToggle(product, activeVariant)}
+              disabled={!variantPicked || selectedVariantOutOfStock}
               className={`w-full font-black py-3 rounded-2xl text-sm transition flex items-center justify-center gap-2 border-2 ${
-                !variantPicked
+                !variantPicked || selectedVariantOutOfStock
                   ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
                   : variantIsSelected
                   ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-200'
                   : 'bg-white border-[#1a1a2e] text-[#1a1a2e] hover:bg-[#1a1a2e] hover:text-[#F5C518]'
               }`}
             >
-              {!variantPicked ? (
+              {selectedVariantOutOfStock ? (
+                <>نفذ المخزون</>
+              ) : !variantPicked ? (
                 <>اختر الموديل أولاً</>
               ) : variantIsSelected ? (
                 <><svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg> تم الاختيار</>
@@ -739,6 +752,7 @@ export default function CatalogClient({ products }: { products: Product[] }) {
   const [activeId, setActiveId] = useState('cover');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const handleLoaded = useCallback(() => setLoaded(true), []);
 
@@ -807,7 +821,13 @@ export default function CatalogClient({ products }: { products: Product[] }) {
     }
   }, []);
 
-  const handlePrint = () => setTimeout(() => window.print(), 300);
+  const handlePrint = useCallback(() => {
+    setPrinting(true);
+    requestAnimationFrame(() => setTimeout(() => {
+      window.print();
+      setPrinting(false);
+    }, 400));
+  }, []);
 
   return (
     <>
@@ -931,6 +951,20 @@ export default function CatalogClient({ products }: { products: Product[] }) {
           />
         )}
       </div>
+
+      {/* PDF print progress overlay */}
+      {printing && (
+        <div className="fixed inset-0 z-[700] flex flex-col items-center justify-center bg-[#1a1a2e]/95 backdrop-blur-sm catalog-no-print">
+          <div className="w-16 h-16 rounded-2xl bg-[#F5C518]/10 border border-[#F5C518]/20 flex items-center justify-center mb-6">
+            <span className="text-3xl">📄</span>
+          </div>
+          <p className="text-white font-black text-lg mb-2">جاري تجهيز PDF...</p>
+          <p className="text-white/40 text-sm mb-6">يرجى الانتظار</p>
+          <div className="w-48 h-1 bg-white/10 rounded-full overflow-hidden" dir="ltr">
+            <div className="h-full bg-[#F5C518] rounded-full" style={{ animation: 'progressbar 0.4s ease-in-out forwards' }} />
+          </div>
+        </div>
+      )}
     </>
   );
 }

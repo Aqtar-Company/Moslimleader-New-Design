@@ -22,6 +22,7 @@ const NAV: NavItem[] = [
   // —— Daily ops ——
   { href: '/admin/dashboard',         label: 'الرئيسية',         icon: '📊', requireAny: [] },
   { href: '/admin/orders',            label: 'الطلبات',           icon: '📦', requireAny: ['orders.read'] },
+  { href: '/admin/catalog-leads',     label: 'عملاء الكتالوج',    icon: '📋', requireAny: ['orders.read'] },
   { href: '/admin/shipments',         label: 'شحنات بوسطة',       icon: '📮', requireAny: ['shipments.read'] },
   { href: '/admin/inventory',         label: 'المخزون',           icon: '📥', requireAny: ['inventory.read'] },
   { href: '/admin/inventory/movements', label: 'سجل المخزون',     icon: '🧾', requireAny: ['inventory.read'] },
@@ -29,7 +30,6 @@ const NAV: NavItem[] = [
   { href: '/admin/products',          label: 'المنتجات',          icon: '🛍️', requireAny: ['products.read'] },
   { href: '/admin/books',             label: 'المكتبة الرقمية',   icon: '📚', requireAny: ['books.read'] },
   { href: '/admin/series',            label: 'السلاسل',           icon: '📖', requireAny: ['books.read'] },
-  { href: '/admin/catalog-leads',     label: 'عملاء الكتالوج',    icon: '📋', requireAny: ['orders.read'] },
   // —— Production & sourcing ——
   { href: '/admin/production',        label: 'باتشات الإنتاج',    icon: '🏭', requireAny: ['production.read'] },
   { href: '/admin/suppliers',         label: 'الموردون',          icon: '🤝', requireAny: ['suppliers.read'] },
@@ -70,9 +70,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isSuperAdmin = user?.role === 'admin';
   const userPerms = user?.permissions ?? [];
 
-  // Fetch the count of unmatched Bosta-historical orders so the sidebar
-  // can render a pending-work pill on the matching entry. Best-effort —
-  // a failure just hides the badge.
   useEffect(() => {
     if (!isAdminLike) return;
     if (!isSuperAdmin && !userPerms.includes('inventory.read')) return;
@@ -102,10 +99,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="admin-shell fixed inset-0 z-50 flex bg-gray-100" dir="rtl">
-      {/* Print fix: the admin shell is `position: fixed; overflow: hidden`
-          for the screen layout, which clips print output to a single page.
-          In print mode we strip the constraints so the browser can flow
-          the report across as many pages as it needs. */}
       <style jsx global>{`
         @media print {
           .admin-shell {
@@ -123,33 +116,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             padding: 0 !important;
           }
         }
-        /* Slim scrollbar for the desktop sidebar so the glass panel
-           doesn't look chunky when the nav overflows. */
         .admin-sidebar-nav::-webkit-scrollbar { width: 4px; }
         .admin-sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
         .admin-sidebar-nav::-webkit-scrollbar-track { background: transparent; }
         .admin-sidebar-nav { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.12) transparent; }
       `}</style>
 
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Sidebar — solid on mobile drawer (readability over a backdrop),
-          glass on desktop (subtle depth without dominating the page). */}
       <aside className={`
         fixed top-0 right-0 h-full w-64 max-w-[85vw] bg-[#1a1a2e] z-50 flex flex-col transition-transform duration-300
         lg:static lg:translate-x-0 lg:w-52 lg:bg-[#0f0f1e]/92 lg:backdrop-blur-xl lg:border-l lg:border-white/15 lg:shadow-xl
         ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
       `}>
-        {/* Logo */}
         <div className="px-6 py-5 border-b border-white/10 lg:px-4 lg:py-3.5">
           <p className="text-[#F5C518] font-black text-lg leading-tight lg:text-base">Moslim Leader</p>
           <p className="text-white/50 text-xs mt-0.5 lg:text-[10px]">لوحة التحكم</p>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 py-4 overflow-y-auto admin-sidebar-nav lg:py-2">
           {NAV.filter(item => {
             if (item.superAdminOnly) return isSuperAdmin;
@@ -181,7 +167,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
 
-        {/* Bottom: store link + logout */}
         <div className="px-4 py-4 border-t border-white/10 space-y-2 lg:px-2.5 lg:py-2.5 lg:space-y-1">
           <Link href="/" className="flex items-center gap-2 px-3 py-2 rounded-lg text-white/75 hover:text-white hover:bg-white/10 text-xs transition lg:px-2 lg:py-1.5 lg:text-[11px]">
             <span>🏠</span> العودة للمتجر
@@ -195,9 +180,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
-      {/* Main content */}
       <div className="admin-main-wrap flex-1 flex flex-col overflow-hidden">
-        {/* Top bar */}
         <header className="admin-topbar bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0">
           <button
             onClick={() => setSidebarOpen(true)}
@@ -214,7 +197,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </header>
 
-        {/* Page content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           <ZakatReminderBanner userPerms={userPerms} isSuperAdmin={isSuperAdmin} />
           {children}
@@ -224,16 +206,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   );
 }
 
-// Show a thin amber banner across the top of every admin page when
-// 1 Dhul-Hijjah is within the next 7 days. The check runs client-side
-// so the banner appears even when the user navigates between routes
-// without a full reload. Self-dismissable per session.
 function ZakatReminderBanner({ userPerms, isSuperAdmin }: { userPerms: string[]; isSuperAdmin: boolean }) {
   const [days, setDays] = useState<number | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
-  // Only users with zakat.read should see the reminder. We check the
-  // permission client-side; the API is gated server-side anyway.
   const canSeeZakat = isSuperAdmin || userPerms.includes('zakat.read');
 
   useEffect(() => {
@@ -242,15 +218,12 @@ function ZakatReminderBanner({ userPerms, isSuperAdmin }: { userPerms: string[];
       setDismissed(true);
       return;
     }
-    // Fetch the days-until from the API (it's the source of truth for
-    // Hijri arithmetic — the JS engine on the client can disagree with
-    // the server depending on locale data).
     fetch('/api/admin/zakat', { credentials: 'include', cache: 'no-store' })
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (d?.today?.daysUntilDhulHijjah1 !== undefined) setDays(d.today.daysUntilDhulHijjah1);
       })
-      .catch(() => {/* swallow — banner is best-effort */});
+      .catch(() => {});
   }, [canSeeZakat]);
 
   if (!canSeeZakat || dismissed || days === null || days > 7) return null;

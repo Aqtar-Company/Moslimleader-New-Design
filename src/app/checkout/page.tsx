@@ -1221,7 +1221,7 @@ export default function CheckoutPage() {
               {(payMethod === 'vodafone' || payMethod === 'instapay') && (
                 <div className="mt-4 bg-amber-50 border border-amber-100 rounded-2xl p-4 text-sm">
                   <p className="font-semibold text-gray-900 mb-1">{isRtl ? 'أرسل المبلغ على الرقم:' : 'Send the amount to:'}</p>
-                  <p className="font-black text-xl tracking-widest text-gray-900" dir="ltr">01060306803</p>
+                  <p className="font-black text-xl tracking-widest text-gray-900" dir="ltr">{payMethod === 'instapay' ? '01010041390' : '01060306803'}</p>
                   <p className="text-gray-500 text-xs mt-1">{isRtl ? 'ثم أرسل صورة التحويل على واتساب' : 'Then send screenshot on WhatsApp to confirm'}</p>
                 </div>
               )}

@@ -27,6 +27,11 @@ src/
     auth/reset-password/            # Password reset
     verify-email/                   # Email verification landing page
     invoice/[orderId]/              # Invoice page
+    catalog/                        # Standalone /catalog — own layout (covers site chrome),
+      page.tsx                      #   own loading boundary (gold loader), variant picker
+      layout.tsx                    #   per card. Submissions go to /api/catalog-leads.
+      loading.tsx                   #   Overrides app/loading.tsx so the site loader never
+      CatalogClient.tsx             #   flashes on /catalog.
     library/                        # Digital library
       page.tsx                      # Book listing
       [id]/page.tsx                 # Book reader (Turnstile + legal overlay + image viewer)
@@ -35,7 +40,8 @@ src/
     admin/                          # Admin panel (no auth middleware)
       dashboard/                    # Stats overview
       products/                     # Physical products CRUD
-      orders/                       # Orders list + expandable invoice rows
+      orders/                       # Orders list + expandable invoice rows (shows variant name)
+      catalog-leads/                # /catalog lead inbox — convert to manual order (orders.read)
       books/                        # Digital books CRUD + file upload
       series/                       # Book series management
       users/                        # User management + device reset
@@ -127,6 +133,8 @@ When admin saves a static product, BOTH the override AND the DB copy are updated
 - **Server OS:** CentOS/RHEL 9 — system packages use `yum install` not `apt-get`
 - **Coupon banner:** one coupon can have `showBanner: true` — shows as colored strip above header
 - **Variant guard:** ProductCard redirects to product page if `product.variants` exists (no direct add-to-cart)
+- **Variant name on orders:** `OrderItem.selectedVariantName` is filled at order-creation time by `resolveVariantName(product.variants, selectedModel)` in `src/lib/products.ts` (handles both customer flow = `imageIndex` and admin manual entry = array position). Admin orders page / invoice / email show the name when present and fall back to `موديل N+1`.
+- **Catalog isolation:** `/catalog` has its own `layout.tsx` (fixed-positioned full-screen shell with z-index 100) AND its own `loading.tsx` (gold-logo loader) so the site loader (`src/app/loading.tsx`) never shows on the catalog route.
 
 ## Environment Variables (required)
 
@@ -158,17 +166,17 @@ GOOGLE_CLIENT_SECRET=
 
 ## Deploy (manual — recommended)
 
-> **CANONICAL BRANCH:** `main`. As of plan addendum 25's final
-> alignment pass, `main` was merged with every commit from
-> `claude/add-bosta-shipping-wOtW6`, so the two now share the same
-> tip. Deploy from `main` going forward; the feature branch stays
-> around as a historical record but no longer carries unique work.
-> The schema **does** include `FacebookEvent` (the warning that used
-> to live here is obsolete after the merge).
+> **CANONICAL BRANCH:** `main`. Latest alignment merged
+> `claude/review-config-sync-jsuvX` (standalone /catalog experience +
+> `OrderItem.selectedVariantName`) into `main`, so the two share the
+> same tip. Deploy from `main`; the feature branch stays around as
+> historical record. The schema **does** include `FacebookEvent` and
+> now **also** `OrderItem.selectedVariantName String?`.
 
 ```bash
+# 1) Backup FIRST (see block below) — always run before touching the tree.
+# 2) Then deploy main (canonical branch).
 cd /home/moslimleader.com/app
-# Deploy main (now the canonical branch).
 git fetch origin main
 git reset --hard origin/main
 npm ci
@@ -176,6 +184,7 @@ npx prisma db push --skip-generate     # If it warns about data loss → STOP an
 npm run build
 pm2 restart 1 --update-env
 pm2 save
+# 3) Verify sync (block further down) — server HEAD must equal origin/main HEAD.
 ```
 
 ### Backup before any deploy (run this first)
@@ -330,6 +339,8 @@ Books are protected from download at two levels:
 | No CSRF protection | `sameSite: 'none'` with no Origin check | Added `middleware.ts` validating Origin header on mutations |
 | Admin shipping rates not reflected | Checkout used hardcoded `getShipping()` | Checkout now fetches rates from `/api/shipping-rates` (DB) |
 | Selected model wrong in invoice | Off-by-one + missing display | Fixed index (+1) in admin, added model to invoice + email |
+| Admin couldn't tell which model a catalog lead wanted | Catalog cards had no variant picker — only `selectedModel` index was stored, not the human-readable name | Added per-card variant picker in `CatalogClient.tsx`, composed display name `"Product — Variant"` into lead's `productName`, and added `OrderItem.selectedVariantName` populated by `resolveVariantName()` at order create |
+| Site loader flashed on `/catalog` | Catalog inherited root `app/loading.tsx` ("اختياراتك اليوم...") | Added `src/app/catalog/loading.tsx` (gold-logo dark loader) — overrides the parent boundary |
 | Admin can't change order status | Arabic statuses sent but API validates English | Admin page now uses English values with Arabic display labels |
 | SSR XSS via product descriptions | `sanitizeHtml()` returned raw HTML on server | Added regex-based server-side sanitization fallback |
 | Book share links unlimited uses | `usedCount` tracked but never enforced | Added max 5 uses per share link |

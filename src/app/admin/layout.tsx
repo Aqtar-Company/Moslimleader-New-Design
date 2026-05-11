@@ -22,6 +22,7 @@ const NAV: NavItem[] = [
   // —— Daily ops ——
   { href: '/admin/dashboard',         label: 'الرئيسية',         icon: '📊', requireAny: [] },
   { href: '/admin/orders',            label: 'الطلبات',           icon: '📦', requireAny: ['orders.read'] },
+  { href: '/admin/catalog-leads',    label: 'طلبات الكتالوج',    icon: '📋', requireAny: ['orders.read'] },
   { href: '/admin/shipments',         label: 'شحنات بوسطة',       icon: '📮', requireAny: ['shipments.read'] },
   { href: '/admin/inventory',         label: 'المخزون',           icon: '📥', requireAny: ['inventory.read'] },
   { href: '/admin/inventory/movements', label: 'سجل المخزون',     icon: '🧾', requireAny: ['inventory.read'] },

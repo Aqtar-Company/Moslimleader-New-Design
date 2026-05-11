@@ -33,13 +33,24 @@ const FALLBACK_GOVS: Array<{ id: string; name: string; shipping: number }> = [
   { id: 'alexandria', name: 'الإسكندرية', shipping: 65 },
 ];
 
+export interface ManualOrderPrefill {
+  name?: string;
+  phone?: string;
+  city?: string;
+  governorate?: string;
+  productId?: string;
+  notes?: string;
+  source?: string;
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
-  onCreated: () => void;
+  onCreated: (orderId?: string) => void;
+  prefill?: ManualOrderPrefill;
 }
 
-export function ManualOrderModal({ open, onClose, onCreated }: Props) {
+export function ManualOrderModal({ open, onClose, onCreated, prefill }: Props) {
   const { addToast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [govs, setGovs] = useState(FALLBACK_GOVS);
@@ -90,6 +101,35 @@ export function ManualOrderModal({ open, onClose, onCreated }: Props) {
       .then(d => setProducts(d.products ?? []))
       .catch(() => {});
   }, [open]);
+
+  // Apply prefill when modal opens
+  useEffect(() => {
+    if (!open || !prefill) return;
+    if (prefill.name) setName(prefill.name);
+    if (prefill.phone) { setPhone(prefill.phone); setWhatsappNumber(prefill.phone); }
+    if (prefill.city) setCity(prefill.city);
+    if (prefill.governorate) setGovernorate(prefill.governorate);
+    if (prefill.notes) setNotes(prefill.notes);
+    if (prefill.source) setSource(prefill.source);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // Auto-add prefill product once the products list is loaded
+  useEffect(() => {
+    if (!open || !prefill?.productId || products.length === 0 || items.length > 0) return;
+    const p = products.find(p => p.id === prefill.productId);
+    if (!p) return;
+    const variants = Array.isArray(p.variants) ? p.variants : [];
+    setItems([{
+      productId: p.id,
+      name: p.name,
+      unitPrice: p.price,
+      quantity: 1,
+      selectedModel: null,
+      variantOptions: variants.length > 0 ? variants : undefined,
+    }]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, open]);
 
   const govObj = useMemo(() => govs.find(g => g.id === governorate), [governorate]);
   const subtotal = useMemo(() => items.reduce((s, it) => s + it.unitPrice * it.quantity, 0), [items]);
@@ -204,7 +244,7 @@ export function ManualOrderModal({ open, onClose, onCreated }: Props) {
       } else {
         addToast(`تم إنشاء الطلب — العميل ${name} سُجِّل في قاعدة البيانات`, 'success', 6000);
         reset();
-        onCreated();
+        onCreated(data.order?.id ?? data.id);
         onClose();
       }
     } catch {

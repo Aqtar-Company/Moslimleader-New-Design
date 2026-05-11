@@ -33,7 +33,7 @@ const CATALOG_STYLES = `
   .catalog-topbar { display: none !important; }
   .catalog-fab { display: none !important; }
   .catalog-no-print { display: none !important; }
-  .catalog-page { page-break-after: always; page-break-inside: avoid; min-height: 297mm; box-shadow: none !important; margin: 0 !important; border-radius: 0 !important; }
+  .catalog-page { page-break-after: always; page-break-inside: avoid; min-height: 297mm; box-shadow: none !important; margin: 0 !important; border-radius: 0 !important; padding: 8mm !important; }
   .catalog-page:last-of-type { page-break-after: avoid; }
   .catalog-divider { display: none !important; }
   body { background: white !important; }
@@ -183,8 +183,8 @@ function OrderFormModal({ products: _products, selected, onClose, onRemove, onUp
   }
 
   return (
-    <div className="fixed inset-0 z-[400] flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm px-4 pb-4" dir="rtl">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
+    <div className="fixed inset-0 z-[400] flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm px-4 pb-4" dir="rtl" onClick={onClose}>
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="bg-[#1a1a2e] px-6 py-5 flex items-center justify-between">
           <div>
             <h3 className="text-[#F5C518] font-black text-lg leading-tight">أرسل طلبك</h3>
@@ -311,7 +311,7 @@ function CatalogCard({ product, index, total, selectedVariantIds, onToggle }: Ca
               fill
               className="object-contain p-6"
               unoptimized
-              loading="eager"
+              loading={index < 3 ? 'eager' : 'lazy'}
               sizes="(max-width: 1024px) 100vw, 60vw"
             />
           </div>
@@ -345,7 +345,7 @@ function CatalogCard({ product, index, total, selectedVariantIds, onToggle }: Ca
           {description && (
             <div
               className="product-description text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-4 flex-1 overflow-hidden"
-              style={{ maxHeight: 200 }}
+              style={{ maxHeight: 200, WebkitMaskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)', maskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)' }}
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(description) }}
             />
           )}
@@ -462,7 +462,7 @@ function CatalogSidebar({ products, selectedCount, onOrderClick, onPrint, scroll
           <button key={p.id} onClick={() => scrollToId(`product-${p.id}`)}
             className={`w-full text-right px-4 py-2 text-xs transition flex items-center gap-2 rounded-lg mx-1 ${activeId === `product-${p.id}` ? 'text-[#F5C518] bg-white/10 font-bold' : 'text-white/60 hover:text-white hover:bg-white/5'}`}>
             <span className="shrink-0 w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[9px] font-black">{i + 1}</span>
-            <span className="truncate flex-1 leading-tight">{p.name}</span>
+            <span className="truncate flex-1 leading-tight" title={p.name}>{p.name}</span>
           </button>
         ))}
 
@@ -498,7 +498,7 @@ function CatalogSidebar({ products, selectedCount, onOrderClick, onPrint, scroll
           )}
         </button>
         <button onClick={onPrint}
-          className="w-full bg-white/8 hover:bg-white/15 border border-white/20 text-white/80 hover:text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2">
+          className="w-full bg-white/10 hover:bg-white/15 border border-white/20 text-white/80 hover:text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2">
           <span>⬇️</span> تحميل PDF
         </button>
         <a href={SITE_URL} target="_blank" rel="noopener noreferrer"
@@ -551,7 +551,7 @@ function CoverPage({ productCount, onStart }: { productCount: number; onStart: (
         </div>
         <div className="w-px h-10 bg-white/20" />
         <div className="text-center">
-          <p className="text-3xl font-black text-[#F5C518]">2025</p>
+          <p className="text-3xl font-black text-[#F5C518]">{new Date().getFullYear()}</p>
           <p className="text-white/50 text-xs mt-0.5">إصدار</p>
         </div>
         <div className="w-px h-10 bg-white/20" />
@@ -702,19 +702,19 @@ function ContactPage() {
         {/* Secondary contact channels */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-xl mx-auto mb-10">
           <a href={`https://wa.me/${WHATSAPP}`} target="_blank" rel="noopener noreferrer"
-            className="bg-white/8 hover:bg-[#25D366]/20 border border-white/10 hover:border-[#25D366]/30 text-white/70 hover:text-white font-bold py-4 rounded-2xl text-sm transition flex flex-col items-center gap-2">
+            className="bg-white/10 hover:bg-[#25D366]/20 border border-white/10 hover:border-[#25D366]/30 text-white/70 hover:text-white font-bold py-4 rounded-2xl text-sm transition flex flex-col items-center gap-2">
             <span className="text-2xl">💬</span>
             <span>واتساب</span>
             <span className="text-[10px] text-white/30">للاستفسارات</span>
           </a>
           <a href={SITE_URL} target="_blank" rel="noopener noreferrer"
-            className="bg-white/8 hover:bg-white/15 border border-white/10 text-white/70 hover:text-white font-bold py-4 rounded-2xl text-sm transition flex flex-col items-center gap-2">
+            className="bg-white/10 hover:bg-white/15 border border-white/10 text-white/70 hover:text-white font-bold py-4 rounded-2xl text-sm transition flex flex-col items-center gap-2">
             <span className="text-2xl">🌐</span>
             <span>الموقع الرسمي</span>
             <span className="text-[10px] text-white/30">تسوق الآن</span>
           </a>
           <a href="https://instagram.com/moslimleader" target="_blank" rel="noopener noreferrer"
-            className="bg-white/8 hover:bg-purple-500/20 border border-white/10 hover:border-purple-500/30 text-white/70 hover:text-white font-bold py-4 rounded-2xl text-sm transition flex flex-col items-center gap-2">
+            className="bg-white/10 hover:bg-purple-500/20 border border-white/10 hover:border-purple-500/30 text-white/70 hover:text-white font-bold py-4 rounded-2xl text-sm transition flex flex-col items-center gap-2">
             <span className="text-2xl">📸</span>
             <span>إنستغرام</span>
             <span className="text-[10px] text-white/30">تابعنا</span>
@@ -724,7 +724,7 @@ function ContactPage() {
         <div className="text-white/30 text-xs space-y-1">
           <p className="font-black text-white/60">Moslim Leader — مسلم ليدر</p>
           <p>{SITE_URL}</p>
-          <p className="mt-4 text-[10px]">جميع الحقوق محفوظة © 2025</p>
+          <p className="mt-4 text-[10px]">جميع الحقوق محفوظة © {new Date().getFullYear()}</p>
         </div>
       </div>
     </div>
@@ -807,22 +807,7 @@ export default function CatalogClient({ products }: { products: Product[] }) {
     }
   }, []);
 
-  const handlePrint = () => {
-    const shell = document.querySelector('.catalog-shell') as HTMLElement;
-    if (shell) {
-      shell.style.position = 'static';
-      shell.style.overflow = 'visible';
-      shell.style.height = 'auto';
-    }
-    window.print();
-    setTimeout(() => {
-      if (shell) {
-        shell.style.position = 'fixed';
-        shell.style.overflow = 'auto';
-        shell.style.height = '';
-      }
-    }, 1000);
-  };
+  const handlePrint = () => setTimeout(() => window.print(), 300);
 
   return (
     <>
@@ -872,7 +857,7 @@ export default function CatalogClient({ products }: { products: Product[] }) {
           {sidebarOpen && (
             <>
               <div className="fixed inset-0 bg-black/60 z-50 lg:hidden" onClick={() => setSidebarOpen(false)} />
-              <div className="fixed top-0 right-0 bottom-0 z-50 w-64 lg:hidden">
+              <div className="fixed top-0 right-0 bottom-0 z-50 w-64 lg:hidden transition-transform duration-300 translate-x-0">
                 <CatalogSidebar
                   products={products}
                   selectedCount={selected.length}

@@ -800,3 +800,21 @@ model FacebookEvent {
   @@index([intentSignal, createdAt])
   @@index([createdAt])
 }
+
+model CatalogLead {
+  id               String   @id @default(cuid())
+  name             String
+  phone            String
+  city             String
+  notes            String?  @db.Text
+  productName      String   @db.Text
+  productId        String?
+  selectedProducts Json?
+  status           String   @default("new")
+  orderId          String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+}

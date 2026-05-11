@@ -40,7 +40,7 @@ async function getProducts(): Promise<Product[]> {
         setTimeout(() => reject(new Error('timeout')), 3000),
       ),
     ]);
-    return [...mergedStatic, ...(dbProducts as unknown as Product[])];
+    return [...(dbProducts as unknown as Product[]), ...mergedStatic];
   } catch {
     try { return await getMergedStaticProducts(); } catch { return staticProducts; }
   }

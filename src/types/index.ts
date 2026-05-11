@@ -32,6 +32,8 @@ export interface Product {
   tags: string[];
   images: string[];
   inStock: boolean;
+  stock?: number;
+  variantStocks?: Record<string, number> | null;
   featured?: boolean;
   videos?: string[];
   videoUrl?: string | null;

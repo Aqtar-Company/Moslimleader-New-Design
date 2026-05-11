@@ -131,7 +131,7 @@ export function resolvePrice(
   }
 
   // دولي: استخدم السعر بالدولار
-  const usdPrice = baseUsdPrice > 0 ? baseUsdPrice : (baseEgpPrice * 0.10); // fallback بسيط لو الدولار صفر
+  const usdPrice = baseUsdPrice > 0 ? baseUsdPrice : (baseEgpPrice / 50); // fallback: 1 USD ≈ 50 EGP
 
   // حول USD → عملة الدولة
   const cc = countryCode ? COUNTRY_CURRENCIES[countryCode.toUpperCase()] : null;

@@ -12,14 +12,7 @@ import type { Product } from '@/types';
 const WHATSAPP = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '201003414003';
 const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://moslimleader.com';
 
-const CITIES = [
-  'القاهرة','الجيزة','الإسكندرية','القليوبية','الشرقية','المنوفية','الغربية',
-  'كفر الشيخ','البحيرة','الدقهلية','دمياط','بور سعيد','الإسماعيلية','السويس',
-  'الفيوم','بني سويف','المنيا','أسيوط','سوهاج','قنا','الأقصر','أسوان',
-  'البحر الأحمر','الوادي الجديد','مطروح','شمال سيناء','جنوب سيناء','خارج مصر',
-];
-
-interface SelectedProduct { id: string; name: string; price: number; }
+interface SelectedProduct { id: string; name: string; price: number; priceUsd: number; }
 
 // ─── Print/PDF styles (injected once) ─────────────────────────────────────────
 const PRINT_STYLES = `
@@ -47,21 +40,25 @@ interface OrderFormProps {
   onRemove: (id: string) => void;
 }
 
-function OrderFormModal({ products, selected, onClose, onRemove }: OrderFormProps) {
+function OrderFormModal({ products: _products, selected, onClose, onRemove }: OrderFormProps) {
   const { addToast } = useToast();
+  const { formatPrice, getProductPrice } = useRegionalPricing();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  // Prevent double-submit (synchronous guard, not relying on React state timing)
+  const inFlight = useRef(false);
 
   const inp = 'w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F5C518] bg-white';
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || !phone.trim() || !city) { addToast('الرجاء ملء جميع الحقول', 'warning'); return; }
+  const handleSubmit = async () => {
+    if (inFlight.current) return;
+    if (!name.trim() || !phone.trim() || !city.trim()) { addToast('الرجاء ملء جميع الحقول', 'warning'); return; }
     if (selected.length === 0) { addToast('اختر منتجاً على الأقل', 'warning'); return; }
+    inFlight.current = true;
     setSubmitting(true);
     try {
       const res = await fetch('/api/catalog-leads', {
@@ -76,7 +73,10 @@ function OrderFormModal({ products, selected, onClose, onRemove }: OrderFormProp
       });
       if (!res.ok) throw new Error();
       setDone(true);
-    } catch { addToast('حدث خطأ، حاول مرة أخرى', 'error'); }
+    } catch {
+      addToast('حدث خطأ، حاول مرة أخرى', 'error');
+      inFlight.current = false;
+    }
     setSubmitting(false);
   };
 
@@ -118,13 +118,16 @@ function OrderFormModal({ products, selected, onClose, onRemove }: OrderFormProp
           ) : (
             <div className="space-y-2">
               <p className="text-xs font-black text-gray-500 uppercase tracking-wider">المنتجات المختارة</p>
-              {selected.map(p => (
-                <div key={p.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5">
-                  <span className="text-sm font-bold text-gray-800 flex-1">{p.name}</span>
-                  <span className="text-xs text-gray-400 mx-3 font-medium">{p.price.toLocaleString('ar-EG')} ج.م</span>
-                  <button onClick={() => onRemove(p.id)} className="text-red-400 hover:text-red-600 text-lg leading-none w-6 h-6 flex items-center justify-center">×</button>
-                </div>
-              ))}
+              {selected.map(p => {
+                const fakeProduct = { price: p.price, priceUsd: p.priceUsd } as Parameters<typeof getProductPrice>[0];
+                return (
+                  <div key={p.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5">
+                    <span className="text-sm font-bold text-gray-800 flex-1">{p.name}</span>
+                    <span className="text-xs text-gray-400 mx-3 font-medium">{formatPrice(getProductPrice(fakeProduct))}</span>
+                    <button onClick={() => onRemove(p.id)} className="text-red-400 hover:text-red-600 text-lg leading-none w-6 h-6 flex items-center justify-center">×</button>
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -135,15 +138,14 @@ function OrderFormModal({ products, selected, onClose, onRemove }: OrderFormProp
               <input value={name} onChange={e => setName(e.target.value)} className={inp} placeholder="اسمك" required />
             </div>
             <div>
-              <label className="text-xs font-black text-gray-600 mb-1 block">رقم الهاتف <span className="text-red-400">*</span></label>
-              <input value={phone} onChange={e => setPhone(e.target.value)} className={inp} placeholder="01xxxxxxxxx" type="tel" required />
+              <label className="text-xs font-black text-gray-600 mb-1 block">رقم الهاتف / واتساب <span className="text-red-400">*</span></label>
+              <input value={phone} onChange={e => setPhone(e.target.value)} className={inp}
+                placeholder="مثال: +966 5xxxxxxxx أو 01xxxxxxxxx" type="tel" required />
             </div>
             <div>
-              <label className="text-xs font-black text-gray-600 mb-1 block">المحافظة <span className="text-red-400">*</span></label>
-              <select value={city} onChange={e => setCity(e.target.value)} className={inp} required>
-                <option value="">اختر محافظتك</option>
-                {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+              <label className="text-xs font-black text-gray-600 mb-1 block">المدينة / البلد <span className="text-red-400">*</span></label>
+              <input value={city} onChange={e => setCity(e.target.value)} className={inp}
+                placeholder="مثال: الرياض، القاهرة، دبي، عمّان..." required />
             </div>
             <div>
               <label className="text-xs font-black text-gray-600 mb-1 block">ملاحظات (اختياري)</label>
@@ -152,7 +154,7 @@ function OrderFormModal({ products, selected, onClose, onRemove }: OrderFormProp
           </div>
 
           <button type="button" onClick={handleSubmit} disabled={submitting || selected.length === 0}
-            className="w-full bg-[#F5C518] hover:bg-[#e0b010] disabled:opacity-50 text-[#1a1a2e] font-black py-4 rounded-2xl text-base transition shadow-lg shadow-yellow-200">
+            className="w-full bg-[#F5C518] hover:bg-[#e0b010] disabled:opacity-50 disabled:cursor-not-allowed text-[#1a1a2e] font-black py-4 rounded-2xl text-base transition shadow-lg shadow-yellow-200">
             {submitting ? '...جاري الإرسال' : 'أرسل الطلب'}
           </button>
         </div>
@@ -303,7 +305,7 @@ interface SidebarProps {
 
 function CatalogSidebar({ products, selectedCount, onOrderClick, onPrint, scrollToId, activeId }: SidebarProps) {
   return (
-    <aside className="catalog-sidebar w-56 shrink-0 flex flex-col bg-[#0f0f1e] border-l border-white/10">
+    <aside className="catalog-sidebar w-56 shrink-0 flex flex-col bg-[#0f0f1e] border-l border-white/10 h-full overflow-hidden">
       {/* Logo */}
       <div className="px-4 py-5 border-b border-white/10">
         <p className="text-[#F5C518] font-black text-base leading-tight">Moslim Leader</p>
@@ -383,11 +385,9 @@ function CoverPage({ productCount, onStart }: { productCount: number; onStart: (
 
       {/* Logo */}
       <div className="relative z-10 mb-8">
-        <div className="w-24 h-24 rounded-3xl bg-[#F5C518] flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-yellow-900/40">
-          <span className="text-4xl">🌙</span>
+        <div className="relative w-48 h-24 mx-auto mb-2">
+          <Image src="/white-Logo.webp" alt="Moslim Leader" fill className="object-contain" priority unoptimized />
         </div>
-        <p className="text-[#F5C518] text-2xl font-black tracking-wide">MOSLIM LEADER</p>
-        <p className="text-white/50 text-sm mt-1">مسلم ليدر</p>
       </div>
 
       {/* Title */}
@@ -501,8 +501,8 @@ function ContactPage() {
   return (
     <div id="contact" className="catalog-page bg-[#1a1a2e] mx-3 lg:mx-8 my-4 rounded-3xl shadow-md overflow-hidden text-center" dir="rtl">
       <div className="px-8 pt-16 pb-10">
-        <div className="w-20 h-20 rounded-3xl bg-[#F5C518] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-yellow-900/40">
-          <span className="text-3xl">🌙</span>
+        <div className="relative w-40 h-20 mx-auto mb-6">
+          <Image src="/white-Logo.webp" alt="Moslim Leader" fill className="object-contain" unoptimized />
         </div>
         <h2 className="text-3xl font-black text-white mb-2">تواصل معنا</h2>
         <p className="text-white/50 text-sm mb-10">نسعد بخدمتك وتلقي طلباتك</p>
@@ -578,7 +578,7 @@ export default function CatalogClient({ products }: { products: Product[] }) {
     setSelected(prev => {
       const exists = prev.find(p => p.id === product.id);
       if (exists) return prev.filter(p => p.id !== product.id);
-      return [...prev, { id: product.id, name: product.name, price: product.price }];
+      return [...prev, { id: product.id, name: product.name, price: product.price, priceUsd: product.priceUsd ?? 0 }];
     });
   }, []);
 

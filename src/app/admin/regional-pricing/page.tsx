@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { products as staticProducts } from '@/lib/products';
 import { Product } from '@/types';
 import { useToast } from '@/components/ui/Toast';
@@ -10,8 +11,7 @@ import ForbiddenState from '@/components/admin/ForbiddenState';
 
 type MergedProduct = Product & { isAdded?: boolean };
 
-// Run an array of tasks with at most `limit` in flight at once. Avoids
-// the rate-limit fan-out on bulk price edits (was firing N parallel PUTs).
+// Run an array of tasks with at most `limit` in flight at once.
 async function runWithConcurrency<T, R>(
   items: T[],
   limit: number,
@@ -42,11 +42,7 @@ export default function RegionalPricingPage() {
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
   const [search, setSearch] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [savedId, setSavedId] = useState<string | null>(null);
-  const [savingRowId, setSavingRowId] = useState<string | null>(null);
 
-  // Bulk pricing states
   const [bulkEgpPercent, setBulkEgpPercent] = useState<number>(0);
   const [bulkUsdPercent, setBulkUsdPercent] = useState<number>(0);
   const [bulkApplying, setBulkApplying] = useState(false);
@@ -73,27 +69,6 @@ export default function RegionalPricingPage() {
     p.name.includes(search) || (p.nameEn || '').toLowerCase().includes(search.toLowerCase())
   );
 
-  const updatePrice = async (id: string, field: 'price' | 'priceUsd', value: number) => {
-    const product = products.find(p => p.id === id);
-    if (!product) return;
-    if (savingRowId === id) return;
-
-    setSavingRowId(id);
-    try {
-      await adminJson(`/api/admin/products/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ [field]: value, isAdded: product.isAdded ?? false }),
-      });
-      setProducts(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
-      setSavedId(id);
-      setTimeout(() => setSavedId(null), 2000);
-    } catch (err) {
-      addToast(err instanceof Error ? err.message : 'فشل في حفظ السعر', 'error');
-    } finally {
-      setSavingRowId(null);
-    }
-  };
-
   const applyBulkIncrease = async (type: 'egp' | 'usd') => {
     const percent = type === 'egp' ? bulkEgpPercent : bulkUsdPercent;
     if (percent === 0) return;
@@ -112,7 +87,6 @@ export default function RegionalPricingPage() {
     setBulkApplying(true);
     setBulkProgress({ done: 0, total: products.length });
     try {
-      // Limit to 4 concurrent PUTs so we don't trip middleware rate-limits.
       let done = 0;
       const results = await runWithConcurrency(products, 4, async (p) => {
         const currentPrice = type === 'egp' ? p.price : p.priceUsd;
@@ -143,15 +117,16 @@ export default function RegionalPricingPage() {
     }
   };
 
-  const currentProduct = products.find(p => p.id === editingId);
-
   if (forbidden) return <ForbiddenState requiredPerm="products.write" />;
 
   return (
     <div className="space-y-5" dir="rtl">
       <div>
         <h1 className="text-xl font-black text-gray-900">إدارة تسعير المنتجات</h1>
-        <p className="text-sm text-gray-500 mt-0.5">تحكم في سعر الجنيه والدولار لكل منتج أو طبق زيادة جماعية</p>
+        <p className="text-sm text-gray-500 mt-0.5">
+          زيادة جماعية على أسعار كل المنتجات. لتعديل سعر منتج بعينه اذهب لـ{' '}
+          <Link href="/admin/products" className="text-blue-600 hover:underline font-bold">إدارة المنتجات ↗</Link>
+        </p>
       </div>
 
       {bulkApplying && bulkProgress && (
@@ -160,7 +135,7 @@ export default function RegionalPricingPage() {
         </div>
       )}
 
-      {/* Bulk actions - Improved Layout */}
+      {/* Bulk increase tools */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
           <div className="flex items-center justify-between mb-3">
@@ -219,120 +194,60 @@ export default function RegionalPricingPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Products list - The Layout you liked */}
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-          <div className="p-4 border-b border-gray-100">
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="بحث عن منتج..."
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#F5C518]"
-            />
-          </div>
-          <div className="overflow-y-auto max-h-[600px] divide-y divide-gray-50">
-            {loading ? (
-              <div className="p-10 text-center text-gray-400 text-xs">جارٍ التحميل...</div>
-            ) : filtered.map(p => (
-              <button key={p.id} onClick={() => setEditingId(p.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-right hover:bg-gray-50 transition ${editingId === p.id ? 'bg-amber-50 border-r-2 border-[#F5C518]' : ''}`}>
-                <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
-                  {p.images[0] && <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-gray-900 text-xs leading-tight truncate">{p.name}</p>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className="text-[10px] text-gray-500 font-medium">🇪🇬 {p.price} ج.م</span>
-                    <span className="text-[10px] text-gray-400 font-medium">🌐 {p.priceUsd} $</span>
-                  </div>
-                </div>
-                {savedId === p.id && (
-                  <span className="shrink-0 text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">تم الحفظ ✓</span>
-                )}
-              </button>
-            ))}
-          </div>
+      {/* Price overview table — read-only reference */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-gray-100 flex items-center gap-3">
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="بحث عن منتج..."
+            className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#F5C518]"
+          />
+          <span className="text-xs text-gray-400 shrink-0">{filtered.length} منتج</span>
         </div>
 
-        {/* Pricing editor */}
-        {editingId && currentProduct ? (
-          <div className="space-y-4">
-            <div className="bg-white rounded-2xl border border-gray-200 p-4 flex items-center gap-3 shadow-sm">
-              <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
-                {currentProduct.images[0] && <img src={currentProduct.images[0]} alt={currentProduct.name} className="w-full h-full object-cover" />}
-              </div>
-              <div>
-                <p className="font-bold text-gray-900 text-sm">{currentProduct.name}</p>
-                <p className="text-[10px] text-gray-400">{currentProduct.category}</p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-5 shadow-sm">
-              <h3 className="font-bold text-gray-900 text-sm border-b pb-2">تعديل الأسعار المباشرة</h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-600 mb-1.5 flex items-center gap-1">
-                    <span>🇪🇬</span> السعر في مصر (ج.م)
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      value={currentProduct.price}
-                      onChange={e => {
-                        const val = +e.target.value;
-                        setProducts(prev => prev.map(p => p.id === editingId ? { ...p, price: val } : p));
-                      }}
-                      className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#F5C518]"
-                    />
-                    <button
-                      onClick={() => updatePrice(currentProduct.id, 'price', currentProduct.price)}
-                      disabled={savingRowId === currentProduct.id}
-                      className="bg-[#1a1a2e] text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-[#2a2a4e] transition disabled:opacity-50"
-                    >
-                      {savingRowId === currentProduct.id ? '...' : 'حفظ'}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-600 mb-1.5 flex items-center gap-1">
-                    <span>🌐</span> السعر الدولي (USD)
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={currentProduct.priceUsd}
-                      onChange={e => {
-                        const val = +e.target.value;
-                        setProducts(prev => prev.map(p => p.id === editingId ? { ...p, priceUsd: val } : p));
-                      }}
-                      className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#F5C518]"
-                    />
-                    <button
-                      onClick={() => updatePrice(currentProduct.id, 'priceUsd', currentProduct.priceUsd)}
-                      disabled={savingRowId === currentProduct.id}
-                      className="bg-[#F5C518] text-gray-900 px-4 py-2 rounded-xl text-xs font-bold hover:bg-amber-400 transition disabled:opacity-50"
-                    >
-                      {savingRowId === currentProduct.id ? '...' : 'حفظ'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                <p className="text-[10px] text-gray-500 leading-relaxed">
-                  * ملاحظة: السعر الدولي (USD) سيتم تحويله تلقائياً لعملة العميل (ريال، درهم، يورو، إلخ) بناءً على موقعه الجغرافي.
-                </p>
-              </div>
-            </div>
-          </div>
+        {loading ? (
+          <div className="p-10 text-center text-gray-400 text-xs">جارٍ التحميل...</div>
         ) : (
-          <div className="bg-white rounded-2xl border border-dashed border-gray-200 flex flex-col items-center justify-center py-16 text-center px-6 shadow-sm">
-            <div className="text-4xl mb-3">💰</div>
-            <p className="font-bold text-gray-700 text-sm">اختر منتجاً لتعديل سعره</p>
-            <p className="text-gray-400 text-[10px] mt-1">أو استخدم أدوات الزيادة الجماعية في الأعلى</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="bg-gray-50 text-[10px] text-gray-500 font-bold uppercase">
+                <tr>
+                  <th className="px-4 py-2.5 text-right">المنتج</th>
+                  <th className="px-4 py-2.5 text-right">السعر المصري</th>
+                  <th className="px-4 py-2.5 text-right">السعر الدولي</th>
+                  <th className="px-4 py-2.5 text-right"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filtered.map(p => (
+                  <tr key={p.id} className="hover:bg-gray-50 transition">
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
+                          {p.images[0] && <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />}
+                        </div>
+                        <span className="font-semibold text-gray-800 truncate max-w-[200px]">{p.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 tabular-nums font-bold text-gray-900">
+                      {p.price.toLocaleString('en-US')} ج.م
+                    </td>
+                    <td className="px-4 py-2.5 tabular-nums text-gray-600">
+                      {p.priceUsd > 0 ? `${p.priceUsd} $` : <span className="text-gray-300">—</span>}
+                    </td>
+                    <td className="px-4 py-2.5 text-left">
+                      <Link
+                        href="/admin/products"
+                        className="text-blue-600 hover:text-blue-800 hover:underline text-[10px] font-bold"
+                      >
+                        تعديل ↗
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

@@ -21,6 +21,7 @@ interface SelectedProduct {
   priceUsd: number;
   variantId?: string;
   variantName?: string;
+  quantity: number;
 }
 
 const CATALOG_STYLES = `
@@ -47,6 +48,11 @@ function CatalogLoader({ onDone }: { onDone: () => void }) {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
+    // Skip intro on repeat visits within the same browser session
+    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('catalog-intro-done')) {
+      onDone();
+      return;
+    }
     const duration = 1800;
     const start = Date.now();
     let raf: number;
@@ -56,7 +62,10 @@ function CatalogLoader({ onDone }: { onDone: () => void }) {
       if (p < 100) {
         raf = requestAnimationFrame(frame);
       } else {
-        setTimeout(onDone, 380);
+        setTimeout(() => {
+          sessionStorage?.setItem('catalog-intro-done', '1');
+          onDone();
+        }, 380);
       }
     };
     raf = requestAnimationFrame(frame);
@@ -107,9 +116,10 @@ interface OrderFormProps {
   selected: SelectedProduct[];
   onClose: () => void;
   onRemove: (id: string) => void;
+  onUpdateQty: (id: string, qty: number) => void;
 }
 
-function OrderFormModal({ products: _products, selected, onClose, onRemove }: OrderFormProps) {
+function OrderFormModal({ products: _products, selected, onClose, onRemove, onUpdateQty }: OrderFormProps) {
   const { addToast } = useToast();
   const { formatPrice, getProductPrice } = useRegionalPricing();
   const [name, setName] = useState('');
@@ -134,9 +144,17 @@ function OrderFormModal({ products: _products, selected, onClose, onRemove }: Or
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name, phone, city, notes,
-          productName: selected.map(p => p.name).join('، '),
+          productName: selected.map(p => p.quantity > 1 ? `${p.name} ×${p.quantity}` : p.name).join('، '),
           productId: selected[0]?.productId ?? null,
-          selectedProducts: selected,
+          selectedProducts: selected.map(p => ({
+            productId: p.productId,
+            variantId: p.variantId,
+            variantName: p.variantName,
+            name: p.name,
+            quantity: p.quantity,
+            price: p.price,
+            priceUsd: p.priceUsd,
+          })),
         }),
       });
       if (!res.ok) throw new Error();
@@ -186,11 +204,21 @@ function OrderFormModal({ products: _products, selected, onClose, onRemove }: Or
               <p className="text-xs font-black text-gray-500 uppercase tracking-wider">المنتجات المختارة</p>
               {selected.map(p => {
                 const fakeProduct = { price: p.price, priceUsd: p.priceUsd } as Parameters<typeof getProductPrice>[0];
+                const unitPrice = getProductPrice(fakeProduct);
                 return (
-                  <div key={p.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5">
-                    <span className="text-sm font-bold text-gray-800 flex-1">{p.name}</span>
-                    <span className="text-xs text-gray-400 mx-3 font-medium">{formatPrice(getProductPrice(fakeProduct))}</span>
-                    <button onClick={() => onRemove(p.id)} className="text-red-400 hover:text-red-600 text-lg leading-none w-6 h-6 flex items-center justify-center">×</button>
+                  <div key={p.id} className="bg-gray-50 rounded-xl px-3 py-2.5 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-gray-800 flex-1 leading-snug">{p.name}</span>
+                      <button onClick={() => onRemove(p.id)} aria-label="حذف" className="text-red-400 hover:text-red-600 text-lg leading-none w-6 h-6 flex items-center justify-center shrink-0">×</button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => onUpdateQty(p.id, p.quantity - 1)} className="w-6 h-6 rounded-lg bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-black text-gray-600 transition">−</button>
+                        <span className="w-7 text-center text-sm font-black text-gray-800">{p.quantity}</span>
+                        <button onClick={() => onUpdateQty(p.id, p.quantity + 1)} className="w-6 h-6 rounded-lg bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-black text-gray-600 transition">+</button>
+                      </div>
+                      <span className="text-xs text-gray-400 font-medium">{formatPrice(unitPrice * p.quantity)}</span>
+                    </div>
                   </div>
                 );
               })}
@@ -740,7 +768,10 @@ export default function CatalogClient({ products }: { products: Product[] }) {
   const scrollToId = useCallback((id: string) => {
     const el = document.getElementById(id);
     if (el && scrollRef.current) {
-      scrollRef.current.scrollTo({ top: el.offsetTop - 8, behavior: 'smooth' });
+      const containerTop = scrollRef.current.getBoundingClientRect().top;
+      const elTop = el.getBoundingClientRect().top;
+      const offset = scrollRef.current.scrollTop + (elTop - containerTop) - 8;
+      scrollRef.current.scrollTo({ top: offset, behavior: 'smooth' });
     }
     setSidebarOpen(false);
   }, []);
@@ -759,12 +790,21 @@ export default function CatalogClient({ products }: { products: Product[] }) {
         priceUsd: product.priceUsd ?? 0,
         variantId: variant?.id,
         variantName: variant?.name,
+        quantity: 1,
       }];
     });
   }, []);
 
   const removeSelected = useCallback((id: string) => {
     setSelected(prev => prev.filter(p => p.id !== id));
+  }, []);
+
+  const updateQuantity = useCallback((id: string, qty: number) => {
+    if (qty < 1) {
+      setSelected(prev => prev.filter(p => p.id !== id));
+    } else {
+      setSelected(prev => prev.map(p => p.id === id ? { ...p, quantity: qty } : p));
+    }
   }, []);
 
   const handlePrint = () => {
@@ -902,6 +942,7 @@ export default function CatalogClient({ products }: { products: Product[] }) {
             selected={selected}
             onClose={() => setOrderOpen(false)}
             onRemove={removeSelected}
+            onUpdateQty={updateQuantity}
           />
         )}
       </div>

@@ -7,6 +7,15 @@ import { ManualOrderModal } from '@/components/admin/ManualOrderModal';
 import type { ManualOrderPrefill } from '@/components/admin/ManualOrderModal';
 import { useToast } from '@/components/ui/Toast';
 
+interface SelectedProductEntry {
+  productId: string;
+  variantId?: string;
+  variantName?: string;
+  name: string;
+  quantity?: number;
+  price?: number;
+}
+
 interface CatalogLead {
   id: string;
   name: string;
@@ -14,6 +23,7 @@ interface CatalogLead {
   city: string;
   productId: string | null;
   productName: string;
+  selectedProducts?: SelectedProductEntry[];
   notes: string | null;
   status: string;
   orderId: string | null;
@@ -48,6 +58,7 @@ export default function CatalogLeadsPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [forbidden, setForbidden] = useState(false);
+  const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
 
   // Modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -91,6 +102,8 @@ export default function CatalogLeadsPage() {
   };
 
   const updateStatus = async (id: string, status: string) => {
+    if (updatingIds.has(id)) return;
+    setUpdatingIds(prev => new Set(prev).add(id));
     try {
       const res = await adminFetch(`/api/admin/catalog-leads/${id}`, {
         method: 'PATCH',
@@ -101,6 +114,8 @@ export default function CatalogLeadsPage() {
       addToast('تم تحديث الحالة', 'success');
     } catch {
       addToast('فشل التحديث', 'error');
+    } finally {
+      setUpdatingIds(prev => { const s = new Set(prev); s.delete(id); return s; });
     }
   };
 
@@ -113,6 +128,9 @@ export default function CatalogLeadsPage() {
       productId: lead.productId ?? undefined,
       notes: lead.notes ?? undefined,
       source: 'catalog',
+      selectedProducts: lead.selectedProducts?.length
+        ? lead.selectedProducts
+        : undefined,
     });
     setModalOpen(true);
   };
@@ -222,8 +240,21 @@ export default function CatalogLeadsPage() {
                         </a>
                       </td>
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{lead.city}</td>
-                      <td className="px-4 py-3 text-gray-700 max-w-[160px]">
-                        <span className="line-clamp-2 text-xs leading-snug">{lead.productName}</span>
+                      <td className="px-4 py-3 text-gray-700 max-w-[200px]">
+                        {lead.selectedProducts && lead.selectedProducts.length > 0 ? (
+                          <div className="space-y-0.5">
+                            {lead.selectedProducts.map((sp, i) => (
+                              <div key={i} className="text-xs leading-snug flex items-center gap-1">
+                                <span className="font-medium text-gray-800 truncate max-w-[130px]" title={sp.name}>{sp.name}</span>
+                                {sp.quantity && sp.quantity > 1 && (
+                                  <span className="shrink-0 bg-gray-100 text-gray-500 rounded px-1 font-bold">×{sp.quantity}</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="line-clamp-2 text-xs leading-snug">{lead.productName}</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-gray-400 text-xs max-w-[140px]">
                         <span className="line-clamp-2">{lead.notes || '—'}</span>
@@ -232,7 +263,8 @@ export default function CatalogLeadsPage() {
                         <select
                           value={lead.status}
                           onChange={e => updateStatus(lead.id, e.target.value)}
-                          className={`text-xs font-bold px-2 py-1 rounded-lg border-0 cursor-pointer ${st.color}`}
+                          disabled={updatingIds.has(lead.id)}
+                          className={`text-xs font-bold px-2 py-1 rounded-lg border-0 cursor-pointer disabled:opacity-50 ${st.color}`}
                         >
                           {Object.entries(STATUS_LABELS).map(([v, { label }]) => (
                             <option key={v} value={v}>{label}</option>
@@ -253,7 +285,7 @@ export default function CatalogLeadsPage() {
                             </button>
                           ) : lead.orderId ? (
                             <a
-                              href={`/admin/orders?q=${lead.orderId}`}
+                              href={`/admin/orders?highlight=${lead.orderId}`}
                               className="text-xs font-bold text-emerald-600 hover:underline whitespace-nowrap"
                             >
                               عرض الطلب

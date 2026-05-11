@@ -41,6 +41,12 @@ export interface ManualOrderPrefill {
   productId?: string;
   notes?: string;
   source?: string;
+  selectedProducts?: Array<{
+    productId: string;
+    variantId?: string;
+    name: string;
+    quantity?: number;
+  }>;
 }
 
 interface Props {
@@ -114,20 +120,44 @@ export function ManualOrderModal({ open, onClose, onCreated, prefill }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Auto-add prefill product once the products list is loaded
+  // Auto-add prefill products once the products list is loaded
   useEffect(() => {
-    if (!open || !prefill?.productId || products.length === 0 || items.length > 0) return;
-    const p = products.find(p => p.id === prefill.productId);
-    if (!p) return;
-    const variants = Array.isArray(p.variants) ? p.variants : [];
-    setItems([{
-      productId: p.id,
-      name: p.name,
-      unitPrice: p.price,
-      quantity: 1,
-      selectedModel: null,
-      variantOptions: variants.length > 0 ? variants : undefined,
-    }]);
+    if (!open || products.length === 0 || items.length > 0) return;
+    const toAdd: LineItem[] = [];
+
+    if (prefill?.selectedProducts && prefill.selectedProducts.length > 0) {
+      for (const sp of prefill.selectedProducts) {
+        const p = products.find(prod => prod.id === sp.productId);
+        if (!p) continue;
+        const variants = Array.isArray(p.variants) ? p.variants : [];
+        const variantIdx = sp.variantId
+          ? variants.findIndex(v => v.id === sp.variantId)
+          : -1;
+        toAdd.push({
+          productId: p.id,
+          name: p.name,
+          unitPrice: p.price,
+          quantity: sp.quantity ?? 1,
+          selectedModel: variantIdx >= 0 ? variantIdx : null,
+          variantOptions: variants.length > 0 ? variants : undefined,
+        });
+      }
+    } else if (prefill?.productId) {
+      const p = products.find(prod => prod.id === prefill.productId);
+      if (p) {
+        const variants = Array.isArray(p.variants) ? p.variants : [];
+        toAdd.push({
+          productId: p.id,
+          name: p.name,
+          unitPrice: p.price,
+          quantity: 1,
+          selectedModel: null,
+          variantOptions: variants.length > 0 ? variants : undefined,
+        });
+      }
+    }
+
+    if (toAdd.length > 0) setItems(toAdd);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products, open]);
 

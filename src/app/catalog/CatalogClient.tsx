@@ -23,24 +23,13 @@ const CATALOG_STYLES = `
   .catalog-topbar { display: none !important; }
   .catalog-fab { display: none !important; }
   .catalog-no-print { display: none !important; }
-  .catalog-page {
-    page-break-after: always !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-    height: 297mm !important;
-    max-height: 297mm !important;
-    overflow: hidden !important;
-    box-shadow: none !important;
-  }
-  .catalog-page:last-of-type { page-break-after: avoid !important; }
-  .catalog-info-scroll { overflow: hidden !important; max-height: none !important; }
-  .img-panel { height: 120mm !important; max-height: 120mm !important; }
+  .catalog-page { page-break-after: always; page-break-inside: avoid; min-height: 297mm; box-shadow: none !important; margin: 0 !important; border-radius: 0 !important; }
+  .catalog-page:last-of-type { page-break-after: avoid; }
+  .catalog-divider { display: none !important; }
   body { background: white !important; }
 }
 .catalog-nav::-webkit-scrollbar { display: none; }
 .catalog-nav { scrollbar-width: none; -ms-overflow-style: none; }
-.catalog-info-scroll::-webkit-scrollbar { width: 3px; }
-.catalog-info-scroll::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 99px; }
 `;
 
 // ─── Loading Screen ────────────────────────────────────────────────────────────
@@ -58,7 +47,7 @@ function CatalogLoader({ onDone }: { onDone: () => void }) {
       if (p < 100) {
         raf = requestAnimationFrame(frame);
       } else {
-        setTimeout(onDone, 350);
+        setTimeout(onDone, 380);
       }
     };
     raf = requestAnimationFrame(frame);
@@ -67,30 +56,35 @@ function CatalogLoader({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="fixed inset-0 z-[600] flex flex-col items-center justify-center bg-[#1a1a2e]">
+      {/* Decorative circles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-120px] right-[-120px] w-[400px] h-[400px] rounded-full bg-[#F5C518]/5" />
         <div className="absolute bottom-[-80px] left-[-80px] w-[300px] h-[300px] rounded-full bg-[#F5C518]/5" />
       </div>
 
-      <div className="relative z-10 w-52 h-20 sm:w-72 sm:h-28 mb-12">
+      {/* Logo */}
+      <div className="relative z-10 w-56 h-24 mb-10 sm:w-72 sm:h-28">
         <Image src="/white-Logo.webp" alt="Moslim Leader" fill className="object-contain" priority unoptimized />
       </div>
 
-      <div className="relative z-10 w-60 mb-3" dir="ltr">
-        <div className="w-full bg-white/10 rounded-full overflow-hidden" style={{ height: 3 }}>
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-[#F5C518] to-[#ffe066]"
-            style={{ width: `${progress}%`, transition: 'width 40ms linear' }}
-          />
-        </div>
+      {/* Progress bar */}
+      <div className="relative z-10 w-56 bg-white/10 rounded-full overflow-hidden mb-3" style={{ height: 4 }} dir="ltr">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-[#F5C518] to-[#e0b010]"
+          style={{ width: `${progress}%`, transition: 'width 40ms linear' }}
+        />
       </div>
 
-      <p className="relative z-10 text-white/40 text-xs tracking-widest mb-2">جاري التحميل...</p>
-      <p className="relative z-10 text-[#F5C518]/40 text-[10px] font-medium">كتالوج المنتجات</p>
+      <p className="relative z-10 text-white/40 text-xs tracking-widest">جاري التحميل...</p>
 
+      {/* Bouncing dots */}
       <div className="absolute bottom-10 flex gap-1.5">
-        {[0, 160, 320].map(delay => (
-          <div key={delay} className="w-1.5 h-1.5 rounded-full bg-[#F5C518]/40 animate-bounce" style={{ animationDelay: `${delay}ms` }} />
+        {[0, 150, 300].map(delay => (
+          <div
+            key={delay}
+            className="w-1.5 h-1.5 rounded-full bg-[#F5C518]/50 animate-bounce"
+            style={{ animationDelay: `${delay}ms` }}
+          />
         ))}
       </div>
     </div>
@@ -201,11 +195,13 @@ function OrderFormModal({ products: _products, selected, onClose, onRemove }: Or
             </div>
             <div>
               <label className="text-xs font-black text-gray-600 mb-1 block">رقم الهاتف / واتساب <span className="text-red-400">*</span></label>
-              <input value={phone} onChange={e => setPhone(e.target.value)} className={inp} placeholder="مثال: +966 5xxxxxxxx أو 01xxxxxxxxx" type="tel" required />
+              <input value={phone} onChange={e => setPhone(e.target.value)} className={inp}
+                placeholder="مثال: +966 5xxxxxxxx أو 01xxxxxxxxx" type="tel" required />
             </div>
             <div>
               <label className="text-xs font-black text-gray-600 mb-1 block">المدينة / البلد <span className="text-red-400">*</span></label>
-              <input value={city} onChange={e => setCity(e.target.value)} className={inp} placeholder="مثال: الرياض، القاهرة، دبي، عمّان..." required />
+              <input value={city} onChange={e => setCity(e.target.value)} className={inp}
+                placeholder="مثال: الرياض، القاهرة، دبي، عمّان..." required />
             </div>
             <div>
               <label className="text-xs font-black text-gray-600 mb-1 block">ملاحظات (اختياري)</label>
@@ -223,7 +219,7 @@ function OrderFormModal({ products: _products, selected, onClose, onRemove }: Or
   );
 }
 
-// ─── Product Card — full-page layout ─────────────────────────────────────────
+// ─── Product Card ──────────────────────────────────────────────────────────────
 
 interface CardProps {
   product: Product;
@@ -247,121 +243,99 @@ function CatalogCard({ product, index, total, isSelected, onToggle }: CardProps)
   return (
     <div
       id={`product-${product.id}`}
-      className="catalog-page flex flex-col bg-white"
-      style={{ height: '100vh' }}
+      className="catalog-page bg-white rounded-3xl shadow-md mx-3 lg:mx-8 my-4 overflow-hidden border border-gray-100"
       dir={isRtl ? 'rtl' : 'ltr'}
     >
-      {/* ── Top bar ── */}
-      <div className="shrink-0 bg-[#1a1a2e] px-5 flex items-center justify-between" style={{ height: 48 }}>
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-1 text-[#F5C518] font-black text-sm">
-            <span>{index + 1}</span>
-            <span className="text-white/30 font-normal">/</span>
-            <span className="text-white/40 font-normal">{total}</span>
-          </div>
-          <div className="w-px h-3.5 bg-white/20" />
-          <span className="text-white/60 text-xs font-semibold truncate max-w-[120px]">{product.category}</span>
+      <div className="bg-[#1a1a2e] px-5 py-2.5 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-[#F5C518] text-xs font-black">{index + 1}/{total}</span>
+          <span className="text-white/40 text-xs">|</span>
+          <span className="text-white/70 text-xs font-bold">{product.category}</span>
         </div>
-        <div className={`flex items-center gap-1.5 text-xs font-bold ${product.inStock ? 'text-emerald-400' : 'text-red-400'}`}>
-          <div className={`w-1.5 h-1.5 rounded-full ${product.inStock ? 'bg-emerald-400' : 'bg-red-400'}`} />
-          {product.inStock ? 'متوفر' : 'غير متوفر'}
-        </div>
+        {!product.inStock && (
+          <span className="text-xs bg-red-500/20 text-red-300 font-bold px-2 py-0.5 rounded-full">نفذ المخزون</span>
+        )}
       </div>
 
-      {/* ── Body: image panel + info panel ── */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-
-        {/* Image panel — top on mobile (fixed height), left on desktop (full height via flex stretch) */}
-        <div
-          className={`shrink-0 bg-gradient-to-br from-gray-50 to-slate-100 flex flex-col overflow-hidden border-b lg:border-b-0 ${isRtl ? 'lg:border-l' : 'lg:border-r'} border-gray-100 lg:w-[46%] lg:h-auto`}
-          style={{ height: '42vw', maxHeight: '56vh' }}
-        >
-          <div className="img-panel flex-1 flex flex-col min-h-0" style={{ height: '100%' }}>
-            {/* Main image */}
-            <div className="flex-1 relative min-h-0">
-              <Image
-                src={imgs[mainImg]}
-                alt={name}
-                fill
-                className="object-contain p-4 lg:p-10"
-                unoptimized
-                loading="eager"
-                sizes="(max-width: 1024px) 100vw, 46vw"
-              />
-            </div>
-            {/* Thumbnails */}
-            {imgs.length > 1 && (
-              <div className="shrink-0 flex gap-1.5 px-3 py-2 bg-white/60 border-t border-gray-100 overflow-x-auto">
-                {imgs.map((img, i) => (
-                  <button key={i} onClick={() => setMainImg(i)}
-                    className={`relative w-9 h-9 shrink-0 rounded-lg overflow-hidden border-2 transition ${i === mainImg ? 'border-[#F5C518]' : 'border-gray-200 hover:border-gray-400'}`}>
-                    <Image src={img} alt="" fill className="object-cover" unoptimized />
-                  </button>
-                ))}
-              </div>
-            )}
+      <div className="grid grid-cols-1 lg:grid-cols-5">
+        <div className="lg:col-span-3 bg-gray-50 flex flex-col">
+          <div className="relative aspect-square lg:aspect-auto lg:flex-1" style={{ minHeight: 280 }}>
+            <Image
+              src={imgs[mainImg]}
+              alt={name}
+              fill
+              className="object-contain p-6"
+              unoptimized
+              loading="eager"
+              sizes="(max-width: 1024px) 100vw, 60vw"
+            />
           </div>
-        </div>
-
-        {/* Info panel — scrollable internally */}
-        <div className="flex-1 overflow-y-auto catalog-info-scroll min-h-0">
-          <div className="p-5 lg:p-8 space-y-4 h-full">
-
-            {/* Product name */}
-            <h2 className="text-xl lg:text-2xl font-black text-gray-900 leading-snug">{name}</h2>
-
-            {/* Short description */}
-            {shortDesc && (
-              <p className="text-gray-500 text-sm leading-relaxed">{shortDesc}</p>
-            )}
-
-            {/* Price */}
-            <div className="flex items-baseline gap-3 py-3 border-y border-gray-100">
-              <span className="text-2xl lg:text-3xl font-black text-[#1a1a2e]">{formatPrice(priceResult)}</span>
+          {imgs.length > 1 && (
+            <div className="flex gap-2 p-3 overflow-x-auto border-t border-gray-100 bg-white">
+              {imgs.map((img, i) => (
+                <button key={i} onClick={() => setMainImg(i)}
+                  className={`relative w-14 h-14 shrink-0 rounded-xl overflow-hidden border-2 transition ${i === mainImg ? 'border-[#F5C518]' : 'border-gray-200 hover:border-gray-400'}`}>
+                  <Image src={img} alt="" fill className="object-cover" unoptimized />
+                </button>
+              ))}
             </div>
-
-            {/* Full description */}
-            {description && (
-              <div
-                className="text-sm text-gray-600 leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: sanitizeHtml(description) }}
-              />
-            )}
-
-            {/* Tags */}
-            {Array.isArray(product.tags) && product.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {(product.tags as string[]).slice(0, 6).map(tag => (
-                  <span key={tag} className="text-[10px] bg-[#FFF9E6] text-[#9a7b00] border border-yellow-200 px-2 py-0.5 rounded-full font-bold">
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Bottom bar: action buttons ── */}
-      <div className="shrink-0 bg-white border-t border-gray-100 px-4 lg:px-6 py-3 flex items-center gap-3 catalog-no-print" style={{ height: 60 }}>
-        <button
-          onClick={() => onToggle(product)}
-          className={`flex-1 font-black py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 border-2 ${
-            isSelected
-              ? 'bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-200'
-              : 'bg-[#F5C518] border-[#F5C518] text-[#1a1a2e] hover:bg-[#e0b010] hover:border-[#e0b010]'
-          }`}
-        >
-          {isSelected ? (
-            <><svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg> تم الاختيار</>
-          ) : (
-            <>+ اختر هذا المنتج</>
           )}
-        </button>
-        <Link href={`/shop/${product.slug}`} target="_blank"
-          className="shrink-0 text-xs text-gray-400 hover:text-gray-700 transition px-4 py-2.5 rounded-xl border border-gray-200 hover:border-gray-300 font-medium">
-          عرض في المتجر ↗
-        </Link>
+        </div>
+
+        <div className={`lg:col-span-2 flex flex-col gap-4 p-6 ${isRtl ? 'border-r' : 'border-l'} border-gray-100`}>
+          <h2 className="text-2xl font-black text-gray-900 leading-snug">{name}</h2>
+          <p className="text-gray-500 text-sm leading-relaxed">{shortDesc}</p>
+
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-black text-[#1a1a2e]">{formatPrice(priceResult)}</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${product.inStock ? 'bg-emerald-500' : 'bg-red-400'}`} />
+            <span className={`text-xs font-bold ${product.inStock ? 'text-emerald-600' : 'text-red-500'}`}>
+              {product.inStock ? 'متوفر في المخزون' : 'غير متوفر حالياً'}
+            </span>
+          </div>
+
+          {description && (
+            <div
+              className="product-description text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-4 flex-1 overflow-hidden"
+              style={{ maxHeight: 200 }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(description) }}
+            />
+          )}
+
+          {Array.isArray(product.tags) && product.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {(product.tags as string[]).slice(0, 5).map(tag => (
+                <span key={tag} className="text-[10px] bg-[#FFF9E6] text-[#9a7b00] border border-yellow-200 px-2 py-0.5 rounded-full font-bold">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2 mt-auto pt-2 catalog-no-print">
+            <button
+              onClick={() => onToggle(product)}
+              className={`w-full font-black py-3 rounded-2xl text-sm transition flex items-center justify-center gap-2 border-2 ${
+                isSelected
+                  ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-200'
+                  : 'bg-white border-[#1a1a2e] text-[#1a1a2e] hover:bg-[#1a1a2e] hover:text-[#F5C518]'
+              }`}
+            >
+              {isSelected ? (
+                <><svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg> تم الاختيار</>
+              ) : (
+                <><span className="text-lg leading-none">+</span> اختر هذا المنتج</>
+              )}
+            </button>
+            <Link href={`/shop/${product.slug}`} target="_blank"
+              className="w-full text-center text-xs text-gray-400 hover:text-gray-600 font-medium transition py-1">
+              عرض المنتج في المتجر ↗
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -381,23 +355,23 @@ interface SidebarProps {
 function CatalogSidebar({ products, selectedCount, onOrderClick, onPrint, scrollToId, activeId }: SidebarProps) {
   return (
     <aside className="catalog-sidebar w-56 shrink-0 flex flex-col bg-[#0f0f1e]/90 backdrop-blur-xl border-l border-white/10 h-full overflow-hidden">
-      {/* Logo */}
-      <div className="px-4 py-4 border-b border-white/10 flex flex-col items-center">
+      {/* Logo image */}
+      <div className="px-4 py-4 border-b border-white/10">
         <div className="relative w-full h-10">
-          <Image src="/white-Logo.webp" alt="Moslim Leader" fill className="object-contain" unoptimized />
+          <Image src="/white-Logo.webp" alt="Moslim Leader" fill className="object-contain object-right" unoptimized />
         </div>
-        <p className="text-white/30 text-[9px] mt-2 tracking-wider">كتالوج المنتجات</p>
+        <p className="text-white/30 text-[9px] mt-2 text-right">كتالوج المنتجات</p>
       </div>
 
-      {/* Nav — hidden scrollbar */}
-      <nav className="catalog-nav flex-1 overflow-y-auto py-2 space-y-0.5 relative">
+      {/* Product tabs — hidden scrollbar, glass bg */}
+      <nav className="catalog-nav flex-1 overflow-y-auto py-2 space-y-0.5">
         <button onClick={() => scrollToId('cover')}
           className={`w-full text-right px-4 py-2 text-xs font-bold transition flex items-center gap-2 rounded-lg mx-1 ${activeId === 'cover' ? 'text-[#F5C518] bg-white/10' : 'text-white/60 hover:text-white hover:bg-white/5'}`}>
           <span>🏠</span> الغلاف
         </button>
 
         <div className="px-3 pt-2 pb-1">
-          <p className="text-white/25 text-[9px] font-black uppercase tracking-wider">المنتجات</p>
+          <p className="text-white/30 text-[9px] font-black uppercase tracking-wider">المنتجات</p>
         </div>
 
         {products.map((p, i) => (
@@ -409,21 +383,20 @@ function CatalogSidebar({ products, selectedCount, onOrderClick, onPrint, scroll
         ))}
 
         <div className="px-3 pt-2 pb-1">
-          <p className="text-white/25 text-[9px] font-black uppercase tracking-wider">أخرى</p>
+          <p className="text-white/30 text-[9px] font-black uppercase tracking-wider">أخرى</p>
         </div>
-        {[
-          { id: 'about', icon: '📖', label: 'من نحن' },
-          { id: 'ameen', icon: '✨', label: 'المساعد أمين' },
-          { id: 'contact', icon: '📞', label: 'تواصل معنا' },
-        ].map(({ id, icon, label }) => (
-          <button key={id} onClick={() => scrollToId(id)}
-            className={`w-full text-right px-4 py-2 text-xs font-bold transition flex items-center gap-2 rounded-lg mx-1 ${activeId === id ? 'text-[#F5C518] bg-white/10' : 'text-white/60 hover:text-white hover:bg-white/5'}`}>
-            <span>{icon}</span> {label}
-          </button>
-        ))}
-
-        {/* Gradient fade at bottom */}
-        <div className="sticky bottom-0 h-8 pointer-events-none bg-gradient-to-t from-[#0f0f1e] to-transparent" />
+        <button onClick={() => scrollToId('about')}
+          className={`w-full text-right px-4 py-2 text-xs font-bold transition flex items-center gap-2 rounded-lg mx-1 ${activeId === 'about' ? 'text-[#F5C518] bg-white/10' : 'text-white/60 hover:text-white hover:bg-white/5'}`}>
+          <span>📖</span> من نحن
+        </button>
+        <button onClick={() => scrollToId('ameen')}
+          className={`w-full text-right px-4 py-2 text-xs font-bold transition flex items-center gap-2 rounded-lg mx-1 ${activeId === 'ameen' ? 'text-[#F5C518] bg-white/10' : 'text-white/60 hover:text-white hover:bg-white/5'}`}>
+          <span>✨</span> المساعد أمين
+        </button>
+        <button onClick={() => scrollToId('contact')}
+          className={`w-full text-right px-4 py-2 text-xs font-bold transition flex items-center gap-2 rounded-lg mx-1 ${activeId === 'contact' ? 'text-[#F5C518] bg-white/10' : 'text-white/60 hover:text-white hover:bg-white/5'}`}>
+          <span>📞</span> تواصل معنا
+        </button>
       </nav>
 
       {/* Actions */}
@@ -441,11 +414,11 @@ function CatalogSidebar({ products, selectedCount, onOrderClick, onPrint, scroll
           )}
         </button>
         <button onClick={onPrint}
-          className="w-full hover:bg-white/15 border border-white/20 text-white/70 hover:text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2">
+          className="w-full bg-white/8 hover:bg-white/15 border border-white/20 text-white/80 hover:text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2">
           <span>⬇️</span> تحميل PDF
         </button>
         <a href={SITE_URL} target="_blank" rel="noopener noreferrer"
-          className="w-full flex items-center justify-center gap-2 text-white/40 hover:text-white/70 text-xs font-medium py-1 transition">
+          className="w-full flex items-center justify-center gap-2 text-white/50 hover:text-white/80 text-xs font-medium py-1 transition">
           <span>🔗</span> زيارة المتجر
         </a>
       </div>
@@ -455,58 +428,32 @@ function CatalogSidebar({ products, selectedCount, onOrderClick, onPrint, scroll
 
 // ─── Cover Page ────────────────────────────────────────────────────────────────
 
-function CoverPage({ productCount, onStart, bgImage }: { productCount: number; onStart: () => void; bgImage?: string }) {
+function CoverPage({ productCount, onStart }: { productCount: number; onStart: () => void }) {
   return (
-    <div id="cover" className="catalog-page flex flex-col items-center justify-center text-center bg-[#1a1a2e] relative overflow-hidden" style={{ height: '100vh' }}>
-      {/* Hero background image with dark gradient overlay */}
-      {bgImage && (
-        <div className="absolute inset-0">
-          <Image src={bgImage} alt="" fill className="object-cover" unoptimized priority />
-          {/* Multi-stop gradient: dark at edges, semi-transparent in center */}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a2e]/85 via-[#1a1a2e]/60 to-[#1a1a2e]/90" />
-        </div>
-      )}
+    <div id="cover" className="catalog-page flex flex-col items-center justify-center text-center min-h-screen bg-[#1a1a2e] relative overflow-hidden px-8 py-16">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-100px] right-[-100px] w-[400px] h-[400px] rounded-full bg-[#F5C518]/5" />
+        <div className="absolute bottom-[-80px] left-[-80px] w-[300px] h-[300px] rounded-full bg-[#F5C518]/5" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-white/[0.015]" />
+      </div>
 
-      {/* Decorative circles (only shown without image) */}
-      {!bgImage && (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-[-100px] right-[-100px] w-[400px] h-[400px] rounded-full bg-[#F5C518]/5" />
-          <div className="absolute bottom-[-80px] left-[-80px] w-[300px] h-[300px] rounded-full bg-[#F5C518]/5" />
-        </div>
-      )}
-
-      {/* Logo — gold mobile / gold desktop */}
+      {/* Logo */}
       <div className="relative z-10 mb-8">
-        <Image
-          src="/logo-mobile.png"
-          alt="Moslim Leader"
-          width={180}
-          height={72}
-          className="md:hidden h-16 w-auto object-contain drop-shadow-lg"
-          priority
-          unoptimized
-        />
-        <Image
-          src="/logo gold.png"
-          alt="Moslim Leader"
-          width={320}
-          height={140}
-          className="hidden md:block h-28 w-auto object-contain drop-shadow-lg"
-          priority
-          unoptimized
-        />
+        <div className="relative w-48 h-24 mx-auto mb-2 sm:w-64 sm:h-28">
+          <Image src="/white-Logo.webp" alt="Moslim Leader" fill className="object-contain" priority unoptimized />
+        </div>
       </div>
 
       {/* Title */}
-      <div className="relative z-10 mb-10 px-4">
-        <div className="inline-block bg-[#F5C518]/10 border border-[#F5C518]/30 text-[#F5C518] text-xs font-black px-4 py-1.5 rounded-full mb-4 tracking-widest uppercase">
+      <div className="relative z-10 mb-10">
+        <div className="inline-block bg-[#F5C518]/10 border border-[#F5C518]/20 text-[#F5C518] text-xs font-black px-4 py-1.5 rounded-full mb-4 tracking-widest uppercase">
           كتالوج رسمي
         </div>
-        <h1 className="text-4xl md:text-6xl font-black text-white leading-tight mb-3 drop-shadow-md">
+        <h1 className="text-4xl md:text-6xl font-black text-white leading-tight mb-3">
           كتالوج<br/>
           <span className="text-[#F5C518]">المنتجات</span>
         </h1>
-        <p className="text-white/70 text-sm md:text-base leading-relaxed max-w-sm mx-auto drop-shadow">
+        <p className="text-white/50 text-sm md:text-base leading-relaxed max-w-sm mx-auto">
           منتجات تربوية وتعليمية للأطفال والأسرة<br/>
           معاً نبني قادة الغد
         </p>
@@ -516,32 +463,31 @@ function CoverPage({ productCount, onStart, bgImage }: { productCount: number; o
       <div className="relative z-10 flex items-center gap-8 mb-10">
         <div className="text-center">
           <p className="text-3xl font-black text-[#F5C518]">{productCount}</p>
-          <p className="text-white/60 text-xs mt-0.5">منتج</p>
+          <p className="text-white/50 text-xs mt-0.5">منتج</p>
         </div>
         <div className="w-px h-10 bg-white/20" />
         <div className="text-center">
           <p className="text-3xl font-black text-[#F5C518]">2025</p>
-          <p className="text-white/60 text-xs mt-0.5">إصدار</p>
+          <p className="text-white/50 text-xs mt-0.5">إصدار</p>
         </div>
         <div className="w-px h-10 bg-white/20" />
         <div className="text-center">
           <p className="text-3xl font-black text-[#F5C518]">🇪🇬</p>
-          <p className="text-white/60 text-xs mt-0.5">صنع في مصر</p>
+          <p className="text-white/50 text-xs mt-0.5">صنع في مصر</p>
         </div>
       </div>
 
-      {/* CTA */}
+      {/* CTA — only browse button, no WhatsApp here */}
       <div className="relative z-10 catalog-no-print">
         <button onClick={onStart}
-          className="bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1a2e] font-black px-10 py-4 rounded-2xl text-base transition shadow-xl shadow-yellow-900/40">
+          className="bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1a2e] font-black px-10 py-4 rounded-2xl text-base transition shadow-xl shadow-yellow-900/30">
           تصفح الكتالوج ↓
         </button>
       </div>
 
-      {/* Scroll hint */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 catalog-no-print animate-bounce z-10">
-        <div className="w-6 h-10 rounded-full border-2 border-white/30 flex items-start justify-center pt-2">
-          <div className="w-1 h-2 bg-white/50 rounded-full" />
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 catalog-no-print animate-bounce">
+        <div className="w-6 h-10 rounded-full border-2 border-white/20 flex items-start justify-center pt-2">
+          <div className="w-1 h-2 bg-white/40 rounded-full" />
         </div>
       </div>
     </div>
@@ -552,7 +498,7 @@ function CoverPage({ productCount, onStart, bgImage }: { productCount: number; o
 
 function AboutPage() {
   return (
-    <div id="about" className="catalog-page bg-white" dir="rtl">
+    <div id="about" className="catalog-page bg-white mx-3 lg:mx-8 my-4 rounded-3xl shadow-md border border-gray-100 overflow-hidden" dir="rtl">
       <div className="bg-gradient-to-l from-[#1a1a2e] to-[#2a1a4e] px-8 py-10 text-center">
         <span className="text-5xl block mb-4">📖</span>
         <h2 className="text-3xl font-black text-white mb-2">من نحن</h2>
@@ -602,17 +548,20 @@ function AboutPage() {
 
 function AmeenSection() {
   return (
-    <div id="ameen" className="catalog-page bg-gradient-to-b from-[#0f0f1e] to-[#1a1a2e] text-center" dir="rtl">
+    <div id="ameen" className="catalog-page bg-gradient-to-b from-[#0f0f1e] to-[#1a1a2e] mx-3 lg:mx-8 my-4 rounded-3xl shadow-md overflow-hidden text-center" dir="rtl">
       <div className="px-8 py-14">
+        {/* Icon */}
         <div className="w-20 h-20 rounded-3xl bg-[#F5C518]/10 border border-[#F5C518]/20 flex items-center justify-center mx-auto mb-6">
           <span className="text-4xl">✨</span>
         </div>
+
         <h2 className="text-2xl font-black text-white mb-3">تحدث مع المساعد أمين</h2>
         <p className="text-white/50 text-sm mb-8 max-w-md mx-auto leading-relaxed">
           مساعدنا الذكي جاهز للإجابة على أي استفسار عن منتجاتنا<br/>
           وتقديم التوصيات المناسبة لك ولأسرتك على مدار الساعة
         </p>
 
+        {/* Features */}
         <div className="flex flex-wrap justify-center gap-3 mb-10">
           {[
             { icon: '🕐', text: 'متاح 24/7' },
@@ -627,35 +576,46 @@ function AmeenSection() {
           ))}
         </div>
 
-        <a href={SITE_URL} target="_blank" rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1a2e] font-black px-10 py-4 rounded-2xl text-sm transition shadow-lg shadow-yellow-900/30">
+        <a
+          href={SITE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1a2e] font-black px-10 py-4 rounded-2xl text-sm transition shadow-lg shadow-yellow-900/30"
+        >
           <span>🤖</span> تحدث مع أمين الآن
         </a>
 
-        <p className="text-white/20 text-xs mt-6">ابحث عن أيقونة الدردشة في الزاوية السفلية على الموقع</p>
+        <p className="text-white/20 text-xs mt-6">
+          ابحث عن أيقونة الدردشة في الزاوية السفلية على الموقع
+        </p>
       </div>
     </div>
   );
 }
 
-// ─── Contact Page ─────────────────────────────────────────────────────────────
+// ─── Contact Page (last) ───────────────────────────────────────────────────────
 
 function ContactPage() {
   return (
-    <div id="contact" className="catalog-page bg-[#1a1a2e] text-center" dir="rtl">
+    <div id="contact" className="catalog-page bg-[#1a1a2e] mx-3 lg:mx-8 my-4 rounded-3xl shadow-md overflow-hidden text-center" dir="rtl">
       <div className="px-8 pt-16 pb-10">
         <div className="relative w-44 h-20 mx-auto mb-6 sm:w-64 sm:h-24">
           <Image src="/white-Logo.webp" alt="Moslim Leader" fill className="object-contain" unoptimized />
         </div>
         <h2 className="text-3xl font-black text-white mb-2">تواصل معنا</h2>
-        <p className="text-white/50 text-sm mb-8">نسعد بخدمتك وتلقي طلباتك</p>
+        <p className="text-white/50 text-sm mb-10">نسعد بخدمتك وتلقي طلباتك</p>
 
-        {/* Primary reminder */}
-        <div className="inline-block bg-[#F5C518]/10 border border-[#F5C518]/20 text-[#F5C518] text-sm font-bold px-6 py-3 rounded-2xl mb-8">
-          📤 لإرسال طلبك: استخدم زر "أرسل الطلب" في القائمة الجانبية
+        {/* Primary: Order button */}
+        <div className="mb-6">
+          <p className="text-white/40 text-xs mb-3">لإرسال طلبك مباشرةً</p>
+          <div className="inline-block">
+            <div className="bg-[#F5C518]/10 border border-[#F5C518]/20 text-[#F5C518] font-bold text-sm px-6 py-3 rounded-2xl">
+              📤 استخدم زر "أرسل الطلب" في القائمة الجانبية
+            </div>
+          </div>
         </div>
 
-        {/* Secondary channels */}
+        {/* Secondary contact channels */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-xl mx-auto mb-10">
           <a href={`https://wa.me/${WHATSAPP}`} target="_blank" rel="noopener noreferrer"
             className="bg-white/8 hover:bg-[#25D366]/20 border border-white/10 hover:border-[#25D366]/30 text-white/70 hover:text-white font-bold py-4 rounded-2xl text-sm transition flex flex-col items-center gap-2">
@@ -724,7 +684,7 @@ export default function CatalogClient({ products }: { products: Product[] }) {
   const scrollToId = useCallback((id: string) => {
     const el = document.getElementById(id);
     if (el && scrollRef.current) {
-      scrollRef.current.scrollTo({ top: el.offsetTop, behavior: 'smooth' });
+      scrollRef.current.scrollTo({ top: el.offsetTop - 8, behavior: 'smooth' });
     }
     setSidebarOpen(false);
   }, []);
@@ -760,6 +720,7 @@ export default function CatalogClient({ products }: { products: Product[] }) {
 
   return (
     <>
+      {/* Loading screen — shown until animation completes */}
       {!loaded && <CatalogLoader onDone={handleLoaded} />}
 
       <div className="flex h-full" dir="rtl">
@@ -779,15 +740,15 @@ export default function CatalogClient({ products }: { products: Product[] }) {
 
         {/* ── Main scroll area ── */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden" style={{ height: '100%' }}>
-
           {/* Mobile top bar with logo */}
-          <div className="catalog-topbar lg:hidden sticky top-0 z-40 bg-[#1a1a2e]/95 backdrop-blur-md flex items-center justify-between px-4 py-2.5 shadow-lg" style={{ height: 52 }}>
+          <div className="catalog-topbar lg:hidden sticky top-0 z-40 bg-[#1a1a2e]/95 backdrop-blur-md flex items-center justify-between px-4 py-2.5 shadow-lg">
             <button onClick={() => setSidebarOpen(true)} className="text-white/70 hover:text-white p-1 shrink-0">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <div className="relative flex-1 mx-4" style={{ height: 28 }}>
+            {/* Logo image in mobile topbar */}
+            <div className="relative flex-1 mx-3" style={{ height: 32 }}>
               <Image src="/white-Logo.webp" alt="Moslim Leader" fill className="object-contain" unoptimized />
             </div>
             <button onClick={() => setOrderOpen(true)}
@@ -819,28 +780,42 @@ export default function CatalogClient({ products }: { products: Product[] }) {
           )}
 
           {/* Cover */}
-          <CoverPage
-            productCount={products.length}
-            onStart={() => scrollToId(products[0] ? `product-${products[0].id}` : 'about')}
-            bgImage={products[0]?.images?.[0]}
-          />
+          <CoverPage productCount={products.length} onStart={() => scrollToId(products[0] ? `product-${products[0].id}` : 'about')} />
 
-          {/* Products — each is h-screen, no dividers, no margin */}
+          {/* Products */}
           {products.map((product, i) => (
-            <CatalogCard
-              key={product.id}
-              product={product}
-              index={i}
-              total={products.length}
-              isSelected={!!selected.find(s => s.id === product.id)}
-              onToggle={toggleProduct}
-            />
+            <div key={product.id}>
+              <CatalogCard
+                product={product}
+                index={i}
+                total={products.length}
+                isSelected={!!selected.find(s => s.id === product.id)}
+                onToggle={toggleProduct}
+              />
+              {i < products.length - 1 && (
+                <div className="catalog-divider mx-3 lg:mx-8 flex items-center gap-4 py-2">
+                  <div className="flex-1 h-px bg-gradient-to-l from-gray-200 to-transparent" />
+                  <div className="flex gap-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#F5C518]/60" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#F5C518]/40" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#F5C518]/20" />
+                  </div>
+                  <div className="flex-1 h-px bg-gradient-to-r from-gray-200 to-transparent" />
+                </div>
+              )}
+            </div>
           ))}
 
           {/* About + Ameen + Contact */}
-          <AboutPage />
-          <AmeenSection />
-          <ContactPage />
+          <div className="mt-4">
+            <AboutPage />
+          </div>
+          <div>
+            <AmeenSection />
+          </div>
+          <div className="mb-4">
+            <ContactPage />
+          </div>
         </div>
 
         {/* Floating order button (mobile) */}
@@ -852,7 +827,7 @@ export default function CatalogClient({ products }: { products: Product[] }) {
           </button>
         )}
 
-        {/* Order modal */}
+        {/* Order form modal */}
         {orderOpen && (
           <OrderFormModal
             products={products}

@@ -1,6 +1,10 @@
 import type { Metadata } from 'next';
 import ShopPageClient from './ShopPageClient';
 import { canonical, organizationJsonLd, websiteJsonLd, ORG_DESCRIPTION } from '@/lib/seo';
+import { getMergedStaticProducts } from '@/lib/product-overrides';
+import { prisma } from '@/lib/prisma';
+import { products as staticProducts } from '@/lib/products';
+import type { Product } from '@/types';
 
 export const metadata: Metadata = {
   title: 'مسلم ليدر | متجر تربوي إسلامي للأطفال — كتب وألعاب ومنتجات راقية',
@@ -25,7 +29,25 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Page() {
+async function getProducts(): Promise<Product[]> {
+  try {
+    const [mergedStatic, dbProducts] = await Promise.race([
+      Promise.all([
+        getMergedStaticProducts(),
+        prisma.product.findMany({ where: { source: 'admin' }, orderBy: { createdAt: 'desc' } }),
+      ]),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 3000),
+      ),
+    ]);
+    return [...mergedStatic, ...(dbProducts as unknown as Product[])];
+  } catch {
+    try { return await getMergedStaticProducts(); } catch { return staticProducts; }
+  }
+}
+
+export default async function Page() {
+  const products = await getProducts();
   return (
     <>
       <script
@@ -36,7 +58,7 @@ export default function Page() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd()) }}
       />
-      <ShopPageClient />
+      <ShopPageClient initialProducts={products} />
     </>
   );
 }

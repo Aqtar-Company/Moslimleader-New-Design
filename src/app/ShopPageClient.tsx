@@ -104,19 +104,29 @@ function expandProducts(products: Product[]) {
   return items;
 }
 
-function ShopContent() {
+function ShopContent({ ssrProducts }: { ssrProducts?: Product[] }) {
   const searchParams = useSearchParams();
   const { t, isRtl } = useLang();
   const initialCategory = searchParams.get('category') || 'all';
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [search, setSearch] = useState('');
 
-  const cached = getCached();
-  const [allProducts, setAllProducts] = useState<Product[]>(cached || staticProducts);
-  const [priceLoading, setPriceLoading] = useState(!cached);
+  // Use SSR products if provided, otherwise fall back to localStorage cache then statics
+  const cached = !ssrProducts ? getCached() : null;
+  const [allProducts, setAllProducts] = useState<Product[]>(
+    ssrProducts ?? cached ?? staticProducts,
+  );
+  const [priceLoading, setPriceLoading] = useState(false);
 
   useEffect(() => {
+    // If page was SSR'd with fresh products, persist them to cache and skip fetch
+    if (ssrProducts && ssrProducts.length > 0) {
+      setCache(ssrProducts);
+      return;
+    }
+    // Fallback: client-side fetch (only when SSR products unavailable)
     let cancelled = false;
+    setPriceLoading(true);
     fetch(`/api/products?_t=${Date.now()}`, { cache: 'no-store' })
       .then(r => r.json())
       .then(data => {
@@ -132,6 +142,7 @@ function ShopContent() {
       })
       .catch(() => { if (!cancelled) setPriceLoading(false); });
     return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const displayCategories = buildCategories(allProducts);
@@ -189,7 +200,7 @@ function ShopContent() {
   );
 }
 
-export default function ShopPageClient() {
+export default function ShopPageClient({ initialProducts }: { initialProducts?: Product[] }) {
   const { t, lang } = useLang();
   const isRtl = lang === 'ar';
 
@@ -227,7 +238,7 @@ export default function ShopPageClient() {
 
       <FadeInSection>
         <Suspense>
-          <ShopContent />
+          <ShopContent ssrProducts={initialProducts} />
         </Suspense>
       </FadeInSection>
     </>

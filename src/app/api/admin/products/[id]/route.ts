@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { invalidateAdminProductsCache } from '@/lib/admin-products-cache';
 import { invalidateAssistantContext } from '@/lib/assistant-knowledge';
 import { products as staticProducts } from '@/lib/products';
-import { loadStaticOverrides, applyOverride } from '@/lib/product-overrides';
+import { loadStaticOverrides, applyOverride, invalidateOverridesCache } from '@/lib/product-overrides';
 import { requirePerm, type Permission } from '@/lib/permissions';
 import { logActionSafe } from '@/lib/audit-log';
 
@@ -115,6 +115,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         });
       }
 
+      invalidateOverridesCache();
       invalidateAdminProductsCache();
       invalidateAssistantContext();
       await logActionSafe({

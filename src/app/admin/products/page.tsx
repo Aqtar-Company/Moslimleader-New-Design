@@ -86,20 +86,21 @@ export default function ProductsPage() {
     const arr = Array.from(files).filter(f => f.type.startsWith('image/'));
     if (!arr.length) return;
     setUploadingCount(arr.length);
-    const uploaded: string[] = [];
-    for (const file of arr) {
+    const results = await Promise.all(arr.map(async (file) => {
       const fd = new FormData();
       fd.append('file', file);
       try {
         const res = await fetch('/api/admin/products/upload-image', { method: 'POST', credentials: 'include', body: fd });
         if (res.ok) {
           const data = await res.json();
-          uploaded.push(data.url);
+          setUploadingCount(prev => Math.max(0, prev - 1));
+          return data.url as string;
         }
-      } finally {
-        setUploadingCount(prev => Math.max(0, prev - 1));
-      }
-    }
+      } catch { /* ignore individual failures */ }
+      setUploadingCount(prev => Math.max(0, prev - 1));
+      return null;
+    }));
+    const uploaded = results.filter((u): u is string => !!u);
     if (uploaded.length) setFormImages(prev => [...uploaded, ...prev].slice(0, 8));
   };
 
@@ -685,8 +686,8 @@ export default function ProductsPage() {
 
           {/* ── Submit ── */}
           <div className="flex gap-3 pt-4 border-t border-gray-100 sticky bottom-0 bg-white">
-            <button onClick={handleSubmit} disabled={saving} className="bg-[#1a1a2e] text-white font-bold px-6 py-2.5 rounded-xl text-sm hover:bg-[#2a2a4e] transition disabled:opacity-50">
-              {saving ? 'جارٍ الحفظ...' : '💾 حفظ المنتج'}
+            <button onClick={handleSubmit} disabled={saving || uploadingCount > 0} className="bg-[#1a1a2e] text-white font-bold px-6 py-2.5 rounded-xl text-sm hover:bg-[#2a2a4e] transition disabled:opacity-50" title={uploadingCount > 0 ? 'انتظر حتى تنتهي الصور من الرفع' : ''}>
+              {saving ? 'جارٍ الحفظ...' : uploadingCount > 0 ? `⏳ جارٍ رفع ${uploadingCount} صورة...` : '💾 حفظ المنتج'}
             </button>
             <button onClick={resetForm} className="border border-gray-200 text-gray-600 font-semibold px-6 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">إلغاء</button>
           </div>

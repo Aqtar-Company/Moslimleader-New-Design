@@ -802,17 +802,18 @@ model FacebookEvent {
 }
 
 model CatalogLead {
-  id          String   @id @default(cuid())
-  name        String
-  phone       String
-  city        String
-  productId   String?
-  productName String
-  notes       String?  @db.Text
-  status      String   @default("new") // new | contacted | converted | closed
-  orderId     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String   @id @default(cuid())
+  name             String
+  phone            String
+  city             String
+  productId        String?
+  productName      String
+  selectedProducts Json?    // [{ id, name, price }]
+  notes            String?  @db.Text
+  status           String   @default("new") // new | contacted | converted | closed
+  orderId          String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@index([status])
   @@index([createdAt])

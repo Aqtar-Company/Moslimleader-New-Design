@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { capturePayPalOrder, PayPalCaptureError } from '@/lib/paypal';
 import { prisma } from '@/lib/prisma';
-import { products as staticProducts } from '@/lib/products';
+import { products as staticProducts, resolveVariantName } from '@/lib/products';
 import { sendOrderEmails } from '@/lib/order-email';
 import { egpToUsd, toUsd } from '@/lib/currency';
 import { attributeOrderToCampaign } from '@/lib/campaign-attribution';
@@ -100,6 +100,7 @@ export async function POST(req: NextRequest) {
         productId: dbProduct.id,
         quantity: qty,
         selectedModel: item.selectedModel ?? null,
+        selectedVariantName: resolveVariantName(dbProduct.variants, item.selectedModel ?? null),
         unitPrice: unitUsd,
         productName: dbProduct.name,
         productImage: (dbProduct.images as any)?.[0] ?? null,
@@ -268,12 +269,13 @@ export async function POST(req: NextRequest) {
       await sendOrderEmails({
         orderId: order.id,
         orderNumber: order.id.slice(-6).toUpperCase(),
-        items: order.items.map((it: { productName: string; productImage: string | null; quantity: number; unitPrice: number; selectedModel?: number | null }) => ({
+        items: order.items.map((it: { productName: string; productImage: string | null; quantity: number; unitPrice: number; selectedModel?: number | null; selectedVariantName?: string | null }) => ({
           productName: it.productName,
           productImage: it.productImage,
           quantity: it.quantity,
           unitPrice: it.unitPrice,
           selectedModel: it.selectedModel,
+          selectedVariantName: it.selectedVariantName ?? null,
         })),
         subtotal: subtotalUsd,
         discount: order.discount ?? 0,

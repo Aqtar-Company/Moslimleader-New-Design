@@ -1010,3 +1010,19 @@ export function getProductsByCategory(category: string): Product[] {
 export function getFeaturedProducts(): Product[] {
   return products.filter(p => p.featured || p.inStock).slice(0, 6);
 }
+
+// Customer flow stores the variant's imageIndex in selectedModel; admin manual-entry
+// stores the array position. Try imageIndex first, fall back to array position so the
+// admin / invoice / email always show the human-readable name when one exists.
+export function resolveVariantName(
+  variants: unknown,
+  selectedModel: number | null | undefined,
+): string | null {
+  if (selectedModel === null || selectedModel === undefined) return null;
+  if (!Array.isArray(variants) || variants.length === 0) return null;
+  const arr = variants as Array<{ name?: string; imageIndex?: number }>;
+  const byImage = arr.find(v => v && typeof v.imageIndex === 'number' && v.imageIndex === selectedModel);
+  if (byImage?.name) return byImage.name;
+  const byPosition = arr[selectedModel];
+  return byPosition?.name ?? null;
+}

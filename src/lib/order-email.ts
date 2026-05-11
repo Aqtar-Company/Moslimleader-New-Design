@@ -7,6 +7,7 @@ interface OrderEmailItem {
   quantity: number;
   unitPrice: number;
   selectedModel?: number | null;
+  selectedVariantName?: string | null;
 }
 
 interface OrderEmailData {
@@ -101,7 +102,9 @@ export function buildOrderEmailHtml(data: OrderEmailData): string {
                 </td>
                 <td style="vertical-align:middle;padding:0 8px;">
                   <p style="margin:0 0 4px;font-weight:700;color:#1a1a2e;font-size:13px;line-height:1.4;">${escapeHtml(item.productName)}</p>
-                  ${item.selectedModel != null ? `<p style="margin:0 0 4px;font-size:10px;color:#7c3aed;font-weight:700;">موديل ${item.selectedModel + 1}</p>` : ''}
+                  ${item.selectedVariantName
+                    ? `<p style="margin:0 0 4px;font-size:10px;color:#7c3aed;font-weight:700;">الموديل: ${escapeHtml(item.selectedVariantName)}</p>`
+                    : (item.selectedModel != null ? `<p style="margin:0 0 4px;font-size:10px;color:#7c3aed;font-weight:700;">موديل ${item.selectedModel + 1}</p>` : '')}
                   <p style="margin:0;font-size:11px;color:#9ca3af;font-family:monospace;">
                     ${formatPrice(item.unitPrice, data.currency)} × ${item.quantity}
                   </p>

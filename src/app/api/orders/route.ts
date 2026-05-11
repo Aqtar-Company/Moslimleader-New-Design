@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
-import { products as staticProducts } from '@/lib/products';
+import { products as staticProducts, resolveVariantName } from '@/lib/products';
 import { sendOrderEmails } from '@/lib/order-email';
 import { attributeOrderToCampaign } from '@/lib/campaign-attribution';
 
@@ -110,10 +110,12 @@ export async function POST(req: NextRequest) {
         }
 
         const serverPrice = dbProduct?.price ?? item.unitPrice;
+        const selectedModel = item.selectedModel ?? null;
         return {
           productId: dbProduct?.id ?? item.productId,
           quantity: item.quantity,
-          selectedModel: item.selectedModel ?? null,
+          selectedModel,
+          selectedVariantName: resolveVariantName(dbProduct?.variants, selectedModel),
           unitPrice: serverPrice,
           productName: dbProduct?.name ?? item.productName,
           productImage: (item.productImage && /^(\/|https?:\/\/)/.test(item.productImage)) ? item.productImage : null,
@@ -216,12 +218,13 @@ export async function POST(req: NextRequest) {
       await sendOrderEmails({
         orderId: order.id,
         orderNumber: order.id.slice(-6).toUpperCase(),
-        items: order.items.map((it: { productName: string; productImage: string | null; quantity: number; unitPrice: number; selectedModel?: number | null }) => ({
+        items: order.items.map((it: { productName: string; productImage: string | null; quantity: number; unitPrice: number; selectedModel?: number | null; selectedVariantName?: string | null }) => ({
           productName: it.productName,
           productImage: it.productImage,
           quantity: it.quantity,
           unitPrice: it.unitPrice,
           selectedModel: it.selectedModel,
+          selectedVariantName: it.selectedVariantName ?? null,
         })),
         subtotal,
         discount: order.discount ?? 0,

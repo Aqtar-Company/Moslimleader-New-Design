@@ -12,7 +12,16 @@ import type { Product } from '@/types';
 const WHATSAPP = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '201003414003';
 const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://moslimleader.com';
 
-interface SelectedProduct { id: string; name: string; price: number; priceUsd: number; }
+interface ProductVariant { id: string; name: string; nameEn?: string; imageIndex: number }
+interface SelectedProduct {
+  id: string;            // unique per variant: `${productId}` or `${productId}__${variantId}`
+  productId: string;
+  name: string;          // display name (includes variant if picked)
+  price: number;
+  priceUsd: number;
+  variantId?: string;
+  variantName?: string;
+}
 
 const CATALOG_STYLES = `
 @media print {
@@ -62,9 +71,9 @@ function CatalogLoader({ onDone }: { onDone: () => void }) {
         <div className="absolute bottom-[-80px] left-[-80px] w-[300px] h-[300px] rounded-full bg-[#F5C518]/5" />
       </div>
 
-      {/* Logo */}
+      {/* Logo (gold) */}
       <div className="relative z-10 w-56 h-24 mb-10 sm:w-72 sm:h-28">
-        <Image src="/white-Logo.webp" alt="Moslim Leader" fill className="object-contain" priority unoptimized />
+        <Image src="/logo%20gold.png" alt="Moslim Leader" fill className="object-contain" priority unoptimized />
       </div>
 
       {/* Progress bar */}
@@ -225,15 +234,23 @@ interface CardProps {
   product: Product;
   index: number;
   total: number;
-  isSelected: boolean;
-  onToggle: (product: Product) => void;
+  selectedVariantIds: string[];   // empty string '' means "no-variant selection"
+  onToggle: (product: Product, variant: ProductVariant | null) => void;
 }
 
-function CatalogCard({ product, index, total, isSelected, onToggle }: CardProps) {
+function CatalogCard({ product, index, total, selectedVariantIds, onToggle }: CardProps) {
+  const variants = (Array.isArray(product.variants) ? product.variants : []) as ProductVariant[];
+  const hasVariants = variants.length > 0;
+  const [activeVariantId, setActiveVariantId] = useState<string | null>(null);
   const [mainImg, setMainImg] = useState(0);
   const { isRtl } = useLang();
   const { getProductPrice, formatPrice } = useRegionalPricing();
   const priceResult = getProductPrice(product);
+  const activeVariant = hasVariants ? variants.find(v => v.id === activeVariantId) ?? null : null;
+  const variantPicked = hasVariants ? !!activeVariant : true;
+  const variantIsSelected = hasVariants
+    ? !!activeVariantId && selectedVariantIds.includes(activeVariantId)
+    : selectedVariantIds.includes('');
 
   const name = isRtl ? product.name : (product.nameEn || product.name);
   const shortDesc = isRtl ? product.shortDescription : (product.shortDescriptionEn || product.shortDescription);
@@ -316,15 +333,54 @@ function CatalogCard({ product, index, total, isSelected, onToggle }: CardProps)
           )}
 
           <div className="flex flex-col gap-2 mt-auto pt-2 catalog-no-print">
+            {hasVariants && (
+              <div>
+                <p className="text-[11px] font-black text-gray-500 mb-1.5">
+                  {isRtl ? 'اختر الموديل' : 'Select Model'}
+                  {activeVariant && (
+                    <span className="text-[#1a1a2e] font-black mr-1">
+                      — {isRtl ? activeVariant.name : (activeVariant.nameEn || activeVariant.name)}
+                    </span>
+                  )}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {variants.map(v => {
+                    const picked = activeVariantId === v.id;
+                    return (
+                      <button
+                        key={v.id}
+                        onClick={() => {
+                          setActiveVariantId(v.id);
+                          if (v.imageIndex >= 0) setMainImg(v.imageIndex);
+                        }}
+                        className={`text-[11px] font-bold px-2.5 py-1.5 rounded-lg border-2 transition ${
+                          picked
+                            ? 'border-[#F5C518] bg-[#FFF9E6] text-[#9a7b00]'
+                            : 'border-gray-200 text-gray-600 hover:border-gray-400'
+                        }`}
+                      >
+                        {isRtl ? v.name : (v.nameEn || v.name)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <button
-              onClick={() => onToggle(product)}
+              onClick={() => variantPicked && onToggle(product, activeVariant)}
+              disabled={!variantPicked}
               className={`w-full font-black py-3 rounded-2xl text-sm transition flex items-center justify-center gap-2 border-2 ${
-                isSelected
+                !variantPicked
+                  ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+                  : variantIsSelected
                   ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-200'
                   : 'bg-white border-[#1a1a2e] text-[#1a1a2e] hover:bg-[#1a1a2e] hover:text-[#F5C518]'
               }`}
             >
-              {isSelected ? (
+              {!variantPicked ? (
+                <>اختر الموديل أولاً</>
+              ) : variantIsSelected ? (
                 <><svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg> تم الاختيار</>
               ) : (
                 <><span className="text-lg leading-none">+</span> اختر هذا المنتج</>
@@ -689,11 +745,21 @@ export default function CatalogClient({ products }: { products: Product[] }) {
     setSidebarOpen(false);
   }, []);
 
-  const toggleProduct = useCallback((product: Product) => {
+  const toggleProduct = useCallback((product: Product, variant: ProductVariant | null) => {
+    const entryId = variant ? `${product.id}__${variant.id}` : product.id;
+    const displayName = variant ? `${product.name} — ${variant.name}` : product.name;
     setSelected(prev => {
-      const exists = prev.find(p => p.id === product.id);
-      if (exists) return prev.filter(p => p.id !== product.id);
-      return [...prev, { id: product.id, name: product.name, price: product.price, priceUsd: product.priceUsd ?? 0 }];
+      const exists = prev.find(p => p.id === entryId);
+      if (exists) return prev.filter(p => p.id !== entryId);
+      return [...prev, {
+        id: entryId,
+        productId: product.id,
+        name: displayName,
+        price: product.price,
+        priceUsd: product.priceUsd ?? 0,
+        variantId: variant?.id,
+        variantName: variant?.name,
+      }];
     });
   }, []);
 
@@ -789,7 +855,9 @@ export default function CatalogClient({ products }: { products: Product[] }) {
                 product={product}
                 index={i}
                 total={products.length}
-                isSelected={!!selected.find(s => s.id === product.id)}
+                selectedVariantIds={selected
+                  .filter(s => s.productId === product.id)
+                  .map(s => s.variantId ?? '')}
                 onToggle={toggleProduct}
               />
               {i < products.length - 1 && (

@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { prisma } from '@/lib/prisma';
-import { products as staticProducts } from '@/lib/products';
+import { products as staticProducts, resolveVariantName } from '@/lib/products';
 import { normalizeEgyptPhone } from '@/lib/phone';
 import { requirePerm } from '@/lib/permissions';
 import { logActionSafe } from '@/lib/audit-log';
@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2) Resolve items: ensure each Product exists in the DB (seed from static if needed).
-    interface ResolvedItem { productId: string; productName: string; productImage: string | null; quantity: number; unitPrice: number; selectedModel: number | null }
+    interface ResolvedItem { productId: string; productName: string; productImage: string | null; quantity: number; unitPrice: number; selectedModel: number | null; selectedVariantName: string | null }
     const resolvedItems: ResolvedItem[] = [];
     let subtotal = 0;
     for (const it of body.items) {
@@ -186,6 +186,7 @@ export async function POST(req: NextRequest) {
         quantity: Math.max(1, Math.floor(it.quantity)),
         unitPrice,
         selectedModel,
+        selectedVariantName: resolveVariantName(dbProduct.variants, selectedModel),
       });
       subtotal += unitPrice * it.quantity;
     }

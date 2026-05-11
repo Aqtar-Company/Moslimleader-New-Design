@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 async function getProducts(): Promise<Product[]> {
   try {

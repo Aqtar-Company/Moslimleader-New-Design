@@ -4,7 +4,7 @@ export default function CatalogLayout({ children }: { children: React.ReactNode 
   return (
     <div
       className="catalog-shell"
-      style={{ position: 'fixed', inset: 0, zIndex: 100, background: '#f3f4f6', overflowY: 'auto', overflowX: 'hidden' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 100, background: '#1a1a2e', overflowY: 'auto', overflowX: 'hidden' }}
     >
       {children}
     </div>

@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
         nisabGrams: 85,
         nisabValue: computation.nisabValue,
         zakatDue: computation.zakatDue,
-        excludedBatchIds: excludedBatchIds.length > 0 ? excludedBatchIds : null,
+        excludedBatchIds: excludedBatchIds.length > 0 ? excludedBatchIds : undefined,
         paymentStatus: 'unpaid',
         notes: body.notes?.trim() || null,
         createdByUserId: guard.user.userId,

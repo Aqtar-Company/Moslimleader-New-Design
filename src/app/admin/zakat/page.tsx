@@ -10,6 +10,18 @@ import ForbiddenState from '@/components/admin/ForbiddenState';
 
 type ValuationMethod = 'retail' | 'wholesale' | 'avg-actual' | 'manual';
 
+interface BatchForExclusion {
+  id: string;
+  productName: string;
+  variantName: string | null;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+  batchDate: string;
+  notes: string | null;
+  isOpeningBalance: boolean;
+}
+
 interface SnapshotSummary {
   id: string;
   hijriYear: string;
@@ -87,6 +99,33 @@ export default function ZakatPage() {
   const [computation, setComputation] = useState<Computation | null>(null);
   const [computing, setComputing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [excludedBatchIds, setExcludedBatchIds] = useState<string[]>([]);
+  const [batches, setBatches] = useState<BatchForExclusion[]>([]);
+  const [batchesLoading, setBatchesLoading] = useState(false);
+  const [showBatches, setShowBatches] = useState(false);
+
+  const loadBatches = async () => {
+    setBatchesLoading(true);
+    try {
+      const res = await adminFetch('/api/admin/production/batches');
+      if (!res.ok) throw new Error('failed');
+      const data = await res.json();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mapped: BatchForExclusion[] = (data.batches ?? []).map((b: any) => ({
+        id: b.id,
+        productName: b.product?.name ?? b.productId,
+        variantName: b.variantName ?? null,
+        quantity: b.quantity,
+        unitCost: b.unitCost,
+        totalCost: b.totalCost,
+        batchDate: b.batchDate,
+        notes: b.notes ?? null,
+        isOpeningBalance: b.isOpeningBalance ?? false,
+      }));
+      setBatches(mapped);
+    } catch { /* ignore */ }
+    setBatchesLoading(false);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -115,6 +154,7 @@ export default function ZakatPage() {
           method,
           cashOnHand: Number(cashOnHand) || 0,
           avgActualWindowDays: windowDays,
+          excludedBatchIds,
         }),
       });
       const data = await res.json();
@@ -139,6 +179,7 @@ export default function ZakatPage() {
           cashOnHand: Number(cashOnHand) || 0,
           avgActualWindowDays: windowDays,
           notes,
+          excludedBatchIds,
         }),
       });
       const data = await res.json();
@@ -255,6 +296,86 @@ export default function ZakatPage() {
           <label className="block text-[10px] text-gray-500 font-bold mb-1">ملاحظات</label>
           <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="اختياري — مرجع، رقم الإيصال، ملاحظات شيخ مستشار..." className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs" />
         </div>
+
+        {/* Batch exclusion — show recent production batches to optionally
+            exclude from Zakat inventory (e.g. goods ordered but not yet
+            available for sale, or specific lots the scholar excludes). */}
+        <div className="border border-gray-200 rounded-xl overflow-hidden">
+          <button
+            type="button"
+            onClick={() => {
+              setShowBatches(v => !v);
+              if (!showBatches && batches.length === 0) loadBatches();
+            }}
+            className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 text-xs font-black text-gray-800 transition"
+          >
+            <span className="flex items-center gap-2">
+              🏭 استثناء باتشات من حساب الزكاة
+              {excludedBatchIds.length > 0 && (
+                <span className="bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+                  {excludedBatchIds.length} مستثني
+                </span>
+              )}
+            </span>
+            <span className="text-gray-400">{showBatches ? '▲' : '▼'}</span>
+          </button>
+
+          {showBatches && (
+            <div className="p-3 space-y-2">
+              <p className="text-[10px] text-gray-500 leading-relaxed">
+                اختر الباتشات اللي عاوز تستثنيها من حساب الزكاة (مثلاً بضاعة لسه ما اتسلمتش أو محجوز لطلبات قائمة). الكميات دي هتتخصم من المخزون قبل الحساب.
+              </p>
+              {batchesLoading ? (
+                <p className="text-xs text-gray-400 text-center py-3">جاري التحميل...</p>
+              ) : batches.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-3">مفيش باتشات محفوظة</p>
+              ) : (
+                <div className="max-h-72 overflow-y-auto rounded-lg border border-gray-100 divide-y divide-gray-100">
+                  {batches.map(b => {
+                    const checked = excludedBatchIds.includes(b.id);
+                    const toggle = () => setExcludedBatchIds(prev =>
+                      checked ? prev.filter(id => id !== b.id) : [...prev, b.id]
+                    );
+                    return (
+                      <label key={b.id} className={`flex items-start gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50 transition ${checked ? 'bg-orange-50' : ''}`}>
+                        <input type="checkbox" checked={checked} onChange={toggle} className="mt-0.5 accent-orange-500 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-gray-800 truncate">
+                            {b.productName}
+                            {b.variantName && <span className="text-gray-500 font-normal"> — {b.variantName}</span>}
+                            {b.isOpeningBalance && <span className="mr-1 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold">رصيد افتتاحي</span>}
+                          </p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">
+                            {b.quantity} قطعة · {Math.round(b.totalCost).toLocaleString('en-US')} ج.م
+                            {b.notes && <span className="mx-1 text-gray-400">— {b.notes}</span>}
+                          </p>
+                        </div>
+                        <p className="text-[10px] text-gray-400 shrink-0 mt-0.5" dir="ltr">
+                          {new Date(b.batchDate).toLocaleDateString('en-GB')}
+                        </p>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              {excludedBatchIds.length > 0 && (
+                <div className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+                  <p className="text-[11px] text-orange-900 font-bold">
+                    {excludedBatchIds.length} باتش مستثني — الكميات هتتخصم من المخزون قبل حساب الزكاة.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setExcludedBatchIds([])}
+                    className="text-[10px] text-orange-700 hover:text-orange-900 font-bold underline"
+                  >
+                    إلغاء الكل
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="flex gap-2 flex-wrap">
           <button onClick={compute} disabled={computing} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition disabled:opacity-50">
             {computing ? '...جاري الحساب' : '🧮 احسب الآن'}

@@ -274,6 +274,7 @@ model ZakatSnapshot {
   nisabGrams               Float?   @default(85)
   nisabValue               Float?   // = nisabGrams × goldPricePerGram24K
   zakatDue                 Boolean? @default(true) // false when pool < nisab
+  excludedBatchIds         Json?    // string[] — batch IDs excluded from this calculation
   paymentStatus            String   @default("unpaid") // 'unpaid' | 'paid'
   paymentDate              DateTime?
   notes                    String?  @db.Text

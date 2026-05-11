@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   const guard = await requirePerm('zakat.read');
   if ('response' in guard) return guard.response;
 
-  let body: { method?: ValuationMethod; cashOnHand?: number; avgActualWindowDays?: number; manualValuation?: Record<string, number> };
+  let body: { method?: ValuationMethod; cashOnHand?: number; avgActualWindowDays?: number; manualValuation?: Record<string, number>; excludedBatchIds?: string[] };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Body غير صالح' }, { status: 400 }); }
 
   const method = (['retail', 'wholesale', 'avg-actual', 'manual'] as const).includes(body.method as ValuationMethod)
@@ -20,10 +20,12 @@ export async function POST(req: NextRequest) {
   const avgActualWindowDays = Number.isFinite(Number(body.avgActualWindowDays))
     ? Math.max(30, Math.min(365, Number(body.avgActualWindowDays)))
     : 90;
+  const excludedBatchIds = Array.isArray(body.excludedBatchIds) ? body.excludedBatchIds.filter((x): x is string => typeof x === 'string') : [];
 
   const result = await computeZakat({
     method, cashOnHand, avgActualWindowDays,
     manualValuation: body.manualValuation,
+    excludedBatchIds,
   });
   return NextResponse.json(result);
 }

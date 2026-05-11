@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
     method?: ValuationMethod; cashOnHand?: number; avgActualWindowDays?: number;
     manualValuation?: Record<string, number>; notes?: string;
     hijriYearOverride?: string; // optional — defaults to current Hijri year
+    excludedBatchIds?: string[];
   };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Body غير صالح' }, { status: 400 }); }
 
@@ -27,6 +28,7 @@ export async function POST(req: NextRequest) {
   const avgActualWindowDays = Number.isFinite(Number(body.avgActualWindowDays))
     ? Math.max(30, Math.min(365, Number(body.avgActualWindowDays)))
     : 90;
+  const excludedBatchIds = Array.isArray(body.excludedBatchIds) ? body.excludedBatchIds.filter((x): x is string => typeof x === 'string') : [];
 
   const today = new Date();
   const hijri = gregorianToHijri(today);
@@ -46,6 +48,7 @@ export async function POST(req: NextRequest) {
   const computation = await computeZakat({
     method, cashOnHand, avgActualWindowDays,
     manualValuation: body.manualValuation,
+    excludedBatchIds,
   });
 
   // Save snapshot + per-product items in one transaction so a partial
@@ -72,6 +75,7 @@ export async function POST(req: NextRequest) {
         nisabGrams: 85,
         nisabValue: computation.nisabValue,
         zakatDue: computation.zakatDue,
+        excludedBatchIds: excludedBatchIds.length > 0 ? excludedBatchIds : null,
         paymentStatus: 'unpaid',
         notes: body.notes?.trim() || null,
         createdByUserId: guard.user.userId,

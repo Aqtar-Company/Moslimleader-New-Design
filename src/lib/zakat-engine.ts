@@ -53,6 +53,7 @@ export interface ZakatComputeInput {
   cashOnHand: number;
   avgActualWindowDays?: number;            // for 'avg-actual' method
   manualValuation?: Record<string, number>; // productId → unitValue
+  excludedBatchIds?: string[];             // batches to subtract from stock before valuation
 }
 
 // Compute supplier liabilities the same way /admin/valuation does:
@@ -101,6 +102,19 @@ export async function computeZakat(input: ZakatComputeInput): Promise<ZakatCompu
     select: { id: true, name: true, price: true, wholesalePrice: true, stock: true, variantStocks: true },
   });
 
+  // Build a per-product exclusion map from the selected batches.
+  // Quantities are subtracted from effective stock before valuation.
+  const exclusionMap = new Map<string, number>();
+  if (input.excludedBatchIds && input.excludedBatchIds.length > 0) {
+    const batches = await prisma.productionBatch.findMany({
+      where: { id: { in: input.excludedBatchIds } },
+      select: { productId: true, quantity: true },
+    });
+    for (const b of batches) {
+      exclusionMap.set(b.productId, (exclusionMap.get(b.productId) ?? 0) + b.quantity);
+    }
+  }
+
   const window = input.avgActualWindowDays ?? 90;
   const avgActualMap = await getAvgActualPrices(window);
 
@@ -113,7 +127,7 @@ export async function computeZakat(input: ZakatComputeInput): Promise<ZakatCompu
   const items: ZakatItem[] = [];
 
   for (const p of products) {
-    const stock = effectiveStock(p);
+    const stock = Math.max(0, effectiveStock(p) - (exclusionMap.get(p.id) ?? 0));
     if (stock <= 0) continue;
     const retailUnit = p.price;
     const wholesaleUnit = p.wholesalePrice ?? p.price * WHOLESALE_FALLBACK_RATIO;

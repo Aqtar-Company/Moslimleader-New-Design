@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLang } from '@/context/LanguageContext';
+import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import AmeenProductCard from './AmeenProductCard';
 
 // On-site AI chat — talks to /api/ameen-chat which uses the SAME
@@ -181,6 +182,7 @@ export default function AmeenChat() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { lang } = useLang();
   const isEn = lang === 'en';
+  const { countryCode } = useRegionalPricing();
 
   // ── visualViewport: track keyboard height on mobile only ──
   // The Tailwind `md` breakpoint is 768px. On wider screens the
@@ -274,7 +276,7 @@ export default function AmeenChat() {
       const res = await fetch('/api/ameen-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, message: text }),
+        body: JSON.stringify({ sessionId, message: text, countryCode: countryCode ?? 'EG' }),
       });
       const data = await res.json() as ChatResponse;
       const reply = (data.reply ?? '').trim();
@@ -320,6 +322,7 @@ export default function AmeenChat() {
     try {
       const form = new FormData();
       form.append('sessionId', sessionId);
+      form.append('countryCode', countryCode ?? 'EG');
       form.append('audio', blob, 'voice.webm');
       const res = await fetch('/api/ameen-chat', { method: 'POST', body: form });
       const data = await res.json() as ChatResponse & { error?: string | boolean };

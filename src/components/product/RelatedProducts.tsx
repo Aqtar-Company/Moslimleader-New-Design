@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
 import { applyOverride, loadStaticOverrides } from '@/lib/product-overrides';
+import RelatedProductPrice from './RelatedProductPrice';
 import type { Product } from '@/types';
 
 // Related products — same-category items shown at the bottom of every
@@ -119,10 +120,7 @@ export default async function RelatedProducts({
               <div className="p-3">
                 <p className="text-sm font-bold text-gray-900 line-clamp-2 leading-tight">{p.name}</p>
                 <p className="text-[11px] text-gray-500 mt-1">{p.category}</p>
-                <p className="text-base font-black text-[#1a1a2e] mt-2">
-                  {Math.round(p.price).toLocaleString('en-US')}
-                  <span className="text-xs font-bold text-gray-500 mr-1">ج.م</span>
-                </p>
+                <RelatedProductPrice price={p.price} priceUsd={p.priceUsd ?? undefined} />
               </div>
             </Link>
           );

@@ -56,6 +56,7 @@ interface Computation {
   zakatDue: boolean;
   comparison: Array<{ method: ValuationMethod; inventory: number; pool: number; zakat: number }>;
   items: Array<{ productId: string; productName: string; quantity: number; unitValue: number; totalValue: number }>;
+  excludedItems: Array<{ productId: string; productName: string; batchTotal: number; effectiveExclusion: number }>;
   inventorySummary: { units: number; valueRetail: number; productsCount: number; inStockProductCount: number };
 }
 
@@ -439,6 +440,45 @@ export default function ZakatPage() {
             من <span className="mx-1 text-gray-900 font-bold">{fmt(computation.inventorySummary.productsCount)}</span> منتج.
             <Link href="/admin/inventory" className="text-blue-700 hover:underline mx-1">افتح المخزون ↗</Link>
           </div>
+
+          {/* Excluded batches summary — shows what was actually removed */}
+          {computation.excludedItems.length > 0 && (
+            <div className="bg-orange-50 border border-orange-200 rounded-xl overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-orange-100 flex items-center justify-between">
+                <p className="text-[11px] font-black text-orange-900">🏭 ملخص الاستثناءات المُطَبَّقَة</p>
+                <p className="text-[10px] text-orange-700">
+                  {computation.excludedItems.reduce((s, i) => s + i.effectiveExclusion, 0)} قطعة مُستثناة فعلياً
+                </p>
+              </div>
+              <table className="w-full text-xs">
+                <thead className="bg-orange-100 text-[10px] text-orange-700 font-bold">
+                  <tr>
+                    <th className="px-3 py-1.5 text-right">المنتج</th>
+                    <th className="px-3 py-1.5 text-right">كمية الباتشات</th>
+                    <th className="px-3 py-1.5 text-right">المُستثنى فعلياً</th>
+                    <th className="px-3 py-1.5 text-right">ملاحظة</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-orange-100">
+                  {computation.excludedItems.map(ex => {
+                    const capped = ex.effectiveExclusion < ex.batchTotal;
+                    return (
+                      <tr key={ex.productId} className="hover:bg-orange-50">
+                        <td className="px-3 py-2 font-semibold text-gray-800">{ex.productName}</td>
+                        <td className="px-3 py-2 tabular-nums text-gray-600">{fmt(ex.batchTotal)} قطعة</td>
+                        <td className="px-3 py-2 tabular-nums font-black text-orange-800">{fmt(ex.effectiveExclusion)} قطعة</td>
+                        <td className="px-3 py-2 text-[10px]">
+                          {capped
+                            ? <span className="text-amber-700">⚠️ المخزون أقل من الباتش — استُثني الكل ({fmt(ex.effectiveExclusion)} من أصل {fmt(ex.batchTotal)})</span>
+                            : <span className="text-emerald-700">✓ تم الاستثناء الكامل</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {/* Comparison table */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">

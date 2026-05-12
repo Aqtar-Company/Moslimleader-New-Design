@@ -21,8 +21,16 @@ export interface ZakatItem {
   valuationMethod: ValuationMethod;
 }
 
+export interface ZakatExcludedItem {
+  productId: string;
+  productName: string;
+  batchTotal: number;       // sum of quantities across all excluded batches for this product
+  effectiveExclusion: number; // what was actually subtracted (≤ stock before exclusion)
+}
+
 export interface ZakatComputation {
   items: ZakatItem[];
+  excludedItems: ZakatExcludedItem[];
   inventoryValueRetail: number;
   inventoryValueWholesale: number;
   inventoryValueAvgActual: number;
@@ -105,13 +113,15 @@ export async function computeZakat(input: ZakatComputeInput): Promise<ZakatCompu
   // Build a per-product exclusion map from the selected batches.
   // Quantities are subtracted from effective stock before valuation.
   const exclusionMap = new Map<string, number>();
+  const exclusionNameMap = new Map<string, string>();
   if (input.excludedBatchIds && input.excludedBatchIds.length > 0) {
     const batches = await prisma.productionBatch.findMany({
       where: { id: { in: input.excludedBatchIds } },
-      select: { productId: true, quantity: true },
+      select: { productId: true, quantity: true, product: { select: { name: true } } },
     });
     for (const b of batches) {
       exclusionMap.set(b.productId, (exclusionMap.get(b.productId) ?? 0) + b.quantity);
+      if (!exclusionNameMap.has(b.productId)) exclusionNameMap.set(b.productId, b.product.name);
     }
   }
 
@@ -125,9 +135,20 @@ export async function computeZakat(input: ZakatComputeInput): Promise<ZakatCompu
   let invAvgActual = 0;
   let invManual: number | null = null;
   const items: ZakatItem[] = [];
+  const excludedItems: ZakatExcludedItem[] = [];
 
   for (const p of products) {
-    const stock = Math.max(0, effectiveStock(p) - (exclusionMap.get(p.id) ?? 0));
+    const stockBefore = effectiveStock(p);
+    const batchTotal = exclusionMap.get(p.id) ?? 0;
+    const stock = Math.max(0, stockBefore - batchTotal);
+    if (batchTotal > 0) {
+      excludedItems.push({
+        productId: p.id,
+        productName: exclusionNameMap.get(p.id) ?? p.name,
+        batchTotal,
+        effectiveExclusion: stockBefore - stock, // = min(stockBefore, batchTotal)
+      });
+    }
     if (stock <= 0) continue;
     const retailUnit = p.price;
     const wholesaleUnit = p.wholesalePrice ?? p.price * WHOLESALE_FALLBACK_RATIO;
@@ -193,6 +214,7 @@ export async function computeZakat(input: ZakatComputeInput): Promise<ZakatCompu
 
   return {
     items,
+    excludedItems,
     inventoryValueRetail: Math.round(invRetail),
     inventoryValueWholesale: Math.round(invWholesale),
     inventoryValueAvgActual: Math.round(invAvgActual),

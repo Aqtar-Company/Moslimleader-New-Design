@@ -46,6 +46,7 @@ export async function GET(req: NextRequest) {
         totalCost: b.totalCost,
         batchDate: b.batchDate.toISOString(),
         notes: b.notes,
+        isOpeningBalance: b.isOpeningBalance,
         createdAt: b.createdAt.toISOString(),
       };
     }),

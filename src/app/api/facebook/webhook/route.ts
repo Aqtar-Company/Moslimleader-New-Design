@@ -11,8 +11,9 @@ import {
   replyToComment,
   shouldAutoReply,
   extractLeadTag,
+  fetchUserCountryCode,
 } from '@/lib/ai-facebook-assistant';
-import { buildAssistantContext } from '@/lib/assistant-knowledge';
+import { buildAssistantContext, buildLocalPriceBlock } from '@/lib/assistant-knowledge';
 import { detectGenderFromName, genderDirective } from '@/lib/gender-detector';
 import {
   extractFromMessage,
@@ -264,12 +265,17 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
   // accumulated customer profile + live site knowledge (RAG-lite).
   // The profile block tells the bot what we already know so it
   // doesn't re-ask the buyer's name / phone / kid ages.
-  const context = await buildAssistantContext();
+  const [context, countryCode] = await Promise.all([
+    buildAssistantContext(),
+    fetchUserCountryCode(input.psid),
+  ]);
   const profileBlock = renderProfileForPrompt(mergedProfile);
+  const localPriceBlock = buildLocalPriceBlock(context.rawProducts, countryCode);
   const enrichedPrompt =
     `${settings.systemPrompt}\n\n` +
     `## معلومات عن العميل:\n${genderDirective(userGender)}\n\n` +
     (profileBlock ? `${profileBlock}\n\n` : '') +
+    (localPriceBlock ? `${localPriceBlock}\n\n` : '') +
     `---\n\n${context.text}`;
 
   let rawAiText: string;

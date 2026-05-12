@@ -588,3 +588,40 @@ export function shouldAutoReply(message: string, settings: AssistantSettings): b
   const lower = message.toLowerCase();
   return settings.triggerKeywords.some(k => lower.includes(k.toLowerCase()));
 }
+
+// Fetch the Facebook user's country code from their profile locale.
+// locale format from Graph API: "ar_SA" → "SA", "ar_EG" → "EG".
+// Result is cached in Setting table (key: fb-country-{psid}) so we
+// only call the Graph API once per user, not on every message.
+export async function fetchUserCountryCode(psid: string): Promise<string> {
+  try {
+    const cached = await prisma.setting.findUnique({
+      where: { key: `fb-country-${psid}` },
+    });
+    if (typeof cached?.value === 'string' && cached.value.length === 2) {
+      return cached.value.toUpperCase();
+    }
+  } catch { /* fall through to API call */ }
+
+  const pageToken = process.env.FB_PAGE_ACCESS_TOKEN;
+  if (!pageToken || pageToken === 'PENDING') return 'EG';
+
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/v21.0/${encodeURIComponent(psid)}?fields=locale&access_token=${encodeURIComponent(pageToken)}`,
+      { signal: AbortSignal.timeout(3000) },
+    );
+    if (!res.ok) return 'EG';
+    const data = await res.json() as { locale?: string };
+    // "ar_SA" → "SA", fallback to "EG"
+    const cc = (data.locale?.split('_')[1] ?? 'EG').toUpperCase();
+    await prisma.setting.upsert({
+      where: { key: `fb-country-${psid}` },
+      create: { key: `fb-country-${psid}`, value: cc },
+      update: { value: cc },
+    }).catch(() => { /* non-critical */ });
+    return cc;
+  } catch {
+    return 'EG';
+  }
+}

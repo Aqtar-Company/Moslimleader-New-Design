@@ -272,10 +272,10 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
   const profileBlock = renderProfileForPrompt(mergedProfile);
   const localPriceBlock = buildLocalPriceBlock(context.rawProducts, countryCode);
   const enrichedPrompt =
+    (localPriceBlock ? `${localPriceBlock}\n\n` : '') +
     `${settings.systemPrompt}\n\n` +
     `## معلومات عن العميل:\n${genderDirective(userGender)}\n\n` +
     (profileBlock ? `${profileBlock}\n\n` : '') +
-    (localPriceBlock ? `${localPriceBlock}\n\n` : '') +
     `---\n\n${context.text}`;
 
   let rawAiText: string;

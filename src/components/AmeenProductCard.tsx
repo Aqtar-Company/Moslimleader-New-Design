@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/components/ui/Toast';
+import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import type { Product } from '@/types';
 
 // Inline product card rendered inside an Amin reply when the AI
@@ -24,6 +25,7 @@ interface ProductLite {
   slug: string;
   name: string;
   price: number;
+  priceUsd?: number;
   images?: string[];
   inStock?: boolean;
   variants?: Array<{ id: string; name: string }> | null;
@@ -40,6 +42,7 @@ export default function AmeenProductCard({ slug, compact = false }: Props) {
   );
   const { addItem } = useCart();
   const { addToast } = useToast();
+  const { getProductPrice, formatPrice } = useRegionalPricing();
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
@@ -81,6 +84,8 @@ export default function AmeenProductCard({ slug, compact = false }: Props) {
 
   const image = product.images?.[0];
   const hasVariants = !!(product.variants && product.variants.length > 0);
+  const priceResult = getProductPrice(product as unknown as Product);
+  const localPrice = formatPrice(priceResult);
 
   async function onAdd() {
     if (adding) return;
@@ -113,7 +118,7 @@ export default function AmeenProductCard({ slug, compact = false }: Props) {
           <p className="text-[12px] font-black text-gray-900 leading-snug line-clamp-2">{product.name}</p>
         </Link>
         <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
-          <span className="text-[12px] font-black text-[#1a1a2e]">{Math.round(product.price)} ج.م</span>
+          <span className="text-[12px] font-black text-[#1a1a2e]">{localPrice}</span>
           {product.minAge != null && product.maxAge != null && (
             <span className="text-[9px] bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded-full border border-amber-200">
               {product.minAge}-{product.maxAge} سنوات

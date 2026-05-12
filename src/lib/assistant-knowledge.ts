@@ -175,15 +175,9 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
       const short = p.shortDescription ? ` — ${p.shortDescription.slice(0, 80)}` : '';
       const url   = `https://moslimleader.com/shop/${p.slug}`;
 
-      // Build price string: EGP always + international price if defined
-      const intlUsd = (p.priceUsd && p.priceUsd > 0) ? p.priceUsd : null;
-      const intlSar = intlUsd ? Math.round(intlUsd * 3.75) : null;
-      const priceStr = intlUsd
-        ? `${Math.round(p.price)} ج.م (دولي: ${intlUsd} $ / ${intlSar} ﷼)`
-        : `${Math.round(p.price)} ج.م`;
       const parts: string[] = [
         `- ${p.name}${short}`,
-        priceStr,
+        `${Math.round(p.price)} ج.م`,
       ];
       // Age range — explicit signal so the model can match recommendations.
       if (p.minAge !== null && p.minAge !== undefined && p.maxAge !== null && p.maxAge !== undefined) {
@@ -337,7 +331,6 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
   lines.push('3. لو السؤال عن منتج غير موجود في القائمة، قل: "مش متوفر حالياً، تقدري تتصفّحي المتجر للمنتجات المشابهة".');
   lines.push('4. لو السؤال عن شحن، اذكر سعر المحافظة من قائمة الشحن.');
   lines.push('5. لا تذكر منتج أو سعر مش موجود في الداتا أعلاه أبداً.');
-  lines.push('6. لو العميل من خارج مصر (السعودية، الإمارات، الكويت، إلخ)، اذكر السعر الدولي مباشرة ($ أو ﷼) دون تحويل من الجنيه — استخدم الأرقام الموجودة في قوسين بجانب كل منتج (دولي: X $ / Y ﷼).');
 
   const text = lines.join('\n');
 
@@ -399,8 +392,9 @@ export function buildLocalPriceBlock(
   const countryName = cc?.nameAr ?? countryCode;
 
   const lines: string[] = [];
-  lines.push(`## أسعار المنتجات بعملتك (${symbol} — ${countryName}):`);
-  lines.push('(استخدم هذه الأسعار فقط — لا تذكر السعر بالجنيه المصري لهذا العميل)');
+  lines.push(`## ⚠️ تعليمة عملة العميل — أولوية قصوى:`);
+  lines.push(`العميل من ${countryName}. يُحظر تمامًا ذكر أي سعر بالجنيه المصري (ج.م) في هذه المحادثة.`);
+  lines.push(`استخدم الأسعار التالية بـ${symbol} فقط — هذه الأسعار الرسمية للمتجر لعملاء ${countryName}:`);
 
   for (const p of rawProducts) {
     const usdPrice = (p.priceUsd && p.priceUsd > 0) ? p.priceUsd : p.price / 50;

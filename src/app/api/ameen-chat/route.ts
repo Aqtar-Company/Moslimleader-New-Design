@@ -222,6 +222,7 @@ export async function POST(req: NextRequest) {
   const countryCode = (body.countryCode ?? 'EG').toUpperCase().slice(0, 2);
   const localPriceBlock = buildLocalPriceBlock(context.rawProducts, countryCode);
   const enrichedPrompt =
+    (localPriceBlock ? `${localPriceBlock}\n\n` : '') +
     `${settings.systemPrompt}\n\n` +
     `## ملاحظة عن القناة (موقع مسلم ليدر):\n` +
     `الردود تظهر في دردشة على https://moslimleader.com.\n\n` +
@@ -249,7 +250,6 @@ export async function POST(req: NextRequest) {
     `   استثناء وحيد: روابط المنتجات وأسماء العلامة "مسلم ليدر / Moslim Leader" تبقى كما هي بالعربي/الإنجليزي حسب الكتالوج. لو احتجت لاسم منتج بلغة العميل، اذكري الاسم بلغة الكتالوج ثم ترجمة قصيرة بين قوسين.\n` +
     `   لا تخلطي لغتين في نفس الرد إلا لو العميل خلط بنفسه (code-switching)، وقتها قلّديها.\n\n` +
     (profileBlock ? `${profileBlock}\n\n` : '') +
-    (localPriceBlock ? `${localPriceBlock}\n\n` : '') +
     `---\n\n${context.text}`;
 
   let rawAiText: string;

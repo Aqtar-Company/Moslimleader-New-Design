@@ -50,7 +50,7 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
     prisma.product.findMany({
       where: { inStock: true },
       select: {
-        id: true, slug: true, name: true, nameEn: true, price: true,
+        id: true, slug: true, name: true, nameEn: true, price: true, priceUsd: true,
         category: true, source: true, shortDescription: true,
         // Sales context fields: age range (B1), stock level (B3),
         // review aggregate (B3 social proof).
@@ -87,6 +87,7 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
   // what the customer sees on the site.
   type ContextProduct = Pick<Product, 'name' | 'slug' | 'category' | 'price'> & {
     id?: string;
+    priceUsd?: number;
     shortDescription?: string;
     minAge?: number | null;
     maxAge?: number | null;
@@ -143,6 +144,7 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
       slug: sp.slug,
       category: sp.category,
       price: sp.price,
+      priceUsd: (sp as { priceUsd?: number }).priceUsd,
       shortDescription: sp.shortDescription,
     });
   }
@@ -162,9 +164,16 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
     const renderProductLine = (p: ContextProduct): string => {
       const short = p.shortDescription ? ` — ${p.shortDescription.slice(0, 80)}` : '';
       const url   = `https://moslimleader.com/shop/${p.slug}`;
+
+      // Build price string: EGP always + international price if defined
+      const intlUsd = (p.priceUsd && p.priceUsd > 0) ? p.priceUsd : null;
+      const intlSar = intlUsd ? Math.round(intlUsd * 3.75) : null;
+      const priceStr = intlUsd
+        ? `${Math.round(p.price)} ج.م (دولي: ${intlUsd} $ / ${intlSar} ﷼)`
+        : `${Math.round(p.price)} ج.م`;
       const parts: string[] = [
         `- ${p.name}${short}`,
-        `${Math.round(p.price)} ج.م`,
+        priceStr,
       ];
       // Age range — explicit signal so the model can match recommendations.
       if (p.minAge !== null && p.minAge !== undefined && p.maxAge !== null && p.maxAge !== undefined) {
@@ -318,6 +327,7 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
   lines.push('3. لو السؤال عن منتج غير موجود في القائمة، قل: "مش متوفر حالياً، تقدري تتصفّحي المتجر للمنتجات المشابهة".');
   lines.push('4. لو السؤال عن شحن، اذكر سعر المحافظة من قائمة الشحن.');
   lines.push('5. لا تذكر منتج أو سعر مش موجود في الداتا أعلاه أبداً.');
+  lines.push('6. لو العميل من خارج مصر (السعودية، الإمارات، الكويت، إلخ)، اذكر السعر الدولي مباشرة ($ أو ﷼) دون تحويل من الجنيه — استخدم الأرقام الموجودة في قوسين بجانب كل منتج (دولي: X $ / Y ﷼).');
 
   const text = lines.join('\n');
 

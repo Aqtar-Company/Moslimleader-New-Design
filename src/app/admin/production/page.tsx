@@ -25,6 +25,7 @@ interface Batch {
   totalCost: number;
   batchDate: string;
   notes: string | null;
+  isOpeningBalance: boolean;
 }
 
 const fmt = (n: number) => n.toLocaleString('en-US');
@@ -49,6 +50,11 @@ export default function ProductionPage() {
     batchDate: new Date().toISOString().slice(0, 10),
     notes: '',
   });
+
+  // Edit batch state
+  const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
+  const [editForm, setEditForm] = useState({ quantity: '', unitCost: '', supplierId: '', batchDate: '', notes: '' });
+  const [editSaving, setEditSaving] = useState(false);
 
   const load = async () => {
     try {
@@ -83,6 +89,7 @@ export default function ProductionPage() {
   const hasVariants = Array.isArray(selectedVariants) && selectedVariants.length > 0;
 
   const totalPreview = (Number(form.quantity) || 0) * (Number(form.unitCost) || 0);
+  const editTotalPreview = (Number(editForm.quantity) || 0) * (Number(editForm.unitCost) || 0);
 
   const submit = async () => {
     if (!form.productId) { addToast('اختر منتج', 'warning'); return; }
@@ -121,6 +128,45 @@ export default function ProductionPage() {
     }
   };
 
+  const openEdit = (b: Batch) => {
+    setEditingBatch(b);
+    setEditForm({
+      quantity: String(b.quantity),
+      unitCost: String(b.unitCost),
+      supplierId: b.supplierId ?? '',
+      batchDate: b.batchDate.slice(0, 10),
+      notes: b.notes ?? '',
+    });
+  };
+
+  const submitEdit = async () => {
+    if (!editingBatch) return;
+    const qty = Number(editForm.quantity);
+    const cost = Number(editForm.unitCost);
+    if (!Number.isFinite(qty) || qty <= 0) { addToast('الكمية غير صحيحة', 'warning'); return; }
+    if (!Number.isFinite(cost) || cost < 0) { addToast('التكلفة غير صحيحة', 'warning'); return; }
+    setEditSaving(true);
+    try {
+      const res = await adminFetch(`/api/admin/production/batches/${editingBatch.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quantity: qty,
+          unitCost: cost,
+          supplierId: editForm.supplierId || null,
+          batchDate: editForm.batchDate,
+          notes: editForm.notes,
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) { addToast(d.error || 'فشل التعديل', 'error'); }
+      else { addToast('تم التعديل', 'success'); setEditingBatch(null); load(); }
+    } catch {
+      addToast('فشل التعديل', 'error');
+    }
+    setEditSaving(false);
+  };
+
   if (forbidden) return <ForbiddenState requiredPerm="production.read" />;
   if (loading) return <Spinner />;
 
@@ -151,7 +197,7 @@ export default function ProductionPage() {
         <KPI label="إجمالي تكلفة الإنتاج" value={`${fmt(totalSpend)} ج.م`} />
       </div>
 
-      {/* Form */}
+      {/* Create Form */}
       {showForm && (
         <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
           <p className="text-sm font-black text-gray-900">باتش جديد</p>
@@ -181,8 +227,6 @@ export default function ProductionPage() {
             <Field label="تاريخ الباتش"><input type="date" value={form.batchDate} onChange={e => setForm({ ...form, batchDate: e.target.value })} className={inputCls} dir="ltr" /></Field>
             <Field label="ملاحظات (اختياري)" wide><textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} className={inputCls + ' resize-none'} /></Field>
           </div>
-
-          {/* Live total + ledger preview */}
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900">
             <p>إجمالي التكلفة: <strong>{fmt(Math.round(totalPreview * 100) / 100)} ج.م</strong></p>
             {form.supplierId && <p className="mt-1">سيتسجل تلقائيًا قيد <strong>فاتورة</strong> على حساب المورد بنفس المبلغ.</p>}
@@ -218,11 +262,12 @@ export default function ProductionPage() {
                   <th className="px-3 py-3 text-right">الكمية</th>
                   <th className="px-3 py-3 text-right">تكلفة الوحدة</th>
                   <th className="px-3 py-3 text-right">الإجمالي</th>
+                  <th className="px-3 py-3 text-right"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {batches.map(b => (
-                  <tr key={b.id}>
+                  <tr key={b.id} className="hover:bg-gray-50/50">
                     <td className="px-3 py-2.5 text-gray-600">{new Date(b.batchDate).toLocaleDateString('en-GB')}</td>
                     <td className="px-3 py-2.5 font-bold text-gray-900">{b.productName}</td>
                     <td className="px-3 py-2.5 text-gray-600">{b.variantName || '—'}</td>
@@ -232,10 +277,79 @@ export default function ProductionPage() {
                     <td className="px-3 py-2.5 font-bold">{fmt(b.quantity)}</td>
                     <td className="px-3 py-2.5">{fmt(b.unitCost)} ج.م</td>
                     <td className="px-3 py-2.5 font-black text-[#6B21A8]">{fmt(b.totalCost)} ج.م</td>
+                    <td className="px-3 py-2.5">
+                      <button
+                        onClick={() => openEdit(b)}
+                        disabled={b.isOpeningBalance}
+                        title={b.isOpeningBalance ? 'رصيد افتتاحي — لا يُعدَّل' : 'تعديل الباتش'}
+                        className="px-2 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 text-[10px] font-bold transition disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        ✏️
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingBatch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={e => { if (e.target === e.currentTarget) setEditingBatch(null); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4" dir="rtl">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-black text-gray-900">تعديل الباتش</h2>
+                <p className="text-xs text-gray-500 mt-0.5">{editingBatch.productName}{editingBatch.variantName ? ` — ${editingBatch.variantName}` : ''}</p>
+              </div>
+              <button onClick={() => setEditingBatch(null)} className="text-gray-400 hover:text-gray-600 text-lg font-bold">✕</button>
+            </div>
+
+            {/* Warning */}
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 text-xs text-orange-900 space-y-1">
+              <p>⚠️ <strong>تغيير الكمية</strong> سيُعدّل المخزون تلقائياً بالفرق (+ أو −).</p>
+              <p>⚠️ <strong>تغيير التكلفة أو المورد</strong> سيُعدّل حساب المورد تلقائياً.</p>
+              <p className="text-orange-600">المنتج والموديل لا يمكن تعديلهما — أنشئ باتشاً جديداً إذا لزم.</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="الكمية *">
+                <input type="number" min="1" value={editForm.quantity} onChange={e => setEditForm({ ...editForm, quantity: e.target.value })} className={inputCls} dir="ltr" />
+              </Field>
+              <Field label="تكلفة الوحدة (ج.م) *">
+                <input type="number" step="0.01" min="0" value={editForm.unitCost} onChange={e => setEditForm({ ...editForm, unitCost: e.target.value })} className={inputCls} dir="ltr" />
+              </Field>
+              <Field label="المورد">
+                <select value={editForm.supplierId} onChange={e => setEditForm({ ...editForm, supplierId: e.target.value })} className={inputCls}>
+                  <option value="">— بدون مورد —</option>
+                  {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </Field>
+              <Field label="تاريخ الباتش">
+                <input type="date" value={editForm.batchDate} onChange={e => setEditForm({ ...editForm, batchDate: e.target.value })} className={inputCls} dir="ltr" />
+              </Field>
+              <Field label="ملاحظات" wide>
+                <textarea rows={2} value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} className={inputCls + ' resize-none'} />
+              </Field>
+            </div>
+
+            {/* Total preview */}
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900">
+              <p>الإجمالي الجديد: <strong>{fmt(Math.round(editTotalPreview * 100) / 100)} ج.م</strong>
+                {editTotalPreview !== editingBatch.totalCost && (
+                  <span className="text-gray-500 mr-2">(كان: {fmt(editingBatch.totalCost)} ج.م)</span>
+                )}
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setEditingBatch(null)} className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold transition">إلغاء</button>
+              <button onClick={submitEdit} disabled={editSaving} className="px-4 py-2 rounded-xl bg-[#F5C518] hover:bg-amber-400 text-[#1a1a2e] text-xs font-black transition disabled:opacity-50">
+                {editSaving ? 'جاري الحفظ...' : '💾 حفظ التعديلات'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -247,7 +361,7 @@ const inputCls = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm out
 
 function Field({ label, wide, children }: { label: string; wide?: boolean; children: React.ReactNode }) {
   return (
-    <div className={wide ? 'md:col-span-3' : ''}>
+    <div className={wide ? 'col-span-2' : ''}>
       <label className="block text-[10px] text-gray-500 font-bold mb-1">{label}</label>
       {children}
     </div>

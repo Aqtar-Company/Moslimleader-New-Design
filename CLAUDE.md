@@ -71,7 +71,7 @@ src/
     shipping.ts           # Egypt shipping zones
     intl-shipping.ts      # International shipping
     order-email.ts        # Order confirmation email HTML (admin + customer)
-    invoice-pdf.ts        # PDF invoice generation (pdf-lib, fallback graceful)
+    invoice-pdf.ts        # PDF invoice generation — logo embedded as base64, wkhtmltopdf primary
     paypal.ts             # PayPal SDK helpers (create/capture order)
     sanitize.ts           # Input sanitization
     products.ts           # Static product definitions (fallback only — DB overrides take priority)
@@ -85,6 +85,7 @@ public/
   covers/                 # Book cover images (gitignored — uploaded via admin)
   products/               # Admin-uploaded product images (gitignored)
   library-hero.jpg        # Library hero background (gitignored — upload manually)
+  ml-logo-new.png         # Logo used in invoice PDF (must exist on server)
 ```
 
 ## Architecture: Static Products + Overrides
@@ -130,6 +131,9 @@ When admin saves a static product, BOTH the override AND the DB copy are updated
 - **Schema-first rule:** When adding a new Prisma model that code references, the model MUST be in `schema.prisma` in the **same commit**. Code that calls `prisma.someModel` before the model is in the schema will build locally (types already generated) but crash on the server with `Property 'someModel' does not exist on type 'PrismaClient'`.
 - **`getProductPrice()` returns PriceResult, not a number:** `src/lib/geo-pricing.ts` → returns `{ price, currency, currencyEn, zone }`. For arithmetic use `.price`; for `formatPrice` spread and override: `{ ...priceResult, price: priceResult.price * qty }`. Never cast to `number`.
 - **ISR is forbidden on price/stock pages:** Pages that display prices or real-time stock must use `export const dynamic = 'force-dynamic'`. Never use `export const revalidate = N` — admin price updates are invisible to users for up to N seconds.
+- **Never hardcode `ج.م` or `EGP` in price display:** Any component that shows a product price MUST use `useRegionalPricing().getProductPrice()` + `formatPrice()` — not `product.price` directly. Server components that can't use hooks must extract price display into a `'use client'` child component (see `RelatedProductPrice.tsx` pattern).
+- **AI chat bot currency:** The `buildLocalPriceBlock(rawProducts, countryCode)` function (`src/lib/assistant-knowledge.ts`) generates a localized price block injected at the TOP of the AI system prompt. This overrides the default EGP prices. The block includes a strict prohibition on mentioning EGP to non-Egyptian customers. For the website chat, `countryCode` comes from `RegionalPricingContext` (client sends it). For Facebook Messenger, it's fetched from the Graph API via `fetchUserCountryCode(psid)` in `src/lib/ai-facebook-assistant.ts`.
+- **Invoice PDF logo:** `src/lib/invoice-pdf.ts` reads `public/ml-logo-new.png` from disk at generation time and embeds it as a base64 data URI. Never use an external HTTPS URL for images in wkhtmltopdf — it blocks all external HTTP requests.
 
 ## Environment Variables (required)
 
@@ -308,6 +312,7 @@ Books are protected from download at two levels:
 - **Static product overrides** — ALWAYS apply product-overrides for `source='static'` DB products (see Architecture section)
 - **SSR timeout** — `page.tsx` getProducts() has 3s timeout; falls back to static products if DB is slow
 - **`variantStocks` index shift** — Variant stocks are stored as `{"0": 5, "1": 3}` keyed by variant array index. If a variant is deleted from the middle of the array, all subsequent indices shift and stored stocks become mismatched. Admin must manually re-enter stocks after deleting a middle variant.
+- **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)
 
@@ -348,3 +353,12 @@ Books are protected from download at two levels:
 | TypeScript build error: `PriceResult` not assignable to `number` | `getProductPrice()` returns `{ price, currency, ... }` object, not a number | Use `.price` for math; spread result + override `price` for `formatPrice` |
 | `variantStocks` doesn't exist on `MergedProduct` | Field missing from `Product` interface in `src/types/index.ts` | Added `variantStocks?: Record<string, number> \| null \| undefined` |
 | Admin catalog-leads page always empty | `/api/admin/catalog-leads/route.ts` didn't exist | Created route with GET (paginated list) + PATCH (update status/orderId) |
+| Invoice PDF: logo missing (empty box) | `wkhtmltopdf` blocks external HTTPS image requests — `<img src="https://...webp">` never loads | Read logo from `public/ml-logo-new.png` at generation time, embed as `data:image/png;base64,...` in HTML |
+| Invoice PDF: no background colors (white boxes instead of dark header/footer) | `wkhtmltopdf` requires `-webkit-print-color-adjust: exact` + `print-color-adjust: exact` in CSS and `--background` CLI flag | Added both to `src/lib/invoice-pdf.ts` |
+| Invoice PDF: CSS gradients not rendering | `wkhtmltopdf`'s WebKit engine renders `linear-gradient` inconsistently | Replaced gradients with solid `#1a1a2e` — reliable across all renderers |
+| Production batch exclusion shows "18" not "409" in Zakat | Engine correctly excludes only what's in stock (18 units), but UI had no explanation | Added `excludedItems[]` to `ZakatComputation` interface; UI now shows batch total vs. effective exclusion with warning |
+| Production batch: `isOpeningBalance` missing from API response | Field existed in schema but wasn't returned by `GET /api/admin/production/batches` | Added `isOpeningBalance: b.isOpeningBalance` to response map |
+| Ameen chat & Facebook bot show EGP prices to Saudi/UAE customers | `buildAssistantContext()` always formatted prices in EGP; AI had no currency directive | Added `buildLocalPriceBlock(rawProducts, countryCode)` injected at TOP of system prompt with strict "⚠️ يُحظر ذكر ج.م" directive; client sends `countryCode` from `RegionalPricingContext` |
+| `AmeenProductCard` shows price in EGP regardless of country | Hardcoded `{product.price} ج.م` | Use `useRegionalPricing().getProductPrice()` + `formatPrice()` |
+| `RelatedProducts` section shows EGP for all users | Server component hardcoded `p.price` + "ج.م" | Extracted `RelatedProductPrice` client component using `useRegionalPricing()` |
+| Facebook bot country detection | No country detection — bot always assumed Egypt | Added `fetchUserCountryCode(psid)` that fetches locale from FB Graph API (`ar_SA` → `SA`), cached in Setting table per-PSID |

@@ -1,6 +1,7 @@
 import { prisma } from './prisma';
 import { products as staticProducts } from './products';
 import { applyOverride, loadStaticOverrides } from './product-overrides';
+import { COUNTRY_CURRENCIES, countryToZone } from './geo-pricing';
 import type { Product } from '@/types';
 
 // Knowledge-base assembler for the AI Facebook Assistant.
@@ -15,9 +16,18 @@ import type { Product } from '@/types';
 // hammer the DB. Invalidated automatically by the cache TTL —
 // admin doesn't need to refresh manually.
 
+export interface RawContextProduct {
+  name: string;
+  slug: string;
+  price: number;
+  priceUsd?: number;
+}
+
 export interface AssistantContext {
   /** The text block injected into the system prompt. Arabic, ~3K tokens max. */
   text: string;
+  /** Raw product list for generating localized price blocks per user country. */
+  rawProducts: RawContextProduct[];
   /** Coarse stats so the admin UI can show "what the bot knows". */
   stats: {
     productCount: number;
@@ -50,7 +60,7 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
     prisma.product.findMany({
       where: { inStock: true },
       select: {
-        id: true, slug: true, name: true, nameEn: true, price: true,
+        id: true, slug: true, name: true, nameEn: true, price: true, priceUsd: true,
         category: true, source: true, shortDescription: true,
         // Sales context fields: age range (B1), stock level (B3),
         // review aggregate (B3 social proof).
@@ -87,6 +97,7 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
   // what the customer sees on the site.
   type ContextProduct = Pick<Product, 'name' | 'slug' | 'category' | 'price'> & {
     id?: string;
+    priceUsd?: number;
     shortDescription?: string;
     minAge?: number | null;
     maxAge?: number | null;
@@ -143,6 +154,7 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
       slug: sp.slug,
       category: sp.category,
       price: sp.price,
+      priceUsd: (sp as { priceUsd?: number }).priceUsd,
       shortDescription: sp.shortDescription,
     });
   }
@@ -162,6 +174,7 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
     const renderProductLine = (p: ContextProduct): string => {
       const short = p.shortDescription ? ` — ${p.shortDescription.slice(0, 80)}` : '';
       const url   = `https://moslimleader.com/shop/${p.slug}`;
+
       const parts: string[] = [
         `- ${p.name}${short}`,
         `${Math.round(p.price)} ج.م`,
@@ -323,6 +336,12 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
 
   const ctx: AssistantContext = {
     text,
+    rawProducts: products.map(p => ({
+      name: p.name,
+      slug: p.slug,
+      price: p.price,
+      priceUsd: p.priceUsd,
+    })),
     stats: {
       productCount: products.length,
       bookCount: books.length,
@@ -352,4 +371,40 @@ export async function getAssistantFaqs(): Promise<string> {
   const row = await prisma.setting.findUnique({ where: { key: 'assistant-faqs' } });
   if (!row?.value) return '';
   return typeof row.value === 'string' ? row.value : JSON.stringify(row.value);
+}
+
+// Build a localized price block for non-Egyptian users so the AI
+// knows exactly what price to quote in the customer's local currency.
+// Uses the same formula as geo-pricing.ts: priceUsd → local via usdRate.
+export function buildLocalPriceBlock(
+  rawProducts: RawContextProduct[],
+  countryCode: string,
+): string {
+  const zone = countryToZone(countryCode);
+
+  // Egyptian customers: no extra block needed — the main context already
+  // lists EGP prices and the AI defaults to them.
+  if (zone === 'egypt') return '';
+
+  const cc = COUNTRY_CURRENCIES[countryCode.toUpperCase()];
+  const symbol = cc?.currency ?? '$';
+  const usdRate = cc?.usdRate ?? 1;
+  const countryName = cc?.nameAr ?? countryCode;
+
+  const lines: string[] = [];
+  lines.push(`## ⚠️ تعليمة عملة العميل — أولوية قصوى:`);
+  lines.push(`العميل من ${countryName}. يُحظر تمامًا ذكر أي سعر بالجنيه المصري (ج.م) في هذه المحادثة.`);
+  lines.push(`استخدم الأسعار التالية بـ${symbol} فقط — هذه الأسعار الرسمية للمتجر لعملاء ${countryName}:`);
+
+  for (const p of rawProducts) {
+    const usdPrice = (p.priceUsd && p.priceUsd > 0) ? p.priceUsd : p.price / 50;
+    const localPrice = Math.round(usdPrice * usdRate * 100) / 100;
+    // Format: round to 2 decimals for KWD/BHD/OMR, integer for others
+    const formatted = localPrice < 10
+      ? localPrice.toFixed(2)
+      : String(Math.round(localPrice));
+    lines.push(`- ${p.name}: ${formatted} ${symbol}`);
+  }
+
+  return lines.join('\n');
 }

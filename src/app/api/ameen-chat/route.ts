@@ -7,7 +7,7 @@ import {
   shouldAutoReply,
   extractLeadTag,
 } from '@/lib/ai-facebook-assistant';
-import { buildAssistantContext } from '@/lib/assistant-knowledge';
+import { buildAssistantContext, buildLocalPriceBlock } from '@/lib/assistant-knowledge';
 import {
   extractFromMessage,
   updateProfile,
@@ -48,6 +48,9 @@ function rateLimit(ip: string): boolean {
 interface ChatBody {
   sessionId?: string;
   message?: string;
+  /** ISO 3166-1 alpha-2 country code from the client's RegionalPricingContext.
+   *  Used to serve prices in the customer's local currency. Defaults to 'EG'. */
+  countryCode?: string;
   /** Optional caller-supplied identity. The model also tries to
    *  extract these from message text, but a logged-in user can
    *  pass them up front so the bot personalises right away. */
@@ -97,12 +100,13 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: msg }, { status: 503 });
       }
       body = {
-        sessionId: form.get('sessionId')?.toString() ?? '',
-        message: text,
-        name:    form.get('name')?.toString()    ?? undefined,
-        email:   form.get('email')?.toString()   ?? undefined,
-        phone:   form.get('phone')?.toString()   ?? undefined,
-        website: form.get('website')?.toString() ?? undefined,
+        sessionId:   form.get('sessionId')?.toString()   ?? '',
+        message:     text,
+        countryCode: form.get('countryCode')?.toString() ?? undefined,
+        name:        form.get('name')?.toString()        ?? undefined,
+        email:       form.get('email')?.toString()       ?? undefined,
+        phone:       form.get('phone')?.toString()       ?? undefined,
+        website:     form.get('website')?.toString()     ?? undefined,
       };
       transcribed = true;
     } catch {
@@ -215,7 +219,10 @@ export async function POST(req: NextRequest) {
   // ── Build prompt + call AI ──
   const context = await buildAssistantContext();
   const profileBlock = renderProfileForPrompt(merged);
+  const countryCode = (body.countryCode ?? 'EG').toUpperCase().slice(0, 2);
+  const localPriceBlock = buildLocalPriceBlock(context.rawProducts, countryCode);
   const enrichedPrompt =
+    (localPriceBlock ? `${localPriceBlock}\n\n` : '') +
     `${settings.systemPrompt}\n\n` +
     `## ملاحظة عن القناة (موقع مسلم ليدر):\n` +
     `الردود تظهر في دردشة على https://moslimleader.com.\n\n` +

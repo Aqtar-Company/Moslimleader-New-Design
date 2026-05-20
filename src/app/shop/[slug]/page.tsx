@@ -15,12 +15,19 @@ async function resolveProduct(slug: string): Promise<Product | null> {
   try {
     const dbProduct = await prisma.product.findUnique({ where: { slug } });
     if (dbProduct) {
-      // Static-sourced products in DB may have stale prices — apply overrides
-      // via the shared helper so the detail page mirrors home + list pages.
       if (dbProduct.source === 'static') {
-        const overrides = await loadStaticOverrides();
-        const merged = applyOverride(dbProduct as unknown as Product, overrides[dbProduct.id]);
-        return merged;
+        // DB copy may have stale price/images if products.ts was updated after seeding.
+        // Always use the current static definition + overrides as the price/data source,
+        // but preserve DB-managed stock fields (updated by orders / production batches).
+        const staticMerged = await getMergedStaticProduct(slug);
+        if (staticMerged) {
+          return {
+            ...staticMerged,
+            stock: dbProduct.stock,
+            inStock: dbProduct.inStock,
+            variantStocks: dbProduct.variantStocks as Product['variantStocks'],
+          } as Product;
+        }
       }
       return dbProduct as unknown as Product;
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/Toast';
@@ -70,7 +70,13 @@ export default function NotifyRequestsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'فشل الإرسال');
-      addToast(`تم إرسال الإشعار لـ ${data.sent} مشترك في "${productName}"`, 'success');
+
+      const parts: string[] = [];
+      if (data.sent > 0) parts.push(`${data.sent} إيميل`);
+      if (data.whatsapp > 0) parts.push(`${data.whatsapp} واتساب (يدوي)`);
+      if (data.failed > 0) parts.push(`${data.failed} فشل`);
+      const summary = parts.length > 0 ? parts.join(' · ') : 'لا يوجد';
+      addToast(`"${productName}" — ${summary}`, data.failed > 0 ? 'warning' : 'success');
       await load();
     } catch (err) {
       addToast(err instanceof Error ? err.message : 'فشل الإرسال', 'error');
@@ -79,8 +85,11 @@ export default function NotifyRequestsPage() {
     }
   };
 
-  const totalPending = groups.reduce((s, g) => s + g.pending, 0);
-  const totalAll = groups.reduce((s, g) => s + g.rows.length, 0);
+  // Memoised so the O(n) reduces don't run on every filter-tab re-render.
+  const { totalPending, totalAll } = useMemo(() => ({
+    totalPending: groups.reduce((s, g) => s + g.pending, 0),
+    totalAll: groups.reduce((s, g) => s + g.rows.length, 0),
+  }), [groups]);
 
   return (
     <div className="space-y-6" dir="rtl">

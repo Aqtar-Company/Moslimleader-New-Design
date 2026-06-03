@@ -20,6 +20,7 @@ export default function ProductCard({ product, priceLoading = false, modelIndex 
   const router = useRouter();
   const [added, setAdded] = useState(false);
   const hasVariants = product.variants && product.variants.length > 0;
+  const isComingSoon = (product as { comingSoon?: boolean }).comingSoon;
 
   const baseName = isRtl ? product.name : (product.nameEn || product.name);
   const matchedVariant = modelIndex !== undefined
@@ -48,11 +49,15 @@ export default function ProductCard({ product, priceLoading = false, modelIndex 
           quality={75}
           className="object-cover hover:scale-105 transition-transform duration-300"
         />
-        {!product.inStock && !priceLoading && (
+        {isComingSoon ? (
+          <div className="absolute inset-0 bg-orange-500/30 flex items-center justify-center">
+            <span className="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full">{t('product.comingSoon')}</span>
+          </div>
+        ) : (!product.inStock && !priceLoading && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
             <span className="bg-white text-gray-800 text-xs font-bold px-3 py-1 rounded-full">{t('product.outOfStock')}</span>
           </div>
-        )}
+        ))}
         {/* Wishlist heart */}
         <button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(product); }}
@@ -81,31 +86,40 @@ export default function ProductCard({ product, priceLoading = false, modelIndex 
           ) : (
             <span className="text-gray-900 font-bold text-sm sm:text-lg shrink-0">{formatPrice(priceResult)}</span>
           )}
-          <button
-            disabled={(!product.inStock && !priceLoading) || added || priceLoading}
-            onClick={() => {
-              if (!product.inStock || priceLoading) return;
-              if (hasVariants) {
-                router.push(href);
-                return;
-              }
-              addItem(product, modelIndex);
-              addToast(isRtl ? `✓ أُضيف "${displayName}" للسلة` : `✓ "${displayName}" added to cart`, 'success');
-              setAdded(true);
-              setTimeout(() => setAdded(false), 1500);
-            }}
-            className={`text-white text-xs sm:text-sm font-semibold px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all whitespace-nowrap shrink-0 ${
-              added
-                ? 'bg-green-500 scale-95'
-                : priceLoading
-                  ? 'bg-gray-300 cursor-not-allowed'
-                  : product.inStock
-                    ? 'bg-purple-700 hover:bg-purple-800 active:scale-95'
-                    : 'bg-gray-300 cursor-not-allowed'
-            }`}
-          >
-            {added ? t('product.added') : priceLoading ? <span className="h-4 w-16 bg-gray-400 rounded inline-block animate-pulse" /> : product.inStock ? (hasVariants ? (isRtl ? 'اختر الموديل' : 'Choose Model') : t('product.addToCart')) : t('product.unavailable')}
-          </button>
+          {isComingSoon ? (
+            <button
+              onClick={() => router.push(href)}
+              className="text-white text-xs sm:text-sm font-semibold px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all whitespace-nowrap shrink-0 bg-orange-500 hover:bg-orange-600 active:scale-95"
+            >
+              {t('product.notifyMe')}
+            </button>
+          ) : (
+            <button
+              disabled={(!product.inStock && !priceLoading) || added || priceLoading}
+              onClick={() => {
+                if (!product.inStock || priceLoading) return;
+                if (hasVariants) {
+                  router.push(href);
+                  return;
+                }
+                addItem(product, modelIndex);
+                addToast(isRtl ? `✓ أُضيف "${displayName}" للسلة` : `✓ "${displayName}" added to cart`, 'success');
+                setAdded(true);
+                setTimeout(() => setAdded(false), 1500);
+              }}
+              className={`text-white text-xs sm:text-sm font-semibold px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all whitespace-nowrap shrink-0 ${
+                added
+                  ? 'bg-green-500 scale-95'
+                  : priceLoading
+                    ? 'bg-gray-300 cursor-not-allowed'
+                    : product.inStock
+                      ? 'bg-purple-700 hover:bg-purple-800 active:scale-95'
+                      : 'bg-gray-300 cursor-not-allowed'
+              }`}
+            >
+              {added ? t('product.added') : priceLoading ? <span className="h-4 w-16 bg-gray-400 rounded inline-block animate-pulse" /> : product.inStock ? (hasVariants ? (isRtl ? 'اختر الموديل' : 'Choose Model') : t('product.addToCart')) : t('product.unavailable')}
+            </button>
+          )}
         </div>
       </div>
     </div>

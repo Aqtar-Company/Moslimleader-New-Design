@@ -204,6 +204,11 @@ const translations = {
     'cat.مفكرات': 'مفكرات',
     'cat.إكسسوار': 'إكسسوار',
     'cat.مجات': 'مجات',
+    'cat.أدوات مكتبية': 'أدوات مكتبية',
+    'cat.المدرسة': 'المدرسة',
+    'cat.هدايا': 'هدايا',
+    'cat.ألعاب تربوية': 'ألعاب تربوية',
+    'cat.ثقافة دينية': 'ثقافة دينية',
 
     // Tags
     'tag.أسرة': 'أسرة',
@@ -488,6 +493,11 @@ const translations = {
     'cat.مفكرات': 'Notebooks',
     'cat.إكسسوار': 'Accessories',
     'cat.مجات': 'Mugs',
+    'cat.أدوات مكتبية': 'Stationery',
+    'cat.المدرسة': 'School',
+    'cat.هدايا': 'Gifts',
+    'cat.ألعاب تربوية': 'Educational Toys',
+    'cat.ثقافة دينية': 'Islamic Culture',
 
     // Tags
     'tag.أسرة': 'Family',

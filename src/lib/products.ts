@@ -996,6 +996,11 @@ export const categories: Category[] = [
   { id: 'مفكرات', name: 'مفكرات', count: products.filter(p => p.category === 'مفكرات').length },
   { id: 'إكسسوار', name: 'إكسسوار', count: products.filter(p => p.category === 'إكسسوار').length },
   { id: 'مجات', name: 'مجات', count: products.filter(p => p.category === 'مجات').length },
+  { id: 'أدوات مكتبية', name: 'أدوات مكتبية', count: products.filter(p => p.category === 'أدوات مكتبية').length },
+  { id: 'المدرسة', name: 'المدرسة', count: products.filter(p => p.category === 'المدرسة').length },
+  { id: 'هدايا', name: 'هدايا', count: products.filter(p => p.category === 'هدايا').length },
+  { id: 'ألعاب تربوية', name: 'ألعاب تربوية', count: products.filter(p => p.category === 'ألعاب تربوية').length },
+  { id: 'ثقافة دينية', name: 'ثقافة دينية', count: products.filter(p => p.category === 'ثقافة دينية').length },
 ];
 
 export function getProductBySlug(slug: string): Product | undefined {

@@ -28,6 +28,7 @@ const NAV: NavItem[] = [
   { href: '/admin/inventory/movements', label: 'سجل المخزون',     icon: '🧾', requireAny: ['inventory.read'] },
   // —— Catalogue ——
   { href: '/admin/products',          label: 'المنتجات',          icon: '🛍️', requireAny: ['products.read'] },
+  { href: '/admin/notify-requests',   label: 'طلبات الإشعار',     icon: '🔔', requireAny: ['products.read'] },
   { href: '/admin/books',             label: 'المكتبة الرقمية',   icon: '📚', requireAny: ['books.read'] },
   { href: '/admin/series',            label: 'السلاسل',           icon: '📖', requireAny: ['books.read'] },
   // —— Production & sourcing ——

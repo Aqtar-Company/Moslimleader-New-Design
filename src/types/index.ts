@@ -38,6 +38,7 @@ export interface Product {
   videos?: string[];
   videoUrl?: string | null;
   weight: number; // grams
+  comingSoon?: boolean;
   reviews?: Review[];
 }
 

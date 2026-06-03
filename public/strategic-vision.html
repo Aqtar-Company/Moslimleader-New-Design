@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>مسلم ليدر — التصور الاستراتيجي للشراكة 2026</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body {
+    font-family:'Cairo',sans-serif;
+    background:#f0f7f4;
+    color:#0d2418;
+    line-height:1.7;
+  }
+  .page {
+    max-width:1100px;
+    margin:0 auto;
+    padding:40px 24px;
+  }
+
+  /* ─── Hero ────────────────────────────────────────────── */
+  .hero {
+    background:linear-gradient(135deg,#0d2418 0%,#1a4a2e 50%,#2d7a4f 100%);
+    color:white;
+    border-radius:32px;
+    padding:60px 40px;
+    text-align:center;
+    margin-bottom:40px;
+    box-shadow:0 30px 80px rgba(10,40,20,.3);
+    position:relative;
+    overflow:hidden;
+  }
+  .hero::before {
+    content:'';
+    position:absolute;
+    top:-50%; left:-30%;
+    width:80%; height:200%;
+    background:radial-gradient(circle, rgba(245,197,24,.15) 0%, transparent 70%);
+    pointer-events:none;
+  }
+  .hero .label { color:#F5C518; font-size:13px; font-weight:700; letter-spacing:3px; text-transform:uppercase; }
+  .hero h1 { font-size:54px; font-weight:900; margin:14px 0 8px; }
+  .hero .subtitle { font-size:18px; opacity:.85; }
+  .hero-tagline {
+    margin-top:30px;
+    padding:24px 32px;
+    background:rgba(245,197,24,.1);
+    border:2px solid rgba(245,197,24,.3);
+    border-radius:16px;
+    font-size:18px;
+    font-weight:700;
+    line-height:1.8;
+    font-style:italic;
+  }
+  .hero-tagline span { color:#F5C518; }
+  .hero-meta { display:flex; justify-content:center; gap:20px; margin-top:28px; flex-wrap:wrap; }
+  .hero-meta-item {
+    background:rgba(255,255,255,.07);
+    backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,.12);
+    padding:14px 22px;
+    border-radius:14px;
+    font-size:13px;
+  }
+  .hero-meta-item b { color:#F5C518; font-weight:800; }
+
+  /* ─── Sections ─────────────────────────────────────────── */
+  .section { margin:50px 0; }
+  .section-title {
+    display:flex; align-items:center; gap:14px;
+    margin-bottom:24px;
+  }
+  .section-title .num {
+    width:44px; height:44px;
+    background:linear-gradient(135deg,#F5C518,#e6a200);
+    color:#0d2418;
+    border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:900; font-size:18px;
+    flex-shrink:0;
+  }
+  .section-title h2 { font-size:28px; font-weight:900; color:#0d2418; }
+  .section-title .sub { color:#557a63; font-size:14px; margin-top:2px; }
+
+  /* ─── Cards ────────────────────────────────────────────── */
+  .grid { display:grid; gap:18px; }
+  .grid-2 { grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); }
+  .grid-3 { grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); }
+  .grid-4 { grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); }
+
+  .card {
+    background:white;
+    border-radius:20px;
+    padding:24px;
+    box-shadow:0 4px 16px rgba(10,40,20,.07);
+    border:1px solid #e0ede6;
+    transition:transform .2s,box-shadow .2s;
+  }
+  .card:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(10,40,20,.13); }
+  .card .icon { font-size:32px; margin-bottom:8px; }
+  .card .title { font-size:13px; color:#557a63; font-weight:700; text-transform:uppercase; letter-spacing:1px; }
+  .card .value { font-size:26px; font-weight:900; margin-top:6px; color:#0d2418; }
+  .card .delta { font-size:12px; color:#16a34a; font-weight:700; margin-top:4px; }
+  .card .desc { font-size:14px; color:#4a6357; margin-top:10px; line-height:1.7; }
+
+  .card-highlight {
+    background:linear-gradient(135deg,#0d2418,#1a4a2e);
+    color:white;
+    border-color:#1a4a2e;
+  }
+  .card-highlight .title { color:#F5C518; }
+  .card-highlight .value { color:white; font-size:30px; }
+  .card-highlight .desc { color:rgba(255,255,255,.75); }
+
+  .card-gold {
+    background:linear-gradient(135deg,#fef7d8,#fde88a);
+    border:2px solid #F5C518;
+  }
+  .card-gold .desc { color:#5a4500; }
+  .card-gold .value { color:#7a5a00; }
+
+  .card-green {
+    background:linear-gradient(135deg,#e8f5ee,#c8e8d5);
+    border:2px solid #2d7a4f;
+  }
+  .card-green .desc { color:#1a4a2e; }
+  .card-green .value { color:#0d5a2e; }
+
+  /* ─── Feature Box ───────────────────────────────────────── */
+  .feature-box {
+    background:linear-gradient(135deg,#fef7d8,#fffbe8);
+    border:3px solid #F5C518;
+    border-radius:24px;
+    padding:32px;
+    margin-bottom:20px;
+    position:relative;
+  }
+  .feature-box::before {
+    content:'⭐';
+    position:absolute;
+    top:-18px; right:24px;
+    background:#F5C518;
+    width:40px; height:40px;
+    border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px;
+  }
+  .feature-box h3 { font-size:22px; font-weight:900; margin-bottom:8px; }
+  .feature-box .tag { display:inline-block; background:#0d2418; color:#F5C518; font-size:11px; padding:4px 12px; border-radius:8px; font-weight:800; letter-spacing:2px; margin-bottom:12px; }
+
+  /* ─── Tables ────────────────────────────────────────────── */
+  table { width:100%; border-collapse:separate; border-spacing:0; background:white; border-radius:16px; overflow:hidden; box-shadow:0 4px 16px rgba(10,40,20,.07); }
+  th { background:#0d2418; color:#F5C518; text-align:right; padding:14px 18px; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:1px; }
+  td { padding:14px 18px; border-top:1px solid #e8f2ec; font-size:14px; }
+  tr:hover td { background:#f5faf7; }
+  td.num { font-weight:800; color:#1a6b3a; text-align:left; }
+  td.center { text-align:center; }
+
+  /* ─── Timeline ──────────────────────────────────────────── */
+  .timeline { position:relative; padding-right:30px; }
+  .timeline::before {
+    content:'';
+    position:absolute;
+    right:14px; top:0; bottom:0;
+    width:2px;
+    background:linear-gradient(to bottom,#F5C518,#2d7a4f);
+  }
+  .timeline-item {
+    position:relative;
+    padding:18px 24px;
+    background:white;
+    border-radius:16px;
+    margin-bottom:16px;
+    box-shadow:0 4px 16px rgba(10,40,20,.07);
+    border:1px solid #e0ede6;
+  }
+  .timeline-item::before {
+    content:'';
+    position:absolute;
+    right:-22px;
+    top:22px;
+    width:16px; height:16px;
+    border-radius:50%;
+    background:#F5C518;
+    border:3px solid white;
+    box-shadow:0 0 0 2px #F5C518;
+  }
+  .timeline-item .year { font-size:11px; color:#F5C518; font-weight:800; background:#0d2418; display:inline-block; padding:3px 10px; border-radius:6px; margin-bottom:6px; letter-spacing:1px; }
+  .timeline-item .tl-title { font-size:16px; font-weight:800; color:#0d2418; }
+  .timeline-item .tl-desc { font-size:13px; color:#4a6357; margin-top:4px; }
+
+  /* ─── Stat Banner ───────────────────────────────────────── */
+  .stat-banner {
+    background:linear-gradient(135deg,#0d2418,#1a4a2e);
+    color:white;
+    border-radius:24px;
+    padding:36px;
+    margin:20px 0;
+  }
+  .stat-banner .lbl { font-size:11px; color:#F5C518; font-weight:800; letter-spacing:3px; }
+  .stat-banner .big { font-size:42px; font-weight:900; margin:8px 0; }
+  .stat-banner .sub { font-size:14px; opacity:.75; }
+
+  /* ─── Difference Grid ───────────────────────────────────── */
+  .diff-item {
+    display:flex; align-items:start; gap:16px;
+    padding:16px;
+    background:white;
+    border-radius:14px;
+    margin-bottom:12px;
+    box-shadow:0 2px 10px rgba(10,40,20,.06);
+    border:1px solid #e0ede6;
+  }
+  .diff-item .diff-icon {
+    width:44px; height:44px;
+    background:linear-gradient(135deg,#F5C518,#e6a200);
+    border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:20px;
+    flex-shrink:0;
+  }
+  .diff-item .diff-title { font-size:15px; font-weight:800; color:#0d2418; }
+  .diff-item .diff-desc { font-size:13px; color:#4a6357; margin-top:3px; }
+
+  /* ─── School Products Grid ──────────────────────────────── */
+  .school-product {
+    background:white;
+    border-radius:14px;
+    padding:18px;
+    text-align:center;
+    box-shadow:0 4px 12px rgba(10,40,20,.07);
+    border:1px solid #e0ede6;
+    transition:transform .2s;
+  }
+  .school-product:hover { transform:translateY(-3px); }
+  .school-product .sp-icon { font-size:36px; margin-bottom:8px; }
+  .school-product .sp-name { font-size:14px; font-weight:800; color:#0d2418; }
+  .school-product .sp-desc { font-size:12px; color:#4a6357; margin-top:4px; }
+
+  /* ─── Partnership Box ───────────────────────────────────── */
+  .partner-box {
+    border-radius:20px;
+    padding:28px;
+    margin-bottom:16px;
+  }
+  .partner-box.model-2 {
+    background:linear-gradient(135deg,#e8f0ff,#dde8ff);
+    border:2px solid #6b8fff;
+  }
+  .partner-box.model-3 {
+    background:linear-gradient(135deg,#fff8e1,#fde8a0);
+    border:2px solid #F5C518;
+  }
+  .partner-box .pb-tag { display:inline-block; font-size:11px; font-weight:800; letter-spacing:2px; padding:4px 12px; border-radius:8px; margin-bottom:10px; }
+  .partner-box.model-2 .pb-tag { background:#6b8fff; color:white; }
+  .partner-box.model-3 .pb-tag { background:#0d2418; color:#F5C518; }
+  .partner-box h3 { font-size:20px; font-weight:900; margin-bottom:12px; }
+  .partner-box ul { padding-right:20px; }
+  .partner-box ul li { margin:8px 0; font-size:14px; }
+
+  /* ─── Don't Do ──────────────────────────────────────────── */
+  .no-item {
+    display:flex; align-items:start; gap:14px;
+    padding:14px 18px;
+    background:white;
+    border-radius:12px;
+    margin-bottom:10px;
+    border-right:4px solid #dc2626;
+    box-shadow:0 2px 8px rgba(10,40,20,.05);
+  }
+  .no-item .no-icon { font-size:20px; flex-shrink:0; margin-top:2px; }
+  .no-item .no-text { font-size:14px; font-weight:700; color:#0d2418; }
+  .no-item .no-desc { font-size:12px; color:#4a6357; margin-top:3px; }
+
+  /* ─── Yes Do ────────────────────────────────────────────── */
+  .yes-item {
+    display:flex; align-items:start; gap:14px;
+    padding:14px 18px;
+    background:white;
+    border-radius:12px;
+    margin-bottom:10px;
+    border-right:4px solid #16a34a;
+    box-shadow:0 2px 8px rgba(10,40,20,.05);
+  }
+  .yes-item .yes-icon { font-size:20px; flex-shrink:0; margin-top:2px; }
+  .yes-item .yes-text { font-size:14px; font-weight:700; color:#0d2418; }
+
+  /* ─── Growth Table ──────────────────────────────────────── */
+  .growth-row {
+    display:grid;
+    grid-template-columns:90px 1fr 120px;
+    gap:16px;
+    align-items:center;
+    padding:14px 0;
+    border-bottom:1px solid #e8f2ec;
+  }
+  .growth-row:last-child { border-bottom:none; }
+  .growth-row .g-year { font-size:20px; font-weight:900; color:#0d2418; }
+  .growth-row .g-desc { font-size:14px; color:#4a6357; }
+  .growth-row .g-status {
+    font-size:12px; font-weight:800;
+    padding:4px 12px;
+    border-radius:8px;
+    text-align:center;
+  }
+  .g-status.current { background:#e8f5ee; color:#16a34a; }
+  .g-status.next { background:#fff8e1; color:#b45309; }
+  .g-status.future { background:#f0f0f5; color:#666; }
+
+  /* ─── CTA ───────────────────────────────────────────────── */
+  .cta-box {
+    background:linear-gradient(135deg,#0d2418 0%,#1a4a2e 60%,#2d7a4f 100%);
+    color:white;
+    padding:60px 40px;
+    border-radius:28px;
+    text-align:center;
+    margin:40px 0 0;
+    box-shadow:0 20px 60px rgba(10,40,20,.3);
+  }
+  .cta-box .small { font-size:12px; color:#F5C518; font-weight:800; letter-spacing:4px; }
+  .cta-box .big { font-size:42px; font-weight:900; margin:16px 0; }
+  .cta-box .desc { opacity:.8; max-width:620px; margin:0 auto 30px; font-size:16px; line-height:1.9; }
+  .cta-contact {
+    display:flex; justify-content:center; gap:20px; flex-wrap:wrap; margin-top:20px;
+  }
+  .cta-contact a {
+    background:rgba(255,255,255,.1);
+    border:2px solid rgba(245,197,24,.4);
+    color:white;
+    text-decoration:none;
+    padding:14px 28px;
+    border-radius:14px;
+    font-size:15px;
+    font-weight:700;
+    transition:all .2s;
+  }
+  .cta-contact a:hover { background:rgba(245,197,24,.15); border-color:#F5C518; }
+
+  /* ─── Tag ───────────────────────────────────────────────── */
+  .tag {
+    display:inline-block;
+    padding:4px 12px;
+    border-radius:8px;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:1px;
+    margin-left:8px;
+  }
+  .tag-gold { background:#F5C518; color:#0d2418; }
+  .tag-green { background:#2d7a4f; color:white; }
+  .tag-dark { background:#0d2418; color:#F5C518; }
+
+  /* ─── Section Divider ───────────────────────────────────── */
+  .divider {
+    height:2px;
+    background:linear-gradient(to left,transparent,#F5C518,transparent);
+    margin:40px 0;
+    opacity:.5;
+  }
+
+  /* ─── Market Pill ───────────────────────────────────────── */
+  .market-pill {
+    display:inline-flex; align-items:center; gap:8px;
+    background:white;
+    border:1px solid #e0ede6;
+    border-radius:100px;
+    padding:8px 16px;
+    font-size:13px; font-weight:700;
+    margin:4px;
+    box-shadow:0 2px 8px rgba(10,40,20,.06);
+  }
+  .market-pill .flag { font-size:20px; }
+
+  /* ─── Footer ────────────────────────────────────────────── */
+  footer {
+    text-align:center;
+    margin-top:60px;
+    padding:30px;
+    color:#557a63;
+    font-size:13px;
+    border-top:1px solid #d0e5da;
+  }
+  footer .brand { color:#F5C518; font-weight:900; }
+
+  /* ─── Print ─────────────────────────────────────────────── */
+  @media print {
+    body { background:white; }
+    .page { padding:20px; }
+    .section { break-inside:avoid; margin:30px 0; }
+    .card:hover { transform:none; }
+  }
+
+  /* ─── Mobile ────────────────────────────────────────────── */
+  @media (max-width:640px) {
+    .hero h1 { font-size:36px; }
+    .cta-box .big { font-size:28px; }
+    .growth-row { grid-template-columns:70px 1fr; }
+    .growth-row .g-status { display:none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ════ HERO ════ -->
+  <div class="hero">
+    <div class="label">Growth Partnership Deck · 2026</div>
+    <h1>مسلم ليدر</h1>
+    <p class="subtitle">التصور الاستراتيجي للشراكة والتوسع العالمي</p>
+
+    <div class="hero-tagline">
+      "نحن لا نبحث عن ممول.<br>
+      نبحث عن <span>شريك يؤمن</span> بأن العلامة التجارية الإسلامية الأسرية الأكبر في العالم<br>
+      <span>لم تُبنَ بعد.</span>"
+    </div>
+
+    <div class="hero-meta">
+      <div class="hero-meta-item">📅 التأسيس: <b>٢٠٢٠</b></div>
+      <div class="hero-meta-item">📋 السجل التجاري: <b>٢٠٢٤</b></div>
+      <div class="hero-meta-item">🌍 اللغات: <b>٦ لغات</b></div>
+      <div class="hero-meta-item">👥 العملاء: <b>١٨٨٤+</b></div>
+      <div class="hero-meta-item">📚 الإصدارات: <b>١٢٧ إصداراً</b></div>
+    </div>
+  </div>
+
+
+  <!-- ════ ١. من هي مسلم ليدر؟ ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">١</div>
+      <div>
+        <h2>من هي مسلم ليدر؟</h2>
+        <div class="sub">أصل جاهز للنمو — لا مشروع في طور البداية</div>
+      </div>
+    </div>
+
+    <div class="grid grid-3">
+      <div class="card card-highlight">
+        <div class="icon">🌱</div>
+        <div class="title">التأسيس</div>
+        <div class="value">٢٠٢٠</div>
+        <div class="desc">بدأت كمشروع محتوى إسلامي أصيل للأطفال، وتحولت إلى منظومة متكاملة خلال ٦ سنوات.</div>
+      </div>
+      <div class="card card-highlight">
+        <div class="icon">✍️</div>
+        <div class="title">هوية المؤسس</div>
+        <div class="value">تربية + تصميم</div>
+        <div class="desc">مؤسس يجمع بين خلفية التربية الإسلامية والتصميم والإعلام — ندرة حقيقية في السوق.</div>
+      </div>
+      <div class="card card-highlight">
+        <div class="icon">⚖️</div>
+        <div class="title">الملكية</div>
+        <div class="value">١٠٠٪ IP</div>
+        <div class="desc">المؤسس هو المؤلف. لا رسوم ترخيص خارجية. لا شركاء مؤسسيين. حرية كاملة في التوسع.</div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px; padding:28px; background:white; border-radius:20px; box-shadow:0 4px 16px rgba(10,40,20,.07); border:1px solid #e0ede6;">
+      <p style="font-size:16px; font-weight:700; color:#0d2418; line-height:2;">
+        مسلم ليدر <strong>ليست دار نشر</strong> بالمعنى التقليدي.<br>
+        هي منظومة محتوى وتعليم إسلامي أسري تمتلك:<br>
+        <span style="color:#1a6b3a;">📚 محتوى مكتوبًا أصيلًا</span> ·
+        <span style="color:#1a6b3a;">🎮 منتجات تعليمية تفاعلية</span> ·
+        <span style="color:#1a6b3a;">📱 منصة رقمية متكاملة</span> ·
+        <span style="color:#1a6b3a;">🌍 ترجمات بـ٦ لغات</span> ·
+        <span style="color:#1a6b3a;">👥 قاعدة عملاء فعلية</span>
+      </p>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ════ ٢. ما الذي تم بناؤه؟ ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">٢</div>
+      <div>
+        <h2>ما الذي تم بناؤه؟</h2>
+        <div class="sub">مرحلة بناء الأصول — ٢٠٢٠ إلى ٢٠٢٦</div>
+      </div>
+    </div>
+
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="year">٢٠٢٠ – ٢٠٢١</div>
+        <div class="tl-title">الانطلاق وبناء المحتوى الأصيل</div>
+        <div class="tl-desc">تأليف أولى الكتب الإسلامية للأطفال · بناء الهوية البصرية · أولى المبيعات (~80K ج.م)</div>
+      </div>
+      <div class="timeline-item">
+        <div class="year">٢٠٢٢ – ٢٠٢٣</div>
+        <div class="tl-title">التوسع في المنتجات والترجمات</div>
+        <div class="tl-desc">إطلاق الألعاب التعليمية · بدء الترجمة لـ٦ لغات · ٢٦ عملًا أصليًا · مبيعات تجاوزت 220K–300K ج.م</div>
+      </div>
+      <div class="timeline-item">
+        <div class="year">٢٠٢٤</div>
+        <div class="tl-title">التسجيل الرسمي والمنصة الرقمية</div>
+        <div class="tl-desc">السجل التجاري الرسمي · إطلاق المنصة الإلكترونية المتكاملة · المكتبة الرقمية · تطبيقات Google Play</div>
+      </div>
+      <div class="timeline-item">
+        <div class="year">٢٠٢٥ – ٢٠٢٦</div>
+        <div class="tl-title">مرحلة الجاهزية للتوسع</div>
+        <div class="tl-desc">١٢٧ إصدارًا متعدد اللغات · ١٨٨٤+ عميل · مبيعات ~520K ج.م · الشركة جاهزة للتفعيل التجاري</div>
+      </div>
+    </div>
+
+    <div class="stat-banner" style="margin-top:28px;">
+      <div class="lbl">المرحلة الحالية</div>
+      <div class="big">التفعيل التجاري والتوسع</div>
+      <div class="sub">انتهت مرحلة بناء الأصول. الشركة جاهزة للتحول من نمو عضوي بطيء إلى نمو مسرّع ومنظّم.</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ════ ٣. الأصول الحالية ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">٣</div>
+      <div>
+        <h2>الأصول الحالية</h2>
+        <div class="sub">ما تمتلكه مسلم ليدر اليوم</div>
+      </div>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="card card-gold">
+        <div class="icon">💡</div>
+        <div class="title">الملكية الفكرية (IP)</div>
+        <div class="value">٢٦ عملًا أصليًا</div>
+        <div class="desc">
+          طُوِّرت إلى <strong>١٢٧ إصدارًا متعدد اللغات</strong>.<br>
+          عربي · إنجليزي · ألماني · فرنسي · إندونيسي · أردو<br>
+          قيمة IP المقدرة: <strong>٢.٢٥ – ٣.٤٥ مليون ج.م</strong>
+        </div>
+      </div>
+      <div class="card card-gold">
+        <div class="icon">🖥️</div>
+        <div class="title">المنصة التقنية</div>
+        <div class="value">منصة Next.js متكاملة</div>
+        <div class="desc">
+          موقع إلكتروني + متجر + مكتبة رقمية<br>
+          100+ نقطة API + نظام إدارة متكامل<br>
+          تطبيقات Google Play + نظام دفع PayPal
+        </div>
+      </div>
+      <div class="card card-green">
+        <div class="icon">👥</div>
+        <div class="title">قاعدة العملاء</div>
+        <div class="value">١٨٨٤+ مشتٍر فعلي</div>
+        <div class="desc">
+          ٢٨٢ عميل متكرر (١٥٪)<br>
+          ٢,٤٤٤ شحنة مسجلة<br>
+          بيانات كاملة لكل عميل
+        </div>
+      </div>
+      <div class="card card-green">
+        <div class="icon">🎨</div>
+        <div class="title">الهوية البصرية والعلامة التجارية</div>
+        <div class="value">٦+ سنوات بناء علامة</div>
+        <div class="desc">
+          هوية بصرية راسخة<br>
+          شخصيات خاصة قابلة للترخيص<br>
+          ١٧,٠٠٠ متابع عضوي على فيسبوك
+        </div>
+      </div>
+    </div>
+
+    <div class="feature-box" style="margin-top:20px;">
+      <span class="tag">⚡ تمييز جوهري</span>
+      <h3>٢٦ أصلًا فكريًا → ١٢٧ إصدارًا دوليًا</h3>
+      <p style="color:#5a4500; line-height:1.9; font-size:15px; margin-top:8px;">
+        عند التقديم لرجل أعمال، لا تقل "١٢٧ عنوانًا" فقط. قل:
+        <strong>"لدينا ٢٦ أصلًا فكريًا تم تطويرها إلى ١٢٧ إصدارًا متعدد اللغات، جاهزة للتوزيع في عدة أسواق."</strong>
+        هذه الصياغة تُظهر قيمة IP حقيقية وقابلية توسع فعلية.
+      </p>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ════ ٤. الإنجازات بالأرقام ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">٤</div>
+      <div>
+        <h2>الإنجازات بالأرقام</h2>
+        <div class="sub">أرقام حقيقية من سوق حقيقي</div>
+      </div>
+    </div>
+
+    <div class="grid grid-4">
+      <div class="card" style="text-align:center;">
+        <div class="icon">💰</div>
+        <div class="title">مبيعات تراكمية</div>
+        <div class="value">~٢.٤م ج.م</div>
+        <div class="delta">منذ ٢٠٢٠</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div class="icon">🛍️</div>
+        <div class="title">عملاء فعليون</div>
+        <div class="value">١٨٨٤+</div>
+        <div class="delta">دفعوا أموالًا فعلًا</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div class="icon">🔄</div>
+        <div class="title">عملاء متكررون</div>
+        <div class="value">٢٨٢</div>
+        <div class="delta">اشتروا أكثر من مرة</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div class="icon">📦</div>
+        <div class="title">شحنات مسجلة</div>
+        <div class="value">٢,٤٤٤</div>
+        <div class="delta">عبر Bosta</div>
+      </div>
+    </div>
+
+    <div class="grid grid-4" style="margin-top:18px;">
+      <div class="card" style="text-align:center;">
+        <div class="icon">📚</div>
+        <div class="title">إصدارات متعددة اللغات</div>
+        <div class="value">١٢٧</div>
+        <div class="delta">٦ لغات</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div class="icon">🎮</div>
+        <div class="title">منتجات حالية</div>
+        <div class="value">٢٣ منتجًا</div>
+        <div class="delta">كتب + ألعاب + ميرش</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div class="icon">👍</div>
+        <div class="title">متابعون عضويون</div>
+        <div class="value">١٧,٠٠٠+</div>
+        <div class="delta">بدون إعلانات مدفوعة</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div class="icon">📈</div>
+        <div class="title">نمو سنوي</div>
+        <div class="value">٢٠–٤٠٪</div>
+        <div class="delta">نمو عضوي مستمر</div>
+      </div>
+    </div>
+
+    <div style="margin-top:24px;">
+      <table>
+        <thead>
+          <tr>
+            <th>السنة</th>
+            <th style="text-align:left;">المبيعات التقديرية</th>
+            <th style="text-align:left;">نسبة النمو</th>
+            <th>الملاحظة</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>٢٠٢٠</td><td class="num">~٨٠,٠٠٠ ج.م</td><td class="num">—</td><td class="center">الانطلاق</td></tr>
+          <tr><td>٢٠٢١</td><td class="num">~١٤٠,٠٠٠ ج.م</td><td class="num" style="color:#16a34a;">+٧٥٪</td><td class="center">توسع المنتجات</td></tr>
+          <tr><td>٢٠٢٢</td><td class="num">~٢٢٠,٠٠٠ ج.م</td><td class="num" style="color:#16a34a;">+٥٧٪</td><td class="center">نمو مستمر</td></tr>
+          <tr><td>٢٠٢٣</td><td class="num">~٣٠٠,٠٠٠ ج.م</td><td class="num" style="color:#16a34a;">+٣٦٪</td><td class="center">ترجمات + ألعاب</td></tr>
+          <tr><td>٢٠٢٤</td><td class="num">~٤٢٠,٠٠٠ ج.م</td><td class="num" style="color:#16a34a;">+٤٠٪</td><td class="center">التسجيل الرسمي</td></tr>
+          <tr><td>٢٠٢٥</td><td class="num">~٥٢٠,٠٠٠ ج.م</td><td class="num" style="color:#16a34a;">+٢٤٪</td><td class="center">المنصة الرقمية</td></tr>
+          <tr style="background:#f5faf7;"><td><strong>٢٠٢٦ (هدف)</strong></td><td class="num"><strong>~٧٢٠,٠٠٠ ج.م</strong></td><td class="num" style="color:#16a34a;"><strong>+٣٨٪</strong></td><td class="center"><strong>مع الشراكة</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ════ ٥. لماذا مسلم ليدر مختلفة؟ ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">٥</div>
+      <div>
+        <h2>لماذا مسلم ليدر مختلفة؟</h2>
+        <div class="sub">ما لا يمتلكه المنافسون</div>
+      </div>
+    </div>
+
+    <div class="diff-item">
+      <div class="diff-icon">✍️</div>
+      <div>
+        <div class="diff-title">محتوى أصيل — لا ترجمة لمحتوى غربي</div>
+        <div class="diff-desc">كل الأعمال تأليف محلي أصيل يعبر عن الهوية الإسلامية من داخلها، لا اقتباسًا من سياق أجنبي.</div>
+      </div>
+    </div>
+
+    <div class="diff-item">
+      <div class="diff-icon">🎓</div>
+      <div>
+        <div class="diff-title">مؤسس يجمع التربية + التصميم + الإعلام</div>
+        <div class="diff-desc">ندرة حقيقية في السوق. المؤسس يفهم الطفل المسلم من منظور تربوي وإبداعي في آنٍ واحد.</div>
+      </div>
+    </div>
+
+    <div class="diff-item">
+      <div class="diff-icon">⏱️</div>
+      <div>
+        <div class="diff-title">٦+ سنوات بناء علامة — ليس مشروعًا ناشئًا</div>
+        <div class="diff-desc">الثقة والسمعة تُبنى بالزمن. مسلم ليدر لديها تاريخ فعلي وجمهور عضوي حقيقي.</div>
+      </div>
+    </div>
+
+    <div class="diff-item">
+      <div class="diff-icon">🌍</div>
+      <div>
+        <div class="diff-title">متعدد اللغات فعليًا — ٦ لغات حالية</div>
+        <div class="diff-desc">عربي · إنجليزي · ألماني · فرنسي · إندونيسي · أردو. محتوى جاهز لأسواق متعددة بدون تكلفة ترجمة إضافية.</div>
+      </div>
+    </div>
+
+    <div class="diff-item">
+      <div class="diff-icon">📦</div>
+      <div>
+        <div class="diff-title">مادي + رقمي في آنٍ واحد</div>
+        <div class="diff-desc">منتجات مادية (كتب، ألعاب، ميرش) + مكتبة رقمية + تطبيقات. قنوات مبيعات متعددة ومتكاملة.</div>
+      </div>
+    </div>
+
+    <div class="diff-item">
+      <div class="diff-icon">💎</div>
+      <div>
+        <div class="diff-title">IP كاملة للمؤسس — لا رسوم ترخيص خارجية</div>
+        <div class="diff-desc">المؤسس هو المؤلف. ربحية أعلى بـ١٠-١٥٪ مقارنة بدور النشر التقليدية التي تدفع رويالتي مستمر.</div>
+      </div>
+    </div>
+
+    <div class="diff-item">
+      <div class="diff-icon">👥</div>
+      <div>
+        <div class="diff-title">جمهور عضوي حقيقي — بدون إعلانات مدفوعة</div>
+        <div class="diff-desc">١٧,٠٠٠ متابع على فيسبوك و١٨٨٤+ مشترٍ دفعوا أموالًا فعلًا. مؤشر ثقة لا يُشترى بالإعلانات.</div>
+      </div>
+    </div>
+
+    <div class="diff-item">
+      <div class="diff-icon">🚀</div>
+      <div>
+        <div class="diff-title">قابلية توسع عالمية جاهزة</div>
+        <div class="diff-desc">محتوى بـ٦ لغات + منصة رقمية + شحن دولي + تسعير متعدد العملات. البنية التحتية للتوسع موجودة.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ════ ٦. فرصة السوق ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">٦</div>
+      <div>
+        <h2>فرصة السوق</h2>
+        <div class="sub">حجم السوق المستهدف وطبيعته</div>
+      </div>
+    </div>
+
+    <div class="grid grid-3">
+      <div class="card" style="text-align:center; border-top:4px solid #F5C518;">
+        <div class="icon">🌙</div>
+        <div class="title">حجم الجمهور</div>
+        <div class="value">١.٨ مليار</div>
+        <div class="desc">مسلم حول العالم، كثير منهم يبحثون عن محتوى إسلامي أصيل لأطفالهم.</div>
+      </div>
+      <div class="card" style="text-align:center; border-top:4px solid #2d7a4f;">
+        <div class="icon">🏫</div>
+        <div class="title">المؤسسات الإسلامية</div>
+        <div class="value">مئات الآلاف</div>
+        <div class="desc">مدارس إسلامية، حضانات، مراكز إسلامية، جمعيات تعليمية حول العالم.</div>
+      </div>
+      <div class="card" style="text-align:center; border-top:4px solid #6b8fff;">
+        <div class="icon">🎒</div>
+        <div class="title">سوق Back to School الإسلامي</div>
+        <div class="value">شبه فارغ</div>
+        <div class="desc">لا توجد علامة تجارية إسلامية متخصصة تهيمن على منتجات المدارس في العالم الإسلامي.</div>
+      </div>
+    </div>
+
+    <div style="margin-top:24px; padding:24px; background:white; border-radius:20px; box-shadow:0 4px 16px rgba(10,40,20,.07); border:1px solid #e0ede6;">
+      <p style="font-size:15px; font-weight:700; color:#0d2418; margin-bottom:16px;">الأسواق المستهدفة:</p>
+      <div>
+        <span class="market-pill"><span class="flag">🇸🇦</span> السعودية — قوة شرائية عالية</span>
+        <span class="market-pill"><span class="flag">🇦🇪</span> الإمارات</span>
+        <span class="market-pill"><span class="flag">🇰🇼</span> الكويت</span>
+        <span class="market-pill"><span class="flag">🇶🇦</span> قطر</span>
+        <span class="market-pill"><span class="flag">🇧🇭</span> البحرين</span>
+        <span class="market-pill"><span class="flag">🇴🇲</span> عمان</span>
+        <span class="market-pill"><span class="flag">🇬🇧</span> بريطانيا — أكبر مجتمع إسلامي أوروبي</span>
+        <span class="market-pill"><span class="flag">🇩🇪</span> ألمانيا</span>
+        <span class="market-pill"><span class="flag">🇫🇷</span> فرنسا</span>
+        <span class="market-pill"><span class="flag">🇳🇱</span> هولندا</span>
+        <span class="market-pill"><span class="flag">🇧🇪</span> بلجيكا</span>
+        <span class="market-pill"><span class="flag">🇸🇪</span> السويد</span>
+        <span class="market-pill"><span class="flag">🇺🇸</span> الولايات المتحدة</span>
+        <span class="market-pill"><span class="flag">🇨🇦</span> كندا</span>
+      </div>
+    </div>
+
+    <div style="margin-top:18px; padding:20px 24px; background:#fff8e1; border-radius:16px; border:2px solid #F5C518;">
+      <p style="font-size:14px; font-weight:700; color:#5a4500;">
+        💡 <strong>نقطة مهمة:</strong> المراكز الإسلامية في الغرب (بريطانيا، ألمانيا، أمريكا) أسرع قرارًا من وزارات التعليم أو المدارس الكبيرة.
+        كثير منها يدرّس العربية والقرآن ويبحث باستمرار عن مواد تعليمية جاهزة للأطفال.
+        هذه الجهات قد تكون أول بوابة حقيقية لدخول أوروبا وأمريكا.
+      </p>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ════ ٧. قطاع Back to School الإسلامي ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">٧</div>
+      <div>
+        <h2>قطاع Back to School الإسلامي</h2>
+        <div class="sub">⭐ أكبر فرصة نمو — محور استراتيجي مستقل</div>
+      </div>
+    </div>
+
+    <div class="feature-box">
+      <span class="tag">🎒 فرصة استراتيجية</span>
+      <h3>المنتجات المدرسية الإسلامية — سوق لم يُستثمَر بعد</h3>
+      <p style="color:#5a4500; font-size:15px; line-height:1.9; margin-top:8px;">
+        الكتب والقصص أساسية لبناء الهوية الفكرية، لكن <strong>المنتجات المدرسية</strong> هي التي تحقق:
+        مبيعات موسمية ضخمة · تكرار شراء سنوي مضمون · انتشار يومي داخل المدرسة · سهولة توزيع أعلى من الكتب.
+      </p>
+    </div>
+
+    <p style="font-size:15px; font-weight:700; color:#0d2418; margin-bottom:18px;">خط منتجات متكامل يحمل شخصيات وهوية مسلم ليدر:</p>
+
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:14px; margin-bottom:24px;">
+      <div class="school-product">
+        <div class="sp-icon">🎒</div>
+        <div class="sp-name">الحقائب المدرسية</div>
+        <div class="sp-desc">بتصاميم شخصيات مسلم ليدر</div>
+      </div>
+      <div class="school-product">
+        <div class="sp-icon">🧸</div>
+        <div class="sp-name">حقائب الحضانة</div>
+        <div class="sp-desc">للأطفال ٣–٦ سنوات</div>
+      </div>
+      <div class="school-product">
+        <div class="sp-icon">📒</div>
+        <div class="sp-name">الدفاتر والكراسات</div>
+        <div class="sp-desc">أغلفة وتصاميم إسلامية</div>
+      </div>
+      <div class="school-product">
+        <div class="sp-icon">📅</div>
+        <div class="sp-name">الأجندات والمفكرات</div>
+        <div class="sp-desc">تحفيزية + تعليمية</div>
+      </div>
+      <div class="school-product">
+        <div class="sp-icon">✏️</div>
+        <div class="sp-name">المقالم</div>
+        <div class="sp-desc">بهوية إسلامية مميزة</div>
+      </div>
+      <div class="school-product">
+        <div class="sp-icon">📐</div>
+        <div class="sp-name">الأدوات المكتبية</div>
+        <div class="sp-desc">أقلام · مساطر · ممحاة</div>
+      </div>
+      <div class="school-product">
+        <div class="sp-icon">📁</div>
+        <div class="sp-name">الملفات المدرسية</div>
+        <div class="sp-desc">تصاميم تعليمية</div>
+      </div>
+      <div class="school-product">
+        <div class="sp-icon">⭐</div>
+        <div class="sp-name">الملصقات التعليمية</div>
+        <div class="sp-desc">بطاقات تحفيز وتشجيع</div>
+      </div>
+      <div class="school-product">
+        <div class="sp-icon">🗓️</div>
+        <div class="sp-name">الجداول المدرسية</div>
+        <div class="sp-desc">منظمة مع قيم تربوية</div>
+      </div>
+      <div class="school-product">
+        <div class="sp-icon">🎁</div>
+        <div class="sp-name">هدايا التخرج</div>
+        <div class="sp-desc">تحفيزية للمناسبات</div>
+      </div>
+    </div>
+
+    <div class="grid grid-2">
+      <div style="padding:22px; background:white; border-radius:16px; border:1px solid #e0ede6; box-shadow:0 4px 12px rgba(10,40,20,.06);">
+        <p style="font-size:14px; font-weight:900; color:#0d2418; margin-bottom:12px;">لماذا هذا القطاع تحديدًا؟</p>
+        <div class="yes-item">
+          <div class="yes-icon">📅</div>
+          <div class="yes-text">مبيعات موسمية ضخمة (يوليو–سبتمبر)</div>
+        </div>
+        <div class="yes-item">
+          <div class="yes-icon">🔄</div>
+          <div class="yes-text">تكرار شراء <strong>سنوي مضمون</strong></div>
+        </div>
+        <div class="yes-item">
+          <div class="yes-icon">👁️</div>
+          <div class="yes-text">انتشار يومي للعلامة داخل المدرسة</div>
+        </div>
+        <div class="yes-item">
+          <div class="yes-icon">🚚</div>
+          <div class="yes-text">سهولة توزيع أعلى من الكتب</div>
+        </div>
+        <div class="yes-item">
+          <div class="yes-icon">💰</div>
+          <div class="yes-text">هامش ربح جيد مع إنتاج بكميات</div>
+        </div>
+      </div>
+      <div style="padding:22px; background:linear-gradient(135deg,#0d2418,#1a4a2e); border-radius:16px; color:white;">
+        <p style="font-size:14px; font-weight:900; color:#F5C518; margin-bottom:12px;">التأثير الاستراتيجي</p>
+        <p style="font-size:14px; opacity:.85; line-height:1.9;">
+          منتجات مسلم ليدر ستدخل يوميًا إلى:
+          <br>🏫 كل فصل دراسي يجلس فيه طفل
+          <br>🎒 كل حقيبة تُفتح في المدرسة
+          <br>✏️ كل درس يكتب فيه الطفل
+          <br><br>
+          هذا يحول العلامة من <strong>"شيء يُقرأ"</strong>
+          إلى <strong>"رفيق يومي"</strong> في حياة الطفل.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ════ ٨. التحول الاستراتيجي ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">٨</div>
+      <div>
+        <h2>التحول الاستراتيجي</h2>
+        <div class="sub">من دار نشر إلى Global Islamic Family Brand</div>
+      </div>
+    </div>
+
+    <div style="padding:36px; background:linear-gradient(135deg,#0d2418,#1a4a2e); border-radius:24px; color:white; text-align:center; margin-bottom:24px;">
+      <div style="font-size:13px; color:#F5C518; font-weight:800; letter-spacing:3px; margin-bottom:12px;">الهدف الاستراتيجي</div>
+      <div style="font-size:28px; font-weight:900; line-height:1.6; max-width:700px; margin:0 auto;">
+        بناء العلامة التجارية الإسلامية الأسرية الأكثر حضورًا في حياة الطفل والأسرة المسلمة حول العالم
+      </div>
+    </div>
+
+    <div class="grid grid-3" style="text-align:center;">
+      <div style="padding:20px; background:white; border-radius:16px; border:1px solid #e0ede6; box-shadow:0 4px 12px rgba(10,40,20,.06);">
+        <div style="font-size:36px; margin-bottom:8px;">📖</div>
+        <div style="font-size:13px; color:#557a63; font-weight:700;">الوضع الحالي</div>
+        <div style="font-size:18px; font-weight:900; margin-top:6px;">دار نشر إسلامية</div>
+      </div>
+      <div style="padding:20px; display:flex; align-items:center; justify-content:center;">
+        <div style="font-size:40px; color:#F5C518;">←</div>
+      </div>
+      <div style="padding:20px; background:linear-gradient(135deg,#fff8e1,#fde8a0); border-radius:16px; border:2px solid #F5C518;">
+        <div style="font-size:36px; margin-bottom:8px;">🌟</div>
+        <div style="font-size:13px; color:#7a5a00; font-weight:700;">الهدف</div>
+        <div style="font-size:18px; font-weight:900; margin-top:6px; color:#0d2418;">Global Islamic Family Brand</div>
+      </div>
+    </div>
+
+    <div style="margin-top:24px; padding:24px; background:white; border-radius:20px; border:1px solid #e0ede6; box-shadow:0 4px 16px rgba(10,40,20,.07);">
+      <p style="font-size:15px; font-weight:700; color:#0d2418; margin-bottom:16px;">يجد منتجات مسلم ليدر في:</p>
+      <div style="display:flex; flex-wrap:wrap; gap:12px;">
+        <div style="padding:14px 20px; background:#f5faf7; border-radius:12px; border:1px solid #d0e5da; text-align:center; flex:1; min-width:120px;">
+          <div style="font-size:24px;">🏫</div>
+          <div style="font-size:13px; font-weight:700; margin-top:4px;">المدرسة</div>
+        </div>
+        <div style="padding:14px 20px; background:#f5faf7; border-radius:12px; border:1px solid #d0e5da; text-align:center; flex:1; min-width:120px;">
+          <div style="font-size:24px;">🏠</div>
+          <div style="font-size:13px; font-weight:700; margin-top:4px;">المنزل</div>
+        </div>
+        <div style="padding:14px 20px; background:#f5faf7; border-radius:12px; border:1px solid #d0e5da; text-align:center; flex:1; min-width:120px;">
+          <div style="font-size:24px;">🕌</div>
+          <div style="font-size:13px; font-weight:700; margin-top:4px;">المسجد</div>
+        </div>
+        <div style="padding:14px 20px; background:#f5faf7; border-radius:12px; border:1px solid #d0e5da; text-align:center; flex:1; min-width:120px;">
+          <div style="font-size:24px;">🏛️</div>
+          <div style="font-size:13px; font-weight:700; margin-top:4px;">المركز الإسلامي</div>
+        </div>
+        <div style="padding:14px 20px; background:#f5faf7; border-radius:12px; border:1px solid #d0e5da; text-align:center; flex:1; min-width:120px;">
+          <div style="font-size:24px;">📱</div>
+          <div style="font-size:13px; font-weight:700; margin-top:4px;">التطبيق</div>
+        </div>
+        <div style="padding:14px 20px; background:#f5faf7; border-radius:12px; border:1px solid #d0e5da; text-align:center; flex:1; min-width:120px;">
+          <div style="font-size:24px;">📚</div>
+          <div style="font-size:13px; font-weight:700; margin-top:4px;">المكتبة الرقمية</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ════ ٩. نموذج الأعمال المستقبلي ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">٩</div>
+      <div>
+        <h2>نموذج الأعمال المستقبلي</h2>
+        <div class="sub">٤ مسارات إيراد متكاملة</div>
+      </div>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="icon">🛍️</div>
+        <div class="title">B2C — بيع مباشر للأفراد</div>
+        <div class="value">الأفراد والأسر</div>
+        <div class="desc">
+          الكتب · القصص · الألعاب · المنتجات التعليمية<br>
+          المنتجات المدرسية · التطبيقات<br>
+          <em>عبر الموقع + المتاجر الإلكترونية</em>
+        </div>
+      </div>
+      <div class="card">
+        <div class="icon">🏢</div>
+        <div class="title">B2B — بيع للمؤسسات</div>
+        <div class="value">مؤسسات تعليمية</div>
+        <div class="desc">
+          المدارس الإسلامية · الحضانات<br>
+          المراكز الإسلامية في الغرب<br>
+          جمعيات تعليم العربية والقرآن<br>
+          <em>بأسعار جملة + عقود سنوية</em>
+        </div>
+      </div>
+      <div class="card">
+        <div class="icon">📱</div>
+        <div class="title">اشتراكات رقمية</div>
+        <div class="value">إيراد متكرر</div>
+        <div class="desc">
+          المكتبة الرقمية · الكتب الإلكترونية<br>
+          المحتوى التفاعلي · التطبيقات<br>
+          <em>نموذج اشتراك شهري/سنوي</em>
+        </div>
+      </div>
+      <div class="card">
+        <div class="icon">🤝</div>
+        <div class="title">تراخيص وشراكات</div>
+        <div class="value">IP Licensing</div>
+        <div class="desc">
+          ترخيص المحتوى لدور نشر<br>
+          ترخيص المناهج للمدارس<br>
+          ترخيص الشخصيات للمنتجات<br>
+          <em>شراكات توزيع دولية</em>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ════ ١٠. خطة التوسع الجغرافي ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">١٠</div>
+      <div>
+        <h2>خطة التوسع الجغرافي</h2>
+        <div class="sub">٣ مراحل — من الخليج إلى العالم</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px; padding:28px; background:white; border-radius:20px; border:2px solid #F5C518; box-shadow:0 4px 16px rgba(10,40,20,.07);">
+      <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px;">
+        <div style="background:#F5C518; color:#0d2418; width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:16px; flex-shrink:0;">١</div>
+        <div>
+          <div style="font-size:18px; font-weight:900; color:#0d2418;">المرحلة الأولى — الخليج العربي</div>
+          <div style="font-size:13px; color:#557a63;">السوق الأقرب والأعلى قوة شرائية</div>
+        </div>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+        <span class="market-pill"><span class="flag">🇸🇦</span> السعودية</span>
+        <span class="market-pill"><span class="flag">🇦🇪</span> الإمارات</span>
+        <span class="market-pill"><span class="flag">🇰🇼</span> الكويت</span>
+        <span class="market-pill"><span class="flag">🇶🇦</span> قطر</span>
+        <span class="market-pill"><span class="flag">🇧🇭</span> البحرين</span>
+        <span class="market-pill"><span class="flag">🇴🇲</span> عمان</span>
+      </div>
+      <p style="font-size:13px; color:#4a6357;">القنوات: المكتبات · المدارس · الحضانات · معارض الكتاب · متاجر إلكترونية (نون، أمازون)</p>
+    </div>
+
+    <div style="margin-bottom:20px; padding:28px; background:white; border-radius:20px; border:2px solid #6b8fff; box-shadow:0 4px 16px rgba(10,40,20,.07);">
+      <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px;">
+        <div style="background:#6b8fff; color:white; width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:16px; flex-shrink:0;">٢</div>
+        <div>
+          <div style="font-size:18px; font-weight:900; color:#0d2418;">المرحلة الثانية — أوروبا</div>
+          <div style="font-size:13px; color:#557a63;">تجمعات إسلامية نامية + طلب متزايد على المحتوى الأصيل</div>
+        </div>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+        <span class="market-pill"><span class="flag">🇬🇧</span> بريطانيا</span>
+        <span class="market-pill"><span class="flag">🇩🇪</span> ألمانيا</span>
+        <span class="market-pill"><span class="flag">🇫🇷</span> فرنسا</span>
+        <span class="market-pill"><span class="flag">🇳🇱</span> هولندا</span>
+        <span class="market-pill"><span class="flag">🇧🇪</span> بلجيكا</span>
+        <span class="market-pill"><span class="flag">🇸🇪</span> السويد</span>
+      </div>
+      <p style="font-size:13px; color:#4a6357;">القنوات: المدارس الإسلامية · المراكز الإسلامية · جمعيات تعليم العربية والقرآن · Homeschooling</p>
+      <div style="margin-top:12px; padding:10px 14px; background:#f0f4ff; border-radius:10px; font-size:13px; font-weight:700; color:#3a4a8a;">
+        💡 المراكز الإسلامية في الغرب: أسرع قرارًا، أوسع انتشارًا، وأكثر جاهزية لشراء محتوى جاهز بلغاتهم.
+      </div>
+    </div>
+
+    <div style="padding:28px; background:white; border-radius:20px; border:2px solid #2d7a4f; box-shadow:0 4px 16px rgba(10,40,20,.07);">
+      <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px;">
+        <div style="background:#2d7a4f; color:white; width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:16px; flex-shrink:0;">٣</div>
+        <div>
+          <div style="font-size:18px; font-weight:900; color:#0d2418;">المرحلة الثالثة — أمريكا الشمالية</div>
+          <div style="font-size:13px; color:#557a63;">مجتمعات إسلامية راسخة وقوة شرائية مرتفعة</div>
+        </div>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+        <span class="market-pill"><span class="flag">🇺🇸</span> الولايات المتحدة</span>
+        <span class="market-pill"><span class="flag">🇨🇦</span> كندا</span>
+      </div>
+      <p style="font-size:13px; color:#4a6357;">القنوات: المدارس الإسلامية · المساجد الكبرى · المراكز الإسلامية · برامج Homeschooling الإسلامي</p>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ════ ١١. نموذج الشراكة المستهدف ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">١١</div>
+      <div>
+        <h2>نموذج الشراكة المستهدف</h2>
+        <div class="sub">لا بيع ملكية — شركة تشغيل مستقلة</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px; padding:20px 24px; background:#e8f5ee; border-radius:16px; border:2px solid #2d7a4f;">
+      <p style="font-size:15px; font-weight:800; color:#0d2418;">
+        ✅ المبدأ الأساسي: مسلم ليدر تبقى مملوكة بالكامل للمؤسس.<br>
+        الشريك يدخل كـ<strong>شريك تشغيل</strong> يأخذ نسبة من الأرباح أو من النمو المحقق.
+      </p>
+    </div>
+
+    <div class="partner-box model-2">
+      <span class="pb-tag">النموذج الثاني — الأساسي</span>
+      <h3>🏢 شريك تشغيلي مستقل</h3>
+      <p style="font-size:14px; color:#3a4a8a; margin-bottom:14px;">شريك يتولى العمليات اليومية والنمو التجاري، بينما يحتفظ المؤسس برسالة الشركة وهويتها.</p>
+      <div class="grid grid-2">
+        <div>
+          <p style="font-size:13px; font-weight:800; color:#3a4a8a; margin-bottom:8px;">ما يتولاه الشريك:</p>
+          <ul style="list-style:none; padding:0;">
+            <li style="padding:5px 0; font-size:14px; border-bottom:1px solid rgba(107,143,255,.2);">• الإدارة اليومية والتشغيلية</li>
+            <li style="padding:5px 0; font-size:14px; border-bottom:1px solid rgba(107,143,255,.2);">• التسويق وبناء قنوات التوزيع</li>
+            <li style="padding:5px 0; font-size:14px; border-bottom:1px solid rgba(107,143,255,.2);">• بناء الفريق واختياره</li>
+            <li style="padding:5px 0; font-size:14px;">• فتح أسواق جديدة</li>
+          </ul>
+        </div>
+        <div>
+          <p style="font-size:13px; font-weight:800; color:#3a4a8a; margin-bottom:8px;">ما يحصل عليه الشريك:</p>
+          <ul style="list-style:none; padding:0;">
+            <li style="padding:5px 0; font-size:14px; border-bottom:1px solid rgba(107,143,255,.2);">• نسبة من صافي الأرباح</li>
+            <li style="padding:5px 0; font-size:14px; border-bottom:1px solid rgba(107,143,255,.2);">• أو نسبة من النمو المحقق</li>
+            <li style="padding:5px 0; font-size:14px;">• حصة مرتبطة بإنجازات فعلية</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="partner-box model-3">
+      <span class="pb-tag">⭐ النموذج الثالث — الأقوى</span>
+      <h3>🇸🇦 شريك توزيع سعودي استراتيجي</h3>
+      <p style="font-size:14px; color:#5a4500; margin-bottom:14px;">أكبر مشكلة مسلم ليدر ليست المنتج — بل <strong>الوصول للسوق</strong>. شريك لديه قنوات توزيع قائمة يحل هذه المشكلة فورًا.</p>
+      <div class="grid grid-2">
+        <div>
+          <p style="font-size:13px; font-weight:800; color:#5a4500; margin-bottom:8px;">ما يمتلكه الشريك المثالي:</p>
+          <ul style="list-style:none; padding:0;">
+            <li style="padding:5px 0; font-size:14px; border-bottom:1px solid rgba(245,197,24,.3);">• مدارس أو شبكة مدارس</li>
+            <li style="padding:5px 0; font-size:14px; border-bottom:1px solid rgba(245,197,24,.3);">• حضانات أو مراكز تعليمية</li>
+            <li style="padding:5px 0; font-size:14px; border-bottom:1px solid rgba(245,197,24,.3);">• مكتبات أو متاجر كتب</li>
+            <li style="padding:5px 0; font-size:14px;">• متاجر إلكترونية نشطة</li>
+          </ul>
+        </div>
+        <div>
+          <p style="font-size:13px; font-weight:800; color:#5a4500; margin-bottom:8px;">الاتفاقية المقترحة:</p>
+          <ul style="list-style:none; padding:0;">
+            <li style="padding:5px 0; font-size:14px; border-bottom:1px solid rgba(245,197,24,.3);">• حصة مرتبطة بالإنجازات</li>
+            <li style="padding:5px 0; font-size:14px; border-bottom:1px solid rgba(245,197,24,.3);">• لا ملكية في الشركة</li>
+            <li style="padding:5px 0; font-size:14px;">• عقد توزيع حصري أو شبه حصري</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ════ ١٢. ما نبحث عنه من الشريك ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">١٢</div>
+      <div>
+        <h2>ما الذي نبحث عنه من الشريك؟</h2>
+        <div class="sub">المعايير والتوقعات</div>
+      </div>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="card card-green">
+        <div class="icon">🌐</div>
+        <div class="title">القنوات والوصول</div>
+        <div class="value">شبكة توزيع قائمة</div>
+        <div class="desc">قنوات توزيع في الخليج أو في المجتمعات الإسلامية في أوروبا وأمريكا. مؤسسات تعليمية أو متاجر نشطة.</div>
+      </div>
+      <div class="card card-green">
+        <div class="icon">📊</div>
+        <div class="title">الخبرة</div>
+        <div class="value">إدارة النمو</div>
+        <div class="desc">خبرة في إدارة العمليات التجارية وبناء الفرق وتطوير قنوات المبيعات في أسواق جديدة.</div>
+      </div>
+      <div class="card card-green">
+        <div class="icon">🤝</div>
+        <div class="title">نموذج العمل</div>
+        <div class="value">Profit-Share / Milestone</div>
+        <div class="desc">استعداد للعمل بنموذج مرتبط بالإنجازات الفعلية، لا بدفع مبالغ ثابتة مقابل الدخول.</div>
+      </div>
+      <div class="card card-green">
+        <div class="icon">💚</div>
+        <div class="title">التوافق القيمي</div>
+        <div class="value">إيمان بالرسالة</div>
+        <div class="desc">مؤمن بأن المحتوى الإسلامي الأصيل للأطفال مشروع ذو قيمة حقيقية، لا مجرد تجارة.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ════ ١٣. سيناريوهات النمو ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">١٣</div>
+      <div>
+        <h2>خطة النمو — ٢٠٢٦ إلى ٢٠٣٠</h2>
+        <div class="sub">رؤية الخمس سنوات القادمة</div>
+      </div>
+    </div>
+
+    <div style="background:white; border-radius:20px; padding:28px; box-shadow:0 4px 16px rgba(10,40,20,.07); border:1px solid #e0ede6;">
+      <div class="growth-row">
+        <div class="g-year">٢٠٢٦</div>
+        <div>
+          <div style="font-size:14px; font-weight:800; color:#0d2418; margin-bottom:4px;">تأسيس الشراكة + تحسين القاعدة المصرية</div>
+          <div class="g-desc">إطلاق Back to School · الشراكة التشغيلية · هدف: ~720K ج.م</div>
+        </div>
+        <div class="g-status current">الآن</div>
+      </div>
+      <div class="growth-row">
+        <div class="g-year">٢٠٢٧</div>
+        <div>
+          <div style="font-size:14px; font-weight:800; color:#0d2418; margin-bottom:4px;">دخول الخليج + B2B مدارس</div>
+          <div class="g-desc">شريك توزيع سعودي · عقود مدارس · قطاع الأدوات المدرسية · ٣× نمو</div>
+        </div>
+        <div class="g-status next">التالي</div>
+      </div>
+      <div class="growth-row">
+        <div class="g-year">٢٠٢٨</div>
+        <div>
+          <div style="font-size:14px; font-weight:800; color:#0d2418; margin-bottom:4px;">شراكات أوروبا + مراكز إسلامية</div>
+          <div class="g-desc">بريطانيا وألمانيا أولًا · MOU مع مراكز إسلامية · ترخيص المحتوى</div>
+        </div>
+        <div class="g-status future">قريبًا</div>
+      </div>
+      <div class="growth-row">
+        <div class="g-year">٢٠٢٩</div>
+        <div>
+          <div style="font-size:14px; font-weight:800; color:#0d2418; margin-bottom:4px;">أمريكا الشمالية + Homeschooling</div>
+          <div class="g-desc">برامج Homeschooling الإسلامية · مساجد كبرى · اشتراكات رقمية دولية</div>
+        </div>
+        <div class="g-status future">المستقبل</div>
+      </div>
+      <div class="growth-row">
+        <div class="g-year">٢٠٣٠</div>
+        <div>
+          <div style="font-size:14px; font-weight:800; color:#0d2418; margin-bottom:4px;">Global Islamic Family Brand</div>
+          <div class="g-desc">حضور في ٢٠+ دولة · ترخيص شخصيات مسلم ليدر عالميًا · قناة يوتيوب متعددة اللغات</div>
+        </div>
+        <div class="g-status future">الهدف الكبير</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ════ ١٤. ما يقدمه المؤسس ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">١٤</div>
+      <div>
+        <h2>ما يقدمه المؤسس في الشراكة</h2>
+        <div class="sub">دوره في المرحلة القادمة</div>
+      </div>
+    </div>
+
+    <div class="grid grid-3">
+      <div class="yes-item" style="border-right-color:#2d7a4f;">
+        <div class="yes-icon">🎯</div>
+        <div>
+          <div class="yes-text">الرؤية والرسالة</div>
+          <div style="font-size:12px; color:#4a6357; margin-top:3px;">ضمان بقاء الهوية الإسلامية الأصيلة</div>
+        </div>
+      </div>
+      <div class="yes-item" style="border-right-color:#2d7a4f;">
+        <div class="yes-icon">✍️</div>
+        <div>
+          <div class="yes-text">تطوير المحتوى الجديد</div>
+          <div style="font-size:12px; color:#4a6357; margin-top:3px;">إنتاج أعمال جديدة باستمرار</div>
+        </div>
+      </div>
+      <div class="yes-item" style="border-right-color:#2d7a4f;">
+        <div class="yes-icon">🎨</div>
+        <div>
+          <div class="yes-text">الهوية الفكرية والبصرية</div>
+          <div style="font-size:12px; color:#4a6357; margin-top:3px;">الإشراف على التصميم والجودة</div>
+        </div>
+      </div>
+      <div class="yes-item" style="border-right-color:#2d7a4f;">
+        <div class="yes-icon">🤝</div>
+        <div>
+          <div class="yes-text">الشراكات الاستراتيجية الكبرى</div>
+          <div style="font-size:12px; color:#4a6357; margin-top:3px;">التفاوض مع شركاء رئيسيين</div>
+        </div>
+      </div>
+      <div class="yes-item" style="border-right-color:#2d7a4f;">
+        <div class="yes-icon">⭐</div>
+        <div>
+          <div class="yes-text">ضمان الجودة والأصالة</div>
+          <div style="font-size:12px; color:#4a6357; margin-top:3px;">معيار لا يُتنازل عنه</div>
+        </div>
+      </div>
+      <div class="yes-item" style="border-right-color:#2d7a4f;">
+        <div class="yes-icon">🌐</div>
+        <div>
+          <div class="yes-text">العلاقات العامة والمجتمع</div>
+          <div style="font-size:12px; color:#4a6357; margin-top:3px;">وجه الشركة أمام الجمهور</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ════ ١٥. ما الذي لن نفعله ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">١٥</div>
+      <div>
+        <h2>ما الذي لن نفعله؟</h2>
+        <div class="sub">هذه الشريحة تستقطب الشريك المناسب وتصفّي غير المناسب</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px; padding:16px 20px; background:#fff0f0; border-radius:14px; border:1px solid #fecaca;">
+      <p style="font-size:14px; font-weight:700; color:#7a1a1a;">
+        الوضوح حول ما لن نفعله يعطي ثقة أكبر من أي وعود. الشريك المناسب لمسلم ليدر يجد في هذه الحدود ضمانة، لا قيدًا.
+      </p>
+    </div>
+
+    <div class="no-item">
+      <div class="no-icon">🚫</div>
+      <div>
+        <div class="no-text">لن نتخلى عن الهوية الإسلامية الأصيلة</div>
+        <div class="no-desc">مهما كانت الضغوط التجارية، رسالة مسلم ليدر ثابتة.</div>
+      </div>
+    </div>
+
+    <div class="no-item">
+      <div class="no-icon">🚫</div>
+      <div>
+        <div class="no-text">لن نبيع ملكية الشركة بالكامل في هذه المرحلة</div>
+        <div class="no-desc">الشراكة المستهدفة هي شراكة تشغيل وتوزيع، لا تخارج أو بيع حصص.</div>
+      </div>
+    </div>
+
+    <div class="no-item">
+      <div class="no-icon">🚫</div>
+      <div>
+        <div class="no-text">لن نتحول إلى مشروع تجاري بحت على حساب الرسالة</div>
+        <div class="no-desc">النمو والربح أهداف مهمة، لكن ليست على حساب القيمة الجوهرية للمشروع.</div>
+      </div>
+    </div>
+
+    <div class="no-item">
+      <div class="no-icon">🚫</div>
+      <div>
+        <div class="no-text">لن ندخل في منتجات لا تخدم الطفل والأسرة المسلمة</div>
+        <div class="no-desc">التوسع يبقى في نطاق التعليم والتربية وبناء الهوية.</div>
+      </div>
+    </div>
+
+    <div class="no-item">
+      <div class="no-icon">🚫</div>
+      <div>
+        <div class="no-text">لن نتنازل عن الجودة لصالح الكمية</div>
+        <div class="no-desc">ما تم بناؤه على مدى ٦ سنوات من مصداقية لن يُضحى به لأجل نمو سريع وزائل.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ════ ١٦. ملخص التصور ════ -->
+  <div class="section">
+    <div class="section-title">
+      <div class="num">١٦</div>
+      <div>
+        <h2>ملخص التصور</h2>
+        <div class="sub">فلسفة النمو الجديدة</div>
+      </div>
+    </div>
+
+    <div style="padding:32px; background:white; border-radius:20px; border:1px solid #e0ede6; box-shadow:0 4px 16px rgba(10,40,20,.07);">
+      <p style="font-size:16px; line-height:2.2; color:#0d2418;">
+        لن تعتمد مسلم ليدر خلال المرحلة القادمة على <strong>زيادة عدد المنتجات</strong> أو تطوير أفكار جديدة بشكل مستمر،
+        بل على <strong>تحويل الأصول الحالية</strong> إلى منظومة نمو مستدامة وقابلة للتوسع.<br><br>
+
+        وسيتحول دور المؤسس تدريجيًا إلى:
+        <strong>قيادة الرؤية · تطوير المحتوى · الهوية الفكرية · الشراكات الكبرى</strong>،
+        بينما يُفوَّض التشغيل التجاري اليومي إلى شريك متخصص.<br><br>
+
+        الهدف ليس أن تصبح مسلم ليدر <strong>دار نشر أكبر</strong>.<br>
+        الهدف أن تصبح <strong>Global Islamic Family Brand</strong> —
+        علامة تجارية إسلامية أسرية شاملة تُرافق الطفل المسلم في كل لحظة من يومه:
+        في المدرسة، في البيت، في المسجد، في التطبيق.
+      </p>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ════ ١٧. الخلاصة والتواصل ════ -->
+  <div class="cta-box">
+    <div class="small">الخطوة التالية</div>
+    <div class="big">ابدأ المحادثة معنا</div>
+    <p class="desc">
+      إذا آمنت بأن المحتوى الإسلامي الأصيل للأطفال سوق لم يُستثمَر بعد بشكل صحيح،
+      وأن مسلم ليدر تمتلك الأصول والرسالة للقيادة في هذا السوق —
+      فنحن نريد أن نتحدث معك.
+    </p>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; max-width:700px; margin:30px auto 0; text-align:right;">
+      <div style="background:rgba(255,255,255,.08); border:1px solid rgba(245,197,24,.3); border-radius:14px; padding:18px;">
+        <div style="font-size:12px; color:#F5C518; font-weight:800; letter-spacing:2px; margin-bottom:6px;">نبحث عن</div>
+        <div style="font-size:15px; font-weight:800;">شريك تشغيلي</div>
+        <div style="font-size:12px; opacity:.7; margin-top:4px;">إدارة + تسويق + توزيع</div>
+      </div>
+      <div style="background:rgba(245,197,24,.1); border:1px solid rgba(245,197,24,.4); border-radius:14px; padding:18px;">
+        <div style="font-size:12px; color:#F5C518; font-weight:800; letter-spacing:2px; margin-bottom:6px;">أو</div>
+        <div style="font-size:15px; font-weight:800;">شريك توزيع سعودي</div>
+        <div style="font-size:12px; opacity:.7; margin-top:4px;">مدارس + مكتبات + متاجر</div>
+      </div>
+      <div style="background:rgba(255,255,255,.08); border:1px solid rgba(245,197,24,.3); border-radius:14px; padding:18px;">
+        <div style="font-size:12px; color:#F5C518; font-weight:800; letter-spacing:2px; margin-bottom:6px;">أو</div>
+        <div style="font-size:15px; font-weight:800;">شريك دولي</div>
+        <div style="font-size:12px; opacity:.7; margin-top:4px;">أوروبا · أمريكا · الخليج</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <p>
+    <span class="brand">مسلم ليدر</span> · Growth Partnership Deck · ٢٠٢٦
+  </p>
+  <p style="margin-top:8px; font-size:12px; color:#99b5a8;">
+    هذا الملف للاستخدام الخاص في محادثات الشراكة الاستراتيجية فقط.
+    جميع الأرقام الواردة تقديرية ومبنية على بيانات تشغيلية فعلية.
+  </p>
+</footer>
+
+</div>
+</body>
+</html>

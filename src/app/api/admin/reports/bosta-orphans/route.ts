@@ -68,23 +68,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'لا توجد إدخالات' }, { status: 400 });
   }
 
-  const result = await prisma.$transaction(async tx => {
-    const created: string[] = [];
-    let totalItemsCreated = 0;
-    const errors: Array<{ orderId: string; error: string }> = [];
+  let result: { created: string[]; errors: Array<{ orderId: string; error: string }>; totalItemsCreated: number };
+  try {
+    result = await prisma.$transaction(async tx => {
+      const created: string[] = [];
+      let totalItemsCreated = 0;
+      const errors: Array<{ orderId: string; error: string }> = [];
 
-    for (const entry of body.entries!) {
-      const r = await applyBackfillEntry(tx, entry);
-      if (r.ok) {
-        created.push(entry.orderId);
-        totalItemsCreated += r.itemCount;
-      } else {
-        errors.push({ orderId: entry.orderId, error: r.error });
+      for (const entry of body.entries!) {
+        const r = await applyBackfillEntry(tx, entry);
+        if (r.ok) {
+          created.push(entry.orderId);
+          totalItemsCreated += r.itemCount;
+        } else {
+          errors.push({ orderId: entry.orderId, error: r.error });
+        }
       }
-    }
 
-    return { created, errors, totalItemsCreated };
-  }, { timeout: 60000 });
+      return { created, errors, totalItemsCreated };
+    }, { timeout: 60000 });
+  } catch (err) {
+    console.error('[bosta-orphans POST] transaction error:', err);
+    const message = err instanceof Error ? err.message : 'خطأ غير معروف في قاعدة البيانات';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 
   await logActionSafe({
     actor: guard.user,

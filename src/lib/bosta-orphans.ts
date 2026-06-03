@@ -559,8 +559,13 @@ export async function applyBackfillEntry(
     validatedItems.push({ productId: product.id, productName: product.name, productImage, quantity, unitPrice });
   }
 
-  for (const v of validatedItems) {
-    await tx.orderItem.create({ data: { orderId, ...v } });
+  try {
+    for (const v of validatedItems) {
+      await tx.orderItem.create({ data: { orderId, ...v } });
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'خطأ أثناء حفظ عناصر الطلب';
+    return { ok: false, error: `فشل إنشاء عنصر للطلب ${orderId}: ${msg}` };
   }
   return { ok: true, itemCount: validatedItems.length };
 }

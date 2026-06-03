@@ -32,6 +32,15 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   // Share
   const [copied, setCopied] = useState(false);
+  // Notify Me modal
+  const [showNotify, setShowNotify] = useState(false);
+  const [notifyMethod, setNotifyMethod] = useState<'email' | 'phone'>('email');
+  const [notifyName, setNotifyName] = useState('');
+  const [notifyEmail, setNotifyEmail] = useState('');
+  const [notifyPhone, setNotifyPhone] = useState('');
+  const [notifySending, setNotifySending] = useState(false);
+  const [notifyDone, setNotifyDone] = useState(false);
+  const [notifyError, setNotifyError] = useState('');
   // Review form
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewName, setReviewName] = useState('');
@@ -134,6 +143,38 @@ export default function ProductDetailClient({ product }: { product: Product }) {
     setTimeout(() => setAdded(false), 2000);
   }
 
+  async function handleNotifySubmit() {
+    const emailVal = notifyEmail.trim();
+    const phoneVal = notifyPhone.trim();
+    if (notifyMethod === 'email' && !emailVal) {
+      setNotifyError(t('product.notifyModal.fillField'));
+      return;
+    }
+    if (notifyMethod === 'phone' && !phoneVal) {
+      setNotifyError(t('product.notifyModal.fillField'));
+      return;
+    }
+    setNotifySending(true);
+    setNotifyError('');
+    try {
+      const res = await fetch(`/api/products/${product.slug}/notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: notifyName.trim() || undefined,
+          email: notifyMethod === 'email' ? emailVal : undefined,
+          phone: notifyMethod === 'phone' ? phoneVal : undefined,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      setNotifyDone(true);
+    } catch {
+      setNotifyError(t('product.notifyModal.error'));
+    } finally {
+      setNotifySending(false);
+    }
+  }
+
   return (
     <div dir={isRtl ? 'rtl' : 'ltr'}>
       {/* Breadcrumb */}
@@ -160,7 +201,12 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                 className="object-contain p-4"
                 unoptimized
               />
-              {!product.inStock && (
+              {product.comingSoon && (
+                <div className="absolute top-3 right-3 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                  {t('product.comingSoon')}
+                </div>
+              )}
+              {!product.comingSoon && !product.inStock && (
                 <div className="absolute top-3 right-3 bg-gray-900 text-white text-xs font-bold px-3 py-1 rounded-full">
                   {t('product.outOfStock')}
                 </div>
@@ -200,9 +246,9 @@ export default function ProductDetailClient({ product }: { product: Product }) {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className={`w-2.5 h-2.5 rounded-full ${product.inStock ? 'bg-green-500' : 'bg-red-400'}`} />
-              <span className={`text-sm font-semibold ${product.inStock ? 'text-green-600' : 'text-red-500'}`}>
-                {product.inStock ? t('product.inStock') : t('product.outOfStock')}
+              <div className={`w-2.5 h-2.5 rounded-full ${product.comingSoon ? 'bg-orange-400' : product.inStock ? 'bg-green-500' : 'bg-red-400'}`} />
+              <span className={`text-sm font-semibold ${product.comingSoon ? 'text-orange-500' : product.inStock ? 'text-green-600' : 'text-red-500'}`}>
+                {product.comingSoon ? t('product.comingSoon') : product.inStock ? t('product.inStock') : t('product.outOfStock')}
               </span>
             </div>
 
@@ -285,7 +331,36 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               </div>
             )}
 
-            {product.inStock && (
+            {/* Coming Soon — Notify Me button */}
+            {product.comingSoon && (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => { setShowNotify(true); setNotifyDone(false); setNotifyError(''); }}
+                  className="flex-1 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 active:scale-95"
+                >
+                  <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/>
+                  </svg>
+                  {t('product.notifyMe')}
+                </button>
+                {/* Wishlist heart */}
+                <button
+                  onClick={() => toggleWishlist(product)}
+                  className={`w-12 h-12 shrink-0 rounded-xl border-2 flex items-center justify-center transition ${
+                    isWishlisted(product.id)
+                      ? 'border-red-300 bg-red-50 text-red-500'
+                      : 'border-gray-200 hover:border-red-300 hover:bg-red-50 text-gray-400 hover:text-red-500'
+                  }`}
+                  aria-label={isWishlisted(product.id) ? t('wishlist.remove') : t('wishlist.add')}
+                >
+                  <svg className="w-5 h-5" fill={isWishlisted(product.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                  </svg>
+                </button>
+              </div>
+            )}
+            {/* In stock — add to cart */}
+            {!product.comingSoon && product.inStock && (
               <div className="flex items-center gap-3">
                 <div className="flex items-center border-2 border-gray-200 rounded-xl overflow-hidden">
                   <button onClick={() => setQty(q => Math.max(1, q - 1))} className="w-10 h-10 flex items-center justify-center text-xl font-bold hover:bg-gray-100 transition">−</button>
@@ -333,7 +408,8 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                 </button>
               </div>
             )}
-            {!product.inStock && (
+            {/* Out of stock (and not coming soon) */}
+            {!product.comingSoon && !product.inStock && (
               <button
                 onClick={() => toggleWishlist(product)}
                 className={`flex items-center gap-2 font-semibold py-2.5 px-5 rounded-xl border-2 transition text-sm ${
@@ -620,6 +696,115 @@ export default function ProductDetailClient({ product }: { product: Product }) {
           </div>
         )}
       </div>
+
+      {/* ── Notify Me Modal ── */}
+      {showNotify && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => setShowNotify(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6"
+            dir={isRtl ? 'rtl' : 'ltr'}
+            onClick={e => e.stopPropagation()}
+          >
+            {notifyDone ? (
+              <div className="text-center py-4">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <p className="font-bold text-gray-900 text-lg mb-1">{t('product.notifyModal.success')}</p>
+                <button
+                  onClick={() => setShowNotify(false)}
+                  className="mt-4 w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 rounded-xl transition text-sm"
+                >
+                  {isRtl ? 'إغلاق' : 'Close'}
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="font-black text-gray-900 text-lg">{t('product.notifyModal.title')}</h3>
+                  <button onClick={() => setShowNotify(false)} className="text-gray-400 hover:text-gray-600">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Method toggle */}
+                <div className="mb-4">
+                  <p className="text-xs font-semibold text-gray-500 mb-2">{t('product.notifyModal.chooseMethod')}</p>
+                  <div className="flex rounded-xl border border-gray-200 overflow-hidden">
+                    <button
+                      onClick={() => setNotifyMethod('email')}
+                      className={`flex-1 py-2.5 text-sm font-bold transition ${notifyMethod === 'email' ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                    >
+                      {t('product.notifyModal.byEmail')}
+                    </button>
+                    <button
+                      onClick={() => setNotifyMethod('phone')}
+                      className={`flex-1 py-2.5 text-sm font-bold transition ${notifyMethod === 'phone' ? 'bg-green-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                    >
+                      {t('product.notifyModal.byWhatsapp')}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Name */}
+                <div className="mb-3">
+                  <input
+                    type="text"
+                    value={notifyName}
+                    onChange={e => setNotifyName(e.target.value)}
+                    placeholder={t('product.notifyModal.name')}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-orange-400"
+                  />
+                </div>
+
+                {/* Email or Phone */}
+                {notifyMethod === 'email' ? (
+                  <div className="mb-3">
+                    <input
+                      type="email"
+                      value={notifyEmail}
+                      onChange={e => setNotifyEmail(e.target.value)}
+                      placeholder={t('product.notifyModal.email')}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-orange-400"
+                      dir="ltr"
+                    />
+                  </div>
+                ) : (
+                  <div className="mb-3">
+                    <input
+                      type="tel"
+                      value={notifyPhone}
+                      onChange={e => setNotifyPhone(e.target.value)}
+                      placeholder={t('product.notifyModal.phone')}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-green-400"
+                      dir="ltr"
+                    />
+                  </div>
+                )}
+
+                {notifyError && (
+                  <p className="text-red-500 text-xs mb-3">{notifyError}</p>
+                )}
+
+                <button
+                  onClick={handleNotifySubmit}
+                  disabled={notifySending}
+                  className={`w-full font-bold py-3 rounded-xl text-white transition ${notifyMethod === 'phone' ? 'bg-green-500 hover:bg-green-600' : 'bg-orange-500 hover:bg-orange-600'} disabled:opacity-60`}
+                >
+                  {notifySending ? t('product.notifyModal.sending') : t('product.notifyModal.send')}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

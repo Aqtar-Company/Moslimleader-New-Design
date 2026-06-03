@@ -27,6 +27,8 @@ const EMPTY_FORM = {
   minAge: null as number | null,
   maxAge: null as number | null,
   needsParentalGuide: false,
+  // When true, the add-to-cart button is replaced by a "Notify Me" button.
+  comingSoon: false,
 };
 
 export default function ProductsPage() {
@@ -213,6 +215,7 @@ export default function ProductsPage() {
         minAge: (fullP as { minAge?: number | null }).minAge ?? null,
         maxAge: (fullP as { maxAge?: number | null }).maxAge ?? null,
         needsParentalGuide: (fullP as { needsParentalGuide?: boolean }).needsParentalGuide ?? false,
+        comingSoon: (fullP as { comingSoon?: boolean }).comingSoon ?? false,
       });
       setFormTags((fullP.tags || []).join(', '));
       setFormImages([...(fullP.images || [])]);
@@ -279,6 +282,7 @@ export default function ProductsPage() {
       minAge: form.minAge,
       maxAge: form.maxAge,
       needsParentalGuide: form.needsParentalGuide,
+      comingSoon: form.comingSoon,
       tags: parsedTags,
       images: formImages,
       variants: builtVariants.length > 0 ? builtVariants : undefined,
@@ -597,18 +601,33 @@ export default function ProductsPage() {
           <div className="space-y-4 pt-4 border-t border-gray-100">
             <h3 className="text-sm font-bold text-gray-900">خيارات أخرى</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex items-center gap-3">
-                <button
-                  dir="ltr"
-                  type="button"
-                  onClick={() => setForm(f => ({ ...f, inStock: !f.inStock }))}
-                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none ${form.inStock ? 'bg-green-500' : 'bg-gray-300'}`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${form.inStock ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
-                <span className={`text-sm font-semibold ${form.inStock ? 'text-green-700' : 'text-gray-400'}`}>
-                  {form.inStock ? 'متوفر في المخزون' : 'غير متوفر'}
-                </span>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <button
+                    dir="ltr"
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, inStock: !f.inStock }))}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none ${form.inStock ? 'bg-green-500' : 'bg-gray-300'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${form.inStock ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                  <span className={`text-sm font-semibold ${form.inStock ? 'text-green-700' : 'text-gray-400'}`}>
+                    {form.inStock ? 'متوفر في المخزون' : 'غير متوفر'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    dir="ltr"
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, comingSoon: !f.comingSoon }))}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none ${form.comingSoon ? 'bg-orange-400' : 'bg-gray-300'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${form.comingSoon ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                  <span className={`text-sm font-semibold ${form.comingSoon ? 'text-orange-600' : 'text-gray-400'}`}>
+                    {form.comingSoon ? 'قريباً (Notify Me بدل السلة)' : 'إطلاق مستقبلي — معطل'}
+                  </span>
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">رابط فيديو YouTube 🎥</label>

@@ -152,16 +152,38 @@ model Product {
   // product card and in Amin's catalogue context, mirroring the
   // existing field on the Book model.
   needsParentalGuide Boolean @default(false)
+  // When true, the product is not yet available for purchase.
+  // The add-to-cart button is replaced by a "Notify Me" button.
+  comingSoon Boolean @default(false)
 
   orderItems OrderItem[]
   cartItems  CartItem[]
   reviews    Review[]
   stockMovements StockMovement[]
   productionBatches ProductionBatch[]
+  notifyRequests NotifyRequest[]
 
   @@index([source])
   @@index([inStock])
   @@index([minAge, maxAge])
+  @@index([comingSoon])
+}
+
+// Stores requests from users who want to be notified when a coming-soon
+// product becomes available. Supports email and WhatsApp contact methods.
+model NotifyRequest {
+  id          String    @id @default(cuid())
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name        String?
+  email       String?
+  phone       String?   // WhatsApp number
+  notified    Boolean   @default(false)
+  notifiedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([productId])
+  @@index([notified])
 }
 
 // Append-only audit log of every stock change. Written inside the same

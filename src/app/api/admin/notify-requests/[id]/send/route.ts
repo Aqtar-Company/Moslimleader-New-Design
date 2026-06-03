@@ -5,8 +5,9 @@ import { requirePerm } from '@/lib/permissions';
 import { getTransporter } from '@/lib/smtp';
 
 // POST /api/admin/notify-requests/[productId]/send
-// Sends email notifications to all pending (not yet notified) subscribers
-// for the given product, then marks them as notified.
+// Sends email notifications to all pending subscribers for the given product.
+// Only marks a request as notified after its specific send attempt resolves.
+// Phone-only requests are returned in a separate count for manual WhatsApp follow-up.
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const guard = await requirePerm('products.write');
@@ -27,64 +28,94 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     });
 
     if (pending.length === 0) {
-      return NextResponse.json({ ok: true, sent: 0, message: 'لا توجد طلبات معلقة' });
+      return NextResponse.json({ ok: true, sent: 0, whatsapp: 0, message: 'لا توجد طلبات معلقة' });
     }
 
     const productName = product.name;
     const productUrl = `https://moslimleader.com/shop/${product.slug}`;
-    const images = product.images as string[];
-    const productImage = images?.[0] || '';
     const fromUser = process.env.SMTP_USER || 'orders@moslimleader.com';
 
+    // Resolve image URL — must be absolute for email clients.
+    const images = product.images as string[];
+    const rawImage = images?.[0] || '';
+    const productImage = rawImage.startsWith('http')
+      ? rawImage
+      : rawImage
+        ? `https://moslimleader.com${rawImage.startsWith('/') ? '' : '/'}${rawImage}`
+        : '';
+
     const transporter = getTransporter();
-    let sent = 0;
     const now = new Date();
 
-    for (const req of pending) {
-      if (req.email) {
-        const html = buildNotifyEmail({ name: req.name, productName, productUrl, productImage });
-        try {
-          await transporter.sendMail({
-            from: `"مسلم ليدر" <${fromUser}>`,
-            to: req.email,
-            subject: `✅ المنتج متاح الآن: ${productName}`,
-            html,
-          });
-          sent++;
-        } catch (err) {
-          console.error(`[notify send] email failed for ${req.email}:`, err);
-        }
-      }
-      // WhatsApp numbers are listed in the admin panel for manual follow-up.
-      // Count them as "sent" since we've processed this request.
-      if (req.phone && !req.email) sent++;
-    }
+    // Separate email vs. phone-only requests.
+    const emailReqs = pending.filter(r => !!r.email);
+    const phoneOnlyReqs = pending.filter(r => !r.email && !!r.phone);
+    const html = buildNotifyEmail({ productName, productUrl, productImage });
 
-    // Mark all as notified regardless of email success (avoid duplicate sends)
-    await prisma.notifyRequest.updateMany({
-      where: { productId, notified: false },
-      data: { notified: true, notifiedAt: now },
+    // Send all emails in parallel (pool handles concurrency via maxConnections:3).
+    // allSettled never throws — we handle per-item failures below.
+    const results = await Promise.allSettled(
+      emailReqs.map(req =>
+        transporter.sendMail({
+          from: `"مسلم ليدر" <${fromUser}>`,
+          to: req.email!,
+          subject: `✅ المنتج متاح الآن: ${productName}`,
+          html: html.replace('__NAME__', req.name ? `مرحباً ${req.name}،` : 'مرحباً،'),
+        })
+      )
+    );
+
+    // Collect IDs of successfully sent + all phone-only (manual follow-up)
+    const succeededEmailIds: string[] = [];
+    const failedEmails: string[] = [];
+    results.forEach((r, i) => {
+      if (r.status === 'fulfilled') {
+        succeededEmailIds.push(emailReqs[i].id);
+      } else {
+        failedEmails.push(emailReqs[i].email!);
+        console.error(`[notify send] failed for ${emailReqs[i].email}:`, r.reason);
+      }
     });
 
-    return NextResponse.json({ ok: true, sent, total: pending.length });
+    const phoneOnlyIds = phoneOnlyReqs.map(r => r.id);
+    const markIds = [...succeededEmailIds, ...phoneOnlyIds];
+
+    // Only mark as notified the requests that actually went through.
+    if (markIds.length > 0) {
+      await prisma.notifyRequest.updateMany({
+        where: { id: { in: markIds } },
+        data: { notified: true, notifiedAt: now },
+      });
+    }
+
+    if (failedEmails.length > 0) {
+      console.error(`[notify send] ${failedEmails.length} email(s) failed:`, failedEmails);
+    }
+
+    return NextResponse.json({
+      ok: true,
+      sent: succeededEmailIds.length,
+      whatsapp: phoneOnlyIds.length,
+      failed: failedEmails.length,
+      total: pending.length,
+    });
   } catch (err) {
     console.error('[admin notify-requests send]', err);
     return NextResponse.json({ error: 'حدث خطأ في الخادم' }, { status: 500 });
   }
 }
 
+// Name placeholder replaced per-recipient at call time to avoid rebuilding the
+// full HTML string for every subscriber.
 function buildNotifyEmail({
-  name,
   productName,
   productUrl,
   productImage,
 }: {
-  name: string | null;
   productName: string;
   productUrl: string;
   productImage: string;
 }): string {
-  const greeting = name ? `مرحباً ${name}،` : 'مرحباً،';
   return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -102,12 +133,12 @@ function buildNotifyEmail({
         <!-- Body -->
         <tr>
           <td style="padding:32px;">
-            <p style="margin:0 0 16px;font-size:16px;color:#1a1a1a;font-weight:700;">${greeting}</p>
+            <p style="margin:0 0 16px;font-size:16px;color:#1a1a1a;font-weight:700;">__NAME__</p>
             <p style="margin:0 0 20px;font-size:15px;color:#444;line-height:1.7;">
               البشرى! المنتج الذي طلبت الإشعار عنه أصبح متاحاً الآن في متجر مسلم ليدر.
             </p>
             ${productImage ? `<div style="text-align:center;margin-bottom:20px;">
-              <img src="${productImage}" alt="${productName}" style="max-width:200px;border-radius:12px;border:1px solid #e5e7eb;">
+              <img src="${productImage}" alt="${productName}" width="200" style="max-width:200px;border-radius:12px;border:1px solid #e5e7eb;">
             </div>` : ''}
             <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px;text-align:center;margin-bottom:24px;">
               <p style="margin:0 0 8px;font-size:18px;font-weight:900;color:#1a4a2e;">${productName}</p>

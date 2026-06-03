@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getMergedStaticProduct } from '@/lib/product-overrides';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {
@@ -8,36 +9,77 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     const body = await req.json();
     const { name, email, phone } = body as { name?: string; email?: string; phone?: string };
 
-    if (!email?.trim() && !phone?.trim()) {
-      return NextResponse.json({ error: 'يرجى إدخال البريد الإلكتروني أو رقم واتساب' }, { status: 400 });
-    }
-
-    // Find product (DB or via slug lookup)
-    const product = await prisma.product.findFirst({ where: { slug } });
-    if (!product) {
-      return NextResponse.json({ error: 'المنتج غير موجود' }, { status: 404 });
-    }
-
-    // Avoid duplicate requests for the same contact info + product
+    // Validate using trimmed values — whitespace-only inputs are treated as empty.
     const emailVal = email?.trim() || null;
     const phoneVal = phone?.trim() || null;
 
+    if (!emailVal && !phoneVal) {
+      return NextResponse.json({ error: 'يرجى إدخال البريد الإلكتروني أو رقم واتساب' }, { status: 400 });
+    }
+
+    // Resolve product: try DB first (covers admin-created + seeded static rows),
+    // then fall back to the pure static definition + overrides. comingSoon static
+    // products are never seeded via ensureProductInDb (add-to-cart is blocked),
+    // so the fallback is essential.
+    let productId: string;
+    const dbProduct = await prisma.product.findFirst({ where: { slug } });
+    if (dbProduct) {
+      productId = dbProduct.id;
+    } else {
+      const staticProduct = await getMergedStaticProduct(slug);
+      if (!staticProduct) {
+        return NextResponse.json({ error: 'المنتج غير موجود' }, { status: 404 });
+      }
+      productId = staticProduct.id;
+      // Seed a minimal DB row so the relation FK can be satisfied and the admin
+      // notify-requests page can include the product name/image.
+      try {
+        await prisma.product.upsert({
+          where: { id: productId },
+          create: {
+            id: productId,
+            slug: staticProduct.slug,
+            name: staticProduct.name,
+            nameEn: staticProduct.nameEn,
+            shortDescription: staticProduct.shortDescription || '',
+            description: staticProduct.description || '',
+            price: staticProduct.price,
+            priceUsd: staticProduct.priceUsd || 0,
+            category: staticProduct.category,
+            tags: staticProduct.tags || [],
+            images: staticProduct.images || [],
+            inStock: staticProduct.inStock ?? true,
+            weight: staticProduct.weight || 0,
+            source: 'static',
+          },
+          update: {},
+        });
+      } catch (seedErr) {
+        console.error('[notify] seed static product failed:', seedErr);
+        // Non-fatal — the product row may already exist under a race condition.
+      }
+    }
+
+    // Avoid duplicate pending requests for the same contact + product.
     const existing = await prisma.notifyRequest.findFirst({
       where: {
-        productId: product.id,
-        ...(emailVal ? { email: emailVal } : { phone: phoneVal }),
+        productId,
+        OR: [
+          ...(emailVal ? [{ email: emailVal }] : []),
+          ...(phoneVal ? [{ phone: phoneVal }] : []),
+        ],
         notified: false,
       },
     });
 
     if (existing) {
-      // Already registered — silently succeed so we don't leak data
+      // Silently succeed — don't reveal whether the contact is already registered.
       return NextResponse.json({ ok: true });
     }
 
     await prisma.notifyRequest.create({
       data: {
-        productId: product.id,
+        productId,
         name: name?.trim() || null,
         email: emailVal,
         phone: phoneVal,

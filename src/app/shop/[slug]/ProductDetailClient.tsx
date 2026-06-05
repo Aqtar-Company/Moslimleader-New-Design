@@ -408,21 +408,33 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                 </button>
               </div>
             )}
-            {/* Out of stock (and not coming soon) */}
+            {/* Out of stock (and not coming soon) — same notify flow */}
             {!product.comingSoon && !product.inStock && (
-              <button
-                onClick={() => toggleWishlist(product)}
-                className={`flex items-center gap-2 font-semibold py-2.5 px-5 rounded-xl border-2 transition text-sm ${
-                  isWishlisted(product.id)
-                    ? 'border-red-300 bg-red-50 text-red-500'
-                    : 'border-gray-200 hover:border-red-300 text-gray-500 hover:text-red-500'
-                }`}
-              >
-                <svg className="w-4 h-4" fill={isWishlisted(product.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-                </svg>
-                {isWishlisted(product.id) ? t('wishlist.added') : t('wishlist.add')}
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => { setShowNotify(true); setNotifyDone(false); setNotifyError(''); }}
+                  className="flex-1 flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 active:scale-95"
+                >
+                  <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/>
+                  </svg>
+                  {t('product.notifyMe')}
+                </button>
+                {/* Wishlist heart */}
+                <button
+                  onClick={() => toggleWishlist(product)}
+                  className={`w-12 h-12 shrink-0 rounded-xl border-2 flex items-center justify-center transition ${
+                    isWishlisted(product.id)
+                      ? 'border-red-300 bg-red-50 text-red-500'
+                      : 'border-gray-200 hover:border-red-300 hover:bg-red-50 text-gray-400 hover:text-red-500'
+                  }`}
+                  aria-label={isWishlisted(product.id) ? t('wishlist.remove') : t('wishlist.add')}
+                >
+                  <svg className="w-5 h-5" fill={isWishlisted(product.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                  </svg>
+                </button>
+              </div>
             )}
 
             {/* Weight badge */}

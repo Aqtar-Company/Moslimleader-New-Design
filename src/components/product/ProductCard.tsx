@@ -21,6 +21,7 @@ export default function ProductCard({ product, priceLoading = false, modelIndex 
   const [added, setAdded] = useState(false);
   const hasVariants = product.variants && product.variants.length > 0;
   const isComingSoon = (product as { comingSoon?: boolean }).comingSoon;
+  const needsNotify = isComingSoon || !product.inStock;
 
   const baseName = isRtl ? product.name : (product.nameEn || product.name);
   const matchedVariant = modelIndex !== undefined
@@ -86,18 +87,20 @@ export default function ProductCard({ product, priceLoading = false, modelIndex 
           ) : (
             <span className="text-gray-900 font-bold text-sm sm:text-lg shrink-0">{formatPrice(priceResult)}</span>
           )}
-          {isComingSoon ? (
+          {needsNotify && !priceLoading ? (
             <button
               onClick={() => router.push(href)}
-              className="text-white text-xs sm:text-sm font-semibold px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all whitespace-nowrap shrink-0 bg-orange-500 hover:bg-orange-600 active:scale-95"
+              className={`text-white text-xs sm:text-sm font-semibold px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all whitespace-nowrap shrink-0 active:scale-95 ${
+                isComingSoon ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-500 hover:bg-gray-600'
+              }`}
             >
               {t('product.notifyMe')}
             </button>
           ) : (
             <button
-              disabled={(!product.inStock && !priceLoading) || added || priceLoading}
+              disabled={added || priceLoading}
               onClick={() => {
-                if (!product.inStock || priceLoading) return;
+                if (priceLoading) return;
                 if (hasVariants) {
                   router.push(href);
                   return;
@@ -112,12 +115,10 @@ export default function ProductCard({ product, priceLoading = false, modelIndex 
                   ? 'bg-green-500 scale-95'
                   : priceLoading
                     ? 'bg-gray-300 cursor-not-allowed'
-                    : product.inStock
-                      ? 'bg-purple-700 hover:bg-purple-800 active:scale-95'
-                      : 'bg-gray-300 cursor-not-allowed'
+                    : 'bg-purple-700 hover:bg-purple-800 active:scale-95'
               }`}
             >
-              {added ? t('product.added') : priceLoading ? <span className="h-4 w-16 bg-gray-400 rounded inline-block animate-pulse" /> : product.inStock ? (hasVariants ? (isRtl ? 'اختر الموديل' : 'Choose Model') : t('product.addToCart')) : t('product.unavailable')}
+              {added ? t('product.added') : priceLoading ? <span className="h-4 w-16 bg-gray-400 rounded inline-block animate-pulse" /> : hasVariants ? (isRtl ? 'اختر الموديل' : 'Choose Model') : t('product.addToCart')}
             </button>
           )}
         </div>

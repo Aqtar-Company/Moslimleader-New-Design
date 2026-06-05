@@ -29,7 +29,7 @@ interface Body {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = await requirePerm('inventory.write');
+  const guard = await requirePerm(['inventory.write', 'orders.write']);
   if ('response' in guard) return guard.response;
 
   let body: Body = {};

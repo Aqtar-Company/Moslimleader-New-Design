@@ -533,6 +533,16 @@ export default function BostaOrphansPage() {
                 onUpdate={(i, p) => updateItem(r.orderId, i, p)}
                 onSetSkip={s => setSkip(r.orderId, s)}
                 onRescale={target => rescaleToOrderTotal(r.orderId, target)}
+                onDelete={async () => {
+                  if (!confirm('حذف هذا الطلب نهائياً من قاعدة البيانات؟')) return;
+                  try {
+                    await adminFetch(`/api/admin/reports/bosta-orphans/${r.orderId}`, { method: 'DELETE' });
+                    setRows(prev => prev.filter(row => row.orderId !== r.orderId));
+                    addToast('تم حذف الطلب', 'success');
+                  } catch {
+                    addToast('فشل الحذف', 'error');
+                  }
+                }}
               />
             ))}
           </div>
@@ -544,7 +554,7 @@ export default function BostaOrphansPage() {
 
 function OrphanCard({
   row, products, draft,
-  onAdd, onRemove, onUpdate, onSetSkip, onRescale,
+  onAdd, onRemove, onUpdate, onSetSkip, onRescale, onDelete,
 }: {
   row: OrphanRow;
   products: Product[];
@@ -554,6 +564,7 @@ function OrphanCard({
   onUpdate: (i: number, p: Partial<DraftItem>) => void;
   onSetSkip: (s: boolean) => void;
   onRescale: (target: number) => void;
+  onDelete: () => void;
 }) {
   const sumDraft = draft.items.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
   // The recorded price (Order.total) is the truth; if the admin's items
@@ -585,10 +596,19 @@ function OrphanCard({
           <p className="text-sm font-bold text-gray-800 mt-1">{row.customerName ?? 'ضيف'}</p>
           <p className="text-[11px] text-gray-500">{row.paymentNote}</p>
         </div>
-        <label className="flex items-center gap-1.5 text-[11px] text-gray-600 cursor-pointer">
-          <input type="checkbox" checked={draft.skip} onChange={e => onSetSkip(e.target.checked)} className="w-4 h-4" />
-          تخطّي هذا الطلب
-        </label>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 text-[11px] text-gray-600 cursor-pointer">
+            <input type="checkbox" checked={draft.skip} onChange={e => onSetSkip(e.target.checked)} className="w-4 h-4" />
+            تخطّي
+          </label>
+          <button
+            onClick={onDelete}
+            title="حذف هذا الطلب نهائياً"
+            className="text-[11px] text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-0.5 rounded transition"
+          >
+            🗑 حذف
+          </button>
+        </div>
       </div>
 
       {/* Bosta description preview — collapsed when long */}

@@ -28,7 +28,7 @@ const HARD_LIMIT = 1000;
 const MAX_CONSECUTIVE_FAILURES = 5;
 
 export async function POST(req: NextRequest) {
-  const guard = await requirePerm('inventory.write');
+  const guard = await requirePerm(['inventory.write', 'orders.write']);
   if ('response' in guard) return guard.response;
 
   let body: BulkMatchBody = {};

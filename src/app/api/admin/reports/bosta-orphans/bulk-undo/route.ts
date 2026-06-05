@@ -14,7 +14,7 @@ import { logActionSafe } from '@/lib/audit-log';
 interface UndoBody { batchId?: string }
 
 export async function POST(req: NextRequest) {
-  const guard = await requirePerm('inventory.write');
+  const guard = await requirePerm(['inventory.write', 'orders.write']);
   if ('response' in guard) return guard.response;
 
   let body: UndoBody = {};
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
 // "undo last batch" as a single button without making the owner
 // remember the batchId).
 export async function GET() {
-  const guard = await requirePerm('inventory.read');
+  const guard = await requirePerm(['inventory.read', 'orders.read']);
   if ('response' in guard) return guard.response;
 
   const summaries = await prisma.auditLog.findMany({

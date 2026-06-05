@@ -15,7 +15,7 @@ import { applyBackfillEntry, buildOrphanRow } from '@/lib/bosta-orphans';
 // so the bulk-match endpoint can reuse them.
 
 export async function GET(req: NextRequest) {
-  const guard = await requirePerm('inventory.read');
+  const guard = await requirePerm(['inventory.read', 'orders.read']);
   if ('response' in guard) return guard.response;
 
   const limit = Math.min(Number(req.nextUrl.searchParams.get('limit') ?? '200') || 200, 500);
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
 // If the unit prices the admin entered don't sum to Order.total, that's
 // FINE — the admin saw the discrepancy in the UI and made a call.
 export async function POST(req: NextRequest) {
-  const guard = await requirePerm('inventory.write');
+  const guard = await requirePerm(['inventory.write', 'orders.write']);
   if ('response' in guard) return guard.response;
 
   let body: { entries?: Array<{ orderId: string; items: Array<{ productId: string; quantity: number; unitPrice?: number }> }> };

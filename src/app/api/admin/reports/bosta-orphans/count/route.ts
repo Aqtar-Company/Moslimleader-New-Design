@@ -14,7 +14,7 @@ import { requirePerm } from '@/lib/permissions';
 // and runs heavier per-row matching logic. We deliberately don't
 // reuse it here — sidebars need to be fast.
 export async function GET() {
-  const guard = await requirePerm('inventory.read');
+  const guard = await requirePerm(['inventory.read', 'orders.read']);
   if ('response' in guard) return guard.response;
   try {
     const count = await prisma.order.count({

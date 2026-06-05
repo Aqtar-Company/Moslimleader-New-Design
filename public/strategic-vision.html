@@ -8,122 +8,145 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;}
-body{font-family:'Cairo',sans-serif;background:#0a1f10;color:#e8f5e9;direction:rtl;}
+body{font-family:'Cairo',sans-serif;background:#fff;color:#111827;direction:rtl;}
 
-/* ── SVG icon ── */
 .ic{display:inline-block;vertical-align:middle;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 
-/* ── tokens ── */
 :root{
   --green-dark:#0d2418;
   --green-mid:#1a4a2e;
   --green-hi:#2d7a4f;
-  --gold:#F5C518;
-  --gold-dim:#c9a012;
-  --text:#e8f5e9;
-  --muted:#a8c5b0;
-  --card:#132d1c;
-  --border:#1f4830;
+  --green-pale:#f0f9f4;
+  --green-light:#e8f5ec;
+  --gold:#c9920a;
+  --gold-bg:#fef9ec;
+  --text:#111827;
+  --muted:#6b7280;
+  --border:#e5e7eb;
+  --card:#ffffff;
+  --shadow:0 1px 4px rgba(0,0,0,.08),0 2px 8px rgba(0,0,0,.04);
+  --shadow-md:0 4px 16px rgba(0,0,0,.10),0 2px 6px rgba(0,0,0,.06);
 }
 
-/* ── scrollbar ── */
 ::-webkit-scrollbar{width:6px;}
-::-webkit-scrollbar-track{background:var(--green-dark);}
-::-webkit-scrollbar-thumb{background:var(--green-hi);border-radius:3px;}
+::-webkit-scrollbar-track{background:#f3f4f6;}
+::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:#9ca3af;}
 
-/* ════════════════════════════
-   NORMAL (scroll) LAYOUT
-════════════════════════════ */
-.slide{padding:80px 0;min-height:100vh;display:flex;align-items:center;border-bottom:1px solid var(--border);}
+/* ── LAYOUT ── */
+.slide{padding:80px 0;border-bottom:1px solid var(--border);}
 .slide:last-child{border-bottom:none;}
-.container{width:100%;max-width:960px;margin:0 auto;padding:0 24px;}
+.slide:nth-child(even){background:#fafafa;}
+.container{width:100%;max-width:980px;margin:0 auto;padding:0 28px;}
 
-/* cover slide */
-#s1{background:linear-gradient(135deg,#051008 0%,#0d2418 50%,#0a1a10 100%);position:relative;overflow:hidden;}
-#s1::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 70% 40%,rgba(45,122,79,.18) 0%,transparent 65%);}
-.cover-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(245,197,24,.12);border:1px solid rgba(245,197,24,.35);border-radius:50px;padding:8px 20px;font-size:.85rem;color:var(--gold);margin-bottom:28px;}
-.cover-tag{font-size:.78rem;background:var(--green-hi);color:#fff;border-radius:4px;padding:3px 10px;margin-bottom:20px;display:inline-block;}
-h1.cover-title{font-size:clamp(2rem,5vw,3.4rem);font-weight:900;line-height:1.2;margin-bottom:20px;}
-h1.cover-title span{color:var(--gold);}
-.cover-definition{background:rgba(255,255,255,.05);border-right:4px solid var(--gold);border-radius:0 8px 8px 0;padding:18px 20px;margin:28px 0;font-size:1.05rem;line-height:1.75;color:#d4e8da;}
-.cover-tagline{font-size:1.15rem;color:var(--gold);font-weight:700;font-style:italic;margin:24px 0 36px;}
-.cover-kpis{display:flex;flex-wrap:wrap;gap:16px;}
-.kpi{background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:12px;padding:16px 24px;text-align:center;flex:1;min-width:120px;}
-.kpi-val{font-size:1.6rem;font-weight:900;color:var(--gold);}
-.kpi-lbl{font-size:.78rem;color:var(--muted);margin-top:4px;}
+/* ── COVER ── */
+#s1{background:linear-gradient(135deg,#0d2418 0%,#1a4a2e 55%,#0d2418 100%);padding:0;border-bottom:none;}
+.cover-inner{display:grid;grid-template-columns:1fr 1fr;min-height:100vh;align-items:stretch;}
+.cover-text{padding:64px 48px 64px 40px;display:flex;flex-direction:column;justify-content:center;}
+.cover-image-col{position:relative;overflow:hidden;min-height:480px;}
+.cover-image-col img{width:100%;height:100%;object-fit:cover;opacity:.85;display:block;}
+.cover-image-col::after{content:'';position:absolute;inset:0;background:linear-gradient(to left,transparent 60%,#1a4a2e 100%);}
+.cover-tag{display:inline-block;font-size:.78rem;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:4px;padding:4px 14px;margin-bottom:20px;color:#e8f5ec;letter-spacing:.04em;}
+h1.cover-title{font-size:clamp(1.8rem,4.5vw,3.2rem);font-weight:900;line-height:1.2;margin-bottom:18px;color:#ffffff;}
+h1.cover-title span{color:#F5C518;}
+.cover-definition{background:rgba(255,255,255,.09);border-right:4px solid #F5C518;border-radius:0 8px 8px 0;padding:16px 20px;margin:22px 0;font-size:.97rem;line-height:1.75;color:#c8e6c9;}
+.cover-tagline{font-size:1.05rem;color:#F5C518;font-weight:700;font-style:italic;margin:20px 0 30px;line-height:1.7;}
+.cover-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.kpi{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:14px 10px;text-align:center;}
+.kpi-val{font-size:1.5rem;font-weight:900;color:#F5C518;}
+.kpi-lbl{font-size:.72rem;color:#a8d8b0;margin-top:3px;}
 
-/* section headings */
-.sec-label{font-size:.78rem;text-transform:uppercase;letter-spacing:.12em;color:var(--gold);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+/* ── SECTION HEAD ── */
+.sec-label{font-size:.75rem;text-transform:uppercase;letter-spacing:.12em;color:var(--green-hi);margin-bottom:10px;display:flex;align-items:center;gap:8px;font-weight:700;}
 .sec-label::after{content:'';flex:1;height:1px;background:var(--border);}
-h2.sec-title{font-size:clamp(1.5rem,3.5vw,2.4rem);font-weight:800;margin-bottom:10px;line-height:1.25;}
-h2.sec-title span{color:var(--gold);}
-.sec-sub{color:var(--muted);font-size:1rem;margin-bottom:40px;line-height:1.7;}
+h2.sec-title{font-size:clamp(1.5rem,3.2vw,2.3rem);font-weight:800;margin-bottom:8px;line-height:1.25;color:var(--green-dark);}
+h2.sec-title span{color:var(--green-hi);}
+.sec-sub{color:var(--muted);font-size:.97rem;margin-bottom:36px;line-height:1.7;max-width:640px;}
 
-/* cards grid */
-.cards{display:grid;gap:20px;}
+/* ── CARDS ── */
+.cards{display:grid;gap:18px;}
 .cards-2{grid-template-columns:repeat(auto-fit,minmax(260px,1fr));}
-.cards-3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));}
-.cards-4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));}
-.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px 24px;}
-.card-icon{width:48px;height:48px;background:rgba(45,122,79,.25);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;color:var(--gold);}
-.card h3{font-size:1.05rem;font-weight:700;margin-bottom:8px;}
-.card p{font-size:.9rem;color:var(--muted);line-height:1.65;}
+.cards-3{grid-template-columns:repeat(auto-fit,minmax(210px,1fr));}
+.cards-4{grid-template-columns:repeat(auto-fit,minmax(190px,1fr));}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:26px 22px;box-shadow:var(--shadow);}
+.card-icon{width:46px;height:46px;background:var(--green-pale);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;color:var(--green-hi);}
+.card h3{font-size:1rem;font-weight:700;margin-bottom:7px;color:var(--green-dark);}
+.card p{font-size:.88rem;color:var(--muted);line-height:1.65;}
 
-/* table */
-.tbl{width:100%;border-collapse:collapse;margin-top:20px;}
-.tbl th{background:var(--green-mid);color:var(--gold);font-weight:700;padding:12px 16px;text-align:right;font-size:.9rem;}
-.tbl td{padding:11px 16px;border-bottom:1px solid var(--border);font-size:.9rem;color:#d4e8da;}
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;margin-top:18px;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);}
+.tbl th{background:var(--green-mid);color:#F5C518;font-weight:700;padding:12px 16px;text-align:right;font-size:.88rem;}
+.tbl td{padding:11px 16px;border-bottom:1px solid var(--border);font-size:.88rem;color:var(--text);}
 .tbl tr:last-child td{border-bottom:none;}
-.tbl tr:hover td{background:rgba(255,255,255,.03);}
+.tbl tr:hover td{background:var(--green-pale);}
 
-/* stat row */
-.stats-row{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin:30px 0;}
-.stat-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;}
-.stat-val{font-size:1.8rem;font-weight:900;color:var(--gold);}
-.stat-lbl{font-size:.8rem;color:var(--muted);margin-top:6px;}
+/* ── STATS ── */
+.stats-row{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin:28px 0;}
+.stat-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;box-shadow:var(--shadow);}
+.stat-val{font-size:1.9rem;font-weight:900;color:var(--green-mid);}
+.stat-lbl{font-size:.78rem;color:var(--muted);margin-top:5px;}
 
-/* highlight box */
-.highlight{background:linear-gradient(135deg,rgba(45,122,79,.18),rgba(26,74,46,.25));border:1px solid rgba(45,122,79,.4);border-radius:14px;padding:28px 32px;margin:28px 0;}
-.highlight p{font-size:1.05rem;line-height:1.8;color:#d4e8da;}
-.highlight .hl-title{font-size:1.2rem;font-weight:800;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:10px;}
+/* ── HIGHLIGHT / GOLD BOX ── */
+.highlight{background:var(--green-pale);border:1px solid #bbf7d0;border-radius:14px;padding:26px 30px;margin:26px 0;}
+.highlight p{font-size:1rem;line-height:1.8;color:#1f4838;}
+.hl-title{font-size:1.1rem;font-weight:800;color:var(--green-dark);margin-bottom:10px;display:flex;align-items:center;gap:10px;}
+.hl-title .ic{color:var(--green-hi);}
 
-/* gold box */
-.gold-box{background:linear-gradient(135deg,rgba(245,197,24,.1),rgba(201,160,18,.08));border:1px solid rgba(245,197,24,.3);border-radius:14px;padding:28px 32px;margin:28px 0;}
-.gold-box p{font-size:1.05rem;line-height:1.8;color:#e8e0b0;}
-.gold-title{font-size:1.3rem;font-weight:800;color:var(--gold);margin-bottom:14px;text-align:center;}
+.gold-box{background:var(--gold-bg);border:1px solid #fcd34d;border-radius:14px;padding:26px 30px;margin:26px 0;}
+.gold-box p{font-size:1rem;line-height:1.8;color:#78350f;}
+.gold-title{font-size:1.2rem;font-weight:800;color:#92400e;margin-bottom:12px;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;}
 
-/* list */
-.check-list{list-style:none;margin-top:16px;display:grid;gap:12px;}
-.check-list li{display:flex;align-items:flex-start;gap:12px;font-size:.95rem;color:#d4e8da;line-height:1.6;}
-.check-list li .ic{color:var(--gold);flex-shrink:0;margin-top:2px;}
-.x-list li .ic{color:#e05252;}
+/* ── LISTS ── */
+.check-list{list-style:none;margin-top:14px;display:grid;gap:10px;}
+.check-list li{display:flex;align-items:flex-start;gap:10px;font-size:.93rem;color:var(--text);line-height:1.65;}
+.check-list li .ic{color:var(--green-hi);flex-shrink:0;margin-top:3px;}
+.x-list li .ic{color:#dc2626;}
+.x-list li{color:#374151;}
 
-/* tag chips */
-.tags{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;}
-.tag{background:rgba(45,122,79,.2);border:1px solid rgba(45,122,79,.4);border-radius:50px;padding:7px 16px;font-size:.85rem;color:#c8e6c9;}
+/* ── TAGS ── */
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
+.tag{background:var(--green-light);border:1px solid #bbf7d0;border-radius:50px;padding:6px 15px;font-size:.83rem;color:var(--green-dark);font-weight:600;}
 
-/* phase block */
-.phase{background:var(--card);border-radius:14px;padding:24px;border:1px solid var(--border);position:relative;overflow:hidden;}
-.phase::before{content:'';position:absolute;top:0;right:0;width:4px;height:100%;background:var(--gold);}
-.phase-num{font-size:.75rem;color:var(--gold);font-weight:700;margin-bottom:8px;letter-spacing:.08em;}
-.phase h3{font-size:1.05rem;font-weight:800;margin-bottom:10px;}
-.phase p{font-size:.88rem;color:var(--muted);line-height:1.65;}
+/* ── PHASE ── */
+.phase{background:var(--card);border-radius:12px;padding:22px;border:1px solid var(--border);box-shadow:var(--shadow);position:relative;overflow:hidden;}
+.phase::before{content:'';position:absolute;top:0;right:0;width:4px;height:100%;background:var(--green-hi);}
+.phase-num{font-size:.72rem;color:var(--green-hi);font-weight:700;margin-bottom:7px;letter-spacing:.06em;}
+.phase h3{font-size:1rem;font-weight:800;margin-bottom:8px;color:var(--green-dark);}
+.phase p{font-size:.86rem;color:var(--muted);line-height:1.65;}
 
-/* timeline */
-.timeline{margin-top:24px;display:grid;gap:0;}
-.tl-row{display:flex;gap:20px;padding:16px 0;border-bottom:1px solid var(--border);}
+/* ── TIMELINE ── */
+.timeline{margin-top:22px;border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);}
+.tl-row{display:flex;gap:0;border-bottom:1px solid var(--border);}
 .tl-row:last-child{border-bottom:none;}
-.tl-year{min-width:56px;font-weight:800;color:var(--gold);font-size:1rem;}
-.tl-text{font-size:.9rem;color:#d4e8da;line-height:1.65;}
+.tl-year{min-width:72px;font-weight:900;color:#fff;font-size:.95rem;background:var(--green-mid);display:flex;align-items:center;justify-content:center;padding:16px 12px;}
+.tl-text{padding:14px 18px;font-size:.9rem;color:var(--text);line-height:1.65;background:#fff;flex:1;}
+.tl-row:hover .tl-text{background:var(--green-pale);}
 
-/* CTA */
-.cta-section{background:linear-gradient(135deg,#051008,#0d2418);padding:80px 0;text-align:center;}
-.cta-title{font-size:clamp(1.6rem,4vw,2.8rem);font-weight:900;margin-bottom:16px;}
-.cta-title span{color:var(--gold);}
-.cta-sub{color:var(--muted);font-size:1rem;margin-bottom:36px;line-height:1.7;max-width:600px;margin-left:auto;margin-right:auto;}
-.cta-contact{display:inline-flex;flex-direction:column;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 40px;}
-.cta-contact a{color:var(--gold);text-decoration:none;font-size:1rem;font-weight:600;}
+/* ── IMAGE ROWS ── */
+.img-row{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;margin:32px 0;}
+.img-row.reverse{direction:ltr;}
+.img-row.reverse .img-row-text{direction:rtl;}
+.img-row-img{border-radius:16px;overflow:hidden;box-shadow:var(--shadow-md);}
+.img-row-img img{width:100%;height:260px;object-fit:cover;display:block;}
+.img-row-text{}
+
+/* founder card */
+.founder-card{display:flex;gap:28px;align-items:center;background:var(--green-pale);border:1px solid #bbf7d0;border-radius:16px;padding:28px 32px;margin:28px 0;}
+.founder-avatar{width:110px;height:110px;border-radius:50%;overflow:hidden;flex-shrink:0;border:3px solid #fff;box-shadow:var(--shadow-md);}
+.founder-avatar img{width:100%;height:100%;object-fit:cover;object-position:top;}
+.founder-info h3{font-size:1.15rem;font-weight:800;color:var(--green-dark);margin-bottom:4px;}
+.founder-info .founder-role{font-size:.83rem;color:var(--green-hi);font-weight:700;margin-bottom:10px;}
+.founder-info p{font-size:.9rem;color:#374151;line-height:1.65;}
+
+/* ── CTA SECTION ── */
+.cta-section{background:linear-gradient(135deg,#0d2418 0%,#1a4a2e 100%);padding:80px 0;border-bottom:none;}
+.cta-title{font-size:clamp(1.5rem,3.5vw,2.6rem);font-weight:900;color:#fff;margin-bottom:14px;}
+.cta-title span{color:#F5C518;}
+.cta-sub{color:#a8d8b0;font-size:.97rem;margin-bottom:32px;line-height:1.7;max-width:580px;margin-left:auto;margin-right:auto;}
+.cta-contact{display:inline-flex;flex-direction:column;align-items:center;gap:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:26px 40px;}
+.cta-contact a{color:#F5C518;text-decoration:none;font-size:1rem;font-weight:600;}
 .cta-contact a:hover{text-decoration:underline;}
+.cta-logo{width:72px;margin:0 auto 20px;display:block;}
 
 /* ── PRESENTATION MODE ── */
 #pres-btn{
@@ -132,7 +155,7 @@ h2.sec-title span{color:var(--gold);}
   color:#fff;border-radius:50px;padding:10px 18px;
   font-family:'Cairo',sans-serif;font-size:.85rem;cursor:pointer;
   display:flex;align-items:center;gap:8px;
-  box-shadow:0 4px 20px rgba(0,0,0,.4);
+  box-shadow:0 4px 20px rgba(0,0,0,.25);
   transition:background .2s;
 }
 #pres-btn:hover{background:var(--green-hi);}
@@ -148,47 +171,47 @@ body.pres-mode .slide.on{opacity:1;pointer-events:auto;z-index:11;}
 #pres-nav{
   display:none;
   position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
-  z-index:9999;background:rgba(13,36,24,.92);
-  backdrop-filter:blur(8px);border:1px solid var(--border);
+  z-index:9999;background:rgba(13,36,24,.95);
+  backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.15);
   border-radius:50px;padding:8px 16px;
   align-items:center;gap:12px;
-  box-shadow:0 4px 24px rgba(0,0,0,.5);
+  box-shadow:0 4px 24px rgba(0,0,0,.35);
 }
 body.pres-mode #pres-nav{display:flex;}
-body.pres-mode #pres-btn{bottom:20px;left:20px;}
-
 #pres-nav button{
   background:none;border:none;color:#fff;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
   width:34px;height:34px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
   transition:background .15s;
 }
-#pres-nav button:hover{background:var(--green-mid);}
-#slide-counter{font-size:.82rem;color:var(--muted);min-width:44px;text-align:center;font-family:'Cairo',sans-serif;}
-
-/* slide dots */
+#pres-nav button:hover{background:rgba(255,255,255,.15);}
+#slide-counter{font-size:.82rem;color:#9ca3af;min-width:44px;text-align:center;font-family:'Cairo',sans-serif;}
 #slide-dots{display:flex;gap:6px;align-items:center;}
-#slide-dots span{
-  width:7px;height:7px;border-radius:50%;background:var(--border);
-  cursor:pointer;transition:background .2s,transform .2s;display:block;
-}
-#slide-dots span.on{background:var(--gold);transform:scale(1.35);}
+#slide-dots span{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.25);cursor:pointer;transition:background .2s,transform .2s;display:block;}
+#slide-dots span.on{background:#F5C518;transform:scale(1.35);}
 
-/* ── responsive ── */
-@media(max-width:640px){
-  .slide{padding:56px 0;}
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .cover-inner{grid-template-columns:1fr;}
+  .cover-image-col{min-height:240px;order:-1;}
+  .cover-text{padding:40px 24px;}
   .cover-kpis{grid-template-columns:repeat(2,1fr);}
+  .img-row{grid-template-columns:1fr;}
+  .img-row.reverse{direction:rtl;}
+  .founder-card{flex-direction:column;text-align:center;}
+}
+@media(max-width:640px){
+  .slide{padding:52px 0;}
   .cards-2,.cards-3,.cards-4{grid-template-columns:1fr;}
   .stats-row{grid-template-columns:repeat(2,1fr);}
   .tbl{font-size:.82rem;}
   .tbl th,.tbl td{padding:9px 10px;}
-  body.pres-mode .slide{padding:40px 0;}
+  body.pres-mode .slide{padding:36px 0;}
 }
 </style>
 </head>
 <body>
 
-<!-- SVG icon sprites -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
   <symbol id="ic-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
   <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
@@ -215,10 +238,10 @@ body.pres-mode #pres-btn{bottom:20px;left:20px;}
   <symbol id="ic-shrink" viewBox="0 0 24 24"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/></symbol>
   <symbol id="ic-arrl" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></symbol>
   <symbol id="ic-arrr" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
-  <symbol id="ic-notebook" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
   <symbol id="ic-trending" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></symbol>
   <symbol id="ic-mail" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></symbol>
   <symbol id="ic-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
+  <symbol id="ic-notebook" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
 </svg>
 
 <!-- Presentation toggle -->
@@ -227,48 +250,44 @@ body.pres-mode #pres-btn{bottom:20px;left:20px;}
   عرض تقديمي
 </button>
 
-<!-- Presentation nav -->
 <div id="pres-nav">
-  <button onclick="prevSlide()" title="السابق">
-    <svg class="ic" width="20" height="20"><use href="#ic-arrr"/></svg>
-  </button>
+  <button onclick="prevSlide()" title="السابق"><svg class="ic" width="20" height="20"><use href="#ic-arrr"/></svg></button>
   <div id="slide-dots"></div>
   <span id="slide-counter">1 / 17</span>
-  <button onclick="nextSlide()" title="التالي">
-    <svg class="ic" width="20" height="20"><use href="#ic-arrl"/></svg>
-  </button>
-  <button onclick="togglePres()" title="إغلاق العرض" style="margin-right:4px;color:var(--muted)">
-    <svg class="ic" width="18" height="18"><use href="#ic-x"/></svg>
-  </button>
+  <button onclick="nextSlide()" title="التالي"><svg class="ic" width="20" height="20"><use href="#ic-arrl"/></svg></button>
+  <button onclick="togglePres()" title="إغلاق" style="margin-right:4px;color:#9ca3af"><svg class="ic" width="18" height="18"><use href="#ic-x"/></svg></button>
 </div>
 
 <!-- ═══════════════════════════════════════════
      S1 — COVER
 ═══════════════════════════════════════════ -->
 <section class="slide" id="s1">
-<div class="container">
-  <div class="cover-tag">Growth Partnership Deck — 2026</div>
-  <h1 class="cover-title">مسلم ليدر<br><span>التصور الاستراتيجي للشراكة</span></h1>
-
-  <div class="cover-definition">
-    <strong style="color:var(--gold);display:block;margin-bottom:8px;">ما هي مسلم ليدر؟</strong>
-    مسلم ليدر هي شركة محتوى وتعليم إسلامي أسري، تُنتج كتبًا ومنتجات تربوية وأدوات تعليمية تحت علامة تجارية أصيلة 100% — تأسست عام 2020 وسُجِّلت رسميًا 2024، بحضور رقمي ومادي متكامل عبر 6 لغات.
+  <div class="cover-inner">
+    <div class="cover-text">
+      <div class="cover-tag">Growth Partnership Deck — 2026</div>
+      <h1 class="cover-title">مسلم ليدر<br><span>التصور الاستراتيجي للشراكة</span></h1>
+      <div class="cover-definition">
+        <strong style="color:#F5C518;display:block;margin-bottom:6px;">ما هي مسلم ليدر؟</strong>
+        شركة محتوى وتعليم إسلامي أسري، تُنتج كتبًا ومنتجات تربوية وأدوات تعليمية تحت علامة تجارية أصيلة 100% — تأسست 2020، مسجلة رسميًا 2024، بحضور رقمي ومادي متكامل عبر 6 لغات.
+      </div>
+      <p class="cover-tagline">"نحن لا نبحث عن ممول. نبحث عن شريك يؤمن بأن العلامة التجارية الإسلامية الأسرية الأكبر في العالم لم تُبنَ بعد."</p>
+      <div class="cover-kpis">
+        <div class="kpi"><div class="kpi-val">1884+</div><div class="kpi-lbl">عميل فعلي</div></div>
+        <div class="kpi"><div class="kpi-val">127</div><div class="kpi-lbl">إصدارًا متعدد اللغات</div></div>
+        <div class="kpi"><div class="kpi-val">6</div><div class="kpi-lbl">لغات حالية</div></div>
+        <div class="kpi"><div class="kpi-val">2.4M</div><div class="kpi-lbl">مبيعات تراكمية (جنيه)</div></div>
+        <div class="kpi"><div class="kpi-val">17K+</div><div class="kpi-lbl">متابع عضوي</div></div>
+        <div class="kpi"><div class="kpi-val">23</div><div class="kpi-lbl">منتجًا حاليًا</div></div>
+      </div>
+    </div>
+    <div class="cover-image-col">
+      <img src="/family-hero.webp" alt="مسلم ليدر" loading="eager">
+    </div>
   </div>
-
-  <p class="cover-tagline">"نحن لا نبحث عن ممول. نبحث عن شريك يؤمن بأن العلامة التجارية الإسلامية الأسرية الأكبر في العالم لم تُبنَ بعد."</p>
-
-  <div class="cover-kpis">
-    <div class="kpi"><div class="kpi-val">1884+</div><div class="kpi-lbl">عميل فعلي</div></div>
-    <div class="kpi"><div class="kpi-val">127</div><div class="kpi-lbl">إصدارًا متعدد اللغات</div></div>
-    <div class="kpi"><div class="kpi-val">6</div><div class="kpi-lbl">لغات حالية</div></div>
-    <div class="kpi"><div class="kpi-val">2.4M</div><div class="kpi-lbl">جنيه مبيعات تراكمية</div></div>
-    <div class="kpi"><div class="kpi-val">17K+</div><div class="kpi-lbl">متابع عضوي</div></div>
-  </div>
-</div>
 </section>
 
 <!-- ═══════════════════════════════════════════
-     S2 — 4 SECTORS (القطاعات الأربعة)
+     S2 — 4 SECTORS
 ═══════════════════════════════════════════ -->
 <section class="slide" id="s2">
 <div class="container">
@@ -301,31 +320,40 @@ body.pres-mode #pres-btn{bottom:20px;left:20px;}
 </section>
 
 <!-- ═══════════════════════════════════════════
-     S3 — WHY NOW? (لماذا الآن؟)
+     S3 — WHY NOW
 ═══════════════════════════════════════════ -->
 <section class="slide" id="s3">
 <div class="container">
   <div class="sec-label"><svg class="ic" width="16" height="16"><use href="#ic-zap"/></svg> التوقيت</div>
   <h2 class="sec-title">لماذا <span>الآن؟</span></h2>
   <p class="sec-sub">3 عوامل متزامنة تجعل 2026 نقطة تحول لا تتكرر.</p>
-  <div class="cards cards-3">
-    <div class="card">
-      <div class="card-icon"><svg class="ic" width="26" height="26"><use href="#ic-trending"/></svg></div>
-      <h3>السوق ناضج ولا منافس حقيقي</h3>
-      <p>1.8 مليار مسلم حول العالم وسوق Back to School الإسلامي شبه فارغ من علامات متخصصة.</p>
+
+  <div class="img-row">
+    <div class="img-row-img">
+      <img src="/reading-boy-hero.webp" alt="طفل يقرأ" loading="lazy">
     </div>
-    <div class="card">
-      <div class="card-icon"><svg class="ic" width="26" height="26"><use href="#ic-shield"/></svg></div>
-      <h3>الأصول جاهزة للتوسع</h3>
-      <p>6 سنوات من بناء الهوية والـ IP أُنجزت. الآن المطلوب هو التنفيذ والتوزيع — لا إعادة بناء.</p>
-    </div>
-    <div class="card">
-      <div class="card-icon"><svg class="ic" width="26" height="26"><use href="#ic-globe"/></svg></div>
-      <h3>الطلب العالمي في ذروته</h3>
-      <p>الجاليات الإسلامية في أوروبا وأمريكا تبحث عن محتوى أصيل. الخليج يُضخ في التعليم بغير مسبوق.</p>
+    <div class="img-row-text">
+      <div class="cards cards-3" style="grid-template-columns:1fr;">
+        <div class="card">
+          <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-trending"/></svg></div>
+          <h3>السوق ناضج ولا منافس حقيقي</h3>
+          <p>1.8 مليار مسلم وسوق Back to School الإسلامي شبه فارغ من علامات متخصصة.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-shield"/></svg></div>
+          <h3>الأصول جاهزة للتوسع</h3>
+          <p>6 سنوات من بناء الهوية والـ IP أُنجزت. المطلوب الآن هو التنفيذ والتوزيع.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-globe"/></svg></div>
+          <h3>الطلب العالمي في ذروته</h3>
+          <p>الجاليات الإسلامية في أوروبا وأمريكا تبحث عن محتوى أصيل. الخليج يُضخ في التعليم.</p>
+        </div>
+      </div>
     </div>
   </div>
-  <div class="highlight" style="margin-top:32px;">
+
+  <div class="highlight">
     <div class="hl-title"><svg class="ic" width="20" height="20"><use href="#ic-clock"/></svg> نافذة الفرصة</div>
     <p>المنافسون المحتملون يحتاجون 4–6 سنوات لبناء ما بناه مسلم ليدر. الشريك الذي يدخل الآن يحجز مكانه قبل أن تُغلق الفرصة بظهور لاعبين جدد.</p>
   </div>
@@ -333,7 +361,7 @@ body.pres-mode #pres-btn{bottom:20px;left:20px;}
 </section>
 
 <!-- ═══════════════════════════════════════════
-     S4 — BACK TO SCHOOL (قطاع مستقل)
+     S4 — BACK TO SCHOOL
 ═══════════════════════════════════════════ -->
 <section class="slide" id="s4">
 <div class="container">
@@ -355,7 +383,7 @@ body.pres-mode #pres-btn{bottom:20px;left:20px;}
     </tbody>
   </table>
 
-  <div class="cards cards-3" style="margin-top:28px;">
+  <div class="cards cards-3" style="margin-top:26px;">
     <div class="card">
       <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-chart"/></svg></div>
       <h3>هامش ربح مرتفع</h3>
@@ -376,7 +404,7 @@ body.pres-mode #pres-btn{bottom:20px;left:20px;}
 </section>
 
 <!-- ═══════════════════════════════════════════
-     S5 — WHO IS MOSLIM LEADER
+     S5 — WHO IS MOSLIM LEADER + FOUNDER
 ═══════════════════════════════════════════ -->
 <section class="slide" id="s5">
 <div class="container">
@@ -384,12 +412,19 @@ body.pres-mode #pres-btn{bottom:20px;left:20px;}
   <h2 class="sec-title">من هي <span>مسلم ليدر؟</span></h2>
   <p class="sec-sub">ست سنوات من بناء الأصول — ليس مشروعًا ناشئًا، بل علامة تجارية راسخة تبحث عن شريك يُكمل المسيرة.</p>
 
-  <div class="cards cards-2">
-    <div class="card">
-      <div class="card-icon"><svg class="ic" width="26" height="26"><use href="#ic-pen"/></svg></div>
-      <h3>المؤسس</h3>
-      <p>يجمع بين التربية والتصميم والإعلام — ندرة حقيقية في السوق. يتولى الرؤية وتطوير المحتوى والهوية البصرية.</p>
+  <!-- Founder Card -->
+  <div class="founder-card">
+    <div class="founder-avatar">
+      <img src="/amin-profile.png" alt="المؤسس" loading="lazy">
     </div>
+    <div class="founder-info">
+      <h3>المؤسس — أمين</h3>
+      <div class="founder-role">مؤسس ومدير مسلم ليدر</div>
+      <p>يجمع بين التربية والتصميم والإعلام في شخص واحد — ندرة حقيقية في السوق. يتولى الرؤية وتطوير المحتوى والهوية الفكرية والبصرية الكاملة.</p>
+    </div>
+  </div>
+
+  <div class="cards cards-2" style="margin-top:4px;">
     <div class="card">
       <div class="card-icon"><svg class="ic" width="26" height="26"><use href="#ic-shield"/></svg></div>
       <h3>ملكية IP كاملة</h3>
@@ -403,7 +438,12 @@ body.pres-mode #pres-btn{bottom:20px;left:20px;}
     <div class="card">
       <div class="card-icon"><svg class="ic" width="26" height="26"><use href="#ic-layers"/></svg></div>
       <h3>مادي + رقمي + تطبيقات</h3>
-      <p>منتجات مادية + مكتبة رقمية + تطبيقات Android — نموذج متكامل لا يعتمد على قناة توزيع واحدة.</p>
+      <p>منتجات مادية + مكتبة رقمية + تطبيقات Android — نموذج لا يعتمد على قناة واحدة.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon"><svg class="ic" width="26" height="26"><use href="#ic-users"/></svg></div>
+      <h3>جمهور عضوي حقيقي</h3>
+      <p>17K+ متابع بدون إعلانات مدفوعة — ولاء عضوي نابع من جودة المحتوى.</p>
     </div>
   </div>
 </div>
@@ -418,28 +458,29 @@ body.pres-mode #pres-btn{bottom:20px;left:20px;}
   <h2 class="sec-title">ماذا <span>بُني؟</span></h2>
   <p class="sec-sub">ست سنوات من العمل الصامت أسفرت عن منظومة أصول متكاملة.</p>
 
-  <div class="stats-row">
-    <div class="stat-box"><div class="stat-val">26</div><div class="stat-lbl">عملًا فكريًا أصيلًا</div></div>
-    <div class="stat-box"><div class="stat-val">127</div><div class="stat-lbl">إصدارًا متعدد اللغات</div></div>
-    <div class="stat-box"><div class="stat-val">23</div><div class="stat-lbl">منتجًا حاليًا</div></div>
-    <div class="stat-box"><div class="stat-val">100+</div><div class="stat-lbl">API متكاملة</div></div>
-  </div>
-
-  <div class="cards cards-3" style="margin-top:8px;">
-    <div class="card">
-      <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-screen"/></svg></div>
-      <h3>المنصة التقنية</h3>
-      <p>موقع Next.js متكامل + مكتبة رقمية + نظام اشتراكات + تطبيقات Android.</p>
+  <div class="img-row reverse">
+    <div class="img-row-text">
+      <div class="stats-row" style="grid-template-columns:repeat(2,1fr);margin:0 0 16px;">
+        <div class="stat-box"><div class="stat-val">26</div><div class="stat-lbl">عملًا فكريًا أصيلًا</div></div>
+        <div class="stat-box"><div class="stat-val">127</div><div class="stat-lbl">إصدارًا متعدد اللغات</div></div>
+        <div class="stat-box"><div class="stat-val">23</div><div class="stat-lbl">منتجًا حاليًا</div></div>
+        <div class="stat-box"><div class="stat-val">100+</div><div class="stat-lbl">API متكاملة</div></div>
+      </div>
+      <div class="cards cards-3" style="grid-template-columns:1fr;margin-top:0;">
+        <div class="card">
+          <div class="card-icon"><svg class="ic" width="22" height="22"><use href="#ic-screen"/></svg></div>
+          <h3>المنصة التقنية</h3>
+          <p>موقع Next.js + مكتبة رقمية + نظام اشتراكات + تطبيقات Android.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon"><svg class="ic" width="22" height="22"><use href="#ic-award"/></svg></div>
+          <h3>الهوية البصرية</h3>
+          <p>شخصيات وعالم بصري خاص قابل للترخيص — أصل تجاري مستقل.</p>
+        </div>
+      </div>
     </div>
-    <div class="card">
-      <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-award"/></svg></div>
-      <h3>الهوية البصرية</h3>
-      <p>شخصيات بصرية وعالم خاص قابل للترخيص — أصل تجاري مستقل بذاته.</p>
-    </div>
-    <div class="card">
-      <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-users"/></svg></div>
-      <h3>شبكة الموردين</h3>
-      <p>علاقات طباعة وإنتاج راسخة تُمكِّن من التنفيذ الفوري لأي طلب كبير.</p>
+    <div class="img-row-img">
+      <img src="/library-hero.webp" alt="مكتبة مسلم ليدر" loading="lazy">
     </div>
   </div>
 </div>
@@ -457,13 +498,13 @@ body.pres-mode #pres-btn{bottom:20px;left:20px;}
   <table class="tbl">
     <thead><tr><th>المؤشر</th><th>القيمة</th><th>الدلالة</th></tr></thead>
     <tbody>
-      <tr><td>إجمالي المبيعات التاريخية</td><td style="color:var(--gold);font-weight:700;">~2.4 مليون جنيه</td><td>قاعدة إيرادات عضوية حقيقية</td></tr>
-      <tr><td>العملاء الفعليون</td><td style="color:var(--gold);font-weight:700;">1884+</td><td>مشترون حقيقيون بأموال حقيقية</td></tr>
-      <tr><td>العملاء المتكررون</td><td style="color:var(--gold);font-weight:700;">282 (15%)</td><td>ولاء عالٍ — المعدل الصناعي 10-12%</td></tr>
-      <tr><td>الإصدارات متعددة اللغات</td><td style="color:var(--gold);font-weight:700;">127 إصدارًا</td><td>جاهز للتوسع الدولي الفوري</td></tr>
-      <tr><td>المنتجات الحالية</td><td style="color:var(--gold);font-weight:700;">23 منتجًا</td><td>مجموعة متنوعة لشرائح مختلفة</td></tr>
-      <tr><td>المتابعون العضويون</td><td style="color:var(--gold);font-weight:700;">17,000+</td><td>بدون إعلانات مدفوعة</td></tr>
-      <tr><td>معدل النمو السنوي</td><td style="color:var(--gold);font-weight:700;">20–40%</td><td>نمو عضوي مستدام</td></tr>
+      <tr><td>إجمالي المبيعات التاريخية</td><td style="color:var(--green-mid);font-weight:700;">~2.4 مليون جنيه</td><td>قاعدة إيرادات عضوية حقيقية</td></tr>
+      <tr><td>العملاء الفعليون</td><td style="color:var(--green-mid);font-weight:700;">1884+</td><td>مشترون حقيقيون بأموال حقيقية</td></tr>
+      <tr><td>العملاء المتكررون</td><td style="color:var(--green-mid);font-weight:700;">282 (15%)</td><td>ولاء عالٍ — المعدل الصناعي 10-12%</td></tr>
+      <tr><td>الإصدارات متعددة اللغات</td><td style="color:var(--green-mid);font-weight:700;">127 إصدارًا</td><td>جاهز للتوسع الدولي الفوري</td></tr>
+      <tr><td>المنتجات الحالية</td><td style="color:var(--green-mid);font-weight:700;">23 منتجًا</td><td>مجموعة متنوعة لشرائح مختلفة</td></tr>
+      <tr><td>المتابعون العضويون</td><td style="color:var(--green-mid);font-weight:700;">17,000+</td><td>بدون إعلانات مدفوعة</td></tr>
+      <tr><td>معدل النمو السنوي</td><td style="color:var(--green-mid);font-weight:700;">20–40%</td><td>نمو عضوي مستدام</td></tr>
     </tbody>
   </table>
 </div>
@@ -492,7 +533,7 @@ body.pres-mode #pres-btn{bottom:20px;left:20px;}
     <div class="card">
       <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-clock"/></svg></div>
       <h3>6+ سنوات من البناء</h3>
-      <p>ليس مشروعًا في مرحلة الفكرة — علامة تجارية قائمة بأصول وعملاء وإيرادات حقيقية.</p>
+      <p>ليس مشروعًا في مرحلة الفكرة — علامة تجارية قائمة بأصول وعملاء وإيرادات.</p>
     </div>
     <div class="card">
       <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-globe"/></svg></div>
@@ -532,34 +573,22 @@ body.pres-mode #pres-btn{bottom:20px;left:20px;}
   <h2 class="sec-title">فرصة <span>السوق</span></h2>
   <p class="sec-sub">1.8 مليار مسلم، وسوق المحتوى الإسلامي الأسري فارغ فعليًا من علامات تجارية متخصصة.</p>
 
-  <div class="stats-row">
-    <div class="stat-box"><div class="stat-val">1.8B</div><div class="stat-lbl">مسلم حول العالم</div></div>
-    <div class="stat-box"><div class="stat-val">500M+</div><div class="stat-lbl">طفل مسلم دون 15 سنة</div></div>
-    <div class="stat-box"><div class="stat-val">26M+</div><div class="stat-lbl">مسلم في أوروبا</div></div>
-    <div class="stat-box"><div class="stat-val">4.5M+</div><div class="stat-lbl">مسلم في أمريكا الشمالية</div></div>
-  </div>
-
-  <div class="cards cards-3" style="margin-top:8px;">
-    <div class="card">
-      <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-star"/></svg></div>
-      <h3>الخليج العربي</h3>
-      <p>سوق رئيسي بقوة شرائية عالية. الإمارات والسعودية تستثمران بكثافة في التعليم والمحتوى الإسلامي.</p>
+  <div class="img-row">
+    <div class="img-row-img">
+      <img src="/reading-girl-heero.webp" alt="قراءة وتعلم" loading="lazy">
     </div>
-    <div class="card">
-      <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-pin"/></svg></div>
-      <h3>أوروبا — 26M مسلم</h3>
-      <p>جاليات متنامية تبحث بشدة عن محتوى إسلامي أصيل بلغاتها. المراكز الإسلامية أسرع قرارًا من الوزارات.</p>
+    <div class="img-row-text">
+      <div class="stats-row" style="grid-template-columns:repeat(2,1fr);margin:0 0 18px;">
+        <div class="stat-box"><div class="stat-val">1.8B</div><div class="stat-lbl">مسلم حول العالم</div></div>
+        <div class="stat-box"><div class="stat-val">500M+</div><div class="stat-lbl">طفل مسلم دون 15 سنة</div></div>
+        <div class="stat-box"><div class="stat-val">26M+</div><div class="stat-lbl">مسلم في أوروبا</div></div>
+        <div class="stat-box"><div class="stat-val">4.5M+</div><div class="stat-lbl">مسلم في أمريكا الشمالية</div></div>
+      </div>
+      <div class="highlight" style="margin:0;">
+        <div class="hl-title"><svg class="ic" width="18" height="18"><use href="#ic-target"/></svg> الفرصة الحقيقية</div>
+        <p>سوق Back to School الإسلامي شبه فارغ من علامات تجارية متخصصة. مئات الآلاف من المدارس والمراكز الإسلامية تُعلِّم أطفالها بأدوات غير مصممة لهم.</p>
+      </div>
     </div>
-    <div class="card">
-      <div class="card-icon"><svg class="ic" width="24" height="24"><use href="#ic-school"/></svg></div>
-      <h3>أمريكا الشمالية — 4.5M+</h3>
-      <p>مدارس إسلامية، مساجد كبرى، برامج Homeschooling إسلامية. طلب متزايد وعرض شحيح.</p>
-    </div>
-  </div>
-
-  <div class="gold-box">
-    <div class="gold-title">الفرصة الحقيقية</div>
-    <p style="text-align:center;">سوق Back to School الإسلامي شبه فارغ من علامات تجارية متخصصة. مئات الآلاف من المدارس والمراكز الإسلامية حول العالم تُعلِّم أطفالها بأدوات غير مصممة لهم.</p>
   </div>
 </div>
 </section>
@@ -575,7 +604,7 @@ body.pres-mode #pres-btn{bottom:20px;left:20px;}
 
   <div class="highlight">
     <div class="hl-title"><svg class="ic" width="20" height="20"><use href="#ic-target"/></svg> الرؤية</div>
-    <p>بناء العلامة التجارية الإسلامية الأسرية الأكثر حضورًا في حياة الطفل والأسرة المسلمة حول العالم — منتجات مسلم ليدر في: <strong style="color:var(--gold);">المدرسة | المنزل | المسجد | المركز الإسلامي | التطبيق | المكتبة الرقمية</strong></p>
+    <p>بناء العلامة التجارية الإسلامية الأسرية الأكثر حضورًا في حياة الطفل والأسرة المسلمة — منتجات مسلم ليدر في: <strong style="color:var(--green-dark);">المدرسة | المنزل | المسجد | المركز الإسلامي | التطبيق | المكتبة الرقمية</strong></p>
   </div>
 
   <div class="cards cards-3" style="margin-top:20px;">
@@ -650,7 +679,7 @@ body.pres-mode #pres-btn{bottom:20px;left:20px;}
     <div class="phase">
       <div class="phase-num">المرحلة الثانية — 2027–2028</div>
       <h3>أوروبا — 26M مسلم</h3>
-      <p>بريطانيا | ألمانيا | فرنسا | هولندا | بلجيكا | السويد<br><br>المدارس الإسلامية والمراكز الإسلامية — أسرع قرارًا من وزارات التعليم.</p>
+      <p>بريطانيا | ألمانيا | فرنسا | هولندا | بلجيكا | السويد<br><br>المدارس والمراكز الإسلامية — أسرع قرارًا من وزارات التعليم.</p>
     </div>
     <div class="phase">
       <div class="phase-num">المرحلة الثالثة — 2029–2030</div>
@@ -676,14 +705,14 @@ body.pres-mode #pres-btn{bottom:20px;left:20px;}
       <h3>نموذج أ — شريك تشغيلي</h3>
       <p>يتولى: الإدارة اليومية + التسويق + التوزيع + بناء الفريق<br><br>يحصل على: نسبة من الأرباح أو من النمو المحقق.</p>
     </div>
-    <div class="card" style="border-color:rgba(245,197,24,.4);background:linear-gradient(135deg,rgba(245,197,24,.06),var(--card));">
-      <div class="card-icon" style="background:rgba(245,197,24,.2);"><svg class="ic" width="26" height="26"><use href="#ic-rocket"/></svg></div>
-      <h3 style="color:var(--gold);">نموذج ب — شريك توزيع خليجي</h3>
-      <p>لديه: مدارس، حضانات، مكتبات، متاجر إلكترونية<br><br>يأخذ: حصة مرتبطة بالإنجازات لا بمجرد الدخول. <strong style="color:var(--gold);">(النموذج الأقوى)</strong></p>
+    <div class="card" style="border-color:#bbf7d0;background:var(--green-pale);">
+      <div class="card-icon" style="background:#dcfce7;"><svg class="ic" width="26" height="26"><use href="#ic-rocket"/></svg></div>
+      <h3 style="color:var(--green-dark);">نموذج ب — شريك توزيع خليجي</h3>
+      <p>لديه: مدارس، حضانات، مكتبات، متاجر إلكترونية<br><br>يأخذ: حصة مرتبطة بالإنجازات لا بمجرد الدخول. <strong style="color:var(--green-hi);">(النموذج الأقوى)</strong></p>
     </div>
   </div>
 
-  <div class="highlight" style="margin-top:28px;">
+  <div class="highlight" style="margin-top:26px;">
     <div class="hl-title"><svg class="ic" width="20" height="20"><use href="#ic-shield"/></svg> مبادئ الشراكة الثابتة</div>
     <ul class="check-list">
       <li><svg class="ic" width="16" height="16"><use href="#ic-check"/></svg> الحصة مرتبطة بالإنجاز الفعلي — لا دخول مجاني</li>
@@ -696,7 +725,7 @@ body.pres-mode #pres-btn{bottom:20px;left:20px;}
 </section>
 
 <!-- ═══════════════════════════════════════════
-     S14 — WHAT WE LOOK FOR IN A PARTNER
+     S14 — IDEAL PARTNER
 ═══════════════════════════════════════════ -->
 <section class="slide" id="s14">
 <div class="container">
@@ -743,7 +772,7 @@ body.pres-mode #pres-btn{bottom:20px;left:20px;}
     <div class="tl-row"><div class="tl-year">2027</div><div class="tl-text">توسع خليجي كامل + عقود مؤسسية مع مدارس وحضانات + شراكات توزيع إقليمية</div></div>
     <div class="tl-row"><div class="tl-year">2028</div><div class="tl-text">دخول أوروبا — شراكات مع المراكز الإسلامية في ألمانيا وبريطانيا وفرنسا</div></div>
     <div class="tl-row"><div class="tl-year">2029</div><div class="tl-text">دخول أمريكا الشمالية — مدارس إسلامية وبرامج Homeschooling</div></div>
-    <div class="tl-row"><div class="tl-year">2030</div><div class="tl-text"><strong style="color:var(--gold);">Global Islamic Family Brand</strong> — حضور في 3 قارات + عقود تراخيص دولية</div></div>
+    <div class="tl-row"><div class="tl-year">2030</div><div class="tl-text"><strong style="color:var(--green-mid);">Global Islamic Family Brand</strong> — حضور في 3 قارات + عقود تراخيص دولية</div></div>
   </div>
 </div>
 </section>
@@ -774,17 +803,17 @@ body.pres-mode #pres-btn{bottom:20px;left:20px;}
     </div>
   </div>
 
-  <div class="gold-box" style="margin-top:28px;">
+  <div class="gold-box" style="margin-top:26px;">
     <div class="gold-title">
-      <svg class="ic" width="20" height="20" style="vertical-align:middle;margin-left:8px;"><use href="#ic-star"/></svg>
+      <svg class="ic" width="20" height="20" style="vertical-align:middle;color:#92400e;"><use href="#ic-star"/></svg>
       ما يُقدِّمه المؤسس
     </div>
     <ul class="check-list" style="max-width:600px;margin:0 auto;">
-      <li><svg class="ic" width="16" height="16" style="color:var(--gold);"><use href="#ic-check"/></svg> الرؤية والرسالة وضمان الأصالة الفكرية</li>
-      <li><svg class="ic" width="16" height="16" style="color:var(--gold);"><use href="#ic-check"/></svg> تطوير المحتوى والمنتجات الجديدة باستمرار</li>
-      <li><svg class="ic" width="16" height="16" style="color:var(--gold);"><use href="#ic-check"/></svg> الهوية الفكرية والبصرية الكاملة</li>
-      <li><svg class="ic" width="16" height="16" style="color:var(--gold);"><use href="#ic-check"/></svg> بناء الشراكات الاستراتيجية الكبرى</li>
-      <li><svg class="ic" width="16" height="16" style="color:var(--gold);"><use href="#ic-check"/></svg> الإشراف على الجودة والمعايير في كل مرحلة</li>
+      <li><svg class="ic" width="16" height="16" style="color:#92400e;"><use href="#ic-check"/></svg> الرؤية والرسالة وضمان الأصالة الفكرية</li>
+      <li><svg class="ic" width="16" height="16" style="color:#92400e;"><use href="#ic-check"/></svg> تطوير المحتوى والمنتجات الجديدة باستمرار</li>
+      <li><svg class="ic" width="16" height="16" style="color:#92400e;"><use href="#ic-check"/></svg> الهوية الفكرية والبصرية الكاملة</li>
+      <li><svg class="ic" width="16" height="16" style="color:#92400e;"><use href="#ic-check"/></svg> بناء الشراكات الاستراتيجية الكبرى</li>
+      <li><svg class="ic" width="16" height="16" style="color:#92400e;"><use href="#ic-check"/></svg> الإشراف على الجودة والمعايير في كل مرحلة</li>
     </ul>
   </div>
 </div>
@@ -795,25 +824,26 @@ body.pres-mode #pres-btn{bottom:20px;left:20px;}
 ═══════════════════════════════════════════ -->
 <section class="slide cta-section" id="s17">
 <div class="container" style="text-align:center;">
-  <div class="sec-label" style="justify-content:center;margin-bottom:20px;">
+  <img src="/ml-logo-new.png" alt="مسلم ليدر" class="cta-logo">
+  <div class="sec-label" style="justify-content:center;color:#a8d8b0;margin-bottom:18px;">
     <svg class="ic" width="16" height="16"><use href="#ic-rocket"/></svg> ابدأ المحادثة
   </div>
   <h2 class="cta-title">الشريك الصحيح يبدأ <span>بسؤال</span></h2>
   <p class="cta-sub">إذا كنت تمتلك قنوات التوزيع وتؤمن بأن العلامة الإسلامية الأسرية الأكبر في العالم لم تُبنَ بعد — فالمحادثة مفتوحة.</p>
 
   <div class="cta-contact">
-    <div style="font-size:.85rem;color:var(--muted);margin-bottom:12px;">للتواصل المباشر</div>
+    <div style="font-size:.85rem;color:#9ca3af;margin-bottom:12px;">للتواصل المباشر</div>
     <a href="mailto:ibrahimdesignarts@gmail.com">
       <svg class="ic" width="16" height="16" style="margin-left:6px;vertical-align:middle;"><use href="#ic-mail"/></svg>
       ibrahimdesignarts@gmail.com
     </a>
-    <div style="font-size:.8rem;color:var(--muted);margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+    <div style="font-size:.8rem;color:#6b7280;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.15);">
       moslimleader.com — Growth Partnership Deck 2026
     </div>
   </div>
 
-  <div style="margin-top:48px;padding-top:32px;border-top:1px solid var(--border);">
-    <p style="color:var(--muted);font-size:.85rem;line-height:1.8;">
+  <div style="margin-top:44px;padding-top:28px;border-top:1px solid rgba(255,255,255,.12);">
+    <p style="color:#6b7280;font-size:.83rem;line-height:1.8;">
       هذا الملف سري ومخصص للشركاء المحتملين فقط.<br>
       جميع الأرقام والبيانات الواردة دقيقة وموثقة.
     </p>
@@ -823,61 +853,49 @@ body.pres-mode #pres-btn{bottom:20px;left:20px;}
 
 <script>
 (function(){
-  var slides = Array.from(document.querySelectorAll('.slide'));
-  var total  = slides.length;
-  var cur    = 0;
-  var inPres = false;
-
-  /* build dots */
-  var dotsEl = document.getElementById('slide-dots');
-  slides.forEach(function(_, i){
-    var d = document.createElement('span');
-    d.addEventListener('click', function(){ goTo(i); });
+  var slides=Array.from(document.querySelectorAll('.slide'));
+  var total=slides.length,cur=0,inPres=false;
+  var dotsEl=document.getElementById('slide-dots');
+  slides.forEach(function(_,i){
+    var d=document.createElement('span');
+    d.addEventListener('click',function(){goTo(i);});
     dotsEl.appendChild(d);
   });
-
   function updateUI(){
-    var dots = dotsEl.querySelectorAll('span');
-    dots.forEach(function(d,i){ d.classList.toggle('on', i===cur); });
-    document.getElementById('slide-counter').textContent = (cur+1)+' / '+total;
+    dotsEl.querySelectorAll('span').forEach(function(d,i){d.classList.toggle('on',i===cur);});
+    document.getElementById('slide-counter').textContent=(cur+1)+' / '+total;
   }
-
   function goTo(n){
-    if(!inPres) return;
+    if(!inPres)return;
     slides[cur].classList.remove('on');
-    cur = Math.max(0, Math.min(n, total-1));
+    cur=Math.max(0,Math.min(n,total-1));
     slides[cur].classList.add('on');
-    slides[cur].scrollTop = 0;
+    slides[cur].scrollTop=0;
     updateUI();
   }
-
-  window.nextSlide = function(){ goTo(cur+1); };
-  window.prevSlide = function(){ goTo(cur-1); };
-
-  window.togglePres = function(){
-    inPres = !inPres;
-    document.body.classList.toggle('pres-mode', inPres);
-    var btn = document.getElementById('pres-btn');
+  window.nextSlide=function(){goTo(cur+1);};
+  window.prevSlide=function(){goTo(cur-1);};
+  window.togglePres=function(){
+    inPres=!inPres;
+    document.body.classList.toggle('pres-mode',inPres);
+    var btn=document.getElementById('pres-btn');
     if(inPres){
-      slides.forEach(function(s){ s.classList.remove('on'); });
+      slides.forEach(function(s){s.classList.remove('on');});
       slides[cur].classList.add('on');
-      btn.innerHTML = '<svg class="ic" width="18" height="18"><use href="#ic-shrink"/></svg> إغلاق العرض';
+      btn.innerHTML='<svg class="ic" width="18" height="18"><use href="#ic-shrink"/></svg> إغلاق العرض';
       updateUI();
-    } else {
-      slides.forEach(function(s){ s.classList.remove('on'); });
-      btn.innerHTML = '<svg class="ic" width="18" height="18"><use href="#ic-expand"/></svg> عرض تقديمي';
-      /* scroll to current slide */
+    }else{
+      slides.forEach(function(s){s.classList.remove('on');});
+      btn.innerHTML='<svg class="ic" width="18" height="18"><use href="#ic-expand"/></svg> عرض تقديمي';
       slides[cur].scrollIntoView({behavior:'smooth'});
     }
   };
-
-  document.addEventListener('keydown', function(e){
-    if(!inPres) return;
-    if(e.key==='ArrowLeft'||e.key==='ArrowDown'||e.key===' '){ e.preventDefault(); nextSlide(); }
-    if(e.key==='ArrowRight'||e.key==='ArrowUp'){ e.preventDefault(); prevSlide(); }
-    if(e.key==='Escape'){ togglePres(); }
+  document.addEventListener('keydown',function(e){
+    if(!inPres)return;
+    if(e.key==='ArrowLeft'||e.key==='ArrowDown'||e.key===' '){e.preventDefault();nextSlide();}
+    if(e.key==='ArrowRight'||e.key==='ArrowUp'){e.preventDefault();prevSlide();}
+    if(e.key==='Escape'){togglePres();}
   });
-
   updateUI();
 })();
 </script>

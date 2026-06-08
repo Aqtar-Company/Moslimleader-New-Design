@@ -744,9 +744,31 @@ export default function CheckoutPage() {
   }
 
 
+  const stepTitles: Record<Step, string> = {
+    address: isRtl ? 'أين نوصّل طلبك؟' : 'Where should we deliver?',
+    payment: isRtl ? 'كيف تريد الدفع؟' : 'How would you like to pay?',
+    confirm: isRtl ? 'راجع وأكمل طلبك' : 'Review & place your order',
+  };
+
   return (
     <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto px-4 py-10 pt-28">
-      <h1 className="text-2xl font-black text-gray-900 mb-8">{L.checkout}</h1>
+      {/* Header: logo + title + SSL badge */}
+      <div className="flex items-start justify-between mb-4 sm:mb-8 gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-gray-900">{L.checkout}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{stepTitles[step]}</p>
+        </div>
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <Link href="/">
+            <Image src="/ml-logo-new.png" alt="Moslim Leader" width={80} height={40} className="object-contain" />
+          </Link>
+          {(step === 'payment' || step === 'confirm') && (
+            <span className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-full px-2.5 py-0.5 font-semibold">
+              {L.securePayment}
+            </span>
+          )}
+        </div>
+      </div>
 
       {/* Progress */}
       <div className="flex items-center gap-0 mb-10">
@@ -754,7 +776,7 @@ export default function CheckoutPage() {
           <div key={i} className="flex items-center flex-1 last:flex-none">
             <div className="flex items-center gap-2">
               <StepDot n={i + 1} current={i === stepIdx} done={i < stepIdx} />
-              <span className={`text-sm font-semibold hidden sm:block ${i === stepIdx ? 'text-gray-900' : i < stepIdx ? 'text-green-600' : 'text-gray-400'}`}>
+              <span className={`text-sm font-semibold ${i === stepIdx ? 'text-gray-900 block' : i < stepIdx ? 'text-green-600 hidden sm:block' : 'text-gray-400 hidden sm:block'}`}>
                 {label}
               </span>
             </div>

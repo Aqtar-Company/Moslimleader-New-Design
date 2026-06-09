@@ -40,6 +40,10 @@ export interface Product {
   weight: number; // grams
   comingSoon?: boolean;
   reviews?: Review[];
+  minAge?: number | null;
+  maxAge?: number | null;
+  ageCategory?: string | null;
+  needsParentalGuide?: boolean;
 }
 
 export interface Category {

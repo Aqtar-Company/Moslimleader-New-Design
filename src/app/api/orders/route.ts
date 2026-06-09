@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
       shippingAddress,
       notes,
       currency,
+      loyaltyPointsToRedeem,
     } = body;
 
     if (!items?.length || !paymentMethod || !shippingAddress) {
@@ -245,6 +246,51 @@ export async function POST(req: NextRequest) {
       });
     } catch (emailErr) {
       console.error('[orders POST email]', emailErr);
+    }
+
+    // Award loyalty points: 1 point per 10 EGP (best-effort, non-blocking)
+    try {
+      const earnedPoints = Math.floor(verifiedTotal / 10);
+      if (earnedPoints > 0) {
+        await prisma.$transaction([
+          prisma.user.update({
+            where: { id: auth.userId },
+            data: { loyaltyPoints: { increment: earnedPoints } },
+          }),
+          prisma.loyaltyTransaction.create({
+            data: {
+              userId: auth.userId,
+              points: earnedPoints,
+              reason: 'order_earn',
+              orderId: order.id,
+            },
+          }),
+        ]);
+      }
+    } catch (loyaltyErr) {
+      console.error('[orders POST loyalty]', loyaltyErr);
+    }
+
+    // Redeem loyalty points if requested
+    if (loyaltyPointsToRedeem && loyaltyPointsToRedeem > 0) {
+      try {
+        await prisma.$transaction([
+          prisma.user.update({
+            where: { id: auth.userId },
+            data: { loyaltyPoints: { decrement: loyaltyPointsToRedeem } },
+          }),
+          prisma.loyaltyTransaction.create({
+            data: {
+              userId: auth.userId,
+              points: -loyaltyPointsToRedeem,
+              reason: 'order_redeem',
+              orderId: order.id,
+            },
+          }),
+        ]);
+      } catch (redeemErr) {
+        console.error('[orders POST loyalty redeem]', redeemErr);
+      }
     }
 
     return NextResponse.json({ order }, { status: 201 });

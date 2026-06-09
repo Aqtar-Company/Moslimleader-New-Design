@@ -69,6 +69,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const bookOrderId = `BK-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    const referrerToken = String(body?.referrerToken || '').trim() || null;
+
+    // Resolve referrer from BookShareLink token if provided
+    let referrerId: string | null = null;
+    let referralDiscountPct = 0;
+    if (referrerToken) {
+      const shareLink = await prisma.bookShareLink.findUnique({
+        where: { token: referrerToken },
+        select: { createdBy: true, bookId: true, expiresAt: true },
+      });
+      const bookData = await prisma.book.findUnique({ where: { id: bookId }, select: { enableReferral: true, referralDiscount: true } });
+      if (shareLink && shareLink.expiresAt > new Date() && bookData?.enableReferral && shareLink.createdBy !== auth.userId) {
+        referrerId = shareLink.createdBy;
+        referralDiscountPct = bookData.referralDiscount ?? 20;
+      }
+    }
 
     // Atomic: create BookOrder + grant BookAccess
     await prisma.$transaction(async (tx) => {
@@ -82,6 +98,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           currency: 'USD',
           paymentMethod: 'paypal',
           paypalOrderId,
+          referrerId,
+          referrerToken,
         },
       });
       await tx.bookAccess.create({
@@ -92,6 +110,30 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         },
       });
     });
+
+    // Grant referral reward to referrer (best-effort)
+    if (referrerId && referralDiscountPct > 0) {
+      try {
+        const couponCode = `REF-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        await prisma.$transaction([
+          prisma.referralReward.create({
+            data: { referrerId, bookOrderId, discountPct: referralDiscountPct, couponCode },
+          }),
+          prisma.coupon.create({
+            data: {
+              code: couponCode,
+              type: 'percentage',
+              value: referralDiscountPct,
+              maxUses: 1,
+              usedCount: 0,
+              isActive: true,
+            },
+          }),
+        ]);
+      } catch (refErr) {
+        console.error('[books paypal-capture referral]', refErr);
+      }
+    }
 
     // Send notification email to admin + customer (non-blocking)
     try {

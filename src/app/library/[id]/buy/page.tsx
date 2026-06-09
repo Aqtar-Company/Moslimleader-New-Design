@@ -3,7 +3,7 @@ import { useLang } from '@/context/LanguageContext';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import PayPalBookButton from '@/components/PayPalBookButton';
@@ -25,9 +25,16 @@ export default function BookBuyPage({ params }: { params: Promise<{ id: string }
   const [orderId, setOrderId] = useState('');
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { addToast } = useToast();
   const { lang } = useLang();
   const isEn = lang === 'en';
+
+  // Store referral token from URL ?ref=TOKEN for attribution at purchase
+  const refToken = searchParams.get('ref');
+  useEffect(() => {
+    if (refToken) sessionStorage.setItem('ml_ref_token', refToken);
+  }, [refToken]);
 
   useEffect(() => {
     // Support both Next.js 14 (plain object) and Next.js 15 (Promise) params
@@ -186,11 +193,15 @@ export default function BookBuyPage({ params }: { params: Promise<{ id: string }
             captureEndpoint={`/api/books/${book.id}/paypal-capture`}
             amountUsd={priceUsd}
             onSuccess={(id) => {
+              sessionStorage.removeItem('ml_ref_token');
               setOrderId(id);
               setOrderPlaced(true);
             }}
             onError={(msg) => addToast(msg, 'error')}
             isRtl
+            extraBody={refToken || (typeof window !== 'undefined' && sessionStorage.getItem('ml_ref_token'))
+              ? { referrerToken: refToken || sessionStorage.getItem('ml_ref_token') }
+              : undefined}
           />
         </div>
       </div>

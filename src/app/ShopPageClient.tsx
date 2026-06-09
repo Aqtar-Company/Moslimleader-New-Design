@@ -109,6 +109,7 @@ function ShopContent({ ssrProducts }: { ssrProducts?: Product[] }) {
   const { t, isRtl } = useLang();
   const initialCategory = searchParams.get('category') || 'all';
   const [activeCategory, setActiveCategory] = useState(initialCategory);
+  const [ageFilter, setAgeFilter] = useState('');
   const [search, setSearch] = useState('');
 
   // Use SSR products if provided, otherwise fall back to localStorage cache then statics
@@ -145,6 +146,14 @@ function ShopContent({ ssrProducts }: { ssrProducts?: Product[] }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const AGE_GROUPS = [
+    { id: '', label: isRtl ? 'كل الأعمار' : 'All Ages' },
+    { id: '0-3', label: isRtl ? '0-3 سنوات' : '0–3 yrs' },
+    { id: '3-6', label: isRtl ? '3-6 سنوات' : '3–6 yrs' },
+    { id: '6-9', label: isRtl ? '6-9 سنوات' : '6–9 yrs' },
+    { id: '9+', label: isRtl ? '9+ سنوات' : '9+ yrs' },
+  ];
+
   const displayCategories = buildCategories(allProducts);
   const filtered = allProducts.filter(p => {
     const matchCat = activeCategory === 'all' || p.category === activeCategory;
@@ -152,7 +161,16 @@ function ShopContent({ ssrProducts }: { ssrProducts?: Product[] }) {
       ? p.name.includes(search) || p.shortDescription.includes(search)
       : (p.nameEn || p.name).toLowerCase().includes(search.toLowerCase()) ||
         (p.shortDescriptionEn || p.shortDescription).toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchSearch;
+    let matchAge = true;
+    if (ageFilter) {
+      const min = (p as { minAge?: number | null }).minAge ?? 0;
+      const max = (p as { maxAge?: number | null }).maxAge ?? 99;
+      if (ageFilter === '0-3') matchAge = min <= 3;
+      else if (ageFilter === '3-6') matchAge = min <= 6 && max >= 3;
+      else if (ageFilter === '6-9') matchAge = min <= 9 && max >= 6;
+      else if (ageFilter === '9+') matchAge = max >= 9;
+    }
+    return matchCat && matchSearch && matchAge;
   });
 
   return (
@@ -168,7 +186,7 @@ function ShopContent({ ssrProducts }: { ssrProducts?: Product[] }) {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 justify-center mb-10">
+      <div className="flex flex-wrap gap-2 justify-center mb-4">
         {displayCategories.map(cat => (
           <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
             className={`flex items-center gap-2 px-5 py-2 rounded-full border-2 font-semibold text-sm transition ${
@@ -178,6 +196,20 @@ function ShopContent({ ssrProducts }: { ssrProducts?: Product[] }) {
             <span className={`text-xs font-bold px-1.5 rounded-full ${activeCategory === cat.id ? 'bg-white text-gray-900' : 'bg-gray-100'}`}>
               {cat.count}
             </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Age group filter */}
+      <div className="flex flex-wrap gap-2 justify-center mb-8">
+        {AGE_GROUPS.map(ag => (
+          <button key={ag.id} onClick={() => setAgeFilter(ag.id)}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full border-2 font-semibold text-xs transition ${
+              ageFilter === ag.id
+                ? 'bg-amber-400 border-amber-400 text-gray-900'
+                : 'border-gray-200 hover:border-amber-400 text-gray-600'
+            }`}>
+            {ag.id === '' ? '🎯' : '🧒'} {ag.label}
           </button>
         ))}
       </div>

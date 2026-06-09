@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import PayPalBookButton from '@/components/PayPalBookButton';
+import { useRegionalPricing } from '@/context/RegionalPricingContext';
 
 interface Book {
   id: string;
@@ -29,6 +30,8 @@ export default function BookBuyPage({ params }: { params: Promise<{ id: string }
   const { addToast } = useToast();
   const { lang } = useLang();
   const isEn = lang === 'en';
+  const { zone } = useRegionalPricing();
+  const isEgypt = zone === 'egypt';
 
   // Store referral token from URL ?ref=TOKEN for attribution at purchase
   const refToken = searchParams.get('ref');
@@ -59,10 +62,15 @@ export default function BookBuyPage({ params }: { params: Promise<{ id: string }
       .finally(() => setLoading(false));
   }, [id, user, isLoading, router]);
 
-  // Calculate USD price (PayPal charges in USD)
-  const priceUsd = book
-    ? (book.priceUSD && book.priceUSD > 0 ? book.priceUSD : book.price * 0.10)
+  // Display price: EGP for Egypt, USD for international
+  const displayPriceEgp = book ? book.price : 0;
+  const displayPriceUsd = book
+    ? (book.priceUSD && book.priceUSD > 0 ? book.priceUSD : Math.round(book.price / 50 * 100) / 100)
     : 0;
+  // PayPal always charges in USD — server picks the correct amount based on IP
+  const amountUsd = isEgypt
+    ? Math.max(0.01, Math.round(displayPriceEgp / 50 * 100) / 100)
+    : displayPriceUsd;
 
   if (loading || isLoading) {
     return (
@@ -171,8 +179,17 @@ export default function BookBuyPage({ params }: { params: Promise<{ id: string }
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <span className="text-gray-500 text-sm">{isEn ? 'Book Price' : 'سعر الكتاب'}</span>
           <div className="text-left">
-            <span className="text-3xl font-black text-[#1a1a2e]">${priceUsd.toFixed(2)}</span>
-            <p className="text-xs text-gray-400 mt-0.5">USD</p>
+            {isEgypt ? (
+              <>
+                <span className="text-3xl font-black text-[#1a1a2e]">{displayPriceEgp.toFixed(0)}</span>
+                <span className="text-lg font-bold text-[#1a1a2e] mr-1"> ج.م</span>
+              </>
+            ) : (
+              <>
+                <span className="text-3xl font-black text-[#1a1a2e]">${displayPriceUsd.toFixed(2)}</span>
+                <p className="text-xs text-gray-400 mt-0.5">USD</p>
+              </>
+            )}
           </div>
         </div>
 
@@ -191,7 +208,7 @@ export default function BookBuyPage({ params }: { params: Promise<{ id: string }
           <PayPalBookButton
             createEndpoint={`/api/books/${book.id}/paypal-create`}
             captureEndpoint={`/api/books/${book.id}/paypal-capture`}
-            amountUsd={priceUsd}
+            amountUsd={amountUsd}
             onSuccess={(id) => {
               sessionStorage.removeItem('ml_ref_token');
               setOrderId(id);

@@ -33,10 +33,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'الكتاب غير متاح' }, { status: 404 });
     }
 
-    // Calculate USD price server-side
-    const priceUsd = book.priceUSD && book.priceUSD > 0
-      ? Number(book.priceUSD)
-      : egpToUsd(Number(book.price));
+    // Detect country from reverse-proxy headers (same logic as /api/geo)
+    const countryCode = (
+      req.headers.get('cf-ipcountry') ||
+      req.headers.get('x-vercel-ip-country') ||
+      req.headers.get('x-country-code') ||
+      req.headers.get('x-geoip-country') ||
+      ''
+    ).toUpperCase();
+    const isEgypt = countryCode === 'EG';
+
+    // Egyptian users get the subsidised EGP price converted to USD.
+    // International users pay the explicit USD price.
+    const priceUsd = isEgypt
+      ? egpToUsd(Number(book.price))
+      : (book.priceUSD && book.priceUSD > 0 ? Number(book.priceUSD) : egpToUsd(Number(book.price)));
 
     if (!Number.isFinite(priceUsd) || priceUsd <= 0) {
       return NextResponse.json({ error: 'خطأ في سعر الكتاب' }, { status: 400 });
@@ -51,6 +62,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       paypalOrderId: paypalOrder.id,
       expectedAmountUsd: finalUsd,
       bookTitle: book.title,
+      isEgyptPrice: isEgypt,
+      priceEgp: isEgypt ? Number(book.price) : null,
     });
   } catch (err) {
     console.error('[books paypal-create]', err);

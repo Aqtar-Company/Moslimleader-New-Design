@@ -18,7 +18,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Fetch series with its books (server-side, never trust client)
     const series = await prisma.bookSeries.findUnique({
       where: { id: seriesId },
-      include: {
+      select: {
+        name: true, isPublished: true, seriesPrice: true, seriesPriceUSD: true,
         books: {
           where: { isPublished: true },
           select: { id: true, title: true, price: true, priceUSD: true },
@@ -30,17 +31,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'السلسلة غير متاحة' }, { status: 404 });
     }
 
-    // Pricing rule: international/PayPal must always prefer the manually
-    // stored USD price over a derived EGP→USD conversion. The EGP price is
-    // subsidized for Egypt and is not a valid international price.
-    //   1. seriesPriceUSD (manual bundle price, if set) wins.
-    //   2. Otherwise sum each book's stored priceUSD; books missing a USD
-    //      price fall back to egpToUsd(book.price) individually.
-    // The previous middle branch — egpToUsd(series.seriesPrice) — was a
-    // pricing bug: it ignored each book's correct USD price whenever the
-    // series-level seriesPriceUSD happened to be unset.
+    // Detect country from reverse-proxy headers (same logic as /api/geo)
+    const countryCode = (
+      req.headers.get('cf-ipcountry') ||
+      req.headers.get('x-vercel-ip-country') ||
+      req.headers.get('x-country-code') ||
+      req.headers.get('x-geoip-country') ||
+      ''
+    ).toUpperCase();
+    const isEgypt = countryCode === 'EG';
+
+    // Egyptian users get the subsidised EGP price converted to USD.
+    // International users get the explicit USD price.
+    //   1. seriesPriceUSD / seriesPrice: manual bundle price wins if set.
+    //   2. Otherwise sum each book's price by zone.
     let priceUsd: number;
-    if (series.seriesPriceUSD && series.seriesPriceUSD > 0) {
+    if (isEgypt) {
+      const egpTotal = series.seriesPrice && series.seriesPrice > 0
+        ? Number(series.seriesPrice)
+        : series.books.reduce((sum, b) => sum + Number(b.price), 0);
+      priceUsd = egpToUsd(egpTotal);
+    } else if (series.seriesPriceUSD && series.seriesPriceUSD > 0) {
       priceUsd = Number(series.seriesPriceUSD);
     } else {
       priceUsd = series.books.reduce((sum, b) => {

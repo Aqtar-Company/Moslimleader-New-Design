@@ -90,17 +90,17 @@ export default function PayPalBookButton({
           disableFunding: 'paylater,venmo',
         }}
       >
-        {/* PayPal wallet button (gold) */}
+        {/* Card button first — majority of users pay by card */}
         <PayPalButtons
-          fundingSource="paypal"
-          style={{ layout: 'vertical', shape: 'rect', label: 'paypal', color: 'gold', height: 48 }}
+          fundingSource="card"
+          style={{ layout: 'vertical', shape: 'rect', label: 'pay', color: 'black', height: 48 }}
           disabled={processing}
           createOrder={createOrder}
           onApprove={onApprove}
           onCancel={() => onError(isRtl ? 'تم إلغاء الدفع' : 'Payment cancelled')}
           onError={(err) => {
-            console.error('[PayPal error]', err);
-            onError(isRtl ? 'حدث خطأ في PayPal' : 'PayPal error occurred');
+            console.error('[PayPal Card error]', err);
+            onError(isRtl ? 'حدث خطأ في الدفع بالبطاقة' : 'Card payment error');
           }}
         />
 
@@ -113,15 +113,15 @@ export default function PayPalBookButton({
         </div>
 
         <PayPalButtons
-          fundingSource="card"
-          style={{ layout: 'vertical', shape: 'rect', label: 'pay', color: 'black', height: 48 }}
+          fundingSource="paypal"
+          style={{ layout: 'vertical', shape: 'rect', label: 'paypal', color: 'gold', height: 48 }}
           disabled={processing}
           createOrder={createOrder}
           onApprove={onApprove}
           onCancel={() => onError(isRtl ? 'تم إلغاء الدفع' : 'Payment cancelled')}
           onError={(err) => {
-            console.error('[PayPal Card error]', err);
-            onError(isRtl ? 'حدث خطأ في الدفع بالبطاقة' : 'Card payment error');
+            console.error('[PayPal error]', err);
+            onError(isRtl ? 'حدث خطأ في PayPal' : 'PayPal error occurred');
           }}
         />
       </PayPalScriptProvider>

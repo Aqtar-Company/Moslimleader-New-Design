@@ -122,10 +122,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           prisma.coupon.create({
             data: {
               code: couponCode,
-              type: 'percentage',
-              value: referralDiscountPct,
-              maxUses: 1,
-              usedCount: 0,
+              discount: referralDiscountPct,
               isActive: true,
             },
           }),

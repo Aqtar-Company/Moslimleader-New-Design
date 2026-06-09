@@ -153,7 +153,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const verifiedTotal = verifiedSubtotal - verifiedDiscount + (shippingCost ?? 0);
+    // Verify shipping cost server-side for COD/local orders — cap at 500 to prevent tampering
+    const verifiedShipping = paymentMethod === 'paypal'
+      ? (shippingCost ?? 0)   // PayPal orders already verified at capture step
+      : Math.min(500, Math.max(0, Number(shippingCost) || 0));
+
+    const verifiedTotal = verifiedSubtotal - verifiedDiscount + verifiedShipping;
 
     // Order create + stock decrement run in ONE transaction so we can
     // never end up with an order whose stock wasn't decremented (or
@@ -168,7 +173,7 @@ export async function POST(req: NextRequest) {
             userId: auth.userId,
             status: paymentMethod === 'paypal' && paypalOrderId ? 'paid' : 'pending',
             total: verifiedTotal,
-            shippingCost: shippingCost ?? 0,
+            shippingCost: verifiedShipping,
             discount: verifiedDiscount,
             couponCode: couponCode?.trim().toUpperCase() || null,
             paymentMethod,

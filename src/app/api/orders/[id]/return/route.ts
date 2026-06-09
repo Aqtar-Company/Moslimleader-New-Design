@@ -43,31 +43,36 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: `انتهت مهلة الإرجاع (${RETURN_WINDOW_DAYS} يوم من التسليم)` }, { status: 400 });
     }
 
-    // Check no existing open return request
-    const existing = await prisma.returnRequest.findFirst({
-      where: { orderId, userId: auth.userId, status: { in: ['pending', 'approved'] } },
+    // Wrap duplicate-check + create in a transaction to prevent race condition
+    const returnRequest = await prisma.$transaction(async (tx) => {
+      const existing = await tx.returnRequest.findFirst({
+        where: { orderId, userId: auth.userId, status: { in: ['pending', 'approved'] } },
+      });
+      if (existing) return null;
+
+      const created = await tx.returnRequest.create({
+        data: {
+          orderId,
+          userId: auth.userId,
+          type,
+          reason,
+          reasonNote: reasonNote?.trim() || null,
+          itemsJson: items,
+          status: 'pending',
+        },
+      });
+
+      await tx.order.update({
+        where: { id: orderId },
+        data: { status: 'return_requested' },
+      });
+
+      return created;
     });
-    if (existing) {
+
+    if (!returnRequest) {
       return NextResponse.json({ error: 'يوجد طلب إرجاع مفتوح بالفعل لهذا الطلب' }, { status: 409 });
     }
-
-    const returnRequest = await prisma.returnRequest.create({
-      data: {
-        orderId,
-        userId: auth.userId,
-        type,
-        reason,
-        reasonNote: reasonNote?.trim() || null,
-        itemsJson: items,
-        status: 'pending',
-      },
-    });
-
-    // Update order status
-    await prisma.order.update({
-      where: { id: orderId },
-      data: { status: 'return_requested' },
-    });
 
     return NextResponse.json({ ok: true, returnRequestId: returnRequest.id }, { status: 201 });
   } catch (err) {

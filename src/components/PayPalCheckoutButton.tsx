@@ -128,7 +128,12 @@ export default function PayPalCheckoutButton({
           currency: 'USD',
           intent: 'capture',
           components: 'buttons',
-          enableFunding: 'card',
+          // Advanced Card Payments requires PayPal merchant approval.
+          // Keep card disabled until the account has been approved by PayPal.
+          // To re-enable: set NEXT_PUBLIC_PAYPAL_CARD_ENABLED=true in .env
+          disableFunding: process.env.NEXT_PUBLIC_PAYPAL_CARD_ENABLED === 'true'
+            ? 'paylater,venmo'
+            : 'paylater,venmo,card',
         }}
       >
         {/* PayPal wallet button */}
@@ -145,28 +150,30 @@ export default function PayPalCheckoutButton({
           }}
         />
 
-        {/* Separator */}
-        <div className="flex items-center gap-3 my-3">
-          <div className="flex-1 h-px bg-gray-200" />
-          <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
-            {isRtl ? 'أو' : 'Or'}
-          </span>
-          <div className="flex-1 h-px bg-gray-200" />
-        </div>
-
-        {/* Card button — handles Debit/Credit cards via PayPal Advanced Cards */}
-        <PayPalButtons
-          fundingSource="card"
-          style={{ layout: 'vertical', shape: 'rect', label: 'pay', color: 'black', height: 48 }}
-          disabled={processing}
-          createOrder={createOrder}
-          onApprove={onApprove}
-          onCancel={() => onError(isRtl ? 'تم إلغاء الدفع' : 'Payment cancelled')}
-          onError={(err) => {
-            console.error('[PayPal Card error]', err);
-            onError(isRtl ? 'حدث خطأ في الدفع بالبطاقة' : 'Card payment error');
-          }}
-        />
+        {/* Card button — only shown after PayPal approves Advanced Card Payments */}
+        {process.env.NEXT_PUBLIC_PAYPAL_CARD_ENABLED === 'true' && (
+          <>
+            <div className="flex items-center gap-3 my-3">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+                {isRtl ? 'أو' : 'Or'}
+              </span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+            <PayPalButtons
+              fundingSource="card"
+              style={{ layout: 'vertical', shape: 'rect', label: 'pay', color: 'black', height: 48 }}
+              disabled={processing}
+              createOrder={createOrder}
+              onApprove={onApprove}
+              onCancel={() => onError(isRtl ? 'تم إلغاء الدفع' : 'Payment cancelled')}
+              onError={(err) => {
+                console.error('[PayPal Card error]', err);
+                onError(isRtl ? 'حدث خطأ في الدفع بالبطاقة' : 'Card payment error');
+              }}
+            />
+          </>
+        )}
       </PayPalScriptProvider>
 
       <p className="mt-3 text-[10px] text-gray-400 text-center">

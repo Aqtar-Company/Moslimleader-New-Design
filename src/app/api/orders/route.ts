@@ -271,23 +271,18 @@ export async function POST(req: NextRequest) {
       console.error('[orders POST loyalty]', loyaltyErr);
     }
 
-    // Redeem loyalty points if requested
+    // Redeem loyalty points if requested — atomic check+decrement prevents race condition
     if (loyaltyPointsToRedeem && loyaltyPointsToRedeem > 0) {
       try {
-        await prisma.$transaction([
-          prisma.user.update({
-            where: { id: auth.userId },
-            data: { loyaltyPoints: { decrement: loyaltyPointsToRedeem } },
-          }),
-          prisma.loyaltyTransaction.create({
-            data: {
-              userId: auth.userId,
-              points: -loyaltyPointsToRedeem,
-              reason: 'order_redeem',
-              orderId: order.id,
-            },
-          }),
-        ]);
+        const updated = await prisma.user.updateMany({
+          where: { id: auth.userId, loyaltyPoints: { gte: loyaltyPointsToRedeem } },
+          data: { loyaltyPoints: { decrement: loyaltyPointsToRedeem } },
+        });
+        if (updated.count > 0) {
+          await prisma.loyaltyTransaction.create({
+            data: { userId: auth.userId, points: -loyaltyPointsToRedeem, reason: 'order_redeem', orderId: order.id },
+          });
+        }
       } catch (redeemErr) {
         console.error('[orders POST loyalty redeem]', redeemErr);
       }

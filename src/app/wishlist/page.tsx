@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useWishlist } from '@/context/WishlistContext';
@@ -10,6 +11,29 @@ export default function WishlistPage() {
   const { items, remove, clear } = useWishlist();
   const { addItem } = useCart();
   const { t, isRtl } = useLang();
+  const [shareLink, setShareLink] = useState<string | null>(null);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  async function handleShare() {
+    setShareLoading(true);
+    try {
+      const res = await fetch('/api/wishlist/share', { method: 'POST' });
+      if (res.status === 401) { alert(isRtl ? 'يجب تسجيل الدخول أولاً' : 'Please sign in first'); return; }
+      const data = await res.json();
+      if (data.token) setShareLink(`${window.location.origin}/wishlist/share/${data.token}`);
+    } finally {
+      setShareLoading(false);
+    }
+  }
+
+  function handleCopy() {
+    if (!shareLink) return;
+    navigator.clipboard.writeText(shareLink).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   if (items.length === 0) {
     return (
@@ -40,9 +64,29 @@ export default function WishlistPage() {
             {items.length} {isRtl ? 'منتج' : items.length === 1 ? 'item' : 'items'}
           </p>
         </div>
-        <button onClick={clear} className="text-xs text-gray-400 hover:text-red-500 transition">
-          {t('cart.clearAll')}
-        </button>
+        <div className="flex items-center gap-3">
+          {!shareLink ? (
+            <button onClick={handleShare} disabled={shareLoading}
+              className="flex items-center gap-2 bg-purple-700 hover:bg-purple-800 disabled:opacity-60 text-white text-xs font-bold px-4 py-2 rounded-xl transition">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              {shareLoading ? '...' : (isRtl ? 'مشاركة القائمة' : 'Share List')}
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <input readOnly value={shareLink}
+                className="text-xs border border-gray-200 rounded-xl px-3 py-2 bg-gray-50 w-48 truncate" />
+              <button onClick={handleCopy}
+                className="text-xs bg-green-600 hover:bg-green-700 text-white font-bold px-3 py-2 rounded-xl transition">
+                {copied ? '✓' : (isRtl ? 'نسخ' : 'Copy')}
+              </button>
+            </div>
+          )}
+          <button onClick={clear} className="text-xs text-gray-400 hover:text-red-500 transition">
+            {t('cart.clearAll')}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">

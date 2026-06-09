@@ -128,7 +128,7 @@ export default function PayPalCheckoutButton({
           currency: 'USD',
           intent: 'capture',
           components: 'buttons',
-          enableFunding: 'card',
+          disableFunding: 'paylater,venmo',
         }}
       >
         {/* PayPal wallet button */}
@@ -145,7 +145,6 @@ export default function PayPalCheckoutButton({
           }}
         />
 
-        {/* Separator */}
         <div className="flex items-center gap-3 my-3">
           <div className="flex-1 h-px bg-gray-200" />
           <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
@@ -154,7 +153,6 @@ export default function PayPalCheckoutButton({
           <div className="flex-1 h-px bg-gray-200" />
         </div>
 
-        {/* Card button — handles Debit/Credit cards via PayPal Advanced Cards */}
         <PayPalButtons
           fundingSource="card"
           style={{ layout: 'vertical', shape: 'rect', label: 'pay', color: 'black', height: 48 }}

@@ -16,7 +16,7 @@ const COUNTRIES_LIST = [
     .map(([code, c]) => ({ code, name: c.nameAr, nameEn: c.nameEn }))
 ];
 
-type Tab = 'profile' | 'addresses' | 'orders' | 'books';
+type Tab = 'profile' | 'addresses' | 'orders' | 'books' | 'loyalty';
 
 interface MyBook {
   id: string;
@@ -46,6 +46,8 @@ export default function AccountPage() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [myBooks, setMyBooks] = useState<MyBook[]>([]);
   const [booksLoading, setBooksLoading] = useState(false);
+  const [loyaltyData, setLoyaltyData] = useState<{ points: number; egpValue: number; transactions: { id: string; points: number; reason: string; createdAt: string }[] } | null>(null);
+  const [loyaltyLoading, setLoyaltyLoading] = useState(false);
 
   // Profile form
   const [name, setName] = useState('');
@@ -98,6 +100,14 @@ export default function AccountPage() {
         .then(d => setMyBooks(d.books ?? []))
         .catch(() => {})
         .finally(() => setBooksLoading(false));
+
+      // Load loyalty points
+      setLoyaltyLoading(true);
+      fetch('/api/loyalty', { credentials: 'include' })
+        .then(r => r.json())
+        .then(d => setLoyaltyData(d))
+        .catch(() => {})
+        .finally(() => setLoyaltyLoading(false));
     }
   }, [user, isLoading, router]);
 
@@ -211,7 +221,7 @@ export default function AccountPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-2xl p-1 mb-8 overflow-x-auto">
-        {([['profile', L.profile], ['addresses', L.addresses], ['orders', L.orders], ['books', isRtl ? '📚 كتبي' : '📚 My Books']] as [Tab, string][]).map(([t, label]) => (
+        {([['profile', L.profile], ['addresses', L.addresses], ['orders', L.orders], ['books', isRtl ? '📚 كتبي' : '📚 My Books'], ['loyalty', isRtl ? '⭐ نقاطي' : '⭐ Points']] as [Tab, string][]).map(([t, label]) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -465,7 +475,29 @@ export default function AccountPage() {
                     <td className="px-5 py-4 text-gray-500">{o.date}</td>
                     <td className="px-5 py-4 font-bold text-gray-900">{o.total.toLocaleString('ar-EG')} {o.currency || L.currency}</td>
                     <td className="px-5 py-4">
-                      <span className="bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-full">{o.status}</span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-full">{o.status}</span>
+                        {o.status === 'delivered' && (
+                          <button
+                            onClick={() => {
+                              const reason = prompt(isRtl ? 'سبب الإرجاع (defective/wrong_item/not_as_described/other):' : 'Reason (defective/wrong_item/not_as_described/other):');
+                              if (!reason) return;
+                              fetch(`/api/orders/${o.id}/return`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                                body: JSON.stringify({ type: 'return', reason, items: [] }),
+                              }).then(r => r.json()).then(d => {
+                                if (d.ok) alert(isRtl ? 'تم إرسال طلب الإرجاع بنجاح' : 'Return request submitted');
+                                else alert(d.error);
+                              });
+                            }}
+                            className="text-xs text-orange-600 hover:text-orange-800 font-semibold border border-orange-200 px-2.5 py-1 rounded-full transition"
+                          >
+                            {isRtl ? '↩ إرجاع' : '↩ Return'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -473,6 +505,72 @@ export default function AccountPage() {
             </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Loyalty Tab */}
+      {tab === 'loyalty' && (
+        <div className="space-y-5">
+          {/* Balance card */}
+          <div className="bg-gradient-to-br from-amber-400 to-amber-500 rounded-2xl p-6 text-gray-900">
+            <p className="text-sm font-semibold opacity-80 mb-1">{isRtl ? 'رصيد نقاطك' : 'Your Points Balance'}</p>
+            {loyaltyLoading ? (
+              <div className="w-6 h-6 border-2 border-gray-900/30 border-t-gray-900 rounded-full animate-spin" />
+            ) : (
+              <>
+                <p className="text-5xl font-black">{loyaltyData?.points ?? 0}</p>
+                <p className="text-sm mt-1 opacity-80">
+                  {isRtl
+                    ? `= ${loyaltyData?.egpValue ?? 0} جنيه خصم قابل للصرف`
+                    : `= ${loyaltyData?.egpValue ?? 0} EGP discount available`}
+                </p>
+              </>
+            )}
+          </div>
+
+          {/* How it works */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <p className="text-sm font-black text-gray-900 mb-3">{isRtl ? 'كيف تعمل النقاط؟' : 'How it works'}</p>
+            <ul className="text-sm text-gray-600 space-y-2">
+              <li>⭐ {isRtl ? 'كل 10 جنيه في طلبك = نقطة واحدة' : 'Every 10 EGP spent = 1 point'}</li>
+              <li>🎁 {isRtl ? 'كل 100 نقطة = 10 جنيه خصم' : '100 points = 10 EGP discount'}</li>
+              <li>🛒 {isRtl ? 'يمكن صرف النقاط عند الدفع' : 'Redeem at checkout'}</li>
+            </ul>
+          </div>
+
+          {/* Transaction history */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100">
+              <p className="text-sm font-black text-gray-900">{isRtl ? 'سجل النقاط' : 'Points History'}</p>
+            </div>
+            {loyaltyLoading ? (
+              <div className="p-8 flex justify-center"><div className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" /></div>
+            ) : !loyaltyData?.transactions?.length ? (
+              <div className="p-8 text-center text-gray-400 text-sm">{isRtl ? 'لا توجد معاملات بعد' : 'No transactions yet'}</div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {loyaltyData.transactions.map(tx => {
+                  const reasonLabel: Record<string, string> = {
+                    order_earn: isRtl ? 'طلب شراء' : 'Purchase',
+                    order_redeem: isRtl ? 'صرف نقاط' : 'Redeemed',
+                    manual: isRtl ? 'تعديل يدوي' : 'Manual',
+                    expired: isRtl ? 'انتهت صلاحية' : 'Expired',
+                  };
+                  return (
+                    <div key={tx.id} className="flex items-center justify-between px-5 py-3">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{reasonLabel[tx.reason] ?? tx.reason}</p>
+                        <p className="text-xs text-gray-400">{new Date(tx.createdAt).toLocaleDateString('ar-EG')}</p>
+                      </div>
+                      <span className={`text-sm font-black ${tx.points > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                        {tx.points > 0 ? '+' : ''}{tx.points} {isRtl ? 'نقطة' : 'pts'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

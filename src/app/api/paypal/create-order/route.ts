@@ -98,6 +98,14 @@ export async function POST(req: NextRequest) {
     const referenceId = `${auth.userId}-${Date.now()}`;
     const paypalOrder = await createPayPalOrder(finalUsd, 'USD', referenceId);
 
+    // Persist the server-verified amount so capture-order can cross-check
+    // against it and reject if capturedAmount is far less (replay attack guard).
+    await prisma.setting.upsert({
+      where: { key: `pp_pending_${paypalOrder.id}` },
+      create: { key: `pp_pending_${paypalOrder.id}`, value: { expectedUsd: finalUsd, userId: auth.userId, createdAt: Date.now() } },
+      update: { value: { expectedUsd: finalUsd, userId: auth.userId, createdAt: Date.now() } },
+    });
+
     return NextResponse.json({
       paypalOrderId: paypalOrder.id,
       expectedAmountUsd: finalUsd,

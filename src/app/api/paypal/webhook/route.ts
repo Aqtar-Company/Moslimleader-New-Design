@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       const orderId = event.resource?.supplementary_data?.related_ids?.order_id;
       if (orderId) {
         await prisma.order.updateMany({
-          where: { paypalOrderId: orderId },
+          where: { paypalOrderId: orderId, status: { notIn: ['paid', 'shipped', 'delivered', 'returned'] } },
           data: { status: 'payment_failed' },
         });
       }

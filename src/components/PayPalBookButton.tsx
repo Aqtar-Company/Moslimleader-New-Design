@@ -4,17 +4,13 @@ import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import { useState } from 'react';
 
 interface PayPalBookButtonProps {
-  // Endpoint used for create-order (e.g. /api/books/abc123/paypal-create)
   createEndpoint: string;
-  // Endpoint used for capture-order (e.g. /api/books/abc123/paypal-capture)
   captureEndpoint: string;
-  // USD amount to display in the top notice (server recalculates for security)
   amountUsd: number;
-  // Called when payment succeeds and access is granted
   onSuccess: (orderId: string) => void;
-  // Called on any error or cancellation
   onError: (message: string) => void;
   isRtl?: boolean;
+  extraBody?: Record<string, unknown>;
 }
 
 export default function PayPalBookButton({
@@ -24,6 +20,7 @@ export default function PayPalBookButton({
   onSuccess,
   onError,
   isRtl = true,
+  extraBody,
 }: PayPalBookButtonProps) {
   const [processing, setProcessing] = useState(false);
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
@@ -55,7 +52,7 @@ export default function PayPalBookButton({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ paypalOrderId: data.orderID }),
+        body: JSON.stringify({ paypalOrderId: data.orderID, ...extraBody }),
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || 'Payment capture failed');
@@ -90,7 +87,7 @@ export default function PayPalBookButton({
           currency: 'USD',
           intent: 'capture',
           components: 'buttons',
-          enableFunding: 'card',
+          disableFunding: 'paylater,venmo',
         }}
       >
         {/* PayPal wallet button (gold) */}
@@ -107,7 +104,6 @@ export default function PayPalBookButton({
           }}
         />
 
-        {/* Separator */}
         <div className="flex items-center gap-3 my-3">
           <div className="flex-1 h-px bg-gray-200" />
           <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
@@ -116,7 +112,6 @@ export default function PayPalBookButton({
           <div className="flex-1 h-px bg-gray-200" />
         </div>
 
-        {/* Card button (black) — handles Debit/Credit cards via PayPal */}
         <PayPalButtons
           fundingSource="card"
           style={{ layout: 'vertical', shape: 'rect', label: 'pay', color: 'black', height: 48 }}

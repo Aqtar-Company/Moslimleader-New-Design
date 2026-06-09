@@ -35,6 +35,7 @@ model User {
   // Marks the customer as a wholesale dealer (تاجر جملة). Filterable on the
   // customer list and surfaced as a separate count on the valuation page.
   isWholesale    Boolean  @default(false)
+  loyaltyPoints  Int      @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -47,6 +48,10 @@ model User {
   devices       BookDevice[]
   customerTransactions CustomerTransaction[]
   campaignRecipients CampaignRecipient[]
+  wishlistShareLinks WishlistShareLink[]
+  loyaltyTransactions LoyaltyTransaction[]
+  referralRewards    ReferralReward[]
+  returnRequests     ReturnRequest[]
 
   @@index([role])
   @@index([isWholesale])
@@ -456,8 +461,9 @@ model Order {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  items    OrderItem[]
-  shipment Shipment?
+  items          OrderItem[]
+  shipment       Shipment?
+  returnRequests ReturnRequest[]
 
   // Indexes for the admin panel — every list/aggregate filters on
   // some combination of createdAt, status, userId, paymentMethod,
@@ -679,6 +685,8 @@ model BookOrder {
   currency      String   @default("EGP")
   paymentMethod String
   paypalOrderId String?  @unique
+  referrerId    String?  // userId of the referrer
+  referrerToken String?  // WishlistShareLink or BookShareLink token used
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   @@index([userId])
@@ -840,4 +848,69 @@ model CatalogLead {
 
   @@index([status])
   @@index([createdAt])
+}
+
+// ─── Wishlist Sharing ────────────────────────────────────────────────────────
+model WishlistShareLink {
+  id         String   @id @default(cuid())
+  token      String   @unique @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productIds Json     // snapshot of wishlistIds at creation time
+  viewCount  Int      @default(0)
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime // +7 days from creation
+
+  @@index([token])
+  @@index([userId])
+}
+
+// ─── Loyalty Points ──────────────────────────────────────────────────────────
+model LoyaltyTransaction {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  points    Int      // positive = earned, negative = redeemed
+  reason    String   // 'order_earn' | 'order_redeem' | 'manual' | 'expired'
+  orderId   String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ─── Referral Rewards ────────────────────────────────────────────────────────
+model ReferralReward {
+  id          String    @id @default(cuid())
+  referrerId  String
+  referrer    User      @relation(fields: [referrerId], references: [id], onDelete: Cascade)
+  bookOrderId String    @unique
+  discountPct Int
+  couponCode  String?   @unique
+  isUsed      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  @@index([referrerId])
+}
+
+// ─── Returns & Exchanges ─────────────────────────────────────────────────────
+model ReturnRequest {
+  id           String   @id @default(cuid())
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id])
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         String   // 'return' | 'exchange'
+  reason       String   // 'defective' | 'wrong_item' | 'not_as_described' | 'other'
+  reasonNote   String?  @db.Text
+  status       String   @default("pending") // 'pending' | 'approved' | 'rejected' | 'completed'
+  itemsJson    Json     // OrderItems requested for return
+  refundAmount Decimal? @db.Decimal(10, 2)
+  adminNote    String?  @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([status])
 }

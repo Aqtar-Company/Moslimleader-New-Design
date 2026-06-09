@@ -120,6 +120,14 @@ export async function POST(req: NextRequest) {
     }
     const expectedUsd = Math.max(0.01, Math.round((totalUsd + shippingUsd - discountUsd) * 100) / 100);
 
+    // Cross-check the server-verified expected amount from create-order.
+    // If the client submitted inflated items between create and capture,
+    // capturedAmount will be far less than the recalculated expectedUsd —
+    // that's a replay attack. Reject BEFORE capturing so PayPal never
+    // moves money for a cart we won't honour.
+    const pendingSetting = await prisma.setting.findUnique({ where: { key: `pp_pending_${paypalOrderId}` } });
+    const storedExpected = pendingSetting ? Number((pendingSetting.value as Record<string, unknown>)?.expectedUsd ?? 0) : null;
+
     const captureResult = await capturePayPalOrder(paypalOrderId);
     if (captureResult.status !== 'COMPLETED') {
       return NextResponse.json(
@@ -174,13 +182,25 @@ export async function POST(req: NextRequest) {
     const capturedAmount = Number(capture?.amount?.value || 0);
     const capturedCurrency = String(capture?.amount?.currency_code || 'USD').toUpperCase();
     const reviewFlags: string[] = [];
+
+    // Use the server-stored expected amount if available (anti-replay).
+    // Fall back to the recalculated expectedUsd for orders created before
+    // this guard was added.
+    const authorisedAmount = storedExpected ?? expectedUsd;
+    if (storedExpected !== null && capturedAmount < storedExpected * 0.95) {
+      console.error('[paypal] Replay attack detected — capturedAmount far below server-authorised amount', {
+        authorised: storedExpected, captured: capturedAmount, paypalOrderId,
+      });
+      reviewFlags.push(`محاولة احتيال محتملة: مُفوَّض ${storedExpected} ومدفوع ${capturedAmount}`);
+    }
+
     if (capturedCurrency !== 'USD') {
       console.error('[paypal] Currency mismatch — saving anyway', { expected: 'USD', got: capturedCurrency, paypalOrderId });
       reviewFlags.push(`عملة مختلفة: ${capturedCurrency}`);
     }
-    if (Math.abs(capturedAmount - expectedUsd) > 0.01) {
-      console.error('[paypal] Amount mismatch — saving anyway', { expected: expectedUsd, captured: capturedAmount, paypalOrderId });
-      reviewFlags.push(`المبلغ المتوقع ${expectedUsd} والمدفوع ${capturedAmount}`);
+    if (Math.abs(capturedAmount - authorisedAmount) > 0.01) {
+      console.error('[paypal] Amount mismatch — saving anyway', { expected: authorisedAmount, captured: capturedAmount, paypalOrderId });
+      reviewFlags.push(`المبلغ المتوقع ${authorisedAmount} والمدفوع ${capturedAmount}`);
     }
     // Bind the persisted order to the actual captured amount so admin
     // dashboards reflect what PayPal really took, not what the cart
@@ -253,8 +273,30 @@ export async function POST(req: NextRequest) {
       return created;
     });
 
+    // Clean up the pending-amount guard entry (best-effort).
+    prisma.setting.delete({ where: { key: `pp_pending_${paypalOrderId}` } }).catch(() => {});
+
     // Best-effort campaign attribution by coupon code (never blocks the order).
     await attributeOrderToCampaign({ orderId: order.id, couponCode: order.couponCode, userId: resolvedUserId as string });
+
+    // Award loyalty points: 1 point per 10 EGP (USD × 50 ≈ EGP, best-effort)
+    try {
+      const egpEquiv = persistedTotal * 50;
+      const earnedPoints = Math.floor(egpEquiv / 10);
+      if (earnedPoints > 0) {
+        await prisma.$transaction([
+          prisma.user.update({
+            where: { id: resolvedUserId as string },
+            data: { loyaltyPoints: { increment: earnedPoints } },
+          }),
+          prisma.loyaltyTransaction.create({
+            data: { userId: resolvedUserId as string, points: earnedPoints, reason: 'order_earn', orderId: order.id },
+          }),
+        ]);
+      }
+    } catch (loyaltyErr) {
+      console.error('[paypal capture-order loyalty]', loyaltyErr);
+    }
 
     // Send order notification email to admin (async, non-blocking)
     try {

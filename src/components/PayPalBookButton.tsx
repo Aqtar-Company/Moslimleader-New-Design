@@ -87,9 +87,7 @@ export default function PayPalBookButton({
           currency: 'USD',
           intent: 'capture',
           components: 'buttons',
-          disableFunding: process.env.NEXT_PUBLIC_PAYPAL_CARD_ENABLED === 'true'
-            ? 'paylater,venmo'
-            : 'paylater,venmo,card',
+          disableFunding: 'paylater,venmo',
         }}
       >
         {/* PayPal wallet button (gold) */}
@@ -106,29 +104,26 @@ export default function PayPalBookButton({
           }}
         />
 
-        {process.env.NEXT_PUBLIC_PAYPAL_CARD_ENABLED === 'true' && (
-          <>
-            <div className="flex items-center gap-3 my-3">
-              <div className="flex-1 h-px bg-gray-200" />
-              <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
-                {isRtl ? 'أو' : 'Or'}
-              </span>
-              <div className="flex-1 h-px bg-gray-200" />
-            </div>
-            <PayPalButtons
-              fundingSource="card"
-              style={{ layout: 'vertical', shape: 'rect', label: 'pay', color: 'black', height: 48 }}
-              disabled={processing}
-              createOrder={createOrder}
-              onApprove={onApprove}
-              onCancel={() => onError(isRtl ? 'تم إلغاء الدفع' : 'Payment cancelled')}
-              onError={(err) => {
-                console.error('[PayPal Card error]', err);
-                onError(isRtl ? 'حدث خطأ في الدفع بالبطاقة' : 'Card payment error');
-              }}
-            />
-          </>
-        )}
+        <div className="flex items-center gap-3 my-3">
+          <div className="flex-1 h-px bg-gray-200" />
+          <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+            {isRtl ? 'أو' : 'Or'}
+          </span>
+          <div className="flex-1 h-px bg-gray-200" />
+        </div>
+
+        <PayPalButtons
+          fundingSource="card"
+          style={{ layout: 'vertical', shape: 'rect', label: 'pay', color: 'black', height: 48 }}
+          disabled={processing}
+          createOrder={createOrder}
+          onApprove={onApprove}
+          onCancel={() => onError(isRtl ? 'تم إلغاء الدفع' : 'Payment cancelled')}
+          onError={(err) => {
+            console.error('[PayPal Card error]', err);
+            onError(isRtl ? 'حدث خطأ في الدفع بالبطاقة' : 'Card payment error');
+          }}
+        />
       </PayPalScriptProvider>
 
       <p className="mt-3 text-[10px] text-gray-400 text-center">

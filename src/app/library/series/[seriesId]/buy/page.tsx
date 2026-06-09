@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import PayPalBookButton from '@/components/PayPalBookButton';
+import { useRegionalPricing } from '@/context/RegionalPricingContext';
 
 interface SeriesData {
   id: string;
@@ -28,6 +29,8 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
   const { addToast } = useToast();
   const { lang } = useLang();
   const isEn = lang === 'en';
+  const { zone } = useRegionalPricing();
+  const isEgypt = zone === 'egypt';
 
   useEffect(() => {
     // Support both Next.js 14 (plain object) and Next.js 15 (Promise) params
@@ -51,20 +54,25 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
       .finally(() => setLoading(false));
   }, [seriesId, user, isLoading, router]);
 
-  // Calculate USD price (PayPal charges in USD) — must match server calculation
-  let priceUsd = 0;
+  // Display and PayPal charge prices — mirrors server-side paypal-create logic
+  let displayPriceEgp = 0;
+  let displayPriceUsd = 0;
   if (series) {
+    displayPriceEgp = series.seriesPrice && series.seriesPrice > 0
+      ? series.seriesPrice
+      : series.books.reduce((sum, b) => sum + b.price, 0);
     if (series.seriesPriceUSD && series.seriesPriceUSD > 0) {
-      priceUsd = series.seriesPriceUSD;
-    } else if (series.seriesPrice && series.seriesPrice > 0) {
-      priceUsd = series.seriesPrice * 0.10;
+      displayPriceUsd = series.seriesPriceUSD;
     } else {
-      priceUsd = series.books.reduce((sum, b) => {
-        const bookUsd = b.priceUSD && b.priceUSD > 0 ? b.priceUSD : b.price * 0.10;
+      displayPriceUsd = series.books.reduce((sum, b) => {
+        const bookUsd = b.priceUSD && b.priceUSD > 0 ? b.priceUSD : Math.round(b.price / 50 * 100) / 100;
         return sum + bookUsd;
       }, 0);
     }
   }
+  const priceUsd = isEgypt
+    ? Math.max(0.01, Math.round(displayPriceEgp / 50 * 100) / 100)
+    : displayPriceUsd;
 
   if (loading || isLoading) {
     return (
@@ -163,8 +171,17 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <span className="text-gray-500 text-sm">{isEn ? 'Full Series Price' : 'سعر السلسلة كاملة'}</span>
           <div className="text-left">
-            <span className="text-3xl font-black text-[#F5C518]">${priceUsd.toFixed(2)}</span>
-            <p className="text-xs text-gray-400 mt-0.5">USD</p>
+            {isEgypt ? (
+              <>
+                <span className="text-3xl font-black text-[#F5C518]">{displayPriceEgp.toFixed(0)}</span>
+                <span className="text-lg font-bold text-[#F5C518] mr-1"> ج.م</span>
+              </>
+            ) : (
+              <>
+                <span className="text-3xl font-black text-[#F5C518]">${displayPriceUsd.toFixed(2)}</span>
+                <p className="text-xs text-gray-400 mt-0.5">USD</p>
+              </>
+            )}
           </div>
         </div>
 

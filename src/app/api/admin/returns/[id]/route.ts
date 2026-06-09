@@ -48,12 +48,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         const product = await tx.product.findUnique({ where: { id: item.productId }, select: { stock: true, variantStocks: true } });
         if (!product) continue;
 
+        let stockBefore: number;
+        let stockAfter: number;
+
         if (item.selectedModel != null && product.variantStocks) {
           const vs = (product.variantStocks as Record<string, number>);
-          vs[String(item.selectedModel)] = (vs[String(item.selectedModel)] ?? 0) + item.quantity;
+          stockBefore = vs[String(item.selectedModel)] ?? 0;
+          stockAfter = stockBefore + item.quantity;
+          vs[String(item.selectedModel)] = stockAfter;
           await tx.product.update({ where: { id: item.productId }, data: { variantStocks: vs } });
         } else {
-          await tx.product.update({ where: { id: item.productId }, data: { stock: { increment: item.quantity } } });
+          stockBefore = product.stock ?? 0;
+          stockAfter = stockBefore + item.quantity;
+          await tx.product.update({ where: { id: item.productId }, data: { stock: stockAfter } });
         }
 
         await tx.stockMovement.create({
@@ -62,6 +69,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             delta: item.quantity,
             reason: 'return_completed',
             orderId: returnRequest.orderId,
+            stockBefore,
+            stockAfter,
           },
         });
       }

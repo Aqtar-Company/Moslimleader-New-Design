@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { adminFetch, ForbiddenError } from '@/lib/admin-fetch';
 import ForbiddenState from '@/components/admin/ForbiddenState';
 
-type PaymentMethodId = 'cod' | 'card' | 'paypal' | 'vodafone' | 'instapay';
+type PaymentMethodId = 'cod' | 'paypal' | 'vodafone' | 'instapay';
 
 interface PaymentMethodConfig {
   id: PaymentMethodId;
@@ -12,14 +12,13 @@ interface PaymentMethodConfig {
 }
 
 const METHOD_META: Record<PaymentMethodId, { icon: string; label: string; desc: string; local: boolean; intl: boolean }> = {
-  cod:      { icon: '💵', label: 'الدفع عند الاستلام',             desc: 'متاح للشحن المحلي فقط',        local: true,  intl: false },
-  card:     { icon: '💳', label: 'بطاقة بنكية (فيزا / ماستركارد)', desc: 'متاح للشحن المحلي والدولي',    local: true,  intl: true  },
-  paypal:   { icon: '🅿️', label: 'PayPal',                         desc: 'متاح للشحن الدولي والمحلي',    local: true,  intl: true  },
-  vodafone: { icon: '📱', label: 'Vodafone Cash',                   desc: 'متاح للشحن المحلي فقط',        local: true,  intl: false },
-  instapay: { icon: '⚡', label: 'InstaPay',                         desc: 'متاح للشحن المحلي فقط',        local: true,  intl: false },
+  cod:      { icon: '💵', label: 'الدفع عند الاستلام',                         desc: 'متاح للشحن المحلي فقط',     local: true,  intl: false },
+  paypal:   { icon: '🅿️', label: 'PayPal / بطاقة بنكية (فيزا / ماستركارد)', desc: 'متاح للشحن الدولي والمحلي', local: true,  intl: true  },
+  vodafone: { icon: '📱', label: 'Vodafone Cash',                               desc: 'متاح للشحن المحلي فقط',     local: true,  intl: false },
+  instapay: { icon: '⚡', label: 'InstaPay',                                     desc: 'متاح للشحن المحلي فقط',     local: true,  intl: false },
 };
 
-const ORDER: PaymentMethodId[] = ['cod', 'card', 'paypal', 'vodafone', 'instapay'];
+const ORDER: PaymentMethodId[] = ['cod', 'paypal', 'vodafone', 'instapay'];
 
 const DEFAULT_METHODS: PaymentMethodConfig[] = ORDER.map(id => ({ id, enabled: true }));
 

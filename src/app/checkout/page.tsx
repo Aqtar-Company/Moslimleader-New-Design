@@ -21,7 +21,7 @@ import {
 } from '@/lib/intl-shipping';
 
 type Step = 'address' | 'payment' | 'confirm';
-type PayMethod = 'cod' | 'card' | 'vodafone' | 'instapay' | 'paypal';
+type PayMethod = 'cod' | 'vodafone' | 'instapay' | 'paypal';
 type ShippingType = 'local' | 'international';
 
 interface AddressForm {
@@ -31,10 +31,6 @@ interface AddressForm {
   region: string;    // region/emirate (from COUNTRY_REGIONS)
   city: string; street: string; building: string; notes: string;
   country: string;
-}
-
-interface CardForm {
-  number: string; name: string; expiry: string; cvv: string;
 }
 
 const EMPTY_ADDR: AddressForm = {
@@ -148,8 +144,6 @@ const COUNTRY_REGIONS: Record<string, { ar: string; en: string }[]> = {
     { ar: 'إزمير', en: 'Izmir' }, { ar: 'أنطاليا', en: 'Antalya' }, { ar: 'أخرى', en: 'Other' },
   ],
 };
-const EMPTY_CARD: CardForm = { number: '', name: '', expiry: '', cvv: '' };
-
 function StepDot({ n, current, done }: { n: number; current: boolean; done: boolean }) {
   return (
     <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition ${
@@ -193,7 +187,7 @@ export default function CheckoutPage() {
     phone: user?.phone || '',
     country: '',
   });
-  const [enabledPaymentIds, setEnabledPaymentIds] = useState<string[]>(['cod', 'card', 'paypal', 'vodafone', 'instapay']);
+  const [enabledPaymentIds, setEnabledPaymentIds] = useState<string[]>(['cod', 'paypal', 'vodafone', 'instapay']);
   useEffect(() => {
     fetch('/api/admin/settings?key=payment-methods')
       .then(r => r.json())
@@ -207,10 +201,8 @@ export default function CheckoutPage() {
       .catch(() => {});
   }, []);
   const [payMethod, setPayMethod] = useState<PayMethod>(
-    zoneInfo.zone === 'egypt' ? 'cod' : 'card'
+    zoneInfo.zone === 'egypt' ? 'cod' : 'paypal'
   );
-  const [cardForm, setCardForm] = useState<CardForm>(EMPTY_CARD);
-  const [cardErrors, setCardErrors] = useState<Partial<CardForm>>({});
   const [errors, setErrors] = useState<Partial<AddressForm>>({});
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -283,7 +275,7 @@ export default function CheckoutPage() {
       setShippingType('local');
     } else {
       setShippingType('international');
-      setPayMethod(p => (p === 'cod' || p === 'vodafone' || p === 'instapay') ? 'card' : p);
+      setPayMethod(p => (p === 'cod' || p === 'vodafone' || p === 'instapay') ? 'paypal' : p);
       // Pre-fill country from detected/selected country code
       if (countryCode && countryCode !== 'EG') {
         setAddress(a => ({ ...a, country: a.country || countryCode }));
@@ -390,14 +382,6 @@ export default function CheckoutPage() {
     weightLabel: isRtl ? 'الوزن الإجمالي' : 'Total Weight',
     estimatedDays: isRtl ? 'مدة التوصيل المتوقعة' : 'Estimated Delivery',
     days: isRtl ? ' أيام عمل' : ' business days',
-    // Card
-    cardNumber: isRtl ? 'رقم البطاقة' : 'Card Number',
-    cardName: isRtl ? 'اسم حامل البطاقة' : 'Cardholder Name',
-    cardExpiry: isRtl ? 'تاريخ الانتهاء (MM/YY)' : 'Expiry Date (MM/YY)',
-    cardCvv: isRtl ? 'الرمز الأمني (CVV)' : 'CVV',
-    invalidCard: isRtl ? 'رقم بطاقة غير صحيح' : 'Invalid card number',
-    invalidExpiry: isRtl ? 'تاريخ انتهاء غير صحيح' : 'Invalid expiry date',
-    invalidCvv: isRtl ? 'الرمز الأمني غير صحيح' : 'Invalid CVV',
     securePayment: isRtl ? '🔒 الدفع آمن ومشفر' : '🔒 Secure & Encrypted Payment',
   };
 
@@ -423,12 +407,6 @@ export default function CheckoutPage() {
   }
 
   const fullName = `${address.firstName} ${address.lastName}`.trim();
-
-  function validateCard() {
-    // Card payment now goes through PayPal in the confirm step (not the old inline form).
-    // No client-side validation needed — PayPal SDK handles everything.
-    return true;
-  }
 
   async function handlePlaceOrder() {
     if (isSubmitting) return;
@@ -584,11 +562,9 @@ export default function CheckoutPage() {
     const finalTotal = snapTotal - snapDiscount + (snapShippingCurrency === snapCurrency ? snapShippingCost : 0);
     const payLabelSuccess = payMethod === 'cod'
       ? (isRtl ? 'الدفع عند الاستلام' : 'Cash on Delivery')
-      : payMethod === 'card'
-        ? (isRtl ? 'بطاقة ائتمان (عبر PayPal)' : 'Credit Card (via PayPal)')
-        : payMethod === 'vodafone' ? 'Vodafone Cash'
-        : payMethod === 'paypal' ? 'PayPal'
-        : 'InstaPay';
+      : payMethod === 'paypal' ? (isRtl ? 'PayPal / بطاقة بنكية' : 'PayPal / Card')
+      : payMethod === 'vodafone' ? 'Vodafone Cash'
+      : 'InstaPay';
 
     return (
       <div className="max-w-xl mx-auto px-4 py-16 pt-28" dir={isRtl ? 'rtl' : 'ltr'}>
@@ -1197,16 +1173,15 @@ export default function CheckoutPage() {
                 <div className="mb-4 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-xs text-blue-700 font-semibold">
                   {isRtl
                     ? 'الشحن الدولي: وسائل الدفع المحلية (عند الاستلام، فودافون كاش، إنستاباي) غير متاحة. يُقبل الدفع ببطاقة أو PayPal.'
-                    : 'International Shipping: Local payment methods are not available. Please use card or PayPal.'}
+                    : 'International Shipping: Local payment methods are not available. Please use PayPal or card.'}
                 </div>
               )}
               <div className="flex flex-col gap-3">
                 {([
-                  { id: 'cod',      icon: '💵', title: isRtl ? 'الدفع عند الاستلام' : 'Cash on Delivery',     desc: isRtl ? 'ادفع نقداً عند وصول طلبك' : 'Pay cash when your order arrives', intl: false },
-                  { id: 'card',     icon: '💳', title: isRtl ? 'بطاقة بنكية (فيزا / ماستركارد)' : 'Credit / Debit Card', desc: isRtl ? 'فيزا، ماستركارد، أو ميزة' : 'Visa, Mastercard, or Meeza', intl: true },
-                  { id: 'paypal',   icon: '🅿️', title: 'PayPal',                                              desc: isRtl ? 'ادفع عبر حسابك على PayPal' : 'Pay with your PayPal account',      intl: true },
-                  { id: 'vodafone', icon: '📱', title: 'Vodafone Cash',                                       desc: isRtl ? 'ادفع عبر محفظة فودافون كاش' : 'Pay via Vodafone Cash wallet',       intl: false },
-                  { id: 'instapay', icon: '⚡', title: 'InstaPay',                                            desc: isRtl ? 'ادفع عبر تطبيق InstaPay' : 'Pay via InstaPay app',               intl: false },
+                  { id: 'cod',      icon: '💵', title: isRtl ? 'الدفع عند الاستلام' : 'Cash on Delivery',                       desc: isRtl ? 'ادفع نقداً عند وصول طلبك' : 'Pay cash when your order arrives',          intl: false },
+                  { id: 'paypal',   icon: '🅿️', title: isRtl ? 'PayPal / بطاقة بنكية (فيزا / ماستركارد)' : 'PayPal / Card (Visa, Mastercard)', desc: isRtl ? 'ادفع عبر PayPal أو ببطاقتك مباشرةً' : 'Pay via PayPal or card directly', intl: true },
+                  { id: 'vodafone', icon: '📱', title: 'Vodafone Cash',                                                           desc: isRtl ? 'ادفع عبر محفظة فودافون كاش' : 'Pay via Vodafone Cash wallet',              intl: false },
+                  { id: 'instapay', icon: '⚡', title: 'InstaPay',                                                                desc: isRtl ? 'ادفع عبر تطبيق InstaPay' : 'Pay via InstaPay app',                      intl: false },
                 ] as const).filter(m => (shippingType === 'local' || m.intl) && enabledPaymentIds.includes(m.id)).map(m => (
                   <label key={m.id}
                     className={`flex items-center gap-4 border-2 rounded-2xl p-4 cursor-pointer transition ${
@@ -1224,18 +1199,15 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
-              {/* Card / PayPal info — both go through PayPal in confirm step */}
-              {(payMethod === 'card' || payMethod === 'paypal') && (
+              {payMethod === 'paypal' && (
                 <div className="mt-4 bg-blue-50 border border-blue-100 rounded-2xl p-4 text-sm">
                   <p className="font-semibold text-gray-900 mb-1">
-                    {payMethod === 'card'
-                      ? (isRtl ? '💳 الدفع بالبطاقة الائتمانية' : '💳 Credit/Debit Card Payment')
-                      : (isRtl ? '🅿️ الدفع عبر PayPal' : '🅿️ PayPal Payment')}
+                    {isRtl ? '🅿️ الدفع عبر PayPal أو بطاقة بنكية' : '🅿️ PayPal or Card Payment'}
                   </p>
                   <p className="text-gray-500 text-xs">
                     {isRtl
-                      ? 'في الخطوة التالية ستظهر لك خيارات الدفع الآمنة عبر PayPal. اضغط "التالي" للمتابعة.'
-                      : 'In the next step, secure PayPal payment options will appear. Click "Next" to continue.'}
+                      ? 'في الخطوة التالية ستظهر لك خياران: PayPal أو بطاقة فيزا/ماستركارد. اضغط "التالي" للمتابعة.'
+                      : 'In the next step you will see two options: PayPal or Visa/Mastercard card. Click "Next" to continue.'}
                   </p>
                 </div>
               )}
@@ -1253,7 +1225,7 @@ export default function CheckoutPage() {
                   className="flex-1 border-2 border-gray-200 hover:border-gray-400 text-gray-700 font-bold py-3.5 rounded-xl transition text-sm">
                   {isRtl ? `${L.back} →` : `← ${L.back}`}
                 </button>
-                <button onClick={() => { if (validateCard()) setStep('confirm'); }}
+                <button onClick={() => setStep('confirm')}
                   className="flex-1 bg-gray-900 hover:bg-gray-700 text-white font-bold py-3.5 rounded-xl transition text-sm">
                   {isRtl ? `← ${L.next}` : `${L.next} →`}
                 </button>
@@ -1287,15 +1259,14 @@ export default function CheckoutPage() {
                   </div>
                   <p className="text-sm text-gray-700">
                     {payMethod === 'cod' ? (isRtl ? 'الدفع عند الاستلام' : 'Cash on Delivery')
-                      : payMethod === 'card' ? (isRtl ? 'بطاقة ائتمان (عبر PayPal)' : 'Credit Card (via PayPal)')
+                      : payMethod === 'paypal' ? (isRtl ? 'PayPal / بطاقة بنكية' : 'PayPal / Card')
                       : payMethod === 'vodafone' ? 'Vodafone Cash'
-                      : payMethod === 'paypal' ? 'PayPal'
                       : 'InstaPay'}
                   </p>
                 </div>
               </div>
 
-              {(payMethod === 'paypal' || payMethod === 'card') ? (
+              {payMethod === 'paypal' ? (
                 <div className="w-full">
                   <PayPalCheckoutButton
                     items={items.map(item => ({

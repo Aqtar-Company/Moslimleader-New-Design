@@ -362,3 +362,6 @@ Books are protected from download at two levels:
 | `AmeenProductCard` shows price in EGP regardless of country | Hardcoded `{product.price} ج.م` | Use `useRegionalPricing().getProductPrice()` + `formatPrice()` |
 | `RelatedProducts` section shows EGP for all users | Server component hardcoded `p.price` + "ج.م" | Extracted `RelatedProductPrice` client component using `useRegionalPricing()` |
 | Facebook bot country detection | No country detection — bot always assumed Egypt | Added `fetchUserCountryCode(psid)` that fetches locale from FB Graph API (`ar_SA` → `SA`), cached in Setting table per-PSID |
+| `StockMovement.create` missing required fields | Code written from memory without reading schema — `stockBefore` + `stockAfter` are non-nullable in DB | **Rule: always read schema for any existing model before writing a `.create()` call** |
+| `logActionSafe` template literal fails TypeScript | `return.${action}` produces `string`, not the strict `AuditAction` union — new action keys not added to `AUDIT_ACTIONS` | **Rule: every new `logActionSafe` call needs its action key added to `AUDIT_ACTIONS` in `src/lib/audit-log.ts` first** |
+| `Coupon.create` wrong fields | Used `type`, `value`, `maxUses`, `usedCount` — none exist; actual field is `discount` | **Rule: read `prisma/schema.prisma` for the exact model before calling `.create()` on any existing model** |

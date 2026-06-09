@@ -4,6 +4,7 @@ import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { capturePayPalOrder, PayPalCaptureError } from '@/lib/paypal';
 import { sendOrderEmails } from '@/lib/order-email';
+import { egpToUsd } from '@/lib/currency';
 
 // POST /api/books/[id]/paypal-capture — capture PayPal payment, create BookOrder, grant access
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -44,10 +45,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'الكتاب غير موجود' }, { status: 404 });
     }
 
-    const expectedUsd = book.priceUSD && book.priceUSD > 0
+    // Read expected amount from Setting (stored by paypal-create) — never recalculate
+    const pendingSetting = await prisma.setting.findUnique({ where: { key: `pp_pending_${paypalOrderId}` } });
+    const storedExpected = pendingSetting ? Number((pendingSetting.value as Record<string, unknown>)?.expectedUsd ?? 0) : null;
+    // Fallback: use book price if Setting was lost (shouldn't happen in normal flow)
+    const fallbackUsd = book.priceUSD && book.priceUSD > 0
       ? Number(book.priceUSD)
-      : Number(book.price) * 0.10;
-    const expectedRounded = Math.max(0.01, Math.round(expectedUsd * 100) / 100);
+      : egpToUsd(Number(book.price));
+    const expectedRounded = Math.max(0.01, Math.round((storedExpected ?? fallbackUsd) * 100) / 100);
 
     // Capture PayPal payment
     const captureResult = await capturePayPalOrder(paypalOrderId);
@@ -163,6 +168,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     } catch (emailErr) {
       console.error('[books paypal-capture email]', emailErr);
     }
+
+    // Cleanup pending Setting (best-effort)
+    prisma.setting.delete({ where: { key: `pp_pending_${paypalOrderId}` } }).catch(() => {});
 
     return NextResponse.json({ orderId: bookOrderId, status: 'paid', granted: true });
   } catch (err) {

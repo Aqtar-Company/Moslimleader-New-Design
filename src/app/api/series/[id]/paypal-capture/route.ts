@@ -4,6 +4,7 @@ import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { capturePayPalOrder, PayPalCaptureError } from '@/lib/paypal';
 import { sendOrderEmails } from '@/lib/order-email';
+import { egpToUsd } from '@/lib/currency';
 
 // POST /api/series/[id]/paypal-capture — capture PayPal payment, grant access to all books
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -42,19 +43,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'السلسلة غير متاحة' }, { status: 404 });
     }
 
-    // Recalculate expected USD price
-    let expectedUsd: number;
+    // Read expected amount from Setting (stored by paypal-create) — never recalculate
+    const pendingSetting = await prisma.setting.findUnique({ where: { key: `pp_pending_${paypalOrderId}` } });
+    const storedExpected = pendingSetting ? Number((pendingSetting.value as Record<string, unknown>)?.expectedUsd ?? 0) : null;
+    // Fallback if Setting was lost (uses correct egpToUsd rate)
+    let fallbackUsd: number;
     if (series.seriesPriceUSD && series.seriesPriceUSD > 0) {
-      expectedUsd = Number(series.seriesPriceUSD);
+      fallbackUsd = Number(series.seriesPriceUSD);
     } else if (series.seriesPrice && series.seriesPrice > 0) {
-      expectedUsd = Number(series.seriesPrice) * 0.10;
+      fallbackUsd = egpToUsd(Number(series.seriesPrice));
     } else {
-      expectedUsd = series.books.reduce((sum, b) => {
-        const bookUsd = b.priceUSD && b.priceUSD > 0 ? Number(b.priceUSD) : Number(b.price) * 0.10;
+      fallbackUsd = series.books.reduce((sum, b) => {
+        const bookUsd = b.priceUSD && b.priceUSD > 0 ? Number(b.priceUSD) : egpToUsd(Number(b.price));
         return sum + bookUsd;
       }, 0);
     }
-    const expectedRounded = Math.max(0.01, Math.round(expectedUsd * 100) / 100);
+    const expectedRounded = Math.max(0.01, Math.round((storedExpected ?? fallbackUsd) * 100) / 100);
 
     // Capture PayPal payment
     const captureResult = await capturePayPalOrder(paypalOrderId);
@@ -145,6 +149,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     } catch (emailErr) {
       console.error('[series paypal-capture email]', emailErr);
     }
+
+    // Cleanup pending Setting (best-effort)
+    prisma.setting.delete({ where: { key: `pp_pending_${paypalOrderId}` } }).catch(() => {});
 
     return NextResponse.json({ orderId: masterOrderId, status: 'paid', granted: series.books.length });
   } catch (err) {

@@ -79,7 +79,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   await logActionSafe({
     actor: guard.user,
-    action: `return.${action}`,
+    action: (action === 'approve' ? 'return.approve' : action === 'reject' ? 'return.reject' : 'return.complete'),
     entity: 'ReturnRequest',
     entityId: id,
     metadata: { orderId: returnRequest.orderId, action, adminNote, refundAmount },

@@ -74,6 +74,10 @@ export const AUDIT_ACTIONS = {
   'partner.delete': 'حذف شريك',
   'production.batch-create': 'تسجيل باتش إنتاج',
   'production.batch-update': 'تعديل باتش إنتاج',
+  // Returns & exchanges
+  'return.approve': 'الموافقة على طلب إرجاع',
+  'return.reject': 'رفض طلب إرجاع',
+  'return.complete': 'إتمام طلب إرجاع',
 } as const;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;

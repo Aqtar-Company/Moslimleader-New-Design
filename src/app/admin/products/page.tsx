@@ -191,7 +191,7 @@ export default function ProductsPage() {
     setLoading(true);
     try {
       // Fetch full product data (with descriptions) from API
-      const res = await fetch(`/api/admin/products/${p.id}`, { credentials: 'include' });
+      const res = await adminFetch(`/api/admin/products/${p.id}`);
       const data = await res.json();
       const fullP = data.product as MergedProduct;
 

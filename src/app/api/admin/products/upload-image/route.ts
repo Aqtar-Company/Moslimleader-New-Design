@@ -28,6 +28,19 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
+    // Validate actual image content via sharp — catches spoofed Content-Type
+    let sharpInstance: ReturnType<typeof sharp>;
+    try {
+      sharpInstance = sharp(buffer);
+      const meta = await sharpInstance.metadata();
+      const allowed = ['jpeg', 'png', 'webp', 'gif', 'avif', 'tiff'];
+      if (!meta.format || !allowed.includes(meta.format)) {
+        return NextResponse.json({ error: 'صيغة الصورة غير مدعومة' }, { status: 400 });
+      }
+    } catch {
+      return NextResponse.json({ error: 'الملف ليس صورة صالحة' }, { status: 400 });
+    }
+
     const dir = path.join(process.cwd(), 'public', 'products');
     await mkdir(dir, { recursive: true });
 
@@ -36,11 +49,13 @@ export async function POST(req: NextRequest) {
     const thumbFilename = `${uid}-thumb.webp`;
 
     const [optimized, thumbnail] = await Promise.all([
-      sharp(buffer)
+      sharpInstance
+        .clone()
         .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
         .webp({ quality: 75 })
         .toBuffer(),
-      sharp(buffer)
+      sharpInstance
+        .clone()
         .resize(400, 400, { fit: 'inside', withoutEnlargement: true })
         .webp({ quality: 65 })
         .toBuffer(),

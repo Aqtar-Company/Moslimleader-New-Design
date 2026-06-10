@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
         priceUsd: priceUsd !== undefined ? Number(priceUsd) : 0,
         category,
         subcategory, variants: variants ?? null,
-        tags: tags ?? [], images: images ?? [],
+        tags: tags ?? [], images: Array.isArray(images) ? images.slice(0, 10) : [],
         inStock: inStock !== false, weight: weight ?? 0,
         // Age targeting (FB AI assistant). Clamp to 0-18 / null.
         minAge: typeof minAge === 'number' ? Math.max(0, Math.min(18, Math.floor(minAge))) : null,

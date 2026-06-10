@@ -44,6 +44,7 @@ export default function ProductsPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [formTags, setFormTags] = useState('');
   const [formImages, setFormImages] = useState<string[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<Record<string, string>>({});
   const [variants, setVariants] = useState<VariantDraft[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -88,7 +89,18 @@ export default function ProductsPage() {
     const arr = Array.from(files).filter(f => f.type.startsWith('image/'));
     if (!arr.length) return;
     setUploadingCount(arr.length);
-    const results = await Promise.all(arr.map(async (file) => {
+
+    // Show local blob previews immediately while uploading
+    const blobKeys: string[] = [];
+    arr.forEach(file => {
+      const blobUrl = URL.createObjectURL(file);
+      const tempKey = `blob-${Date.now()}-${Math.random()}`;
+      blobKeys.push(tempKey);
+      setImagePreviews(prev => ({ ...prev, [tempKey]: blobUrl }));
+      setFormImages(prev => [...prev, tempKey].slice(0, 8));
+    });
+
+    const results = await Promise.all(arr.map(async (file, idx) => {
       const fd = new FormData();
       fd.append('file', file);
       try {
@@ -96,14 +108,31 @@ export default function ProductsPage() {
         if (res.ok) {
           const data = await res.json();
           setUploadingCount(prev => Math.max(0, prev - 1));
-          return data.url as string;
+          return { tempKey: blobKeys[idx], url: data.url as string };
         }
       } catch { /* ignore individual failures */ }
       setUploadingCount(prev => Math.max(0, prev - 1));
-      return null;
+      return { tempKey: blobKeys[idx], url: null };
     }));
-    const uploaded = results.filter((u): u is string => !!u);
-    if (uploaded.length) setFormImages(prev => [...uploaded, ...prev].slice(0, 8));
+
+    // Replace blob keys with real server URLs (or remove failed ones)
+    results.forEach(({ tempKey, url }) => {
+      if (url) {
+        setFormImages(prev => prev.map(k => k === tempKey ? url : k));
+        setImagePreviews(prev => {
+          URL.revokeObjectURL(prev[tempKey]);
+          const { [tempKey]: _, ...rest } = prev;
+          return rest;
+        });
+      } else {
+        setFormImages(prev => prev.filter(k => k !== tempKey));
+        setImagePreviews(prev => {
+          URL.revokeObjectURL(prev[tempKey]);
+          const { [tempKey]: _, ...rest } = prev;
+          return rest;
+        });
+      }
+    });
   };
 
   const handleDrop = async (e: React.DragEvent) => {
@@ -582,7 +611,7 @@ export default function ProductsPage() {
                   {formImages.map((img, i) => (
                     <div key={i} className="relative group">
                       <img
-                        src={img}
+                        src={imagePreviews[img] ?? img}
                         alt={`img-${i}`}
                         className={`w-full h-20 object-cover rounded-lg border-2 ${i === 0 ? 'border-[#F5C518]' : 'border-gray-200'}`}
                         onError={e => { (e.target as HTMLImageElement).src = '/logo.png'; }}

@@ -581,7 +581,12 @@ export default function ProductsPage() {
                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                   {formImages.map((img, i) => (
                     <div key={i} className="relative group">
-                      <img src={img} alt={`img-${i}`} className={`w-full h-20 object-cover rounded-lg border-2 ${i === 0 ? 'border-[#F5C518]' : 'border-gray-200'}`} />
+                      <img
+                        src={img}
+                        alt={`img-${i}`}
+                        className={`w-full h-20 object-cover rounded-lg border-2 ${i === 0 ? 'border-[#F5C518]' : 'border-gray-200'}`}
+                        onError={e => { (e.target as HTMLImageElement).src = '/logo.png'; }}
+                      />
                       {i === 0 && (
                         <span className="absolute top-1 right-1 text-[9px] bg-[#F5C518] text-gray-900 font-bold px-1 py-0.5 rounded leading-none">رئيسية</span>
                       )}

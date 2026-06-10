@@ -788,12 +788,14 @@ export default function AdminBooksPage() {
 
               {/* Referral */}
               <div>
-                <p className="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider">نظام الإحالة</p>
+                <p className="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">مشاركة الكتاب ومكافأة المُوصي</p>
+                <p className="text-xs text-gray-400 mb-3">إذا شارك عميل رابط الكتاب لصديق واشترى الصديق، يحصل المُوصي تلقائيًا على كوبون خصم.</p>
                 <div className="space-y-3">
-                  {checkRow('enableReferral', 'تفعيل نظام الإحالة')}
+                  {checkRow('enableReferral', 'تفعيل المشاركة والمكافأة')}
                   {form.enableReferral && (
-                    <div className="mr-7">
-                      <label className="text-xs text-gray-500 mb-1 block">نسبة الخصم عند الإحالة (%)</label>
+                    <div className="mr-7 space-y-1">
+                      <label className="text-xs text-gray-500 block">نسبة الخصم التي يحصل عليها المُوصي (%)</label>
+                      <p className="text-[11px] text-gray-400">مثال: 20% تعني أن المُوصي يحصل على كوبون خصم 20% على كتاب آخر</p>
                       <input type="number" min={1} max={100} value={form.referralDiscount} onChange={f('referralDiscount')} className={inputCls + ' w-32'} dir="ltr" />
                     </div>
                   )}

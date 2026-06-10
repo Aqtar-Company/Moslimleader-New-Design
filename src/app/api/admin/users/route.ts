@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
           email: true,
           phone: true,
           role: true,
+          loyaltyPoints: true,
           createdAt: true,
           _count: { select: { orders: true } },
         },
@@ -49,6 +50,7 @@ export async function GET(req: NextRequest) {
       email: u.email,
       phone: u.phone,
       role: u.role,
+      loyaltyPoints: u.loyaltyPoints,
       createdAt: u.createdAt,
       orderCount: u._count.orders,
     }));

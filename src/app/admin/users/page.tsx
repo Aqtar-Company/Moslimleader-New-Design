@@ -15,6 +15,7 @@ interface DbUser {
   phone: string | null;
   role: string;
   orderCount: number;
+  loyaltyPoints: number;
 }
 
 interface DbOrder {
@@ -114,6 +115,7 @@ export default function UsersPage() {
                 <th className="px-5 py-3.5 text-right">البريد الإلكتروني</th>
                 <th className="px-5 py-3.5 text-right">الهاتف</th>
                 <th className="px-5 py-3.5 text-center">عدد الطلبات</th>
+                <th className="px-5 py-3.5 text-center">🏆 نقاط الولاء</th>
                 <th className="px-5 py-3.5 text-center">عرض الطلبات</th>
                 <th className="px-5 py-3.5 text-center">الأجهزة</th>
               </tr>
@@ -132,6 +134,16 @@ export default function UsersPage() {
                     <td className="px-5 py-3.5 text-gray-500 text-xs">{u.phone || '—'}</td>
                     <td className="px-5 py-3.5 text-center">
                       <span className={`font-bold ${u.orderCount > 0 ? 'text-gray-900' : 'text-gray-300'}`}>{u.orderCount}</span>
+                    </td>
+                    <td className="px-5 py-3.5 text-center">
+                      {u.loyaltyPoints > 0 ? (
+                        <div className="inline-flex flex-col items-center">
+                          <span className="font-bold text-amber-700">{u.loyaltyPoints.toLocaleString('en-US')}</span>
+                          <span className="text-[10px] text-amber-500">= {Math.floor(u.loyaltyPoints / 10)} ج.م</span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-300 font-bold">—</span>
+                      )}
                     </td>
                     <td className="px-5 py-3.5 text-center">
                       <button onClick={() => handleSelect(u)}
@@ -170,7 +182,7 @@ export default function UsersPage() {
                   </tr>
                   {selectedId === u.id && (
                     <tr key={`${u.id}-orders`}>
-                      <td colSpan={6} className="bg-gray-50 px-5 py-4 border-b border-gray-100">
+                      <td colSpan={7} className="bg-gray-50 px-5 py-4 border-b border-gray-100">
                         {(userOrders[u.id] ?? []).length === 0 ? (
                           <p className="text-gray-400 text-sm text-center py-3">لا توجد طلبات لهذا العميل</p>
                         ) : (

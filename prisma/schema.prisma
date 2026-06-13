@@ -52,6 +52,7 @@ model User {
   loyaltyTransactions LoyaltyTransaction[]
   referralRewards    ReferralReward[]
   returnRequests     ReturnRequest[]
+  children           Child[]
 
   @@index([role])
   @@index([isWholesale])
@@ -326,18 +327,14 @@ model ZakatSnapshotItem {
   @@index([snapshotId])
 }
 
-// Team / payroll directory. Captures the people working with the
-// company along with their compensation so the valuation report can
-// finally compute a real OpEx instead of disclosing 'untracked'. Roles
-// are free-text-ish (an enum-like predefined set + 'other' fallback)
-// to keep the page simple while still reporting cleanly.
+// Team / payroll directory.
 model Employee {
   id              String   @id @default(cuid())
   name            String
-  role            String   // see TEAM_ROLES in src/lib/team-roles.ts
-  customRole      String?  // populated when role = 'other'
-  employmentType  String   // 'full-time' | 'part-time' | 'consultant' | 'contractor'
-  monthlySalary   Float    @default(0) // EGP — net cost to company per month
+  role            String
+  customRole      String?
+  employmentType  String
+  monthlySalary   Float    @default(0)
   startDate       DateTime
   endDate         DateTime?
   isActive        Boolean  @default(true)
@@ -351,26 +348,13 @@ model Employee {
   @@index([role])
 }
 
-// Royalty / intellectual-property agreement. A rights-holder (typically
-// the author) earns a percentage of the gross profit of specific
-// products for a defined period. Distinct from Employee — a person who
-// is both a manager and an author would have one row in each table.
-//
-// productIds is a JSON array of Product.id strings. Kept simple
-// (no junction table) because royalties usually span a small fixed set
-// of products. The percentage is applied to TTM gross profit (revenue
-// minus weighted-avg COGS) of those products.
-//
-// lastPaidAt is a manual marker the owner toggles after issuing
-// payment. v1 does not track per-payment history — phase 2 could add
-// a RoyaltyPayment ledger if multi-payment audit becomes useful.
 model RoyaltyAgreement {
   id              String    @id @default(cuid())
   payeeName       String
   contactPhone    String?
   contactEmail    String?
-  percentage      Float     // 0–100, applied to gross profit (not revenue)
-  productIds      Json      // string[] of Product.id
+  percentage      Float
+  productIds      Json
   startDate       DateTime
   endDate         DateTime?
   isActive        Boolean   @default(true)
@@ -382,15 +366,12 @@ model RoyaltyAgreement {
   @@index([isActive])
 }
 
-// Partners and investors — equity stakeholders, neither salaried nor
-// royalty-based. Their stake informs the cap-table view in the
-// valuation report (each partner's share of reconciledMid).
 model Partner {
   id                  String    @id @default(cuid())
   name                String
-  type                String    // 'founder' | 'investor' | 'silent-partner' | 'other'
-  stakePercentage     Float     // 0–100
-  capitalContribution Float     @default(0) // EGP put in (informational)
+  type                String
+  stakePercentage     Float
+  capitalContribution Float     @default(0)
   joinDate            DateTime
   exitDate            DateTime?
   isActive            Boolean   @default(true)
@@ -403,32 +384,18 @@ model Partner {
   @@index([isActive])
 }
 
-// One manufacturing run of a product. Each batch carries its own unit cost
-// (which drifts over time) so the valuation page can compute a true
-// weighted-average COGS instead of the old 35% heuristic.
-//
-// Creating a batch atomically: increments Product.stock (or variantStocks),
-// writes a StockMovement (reason='batch_created'), and — if supplierId is
-// set — writes a SupplierTransaction (kind='invoice') so the supplier
-// balance reflects the new debt automatically.
 model ProductionBatch {
   id              String    @id @default(cuid())
   productId       String
   product         Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
   supplierId      String?
   supplier        Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  variantIndex    Int?      // null if the batch contributes to top-level stock
+  variantIndex    Int?
   quantity        Int
   unitCost        Float
-  totalCost       Float     // denormalised = quantity × unitCost
+  totalCost       Float
   batchDate       DateTime  @default(now())
   notes           String?   @db.Text
-  // Marks rows seeded by the legacy-stock wizard. Seed batches record the
-  // historical unit cost WITHOUT incrementing Product.stock (the units
-  // already exist in inventory) and without posting a SupplierTransaction
-  // (the legacy stock was paid for long before the system started). The
-  // valuation page treats them identically to regular batches when
-  // computing weighted-average COGS.
   isOpeningBalance Boolean  @default(false)
   createdByUserId String?
   createdAt       DateTime  @default(now())
@@ -451,12 +418,8 @@ model Order {
   shippingAddress Json
   notes           String?  @db.Text
   currency        String   @default("EGP")
-  // External reference for idempotent imports (e.g. ML-WA-123 from the
-  // historical WhatsApp orders import). Null for organic orders.
   externalOrderId String?  @unique
-  source          String?  // whatsapp_cleaned_ready | manual | etc. — null for organic
-  // Attribution: which admin/staff created this order (manual orders).
-  // Null for customer self-checkout.
+  source          String?
   createdByUserId String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -465,10 +428,6 @@ model Order {
   shipment       Shipment?
   returnRequests ReturnRequest[]
 
-  // Indexes for the admin panel — every list/aggregate filters on
-  // some combination of createdAt, status, userId, paymentMethod,
-  // source. Without these the valuation route alone full-scans the
-  // table 15+ times per request.
   @@index([createdAt])
   @@index([status, createdAt])
   @@index([userId])
@@ -546,7 +505,6 @@ model Coupon {
   showBanner        Boolean  @default(false)
   bannerText        String?
   bannerColor       String?
-  // Attribution: which admin/staff created/edited this coupon.
   createdByUserId   String?
   lastEditedByUserId String?
   createdAt         DateTime @default(now())
@@ -586,14 +544,14 @@ model Book {
   totalPages    Int      @default(0)
   freePages     Int      @default(10)
   price         Float    @default(0)
-  priceUSD      Float?   // Manual USD price; if null, auto-calculated from price * 0.10
+  priceUSD      Float?
   author        String?
   authorEn      String?
   category      String?
-  language      String?  @default("ar") // 'ar' | 'en' | 'ur' | 'id' | 'bn' | 'hi' | 'de' | 'fr' | 'both'
-  section       String?  @default("books") // 'books' | 'stories'
-  minAge        Int?     // null = no age restriction
-  maxAge        Int?     // null = open-ended (minAge+), value = upper bound
+  language      String?  @default("ar")
+  section       String?  @default("books")
+  minAge        Int?
+  maxAge        Int?
   needsParentalGuide Boolean @default(false)
   isPublished   Boolean  @default(false)
   allowQuoteShare   Boolean @default(true)
@@ -603,12 +561,12 @@ model Book {
   referralDiscount  Int     @default(20)
   enableWatermark   Boolean @default(true)
   enableForensic    Boolean @default(true)
-  paperProductSlug  String?  // slug of the paper version product in /shop
-  seriesId          String?  // FK to BookSeries
+  paperProductSlug  String?
+  seriesId          String?
   series            BookSeries? @relation(fields: [seriesId], references: [id])
-  seriesOrder       Int?     // order within the series (1, 2, 3...)
-  bgmUrl            String?  // background music URL (MP3 file path or external)
-  promoVideoUrl     String?  // YouTube promo video URL
+  seriesOrder       Int?
+  bgmUrl            String?
+  promoVideoUrl     String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -621,15 +579,15 @@ model Book {
 
 model BookSeries {
   id            String   @id @default(cuid())
-  name          String   // Arabic name
-  nameEn        String?  // English name
+  name          String
+  nameEn        String?
   slug          String   @unique
   description   String?  @db.Text
   descriptionEn String?  @db.Text
-  cover         String?  // cover image URL
-  seriesPrice   Float?   // discounted price for buying the full series
-  seriesPriceUSD Float?  // USD price for full series
-  language      String?  @default("ar") // 'ar' | 'en' | 'ur' | 'id' | 'bn' | 'hi' | 'de' | 'fr' | 'both'
+  cover         String?
+  seriesPrice   Float?
+  seriesPriceUSD Float?
+  language      String?  @default("ar")
   isPublished   Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -685,8 +643,8 @@ model BookOrder {
   currency      String   @default("EGP")
   paymentMethod String
   paypalOrderId String?  @unique
-  referrerId    String?  // userId of the referrer
-  referrerToken String?  // WishlistShareLink or BookShareLink token used
+  referrerId    String?
+  referrerToken String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   @@index([userId])
@@ -735,23 +693,18 @@ model BookSession {
   @@index([lastPing])
 }
 
-// Append-only audit log of every admin/staff write action. Used to surface
-// "who did what and when" to the super-admin and to attribute write
-// operations across the app. Failure to log is non-fatal — logActionSafe()
-// in src/lib/audit-log.ts swallows errors so a logging blip can never
-// break the underlying business operation.
 model AuditLog {
   id          String   @id @default(cuid())
-  actorUserId String?  // null for system / unauthenticated events
-  actorRole   String?  // 'admin' | 'staff' | null
-  actorName   String?  // denormalized for display when User is later deleted
+  actorUserId String?
+  actorRole   String?
+  actorName   String?
   actorEmail  String?
-  action      String   // e.g. 'intl-shipping.update', 'order.create', 'staff.add'
-  entity      String?  // e.g. 'Setting', 'Order', 'Coupon'
+  action      String
+  entity      String?
   entityId    String?
   before      Json?
   after       Json?
-  metadata    Json?    // free-form extras (ip, route, etc.)
+  metadata    Json?
   createdAt   DateTime @default(now())
 
   @@index([createdAt])
@@ -760,67 +713,28 @@ model AuditLog {
   @@index([action, createdAt])
 }
 
-// Facebook Messenger conversation log + AI reply ledger.
-// Append-only — every event coming in from /api/facebook/webhook
-// gets a row, and every outbound reply (auto or manual) gets a row.
-// The /admin/ai-facebook-assistant page renders this as a chat view.
 model FacebookEvent {
   id              String   @id @default(cuid())
-  // Conversation identifier — Messenger PSID or commenter user-id
-  // (for comments). Same field for both so the inbox can group all
-  // events from one person regardless of channel.
   psid            String
-  // 'message' = Messenger DM; 'comment' = Page feed comment;
-  // 'postback' = button click in Messenger.
   kind            String   @default("message")
-  // 'incoming' = from user → page; 'outgoing-auto' = AI reply;
-  // 'outgoing-manual' = admin replied via the dashboard.
   direction       String
-  // Free-text body. For postback events we store the payload here too.
   text            String   @db.Text
-  // For comments: the comment's FB id (used to POST a reply) and the
-  // parent post id. Null for Messenger events.
   commentId       String?
   postId          String?
-  // Senders/recipients are JSON so we can capture display names + ids
-  // when Facebook supplies them (User Profile API can backfill later).
   sender          Json?
   recipient       Json?
-  // Original raw event from Facebook for forensic audit. Truncated
-  // server-side to a sane size (we only keep the relevant block).
   rawPayload      Json?
-  // For outgoing-auto: which AI model + how many tokens it cost.
   aiModel         String?
   aiTokens        Int?
-  // For outgoing-*: did Facebook accept the send call?
-  sendStatus      String?  // 'sent' | 'failed' | null
+  sendStatus      String?
   sendError       String?  @db.Text
-  // Lead classification appended by the bot ('hot' | 'warm' | 'cold').
-  // Only set on outgoing-auto rows where the AI flagged conversion
-  // intent in the user's message (asked price, gave phone, said
-  // wants-to-buy, etc.). The conversation's "hottest" event status
-  // is rolled up into the inbox card.
   leadStatus      String?
-  // Detected gender of the user this event is associated with —
-  // 'male' | 'female' | 'unknown'. Stored once per incoming event so
-  // the inbox can render the correct grammar in admin previews.
   userGender      String?
-  // ─── Sales-conversion fields (populated by conversation-extractor) ───
-  // Buyer signals captured from incoming messages: name, phone,
-  // address, governorate, kids' ages. The extractor merges these
-  // into a per-psid profile (Setting `fb-profile:<psid>`) so the
-  // bot has them across turns; we also store them per-event for
-  // reporting + audit.
   customerName    String?
   customerPhone   String?
   customerAddress String?  @db.Text
   customerGov     String?
-  // Kids' ages as JSON array, e.g. [3, 5, 7]. Used to filter the
-  // catalogue context to age-appropriate items only.
   kidAges         Json?
-  // Detected intent class for the analytics funnel:
-  //   'price-question' | 'shipping-question' | 'ready-to-buy'
-  //   | 'objection' | 'general' | null
   intentSignal    String?
   createdAt       DateTime @default(now())
   @@index([psid, createdAt])
@@ -856,10 +770,10 @@ model WishlistShareLink {
   token      String   @unique @default(cuid())
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  productIds Json     // snapshot of wishlistIds at creation time
+  productIds Json
   viewCount  Int      @default(0)
   createdAt  DateTime @default(now())
-  expiresAt  DateTime // +7 days from creation
+  expiresAt  DateTime
 
   @@index([token])
   @@index([userId])
@@ -870,8 +784,8 @@ model LoyaltyTransaction {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  points    Int      // positive = earned, negative = redeemed
-  reason    String   // 'order_earn' | 'order_redeem' | 'manual' | 'expired'
+  points    Int
+  reason    String
   orderId   String?
   createdAt DateTime @default(now())
 
@@ -900,11 +814,11 @@ model ReturnRequest {
   order        Order    @relation(fields: [orderId], references: [id])
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type         String   // 'return' | 'exchange'
-  reason       String   // 'defective' | 'wrong_item' | 'not_as_described' | 'other'
+  type         String
+  reason       String
   reasonNote   String?  @db.Text
-  status       String   @default("pending") // 'pending' | 'approved' | 'rejected' | 'completed'
-  itemsJson    Json     // OrderItems requested for return
+  status       String   @default("pending")
+  itemsJson    Json
   refundAmount Decimal? @db.Decimal(10, 2)
   adminNote    String?  @db.Text
   createdAt    DateTime @default(now())
@@ -913,4 +827,16 @@ model ReturnRequest {
   @@index([orderId])
   @@index([userId])
   @@index([status])
+}
+
+model Child {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  birthdate DateTime
+  gender    String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

@@ -8,6 +8,7 @@ import { products as staticProducts, categories } from '@/lib/products';
 import { Product } from '@/types';
 import ProductCard from '@/components/product/ProductCard';
 import { useLang } from '@/context/LanguageContext';
+import { useAuth } from '@/context/AuthContext';
 
 const heroImages = [
   { src: '/family-hero.webp', alt: 'Moslim Leader Family' },
@@ -107,10 +108,20 @@ function expandProducts(products: Product[]) {
 function ShopContent({ ssrProducts }: { ssrProducts?: Product[] }) {
   const searchParams = useSearchParams();
   const { t, isRtl } = useLang();
+  const { user } = useAuth();
   const initialCategory = searchParams.get('category') || 'all';
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [ageFilter, setAgeFilter] = useState('');
   const [search, setSearch] = useState('');
+  const [showChildBanner, setShowChildBanner] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    fetch('/api/user/children', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => { if ((d.children ?? []).length === 0) setShowChildBanner(true); })
+      .catch(() => {});
+  }, [user]);
 
   // Use SSR products if provided, otherwise fall back to localStorage cache then statics
   const cached = !ssrProducts ? getCached() : null;
@@ -213,6 +224,24 @@ function ShopContent({ ssrProducts }: { ssrProducts?: Product[] }) {
           </button>
         ))}
       </div>
+
+      {showChildBanner && (
+        <div className="bg-gradient-to-l from-amber-50 to-yellow-50 border border-amber-200 rounded-2xl px-5 py-4 flex items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">👨‍👩‍👧‍👦</span>
+            <div>
+              <p className="font-bold text-gray-900 text-sm">{isRtl ? 'أضف أطفالك واحصل على 50 نقطة مجانًا' : 'Add your children & earn 50 free points'}</p>
+              <p className="text-xs text-gray-500">{isRtl ? 'نرشح لك منتجات مناسبة لعمر كل طفل' : "We'll suggest age-appropriate products for each child"}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link href="/account?tab=children" className="bg-[#F5C518] hover:bg-yellow-400 text-gray-900 font-bold px-4 py-2 rounded-xl text-xs transition whitespace-nowrap">
+              {isRtl ? 'أضف الآن' : 'Add Now'}
+            </Link>
+            <button onClick={() => setShowChildBanner(false)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
+          </div>
+        </div>
+      )}
 
       <p className="text-gray-500 text-sm mb-6">{filtered.length} {t('shop.results')}</p>
 

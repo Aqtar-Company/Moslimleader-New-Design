@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LanguageContext';
+import { ageInYears } from '@/lib/child-age';
 import { Address } from '@/context/AuthContext';
 import { governorates } from '@/lib/shipping';
 import { COUNTRY_CURRENCIES } from '@/lib/geo-pricing';
@@ -16,7 +17,9 @@ const COUNTRIES_LIST = [
     .map(([code, c]) => ({ code, name: c.nameAr, nameEn: c.nameEn }))
 ];
 
-type Tab = 'profile' | 'addresses' | 'orders' | 'books' | 'loyalty';
+type Tab = 'profile' | 'addresses' | 'orders' | 'books' | 'loyalty' | 'children';
+
+interface ChildRecord { id: string; name: string; birthdate: string; gender: string | null; }
 
 interface MyBook {
   id: string;
@@ -48,6 +51,15 @@ export default function AccountPage() {
   const [booksLoading, setBooksLoading] = useState(false);
   const [loyaltyData, setLoyaltyData] = useState<{ points: number; egpValue: number; transactions: { id: string; points: number; reason: string; createdAt: string }[] } | null>(null);
   const [loyaltyLoading, setLoyaltyLoading] = useState(false);
+
+  // Children
+  const [children, setChildren] = useState<ChildRecord[]>([]);
+  const [childrenLoading, setChildrenLoading] = useState(false);
+  const [showChildForm, setShowChildForm] = useState(false);
+  const [childName, setChildName] = useState('');
+  const [childBirthdate, setChildBirthdate] = useState('');
+  const [childGender, setChildGender] = useState<'boy' | 'girl' | ''>('');
+  const [childError, setChildError] = useState('');
 
   // Profile form
   const [name, setName] = useState('');
@@ -108,6 +120,14 @@ export default function AccountPage() {
         .then(d => setLoyaltyData(d))
         .catch(() => {})
         .finally(() => setLoyaltyLoading(false));
+
+      // Load children
+      setChildrenLoading(true);
+      fetch('/api/user/children', { credentials: 'include' })
+        .then(r => r.json())
+        .then(d => setChildren(d.children ?? []))
+        .catch(() => {})
+        .finally(() => setChildrenLoading(false));
     }
   }, [user, isLoading, router]);
 
@@ -221,7 +241,7 @@ export default function AccountPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-2xl p-1 mb-8 overflow-x-auto">
-        {([['profile', L.profile], ['addresses', L.addresses], ['orders', L.orders], ['books', isRtl ? '📚 كتبي' : '📚 My Books'], ['loyalty', isRtl ? '⭐ نقاطي' : '⭐ Points']] as [Tab, string][]).map(([t, label]) => (
+        {([['profile', L.profile], ['addresses', L.addresses], ['orders', L.orders], ['books', isRtl ? '📚 كتبي' : '📚 My Books'], ['loyalty', isRtl ? '⭐ نقاطي' : '⭐ Points'], ['children', isRtl ? '👶 أطفالي' : '👶 My Kids']] as [Tab, string][]).map(([t, label]) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -571,6 +591,136 @@ export default function AccountPage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Children Tab */}
+      {tab === 'children' && (
+        <div className="space-y-4">
+          {childrenLoading ? (
+            <div className="flex justify-center py-16">
+              <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : children.length === 0 && !showChildForm ? (
+            <div className="text-center py-14 bg-gradient-to-b from-amber-50 to-white rounded-2xl border border-amber-100">
+              <div className="text-5xl mb-3">👨‍👩‍👧‍👦</div>
+              <h3 className="font-black text-gray-900 text-lg mb-2">
+                {isRtl ? 'أضف أطفالك واحصل على 50 نقطة مجانًا!' : 'Add your children & get 50 free points!'}
+              </h3>
+              <p className="text-sm text-gray-500 mb-6 max-w-xs mx-auto">
+                {isRtl ? 'نرشح لك منتجات تعليمية مناسبة لعمر كل طفل تلقائيًا' : "We'll recommend age-appropriate products for each child automatically"}
+              </p>
+              <button
+                onClick={() => setShowChildForm(true)}
+                className="bg-[#F5C518] hover:bg-yellow-400 text-gray-900 font-black px-8 py-3 rounded-xl text-sm transition"
+              >
+                {isRtl ? '+ إضافة طفل الآن' : '+ Add a Child Now'}
+              </button>
+            </div>
+          ) : (
+            <>
+              {children.map(child => {
+                const bd = new Date(child.birthdate);
+                const age = ageInYears(bd);
+                const gIcon = child.gender === 'boy' ? '👦' : child.gender === 'girl' ? '👧' : '🧒';
+                return (
+                  <div key={child.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{gIcon}</span>
+                      <div>
+                        <p className="font-bold text-gray-900">{child.name}</p>
+                        <p className="text-sm text-gray-500">{age} {isRtl ? 'سنة' : 'years old'}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        await fetch(`/api/user/children/${child.id}`, { method: 'DELETE', credentials: 'include' });
+                        setChildren(prev => prev.filter(c => c.id !== child.id));
+                      }}
+                      className="text-xs text-red-400 hover:text-red-600 font-semibold transition"
+                    >
+                      {isRtl ? 'حذف' : 'Delete'}
+                    </button>
+                  </div>
+                );
+              })}
+              {children.length < 10 && !showChildForm && (
+                <button
+                  onClick={() => setShowChildForm(true)}
+                  className="w-full border-2 border-dashed border-gray-200 hover:border-amber-300 text-gray-500 hover:text-gray-700 font-bold py-4 rounded-2xl transition text-sm"
+                >
+                  {isRtl ? '+ إضافة طفل آخر' : '+ Add Another Child'}
+                </button>
+              )}
+            </>
+          )}
+
+          {showChildForm && (
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+              <h3 className="font-black text-gray-900 mb-5 text-base">{isRtl ? 'إضافة طفل' : 'Add a Child'}</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className={labelClass}>{isRtl ? 'الاسم *' : 'Name *'}</label>
+                  <input
+                    type="text" value={childName} onChange={e => setChildName(e.target.value)}
+                    className={inputClass} placeholder={isRtl ? 'اسم الطفل' : "Child's name"}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>{isRtl ? 'تاريخ الميلاد *' : 'Birthdate *'}</label>
+                  <input
+                    type="date" value={childBirthdate} onChange={e => setChildBirthdate(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
+                    className={inputClass} dir="ltr"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>{isRtl ? 'الجنس (اختياري)' : 'Gender (optional)'}</label>
+                  <select
+                    value={childGender} onChange={e => setChildGender(e.target.value as 'boy' | 'girl' | '')}
+                    className={inputClass + ' bg-white cursor-pointer'}
+                  >
+                    <option value="">—</option>
+                    <option value="boy">{isRtl ? '👦 ولد' : '👦 Boy'}</option>
+                    <option value="girl">{isRtl ? '👧 بنت' : '👧 Girl'}</option>
+                  </select>
+                </div>
+                {childError && <p className="text-red-500 text-xs">{childError}</p>}
+              </div>
+              <div className="flex gap-3 mt-5">
+                <button
+                  onClick={() => { setShowChildForm(false); setChildName(''); setChildBirthdate(''); setChildGender(''); setChildError(''); }}
+                  className="flex-1 border border-gray-200 text-gray-700 font-bold py-2.5 rounded-xl text-sm"
+                >
+                  {isRtl ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!childName.trim() || !childBirthdate) { setChildError(isRtl ? 'الاسم والتاريخ مطلوبان' : 'Name and birthdate are required'); return; }
+                    setChildError('');
+                    const res = await fetch('/api/user/children', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify({ name: childName.trim(), birthdate: childBirthdate, gender: childGender || null }),
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                      setChildren(prev => [...prev, data.child]);
+                      setShowChildForm(false);
+                      setChildName(''); setChildBirthdate(''); setChildGender('');
+                      if (data.pointsEarned > 0) alert(`🏆 ${isRtl ? `حصلت على ${data.pointsEarned} نقطة كهدية!` : `You earned ${data.pointsEarned} bonus points!`}`);
+                    } else {
+                      setChildError(data.error || (isRtl ? 'حدث خطأ' : 'An error occurred'));
+                    }
+                  }}
+                  className="flex-1 bg-gray-900 hover:bg-gray-700 text-white font-bold py-2.5 rounded-xl text-sm transition"
+                >
+                  {isRtl ? 'إضافة' : 'Add'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

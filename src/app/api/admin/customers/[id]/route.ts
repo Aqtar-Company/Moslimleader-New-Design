@@ -19,7 +19,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const user = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, name: true, email: true, phone: true, createdAt: true, savedAddresses: true, isWholesale: true },
+    select: {
+      id: true, name: true, email: true, phone: true, createdAt: true,
+      savedAddresses: true, isWholesale: true,
+      children: { select: { id: true, name: true, birthdate: true, gender: true }, orderBy: { createdAt: 'asc' } },
+    },
   });
   if (!user) return NextResponse.json({ error: 'العميل غير موجود' }, { status: 404 });
 
@@ -78,6 +82,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       createdAt: user.createdAt.toISOString(),
       lastAddr,
       lastGovernorate: lastAddr?.governorate || null,
+      children: user.children.map(c => ({ ...c, birthdate: c.birthdate.toISOString() })),
     },
     metrics: {
       totalSpend: Math.round(totalSpend * 100) / 100,

@@ -1,10 +1,10 @@
 export const dynamic = 'force-dynamic';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await getAuthUser(req);
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await getAuthUser();
   if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
   const { id } = await params;
   const child = await prisma.child.findUnique({ where: { id }, select: { userId: true } });

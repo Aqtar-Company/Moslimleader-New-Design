@@ -1,13 +1,13 @@
 export const dynamic = 'force-dynamic';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 
 const MAX_CHILDREN = 10;
 const FIRST_CHILD_POINTS = 50;
 
-export async function GET(req: NextRequest) {
-  const auth = await getAuthUser(req);
+export async function GET() {
+  const auth = await getAuthUser();
   if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
   const children = await prisma.child.findMany({
     where: { userId: auth.userId },
@@ -17,8 +17,8 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ children: children.map(c => ({ ...c, birthdate: c.birthdate.toISOString() })) });
 }
 
-export async function POST(req: NextRequest) {
-  const auth = await getAuthUser(req);
+export async function POST(req: Request) {
+  const auth = await getAuthUser();
   if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
   let body: { name?: string; birthdate?: string; gender?: string | null };

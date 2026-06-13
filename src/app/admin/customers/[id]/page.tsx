@@ -6,11 +6,14 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useToast } from '@/components/ui/Toast';
 import { toIntlPhone } from '@/lib/phone';
+import { ageLabel } from '@/lib/child-age';
 import Spinner from '@/components/admin/Spinner';
 import { adminFetch, ForbiddenError } from '@/lib/admin-fetch';
 import ForbiddenState from '@/components/admin/ForbiddenState';
 
 interface ProductImage { url?: string; src?: string }
+
+interface ChildInfo { id: string; name: string; birthdate: string; gender: string | null; }
 
 interface Customer {
   id: string;
@@ -21,6 +24,7 @@ interface Customer {
   lastGovernorate: string | null;
   lastAddr: { street?: string; building?: string; city?: string; region?: string; governorate?: string; country?: string } | null;
   isWholesale: boolean;
+  children?: ChildInfo[];
 }
 
 interface Metrics {
@@ -340,6 +344,28 @@ export default function CustomerDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Children section */}
+      {customer.children && customer.children.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-5">
+          <h2 className="text-sm font-black text-gray-900 mb-3">👶 أطفال العميل ({customer.children.length})</h2>
+          <div className="space-y-2">
+            {customer.children.map(child => {
+              const bd = new Date(child.birthdate);
+              const gIcon = child.gender === 'boy' ? '👦' : child.gender === 'girl' ? '👧' : '🧒';
+              return (
+                <div key={child.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
+                  <span className="text-xl">{gIcon}</span>
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">{child.name}</p>
+                    <p className="text-xs text-gray-500">{ageLabel(bd)}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

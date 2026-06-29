@@ -167,7 +167,7 @@ export default function CustomerDetailPage() {
           </div>
         </div>
 
-        {/* Wholesale toggle — gated by customers.write on the server side. */}
+        {/* Wholesale toggle */}
         <div className="mt-5 pt-5 border-t border-white/10 flex items-center justify-between gap-3 flex-wrap">
           <div>
             <p className="text-xs font-bold text-[#F5C518] uppercase tracking-wide">حالة العميل</p>

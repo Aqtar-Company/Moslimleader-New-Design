@@ -4,11 +4,11 @@ import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { generateInvoicePdf } from '@/lib/invoice-pdf';
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ orderId: string }> }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await getAuthUser();
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { orderId } = await params;
+  const { id: orderId } = await params;
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: { items: true, user: { select: { name: true, email: true } } },
@@ -58,7 +58,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ ord
 
   if (!pdf) return NextResponse.json({ error: 'Failed to generate PDF' }, { status: 500 });
 
-  return new NextResponse(pdf, {
+  return new Response(Buffer.from(pdf) as unknown as BodyInit, {
+    status: 200,
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="invoice-${order.id.slice(-6)}.pdf"`,

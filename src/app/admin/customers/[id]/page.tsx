@@ -24,6 +24,7 @@ interface Customer {
   lastGovernorate: string | null;
   lastAddr: { street?: string; building?: string; city?: string; region?: string; governorate?: string; country?: string } | null;
   isWholesale: boolean;
+  loyaltyPoints?: number;
   children?: ChildInfo[];
 }
 
@@ -345,27 +346,51 @@ export default function CustomerDetailPage() {
         )}
       </div>
 
-      {/* Children section */}
-      {customer.children && customer.children.length > 0 && (
+      {/* Children + Loyalty section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Children */}
         <div className="bg-white border border-gray-200 rounded-2xl p-5">
-          <h2 className="text-sm font-black text-gray-900 mb-3">👶 أطفال العميل ({customer.children.length})</h2>
-          <div className="space-y-2">
-            {customer.children.map(child => {
-              const bd = new Date(child.birthdate);
-              const gIcon = child.gender === 'boy' ? '👦' : child.gender === 'girl' ? '👧' : '🧒';
-              return (
-                <div key={child.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-                  <span className="text-xl">{gIcon}</span>
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">{child.name}</p>
-                    <p className="text-xs text-gray-500">{ageLabel(bd)}</p>
+          <h2 className="text-sm font-black text-gray-900 mb-3">
+            👶 أطفال العميل ({customer.children?.length ?? 0})
+          </h2>
+          {!customer.children || customer.children.length === 0 ? (
+            <p className="text-xs text-gray-400 py-4 text-center">لم يضف العميل أطفالاً بعد</p>
+          ) : (
+            <div className="space-y-2">
+              {customer.children.map(child => {
+                const bd = new Date(child.birthdate);
+                const gIcon = child.gender === 'boy' ? '👦' : child.gender === 'girl' ? '👧' : '🧒';
+                return (
+                  <div key={child.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
+                    <span className="text-xl">{gIcon}</span>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">{child.name}</p>
+                      <p className="text-xs text-gray-500">{ageLabel(bd)}</p>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Loyalty Points */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-5">
+          <h2 className="text-sm font-black text-gray-900 mb-3">💰 نقاط الولاء</h2>
+          <div className="flex flex-col items-center justify-center py-4 gap-2">
+            <span className="text-4xl font-black text-[#6B21A8]">
+              {(customer.loyaltyPoints ?? 0).toLocaleString('en-US')}
+            </span>
+            <span className="text-xs text-gray-500">نقطة</span>
+            <div className="mt-2 bg-purple-50 rounded-xl px-4 py-2 text-center">
+              <p className="text-sm font-bold text-purple-700">
+                = {Math.floor((customer.loyaltyPoints ?? 0) / 10).toLocaleString('en-US')} ج.م خصم
+              </p>
+              <p className="text-[10px] text-gray-400 mt-0.5">كل 10 نقاط = 1 ج.م</p>
+            </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

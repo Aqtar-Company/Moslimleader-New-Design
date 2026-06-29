@@ -21,7 +21,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     where: { id },
     select: {
       id: true, name: true, email: true, phone: true, createdAt: true,
-      savedAddresses: true, isWholesale: true,
+      savedAddresses: true, isWholesale: true, loyaltyPoints: true,
       children: { select: { id: true, name: true, birthdate: true, gender: true }, orderBy: { createdAt: 'asc' } },
     },
   });

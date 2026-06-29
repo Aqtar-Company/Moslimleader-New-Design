@@ -45,8 +45,10 @@ export async function POST(req: Request) {
     select: { id: true, name: true, birthdate: true, gender: true },
   });
 
+  // Check transaction history — not current child count — to prevent re-awarding after delete
+  const alreadyEarned = await prisma.loyaltyTransaction.count({ where: { userId: auth.userId, reason: 'first_child' } });
   let pointsEarned = 0;
-  if (existing === 0) {
+  if (alreadyEarned === 0) {
     try {
       await prisma.$transaction([
         prisma.user.update({ where: { id: auth.userId }, data: { loyaltyPoints: { increment: FIRST_CHILD_POINTS } } }),

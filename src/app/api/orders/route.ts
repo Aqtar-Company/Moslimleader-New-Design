@@ -140,8 +140,8 @@ export async function POST(req: NextRequest) {
       (s, it) => s + it.unitPrice * it.quantity, 0
     );
 
-    // Verify coupon discount server-side
-    let verifiedDiscount = 0;
+    // Verify discount + coupon server-side
+    let verifiedDiscount = Math.round((discount ?? 0) * 100) / 100;
     if (couponCode) {
       const couponSetting = await prisma.setting.findUnique({ where: { key: 'coupons' } });
       const coupons = (couponSetting?.value ?? []) as { code: string; pct: number; active?: boolean }[];
@@ -149,7 +149,8 @@ export async function POST(req: NextRequest) {
         c => c.code?.toLowerCase() === couponCode.toLowerCase() && c.active !== false
       );
       if (matched) {
-        verifiedDiscount = Math.round(verifiedSubtotal * matched.pct / 100);
+        const couponDiscount = Math.round(verifiedSubtotal * matched.pct / 100);
+        verifiedDiscount += couponDiscount;
       }
     }
 

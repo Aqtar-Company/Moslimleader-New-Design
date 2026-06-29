@@ -175,6 +175,20 @@ export default function CheckoutPage() {
   const { total, currency, currencyEn } = getCartRegionalTotal(items);
   const discount = coupon ? Math.round(total * coupon.pct / 100) : 0;
 
+  // Loyalty points
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
+  const [usePoints, setUsePoints] = useState(false);
+  useEffect(() => {
+    if (!user) return;
+    fetch('/api/loyalty', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setLoyaltyPoints(d.points ?? 0))
+      .catch(() => {});
+  }, [user]);
+  // كل 10 نقاط = 1 ج.م (فقط بالجنيه المصري)
+  const pointsDiscount = (usePoints && currency === 'EGP') ? Math.min(Math.floor(loyaltyPoints / 10), total - discount) : 0;
+  const pointsToRedeem = pointsDiscount * 10;
+
   const [intlConfig, setIntlConfig] = useState<IntlShippingConfig>(DEFAULT_CONFIG);
   const [step, setStep] = useState<Step>('address');
   const [shippingType, setShippingType] = useState<ShippingType>(
@@ -433,10 +447,11 @@ export default function CheckoutPage() {
               productName: item.product.name,
               productImage: item.product.images?.[item.selectedModel ?? 0] ?? null,
             })),
-            total: total - discount + shippingCost,
+            total: total - discount - pointsDiscount + shippingCost,
             shippingCost,
-            discount,
+            discount: discount + pointsDiscount,
             couponCode: coupon?.code ?? null,
+            loyaltyPointsToRedeem: pointsToRedeem,
             paymentMethod: payMethod,
             shippingAddress: address,
             notes: address.notes,
@@ -1388,6 +1403,32 @@ export default function CheckoutPage() {
                   <span className="font-semibold">−{discount} {L.currency}</span>
                 </div>
               )}
+              {/* Loyalty points */}
+              {user && loyaltyPoints >= 10 && currency === 'EGP' && (
+                <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                  <div>
+                    <p className="text-[11px] font-bold text-amber-800">
+                      ⭐ {isRtl ? 'نقاطك' : 'Your Points'}: {loyaltyPoints.toLocaleString('en-US')}
+                    </p>
+                    <p className="text-[10px] text-amber-600">
+                      {isRtl ? `= ${Math.floor(loyaltyPoints / 10)} ج.م خصم` : `= ${Math.floor(loyaltyPoints / 10)} EGP off`}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setUsePoints(p => !p)}
+                    className={`text-[11px] font-black px-3 py-1.5 rounded-lg transition ${usePoints ? 'bg-amber-500 text-white' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
+                  >
+                    {usePoints ? (isRtl ? '✓ مُطبَّق' : '✓ Applied') : (isRtl ? 'استخدم' : 'Use')}
+                  </button>
+                </div>
+              )}
+              {usePoints && pointsDiscount > 0 && (
+                <div className="flex justify-between text-amber-600">
+                  <span className="font-bold">⭐ {isRtl ? 'خصم النقاط' : 'Points Discount'}</span>
+                  <span className="font-semibold">−{pointsDiscount} {currency}</span>
+                </div>
+              )}
               <div className="flex justify-between text-gray-500">
                 <span>
                   {L.shippingLabel}
@@ -1412,7 +1453,7 @@ export default function CheckoutPage() {
               {shippingCost > 0 && shippingCurrency === currency && (
                 <div className="flex justify-between border-t pt-2 text-sm">
                   <span className="font-black text-gray-900">{L.totalLabel}</span>
-                  <span className="font-black text-gray-900 text-base">{total - discount + shippingCost} <span className="text-xs text-gray-500">{currency}</span></span>
+                  <span className="font-black text-gray-900 text-base">{total - discount - pointsDiscount + shippingCost} <span className="text-xs text-gray-500">{currency}</span></span>
                 </div>
               )}
               {/* When currencies differ — show labeled breakdown as grand total */}

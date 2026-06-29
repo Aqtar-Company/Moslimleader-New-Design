@@ -138,9 +138,25 @@ function InvoiceDetail({ order }: { order: DbOrder }) {
               <Image src="/white-Logo.webp" alt="Moslim Leader" width={100} height={32} className="h-8 w-auto" unoptimized />
             </div>
           </div>
-          <div className="text-left">
-            <p className="text-[#F5C518] text-[10px] font-bold tracking-widest uppercase">فاتورة الطلب</p>
-            <p className="text-white/70 text-xs mt-0.5 font-mono">#{order.id.slice(-6).toUpperCase()}</p>
+          <div className="flex items-center justify-between gap-4">
+            <div className="text-left">
+              <p className="text-[#F5C518] text-[10px] font-bold tracking-widest uppercase">فاتورة الطلب</p>
+              <p className="text-white/70 text-xs mt-0.5 font-mono">#{order.id.slice(-6).toUpperCase()}</p>
+            </div>
+            <button
+              onClick={() => {
+                const link = document.createElement('a');
+                link.href = `/api/orders/${order.id}/invoice`;
+                link.download = `invoice-${order.id.slice(-6)}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
+              className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition border border-white/20"
+              title="تحميل الفاتورة بصيغة PDF"
+            >
+              📥 تحميل
+            </button>
           </div>
         </div>
 

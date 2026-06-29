@@ -165,8 +165,9 @@ export function ManualOrderModal({ open, onClose, onCreated, prefill }: Props) {
   const subtotal = useMemo(() => items.reduce((s, it) => s + it.unitPrice * it.quantity, 0), [items]);
   const baseShipping = govObj?.shipping ?? 0;
   const shippingCost = isGift && giftFreeShipping ? 0 : baseShipping;
+  const discountAmount = isGift ? 0 : Math.round((subtotal * discount / 100) * 100) / 100;
   // For gifts the customer pays nothing for items; total = shipping (if not waived).
-  const total = isGift ? shippingCost : Math.max(0, subtotal - discount + shippingCost);
+  const total = isGift ? shippingCost : Math.max(0, subtotal - discountAmount + shippingCost);
 
   const reset = () => {
     setName(''); setPhone(''); setWhatsappNumber(''); setEmail('');
@@ -258,7 +259,7 @@ export function ManualOrderModal({ open, onClose, onCreated, prefill }: Props) {
             selectedModel: it.selectedModel,
           })),
           shippingCost,
-          discount,
+          discount: discountAmount,
           couponCode,
           paymentMethod: isGift ? 'gift' : paymentMethod,
           source: isGift ? 'gift' : source,
@@ -502,8 +503,8 @@ export function ManualOrderModal({ open, onClose, onCreated, prefill }: Props) {
                     <input value={couponCode} onChange={e => setCouponCode(e.target.value)} className={inputClass} placeholder="CODE" />
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold text-gray-600">خصم (ج.م)</label>
-                    <input type="number" min={0} value={discount} onChange={e => setDiscount(Number(e.target.value) || 0)} className={inputClass} />
+                    <label className="text-[11px] font-bold text-gray-600">خصم (%)</label>
+                    <input type="number" min={0} max={100} value={discount} onChange={e => setDiscount(Number(e.target.value) || 0)} className={inputClass} placeholder="0 - 100" />
                   </div>
                 </>
               )}
@@ -515,7 +516,7 @@ export function ManualOrderModal({ open, onClose, onCreated, prefill }: Props) {
 
             <div className="bg-gray-50 rounded-xl p-3 space-y-1.5 text-xs">
               <div className="flex justify-between"><span className="text-gray-600">قيمة المنتجات (تكلفة على الشركة)</span><span className="font-bold">{subtotal.toLocaleString('en-US')} ج.م</span></div>
-              {!isGift && discount > 0 && <div className="flex justify-between text-green-700"><span>خصم</span><span className="font-bold">−{discount.toLocaleString('en-US')} ج.م</span></div>}
+              {!isGift && discount > 0 && <div className="flex justify-between text-green-700"><span>خصم ({discount}%)</span><span className="font-bold">−{discountAmount.toLocaleString('en-US')} ج.م</span></div>}
               <div className="flex justify-between"><span className="text-gray-600">الشحن ({govObj?.name}){isGift && giftFreeShipping ? ' — مجاني' : ''}</span><span className="font-bold">{shippingCost.toLocaleString('en-US')} ج.م</span></div>
               <div className="flex justify-between border-t border-gray-200 pt-2 mt-2 text-base">
                 <span className="font-black">{isGift ? 'المطلوب من المستلم' : 'الإجمالي'}</span>

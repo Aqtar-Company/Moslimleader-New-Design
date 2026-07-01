@@ -168,6 +168,7 @@ model Product {
   stockMovements StockMovement[]
   productionBatches ProductionBatch[]
   notifyRequests NotifyRequest[]
+  productionFiles ProductionFile[]
 
   @@index([source])
   @@index([inStock])
@@ -839,4 +840,33 @@ model Child {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+// ─── Production / Print Files (Google Drive backed) ──────────────────────────
+// Each row is one uploaded version. Rows sharing groupId represent the full
+// version history of the same logical file. isLatest marks the current
+// version shown by default. Files are stored only on Google Drive — no local
+// disk copy is kept on the server.
+model ProductionFile {
+  id                String   @id @default(cuid())
+  groupId           String   // stable across all versions of the same file
+  version           Int      @default(1)
+  isLatest          Boolean  @default(true)
+  fileName          String
+  mimeType          String
+  fileSize          Int      // bytes
+  category          String   // 'print-ready' | 'cover' | 'proof' | 'other'
+  productId         String?
+  product           Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  driveFileId       String
+  driveWebViewLink  String?
+  driveDownloadLink String?
+  notes             String?  @db.Text
+  uploadedByUserId  String?
+  createdAt         DateTime @default(now())
+
+  @@index([groupId, version])
+  @@index([productId])
+  @@index([category])
+  @@index([isLatest])
 }

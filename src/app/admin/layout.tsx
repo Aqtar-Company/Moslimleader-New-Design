@@ -34,6 +34,7 @@ const NAV: NavItem[] = [
   { href: '/admin/series',            label: 'السلاسل',           icon: '📖', requireAny: ['books.read'] },
   // —— Production & sourcing ——
   { href: '/admin/production',        label: 'باتشات الإنتاج',    icon: '🏭', requireAny: ['production.read'] },
+  { href: '/admin/production-files',  label: 'ملفات الإنتاج',     icon: '📁', requireAny: ['production-files.read'] },
   { href: '/admin/suppliers',         label: 'الموردون',          icon: '🤝', requireAny: ['suppliers.read'] },
   // —— Customers & marketing ——
   { href: '/admin/customers',         label: 'قاعدة العملاء',     icon: '👥', requireAny: ['customers.read'] },

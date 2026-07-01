@@ -1,24 +1,25 @@
 import { google } from 'googleapis';
 import { Readable } from 'stream';
-
 const FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID;
 
-function getAuth() {
-  return new google.auth.JWT({
-    email: process.env.GOOGLE_DRIVE_CLIENT_EMAIL,
-    key: (process.env.GOOGLE_DRIVE_PRIVATE_KEY ?? '').replace(/\\n/g, '\n'),
-    scopes: ['https://www.googleapis.com/auth/drive.file'],
-  });
-}
-
+// Module-level singleton — avoids creating a new JWT + fetching a new
+// access token on every Drive operation.
+let _drive: ReturnType<typeof google.drive> | null = null;
 function getDrive() {
-  return google.drive({ version: 'v3', auth: getAuth() });
+  if (!_drive) {
+    const auth = new google.auth.JWT({
+      email: process.env.GOOGLE_DRIVE_CLIENT_EMAIL,
+      key: (process.env.GOOGLE_DRIVE_PRIVATE_KEY ?? '').replace(/\\n/g, '\n'),
+      scopes: ['https://www.googleapis.com/auth/drive.file'],
+    });
+    _drive = google.drive({ version: 'v3', auth });
+  }
+  return _drive;
 }
 
 export interface DriveUploadResult {
   id: string;
   webViewLink: string;
-  downloadLink: string;
 }
 
 export async function uploadToDrive(params: {
@@ -39,32 +40,28 @@ export async function uploadToDrive(params: {
       mimeType: params.mimeType,
       body: stream,
     },
-    fields: 'id,webViewLink,webContentLink',
+    fields: 'id,webViewLink',
   });
 
   const file = res.data;
   if (!file.id) throw new Error('Drive upload returned no file ID');
 
-  // Make readable by anyone with the link so employees with the link can view/download
-  await drive.permissions.create({
-    fileId: file.id,
-    requestBody: { role: 'reader', type: 'anyone' },
-  });
+  // No public permissions are granted — all access goes through
+  // the authenticated /api/admin/production-files/[id]/download route.
 
   return {
     id: file.id,
     webViewLink: file.webViewLink ?? `https://drive.google.com/file/d/${file.id}/view`,
-    downloadLink: file.webContentLink ?? `https://drive.google.com/uc?export=download&id=${file.id}`,
   };
 }
 
-export async function downloadFromDrive(fileId: string): Promise<Buffer> {
+// Returns a readable stream directly from Drive to avoid buffering the
+// entire file in Node.js heap (production files can be 100+ MB).
+export async function streamFromDrive(fileId: string): Promise<NodeJS.ReadableStream> {
   const drive = getDrive();
-  const res = await drive.files.get(
-    { fileId, alt: 'media' },
-    { responseType: 'arraybuffer' },
-  );
-  return Buffer.from(res.data as ArrayBuffer);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const res = await drive.files.get({ fileId, alt: 'media' }, { responseType: 'stream' }) as any;
+  return res.data as NodeJS.ReadableStream;
 }
 
 export async function deleteFromDrive(fileId: string): Promise<void> {

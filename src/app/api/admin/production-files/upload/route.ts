@@ -3,11 +3,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { requirePerm } from '@/lib/permissions';
-import { uploadToDrive } from '@/lib/google-drive';
+import { uploadToDrive, deleteFromDrive } from '@/lib/google-drive';
 import { logActionSafe } from '@/lib/audit-log';
 
 const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200 MB
 const ALLOWED_CATEGORIES = ['print-ready', 'cover', 'proof', 'other'];
+const ALLOWED_MIME_TYPES = new Set([
+  'application/pdf',
+  'application/postscript',          // AI / EPS
+  'image/png', 'image/jpeg', 'image/tiff', 'image/webp',
+  'image/vnd.adobe.photoshop',        // PSD
+  'application/zip', 'application/x-zip-compressed',
+  'application/octet-stream',         // generic fallback for unknown binary
+]);
 
 // POST /api/admin/production-files/upload
 // FormData: file (File), category (string), productId? (string), groupId? (string for new version), notes? (string)
@@ -29,52 +37,61 @@ export async function POST(req: NextRequest) {
     if (file.size > MAX_FILE_SIZE)
       return NextResponse.json({ error: 'حجم الملف يتجاوز 200 ميجابايت' }, { status: 400 });
 
+    const mime = file.type || 'application/octet-stream';
+    if (!ALLOWED_MIME_TYPES.has(mime))
+      return NextResponse.json({ error: 'نوع الملف غير مدعوم' }, { status: 400 });
+
     const buffer = Buffer.from(await file.arrayBuffer());
-    const driveResult = await uploadToDrive({
-      name: file.name,
-      mimeType: file.type || 'application/octet-stream',
-      buffer,
-    });
+    const driveResult = await uploadToDrive({ name: file.name, mimeType: mime, buffer });
 
-    let newVersion = 1;
     const effectiveGroupId = groupId ?? randomUUID();
+    const isNewVersion = Boolean(groupId);
 
-    if (groupId) {
-      // Mark previous latest as not latest
-      const prev = await prisma.productionFile.findFirst({
-        where: { groupId, isLatest: true },
-        select: { version: true },
-      });
-      if (prev) {
-        newVersion = prev.version + 1;
-        await prisma.productionFile.updateMany({
-          where: { groupId, isLatest: true },
-          data: { isLatest: false },
+    // Atomic: flip isLatest on previous version + create new row in one transaction.
+    // This prevents race conditions when two uploads arrive for the same groupId.
+    let created;
+    try {
+      created = await prisma.$transaction(async tx => {
+        let newVersion = 1;
+        if (isNewVersion) {
+          const prev = await tx.productionFile.findFirst({
+            where: { groupId: groupId!, isLatest: true },
+            select: { version: true },
+          });
+          if (prev) {
+            newVersion = prev.version + 1;
+            await tx.productionFile.updateMany({
+              where: { groupId: groupId!, isLatest: true },
+              data: { isLatest: false },
+            });
+          }
+        }
+        return tx.productionFile.create({
+          data: {
+            groupId: effectiveGroupId,
+            version: newVersion,
+            isLatest: true,
+            fileName: file.name,
+            mimeType: mime,
+            fileSize: file.size,
+            category,
+            productId: productId || null,
+            driveFileId: driveResult.id,
+            driveWebViewLink: driveResult.webViewLink ?? null,
+            notes,
+            uploadedByUserId: guard.user.userId,
+          },
         });
-      }
+      });
+    } catch (dbErr) {
+      // DB failed after Drive upload succeeded → clean up the orphaned Drive file.
+      try { await deleteFromDrive(driveResult.id); } catch {}
+      throw dbErr;
     }
-
-    const created = await prisma.productionFile.create({
-      data: {
-        groupId: effectiveGroupId,
-        version: newVersion,
-        isLatest: true,
-        fileName: file.name,
-        mimeType: file.type || 'application/octet-stream',
-        fileSize: file.size,
-        category,
-        productId: productId || null,
-        driveFileId: driveResult.id,
-        driveWebViewLink: driveResult.webViewLink,
-        driveDownloadLink: driveResult.downloadLink,
-        notes,
-        uploadedByUserId: guard.user.userId,
-      },
-    });
 
     await logActionSafe({
       actor: guard.user,
-      action: groupId ? 'production-file.version-replace' : 'production-file.upload',
+      action: isNewVersion ? 'production-file.version-replace' : 'production-file.upload',
       entity: 'ProductionFile',
       entityId: created.id,
       after: { fileName: created.fileName, version: created.version, driveFileId: driveResult.id },

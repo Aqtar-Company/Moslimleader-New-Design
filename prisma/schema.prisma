@@ -860,12 +860,11 @@ model ProductionFile {
   product           Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
   driveFileId       String
   driveWebViewLink  String?
-  driveDownloadLink String?
   notes             String?  @db.Text
   uploadedByUserId  String?
   createdAt         DateTime @default(now())
 
-  @@index([groupId, version])
+  @@unique([groupId, version])
   @@index([productId])
   @@index([category])
   @@index([isLatest])

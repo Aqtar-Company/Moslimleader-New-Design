@@ -19,7 +19,6 @@ interface ProductionFileRow {
   productId: string | null;
   product: FileProduct | null;
   driveWebViewLink: string | null;
-  driveDownloadLink: string | null;
   notes: string | null;
   uploadedByUserId: string | null;
   createdAt: string;
@@ -95,7 +94,7 @@ export default function ProductionFilesPage() {
       if (form.notes) fd.append('notes', form.notes);
       if (uploadGroupId) fd.append('groupId', uploadGroupId);
 
-      const data = await adminJson<{ file: ProductionFileRow }>('/api/admin/production-files/upload', { method: 'POST', body: fd, headers: {} });
+      const data = await adminJson<{ file: ProductionFileRow }>('/api/admin/production-files/upload', { method: 'POST', body: fd });
       addToast(uploadGroupId ? 'تم رفع النسخة الجديدة بنجاح ✅' : 'تم رفع الملف على Google Drive بنجاح ✅', 'success');
       const prevGroupId = uploadGroupId;
       setShowUpload(false);
@@ -104,7 +103,8 @@ export default function ProductionFilesPage() {
       if (fileEl) fileEl.value = '';
       setFiles(prev => {
         if (prevGroupId) {
-          return [data.file, ...prev.map((f: ProductionFileRow) => f.groupId === prevGroupId && f.isLatest ? { ...f, isLatest: false } : f)];
+          // Remove superseded version from list (GET only returns isLatest=true rows)
+          return [data.file, ...prev.filter(f => f.groupId !== prevGroupId)];
         }
         return [data.file, ...prev];
       });
@@ -183,15 +183,9 @@ export default function ProductionFilesPage() {
                 {files.map(file => (
                   <tr key={file.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3">
-                      <a
-                        href={file.driveWebViewLink ?? '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-medium text-[#6B21A8] hover:underline truncate max-w-[200px] block"
-                        title={file.fileName}
-                      >
+                      <span className="font-medium text-gray-900 truncate max-w-[200px] block" title={file.fileName}>
                         {file.fileName}
-                      </a>
+                      </span>
                     </td>
                     <td className="px-4 py-3">
                       <span className="bg-purple-50 text-purple-700 px-2.5 py-0.5 rounded-full text-xs font-medium">
@@ -218,16 +212,6 @@ export default function ProductionFilesPage() {
                         >
                           تحميل
                         </a>
-                        {file.driveWebViewLink && (
-                          <a
-                            href={file.driveWebViewLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-xs font-medium transition-colors"
-                          >
-                            Drive
-                          </a>
-                        )}
                         <button
                           onClick={() => openNewVersion(file)}
                           className="bg-green-50 hover:bg-green-100 text-green-700 px-3 py-1 rounded-lg text-xs font-medium transition-colors"
@@ -322,7 +306,7 @@ export default function ProductionFilesPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setShowUpload(false); setUploadGroupId(null); }}
+                  onClick={() => { setShowUpload(false); setUploadGroupId(null); setForm({ category: 'print-ready', productId: '', notes: '' }); if (fileInputRef.current) fileInputRef.current.value = ''; }}
                   className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl text-sm font-bold hover:bg-gray-200 transition-colors"
                 >
                   إلغاء

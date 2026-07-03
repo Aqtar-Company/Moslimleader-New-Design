@@ -1,105 +1,113 @@
 export const dynamic = 'force-dynamic';
-
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUserFromRequest } from '@/lib/jwt';
-import { prisma } from '@/lib/prisma';
-import { uploadToDrive } from '@/lib/google-drive';
 import { randomUUID } from 'crypto';
+import { prisma } from '@/lib/prisma';
+import { requirePerm } from '@/lib/permissions';
+import { uploadToDrive, deleteFromDrive } from '@/lib/google-drive';
+import { logActionSafe } from '@/lib/audit-log';
 
 const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB
+const ALLOWED_CATEGORIES = ['print-ready', 'cover', 'proof', 'other'];
+const ALLOWED_MIME_TYPES = new Set([
+  'application/pdf',
+  'application/postscript',          // AI / EPS
+  'image/png', 'image/jpeg', 'image/tiff', 'image/webp',
+  'image/vnd.adobe.photoshop',        // PSD
+  'application/zip', 'application/x-zip-compressed',
+  'application/octet-stream',         // generic fallback for unknown binary
+]);
+// Extension allowlist — secondary gate that catches octet-stream abuse
+const ALLOWED_EXTENSIONS = new Set([
+  'pdf', 'ai', 'eps', 'png', 'jpg', 'jpeg', 'tiff', 'tif', 'webp', 'psd', 'zip',
+]);
 
-const ALLOWED: Record<string, string> = {
-  pdf: 'application/pdf',
-  ai: 'application/postscript',
-  eps: 'application/postscript',
-  png: 'image/png',
-  jpg: 'image/jpeg',
-  jpeg: 'image/jpeg',
-  tiff: 'image/tiff',
-  tif: 'image/tiff',
-  webp: 'image/webp',
-  psd: 'image/vnd.adobe.photoshop',
-  zip: 'application/zip',
-};
-
+// POST /api/admin/production-files/upload
+// FormData: file (File), category (string), productId? (string), groupId? (string for new version), notes? (string)
 export async function POST(req: NextRequest) {
-  const user = await getAuthUserFromRequest(req);
-  if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
-    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-  }
+  const guard = await requirePerm('production-files.write');
+  if ('response' in guard) return guard.response;
 
-  let formData: FormData;
   try {
-    formData = await req.formData();
-  } catch {
-    return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 });
-  }
+    const formData = await req.formData();
+    const file = formData.get('file') as File | null;
+    const category = (formData.get('category') as string | null)?.trim() ?? '';
+    const productId = (formData.get('productId') as string | null)?.trim() || null;
+    const groupId = (formData.get('groupId') as string | null)?.trim() || null;
+    const notes = (formData.get('notes') as string | null)?.trim() || null;
 
-  const file = formData.get('file') as File | null;
-  const title = (formData.get('title') as string | null)?.trim() || '';
-  const fileType = (formData.get('fileType') as string | null)?.trim() || 'design';
-  const productId = (formData.get('productId') as string | null)?.trim() || null;
-  const groupId = (formData.get('groupId') as string | null)?.trim() || randomUUID();
-  const notes = (formData.get('notes') as string | null)?.trim() || null;
+    if (!file) return NextResponse.json({ error: 'الملف مطلوب' }, { status: 400 });
+    if (!ALLOWED_CATEGORIES.includes(category))
+      return NextResponse.json({ error: 'التصنيف غير صالح' }, { status: 400 });
+    if (file.size > MAX_FILE_SIZE)
+      return NextResponse.json({ error: 'حجم الملف يتجاوز 200 ميجابايت' }, { status: 400 });
 
-  if (!file) return NextResponse.json({ error: 'لم يتم إرفاق ملف' }, { status: 400 });
-  if (!title) return NextResponse.json({ error: 'العنوان مطلوب' }, { status: 400 });
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+    if (!ALLOWED_EXTENSIONS.has(ext))
+      return NextResponse.json({ error: 'امتداد الملف غير مدعوم' }, { status: 400 });
 
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-  if (!ALLOWED[ext]) {
-    return NextResponse.json({ error: 'امتداد الملف غير مدعوم' }, { status: 400 });
-  }
-  if (file.size > MAX_FILE_SIZE) {
-    return NextResponse.json({ error: 'حجم الملف يتجاوز 500 ميجابايت' }, { status: 400 });
-  }
+    const mime = file.type || 'application/octet-stream';
+    if (!ALLOWED_MIME_TYPES.has(mime))
+      return NextResponse.json({ error: 'نوع الملف غير مدعوم' }, { status: 400 });
 
-  // Determine next version for this group
-  const existing = await prisma.productionFile.findMany({
-    where: { groupId },
-    orderBy: { version: 'desc' },
-    take: 1,
-  });
-  const nextVersion = existing.length > 0 ? existing[0].version + 1 : 1;
-  const isNewGroup = existing.length === 0;
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const driveResult = await uploadToDrive({ name: file.name, mimeType: mime, buffer });
 
-  const mimeType = ALLOWED[ext];
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const driveName = `${groupId}_v${nextVersion}_${file.name}`;
+    const effectiveGroupId = groupId ?? randomUUID();
+    const isNewVersion = Boolean(groupId);
 
-  let driveFileId: string;
-  try {
-    const res = await uploadToDrive({ buffer, name: driveName, mimeType });
-    driveFileId = res.id;
-  } catch (err) {
-    console.error('[production-files/upload] Drive error:', err);
-    return NextResponse.json({ error: 'فشل الرفع على Drive' }, { status: 500 });
-  }
-
-  // Atomically: mark old latest → false, insert new record
-  const record = await prisma.$transaction(async tx => {
-    if (!isNewGroup) {
-      await tx.productionFile.updateMany({
-        where: { groupId, isLatest: true },
-        data: { isLatest: false },
+    // Atomic: flip isLatest on previous version + create new row in one transaction.
+    // This prevents race conditions when two uploads arrive for the same groupId.
+    let created;
+    try {
+      created = await prisma.$transaction(async tx => {
+        let newVersion = 1;
+        if (isNewVersion) {
+          const prev = await tx.productionFile.findFirst({
+            where: { groupId: groupId!, isLatest: true },
+            select: { version: true },
+          });
+          if (prev) {
+            newVersion = prev.version + 1;
+            await tx.productionFile.updateMany({
+              where: { groupId: groupId!, isLatest: true },
+              data: { isLatest: false },
+            });
+          }
+        }
+        return tx.productionFile.create({
+          data: {
+            groupId: effectiveGroupId,
+            version: newVersion,
+            isLatest: true,
+            fileName: file.name,
+            mimeType: mime,
+            fileSize: file.size,
+            category,
+            productId: productId || null,
+            driveFileId: driveResult.id,
+            driveWebViewLink: driveResult.webViewLink ?? null,
+            notes,
+            uploadedByUserId: guard.user.userId,
+          },
+        });
       });
+    } catch (dbErr) {
+      // DB failed after Drive upload succeeded → clean up the orphaned Drive file.
+      try { await deleteFromDrive(driveResult.id); } catch {}
+      throw dbErr;
     }
-    return tx.productionFile.create({
-      data: {
-        groupId,
-        productId: productId || null,
-        title,
-        fileType,
-        driveFileId,
-        fileName: file.name,
-        mimeType,
-        sizeBytes: file.size,
-        version: nextVersion,
-        isLatest: true,
-        notes,
-        uploadedBy: user.userId,
-      },
-    });
-  });
 
-  return NextResponse.json({ ok: true, file: record });
+    await logActionSafe({
+      actor: guard.user,
+      action: isNewVersion ? 'production-file.version-replace' : 'production-file.upload',
+      entity: 'ProductionFile',
+      entityId: created.id,
+      after: { fileName: created.fileName, version: created.version, driveFileId: driveResult.id },
+    });
+
+    return NextResponse.json({ file: created }, { status: 201 });
+  } catch (err) {
+    console.error('[production-files upload]', err);
+    return NextResponse.json({ error: 'فشل رفع الملف' }, { status: 500 });
+  }
 }

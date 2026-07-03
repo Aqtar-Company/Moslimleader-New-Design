@@ -31,7 +31,7 @@ export async function adminFetch(input: string | URL, init: RequestInit = {}): P
   const method = (init.method ?? 'GET').toUpperCase();
   const isMutation = method !== 'GET' && method !== 'HEAD';
   const headers = new Headers(init.headers);
-  if (isMutation && init.body && !headers.has('Content-Type') && !(init.body instanceof FormData)) {
+  if (isMutation && init.body && !(init.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
   const res = await fetch(input, {

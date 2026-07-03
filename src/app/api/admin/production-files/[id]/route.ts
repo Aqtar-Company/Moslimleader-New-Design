@@ -1,24 +1,45 @@
 export const dynamic = 'force-dynamic';
-
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUserFromRequest } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
+import { requirePerm } from '@/lib/permissions';
 import { deleteFromDrive } from '@/lib/google-drive';
+import { logActionSafe } from '@/lib/audit-log';
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  const user = await getAuthUserFromRequest(req);
-  if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
-    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-  }
+// GET /api/admin/production-files/[id] — get a single file (any version)
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const guard = await requirePerm('production-files.read');
+  if ('response' in guard) return guard.response;
 
-  const file = await prisma.productionFile.findUnique({ where: { id: params.id } });
+  const { id } = await params;
+  const file = await prisma.productionFile.findUnique({
+    where: { id },
+    include: { product: { select: { id: true, name: true, slug: true } } },
+  });
+  if (!file) return NextResponse.json({ error: 'الملف غير موجود' }, { status: 404 });
+  return NextResponse.json({ file });
+}
+
+// DELETE /api/admin/production-files/[id] — delete from Drive + DB
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const guard = await requirePerm('production-files.write');
+  if ('response' in guard) return guard.response;
+
+  const { id } = await params;
+  const file = await prisma.productionFile.findUnique({ where: { id } });
   if (!file) return NextResponse.json({ error: 'الملف غير موجود' }, { status: 404 });
 
+  // Atomic: delete row + promote previous version in one transaction
   await prisma.$transaction(async tx => {
-    await tx.productionFile.delete({ where: { id: params.id } });
+    await tx.productionFile.delete({ where: { id } });
     if (file.isLatest) {
       const prev = await tx.productionFile.findFirst({
-        where: { groupId: file.groupId, id: { not: params.id } },
+        where: { groupId: file.groupId, id: { not: id } },
         orderBy: { version: 'desc' },
       });
       if (prev) {
@@ -27,37 +48,20 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     }
   });
 
-  // Best-effort Drive delete after DB succeeds
+  // Delete from Google Drive after DB succeeds (best-effort)
   try {
     await deleteFromDrive(file.driveFileId);
-  } catch (err) {
-    console.error('[production-files/delete] Drive delete failed:', err);
+  } catch (driveErr) {
+    console.error('[production-files delete drive]', driveErr);
   }
 
-  return NextResponse.json({ ok: true });
-}
-
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const user = await getAuthUserFromRequest(req);
-  if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
-    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-  }
-
-  const body = await req.json().catch(() => ({}));
-  const allowed = ['title', 'notes', 'status', 'fileType', 'productId'] as const;
-  const data: Record<string, unknown> = {};
-  for (const k of allowed) {
-    if (k in body) data[k] = body[k];
-  }
-
-  if (Object.keys(data).length === 0) {
-    return NextResponse.json({ error: 'لا يوجد بيانات للتحديث' }, { status: 400 });
-  }
-
-  const updated = await prisma.productionFile.update({
-    where: { id: params.id },
-    data,
+  await logActionSafe({
+    actor: guard.user,
+    action: 'production-file.delete',
+    entity: 'ProductionFile',
+    entityId: id,
+    before: { fileName: file.fileName, version: file.version },
   });
 
-  return NextResponse.json({ ok: true, file: updated });
+  return NextResponse.json({ ok: true });
 }

@@ -78,6 +78,10 @@ export const AUDIT_ACTIONS = {
   'return.approve': 'الموافقة على طلب إرجاع',
   'return.reject': 'رفض طلب إرجاع',
   'return.complete': 'إتمام طلب إرجاع',
+  // Production files (Google Drive)
+  'production-file.upload': 'رفع ملف إنتاج',
+  'production-file.version-replace': 'تحديث نسخة ملف إنتاج',
+  'production-file.delete': 'حذف ملف إنتاج',
 } as const;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;

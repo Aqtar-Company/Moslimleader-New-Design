@@ -252,6 +252,25 @@ npx prisma db push --skip-generate
 yum install -y poppler-utils ghostscript
 ```
 
+### تجديد شهادة الأمان (SSL)
+السيرفر يشغّل **ليتسبيد ونجينكس معاً** — كلاهما يتنافسان على المنفذ 443. لو تجديد الشهادة فشل أو نجينكس رفض الإقلاع:
+```bash
+# 1. أوقف ليتسبيد ونجينكس
+systemctl stop lsws
+# 2. اقتل أي عملية لا تزال تشغل المنفذ 443
+fuser -k 443/tcp
+# 3. جدّد الشهادة بوضع standalone
+certbot certonly --standalone -d moslimleader.com -d www.moslimleader.com --force-renewal
+# 4. شغّل نجينكس
+systemctl start nginx
+```
+> لا تستخدم `certbot renew` بدون إيقاف ليتسبيد أولاً — سيفشل لأنه يحاول يعيد تشغيل نجينكس بينما ليتسبيد شايل المنفذ.
+
+### Build بذاكرة أكبر (لو TypeScript نفد منه الذاكرة)
+```bash
+NODE_OPTIONS="--max-old-space-size=4096" npm run build
+```
+
 ## Book Reader Flow
 
 1. User opens `/library/[id]`

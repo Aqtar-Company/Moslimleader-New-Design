@@ -18,7 +18,6 @@ interface ProductionFileRow {
   category: string;
   productId: string | null;
   product: FileProduct | null;
-  driveWebViewLink: string | null;
   notes: string | null;
   uploadedByUserId: string | null;
   createdAt: string;
@@ -46,8 +45,10 @@ export default function ProductionFilesPage() {
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
-  const [uploadGroupId, setUploadGroupId] = useState<string | null>(null); // null = new file
+  const [uploadGroupId, setUploadGroupId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0); // 0-100 sending to server
+  const [uploadPhase, setUploadPhase] = useState<'uploading' | 'processing'>('uploading');
   const [categoryFilter, setCategoryFilter] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -56,6 +57,15 @@ export default function ProductionFilesPage() {
     productId: '',
     notes: '',
   });
+
+  function resetModal() {
+    setShowUpload(false);
+    setUploadGroupId(null);
+    setForm({ category: 'print-ready', productId: '', notes: '' });
+    setUploadProgress(0);
+    setUploadPhase('uploading');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
 
   async function load() {
     try {
@@ -86,32 +96,70 @@ export default function ProductionFilesPage() {
     const fileEl = fileInputRef.current;
     if (!fileEl?.files?.[0]) { addToast('اختر ملفاً أولاً', 'error'); return; }
     setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append('file', fileEl.files[0]);
-      fd.append('category', form.category);
-      if (form.productId) fd.append('productId', form.productId);
-      if (form.notes) fd.append('notes', form.notes);
-      if (uploadGroupId) fd.append('groupId', uploadGroupId);
+    setUploadProgress(0);
+    setUploadPhase('uploading');
 
-      const data = await adminJson<{ file: ProductionFileRow }>('/api/admin/production-files/upload', { method: 'POST', body: fd });
-      addToast(uploadGroupId ? 'تم رفع النسخة الجديدة بنجاح ✅' : 'تم رفع الملف على Google Drive بنجاح ✅', 'success');
-      const prevGroupId = uploadGroupId;
-      setShowUpload(false);
-      setUploadGroupId(null);
-      setForm({ category: 'print-ready', productId: '', notes: '' });
-      if (fileEl) fileEl.value = '';
+    const fd = new FormData();
+    fd.append('file', fileEl.files[0]);
+    fd.append('category', form.category);
+    if (form.productId) fd.append('productId', form.productId);
+    if (form.notes) fd.append('notes', form.notes);
+    if (uploadGroupId) fd.append('groupId', uploadGroupId);
+
+    const prevGroupId = uploadGroupId;
+
+    try {
+      const result = await new Promise<{ file: ProductionFileRow }>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.withCredentials = true;
+
+        xhr.upload.addEventListener('progress', ev => {
+          if (ev.lengthComputable) {
+            setUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+          }
+        });
+
+        xhr.upload.addEventListener('load', () => {
+          // File reached server — now Drive upload happens server-side
+          setUploadProgress(100);
+          setUploadPhase('processing');
+        });
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try { resolve(JSON.parse(xhr.responseText)); }
+            catch { reject(new Error('استجابة غير صالحة من السيرفر')); }
+          } else {
+            try {
+              const d = JSON.parse(xhr.responseText);
+              reject(new Error(d.error || `فشل الرفع (${xhr.status})`));
+            } catch {
+              reject(new Error(`فشل الرفع (${xhr.status})`));
+            }
+          }
+        });
+
+        xhr.addEventListener('error', () => reject(new Error('فشل الاتصال بالسيرفر')));
+        xhr.addEventListener('abort', () => reject(new Error('تم إلغاء الرفع')));
+
+        xhr.open('POST', '/api/admin/production-files/upload');
+        xhr.send(fd);
+      });
+
+      addToast(prevGroupId ? 'تم رفع النسخة الجديدة بنجاح ✅' : 'تم رفع الملف على Google Drive بنجاح ✅', 'success');
+      resetModal();
       setFiles(prev => {
         if (prevGroupId) {
-          // Remove superseded version from list (GET only returns isLatest=true rows)
-          return [data.file, ...prev.filter(f => f.groupId !== prevGroupId)];
+          return [result.file, ...prev.filter(f => f.groupId !== prevGroupId)];
         }
-        return [data.file, ...prev];
+        return [result.file, ...prev];
       });
     } catch (err) {
       addToast((err as Error).message || 'فشل رفع الملف', 'error');
     } finally {
       setUploading(false);
+      setUploadProgress(0);
+      setUploadPhase('uploading');
     }
   }
 
@@ -249,8 +297,10 @@ export default function ProductionFilesPage() {
                   ref={fileInputRef}
                   type="file"
                   required
+                  accept=".pdf,.ai,.eps,.png,.jpg,.jpeg,.tiff,.tif,.webp,.psd,.zip"
                   className="w-full text-sm text-gray-600 file:mr-0 file:ml-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#6B21A8] file:text-white file:text-xs file:font-medium cursor-pointer"
                 />
+                <p className="text-xs text-gray-400 mt-1">PDF, AI, EPS, PSD, PNG, JPG, TIFF, ZIP — حد أقصى 500 ميجابايت</p>
               </div>
 
               {/* Category */}
@@ -296,18 +346,39 @@ export default function ProductionFilesPage() {
                 />
               </div>
 
+              {/* Upload progress */}
+              {uploading && (
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>
+                      {uploadPhase === 'uploading'
+                        ? `جاري الرفع... ${uploadProgress}%`
+                        : 'جاري الحفظ على Google Drive...'}
+                    </span>
+                    {uploadPhase === 'uploading' && <span>{uploadProgress}%</span>}
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2" dir="ltr">
+                    <div
+                      className={`h-2 rounded-full transition-all duration-300 ${uploadPhase === 'processing' ? 'bg-green-500 animate-pulse w-full' : 'bg-[#6B21A8]'}`}
+                      style={{ width: uploadPhase === 'uploading' ? `${uploadProgress}%` : '100%' }}
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-3 pt-2">
                 <button
                   type="submit"
                   disabled={uploading}
                   className="flex-1 bg-[#6B21A8] text-white py-2.5 rounded-xl text-sm font-bold hover:bg-[#7e22ce] disabled:opacity-50 transition-colors"
                 >
-                  {uploading ? 'جاري الرفع على Drive...' : 'رفع الملف'}
+                  {uploading ? (uploadPhase === 'processing' ? 'جاري الحفظ على Drive...' : `جاري الرفع ${uploadProgress}%`) : 'رفع الملف'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setShowUpload(false); setUploadGroupId(null); setForm({ category: 'print-ready', productId: '', notes: '' }); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                  className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl text-sm font-bold hover:bg-gray-200 transition-colors"
+                  disabled={uploading}
+                  onClick={resetModal}
+                  className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl text-sm font-bold hover:bg-gray-200 disabled:opacity-50 transition-colors"
                 >
                   إلغاء
                 </button>

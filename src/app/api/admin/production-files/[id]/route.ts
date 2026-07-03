@@ -34,24 +34,25 @@ export async function DELETE(
   const file = await prisma.productionFile.findUnique({ where: { id } });
   if (!file) return NextResponse.json({ error: 'الملف غير موجود' }, { status: 404 });
 
-  // Delete from Google Drive (best-effort — don't block DB delete if Drive fails)
+  // Atomic: delete row + promote previous version in one transaction
+  await prisma.$transaction(async tx => {
+    await tx.productionFile.delete({ where: { id } });
+    if (file.isLatest) {
+      const prev = await tx.productionFile.findFirst({
+        where: { groupId: file.groupId, id: { not: id } },
+        orderBy: { version: 'desc' },
+      });
+      if (prev) {
+        await tx.productionFile.update({ where: { id: prev.id }, data: { isLatest: true } });
+      }
+    }
+  });
+
+  // Delete from Google Drive after DB succeeds (best-effort)
   try {
     await deleteFromDrive(file.driveFileId);
   } catch (driveErr) {
     console.error('[production-files delete drive]', driveErr);
-  }
-
-  await prisma.productionFile.delete({ where: { id } });
-
-  // If this was the latest, promote the previous version
-  if (file.isLatest) {
-    const prev = await prisma.productionFile.findFirst({
-      where: { groupId: file.groupId, id: { not: id } },
-      orderBy: { version: 'desc' },
-    });
-    if (prev) {
-      await prisma.productionFile.update({ where: { id: prev.id }, data: { isLatest: true } });
-    }
   }
 
   await logActionSafe({

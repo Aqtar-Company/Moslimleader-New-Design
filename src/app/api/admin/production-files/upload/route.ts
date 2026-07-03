@@ -6,7 +6,7 @@ import { requirePerm } from '@/lib/permissions';
 import { uploadToDrive, deleteFromDrive } from '@/lib/google-drive';
 import { logActionSafe } from '@/lib/audit-log';
 
-const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200 MB
+const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB
 const ALLOWED_CATEGORIES = ['print-ready', 'cover', 'proof', 'other'];
 const ALLOWED_MIME_TYPES = new Set([
   'application/pdf',
@@ -15,6 +15,10 @@ const ALLOWED_MIME_TYPES = new Set([
   'image/vnd.adobe.photoshop',        // PSD
   'application/zip', 'application/x-zip-compressed',
   'application/octet-stream',         // generic fallback for unknown binary
+]);
+// Extension allowlist — secondary gate that catches octet-stream abuse
+const ALLOWED_EXTENSIONS = new Set([
+  'pdf', 'ai', 'eps', 'png', 'jpg', 'jpeg', 'tiff', 'tif', 'webp', 'psd', 'zip',
 ]);
 
 // POST /api/admin/production-files/upload
@@ -36,6 +40,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'التصنيف غير صالح' }, { status: 400 });
     if (file.size > MAX_FILE_SIZE)
       return NextResponse.json({ error: 'حجم الملف يتجاوز 200 ميجابايت' }, { status: 400 });
+
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+    if (!ALLOWED_EXTENSIONS.has(ext))
+      return NextResponse.json({ error: 'امتداد الملف غير مدعوم' }, { status: 400 });
 
     const mime = file.type || 'application/octet-stream';
     if (!ALLOWED_MIME_TYPES.has(mime))

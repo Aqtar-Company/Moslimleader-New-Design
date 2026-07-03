@@ -10,7 +10,8 @@ function getDrive() {
     const auth = new google.auth.JWT({
       email: process.env.GOOGLE_DRIVE_CLIENT_EMAIL,
       key: (process.env.GOOGLE_DRIVE_PRIVATE_KEY ?? '').replace(/\\n/g, '\n'),
-      scopes: ['https://www.googleapis.com/auth/drive.file'],
+      // drive (not drive.file) is required for Shared Drive access
+      scopes: ['https://www.googleapis.com/auth/drive'],
     });
     _drive = google.drive({ version: 'v3', auth });
   }
@@ -31,6 +32,8 @@ export async function uploadToDrive(params: {
   const stream = Readable.from(params.buffer);
 
   const res = await drive.files.create({
+    // Required for Shared Drive support
+    supportsAllDrives: true,
     requestBody: {
       name: params.name,
       mimeType: params.mimeType,
@@ -46,9 +49,6 @@ export async function uploadToDrive(params: {
   const file = res.data;
   if (!file.id) throw new Error('Drive upload returned no file ID');
 
-  // No public permissions are granted — all access goes through
-  // the authenticated /api/admin/production-files/[id]/download route.
-
   return {
     id: file.id,
     webViewLink: file.webViewLink ?? `https://drive.google.com/file/d/${file.id}/view`,
@@ -60,11 +60,11 @@ export async function uploadToDrive(params: {
 export async function streamFromDrive(fileId: string): Promise<NodeJS.ReadableStream> {
   const drive = getDrive();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const res = await drive.files.get({ fileId, alt: 'media' }, { responseType: 'stream' }) as any;
+  const res = await drive.files.get({ fileId, alt: 'media', supportsAllDrives: true }, { responseType: 'stream' }) as any;
   return res.data as NodeJS.ReadableStream;
 }
 
 export async function deleteFromDrive(fileId: string): Promise<void> {
   const drive = getDrive();
-  await drive.files.delete({ fileId });
+  await drive.files.delete({ fileId, supportsAllDrives: true });
 }

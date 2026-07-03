@@ -23,8 +23,6 @@ const nextConfig = {
   experimental: {
     // Keep native/ESM packages out of webpack — Node.js loads them at runtime
     serverComponentsExternalPackages: ['pdfjs-dist', '@napi-rs/canvas'],
-    // Allow large production file uploads (print-ready PDFs can be 500MB+)
-    serverBodySizeLimit: '500mb',
     optimizePackageImports: [
       'lucide-react',
       '@marsidev/react-turnstile',

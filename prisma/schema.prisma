@@ -385,28 +385,6 @@ model Partner {
   @@index([isActive])
 }
 
-model ProductionFile {
-  id           String   @id @default(cuid())
-  groupId      String   // logical file group (same product/type across versions)
-  productId    String?
-  title        String   // display name
-  fileType     String   // e.g. "design", "proof", "print-ready"
-  driveFileId  String   // Google Drive file ID
-  fileName     String   // original filename with extension
-  mimeType     String
-  sizeBytes    Int
-  version      Int      @default(1)
-  isLatest     Boolean  @default(true)
-  status       String   @default("draft") // draft | approved | sent-to-printer | done
-  notes        String?  @db.Text
-  uploadedBy   String?
-  createdAt    DateTime @default(now())
-
-  @@index([groupId])
-  @@index([productId])
-  @@index([isLatest])
-}
-
 model ProductionBatch {
   id              String    @id @default(cuid())
   productId       String

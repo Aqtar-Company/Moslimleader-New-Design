@@ -102,7 +102,7 @@ export default function Footer() {
               { href: '/contact', ar: 'تواصل معنا', en: 'Contact' },
               { href: '/policy', ar: 'سياسة الخصوصية', en: 'Privacy Policy' },
               { href: '/delete-data', ar: 'حذف البيانات', en: 'Delete My Data' },
-              { href: '/brand-strategy', ar: '📋 الرؤية الاستراتيجية', en: '📋 Strategic Vision' },
+              { href: '/brand-strategy.html', ar: '📋 الرؤية الاستراتيجية', en: '📋 Strategic Vision' },
             ].map(link => (
               <Link
                 key={link.href}

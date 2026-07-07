@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>استراتيجية مسلم ليدر | Moslim Leader Strategy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@500;600;700;800&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold:#F5C518;
+  --gold-deep:#C79A00;
+  --gold-soft:#FBEEBB;
+  --navy:#16223F;
+  --navy-mid:#22335C;
+  --navy-deep:#0C1428;
+  --paper:#FFFDF4;
+  --cream:#FAF6E6;
+  --ink:#1C2430;
+  --muted:#5C6373;
+  --danger:#A33B2E;
+  --danger-bg:#FBEDE9;
+  --ok-bg:#FFF8DF;
+  --radius:16px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:'IBM Plex Sans Arabic',sans-serif;
+  background:var(--paper);
+  color:var(--ink);
+  line-height:1.9;
+  font-size:16.5px;
+}
+h1,h2,h3,h4{font-family:'Baloo Bhaijaan 2',sans-serif;line-height:1.5}
+
+/* flat icon chip */
+.icx{
+  width:52px;height:52px;border-radius:14px;
+  display:grid;place-items:center;flex-shrink:0;
+  background:var(--cream);
+  transition:transform .25s ease, background .25s ease;
+}
+.icx svg{width:28px;height:28px;display:block}
+.card:hover .icx{transform:translateY(-4px) rotate(-4deg);background:var(--gold-soft)}
+
+/* HERO */
+.hero{
+  background:
+    radial-gradient(1100px 520px at 85% -10%, rgba(245,197,24,.22), transparent 60%),
+    linear-gradient(160deg, var(--navy-deep) 0%, var(--navy) 75%);
+  color:#fff;
+  padding:72px 24px 96px;
+  position:relative;overflow:hidden;
+}
+.hero::after{
+  content:"";position:absolute;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg width='72' height='72' viewBox='0 0 72 72' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23F5C518' stroke-opacity='0.08'%3E%3Cpath d='M36 6 L44 28 L66 36 L44 44 L36 66 L28 44 L6 36 L28 28 Z'/%3E%3C/g%3E%3C/svg%3E");
+  pointer-events:none;
+}
+.hero-inner{max-width:900px;margin:0 auto;position:relative;z-index:1}
+.hero .eyebrow{
+  display:inline-block;border:1px solid rgba(245,197,24,.5);
+  border-radius:100px;padding:4px 18px;font-size:.85rem;
+  color:var(--gold);margin-bottom:18px;
+}
+.hero h1{font-size:clamp(2rem,5vw,3.2rem);font-weight:800;margin-bottom:8px}
+.hero h1 span{color:var(--gold)}
+.hero .slogan{font-family:'Baloo Bhaijaan 2';color:var(--gold-soft);font-size:1.15rem;font-weight:600;margin-bottom:6px}
+.hero .sub{font-size:1.08rem;color:#D7DCE8;max-width:660px;font-weight:300}
+.hero .site{
+  display:inline-block;margin-top:22px;
+  font-family:'Baloo Bhaijaan 2';font-weight:600;
+  color:var(--gold);font-size:.95rem;
+  border-bottom:1px dashed rgba(245,197,24,.6);
+}
+
+/* STATS STRIP */
+.stats{
+  max-width:960px;margin:-64px auto 0;position:relative;z-index:5;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;
+  padding-inline:20px;
+}
+.stat{
+  background:var(--gold);color:var(--navy-deep);
+  border-radius:var(--radius);padding:18px 14px;text-align:center;
+  box-shadow:0 12px 28px rgba(12,20,40,.22);
+  transition:transform .25s ease;
+}
+.stat:hover{transform:translateY(-5px)}
+.stat b{display:block;font-family:'Baloo Bhaijaan 2';font-weight:800;font-size:1.7rem;line-height:1.3}
+.stat span{font-size:.8rem;font-weight:600;opacity:.85}
+
+/* TOC */
+.toc{
+  max-width:960px;margin:-46px auto 0;position:sticky;top:12px;z-index:20;
+  background:rgba(255,253,244,.94);backdrop-filter:blur(8px);
+  border-radius:var(--radius);
+  box-shadow:0 10px 28px rgba(12,20,40,.14);
+  padding:16px 20px;display:flex;flex-wrap:wrap;gap:8px;
+}
+@media(max-width:1010px){.toc{margin-inline:16px}}
+.toc a{
+  text-decoration:none;color:var(--navy);
+  background:var(--cream);border-radius:100px;
+  padding:5px 15px;font-size:.84rem;font-weight:500;transition:.2s;
+}
+.toc a:hover,.toc a:focus-visible,.toc a.active{background:var(--navy);color:var(--gold);outline:none}
+
+/* SECTIONS */
+main{max-width:960px;margin:0 auto;padding:56px 20px 40px}
+section{margin-bottom:70px;scroll-margin-top:96px}
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .6s ease,transform .6s ease}
+.reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+
+.sec-head{display:flex;align-items:center;gap:16px;margin-bottom:10px}
+.star{width:54px;height:54px;flex-shrink:0;position:relative;display:grid;place-items:center}
+.star svg{position:absolute;inset:0}
+.star b{position:relative;color:var(--navy-deep);font-family:'Baloo Bhaijaan 2';font-weight:800;font-size:1.05rem}
+.sec-head h2{font-size:1.62rem;font-weight:700;color:var(--navy-deep)}
+.sec-lead{color:var(--muted);margin-bottom:26px;max-width:720px}
+
+.grid{display:grid;gap:14px}
+.grid.c3{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.card{
+  background:#fff;border-radius:var(--radius);
+  border:1px solid #EFE7CE;padding:20px 22px;
+  box-shadow:0 2px 10px rgba(12,20,40,.04);
+  transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+.card:hover{transform:translateY(-5px);box-shadow:0 14px 30px rgba(12,20,40,.13);border-color:var(--gold)}
+.card h3{color:var(--navy);font-size:1.06rem;font-weight:700;margin:12px 0 6px}
+.card p{font-size:.93rem;color:#3A4150}
+.card .tag{
+  display:inline-block;font-size:.75rem;font-weight:700;
+  background:var(--gold-soft);color:#8A6A00;
+  border-radius:100px;padding:2px 12px;margin-bottom:6px;
+}
+
+/* do/don't */
+.dodont{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.rulebox{border-radius:var(--radius);padding:22px 22px 16px;border:1px solid transparent;transition:box-shadow .25s ease}
+.rulebox:hover{box-shadow:0 10px 26px rgba(12,20,40,.1)}
+.rulebox.do{background:var(--ok-bg);border-color:#EFDD9A}
+.rulebox.dont{background:var(--danger-bg);border-color:#F0D3CB}
+.rulebox h3{font-size:1.05rem;margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.rulebox h3 svg{width:24px;height:24px}
+.rulebox.do h3{color:var(--navy)}
+.rulebox.dont h3{color:var(--danger)}
+.rulebox ul{list-style:none}
+.rulebox li{position:relative;padding-inline-start:26px;margin-bottom:10px;font-size:.93rem;line-height:1.8;transition:transform .2s ease}
+.rulebox li:hover{transform:translateX(-4px)}
+.rulebox.do li::before{content:"✓";position:absolute;inset-inline-start:0;top:0;color:var(--gold-deep);font-weight:700}
+.rulebox.dont li::before{content:"✕";position:absolute;inset-inline-start:0;top:0;color:var(--danger);font-weight:700}
+
+/* numbered list */
+ol.nlist{list-style:none;counter-reset:n;display:grid;gap:10px}
+ol.nlist li{
+  counter-increment:n;background:#fff;border:1px solid #EFE7CE;border-radius:12px;
+  padding:14px 18px;display:flex;gap:14px;align-items:flex-start;font-size:.95rem;
+  transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+ol.nlist li:hover{transform:translateX(-6px);box-shadow:0 8px 20px rgba(12,20,40,.09);border-color:var(--gold)}
+ol.nlist li::before{
+  content:counter(n);flex-shrink:0;width:30px;height:30px;border-radius:50%;
+  background:var(--gold-soft);color:var(--navy);
+  font-family:'Baloo Bhaijaan 2';font-weight:800;
+  display:grid;place-items:center;font-size:.9rem;margin-top:2px;
+}
+
+/* audience */
+.aud{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.aud .card{text-align:center;padding:22px 14px}
+.aud .icx{margin:0 auto}
+.aud .age{font-family:'Baloo Bhaijaan 2';font-weight:800;font-size:1.35rem;color:var(--gold-deep);direction:ltr;margin-top:8px}
+.aud h3{font-size:1rem;margin-top:0}
+.aud p{font-size:.82rem;color:var(--muted)}
+
+.note{
+  background:var(--gold-soft);border-radius:12px;
+  padding:14px 20px;font-size:.9rem;color:#6B5200;
+  border-inline-start:4px solid var(--gold);margin-top:18px;
+}
+
+/* tangible emphasis */
+.hl-tangible{
+  font-family:'Baloo Bhaijaan 2';font-weight:800;color:var(--navy-deep);
+  background:linear-gradient(transparent 55%, var(--gold) 55%);
+  padding:0 4px;border-radius:3px;
+}
+.tangible-banner{
+  display:flex;gap:18px;align-items:flex-start;
+  background:linear-gradient(135deg, var(--navy-deep), var(--navy-mid));
+  color:#E7EBF4;border-radius:var(--radius);
+  padding:24px 26px;margin-bottom:18px;
+  border:1px solid var(--gold);
+  box-shadow:0 10px 26px rgba(12,20,40,.18);
+}
+.tangible-banner .tb-icon{
+  flex-shrink:0;width:56px;height:56px;border-radius:14px;
+  background:rgba(245,197,24,.15);display:grid;place-items:center;
+}
+.tangible-banner .tb-icon svg{width:32px;height:32px}
+.tangible-banner h3{color:var(--gold);font-size:1.12rem;margin-bottom:6px}
+.tangible-banner p{font-size:.92rem;line-height:1.95}
+
+/* roadmap */
+.road{display:grid;gap:12px}
+.road .card{display:flex;gap:16px;align-items:flex-start}
+.road .ph{
+  flex-shrink:0;background:var(--navy);color:var(--gold);
+  font-family:'Baloo Bhaijaan 2';font-weight:700;font-size:.82rem;
+  border-radius:10px;padding:6px 14px;margin-top:4px;white-space:nowrap;
+}
+.road h3{margin-top:0}
+
+footer{
+  background:var(--navy-deep);color:#AEB6C8;
+  text-align:center;padding:34px 20px;font-size:.85rem;
+}
+footer b{color:var(--gold);font-family:'Baloo Bhaijaan 2'}
+footer .slog{color:var(--gold-soft);font-size:.9rem;margin-top:4px}
+
+@media print{
+  .toc{display:none}
+  .hero{padding:40px 24px}
+  section{break-inside:avoid-page}
+  .reveal{opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+
+<!-- flat icon sprite (navy + gold) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 3v18" stroke="#16223F" stroke-width="2.2" stroke-linecap="round"/><path d="M5 4h11l-2.5 4L16 12H5z" fill="#F5C518"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#22335C"/><circle cx="12" cy="12" r="5.5" fill="#FFFDF4"/><circle cx="12" cy="12" r="2.4" fill="#F5C518"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7.5-4.6-9.3-9.2C1.4 7.5 3.6 4.5 6.8 4.5c2 0 3.6 1.1 4.4 2.7l.8 1.6.8-1.6c.8-1.6 2.4-2.7 4.4-2.7 3.2 0 5.4 3 4.1 6.3C19.5 15.4 12 20 12 20z" fill="#16223F"/><path d="M12 20s-7.5-4.6-9.3-9.2C1.4 7.5 3.6 4.5 6.8 4.5c2 0 3.6 1.1 4.4 2.7l.8 1.6z" fill="#F5C518"/></symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="13" rx="2" fill="#22335C"/><rect x="4" y="5" width="16" height="4" rx="2" fill="#16223F"/><path d="M8 12h8M8 15h5" stroke="#FFFDF4" stroke-width="1.8" stroke-linecap="round"/><circle cx="18.5" cy="18.5" r="3.5" fill="#F5C518"/><path d="M17 18.5h3M18.5 17v3" stroke="#16223F" stroke-width="1.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 5c-2-1.4-5-1.8-8-1.4V19c3-.4 6 0 8 1.4 2-1.4 5-1.8 8-1.4V3.6C17 3.2 14 3.6 12 5z" fill="#22335C"/><path d="M12 5v15.4c2-1.4 5-1.8 8-1.4V3.6C17 3.2 14 3.6 12 5z" fill="#16223F"/><path d="M12 5v15.4" stroke="#F5C518" stroke-width="1.4"/></symbol>
+    <symbol id="i-puzzle" viewBox="0 0 24 24"><path d="M4 8h4a2.5 2.5 0 1 1 5 0h4v4a2.5 2.5 0 1 0 0 5v4H4z" fill="#22335C"/><circle cx="8" cy="15" r="1.6" fill="#F5C518"/></symbol>
+    <symbol id="i-gift" viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="12" rx="2" fill="#22335C"/><rect x="4" y="9" width="16" height="4" fill="#16223F"/><rect x="10.6" y="9" width="2.8" height="12" fill="#F5C518"/><path d="M12 8.5c-1.5-3-6-3.4-6-.8 0 1.6 3.5 1.4 6 .8zm0 0c1.5-3 6-3.4 6-.8 0 1.6-3.5 1.4-6 .8z" fill="#F5C518"/></symbol>
+    <symbol id="i-quran" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2.5" fill="#16223F"/><path d="M12 8.2a3.4 3.4 0 1 0 2.6 5.6 4.2 4.2 0 1 1 0-5.4A3.4 3.4 0 0 0 12 8.2z" fill="#F5C518"/><path d="M8 18.5h8" stroke="#FBEEBB" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="i-shirt" viewBox="0 0 24 24"><path d="M8 4 4 7l2 3 2-1v11h8V9l2 1 2-3-4-3a4 4 0 0 1-8 0z" fill="#22335C"/><path d="M8 4a4 4 0 0 0 8 0" fill="#16223F"/><circle cx="12" cy="13" r="2.2" fill="#F5C518"/></symbol>
+    <symbol id="i-seed" viewBox="0 0 24 24"><path d="M12 21v-7" stroke="#16223F" stroke-width="2.2" stroke-linecap="round"/><path d="M12 14C6 14 5 8 5 5c4 0 7 2 7 9z" fill="#22335C"/><path d="M12 14c6 0 7-6 7-9-4 0-7 2-7 9z" fill="#F5C518"/></symbol>
+    <symbol id="i-grow" viewBox="0 0 24 24"><rect x="4" y="13" width="4" height="7" rx="1" fill="#22335C"/><rect x="10" y="9" width="4" height="11" rx="1" fill="#16223F"/><rect x="16" y="4" width="4" height="16" rx="1" fill="#F5C518"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" fill="#22335C"/><path d="M12 3l8 3v6c0 5-3.5 8-8 9z" fill="#16223F"/><path d="M8.5 12l2.4 2.4 4.6-4.8" stroke="#F5C518" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-youth" viewBox="0 0 24 24"><circle cx="12" cy="7.5" r="3.6" fill="#22335C"/><path d="M4.5 20c.8-4 3.9-6 7.5-6s6.7 2 7.5 6z" fill="#16223F"/><path d="M12 3.9a3.6 3.6 0 0 1 0 7.2z" fill="#16223F"/></symbol>
+    <symbol id="i-family" viewBox="0 0 24 24"><circle cx="8" cy="7" r="2.8" fill="#16223F"/><circle cx="16" cy="7" r="2.8" fill="#22335C"/><path d="M2.5 20c.5-3.4 2.7-5.2 5.5-5.2S13 16.6 13.5 20z" fill="#16223F"/><path d="M11 20c.5-3.4 2.4-5.2 5-5.2s4.5 1.8 5 5.2z" fill="#22335C"/><circle cx="12" cy="13.6" r="1.9" fill="#F5C518"/></symbol>
+    <symbol id="i-medal" viewBox="0 0 24 24"><path d="M8 3h8l-2.5 6h-3z" fill="#16223F"/><circle cx="12" cy="14.5" r="5.5" fill="#F5C518"/><path d="M12 11.5l1 2 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5 2.2-.3z" fill="#16223F"/></symbol>
+    <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0 0 18c1.6 0 2-1 1.4-2-.8-1.3.2-2.6 1.8-2.6H17a4.5 4.5 0 0 0 4-4.6C20.7 6.6 16.7 3 12 3z" fill="#22335C"/><circle cx="8" cy="9" r="1.5" fill="#F5C518"/><circle cx="13" cy="7" r="1.5" fill="#FFFDF4"/><circle cx="7" cy="14" r="1.5" fill="#FBEEBB"/></symbol>
+    <symbol id="i-store" viewBox="0 0 24 24"><path d="M4 9l1.4-5h13.2L20 9z" fill="#F5C518"/><path d="M5 9h14v11H5z" fill="#22335C"/><rect x="9" y="13" width="6" height="7" rx="1" fill="#FFFDF4"/></symbol>
+    <symbol id="i-hand" viewBox="0 0 24 24"><path d="M4 14l5-1.5 5 2 6-2v3l-6 3.5-5-1L4 19z" fill="#22335C"/><circle cx="15" cy="7" r="3.5" fill="#F5C518"/><path d="M15 5v4M13 7h4" stroke="#16223F" stroke-width="1.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-ar" viewBox="0 0 24 24"><path d="M12 3l7 4v10l-7 4-7-4V7z" fill="none" stroke="#22335C" stroke-width="2"/><path d="M12 3l7 4-7 4-7-4z" fill="#F5C518"/><path d="M12 11v10" stroke="#22335C" stroke-width="2"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.6" fill="#F5C518"/><circle cx="18" cy="6" r="2.6" fill="#16223F"/><path d="M8 17h7a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6" fill="none" stroke="#22335C" stroke-width="2" stroke-linecap="round" stroke-dasharray="1 3.4"/></symbol>
+  </defs>
+</svg>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">وثيقة استراتيجية داخلية · 2026</span>
+    <h1>استراتيجية <span>مسلم ليدر</span></h1>
+    <p class="slogan">معًا نبني قادة الغد · اختياراتك اليوم تبنيه غدًا</p>
+    <p class="sub">الإطار الحاكم للمنتجات والمحتوى والتصميم والتسويق وفرق العمل — لبناء علامة تربوية إسلامية يثق بها الوالدان، وتُنشئ جيلًا يسعى إلى الإمامة في الدين والدنيا، متصلًا بربه وواقعه.</p>
+    <span class="site">MoslimLeader.com</span>
+  </div>
+</header>
+
+<nav class="toc" aria-label="محتويات الوثيقة">
+  <a href="#identity">الهوية</a>
+  <a href="#products">المنتجات</a>
+  <a href="#audience">الفئات</a>
+  <a href="#content">المحتوى</a>
+  <a href="#design">التصميم</a>
+  <a href="#make">التصنيع</a>
+  <a href="#model">نموذج العمل</a>
+  <a href="#edge">الميزة التنافسية</a>
+  <a href="#marketing">التسويق</a>
+  <a href="#support">خدمة العملاء</a>
+  <a href="#sales">المبيعات</a>
+  <a href="#production">الإنتاج</a>
+  <a href="#roadmap">خارطة الطريق</a>
+</nav>
+
+<main>
+
+<section id="identity" class="reveal">
+  <div class="sec-head">
+    <div class="star"><svg viewBox="0 0 52 52"><path d="M26 2 L32 20 L50 26 L32 32 L26 50 L20 32 L2 26 L20 20 Z" fill="#F5C518"/></svg><b>1</b></div>
+    <h2>الهوية والرؤية والرسالة</h2>
+  </div>
+  <p class="sec-lead">الأساس الذي تُقاس عليه كل القرارات: أي منتج أو محتوى أو حملة لا تخدم هذه الرسالة لا مكان لها في مسلم ليدر.</p>
+  <div class="grid c3">
+    <div class="card"><div class="icx"><svg><use href="#i-flag"/></svg></div><span class="tag">الرؤية</span><p>أن نكون العلامة الأولى في العالم العربي في المنتجات التربوية الملموسة التي تبني في الطفل المسلم السعي إلى الإمامة في الدين والدنيا.</p></div>
+    <div class="card"><div class="icx"><svg><use href="#i-target"/></svg></div><span class="tag">الرسالة</span><p>تقديم منتجات وأنشطة واقعية عالية الجودة تُقوّي صلة الطفل بالله، وتُرسّخ روابط الأسرة، وتُنمّي المسؤولية تجاه الآخرين.</p></div>
+    <div class="card"><div class="icx"><svg><use href="#i-heart"/></svg></div><span class="tag">القيم</span><p>الصدق والشفافية · الجودة قبل السرعة · الواقعية بدل الخيال المستحيل · الاحتشام · الإحسان في التعامل.</p></div>
+  </div>
+  <div class="note">الأصل في مسلم ليدر هو <b>المنتج الملموس</b> في حياة الطفل الواقعية؛ وقد يكون له امتداد رقمي داعم (كالمكتبة الرقمية وتطبيقات AR)، لكن الرقمي تابع لا أصل.</div>
+</section>
+
+<section id="products" class="reveal">
+  <div class="sec-head">
+    <div class="star"><svg viewBox="0 0 52 52"><path d="M26 2 L32 20 L50 26 L32 32 L26 50 L20 32 L2 26 L20 20 Z" fill="#F5C518"/></svg><b>2</b></div>
+    <h2>خطوط المنتجات</h2>
+  </div>
+  <p class="sec-lead">ست عائلات منتجات تغطي يوم الطفل كاملًا: في الدراسة، والقراءة، واللعب، والعبادة، والملبس.</p>
+  <div class="grid c3">
+    <div class="card"><div class="icx"><svg><use href="#i-pencil"/></svg></div><h3>الأدوات والمستلزمات الدراسية</h3><p>كل ما يرافق الطفل في مدرسته: كراسات، أقلام، حقائب، مقلمات — بهوية مسلم ليدر البصرية.</p></div>
+    <div class="card"><div class="icx"><svg><use href="#i-book"/></svg></div><h3>القصص والكتب والروايات</h3><p>محتوى أدبي واقعي يبني المعرفة والثبات، موزّع بحسب المراحل العمرية.</p></div>
+    <div class="card"><div class="icx"><svg><use href="#i-puzzle"/></svg></div><h3>الألعاب الورقية وتنمية المهارات</h3><p>ألعاب تفاعلية تنمّي التفكير والمهارات الاجتماعية وتجمع الأسرة حول نشاط واحد.</p></div>
+    <div class="card"><div class="icx"><svg><use href="#i-gift"/></svg></div><h3>الهدايا والمقتنيات</h3><p>مجات، تيشيرتات، ميداليات، وإكسسوارات تحمل رسائل البراند وتصلح كهدايا هادفة.</p></div>
+    <div class="card"><div class="icx"><svg><use href="#i-quran"/></svg></div><h3>أدوات تعليم القرآن</h3><p>ألواح وحوامل مصحف ووسائل تُيسّر الحفظ والتلاوة وتُحبّب الطفل في كتاب الله.</p></div>
+    <div class="card"><div class="icx"><svg><use href="#i-shirt"/></svg></div><h3>قسم الملابس</h3><p>خط ملابس خاص بالبراند يلتزم بمعايير الاحتشام والجودة وزهاء الألوان.</p></div>
+  </div>
+</section>
+
+<section id="audience" class="reveal">
+  <div class="sec-head">
+    <div class="star"><svg viewBox="0 0 52 52"><path d="M26 2 L32 20 L50 26 L32 32 L26 50 L20 32 L2 26 L20 20 Z" fill="#F5C518"/></svg><b>3</b></div>
+    <h2>الفئات المستهدفة</h2>
+  </div>
+  <p class="sec-lead">تقسيم عمري مستمد من المراحل الشرعية والتربوية، لكل مرحلة لغتها ومنتجاتها وأسلوب خطابها.</p>
+  <div class="aud">
+    <div class="card"><div class="icx"><svg><use href="#i-seed"/></svg></div><div class="age">4–7</div><h3>سن التمييز</h3><p>غرس الحب والعادات الأولى باللعب والقصة المصوّرة.</p></div>
+    <div class="card"><div class="icx"><svg><use href="#i-grow"/></svg></div><div class="age">8–13</div><h3>سن اليافعين</h3><p>بناء المعرفة والمهارات وروح المسؤولية.</p></div>
+    <div class="card"><div class="icx"><svg><use href="#i-shield"/></svg></div><div class="age">14–16</div><h3>سن التكليف</h3><p>ترسيخ الهوية والثبات وفهم العبادات والواجبات.</p></div>
+    <div class="card"><div class="icx"><svg><use href="#i-youth"/></svg></div><div class="age">17–22</div><h3>الشباب</h3><p>الإمامة في الدين والدنيا، والقدوة، ونفع المجتمع.</p></div>
+    <div class="card"><div class="icx"><svg><use href="#i-family"/></svg></div><div class="age">&nbsp;</div><h3>الوالدان</h3><p>صانع القرار الشرائي وشريك التربية الأول.</p></div>
+  </div>
+</section>
+
+<section id="content" class="reveal">
+  <div class="sec-head">
+    <div class="star"><svg viewBox="0 0 52 52"><path d="M26 2 L32 20 L50 26 L32 32 L26 50 L20 32 L2 26 L20 20 Z" fill="#F5C518"/></svg><b>4</b></div>
+    <h2>استراتيجية المحتوى المعرفي</h2>
+  </div>
+  <p class="sec-lead">المحتوى واقعي أو مستقبلي في أصله؛ والعودة للماضي تكون لاستخلاص الفوائد والتجارب لا للسرد المجرد. <b>مثال:</b> «رسائل أمهات العظماء» يتناول واقع بعض الصحابيات أو التابعيات ثم يُطبّق فوائد سيرتهن على واقع القارئ اليوم.</p>
+  <div class="dodont">
+    <div class="rulebox do">
+      <h3><svg><use href="#i-shield"/></svg> نتناول ونعمّق</h3>
+      <ul>
+        <li>الموضوعات الواقعية والمستقبلية (مثل نموذج ذكاء اصطناعي يحاور الطفل — بديل واقعي عن الخيال المستحيل).</li>
+        <li>ما يرتقي بالمعرفة والفهم والثبات.</li>
+        <li>ما يقوّي روابط الأسرة ويحسّن العلاقة بالله.</li>
+        <li>تنمية الشعور بالمسؤولية تجاه الآخرين.</li>
+        <li>الحلول والجوانب الإيجابية بعمق وتفصيل.</li>
+        <li>الرجوع للتاريخ والسيرة لاستخراج العبرة وتطبيقها على الواقع.</li>
+        <li>بديهيات الدين وما هو متفق عليه بين المسلمين — فهو الأساس الذي يُبنى عليه المحتوى.</li>
+      </ul>
+    </div>
+    <div class="rulebox dont">
+      <h3><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#A33B2E"/><path d="M9 9l6 6M15 9l-6 6" stroke="#FBEDE9" stroke-width="2.2" stroke-linecap="round"/></svg> نتجنّب</h3>
+      <ul>
+        <li>الخيال المستحيل عقلًا: المرآة المتكلمة، آلة الزمن، وما شابه.</li>
+        <li>السوبر هيرو والشخصيات الخارقة في التناول الأدبي.</li>
+        <li>الموضوعات التي تُغذّي النرجسية وتُشعر الطفل أنه محور الكون وأن كل شيء يستجيب له.</li>
+        <li>الإسراف في تفصيل السلبيات والتنظير للمشكلات والشبهات.</li>
+        <li>سرد الماضي سردًا مباشرًا دون ربطه بفائدة واقعية.</li>
+        <li>التعرض للخلافات الفقهية أو ترجيح مذهب على آخر.</li>
+        <li>الشحن لاتجاه حزبي — دينيًا كان أو سياسيًا.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="design" class="reveal">
+  <div class="sec-head">
+    <div class="star"><svg viewBox="0 0 52 52"><path d="M26 2 L32 20 L50 26 L32 32 L26 50 L20 32 L2 26 L20 20 Z" fill="#F5C518"/></svg><b>5</b></div>
+    <h2>استراتيجية التصميم</h2>
+  </div>
+  <div class="dodont">
+    <div class="rulebox do">
+      <h3><svg><use href="#i-palette"/></svg> معايير التصميم المعتمدة</h3>
+      <ul>
+        <li>تمثيل المرأة والطفلة برمز الحجاب، دون شعر خارج من الرأس أو أجزاء بارزة من الجسم.</li>
+        <li>التركيز في تصوير الأنثى على جوانب الاحتواء والعطف والرقة وكل ما يناسب طبيعتها.</li>
+        <li>وضع عناصر تعبّر عن البراند داخل المشاهد (مج مسلم ليدر، تيشيرت مسلم ليدر...).</li>
+        <li>نصوص وكتابات واضحة ومناسبة لعمر القارئ.</li>
+        <li>تنسيق تيبوغرافي قوي: مسافات مريحة بين الأسطر، محاذاة منضبطة، وتقسيم واضح للفقرات.</li>
+        <li>إبراز الشعار في الغلاف وفي التصميمات.</li>
+      </ul>
+    </div>
+    <div class="rulebox dont">
+      <h3><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#A33B2E"/><path d="M9 9l6 6M15 9l-6 6" stroke="#FBEDE9" stroke-width="2.2" stroke-linecap="round"/></svg> ممنوع في التصميم</h3>
+      <ul>
+        <li>رسومات السوبر هيرو والشخصيات الخارقة.</li>
+        <li>إظهار الشعر أو تفاصيل الجسم في رسوم الإناث.</li>
+        <li>تصوير الأنثى في أنشطة لا تناسب طبيعتها (أعمال النجارة، الشرطية...).</li>
+        <li>الزحام البصري الذي يُضعف وضوح الرسالة أو الشعار.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="make" class="reveal">
+  <div class="sec-head">
+    <div class="star"><svg viewBox="0 0 52 52"><path d="M26 2 L32 20 L50 26 L32 32 L26 50 L20 32 L2 26 L20 20 Z" fill="#F5C518"/></svg><b>6</b></div>
+    <h2>التصنيع والجودة</h2>
+  </div>
+  <p class="sec-lead">ثلاثة معايير لا تُخترق في أي منتج يحمل اسم مسلم ليدر:</p>
+  <div class="grid c3">
+    <div class="card"><div class="icx"><svg><use href="#i-medal"/></svg></div><h3>الجودة</h3><p>خامات عالية وتشطيب متقن؛ المنتج سفير للبراند في يد الطفل وبيت الأسرة.</p></div>
+    <div class="card"><div class="icx"><svg><use href="#i-shield"/></svg></div><h3>المتانة</h3><p>منتجات تتحمل الاستخدام اليومي للطفل وتعيش طويلًا — فالمتانة أمانة وقيمة اقتصادية للعميل.</p></div>
+    <div class="card"><div class="icx"><svg><use href="#i-palette"/></svg></div><h3>زهاء الألوان</h3><p>ألوان مبهجة ثابتة لا تبهت، متسقة مع الهوية البصرية للعلامة.</p></div>
+  </div>
+</section>
+
+<section id="model" class="reveal">
+  <div class="sec-head">
+    <div class="star"><svg viewBox="0 0 52 52"><path d="M26 2 L32 20 L50 26 L32 32 L26 50 L20 32 L2 26 L20 20 Z" fill="#F5C518"/></svg><b>7</b></div>
+    <h2>نموذج العمل وقنوات البيع</h2>
+  </div>
+  <p class="sec-lead">إيرادات متعددة المصادر تدور كلها حول <span class="hl-tangible">المنتج الملموس</span>، مع امتداد رقمي داعم.</p>
+  <div class="tangible-banner">
+    <div class="tb-icon"><svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" fill="#16223F"/><path d="M12 3l8 4.5-8 4.5-8-4.5z" fill="#F5C518"/><path d="M12 12v9" stroke="#F5C518" stroke-width="1.6"/></svg></div>
+    <div>
+      <h3>لماذا المنتج الملموس؟</h3>
+      <p>الطفل يتعلم ويتشرّب القيم بحواسه: كتاب يمسكه، لعبة يلعبها مع أسرته، مفكرة يكتب فيها بيده. المنتج الملموس يبقى في بيت الأسرة سنوات ويُرى ويُهدى ويُتوارث — فيتحول كل منتج إلى سفير دائم للرسالة، بعكس المحتوى الرقمي سريع الاستهلاك والنسيان. كما أنه يقلل زمن الشاشات ويعيد اللعب والقراءة الحقيقية إلى يوم الطفل، وهو ما يبحث عنه الوالدان اليوم تحديدًا.</p>
+    </div>
+  </div>
+  <div class="grid c3">
+    <div class="card"><div class="icx"><svg><use href="#i-store"/></svg></div><h3>المتجر الإلكتروني</h3><p>القناة الرئيسية عبر MoslimLeader.com — انطلاقًا من مصر والوطن العربي، ووصولًا إلى العالم الإسلامي في شرق آسيا، وأوروبا، والجاليات المسلمة في أمريكا.</p></div>
+    <div class="card"><div class="icx"><svg><use href="#i-hand"/></svg></div><h3>البيع بالجملة والشراكات</h3><p>توزيع عبر المدارس والحضانات والمكتبات ودور النشر والمعارض — بشروط تحفظ الهوية والسعر.</p></div>
+    <div class="card"><div class="icx"><svg><use href="#i-ar"/></svg></div><h3>الامتداد الرقمي</h3><p>المكتبة الرقمية بمنتجات مترجمة إلى 6 لغات أساسية، وتطبيقات الواقع المعزز (AR) — قيمة مضافة تخدم المنتج الملموس وتفتح أسواق الجاليات غير الناطقة بالعربية.</p></div>
+  </div>
+</section>
+
+<section id="edge" class="reveal">
+  <div class="sec-head">
+    <div class="star"><svg viewBox="0 0 52 52"><path d="M26 2 L32 20 L50 26 L32 32 L26 50 L20 32 L2 26 L20 20 Z" fill="#F5C518"/></svg><b>8</b></div>
+    <h2>الميزة التنافسية</h2>
+  </div>
+  <ol class="nlist">
+    <li>منظومة متكاملة لا منتج منفرد: الكتاب واللعبة والمفكرة والحقيبة تخدم نفس المنهج التربوي — سلة شراء أعلى وولاء أطول.</li>
+    <li>ضوابط شرعية وتربوية معلنة وموثّقة (هذه الوثيقة) تمنح الوالدين ثقة يصعب على المنافسين تقليدها.</li>
+    <li>دمج تقنيات حديثة (AR ومكتبة رقمية مترجمة إلى 6 لغات) داخل منتجات ملموسة — نادر في سوق المنتجات التربوية الإسلامية.</li>
+    <li>محتوى أصلي مؤلَّف داخليًا يعالج أسئلة وشبهات حقيقية بأسلوب قصصي، لا مجرد إعادة إنتاج لمحتوى موجود.</li>
+    <li>تغطية سلسلة القيمة كاملة: تأليف، تصميم، طباعة، إنتاج، بيع — تحكم في الجودة والتكلفة والهامش.</li>
+  </ol>
+</section>
+
+<section id="marketing" class="reveal">
+  <div class="sec-head">
+    <div class="star"><svg viewBox="0 0 52 52"><path d="M26 2 L32 20 L50 26 L32 32 L26 50 L20 32 L2 26 L20 20 Z" fill="#F5C518"/></svg><b>9</b></div>
+    <h2>استراتيجية التسويق</h2>
+  </div>
+  <p class="sec-lead">تسويق مبني على الصدق والوضوح والشفافية؛ نرضى بوصول أقل مقابل ثقة أعمق.</p>
+  <div class="dodont">
+    <div class="rulebox do">
+      <h3><svg><use href="#i-shield"/></svg> منهجنا</h3>
+      <ul>
+        <li>الصدق والوضوح والشفافية في كل رسالة تسويقية.</li>
+        <li>الهدايا تُقدَّم لوجه الله لمن نرجو منهم النفع — لا لغرض تسويقي.</li>
+        <li>استخدام المؤثرات الصوتية بدل الموسيقى.</li>
+        <li>إبراز القيمة الحقيقية للمنتج ودوره التربوي كما هو.</li>
+      </ul>
+    </div>
+    <div class="rulebox dont">
+      <h3><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#A33B2E"/><path d="M9 9l6 6M15 9l-6 6" stroke="#FBEDE9" stroke-width="2.2" stroke-linecap="round"/></svg> خطوط حمراء</h3>
+      <ul>
+        <li>تقنيات مزيفة (فيك) لتضخيم التفاعل والوصول.</li>
+        <li>التعاقد بأجر مع دعاة أو متخصصي تربية للحديث عن منتجاتنا وادّعاء استخدامها — أو إهداؤهم لهذا الغرض.</li>
+        <li>عبارات المبالغة: «أفضل كتاب»، «الأكثر مبيعًا»...</li>
+        <li>ظهور عنصر المرأة بشكل صريح في المواد التسويقية.</li>
+        <li>استخدام نصوص القرآن أو السنة للترويج التجاري.</li>
+        <li>تعلّق الطفل بشخصيات رمزية محددة للبراند؛ لا يُطلب من المسوّق اعتماد شخصية رمزًا للعلامة.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="support" class="reveal">
+  <div class="sec-head">
+    <div class="star"><svg viewBox="0 0 52 52"><path d="M26 2 L32 20 L50 26 L32 32 L26 50 L20 32 L2 26 L20 20 Z" fill="#F5C518"/></svg><b>10</b></div>
+    <h2>خدمة العملاء والرد على الرسائل</h2>
+  </div>
+  <ol class="nlist">
+    <li>الرد بذوق وأدب دائمًا مهما كان أسلوب العميل.</li>
+    <li>عدم الرد على أي رسائل خارج إطار المنتجات والخدمات (نقاشات دينية أو سياسية أو اجتماعية عامة).</li>
+    <li>المرونة مع العميل في الحلول والبدائل قدر المستطاع.</li>
+    <li>إظهار عناية حقيقية بأطفال العميل وترشيح المنتجات المناسبة لهم بصدق — لا بيع منتج غير مناسب لعمر الطفل أو حاجته.</li>
+    <li>سرعة الرد والمتابعة حتى إغلاق المشكلة بالكامل.</li>
+  </ol>
+</section>
+
+<section id="sales" class="reveal">
+  <div class="sec-head">
+    <div class="star"><svg viewBox="0 0 52 52"><path d="M26 2 L32 20 L50 26 L32 32 L26 50 L20 32 L2 26 L20 20 Z" fill="#F5C518"/></svg><b>11</b></div>
+    <h2>استراتيجية فريق المبيعات</h2>
+  </div>
+  <p class="sec-lead">«نبيع الثقة قبل أن نبيع المنتج» — هذا هو الميثاق الذي يوقّع عليه كل عضو في الفريق.</p>
+  <ol class="nlist">
+    <li>نبيع الثقة قبل أن نبيع المنتج.</li>
+    <li>نرشّح للعميل المنتج الأنسب لاحتياجه، لا الأعلى سعرًا.</li>
+    <li>الصدق والشفافية أساس جميع المعلومات المقدمة عن المنتجات.</li>
+    <li>عدم المبالغة أو استخدام عبارات تسويقية مضللة أو وعود غير واقعية.</li>
+    <li>التعامل مع جميع العملاء بأدب واحترام، وإحسان الاستماع لاحتياجاتهم.</li>
+    <li>سرعة الرد على الاستفسارات والمتابعة حتى حل المشكلة.</li>
+    <li>الحفاظ على علاقة طويلة الأمد مع العميل، وعدم الاكتفاء بإتمام عملية البيع.</li>
+    <li>استقبال الملاحظات والشكاوى بروح إيجابية وتحويلها إلى فرصة لتحسين الخدمة.</li>
+    <li>الالتزام بسياسات وأسعار الشركة وعدم تقديم وعود أو استثناءات غير معتمدة.</li>
+    <li>عدم الدخول في نقاشات دينية أو سياسية أو اجتماعية لا تتعلق بمنتجات وخدمات مسلم ليدر.</li>
+    <li>المحافظة على سرية بيانات العملاء واحترام خصوصيتهم.</li>
+    <li>تمثيل قيم مسلم ليدر في المظهر وأسلوب الحديث والسلوك، بما يعكس الاحترافية والأمانة وحسن الخلق.</li>
+  </ol>
+</section>
+
+<section id="production" class="reveal">
+  <div class="sec-head">
+    <div class="star"><svg viewBox="0 0 52 52"><path d="M26 2 L32 20 L50 26 L32 32 L26 50 L20 32 L2 26 L20 20 Z" fill="#F5C518"/></svg><b>12</b></div>
+    <h2>استراتيجية فريق التنفيذ والطباعة والإنتاج</h2>
+  </div>
+  <ol class="nlist">
+    <li>الجودة مقدَّمة على سرعة التنفيذ؛ لا يُسلَّم أي منتج لا يحقق معايير مسلم ليدر.</li>
+    <li>الالتزام بالمواصفات المعتمدة لكل منتج دون أي تعديل أو اجتهاد غير مصرَّح به.</li>
+    <li>مراجعة جميع الملفات والتصميمات قبل الطباعة أو الإنتاج للتأكد من خلوّها من الأخطاء.</li>
+    <li>استخدام خامات عالية الجودة تحقق المتانة وطول عمر المنتج.</li>
+    <li>المحافظة على دقة الألوان واتساقها مع الهوية البصرية للعلامة التجارية.</li>
+    <li>التأكد من وضوح الطباعة وجودة التشطيب وخلوّ المنتجات من العيوب الظاهرة.</li>
+    <li>تغليف المنتجات بصورة احترافية تحافظ عليها وتعكس قيمة العلامة التجارية.</li>
+    <li>الالتزام بمواعيد التسليم المتفق عليها دون التضحية بالجودة من أجل السرعة.</li>
+    <li>تقليل الهدر في الخامات والإنتاج، والمحافظة على الموارد بأفضل صورة ممكنة.</li>
+    <li>اقتراح تحسينات مستمرة في المواد وأساليب التصنيع والتغليف بما يرفع جودة المنتجات.</li>
+    <li>عدم اعتماد أي منتج يخالف الهوية البصرية أو المعايير الشرعية والتربوية لمسلم ليدر.</li>
+    <li>اعتبار كل منتج يخرج من خطوط الإنتاج ممثلًا للعلامة التجارية، فيجب أن يكون بمستوى يليق برسالة مسلم ليدر.</li>
+  </ol>
+</section>
+
+<section id="roadmap" class="reveal">
+  <div class="sec-head">
+    <div class="star"><svg viewBox="0 0 52 52"><path d="M26 2 L32 20 L50 26 L32 32 L26 50 L20 32 L2 26 L20 20 Z" fill="#F5C518"/></svg><b>13</b></div>
+    <h2>خارطة الطريق ومؤشرات الأداء</h2>
+  </div>
+  <p class="sec-lead">أهداف مرحلية تُراجَع دوريًا، ويُقاس كل هدف بمؤشر واضح لا يتعارض مع القيم (لا مؤشرات تدفع للمبالغة أو التضليل).</p>
+  <div class="road">
+    <div class="card"><span class="ph">المرحلة 1</span><div><h3>تثبيت الأساس</h3><p>اكتمال الكتالوج الحالي وتوافر المخزون · رفع معدل تقييم رضا العملاء · تقليل نسبة العيوب والمرتجعات · توثيق معايير الجودة لكل منتج.</p></div></div>
+    <div class="card"><span class="ph">المرحلة 2</span><div><h3>التوسع في القنوات</h3><p>شراكات مع مدارس وحضانات ومكتبات · تفعيل البيع بالجملة · نمو الطلبات الشهرية عبر المتجر · رفع متوسط قيمة سلة الشراء عبر الباقات المتكاملة.</p></div></div>
+    <div class="card"><span class="ph">المرحلة 3</span><div><h3>التوسع الجغرافي</h3><p>ترسيخ الحضور في مصر والوطن العربي (الخليج أولوية) · الوصول إلى العالم الإسلامي في شرق آسيا وأوروبا · خدمة الجاليات المسلمة في أمريكا عبر المكتبة الرقمية المترجمة إلى 6 لغات ونقاط توزيع للمنتجات الملموسة.</p></div></div>
+    <div class="card"><span class="ph">مستمر</span><div><h3>تطوير المنتج بالتغذية الراجعة</h3><p>قناة دائمة لملاحظات الوالدين والمعلمين · اختبار المنتجات الجديدة مع عينة أسر قبل الإطلاق · مراجعة سنوية لهذه الاستراتيجية.</p></div></div>
+  </div>
+  <div class="note"><b>حوكمة القيم:</b> أي مؤشر أداء أو هدف نمو يتعارض مع الضوابط الشرعية والتربوية في هذه الوثيقة يُلغى — النمو وسيلة والرسالة هي الغاية.</div>
+</section>
+
+</main>
+
+<footer>
+  <b>Moslim Leader</b> · MoslimLeader.com
+  <div class="slog">معًا نبني قادة الغد</div>
+  وثيقة استراتيجية داخلية — جميع الحقوق محفوظة © 2026
+</footer>
+
+<script>
+const io = new IntersectionObserver(es => {
+  es.forEach(e => { if (e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+},{threshold:.08});
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+const links = [...document.querySelectorAll('.toc a')];
+const secObs = new IntersectionObserver(es => {
+  es.forEach(e => {
+    if (e.isIntersecting){
+      links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id));
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+document.querySelectorAll('main section').forEach(s => secObs.observe(s));
+</script>
+
+</body>
+</html>

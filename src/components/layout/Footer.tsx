@@ -102,7 +102,6 @@ export default function Footer() {
               { href: '/contact', ar: 'تواصل معنا', en: 'Contact' },
               { href: '/policy', ar: 'سياسة الخصوصية', en: 'Privacy Policy' },
               { href: '/delete-data', ar: 'حذف البيانات', en: 'Delete My Data' },
-              { href: '/brand-strategy.html', ar: '📋 الرؤية الاستراتيجية', en: '📋 Strategic Vision' },
             ].map(link => (
               <Link
                 key={link.href}
@@ -113,6 +112,15 @@ export default function Footer() {
                 {isRtl ? link.ar : link.en}
               </Link>
             ))}
+            <a
+              href="/brand-strategy.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-gray-400 hover:text-[#F5C518] transition flex items-center gap-1.5 group"
+            >
+              <span className="w-1 h-1 rounded-full bg-[#F5C518]/40 group-hover:bg-[#F5C518] transition" />
+              {isRtl ? '📋 الرؤية الاستراتيجية' : '📋 Strategic Vision'}
+            </a>
           </div>
 
           {/* ── Column 3: Contact info + socials ── */}

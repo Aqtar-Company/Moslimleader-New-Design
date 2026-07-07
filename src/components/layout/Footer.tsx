@@ -67,7 +67,173 @@ const SOCIAL = [
 export default function Footer() {
   const { t, isRtl } = useLang();
 
+  const PRODUCTS = isRtl ? [
+    { icon: '✏️', label: 'الأدوات والمستلزمات الدراسية' },
+    { icon: '📚', label: 'القصص والكتب والروايات' },
+    { icon: '🎲', label: 'الألعاب الورقية وتنمية المهارات' },
+    { icon: '🎁', label: 'الهدايا والمقتنيات' },
+    { icon: '📿', label: 'أدوات تعليم القرآن' },
+    { icon: '👕', label: 'قسم الملابس' },
+  ] : [
+    { icon: '✏️', label: 'Study Tools & Stationery' },
+    { icon: '📚', label: 'Books, Stories & Novels' },
+    { icon: '🎲', label: 'Educational Board Games' },
+    { icon: '🎁', label: 'Gifts & Collectibles' },
+    { icon: '📿', label: 'Quran Learning Tools' },
+    { icon: '👕', label: 'Clothing Line' },
+  ];
+
+  const ADVANTAGES = isRtl ? [
+    'منظومة متكاملة لا منتج منفرد — الكتاب واللعبة والمفكرة والحقيبة تخدم نفس المنهج التربوي.',
+    'ضوابط شرعية وتربوية معلنة وموثّقة تمنح الوالدين ثقة يصعب على المنافسين تقليدها.',
+    'دمج تقنيات حديثة (AR ومكتبة رقمية بـ 6 لغات) داخل منتجات ملموسة — نادر في السوق.',
+    'محتوى أصلي مؤلَّف داخليًا يعالج أسئلة وشبهات حقيقية بأسلوب قصصي.',
+    'تغطية سلسلة القيمة كاملة: تأليف، تصميم، طباعة، إنتاج، بيع — تحكم في الجودة والهامش.',
+  ] : [
+    'An integrated ecosystem — book, game, planner, and bag all serve the same educational framework.',
+    'Publicly documented Sharia and educational standards — a trust signal competitors cannot easily replicate.',
+    'Modern tech (AR + 6-language digital library) embedded in physical products — rare in the market.',
+    'Original in-house content addressing real questions through storytelling.',
+    'Full value-chain ownership: authoring, design, printing, production, sales.',
+  ];
+
+  const ROADMAP = isRtl ? [
+    { phase: 'المرحلة 1', title: 'تثبيت الأساس', desc: 'اكتمال الكتالوج · رفع رضا العملاء · توثيق معايير الجودة لكل منتج.' },
+    { phase: 'المرحلة 2', title: 'التوسع في القنوات', desc: 'شراكات مع مدارس وحضانات ومكتبات · تفعيل البيع بالجملة · رفع متوسط سلة الشراء.' },
+    { phase: 'المرحلة 3', title: 'التوسع الجغرافي', desc: 'الخليج أولوية · الوصول للعالم الإسلامي في آسيا وأوروبا وأمريكا عبر المكتبة الرقمية.' },
+  ] : [
+    { phase: 'Phase 1', title: 'Foundation', desc: 'Complete catalog · Raise customer satisfaction · Document quality standards.' },
+    { phase: 'Phase 2', title: 'Channel Expansion', desc: 'School & library partnerships · Wholesale activation · Raise average basket.' },
+    { phase: 'Phase 3', title: 'Geographic Scale', desc: 'Gulf priority → global Islamic world via digital library in 6 languages.' },
+  ];
+
   return (
+    <>
+    {/* ══ Strategic Vision Section ══ */}
+    <section className="bg-[#0C1428] text-gray-300 pt-16 pb-10 print:hidden" dir={isRtl ? 'rtl' : 'ltr'}>
+      <div className="max-w-6xl mx-auto px-6">
+
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-10">
+          <div className="flex-1 h-px bg-[#F5C518]/20" />
+          <div className="text-center">
+            <span className="text-[#F5C518] text-xs font-bold tracking-widest uppercase block mb-1">
+              {isRtl ? 'وثيقة استراتيجية داخلية · 2026' : 'Internal Strategy Document · 2026'}
+            </span>
+            <h2 className="text-white font-black text-xl">
+              {isRtl ? 'الرؤية الاستراتيجية — مسلم ليدر' : 'Strategic Vision — Moslim Leader'}
+            </h2>
+          </div>
+          <div className="flex-1 h-px bg-[#F5C518]/20" />
+        </div>
+
+        {/* Vision / Mission / Values */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+          {[
+            {
+              tag: isRtl ? 'الرؤية' : 'Vision',
+              text: isRtl
+                ? 'أن نكون العلامة الأولى في العالم العربي في المنتجات التربوية الملموسة التي تبني في الطفل المسلم السعي إلى الإمامة في الدين والدنيا.'
+                : 'To be the leading brand in the Arab world for tangible educational products that build in every Muslim child the drive to excel in faith and life.',
+            },
+            {
+              tag: isRtl ? 'الرسالة' : 'Mission',
+              text: isRtl
+                ? 'تقديم منتجات وأنشطة واقعية عالية الجودة تُقوّي صلة الطفل بالله، وتُرسّخ روابط الأسرة، وتُنمّي المسؤولية تجاه الآخرين.'
+                : 'Delivering high-quality, realistic products and activities that strengthen the child\'s bond with Allah, deepen family ties, and cultivate responsibility toward others.',
+            },
+            {
+              tag: isRtl ? 'القيم' : 'Values',
+              text: isRtl
+                ? 'الصدق والشفافية · الجودة قبل السرعة · الواقعية بدل الخيال · الاحتشام · الإحسان في التعامل.'
+                : 'Honesty & transparency · Quality before speed · Realism over fantasy · Modesty · Excellence in service.',
+            },
+          ].map(card => (
+            <div key={card.tag} className="bg-white/4 border border-white/8 rounded-2xl p-5 hover:border-[#F5C518]/40 transition">
+              <span className="inline-block text-[#F5C518] text-xs font-bold bg-[#F5C518]/10 px-3 py-1 rounded-full mb-3">
+                {card.tag}
+              </span>
+              <p className="text-sm text-gray-300 leading-relaxed">{card.text}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Why tangible products */}
+        <div className="flex gap-5 items-start bg-[#16223F] border border-[#F5C518]/30 rounded-2xl p-6 mb-10">
+          <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-[#F5C518]/15 flex items-center justify-center text-2xl">📦</div>
+          <div>
+            <h3 className="text-[#F5C518] font-bold text-base mb-2">
+              {isRtl ? 'لماذا المنتج الملموس؟' : 'Why Tangible Products?'}
+            </h3>
+            <p className="text-sm text-gray-300 leading-relaxed">
+              {isRtl
+                ? 'الطفل يتعلم ويتشرّب القيم بحواسه: كتاب يمسكه، لعبة يلعبها مع أسرته، مفكرة يكتب فيها بيده. المنتج الملموس يبقى في بيت الأسرة سنوات ويُرى ويُهدى ويُتوارث — فيتحول كل منتج إلى سفير دائم للرسالة. كما أنه يقلل وقت الشاشات ويعيد اللعب والقراءة الحقيقية إلى يوم الطفل، وهو ما يبحث عنه الوالدان اليوم تحديدًا.'
+                : 'Children learn and absorb values through their senses — a book they hold, a game played with family, a notebook written in by hand. A tangible product stays in the home for years: seen, gifted, and passed on, turning every product into a lasting ambassador for the mission. It also reduces screen time and brings real play and reading back to the child\'s day — exactly what parents are searching for today.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Product lines */}
+        <div className="mb-10">
+          <h3 className="text-white font-bold text-sm mb-4 uppercase tracking-widest">
+            {isRtl ? 'خطوط المنتجات الستة' : 'Six Product Lines'}
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {PRODUCTS.map(p => (
+              <span key={p.label} className="flex items-center gap-1.5 bg-white/5 border border-white/10 text-gray-300 text-xs px-3 py-1.5 rounded-full hover:border-[#F5C518]/40 hover:text-[#F5C518] transition">
+                <span>{p.icon}</span>{p.label}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Competitive advantages */}
+        <div className="mb-10">
+          <h3 className="text-white font-bold text-sm mb-4 uppercase tracking-widest">
+            {isRtl ? 'الميزة التنافسية' : 'Competitive Advantages'}
+          </h3>
+          <ol className="space-y-2">
+            {ADVANTAGES.map((adv, i) => (
+              <li key={i} className="flex gap-3 items-start text-sm text-gray-400 leading-relaxed">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#F5C518]/15 text-[#F5C518] font-bold text-xs flex items-center justify-center mt-0.5">
+                  {i + 1}
+                </span>
+                {adv}
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        {/* Roadmap */}
+        <div>
+          <h3 className="text-white font-bold text-sm mb-4 uppercase tracking-widest">
+            {isRtl ? 'خارطة الطريق' : 'Roadmap'}
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {ROADMAP.map(r => (
+              <div key={r.phase} className="bg-white/4 border border-white/8 rounded-xl p-4 hover:border-[#F5C518]/30 transition">
+                <span className="inline-block text-[#16223F] bg-[#F5C518] font-bold text-xs px-2.5 py-1 rounded-lg mb-2">
+                  {r.phase}
+                </span>
+                <h4 className="text-white font-bold text-sm mb-1">{r.title}</h4>
+                <p className="text-gray-400 text-xs leading-relaxed">{r.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Governance note */}
+        <div className="mt-8 border-t border-white/8 pt-6">
+          <p className="text-xs text-gray-500 text-center leading-relaxed">
+            {isRtl
+              ? '⚖️ حوكمة القيم: أي مؤشر أداء أو هدف نمو يتعارض مع الضوابط الشرعية والتربوية في هذه الوثيقة يُلغى — النمو وسيلة والرسالة هي الغاية.'
+              : '⚖️ Values Governance: Any KPI or growth target that conflicts with the Sharia and educational standards in this document is cancelled — growth is the means, the mission is the purpose.'}
+          </p>
+        </div>
+
+      </div>
+    </section>
+
     <footer className="bg-gray-950 border-t border-white/8 text-gray-400 pt-10 pb-5 mt-16 print:hidden" dir={isRtl ? 'rtl' : 'ltr'}>
       <div className="max-w-6xl mx-auto px-6">
 
@@ -185,5 +351,6 @@ export default function Footer() {
         </div>
       </div>
     </footer>
+    </>
   );
 }

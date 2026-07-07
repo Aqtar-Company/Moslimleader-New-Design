@@ -26,6 +26,7 @@ export default function AboutPage() {
     { titleKey: 'about.prod3.title', descKey: 'about.prod3.desc', icon: '🎲' },
     { titleKey: 'about.prod4.title', descKey: 'about.prod4.desc', icon: '📿' },
     { titleKey: 'about.prod5.title', descKey: 'about.prod5.desc', icon: '✏️' },
+    { titleKey: 'about.prod6.title', descKey: 'about.prod6.desc', icon: '👕' },
   ] as const;
 
   const values = [
@@ -119,6 +120,21 @@ export default function AboutPage() {
                 <p className="text-gray-400 text-xs leading-relaxed">{t(p.descKey)}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Why tangible products ── */}
+      <section className="bg-[#16223F] py-16">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="flex flex-col md:flex-row gap-8 items-center">
+            <div className="flex-shrink-0 w-20 h-20 rounded-2xl bg-[#F5C518]/15 border border-[#F5C518]/30 flex items-center justify-center text-4xl">
+              📦
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-[#F5C518] mb-3">{t('about.tangible.title')}</h2>
+              <p className="text-gray-300 leading-relaxed text-sm md:text-base">{t('about.tangible.text')}</p>
+            </div>
           </div>
         </div>
       </section>

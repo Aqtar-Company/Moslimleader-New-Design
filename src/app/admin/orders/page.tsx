@@ -14,6 +14,7 @@ import ForbiddenState from '@/components/admin/ForbiddenState';
 
 interface OrderItem {
   id: string;
+  productId: string;
   productName: string;
   productImage: string | null;
   quantity: number;

@@ -25,6 +25,7 @@ interface EditItem {
 interface OrderToEdit {
   id: string;
   currency: string;
+  total: number;
   shippingCost: number;
   discount: number;
   notes: string | null;
@@ -281,7 +282,7 @@ export function EditOrderModal({ order, onClose, onSaved }: Props) {
               onClick={() => setSendEmail(p => !p)}
               className={`w-10 h-6 rounded-full transition-colors ${sendEmail ? 'bg-[#F5C518]' : 'bg-gray-200'} relative`}
             >
-              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${sendEmail ? 'translate-x-1' : 'translate-x-5'}`} />
+              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${sendEmail ? 'translate-x-5' : 'translate-x-1'}`} />
             </div>
             <span className="text-sm font-semibold text-gray-700">إرسال إيميل تعديل الطلب للعميل والأدمن</span>
           </label>

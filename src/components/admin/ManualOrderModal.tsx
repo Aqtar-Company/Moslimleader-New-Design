@@ -161,7 +161,7 @@ export function ManualOrderModal({ open, onClose, onCreated, prefill }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products, open]);
 
-  const govObj = useMemo(() => govs.find(g => g.id === governorate), [governorate]);
+  const govObj = useMemo(() => govs.find(g => g.id === governorate), [govs, governorate]);
   const subtotal = useMemo(() => items.reduce((s, it) => s + it.unitPrice * it.quantity, 0), [items]);
   const baseShipping = govObj?.shipping ?? 0;
   const shippingCost = isGift && giftFreeShipping ? 0 : baseShipping;

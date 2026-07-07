@@ -6,6 +6,14 @@ import { requirePerm } from '@/lib/permissions';
 import { logActionSafe } from '@/lib/audit-log';
 import { getShipping } from '@/lib/shipping';
 
+async function getDbShipping(governorateId: string): Promise<number> {
+  try {
+    const row = await prisma.shippingRate.findUnique({ where: { governorateId } });
+    if (row) return row.rate;
+  } catch { /* fall through */ }
+  return getShipping(governorateId);
+}
+
 // Create an Order from a Facebook conversation. Triggered when the
 // admin clicks "📦 إنشاء طلب" on a HOT (or extracted-phone) thread.
 //
@@ -118,7 +126,7 @@ export async function POST(req: NextRequest) {
     (s, oi) => s + oi.unitPrice * oi.quantity,
     0,
   );
-  const shippingCost = getShipping(governorate);
+  const shippingCost = await getDbShipping(governorate);
   const total = Math.round((subtotal + shippingCost) * 100) / 100;
 
   // ── Create Order + items in one transaction ──

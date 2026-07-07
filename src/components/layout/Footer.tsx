@@ -73,14 +73,14 @@ export default function Footer() {
     { icon: '🎲', label: 'الألعاب الورقية وتنمية المهارات' },
     { icon: '🎁', label: 'الهدايا والمقتنيات' },
     { icon: '📿', label: 'أدوات تعليم القرآن' },
-    { icon: '👕', label: 'قسم الملابس' },
+    { icon: '🎒', label: 'الملابس والشنط' },
   ] : [
     { icon: '✏️', label: 'Study Tools & Stationery' },
     { icon: '📚', label: 'Books, Stories & Novels' },
     { icon: '🎲', label: 'Educational Board Games' },
     { icon: '🎁', label: 'Gifts & Collectibles' },
     { icon: '📿', label: 'Quran Learning Tools' },
-    { icon: '👕', label: 'Clothing Line' },
+    { icon: '🎒', label: 'Clothing & Bags' },
   ];
 
   const ADVANTAGES = isRtl ? [

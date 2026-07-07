@@ -26,7 +26,7 @@ export default function AboutPage() {
     { titleKey: 'about.prod3.title', descKey: 'about.prod3.desc', icon: '🎲' },
     { titleKey: 'about.prod4.title', descKey: 'about.prod4.desc', icon: '📿' },
     { titleKey: 'about.prod5.title', descKey: 'about.prod5.desc', icon: '✏️' },
-    { titleKey: 'about.prod6.title', descKey: 'about.prod6.desc', icon: '👕' },
+    { titleKey: 'about.prod6.title', descKey: 'about.prod6.desc', icon: '🎒' },
   ] as const;
 
   const values = [

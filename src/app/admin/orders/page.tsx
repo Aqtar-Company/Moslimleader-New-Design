@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { PaginationFooter } from '@/components/admin/PaginationFooter';
 import { ManualOrderModal } from '@/components/admin/ManualOrderModal';
+import { EditOrderModal } from '@/components/admin/EditOrderModal';
 import Spinner from '@/components/admin/Spinner';
 import { adminFetch, ForbiddenError } from '@/lib/admin-fetch';
 import ForbiddenState from '@/components/admin/ForbiddenState';
@@ -314,6 +315,7 @@ export default function OrdersPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [manualOpen, setManualOpen] = useState(false);
+  const [editOrder, setEditOrder] = useState<DbOrder | null>(null);
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(50);
   const [forbidden, setForbidden] = useState(false);
@@ -659,11 +661,17 @@ export default function OrdersPage() {
                       <span className="font-bold">{payInfo.ar}</span>
                       {o.paymentMethod === 'paypal' && <span className="text-[10px] text-amber-700">— تم التحصيل بالـ {o.currency}</span>}
                     </div>
-                    <div className="flex gap-2 items-center pt-1" onClick={e => e.stopPropagation()}>
+                    <div className="flex gap-2 items-center pt-1 flex-wrap" onClick={e => e.stopPropagation()}>
                       <select value={o.status} onChange={e => handleStatus(o, e.target.value)}
                         className="border border-gray-200 rounded-lg px-3 py-2 text-xs outline-none bg-white flex-1">
                         {STATUSES.map(s => <option key={s} value={s}>{statusLabel(s)}</option>)}
                       </select>
+                      {!['delivered', 'cancelled'].includes(o.status) && (
+                        <button onClick={() => setEditOrder(o)}
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-gray-100 hover:bg-[#F5C518] hover:text-black text-gray-600 transition">
+                          ✏️ تعديل
+                        </button>
+                      )}
                       {o.shipment?.trackingNumber && (
                         <a href={`https://bosta.co/en/track-shipment/${o.shipment.trackingNumber}`}
                           target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-600">تتبع</a>
@@ -768,10 +776,18 @@ export default function OrdersPage() {
                           )}
                         </td>
                         <td className="px-5 py-3.5" onClick={e => e.stopPropagation()}>
-                          <select value={o.status} onChange={e => handleStatus(o, e.target.value)}
-                            className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-gray-400 bg-white cursor-pointer">
-                            {STATUSES.map(s => <option key={s} value={s}>{statusLabel(s)}</option>)}
-                          </select>
+                          <div className="flex flex-col gap-1.5">
+                            <select value={o.status} onChange={e => handleStatus(o, e.target.value)}
+                              className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-gray-400 bg-white cursor-pointer">
+                              {STATUSES.map(s => <option key={s} value={s}>{statusLabel(s)}</option>)}
+                            </select>
+                            {!['delivered', 'cancelled'].includes(o.status) && (
+                              <button
+                                onClick={() => setEditOrder(o)}
+                                className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-gray-100 hover:bg-[#F5C518] hover:text-black text-gray-600 transition"
+                              >✏️ تعديل</button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                       {isOpen && (
@@ -803,6 +819,26 @@ export default function OrdersPage() {
         open={manualOpen}
         onClose={() => setManualOpen(false)}
         onCreated={() => load(pageSize)}
+      />
+
+      <EditOrderModal
+        order={editOrder}
+        onClose={() => setEditOrder(null)}
+        onSaved={updated => {
+          setOrders(prev => prev.map(o =>
+            o.id === updated.id
+              ? {
+                  ...o,
+                  items: updated.items as DbOrder['items'],
+                  total: updated.total,
+                  shippingCost: updated.shippingCost,
+                  discount: updated.discount,
+                  notes: updated.notes,
+                }
+              : o
+          ));
+          setEditOrder(null);
+        }}
       />
     </div>
   );

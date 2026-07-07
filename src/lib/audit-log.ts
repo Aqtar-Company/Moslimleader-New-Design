@@ -20,6 +20,7 @@ export const AUDIT_ACTIONS = {
   // Orders & shipments
   'order.create-manual': 'إنشاء أوردر يدوي',
   'order.update-status': 'تغيير حالة الأوردر',
+  'order.edit': 'تعديل بنود الأوردر',
   'order.delete': 'حذف أوردر',
   'shipment.bosta-create': 'إنشاء شحنة بوسطة',
   'shipment.bosta-cancel': 'إلغاء شحنة بوسطة',

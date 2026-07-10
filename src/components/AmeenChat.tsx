@@ -190,18 +190,22 @@ export default function AmeenChat() {
   // need the visual-viewport binding (and applying it would clip
   // the panel to a strange height when DevTools opens).
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.visualViewport) return;
+    if (typeof window === 'undefined') return;
     const vv = window.visualViewport;
     const update = () => {
-      setVh(window.innerWidth < 768 ? vv.height : null);
+      if (window.innerWidth >= 768) { setVh(null); return; }
+      // Use visualViewport when available; fall back to innerHeight for
+      // WebViews (Instagram, Meta Business Suite) that resize innerHeight
+      // when the soft keyboard opens but don't fire visualViewport events.
+      setVh(vv ? vv.height : window.innerHeight);
     };
     update();
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
+    vv?.addEventListener('resize', update);
+    vv?.addEventListener('scroll', update);
     window.addEventListener('resize', update);
     return () => {
-      vv.removeEventListener('resize', update);
-      vv.removeEventListener('scroll', update);
+      vv?.removeEventListener('resize', update);
+      vv?.removeEventListener('scroll', update);
       window.removeEventListener('resize', update);
     };
   }, []);
@@ -600,6 +604,19 @@ export default function AmeenChat() {
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={onKeyDown}
+                  onFocus={() => {
+                    // Some WebViews (Meta Business Suite, Instagram) delay
+                    // the visualViewport update after the soft keyboard opens.
+                    // Re-read after 350 ms so the panel shrinks and the input
+                    // is visible above the keyboard instead of behind it.
+                    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                      setTimeout(() => {
+                        const h = window.visualViewport?.height ?? window.innerHeight;
+                        setVh(h);
+                        scrollToBottom();
+                      }, 350);
+                    }
+                  }}
                   placeholder={isEn ? 'Type your message…' : 'اكتب رسالتك…'}
                   rows={1}
                   disabled={sending}

@@ -94,6 +94,7 @@ export default function AdminBooksPage() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadedPdfPath, setUploadedPdfPath] = useState('');
   const [uploadedCoverUrl, setUploadedCoverUrl] = useState('');
   const pdfRef = useRef<HTMLInputElement>(null);
@@ -182,14 +183,29 @@ export default function AdminBooksPage() {
     setShowForm(true);
   };
 
-  const uploadFile = async (file: File, type: 'pdf' | 'cover' | 'audio') => {
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('type', type);
-    const res = await fetch('/api/admin/books/upload', { method: 'POST', credentials: 'include', body: fd });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Upload failed');
-    return data.path as string;
+  const uploadFile = (file: File, type: 'pdf' | 'cover' | 'audio', isPdf = false): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('type', type);
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/admin/books/upload');
+      xhr.withCredentials = true;
+      if (isPdf) {
+        xhr.upload.onprogress = e => {
+          if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
+        };
+      }
+      xhr.onload = () => {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (xhr.status >= 200 && xhr.status < 300) resolve(data.path as string);
+          else reject(new Error(data.error || 'Upload failed'));
+        } catch { reject(new Error('Upload failed')); }
+      };
+      xhr.onerror = () => reject(new Error('فشل الاتصال أثناء الرفع'));
+      xhr.send(fd);
+    });
   };
 
   const handleSave = async () => {
@@ -202,7 +218,9 @@ export default function AdminBooksPage() {
       let bgmPath = uploadedBgmUrl;
 
       setUploading(true);
-      if (pdfFile) pdfPath = await uploadFile(pdfFile, 'pdf');
+      setUploadProgress(0);
+      if (pdfFile) pdfPath = await uploadFile(pdfFile, 'pdf', true);
+      setUploadProgress(0);
       if (coverFile) coverUrl = await uploadFile(coverFile, 'cover');
       if (audioFile) bgmPath = await uploadFile(audioFile, 'audio');
       setUploading(false);
@@ -813,20 +831,36 @@ export default function AdminBooksPage() {
               {saveError && <p className="text-red-500 text-sm">{saveError}</p>}
             </div>
 
-            <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
-              <button
-                onClick={() => setShowForm(false)}
-                className="flex-1 border border-gray-200 hover:border-gray-400 text-gray-700 font-bold py-2.5 rounded-xl text-sm transition"
-              >
-                إلغاء
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex-1 bg-[#F5C518] hover:bg-amber-400 text-[#1a1a2e] font-black py-2.5 rounded-xl text-sm transition disabled:opacity-60"
-              >
-                {uploading ? 'جارٍ الرفع...' : saving ? 'جارٍ الحفظ...' : editBook ? 'حفظ التعديلات' : 'إضافة الكتاب'}
-              </button>
+            <div className="px-6 py-4 border-t border-gray-100 space-y-3">
+              {uploading && uploadProgress > 0 && (
+                <div>
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>جارٍ رفع الملف…</span>
+                    <span className="font-bold">{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2" dir="ltr">
+                    <div
+                      className="bg-[#F5C518] h-2 rounded-full transition-all duration-200"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowForm(false)}
+                  className="flex-1 border border-gray-200 hover:border-gray-400 text-gray-700 font-bold py-2.5 rounded-xl text-sm transition"
+                >
+                  إلغاء
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex-1 bg-[#F5C518] hover:bg-amber-400 text-[#1a1a2e] font-black py-2.5 rounded-xl text-sm transition disabled:opacity-60"
+                >
+                  {uploading ? (uploadProgress > 0 ? `${uploadProgress}%` : 'جارٍ الرفع...') : saving ? 'جارٍ الحفظ...' : editBook ? 'حفظ التعديلات' : 'إضافة الكتاب'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

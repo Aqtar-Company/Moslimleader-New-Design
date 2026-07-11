@@ -653,7 +653,15 @@ export default function AdminBooksPage() {
                     type="file"
                     accept="application/pdf"
                     className="hidden"
-                    onChange={e => setPdfFile(e.target.files?.[0] ?? null)}
+                    onChange={e => {
+                      const f = e.target.files?.[0] ?? null;
+                      if (f && f.size > 90 * 1024 * 1024) {
+                        addToast('حجم الـ PDF كبير جداً — الحد الأقصى 90 ميجابايت', 'error');
+                        e.target.value = '';
+                        return;
+                      }
+                      setPdfFile(f);
+                    }}
                   />
                 </div>
                 <div>

@@ -91,24 +91,29 @@ const pricing = [
   { name: 'وسام القائد', price: 500 },
 ];
 
-async function getStickerImages(): Promise<{ boys: string | null; girls: string | null }> {
+async function getStickerImages(): Promise<{ boys: string | null; girls: string | null; boysModel: number; girlsModel: number }> {
   try {
     const product = await prisma.product.findFirst({
-      where: { slug: 'ملصقات' },
+      where: { slug: 'stickers-kids' },
       select: { images: true, variants: true },
     });
-    if (!product) return { boys: null, girls: null };
+    if (!product) return { boys: null, girls: null, boysModel: 0, girlsModel: 1 };
     const imgs = Array.isArray(product.images) ? (product.images as string[]) : [];
     const variants = Array.isArray(product.variants)
-      ? (product.variants as { id?: string; imageIndex?: number }[])
+      ? (product.variants as { name?: string; imageIndex?: number }[])
       : [];
-    const boysVariant = variants.find(v => (v as {id?:string}).id === 'boys');
-    const girlsVariant = variants.find(v => (v as {id?:string}).id === 'girls');
+    // Find boys/girls by name (Arabic or English) or fall back to index 0/1
+    const boysIdx = variants.findIndex(v => /ولاد|boy/i.test(v.name ?? ''));
+    const girlsIdx = variants.findIndex(v => /بنات|girl/i.test(v.name ?? ''));
+    const boysVariant = variants[boysIdx >= 0 ? boysIdx : 0];
+    const girlsVariant = variants[girlsIdx >= 0 ? girlsIdx : 1];
     return {
       boys: imgs[boysVariant?.imageIndex ?? 0] ?? imgs[0] ?? null,
-      girls: imgs[girlsVariant?.imageIndex ?? 1] ?? imgs[1] ?? null,
+      girls: imgs[girlsVariant?.imageIndex ?? (boysVariant?.imageIndex === 1 ? 0 : 1)] ?? imgs[1] ?? null,
+      boysModel: boysIdx >= 0 ? boysIdx : 0,
+      girlsModel: girlsIdx >= 0 ? girlsIdx : 1,
     };
-  } catch { return { boys: null, girls: null }; }
+  } catch { return { boys: null, girls: null, boysModel: 0, girlsModel: 1 }; }
 }
 
 export default async function NurseryPage() {
@@ -117,7 +122,7 @@ export default async function NurseryPage() {
   const products = [
     ...STATIC_PRODUCTS.slice(0, 3), // وسام + بازل أولاد + بازل بنات
     {
-      slug: 'ملصقات',
+      slug: `stickers-kids?model=${stickerImgs.boysModel}`,
       name: 'الملصقات — أولاد',
       price: 40,
       image: stickerImgs.boys,
@@ -125,7 +130,7 @@ export default async function NurseryPage() {
       desc: 'ملصقات تحفيزية للأولاد تُستخدم على لوحات الإنجاز ودفاتر الأطفال كمكافأة يومية.',
     },
     {
-      slug: 'ملصقات',
+      slug: `stickers-kids?model=${stickerImgs.girlsModel}`,
       name: 'الملصقات — بنات',
       price: 40,
       image: stickerImgs.girls,

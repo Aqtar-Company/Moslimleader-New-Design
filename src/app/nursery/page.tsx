@@ -28,10 +28,33 @@ const products = [
   },
   {
     slug: 'puzzle-boys',
-    name: 'البازل التربوي',
+    name: 'البازل التربوي — أولاد',
     price: 220,
     image: `${BASE}/2024/07/Puzzle-Boys-1.webp`,
-    desc: 'بازل تعليمي يُنمي مهارات التفكير ويُعزز القيم من خلال الأنشطة الجماعية داخل الفصل.',
+    desc: 'بازل تعليمي للأولاد يُنمي مهارات التفكير ويُعزز القيم من خلال الأنشطة الجماعية.',
+  },
+  {
+    slug: 'puzzle-girls',
+    name: 'البازل التربوي — بنات',
+    price: 220,
+    image: `${BASE}/2024/07/Puzzle-Girls-1.webp`,
+    desc: 'بازل تعليمي للبنات يُنمي مهارات التفكير والتركيز بأشكال ملهمة ومصممة خصيصًا لهن.',
+  },
+  {
+    slug: null,
+    name: 'شيتات الاستيكر — أولاد',
+    price: 40,
+    image: null,
+    emoji: '✨',
+    desc: 'استيكرات تحفيزية للأولاد تُستخدم على لوحات الإنجاز ودفاتر الأطفال كمكافأة يومية.',
+  },
+  {
+    slug: null,
+    name: 'شيتات الاستيكر — بنات',
+    price: 40,
+    image: null,
+    emoji: '🌸',
+    desc: 'استيكرات تحفيزية للبنات تُستخدم على لوحات الإنجاز ودفاتر الأطفال كمكافأة يومية.',
   },
   {
     slug: 'my-son-asks-series',
@@ -68,7 +91,7 @@ const timeline = [
   { step: '02', icon: '🧩', title: 'وقت النشاط', desc: 'البازل التربوي الجماعي لتعزيز التعاون والتفكير' },
   { step: '03', icon: '✨', title: 'التحفيز بالاستيكر', desc: 'مكافأة فورية على الالتزام والإنجاز اليومي' },
   { step: '04', icon: '🏅', title: 'تكريم المتميز', desc: 'وسام القادة الأسبوعي يصنع نماذج يقتدي بها أقرانهم' },
-  { step: '05', icon: '👑', title: 'التعرف على القدوات', desc: 'قصص الصالحين كنماذج واقعية من التاريخ الإسلامي' },
+  { step: '05', icon: '📚', title: 'ركن القصص', desc: 'قراءة جماعية من سلاسل ابني يسأل، قصة الصلاة، ومسلسل البر — كل قصة تفتح نقاشًا تربويًا حول قيمة اليوم' },
   { step: '06', icon: '📖', title: 'ركن القرآن', desc: 'حامل المصحف يُهيئ جواً روحانياً هادئاً داخل الحضانة' },
 ];
 
@@ -98,7 +121,7 @@ export default function NurseryPage() {
             <span className="text-[#4a9c6f]">للحضانات</span>
           </h1>
           <p className="text-xl md:text-2xl text-white/70 font-light mb-3">
-            لأن القيم تُغرس... ولا تُلقَّن.
+            معًا نبني قادة
           </p>
           <p className="text-sm text-white/40 mb-10">
             معًا نصنع قادة الغد
@@ -157,34 +180,53 @@ export default function NurseryPage() {
           </h2>
           <p className="text-gray-500 text-center mb-12">كل منتج مصمم ليؤدي دورًا تربويًا محددًا</p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
-            {products.map((p) => (
-              <Link
-                key={p.slug}
-                href={`/shop/${p.slug}`}
-                className="group bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition hover:-translate-y-1"
-              >
-                {/* Image */}
-                <div className="relative bg-[#f9f7f4] aspect-square overflow-hidden">
-                  <img
-                    src={p.image}
-                    alt={p.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                  />
-                  {/* Price badge */}
-                  <span className="absolute top-3 right-3 bg-[#4a9c6f] text-white text-xs font-black px-3 py-1.5 rounded-full shadow">
-                    {p.price} ج.م
-                  </span>
+            {products.map((p, i) => {
+              const inner = (
+                <>
+                  {/* Image or emoji placeholder */}
+                  <div className="relative bg-[#f9f7f4] aspect-square overflow-hidden flex items-center justify-center">
+                    {p.image ? (
+                      <img
+                        src={p.image}
+                        alt={p.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                      />
+                    ) : (
+                      <span className="text-6xl select-none">{(p as {emoji?: string}).emoji ?? '✨'}</span>
+                    )}
+                    <span className="absolute top-3 right-3 bg-[#4a9c6f] text-white text-xs font-black px-3 py-1.5 rounded-full shadow">
+                      {p.price} ج.م
+                    </span>
+                  </div>
+                  {/* Info */}
+                  <div className="p-4">
+                    <h3 className="font-black text-[#1a1a2e] text-sm mb-1 leading-snug">{p.name}</h3>
+                    <p className="text-gray-500 text-xs leading-relaxed line-clamp-2">{p.desc}</p>
+                    {p.slug && (
+                      <span className="mt-3 inline-block text-[#4a9c6f] text-xs font-black group-hover:underline">
+                        اعرف أكثر ←
+                      </span>
+                    )}
+                  </div>
+                </>
+              );
+              return p.slug ? (
+                <Link
+                  key={i}
+                  href={`/shop/${p.slug}`}
+                  className="group bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition hover:-translate-y-1"
+                >
+                  {inner}
+                </Link>
+              ) : (
+                <div
+                  key={i}
+                  className="group bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm"
+                >
+                  {inner}
                 </div>
-                {/* Info */}
-                <div className="p-4">
-                  <h3 className="font-black text-[#1a1a2e] text-sm mb-1 leading-snug">{p.name}</h3>
-                  <p className="text-gray-500 text-xs leading-relaxed line-clamp-2">{p.desc}</p>
-                  <span className="mt-3 inline-block text-[#4a9c6f] text-xs font-black group-hover:underline">
-                    اعرف أكثر ←
-                  </span>
-                </div>
-              </Link>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>

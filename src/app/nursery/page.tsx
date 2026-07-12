@@ -96,7 +96,9 @@ const timeline = [
 ];
 
 const pricing = [
-  { name: 'البازل التربوي', price: 220 },
+  { name: 'شيتات الاستيكر — أولاد', price: 40 },
+  { name: 'شيتات الاستيكر — بنات', price: 40 },
+  { name: 'البازل التربوي (أولاد أو بنات)', price: 220 },
   { name: 'سلسلة ابني يسأل', price: 250 },
   { name: 'قصة الصلاة', price: 250 },
   { name: 'مسلسل البر', price: 300 },
@@ -146,13 +148,10 @@ export default function NurseryPage() {
         <p className="text-gray-600 text-lg leading-relaxed mb-6">
           يقضي الطفل ساعات طويلة داخل الحضانة، ولذلك فهي ليست مكانًا للتعلم فقط، بل بيئة تُبنى فيها شخصيته، وتُغرس فيها عاداته، وتتكون فيها قيمه.
         </p>
-        <p className="text-gray-600 text-lg leading-relaxed mb-8">
+        <p className="text-gray-600 text-lg leading-relaxed">
           ومن هنا جاءت فكرة <strong className="text-[#1a1a2e]">ركن القيم من مسلم ليدر</strong>...
           ركن تربوي يجمع بين القصة، واللعبة، والنشاط، والتحفيز؛ ليصبح تعليم القيم جزءًا من الحياة اليومية داخل الحضانة.
         </p>
-        <blockquote className="border-r-4 border-[#4a9c6f] pr-6 text-right bg-[#f8faf9] rounded-xl p-6">
-          <p className="text-xl font-black text-[#1a1a2e]">"لأن القيم لا تُحفظ... بل تُعاش."</p>
-        </blockquote>
       </section>
 
       {/* ── Benefits infographic ── */}

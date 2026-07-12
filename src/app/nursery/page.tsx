@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { prisma } from '@/lib/prisma';
 
 export const metadata: Metadata = {
   title: 'ركن القيم للحضانات | مسلم ليدر',
@@ -18,7 +19,7 @@ const benefits = [
   { icon: '🏆', label: 'التحفيز الإيجابي' },
 ];
 
-const products = [
+const STATIC_PRODUCTS = [
   {
     slug: 'leader-medal',
     name: 'وسام القائد',
@@ -39,22 +40,6 @@ const products = [
     price: 220,
     image: `${BASE}/2024/07/Puzzle-Girls-1.webp`,
     desc: 'بازل تعليمي للبنات يُنمي مهارات التفكير والتركيز بأشكال ملهمة ومصممة خصيصًا لهن.',
-  },
-  {
-    slug: null,
-    name: 'شيتات الاستيكر — أولاد',
-    price: 40,
-    image: null,
-    emoji: '✨',
-    desc: 'استيكرات تحفيزية للأولاد تُستخدم على لوحات الإنجاز ودفاتر الأطفال كمكافأة يومية.',
-  },
-  {
-    slug: null,
-    name: 'شيتات الاستيكر — بنات',
-    price: 40,
-    image: null,
-    emoji: '🌸',
-    desc: 'استيكرات تحفيزية للبنات تُستخدم على لوحات الإنجاز ودفاتر الأطفال كمكافأة يومية.',
   },
   {
     slug: 'my-son-asks-series',
@@ -106,7 +91,49 @@ const pricing = [
   { name: 'وسام القائد', price: 500 },
 ];
 
-export default function NurseryPage() {
+async function getStickerImages(): Promise<{ boys: string | null; girls: string | null }> {
+  try {
+    const product = await prisma.product.findFirst({
+      where: { slug: 'ملصقات' },
+      select: { images: true, variants: true },
+    });
+    if (!product) return { boys: null, girls: null };
+    const imgs = Array.isArray(product.images) ? (product.images as string[]) : [];
+    const variants = Array.isArray(product.variants)
+      ? (product.variants as { id?: string; imageIndex?: number }[])
+      : [];
+    const boysVariant = variants.find(v => (v as {id?:string}).id === 'boys');
+    const girlsVariant = variants.find(v => (v as {id?:string}).id === 'girls');
+    return {
+      boys: imgs[boysVariant?.imageIndex ?? 0] ?? imgs[0] ?? null,
+      girls: imgs[girlsVariant?.imageIndex ?? 1] ?? imgs[1] ?? null,
+    };
+  } catch { return { boys: null, girls: null }; }
+}
+
+export default async function NurseryPage() {
+  const stickerImgs = await getStickerImages();
+
+  const products = [
+    ...STATIC_PRODUCTS.slice(0, 3), // وسام + بازل أولاد + بازل بنات
+    {
+      slug: 'ملصقات',
+      name: 'الملصقات — أولاد',
+      price: 40,
+      image: stickerImgs.boys,
+      emoji: '✨',
+      desc: 'ملصقات تحفيزية للأولاد تُستخدم على لوحات الإنجاز ودفاتر الأطفال كمكافأة يومية.',
+    },
+    {
+      slug: 'ملصقات',
+      name: 'الملصقات — بنات',
+      price: 40,
+      image: stickerImgs.girls,
+      emoji: '🌸',
+      desc: 'ملصقات تحفيزية للبنات تُستخدم على لوحات الإنجاز ودفاتر الأطفال كمكافأة يومية.',
+    },
+    ...STATIC_PRODUCTS.slice(3), // باقي المنتجات
+  ];
   return (
     <main dir="rtl" className="bg-white text-[#1a1a2e] font-sans">
 

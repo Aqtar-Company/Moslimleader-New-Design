@@ -98,6 +98,7 @@ export default function Footer() {
               { href: '/', ar: 'الرئيسية', en: 'Home' },
               { href: '/library', ar: 'المكتبة الرقمية', en: 'Digital Library' },
               { href: '/catalog', ar: '📖 كتالوج المنتجات', en: '📖 Product Catalog' },
+              { href: '/nursery', ar: '🌱 ركن القيم للحضانات', en: '🌱 Values Corner' },
               { href: '/about', ar: 'من نحن', en: 'About' },
               { href: '/contact', ar: 'تواصل معنا', en: 'Contact' },
               { href: '/policy', ar: 'سياسة الخصوصية', en: 'Privacy Policy' },

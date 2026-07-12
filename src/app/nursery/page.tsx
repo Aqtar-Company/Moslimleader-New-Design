@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: 'دليل ركن القيم للحضانات — بيئة تربوية متكاملة تغرس القيم والأخلاق في نفوس أطفالك من خلال القصة واللعبة والتحفيز.',
 };
 
+const BASE = '/wp-content/uploads';
+
 const benefits = [
   { icon: '🌱', label: 'غرس القيم والأخلاق' },
   { icon: '📚', label: 'تنمية حب القراءة' },
@@ -18,46 +20,46 @@ const benefits = [
 
 const products = [
   {
-    emoji: '✨',
-    name: 'شيتات الاستيكر التربوية',
-    price: 40,
-    desc: 'استيكرات ملونة للإنجاز والتحفيز — تُستخدم على لوحات الإنجاز ودفاتر الأطفال كمكافأة يومية.',
+    slug: 'leader-medal',
+    name: 'وسام القائد',
+    price: 500,
+    image: `${BASE}/2024/07/Leader-Medal.webp`,
+    desc: 'برنامج تحفيزي أسبوعي لتكريم الطفل المتميز في الأخلاق والنظام والحفظ والالتزام.',
   },
   {
-    emoji: '🧩',
+    slug: 'puzzle-boys',
     name: 'البازل التربوي',
     price: 220,
+    image: `${BASE}/2024/07/Puzzle-Boys-1.webp`,
     desc: 'بازل تعليمي يُنمي مهارات التفكير ويُعزز القيم من خلال الأنشطة الجماعية داخل الفصل.',
   },
   {
-    emoji: '📚',
+    slug: 'my-son-asks-series',
     name: 'سلسلة ابني يسأل',
     price: 250,
-    desc: 'سلسلة قصصية تُجيب عن أسئلة الأطفال الحقيقية عن الدين والحياة بأسلوب بسيط ومحبب.',
+    image: `${BASE}/2024/07/My-Son-Asks-1.webp`,
+    desc: '7 قصص تُجيب عن أسئلة الأطفال الحقيقية عن الدين والحياة بأسلوب بسيط ومحبب.',
   },
   {
-    emoji: '🕌',
-    name: 'سلسلة لماذا نصلي',
+    slug: 'pray-story',
+    name: 'قصة الصلاة',
     price: 250,
-    desc: 'كتب مصورة تُعرّف الطفل بمعنى الصلاة وأثرها في حياته اليومية بلغة قريبة من عقله وقلبه.',
+    image: `${BASE}/2024/07/Pray-Story-1.webp`,
+    desc: '6 قصص مصورة تُعرّف الطفل بمعنى الصلاة وأثرها في حياته اليومية بلغة قريبة من قلبه.',
   },
   {
-    emoji: '🌟',
-    name: 'سلسلة مسلسل البر',
+    slug: 'righteousness-series',
+    name: 'مسلسل البر',
     price: 300,
-    desc: 'سلسلة قصصية متسلسلة تُغرس البر والصدق والتعاون من خلال شخصيات يُحبها الأطفال.',
+    image: `${BASE}/2024/07/The-Series-of-Righteousness-1.webp`,
+    desc: '7 قصص تُغرس البر والصدق والتعاون من خلال شخصيات يُحبها الأطفال، من سن 5 إلى 12.',
   },
   {
-    emoji: '🏅',
-    name: 'وسام القادة',
-    price: 500,
-    desc: 'برنامج تحفيزي أسبوعي أو شهري لتكريم الطفل المتميز في الأخلاق والحفظ والنظام والالتزام.',
-  },
-  {
-    emoji: '📖',
-    name: 'حامل المصحف',
+    slug: 'masek',
+    name: 'ماسك — حامل المصحف',
     price: 230,
-    desc: 'حامل أنيق لإنشاء ركن قرآن جميل داخل الحضانة يُعلّم الطفل تعظيم كتاب الله.',
+    image: `${BASE}/2024/10/Masek-Cover.webp`,
+    desc: 'حامل مصحف خشبي للأطفال يُهيئ ركن قرآن جميل ويُشجعهم على التلاوة اليومية.',
   },
 ];
 
@@ -71,13 +73,12 @@ const timeline = [
 ];
 
 const pricing = [
-  { name: 'شيتات الاستيكر', price: 40 },
   { name: 'البازل التربوي', price: 220 },
   { name: 'سلسلة ابني يسأل', price: 250 },
-  { name: 'سلسلة لماذا نصلي', price: 250 },
-  { name: 'سلسلة مسلسل البر', price: 300 },
-  { name: 'حامل المصحف', price: 230 },
-  { name: 'وسام القادة', price: 500 },
+  { name: 'قصة الصلاة', price: 250 },
+  { name: 'مسلسل البر', price: 300 },
+  { name: 'ماسك — حامل المصحف', price: 230 },
+  { name: 'وسام القائد', price: 500 },
 ];
 
 export default function NurseryPage() {
@@ -127,7 +128,7 @@ export default function NurseryPage() {
           ركن تربوي يجمع بين القصة، واللعبة، والنشاط، والتحفيز؛ ليصبح تعليم القيم جزءًا من الحياة اليومية داخل الحضانة.
         </p>
         <blockquote className="border-r-4 border-[#4a9c6f] pr-6 text-right bg-[#f8faf9] rounded-xl p-6">
-          <p className="text-xl font-black text-[#1a1a2e] italic">"لأن القيم لا تُحفظ... بل تُعاش."</p>
+          <p className="text-xl font-black text-[#1a1a2e]">"لأن القيم لا تُحفظ... بل تُعاش."</p>
         </blockquote>
       </section>
 
@@ -139,10 +140,7 @@ export default function NurseryPage() {
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {benefits.map((b, i) => (
-              <div
-                key={i}
-                className="bg-white rounded-2xl p-5 text-center shadow-sm hover:shadow-md transition group hover:-translate-y-1"
-              >
+              <div key={i} className="bg-white rounded-2xl p-5 text-center shadow-sm hover:shadow-md transition hover:-translate-y-1">
                 <span className="text-4xl block mb-3">{b.icon}</span>
                 <p className="font-bold text-sm text-gray-800 leading-snug">{b.label}</p>
               </div>
@@ -151,56 +149,71 @@ export default function NurseryPage() {
         </div>
       </section>
 
-      {/* ── How to use: Timeline ── */}
-      <section className="max-w-3xl mx-auto px-6 py-20">
-        <h2 className="text-3xl font-black text-center mb-4">
-          كيف تستخدم المعلمة <span className="text-[#4a9c6f]">ركن القيم؟</span>
-        </h2>
-        <p className="text-center text-gray-500 mb-12">برنامج يومي متكامل داخل الفصل</p>
-        <div className="relative">
-          {/* vertical line */}
-          <div className="absolute right-6 top-0 bottom-0 w-0.5 bg-[#4a9c6f]/20" />
-          <div className="space-y-8">
-            {timeline.map((t, i) => (
-              <div key={i} className="flex gap-6 items-start relative">
-                <div className="relative z-10 flex-shrink-0 w-12 h-12 rounded-full bg-[#4a9c6f] text-white flex items-center justify-center font-black text-sm shadow-md">
-                  {t.step}
+      {/* ── Products ── */}
+      <section className="py-20">
+        <div className="max-w-5xl mx-auto px-6">
+          <h2 className="text-3xl font-black text-center mb-3">
+            مكونات <span className="text-[#4a9c6f]">ركن القيم</span>
+          </h2>
+          <p className="text-gray-500 text-center mb-12">كل منتج مصمم ليؤدي دورًا تربويًا محددًا</p>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
+            {products.map((p) => (
+              <Link
+                key={p.slug}
+                href={`/shop/${p.slug}`}
+                className="group bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition hover:-translate-y-1"
+              >
+                {/* Image */}
+                <div className="relative bg-[#f9f7f4] aspect-square overflow-hidden">
+                  <img
+                    src={p.image}
+                    alt={p.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                  />
+                  {/* Price badge */}
+                  <span className="absolute top-3 right-3 bg-[#4a9c6f] text-white text-xs font-black px-3 py-1.5 rounded-full shadow">
+                    {p.price} ج.م
+                  </span>
                 </div>
-                <div className="flex-1 bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-2xl">{t.icon}</span>
-                    <h3 className="font-black text-[#1a1a2e]">{t.title}</h3>
-                  </div>
-                  <p className="text-gray-600 text-sm leading-relaxed">{t.desc}</p>
+                {/* Info */}
+                <div className="p-4">
+                  <h3 className="font-black text-[#1a1a2e] text-sm mb-1 leading-snug">{p.name}</h3>
+                  <p className="text-gray-500 text-xs leading-relaxed line-clamp-2">{p.desc}</p>
+                  <span className="mt-3 inline-block text-[#4a9c6f] text-xs font-black group-hover:underline">
+                    اعرف أكثر ←
+                  </span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Products ── */}
-      <section className="bg-[#1a1a2e] py-20">
-        <div className="max-w-5xl mx-auto px-6">
-          <h2 className="text-3xl font-black text-white text-center mb-3">
-            مكونات <span className="text-[#4a9c6f]">ركن القيم</span>
+      {/* ── How to use: Timeline ── */}
+      <section className="bg-[#f5f0e8] py-20">
+        <div className="max-w-3xl mx-auto px-6">
+          <h2 className="text-3xl font-black text-center mb-4">
+            كيف تستخدم المعلمة <span className="text-[#4a9c6f]">ركن القيم؟</span>
           </h2>
-          <p className="text-white/50 text-center mb-12">كل منتج مصمم ليؤدي دورًا تربويًا محددًا</p>
-          <div className="grid md:grid-cols-2 gap-5">
-            {products.map((p, i) => (
-              <div key={i} className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl p-6 transition group">
-                <div className="flex items-start gap-4">
-                  <span className="text-4xl shrink-0">{p.emoji}</span>
-                  <div className="flex-1">
-                    <div className="flex items-baseline justify-between gap-2 mb-2">
-                      <h3 className="font-black text-white">{p.name}</h3>
-                      <span className="text-[#F5C518] font-black text-sm shrink-0">{p.price} ج</span>
+          <p className="text-center text-gray-500 mb-12">برنامج يومي متكامل داخل الفصل</p>
+          <div className="relative">
+            <div className="absolute right-6 top-0 bottom-0 w-0.5 bg-[#4a9c6f]/20" />
+            <div className="space-y-8">
+              {timeline.map((t, i) => (
+                <div key={i} className="flex gap-6 items-start relative">
+                  <div className="relative z-10 flex-shrink-0 w-12 h-12 rounded-full bg-[#4a9c6f] text-white flex items-center justify-center font-black text-sm shadow-md">
+                    {t.step}
+                  </div>
+                  <div className="flex-1 bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-2xl">{t.icon}</span>
+                      <h3 className="font-black text-[#1a1a2e]">{t.title}</h3>
                     </div>
-                    <p className="text-white/60 text-sm leading-relaxed">{p.desc}</p>
+                    <p className="text-gray-600 text-sm leading-relaxed">{t.desc}</p>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -214,7 +227,7 @@ export default function NurseryPage() {
         <p className="text-gray-600 text-lg mb-10">
           لا توجد باقة واحدة ثابتة... بل يتم تصميم الركن بما يناسب كل حضانة.
         </p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { icon: '👦', label: 'عدد الأطفال' },
             { icon: '🎂', label: 'الفئة العمرية' },

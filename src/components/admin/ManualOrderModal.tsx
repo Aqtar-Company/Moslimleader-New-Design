@@ -31,6 +31,7 @@ const FALLBACK_GOVS: Array<{ id: string; name: string; shipping: number }> = [
   { id: 'giza', name: 'الجيزة', shipping: 50 },
   { id: 'qalyubia', name: 'القليوبية', shipping: 55 },
   { id: 'alexandria', name: 'الإسكندرية', shipping: 65 },
+  { id: 'borg-el-arab', name: 'برج العرب', shipping: 85 },
 ];
 
 export interface ManualOrderPrefill {

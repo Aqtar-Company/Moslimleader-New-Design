@@ -383,6 +383,7 @@ const GOVERNORATE_TO_BOSTA: Record<string, string> = {
   giza: 'Giza',
   qalyubia: 'Qalyubia',
   alexandria: 'Alexandria',
+  'borg-el-arab': 'Alexandria',
   sharqia: 'Sharqia',
   dakahlia: 'Dakahlia',
   gharbia: 'Gharbia',

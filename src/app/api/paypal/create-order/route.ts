@@ -100,9 +100,9 @@ export async function POST(req: NextRequest) {
     if (couponCode) {
       // Try new Coupon model first
       const coupon = await prisma.coupon.findFirst({
-        where: { isActive: true },
-        select: { discount: true, code: true },
-      }).then(rows => rows?.code?.toLowerCase() === couponCode.toLowerCase() ? rows : null).catch(() => null);
+        where: { code: couponCode, isActive: true },
+        select: { discount: true },
+      }).catch(() => null);
       if (coupon) {
         const pct = Math.min(100, Number(coupon.discount));
         discountUsd = Math.round(totalUsd * pct) / 100;

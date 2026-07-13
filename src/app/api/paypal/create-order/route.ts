@@ -5,12 +5,20 @@ import { createPayPalOrder } from '@/lib/paypal';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
 import { egpToUsd, toUsd } from '@/lib/currency';
+import { applyOverride, loadStaticOverrides } from '@/lib/product-overrides';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
   try {
     const auth = await getAuthUser();
     if (!auth) {
       return NextResponse.json({ error: 'يجب تسجيل الدخول للدفع عبر PayPal' }, { status: 401 });
+    }
+
+    // Rate limit: 10 create-order requests per user per hour
+    const rl = checkRateLimit(`paypal-create:${auth.userId}`, 10, 60 * 60 * 1000);
+    if (!rl.allowed) {
+      return NextResponse.json({ error: 'تجاوزت الحد المسموح به، حاول لاحقاً' }, { status: 429 });
     }
 
     const body = await req.json();
@@ -23,17 +31,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'عدد المنتجات كبير جداً' }, { status: 400 });
     }
 
-    // Currency of the discount and shipping amounts sent from the frontend
-    // e.g. 'SAR', 'EGP', 'USD', 'AED' ...
-    const discountCurrency: string = String(body?.discountCurrency || 'USD').toUpperCase();
     const shippingCurrency: string = String(body?.shippingCurrency || 'USD').toUpperCase();
+    const couponCode: string = String(body?.couponCode || '').trim().toUpperCase();
 
     // Batch-fetch all products in one query instead of N+1
     const productIds = items.map((it: any) => String(it.productId));
     const dbProducts = await prisma.product.findMany({
       where: { OR: [{ id: { in: productIds } }, { slug: { in: productIds } }] },
     });
-    const dbMap = new Map(dbProducts.flatMap(p => [[p.id, p], [p.slug, p]]));
+
+    // Apply product overrides for static products (admin price/image changes)
+    const overrides = await loadStaticOverrides().catch(() => ({}) as Record<string, any>);
+    const dbProductsWithOverrides = dbProducts.map(p =>
+      p.source === 'static' ? (applyOverride(p as any, (overrides as Record<string, any>)[p.id]) ?? p) : p
+    );
+    const dbMap = new Map(dbProductsWithOverrides.flatMap(p => [[p.id, p], [p.slug, p]]));
 
     let totalUsd = 0;
     for (const item of items) {
@@ -79,31 +91,40 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: stockErr.message }, { status: 409 });
     }
 
-    // Convert shipping from local currency to USD
+    // Convert shipping from local currency to USD (client-supplied, capped)
     const rawShipping = Math.max(0, Number(body?.shippingUsd) || 0);
     const shippingUsd = Math.min(500, toUsd(rawShipping, shippingCurrency));
 
-    // Discount: either percentage (discountCurrency === 'PCT') or local currency amount
-    const rawDiscount = Math.max(0, Number(body?.discountUsd) || 0);
-    let discountUsd: number;
-    if (discountCurrency === 'PCT') {
-      // rawDiscount is a percentage (e.g. 95 = 95%)
-      const pct = Math.min(100, rawDiscount);
-      discountUsd = Math.round(totalUsd * pct) / 100;
-    } else {
-      discountUsd = Math.min(totalUsd + shippingUsd, toUsd(rawDiscount, discountCurrency));
+    // Validate coupon server-side — never trust client-supplied discount amounts
+    let discountUsd = 0;
+    if (couponCode) {
+      // Try new Coupon model first
+      const coupon = await prisma.coupon.findFirst({
+        where: { isActive: true },
+        select: { discount: true, code: true },
+      }).then(rows => rows?.code?.toLowerCase() === couponCode.toLowerCase() ? rows : null).catch(() => null);
+      if (coupon) {
+        const pct = Math.min(100, Number(coupon.discount));
+        discountUsd = Math.round(totalUsd * pct) / 100;
+      } else {
+        // Fallback: legacy Setting-based coupons
+        const setting = await prisma.setting.findUnique({ where: { key: 'coupons' } }).catch(() => null);
+        const legacyCoupons = (setting?.value ?? []) as { code: string; pct: number; active?: boolean }[];
+        const matched = legacyCoupons.find(c => c.code?.toLowerCase() === couponCode.toLowerCase() && c.active !== false);
+        if (matched) discountUsd = Math.round(totalUsd * matched.pct) / 100;
+      }
     }
 
     const finalUsd = Math.max(0.01, Math.round((totalUsd + shippingUsd - discountUsd) * 100) / 100);
     const referenceId = `${auth.userId}-${Date.now()}`;
     const paypalOrder = await createPayPalOrder(finalUsd, 'USD', referenceId);
 
-    // Persist the server-verified amount so capture-order can cross-check
-    // against it and reject if capturedAmount is far less (replay attack guard).
+    // Persist the server-verified amounts so capture-order can cross-check
+    // without trusting anything from the client body.
     await prisma.setting.upsert({
       where: { key: `pp_pending_${paypalOrder.id}` },
-      create: { key: `pp_pending_${paypalOrder.id}`, value: { expectedUsd: finalUsd, userId: auth.userId, createdAt: Date.now() } },
-      update: { value: { expectedUsd: finalUsd, userId: auth.userId, createdAt: Date.now() } },
+      create: { key: `pp_pending_${paypalOrder.id}`, value: { expectedUsd: finalUsd, discountUsd, couponCode: couponCode || null, userId: auth.userId, createdAt: Date.now() } },
+      update: { value: { expectedUsd: finalUsd, discountUsd, couponCode: couponCode || null, userId: auth.userId, createdAt: Date.now() } },
     });
 
     return NextResponse.json({

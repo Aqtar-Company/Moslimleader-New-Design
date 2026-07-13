@@ -3,6 +3,7 @@ import { promisify } from 'util';
 import { writeFile, unlink, readFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { governorates } from './shipping';
 
 const execAsync = promisify(exec);
 
@@ -79,12 +80,15 @@ function buildInvoiceHtml(data: InvoiceData, logoDataUri: string): string {
     hour: '2-digit', minute: '2-digit',
   });
 
+  const govName = data.shippingAddress.governorate
+    ? (governorates.find(g => g.id === data.shippingAddress.governorate)?.name ?? data.shippingAddress.governorate)
+    : undefined;
   const addrParts = [
     data.shippingAddress.street,
     data.shippingAddress.building,
     data.shippingAddress.city,
     data.shippingAddress.region,
-    data.shippingAddress.governorate,
+    govName,
     data.shippingAddress.country,
   ].filter(Boolean);
   const addressLine = esc(addrParts.join('، '));

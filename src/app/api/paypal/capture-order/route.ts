@@ -5,9 +5,11 @@ import { capturePayPalOrder, PayPalCaptureError } from '@/lib/paypal';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
 import { sendOrderEmails } from '@/lib/order-email';
-import { egpToUsd, toUsd } from '@/lib/currency';
+import { egpToUsd } from '@/lib/currency';
 import { attributeOrderToCampaign } from '@/lib/campaign-attribution';
 import { logActionSafe } from '@/lib/audit-log';
+import { applyOverride, loadStaticOverrides } from '@/lib/product-overrides';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
   try {
@@ -49,12 +51,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'عنوان الشارع غير صحيح' }, { status: 400 });
     }
 
+    // Rate limit: 20 capture attempts per user per hour (higher than create since
+    // the PayPal popup sometimes triggers a retry on slow connections)
+    const captureAuth = auth ?? { userId: '' };
+    const rlKey = captureAuth.userId || req.headers.get('x-forwarded-for') || 'anon';
+    const rl = checkRateLimit(`paypal-capture:${rlKey}`, 20, 60 * 60 * 1000);
+    if (!rl.allowed) {
+      return NextResponse.json({ error: 'تجاوزت الحد المسموح به، حاول لاحقاً' }, { status: 429 });
+    }
+
     // Batch-fetch all products in one query
     const productIds = items.map((it: any) => String(it.productId));
     const dbProductsList = await prisma.product.findMany({
       where: { OR: [{ id: { in: productIds } }, { slug: { in: productIds } }] },
     });
-    const dbProductMap = new Map(dbProductsList.flatMap(p => [[p.id, p], [p.slug, p]]));
+
+    // Apply product overrides for static products (admin price/image changes)
+    const overrides = await loadStaticOverrides().catch(() => ({}) as Record<string, any>);
+    const dbProductsOverridden = dbProductsList.map(p =>
+      p.source === 'static' ? (applyOverride(p as any, (overrides as Record<string, any>)[p.id]) ?? p) : p
+    );
+    const dbProductMap = new Map(dbProductsOverridden.flatMap(p => [[p.id, p], [p.slug, p]]));
 
     let totalUsd = 0;
     const resolvedItems: any[] = [];
@@ -106,18 +123,18 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Read stored discount and shipping from the server-verified pp_pending entry.
+    // Never trust client-supplied discount/shipping amounts here.
+    const pendingSettingEarly = await prisma.setting.findUnique({ where: { key: `pp_pending_${paypalOrderId}` } });
+    const pendingData = pendingSettingEarly?.value as Record<string, unknown> | null;
+    const storedDiscountUsd = Number(pendingData?.discountUsd ?? 0);
+    const storedCouponCode = String(pendingData?.couponCode ?? '');
+
     const rawShipping = Math.max(0, Number(body?.shippingUsd) || 0);
-    const rawDiscount = Math.max(0, Number(body?.discountUsd) || 0);
     const shippingCurrencyEn = String(body?.shippingCurrency || 'USD').toUpperCase();
-    const discountCurrencyEn = String(body?.discountCurrency || 'USD').toUpperCase();
+    const { toUsd } = await import('@/lib/currency');
     const shippingUsd = Math.min(500, toUsd(rawShipping, shippingCurrencyEn));
-    let discountUsd: number;
-    if (discountCurrencyEn === 'PCT') {
-      const pct = Math.min(100, rawDiscount);
-      discountUsd = Math.round(totalUsd * pct) / 100;
-    } else {
-      discountUsd = Math.min(totalUsd + shippingUsd, toUsd(rawDiscount, discountCurrencyEn));
-    }
+    const discountUsd = storedDiscountUsd;
     const expectedUsd = Math.max(0.01, Math.round((totalUsd + shippingUsd - discountUsd) * 100) / 100);
 
     // Cross-check the server-verified expected amount from create-order.
@@ -125,8 +142,7 @@ export async function POST(req: NextRequest) {
     // capturedAmount will be far less than the recalculated expectedUsd —
     // that's a replay attack. Reject BEFORE capturing so PayPal never
     // moves money for a cart we won't honour.
-    const pendingSetting = await prisma.setting.findUnique({ where: { key: `pp_pending_${paypalOrderId}` } });
-    const storedExpected = pendingSetting ? Number((pendingSetting.value as Record<string, unknown>)?.expectedUsd ?? 0) : null;
+    const storedExpected = pendingData ? Number(pendingData.expectedUsd ?? 0) : null;
 
     const captureResult = await capturePayPalOrder(paypalOrderId);
     if (captureResult.status !== 'COMPLETED') {
@@ -226,7 +242,7 @@ export async function POST(req: NextRequest) {
           total: persistedTotal,
           shippingCost: shippingUsd,
           discount: discountUsd,
-          couponCode: (body?.couponCode || '').trim().toUpperCase() || null,
+          couponCode: storedCouponCode || null,
           paymentMethod: 'paypal',
           paypalOrderId,
           shippingAddress,

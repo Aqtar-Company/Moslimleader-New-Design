@@ -220,7 +220,7 @@ export async function POST(req: NextRequest) {
   const context = await buildAssistantContext();
   const profileBlock = renderProfileForPrompt(merged);
   const countryCode = (body.countryCode ?? 'EG').toUpperCase().slice(0, 2);
-  const localPriceBlock = buildLocalPriceBlock(context.rawProducts, countryCode);
+  const localPriceBlock = buildLocalPriceBlock(context.rawProducts, countryCode, context.rawBooks, context.rawSeries);
   const enrichedPrompt =
     (localPriceBlock ? `${localPriceBlock}\n\n` : '') +
     `${settings.systemPrompt}\n\n` +

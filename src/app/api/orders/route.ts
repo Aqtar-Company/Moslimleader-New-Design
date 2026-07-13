@@ -51,9 +51,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'بيانات الطلب غير مكتملة' }, { status: 400 });
     }
 
-    const VALID_PAY = ['cod', 'card', 'vodafone', 'instapay', 'paypal', 'bank', 'gift'];
+    // PayPal orders must go through /api/paypal/capture-order which verifies
+    // payment with PayPal before creating the order. Accepting 'paypal' here
+    // would let anyone forge a paid order with a fake paypalOrderId.
+    const VALID_PAY = ['cod', 'card', 'vodafone', 'instapay', 'bank', 'gift'];
     if (!VALID_PAY.includes(paymentMethod)) {
       return NextResponse.json({ error: 'طريقة دفع غير صحيحة' }, { status: 400 });
+    }
+
+    // Local payment methods (COD, Vodafone, Instapay) are Egypt-only.
+    // Block them for international addresses to prevent unfulfillable orders.
+    const LOCAL_ONLY_METHODS = ['cod', 'vodafone', 'instapay'];
+    const addrCountry = (shippingAddress as Record<string, string>)?.country?.toUpperCase();
+    if (LOCAL_ONLY_METHODS.includes(paymentMethod) && addrCountry && addrCountry !== 'EG') {
+      return NextResponse.json({ error: 'هذه الطريقة متاحة للشحن داخل مصر فقط' }, { status: 400 });
     }
 
     // Resolve productId for each item (handle static products which have string IDs)
@@ -172,7 +183,7 @@ export async function POST(req: NextRequest) {
         const created = await tx.order.create({
           data: {
             userId: auth.userId,
-            status: paymentMethod === 'paypal' && paypalOrderId ? 'paid' : 'pending',
+            status: 'pending',
             total: verifiedTotal,
             shippingCost: verifiedShipping,
             discount: verifiedDiscount,

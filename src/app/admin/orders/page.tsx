@@ -489,9 +489,14 @@ export default function OrdersPage() {
 
   // Gifts don't generate revenue — they're a marketing cost. Exclude them
   // from the revenue strip so the number reflects real money in.
-  const totalRevenue = filtered
-    .filter(o => o.status !== 'cancelled' && o.paymentMethod !== 'gift')
-    .reduce((s, o) => s + o.total, 0);
+  // Group by currency to avoid mixing EGP + USD + SAR totals.
+  const revenueOrders = filtered.filter(o => o.status !== 'cancelled' && o.paymentMethod !== 'gift');
+  const revenueByCurrency = revenueOrders.reduce<Record<string, number>>((acc, o) => {
+    const cur = o.currency || 'EGP';
+    acc[cur] = (acc[cur] ?? 0) + o.total;
+    return acc;
+  }, {});
+  const totalRevenue = revenueOrders.reduce((s, o) => s + o.total, 0);
   const giftCount = filtered.filter(o => o.paymentMethod === 'gift' && o.status !== 'cancelled').length;
   const giftCost = filtered
     .filter(o => o.paymentMethod === 'gift' && o.status !== 'cancelled')
@@ -595,7 +600,7 @@ export default function OrdersPage() {
 
       {filtered.length > 0 && (
         <div className="text-sm text-gray-500 flex flex-wrap gap-x-4 gap-y-1">
-          <span>{filtered.length} طلب — إيرادات: <span className="font-bold text-gray-900">{totalRevenue.toLocaleString('en-US')} {filtered[0]?.currency || 'EGP'}</span></span>
+          <span>{filtered.length} طلب — إيرادات: <span className="font-bold text-gray-900">{Object.entries(revenueByCurrency).map(([cur, amt]) => `${amt.toLocaleString('en-US')} ${cur}`).join(' + ') || '0 EGP'}</span></span>
           {giftCount > 0 && (
             <span className="text-pink-700">🎁 {giftCount} هدية — تكلفة: <span className="font-bold">{Math.round(giftCost).toLocaleString('en-US')} ج.م</span></span>
           )}

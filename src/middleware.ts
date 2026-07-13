@@ -17,7 +17,10 @@ export function middleware(req: NextRequest) {
   }
 
   const origin = req.headers.get('origin');
-  if (origin && !ALLOWED_ORIGINS.includes(origin)) {
+  // Block cross-origin mutations and requests with no Origin header.
+  // Requests without Origin could be crafted API calls using stolen cookies.
+  // Webhooks and track endpoints are already excluded above.
+  if (!origin || !ALLOWED_ORIGINS.includes(origin)) {
     return NextResponse.json({ error: 'Origin not allowed' }, { status: 403 });
   }
 

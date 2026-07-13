@@ -1,5 +1,6 @@
 import { generateInvoicePdf } from './invoice-pdf';
 import { getTransporter } from './smtp';
+import { governorates } from './shipping';
 
 interface OrderEmailItem {
   productName: string;
@@ -58,12 +59,15 @@ function escapeHtml(s: string | null | undefined): string {
 }
 
 function buildAddressLine(addr: OrderEmailData['shippingAddress']): string {
+  const govName = addr.governorate
+    ? (governorates.find(g => g.id === addr.governorate)?.name ?? addr.governorate)
+    : undefined;
   const parts = [
     addr.street,
     addr.building,
     addr.city,
     addr.region,
-    addr.governorate,
+    govName,
     addr.country,
   ].filter(Boolean);
   return escapeHtml(parts.join('، '));

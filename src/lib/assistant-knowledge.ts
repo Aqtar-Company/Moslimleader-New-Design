@@ -28,6 +28,10 @@ export interface AssistantContext {
   text: string;
   /** Raw product list for generating localized price blocks per user country. */
   rawProducts: RawContextProduct[];
+  /** Raw book list for localized pricing. */
+  rawBooks: RawContextBook[];
+  /** Raw series list for localized pricing. */
+  rawSeries: RawContextSeries[];
   /** Coarse stats so the admin UI can show "what the bot knows". */
   stats: {
     productCount: number;
@@ -342,6 +346,8 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
       price: p.price,
       priceUsd: p.priceUsd,
     })),
+    rawBooks: books.map(b => ({ title: b.title, id: b.id, price: b.price ?? 0 })),
+    rawSeries: seriesList.map(s => ({ name: s.name, id: s.id, seriesPrice: s.seriesPrice ?? 0 })),
     stats: {
       productCount: products.length,
       bookCount: books.length,
@@ -373,12 +379,26 @@ export async function getAssistantFaqs(): Promise<string> {
   return typeof row.value === 'string' ? row.value : JSON.stringify(row.value);
 }
 
+export interface RawContextBook {
+  title: string;
+  id: string;
+  price: number;
+}
+
+export interface RawContextSeries {
+  name: string;
+  id: string;
+  seriesPrice: number;
+}
+
 // Build a localized price block for non-Egyptian users so the AI
 // knows exactly what price to quote in the customer's local currency.
 // Uses the same formula as geo-pricing.ts: priceUsd → local via usdRate.
 export function buildLocalPriceBlock(
   rawProducts: RawContextProduct[],
   countryCode: string,
+  rawBooks: RawContextBook[] = [],
+  rawSeries: RawContextSeries[] = [],
 ): string {
   const zone = countryToZone(countryCode);
 
@@ -391,19 +411,39 @@ export function buildLocalPriceBlock(
   const usdRate = cc?.usdRate ?? 1;
   const countryName = cc?.nameAr ?? countryCode;
 
+  const toLocal = (egp: number) => {
+    const usd = egp / 50;
+    const local = Math.round(usd * usdRate * 100) / 100;
+    return local < 10 ? local.toFixed(2) : String(Math.round(local));
+  };
+
   const lines: string[] = [];
   lines.push(`## ⚠️ تعليمة عملة العميل — أولوية قصوى:`);
   lines.push(`العميل من ${countryName}. يُحظر تمامًا ذكر أي سعر بالجنيه المصري (ج.م) في هذه المحادثة.`);
   lines.push(`استخدم الأسعار التالية بـ${symbol} فقط — هذه الأسعار الرسمية للمتجر لعملاء ${countryName}:`);
 
-  for (const p of rawProducts) {
-    const usdPrice = (p.priceUsd && p.priceUsd > 0) ? p.priceUsd : p.price / 50;
-    const localPrice = Math.round(usdPrice * usdRate * 100) / 100;
-    // Format: round to 2 decimals for KWD/BHD/OMR, integer for others
-    const formatted = localPrice < 10
-      ? localPrice.toFixed(2)
-      : String(Math.round(localPrice));
-    lines.push(`- ${p.name}: ${formatted} ${symbol}`);
+  if (rawProducts.length > 0) {
+    lines.push(`### المنتجات:`);
+    for (const p of rawProducts) {
+      const usdPrice = (p.priceUsd && p.priceUsd > 0) ? p.priceUsd : p.price / 50;
+      const localPrice = Math.round(usdPrice * usdRate * 100) / 100;
+      const formatted = localPrice < 10 ? localPrice.toFixed(2) : String(Math.round(localPrice));
+      lines.push(`- ${p.name}: ${formatted} ${symbol}`);
+    }
+  }
+
+  if (rawBooks.length > 0) {
+    lines.push(`### الكتب الرقمية:`);
+    for (const b of rawBooks) {
+      if (b.price > 0) lines.push(`- ${b.title}: ${toLocal(b.price)} ${symbol}`);
+    }
+  }
+
+  if (rawSeries.length > 0) {
+    lines.push(`### سلاسل الكتب:`);
+    for (const s of rawSeries) {
+      if (s.seriesPrice > 0) lines.push(`- ${s.name}: ${toLocal(s.seriesPrice)} ${symbol}`);
+    }
   }
 
   return lines.join('\n');

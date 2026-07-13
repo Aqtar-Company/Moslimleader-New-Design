@@ -270,7 +270,7 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
     fetchUserCountryCode(input.psid),
   ]);
   const profileBlock = renderProfileForPrompt(mergedProfile);
-  const localPriceBlock = buildLocalPriceBlock(context.rawProducts, countryCode);
+  const localPriceBlock = buildLocalPriceBlock(context.rawProducts, countryCode, context.rawBooks, context.rawSeries);
   const enrichedPrompt =
     (localPriceBlock ? `${localPriceBlock}\n\n` : '') +
     `${settings.systemPrompt}\n\n` +

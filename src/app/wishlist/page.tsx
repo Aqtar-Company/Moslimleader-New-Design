@@ -6,11 +6,13 @@ import Link from 'next/link';
 import { useWishlist } from '@/context/WishlistContext';
 import { useCart } from '@/context/CartContext';
 import { useLang } from '@/context/LanguageContext';
+import { useRegionalPricing } from '@/context/RegionalPricingContext';
 
 export default function WishlistPage() {
   const { items, remove, clear } = useWishlist();
   const { addItem } = useCart();
   const { t, isRtl } = useLang();
+  const { getProductPrice, formatPrice } = useRegionalPricing();
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [shareLoading, setShareLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -110,7 +112,7 @@ export default function WishlistPage() {
                   <h3 className="font-bold text-gray-900 text-sm leading-snug hover:text-purple-700 transition line-clamp-2">{name}</h3>
                 </Link>
                 <span className="font-black text-gray-900 text-base">
-                  {product.price} <span className="text-xs font-normal text-gray-500">{t('cart.currency')}</span>
+                  {formatPrice(getProductPrice(product as any))}
                 </span>
 
                 <div className="mt-auto flex flex-col gap-2 pt-1">

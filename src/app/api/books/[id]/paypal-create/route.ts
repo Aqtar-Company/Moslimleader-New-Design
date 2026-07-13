@@ -61,8 +61,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Store expected amount so capture can verify without recalculating
     await prisma.setting.upsert({
       where: { key: `pp_pending_${paypalOrder.id}` },
-      create: { key: `pp_pending_${paypalOrder.id}`, value: { expectedUsd: finalUsd, userId: auth.userId, createdAt: Date.now() } },
-      update: { value: { expectedUsd: finalUsd, userId: auth.userId, createdAt: Date.now() } },
+      create: { key: `pp_pending_${paypalOrder.id}`, value: { expectedUsd: finalUsd, userId: auth.userId, bookId, type: 'book', createdAt: Date.now() } },
+      update: { value: { expectedUsd: finalUsd, userId: auth.userId, bookId, type: 'book', createdAt: Date.now() } },
     });
 
     return NextResponse.json({

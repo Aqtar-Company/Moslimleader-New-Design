@@ -55,6 +55,26 @@ export async function POST(req: NextRequest) {
       if (!ALLOWED_EXTS.includes(ext)) {
         return NextResponse.json({ error: 'امتداد الصورة غير مدعوم' }, { status: 400 });
       }
+      // Verify image magic bytes to prevent disguised file uploads
+      const isJpeg = buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF;
+      const isPng  = buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47;
+      const isWebp = buffer.length > 11 &&
+                     buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+                     buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50;
+      const isAvif = buffer.length > 11 &&
+                     buffer[4] === 0x66 && buffer[5] === 0x74 && buffer[6] === 0x79 && buffer[7] === 0x70;
+      if (['jpg','jpeg'].includes(ext) && !isJpeg) {
+        return NextResponse.json({ error: 'محتوى الملف لا يتوافق مع الامتداد' }, { status: 400 });
+      }
+      if (ext === 'png' && !isPng) {
+        return NextResponse.json({ error: 'محتوى الملف لا يتوافق مع الامتداد' }, { status: 400 });
+      }
+      if (ext === 'webp' && !isWebp) {
+        return NextResponse.json({ error: 'محتوى الملف لا يتوافق مع الامتداد' }, { status: 400 });
+      }
+      if (ext === 'avif' && !isAvif) {
+        return NextResponse.json({ error: 'محتوى الملف لا يتوافق مع الامتداد' }, { status: 400 });
+      }
       const dir = path.join(process.cwd(), 'public', 'covers');
       await mkdir(dir, { recursive: true });
       const filename = `${randomUUID()}.${ext}`;

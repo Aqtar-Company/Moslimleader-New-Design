@@ -45,6 +45,12 @@ export async function GET(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'الكتاب غير موجود' }, { status: 404 });
     }
 
+    // Reject filePaths that could escape the books directory
+    if (!/^[\w-]+\.pdf$/.test(book.filePath)) {
+      console.error('[books page] suspicious filePath rejected', { bookId, filePath: book.filePath });
+      return NextResponse.json({ error: 'الكتاب غير موجود' }, { status: 404 });
+    }
+
     if (!book.isPublished && (!auth || auth.role !== 'admin')) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
     }

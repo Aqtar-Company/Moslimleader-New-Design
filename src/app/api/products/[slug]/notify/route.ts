@@ -2,9 +2,16 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getMergedStaticProduct } from '@/lib/product-overrides';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+    const rl = checkRateLimit(`notify:${ip}`, 5, 60 * 60 * 1000);
+    if (!rl.allowed) {
+      return NextResponse.json({ error: 'حاول مرة أخرى لاحقاً' }, { status: 429 });
+    }
+
     const { slug } = await params;
     const body = await req.json();
     const { name, email, phone } = body as { name?: string; email?: string; phone?: string };

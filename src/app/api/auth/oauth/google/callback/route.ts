@@ -7,11 +7,18 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get('code');
   const error = searchParams.get('error');
+  const receivedState = searchParams.get('state');
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://moslimleader.com';
 
   if (error || !code) {
     return NextResponse.redirect(`${baseUrl}/auth?error=google_denied`);
+  }
+
+  // Verify CSRF state cookie
+  const cookieState = req.cookies.get('oauth_state')?.value;
+  if (!cookieState || !receivedState || cookieState !== receivedState) {
+    return NextResponse.redirect(`${baseUrl}/auth?error=google_csrf`);
   }
 
   try {
@@ -93,6 +100,8 @@ export async function GET(req: NextRequest) {
     const token = await signToken({ userId: user.id, email: user.email, role: user.role, name: user.name });
     const response = NextResponse.redirect(`${baseUrl}/`);
     response.cookies.set(makeAuthCookie(token));
+    // Clear the CSRF state cookie
+    response.cookies.set('oauth_state', '', { httpOnly: true, maxAge: 0, path: '/' });
 
     return response;
   } catch (err) {

@@ -50,6 +50,15 @@ export async function POST(req: NextRequest) {
     if (!items?.length || !paymentMethod || !shippingAddress) {
       return NextResponse.json({ error: 'بيانات الطلب غير مكتملة' }, { status: 400 });
     }
+    if (items.length > 50) {
+      return NextResponse.json({ error: 'عدد المنتجات كبير جداً' }, { status: 400 });
+    }
+    for (const item of items) {
+      const qty = Number(item.quantity);
+      if (!Number.isInteger(qty) || qty < 1 || qty > 999) {
+        return NextResponse.json({ error: 'كمية غير صحيحة' }, { status: 400 });
+      }
+    }
 
     // PayPal orders must go through /api/paypal/capture-order which verifies
     // payment with PayPal before creating the order. Accepting 'paypal' here

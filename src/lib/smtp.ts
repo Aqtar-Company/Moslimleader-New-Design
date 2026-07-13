@@ -21,7 +21,7 @@ export function getTransporter(): Transporter {
     port,
     secure: port === 465, // 465 = SSL, 587 = STARTTLS
     auth: { user, pass },
-    tls: { rejectUnauthorized: false },
+    tls: { rejectUnauthorized: true },
     connectionTimeout: 10_000,
     greetingTimeout: 10_000,
     socketTimeout: 15_000,

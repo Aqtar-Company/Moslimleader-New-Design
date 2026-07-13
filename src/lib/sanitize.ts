@@ -13,6 +13,7 @@ export function sanitizeHtml(html: string): string {
       .replace(/<form\b[^>]*>[\s\S]*?<\/form>/gi, '')
       .replace(/\bon\w+\s*=\s*"[^"]*"/gi, '')
       .replace(/\bon\w+\s*=\s*'[^']*'/gi, '')
+      .replace(/\bon\w+\s*=\s*[^'"\s>][^\s>]*/gi, '')
       .replace(/href\s*=\s*"javascript:[^"]*"/gi, '')
       .replace(/href\s*=\s*'javascript:[^']*'/gi, '');
   }

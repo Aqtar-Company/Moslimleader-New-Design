@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
 import { sendOrderEmails } from '@/lib/order-email';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { applyOverride, loadStaticOverrides } from '@/lib/product-overrides';
 
 // POST /api/orders/guest-notify — guest checkout endpoint.
 //
@@ -62,8 +63,14 @@ export async function POST(req: NextRequest) {
     if (!paymentMethod || !['cod', 'card', 'vodafone', 'instapay'].includes(paymentMethod)) {
       return NextResponse.json({ error: 'طريقة دفع غير صحيحة' }, { status: 400 });
     }
-    if (typeof total !== 'number' || total <= 0) {
-      return NextResponse.json({ error: 'المبلغ غير صحيح' }, { status: 400 });
+    if (items.length > 50) {
+      return NextResponse.json({ error: 'عدد المنتجات كبير جداً' }, { status: 400 });
+    }
+    for (const item of items) {
+      const qty = Number(item.quantity);
+      if (!Number.isInteger(qty) || qty < 1 || qty > 999) {
+        return NextResponse.json({ error: 'كمية غير صحيحة' }, { status: 400 });
+      }
     }
 
     const firstName = String(addr.firstName).trim();
@@ -74,10 +81,14 @@ export async function POST(req: NextRequest) {
     // Synthetic email keyed on the cleaned phone — keeps a single
     // User row per phone across repeat guest orders.
     const syntheticEmail = `guest-${phoneClean || `ip-${ip.replace(/\./g, '-')}-${Date.now()}`}@guest.moslimleader.com`;
-    const subtotal = items.reduce(
-      (s: number, it: { unitPrice: number; quantity: number }) => s + (it.unitPrice ?? 0) * (it.quantity ?? 1),
-      0,
-    );
+
+    // Shared server-computed values (populated inside the try block; used in email below)
+    let serverSubtotal = 0;
+    let serverShipping = 0;
+    let serverDiscount = 0;
+    let serverTotal = 0;
+    let couponStr = '';
+    let resolvedItemsForEmail: Array<{ productName: string; productImage: string | null; quantity: number; unitPrice: number }> = [];
 
     let createdOrderId: string | null = null;
     try {
@@ -86,6 +97,7 @@ export async function POST(req: NextRequest) {
       // checkouts can carry static-product slugs that aren't in the
       // Product table yet — without this resolution the OrderItem FK
       // would fail. Mirrors the auth'd /api/orders POST flow.
+      const overrides = await loadStaticOverrides().catch(() => ({}) as Record<string, any>);
       const resolvedItems = await Promise.all(
         items.map(async (item: { productId?: string; productName?: string; productImage?: string | null; quantity?: number; unitPrice?: number; selectedModel?: number }) => {
           const reqId = String(item.productId ?? '').trim();
@@ -122,12 +134,16 @@ export async function POST(req: NextRequest) {
               });
             }
           }
+          // Apply product overrides for static products (admin price changes)
+          const merged = dbProduct && dbProduct.source === 'static'
+            ? (applyOverride(dbProduct as any, (overrides as Record<string, any>)[dbProduct.id]) ?? dbProduct)
+            : dbProduct;
           return {
-            productId: dbProduct?.id ?? null,
-            productName: dbProduct?.name ?? item.productName ?? 'منتج',
+            productId: merged?.id ?? null,
+            productName: merged?.name ?? item.productName ?? 'منتج',
             productImage: item.productImage ?? null,
-            quantity: item.quantity ?? 1,
-            unitPrice: item.unitPrice ?? 0,
+            quantity: Number(item.quantity) || 1,
+            unitPrice: Number(merged?.price ?? 0),
             selectedModel: item.selectedModel ?? null,
           };
         })
@@ -140,6 +156,35 @@ export async function POST(req: NextRequest) {
       if (unresolved.length > 0) {
         throw new Error(`Could not resolve ${unresolved.length} product(s) for guest order — names: ${unresolved.map(u => u.productName).join(', ')}`);
       }
+
+      // Server-side price recalculation — never trust client totals
+      serverSubtotal = resolvedItems.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
+      serverShipping = Math.min(500, Math.max(0, Number(shippingCost) || 0));
+      resolvedItemsForEmail = resolvedItems.map(r => ({
+        productName: r.productName,
+        productImage: r.productImage,
+        quantity: r.quantity,
+        unitPrice: r.unitPrice,
+      }));
+
+      // Validate coupon server-side
+      couponStr = String(couponCode || '').trim().toUpperCase();
+      if (couponStr) {
+        const coupon = await prisma.coupon.findFirst({
+          where: { code: couponStr, isActive: true },
+          select: { discount: true },
+        }).catch(() => null);
+        if (coupon) {
+          serverDiscount = Math.round(serverSubtotal * Math.min(100, Number(coupon.discount))) / 100;
+        } else {
+          const setting = await prisma.setting.findUnique({ where: { key: 'coupons' } }).catch(() => null);
+          const legacyCoupons = (setting?.value ?? []) as { code: string; pct: number; active?: boolean }[];
+          const matched = legacyCoupons.find(c => c.code?.toUpperCase() === couponStr && c.active !== false);
+          if (matched) serverDiscount = Math.round(serverSubtotal * matched.pct) / 100;
+        }
+      }
+
+      serverTotal = Math.max(0, serverSubtotal - serverDiscount + serverShipping);
 
       const guestUser = await prisma.user.upsert({
         where: { email: syntheticEmail },
@@ -164,10 +209,10 @@ export async function POST(req: NextRequest) {
         data: {
           userId: guestUser.id,
           status: 'pending',
-          total,
-          shippingCost: shippingCost ?? 0,
-          discount: discount ?? 0,
-          couponCode: couponCode ?? null,
+          total: serverTotal,
+          shippingCost: serverShipping,
+          discount: serverDiscount,
+          couponCode: couponStr || null,
           paymentMethod,
           currency: currency ?? 'EGP',
           shippingAddress: addr as object,
@@ -191,20 +236,27 @@ export async function POST(req: NextRequest) {
       console.error('[guest-notify] DB save failed, continuing to email', err);
     }
 
+    // Use server-computed totals; fall back to client values only if resolution failed (email still goes out)
+    const emailItems = resolvedItemsForEmail.length > 0
+      ? resolvedItemsForEmail
+      : items.map((it: { productName?: string; productImage?: string | null; quantity?: number; unitPrice?: number }) => ({
+          productName: it.productName ?? 'منتج',
+          productImage: it.productImage ?? null,
+          quantity: it.quantity ?? 1,
+          unitPrice: 0,
+        }));
+    const emailSubtotal = serverSubtotal || 0;
+    const emailTotal = serverTotal || 0;
+
     await sendOrderEmails({
       orderId: createdOrderId ?? `GUEST-${Date.now()}`,
       orderNumber: orderNumber || String(Math.floor(100000 + Math.random() * 900000)),
-      items: items.map((it: { productName?: string; productImage?: string | null; quantity?: number; unitPrice?: number }) => ({
-        productName: it.productName ?? 'منتج',
-        productImage: it.productImage ?? null,
-        quantity: it.quantity ?? 1,
-        unitPrice: it.unitPrice ?? 0,
-      })),
-      subtotal,
-      discount: discount ?? 0,
-      couponCode: couponCode ?? null,
-      shippingCost: shippingCost ?? 0,
-      total,
+      items: emailItems,
+      subtotal: emailSubtotal,
+      discount: serverDiscount,
+      couponCode: couponStr || null,
+      shippingCost: serverShipping,
+      total: emailTotal,
       currency: currency ?? 'EGP',
       paymentMethod,
       customerName,

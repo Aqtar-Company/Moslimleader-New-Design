@@ -24,6 +24,10 @@ export async function PUT(
       return NextResponse.json({ error: 'العنصر غير موجود' }, { status: 404 });
     }
 
+    if (!Number.isInteger(quantity) || quantity < 0 || quantity > 999) {
+      return NextResponse.json({ error: 'كمية غير صحيحة' }, { status: 400 });
+    }
+
     if (quantity <= 0) {
       await prisma.cartItem.delete({ where: { id: itemId } });
     } else {

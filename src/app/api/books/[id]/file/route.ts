@@ -40,6 +40,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       hasFullAccess = !!access;
     }
 
+    // Reject filePaths that could escape the books directory
+    if (!/^[\w-]+\.pdf$/.test(book.filePath)) {
+      console.error('[books file] suspicious filePath rejected', { bookId: id, filePath: book.filePath });
+      return NextResponse.json({ error: 'ملف الكتاب غير متوفر' }, { status: 404 });
+    }
+
     const filePath = path.join(process.cwd(), 'private', 'books', book.filePath);
 
     let buffer: Buffer;

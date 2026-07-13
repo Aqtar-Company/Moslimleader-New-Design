@@ -47,7 +47,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Read expected amount from Setting (stored by paypal-create) — never recalculate
     const pendingSetting = await prisma.setting.findUnique({ where: { key: `pp_pending_${paypalOrderId}` } });
-    const storedExpected = pendingSetting ? Number((pendingSetting.value as Record<string, unknown>)?.expectedUsd ?? 0) : null;
+    const storedData = pendingSetting?.value as Record<string, unknown> | null;
+    const storedExpected = storedData ? Number(storedData.expectedUsd ?? 0) : null;
+
+    // Guard against cross-book replay: verify the stored bookId and userId match this request
+    if (storedData) {
+      if (storedData.bookId && storedData.bookId !== bookId) {
+        console.error('[books paypal-capture] bookId mismatch', { stored: storedData.bookId, requested: bookId, paypalOrderId });
+        return NextResponse.json({ error: 'طلب دفع غير صالح' }, { status: 400 });
+      }
+      if (storedData.userId && storedData.userId !== auth.userId) {
+        console.error('[books paypal-capture] userId mismatch', { paypalOrderId });
+        return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+      }
+    }
     // Fallback: use book price if Setting was lost (shouldn't happen in normal flow)
     const fallbackUsd = book.priceUSD && book.priceUSD > 0
       ? Number(book.priceUSD)

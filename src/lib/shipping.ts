@@ -10,6 +10,7 @@ export const governorates: Governorate[] = [
   { id: 'giza', name: 'الجيزة', nameEn: 'Giza', shipping: 50 },
   { id: 'qalyubia', name: 'القليوبية', nameEn: 'Qalyubia', shipping: 55 },
   { id: 'alexandria', name: 'الإسكندرية', nameEn: 'Alexandria', shipping: 65 },
+  { id: 'borg-el-arab', name: 'برج العرب', nameEn: 'Borg El Arab', shipping: 85 },
   { id: 'sharqia', name: 'الشرقية', nameEn: 'Sharqia', shipping: 65 },
   { id: 'dakahlia', name: 'الدقهلية', nameEn: 'Dakahlia', shipping: 65 },
   { id: 'gharbia', name: 'الغربية', nameEn: 'Gharbia', shipping: 65 },

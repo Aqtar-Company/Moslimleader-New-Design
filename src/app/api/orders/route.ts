@@ -160,17 +160,21 @@ export async function POST(req: NextRequest) {
       (s, it) => s + it.unitPrice * it.quantity, 0
     );
 
-    // Verify discount + coupon server-side
-    let verifiedDiscount = Math.round((discount ?? 0) * 100) / 100;
+    // Verify discount + coupon server-side — check Coupon model first, then legacy Setting
+    let verifiedDiscount = 0;
     if (couponCode) {
-      const couponSetting = await prisma.setting.findUnique({ where: { key: 'coupons' } });
-      const coupons = (couponSetting?.value ?? []) as { code: string; pct: number; active?: boolean }[];
-      const matched = coupons.find(
-        c => c.code?.toLowerCase() === couponCode.toLowerCase() && c.active !== false
-      );
-      if (matched) {
-        const couponDiscount = Math.round(verifiedSubtotal * matched.pct / 100);
-        verifiedDiscount += couponDiscount;
+      const couponUpper = couponCode.trim().toUpperCase();
+      const coupon = await prisma.coupon.findFirst({
+        where: { code: couponUpper, isActive: true },
+        select: { discount: true },
+      }).catch(() => null);
+      if (coupon) {
+        verifiedDiscount = Math.round(verifiedSubtotal * Math.min(100, Number(coupon.discount))) / 100;
+      } else {
+        const couponSetting = await prisma.setting.findUnique({ where: { key: 'coupons' } });
+        const coupons = (couponSetting?.value ?? []) as { code: string; pct: number; active?: boolean }[];
+        const matched = coupons.find(c => c.code?.toLowerCase() === couponCode.toLowerCase() && c.active !== false);
+        if (matched) verifiedDiscount = Math.round(verifiedSubtotal * matched.pct / 100);
       }
     }
 

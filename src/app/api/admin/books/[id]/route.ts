@@ -16,6 +16,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const body = await req.json();
 
+    // Validate filePath if provided — must be a safe UUID.pdf filename
+    if ('filePath' in body && body.filePath != null) {
+      if (!/^[\w-]+\.pdf$/.test(String(body.filePath))) {
+        return NextResponse.json({ error: 'مسار الملف غير صالح' }, { status: 400 });
+      }
+    }
+
     const ALLOWED = [
       'title', 'titleEn', 'description', 'descriptionEn', 'author', 'authorEn',
       'cover', 'price', 'priceUSD', 'freePages', 'totalPages', 'isPublished',
@@ -53,11 +60,15 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const book = await prisma.book.findUnique({ where: { id } });
     if (!book) return NextResponse.json({ error: 'الكتاب غير موجود' }, { status: 404 });
 
-    // Delete PDF file if exists
+    // Delete PDF file if exists — validate filePath to prevent path traversal
     if (book.filePath) {
-      try {
-        await unlink(path.join(process.cwd(), 'private', 'books', book.filePath));
-      } catch { /* file may not exist */ }
+      if (/^[\w-]+\.pdf$/.test(book.filePath)) {
+        try {
+          await unlink(path.join(process.cwd(), 'private', 'books', book.filePath));
+        } catch { /* file may not exist */ }
+      } else {
+        console.error('[admin books DELETE] suspicious filePath skipped', { id, filePath: book.filePath });
+      }
     }
 
     await prisma.book.delete({ where: { id } });

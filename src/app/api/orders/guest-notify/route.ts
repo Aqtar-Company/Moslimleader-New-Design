@@ -236,17 +236,22 @@ export async function POST(req: NextRequest) {
       console.error('[guest-notify] DB save failed, continuing to email', err);
     }
 
-    // Use server-computed totals; fall back to client values only if resolution failed (email still goes out)
+    // Use server-computed totals; fall back to client-supplied values (not zero) when
+    // product resolution failed — the email still goes out so the admin gets the lead.
+    const clientSubtotal = items.reduce(
+      (s: number, it: { unitPrice?: number; quantity?: number }) => s + (Number(it.unitPrice) || 0) * (Number(it.quantity) || 1),
+      0,
+    );
     const emailItems = resolvedItemsForEmail.length > 0
       ? resolvedItemsForEmail
       : items.map((it: { productName?: string; productImage?: string | null; quantity?: number; unitPrice?: number }) => ({
           productName: it.productName ?? 'منتج',
           productImage: it.productImage ?? null,
-          quantity: it.quantity ?? 1,
-          unitPrice: 0,
+          quantity: Number(it.quantity) || 1,
+          unitPrice: Number(it.unitPrice) || 0,
         }));
-    const emailSubtotal = serverSubtotal || 0;
-    const emailTotal = serverTotal || 0;
+    const emailSubtotal = serverSubtotal > 0 ? serverSubtotal : clientSubtotal;
+    const emailTotal = serverTotal > 0 ? serverTotal : (Number(total) || clientSubtotal);
 
     await sendOrderEmails({
       orderId: createdOrderId ?? `GUEST-${Date.now()}`,

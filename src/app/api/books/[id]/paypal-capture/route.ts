@@ -45,27 +45,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'الكتاب غير موجود' }, { status: 404 });
     }
 
-    // Read expected amount from Setting (stored by paypal-create) — never recalculate
+    // Read expected amount from Setting (stored by paypal-create) — reject if absent
     const pendingSetting = await prisma.setting.findUnique({ where: { key: `pp_pending_${paypalOrderId}` } });
-    const storedData = pendingSetting?.value as Record<string, unknown> | null;
-    const storedExpected = storedData ? Number(storedData.expectedUsd ?? 0) : null;
-
-    // Guard against cross-book replay: verify the stored bookId and userId match this request
-    if (storedData) {
-      if (storedData.bookId && storedData.bookId !== bookId) {
-        console.error('[books paypal-capture] bookId mismatch', { stored: storedData.bookId, requested: bookId, paypalOrderId });
-        return NextResponse.json({ error: 'طلب دفع غير صالح' }, { status: 400 });
-      }
-      if (storedData.userId && storedData.userId !== auth.userId) {
-        console.error('[books paypal-capture] userId mismatch', { paypalOrderId });
-        return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-      }
+    if (!pendingSetting) {
+      console.error('[books paypal-capture] pp_pending missing — order ID may be replayed or expired', { paypalOrderId, bookId });
+      return NextResponse.json({ error: 'طلب الدفع منتهٍ أو غير صالح' }, { status: 400 });
     }
-    // Fallback: use book price if Setting was lost (shouldn't happen in normal flow)
-    const fallbackUsd = book.priceUSD && book.priceUSD > 0
-      ? Number(book.priceUSD)
-      : egpToUsd(Number(book.price));
-    const expectedRounded = Math.max(0.01, Math.round((storedExpected ?? fallbackUsd) * 100) / 100);
+    const storedData = pendingSetting.value as Record<string, unknown>;
+
+    // Guard against cross-book replay: verify stored bookId and userId match this request
+    if (storedData.bookId !== undefined && storedData.bookId !== bookId) {
+      console.error('[books paypal-capture] bookId mismatch', { stored: storedData.bookId, requested: bookId, paypalOrderId });
+      return NextResponse.json({ error: 'طلب دفع غير صالح' }, { status: 400 });
+    }
+    if (storedData.userId !== undefined && storedData.userId !== auth.userId) {
+      console.error('[books paypal-capture] userId mismatch', { paypalOrderId });
+      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    }
+
+    const storedExpected = Number(storedData.expectedUsd ?? 0);
+    const expectedRounded = Math.max(0.01, Math.round(storedExpected * 100) / 100);
 
     // Capture PayPal payment
     const captureResult = await capturePayPalOrder(paypalOrderId);
@@ -98,7 +97,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         select: { createdBy: true, bookId: true, expiresAt: true },
       });
       const bookData = await prisma.book.findUnique({ where: { id: bookId }, select: { enableReferral: true, referralDiscount: true } });
-      if (shareLink && shareLink.expiresAt > new Date() && bookData?.enableReferral && shareLink.createdBy !== auth.userId) {
+      if (shareLink && shareLink.bookId === bookId && shareLink.expiresAt > new Date() && bookData?.enableReferral && shareLink.createdBy !== auth.userId) {
         referrerId = shareLink.createdBy;
         referralDiscountPct = bookData.referralDiscount ?? 20;
       }

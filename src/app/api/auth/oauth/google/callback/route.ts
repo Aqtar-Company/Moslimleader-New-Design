@@ -106,6 +106,8 @@ export async function GET(req: NextRequest) {
     return response;
   } catch (err) {
     console.error('[google oauth callback]', err);
-    return NextResponse.redirect(`${baseUrl}/auth?error=google_failed`);
+    const errResponse = NextResponse.redirect(`${baseUrl}/auth?error=google_failed`);
+    errResponse.cookies.set('oauth_state', '', { httpOnly: true, maxAge: 0, path: '/' });
+    return errResponse;
   }
 }

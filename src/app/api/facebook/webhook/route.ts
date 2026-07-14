@@ -52,10 +52,10 @@ async function isPsidMuted(psid: string): Promise<boolean> {
 //
 // GET = verification handshake. POST = events.
 
-const VERIFY_TOKEN =
-  process.env.FB_VERIFY_TOKEN ||
-  process.env.FACEBOOK_VERIFY_TOKEN ||
-  'ml_webhook_2026';
+const VERIFY_TOKEN = process.env.FB_VERIFY_TOKEN || process.env.FACEBOOK_VERIFY_TOKEN || '';
+if (!VERIFY_TOKEN) {
+  console.warn('[facebook webhook] FB_VERIFY_TOKEN env var is not set — webhook verification will reject all hub challenges');
+}
 
 // Cache the page id once; it's used to skip echoes from the page
 // commenting on its own posts (the page itself shows up as a "from"

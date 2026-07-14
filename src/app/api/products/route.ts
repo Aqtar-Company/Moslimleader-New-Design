@@ -65,11 +65,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
     }
 
-    const data = await req.json();
+    const body = await req.json();
+    // Whitelist allowed fields — never spread untrusted body into Prisma create
     const product = await prisma.product.create({
       data: {
-        ...data,
-        source: 'admin',
+        slug:                   String(body.slug || ''),
+        name:                   String(body.name || ''),
+        nameEn:                 body.nameEn != null ? String(body.nameEn) : null,
+        shortDescription:       String(body.shortDescription || ''),
+        shortDescriptionEn:     body.shortDescriptionEn != null ? String(body.shortDescriptionEn) : undefined,
+        description:            String(body.description || ''),
+        descriptionEn:          body.descriptionEn != null ? String(body.descriptionEn) : undefined,
+        price:                  Number(body.price) || 0,
+        priceUsd:               body.priceUsd != null ? Number(body.priceUsd) : undefined,
+        category:               String(body.category || ''),
+        subcategory:            body.subcategory != null ? String(body.subcategory) : undefined,
+        variants:               Array.isArray(body.variants) ? body.variants : [],
+        tags:                   Array.isArray(body.tags) ? body.tags : [],
+        images:                 Array.isArray(body.images) ? body.images : [],
+        videos:                 Array.isArray(body.videos) ? body.videos : [],
+        inStock:                typeof body.inStock === 'boolean' ? body.inStock : true,
+        featured:               typeof body.featured === 'boolean' ? body.featured : false,
+        comingSoon:             typeof body.comingSoon === 'boolean' ? body.comingSoon : false,
+        weight:                 body.weight != null ? Number(body.weight) : undefined,
+        minAge:                 body.minAge != null ? Number(body.minAge) : undefined,
+        maxAge:                 body.maxAge != null ? Number(body.maxAge) : undefined,
+        source:                 'admin',
       },
     });
     return NextResponse.json({ product }, { status: 201 });

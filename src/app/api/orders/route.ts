@@ -298,15 +298,19 @@ export async function POST(req: NextRequest) {
     }
 
     // Redeem loyalty points if requested — atomic check+decrement prevents race condition
-    if (loyaltyPointsToRedeem && loyaltyPointsToRedeem > 0) {
+    // Cap to order total so a single order can't drain unlimited points
+    const cappedLoyalty = loyaltyPointsToRedeem && loyaltyPointsToRedeem > 0
+      ? Math.min(Math.floor(loyaltyPointsToRedeem), Math.ceil(verifiedTotal))
+      : 0;
+    if (cappedLoyalty > 0) {
       try {
         const updated = await prisma.user.updateMany({
-          where: { id: auth.userId, loyaltyPoints: { gte: loyaltyPointsToRedeem } },
-          data: { loyaltyPoints: { decrement: loyaltyPointsToRedeem } },
+          where: { id: auth.userId, loyaltyPoints: { gte: cappedLoyalty } },
+          data: { loyaltyPoints: { decrement: cappedLoyalty } },
         });
         if (updated.count > 0) {
           await prisma.loyaltyTransaction.create({
-            data: { userId: auth.userId, points: -loyaltyPointsToRedeem, reason: 'order_redeem', orderId: order.id },
+            data: { userId: auth.userId, points: -cappedLoyalty, reason: 'order_redeem', orderId: order.id },
           });
         }
       } catch (redeemErr) {

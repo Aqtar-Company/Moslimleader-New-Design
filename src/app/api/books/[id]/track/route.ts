@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUserFromRequest } from '@/lib/jwt';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 // POST /api/books/[id]/track
 // Called when user passes reCAPTCHA and opens a book
@@ -11,6 +12,15 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: bookId } = await params;
+
+  // Rate limit: 30 track events per IP per 10 minutes (1 per ~20s — normal reading pace)
+  const ipRaw = req.headers.get('cf-connecting-ip') ||
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    req.headers.get('x-real-ip') || 'unknown';
+  const rl = checkRateLimit(`book-track:${ipRaw}`, 30, 10 * 60 * 1000);
+  if (!rl.allowed) {
+    return NextResponse.json({ ok: true }); // silent — don't disrupt reading
+  }
 
   // Get user from JWT token (optional — guests can also read free pages)
   let userId: string | undefined;

@@ -67,6 +67,7 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [total, setTotal] = useState(0);
+  const [allCount, setAllCount] = useState(0); // persists across filter changes to avoid flicker
   const [pageSize, setPageSize] = useState(50);
   const [excludeWholesale, setExcludeWholesale] = useState(false);
   const [bulkMessage, setBulkMessage] = useState(
@@ -85,6 +86,7 @@ export default function CustomersPage() {
       setCustomers(data.customers ?? []);
       setCounts(data.counts ?? {});
       setTotal(data.total ?? (data.customers?.length ?? 0));
+      if (data.counts?.all) setAllCount(data.counts.all);
       if (limitOverride) setPageSize(limitOverride);
     } catch {
       addToast('فشل تحميل العملاء', 'error');
@@ -129,8 +131,8 @@ export default function CustomersPage() {
         <div>
           <h1 className="text-xl font-black text-gray-900">قاعدة العملاء</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            <span className="font-bold text-gray-900">{(counts['all'] ?? total).toLocaleString('en-US')}</span> عميل إجمالاً
-            {segment !== 'all' && total !== (counts['all'] ?? total) && (
+            <span className="font-bold text-gray-900">{(allCount || total).toLocaleString('en-US')}</span> عميل إجمالاً
+            {(segment !== 'all' || excludeWholesale) && total !== allCount && allCount > 0 && (
               <span> · يظهر {total.toLocaleString('en-US')}</span>
             )}
             {' '}· إجمالي مبيعاتهم {formatPrice(totalSpend)} ج.م
@@ -185,11 +187,11 @@ export default function CustomersPage() {
         >
           {SORTS.map(s => <option key={s.key} value={s.key}>ترتيب: {s.label}</option>)}
         </select>
-        <label className="flex items-center gap-2 cursor-pointer select-none">
-          <div
-            onClick={() => setExcludeWholesale(v => !v)}
-            className={`relative w-9 h-5 rounded-full transition-colors ${excludeWholesale ? 'bg-blue-600' : 'bg-gray-300'}`}
-          >
+        <label
+          className="flex items-center gap-2 cursor-pointer select-none"
+          onClick={() => setExcludeWholesale(v => !v)}
+        >
+          <div className={`relative w-9 h-5 rounded-full transition-colors ${excludeWholesale ? 'bg-blue-600' : 'bg-gray-300'}`}>
             <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${excludeWholesale ? 'right-0.5' : 'left-0.5'}`} />
           </div>
           <span className="text-xs font-semibold text-gray-600">استثناء تجار الجملة</span>

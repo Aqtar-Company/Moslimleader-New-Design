@@ -12,13 +12,13 @@ export async function GET(req: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://moslimleader.com';
 
   if (error || !code) {
-    return NextResponse.redirect(`${baseUrl}/auth?error=google_denied`);
+    return NextResponse.redirect(`${baseUrl}/login?error=google_denied`);
   }
 
   // Verify CSRF state cookie
   const cookieState = req.cookies.get('oauth_state')?.value;
   if (!cookieState || !receivedState || cookieState !== receivedState) {
-    return NextResponse.redirect(`${baseUrl}/auth?error=google_csrf`);
+    return NextResponse.redirect(`${baseUrl}/login?error=google_csrf`);
   }
 
   try {
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
 
     const tokenData = await tokenRes.json();
     if (!tokenData.access_token) {
-      return NextResponse.redirect(`${baseUrl}/auth?error=google_token`);
+      return NextResponse.redirect(`${baseUrl}/login?error=google_token`);
     }
 
     // Get user info from Google
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
     const googleUser = await userRes.json();
 
     if (!googleUser.email) {
-      return NextResponse.redirect(`${baseUrl}/auth?error=google_email`);
+      return NextResponse.redirect(`${baseUrl}/login?error=google_email`);
     }
 
     const emailKey = googleUser.email.toLowerCase();
@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
     return response;
   } catch (err) {
     console.error('[google oauth callback]', err);
-    const errResponse = NextResponse.redirect(`${baseUrl}/auth?error=google_failed`);
+    const errResponse = NextResponse.redirect(`${baseUrl}/login?error=google_failed`);
     errResponse.cookies.set('oauth_state', '', { httpOnly: true, maxAge: 0, path: '/' });
     return errResponse;
   }

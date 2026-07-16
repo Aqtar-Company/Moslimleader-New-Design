@@ -175,10 +175,11 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Segment counts for the chips (computed on the *unfiltered* list so chips
-  // always show the true universe size).
-  const counts: Record<string, number> = { all: list.length };
-  for (const r of list) for (const s of r.segments) counts[s] = (counts[s] || 0) + 1;
+  // Segment counts: computed after wholesale exclusion so chips reflect the
+  // active universe, but before segment/search filters so all chips stay visible.
+  const countBase = excludeWholesale ? list.filter(r => !r.segments.includes('wholesale')) : list;
+  const counts: Record<string, number> = { all: countBase.length };
+  for (const r of countBase) for (const s of r.segments) counts[s] = (counts[s] || 0) + 1;
 
   // Sort then paginate
   if (sort === 'recent') filtered.sort((a, b) => (b.lastOrderAt || '').localeCompare(a.lastOrderAt || ''));

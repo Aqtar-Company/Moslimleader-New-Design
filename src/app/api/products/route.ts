@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     }
     if (gender === 'male' || gender === 'female') {
       allProducts = allProducts.filter(p => {
-        const g = (p as Product & { gender?: string }).gender ?? 'both';
+        const g = p.gender ?? 'both';
         return g === gender || g === 'both';
       });
     }
@@ -94,6 +94,7 @@ export async function POST(req: NextRequest) {
         weight:                 body.weight != null ? Number(body.weight) : undefined,
         minAge:                 body.minAge != null ? Number(body.minAge) : undefined,
         maxAge:                 body.maxAge != null ? Number(body.maxAge) : undefined,
+        gender:                 body.gender != null ? String(body.gender) : undefined,
         source:                 'admin',
       },
     });

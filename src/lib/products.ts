@@ -333,7 +333,7 @@ export const products: Product[] = [
     price: 350,
     priceUsd: 4.5,
     category: 'القصص والكتب والروايات',
-    minAge: 8, maxAge: 22, gender: 'both',
+    minAge: 8, maxAge: 22, gender: 'both', isParentBook: true,
     tags: ['فلسطين', 'كتب', 'أسرة', 'تاريخ'],
     images: [
       `${BASE}/2024/07/Palestine-1.webp`,
@@ -415,7 +415,7 @@ export const products: Product[] = [
     price: 250,
     priceUsd: 3.5,
     category: 'القصص والكتب والروايات',
-    minAge: 14, maxAge: 22, gender: 'both',
+    minAge: 14, maxAge: 22, gender: 'both', isParentBook: true,
     tags: ['أمهات', 'تربية', 'أسرة'],
     images: [
       `${BASE}/2024/07/Mothers-1.webp`,

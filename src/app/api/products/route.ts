@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     }
     if (gender === 'male' || gender === 'female') {
       allProducts = allProducts.filter(p => {
-        const g = p.gender ?? 'both';
+        const g = p.gender || 'both';
         return g === gender || g === 'both';
       });
     }

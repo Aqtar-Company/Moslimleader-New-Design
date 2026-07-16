@@ -154,10 +154,11 @@ function ShopContent({ ssrProducts }: { ssrProducts?: Product[] }) {
 
   const AGE_GROUPS = [
     { id: '', label: isRtl ? 'كل الأعمار' : 'All Ages', desc: '' },
-    { id: '4-7',   label: isRtl ? '٤–٧' : '4–7',   name: isRtl ? 'سن التمييز'  : 'Discernment', desc: isRtl ? 'غرس الحب والعادات الأولى باللعب والقصة المصوّرة' : 'Planting love and first habits through play and picture stories' },
-    { id: '8-13',  label: isRtl ? '٨–١٣' : '8–13',  name: isRtl ? 'سن اليافعين' : 'Pre-teen',    desc: isRtl ? 'بناء المعرفة والمهارات وروح المسؤولية' : 'Building knowledge, skills and responsibility' },
-    { id: '14-16', label: isRtl ? '١٤–١٦' : '14–16', name: isRtl ? 'سن التكليف'  : 'Accountability', desc: isRtl ? 'ترسيخ الهوية والثبات وفهم العبادات والواجبات' : 'Grounding identity, steadfastness and understanding of duties' },
-    { id: '17-22', label: isRtl ? '١٧–٢٢' : '17–22', name: isRtl ? 'الشباب'      : 'Youth',       desc: isRtl ? 'الإمامة في الدين والدنيا، والقدوة، ونفع المجتمع' : 'Leadership in faith and life, being a role model' },
+    { id: '4-7',     label: isRtl ? '٤–٧' : '4–7',       name: isRtl ? 'سن التمييز'    : 'Discernment',   desc: isRtl ? 'غرس الحب والعادات الأولى باللعب والقصة المصوّرة' : 'Planting love and first habits through play and picture stories' },
+    { id: '8-13',    label: isRtl ? '٨–١٣' : '8–13',     name: isRtl ? 'سن اليافعين'   : 'Pre-teen',      desc: isRtl ? 'بناء المعرفة والمهارات وروح المسؤولية' : 'Building knowledge, skills and responsibility' },
+    { id: '14-16',   label: isRtl ? '١٤–١٦' : '14–16',   name: isRtl ? 'سن التكليف'    : 'Accountability', desc: isRtl ? 'ترسيخ الهوية والثبات وفهم العبادات والواجبات' : 'Grounding identity, steadfastness and understanding of duties' },
+    { id: '17-22',   label: isRtl ? '١٧–٢٢' : '17–22',   name: isRtl ? 'الشباب'        : 'Youth',         desc: isRtl ? 'الإمامة في الدين والدنيا، والقدوة، ونفع المجتمع' : 'Leadership in faith and life, being a role model' },
+    { id: 'parents', label: isRtl ? 'الوالدين' : 'Parents', name: isRtl ? 'للآباء والأمهات' : 'For Parents', desc: isRtl ? 'محتوى يدعم الوالدين في التربية والتوجيه' : 'Content supporting parents in raising and guiding children' },
   ];
 
   const displayCategories = buildCategories(allProducts);
@@ -168,14 +169,16 @@ function ShopContent({ ssrProducts }: { ssrProducts?: Product[] }) {
       : (p.nameEn || p.name).toLowerCase().includes(search.toLowerCase()) ||
         (p.shortDescriptionEn || p.shortDescription).toLowerCase().includes(search.toLowerCase());
     let matchAge = true;
-    if (ageFilter) {
+    if (ageFilter === 'parents') {
+      matchAge = !!p.isParentBook;
+    } else if (ageFilter) {
       const [lo, hi] = ageFilter.split('-').map(Number);
       const min = p.minAge ?? 0;
       const max = p.maxAge ?? 99;
       matchAge = min <= hi && max >= lo;
     }
     const matchGender = !genderFilter || (() => {
-      const g = p.gender ?? 'both';
+      const g = p.gender || 'both';
       return g === genderFilter || g === 'both';
     })();
     return matchCat && matchSearch && matchAge && matchGender;
@@ -196,7 +199,7 @@ function ShopContent({ ssrProducts }: { ssrProducts?: Product[] }) {
 
       <div className="flex flex-wrap gap-2 justify-center mb-4">
         {displayCategories.map(cat => (
-          <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
+          <button key={cat.id} onClick={() => { setActiveCategory(cat.id); if (cat.id === 'all') { setAgeFilter(''); setGenderFilter(''); } }}
             className={`flex items-center gap-2 px-5 py-2 rounded-full border-2 font-semibold text-sm transition ${
               activeCategory === cat.id ? 'bg-gray-900 border-gray-900 text-white' : 'border-gray-200 hover:border-gray-900 text-gray-700'
             }`}>

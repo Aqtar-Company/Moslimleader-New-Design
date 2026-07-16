@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
+import { loadStaticOverrides, applyOverride } from '@/lib/product-overrides';
 import { sendOrderEmails } from '@/lib/order-email';
 import { attributeOrderToCampaign } from '@/lib/campaign-attribution';
 
@@ -76,6 +77,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'هذه الطريقة متاحة للشحن داخل مصر فقط' }, { status: 400 });
     }
 
+    // Load admin price overrides once — applied below to source='static' products
+    const staticOverrides = await loadStaticOverrides();
+
     // Resolve productId for each item (handle static products which have string IDs)
     const resolvedItems = await Promise.all(
       items.map(async (item: {
@@ -130,7 +134,17 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        const serverPrice = dbProduct?.price ?? item.unitPrice;
+        // For static products apply admin price overrides so the email/order
+        // reflects the current admin-set price, not the stale DB copy price.
+        let effectivePrice = dbProduct?.price ?? item.unitPrice;
+        if (dbProduct?.source === 'static') {
+          const merged = applyOverride(
+            dbProduct as unknown as import('@/types').Product,
+            staticOverrides[dbProduct.id],
+          );
+          if (merged) effectivePrice = merged.price;
+        }
+        const serverPrice = effectivePrice;
         return {
           productId: dbProduct?.id ?? item.productId,
           quantity: item.quantity,

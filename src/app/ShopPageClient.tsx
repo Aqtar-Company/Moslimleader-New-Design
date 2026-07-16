@@ -76,17 +76,11 @@ function setCache(data: Product[]) {
 }
 
 function buildCategories(fetched: Product[]) {
-  const staticUpdated = categories.map(cat =>
+  return categories.map(cat =>
     cat.id === 'all'
       ? { ...cat, count: fetched.length }
       : { ...cat, count: fetched.filter(p => p.category === cat.id).length }
   );
-  const existingIds = new Set(categories.map(c => c.id));
-  const customEntries = fetched
-    .map(p => p.category)
-    .filter((c, i, arr) => !existingIds.has(c) && arr.indexOf(c) === i)
-    .map(c => ({ id: c, name: c, count: fetched.filter(p => p.category === c).length }));
-  return [...staticUpdated, ...customEntries];
 }
 
 function expandProducts(products: Product[]) {

@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
     const featured = searchParams.get('featured');
     const search = searchParams.get('q');
     const ageGroup = searchParams.get('ageGroup');
+    const gender = searchParams.get('gender');
 
     const [mergedStatic, dbProducts] = await Promise.all([
       getMergedStaticProducts(),
@@ -29,14 +30,17 @@ export async function GET(req: NextRequest) {
       );
     }
     if (ageGroup) {
+      const [lo, hi] = ageGroup.split('-').map(Number);
       allProducts = allProducts.filter(p => {
         const min = p.minAge ?? 0;
         const max = p.maxAge ?? 99;
-        if (ageGroup === '0-3') return min <= 3;
-        if (ageGroup === '3-6') return min <= 6 && max >= 3;
-        if (ageGroup === '6-9') return min <= 9 && max >= 6;
-        if (ageGroup === '9+') return max >= 9;
-        return true;
+        return min <= hi && max >= lo;
+      });
+    }
+    if (gender === 'male' || gender === 'female') {
+      allProducts = allProducts.filter(p => {
+        const g = (p as Product & { gender?: string }).gender ?? 'both';
+        return g === gender || g === 'both';
       });
     }
 

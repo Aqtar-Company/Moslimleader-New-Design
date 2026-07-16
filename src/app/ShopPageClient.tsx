@@ -106,6 +106,7 @@ function ShopContent({ ssrProducts }: { ssrProducts?: Product[] }) {
   const initialCategory = searchParams.get('category') || 'all';
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [ageFilter, setAgeFilter] = useState('');
+  const [genderFilter, setGenderFilter] = useState<'male' | 'female' | ''>('');
   const [search, setSearch] = useState('');
   const [showChildBanner, setShowChildBanner] = useState(false);
 
@@ -152,11 +153,11 @@ function ShopContent({ ssrProducts }: { ssrProducts?: Product[] }) {
   }, []);
 
   const AGE_GROUPS = [
-    { id: '', label: isRtl ? 'كل الأعمار' : 'All Ages' },
-    { id: '0-3', label: isRtl ? '0-3 سنوات' : '0–3 yrs' },
-    { id: '3-6', label: isRtl ? '3-6 سنوات' : '3–6 yrs' },
-    { id: '6-9', label: isRtl ? '6-9 سنوات' : '6–9 yrs' },
-    { id: '9+', label: isRtl ? '9+ سنوات' : '9+ yrs' },
+    { id: '', label: isRtl ? 'كل الأعمار' : 'All Ages', desc: '' },
+    { id: '4-7',   label: isRtl ? '٤–٧' : '4–7',   name: isRtl ? 'سن التمييز'  : 'Discernment', desc: isRtl ? 'غرس الحب والعادات الأولى باللعب والقصة المصوّرة' : 'Planting love and first habits through play and picture stories' },
+    { id: '8-13',  label: isRtl ? '٨–١٣' : '8–13',  name: isRtl ? 'سن اليافعين' : 'Pre-teen',    desc: isRtl ? 'بناء المعرفة والمهارات وروح المسؤولية' : 'Building knowledge, skills and responsibility' },
+    { id: '14-16', label: isRtl ? '١٤–١٦' : '14–16', name: isRtl ? 'سن التكليف'  : 'Accountability', desc: isRtl ? 'ترسيخ الهوية والثبات وفهم العبادات والواجبات' : 'Grounding identity, steadfastness and understanding of duties' },
+    { id: '17-22', label: isRtl ? '١٧–٢٢' : '17–22', name: isRtl ? 'الشباب'      : 'Youth',       desc: isRtl ? 'الإمامة في الدين والدنيا، والقدوة، ونفع المجتمع' : 'Leadership in faith and life, being a role model' },
   ];
 
   const displayCategories = buildCategories(allProducts);
@@ -168,14 +169,16 @@ function ShopContent({ ssrProducts }: { ssrProducts?: Product[] }) {
         (p.shortDescriptionEn || p.shortDescription).toLowerCase().includes(search.toLowerCase());
     let matchAge = true;
     if (ageFilter) {
-      const min = (p as { minAge?: number | null }).minAge ?? 0;
-      const max = (p as { maxAge?: number | null }).maxAge ?? 99;
-      if (ageFilter === '0-3') matchAge = min <= 3;
-      else if (ageFilter === '3-6') matchAge = min <= 6 && max >= 3;
-      else if (ageFilter === '6-9') matchAge = min <= 9 && max >= 6;
-      else if (ageFilter === '9+') matchAge = max >= 9;
+      const [lo, hi] = ageFilter.split('-').map(Number);
+      const min = p.minAge ?? 0;
+      const max = p.maxAge ?? 99;
+      matchAge = min <= hi && max >= lo;
     }
-    return matchCat && matchSearch && matchAge;
+    const matchGender = !genderFilter || (() => {
+      const g = p.gender ?? 'both';
+      return g === genderFilter || g === 'both';
+    })();
+    return matchCat && matchSearch && matchAge && matchGender;
   });
 
   return (
@@ -206,15 +209,35 @@ function ShopContent({ ssrProducts }: { ssrProducts?: Product[] }) {
       </div>
 
       {/* Age group filter */}
-      <div className="flex flex-wrap gap-2 justify-center mb-8">
+      <div className="flex flex-wrap gap-2 justify-center mb-3">
         {AGE_GROUPS.map(ag => (
           <button key={ag.id} onClick={() => setAgeFilter(ag.id)}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full border-2 font-semibold text-xs transition ${
+            title={ag.desc}
+            className={`flex flex-col items-center px-4 py-2 rounded-2xl border-2 font-semibold text-xs transition ${
               ageFilter === ag.id
                 ? 'bg-amber-400 border-amber-400 text-gray-900'
                 : 'border-gray-200 hover:border-amber-400 text-gray-600'
             }`}>
-            {ag.id === '' ? '🎯' : '🧒'} {ag.label}
+            <span className="font-bold text-sm">{ag.id === '' ? '🎯 ' : ''}{ag.label}</span>
+            {'name' in ag && ag.name && <span className="text-[10px] opacity-80 mt-0.5">{ag.name}</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* Gender filter */}
+      <div className="flex gap-2 justify-center mb-8">
+        {[
+          { id: '' as const,      icon: '👥', label: isRtl ? 'الكل' : 'All' },
+          { id: 'male' as const,  icon: '👦', label: isRtl ? 'ذكور' : 'Boys' },
+          { id: 'female' as const, icon: '👧', label: isRtl ? 'إناث' : 'Girls' },
+        ].map(g => (
+          <button key={g.id} onClick={() => setGenderFilter(g.id)}
+            className={`flex items-center gap-1.5 px-5 py-1.5 rounded-full border-2 font-semibold text-xs transition ${
+              genderFilter === g.id
+                ? 'bg-sky-500 border-sky-500 text-white'
+                : 'border-gray-200 hover:border-sky-400 text-gray-600'
+            }`}>
+            {g.icon} {g.label}
           </button>
         ))}
       </div>

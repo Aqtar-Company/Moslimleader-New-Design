@@ -44,6 +44,7 @@ export interface Product {
   maxAge?: number | null;
   ageCategory?: string | null;
   needsParentalGuide?: boolean;
+  gender?: 'male' | 'female' | 'both' | null;
 }
 
 export interface Category {

@@ -33,6 +33,7 @@ export const products: Product[] = [
     price: 350,
     priceUsd: 15,
     category: 'الألعاب الورقية وتنمية المهارات',
+    minAge: 6, maxAge: 13, gender: 'both',
     tags: ['لعبة', 'صيام', 'رمضان', 'تربوية'],
     images: [
       `${BASE}/2024/07/Feast-Day-1.webp`,
@@ -81,6 +82,7 @@ export const products: Product[] = [
     price: 500,
     priceUsd: 32,
     category: 'الألعاب الورقية وتنمية المهارات',
+    minAge: 8, maxAge: 16, gender: 'both',
     tags: ['قيادة', 'تربية', 'شخصية'],
     images: [
       `${BASE}/2024/07/Leader-Medal.webp`,
@@ -126,6 +128,7 @@ export const products: Product[] = [
     price: 370,
     priceUsd: 23,
     category: 'الألعاب الورقية وتنمية المهارات',
+    minAge: 8, maxAge: 16, gender: 'both',
     tags: ['قيادة', 'تربية', 'تعليم'],
     images: [
       `${BASE}/2024/07/Muslim-Leaders-1.webp`,
@@ -172,6 +175,7 @@ export const products: Product[] = [
     price: 350,
     priceUsd: 25,
     category: 'الألعاب الورقية وتنمية المهارات',
+    minAge: 4, maxAge: 9, gender: 'both',
     tags: ['صلاة', 'حج', 'تعليم', 'AR'],
     images: [
       `${BASE}/2024/07/Pray-and-Hajj-1.webp`,
@@ -212,6 +216,7 @@ export const products: Product[] = [
     price: 220,
     priceUsd: 16,
     category: 'الألعاب الورقية وتنمية المهارات',
+    minAge: 6, maxAge: 13, gender: 'male',
     tags: ['بازل', 'أولاد', 'تعليم'],
     images: [
       `${BASE}/2024/07/Puzzle-Boys-1.webp`,
@@ -247,6 +252,7 @@ export const products: Product[] = [
     price: 220,
     priceUsd: 16,
     category: 'الألعاب الورقية وتنمية المهارات',
+    minAge: 6, maxAge: 13, gender: 'female',
     tags: ['بازل', 'بنات', 'تعليم'],
     images: [
       `${BASE}/2024/07/Puzzle-Girls-1.webp`,
@@ -290,6 +296,7 @@ export const products: Product[] = [
     price: 350,
     priceUsd: 7,
     category: 'أدوات تعليم القرآن',
+    minAge: 4, maxAge: 10, gender: 'both',
     tags: ['قرآن', 'تعليم', 'ألواح'],
     images: [
       `${BASE}/2024/07/Alwah-1.webp`,
@@ -326,6 +333,7 @@ export const products: Product[] = [
     price: 350,
     priceUsd: 4.5,
     category: 'القصص والكتب والروايات',
+    minAge: 8, maxAge: 22, gender: 'both',
     tags: ['فلسطين', 'كتب', 'أسرة', 'تاريخ'],
     images: [
       `${BASE}/2024/07/Palestine-1.webp`,
@@ -366,6 +374,7 @@ export const products: Product[] = [
     price: 250,
     priceUsd: 3.5,
     category: 'القصص والكتب والروايات',
+    minAge: 14, maxAge: 22, gender: 'male',
     tags: ['شباب', 'تربية', 'فكر', 'شبهات'],
     images: [
       `${BASE}/2024/07/To-My-Son-1.webp`,
@@ -406,6 +415,7 @@ export const products: Product[] = [
     price: 250,
     priceUsd: 3.5,
     category: 'القصص والكتب والروايات',
+    minAge: 14, maxAge: 22, gender: 'both',
     tags: ['أمهات', 'تربية', 'أسرة'],
     images: [
       `${BASE}/2024/07/Mothers-1.webp`,
@@ -446,6 +456,7 @@ export const products: Product[] = [
     price: 220,
     priceUsd: 16,
     category: 'القصص والكتب والروايات',
+    minAge: 14, maxAge: 22, gender: 'both',
     tags: ['حديث', 'شبهات', 'قصص', 'إنفوجرافيك'],
     images: [
       `${BASE}/2024/07/Bukhari-on-Mars-1.webp`,
@@ -487,6 +498,7 @@ export const products: Product[] = [
     price: 230,
     priceUsd: 4.5,
     category: 'القصص والكتب والروايات',
+    minAge: 8, maxAge: 16, gender: 'both',
     tags: ['فقه', 'طهارة', 'قصص', 'أطفال'],
     images: [
       `${BASE}/2024/07/Fakih-in-Wonderland-1.webp`,
@@ -530,6 +542,7 @@ export const products: Product[] = [
     price: 250,
     priceUsd: 4,
     category: 'القصص والكتب والروايات',
+    minAge: 4, maxAge: 9, gender: 'both',
     tags: ['صلاة', 'قصص', 'أطفال', 'AR'],
     images: [
       `${BASE}/2024/07/Pray-Story-1.webp`,
@@ -569,6 +582,7 @@ export const products: Product[] = [
     price: 250,
     priceUsd: 4,
     category: 'القصص والكتب والروايات',
+    minAge: 4, maxAge: 9, gender: 'male',
     tags: ['قصص', 'أطفال', 'تساؤلات', 'إيمان'],
     images: [
       `${BASE}/2024/07/My-Son-Asks-1.webp`,
@@ -608,6 +622,7 @@ export const products: Product[] = [
     price: 300,
     priceUsd: 4,
     category: 'القصص والكتب والروايات',
+    minAge: 4, maxAge: 13, gender: 'both',
     tags: ['بر', 'والدين', 'قصص', 'أطفال'],
     images: [
       `${BASE}/2024/07/The-Series-of-Righteousness-1.webp`,
@@ -649,6 +664,7 @@ export const products: Product[] = [
     price: 220,
     priceUsd: 10,
     category: 'الأدوات والمستلزمات الدراسية',
+    minAge: 6, maxAge: 13, gender: 'both',
     tags: ['مفكرة', 'أطفال', 'تنظيم', 'عبادات'],
     images: [
       `${BASE}/2024/07/Kids-Notebook-Cover.webp`,
@@ -699,6 +715,7 @@ export const products: Product[] = [
     price: 220,
     priceUsd: 10,
     category: 'الأدوات والمستلزمات الدراسية',
+    minAge: 14, maxAge: 22, gender: 'both',
     tags: ['مفكرة', 'كبار', 'تنظيم', 'عبادات'],
     images: [
       `${BASE}/2024/07/Adults-Notebook-Cover.webp`,
@@ -748,6 +765,7 @@ export const products: Product[] = [
     price: 280,
     priceUsd: 5.5,
     category: 'الهدايا والمقتنيات',
+    minAge: 4, maxAge: 13, gender: 'both',
     tags: ['شنطة', 'أطفال', 'مدرسة', 'حضانة'],
     images: [
       `${BASE}/2024/10/Boys-Bag-1-1.webp`,
@@ -790,6 +808,7 @@ export const products: Product[] = [
     price: 230,
     priceUsd: 4,
     category: 'أدوات تعليم القرآن',
+    minAge: 4, maxAge: 13, gender: 'both',
     tags: ['قرآن', 'حامل', 'مصحف', 'أطفال'],
     images: [
       `${BASE}/2024/10/Masek-Cover.webp`,
@@ -840,6 +859,7 @@ export const products: Product[] = [
     price: 210,
     priceUsd: 3.5,
     category: 'الهدايا والمقتنيات',
+    minAge: 6, maxAge: 22, gender: 'male',
     tags: ['مج', 'هدية', 'أولاد', 'إسلامي'],
     images: [
       `${BASE}/2024/10/Boys-Mugs-1.webp`,
@@ -887,6 +907,7 @@ export const products: Product[] = [
     price: 210,
     priceUsd: 3.5,
     category: 'الهدايا والمقتنيات',
+    minAge: 6, maxAge: 22, gender: 'female',
     tags: ['مج', 'هدية', 'بنات', 'إسلامي'],
     images: [
       `${BASE}/2024/10/Girls-Mugs.webp`,
@@ -933,6 +954,7 @@ export const products: Product[] = [
     price: 210,
     priceUsd: 3.5,
     category: 'الهدايا والمقتنيات',
+    minAge: 14, maxAge: 22, gender: 'female',
     tags: ['مج', 'هدية', 'نساء', 'إسلامي'],
     images: [
       `${BASE}/2024/10/Women-Mugs.webp`,
@@ -972,6 +994,7 @@ export const products: Product[] = [
     price: 35,
     priceUsd: 0.5,
     category: 'الهدايا والمقتنيات',
+    minAge: 14, maxAge: 22, gender: 'both',
     tags: ['دبوس', 'هدية', 'إكسسوار'],
     images: [
       `${BASE}/2024/10/Pins.webp`,

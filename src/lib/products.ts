@@ -32,7 +32,7 @@ export const products: Product[] = [
 </ul>`,
     price: 350,
     priceUsd: 15,
-    category: 'ألعاب تعليمية',
+    category: 'الألعاب الورقية وتنمية المهارات',
     tags: ['لعبة', 'صيام', 'رمضان', 'تربوية'],
     images: [
       `${BASE}/2024/07/Feast-Day-1.webp`,
@@ -80,7 +80,7 @@ export const products: Product[] = [
 </ul>`,
     price: 500,
     priceUsd: 32,
-    category: 'ألعاب تعليمية',
+    category: 'الألعاب الورقية وتنمية المهارات',
     tags: ['قيادة', 'تربية', 'شخصية'],
     images: [
       `${BASE}/2024/07/Leader-Medal.webp`,
@@ -125,7 +125,7 @@ export const products: Product[] = [
 </ul>`,
     price: 370,
     priceUsd: 23,
-    category: 'ألعاب تعليمية',
+    category: 'الألعاب الورقية وتنمية المهارات',
     tags: ['قيادة', 'تربية', 'تعليم'],
     images: [
       `${BASE}/2024/07/Muslim-Leaders-1.webp`,
@@ -171,7 +171,7 @@ export const products: Product[] = [
 <p><strong>Apps are free on Google Play</strong></p>`,
     price: 350,
     priceUsd: 25,
-    category: 'ألعاب تعليمية',
+    category: 'الألعاب الورقية وتنمية المهارات',
     tags: ['صلاة', 'حج', 'تعليم', 'AR'],
     images: [
       `${BASE}/2024/07/Pray-and-Hajj-1.webp`,
@@ -211,7 +211,7 @@ export const products: Product[] = [
 </ul>`,
     price: 220,
     priceUsd: 16,
-    category: 'ألعاب تعليمية',
+    category: 'الألعاب الورقية وتنمية المهارات',
     tags: ['بازل', 'أولاد', 'تعليم'],
     images: [
       `${BASE}/2024/07/Puzzle-Boys-1.webp`,
@@ -246,7 +246,7 @@ export const products: Product[] = [
 </ul>`,
     price: 220,
     priceUsd: 16,
-    category: 'ألعاب تعليمية',
+    category: 'الألعاب الورقية وتنمية المهارات',
     tags: ['بازل', 'بنات', 'تعليم'],
     images: [
       `${BASE}/2024/07/Puzzle-Girls-1.webp`,
@@ -289,7 +289,7 @@ export const products: Product[] = [
 <p><strong>App is free on Google Play</strong></p>`,
     price: 350,
     priceUsd: 7,
-    category: 'أدوات القرآن',
+    category: 'أدوات تعليم القرآن',
     tags: ['قرآن', 'تعليم', 'ألواح'],
     images: [
       `${BASE}/2024/07/Alwah-1.webp`,
@@ -325,7 +325,7 @@ export const products: Product[] = [
 </ul>`,
     price: 350,
     priceUsd: 4.5,
-    category: 'كتب الأسرة',
+    category: 'القصص والكتب والروايات',
     tags: ['فلسطين', 'كتب', 'أسرة', 'تاريخ'],
     images: [
       `${BASE}/2024/07/Palestine-1.webp`,
@@ -365,7 +365,7 @@ export const products: Product[] = [
 </ul>`,
     price: 250,
     priceUsd: 3.5,
-    category: 'كتب',
+    category: 'القصص والكتب والروايات',
     tags: ['شباب', 'تربية', 'فكر', 'شبهات'],
     images: [
       `${BASE}/2024/07/To-My-Son-1.webp`,
@@ -405,7 +405,7 @@ export const products: Product[] = [
 </ul>`,
     price: 250,
     priceUsd: 3.5,
-    category: 'كتب',
+    category: 'القصص والكتب والروايات',
     tags: ['أمهات', 'تربية', 'أسرة'],
     images: [
       `${BASE}/2024/07/Mothers-1.webp`,
@@ -445,7 +445,7 @@ export const products: Product[] = [
 </ul>`,
     price: 220,
     priceUsd: 16,
-    category: 'كتب',
+    category: 'القصص والكتب والروايات',
     tags: ['حديث', 'شبهات', 'قصص', 'إنفوجرافيك'],
     images: [
       `${BASE}/2024/07/Bukhari-on-Mars-1.webp`,
@@ -486,7 +486,7 @@ export const products: Product[] = [
 </ul>`,
     price: 230,
     priceUsd: 4.5,
-    category: 'كتب',
+    category: 'القصص والكتب والروايات',
     tags: ['فقه', 'طهارة', 'قصص', 'أطفال'],
     images: [
       `${BASE}/2024/07/Fakih-in-Wonderland-1.webp`,
@@ -529,7 +529,7 @@ export const products: Product[] = [
 <p><strong>App is free on Google Play</strong></p>`,
     price: 250,
     priceUsd: 4,
-    category: 'قصص الأطفال',
+    category: 'القصص والكتب والروايات',
     tags: ['صلاة', 'قصص', 'أطفال', 'AR'],
     images: [
       `${BASE}/2024/07/Pray-Story-1.webp`,
@@ -568,7 +568,7 @@ export const products: Product[] = [
 </ul>`,
     price: 250,
     priceUsd: 4,
-    category: 'قصص الأطفال',
+    category: 'القصص والكتب والروايات',
     tags: ['قصص', 'أطفال', 'تساؤلات', 'إيمان'],
     images: [
       `${BASE}/2024/07/My-Son-Asks-1.webp`,
@@ -607,7 +607,7 @@ export const products: Product[] = [
 </ul>`,
     price: 300,
     priceUsd: 4,
-    category: 'قصص الأطفال',
+    category: 'القصص والكتب والروايات',
     tags: ['بر', 'والدين', 'قصص', 'أطفال'],
     images: [
       `${BASE}/2024/07/The-Series-of-Righteousness-1.webp`,
@@ -648,7 +648,7 @@ export const products: Product[] = [
 </ul>`,
     price: 220,
     priceUsd: 10,
-    category: 'مفكرات',
+    category: 'الأدوات والمستلزمات الدراسية',
     tags: ['مفكرة', 'أطفال', 'تنظيم', 'عبادات'],
     images: [
       `${BASE}/2024/07/Kids-Notebook-Cover.webp`,
@@ -698,7 +698,7 @@ export const products: Product[] = [
 </ul>`,
     price: 220,
     priceUsd: 10,
-    category: 'مفكرات',
+    category: 'الأدوات والمستلزمات الدراسية',
     tags: ['مفكرة', 'كبار', 'تنظيم', 'عبادات'],
     images: [
       `${BASE}/2024/07/Adults-Notebook-Cover.webp`,
@@ -747,7 +747,7 @@ export const products: Product[] = [
 </ul>`,
     price: 280,
     priceUsd: 5.5,
-    category: 'إكسسوار',
+    category: 'الهدايا والمقتنيات',
     tags: ['شنطة', 'أطفال', 'مدرسة', 'حضانة'],
     images: [
       `${BASE}/2024/10/Boys-Bag-1-1.webp`,
@@ -789,7 +789,7 @@ export const products: Product[] = [
 <p><strong>App is free on Google Play</strong></p>`,
     price: 230,
     priceUsd: 4,
-    category: 'أدوات القرآن',
+    category: 'أدوات تعليم القرآن',
     tags: ['قرآن', 'حامل', 'مصحف', 'أطفال'],
     images: [
       `${BASE}/2024/10/Masek-Cover.webp`,
@@ -839,7 +839,7 @@ export const products: Product[] = [
 </ul>`,
     price: 210,
     priceUsd: 3.5,
-    category: 'مجات',
+    category: 'الهدايا والمقتنيات',
     tags: ['مج', 'هدية', 'أولاد', 'إسلامي'],
     images: [
       `${BASE}/2024/10/Boys-Mugs-1.webp`,
@@ -886,7 +886,7 @@ export const products: Product[] = [
 </ul>`,
     price: 210,
     priceUsd: 3.5,
-    category: 'مجات',
+    category: 'الهدايا والمقتنيات',
     tags: ['مج', 'هدية', 'بنات', 'إسلامي'],
     images: [
       `${BASE}/2024/10/Girls-Mugs.webp`,
@@ -932,7 +932,7 @@ export const products: Product[] = [
 </ul>`,
     price: 210,
     priceUsd: 3.5,
-    category: 'مجات',
+    category: 'الهدايا والمقتنيات',
     tags: ['مج', 'هدية', 'نساء', 'إسلامي'],
     images: [
       `${BASE}/2024/10/Women-Mugs.webp`,
@@ -971,7 +971,7 @@ export const products: Product[] = [
 </ul>`,
     price: 35,
     priceUsd: 0.5,
-    category: 'إكسسوار',
+    category: 'الهدايا والمقتنيات',
     tags: ['دبوس', 'هدية', 'إكسسوار'],
     images: [
       `${BASE}/2024/10/Pins.webp`,
@@ -988,19 +988,12 @@ export const products: Product[] = [
 
 export const categories: Category[] = [
   { id: 'all', name: 'الكل', count: products.length },
-  { id: 'ألعاب تعليمية', name: 'ألعاب تعليمية', count: products.filter(p => p.category === 'ألعاب تعليمية').length },
-  { id: 'كتب', name: 'كتب', count: products.filter(p => p.category === 'كتب').length },
-  { id: 'كتب الأسرة', name: 'كتب الأسرة', count: products.filter(p => p.category === 'كتب الأسرة').length },
-  { id: 'قصص الأطفال', name: 'قصص الأطفال', count: products.filter(p => p.category === 'قصص الأطفال').length },
-  { id: 'أدوات القرآن', name: 'أدوات القرآن', count: products.filter(p => p.category === 'أدوات القرآن').length },
-  { id: 'مفكرات', name: 'مفكرات', count: products.filter(p => p.category === 'مفكرات').length },
-  { id: 'إكسسوار', name: 'إكسسوار', count: products.filter(p => p.category === 'إكسسوار').length },
-  { id: 'مجات', name: 'مجات', count: products.filter(p => p.category === 'مجات').length },
-  { id: 'أدوات مكتبية', name: 'أدوات مكتبية', count: products.filter(p => p.category === 'أدوات مكتبية').length },
-  { id: 'المدرسة', name: 'المدرسة', count: products.filter(p => p.category === 'المدرسة').length },
-  { id: 'هدايا', name: 'هدايا', count: products.filter(p => p.category === 'هدايا').length },
-  { id: 'ألعاب تربوية', name: 'ألعاب تربوية', count: products.filter(p => p.category === 'ألعاب تربوية').length },
-  { id: 'ثقافة دينية', name: 'ثقافة دينية', count: products.filter(p => p.category === 'ثقافة دينية').length },
+  { id: 'الأدوات والمستلزمات الدراسية', name: 'الأدوات والمستلزمات الدراسية', count: products.filter(p => p.category === 'الأدوات والمستلزمات الدراسية').length },
+  { id: 'القصص والكتب والروايات', name: 'القصص والكتب والروايات', count: products.filter(p => p.category === 'القصص والكتب والروايات').length },
+  { id: 'الألعاب الورقية وتنمية المهارات', name: 'الألعاب الورقية وتنمية المهارات', count: products.filter(p => p.category === 'الألعاب الورقية وتنمية المهارات').length },
+  { id: 'الهدايا والمقتنيات', name: 'الهدايا والمقتنيات', count: products.filter(p => p.category === 'الهدايا والمقتنيات').length },
+  { id: 'أدوات تعليم القرآن', name: 'أدوات تعليم القرآن', count: products.filter(p => p.category === 'أدوات تعليم القرآن').length },
+  { id: 'قسم الملابس', name: 'قسم الملابس', count: products.filter(p => p.category === 'قسم الملابس').length },
 ];
 
 export function getProductBySlug(slug: string): Product | undefined {

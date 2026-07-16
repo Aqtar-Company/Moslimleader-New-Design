@@ -101,6 +101,8 @@ export async function POST(req: NextRequest) {
         inStock: inStock !== false, weight: weight ?? 0,
         ageGroups: Array.isArray(body.ageGroups) && body.ageGroups.length > 0 ? body.ageGroups : null,
         gender: body.gender || null,
+        variantStocks: body.variantStocks ?? null,
+        comingSoon: body.comingSoon === true,
         videoUrl: body.videoUrl ?? null,
         source: 'admin',
         updatedAt: new Date(),

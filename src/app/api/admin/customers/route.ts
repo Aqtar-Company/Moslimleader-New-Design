@@ -137,6 +137,7 @@ export async function GET(req: NextRequest) {
 
   const url = new URL(req.url);
   const segment = url.searchParams.get('segment') || 'all';
+  const excludeWholesale = url.searchParams.get('excludeWholesale') === '1';
   const productFilter = url.searchParams.get('boughtProduct');
   const notProductFilter = url.searchParams.get('notBoughtProduct');
   const govFilter = url.searchParams.get('governorate');
@@ -153,6 +154,9 @@ export async function GET(req: NextRequest) {
   let filtered = list;
   if (segment && segment !== 'all') {
     filtered = filtered.filter(r => r.segments.includes(segment));
+  }
+  if (excludeWholesale) {
+    filtered = filtered.filter(r => !r.segments.includes('wholesale'));
   }
   if (productFilter) {
     filtered = filtered.filter(r => r.productIds.includes(productFilter));

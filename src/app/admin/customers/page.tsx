@@ -68,6 +68,7 @@ export default function CustomersPage() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(50);
+  const [excludeWholesale, setExcludeWholesale] = useState(false);
   const [bulkMessage, setBulkMessage] = useState(
     'مرحبًا 👋\nمن Moslim Leader، عندنا منتج جديد ممكن يعجبك. تحب أبعتلك التفاصيل؟',
   );
@@ -78,6 +79,7 @@ export default function CustomersPage() {
       const effectiveLimit = limitOverride ?? pageSize;
       const params = new URLSearchParams({ segment, sort, limit: String(effectiveLimit), offset: '0' });
       if (search.trim()) params.set('q', search.trim());
+      if (excludeWholesale) params.set('excludeWholesale', '1');
       const res = await fetch(`/api/admin/customers?${params}`, { credentials: 'include', cache: 'no-store' });
       const data = await res.json();
       setCustomers(data.customers ?? []);
@@ -88,14 +90,14 @@ export default function CustomersPage() {
       addToast('فشل تحميل العملاء', 'error');
     }
     setLoading(false);
-  }, [segment, sort, search, pageSize, addToast]);
+  }, [segment, sort, search, pageSize, excludeWholesale, addToast]);
 
   useEffect(() => {
     setPageSize(50); // reset page size on filter/search change
     const t = setTimeout(() => load(50), search ? 300 : 0);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [segment, sort, search]);
+  }, [segment, sort, search, excludeWholesale]);
 
   const totalSpend = useMemo(() => customers.reduce((s, c) => s + c.totalSpend, 0), [customers]);
 
@@ -127,7 +129,11 @@ export default function CustomersPage() {
         <div>
           <h1 className="text-xl font-black text-gray-900">قاعدة العملاء</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {customers.length} عميل · إجمالي مبيعاتهم {formatPrice(totalSpend)} ج.م
+            <span className="font-bold text-gray-900">{(counts['all'] ?? total).toLocaleString('en-US')}</span> عميل إجمالاً
+            {segment !== 'all' && total !== (counts['all'] ?? total) && (
+              <span> · يظهر {total.toLocaleString('en-US')}</span>
+            )}
+            {' '}· إجمالي مبيعاتهم {formatPrice(totalSpend)} ج.م
           </p>
         </div>
         {reachableCount > 0 && segment !== 'all' && (
@@ -179,6 +185,15 @@ export default function CustomersPage() {
         >
           {SORTS.map(s => <option key={s.key} value={s.key}>ترتيب: {s.label}</option>)}
         </select>
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <div
+            onClick={() => setExcludeWholesale(v => !v)}
+            className={`relative w-9 h-5 rounded-full transition-colors ${excludeWholesale ? 'bg-blue-600' : 'bg-gray-300'}`}
+          >
+            <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${excludeWholesale ? 'right-0.5' : 'left-0.5'}`} />
+          </div>
+          <span className="text-xs font-semibold text-gray-600">استثناء تجار الجملة</span>
+        </label>
       </div>
 
       {/* Table */}

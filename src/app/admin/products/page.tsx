@@ -22,11 +22,10 @@ const EMPTY_FORM = {
   slug: '', name: '', nameEn: '', shortDescription: '', shortDescriptionEn: '',
   description: '', descriptionEn: '', price: 0, priceUsd: 0, videoUrl: '', category: '',
   tags: [] as string[], images: [] as string[], inStock: true, weight: 0,
-  // Age targeting — used by the FB AI assistant to recommend
-  // age-appropriate products. null = "all ages".
-  minAge: null as number | null,
-  maxAge: null as number | null,
-  needsParentalGuide: false,
+  // Age groups — multi-select checkboxes in the admin form.
+  // IDs: '4-7' | '8-13' | '14-16' | '17-22' | 'parents'
+  ageGroups: [] as string[],
+  gender: '' as string,
   // When true, the add-to-cart button is replaced by a "Notify Me" button.
   comingSoon: false,
 };
@@ -79,6 +78,20 @@ export default function ProductsPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Auto-detect gender from variant names (only when gender not manually set)
+  useEffect(() => {
+    if (form.gender) return; // don't override manual selection
+    const MALE_WORDS = ['أولاد', 'ولادي', 'ولد', 'boys', 'boy', 'male'];
+    const FEMALE_WORDS = ['بنات', 'بناتي', 'بنت', 'girls', 'girl', 'female', 'نساء'];
+    const names = variants.flatMap(v => [v.name, v.nameEn].filter(Boolean).map(s => s.toLowerCase()));
+    const hasMale = names.some(n => MALE_WORDS.some(w => n.includes(w)));
+    const hasFemale = names.some(n => FEMALE_WORDS.some(w => n.includes(w)));
+    if (hasMale && hasFemale) setForm(f => ({ ...f, gender: 'both' }));
+    else if (hasMale) setForm(f => ({ ...f, gender: 'male' }));
+    else if (hasFemale) setForm(f => ({ ...f, gender: 'female' }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variants]);
 
   const allCategoryNames = [
     ...staticCategories.filter(c => c.id !== 'all').map(c => c.name),
@@ -241,9 +254,8 @@ export default function ProductsPage() {
         images: fullP.images || [],
         inStock: fullP.inStock ?? true,
         weight: fullP.weight || 0,
-        minAge: (fullP as { minAge?: number | null }).minAge ?? null,
-        maxAge: (fullP as { maxAge?: number | null }).maxAge ?? null,
-        needsParentalGuide: (fullP as { needsParentalGuide?: boolean }).needsParentalGuide ?? false,
+        ageGroups: (fullP as { ageGroups?: string[] | null }).ageGroups ?? [],
+        gender: (fullP as { gender?: string | null }).gender ?? '',
         comingSoon: (fullP as { comingSoon?: boolean }).comingSoon ?? false,
       });
       setFormTags((fullP.tags || []).join(', '));
@@ -307,10 +319,8 @@ export default function ProductsPage() {
         category: form.category,
       inStock: form.inStock,
       weight: form.weight,
-      // Age targeting (FB AI assistant). null = "all ages".
-      minAge: form.minAge,
-      maxAge: form.maxAge,
-      needsParentalGuide: form.needsParentalGuide,
+      ageGroups: form.ageGroups.length > 0 ? form.ageGroups : null,
+      gender: form.gender || null,
       comingSoon: form.comingSoon,
       tags: parsedTags,
       images: formImages,
@@ -463,78 +473,51 @@ export default function ProductsPage() {
               </div>
             </div>
 
-            {/* Age targeting — used by the FB AI assistant to recommend
-                age-appropriate products. Optional (left blank = "all ages"). */}
+            {/* Age groups — multi-select checkboxes */}
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
               <p className="text-xs font-bold text-blue-900 mb-2">
-                👶 الفئة العمرية المناسبة (للمساعد الذكي على فيسبوك)
+                👶 الفئة العمرية المناسبة
               </p>
               <p className="text-[10px] text-blue-700 mb-3 leading-relaxed">
-                لما العميل يقول "ابني عمره 5 سنين" البوت بيرشّح المنتجات اللي فئتها العمرية مطابقة. سيب الخانتين فاضيين لو المنتج مناسب لكل الأعمار.
+                ممكن تختار أكتر من فئة. سيب الكل فاضي لو المنتج مناسب لكل الأعمار.
               </p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">من عمر</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={18}
-                    value={form.minAge ?? ''}
-                    onChange={e => setForm(f => ({ ...f, minAge: e.target.value === '' ? null : Math.max(0, Math.min(18, Number(e.target.value))) }))}
-                    placeholder="مثال: 4"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400 bg-white"
-                    dir="ltr"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">إلى عمر</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={18}
-                    value={form.maxAge ?? ''}
-                    onChange={e => setForm(f => ({ ...f, maxAge: e.target.value === '' ? null : Math.max(0, Math.min(18, Number(e.target.value))) }))}
-                    placeholder="مثال: 8"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gray-400 bg-white"
-                    dir="ltr"
-                  />
-                </div>
-              </div>
-              {/* Parental-help checkbox — mirrors the field on books.
-                  Surfaces a chip on the product card so parents see
-                  it before they buy. */}
-              <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.needsParentalGuide}
-                  onChange={e => setForm(f => ({ ...f, needsParentalGuide: e.target.checked }))}
-                  className="w-4 h-4 accent-amber-500"
-                />
-                <span className="text-xs text-gray-700 font-semibold">
-                  👨‍👩‍👧 هذا المنتج يحتاج مساعدة الوالدين (مناسب للأطفال أقل من 8 سنوات بمساعدة)
-                </span>
-              </label>
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                <span className="text-[10px] text-blue-700 font-bold">اختصارات:</span>
+              <div className="flex flex-col gap-2">
                 {[
-                  { label: '👶 رضيع 0-2', min: 0, max: 2 },
-                  { label: '🧒 حضانة 3-5', min: 3, max: 5 },
-                  { label: '🧒 ابتدائي 6-9', min: 6, max: 9 },
-                  { label: '👦 إعدادي 10-12', min: 10, max: 12 },
-                  { label: '👦 ثانوي 13+', min: 13, max: 18 },
-                ].map(preset => (
-                  <button
-                    key={preset.label}
-                    type="button"
-                    onClick={() => setForm(f => ({ ...f, minAge: preset.min, maxAge: preset.max }))}
-                    className="text-[10px] bg-white hover:bg-blue-100 border border-blue-200 text-blue-700 px-2 py-0.5 rounded transition"
-                  >{preset.label}</button>
+                  { id: '4-7',     label: '٤–٧ سن التمييز' },
+                  { id: '8-13',    label: '٨–١٣ سن اليافعين' },
+                  { id: '14-16',   label: '١٤–١٦ سن التكليف' },
+                  { id: '17-22',   label: '١٧–٢٢ الشباب' },
+                  { id: 'parents', label: 'الوالدين' },
+                ].map(ag => (
+                  <label key={ag.id} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.ageGroups.includes(ag.id)}
+                      onChange={e => setForm(f => ({
+                        ...f,
+                        ageGroups: e.target.checked
+                          ? [...f.ageGroups, ag.id]
+                          : f.ageGroups.filter(x => x !== ag.id),
+                      }))}
+                      className="w-4 h-4 accent-blue-600"
+                    />
+                    <span className="text-xs text-gray-700 font-semibold">{ag.label}</span>
+                  </label>
                 ))}
-                <button
-                  type="button"
-                  onClick={() => setForm(f => ({ ...f, minAge: null, maxAge: null }))}
-                  className="text-[10px] bg-white hover:bg-gray-100 border border-gray-200 text-gray-600 px-2 py-0.5 rounded transition"
-                >🗑️ كل الأعمار</button>
+              </div>
+              {/* Gender */}
+              <div className="mt-3">
+                <label className="block text-xs font-semibold text-gray-700 mb-1">الجنس</label>
+                <select
+                  value={form.gender}
+                  onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-gray-400 bg-white"
+                >
+                  <option value="">للجميع</option>
+                  <option value="male">ذكور</option>
+                  <option value="female">إناث</option>
+                  <option value="both">للجميع (صريح)</option>
+                </select>
               </div>
             </div>
           </div>

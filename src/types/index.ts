@@ -45,6 +45,7 @@ export interface Product {
   ageCategory?: string | null;
   needsParentalGuide?: boolean;
   gender?: 'male' | 'female' | 'both' | null;
+  ageGroups?: string[] | null;
   isParentBook?: boolean;
 }
 

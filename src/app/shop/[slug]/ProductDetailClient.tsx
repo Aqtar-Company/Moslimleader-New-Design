@@ -14,9 +14,9 @@ import { Product, ProductVariant } from '@/types';
 import ProductCard from '@/components/product/ProductCard';
 import { sanitizeHtml } from '@/lib/sanitize';
 
-const MODEL_CATEGORIES = ['مجات', 'مفكرات'];
+const MODEL_CATEGORIES = ['الأدوات والمستلزمات الدراسية'];
 // Slugs where images[0] is overview and images[1+] are models
-const MODEL_SLUGS_WITH_COVER = ['masek', 'ml-pin'];
+const MODEL_SLUGS_WITH_COVER = ['masek', 'ml-pin', 'boys-mug', 'girls-mug', 'women-mug'];
 // Slugs where ALL images are selectable models (no overview image)
 const MODEL_SLUGS_NO_COVER = ['ml-bag'];
 

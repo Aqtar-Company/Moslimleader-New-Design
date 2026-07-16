@@ -429,7 +429,7 @@ function BookPageInner() {
               </Link>
             ) : (
               <Link
-                href={`/auth?redirect=/library/${id}`}
+                href={`/login?redirect=/library/${id}`}
                 className="block w-full bg-[#1a1a2e] hover:bg-[#2a2a4e] text-white font-black py-3.5 rounded-xl text-center text-base transition"
               >
                 {isEn ? 'Sign in to Purchase' : 'سجّل دخولك للشراء'}
@@ -557,7 +557,7 @@ function BookPageInner() {
               {!hasAccess && book.price > 0 && (
                 <div className="flex flex-wrap gap-2">
                   <Link
-                    href={user ? `/library/${id}/buy` : `/auth?redirect=/library/${id}`}
+                    href={user ? `/library/${id}/buy` : `/login?redirect=/library/${id}`}
                     className="inline-block bg-[#F5C518] text-[#1a1a2e] font-black text-xs px-4 py-2 rounded-xl"
                   >
                     {user ? `رقمي — ${displayBookPrice(book)}` : 'سجّل دخولك'}

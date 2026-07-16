@@ -780,7 +780,7 @@ export default function CheckoutPage() {
       {!user && (
         <div className="bg-blue-50 border border-blue-100 rounded-2xl px-5 py-3.5 flex items-center justify-between gap-4 mb-6">
           <p className="text-sm text-blue-700">{L.signInNote}</p>
-          <Link href={`/auth?redirect=/checkout`} className="text-sm font-bold text-blue-700 hover:underline shrink-0">{L.signIn}</Link>
+          <Link href={`/login?redirect=/checkout`} className="text-sm font-bold text-blue-700 hover:underline shrink-0">{L.signIn}</Link>
         </div>
       )}
 

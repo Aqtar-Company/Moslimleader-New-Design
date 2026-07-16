@@ -40,7 +40,7 @@ export default function SeriesBuyPage({ params }: { params: Promise<{ seriesId: 
   useEffect(() => {
     if (!seriesId) return;
     if (!isLoading && !user) {
-      router.replace(`/auth?redirect=/library/series/${seriesId}/buy`);
+      router.replace(`/login?redirect=/library/series/${seriesId}/buy`);
       return;
     }
     if (isLoading) return;

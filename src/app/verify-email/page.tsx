@@ -128,7 +128,7 @@ function VerifyEmailContent() {
             )}
 
             <button
-              onClick={() => router.push('/auth')}
+              onClick={() => router.push('/login')}
               className="mt-4 text-sm text-gray-500 hover:text-gray-700 underline block"
             >
               العودة لصفحة الدخول
@@ -142,7 +142,7 @@ function VerifyEmailContent() {
             <h2 className="text-2xl font-bold text-gray-900 mb-2">تم إرسال الرابط</h2>
             <p className="text-gray-600 mb-4">تحقق من صندوق الوارد في بريدك الإلكتروني وافتح رابط التحقق.</p>
             <button
-              onClick={() => router.push('/auth')}
+              onClick={() => router.push('/login')}
               className="mt-2 text-sm text-gray-500 hover:text-gray-700 underline"
             >
               العودة لصفحة الدخول

@@ -84,7 +84,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (isLoading) return;
     if (!user) {
-      router.replace('/auth?redirect=' + pathname);
+      router.replace('/login?redirect=' + pathname);
       return;
     }
     if (!isAdminLike) {

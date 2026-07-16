@@ -32,6 +32,12 @@ const nextConfig = {
       allowedOrigins: ['moslimleader.com', 'www.moslimleader.com', 'localhost:3000'],
     },
   },
+  async redirects() {
+    return [
+      { source: '/auth', destination: '/login', permanent: true },
+      { source: '/auth/:path*', destination: '/login/:path*', permanent: true },
+    ];
+  },
   async rewrites() {
     return [
       { source: '/partnership', destination: '/strategic-vision.html' },

@@ -47,7 +47,7 @@ export default function BookBuyPage({ params }: { params: Promise<{ id: string }
   useEffect(() => {
     if (!id) return;
     if (!isLoading && !user) {
-      router.replace(`/auth?redirect=/library/${id}/buy`);
+      router.replace(`/login?redirect=/library/${id}/buy`);
       return;
     }
     if (isLoading) return;

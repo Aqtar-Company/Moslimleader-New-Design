@@ -81,7 +81,7 @@ export default function AccountPage() {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      router.replace('/auth?redirect=/account');
+      router.replace('/login?redirect=/account');
     }
     if (user) {
       setName(user.name);

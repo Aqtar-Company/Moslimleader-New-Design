@@ -101,7 +101,7 @@ export default function MobileMenu({ open, onClose }: MobileMenuProps) {
             </div>
           ) : (
             <Link
-              href="/auth"
+              href='/login'
               onClick={onClose}
               className="flex items-center justify-center gap-2 w-full bg-[#1a1a2e] hover:bg-gray-800 text-white font-black py-3 rounded-xl text-sm transition"
             >

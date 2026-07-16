@@ -48,7 +48,7 @@ function ResetPasswordContent() {
         return;
       }
       setSuccess(true);
-      setTimeout(() => router.push('/auth'), 2000);
+      setTimeout(() => router.push('/login'), 2000);
     } catch {
       setError(isRtl ? 'حدث خطأ في الاتصال' : 'Connection error');
     } finally {
@@ -61,7 +61,7 @@ function ResetPasswordContent() {
       <div className="flex min-h-screen items-center justify-center" dir={isRtl ? 'rtl' : 'ltr'}>
         <div className="text-center">
           <p className="text-red-500 text-lg font-bold">{isRtl ? 'رابط غير صالح' : 'Invalid link'}</p>
-          <button onClick={() => router.push('/auth')} className="mt-4 text-gray-600 underline text-sm">
+          <button onClick={() => router.push('/login')} className="mt-4 text-gray-600 underline text-sm">
             {isRtl ? 'العودة لتسجيل الدخول' : 'Back to sign in'}
           </button>
         </div>
@@ -155,7 +155,7 @@ function ResetPasswordContent() {
               </form>
 
               <p className="text-center mt-6">
-                <button onClick={() => router.push('/auth')}
+                <button onClick={() => router.push('/login')}
                   className="text-xs text-gray-400 hover:text-gray-600 transition underline underline-offset-2">
                   {isRtl ? 'العودة لتسجيل الدخول' : 'Back to sign in'}
                 </button>

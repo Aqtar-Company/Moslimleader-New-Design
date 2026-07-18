@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useLang } from '@/context/LanguageContext';
@@ -130,7 +130,6 @@ function Shelf({ title, subtitle, books, isEn, getPrice, shelfColor = '#C8B49A' 
   getPrice: (b: { price: number; priceUSD?: number }) => string;
   shelfColor?: string;
 }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
   if (books.length === 0) return null;
 
   return (
@@ -149,7 +148,6 @@ function Shelf({ title, subtitle, books, isEn, getPrice, shelfColor = '#C8B49A' 
       {/* Scrollable book row */}
       <div className="relative">
         <div
-          ref={scrollRef}
           className="flex gap-4 overflow-x-auto pb-5 px-2 scrollbar-none"
           dir="ltr"
         >
@@ -211,11 +209,11 @@ export default function LibraryV2Page() {
       .finally(() => setLoading(false));
   }, []);
 
-  const langMatch = (lang?: string) => {
+  const langMatch = useCallback((bookLang?: string) => {
     if (activeLang === 'all') return true;
-    const l = lang || 'ar';
+    const l = bookLang || 'ar';
     return l === activeLang || l === 'both';
-  };
+  }, [activeLang]);
 
   // Filter books by search + language
   const filteredBooks = useMemo(() => {
@@ -232,7 +230,7 @@ export default function LibraryV2Page() {
       list = list.filter(b => langMatch(b.language));
     }
     return list;
-  }, [books, search, activeLang]);
+  }, [books, search, activeLang, langMatch]);
 
   // Standalone books (no series) — split by section
   const standaloneBooks = useMemo(() =>

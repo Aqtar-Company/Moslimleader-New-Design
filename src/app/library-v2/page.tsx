@@ -15,7 +15,6 @@ interface Book {
   description: string;
   author?: string;
   authorEn?: string;
-  category?: string;
   language?: string;
   section?: string;
   price: number;
@@ -40,8 +39,6 @@ interface SeriesBook {
   language?: string;
   freePages: number;
   totalPages: number;
-  author?: string;
-  authorEn?: string;
 }
 
 interface BookSeriesData {
@@ -60,16 +57,27 @@ interface BookSeriesData {
 type LangFilter = 'all' | 'ar' | 'en' | 'ur' | 'id' | 'de' | 'fr';
 
 const LANG_OPTIONS: { id: LangFilter; label: string; flag: string }[] = [
-  { id: 'all', label: 'الكل',       flag: '🌐' },
-  { id: 'ar',  label: 'عربي',       flag: '🇸🇦' },
-  { id: 'en',  label: 'English',    flag: '🇬🇧' },
-  { id: 'ur',  label: 'اردو',       flag: '🇵🇰' },
-  { id: 'id',  label: 'Indonesia',  flag: '🇮🇩' },
-  { id: 'de',  label: 'Deutsch',    flag: '🇩🇪' },
-  { id: 'fr',  label: 'Français',   flag: '🇫🇷' },
+  { id: 'all', label: 'الكل',      flag: '🌐' },
+  { id: 'ar',  label: 'عربي',      flag: '🇸🇦' },
+  { id: 'en',  label: 'English',   flag: '🇬🇧' },
+  { id: 'ur',  label: 'اردو',      flag: '🇵🇰' },
+  { id: 'id',  label: 'Indonesia', flag: '🇮🇩' },
+  { id: 'de',  label: 'Deutsch',   flag: '🇩🇪' },
+  { id: 'fr',  label: 'Français',  flag: '🇫🇷' },
 ];
 
-function BookSpine({ book, href, price, isEn }: {
+const SHELF_COLORS = [
+  '#C8B49A', '#B8A88A', '#D4C0A0', '#C0AC90',
+  '#BAA888', '#CCC0A8', '#B4A282', '#CCB898',
+];
+
+/* ─── Book card standing on shelf ─── */
+function BookSpine({
+  book,
+  href,
+  price,
+  isEn,
+}: {
   book: { cover: string; title: string; titleEn?: string; freePages: number; language?: string };
   href: string;
   price: string;
@@ -77,43 +85,45 @@ function BookSpine({ book, href, price, isEn }: {
 }) {
   const title = isEn && book.titleEn ? book.titleEn : book.title;
   return (
-    <Link href={href} className="group shrink-0 flex flex-col items-center" style={{ width: 110 }}>
-      {/* Book standing upright */}
-      <div className="relative w-[88px] h-[132px] transition-transform duration-300 ease-out group-hover:-translate-y-3"
-        style={{ transformStyle: 'preserve-3d' }}>
-
-        {/* Book cover */}
-        <div className="absolute inset-0 rounded-sm overflow-hidden bg-gradient-to-br from-[#2a1a4e] to-[#1a0a2e]"
-          style={{
-            boxShadow: '4px 6px 16px rgba(0,0,0,0.35), inset -3px 0 6px rgba(0,0,0,0.2)',
-          }}>
+    <Link href={href} className="group shrink-0 flex flex-col items-center" style={{ width: 106 }}>
+      <div
+        className="relative w-[84px] h-[126px] transition-all duration-300 ease-out group-hover:-translate-y-4 group-hover:rotate-1"
+        style={{ transformStyle: 'preserve-3d' }}
+      >
+        {/* Cover */}
+        <div
+          className="absolute inset-0 rounded-[3px] overflow-hidden bg-[#1a1a2e]"
+          style={{ boxShadow: '5px 8px 20px rgba(0,0,0,0.4), inset -4px 0 8px rgba(0,0,0,0.25)' }}
+        >
           {book.cover ? (
-            <Image src={book.cover} alt={title} fill className="object-cover" unoptimized sizes="88px" />
+            <Image src={book.cover} alt={title} fill className="object-cover" unoptimized sizes="84px" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-white/30 text-3xl">📖</div>
+            <div className="w-full h-full flex items-center justify-center text-white/20 text-3xl">📖</div>
           )}
-          {/* Spine reflection */}
-          <div className="absolute inset-y-0 left-0 w-2 bg-gradient-to-r from-black/30 to-transparent pointer-events-none" />
+          {/* Left spine shadow */}
+          <div className="absolute inset-y-0 left-0 w-3 bg-gradient-to-r from-black/40 to-transparent pointer-events-none" />
+          {/* Sheen on hover */}
+          <div className="absolute inset-0 bg-white/0 group-hover:bg-white/8 transition-colors duration-300 pointer-events-none" />
         </div>
 
-        {/* Free preview badge */}
+        {/* Free badge */}
         {book.freePages > 0 && (
-          <div className="absolute -top-2 -right-2 z-10 bg-amber-400 text-[#1a1a2e] text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm leading-tight">
+          <span className="absolute -top-2 -right-2 z-10 bg-amber-400 text-[#1a1a2e] text-[7px] font-black px-1.5 py-0.5 rounded-full shadow leading-tight">
             {isEn ? 'FREE' : 'مجاني'}
-          </div>
+          </span>
         )}
 
         {/* Language badge */}
         {book.language && book.language !== 'ar' && (
-          <div className="absolute bottom-1 left-1 z-10 text-[8px] bg-black/60 text-white px-1 py-0.5 rounded font-bold">
+          <span className="absolute bottom-1 left-1 z-10 text-[7px] bg-black/65 text-white px-1 py-0.5 rounded font-bold tracking-wide">
             {book.language === 'both' ? 'AR/EN' : book.language.toUpperCase()}
-          </div>
+          </span>
         )}
       </div>
 
-      {/* Book info below */}
-      <div className="mt-2 w-full text-center px-1">
-        <p className="text-[11px] font-bold text-gray-700 leading-tight line-clamp-2 group-hover:text-amber-700 transition-colors">
+      {/* Info */}
+      <div className="mt-2.5 w-full text-center px-0.5">
+        <p className="text-[11px] font-bold text-gray-700 leading-snug line-clamp-2 group-hover:text-amber-700 transition-colors">
           {title}
         </p>
         <p className="text-[11px] font-black text-amber-600 mt-0.5">{price}</p>
@@ -122,35 +132,37 @@ function BookSpine({ book, href, price, isEn }: {
   );
 }
 
-function Shelf({ title, subtitle, books, isEn, getPrice, shelfColor = '#C8B49A' }: {
+/* ─── Single shelf row ─── */
+function Shelf({
+  title,
+  books,
+  isEn,
+  getPrice,
+  color = '#C8B49A',
+}: {
   title: string;
-  subtitle?: string;
   books: Array<{ id: string; cover: string; title: string; titleEn?: string; price: number; priceUSD?: number; freePages: number; language?: string }>;
   isEn: boolean;
   getPrice: (b: { price: number; priceUSD?: number }) => string;
-  shelfColor?: string;
+  color?: string;
 }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
   if (books.length === 0) return null;
 
   return (
-    <div className="mb-10">
-      {/* Shelf label */}
-      <div className="flex items-end justify-between mb-4 px-1">
-        <div>
-          <h2 className="text-lg font-black text-gray-800 leading-tight">{title}</h2>
-          {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
-        </div>
-        <span className="text-xs text-amber-600 font-bold flex items-center gap-1">
+    <section className="mb-12">
+      <div className="flex items-center justify-between mb-4 px-1">
+        <h2 className="text-base font-black text-gray-800">{title}</h2>
+        <span className="text-[11px] text-gray-400 font-medium">
           {books.length} {isEn ? 'books' : 'كتاب'}
         </span>
       </div>
 
-      {/* Scrollable book row */}
       <div className="relative">
+        {/* Books row */}
         <div
-          ref={scrollRef}
-          className="flex gap-4 overflow-x-auto pb-5 px-2 scrollbar-none"
+          ref={ref}
+          className="flex gap-3 overflow-x-auto pb-4 px-1 scrollbar-none"
           dir="ltr"
         >
           {books.map(b => (
@@ -162,26 +174,28 @@ function Shelf({ title, subtitle, books, isEn, getPrice, shelfColor = '#C8B49A' 
               isEn={isEn}
             />
           ))}
-          {/* Padding at end */}
-          <div className="shrink-0 w-2" />
+          <div className="shrink-0 w-1" />
         </div>
 
         {/* Shelf plank */}
         <div
-          className="h-3 rounded-full mx-2"
+          className="h-[10px] rounded-full mx-1"
           style={{
-            background: `linear-gradient(180deg, ${shelfColor} 0%, #A8926E 100%)`,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+            background: `linear-gradient(180deg, ${color}ee 0%, #9a7d5a 100%)`,
+            boxShadow: '0 5px 14px rgba(0,0,0,0.28)',
           }}
         />
-        {/* Shelf shadow */}
-        <div className="h-2 mx-6 rounded-full mt-0.5"
-          style={{ background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.15) 0%, transparent 70%)' }} />
+        {/* Drop shadow under plank */}
+        <div
+          className="h-2 mx-8 rounded-full mt-0.5 opacity-40"
+          style={{ background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.3) 0%, transparent 75%)' }}
+        />
       </div>
-    </div>
+    </section>
   );
 }
 
+/* ─── Page ─── */
 export default function LibraryV2Page() {
   const { lang } = useLang();
   const isEn = lang === 'en';
@@ -192,10 +206,10 @@ export default function LibraryV2Page() {
     return formatPrice(resolvePrice(b.price, b.priceUSD ?? 0, zone, countryCode));
   };
 
-  const [books, setBooks] = useState<Book[]>([]);
+  const [books, setBooks]   = useState<Book[]>([]);
   const [series, setSeries] = useState<BookSeriesData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [search, setSearch]   = useState('');
   const [activeLang, setActiveLang] = useState<LangFilter>('all');
 
   useEffect(() => {
@@ -211,13 +225,12 @@ export default function LibraryV2Page() {
       .finally(() => setLoading(false));
   }, []);
 
-  const langMatch = (lang?: string) => {
+  const langMatch = (l?: string) => {
     if (activeLang === 'all') return true;
-    const l = lang || 'ar';
-    return l === activeLang || l === 'both';
+    const lang = l || 'ar';
+    return lang === activeLang || lang === 'both';
   };
 
-  // Filter books by search + language
   const filteredBooks = useMemo(() => {
     let list = books;
     if (search.trim()) {
@@ -228,91 +241,68 @@ export default function LibraryV2Page() {
         (b.author || '').toLowerCase().includes(q),
       );
     }
-    if (activeLang !== 'all') {
-      list = list.filter(b => langMatch(b.language));
-    }
+    if (activeLang !== 'all') list = list.filter(b => langMatch(b.language));
     return list;
   }, [books, search, activeLang]);
 
-  // Standalone books (no series) — split by section
-  const standaloneBooks = useMemo(() =>
-    filteredBooks.filter(b => !b.seriesId && (!b.section || b.section === 'books')),
-    [filteredBooks]);
+  const standaloneBooks   = useMemo(() => filteredBooks.filter(b => !b.seriesId && (!b.section || b.section === 'books')), [filteredBooks]);
+  const standaloneStories = useMemo(() => filteredBooks.filter(b => !b.seriesId && b.section === 'stories'), [filteredBooks]);
 
-  const standaloneStories = useMemo(() =>
-    filteredBooks.filter(b => !b.seriesId && b.section === 'stories'),
-    [filteredBooks]);
-
-  // Series filtered by language
   const filteredSeries = useMemo(() =>
-    series.filter(s => {
-      if (activeLang === 'all') return true;
-      return langMatch(s.language);
-    }),
-    [series, activeLang]);
+    series.filter(s => activeLang === 'all' || langMatch(s.language)),
+    [series, activeLang],
+  );
 
-  const shelfColors = [
-    '#C8B49A', '#B8A88A', '#D4C0A0', '#C0AC90',
-    '#BAA888', '#CCC0A8', '#B4A282', '#CCB898',
-  ];
+  const isEmpty = filteredBooks.length === 0 && filteredSeries.length === 0;
 
   return (
     <div className="min-h-screen" style={{ background: '#F5F0E8' }} dir={isEn ? 'ltr' : 'rtl'}>
 
-      {/* ── Hero ── */}
-      <div className="pt-24 pb-6 px-4" style={{ background: 'linear-gradient(180deg, #1a1a2e 0%, #2a1f3d 60%, #F5F0E8 100%)' }}>
-        <div className="max-w-2xl mx-auto text-center">
-          <p className="text-amber-400 text-xs font-black tracking-widest uppercase mb-2">
-            {isEn ? 'Digital Library' : 'المكتبة الرقمية'}
-          </p>
-          <h1 className="text-white font-black text-3xl sm:text-4xl mb-1">
-            {isEn ? 'Read. Learn. Grow.' : 'اقرأ. تعلّم. وانمُ.'}
-          </h1>
-          <p className="text-gray-400 text-sm mb-6">
-            {isEn ? 'Educational books & stories for tomorrow\'s leaders' : 'كتب وقصص تربوية لقادة الغد'}
-          </p>
+      {/* ── Sticky header: search + language pills ── */}
+      <div
+        className="sticky top-16 z-30 px-4 pt-3 pb-3"
+        style={{
+          background: 'linear-gradient(180deg, #16122a 0%, #1e1a35 100%)',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
+        }}
+      >
+        <div className="max-w-2xl mx-auto space-y-2.5">
 
           {/* Search */}
-          <div className="relative max-w-md mx-auto">
-            <svg className={`absolute ${isEn ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none`}
-              fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <div className="relative">
+            <svg
+              className={`absolute ${isEn ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none`}
+              fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder={isEn ? 'Search books...' : 'ابحث عن كتاب أو مؤلف...'}
-              className={`w-full bg-white/10 border border-white/20 text-white placeholder:text-gray-400
-                rounded-2xl ${isEn ? 'pl-11 pr-4' : 'pr-11 pl-4'} py-3 text-sm
-                outline-none focus:border-amber-400/60 focus:bg-white/15 transition`}
+              placeholder={isEn ? 'Search books or authors…' : 'ابحث عن كتاب أو مؤلف…'}
+              className={`w-full bg-white/10 border border-white/15 text-white placeholder:text-gray-500
+                rounded-xl ${isEn ? 'pl-11 pr-10' : 'pr-11 pl-10'} py-2.5 text-sm
+                outline-none focus:border-amber-400/60 focus:bg-white/15 transition-all`}
             />
             {search && (
-              <button onClick={() => setSearch('')}
-                className={`absolute ${isEn ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-xl leading-none`}>
-                ×
-              </button>
+              <button
+                onClick={() => setSearch('')}
+                className={`absolute ${isEn ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-lg leading-none`}
+              >×</button>
             )}
           </div>
-        </div>
-      </div>
 
-      {/* ── Language Filters ── */}
-      <div className="sticky top-16 z-20 px-4 py-3"
-        style={{ background: 'rgba(245, 240, 232, 0.95)', backdropFilter: 'blur(8px)', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
-            <span className="shrink-0 text-[11px] font-black text-gray-400 uppercase tracking-widest me-1">
-              {isEn ? 'Language:' : 'اللغة:'}
-            </span>
+          {/* Language pills */}
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
             {LANG_OPTIONS.map(opt => (
               <button
                 key={opt.id}
                 onClick={() => setActiveLang(opt.id)}
-                className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all duration-200 ${
+                className={`shrink-0 flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold transition-all duration-200 ${
                   activeLang === opt.id
-                    ? 'bg-[#1a1a2e] text-amber-400 shadow-md scale-105'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:border-amber-300 hover:text-amber-700'
+                    ? 'bg-amber-400 text-[#1a1a2e]'
+                    : 'bg-white/10 text-gray-300 hover:bg-white/18 hover:text-white'
                 }`}
               >
                 <span className="text-sm leading-none">{opt.flag}</span>
@@ -323,34 +313,38 @@ export default function LibraryV2Page() {
         </div>
       </div>
 
+      {/* ── Gradient transition dark → cream ── */}
+      <div className="h-8" style={{ background: 'linear-gradient(180deg, #1e1a35 0%, #F5F0E8 100%)' }} />
+
       {/* ── Shelves ── */}
-      <div className="max-w-5xl mx-auto px-4 pt-8 pb-16">
+      <div className="max-w-5xl mx-auto px-4 pt-4 pb-20">
 
         {loading ? (
-          /* Skeleton */
-          <div className="space-y-10">
+          <div className="space-y-12">
             {[1, 2, 3].map(i => (
               <div key={i}>
-                <div className="h-5 w-40 bg-gray-200 rounded-full mb-4 animate-pulse" />
-                <div className="flex gap-4 pb-4">
+                <div className="h-4 w-32 bg-gray-300/60 rounded-full mb-5 animate-pulse" />
+                <div className="flex gap-3 pb-4">
                   {Array.from({ length: 5 }).map((_, j) => (
-                    <div key={j} className="shrink-0 w-[88px] h-[132px] bg-gray-200 rounded animate-pulse" />
+                    <div key={j} className="shrink-0 w-[84px] h-[126px] bg-gray-300/50 rounded animate-pulse" />
                   ))}
                 </div>
-                <div className="h-3 rounded-full bg-[#C8B49A]/40 animate-pulse" />
+                <div className="h-2.5 rounded-full bg-[#C8B49A]/40 animate-pulse" />
               </div>
             ))}
           </div>
 
-        ) : filteredBooks.length === 0 && filteredSeries.length === 0 ? (
+        ) : isEmpty ? (
           <div className="text-center py-24">
-            <div className="text-5xl mb-4">📚</div>
-            <p className="text-gray-500 font-bold text-lg mb-2">
-              {search ? `لا نتائج لـ "${search}"` : 'لا توجد كتب'}
+            <p className="text-4xl mb-3">📚</p>
+            <p className="text-gray-500 font-bold mb-3">
+              {search ? `لا نتائج لـ "${search}"` : isEn ? 'No books found' : 'لا توجد كتب'}
             </p>
             {(search || activeLang !== 'all') && (
-              <button onClick={() => { setSearch(''); setActiveLang('all'); }}
-                className="text-sm text-amber-600 underline mt-2">
+              <button
+                onClick={() => { setSearch(''); setActiveLang('all'); }}
+                className="text-sm text-amber-600 underline"
+              >
                 {isEn ? 'Clear filters' : 'مسح الفلاتر'}
               </button>
             )}
@@ -358,53 +352,45 @@ export default function LibraryV2Page() {
 
         ) : (
           <>
-            {/* Series shelves — one per series */}
+            {/* Series — one shelf each */}
             {filteredSeries.map((s, idx) => {
               const sBooks = s.books.filter(b => {
                 if (search.trim()) {
                   const q = search.toLowerCase();
-                  if (!(b.title.toLowerCase().includes(q) || (b.titleEn || '').toLowerCase().includes(q))) return false;
+                  if (!b.title.toLowerCase().includes(q) && !(b.titleEn || '').toLowerCase().includes(q)) return false;
                 }
-                if (activeLang !== 'all') return langMatch(b.language);
-                return true;
+                return activeLang === 'all' || langMatch(b.language);
               });
-              if (sBooks.length === 0) return null;
               const name = isEn && s.nameEn ? s.nameEn : s.name;
-              const color = shelfColors[idx % shelfColors.length];
               return (
                 <Shelf
                   key={s.id}
                   title={name}
-                  subtitle={s.description ? s.description.slice(0, 60) + (s.description.length > 60 ? '…' : '') : undefined}
                   books={sBooks}
                   isEn={isEn}
                   getPrice={getPrice}
-                  shelfColor={color}
+                  color={SHELF_COLORS[idx % SHELF_COLORS.length]}
                 />
               );
             })}
 
-            {/* Standalone books shelf */}
-            {standaloneBooks.length > 0 && (
-              <Shelf
-                title={isEn ? 'Books & Novels' : 'كتب وروايات'}
-                books={standaloneBooks}
-                isEn={isEn}
-                getPrice={getPrice}
-                shelfColor="#B8A078"
-              />
-            )}
+            {/* Standalone books */}
+            <Shelf
+              title={isEn ? 'Books & Novels' : 'كتب وروايات'}
+              books={standaloneBooks}
+              isEn={isEn}
+              getPrice={getPrice}
+              color="#B8A078"
+            />
 
-            {/* Standalone stories shelf */}
-            {standaloneStories.length > 0 && (
-              <Shelf
-                title={isEn ? 'Educational Stories' : 'قصص تربوية'}
-                books={standaloneStories}
-                isEn={isEn}
-                getPrice={getPrice}
-                shelfColor="#A89070"
-              />
-            )}
+            {/* Standalone stories */}
+            <Shelf
+              title={isEn ? 'Educational Stories' : 'قصص تربوية'}
+              books={standaloneStories}
+              isEn={isEn}
+              getPrice={getPrice}
+              color="#A89070"
+            />
           </>
         )}
       </div>

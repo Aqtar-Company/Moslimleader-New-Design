@@ -281,12 +281,14 @@ export default function LibraryV2Page() {
       <div
         className="relative px-4 overflow-hidden"
         style={{
-          minHeight: '65vh',
+          minHeight: '70vh',
           display: 'flex',
           alignItems: 'center',
           paddingTop: '6rem',
+          backgroundColor: '#0d0d1a',
           backgroundImage: 'url(/Digital-Liberary-hero-image.png)',
-          backgroundSize: 'cover',
+          backgroundSize: 'contain',
+          backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center center',
         }}
       >

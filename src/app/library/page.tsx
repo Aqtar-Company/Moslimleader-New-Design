@@ -261,7 +261,7 @@ export default function LibraryV2Page() {
       <div
         className="relative px-4 overflow-hidden"
         style={{
-          minHeight: '88vh',
+          minHeight: '65vh',
           display: 'flex',
           alignItems: 'center',
           paddingTop: '5rem',

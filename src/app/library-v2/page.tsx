@@ -261,7 +261,7 @@ export default function LibraryV2Page() {
 
       {/* ── Hero ── */}
       <div
-        className="relative pt-28 pb-10 px-4 overflow-hidden"
+        className="relative pt-36 pb-16 px-4 overflow-hidden"
         style={{
           backgroundImage: 'url(/Digital-Liberary-hero-image.png)',
           backgroundSize: 'cover',
@@ -279,7 +279,7 @@ export default function LibraryV2Page() {
             {isEn ? 'Digital Library' : 'المكتبة الرقمية'}
           </p>
           <h1 className="text-white font-black text-3xl sm:text-4xl mb-6 drop-shadow-lg">
-            {isEn ? 'Read. Learn. Grow.' : 'اقرأ. تعلّم. وانمُ.'}
+            {isEn ? 'Read. Learn. Rise.' : 'اقرأ. وتفقّه. وارتقِ.'}
           </h1>
 
           {/* Search */}

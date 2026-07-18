@@ -260,17 +260,27 @@ export default function LibraryV2Page() {
     <div className="min-h-screen" style={{ background: '#F5F0E8' }} dir={isEn ? 'ltr' : 'rtl'}>
 
       {/* ── Hero ── */}
-      <div className="pt-24 pb-6 px-4" style={{ background: 'linear-gradient(180deg, #1a1a2e 0%, #2a1f3d 60%, #F5F0E8 100%)' }}>
-        <div className="max-w-2xl mx-auto text-center">
-          <p className="text-amber-400 text-xs font-black tracking-widest uppercase mb-2">
+      <div
+        className="relative pt-28 pb-10 px-4 overflow-hidden"
+        style={{
+          backgroundImage: 'url(/Digital-Liberary-hero-image.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center top',
+        }}
+      >
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-[#0d0d1a]/65" />
+        {/* Bottom fade to cream */}
+        <div className="absolute bottom-0 left-0 right-0 h-20"
+          style={{ background: 'linear-gradient(to bottom, transparent, #F5F0E8)' }} />
+
+        <div className="relative z-10 max-w-2xl mx-auto text-center">
+          <p className="text-amber-400 text-xs font-black tracking-widest uppercase mb-3">
             {isEn ? 'Digital Library' : 'المكتبة الرقمية'}
           </p>
-          <h1 className="text-white font-black text-3xl sm:text-4xl mb-1">
+          <h1 className="text-white font-black text-3xl sm:text-4xl mb-6 drop-shadow-lg">
             {isEn ? 'Read. Learn. Grow.' : 'اقرأ. تعلّم. وانمُ.'}
           </h1>
-          <p className="text-gray-400 text-sm mb-6">
-            {isEn ? 'Educational books & stories for tomorrow\'s leaders' : 'كتب وقصص تربوية لقادة الغد'}
-          </p>
 
           {/* Search */}
           <div className="relative max-w-md mx-auto">
@@ -283,13 +293,13 @@ export default function LibraryV2Page() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder={isEn ? 'Search books...' : 'ابحث عن كتاب أو مؤلف...'}
-              className={`w-full bg-white/10 border border-white/20 text-white placeholder:text-gray-400
-                rounded-2xl ${isEn ? 'pl-11 pr-4' : 'pr-11 pl-4'} py-3 text-sm
-                outline-none focus:border-amber-400/60 focus:bg-white/15 transition`}
+              className={`w-full bg-white/15 backdrop-blur-sm border border-white/25 text-white placeholder:text-gray-300
+                rounded-2xl ${isEn ? 'pl-11 pr-4' : 'pr-11 pl-4'} py-3.5 text-sm
+                outline-none focus:border-amber-400/70 focus:bg-white/20 transition`}
             />
             {search && (
               <button onClick={() => setSearch('')}
-                className={`absolute ${isEn ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-xl leading-none`}>
+                className={`absolute ${isEn ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-gray-300 hover:text-white text-xl leading-none`}>
                 ×
               </button>
             )}

@@ -90,9 +90,9 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
       take: 30,
     }).catch(() => []),
     prisma.coupon.findMany({
-      where: { isActive: true },
-      select: { code: true, discount: true, showBanner: true },
-      take: 20,
+      where: { isActive: true, showBanner: true },
+      select: { code: true, discount: true },
+      take: 5,
     }).catch(() => []),
     prisma.setting.findUnique({ where: { key: 'assistant-faqs' } }).catch(() => null),
   ]);
@@ -303,15 +303,23 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
     lines.push('');
   }
 
-  // Active coupons.
+  // Only banner coupons reach the bot — private/test coupons are excluded at query level.
   if (coupons.length > 0) {
-    lines.push(`### كوبونات الخصم الحالية (لا تذكرها إلا إذا سأل العميل عنها):`);
-    for (const c of coupons.slice(0, 5)) {
-      const banner = c.showBanner ? ' [معروض على الموقع]' : '';
-      lines.push(`- ${c.code}: خصم ${Math.round(c.discount)}%${banner}`);
+    lines.push(`### كوبون الخصم المعروض على الموقع حالياً (اذكره فقط عند الاعتراض على السعر):`);
+    for (const c of coupons) {
+      lines.push(`- ${c.code}: خصم ${Math.round(c.discount)}%`);
     }
     lines.push('');
   }
+
+  // Loyalty points system — always present so the bot can explain it.
+  lines.push('### نظام نقاط المكافآت:');
+  lines.push('- كل 10 جنيه في أي طلب = نقطة واحدة');
+  lines.push('- إضافة أول طفل في حسابك = 50 نقطة هدية (مرة واحدة فقط)');
+  lines.push('- كل 100 نقطة = 10 جنيه خصم تُصرف وقت الدفع');
+  lines.push('- لعرض النقاط والسجل: https://moslimleader.com/account (تبويب ⭐ نقاطي)');
+  lines.push('- لإضافة طفل: https://moslimleader.com/account (تبويب 👶 أطفالي)');
+  lines.push('');
 
   // Custom FAQs (admin-curated). Stored in Setting as a string
   // (markdown) so the owner can edit it freely from the admin page.

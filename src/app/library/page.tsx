@@ -50,6 +50,7 @@ interface BookSeriesData {
   nameEn?: string;
   slug: string;
   description?: string;
+  descriptionEn?: string;
   cover?: string;
   seriesPrice?: number;
   seriesPriceUSD?: number;
@@ -406,12 +407,13 @@ export default function LibraryV2Page() {
               });
               if (sBooks.length === 0) return null;
               const name = isEn && s.nameEn ? s.nameEn : s.name;
+              const desc = isEn && s.descriptionEn ? s.descriptionEn : s.description;
               const color = shelfColors[idx % shelfColors.length];
               return (
                 <Shelf
                   key={s.id}
                   title={name}
-                  description={s.description || undefined}
+                  description={desc || undefined}
                   books={sBooks}
                   isEn={isEn}
                   getPrice={getPrice}

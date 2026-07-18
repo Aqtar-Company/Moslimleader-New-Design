@@ -261,7 +261,7 @@ export default function LibraryV2Page() {
 
       {/* ── Hero ── */}
       <div
-        className="relative pt-36 pb-16 px-4 overflow-hidden"
+        className="relative pt-44 pb-28 px-4 overflow-hidden"
         style={{
           backgroundImage: 'url(/Digital-Liberary-hero-image.png)',
           backgroundSize: 'cover',

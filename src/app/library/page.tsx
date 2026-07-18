@@ -264,6 +264,7 @@ export default function LibraryV2Page() {
           minHeight: '88vh',
           display: 'flex',
           alignItems: 'center',
+          paddingTop: '5rem',
           backgroundImage: 'url(/Digital-Liberary-hero-image.png)',
           backgroundSize: 'cover',
           backgroundPosition: 'center top',
@@ -275,7 +276,7 @@ export default function LibraryV2Page() {
         <div className="absolute bottom-0 left-0 right-0 h-20"
           style={{ background: 'linear-gradient(to bottom, transparent, #F5F0E8)' }} />
 
-        <div className="relative z-10 max-w-2xl mx-auto text-center w-full pt-20 pb-10">
+        <div className="relative z-10 max-w-2xl mx-auto text-center w-full pb-10">
           <p className="text-amber-400 text-xs font-black tracking-widest uppercase mb-3">
             {isEn ? 'Digital Library' : 'المكتبة الرقمية'}
           </p>

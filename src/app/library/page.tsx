@@ -122,33 +122,51 @@ function BookSpine({ book, href, price, isEn }: {
   );
 }
 
-function Shelf({ title, subtitle, books, isEn, getPrice, shelfColor = '#C8B49A' }: {
+function Shelf({ title, description, books, isEn, getPrice, shelfColor = '#C8B49A' }: {
   title: string;
-  subtitle?: string;
+  description?: string;
   books: Array<{ id: string; cover: string; title: string; titleEn?: string; price: number; priceUSD?: number; freePages: number; language?: string }>;
   isEn: boolean;
   getPrice: (b: { price: number; priceUSD?: number }) => string;
   shelfColor?: string;
 }) {
+  const [expanded, setExpanded] = useState(false);
   if (books.length === 0) return null;
+
+  const needsExpand = description && description.length > 80;
+  const shownDesc = description
+    ? (expanded || !needsExpand ? description : description.slice(0, 80) + '…')
+    : undefined;
 
   return (
     <div className="mb-10">
       {/* Shelf label */}
-      <div className="flex items-end justify-between mb-4 px-1">
-        <div>
+      <div className="mb-4 px-1">
+        <div className="flex items-center justify-between">
           <h2 className="text-lg font-black text-gray-800 leading-tight">{title}</h2>
-          {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+          <span className="text-xs text-amber-600 font-bold flex items-center gap-1">
+            {books.length} {isEn ? 'books' : 'كتاب'}
+          </span>
         </div>
-        <span className="text-xs text-amber-600 font-bold flex items-center gap-1">
-          {books.length} {isEn ? 'books' : 'كتاب'}
-        </span>
+        {shownDesc && (
+          <div className="mt-1 flex items-baseline gap-1 flex-wrap">
+            <p className="text-xs text-gray-500 leading-relaxed">{shownDesc}</p>
+            {needsExpand && (
+              <button
+                onClick={() => setExpanded(e => !e)}
+                className="shrink-0 text-[11px] font-bold text-amber-600 hover:text-amber-800 underline"
+              >
+                {expanded ? (isEn ? 'less' : 'أقل') : (isEn ? 'more' : 'المزيد')}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Scrollable book row */}
       <div className="relative">
         <div
-          className="flex gap-4 overflow-x-auto pb-5 px-2 scrollbar-none"
+          className="flex gap-4 overflow-x-auto pt-4 pb-5 px-2 scrollbar-none"
           dir="ltr"
         >
           {books.map(b => (
@@ -391,7 +409,7 @@ export default function LibraryV2Page() {
                 <Shelf
                   key={s.id}
                   title={name}
-                  subtitle={s.description ? s.description.slice(0, 60) + (s.description.length > 60 ? '…' : '') : undefined}
+                  description={s.description || undefined}
                   books={sBooks}
                   isEn={isEn}
                   getPrice={getPrice}

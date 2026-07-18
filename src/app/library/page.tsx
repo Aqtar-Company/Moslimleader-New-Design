@@ -281,13 +281,13 @@ export default function LibraryV2Page() {
       <div
         className="relative px-4 overflow-hidden"
         style={{
-          minHeight: '78vh',
+          minHeight: '52vh',
           display: 'flex',
           alignItems: 'center',
-          paddingTop: '8rem',
+          paddingTop: '6rem',
           backgroundImage: 'url(/Digital-Liberary-hero-image.png)',
           backgroundSize: 'cover',
-          backgroundPosition: 'center top',
+          backgroundPosition: 'center center',
         }}
       >
         {/* Dark overlay */}

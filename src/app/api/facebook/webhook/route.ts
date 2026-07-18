@@ -322,7 +322,13 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
   // Strip the [[LEAD:...]] and [[INTENT:...]] tags before sending
   // to the user, but keep the parsed values for the inbox view +
   // analytics funnel.
-  const { cleanText: aiText, leadStatus, intent } = extractLeadTag(rawAiText);
+  const { cleanText, leadStatus, intent } = extractLeadTag(rawAiText);
+  // Messenger renders markdown [text](url) as literal broken text —
+  // convert to plain URLs so Facebook shows a proper link preview.
+  const aiText = cleanText
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '$2')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .trim();
 
   // Humanise: pause briefly before sending so it feels like a real
   // person typing. Uses reply length to scale the delay.

@@ -553,6 +553,56 @@ export async function sendFacebookReply(recipientPsid: string, text: string): Pr
   }
 }
 
+// Send a Generic Template card for a product — shows image + title +
+// "اطلب الآن" button as a rich Messenger card (plain-text URLs don't
+// trigger previews when sent by a bot; cards always show the image).
+export async function sendProductCard(
+  recipientPsid: string,
+  product: { name: string; imageUrl: string; price: number; slug: string; shortDescription?: string | null },
+): Promise<FacebookSendResult> {
+  const pageToken = process.env.FB_PAGE_ACCESS_TOKEN;
+  if (!pageToken || pageToken === 'PENDING') return { ok: false, error: 'FB_PAGE_ACCESS_TOKEN not set' };
+
+  const productUrl = `https://moslimleader.com/shop/${product.slug}`;
+  const subtitle = [
+    product.shortDescription ? product.shortDescription.slice(0, 60) : null,
+    `${Math.round(product.price)} ج.م`,
+  ].filter(Boolean).join(' — ');
+
+  const url = `https://graph.facebook.com/v21.0/me/messages?access_token=${encodeURIComponent(pageToken)}`;
+  const body = {
+    recipient: { id: recipientPsid },
+    message: {
+      attachment: {
+        type: 'template',
+        payload: {
+          template_type: 'generic',
+          elements: [{
+            title: product.name,
+            subtitle,
+            image_url: product.imageUrl,
+            default_action: { type: 'web_url', url: productUrl, webview_height_ratio: 'full' },
+            buttons: [{ type: 'web_url', url: productUrl, title: '🛒 اطلب الآن' }],
+          }],
+        },
+      },
+    },
+    messaging_type: 'RESPONSE',
+  };
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: JSON.stringify(data).slice(0, 300) };
+    return { ok: true, messageId: (data as { message_id?: string }).message_id };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 // Toggle the "is typing..." dots in Messenger. Called BEFORE the AI
 // runs so the user sees activity within a fraction of a second
 // (otherwise they sit watching nothing for 1-3s while the model

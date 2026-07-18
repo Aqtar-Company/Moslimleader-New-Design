@@ -160,9 +160,11 @@ function Shelf({ title, subtitle, books, isEn, getPrice, shelfColor = '#C8B49A' 
               isEn={isEn}
             />
           ))}
-          {/* Padding at end */}
           <div className="shrink-0 w-2" />
         </div>
+        {/* Scroll fade hints — tell mobile users more books exist */}
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[#F5F0E8] to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-[#F5F0E8] to-transparent" />
 
         {/* Shelf plank */}
         <div
@@ -344,7 +346,7 @@ export default function LibraryV2Page() {
             {[1, 2, 3].map(i => (
               <div key={i}>
                 <div className="h-5 w-40 bg-gray-200 rounded-full mb-4 animate-pulse" />
-                <div className="flex gap-4 pb-4">
+                <div className="flex gap-4 overflow-x-auto scrollbar-none pb-4">
                   {Array.from({ length: 5 }).map((_, j) => (
                     <div key={j} className="shrink-0 w-[88px] h-[132px] bg-gray-200 rounded animate-pulse" />
                   ))}
@@ -358,7 +360,9 @@ export default function LibraryV2Page() {
           <div className="text-center py-24">
             <div className="text-5xl mb-4">📚</div>
             <p className="text-gray-500 font-bold text-lg mb-2">
-              {search ? `لا نتائج لـ "${search}"` : 'لا توجد كتب'}
+              {search
+                ? (isEn ? `No results for "${search}"` : `لا نتائج لـ "${search}"`)
+                : (isEn ? 'No books found' : 'لا توجد كتب')}
             </p>
             {(search || activeLang !== 'all') && (
               <button onClick={() => { setSearch(''); setActiveLang('all'); }}

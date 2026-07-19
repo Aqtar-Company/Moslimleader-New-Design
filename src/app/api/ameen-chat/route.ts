@@ -131,12 +131,20 @@ export async function POST(req: NextRequest) {
   // assistant globally, the chat shows a "currently offline"
   // response instead of trying to call a misconfigured AI.
   const settings = await getAssistantSettings();
-  if (!settings.enabled || !settings.chatEnabled) {
+  if (!settings.enabled) {
     return NextResponse.json({
       ok: true,
       reply: 'مساعد أمين متوقف مؤقتاً. تقدري تتواصلي معانا على واتساب أو تترك رسالة في صفحة التواصل.',
       leadStatus: 'cold',
       offline: true,
+    });
+  }
+  if (!settings.chatEnabled) {
+    return NextResponse.json({
+      ok: true,
+      reply: 'الشات متوقف مؤقتاً. تقدري تتواصلي معانا على ماسنجر أو واتساب.',
+      leadStatus: 'cold',
+      chatDisabled: true,
     });
   }
   // The same shouldAutoReply heuristic decides whether to engage.

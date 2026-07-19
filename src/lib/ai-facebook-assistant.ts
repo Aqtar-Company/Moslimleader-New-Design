@@ -268,6 +268,9 @@ export async function getAssistantSettings(): Promise<AssistantSettings> {
     if (!merged.apiKeys || typeof merged.apiKeys !== 'object') {
       merged.apiKeys = {};
     }
+    if (!Array.isArray(merged.triggerKeywords)) {
+      merged.triggerKeywords = [];
+    }
     return merged;
   } catch {
     return DEFAULTS;

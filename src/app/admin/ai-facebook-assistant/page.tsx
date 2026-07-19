@@ -54,6 +54,8 @@ const PROVIDER_INFO: Record<AiProvider, { label: string; help: string; getKeyUrl
 
 interface Settings {
   enabled: boolean;
+  fbEnabled: boolean;
+  chatEnabled: boolean;
   systemPrompt: string;
   provider: AiProvider;
   model: string;

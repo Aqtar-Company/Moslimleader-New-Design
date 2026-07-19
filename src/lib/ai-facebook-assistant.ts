@@ -65,6 +65,8 @@ export interface AssistantApiKeys {
 
 export interface AssistantSettings {
   enabled: boolean;
+  fbEnabled: boolean;
+  chatEnabled: boolean;
   systemPrompt: string;
   // Which AI provider to call by default. Each provider has its own
   // API key; the active one is consulted at every webhook turn.
@@ -240,6 +242,8 @@ https://KaleemAi.com [[LEAD:COLD]] [[INTENT:parenting-question]]"
 
 const DEFAULTS: AssistantSettings = {
   enabled: false,
+  fbEnabled: true,
+  chatEnabled: true,
   systemPrompt: DEFAULT_SYSTEM_PROMPT,
   provider: 'gemini',
   model: 'gemini-2.0-flash',
@@ -294,6 +298,8 @@ export async function saveAssistantSettings(input: Partial<AssistantSettings>): 
 
   const next: AssistantSettings = {
     enabled: typeof input.enabled === 'boolean' ? input.enabled : current.enabled,
+    fbEnabled: typeof input.fbEnabled === 'boolean' ? input.fbEnabled : current.fbEnabled,
+    chatEnabled: typeof input.chatEnabled === 'boolean' ? input.chatEnabled : current.chatEnabled,
     systemPrompt: typeof input.systemPrompt === 'string' && input.systemPrompt.trim()
       ? input.systemPrompt.trim()
       : current.systemPrompt,
@@ -703,8 +709,10 @@ export function extractLeadTag(rawText: string): {
 // Decide whether to auto-reply to an incoming message based on
 // settings. Pure function — no I/O so it's cheap to call inside the
 // hot path of the webhook handler.
-export function shouldAutoReply(message: string, settings: AssistantSettings): boolean {
+export function shouldAutoReply(message: string, settings: AssistantSettings, channel: 'fb' | 'chat' = 'fb'): boolean {
   if (!settings.enabled) return false;
+  if (channel === 'fb' && !settings.fbEnabled) return false;
+  if (channel === 'chat' && !settings.chatEnabled) return false;
   if (!message || message.trim().length === 0) return false;
   if (settings.triggerKeywords.length === 0) return true;
   const lower = message.toLowerCase();

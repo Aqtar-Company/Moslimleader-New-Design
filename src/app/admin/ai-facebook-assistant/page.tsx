@@ -128,6 +128,8 @@ export default function AIFacebookAssistantPage() {
 
   // Settings form
   const [enabled, setEnabled] = useState(false);
+  const [fbEnabled, setFbEnabled] = useState(true);
+  const [chatEnabled, setChatEnabled] = useState(true);
   const [systemPrompt, setSystemPrompt] = useState('');
   const [provider, setProvider] = useState<AiProvider>('gemini');
   const [model, setModel] = useState('gemini-1.5-flash');
@@ -206,6 +208,8 @@ export default function AIFacebookAssistantPage() {
       const d = await res.json();
       setData(d);
       setEnabled(d.settings.enabled);
+      setFbEnabled(d.settings.fbEnabled ?? true);
+      setChatEnabled(d.settings.chatEnabled ?? true);
       setSystemPrompt(d.settings.systemPrompt ?? '');
       setProvider(d.settings.provider ?? 'gemini');
       setModel(d.settings.model ?? 'gemini-1.5-flash');
@@ -241,7 +245,7 @@ export default function AIFacebookAssistantPage() {
       const res = await adminFetch('/api/admin/ai-facebook-assistant', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled, systemPrompt, provider, model, maxTokens, triggerKeywords, apiKeys }),
+        body: JSON.stringify({ enabled, fbEnabled, chatEnabled, systemPrompt, provider, model, maxTokens, triggerKeywords, apiKeys }),
       });
       const d = await res.json();
       if (!res.ok) { addToast(d.error || 'فشل الحفظ', 'error'); setSaving(false); return; }
@@ -375,6 +379,43 @@ export default function AIFacebookAssistantPage() {
             <p className="text-[11px] text-gray-500">لو متوقف، الرسائل تتسجّل في الـ inbox بس بدون أي رد</p>
           </div>
         </label>
+
+        {/* Per-channel sub-toggles — only relevant when global is ON */}
+        {enabled && (
+          <div className="ms-2 space-y-2 border-s-2 border-amber-300 ps-4">
+            <label className="flex items-center gap-3 p-2.5 bg-blue-50 rounded-lg cursor-pointer hover:bg-blue-100 transition">
+              <input
+                type="checkbox"
+                checked={fbEnabled}
+                onChange={e => setFbEnabled(e.target.checked)}
+                className="w-4 h-4"
+              />
+              <div className="flex-1">
+                <p className="text-sm font-bold text-gray-800">📘 ماسنجر فيسبوك</p>
+                <p className="text-[11px] text-gray-500">الرد التلقائي على رسائل ماسنجر وتعليقات الصفحة</p>
+              </div>
+              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${fbEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+                {fbEnabled ? 'شغّال' : 'متوقف'}
+              </span>
+            </label>
+
+            <label className="flex items-center gap-3 p-2.5 bg-amber-50 rounded-lg cursor-pointer hover:bg-amber-100 transition">
+              <input
+                type="checkbox"
+                checked={chatEnabled}
+                onChange={e => setChatEnabled(e.target.checked)}
+                className="w-4 h-4"
+              />
+              <div className="flex-1">
+                <p className="text-sm font-bold text-gray-800">💬 شات الموقع (أمين)</p>
+                <p className="text-[11px] text-gray-500">الرد التلقائي على زوار الموقع عبر نافذة الشات</p>
+              </div>
+              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${chatEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+                {chatEnabled ? 'شغّال' : 'متوقف'}
+              </span>
+            </label>
+          </div>
+        )}
 
         <Field label="شخصية البوت (System Prompt)" hint="الكلام ده مش بيظهر للعميل، لكن البوت بيلتزم بيه في كل رد. عدّله بحرية.">
           <textarea

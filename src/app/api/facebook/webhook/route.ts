@@ -230,7 +230,7 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
   }
 
   const settings = await getAssistantSettings();
-  if (!shouldAutoReply(input.text, settings)) return;
+  if (!shouldAutoReply(input.text, settings, 'fb')) return;
   // Per-conversation mute — admin can pause auto-reply on a
   // delicate thread without disabling the bot globally.
   if (await isPsidMuted(input.psid)) return;
@@ -415,7 +415,7 @@ async function handleIncomingComment(input: IncomingCommentInput) {
   }
 
   const settings = await getAssistantSettings();
-  if (!shouldAutoReply(input.text, settings)) return;
+  if (!shouldAutoReply(input.text, settings, 'fb')) return;
 
   // Same RAG context + gender directive as DM handler — comments
   // benefit from the same product/price knowledge.

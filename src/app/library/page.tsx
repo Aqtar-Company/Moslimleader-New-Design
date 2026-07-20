@@ -97,12 +97,7 @@ function BookSpine({ book, href, price, isEn }: {
           <div className="absolute inset-y-0 left-0 w-2 bg-gradient-to-r from-black/30 to-transparent pointer-events-none" />
         </div>
 
-        {/* Free preview badge */}
-        {book.freePages > 0 && (
-          <div className="absolute -top-2 -right-2 z-10 bg-amber-400 text-[#1a1a2e] text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm leading-tight">
-            {isEn ? 'FREE' : 'مجاني'}
-          </div>
-        )}
+        {/* Free preview badge removed */}
 
         {/* Language badge */}
         {book.language && book.language !== 'ar' && (

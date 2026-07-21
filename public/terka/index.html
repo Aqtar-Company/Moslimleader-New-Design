@@ -84,9 +84,11 @@
   <div id="round-lesson-box"></div>
 
   <div class="hand-area" id="hand-area">
+    <div id="stuck-hand-message" class="warning-box hidden"></div>
     <div class="hand-cards" id="hand-cards"></div>
     <div class="hand-actions">
       <button class="btn btn-primary btn-sm" id="btn-confirm-choice" disabled>تأكيد الاختيار</button>
+      <button class="btn btn-primary btn-sm hidden" id="btn-stuck-continue">تابع</button>
     </div>
   </div>
 </section>
@@ -114,7 +116,7 @@
     </table>
     <div id="result-undistributed" class="warning-box hidden"></div>
     <div id="result-lesson" class="lesson-box"></div>
-    <div class="section-title">إجمالي النقاط</div>
+    <div class="section-title">الرصيد الحالي</div>
     <ul class="rank-list" id="result-totals"></ul>
     <button class="btn btn-primary btn-block" id="btn-next-round" style="margin-top:16px;">الجولة التالية</button>
   </div>

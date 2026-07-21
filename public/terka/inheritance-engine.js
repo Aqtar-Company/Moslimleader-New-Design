@@ -126,10 +126,12 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
     }
   }
 
-  // ---------- الجدة (أم الأب/الأم — لا تمييز بينهما في هذه النسخة المبسّطة) ----------
+  // ---------- الجدة (لأم — أم الأم تحديدًا) ----------
+  // تُحجب بالأم فقط. تنبيه: الجدة لأب (أم الأب) لها حكم حجب مختلف (تُحجب بالأب أيضًا لا بالأم
+  // فقط)، وغير ممثَّلة بهذه البطاقة — البطاقة تمثّل الجدة لأم حصرًا (انظر وصفها في data.js).
   if (hasGrandmother) {
     if (hasMother) {
-      setHeir('grandmother', { fraction: ZERO, points: 0, status: 'محجوب', reason: 'الجدة محجوبة بوجود الأم.' });
+      setHeir('grandmother', { fraction: ZERO, points: 0, status: 'محجوب', reason: 'الجدة (لأم) محجوبة بوجود الأم.' });
     } else {
       fixed['grandmother'] = new Fraction(1, 6);
     }
@@ -175,31 +177,22 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
   // ---------- الإخوة الأشقاء ----------
   const siblingsBlocked = hasFather || hasSon;
   let siblingsResiduary = false;
-  let siblingsNeedsReview = false;
 
   if (siblingsCount > 0) {
     if (siblingsBlocked) {
       const reason = hasFather ? 'محجوب لوجود الأب.' : 'محجوب لوجود الابن.';
       if (brotherCount > 0) setHeir('brother', { fraction: ZERO, points: 0, status: 'محجوب', reason });
       if (sisterCount > 0) setHeir('sister', { fraction: ZERO, points: 0, status: 'محجوب', reason });
-    } else if (hasDaughter) {
-      // حالة أخت/أخ مع بنت بلا أب ولا ابن: تعصيب مع الغير — غير مطبقة في هذه النسخة
-      siblingsNeedsReview = true;
-      result.caseNeedsReview = true;
-      result.notes.push(TEXTS.needsReviewMessage + ' (اجتماع الإخوة مع البنت بدون أب أو ابن)');
-      if (brotherCount > 0) setHeir('brother', { fraction: null, points: null, status: 'تحتاج مراجعة', reason: TEXTS.needsReviewMessage });
-      if (sisterCount > 0) setHeir('sister', { fraction: null, points: null, status: 'تحتاج مراجعة', reason: TEXTS.needsReviewMessage });
-    } else if (brotherCount > 0) {
-      siblingsResiduary = true; // يُحسب مع الباقي لاحقًا
+    } else if (hasDaughter || brotherCount > 0) {
+      // مع وجود البنت بلا أب ولا ابن: الإخوة يصيرون عصبة — الأخ عصبة بنفسه كعادته،
+      // والأخت "عصبة مع الغير" بقاعدة "أعصبوهن بالبنات" المتفَق عليها (ليست مسألة خلافية
+      // كمسألة الجد والإخوة). يُحسبان معًا مع الباقي بنفس آلية siblingsResiduary أدناه،
+      // سواء وُجدت بنت أم لا (فوجود الأخ وحده يكفي ليكون عصبة بنفسه بلا حاجة لبنت).
+      siblingsResiduary = true;
     } else {
-      // أخوات فقط بلا إخوة ذكور: فرض ثابت
+      // أخوات فقط بلا إخوة ذكور ولا بنت: فرض ثابت (لا عصبة هنا)
       fixed['sister'] = sisterCount === 1 ? new Fraction(1, 2) : new Fraction(2, 3);
     }
-  }
-
-  if (siblingsNeedsReview) {
-    result.supported = false;
-    return finalizeUnsupported(result, fixed, estateValue);
   }
 
   // ---------- مجموع الفروض ----------
@@ -282,7 +275,7 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
     const points = rawPoints[id].floorVal;
     const count = countHeir(playedHeirIds, id);
     let status = 'يرث';
-    let reason = describeShareReason(id, fixed, fatherGetsResidue, hasSon, hasDaughter, siblingsResiduary);
+    let reason = describeShareReason(id, fixed, fatherGetsResidue, hasSon, hasDaughter, siblingsResiduary, brotherCount > 0);
     setHeir(id, { fraction: fractions[id], points, status, reason, perPersonPoints: count > 0 ? points / count : points });
   });
 
@@ -290,7 +283,7 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
   return result;
 }
 
-function describeShareReason(id, fixed, fatherGetsResidue, hasSon, hasDaughter, siblingsResiduary) {
+function describeShareReason(id, fixed, fatherGetsResidue, hasSon, hasDaughter, siblingsResiduary, hasBrother) {
   switch (id) {
     case 'husband': return 'فرض الزوج (نصف أو ربع حسب وجود الفرع الوارث).';
     case 'wife': return 'فرض الزوجة (ربع أو ثمن حسب وجود الفرع الوارث)، مقسّم بين الزوجات إن تعددن.';
@@ -299,7 +292,7 @@ function describeShareReason(id, fixed, fatherGetsResidue, hasSon, hasDaughter, 
       if (hasSon) return 'فرض الأب: السدس مع وجود الابن.';
       if (hasDaughter) return 'فرض الأب السدس مع وجود البنت، بالإضافة إلى الباقي تعصيبًا.';
       return 'الأب يأخذ الباقي كله تعصيبًا لعدم وجود فرع وارث.';
-    case 'grandmother': return 'فرض الجدة: السدس عند عدم وجود الأم (تُحجب كليًا بوجودها).';
+    case 'grandmother': return 'فرض الجدة لأم: السدس عند عدم وجود الأم (تُحجب كليًا بوجودها).';
     case 'grandfather':
       if (hasSon) return 'فرض الجد: السدس مع وجود الابن (يقوم مقام الأب تمامًا لغيابه).';
       if (hasDaughter) return 'فرض الجد السدس مع وجود البنت، بالإضافة إلى الباقي تعصيبًا (كالأب تمامًا لغيابه).';
@@ -308,9 +301,14 @@ function describeShareReason(id, fixed, fatherGetsResidue, hasSon, hasDaughter, 
     case 'daughter':
       return hasSon ? 'البنت تشارك إخوتها الأبناء في الباقي تعصيبًا.' : 'فرض البنت: النصف منفردة أو الثلثان مع أخواتها.';
     case 'brother':
-      return siblingsResiduary ? 'الأخ الشقيق عصبة، يأخذ الباقي (وللذكر مثل حظ الأنثيين مع الأخت).' : 'الأخ الشقيق عصبة منفرد، يأخذ الباقي كله.';
+      if (!siblingsResiduary) return 'الأخ الشقيق عصبة منفرد، يأخذ الباقي كله.';
+      return hasDaughter
+        ? 'الأخ الشقيق عصبة بنفسه، يأخذ الباقي بعد فرض البنت (وللذكر مثل حظ الأنثيين مع الأخت إن وُجدت).'
+        : 'الأخ الشقيق عصبة، يأخذ الباقي (وللذكر مثل حظ الأنثيين مع الأخت).';
     case 'sister':
-      return siblingsResiduary ? 'الأخت الشقيقة تشارك أخاها في الباقي تعصيبًا.' : 'فرض الأخت الشقيقة: النصف منفردة أو الثلثان مع أخواتها.';
+      if (!siblingsResiduary) return 'فرض الأخت الشقيقة: النصف منفردة أو الثلثان مع أخواتها.';
+      if (!hasBrother) return 'الأخت الشقيقة "عصبة مع الغير": تصير عصبة بمشاركة البنت فتأخذ الباقي بعد فرضها (قاعدة "أعصبوهن بالبنات" المتفق عليها).';
+      return 'الأخت الشقيقة تشارك أخاها في الباقي تعصيبًا.';
     default: return '';
   }
 }
@@ -451,6 +449,22 @@ function runInheritanceTests() {
 
     const r2 = computeInheritance(caseObj, ['brother', 'brother'], 12);
     assertEqual('اختبار13-أخوان_ياخذان_كل_الباقي', r2.perHeirType['brother'].points, 12);
+  }
+
+  // اختبار 14 (تصحيح: اجتماع الإخوة مع البنت بلا أب ولا ابن ليست مسألة خلافية —
+  // الأخت "عصبة مع الغير" بقاعدة "أعصبوهن بالبنات" المتفَق عليها، والأخ عصبة بنفسه كعادته)
+  {
+    const caseObj = { deceasedGender: 'male' };
+    // بنت واحدة + أختان شقيقتان: البنت النصف، والأختان تقتسمان الباقي (النصف) بينهما بالتساوي (ربع لكل واحدة)
+    const r1 = computeInheritance(caseObj, ['daughter', 'sister', 'sister'], 24);
+    assertEqual('اختبار14-بنت_مع_أختين-البنت', r1.perHeirType['daughter'].points, 12);
+    assertEqual('اختبار14-بنت_مع_أختين-الأختان', r1.perHeirType['sister'].points, 12);
+    assertEqual('اختبار14-بنت_مع_أختين-مدعومة', r1.supported, true);
+
+    // بنت واحدة + أخ شقيق: البنت النصف، والأخ عصبة بنفسه يأخذ الباقي (النصف) كاملًا
+    const r2 = computeInheritance(caseObj, ['daughter', 'brother'], 24);
+    assertEqual('اختبار14-بنت_مع_أخ-البنت', r2.perHeirType['daughter'].points, 12);
+    assertEqual('اختبار14-بنت_مع_أخ-الأخ', r2.perHeirType['brother'].points, 12);
   }
 
   const passCount = results.filter(r => r.pass).length;

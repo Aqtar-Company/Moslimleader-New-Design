@@ -139,7 +139,7 @@ const SOLVER_MAX_COUNT = { wife: 4, son: 9, daughter: 9, brother: 9, sister: 9 }
 
 let solverState = {
   gender: 'male',
-  selections: { son: 0, daughter: 0, father: 0, mother: 0, husband: 0, wife: 0, brother: 0, sister: 0 }
+  selections: { son: 0, daughter: 0, father: 0, mother: 0, husband: 0, wife: 0, brother: 0, sister: 0, grandfather: 0, grandmother: 0 }
 };
 
 function initSolverScreen() {
@@ -417,7 +417,7 @@ function resumeSavedGame() {
     // نعيد بدء الجولة الحالية بأمان (تجنبًا لتعقيد استرجاع منتصف الدور).
     // أي لاعب كان قد لعب بطاقته بالفعل قبل الخروج تكون قد خرجت من يده دون أن
     // تدخل كومة الاستخدام (ذلك يحدث فقط عند حساب نتيجة الجولة) — نعوّض يده
-    // حتى تكتمل لأربع بطاقات قبل إعادة بدء الجولة من أولها.
+    // حتى تكتمل إلى HAND_SIZE بطاقة قبل إعادة بدء الجولة من أولها.
     state.players.forEach(p => {
       while (p.hand.length < HAND_SIZE) {
         const card = drawFrom('heirDeck', 'heirDiscard');
@@ -670,7 +670,10 @@ function revealRoundAndCompute() {
   state.players.forEach((p, i) => {
     const play = state.roundPlays[i];
     if (play) {
-      playedHeirIds.push(play);
+      // بطاقة "ممنوعة" في قصة هذه الحالة لا تدخل حساب المحرك الفقهي إطلاقًا (تبقى تُعرض بصريًا
+      // هنا فقط)، وإلا لأثّرت هويتها الوهمية على حساب نصيب بقية اللاعبين الذين اختاروا بشكل صحيح
+      // (مثلًا وجود "ابن" وهمي يُغيّر فرض الأب من الباقي إلى السدس لكل اللاعبين في نفس الجولة).
+      if (!caseObj.disallowed.includes(play)) playedHeirIds.push(play);
       const heir = getHeirType(play);
       const el = document.createElement('div');
       el.className = 'card small card-flip';
@@ -726,7 +729,7 @@ function finalizeRoundScoring(caseObj, engineResult) {
     perPlayerRows.push({ player: p.name, card: heir.name, status: statusClass, statusText, ratio: ratioText, points });
   });
 
-  // إعادة البطاقات الملعوبة إلى كومة الاستخدام وسحب بطاقات جديدة لإعادة اليد إلى 4
+  // إعادة البطاقات الملعوبة إلى كومة الاستخدام وسحب بطاقات جديدة لإعادة اليد إلى HAND_SIZE
   // (تُعاد هوية البطاقة الفعلية اللي لُعبت، فبطاقة الجوكر ترجع "جوكر" لا هوية الوارث اللي مثّلته)
   Object.entries(state.roundPlays).forEach(([i, play]) => {
     if (play) {

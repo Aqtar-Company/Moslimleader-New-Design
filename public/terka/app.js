@@ -121,6 +121,7 @@ function renderSolverHeirList() {
   wrap.innerHTML = '';
 
   HEIR_TYPES.forEach(h => {
+    if (h.id === 'joker') return; // بطاقة آلية للعبة فقط، ليست وارثًا فقهيًا حقيقيًا
     if (h.id === 'husband' && solverState.gender !== 'female') return;
     if (h.id === 'wife' && solverState.gender !== 'male') return;
 
@@ -346,7 +347,8 @@ function startMatch(names, rounds, difficulty) {
     currentCaseId: null,
     currentEstateValue: null,
     turnIndex: 0,
-    roundPlays: {}, // playerIndex -> heirId | 'substituted'
+    roundPlays: {}, // playerIndex -> heirId | 'substituted' (الهوية المُستخدَمة في الحساب — للجوكر تكون هوية الوارث المُختار)
+    roundPlayedCards: {}, // playerIndex -> هوية البطاقة الفعلية اللي لُعبت (تُعاد لكومة الاستخدام؛ 'joker' لبطاقات الجوكر)
     substitutedThisRound: {},
     muted: false,
     phase: 'setup' // setup | acting | reveal | result | judgment | end
@@ -379,6 +381,7 @@ function resumeSavedGame() {
     });
     state.turnIndex = 0;
     state.roundPlays = {};
+    state.roundPlayedCards = {};
     state.substitutedThisRound = {};
     renderPlayScreenShell();
     beginTurnFlow();
@@ -389,6 +392,7 @@ function beginRound() {
   state.phase = 'acting';
   state.turnIndex = 0;
   state.roundPlays = {};
+  state.roundPlayedCards = {};
   state.substitutedThisRound = {};
 
   const caseId = drawFrom('caseDeck', 'caseDiscard');
@@ -489,6 +493,8 @@ function initPassOverlay() {
 
 function renderHandForCurrentPlayer() {
   selection = { heirId: null, cardEl: null, mode: 'play' };
+  $('#btn-confirm-choice').classList.remove('hidden');
+  $('#btn-substitute').classList.remove('hidden');
   $('#btn-confirm-choice').disabled = true;
   $('#btn-substitute').disabled = !!state.substitutedThisRound[state.turnIndex];
 
@@ -538,6 +544,8 @@ function initHandActions() {
   $('#btn-confirm-choice').addEventListener('click', () => {
     if (selection.mode === 'substitute') {
       doSubstitute();
+    } else if (selection.heirId === 'joker') {
+      showJokerIdentityPicker();
     } else {
       doConfirmPlay();
     }
@@ -567,7 +575,45 @@ function doConfirmPlay() {
   const playerIndex = state.turnIndex;
   const player = state.players[playerIndex];
   state.roundPlays[playerIndex] = selection.heirId;
+  state.roundPlayedCards[playerIndex] = selection.heirId;
   player.hand.splice(selection.handIndex, 1); // البطاقة تُلعب وتخرج من اليد مؤقتًا (ستُضاف لكومة الاستخدام لاحقًا)
+  AudioManager.playDraw();
+  advanceTurn();
+}
+
+// بطاقة الجوكر: تخرج من اليد كـ'joker' دائمًا (وتعود لكومة استخدام الجوكر بهذه الهوية)،
+// لكن تُحسَب في الجولة كأي وارث مسموح به يختاره اللاعب وقت اللعب.
+function showJokerIdentityPicker() {
+  const caseObj = DECEASED_CASES.find(c => c.id === state.currentCaseId);
+  const allowedHeirs = HEIR_TYPES.filter(h => h.id !== 'joker' && !caseObj.disallowed.includes(h.id));
+  const wrap = $('#hand-cards');
+  wrap.innerHTML = allowedHeirs.map(h => `
+    <div class="card small selectable joker-pick-card" data-heir="${h.id}">
+      <div class="card-icon">${h.icon}</div>
+      <div class="card-name">${h.name}</div>
+    </div>`).join('') + `<button type="button" class="btn btn-secondary btn-sm" id="btn-joker-cancel">إلغاء</button>`;
+
+  $all('.joker-pick-card', wrap).forEach(cardEl => {
+    cardEl.addEventListener('click', () => {
+      AudioManager.playClick();
+      doConfirmJokerPlay(cardEl.dataset.heir);
+    });
+  });
+  $('#btn-joker-cancel').addEventListener('click', () => {
+    renderHandForCurrentPlayer();
+  });
+
+  $('#btn-confirm-choice').classList.add('hidden');
+  $('#btn-substitute').classList.add('hidden');
+  flashMessage('اختر الوارث اللي هيمثله الجوكر في هذه الحالة.');
+}
+
+function doConfirmJokerPlay(chosenHeirId) {
+  const playerIndex = state.turnIndex;
+  const player = state.players[playerIndex];
+  state.roundPlays[playerIndex] = chosenHeirId;
+  state.roundPlayedCards[playerIndex] = 'joker';
+  player.hand.splice(selection.handIndex, 1); // بطاقة الجوكر نفسها تخرج من اليد
   AudioManager.playDraw();
   advanceTurn();
 }
@@ -657,9 +703,11 @@ function finalizeRoundScoring(caseObj, engineResult) {
   });
 
   // إعادة البطاقات الملعوبة إلى كومة الاستخدام وسحب بطاقات جديدة لإعادة اليد إلى 4
+  // (تُعاد هوية البطاقة الفعلية اللي لُعبت، فبطاقة الجوكر ترجع "جوكر" لا هوية الوارث اللي مثّلته)
   Object.entries(state.roundPlays).forEach(([i, play]) => {
     if (play && play !== 'substituted') {
-      state.heirDiscard.push(play);
+      const actualCard = (state.roundPlayedCards && state.roundPlayedCards[i]) || play;
+      state.heirDiscard.push(actualCard);
       const p = state.players[i];
       const newCard = drawFrom('heirDeck', 'heirDiscard');
       if (newCard) p.hand.push(newCard);

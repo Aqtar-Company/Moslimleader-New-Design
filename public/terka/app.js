@@ -5,6 +5,19 @@ let setupChoice = { count: 2, difficulty: 'easy' };
 let selection = { heirId: null, cardEl: null };
 const HAND_SIZE = 5; // عدد بطاقات يد اللاعب
 const EXTRA_CARD_COST = 1; // سهم — تكلفة طلب بطاقة إضافية من البنك (كل كارت يمثل وحدة واحدة)
+// ورثة "فرديون" بطبيعتهم — لا يمكن أن يوجد للمتوفى أكثر من واحد منهم في نفس الوقت
+// (بخلاف الابن/البنت/الأخ/الأخت أو حتى الزوجات الأربع، وهي كلها تعدّديات فقهية حقيقية).
+const SINGULAR_HEIR_TYPES = ['father', 'mother', 'husband', 'grandfather', 'grandmother'];
+
+// لو أكثر من لاعب لعب نفس الوارث "الفردي" في نفس الجولة (مثلًا لاعبان كلاهما "زوج" لنفس
+// المتوفاة)، فهذا وضع مستحيل فقهيًا — لا يمكن معرفة أيهما "الصحيح"، فكلاهما يُعتبَر خطأ.
+function getDuplicateSingularHeirs() {
+  const counts = {};
+  Object.values(state.roundPlays).forEach(play => {
+    if (play) counts[play] = (counts[play] || 0) + 1;
+  });
+  return new Set(SINGULAR_HEIR_TYPES.filter(id => (counts[id] || 0) > 1));
+}
 
 // ---------- أدوات عامة ----------
 function $(sel, root = document) { return root.querySelector(sel); }
@@ -684,6 +697,7 @@ function revealRoundAndCompute() {
   state.phase = 'reveal';
   renderPlayersRow();
   const caseObj = DECEASED_CASES.find(c => c.id === state.currentCaseId);
+  const duplicateSingulars = getDuplicateSingularHeirs();
   const playedHeirIds = [];
   const revealWrap = $('#revealed-heirs');
   revealWrap.innerHTML = '';
@@ -691,10 +705,10 @@ function revealRoundAndCompute() {
   state.players.forEach((p, i) => {
     const play = state.roundPlays[i];
     if (play) {
-      // بطاقة "ممنوعة" في قصة هذه الحالة لا تدخل حساب المحرك الفقهي إطلاقًا (تبقى تُعرض بصريًا
-      // هنا فقط)، وإلا لأثّرت هويتها الوهمية على حساب نصيب بقية اللاعبين الذين اختاروا بشكل صحيح
-      // (مثلًا وجود "ابن" وهمي يُغيّر فرض الأب من الباقي إلى السدس لكل اللاعبين في نفس الجولة).
-      if (!caseObj.disallowed.includes(play)) playedHeirIds.push(play);
+      // بطاقة "ممنوعة" في قصة هذه الحالة، أو ادّعاء مزدوج لوارث فردي (كلاهما لا يدخلان حساب
+      // المحرك الفقهي إطلاقًا (تبقيان تُعرضان بصريًا هنا فقط)، وإلا لأثّرت الهوية الوهمية على
+      // حساب نصيب بقية اللاعبين الذين اختاروا بشكل صحيح.
+      if (!caseObj.disallowed.includes(play) && !duplicateSingulars.has(play)) playedHeirIds.push(play);
       const heir = getHeirType(play);
       const el = document.createElement('div');
       el.className = 'card small card-flip';
@@ -706,16 +720,17 @@ function revealRoundAndCompute() {
 
   const engineResult = computeInheritance(caseObj, playedHeirIds, state.currentEstateValue);
 
-  setTimeout(() => finalizeRoundScoring(caseObj, engineResult), 700);
+  setTimeout(() => finalizeRoundScoring(caseObj, engineResult, duplicateSingulars), 700);
 }
 
-function finalizeRoundScoring(caseObj, engineResult) {
+function finalizeRoundScoring(caseObj, engineResult, duplicateSingulars) {
   // توزيع النقاط على اللاعبين حسب البطاقة التي لعبوها
   const perPlayerRows = [];
   const heirPlayCounts = {}; // لتقسيم النقاط بالتساوي عند تكرار نفس الوارث (مثل تعدد الزوجات)
   Object.values(state.roundPlays).forEach(v => {
     if (v) heirPlayCounts[v] = (heirPlayCounts[v] || 0) + 1;
   });
+  duplicateSingulars = duplicateSingulars || getDuplicateSingularHeirs();
 
   state.players.forEach((p, i) => {
     const play = state.roundPlays[i];
@@ -724,6 +739,12 @@ function finalizeRoundScoring(caseObj, engineResult) {
       return;
     }
     const heir = getHeirType(play);
+    // وارث "فردي" (لا يمكن أن يوجد للمتوفى أكثر من واحد منه) لعبه أكثر من لاعب في نفس
+    // الجولة — وضع مستحيل فقهيًا، فلا أحد منهم يُحسَب له شيء (لا يمكن ترجيح أيهما "الحقيقي").
+    if (duplicateSingulars.has(play)) {
+      perPlayerRows.push({ player: p.name, card: heir.name, status: 'invalid', statusText: `لا يمكن أن يوجد أكثر من ${heir.name} واحد لنفس المتوفى — كل من اختار هذه البطاقة أخطأ.`, ratio: '—', points: 0 });
+      return;
+    }
     // هذا الوارث غير موجود أصلًا في قصة هذه الحالة (caseObj.disallowed) — محرك الفرائض لا يعرف
     // بهذا القيد (يحسب فقط توافق الجنس)، فلازم نمنع النقاط هنا صراحة قبل اللجوء لنتيجة المحرك،
     // وإلا يحصل اللاعب على نقاط حقيقية (وربما أكبر من الصحيح) لوارث غير منطقي في القصة.

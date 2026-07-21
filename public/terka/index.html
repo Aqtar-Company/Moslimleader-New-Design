@@ -19,6 +19,7 @@
     <button class="btn btn-secondary btn-block" id="btn-how-to-play">طريقة اللعب</button>
     <button class="btn btn-secondary btn-block" id="btn-heir-guide">دليل الورثة</button>
     <button class="btn btn-secondary btn-block" id="btn-solver">❓ احسب حالتك</button>
+    <button class="btn btn-secondary btn-block" id="btn-gallery">🗂️ معرض البطاقات (للمراجعة)</button>
   </div>
   <p class="muted" style="margin-top:24px; max-width:340px; text-align:center;">أداة تعليمية مبسطة، وليست مرجعًا شرعيًا نهائيًا.</p>
 </section>
@@ -219,6 +220,32 @@
     </table>
     <div id="solver-undistributed" class="warning-box hidden"></div>
     <div id="solver-reasons"></div>
+  </div>
+</section>
+
+<!-- ============ معرض البطاقات (للمراجعة خارج اللعب) ============ -->
+<section id="screen-gallery" class="screen">
+  <div class="top-nav">
+    <button class="icon-btn" id="gallery-back">➜</button>
+    <h3>معرض البطاقات</h3>
+    <span></span>
+  </div>
+  <p class="muted" style="max-width:420px; text-align:center; margin-bottom:12px;">
+    كل الوجهين لكل نوع بطاقة في اللعبة، للمراجعة قبل الطباعة — بدون الحاجة للعب.
+  </p>
+
+  <div class="panel-card">
+    <div class="section-title">كروت أصحاب الفروض — نموذج الوجه (السهم، مشترك لكل الكروت)</div>
+    <div class="gallery-row" id="gallery-heir-face"></div>
+    <div class="section-title">كروت أصحاب الفروض — الظهور (9 هويات مختلفة، شاملة الجوكر)</div>
+    <div class="gallery-row" id="gallery-heir-backs"></div>
+  </div>
+
+  <div class="panel-card" style="margin-top:16px;">
+    <div class="section-title">بطاقات الأحكام — نموذج الظهر (مقفول، مشترك لكل الـ50 بطاقة)</div>
+    <div class="gallery-row" id="gallery-judgment-back"></div>
+    <div class="section-title">بطاقات الأحكام — كل الأوجه (50 بطاقة)</div>
+    <div class="gallery-row" id="gallery-judgment-fronts"></div>
   </div>
 </section>
 

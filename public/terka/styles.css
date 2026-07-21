@@ -385,6 +385,16 @@ button:focus-visible, input:focus-visible {
 
 .judgment-player-pick { margin-top: 6px; }
 
+/* ---------- معرض البطاقات (مراجعة كل الوجوه خارج اللعب) ---------- */
+.gallery-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 18px; }
+.gallery-row .judgment-card { width: 170px; height: 238px; }
+.gallery-row .judgment-card-title { font-size: 15px; }
+.gallery-row .judgment-card-story { font-size: 12px; }
+.gallery-row .judgment-card-fact { font-size: 10px; padding: 6px 8px; }
+.gallery-row .judgment-card-ruling { font-size: 12px; padding: 8px 10px; }
+.gallery-row .judgment-card-back-icon { font-size: 40px; }
+.gallery-row .judgment-card-back-label { font-size: 13px; }
+
 @media (max-width: 420px) {
   .card { width: 92px; height: 130px; }
   .card.small { width: 68px; height: 96px; }

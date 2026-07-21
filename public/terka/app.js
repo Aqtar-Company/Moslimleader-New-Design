@@ -53,10 +53,12 @@ function initStartScreen() {
   $('#btn-how-to-play').addEventListener('click', () => { renderHowTo(); showScreen('screen-how-to'); });
   $('#btn-heir-guide').addEventListener('click', () => { renderHeirGuide(); showScreen('screen-heir-guide'); });
   $('#btn-solver').addEventListener('click', () => { AudioManager.playClick(); resetSolverScreen(); showScreen('screen-solver'); });
+  $('#btn-gallery').addEventListener('click', () => { AudioManager.playClick(); renderGalleryScreen(); showScreen('screen-gallery'); });
   $('#howto-back').addEventListener('click', () => showScreen('screen-start'));
   $('#heirguide-back').addEventListener('click', () => showScreen('screen-start'));
   $('#setup-back').addEventListener('click', () => showScreen('screen-start'));
   $('#solver-back').addEventListener('click', () => showScreen('screen-start'));
+  $('#gallery-back').addEventListener('click', () => showScreen('screen-start'));
 }
 
 function renderHowTo() {
@@ -74,6 +76,47 @@ function renderHeirGuide() {
   $('#heir-guide-list').innerHTML = HEIR_TYPES.map(h =>
     `<div class="guide-item"><h4>${h.icon} ${h.name}</h4><p>${h.description}</p></div>`
   ).join('');
+}
+
+// ============================================================
+// معرض البطاقات (مراجعة كل الوجوه خارج اللعب، قبل الطباعة)
+// ============================================================
+function renderGalleryScreen() {
+  // نموذج وجه بطاقة السهم — مشترك لكل كروت أصحاب الفروض (بما فيها الجوكر)
+  $('#gallery-heir-face').innerHTML = `
+    <div class="card">
+      <div class="card-icon">💠</div>
+      <div class="card-name">سهم واحد</div>
+      <div class="card-sub">١ نقطة من التركة</div>
+    </div>`;
+
+  // ظهور الهويات التسعة (8 ورثة + جوكر)
+  $('#gallery-heir-backs').innerHTML = HEIR_TYPES.map(h => `
+    <div class="card">
+      <div class="card-icon">${h.icon}</div>
+      <div class="card-name">${h.name}</div>
+      <div class="card-sub" style="font-size:10px; line-height:1.3;">${h.description}</div>
+    </div>`).join('');
+
+  // نموذج ظهر بطاقة الحكم — مشترك لكل الـ50 بطاقة
+  $('#gallery-judgment-back').innerHTML = `
+    <div class="judgment-card">
+      <div class="judgment-card-back">
+        <div class="judgment-card-back-icon">🃏</div>
+        <div class="judgment-card-back-label">بطاقة حكم</div>
+      </div>
+    </div>`;
+
+  // كل أوجه بطاقات الأحكام الخمسين
+  $('#gallery-judgment-fronts').innerHTML = JUDGMENT_CARDS.map(card => `
+    <div class="judgment-card">
+      <div class="judgment-card-front">
+        <div class="judgment-card-title">${card.title}</div>
+        <div class="judgment-card-story">${card.story}</div>
+        <div class="judgment-card-fact">💡 ${card.didYouKnow}</div>
+        <div class="judgment-card-ruling">⚖️ ${card.ruling}</div>
+      </div>
+    </div>`).join('');
 }
 
 // ============================================================

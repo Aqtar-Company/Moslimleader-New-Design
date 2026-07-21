@@ -95,8 +95,18 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
 
   // ---------- الأم ----------
   if (hasMother) {
-    const share = (hasDescendant || siblingsCount >= 2) ? new Fraction(1, 6) : new Fraction(1, 3);
-    fixed['mother'] = share;
+    const reducedToSixth = hasDescendant || siblingsCount >= 2;
+    if (reducedToSixth) {
+      fixed['mother'] = new Fraction(1, 6);
+    } else if (hasFather && (hasHusband || hasWife)) {
+      // المسألتان العُمَريتان (زوج/زوجة + أب + أم، بلا فرع وارث ولا إخوة معتبَرين):
+      // الأم تأخذ ثلث ما تبقّى بعد نصيب الزوج/الزوجة، لا ثلث التركة كاملة (رأي الجمهور).
+      const spouseShare = fixed['husband'] || fixed['wife'] || ZERO;
+      fixed['mother'] = ONE.sub(spouseShare).mul(new Fraction(1, 3));
+      result.notes.push('طُبّقت المسألة العُمَرية: نصيب الأم هنا ثلث الباقي بعد نصيب الزوج/الزوجة، وليس ثلث التركة كاملة.');
+    } else {
+      fixed['mother'] = new Fraction(1, 3);
+    }
   }
 
   // ---------- الأب ----------
@@ -322,6 +332,21 @@ function runInheritanceTests() {
     assertEqual('اختبار6-الزوج', r.perHeirType['husband'].points, 12);
     assertEqual('اختبار6-الأم', r.perHeirType['mother'].points, 4);
     assertEqual('اختبار6-مجموع_النقاط_يساوي_التركة', total, 24);
+  }
+
+  // اختبار 7 (المسألتان العُمَريتان: زوج/زوجة + أب + أم، بلا فرع وارث ولا إخوة)
+  {
+    const caseObj1 = { deceasedGender: 'female' };
+    const r1 = computeInheritance(caseObj1, ['husband', 'father', 'mother'], 24);
+    assertEqual('اختبار7-عمرية1-الزوج', r1.perHeirType['husband'].points, 12);
+    assertEqual('اختبار7-عمرية1-الأم', r1.perHeirType['mother'].points, 4);
+    assertEqual('اختبار7-عمرية1-الأب', r1.perHeirType['father'].points, 8);
+
+    const caseObj2 = { deceasedGender: 'male' };
+    const r2 = computeInheritance(caseObj2, ['wife', 'father', 'mother'], 24);
+    assertEqual('اختبار7-عمرية2-الزوجة', r2.perHeirType['wife'].points, 6);
+    assertEqual('اختبار7-عمرية2-الأم', r2.perHeirType['mother'].points, 6);
+    assertEqual('اختبار7-عمرية2-الأب', r2.perHeirType['father'].points, 12);
   }
 
   const passCount = results.filter(r => r.pass).length;

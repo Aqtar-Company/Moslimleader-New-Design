@@ -184,7 +184,17 @@ function resumeSavedGame() {
   } else if (state.phase === 'end') {
     showEndScreen();
   } else {
-    // نعيد بدء الجولة الحالية بأمان (تجنبًا لتعقيد استرجاع منتصف الدور)
+    // نعيد بدء الجولة الحالية بأمان (تجنبًا لتعقيد استرجاع منتصف الدور).
+    // أي لاعب كان قد لعب بطاقته بالفعل قبل الخروج تكون قد خرجت من يده دون أن
+    // تدخل كومة الاستخدام (ذلك يحدث فقط عند حساب نتيجة الجولة) — نعوّض يده
+    // حتى تكتمل لأربع بطاقات قبل إعادة بدء الجولة من أولها.
+    state.players.forEach(p => {
+      while (p.hand.length < 4) {
+        const card = drawFrom('heirDeck', 'heirDiscard');
+        if (!card) break;
+        p.hand.push(card);
+      }
+    });
     state.turnIndex = 0;
     state.roundPlays = {};
     state.substitutedThisRound = {};

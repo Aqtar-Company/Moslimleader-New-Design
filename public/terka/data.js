@@ -192,6 +192,66 @@ const HEIR_QURAN_REF = {
   sister: { ayah: 'nisa-176', note: 'آية الكلالة: "وإن امرؤ هلك ليس له ولد وله أخت فلها نصف ما ترك".' }
 };
 
+// ---------- بطاقات الأحكام (إصدار أول، 50 بطاقة) ----------
+// تُنفَّذ بعد توزيع الميراث، ولا تؤثر في صحة القسمة الشرعية، وإنما تُطبَّق على "رصيد" منفصل لكل لاعب.
+// effect.target أنواعه: self | allPlayers | allExceptSelf | heirsThisRound | aqilah | largestAqilahShare |
+//   lowestBalance | highestBalance | largestShareThisRound | smallestShareThisRound |
+//   leftNeighbor | rightNeighbor | allOthersPayToSelf | chosenPlayer | chosenPlayers2 | firstToNotice | none
+// effect.amount: القيمة المطبَّقة على الهدف (سالبة = دفع، موجبة = أخذ). effect.selfAmount: أثر إضافي على صاحب الدور
+// نفسه في حالات النقل المباشر (جار/لاعب مُختار).
+const JUDGMENT_CARDS = [
+  { id: 1, title: 'دين على المتوفى', story: 'ظهر دين كان يجب سداده قبل القسمة.', didYouKnow: 'الدين مقدم على الميراث.', ruling: 'يرد كل وارث 5 أسهم.', effect: { target: 'heirsThisRound', amount: -5 } },
+  { id: 2, title: 'مؤخر صداق', story: 'تبين وجود مؤخر صداق.', didYouKnow: 'المؤخر دين في الذمة.', ruling: 'يدفع كل لاعب 5 أسهم.', effect: { target: 'allPlayers', amount: -5 } },
+  { id: 3, title: 'زكاة', story: 'ظهر أن على المتوفى زكاة.', didYouKnow: 'تخرج قبل القسمة.', ruling: 'يدفع كل لاعب 3 أسهم.', effect: { target: 'allPlayers', amount: -3 } },
+  { id: 4, title: 'أمانة', story: 'وجد مال أمانة.', didYouKnow: 'الأمانات ترد لأهلها.', ruling: 'يدفع كل لاعب 3 أسهم.', effect: { target: 'allPlayers', amount: -3 } },
+  { id: 5, title: 'وصية', story: 'ثبتت وصية صحيحة.', didYouKnow: 'تنفذ قبل الميراث.', ruling: 'يدفع كل لاعب 3 أسهم.', effect: { target: 'allPlayers', amount: -3 } },
+  { id: 6, title: 'دية قتل خطأ', story: 'وقعت دية قتل خطأ.', didYouKnow: 'العاقلة تتحمل الدية.', ruling: 'كل لاعب من العاقلة يدفع 15 سهماً.', effect: { target: 'aqilah', amount: -15 } },
+  { id: 7, title: 'عفو', story: 'عفا أولياء الدم عن جزء من الدية.', didYouKnow: 'العفو من الإحسان.', ruling: 'كل لاعب من العاقلة يسترد 5 أسهم.', effect: { target: 'aqilah', amount: 5 } },
+  { id: 8, title: 'إتلاف مزرعة', story: 'أتلف أحد أبنائك مزرعة الجيران.', didYouKnow: 'المسلم يضمن ما أتلف.', ruling: 'ادفع 20 سهماً.', effect: { target: 'self', amount: -20 } },
+  { id: 9, title: 'دين شخصي', story: 'حل موعد سداد دينك.', didYouKnow: 'أداء الحقوق واجب.', ruling: 'ادفع 10 أسهم.', effect: { target: 'self', amount: -10 } },
+  { id: 10, title: 'مؤخر صداقك', story: 'حل موعد سداد مؤخر صداقك.', didYouKnow: 'الوفاء بالعقود.', ruling: 'ادفع 25 سهماً.', effect: { target: 'self', amount: -25 } },
+  { id: 11, title: 'صدقة', story: 'كنت كثير الصدقة.', didYouKnow: 'ما نقص مال من صدقة.', ruling: 'صاحب أقل رصيد يحصل على 30 سهماً.', effect: { target: 'lowestBalance', amount: 30 } },
+  { id: 12, title: 'بركة تجارة', story: 'بارك الله في تجارتك.', didYouKnow: 'الصدق سبب للبركة.', ruling: 'خذ 20 سهماً من البنك.', effect: { target: 'self', amount: 20 } },
+  { id: 13, title: 'صلة الرحم', story: 'وصلت رحمك.', didYouKnow: 'صلة الرحم بركة.', ruling: 'خذ 5 أسهم من كل اللاعبين.', effect: { target: 'allOthersPayToSelf', amount: -5 } },
+  { id: 14, title: 'بر الوالدين', story: 'أحسنت إلى والديك.', didYouKnow: 'بر الوالدين من أعظم القرب.', ruling: 'خذ 15 سهماً.', effect: { target: 'self', amount: 15 } },
+  { id: 15, title: 'كفالة يتيم', story: 'شاركت في كفالة يتيم.', didYouKnow: 'كافل اليتيم له أجر عظيم.', ruling: 'ادفع 5 أسهم.', effect: { target: 'self', amount: -5 } },
+  { id: 16, title: 'مطلقة', story: 'تعاونت الأسرة مع مطلقة من الأقارب.', didYouKnow: 'التكافل خلق كريم.', ruling: 'كل اللاعبين ما عدا أنت يدفعون 5 أسهم.', effect: { target: 'allExceptSelf', amount: -5 } },
+  { id: 17, title: 'أرملة', story: 'ساعدت الأسرة أرملة.', didYouKnow: 'الإحسان للأرامل فضل.', ruling: 'اختر لاعبين يدفع كل منهما 5 أسهم.', effect: { target: 'chosenPlayers2', amount: -5 } },
+  { id: 18, title: 'علاج قريب', story: 'احتاج قريب للعلاج.', didYouKnow: 'التعاون على البر.', ruling: 'كل لاعب يدفع 3 أسهم.', effect: { target: 'allPlayers', amount: -3 } },
+  { id: 19, title: 'زواج قريب', story: 'ساهمت الأسرة في زواج قريب.', didYouKnow: 'التعاون من المروءة.', ruling: 'كل لاعب يدفع 5 أسهم.', effect: { target: 'allPlayers', amount: -5 } },
+  { id: 20, title: 'حريق منزل قريب', story: 'ساهمت الأسرة في إعادة البناء.', didYouKnow: 'التكافل قوة.', ruling: 'كل لاعب يدفع 4 أسهم.', effect: { target: 'allPlayers', amount: -4 } },
+  { id: 21, title: 'هدية', story: 'وصلتك هدية.', didYouKnow: 'الهدية تزيد المحبة.', ruling: 'خذ 10 أسهم.', effect: { target: 'self', amount: 10 } },
+  { id: 22, title: 'ميراث جديد', story: 'ورثت قريباً آخر.', didYouKnow: 'رزق جديد.', ruling: 'خذ 20 سهماً.', effect: { target: 'self', amount: 20 } },
+  { id: 23, title: 'مكافأة', story: 'حصلت على مكافأة.', didYouKnow: 'الإتقان له ثمرة.', ruling: 'خذ 15 سهماً.', effect: { target: 'self', amount: 15 } },
+  { id: 24, title: 'استثمار', story: 'نجح استثمارك.', didYouKnow: 'حسن التدبير نعمة.', ruling: 'خذ 15 سهماً.', effect: { target: 'self', amount: 15 } },
+  { id: 25, title: 'بيع أرض', story: 'ارتفعت قيمة أرضك.', didYouKnow: 'الرزق بيد الله.', ruling: 'خذ 20 سهماً.', effect: { target: 'self', amount: 20 } },
+  { id: 26, title: 'قرض حسن', story: 'أقرضت محتاجاً.', didYouKnow: 'القرض الحسن أجر.', ruling: 'اختر لاعباً يدفع لك 10 أسهم.', effect: { target: 'chosenPlayer', amount: -10, selfAmount: 10 } },
+  { id: 27, title: 'دين معسر', story: 'قضيت دين معسر.', didYouKnow: 'تفريج الكرب فضل.', ruling: 'خذ 10 أسهم.', effect: { target: 'self', amount: 10 } },
+  { id: 28, title: 'أمانة', story: 'أديت أمانة.', didYouKnow: 'الأمانة خلق المؤمن.', ruling: 'خذ 15 سهماً.', effect: { target: 'self', amount: 15 } },
+  { id: 29, title: 'خطأ حساب', story: 'اكتشفت خطأ بالحساب.', didYouKnow: 'التثبت مطلوب.', ruling: 'أول من يكتشفه يأخذ 10 أسهم.', effect: { target: 'firstToNotice', amount: 10 } },
+  { id: 30, title: 'صدقة جماعية', story: 'اتفق الورثة على الصدقة.', didYouKnow: 'الخير جماعي.', ruling: 'كل لاعب يدفع 3 أسهم.', effect: { target: 'allPlayers', amount: -3 } },
+  { id: 31, title: 'اللاعب على يمينك', story: 'حدث طارئ أثناء الجولة.', didYouKnow: 'التعاون والعدل من مقاصد الشريعة.', ruling: 'ادفع له 5 أسهم.', effect: { target: 'rightNeighbor', amount: 5, selfAmount: -5 } },
+  { id: 32, title: 'اللاعب على يسارك', story: 'حدث طارئ أثناء الجولة.', didYouKnow: 'التعاون والعدل من مقاصد الشريعة.', ruling: 'خذ منه 5 أسهم.', effect: { target: 'leftNeighbor', amount: -5, selfAmount: 5 } },
+  { id: 33, title: 'أكبر رصيد', story: 'حدث طارئ أثناء الجولة.', didYouKnow: 'التعاون والعدل من مقاصد الشريعة.', ruling: 'يدفع 10 أسهم للبنك.', effect: { target: 'highestBalance', amount: -10 } },
+  { id: 34, title: 'أقل رصيد', story: 'حدث طارئ أثناء الجولة.', didYouKnow: 'التعاون والعدل من مقاصد الشريعة.', ruling: 'يحصل على 10 أسهم.', effect: { target: 'lowestBalance', amount: 10 } },
+  { id: 35, title: 'اختر لاعباً', story: 'حدث طارئ أثناء الجولة.', didYouKnow: 'التعاون والعدل من مقاصد الشريعة.', ruling: 'ليدفع 5 أسهم.', effect: { target: 'chosenPlayer', amount: -5, selfAmount: 5 } },
+  { id: 36, title: 'اختر لاعباً', story: 'حدث طارئ أثناء الجولة.', didYouKnow: 'التعاون والعدل من مقاصد الشريعة.', ruling: 'ليحصل على 5 أسهم منك.', effect: { target: 'chosenPlayer', amount: 5, selfAmount: -5 } },
+  { id: 37, title: 'كل اللاعبين', story: 'حدث طارئ أثناء الجولة.', didYouKnow: 'التعاون والعدل من مقاصد الشريعة.', ruling: 'يدفعون لك سهمين.', effect: { target: 'allOthersPayToSelf', amount: -2 } },
+  { id: 38, title: 'كل اللاعبين ما عدا أنت', story: 'حدث طارئ أثناء الجولة.', didYouKnow: 'التعاون والعدل من مقاصد الشريعة.', ruling: 'يدفعون 3 أسهم للبنك.', effect: { target: 'allExceptSelf', amount: -3 } },
+  { id: 39, title: 'صاحب أكبر نصيب', story: 'حدث طارئ أثناء الجولة.', didYouKnow: 'التعاون والعدل من مقاصد الشريعة.', ruling: 'يدفع 10 أسهم.', effect: { target: 'largestShareThisRound', amount: -10 } },
+  { id: 40, title: 'صاحب أقل نصيب', story: 'حدث طارئ أثناء الجولة.', didYouKnow: 'التعاون والعدل من مقاصد الشريعة.', ruling: 'يحصل على 10 أسهم.', effect: { target: 'smallestShareThisRound', amount: 10 } },
+  { id: 41, title: 'العاقلة', story: 'حدث طارئ أثناء الجولة.', didYouKnow: 'التعاون والعدل من مقاصد الشريعة.', ruling: 'أكبر عاصب يدفع 5 أسهم إضافية.', effect: { target: 'largestAqilahShare', amount: -5 } },
+  { id: 42, title: 'العاقلة', story: 'حدث طارئ أثناء الجولة.', didYouKnow: 'التعاون والعدل من مقاصد الشريعة.', ruling: 'أقل عاصب يعفى من الدفع.', effect: { target: 'none', amount: 0 } },
+  { id: 43, title: 'تجارة', story: 'حدث طارئ أثناء الجولة.', didYouKnow: 'التعاون والعدل من مقاصد الشريعة.', ruling: 'خسرت صفقة، ادفع 15 سهماً.', effect: { target: 'self', amount: -15 } },
+  { id: 44, title: 'تبرع', story: 'حدث طارئ أثناء الجولة.', didYouKnow: 'التعاون والعدل من مقاصد الشريعة.', ruling: 'تبرعت لبناء مسجد، ادفع 5 أسهم.', effect: { target: 'self', amount: -5 } },
+  { id: 45, title: 'وقف', story: 'حدث طارئ أثناء الجولة.', didYouKnow: 'التعاون والعدل من مقاصد الشريعة.', ruling: 'ساهمت في وقف خيري، ادفع 5 أسهم.', effect: { target: 'self', amount: -5 } },
+  { id: 46, title: 'هبة', story: 'حدث طارئ أثناء الجولة.', didYouKnow: 'التعاون والعدل من مقاصد الشريعة.', ruling: 'وهبك قريب مالاً، خذ 10 أسهم.', effect: { target: 'self', amount: 10 } },
+  { id: 47, title: 'تعويض', story: 'حدث طارئ أثناء الجولة.', didYouKnow: 'التعاون والعدل من مقاصد الشريعة.', ruling: 'أفسدت مال غيرك، ادفع 10 أسهم.', effect: { target: 'self', amount: -10 } },
+  { id: 48, title: 'صلح', story: 'حدث طارئ أثناء الجولة.', didYouKnow: 'التعاون والعدل من مقاصد الشريعة.', ruling: 'تصالحتم، استرد 5 أسهم.', effect: { target: 'self', amount: 5 } },
+  { id: 49, title: 'تكافل', story: 'حدث طارئ أثناء الجولة.', didYouKnow: 'التعاون والعدل من مقاصد الشريعة.', ruling: 'ساعدوا مريضاً، كل لاعب يدفع سهمين.', effect: { target: 'allPlayers', amount: -2 } },
+  { id: 50, title: 'بركة', story: 'حدث طارئ أثناء الجولة.', didYouKnow: 'التعاون والعدل من مقاصد الشريعة.', ruling: 'رزقك الله رزقاً، خذ 10 أسهم.', effect: { target: 'self', amount: 10 } }
+];
+
 // ---------- نصوص عامة ----------
 const TEXTS = {
   gameTitle: 'لعبة التركة',
@@ -208,5 +268,12 @@ const TEXTS = {
   needsReviewMessage: 'هذه الحالة تحتاج إلى مراجعة من دليل اللعبة.',
   unevenSplitMessage: 'هذه التركة لا تنقسم بالتساوي على هذه المسألة.',
   undistributedMessage: 'يوجد جزء من التركة لم يُوزَّع لعدم وجود قاعدة واضحة (بدون رد).',
-  disclaimer: 'هذه اللعبة أداة تعليمية مبسطة لتقريب مبادئ توزيع المواريث، ولا تُعد مرجعًا شرعيًا نهائيًا. يُرجى مراجعة عالم شرعي أو مختص في الفرائض في أي حالة واقعية.'
+  disclaimer: 'هذه اللعبة أداة تعليمية مبسطة لتقريب مبادئ توزيع المواريث، ولا تُعد مرجعًا شرعيًا نهائيًا. يُرجى مراجعة عالم شرعي أو مختص في الفرائض في أي حالة واقعية.',
+  judgmentIntro: 'تُنفذ جميع الأحكام بعد توزيع الميراث. لا تؤثر البطاقات في صحة القسمة الشرعية، وإنما تُطبق على أرصدة اللاعبين. البطاقات التعليمية تشرح الحكم بإيجاز.',
+  judgmentTurnLabel: 'دور كشف الحكم:',
+  judgmentRevealButton: 'اكشف البطاقة',
+  judgmentChoosePlayer: 'اختر لاعبًا',
+  judgmentChooseTwoPlayers: 'اختر لاعبين',
+  judgmentApplyButton: 'تطبيق الحكم',
+  judgmentContinueButton: 'متابعة'
 };

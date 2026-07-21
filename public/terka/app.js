@@ -3,6 +3,7 @@
 let state = null; // حالة المباراة الحالية
 let setupChoice = { count: 2, difficulty: 'easy' };
 let selection = { heirId: null, cardEl: null };
+const HAND_SIZE = 6; // عدد بطاقات يد اللاعب (بعد إلغاء منع الاختيار، اليد أكبر لتقليل فرصة عدم وجود بطاقة مناسبة)
 
 // ---------- أدوات عامة ----------
 function $(sel, root = document) { return root.querySelector(sel); }
@@ -117,6 +118,17 @@ function renderGalleryScreen() {
         <div class="judgment-card-ruling">🎮 ${card.ruling}</div>
       </div>
     </div>`).join('');
+
+  // بروفة كروت القضايا الخمسين (للمراجعة البصرية فقط — غير مستخدَمة في منطق اللعب)
+  $('#gallery-case-cards').innerHTML = CASE_CARDS_PREVIEW.map(card => `
+    <div class="judgment-card">
+      <div class="judgment-card-front">
+        <div class="judgment-card-title">${card.deceasedGender === 'male' ? '👨' : '👩'} ${card.title}</div>
+        <div class="judgment-card-story">${card.note}</div>
+        <div class="judgment-card-fact">💰 قيمة التركة: ${card.estateValue} سهم</div>
+        <div class="judgment-card-ruling">${card.lesson}</div>
+      </div>
+    </div>`).join('');
 }
 
 // ============================================================
@@ -150,7 +162,7 @@ function initSolverScreen() {
 function resetSolverScreen() {
   solverState = {
     gender: 'male',
-    selections: { son: 0, daughter: 0, father: 0, mother: 0, husband: 0, wife: 0, brother: 0, sister: 0 }
+    selections: { son: 0, daughter: 0, father: 0, mother: 0, husband: 0, wife: 0, brother: 0, sister: 0, grandfather: 0, grandmother: 0 }
   };
   $all('#solver-gender-group .pill').forEach(b => b.classList.remove('selected'));
   $(`#solver-gender-group [data-gender="male"]`).classList.add('selected');
@@ -362,8 +374,8 @@ function startMatch(names, difficulty) {
   const players = names.map(name => ({
     name, score: 0, roundsWon: 0, blockedCount: 0, hand: [], balance: 30 // 30 سهم رأس مال ابتدائي
   }));
-  // توزيع 4 بطاقات لكل لاعب
-  players.forEach(p => { for (let i = 0; i < 4; i++) p.hand.push(heirDeck.pop()); });
+  // توزيع بطاقات يد كل لاعب
+  players.forEach(p => { for (let i = 0; i < HAND_SIZE; i++) p.hand.push(heirDeck.pop()); });
 
   state = {
     players,
@@ -407,7 +419,7 @@ function resumeSavedGame() {
     // تدخل كومة الاستخدام (ذلك يحدث فقط عند حساب نتيجة الجولة) — نعوّض يده
     // حتى تكتمل لأربع بطاقات قبل إعادة بدء الجولة من أولها.
     state.players.forEach(p => {
-      while (p.hand.length < 4) {
+      while (p.hand.length < HAND_SIZE) {
         const card = drawFrom('heirDeck', 'heirDiscard');
         if (!card) break;
         p.hand.push(card);
@@ -561,11 +573,9 @@ function renderHandForCurrentPlayer() {
       alert(`${heir.name}: ${heir.description}`);
     });
     cardEl.addEventListener('click', () => {
-      if (disallowed) {
-        AudioManager.playError();
-        flashMessage('لا يمكن اختيار هذه البطاقة في هذه الحالة.');
-        return;
-      }
+      // ملاحظة: البطاقة "الممنوعة" تبقى قابلة للاختيار عمدًا — لو اختارها اللاعب
+      // فلن تُحسَب له أي نقاط (المحرك يُرجع "غير مناسب" ونقاط=0)، بدل منعه من الاختيار
+      // نهائيًا (كان يسبب أيادٍ بلا أي بطاقة قابلة للعب في ~7% من الحالات).
       $all('.card', wrap).forEach(c => c.classList.remove('selected'));
       cardEl.classList.add('selected');
       selection.heirId = heirId;
@@ -689,8 +699,15 @@ function finalizeRoundScoring(caseObj, engineResult) {
       perPlayerRows.push({ player: p.name, card: '—', status: 'invalid', statusText: 'لم يشارك', ratio: '—', points: 0 });
       return;
     }
-    const heirInfo = engineResult.perHeirType[play];
     const heir = getHeirType(play);
+    // هذا الوارث غير موجود أصلًا في قصة هذه الحالة (caseObj.disallowed) — محرك الفرائض لا يعرف
+    // بهذا القيد (يحسب فقط توافق الجنس)، فلازم نمنع النقاط هنا صراحة قبل اللجوء لنتيجة المحرك،
+    // وإلا يحصل اللاعب على نقاط حقيقية (وربما أكبر من الصحيح) لوارث غير منطقي في القصة.
+    if (caseObj.disallowed.includes(play)) {
+      perPlayerRows.push({ player: p.name, card: heir.name, status: 'invalid', statusText: 'غير مناسب لهذه الحالة', ratio: '—', points: 0 });
+      return;
+    }
+    const heirInfo = engineResult.perHeirType[play];
     if (!heirInfo) {
       perPlayerRows.push({ player: p.name, card: heir.name, status: 'invalid', statusText: 'غير مناسب', ratio: '—', points: 0 });
       return;

@@ -71,6 +71,8 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
   const motherCount = countHeir(playedHeirIds, 'mother');
   const brotherCount = countHeir(playedHeirIds, 'brother');
   const sisterCount = countHeir(playedHeirIds, 'sister');
+  const grandfatherCount = countHeir(playedHeirIds, 'grandfather');
+  const grandmotherCount = countHeir(playedHeirIds, 'grandmother');
 
   const hasSon = sonCount > 0;
   const hasDaughter = daughterCount > 0;
@@ -78,6 +80,8 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
   const hasFather = fatherCount > 0;
   const hasMother = motherCount > 0;
   const siblingsCount = brotherCount + sisterCount;
+  const hasGrandfather = grandfatherCount > 0;
+  const hasGrandmother = grandmotherCount > 0;
 
   const fixed = {}; // id -> Fraction (المجموع لكل فئة)
   let fatherGetsResidue = false;
@@ -120,6 +124,47 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
       fixed['father'] = ZERO;
       fatherGetsResidue = true;
     }
+  }
+
+  // ---------- الجدة (أم الأب/الأم — لا تمييز بينهما في هذه النسخة المبسّطة) ----------
+  if (hasGrandmother) {
+    if (hasMother) {
+      setHeir('grandmother', { fraction: ZERO, points: 0, status: 'محجوب', reason: 'الجدة محجوبة بوجود الأم.' });
+    } else {
+      fixed['grandmother'] = new Fraction(1, 6);
+    }
+  }
+
+  // ---------- الجد (أب الأب) ----------
+  // يُحجب كليًا بوجود الأب، ويقوم مقامه تمامًا فرضًا وتعصيبًا عند غيابه — إلا في حال اجتماعه
+  // مع الإخوة الأشقاء بلا أب ولا ابن، وهي مسألة خلافية شهيرة بين الصحابة (أبو بكر: يحجبهم كالأب،
+  // علي وزيد بن ثابت ومن تبعهم: مقاسمة) لا نرجّح فيها رأيًا — تُعرض كحالة تحتاج مراجعة.
+  let grandfatherGetsResidue = false;
+  let grandfatherSiblingsDispute = false;
+  if (hasGrandfather) {
+    if (hasFather) {
+      setHeir('grandfather', { fraction: ZERO, points: 0, status: 'محجوب', reason: 'الجد محجوب بوجود الأب.' });
+    } else if (siblingsCount > 0 && !hasSon) {
+      grandfatherSiblingsDispute = true;
+    } else if (hasSon) {
+      fixed['grandfather'] = new Fraction(1, 6);
+    } else if (hasDaughter) {
+      fixed['grandfather'] = new Fraction(1, 6);
+      grandfatherGetsResidue = true;
+    } else {
+      fixed['grandfather'] = ZERO;
+      grandfatherGetsResidue = true;
+    }
+  }
+
+  if (grandfatherSiblingsDispute) {
+    result.caseNeedsReview = true;
+    result.supported = false;
+    result.notes.push(TEXTS.needsReviewMessage + ' (اجتماع الجد مع الإخوة الأشقاء بلا أب ولا ابن - مسألة خلافية بين الصحابة)');
+    setHeir('grandfather', { fraction: null, points: null, status: 'تحتاج مراجعة', reason: TEXTS.needsReviewMessage });
+    if (brotherCount > 0) setHeir('brother', { fraction: null, points: null, status: 'تحتاج مراجعة', reason: TEXTS.needsReviewMessage });
+    if (sisterCount > 0) setHeir('sister', { fraction: null, points: null, status: 'تحتاج مراجعة', reason: TEXTS.needsReviewMessage });
+    return finalizeUnsupported(result, fixed, estateValue);
   }
 
   // ---------- البنت (فرض ثابت فقط إن لم يوجد ابن) ----------
@@ -174,20 +219,26 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
 
   // ---------- توزيع الباقي (التعصيب) ----------
   if (hasSon) {
+    // إجمالي حصة كل نوع (الأبناء مجتمعين / البنات مجتمعات) لا حصة فرد واحد فقط —
+    // لازم ضرب عدد الأبناء/البنات في وزن كل فرد (2 للابن، 1 للبنت)، لا رقمًا ثابتًا.
     const totalShares = 2 * sonCount + 1 * daughterCount;
     if (totalShares > 0 && !leftover.isZero()) {
-      fractions['son'] = leftover.mul(new Fraction(2, totalShares));
-      if (hasDaughter) fractions['daughter'] = leftover.mul(new Fraction(1, totalShares));
+      fractions['son'] = leftover.mul(new Fraction(2 * sonCount, totalShares));
+      if (hasDaughter) fractions['daughter'] = leftover.mul(new Fraction(daughterCount, totalShares));
     }
     leftover = ZERO;
   } else if (fatherGetsResidue) {
     fractions['father'] = (fractions['father'] || ZERO).add(leftover);
     leftover = ZERO;
+  } else if (grandfatherGetsResidue) {
+    fractions['grandfather'] = (fractions['grandfather'] || ZERO).add(leftover);
+    leftover = ZERO;
   } else if (siblingsResiduary) {
+    // نفس مبدأ الأبناء/البنات أعلاه: الإجمالي لكل نوع، لا حصة فرد واحد.
     const totalShares = 2 * brotherCount + 1 * sisterCount;
     if (totalShares > 0 && !leftover.isZero()) {
-      fractions['brother'] = leftover.mul(new Fraction(2, totalShares));
-      if (sisterCount > 0) fractions['sister'] = leftover.mul(new Fraction(1, totalShares));
+      fractions['brother'] = leftover.mul(new Fraction(2 * brotherCount, totalShares));
+      if (sisterCount > 0) fractions['sister'] = leftover.mul(new Fraction(sisterCount, totalShares));
     }
     leftover = ZERO;
   }
@@ -248,6 +299,11 @@ function describeShareReason(id, fixed, fatherGetsResidue, hasSon, hasDaughter, 
       if (hasSon) return 'فرض الأب: السدس مع وجود الابن.';
       if (hasDaughter) return 'فرض الأب السدس مع وجود البنت، بالإضافة إلى الباقي تعصيبًا.';
       return 'الأب يأخذ الباقي كله تعصيبًا لعدم وجود فرع وارث.';
+    case 'grandmother': return 'فرض الجدة: السدس عند عدم وجود الأم (تُحجب كليًا بوجودها).';
+    case 'grandfather':
+      if (hasSon) return 'فرض الجد: السدس مع وجود الابن (يقوم مقام الأب تمامًا لغيابه).';
+      if (hasDaughter) return 'فرض الجد السدس مع وجود البنت، بالإضافة إلى الباقي تعصيبًا (كالأب تمامًا لغيابه).';
+      return 'الجد يأخذ الباقي كله تعصيبًا لعدم وجود فرع وارث ولا أب.';
     case 'son': return 'الابن عصبة، يأخذ الباقي (وللذكر مثل حظ الأنثيين مع البنت).';
     case 'daughter':
       return hasSon ? 'البنت تشارك إخوتها الأبناء في الباقي تعصيبًا.' : 'فرض البنت: النصف منفردة أو الثلثان مع أخواتها.';
@@ -347,6 +403,54 @@ function runInheritanceTests() {
     assertEqual('اختبار7-عمرية2-الزوجة', r2.perHeirType['wife'].points, 6);
     assertEqual('اختبار7-عمرية2-الأم', r2.perHeirType['mother'].points, 6);
     assertEqual('اختبار7-عمرية2-الأب', r2.perHeirType['father'].points, 12);
+  }
+
+  // اختبار 8 (الجد يقوم مقام الأب تمامًا عند غيابه، بلا فرع وارث ولا إخوة)
+  {
+    const caseObj = { deceasedGender: 'male' };
+    const r = computeInheritance(caseObj, ['grandfather'], 24);
+    assertEqual('اختبار8-الجد_يأخذ_الباقي_كالأب', r.perHeirType['grandfather'].points, 24);
+  }
+  // اختبار 9 (الجد محجوب كليًا بوجود الأب)
+  {
+    const caseObj = { deceasedGender: 'male' };
+    const r = computeInheritance(caseObj, ['father', 'grandfather'], 24);
+    assertEqual('اختبار9-الأب', r.perHeirType['father'].points, 24);
+    assertEqual('اختبار9-الجد_محجوب_نقاط', r.perHeirType['grandfather'].points, 0);
+    assertEqual('اختبار9-الجد_محجوب_حالة', r.perHeirType['grandfather'].status, 'محجوب');
+  }
+  // اختبار 10 (الجدة محجوبة كليًا بوجود الأم)
+  {
+    const caseObj = { deceasedGender: 'male' };
+    const r = computeInheritance(caseObj, ['mother', 'grandmother'], 24);
+    assertEqual('اختبار10-الأم', r.perHeirType['mother'].points, 8);
+    assertEqual('اختبار10-الجدة_محجوبة_نقاط', r.perHeirType['grandmother'].points, 0);
+    assertEqual('اختبار10-الجدة_محجوبة_حالة', r.perHeirType['grandmother'].status, 'محجوب');
+  }
+  // اختبار 11 (الجدة تأخذ السدس عند غياب الأم)
+  {
+    const caseObj = { deceasedGender: 'male' };
+    const r = computeInheritance(caseObj, ['grandmother', 'son'], 24);
+    assertEqual('اختبار11-الجدة_السدس', r.perHeirType['grandmother'].points, 4);
+    assertEqual('اختبار11-الابن_الباقي', r.perHeirType['son'].points, 20);
+  }
+  // اختبار 12 (اجتماع الجد مع الإخوة الأشقاء بلا أب ولا ابن: مسألة خلافية - تحتاج مراجعة)
+  {
+    const caseObj = { deceasedGender: 'male' };
+    const r = computeInheritance(caseObj, ['grandfather', 'brother'], 24);
+    assertEqual('اختبار12-الجد_تحتاج_مراجعة', r.perHeirType['grandfather'].status, 'تحتاج مراجعة');
+    assertEqual('اختبار12-الأخ_تحتاج_مراجعة', r.perHeirType['brother'].status, 'تحتاج مراجعة');
+    assertEqual('اختبار12-الحالة_غير_مدعومة', r.supported, false);
+  }
+
+  // اختبار 13 (تصحيح: مجموع حصة عدة أبناء/إخوة يجب أن يُحسب كإجمالي، لا حصة فرد واحد فقط)
+  {
+    const caseObj = { deceasedGender: 'male' };
+    const r1 = computeInheritance(caseObj, ['son', 'son'], 12);
+    assertEqual('اختبار13-ابنان_ياخذان_كل_الباقي', r1.perHeirType['son'].points, 12);
+
+    const r2 = computeInheritance(caseObj, ['brother', 'brother'], 12);
+    assertEqual('اختبار13-أخوان_ياخذان_كل_الباقي', r2.perHeirType['brother'].points, 12);
   }
 
   const passCount = results.filter(r => r.pass).length;

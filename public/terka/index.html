@@ -42,13 +42,6 @@
     <div class="section-title">أسماء اللاعبين</div>
     <div class="name-inputs" id="name-inputs"></div>
 
-    <div class="section-title">عدد الجولات</div>
-    <div class="pill-group" id="rounds-group">
-      <button class="pill" data-rounds="5">5 جولات</button>
-      <button class="pill" data-rounds="8">8 جولات</button>
-      <button class="pill" data-rounds="10">10 جولات</button>
-    </div>
-
     <div class="section-title">مستوى الصعوبة</div>
     <div class="pill-group" id="difficulty-group">
       <button class="pill difficulty-pill" data-diff="easy">سهل</button>
@@ -67,11 +60,12 @@
 <section id="screen-play" class="screen play-screen">
   <div class="top-bar">
     <div class="top-bar-info">
-      <span>الجولة <b id="info-round-num">1</b> من <b id="info-round-total">8</b></span>
+      <span>الجولة <b id="info-round-num">1</b></span>
       <span class="diff-badge" id="info-diff-badge">سهل</span>
     </div>
     <div class="top-bar-actions">
       <button class="icon-btn" id="btn-mute" title="كتم الصوت">🔊</button>
+      <button class="icon-btn" id="btn-end-match" title="إنهاء المباراة">🏁</button>
       <button class="icon-btn" id="btn-restart" title="إعادة المباراة">🔁</button>
       <button class="icon-btn" id="btn-exit" title="العودة للقائمة">🏠</button>
     </div>
@@ -92,7 +86,6 @@
   <div class="hand-area" id="hand-area">
     <div class="hand-cards" id="hand-cards"></div>
     <div class="hand-actions">
-      <button class="btn btn-secondary btn-sm" id="btn-substitute">استبدال بطاقة</button>
       <button class="btn btn-primary btn-sm" id="btn-confirm-choice" disabled>تأكيد الاختيار</button>
     </div>
   </div>

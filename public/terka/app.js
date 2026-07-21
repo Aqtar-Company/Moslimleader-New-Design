@@ -1,8 +1,8 @@
 /* app.js — إدارة الشاشات والأدوار وسحب البطاقات وربط الواجهة بمحرك المواريث */
 
 let state = null; // حالة المباراة الحالية
-let setupChoice = { count: 2, rounds: 8, difficulty: 'easy' };
-let selection = { heirId: null, cardEl: null, mode: 'play' }; // mode: 'play' | 'substitute'
+let setupChoice = { count: 2, difficulty: 'easy' };
+let selection = { heirId: null, cardEl: null };
 
 // ---------- أدوات عامة ----------
 function $(sel, root = document) { return root.querySelector(sel); }
@@ -111,10 +111,10 @@ function renderGalleryScreen() {
   $('#gallery-judgment-fronts').innerHTML = JUDGMENT_CARDS.map(card => `
     <div class="judgment-card">
       <div class="judgment-card-front">
-        <div class="judgment-card-title">${card.title}</div>
+        <div class="judgment-card-title">${card.categoryIcon || ''} ${card.title}</div>
         <div class="judgment-card-story">${card.story}</div>
-        <div class="judgment-card-fact">💡 ${card.didYouKnow}</div>
-        <div class="judgment-card-ruling">⚖️ ${card.ruling}</div>
+        <div class="judgment-card-fact">🌿 ${card.benefit}</div>
+        <div class="judgment-card-ruling">🎮 ${card.ruling}</div>
       </div>
     </div>`).join('');
 }
@@ -299,13 +299,6 @@ function initSetupScreen() {
       renderNameInputs();
     });
   });
-  $all('#rounds-group .pill').forEach(btn => {
-    btn.addEventListener('click', () => {
-      setupChoice.rounds = parseInt(btn.dataset.rounds, 10);
-      $all('#rounds-group .pill').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-    });
-  });
   $all('#difficulty-group .pill').forEach(btn => {
     btn.addEventListener('click', () => {
       setupChoice.difficulty = btn.dataset.diff;
@@ -315,13 +308,12 @@ function initSetupScreen() {
   });
   // إعداد افتراضي
   $(`#player-count-group [data-count="2"]`).classList.add('selected');
-  $(`#rounds-group [data-rounds="8"]`).classList.add('selected');
   $(`#difficulty-group [data-diff="easy"]`).classList.add('selected');
   renderNameInputs();
 
   $('#btn-launch-match').addEventListener('click', () => {
     const names = $all('#name-inputs input').map((inp, i) => inp.value.trim() || `لاعب ${i + 1}`);
-    startMatch(names, setupChoice.rounds, setupChoice.difficulty);
+    startMatch(names, setupChoice.difficulty);
   });
 }
 
@@ -365,17 +357,16 @@ function buildJudgmentDeck() {
   return shuffle(JUDGMENT_CARDS.map(c => c.id));
 }
 
-function startMatch(names, rounds, difficulty) {
+function startMatch(names, difficulty) {
   const heirDeck = buildHeirDeck();
   const players = names.map(name => ({
-    name, score: 0, roundsWon: 0, blockedCount: 0, hand: [], balance: 0
+    name, score: 0, roundsWon: 0, blockedCount: 0, hand: [], balance: 30 // 30 سهم رأس مال ابتدائي
   }));
   // توزيع 4 بطاقات لكل لاعب
   players.forEach(p => { for (let i = 0; i < 4; i++) p.hand.push(heirDeck.pop()); });
 
   state = {
     players,
-    totalRounds: rounds,
     difficulty,
     roundNum: 1,
     heirDeck, heirDiscard: [],
@@ -387,12 +378,12 @@ function startMatch(names, rounds, difficulty) {
     judgmentRevealed: false,
     judgmentApplied: false,
     judgmentChosenPlayers: [],
+    pendingDeferred: [], // {playerIndex, amount, triggerRound} — أثر مؤجَّل من بطاقات أحكام سابقة
     currentCaseId: null,
     currentEstateValue: null,
     turnIndex: 0,
-    roundPlays: {}, // playerIndex -> heirId | 'substituted' (الهوية المُستخدَمة في الحساب — للجوكر تكون هوية الوارث المُختار)
+    roundPlays: {}, // playerIndex -> heirId (الهوية المُستخدَمة في الحساب — للجوكر تكون هوية الوارث المُختار)
     roundPlayedCards: {}, // playerIndex -> هوية البطاقة الفعلية اللي لُعبت (تُعاد لكومة الاستخدام؛ 'joker' لبطاقات الجوكر)
-    substitutedThisRound: {},
     muted: false,
     phase: 'setup' // setup | acting | reveal | result | judgment | end
   };
@@ -425,7 +416,6 @@ function resumeSavedGame() {
     state.turnIndex = 0;
     state.roundPlays = {};
     state.roundPlayedCards = {};
-    state.substitutedThisRound = {};
     renderPlayScreenShell();
     beginTurnFlow();
   }
@@ -436,15 +426,30 @@ function beginRound() {
   state.turnIndex = 0;
   state.roundPlays = {};
   state.roundPlayedCards = {};
-  state.substitutedThisRound = {};
 
   const caseId = drawFrom('caseDeck', 'caseDiscard');
   state.currentCaseId = caseId;
   state.currentEstateValue = drawFrom('estateDeck', 'estateDiscard');
 
+  const dueNotices = applyDueDeferredPayouts();
+
   saveGame();
   renderPlayScreenShell();
+  if (dueNotices.length) flashMessage(dueNotices.join('<br>'));
   beginTurnFlow();
+}
+
+// يطبّق أي أثر مؤجَّل من بطاقات أحكام سابقة حان وقته (state.pendingDeferred)
+function applyDueDeferredPayouts() {
+  if (!state.pendingDeferred || !state.pendingDeferred.length) return [];
+  const due = state.pendingDeferred.filter(d => d.triggerRound <= state.roundNum);
+  state.pendingDeferred = state.pendingDeferred.filter(d => d.triggerRound > state.roundNum);
+  const notices = [];
+  due.forEach(d => {
+    state.players[d.playerIndex].balance += d.amount;
+    notices.push(`💰 ${state.players[d.playerIndex].name}: ${d.amount > 0 ? '+' : ''}${d.amount} سهم (أثر مؤجَّل من بطاقة سابقة)`);
+  });
+  return notices;
 }
 
 function saveGame() {
@@ -457,7 +462,6 @@ function saveGame() {
 function renderPlayScreenShell() {
   showScreen('screen-play');
   $('#info-round-num').textContent = state.roundNum;
-  $('#info-round-total').textContent = state.totalRounds;
   const diffBadge = $('#info-diff-badge');
   const caseObj = DECEASED_CASES.find(c => c.id === state.currentCaseId);
   const diffKey = caseObj.difficulty;
@@ -498,8 +502,7 @@ function renderPlayersRow() {
   row.innerHTML = state.players.map((p, i) => {
     const activeCls = (i === state.turnIndex && state.phase === 'acting') ? 'active-turn' : '';
     let stateText = 'ينتظر';
-    if (state.roundPlays[i] === 'substituted') stateText = 'استبدل';
-    else if (state.roundPlays[i] !== undefined) stateText = 'جاهز';
+    if (state.roundPlays[i] !== undefined) stateText = 'جاهز';
     else if (i === state.turnIndex && state.phase === 'acting') stateText = 'يختار';
     return `<div class="player-chip ${activeCls}">
       <span class="p-name">${p.name}</span>
@@ -535,11 +538,9 @@ function initPassOverlay() {
 }
 
 function renderHandForCurrentPlayer() {
-  selection = { heirId: null, cardEl: null, mode: 'play' };
+  selection = { heirId: null, cardEl: null };
   $('#btn-confirm-choice').classList.remove('hidden');
-  $('#btn-substitute').classList.remove('hidden');
   $('#btn-confirm-choice').disabled = true;
-  $('#btn-substitute').disabled = !!state.substitutedThisRound[state.turnIndex];
 
   const player = state.players[state.turnIndex];
   const caseObj = DECEASED_CASES.find(c => c.id === state.currentCaseId);
@@ -560,7 +561,7 @@ function renderHandForCurrentPlayer() {
       alert(`${heir.name}: ${heir.description}`);
     });
     cardEl.addEventListener('click', () => {
-      if (selection.mode !== 'substitute' && disallowed) {
+      if (disallowed) {
         AudioManager.playError();
         flashMessage('لا يمكن اختيار هذه البطاقة في هذه الحالة.');
         return;
@@ -585,32 +586,11 @@ function flashMessage(text) {
 
 function initHandActions() {
   $('#btn-confirm-choice').addEventListener('click', () => {
-    if (selection.mode === 'substitute') {
-      doSubstitute();
-    } else if (selection.heirId === 'joker') {
+    if (selection.heirId === 'joker') {
       showJokerIdentityPicker();
     } else {
       doConfirmPlay();
     }
-  });
-  $('#btn-substitute').addEventListener('click', () => {
-    if (state.substitutedThisRound[state.turnIndex]) return;
-    selection.mode = 'substitute';
-    selection.heirId = null;
-    $all('#hand-cards .card').forEach(c => c.classList.remove('selected'));
-    $('#btn-confirm-choice').disabled = true;
-    flashMessage('اختر بطاقة من يدك لاستبدالها.');
-    // إعادة ربط اختيار البطاقات لوضع الاستبدال
-    $all('#hand-cards .card').forEach((cardEl, idx) => {
-      cardEl.classList.remove('disallowed');
-      cardEl.onclick = () => {
-        $all('#hand-cards .card').forEach(c => c.classList.remove('selected'));
-        cardEl.classList.add('selected');
-        selection.handIndex = idx;
-        selection.cardEl = cardEl;
-        $('#btn-confirm-choice').disabled = false;
-      };
-    });
   });
 }
 
@@ -647,7 +627,6 @@ function showJokerIdentityPicker() {
   });
 
   $('#btn-confirm-choice').classList.add('hidden');
-  $('#btn-substitute').classList.add('hidden');
   flashMessage('اختر الوارث اللي هيمثله الجوكر في هذه الحالة.');
 }
 
@@ -657,21 +636,6 @@ function doConfirmJokerPlay(chosenHeirId) {
   state.roundPlays[playerIndex] = chosenHeirId;
   state.roundPlayedCards[playerIndex] = 'joker';
   player.hand.splice(selection.handIndex, 1); // بطاقة الجوكر نفسها تخرج من اليد
-  AudioManager.playDraw();
-  advanceTurn();
-}
-
-function doSubstitute() {
-  const playerIndex = state.turnIndex;
-  const player = state.players[playerIndex];
-  const discardedId = player.hand[selection.handIndex];
-  player.hand.splice(selection.handIndex, 1);
-  state.heirDiscard.push(discardedId);
-  const newCard = drawFrom('heirDeck', 'heirDiscard');
-  if (newCard) player.hand.push(newCard);
-  state.substitutedThisRound[playerIndex] = true;
-  state.roundPlays[playerIndex] = 'substituted';
-  flashMessage(TEXTS.substituteMessage);
   AudioManager.playDraw();
   advanceTurn();
 }
@@ -695,7 +659,7 @@ function revealRoundAndCompute() {
 
   state.players.forEach((p, i) => {
     const play = state.roundPlays[i];
-    if (play && play !== 'substituted') {
+    if (play) {
       playedHeirIds.push(play);
       const heir = getHeirType(play);
       const el = document.createElement('div');
@@ -716,13 +680,13 @@ function finalizeRoundScoring(caseObj, engineResult) {
   const perPlayerRows = [];
   const heirPlayCounts = {}; // لتقسيم النقاط بالتساوي عند تكرار نفس الوارث (مثل تعدد الزوجات)
   Object.values(state.roundPlays).forEach(v => {
-    if (v && v !== 'substituted') heirPlayCounts[v] = (heirPlayCounts[v] || 0) + 1;
+    if (v) heirPlayCounts[v] = (heirPlayCounts[v] || 0) + 1;
   });
 
   state.players.forEach((p, i) => {
     const play = state.roundPlays[i];
-    if (!play || play === 'substituted') {
-      perPlayerRows.push({ player: p.name, card: play === 'substituted' ? 'استبدال' : '—', status: 'invalid', statusText: play === 'substituted' ? 'استبدل ولم يشارك' : 'لم يشارك', ratio: '—', points: 0 });
+    if (!play) {
+      perPlayerRows.push({ player: p.name, card: '—', status: 'invalid', statusText: 'لم يشارك', ratio: '—', points: 0 });
       return;
     }
     const heirInfo = engineResult.perHeirType[play];
@@ -748,7 +712,7 @@ function finalizeRoundScoring(caseObj, engineResult) {
   // إعادة البطاقات الملعوبة إلى كومة الاستخدام وسحب بطاقات جديدة لإعادة اليد إلى 4
   // (تُعاد هوية البطاقة الفعلية اللي لُعبت، فبطاقة الجوكر ترجع "جوكر" لا هوية الوارث اللي مثّلته)
   Object.entries(state.roundPlays).forEach(([i, play]) => {
-    if (play && play !== 'substituted') {
+    if (play) {
       const actualCard = (state.roundPlayedCards && state.roundPlayedCards[i]) || play;
       state.heirDiscard.push(actualCard);
       const p = state.players[i];
@@ -815,14 +779,8 @@ function initRoundResultScreen() {
 
 function proceedAfterJudgment() {
   state.judgmentTurnIndex = (state.judgmentTurnIndex + 1) % state.players.length;
-  if (state.roundNum >= state.totalRounds) {
-    state.phase = 'end';
-    saveGame();
-    showEndScreen();
-  } else {
-    state.roundNum++;
-    beginRound();
-  }
+  state.roundNum++;
+  beginRound();
 }
 
 // ============================================================
@@ -868,10 +826,10 @@ function renderJudgmentScreen() {
     cardEl.className = 'judgment-card revealed card-flip';
     cardEl.innerHTML = `
       <div class="judgment-card-front">
-        <div class="judgment-card-title">${card.title}</div>
+        <div class="judgment-card-title">${card.categoryIcon || ''} ${card.title}</div>
         <div class="judgment-card-story">${card.story}</div>
-        <div class="judgment-card-fact">💡 هل تعلم؟ ${card.didYouKnow}</div>
-        <div class="judgment-card-ruling">⚖️ ${card.ruling}</div>
+        <div class="judgment-card-fact">🌿 ${card.benefit}</div>
+        <div class="judgment-card-ruling">🎮 ${card.ruling}</div>
       </div>`;
   }
 
@@ -904,9 +862,9 @@ function renderJudgmentControls(card) {
     return;
   }
 
-  const needsChoice = card.effect.target === 'chosenPlayer' || card.effect.target === 'chosenPlayers2';
-  if (needsChoice) {
-    const neededCount = card.effect.target === 'chosenPlayers2' ? 2 : 1;
+  const choiceEffect = (card.effects || []).find(e => e.target === 'chosenPlayer' || e.target === 'chosenPlayers2');
+  if (choiceEffect) {
+    const neededCount = choiceEffect.target === 'chosenPlayers2' ? 2 : 1;
     const candidates = state.players.map((p, i) => i).filter(i => i !== state.judgmentTurnIndex);
     const label = neededCount === 2 ? TEXTS.judgmentChooseTwoPlayers : TEXTS.judgmentChoosePlayer;
     wrap.innerHTML = `
@@ -935,13 +893,41 @@ function renderJudgmentControls(card) {
   }
 }
 
+// بطاقة الأحكام قد تحمل أكثر من أثر (effects[]) يُطبَّق بالتتابع؛ كل أثر لاحق يرى
+// الأرصدة بعد تطبيق الآثار اللي قبله في نفس البطاقة (مهم لبطاقات زي "صندوق الأسرة").
 function resolveJudgmentTargets(card, revealerIndex, chosenPlayers) {
-  const eff = card.effect;
+  const deltas = state.players.map(() => 0);
+  const workingBalances = state.players.map(p => p.balance);
+
+  (card.effects || []).forEach(eff => {
+    const effDeltas = resolveSingleEffect(eff, revealerIndex, chosenPlayers, workingBalances);
+    effDeltas.forEach((d, i) => {
+      deltas[i] += d;
+      workingBalances[i] += d;
+    });
+    if (eff.deferred) {
+      state.pendingDeferred.push({
+        playerIndex: revealerIndex,
+        amount: eff.deferred.amount,
+        triggerRound: state.roundNum + eff.deferred.afterRounds
+      });
+    }
+  });
+
+  return deltas;
+}
+
+function resolveSingleEffect(eff, revealerIndex, chosenPlayers, balances) {
   const n = state.players.length;
   const deltas = state.players.map(() => 0);
   const rows = (state.lastRoundResult && state.lastRoundResult.rows) || [];
 
   const addAll = (idxs, amount) => idxs.forEach(i => { deltas[i] += amount; });
+  const indexOfExtreme = (arr, better) => {
+    let idx = 0;
+    arr.forEach((v, i) => { if (better(v, arr[idx])) idx = i; });
+    return idx;
+  };
 
   switch (eff.target) {
     case 'self':
@@ -964,36 +950,50 @@ function resolveJudgmentTargets(card, revealerIndex, chosenPlayers) {
     case 'largestAqilahShare': {
       const aqilahIdxs = getAqilahPlayerIndexes();
       if (aqilahIdxs.length) {
-        let best = aqilahIdxs[0];
-        aqilahIdxs.forEach(i => { if ((rows[i] ? rows[i].points : 0) > (rows[best] ? rows[best].points : 0)) best = i; });
+        const best = aqilahIdxs[indexOfExtreme(aqilahIdxs.map(i => (rows[i] ? rows[i].points : 0)), (a, b) => a > b)];
+        deltas[best] += eff.amount;
+      }
+      break;
+    }
+    case 'highestBalanceAqilah': {
+      const aqilahIdxs = getAqilahPlayerIndexes();
+      if (aqilahIdxs.length) {
+        const best = aqilahIdxs[indexOfExtreme(aqilahIdxs.map(i => balances[i]), (a, b) => a > b)];
         deltas[best] += eff.amount;
       }
       break;
     }
     case 'lowestBalance': {
-      let idx = 0;
-      state.players.forEach((p, i) => { if (p.balance < state.players[idx].balance) idx = i; });
+      const idx = indexOfExtreme(balances, (a, b) => a < b);
       deltas[idx] += eff.amount;
       break;
     }
     case 'highestBalance': {
-      let idx = 0;
-      state.players.forEach((p, i) => { if (p.balance > state.players[idx].balance) idx = i; });
+      const idx = indexOfExtreme(balances, (a, b) => a > b);
       deltas[idx] += eff.amount;
+      break;
+    }
+    case 'allExceptHighestBalance': {
+      const idx = indexOfExtreme(balances, (a, b) => a > b);
+      addAll(state.players.map((_, i) => i).filter(i => i !== idx), eff.amount);
+      break;
+    }
+    case 'lowestBalancePool': {
+      const pool = eff.amount * n;
+      const idx = indexOfExtreme(balances, (a, b) => a < b);
+      deltas[idx] += pool;
       break;
     }
     case 'largestShareThisRound': {
       if (rows.length) {
-        let idx = 0;
-        rows.forEach((r, i) => { if (r.points > rows[idx].points) idx = i; });
+        const idx = indexOfExtreme(rows.map(r => r.points), (a, b) => a > b);
         deltas[idx] += eff.amount;
       }
       break;
     }
     case 'smallestShareThisRound': {
       if (rows.length) {
-        let idx = 0;
-        rows.forEach((r, i) => { if (r.points < rows[idx].points) idx = i; });
+        const idx = indexOfExtreme(rows.map(r => r.points), (a, b) => a < b);
         deltas[idx] += eff.amount;
       }
       break;
@@ -1014,6 +1014,11 @@ function resolveJudgmentTargets(card, revealerIndex, chosenPlayers) {
       const others = state.players.map((_, i) => i).filter(i => i !== revealerIndex);
       addAll(others, eff.amount);
       deltas[revealerIndex] += -eff.amount * others.length;
+      break;
+    }
+    case 'conditionalBalance': {
+      const isBelow = balances[revealerIndex] < eff.threshold;
+      deltas[revealerIndex] += isBelow ? eff.belowAmount : eff.aboveOrEqualAmount;
       break;
     }
     case 'firstToNotice':
@@ -1070,7 +1075,7 @@ function showEndScreen() {
   $('#final-rank-list').innerHTML = sorted.map((p, i) => `
     <li class="${i === 0 ? 'first' : ''}">
       <span>${i + 1}. ${p.name}</span>
-      <span>${p.score} نقطة · فاز بـ${p.roundsWon} جولة · حُجب ${p.blockedCount} مرة</span>
+      <span>${p.score} نقطة · 💰 ${p.balance} سهم · فاز بـ${p.roundsWon} جولة · حُجب ${p.blockedCount} مرة</span>
     </li>`).join('');
 
   GameStorage.clear();
@@ -1083,7 +1088,7 @@ function initEndScreen() {
   });
   $('#btn-replay-names').addEventListener('click', () => {
     const names = state.players.map(p => p.name);
-    startMatch(names, setupChoice.rounds, setupChoice.difficulty);
+    startMatch(names, setupChoice.difficulty);
   });
 }
 
@@ -1104,8 +1109,14 @@ function initTopBarActions() {
   $('#btn-restart').addEventListener('click', () => {
     if (confirm('هل تريد إعادة المباراة من البداية بنفس الأسماء؟')) {
       const names = state.players.map(p => p.name);
-      const rounds = state.totalRounds, diff = state.difficulty;
-      startMatch(names, rounds, diff);
+      startMatch(names, state.difficulty);
+    }
+  });
+  $('#btn-end-match').addEventListener('click', () => {
+    if (confirm('هل تريد إنهاء المباراة الآن وعرض النتيجة النهائية؟')) {
+      state.phase = 'end';
+      saveGame();
+      showEndScreen();
     }
   });
   $('#btn-exit').addEventListener('click', () => {

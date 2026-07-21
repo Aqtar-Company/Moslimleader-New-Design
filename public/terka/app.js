@@ -1,0 +1,614 @@
+/* app.js — إدارة الشاشات والأدوار وسحب البطاقات وربط الواجهة بمحرك المواريث */
+
+let state = null; // حالة المباراة الحالية
+let setupChoice = { count: 2, rounds: 8, difficulty: 'easy' };
+let selection = { heirId: null, cardEl: null, mode: 'play' }; // mode: 'play' | 'substitute'
+
+// ---------- أدوات عامة ----------
+function $(sel, root = document) { return root.querySelector(sel); }
+function $all(sel, root = document) { return Array.from(root.querySelectorAll(sel)); }
+
+function showScreen(id) {
+  $all('.screen').forEach(s => s.classList.remove('active'));
+  $(`#${id}`).classList.add('active');
+}
+
+function shuffle(array) {
+  // خوارزمية Fisher-Yates
+  const arr = array.slice();
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function drawFrom(deckArrName, discardArrName) {
+  if (state[deckArrName].length === 0) {
+    if (state[discardArrName].length === 0) return null;
+    state[deckArrName] = shuffle(state[discardArrName]);
+    state[discardArrName] = [];
+  }
+  return state[deckArrName].pop();
+}
+
+// ============================================================
+// شاشة البداية
+// ============================================================
+function initStartScreen() {
+  if (GameStorage.hasSavedGame()) {
+    $('#btn-continue').classList.remove('hidden');
+  }
+  $('#btn-start-new').addEventListener('click', () => {
+    AudioManager.playClick();
+    showScreen('screen-setup');
+  });
+  $('#btn-continue').addEventListener('click', () => {
+    const saved = GameStorage.load();
+    if (saved) {
+      state = saved;
+      resumeSavedGame();
+    }
+  });
+  $('#btn-how-to-play').addEventListener('click', () => { renderHowTo(); showScreen('screen-how-to'); });
+  $('#btn-heir-guide').addEventListener('click', () => { renderHeirGuide(); showScreen('screen-heir-guide'); });
+  $('#howto-back').addEventListener('click', () => showScreen('screen-start'));
+  $('#heirguide-back').addEventListener('click', () => showScreen('screen-start'));
+  $('#setup-back').addEventListener('click', () => showScreen('screen-start'));
+}
+
+function renderHowTo() {
+  const items = [
+    ['الهدف', 'اجمع أكبر عدد من نقاط التركة عبر عدة جولات بلعب بطاقة الوارث المناسبة لكل حالة.'],
+    ['بداية كل جولة', 'تُكشف بطاقة حالة المتوفى وبطاقة قيمة التركة، ثم يختار كل لاعب بسرّية بطاقة وارث من يده.'],
+    ['الكشف والحساب', 'بعد اختيار الجميع، تُكشف البطاقات ويُحسب نصيب كل وارث حسب قواعد الفرائض المبسطة.'],
+    ['الاستبدال', 'إن لم تناسبك بطاقاتك، استبدل بطاقة واحدة، لكنك تخسر مشاركتك في تلك الجولة.'],
+    ['الفوز', 'يفوز صاحب أكبر مجموع نقاط بعد انتهاء كل الجولات.']
+  ];
+  $('#howto-list').innerHTML = items.map(([t, d]) => `<div class="guide-item"><h4>${t}</h4><p>${d}</p></div>`).join('');
+}
+
+function renderHeirGuide() {
+  $('#heir-guide-list').innerHTML = HEIR_TYPES.map(h =>
+    `<div class="guide-item"><h4>${h.icon} ${h.name}</h4><p>${h.description}</p></div>`
+  ).join('');
+}
+
+// ============================================================
+// شاشة الإعداد
+// ============================================================
+function initSetupScreen() {
+  $all('#player-count-group .pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setupChoice.count = parseInt(btn.dataset.count, 10);
+      $all('#player-count-group .pill').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      renderNameInputs();
+    });
+  });
+  $all('#rounds-group .pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setupChoice.rounds = parseInt(btn.dataset.rounds, 10);
+      $all('#rounds-group .pill').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    });
+  });
+  $all('#difficulty-group .pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setupChoice.difficulty = btn.dataset.diff;
+      $all('#difficulty-group .pill').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    });
+  });
+  // إعداد افتراضي
+  $(`#player-count-group [data-count="2"]`).classList.add('selected');
+  $(`#rounds-group [data-rounds="8"]`).classList.add('selected');
+  $(`#difficulty-group [data-diff="easy"]`).classList.add('selected');
+  renderNameInputs();
+
+  $('#btn-launch-match').addEventListener('click', () => {
+    const names = $all('#name-inputs input').map((inp, i) => inp.value.trim() || `لاعب ${i + 1}`);
+    startMatch(names, setupChoice.rounds, setupChoice.difficulty);
+  });
+}
+
+function renderNameInputs() {
+  const wrap = $('#name-inputs');
+  const existing = $all('#name-inputs input').map(i => i.value);
+  wrap.innerHTML = '';
+  for (let i = 0; i < setupChoice.count; i++) {
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.placeholder = `اسم اللاعب ${i + 1}`;
+    inp.maxLength = 16;
+    inp.value = existing[i] || '';
+    wrap.appendChild(inp);
+  }
+}
+
+// ============================================================
+// بناء المباراة
+// ============================================================
+function buildHeirDeck() {
+  let deck = [];
+  HEIR_TYPES.forEach(h => { for (let i = 0; i < h.count; i++) deck.push(h.id); });
+  return shuffle(deck);
+}
+
+function buildEstateDeck() {
+  let deck = [];
+  ESTATE_VALUES.forEach(e => { for (let i = 0; i < e.count; i++) deck.push(e.value); });
+  return shuffle(deck);
+}
+
+function buildCaseDeck(difficulty) {
+  let pool;
+  if (difficulty === 'mixed') pool = DECEASED_CASES.filter(c => c.difficulty !== 'expert');
+  else pool = DECEASED_CASES.filter(c => c.difficulty === difficulty);
+  return shuffle(pool.map(c => c.id));
+}
+
+function startMatch(names, rounds, difficulty) {
+  const heirDeck = buildHeirDeck();
+  const players = names.map(name => ({
+    name, score: 0, roundsWon: 0, blockedCount: 0, hand: []
+  }));
+  // توزيع 4 بطاقات لكل لاعب
+  players.forEach(p => { for (let i = 0; i < 4; i++) p.hand.push(heirDeck.pop()); });
+
+  state = {
+    players,
+    totalRounds: rounds,
+    difficulty,
+    roundNum: 1,
+    heirDeck, heirDiscard: [],
+    caseDeck: buildCaseDeck(difficulty), caseDiscard: [],
+    estateDeck: buildEstateDeck(), estateDiscard: [],
+    currentCaseId: null,
+    currentEstateValue: null,
+    turnIndex: 0,
+    roundPlays: {}, // playerIndex -> heirId | 'substituted'
+    substitutedThisRound: {},
+    muted: false,
+    phase: 'setup' // setup | acting | reveal | result | end
+  };
+  AudioManager.playClick();
+  beginRound();
+}
+
+function resumeSavedGame() {
+  AudioManager.setMuted(!!state.muted);
+  updateMuteIcon();
+  if (state.phase === 'result') {
+    showRoundResult(state.lastRoundResult);
+  } else if (state.phase === 'end') {
+    showEndScreen();
+  } else {
+    // نعيد بدء الجولة الحالية بأمان (تجنبًا لتعقيد استرجاع منتصف الدور)
+    state.turnIndex = 0;
+    state.roundPlays = {};
+    state.substitutedThisRound = {};
+    renderPlayScreenShell();
+    beginTurnFlow();
+  }
+}
+
+function beginRound() {
+  state.phase = 'acting';
+  state.turnIndex = 0;
+  state.roundPlays = {};
+  state.substitutedThisRound = {};
+
+  const caseId = drawFrom('caseDeck', 'caseDiscard');
+  state.currentCaseId = caseId;
+  state.currentEstateValue = drawFrom('estateDeck', 'estateDiscard');
+
+  saveGame();
+  renderPlayScreenShell();
+  beginTurnFlow();
+}
+
+function saveGame() {
+  GameStorage.save(state);
+}
+
+// ============================================================
+// شاشة اللعب — الهيكل الثابت
+// ============================================================
+function renderPlayScreenShell() {
+  showScreen('screen-play');
+  $('#info-round-num').textContent = state.roundNum;
+  $('#info-round-total').textContent = state.totalRounds;
+  const diffBadge = $('#info-diff-badge');
+  const caseObj = DECEASED_CASES.find(c => c.id === state.currentCaseId);
+  const diffKey = caseObj.difficulty;
+  diffBadge.textContent = TEXTS.difficultyNames[diffKey];
+  diffBadge.className = 'diff-badge ' + diffKey;
+
+  renderPlayersRow();
+
+  // بطاقة الحالة (مقلوبة أولًا ثم تُكشف)
+  $('#status-card-slot').innerHTML = `
+    <div class="card status-card gender-${caseObj.deceasedGender} card-flip">
+      <div class="card-icon">${caseObj.deceasedGender === 'male' ? '🕌' : '🕋'}</div>
+      <div class="card-name">${caseObj.title}</div>
+      <div class="card-sub">${caseObj.note}</div>
+    </div>`;
+
+  $('#estate-card-slot').innerHTML = `
+    <div class="card estate-card ${estateTierClass(state.currentEstateValue)} card-flip">
+      <div class="card-icon">📦</div>
+      <div class="card-value">${state.currentEstateValue}</div>
+      <div class="card-sub">وزّع التركة بالعدل</div>
+    </div>`;
+
+  $('#revealed-heirs').innerHTML = '';
+  $('#round-lesson-box').innerHTML = '';
+  AudioManager.playReveal();
+}
+
+function estateTierClass(value) {
+  if (value >= 48) return 'tier-4';
+  if (value >= 36) return 'tier-3';
+  if (value >= 24) return 'tier-2';
+  return 'tier-1';
+}
+
+function renderPlayersRow() {
+  const row = $('#players-row');
+  row.innerHTML = state.players.map((p, i) => {
+    const activeCls = (i === state.turnIndex && state.phase === 'acting') ? 'active-turn' : '';
+    let stateText = 'ينتظر';
+    if (state.roundPlays[i] === 'substituted') stateText = 'استبدل';
+    else if (state.roundPlays[i] !== undefined) stateText = 'جاهز';
+    else if (i === state.turnIndex && state.phase === 'acting') stateText = 'يختار';
+    return `<div class="player-chip ${activeCls}">
+      <span class="p-name">${p.name}</span>
+      <span class="p-score">${p.score} نقطة</span>
+      <span class="p-state">${stateText}</span>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// تدفّق الأدوار (تمرير الجهاز)
+// ============================================================
+function beginTurnFlow() {
+  if (state.turnIndex >= state.players.length) {
+    revealRoundAndCompute();
+    return;
+  }
+  renderPlayersRow();
+  const player = state.players[state.turnIndex];
+  $('#pass-overlay-text').textContent = TEXTS.passDeviceMessage;
+  $('#pass-player-name').textContent = player.name;
+  $('#hand-area').classList.add('hidden');
+  $('#pass-overlay').classList.remove('hidden');
+}
+
+function initPassOverlay() {
+  $('#btn-im-ready').addEventListener('click', () => {
+    $('#pass-overlay').classList.add('hidden');
+    $('#hand-area').classList.remove('hidden');
+    renderHandForCurrentPlayer();
+  });
+}
+
+function renderHandForCurrentPlayer() {
+  selection = { heirId: null, cardEl: null, mode: 'play' };
+  $('#btn-confirm-choice').disabled = true;
+  $('#btn-substitute').disabled = !!state.substitutedThisRound[state.turnIndex];
+
+  const player = state.players[state.turnIndex];
+  const caseObj = DECEASED_CASES.find(c => c.id === state.currentCaseId);
+  const wrap = $('#hand-cards');
+  wrap.innerHTML = '';
+
+  player.hand.forEach((heirId, idx) => {
+    const heir = getHeirType(heirId);
+    const disallowed = caseObj.disallowed.includes(heirId);
+    const cardEl = document.createElement('div');
+    cardEl.className = 'card small selectable' + (disallowed ? ' disallowed' : '');
+    cardEl.innerHTML = `
+      <button class="info-btn" title="معلومات">؟</button>
+      <div class="card-icon">${heir.icon}</div>
+      <div class="card-name">${heir.name}</div>`;
+    cardEl.querySelector('.info-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      alert(`${heir.name}: ${heir.description}`);
+    });
+    cardEl.addEventListener('click', () => {
+      if (selection.mode !== 'substitute' && disallowed) {
+        AudioManager.playError();
+        flashMessage('لا يمكن اختيار هذه البطاقة في هذه الحالة.');
+        return;
+      }
+      $all('.card', wrap).forEach(c => c.classList.remove('selected'));
+      cardEl.classList.add('selected');
+      selection.heirId = heirId;
+      selection.handIndex = idx;
+      selection.cardEl = cardEl;
+      $('#btn-confirm-choice').disabled = false;
+      AudioManager.playClick();
+    });
+    wrap.appendChild(cardEl);
+  });
+}
+
+function flashMessage(text) {
+  const box = $('#round-lesson-box');
+  box.innerHTML = `<div class="warning-box">${text}</div>`;
+  setTimeout(() => { if (state.phase === 'acting') box.innerHTML = ''; }, 2200);
+}
+
+function initHandActions() {
+  $('#btn-confirm-choice').addEventListener('click', () => {
+    if (selection.mode === 'substitute') {
+      doSubstitute();
+    } else {
+      doConfirmPlay();
+    }
+  });
+  $('#btn-substitute').addEventListener('click', () => {
+    if (state.substitutedThisRound[state.turnIndex]) return;
+    selection.mode = 'substitute';
+    selection.heirId = null;
+    $all('#hand-cards .card').forEach(c => c.classList.remove('selected'));
+    $('#btn-confirm-choice').disabled = true;
+    flashMessage('اختر بطاقة من يدك لاستبدالها.');
+    // إعادة ربط اختيار البطاقات لوضع الاستبدال
+    $all('#hand-cards .card').forEach((cardEl, idx) => {
+      cardEl.classList.remove('disallowed');
+      cardEl.onclick = () => {
+        $all('#hand-cards .card').forEach(c => c.classList.remove('selected'));
+        cardEl.classList.add('selected');
+        selection.handIndex = idx;
+        selection.cardEl = cardEl;
+        $('#btn-confirm-choice').disabled = false;
+      };
+    });
+  });
+}
+
+function doConfirmPlay() {
+  const playerIndex = state.turnIndex;
+  const player = state.players[playerIndex];
+  state.roundPlays[playerIndex] = selection.heirId;
+  player.hand.splice(selection.handIndex, 1); // البطاقة تُلعب وتخرج من اليد مؤقتًا (ستُضاف لكومة الاستخدام لاحقًا)
+  AudioManager.playDraw();
+  advanceTurn();
+}
+
+function doSubstitute() {
+  const playerIndex = state.turnIndex;
+  const player = state.players[playerIndex];
+  const discardedId = player.hand[selection.handIndex];
+  player.hand.splice(selection.handIndex, 1);
+  state.heirDiscard.push(discardedId);
+  const newCard = drawFrom('heirDeck', 'heirDiscard');
+  if (newCard) player.hand.push(newCard);
+  state.substitutedThisRound[playerIndex] = true;
+  state.roundPlays[playerIndex] = 'substituted';
+  flashMessage(TEXTS.substituteMessage);
+  AudioManager.playDraw();
+  advanceTurn();
+}
+
+function advanceTurn() {
+  state.turnIndex += 1;
+  saveGame();
+  setTimeout(() => beginTurnFlow(), 350);
+}
+
+// ============================================================
+// الكشف والحساب
+// ============================================================
+function revealRoundAndCompute() {
+  state.phase = 'reveal';
+  renderPlayersRow();
+  const caseObj = DECEASED_CASES.find(c => c.id === state.currentCaseId);
+  const playedHeirIds = [];
+  const revealWrap = $('#revealed-heirs');
+  revealWrap.innerHTML = '';
+
+  state.players.forEach((p, i) => {
+    const play = state.roundPlays[i];
+    if (play && play !== 'substituted') {
+      playedHeirIds.push(play);
+      const heir = getHeirType(play);
+      const el = document.createElement('div');
+      el.className = 'card small card-flip';
+      el.innerHTML = `<div class="card-icon">${heir.icon}</div><div class="card-name">${heir.name}</div><div class="card-sub">${p.name}</div>`;
+      revealWrap.appendChild(el);
+    }
+  });
+  AudioManager.playReveal();
+
+  const engineResult = computeInheritance(caseObj, playedHeirIds, state.currentEstateValue);
+
+  setTimeout(() => finalizeRoundScoring(caseObj, engineResult), 700);
+}
+
+function finalizeRoundScoring(caseObj, engineResult) {
+  // توزيع النقاط على اللاعبين حسب البطاقة التي لعبوها
+  const perPlayerRows = [];
+  const heirPlayCounts = {}; // لتقسيم النقاط بالتساوي عند تكرار نفس الوارث (مثل تعدد الزوجات)
+  Object.values(state.roundPlays).forEach(v => {
+    if (v && v !== 'substituted') heirPlayCounts[v] = (heirPlayCounts[v] || 0) + 1;
+  });
+
+  state.players.forEach((p, i) => {
+    const play = state.roundPlays[i];
+    if (!play || play === 'substituted') {
+      perPlayerRows.push({ player: p.name, card: play === 'substituted' ? 'استبدال' : '—', status: 'invalid', statusText: play === 'substituted' ? 'استبدل ولم يشارك' : 'لم يشارك', ratio: '—', points: 0 });
+      return;
+    }
+    const heirInfo = engineResult.perHeirType[play];
+    const heir = getHeirType(play);
+    if (!heirInfo) {
+      perPlayerRows.push({ player: p.name, card: heir.name, status: 'invalid', statusText: 'غير مناسب', ratio: '—', points: 0 });
+      return;
+    }
+    let statusClass = 'inherits', statusText = 'يرث';
+    if (heirInfo.status === 'محجوب') { statusClass = 'blocked'; statusText = heirInfo.reason; p.blockedCount++; }
+    else if (heirInfo.status === 'غير مناسب') { statusClass = 'invalid'; statusText = heirInfo.reason; }
+    else if ((heirInfo.status || '').includes('مراجعة')) { statusClass = 'review'; statusText = heirInfo.reason; }
+    else statusText = heirInfo.reason || 'يرث';
+
+    const totalCardHolders = heirPlayCounts[play] || 1;
+    const points = totalCardHolders > 1 ? Math.floor((heirInfo.points || 0) / totalCardHolders) : (heirInfo.points || 0);
+    const ratioText = heirInfo.fraction ? heirInfo.fraction.toString() : '—';
+
+    p.score += points;
+    perPlayerRows.push({ player: p.name, card: heir.name, status: statusClass, statusText, ratio: ratioText, points });
+  });
+
+  // إعادة البطاقات الملعوبة إلى كومة الاستخدام وسحب بطاقات جديدة لإعادة اليد إلى 4
+  Object.entries(state.roundPlays).forEach(([i, play]) => {
+    if (play && play !== 'substituted') {
+      state.heirDiscard.push(play);
+      const p = state.players[i];
+      const newCard = drawFrom('heirDeck', 'heirDiscard');
+      if (newCard) p.hand.push(newCard);
+    }
+  });
+  state.caseDiscard.push(state.currentCaseId);
+  state.estateDiscard.push(state.currentEstateValue);
+
+  // تحديد الفائز/الفائزين بالجولة (لأعلى نقاط في هذه الجولة تحديدًا)
+  const maxRoundPoints = Math.max(...perPlayerRows.map(r => r.points));
+  if (maxRoundPoints > 0) {
+    perPlayerRows.forEach((r, i) => { if (r.points === maxRoundPoints) state.players[i].roundsWon++; });
+  }
+
+  AudioManager.playPoints();
+
+  const resultPayload = { caseObj, rows: perPlayerRows, engineResult };
+  state.lastRoundResult = resultPayload;
+  state.phase = 'result';
+  saveGame();
+  showRoundResult(resultPayload);
+}
+
+// ============================================================
+// شاشة نتيجة الجولة
+// ============================================================
+function showRoundResult(payload) {
+  showScreen('screen-round-result');
+  const { caseObj, rows, engineResult } = payload;
+  $('#result-table-body').innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.player}</td>
+      <td>${r.card}</td>
+      <td><span class="status-tag ${r.status}">${r.statusText}</span></td>
+      <td>${r.ratio}</td>
+      <td>${r.points}</td>
+    </tr>`).join('');
+
+  const undistributedBox = $('#result-undistributed');
+  if (engineResult.undistributedPoints > 0) {
+    undistributedBox.classList.remove('hidden');
+    undistributedBox.textContent = `⚠️ ${TEXTS.undistributedMessage} (${engineResult.undistributedPoints} نقطة بلا وارث معروف في هذه اللعبة)`;
+  } else {
+    undistributedBox.classList.add('hidden');
+  }
+
+  let lessonHtml = `<b>💡 </b>${caseObj.lesson}`;
+  if (engineResult.notes && engineResult.notes.length) {
+    lessonHtml += '<br>' + engineResult.notes.map(n => `⚠️ ${n}`).join('<br>');
+  }
+  $('#result-lesson').innerHTML = lessonHtml;
+
+  const sorted = state.players.slice().sort((a, b) => b.score - a.score);
+  $('#result-totals').innerHTML = sorted.map(p => `<li><span>${p.name}</span><span>${p.score} نقطة</span></li>`).join('');
+}
+
+function initRoundResultScreen() {
+  $('#btn-next-round').addEventListener('click', () => {
+    if (state.roundNum >= state.totalRounds) {
+      state.phase = 'end';
+      saveGame();
+      showEndScreen();
+    } else {
+      state.roundNum++;
+      beginRound();
+    }
+  });
+}
+
+// ============================================================
+// شاشة نهاية المباراة
+// ============================================================
+function showEndScreen() {
+  showScreen('screen-end');
+  const maxScore = Math.max(...state.players.map(p => p.score));
+  const winners = state.players.filter(p => p.score === maxScore);
+  AudioManager.playWin();
+
+  $('#winner-name').textContent = winners.length > 1
+    ? 'تعادل بين: ' + winners.map(w => w.name).join(' و ')
+    : winners[0].name;
+  $('#winner-score').textContent = `${maxScore} نقطة`;
+
+  const sorted = state.players.slice().sort((a, b) => b.score - a.score);
+  $('#final-rank-list').innerHTML = sorted.map((p, i) => `
+    <li class="${i === 0 ? 'first' : ''}">
+      <span>${i + 1}. ${p.name}</span>
+      <span>${p.score} نقطة · فاز بـ${p.roundsWon} جولة · حُجب ${p.blockedCount} مرة</span>
+    </li>`).join('');
+
+  GameStorage.clear();
+}
+
+function initEndScreen() {
+  $('#btn-new-match').addEventListener('click', () => {
+    state = null;
+    showScreen('screen-setup');
+  });
+  $('#btn-replay-names').addEventListener('click', () => {
+    const names = state.players.map(p => p.name);
+    startMatch(names, setupChoice.rounds, setupChoice.difficulty);
+  });
+}
+
+// ============================================================
+// أزرار شريط اللعب العلوي
+// ============================================================
+function updateMuteIcon() {
+  $('#btn-mute').textContent = AudioManager.isMuted() ? '🔇' : '🔊';
+}
+
+function initTopBarActions() {
+  $('#btn-mute').addEventListener('click', () => {
+    AudioManager.setMuted(!AudioManager.isMuted());
+    state.muted = AudioManager.isMuted();
+    updateMuteIcon();
+    saveGame();
+  });
+  $('#btn-restart').addEventListener('click', () => {
+    if (confirm('هل تريد إعادة المباراة من البداية بنفس الأسماء؟')) {
+      const names = state.players.map(p => p.name);
+      const rounds = state.totalRounds, diff = state.difficulty;
+      startMatch(names, rounds, diff);
+    }
+  });
+  $('#btn-exit').addEventListener('click', () => {
+    if (confirm('هل تريد العودة للقائمة الرئيسية؟ سيتم حفظ تقدّمك تلقائيًا.')) {
+      saveGame();
+      showScreen('screen-start');
+    }
+  });
+}
+
+// ============================================================
+// التشغيل
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  initStartScreen();
+  initSetupScreen();
+  initPassOverlay();
+  initHandActions();
+  initRoundResultScreen();
+  initEndScreen();
+  initTopBarActions();
+});

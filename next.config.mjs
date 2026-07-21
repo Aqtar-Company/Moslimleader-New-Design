@@ -41,6 +41,8 @@ const nextConfig = {
   async rewrites() {
     return [
       { source: '/partnership', destination: '/strategic-vision.html' },
+      { source: '/terka', destination: '/terka/index.html' },
+      { source: '/terka/', destination: '/terka/index.html' },
     ];
   },
   async headers() {

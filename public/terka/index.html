@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>لعبة التركة — تعلّم المواريث باللعب</title>
+<link rel="stylesheet" href="/terka/styles.css">
+</head>
+<body>
+
+<!-- ============ شاشة البداية ============ -->
+<section id="screen-start" class="screen start-screen active">
+  <div class="seal"><span class="seal-icon">⚖️</span></div>
+  <h1 class="game-title">لعبة التركة</h1>
+  <p class="game-tagline">تعلّم المواريث باللعب</p>
+  <div class="menu-buttons">
+    <button class="btn btn-primary btn-block" id="btn-start-new">ابدأ اللعب</button>
+    <button class="btn btn-secondary btn-block hidden" id="btn-continue">متابعة المباراة السابقة</button>
+    <button class="btn btn-secondary btn-block" id="btn-how-to-play">طريقة اللعب</button>
+    <button class="btn btn-secondary btn-block" id="btn-heir-guide">دليل الورثة</button>
+  </div>
+  <p class="muted" style="margin-top:24px; max-width:340px; text-align:center;">أداة تعليمية مبسطة، وليست مرجعًا شرعيًا نهائيًا.</p>
+</section>
+
+<!-- ============ شاشة الإعداد ============ -->
+<section id="screen-setup" class="screen">
+  <div class="top-nav">
+    <button class="icon-btn" id="setup-back">➜</button>
+    <h3>إعداد المباراة</h3>
+    <span></span>
+  </div>
+  <div class="setup-card">
+    <div class="section-title">عدد اللاعبين</div>
+    <div class="pill-group" id="player-count-group">
+      <button class="pill" data-count="2">لاعبان</button>
+      <button class="pill" data-count="3">3 لاعبين</button>
+      <button class="pill" data-count="4">4 لاعبين</button>
+    </div>
+
+    <div class="section-title">أسماء اللاعبين</div>
+    <div class="name-inputs" id="name-inputs"></div>
+
+    <div class="section-title">عدد الجولات</div>
+    <div class="pill-group" id="rounds-group">
+      <button class="pill" data-rounds="5">5 جولات</button>
+      <button class="pill" data-rounds="8">8 جولات</button>
+      <button class="pill" data-rounds="10">10 جولات</button>
+    </div>
+
+    <div class="section-title">مستوى الصعوبة</div>
+    <div class="pill-group" id="difficulty-group">
+      <button class="pill difficulty-pill" data-diff="easy">سهل</button>
+      <button class="pill difficulty-pill" data-diff="medium">متوسط</button>
+      <button class="pill difficulty-pill" data-diff="advanced">متقدم</button>
+      <button class="pill difficulty-pill" data-diff="mixed">مختلط</button>
+    </div>
+
+    <div class="setup-actions">
+      <button class="btn btn-primary btn-block" id="btn-launch-match">ابدأ المباراة</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ شاشة اللعب ============ -->
+<section id="screen-play" class="screen play-screen">
+  <div class="top-bar">
+    <div class="top-bar-info">
+      <span>الجولة <b id="info-round-num">1</b> من <b id="info-round-total">8</b></span>
+      <span class="diff-badge" id="info-diff-badge">سهل</span>
+    </div>
+    <div class="top-bar-actions">
+      <button class="icon-btn" id="btn-mute" title="كتم الصوت">🔊</button>
+      <button class="icon-btn" id="btn-restart" title="إعادة المباراة">🔁</button>
+      <button class="icon-btn" id="btn-exit" title="العودة للقائمة">🏠</button>
+    </div>
+  </div>
+
+  <div class="players-row" id="players-row"></div>
+
+  <div class="table-area">
+    <div class="table-cards">
+      <div id="status-card-slot"></div>
+      <div id="estate-card-slot"></div>
+    </div>
+    <div class="revealed-heirs" id="revealed-heirs"></div>
+  </div>
+
+  <div id="round-lesson-box"></div>
+
+  <div class="hand-area" id="hand-area">
+    <div class="hand-cards" id="hand-cards"></div>
+    <div class="hand-actions">
+      <button class="btn btn-secondary btn-sm" id="btn-substitute">استبدال بطاقة</button>
+      <button class="btn btn-primary btn-sm" id="btn-confirm-choice" disabled>تأكيد الاختيار</button>
+    </div>
+  </div>
+</section>
+
+<!-- شاشة تمرير الجهاز -->
+<div class="pass-overlay hidden" id="pass-overlay">
+  <h2 id="pass-overlay-text">أعطِ الجهاز إلى اللاعب التالي</h2>
+  <div class="next-player-name" id="pass-player-name">—</div>
+  <button class="btn btn-primary" id="btn-im-ready">أنا جاهز</button>
+</div>
+
+<!-- ============ شاشة نتيجة الجولة ============ -->
+<section id="screen-round-result" class="screen">
+  <div class="top-nav">
+    <span></span>
+    <h3>نتيجة الجولة</h3>
+    <span></span>
+  </div>
+  <div class="panel-card">
+    <table class="result-table" id="result-table">
+      <thead>
+        <tr><th>اللاعب</th><th>البطاقة</th><th>الحالة</th><th>النسبة</th><th>النقاط</th></tr>
+      </thead>
+      <tbody id="result-table-body"></tbody>
+    </table>
+    <div id="result-undistributed" class="warning-box hidden"></div>
+    <div id="result-lesson" class="lesson-box"></div>
+    <div class="section-title">إجمالي النقاط</div>
+    <ul class="rank-list" id="result-totals"></ul>
+    <button class="btn btn-primary btn-block" id="btn-next-round" style="margin-top:16px;">الجولة التالية</button>
+  </div>
+</section>
+
+<!-- ============ شاشة نهاية المباراة ============ -->
+<section id="screen-end" class="screen">
+  <div class="winner-banner">
+    <div class="trophy">🏆</div>
+    <h2 id="winner-name">الفائز</h2>
+    <div class="muted" id="winner-score"></div>
+  </div>
+  <div class="panel-card">
+    <div class="section-title">الترتيب النهائي</div>
+    <ul class="rank-list" id="final-rank-list"></ul>
+    <div class="menu-buttons" style="margin-top:16px;">
+      <button class="btn btn-primary btn-block" id="btn-new-match">مباراة جديدة</button>
+      <button class="btn btn-secondary btn-block" id="btn-replay-names">إعادة اللعب بنفس الأسماء</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ دليل اللعب ============ -->
+<section id="screen-how-to" class="screen">
+  <div class="top-nav">
+    <button class="icon-btn" id="howto-back">➜</button>
+    <h3>طريقة اللعب</h3>
+    <span></span>
+  </div>
+  <div class="panel-card">
+    <div class="guide-list" id="howto-list"></div>
+  </div>
+</section>
+
+<!-- ============ دليل الورثة ============ -->
+<section id="screen-heir-guide" class="screen">
+  <div class="top-nav">
+    <button class="icon-btn" id="heirguide-back">➜</button>
+    <h3>دليل الورثة</h3>
+    <span></span>
+  </div>
+  <div class="panel-card">
+    <div class="guide-list" id="heir-guide-list"></div>
+  </div>
+</section>
+
+<script src="/terka/data.js"></script>
+<script src="/terka/inheritance-engine.js"></script>
+<script src="/terka/storage.js"></script>
+<script src="/terka/audio.js"></script>
+<script src="/terka/app.js"></script>
+</body>
+</html>

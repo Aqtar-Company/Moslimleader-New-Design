@@ -1,0 +1,333 @@
+/* styles.css — التصميم الكامل: RTL، متجاوب، حركات البطاقات */
+
+:root {
+  --bg: #F6EFDF;
+  --bg-deep: #EFE4CB;
+  --surface: #FFFCF4;
+  --ink: #2E271C;
+  --ink-soft: #6B6252;
+  --gold: #B4903F;
+  --gold-soft: #E7D6A8;
+  --line: #DCCFA9;
+
+  --easy: #4C9A6A;
+  --easy-bg: #E4F1E7;
+  --medium: #3E7CB1;
+  --medium-bg: #E3EDF5;
+  --advanced: #C97A2E;
+  --advanced-bg: #F6E8D6;
+  --expert: #A94A3D;
+  --expert-bg: #F1DEDA;
+
+  --shadow: 0 6px 18px rgba(60, 45, 15, 0.12);
+  --shadow-soft: 0 2px 8px rgba(60, 45, 15, 0.08);
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Tahoma, Arial, sans-serif;
+  direction: rtl;
+  text-align: right;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-image:
+    radial-gradient(circle at 15% 20%, rgba(180, 144, 63, 0.06), transparent 45%),
+    radial-gradient(circle at 85% 80%, rgba(180, 144, 63, 0.06), transparent 45%);
+  min-height: 100vh;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+button:focus-visible, input:focus-visible {
+  outline: 3px solid var(--medium);
+  outline-offset: 2px;
+}
+
+.screen {
+  min-height: 100vh;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 14px 40px;
+  animation: fadeIn 0.25s ease;
+}
+.screen.active { display: flex; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- الشعار / الختم الزخرفي (العنصر المميز) ---------- */
+.seal {
+  width: 96px; height: 96px;
+  border-radius: 50%;
+  position: relative;
+  margin: 0 auto 14px;
+  background:
+    conic-gradient(from 0deg,
+      var(--gold) 0deg 30deg, transparent 30deg 60deg,
+      var(--gold) 60deg 90deg, transparent 90deg 120deg,
+      var(--gold) 120deg 150deg, transparent 150deg 180deg,
+      var(--gold) 180deg 210deg, transparent 210deg 240deg,
+      var(--gold) 240deg 270deg, transparent 270deg 300deg,
+      var(--gold) 300deg 330deg, transparent 330deg 360deg);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--shadow);
+}
+.seal::before {
+  content: '';
+  width: 66px; height: 66px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--gold-soft);
+}
+.seal .seal-icon {
+  position: absolute;
+  font-size: 30px;
+}
+
+/* ---------- شاشة البداية ---------- */
+.start-screen { justify-content: center; text-align: center; }
+.game-title {
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 4px;
+}
+.game-tagline {
+  color: var(--ink-soft);
+  font-size: 16px;
+  margin: 0 0 28px;
+}
+.menu-buttons { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 320px; }
+
+.btn {
+  padding: 14px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+  font-weight: 700;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  box-shadow: var(--shadow-soft);
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--gold); color: #fff; }
+.btn-primary:hover { background: #9d7c30; }
+.btn-secondary { background: var(--surface); color: var(--ink); border: 1.5px solid var(--line); }
+.btn-secondary:hover { background: var(--bg-deep); }
+.btn-danger { background: var(--expert); color: #fff; }
+.btn-block { width: 100%; }
+.btn-sm { padding: 8px 14px; font-size: 13px; border-radius: 8px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ---------- الإعداد ---------- */
+.setup-card, .panel-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  width: 100%;
+  max-width: 480px;
+  border: 1px solid var(--line);
+}
+.section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gold);
+  margin: 18px 0 8px;
+}
+.section-title:first-child { margin-top: 0; }
+
+.pill-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill {
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+.pill.selected { background: var(--gold); color: #fff; border-color: var(--gold); }
+
+.name-inputs { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.name-inputs input {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--line);
+  background: var(--bg);
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.difficulty-pill[data-diff="easy"].selected { background: var(--easy); border-color: var(--easy); }
+.difficulty-pill[data-diff="medium"].selected { background: var(--medium); border-color: var(--medium); }
+.difficulty-pill[data-diff="advanced"].selected { background: var(--advanced); border-color: var(--advanced); }
+.difficulty-pill[data-diff="expert"] { opacity: 0.5; }
+.difficulty-pill[data-diff="mixed"].selected { background: var(--ink); border-color: var(--ink); }
+
+.setup-actions { margin-top: 20px; }
+
+/* ---------- شاشة اللعب ---------- */
+.play-screen { padding: 10px 8px 130px; width: 100%; max-width: 720px; }
+.top-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--surface); border-radius: var(--radius-sm);
+  padding: 10px 14px; box-shadow: var(--shadow-soft);
+  width: 100%; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;
+}
+.top-bar-info { display: flex; gap: 14px; align-items: center; font-size: 13px; color: var(--ink-soft); flex-wrap: wrap; }
+.top-bar-info b { color: var(--ink); }
+.diff-badge {
+  padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff;
+}
+.diff-badge.easy { background: var(--easy); }
+.diff-badge.medium { background: var(--medium); }
+.diff-badge.advanced { background: var(--advanced); }
+.diff-badge.expert { background: var(--expert); }
+.top-bar-actions { display: flex; gap: 6px; }
+.icon-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--bg); border: 1px solid var(--line);
+  font-size: 16px; display: flex; align-items: center; justify-content: center;
+}
+
+.players-row { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; margin-bottom: 10px; justify-content: center; }
+.player-chip {
+  background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius-sm);
+  padding: 8px 12px; font-size: 13px; min-width: 90px; text-align: center;
+  box-shadow: var(--shadow-soft);
+}
+.player-chip.active-turn { border-color: var(--gold); background: var(--gold-soft); }
+.player-chip .p-name { font-weight: 700; display: block; }
+.player-chip .p-score { color: var(--ink-soft); font-size: 12px; }
+.player-chip .p-state { font-size: 11px; margin-top: 2px; color: var(--medium); }
+
+.table-area {
+  width: 100%; background: var(--bg-deep); border-radius: var(--radius);
+  padding: 18px; display: flex; flex-direction: column; align-items: center; gap: 12px;
+  box-shadow: var(--shadow-soft) inset; margin-bottom: 12px; min-height: 180px;
+}
+.table-cards { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+.revealed-heirs { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; min-height: 90px; }
+
+.card {
+  width: 108px; height: 150px; border-radius: 14px; background: var(--surface);
+  box-shadow: var(--shadow); border: 1.5px solid var(--line);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 8px; position: relative; user-select: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.card.small { width: 78px; height: 108px; }
+.card .card-icon { font-size: 32px; margin-bottom: 6px; }
+.card.small .card-icon { font-size: 24px; margin-bottom: 3px; }
+.card .card-name { font-weight: 700; font-size: 14px; text-align: center; }
+.card.small .card-name { font-size: 11px; }
+.card .card-sub { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
+.card.selectable:hover { transform: translateY(-6px); box-shadow: var(--shadow); }
+.card.selected { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); }
+.card.disallowed { opacity: 0.4; cursor: not-allowed; }
+.card.blocked { opacity: 0.45; }
+.card .info-btn {
+  position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--bg); font-size: 11px; border: 1px solid var(--line); color: var(--ink-soft);
+}
+
+.card-flip { animation: flipIn 0.5s ease; }
+@keyframes flipIn {
+  from { transform: rotateY(90deg); opacity: 0.2; }
+  to { transform: rotateY(0deg); opacity: 1; }
+}
+
+.estate-card { background: linear-gradient(160deg, var(--surface), var(--gold-soft)); }
+.estate-card.tier-3, .estate-card.tier-4 { background: linear-gradient(160deg, var(--gold-soft), var(--gold)); color: #3a2c0d; }
+.estate-card .card-value { font-size: 26px; font-weight: 800; }
+
+.status-card.gender-male { border-top: 6px solid var(--medium); }
+.status-card.gender-female { border-top: 6px solid #C9598A; }
+
+.pass-overlay {
+  position: fixed; inset: 0; background: rgba(46, 39, 28, 0.92);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: #fff; z-index: 50; text-align: center; padding: 20px; gap: 16px;
+}
+.pass-overlay h2 { font-size: 22px; margin: 0; }
+.pass-overlay .next-player-name { color: var(--gold-soft); font-size: 26px; font-weight: 800; }
+
+.hand-area {
+  position: fixed; bottom: 0; right: 0; left: 0; background: var(--surface);
+  border-top: 2px solid var(--line); padding: 10px 10px 14px; box-shadow: 0 -6px 18px rgba(0,0,0,0.08);
+  z-index: 20;
+}
+.hand-cards { display: flex; gap: 10px; overflow-x: auto; justify-content: center; padding: 6px 2px 10px; }
+.hand-actions { display: flex; gap: 8px; justify-content: center; }
+
+.moving-point {
+  position: fixed; width: 18px; height: 18px; border-radius: 50%; background: var(--gold);
+  box-shadow: 0 0 0 2px #fff; z-index: 60; pointer-events: none;
+}
+
+/* ---------- نتيجة الجولة ---------- */
+.result-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0; }
+.result-table th, .result-table td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: center; }
+.result-table th { color: var(--gold); font-size: 12px; }
+.status-tag { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; display: inline-block; }
+.status-tag.inherits { background: var(--easy-bg); color: var(--easy); }
+.status-tag.blocked { background: var(--expert-bg); color: var(--expert); }
+.status-tag.review { background: var(--advanced-bg); color: var(--advanced); }
+.status-tag.invalid { background: #eee; color: #888; }
+
+.lesson-box {
+  background: var(--medium-bg); border-radius: var(--radius-sm); padding: 12px 14px;
+  font-size: 13px; color: var(--ink); margin-top: 8px; border-right: 4px solid var(--medium);
+}
+.warning-box {
+  background: var(--advanced-bg); border-radius: var(--radius-sm); padding: 12px 14px;
+  font-size: 13px; color: var(--ink); margin-top: 8px; border-right: 4px solid var(--advanced);
+}
+
+/* ---------- نهاية المباراة ---------- */
+.winner-banner { text-align: center; margin-bottom: 14px; }
+.winner-banner .trophy { font-size: 48px; }
+.winner-banner h2 { margin: 6px 0 2px; }
+.rank-list { list-style: none; padding: 0; margin: 0; width: 100%; }
+.rank-list li {
+  display: flex; justify-content: space-between; padding: 10px 12px; border-radius: var(--radius-sm);
+  background: var(--bg); margin-bottom: 6px; font-size: 14px;
+}
+.rank-list li.first { background: var(--gold-soft); font-weight: 700; }
+
+/* ---------- الأدلة ---------- */
+.guide-list { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.guide-item { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; }
+.guide-item h4 { margin: 0 0 4px; color: var(--gold); }
+.guide-item p { margin: 0; font-size: 13px; color: var(--ink-soft); }
+
+.top-nav { width: 100%; max-width: 480px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.top-nav h3 { margin: 0; }
+
+.muted { color: var(--ink-soft); font-size: 12px; }
+.center-text { text-align: center; }
+
+@media (max-width: 420px) {
+  .card { width: 92px; height: 130px; }
+  .card.small { width: 68px; height: 96px; }
+  .game-title { font-size: 28px; }
+}
+
+.hidden { display: none !important; }

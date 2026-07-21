@@ -52,9 +52,11 @@ function initStartScreen() {
   });
   $('#btn-how-to-play').addEventListener('click', () => { renderHowTo(); showScreen('screen-how-to'); });
   $('#btn-heir-guide').addEventListener('click', () => { renderHeirGuide(); showScreen('screen-heir-guide'); });
+  $('#btn-solver').addEventListener('click', () => { AudioManager.playClick(); resetSolverScreen(); showScreen('screen-solver'); });
   $('#howto-back').addEventListener('click', () => showScreen('screen-start'));
   $('#heirguide-back').addEventListener('click', () => showScreen('screen-start'));
   $('#setup-back').addEventListener('click', () => showScreen('screen-start'));
+  $('#solver-back').addEventListener('click', () => showScreen('screen-start'));
 }
 
 function renderHowTo() {
@@ -72,6 +74,173 @@ function renderHeirGuide() {
   $('#heir-guide-list').innerHTML = HEIR_TYPES.map(h =>
     `<div class="guide-item"><h4>${h.icon} ${h.name}</h4><p>${h.description}</p></div>`
   ).join('');
+}
+
+// ============================================================
+// احسب حالتك (الحلّال التفاعلي)
+// ============================================================
+const SOLVER_MULTI_HEIRS = ['son', 'daughter', 'brother', 'sister', 'wife'];
+const SOLVER_MAX_COUNT = { wife: 4, son: 9, daughter: 9, brother: 9, sister: 9 };
+
+let solverState = {
+  gender: 'male',
+  selections: { son: 0, daughter: 0, father: 0, mother: 0, husband: 0, wife: 0, brother: 0, sister: 0 }
+};
+
+function initSolverScreen() {
+  $all('#solver-gender-group .pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      solverState.gender = btn.dataset.gender;
+      $all('#solver-gender-group .pill').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      // الزوج يفترض متوفاة أنثى، والزوجة يفترض متوفى ذكر — تعطيل الاختيار المتناقض تلقائيًا
+      if (solverState.gender === 'male') solverState.selections.husband = 0;
+      if (solverState.gender === 'female') solverState.selections.wife = 0;
+      renderSolverHeirList();
+    });
+  });
+  $(`#solver-gender-group [data-gender="male"]`).classList.add('selected');
+  renderSolverHeirList();
+  $('#btn-solver-compute').addEventListener('click', computeSolverResult);
+}
+
+function resetSolverScreen() {
+  solverState = {
+    gender: 'male',
+    selections: { son: 0, daughter: 0, father: 0, mother: 0, husband: 0, wife: 0, brother: 0, sister: 0 }
+  };
+  $all('#solver-gender-group .pill').forEach(b => b.classList.remove('selected'));
+  $(`#solver-gender-group [data-gender="male"]`).classList.add('selected');
+  $('#solver-estate').value = 24;
+  $('#solver-results-card').classList.add('hidden');
+  renderSolverHeirList();
+}
+
+function renderSolverHeirList() {
+  const wrap = $('#solver-heir-list');
+  wrap.innerHTML = '';
+
+  HEIR_TYPES.forEach(h => {
+    if (h.id === 'husband' && solverState.gender !== 'female') return;
+    if (h.id === 'wife' && solverState.gender !== 'male') return;
+
+    const isMulti = SOLVER_MULTI_HEIRS.includes(h.id);
+    const count = solverState.selections[h.id] || 0;
+    const row = document.createElement('div');
+    row.className = 'solver-heir-row' + (count > 0 ? ' checked' : '');
+    row.innerHTML = `
+      <label class="solver-heir-label">
+        <input type="checkbox" data-heir="${h.id}" ${count > 0 ? 'checked' : ''}>
+        <span class="heir-icon">${h.icon}</span>
+        <span class="heir-name">${h.name}</span>
+      </label>
+      ${isMulti && count > 0 ? `
+      <div class="solver-stepper">
+        <button type="button" class="step-minus" data-heir="${h.id}">−</button>
+        <span class="count">${count}</span>
+        <button type="button" class="step-plus" data-heir="${h.id}" ${count >= (SOLVER_MAX_COUNT[h.id] || 9) ? 'disabled' : ''}>+</button>
+      </div>` : ''}
+    `;
+    wrap.appendChild(row);
+  });
+
+  $all('.solver-heir-label input[type="checkbox"]', wrap).forEach(cb => {
+    cb.addEventListener('change', () => {
+      solverState.selections[cb.dataset.heir] = cb.checked ? 1 : 0;
+      AudioManager.playClick();
+      renderSolverHeirList();
+    });
+  });
+  $all('.step-minus', wrap).forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.heir;
+      if (solverState.selections[id] > 1) solverState.selections[id]--;
+      renderSolverHeirList();
+    });
+  });
+  $all('.step-plus', wrap).forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.heir;
+      const max = SOLVER_MAX_COUNT[id] || 9;
+      if (solverState.selections[id] < max) solverState.selections[id]++;
+      renderSolverHeirList();
+    });
+  });
+}
+
+function computeSolverResult() {
+  const estateValue = parseInt($('#solver-estate').value, 10);
+  if (!estateValue || estateValue <= 0) {
+    alert('اكتب قيمة تركة صحيحة أكبر من صفر.');
+    return;
+  }
+  const playedHeirIds = [];
+  Object.entries(solverState.selections).forEach(([id, count]) => {
+    for (let i = 0; i < count; i++) playedHeirIds.push(id);
+  });
+  if (playedHeirIds.length === 0) {
+    alert('اختر وارثًا واحدًا على الأقل.');
+    return;
+  }
+  AudioManager.playReveal();
+  const result = computeInheritance({ deceasedGender: solverState.gender }, playedHeirIds, estateValue);
+  renderSolverResult(result, playedHeirIds);
+}
+
+function renderSolverResult(result, playedHeirIds) {
+  $('#solver-results-card').classList.remove('hidden');
+  const uniqueIds = [...new Set(playedHeirIds)];
+  const orderedIds = HEIR_TYPES.map(h => h.id).filter(id => uniqueIds.includes(id));
+
+  $('#solver-result-body').innerHTML = orderedIds.map(id => {
+    const heir = getHeirType(id);
+    const info = result.perHeirType[id];
+    const count = playedHeirIds.filter(x => x === id).length;
+    const nameCell = `${heir.icon} ${heir.name}${count > 1 ? ' ×' + count : ''}`;
+    if (!info) {
+      return `<tr><td>${nameCell}</td><td>—</td><td>0</td><td><span class="status-tag invalid">لا يرث في هذه الحالة</span></td></tr>`;
+    }
+    let statusClass = 'inherits';
+    if (info.status === 'محجوب') statusClass = 'blocked';
+    else if (info.status === 'غير مناسب') statusClass = 'invalid';
+    else if ((info.status || '').includes('مراجعة')) statusClass = 'review';
+    const ratioText = info.fraction ? info.fraction.toString() : '—';
+    return `<tr><td>${nameCell}</td><td>${ratioText}</td><td>${info.points ?? 0}</td><td><span class="status-tag ${statusClass}">${info.status}</span></td></tr>`;
+  }).join('');
+
+  const undistributedBox = $('#solver-undistributed');
+  if (result.undistributedPoints > 0) {
+    undistributedBox.classList.remove('hidden');
+    undistributedBox.textContent = `⚠️ ${TEXTS.undistributedMessage} (${result.undistributedPoints} نقطة بلا وارث معروف)`;
+  } else {
+    undistributedBox.classList.add('hidden');
+  }
+
+  const reasonsWrap = $('#solver-reasons');
+  reasonsWrap.innerHTML = orderedIds.map(id => {
+    const heir = getHeirType(id);
+    const info = result.perHeirType[id];
+    if (!info) return '';
+    const ref = HEIR_QURAN_REF[id];
+    const ayah = ref ? QURAN_AYAT[ref.ayah] : null;
+    return `
+      <div class="solver-reason-item">
+        <h4>${heir.icon} ${heir.name}</h4>
+        <p>${info.reason || ''}</p>
+        ${ayah ? `
+        <div class="ayah-box">
+          <div class="ayah-ref">سورة ${ayah.surah} — الآية ${ayah.ayah}</div>
+          <div class="ayah-text">﴿ ${ayah.text} ﴾</div>
+          ${ref.note ? `<div class="ayah-note">${ref.note}</div>` : ''}
+        </div>` : ''}
+      </div>`;
+  }).join('');
+
+  if (result.notes && result.notes.length) {
+    reasonsWrap.innerHTML += `<div class="warning-box" style="margin-top:10px;">${result.notes.map(n => `⚠️ ${n}`).join('<br>')}</div>`;
+  }
+
+  $('#solver-results-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ============================================================
@@ -621,4 +790,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initRoundResultScreen();
   initEndScreen();
   initTopBarActions();
+  initSolverScreen();
 });

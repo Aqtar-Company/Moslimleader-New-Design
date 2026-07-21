@@ -18,6 +18,7 @@
     <button class="btn btn-secondary btn-block hidden" id="btn-continue">متابعة المباراة السابقة</button>
     <button class="btn btn-secondary btn-block" id="btn-how-to-play">طريقة اللعب</button>
     <button class="btn btn-secondary btn-block" id="btn-heir-guide">دليل الورثة</button>
+    <button class="btn btn-secondary btn-block" id="btn-solver">❓ احسب حالتك</button>
   </div>
   <p class="muted" style="margin-top:24px; max-width:340px; text-align:center;">أداة تعليمية مبسطة، وليست مرجعًا شرعيًا نهائيًا.</p>
 </section>
@@ -163,6 +164,44 @@
   </div>
   <div class="panel-card">
     <div class="guide-list" id="heir-guide-list"></div>
+  </div>
+</section>
+
+<!-- ============ احسب حالتك (الحلّال التفاعلي) ============ -->
+<section id="screen-solver" class="screen">
+  <div class="top-nav">
+    <button class="icon-btn" id="solver-back">➜</button>
+    <h3>احسب حالتك</h3>
+    <span></span>
+  </div>
+  <div class="setup-card">
+    <div class="section-title">المتوفى</div>
+    <div class="pill-group" id="solver-gender-group">
+      <button class="pill" data-gender="male">رجل</button>
+      <button class="pill" data-gender="female">امرأة</button>
+    </div>
+
+    <div class="section-title">قيمة التركة (بالنقاط/الأسهم)</div>
+    <input type="number" id="solver-estate" min="1" max="9999" value="24" class="solver-estate-input">
+
+    <div class="section-title">الورثة الموجودون</div>
+    <div class="solver-heir-list" id="solver-heir-list"></div>
+
+    <div class="setup-actions">
+      <button class="btn btn-primary btn-block" id="btn-solver-compute">احسب</button>
+    </div>
+  </div>
+
+  <div class="panel-card hidden" id="solver-results-card" style="margin-top:16px;">
+    <div class="section-title">النتيجة</div>
+    <table class="result-table" id="solver-result-table">
+      <thead>
+        <tr><th>الوارث</th><th>النسبة</th><th>النقاط</th><th>الحالة</th></tr>
+      </thead>
+      <tbody id="solver-result-body"></tbody>
+    </table>
+    <div id="solver-undistributed" class="warning-box hidden"></div>
+    <div id="solver-reasons"></div>
   </div>
 </section>
 

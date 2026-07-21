@@ -321,6 +321,43 @@ button:focus-visible, input:focus-visible {
 .top-nav { width: 100%; max-width: 480px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
 .top-nav h3 { margin: 0; }
 
+/* ---------- احسب حالتك (الحلّال التفاعلي) ---------- */
+.solver-estate-input {
+  width: 100%; padding: 10px 12px; margin-top: 8px;
+  border-radius: var(--radius-sm); border: 1.5px solid var(--line);
+  background: var(--bg); font-family: inherit; font-size: 16px; color: var(--ink);
+}
+.solver-heir-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.solver-heir-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--bg); border: 1.5px solid var(--line); border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+.solver-heir-row.checked { border-color: var(--gold); background: var(--gold-soft); }
+.solver-heir-label { display: flex; align-items: center; gap: 10px; flex: 1; cursor: pointer; }
+.solver-heir-label input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--gold); cursor: pointer; }
+.solver-heir-label .heir-icon { font-size: 22px; }
+.solver-heir-label .heir-name { font-weight: 700; font-size: 14px; }
+.solver-stepper { display: flex; align-items: center; gap: 8px; }
+.solver-stepper button {
+  width: 32px; height: 32px; border-radius: 8px; background: var(--surface);
+  border: 1.5px solid var(--line); font-size: 16px; font-weight: 700; color: var(--ink);
+}
+.solver-stepper button:disabled { opacity: 0.4; }
+.solver-stepper .count { min-width: 20px; text-align: center; font-weight: 700; }
+
+.ayah-box {
+  background: var(--bg-deep); border-radius: var(--radius-sm); padding: 14px 16px;
+  margin-top: 10px; border: 1.5px solid var(--gold-soft);
+}
+.ayah-box .ayah-ref { color: var(--gold); font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+.ayah-box .ayah-text { font-size: 16px; line-height: 2; color: var(--ink); }
+.ayah-box .ayah-note { font-size: 12px; color: var(--ink-soft); margin-top: 8px; border-top: 1px dashed var(--line); padding-top: 8px; }
+
+.solver-reason-item { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; margin-top: 10px; }
+.solver-reason-item h4 { margin: 0 0 6px; color: var(--ink); display: flex; align-items: center; gap: 6px; }
+.solver-reason-item p { margin: 0; font-size: 13px; color: var(--ink-soft); }
+
 .muted { color: var(--ink-soft); font-size: 12px; }
 .center-text { text-align: center; }
 

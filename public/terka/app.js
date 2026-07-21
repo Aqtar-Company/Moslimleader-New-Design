@@ -4,7 +4,7 @@ let state = null; // حالة المباراة الحالية
 let setupChoice = { count: 2, difficulty: 'easy' };
 let selection = { heirId: null, cardEl: null };
 const HAND_SIZE = 5; // عدد بطاقات يد اللاعب
-const STUCK_HAND_PENALTY = 5; // سهم يُخصَم من رصيد اللاعب لو كل بطاقات يده غير مناسبة للقضية الحالية (قابل للتعديل)
+const EXTRA_CARD_COST = 1; // سهم — تكلفة طلب بطاقة إضافية من البنك (كل كارت يمثل وحدة واحدة)
 
 // ---------- أدوات عامة ----------
 function $(sel, root = document) { return root.querySelector(sel); }
@@ -397,7 +397,6 @@ function startMatch(names, difficulty) {
     turnIndex: 0,
     roundPlays: {}, // playerIndex -> heirId (الهوية المُستخدَمة في الحساب — للجوكر تكون هوية الوارث المُختار)
     roundPlayedCards: {}, // playerIndex -> هوية البطاقة الفعلية اللي لُعبت (تُعاد لكومة الاستخدام؛ 'joker' لبطاقات الجوكر)
-    stuckPlayers: {}, // playerIndex -> true لو خُصمت منه غرامة اليد المسدودة هذه الجولة (بلا لعب بطاقة)
     muted: false,
     phase: 'setup' // setup | acting | reveal | result | judgment | end
   };
@@ -430,7 +429,6 @@ function resumeSavedGame() {
     state.turnIndex = 0;
     state.roundPlays = {};
     state.roundPlayedCards = {};
-    state.stuckPlayers = {};
     renderPlayScreenShell();
     beginTurnFlow();
   }
@@ -441,7 +439,6 @@ function beginRound() {
   state.turnIndex = 0;
   state.roundPlays = {};
   state.roundPlayedCards = {};
-  state.stuckPlayers = {};
 
   const caseId = drawFrom('caseDeck', 'caseDiscard');
   state.currentCaseId = caseId;
@@ -553,46 +550,21 @@ function initPassOverlay() {
 }
 
 // هل عند اللاعب بطاقة واحدة على الأقل قابلة للعب في هذه الحالة؟ الجوكر دائمًا صالح
-// (لأنه يمثّل أي وارث مسموح به وقت اللعب — انظر showJokerIdentityPicker()).
-function playerHasValidCard(player, caseObj) {
-  return player.hand.some(heirId => heirId === 'joker' || !caseObj.disallowed.includes(heirId));
-}
-
 function renderHandForCurrentPlayer() {
   selection = { heirId: null, cardEl: null };
+  $('#btn-confirm-choice').classList.remove('hidden');
+  $('#btn-confirm-choice').disabled = true;
+
   const player = state.players[state.turnIndex];
   const caseObj = DECEASED_CASES.find(c => c.id === state.currentCaseId);
   const wrap = $('#hand-cards');
   wrap.innerHTML = '';
-  $('#stuck-hand-message').classList.add('hidden');
-
-  if (!playerHasValidCard(player, caseObj)) {
-    // اليد مسدودة تمامًا: كل بطاقات اللاعب غير مناسبة لهذه القضية — تُعرَض معطَّلة،
-    // ولا يُطلَب منه اختيار شيء؛ بدلًا من ذلك يضغط "تابع" فتُخصَم غرامة من رصيده.
-    player.hand.forEach(heirId => {
-      const heir = getHeirType(heirId);
-      const cardEl = document.createElement('div');
-      cardEl.className = 'card small disallowed';
-      cardEl.innerHTML = `<div class="card-icon">${heir.icon}</div><div class="card-name">${heir.name}</div>`;
-      wrap.appendChild(cardEl);
-    });
-    const msgBox = $('#stuck-hand-message');
-    msgBox.classList.remove('hidden');
-    msgBox.innerHTML = `⚠️ لا توجد بطاقة مناسبة لهذه القضية في يد ${player.name} — بالضغط على "تابع" سيُخصَم ${STUCK_HAND_PENALTY} سهم من رصيده.`;
-    $('#btn-confirm-choice').classList.add('hidden');
-    $('#btn-stuck-continue').classList.remove('hidden');
-    return;
-  }
-
-  $('#btn-confirm-choice').classList.remove('hidden');
-  $('#btn-confirm-choice').disabled = true;
-  $('#btn-stuck-continue').classList.add('hidden');
 
   player.hand.forEach((heirId, idx) => {
     const heir = getHeirType(heirId);
     const disallowed = caseObj.disallowed.includes(heirId);
     const cardEl = document.createElement('div');
-    cardEl.className = 'card small' + (disallowed ? ' disallowed' : ' selectable');
+    cardEl.className = 'card small selectable' + (disallowed ? ' disallowed' : '');
     cardEl.innerHTML = `
       <button class="info-btn" title="معلومات">؟</button>
       <div class="card-icon">${heir.icon}</div>
@@ -602,11 +574,10 @@ function renderHandForCurrentPlayer() {
       alert(`${heir.name}: ${heir.description}`);
     });
     cardEl.addEventListener('click', () => {
-      if (disallowed) {
-        AudioManager.playError();
-        flashMessage('هذه البطاقة غير مناسبة لهذه الحالة، اختر بطاقة أخرى.');
-        return;
-      }
+      // كل البطاقات قابلة للاختيار دائمًا حتى غير المناسبة — لو اختار اللاعب بطاقة
+      // غير مناسبة، لن يُمنَع، لكن عند إعلان توزيع التركة سيُخبَر أنه أخطأ (صفر نقطة،
+      // انظر finalizeRoundScoring()). لو اكتشف اللاعب أن كل بطاقاته غير مناسبة، له أن
+      // يطلب بطاقة إضافية من البنك (بزر منفصل بالأسفل) بتكلفة سهم واحد من رصيده.
       $all('.card', wrap).forEach(c => c.classList.remove('selected'));
       cardEl.classList.add('selected');
       selection.heirId = heirId;
@@ -619,16 +590,22 @@ function renderHandForCurrentPlayer() {
   });
 }
 
-function handleStuckHand() {
-  const playerIndex = state.turnIndex;
-  const player = state.players[playerIndex];
-  player.balance -= STUCK_HAND_PENALTY;
-  state.stuckPlayers[playerIndex] = true;
-  // اليد لا تُمس إطلاقًا: لا خصم ولا سحب بطاقة، لأن اللاعب لم يستخدم أي كارت فعليًا.
-  $('#btn-stuck-continue').classList.add('hidden');
-  $('#stuck-hand-message').classList.add('hidden');
+// طلب بطاقة إضافية من البنك بتكلفة سهم واحد (كل كارت يمثل وحدة واحدة) — حق اختياري
+// للاعب في أي وقت أثناء دوره، خصوصًا لو اكتشف أن يده كلها غير مناسبة للقضية الحالية.
+// اليد الأصلية لا تُمس؛ البطاقة الجديدة تُضاف إليها فقط.
+function requestExtraCard() {
+  const player = state.players[state.turnIndex];
+  const newCard = drawFrom('heirDeck', 'heirDiscard');
+  if (!newCard) {
+    flashMessage('لا توجد بطاقات إضافية متبقية في البنك حاليًا.');
+    return;
+  }
+  player.balance -= EXTRA_CARD_COST;
+  player.hand.push(newCard);
+  AudioManager.playDraw();
   saveGame();
-  advanceTurn();
+  renderHandForCurrentPlayer();
+  renderPlayersRow();
 }
 
 function flashMessage(text) {
@@ -645,7 +622,7 @@ function initHandActions() {
       doConfirmPlay();
     }
   });
-  $('#btn-stuck-continue').addEventListener('click', handleStuckHand);
+  $('#btn-request-extra-card').addEventListener('click', requestExtraCard);
 }
 
 function doConfirmPlay() {
@@ -743,10 +720,7 @@ function finalizeRoundScoring(caseObj, engineResult) {
   state.players.forEach((p, i) => {
     const play = state.roundPlays[i];
     if (!play) {
-      const statusText = (state.stuckPlayers && state.stuckPlayers[i])
-        ? `لا توجد بطاقة مناسبة لهذه القضية (خُصم ${STUCK_HAND_PENALTY} سهم)`
-        : 'لم يشارك';
-      perPlayerRows.push({ player: p.name, card: '—', status: 'invalid', statusText, ratio: '—', points: 0 });
+      perPlayerRows.push({ player: p.name, card: '—', status: 'invalid', statusText: 'لم يشارك', ratio: '—', points: 0 });
       return;
     }
     const heir = getHeirType(play);

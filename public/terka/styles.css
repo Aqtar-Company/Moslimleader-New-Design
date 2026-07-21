@@ -244,7 +244,9 @@ button:focus-visible, input:focus-visible {
 .card.selected { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); }
 /* بطاقة "غير مناسبة" للحالة الحالية: غير قابلة للاختيار (تُمنع من الواجهة)، فتُعرض بمظهر
    معطَّل واضح + شارة تنبيه توضّح السبب. */
-.card.disallowed { border: 1.5px dashed var(--advanced); opacity: 0.5; cursor: not-allowed; }
+/* بطاقة "غير مناسبة" للحالة الحالية: تبقى قابلة للاختيار عمدًا (اختيارها لا يُحسب له نقاط
+   ويُخبَر اللاعب أنه أخطأ عند إعلان توزيع التركة) — تُعرض بتنبيه بصري خفيف فقط، لا معطَّلة. */
+.card.disallowed { border: 1.5px dashed var(--advanced); }
 .card.disallowed::after { content: '⚠️'; position: absolute; bottom: 4px; left: 4px; font-size: 11px; }
 .card.blocked { opacity: 0.45; }
 .card .info-btn {

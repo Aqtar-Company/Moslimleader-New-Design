@@ -184,7 +184,7 @@ button:focus-visible, input:focus-visible {
 .setup-actions { margin-top: 20px; }
 
 /* ---------- شاشة اللعب ---------- */
-.play-screen { padding: 10px 8px 130px; width: 100%; max-width: 720px; }
+.play-screen { padding: 10px 8px 290px; width: 100%; max-width: 720px; }
 .top-bar {
   display: flex; justify-content: space-between; align-items: center;
   background: var(--surface); border-radius: var(--radius-sm);
@@ -212,8 +212,18 @@ button:focus-visible, input:focus-visible {
   background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius-sm);
   padding: 8px 12px; font-size: 13px; min-width: 90px; text-align: center;
   box-shadow: var(--shadow-soft);
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
 }
 .player-chip.active-turn { border-color: var(--gold); background: var(--gold-soft); }
+.p-avatar {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--avatar-color, var(--gold));
+  color: #fff; font-weight: 800; font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--surface); box-shadow: var(--shadow-soft);
+  margin-bottom: 3px;
+}
+.player-chip.active-turn .p-avatar { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); }
 .player-chip .p-name { font-weight: 700; display: block; }
 .player-chip .p-score { color: var(--ink-soft); font-size: 12px; }
 .player-chip .p-balance { display: block; font-size: 11px; color: var(--gold); font-weight: 700; }
@@ -244,7 +254,8 @@ button:focus-visible, input:focus-visible {
 .card.small .card-name { font-size: 11px; }
 .card .card-sub { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
 /* دائرة ملوَّنة خلف أيقونة الوارث — لون مختلف لكل نوع (من heir.color في data.js)، زي ألوان
-   بدلات الورق في لعبة الكوتشينة، عشان الطفل يميّز نوع الوارث من أول نظرة باللون مش بس بالنص. */
+   بدلات الورق في لعبة الكوتشينة، عشان الطفل يميّز نوع الوارث من أول نظرة باللون مش بس بالنص.
+   تُستخدَم بس لو مفيش صورة حقيقية للوارث (احتياطي، الجوكر مثلًا). */
 .card-icon-badge {
   width: 46px; height: 46px; border-radius: 50%;
   background: var(--card-color, var(--gold-soft));
@@ -252,9 +263,16 @@ button:focus-visible, input:focus-visible {
   margin-bottom: 6px; box-shadow: var(--shadow-soft);
 }
 .card-icon-badge .card-icon { font-size: 24px; margin-bottom: 0; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3)); }
-.card-icon-badge .card-portrait { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; object-position: top center; }
 .card.small .card-icon-badge { width: 34px; height: 34px; margin-bottom: 3px; }
 .card.small .card-icon-badge .card-icon { font-size: 18px; }
+
+/* بطاقة الوارث بصورة حقيقية: الصورة نفسها هي تصميم الكارت الكامل (حدود ذهبية + اسم
+   مطبوعين عليها من التصميم الأصلي)، فتُعرض كاملة بلا أي قص (object-fit: contain) وبلا
+   نص مكرر من عندنا — الكارت بيبقى مجرّد إطار حوالين الصورة. */
+.card.has-photo { padding: 0; overflow: hidden; background: #F7EFE0; display: flex; flex-direction: column; }
+.card.has-photo .card-portrait-full { width: 100%; flex: 1 1 auto; min-height: 0; object-fit: contain; display: block; }
+.card.has-photo .card-sub { padding: 4px 4px 6px; text-align: center; background: var(--surface); flex-shrink: 0; margin-top: 0; }
+.card.has-photo .info-btn { z-index: 2; }
 .card.selectable:hover { transform: translateY(-6px); box-shadow: var(--shadow); }
 .card.selected { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); }
 /* بطاقة "غير مناسبة" للحالة الحالية: تبقى قابلة للاختيار عمدًا (اختيارها لا يُحسب له نقاط
@@ -348,8 +366,11 @@ button:focus-visible, input:focus-visible {
   text-align: center; font-size: 11px; font-weight: 700; color: var(--ink-soft);
   letter-spacing: 0.3px; margin-bottom: 4px;
 }
-.hand-cards { display: flex; gap: 16px; overflow-x: auto; justify-content: center; padding: 6px 6px 18px; }
-.hand-cards .card.small { width: 84px; height: 116px; }
+.hand-cards { display: flex; gap: 14px; overflow-x: auto; justify-content: center; padding: 6px 6px 18px; }
+/* كروت اليد كبيرة وكاملة الظهور (بلا قص) — الأولوية لوضوح الصورة للأطفال وقت اللعب. */
+.hand-cards .card.small { width: 132px; height: 193px; flex-shrink: 0; }
+.hand-cards .card.small .card-name { font-size: 13px; }
+.revealed-heirs .card.small { width: 104px; height: 152px; }
 .hand-actions { display: flex; gap: 8px; justify-content: center; }
 
 .moving-point {

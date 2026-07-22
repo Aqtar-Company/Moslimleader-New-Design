@@ -116,9 +116,8 @@ function renderGalleryScreen() {
 
   // ظهور الهويات التسعة (8 ورثة + جوكر)
   $('#gallery-heir-backs').innerHTML = HEIR_TYPES.map(h => `
-    <div class="card" style="--card-color:${h.color}">
-      <div class="card-icon-badge">${heirVisualHtml(h)}</div>
-      <div class="card-name">${h.name}</div>
+    <div class="card${heirCardClass(h)}" style="--card-color:${h.color}">
+      ${heirVisualHtml(h)}
       <div class="card-sub" style="font-size:10px; line-height:1.3;">${h.description}</div>
     </div>`).join('');
 
@@ -542,6 +541,8 @@ function estateTierClass(value) {
   return 'tier-1';
 }
 
+const PLAYER_AVATAR_COLORS = ['#B4903F', '#4C9A6A', '#3E7CB1', '#C97A2E'];
+
 function renderPlayersRow() {
   const row = $('#players-row');
   row.innerHTML = state.players.map((p, i) => {
@@ -550,7 +551,10 @@ function renderPlayersRow() {
     let stateCls = 'state-waiting';
     if (state.roundPlays[i] !== undefined) { stateText = 'جاهز'; stateCls = 'state-ready'; }
     else if (i === state.turnIndex && state.phase === 'acting') { stateText = 'يختار'; stateCls = 'state-picking'; }
+    const avatarColor = PLAYER_AVATAR_COLORS[i % PLAYER_AVATAR_COLORS.length];
+    const initial = (p.name || '؟').trim().charAt(0);
     return `<div class="player-chip ${activeCls}">
+      <span class="p-avatar" style="--avatar-color:${avatarColor}">${initial}</span>
       <span class="p-name">${p.name}</span>
       <span class="p-balance">💰 ${p.balance} سهم</span>
       <span class="p-state ${stateCls}">${stateText}</span>
@@ -601,13 +605,12 @@ function renderHandForCurrentPlayer() {
     const cardEl = document.createElement('div');
     // البطاقة "غير المناسبة" لا تُميَّز بصريًا افتراضيًا — اللاعب لازم يكتشفها بنفسه أو
     // يضغط "طلب المساعدة" (انظر initHandActions()) عشان تظهر شارة التنبيه.
-    cardEl.className = 'card small selectable';
+    cardEl.className = 'card small selectable' + heirCardClass(heir);
     if (disallowed) cardEl.dataset.disallowed = 'true';
     cardEl.style.setProperty('--card-color', heir.color);
     cardEl.innerHTML = `
       <button class="info-btn" title="معلومات">؟</button>
-      <div class="card-icon-badge">${heirVisualHtml(heir)}</div>
-      <div class="card-name">${heir.name}</div>`;
+      ${heirVisualHtml(heir)}`;
     cardEl.querySelector('.info-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       alert(`${heir.name}: ${heir.description}`);
@@ -669,9 +672,8 @@ function showJokerIdentityPicker() {
   const allowedHeirs = HEIR_TYPES.filter(h => h.id !== 'joker' && !caseObj.disallowed.includes(h.id));
   const wrap = $('#hand-cards');
   wrap.innerHTML = allowedHeirs.map(h => `
-    <div class="card small selectable joker-pick-card" data-heir="${h.id}" style="--card-color:${h.color}">
-      <div class="card-icon-badge">${heirVisualHtml(h)}</div>
-      <div class="card-name">${h.name}</div>
+    <div class="card small selectable joker-pick-card${heirCardClass(h)}" data-heir="${h.id}" style="--card-color:${h.color}">
+      ${heirVisualHtml(h)}
     </div>`).join('') + `<button type="button" class="btn btn-secondary btn-sm" id="btn-joker-cancel">إلغاء</button>`;
 
   $all('.joker-pick-card', wrap).forEach(cardEl => {
@@ -726,9 +728,9 @@ function revealRoundAndCompute() {
       if (!caseObj.disallowed.includes(play) && !lateClaimPlayers.has(i)) playedHeirIds.push(play);
       const heir = getHeirType(play);
       const el = document.createElement('div');
-      el.className = 'card small card-flip';
+      el.className = 'card small card-flip' + heirCardClass(heir);
       el.style.setProperty('--card-color', heir.color);
-      el.innerHTML = `<div class="card-icon-badge">${heirVisualHtml(heir)}</div><div class="card-name">${heir.name}</div><div class="card-sub">${p.name}</div>`;
+      el.innerHTML = `${heirVisualHtml(heir)}<div class="card-sub">${p.name}</div>`;
       revealWrap.appendChild(el);
     }
   });

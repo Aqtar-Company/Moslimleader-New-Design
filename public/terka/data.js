@@ -107,10 +107,18 @@ function getHeirType(id) {
   return HEIR_TYPES.find(h => h.id === id);
 }
 
-// يُرجِع HTML لصورة الوارث الحقيقية لو متوفرة (heir.image)، وإلا الإيموجي كبديل (الجوكر مثلًا).
+// يُرجِع HTML لمحتوى كارت الوارث الكامل. لو عنده صورة حقيقية (heir.image)، الصورة نفسها هي
+// تصميم الكارت الكامل (حدود ذهبية + اسم مطبوعين عليها) فتُعرض كاملة بلا أي قص وبلا نص
+// مكرر من عندنا. وإلا (الجوكر مثلًا)، رجوع للشكل القديم: دائرة ملوَّنة بالإيموجي + اسم نصي.
 function heirVisualHtml(heir) {
-  if (heir.image) return `<img class="card-portrait" src="${heir.image}" alt="${heir.name}" draggable="false">`;
-  return `<span class="card-icon">${heir.icon}</span>`;
+  if (heir.image) return `<img class="card-portrait-full" src="${heir.image}" alt="${heir.name}" draggable="false">`;
+  return `<div class="card-icon-badge"><span class="card-icon">${heir.icon}</span></div><div class="card-name">${heir.name}</div>`;
+}
+
+// كلاس إضافي على عنصر .card نفسه لو الوارث عنده صورة حقيقية (يُلغي padding الكارت
+// الافتراضي عشان الصورة تملأ الكارت بالكامل بلا حواف بيضاء حوالين حدودها المطبوعة).
+function heirCardClass(heir) {
+  return heir.image ? ' has-photo' : '';
 }
 
 // ---------- بطاقات حالة المتوفى ----------

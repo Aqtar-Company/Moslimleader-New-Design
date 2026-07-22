@@ -7,6 +7,7 @@ const HEIR_TYPES = [
     id: 'son',
     name: 'ابن',
     icon: '👦',
+    image: '/terka/cards/son.png',
     color: '#3E7CB1',
     description: 'الابن وارث بالتعصيب (يأخذ الباقي بعد أصحاب الفروض)، وللذكر مثل حظ الأنثيين مع البنات.',
     count: 10
@@ -15,6 +16,7 @@ const HEIR_TYPES = [
     id: 'daughter',
     name: 'بنت',
     icon: '👧',
+    image: '/terka/cards/daughter.png',
     color: '#B15C9E',
     description: 'البنت الواحدة تأخذ النصف، والبنتان فأكثر يأخذن الثلثين، وإن وُجد ابن أخذت مع إخوتها الباقي تعصيبًا.',
     count: 10
@@ -23,6 +25,7 @@ const HEIR_TYPES = [
     id: 'father',
     name: 'أب',
     icon: '👴',
+    image: '/terka/cards/father.png',
     color: '#4C9A6A',
     description: 'الأب يأخذ السدس مع وجود الابن، ويجمع بين السدس والباقي مع وجود البنت فقط، ويأخذ الباقي كله عند عدم وجود فرع وارث.',
     count: 1 // وارث فردي — لا يمكن أن يوجد للمتوفى أكثر من أب واحد، فنسخة واحدة فقط في الرزمة تمنع تصادم لاعبين على نفس الدور
@@ -31,6 +34,7 @@ const HEIR_TYPES = [
     id: 'mother',
     name: 'أم',
     icon: '👵',
+    image: '/terka/cards/mother.png',
     color: '#D98A3D',
     description: 'الأم تأخذ السدس مع وجود فرع وارث أو عدد من الإخوة، وتأخذ الثلث في غير ذلك.',
     count: 1 // وارث فردي — نفس المنطق
@@ -39,6 +43,7 @@ const HEIR_TYPES = [
     id: 'grandfather',
     name: 'جد',
     icon: '👴🏽',
+    image: '/terka/cards/grandfather.png',
     color: '#1F6B4A',
     description: 'الجد (أب الأب) يُحجب كليًا بوجود الأب، ويقوم مقامه تمامًا فرضًا وتعصيبًا عند غيابه. عند اجتماعه مع الإخوة الأشقاء بلا أب ولا ابن: مسألة خلافية بين الصحابة — تُعرض كحالة تحتاج مراجعة.',
     count: 1 // وارث فردي — نفس المنطق
@@ -47,6 +52,7 @@ const HEIR_TYPES = [
     id: 'grandmother',
     name: 'جدة (لأم)',
     icon: '👵🏽',
+    image: '/terka/cards/grandmother.png',
     color: '#B8722E',
     description: 'الجدة لأم (أم الأم) تُحجب كليًا بوجود الأم، وتأخذ السدس عند غيابها. ملاحظة: هذه البطاقة تمثّل الجدة لأم تحديدًا؛ الجدة لأب لها حكم حجب مختلف (تُحجب بالأب أيضًا لا بالأم فقط) وغير ممثَّلة في هذه النسخة المبسّطة.',
     count: 1 // وارث فردي — نفس المنطق
@@ -55,6 +61,7 @@ const HEIR_TYPES = [
     id: 'husband',
     name: 'زوج',
     icon: '🤵',
+    image: '/terka/cards/husband.png',
     color: '#7A6FB0',
     description: 'الزوج يأخذ النصف إن لم يوجد فرع وارث للزوجة المتوفاة، والربع إن وُجد.',
     count: 1 // وارث فردي — المرأة لها زوج واحد فقط وقت وفاتها، بخلاف الزوجة (يصح تعددها حتى 4)
@@ -63,6 +70,7 @@ const HEIR_TYPES = [
     id: 'wife',
     name: 'زوجة',
     icon: '👰',
+    image: '/terka/cards/wife.png',
     color: '#C9598A',
     description: 'الزوجة تأخذ الربع إن لم يوجد فرع وارث للزوج المتوفى، والثمن إن وُجد، وتشترك الزوجات في النصيب.',
     count: 5
@@ -71,6 +79,7 @@ const HEIR_TYPES = [
     id: 'brother',
     name: 'أخ شقيق',
     icon: '🧔',
+    image: '/terka/cards/brother.png',
     color: '#3D8F8A',
     description: 'الأخ الشقيق وارث بالتعصيب، يُحجب بالأب أو الابن، وإن وُجدت أخت شقيقة معه اقتسما الباقي للذكر مثل حظ الأنثيين.',
     count: 8
@@ -79,6 +88,7 @@ const HEIR_TYPES = [
     id: 'sister',
     name: 'أخت شقيقة',
     icon: '👩',
+    image: '/terka/cards/sister.png',
     color: '#A9762E',
     description: 'الأخت الشقيقة تأخذ النصف منفردة أو الثلثين مع أخواتها، وتُحجب بالأب أو الابن.',
     count: 8
@@ -95,6 +105,12 @@ const HEIR_TYPES = [
 
 function getHeirType(id) {
   return HEIR_TYPES.find(h => h.id === id);
+}
+
+// يُرجِع HTML لصورة الوارث الحقيقية لو متوفرة (heir.image)، وإلا الإيموجي كبديل (الجوكر مثلًا).
+function heirVisualHtml(heir) {
+  if (heir.image) return `<img class="card-portrait" src="${heir.image}" alt="${heir.name}" draggable="false">`;
+  return `<span class="card-icon">${heir.icon}</span>`;
 }
 
 // ---------- بطاقات حالة المتوفى ----------

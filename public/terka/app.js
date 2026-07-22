@@ -117,25 +117,29 @@ function renderGalleryScreen() {
   // ظهور الهويات التسعة (8 ورثة + جوكر)
   $('#gallery-heir-backs').innerHTML = HEIR_TYPES.map(h => `
     <div class="card" style="--card-color:${h.color}">
-      <div class="card-icon-badge"><span class="card-icon">${h.icon}</span></div>
+      <div class="card-icon-badge">${heirVisualHtml(h)}</div>
       <div class="card-name">${h.name}</div>
       <div class="card-sub" style="font-size:10px; line-height:1.3;">${h.description}</div>
     </div>`).join('');
 
   // نموذج ظهر بطاقة الحكم — مشترك لكل الـ50 بطاقة
   $('#gallery-judgment-back').innerHTML = `
-    <div class="judgment-card">
+    <div class="judgment-card royal-card">
+      <span class="royal-corner tl">✦</span><span class="royal-corner tr">✦</span>
+      <span class="royal-corner bl">✦</span><span class="royal-corner br">✦</span>
       <div class="judgment-card-back">
-        <div class="judgment-card-back-icon">🃏</div>
+        <div class="royal-icon-frame">🃏</div>
         <div class="judgment-card-back-label">بطاقة حكم</div>
       </div>
     </div>`;
 
   // كل أوجه بطاقات الأحكام الخمسين
   $('#gallery-judgment-fronts').innerHTML = JUDGMENT_CARDS.map(card => `
-    <div class="judgment-card">
+    <div class="judgment-card royal-card">
+      <span class="royal-corner tl">✦</span><span class="royal-corner tr">✦</span>
+      <span class="royal-corner bl">✦</span><span class="royal-corner br">✦</span>
       <div class="judgment-card-front">
-        <div class="judgment-card-title">${card.categoryIcon || ''} ${card.title}</div>
+        <div class="royal-card-title">${card.categoryIcon || ''} ${card.title}</div>
         <div class="judgment-card-story">${card.story}</div>
         <div class="judgment-card-fact">🌿 ${card.benefit}</div>
         <div class="judgment-card-ruling">🎮 ${card.ruling}</div>
@@ -144,9 +148,11 @@ function renderGalleryScreen() {
 
   // بروفة كروت القضايا الخمسين (للمراجعة البصرية فقط — غير مستخدَمة في منطق اللعب)
   $('#gallery-case-cards').innerHTML = CASE_CARDS_PREVIEW.map(card => `
-    <div class="judgment-card">
+    <div class="judgment-card royal-card">
+      <span class="royal-corner tl">✦</span><span class="royal-corner tr">✦</span>
+      <span class="royal-corner bl">✦</span><span class="royal-corner br">✦</span>
       <div class="judgment-card-front">
-        <div class="judgment-card-title">${card.deceasedGender === 'male' ? '👨' : '👩'} ${card.title}</div>
+        <div class="royal-card-title">${card.deceasedGender === 'male' ? '👨' : '👩'} ${card.title}</div>
         <div class="judgment-card-story">${card.note}</div>
         <div class="judgment-card-fact">💰 قيمة التركة: ${card.estateValue} سهم</div>
         <div class="judgment-card-ruling">${card.lesson}</div>
@@ -505,17 +511,21 @@ function renderPlayScreenShell() {
 
   renderPlayersRow();
 
-  // بطاقة الحالة (مقلوبة أولًا ثم تُكشف)
+  // بطاقة الحالة (مقلوبة أولًا ثم تُكشف) — إطار ملكي كلاسيكي (زخارف ذهبية بالأركان + إطار مزدوج)
   $('#status-card-slot').innerHTML = `
-    <div class="card status-card gender-${caseObj.deceasedGender} card-flip">
-      <div class="card-icon">${caseObj.deceasedGender === 'male' ? '🕌' : '🕋'}</div>
-      <div class="card-name">${caseObj.title}</div>
+    <div class="card royal-card status-card gender-${caseObj.deceasedGender} card-flip">
+      <span class="royal-corner tl">✦</span><span class="royal-corner tr">✦</span>
+      <span class="royal-corner bl">✦</span><span class="royal-corner br">✦</span>
+      <div class="royal-icon-frame">${caseObj.deceasedGender === 'male' ? '🕌' : '🕋'}</div>
+      <div class="royal-card-title">${caseObj.title}</div>
       <div class="card-sub">${caseObj.note}</div>
     </div>`;
 
   $('#estate-card-slot').innerHTML = `
-    <div class="card estate-card ${estateTierClass(state.currentEstateValue)} card-flip">
-      <div class="card-icon">📦</div>
+    <div class="card royal-card estate-card ${estateTierClass(state.currentEstateValue)} card-flip">
+      <span class="royal-corner tl">✦</span><span class="royal-corner tr">✦</span>
+      <span class="royal-corner bl">✦</span><span class="royal-corner br">✦</span>
+      <div class="royal-icon-frame">📦</div>
       <div class="card-value">${state.currentEstateValue}</div>
       <div class="card-sub">وزّع التركة بالعدل</div>
     </div>`;
@@ -596,7 +606,7 @@ function renderHandForCurrentPlayer() {
     cardEl.style.setProperty('--card-color', heir.color);
     cardEl.innerHTML = `
       <button class="info-btn" title="معلومات">؟</button>
-      <div class="card-icon-badge"><span class="card-icon">${heir.icon}</span></div>
+      <div class="card-icon-badge">${heirVisualHtml(heir)}</div>
       <div class="card-name">${heir.name}</div>`;
     cardEl.querySelector('.info-btn').addEventListener('click', (e) => {
       e.stopPropagation();
@@ -660,7 +670,7 @@ function showJokerIdentityPicker() {
   const wrap = $('#hand-cards');
   wrap.innerHTML = allowedHeirs.map(h => `
     <div class="card small selectable joker-pick-card" data-heir="${h.id}" style="--card-color:${h.color}">
-      <div class="card-icon-badge"><span class="card-icon">${h.icon}</span></div>
+      <div class="card-icon-badge">${heirVisualHtml(h)}</div>
       <div class="card-name">${h.name}</div>
     </div>`).join('') + `<button type="button" class="btn btn-secondary btn-sm" id="btn-joker-cancel">إلغاء</button>`;
 
@@ -718,7 +728,7 @@ function revealRoundAndCompute() {
       const el = document.createElement('div');
       el.className = 'card small card-flip';
       el.style.setProperty('--card-color', heir.color);
-      el.innerHTML = `<div class="card-icon-badge"><span class="card-icon">${heir.icon}</span></div><div class="card-name">${heir.name}</div><div class="card-sub">${p.name}</div>`;
+      el.innerHTML = `<div class="card-icon-badge">${heirVisualHtml(heir)}</div><div class="card-name">${heir.name}</div><div class="card-sub">${p.name}</div>`;
       revealWrap.appendChild(el);
     }
   });
@@ -888,17 +898,21 @@ function renderJudgmentScreen() {
   const cardEl = $('#judgment-card');
 
   if (!state.judgmentRevealed) {
-    cardEl.className = 'judgment-card';
+    cardEl.className = 'judgment-card royal-card';
     cardEl.innerHTML = `
+      <span class="royal-corner tl">✦</span><span class="royal-corner tr">✦</span>
+      <span class="royal-corner bl">✦</span><span class="royal-corner br">✦</span>
       <div class="judgment-card-back">
-        <div class="judgment-card-back-icon">🃏</div>
+        <div class="royal-icon-frame">🃏</div>
         <div class="judgment-card-back-label">بطاقة حكم</div>
       </div>`;
   } else {
-    cardEl.className = 'judgment-card revealed card-flip';
+    cardEl.className = 'judgment-card royal-card revealed card-flip';
     cardEl.innerHTML = `
+      <span class="royal-corner tl">✦</span><span class="royal-corner tr">✦</span>
+      <span class="royal-corner bl">✦</span><span class="royal-corner br">✦</span>
       <div class="judgment-card-front">
-        <div class="judgment-card-title">${card.categoryIcon || ''} ${card.title}</div>
+        <div class="royal-card-title">${card.categoryIcon || ''} ${card.title}</div>
         <div class="judgment-card-story">${card.story}</div>
         <div class="judgment-card-fact">🌿 ${card.benefit}</div>
         <div class="judgment-card-ruling">🎮 ${card.ruling}</div>

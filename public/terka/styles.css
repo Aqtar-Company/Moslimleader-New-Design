@@ -252,6 +252,7 @@ button:focus-visible, input:focus-visible {
   margin-bottom: 6px; box-shadow: var(--shadow-soft);
 }
 .card-icon-badge .card-icon { font-size: 24px; margin-bottom: 0; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3)); }
+.card-icon-badge .card-portrait { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; object-position: top center; }
 .card.small .card-icon-badge { width: 34px; height: 34px; margin-bottom: 3px; }
 .card.small .card-icon-badge .card-icon { font-size: 18px; }
 .card.selectable:hover { transform: translateY(-6px); box-shadow: var(--shadow); }
@@ -280,6 +281,52 @@ button:focus-visible, input:focus-visible {
 .estate-card { background: linear-gradient(160deg, var(--surface), var(--gold-soft)); }
 .estate-card.tier-3, .estate-card.tier-4 { background: linear-gradient(160deg, var(--gold-soft), var(--gold)); color: #3a2c0d; }
 .estate-card .card-value { font-size: 26px; font-weight: 800; }
+
+/* ---------- الإطار الملكي الكلاسيكي: كارت القضية وكارت الحكم ---------- */
+.royal-card, .judgment-card.royal-card {
+  border: 2px solid var(--gold) !important;
+  position: relative;
+}
+.royal-card::before {
+  content: '';
+  position: absolute; inset: 5px;
+  border: 1px solid var(--gold-soft);
+  border-radius: 10px;
+  pointer-events: none;
+}
+.royal-corner {
+  position: absolute; font-size: 10px; color: var(--gold); line-height: 1;
+  pointer-events: none; z-index: 1;
+}
+.royal-corner.tl { top: 7px; left: 7px; }
+.royal-corner.tr { top: 7px; right: 7px; }
+.royal-corner.bl { bottom: 7px; left: 7px; }
+.royal-corner.br { bottom: 7px; right: 7px; }
+.judgment-card-back .royal-corner { color: rgba(255,255,255,0.85); }
+
+.royal-icon-frame {
+  width: 58px; height: 58px; margin: 2px auto 8px;
+  border-radius: 50%; border: 2px solid var(--gold);
+  background: var(--bg-deep); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; overflow: hidden;
+  box-shadow: inset 0 0 0 3px var(--surface), var(--shadow-soft);
+}
+.royal-icon-frame img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+.judgment-card-back .royal-icon-frame {
+  background: rgba(255,255,255,0.15); border-color: #fff; color: #fff;
+  box-shadow: inset 0 0 0 3px rgba(255,255,255,0.35);
+}
+
+.royal-card-title {
+  font-weight: 800; font-size: 14px; color: var(--ink); text-align: center; padding: 0 4px;
+}
+.royal-card-title::before, .royal-card-title::after {
+  content: '✦'; color: var(--gold); font-size: 9px; margin: 0 5px; display: inline-block;
+}
+.judgment-card .royal-icon-frame { width: 68px; height: 68px; font-size: 32px; }
+.gallery-row .royal-icon-frame { width: 42px; height: 42px; font-size: 20px; margin-bottom: 5px; }
+.gallery-row .royal-card-title::before, .gallery-row .royal-card-title::after { font-size: 8px; margin: 0 3px; }
 
 .status-card.gender-male { border-top: 6px solid var(--medium); }
 .status-card.gender-female { border-top: 6px solid #C9598A; }
@@ -415,13 +462,11 @@ button:focus-visible, input:focus-visible {
   gap: 10px; background: conic-gradient(from 45deg, var(--gold) 0deg 90deg, var(--gold-soft) 90deg 180deg, var(--gold) 180deg 270deg, var(--gold-soft) 270deg 360deg);
   color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
-.judgment-card-back-icon { font-size: 56px; }
 .judgment-card-back-label { font-weight: 700; font-size: 15px; }
 .judgment-card-front {
   width: 100%; height: 100%; background: var(--surface); padding: 16px;
   display: flex; flex-direction: column; gap: 10px; overflow-y: auto;
 }
-.judgment-card-title { font-size: 18px; font-weight: 800; color: var(--gold); text-align: center; }
 .judgment-card-story { font-size: 14px; color: var(--ink); text-align: center; }
 .judgment-card-fact { font-size: 12px; color: var(--ink-soft); font-style: italic; background: var(--medium-bg); border-radius: var(--radius-sm); padding: 8px 10px; }
 .judgment-card-ruling { font-size: 14px; font-weight: 700; color: var(--ink); background: var(--gold-soft); border-radius: var(--radius-sm); padding: 10px 12px; text-align: center; margin-top: auto; }
@@ -431,11 +476,9 @@ button:focus-visible, input:focus-visible {
 /* ---------- معرض البطاقات (مراجعة كل الوجوه خارج اللعب) ---------- */
 .gallery-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 18px; }
 .gallery-row .judgment-card { width: 170px; height: 238px; }
-.gallery-row .judgment-card-title { font-size: 15px; }
 .gallery-row .judgment-card-story { font-size: 12px; }
 .gallery-row .judgment-card-fact { font-size: 10px; padding: 6px 8px; }
 .gallery-row .judgment-card-ruling { font-size: 12px; padding: 8px 10px; }
-.gallery-row .judgment-card-back-icon { font-size: 40px; }
 .gallery-row .judgment-card-back-label { font-size: 13px; }
 
 @media (max-width: 420px) {

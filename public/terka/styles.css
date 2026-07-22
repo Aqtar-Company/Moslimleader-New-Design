@@ -243,12 +243,23 @@ button:focus-visible, input:focus-visible {
 .card .card-name { font-weight: 700; font-size: 14px; text-align: center; }
 .card.small .card-name { font-size: 11px; }
 .card .card-sub { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
+/* دائرة ملوَّنة خلف أيقونة الوارث — لون مختلف لكل نوع (من heir.color في data.js)، زي ألوان
+   بدلات الورق في لعبة الكوتشينة، عشان الطفل يميّز نوع الوارث من أول نظرة باللون مش بس بالنص. */
+.card-icon-badge {
+  width: 46px; height: 46px; border-radius: 50%;
+  background: var(--card-color, var(--gold-soft));
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 6px; box-shadow: var(--shadow-soft);
+}
+.card-icon-badge .card-icon { font-size: 24px; margin-bottom: 0; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3)); }
+.card.small .card-icon-badge { width: 34px; height: 34px; margin-bottom: 3px; }
+.card.small .card-icon-badge .card-icon { font-size: 18px; }
 .card.selectable:hover { transform: translateY(-6px); box-shadow: var(--shadow); }
 .card.selected { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); }
 /* بطاقة "غير مناسبة" للحالة الحالية: تبقى قابلة للاختيار عمدًا (اختيارها لا يُحسب له نقاط
    ويُخبَر اللاعب أنه أخطأ عند إعلان توزيع التركة) — تُعرض بتنبيه بصري واضح، لا معطَّلة. */
 .card.disallowed { border: 1.5px dashed var(--advanced); background: var(--advanced-bg); }
-.card.disallowed .card-icon, .card.disallowed .card-name { opacity: 0.55; }
+.card.disallowed .card-icon-badge, .card.disallowed .card-name { opacity: 0.55; }
 .card.disallowed::after {
   content: '⚠️ غير مناسبة'; position: absolute; bottom: -9px; left: 50%; transform: translateX(-50%);
   font-size: 9px; font-weight: 700; color: #fff; background: var(--advanced);

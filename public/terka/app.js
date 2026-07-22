@@ -98,7 +98,7 @@ function renderHowTo() {
 
 function renderHeirGuide() {
   $('#heir-guide-list').innerHTML = HEIR_TYPES.map(h =>
-    `<div class="guide-item"><h4>${h.icon} ${h.name}</h4><p>${h.description}</p></div>`
+    `<div class="guide-item" style="border-right: 5px solid ${h.color};"><h4>${h.icon} ${h.name}</h4><p>${h.description}</p></div>`
   ).join('');
 }
 
@@ -116,8 +116,8 @@ function renderGalleryScreen() {
 
   // ظهور الهويات التسعة (8 ورثة + جوكر)
   $('#gallery-heir-backs').innerHTML = HEIR_TYPES.map(h => `
-    <div class="card">
-      <div class="card-icon">${h.icon}</div>
+    <div class="card" style="--card-color:${h.color}">
+      <div class="card-icon-badge"><span class="card-icon">${h.icon}</span></div>
       <div class="card-name">${h.name}</div>
       <div class="card-sub" style="font-size:10px; line-height:1.3;">${h.description}</div>
     </div>`).join('');
@@ -593,9 +593,10 @@ function renderHandForCurrentPlayer() {
     // يضغط "طلب المساعدة" (انظر initHandActions()) عشان تظهر شارة التنبيه.
     cardEl.className = 'card small selectable';
     if (disallowed) cardEl.dataset.disallowed = 'true';
+    cardEl.style.setProperty('--card-color', heir.color);
     cardEl.innerHTML = `
       <button class="info-btn" title="معلومات">؟</button>
-      <div class="card-icon">${heir.icon}</div>
+      <div class="card-icon-badge"><span class="card-icon">${heir.icon}</span></div>
       <div class="card-name">${heir.name}</div>`;
     cardEl.querySelector('.info-btn').addEventListener('click', (e) => {
       e.stopPropagation();
@@ -658,8 +659,8 @@ function showJokerIdentityPicker() {
   const allowedHeirs = HEIR_TYPES.filter(h => h.id !== 'joker' && !caseObj.disallowed.includes(h.id));
   const wrap = $('#hand-cards');
   wrap.innerHTML = allowedHeirs.map(h => `
-    <div class="card small selectable joker-pick-card" data-heir="${h.id}">
-      <div class="card-icon">${h.icon}</div>
+    <div class="card small selectable joker-pick-card" data-heir="${h.id}" style="--card-color:${h.color}">
+      <div class="card-icon-badge"><span class="card-icon">${h.icon}</span></div>
       <div class="card-name">${h.name}</div>
     </div>`).join('') + `<button type="button" class="btn btn-secondary btn-sm" id="btn-joker-cancel">إلغاء</button>`;
 
@@ -716,7 +717,8 @@ function revealRoundAndCompute() {
       const heir = getHeirType(play);
       const el = document.createElement('div');
       el.className = 'card small card-flip';
-      el.innerHTML = `<div class="card-icon">${heir.icon}</div><div class="card-name">${heir.name}</div><div class="card-sub">${p.name}</div>`;
+      el.style.setProperty('--card-color', heir.color);
+      el.innerHTML = `<div class="card-icon-badge"><span class="card-icon">${heir.icon}</span></div><div class="card-name">${heir.name}</div><div class="card-sub">${p.name}</div>`;
       revealWrap.appendChild(el);
     }
   });

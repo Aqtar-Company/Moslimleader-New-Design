@@ -50,11 +50,21 @@ function shuffle(array) {
   return arr;
 }
 
-function drawFrom(deckArrName, discardArrName) {
+// avoidValue (اختياري): لو إعادة الخلط حطّت نفس آخر بطاقة اتلعبت في أول مكان هيُسحَب
+// (نهاية المصفوفة، لأننا بنسحب بـ pop())، بنبدّلها بمكان عشوائي تاني — عشان نتجنّب
+// تكرار نفس القضية فورًا بعد إعادة تدوير الرزمة (مؤثّر خصوصًا في الرُّزم الصغيرة زي
+// حالات "سهل" الأربعة، واللي من غيره ممكن تتكرر القضية نفسها فورًا بمحض الصدفة).
+function drawFrom(deckArrName, discardArrName, avoidValue) {
   if (state[deckArrName].length === 0) {
     if (state[discardArrName].length === 0) return null;
     state[deckArrName] = shuffle(state[discardArrName]);
     state[discardArrName] = [];
+    const deck = state[deckArrName];
+    const lastIdx = deck.length - 1;
+    if (avoidValue !== undefined && deck.length > 1 && deck[lastIdx] === avoidValue) {
+      const swapIdx = Math.floor(Math.random() * lastIdx);
+      [deck[lastIdx], deck[swapIdx]] = [deck[swapIdx], deck[lastIdx]];
+    }
   }
   return state[deckArrName].pop();
 }
@@ -470,7 +480,7 @@ function beginRound() {
   state.roundPlays = {};
   state.roundPlayedCards = {};
 
-  const caseId = drawFrom('caseDeck', 'caseDiscard');
+  const caseId = drawFrom('caseDeck', 'caseDiscard', state.currentCaseId);
   state.currentCaseId = caseId;
   state.currentEstateValue = drawFrom('estateDeck', 'estateDiscard');
 
@@ -532,7 +542,7 @@ function renderPlayScreenShell() {
       <span class="royal-corner bl">✦</span><span class="royal-corner br">✦</span>
       <div class="royal-icon-frame">📦</div>
       <div class="card-value">${state.currentEstateValue}</div>
-      <div class="card-sub">وزّع التركة بالعدل</div>
+      <div class="card-sub">قيمة التركة</div>
     </div>`;
 
   $('#revealed-heirs').innerHTML = '';

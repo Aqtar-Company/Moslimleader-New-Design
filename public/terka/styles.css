@@ -1,26 +1,29 @@
 /* styles.css — التصميم الكامل: RTL، متجاوب، حركات البطاقات */
+/* هوية بصرية داكنة فاخرة (طاولة لعب حقيقية): خلفية خضراء/كحلية غامقة، حواف وتفاصيل
+   ذهبية مضيئة، نصوص فاتحة — استلهام من ألعاب الطاولة الحية (Jackaroo وأمثالها). */
 
 :root {
-  --bg: #F6EFDF;
-  --bg-deep: #EFE4CB;
-  --surface: #FFFCF4;
-  --ink: #2E271C;
-  --ink-soft: #6B6252;
-  --gold: #B4903F;
-  --gold-soft: #E7D6A8;
-  --line: #DCCFA9;
+  --bg: #0f1f1a;
+  --bg-deep: #16281f;
+  --surface: #1c352a;
+  --surface-2: #24402f;
+  --ink: #F3EEDD;
+  --ink-soft: #B7CBBB;
+  --gold: #E7C766;
+  --gold-soft: #F3E3A8;
+  --line: rgba(231, 199, 102, 0.22);
 
-  --easy: #4C9A6A;
-  --easy-bg: #E4F1E7;
-  --medium: #3E7CB1;
-  --medium-bg: #E3EDF5;
-  --advanced: #C97A2E;
-  --advanced-bg: #F6E8D6;
-  --expert: #A94A3D;
-  --expert-bg: #F1DEDA;
+  --easy: #6BC48D;
+  --easy-bg: rgba(107, 196, 141, 0.16);
+  --medium: #74B3E3;
+  --medium-bg: rgba(116, 179, 227, 0.16);
+  --advanced: #E6A15C;
+  --advanced-bg: rgba(230, 161, 92, 0.16);
+  --expert: #E37567;
+  --expert-bg: rgba(227, 117, 103, 0.16);
 
-  --shadow: 0 6px 18px rgba(60, 45, 15, 0.12);
-  --shadow-soft: 0 2px 8px rgba(60, 45, 15, 0.08);
+  --shadow: 0 10px 28px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(231, 199, 102, 0.06);
+  --shadow-soft: 0 4px 14px rgba(0, 0, 0, 0.4);
   --radius: 16px;
   --radius-sm: 10px;
 }
@@ -40,9 +43,11 @@ html, body {
 }
 
 body {
-  background-image:
-    radial-gradient(circle at 15% 20%, rgba(180, 144, 63, 0.06), transparent 45%),
-    radial-gradient(circle at 85% 80%, rgba(180, 144, 63, 0.06), transparent 45%);
+  background:
+    radial-gradient(circle at 15% 10%, rgba(231, 199, 102, 0.10), transparent 45%),
+    radial-gradient(circle at 85% 90%, rgba(231, 199, 102, 0.08), transparent 45%),
+    linear-gradient(160deg, #0f1f1a 0%, #16281f 60%, #1a2e24 100%);
+  background-attachment: fixed;
   min-height: 100vh;
 }
 
@@ -87,7 +92,7 @@ button:focus-visible, input:focus-visible {
       var(--gold) 240deg 270deg, transparent 270deg 300deg,
       var(--gold) 300deg 330deg, transparent 330deg 360deg);
   display: flex; align-items: center; justify-content: center;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow), 0 0 24px rgba(231, 199, 102, 0.25);
 }
 .seal::before {
   content: '';
@@ -108,6 +113,7 @@ button:focus-visible, input:focus-visible {
   font-weight: 700;
   color: var(--ink);
   margin: 0 0 4px;
+  text-shadow: 0 0 20px rgba(231, 199, 102, 0.25);
 }
 .game-tagline {
   color: var(--ink-soft);
@@ -125,10 +131,10 @@ button:focus-visible, input:focus-visible {
   box-shadow: var(--shadow-soft);
 }
 .btn:active { transform: scale(0.97); }
-.btn-primary { background: var(--gold); color: #fff; }
-.btn-primary:hover { background: #9d7c30; }
+.btn-primary { background: var(--gold); color: #241c08; }
+.btn-primary:hover { background: #efd685; box-shadow: 0 4px 20px rgba(231, 199, 102, 0.4); }
 .btn-secondary { background: var(--surface); color: var(--ink); border: 1.5px solid var(--line); }
-.btn-secondary:hover { background: var(--bg-deep); }
+.btn-secondary:hover { background: var(--surface-2); }
 .btn-danger { background: var(--expert); color: #fff; }
 .btn-block { width: 100%; }
 .btn-sm { padding: 8px 14px; font-size: 13px; border-radius: 8px; }
@@ -157,29 +163,29 @@ button:focus-visible, input:focus-visible {
   padding: 9px 16px;
   border-radius: 999px;
   border: 1.5px solid var(--line);
-  background: var(--bg);
+  background: var(--surface-2);
   color: var(--ink);
   font-size: 14px;
   font-weight: 600;
 }
-.pill.selected { background: var(--gold); color: #fff; border-color: var(--gold); }
+.pill.selected { background: var(--gold); color: #241c08; border-color: var(--gold); box-shadow: 0 0 14px rgba(231, 199, 102, 0.35); }
 
 .name-inputs { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 .name-inputs input {
   padding: 10px 12px;
   border-radius: var(--radius-sm);
   border: 1.5px solid var(--line);
-  background: var(--bg);
+  background: var(--surface-2);
   font-family: inherit;
   font-size: 14px;
   color: var(--ink);
 }
 
-.difficulty-pill[data-diff="easy"].selected { background: var(--easy); border-color: var(--easy); }
-.difficulty-pill[data-diff="medium"].selected { background: var(--medium); border-color: var(--medium); }
-.difficulty-pill[data-diff="advanced"].selected { background: var(--advanced); border-color: var(--advanced); }
+.difficulty-pill[data-diff="easy"].selected { background: var(--easy); border-color: var(--easy); color: #0d2417; }
+.difficulty-pill[data-diff="medium"].selected { background: var(--medium); border-color: var(--medium); color: #0d2032; }
+.difficulty-pill[data-diff="advanced"].selected { background: var(--advanced); border-color: var(--advanced); color: #2e1a06; }
 .difficulty-pill[data-diff="expert"] { opacity: 0.5; }
-.difficulty-pill[data-diff="mixed"].selected { background: var(--ink); border-color: var(--ink); }
+.difficulty-pill[data-diff="mixed"].selected { background: #8B7FC7; border-color: #8B7FC7; color: #1b1730; }
 
 .setup-actions { margin-top: 20px; }
 
@@ -190,21 +196,23 @@ button:focus-visible, input:focus-visible {
   background: var(--surface); border-radius: var(--radius-sm);
   padding: 10px 14px; box-shadow: var(--shadow-soft);
   width: 100%; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;
+  border: 1px solid var(--line);
 }
 .top-bar-info { display: flex; gap: 14px; align-items: center; font-size: 13px; color: var(--ink-soft); flex-wrap: wrap; }
 .top-bar-info b { color: var(--ink); }
 .diff-badge {
   padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff;
 }
-.diff-badge.easy { background: var(--easy); }
-.diff-badge.medium { background: var(--medium); }
-.diff-badge.advanced { background: var(--advanced); }
+.diff-badge.easy { background: var(--easy); color: #0d2417; }
+.diff-badge.medium { background: var(--medium); color: #0d2032; }
+.diff-badge.advanced { background: var(--advanced); color: #2e1a06; }
 .diff-badge.expert { background: var(--expert); }
 .top-bar-actions { display: flex; gap: 6px; }
 .icon-btn {
   width: 36px; height: 36px; border-radius: 50%;
-  background: var(--bg); border: 1px solid var(--line);
+  background: var(--surface-2); border: 1px solid var(--line);
   font-size: 16px; display: flex; align-items: center; justify-content: center;
+  color: var(--ink);
 }
 
 .players-row { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; margin-bottom: 10px; justify-content: center; }
@@ -214,7 +222,7 @@ button:focus-visible, input:focus-visible {
   box-shadow: var(--shadow-soft);
   display: flex; flex-direction: column; align-items: center; gap: 1px;
 }
-.player-chip.active-turn { border-color: var(--gold); background: var(--gold-soft); }
+.player-chip.active-turn { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold), 0 0 16px rgba(231, 199, 102, 0.35); }
 .p-avatar {
   width: 38px; height: 38px; border-radius: 50%;
   background: var(--avatar-color, var(--gold));
@@ -223,7 +231,7 @@ button:focus-visible, input:focus-visible {
   border: 2px solid var(--surface); box-shadow: var(--shadow-soft);
   margin-bottom: 3px;
 }
-.player-chip.active-turn .p-avatar { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); }
+.player-chip.active-turn .p-avatar { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(231, 199, 102, 0.4); }
 .player-chip .p-name { font-weight: 700; display: block; }
 .player-chip .p-score { color: var(--ink-soft); font-size: 12px; }
 .player-chip .p-balance { display: block; font-size: 11px; color: var(--gold); font-weight: 700; }
@@ -236,6 +244,7 @@ button:focus-visible, input:focus-visible {
   width: 100%; background: var(--bg-deep); border-radius: var(--radius);
   padding: 18px; display: flex; flex-direction: column; align-items: center; gap: 12px;
   box-shadow: var(--shadow-soft) inset; margin-bottom: 12px; min-height: 180px;
+  border: 1px solid var(--line);
 }
 .table-cards { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
 .revealed-heirs { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; min-height: 90px; }
@@ -250,7 +259,7 @@ button:focus-visible, input:focus-visible {
 .card.small { width: 78px; height: 108px; }
 .card .card-icon { font-size: 32px; margin-bottom: 6px; }
 .card.small .card-icon { font-size: 24px; margin-bottom: 3px; }
-.card .card-name { font-weight: 700; font-size: 14px; text-align: center; }
+.card .card-name { font-weight: 700; font-size: 14px; text-align: center; color: var(--ink); }
 .card.small .card-name { font-size: 11px; }
 .card .card-sub { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
 /* دائرة ملوَّنة خلف أيقونة الوارث — لون مختلف لكل نوع (من heir.color في data.js)، زي ألوان
@@ -268,13 +277,14 @@ button:focus-visible, input:focus-visible {
 
 /* بطاقة الوارث بصورة حقيقية: الصورة نفسها هي تصميم الكارت الكامل (حدود ذهبية + اسم
    مطبوعين عليها من التصميم الأصلي)، فتُعرض كاملة بلا أي قص (object-fit: contain) وبلا
-   نص مكرر من عندنا — الكارت بيبقى مجرّد إطار حوالين الصورة. */
-.card.has-photo { padding: 0; overflow: hidden; background: #F7EFE0; display: flex; flex-direction: column; }
+   نص مكرر من عندنا — الكارت بيبقى مجرّد إطار حوالين الصورة، والخلفية غامقة (طاولة اللعب)
+   بدل الكريمي عشان تندمج مع الهوية الجديدة لو ظهر أي هامش حوالين الصورة. */
+.card.has-photo { padding: 0; overflow: hidden; background: var(--surface); display: flex; flex-direction: column; }
 .card.has-photo .card-portrait-full { width: 100%; flex: 1 1 auto; min-height: 0; object-fit: contain; display: block; }
-.card.has-photo .card-sub { padding: 4px 4px 6px; text-align: center; background: var(--surface); flex-shrink: 0; margin-top: 0; }
+.card.has-photo .card-sub { padding: 4px 4px 6px; text-align: center; background: var(--surface-2); flex-shrink: 0; margin-top: 0; }
 .card.has-photo .info-btn { z-index: 2; }
-.card.selectable:hover { transform: translateY(-6px); box-shadow: var(--shadow); }
-.card.selected { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); }
+.card.selectable:hover { transform: translateY(-6px); box-shadow: var(--shadow), 0 0 16px rgba(231, 199, 102, 0.2); }
+.card.selected { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(231, 199, 102, 0.5), 0 0 20px rgba(231, 199, 102, 0.4); }
 /* بطاقة "غير مناسبة" للحالة الحالية: تبقى قابلة للاختيار عمدًا (اختيارها لا يُحسب له نقاط
    ويُخبَر اللاعب أنه أخطأ عند إعلان توزيع التركة) — تُعرض بتنبيه بصري واضح، لا معطَّلة. */
 .card.disallowed { border: 1.5px dashed var(--advanced); background: var(--advanced-bg); }
@@ -287,7 +297,7 @@ button:focus-visible, input:focus-visible {
 .card.blocked { opacity: 0.45; }
 .card .info-btn {
   position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; border-radius: 50%;
-  background: var(--bg); font-size: 11px; border: 1px solid var(--line); color: var(--ink-soft);
+  background: var(--surface-2); font-size: 11px; border: 1px solid var(--line); color: var(--ink-soft);
 }
 
 .card-flip { animation: flipIn 0.5s ease; }
@@ -296,14 +306,16 @@ button:focus-visible, input:focus-visible {
   to { transform: rotateY(0deg); opacity: 1; }
 }
 
-.estate-card { background: linear-gradient(160deg, var(--surface), var(--gold-soft)); }
-.estate-card.tier-3, .estate-card.tier-4 { background: linear-gradient(160deg, var(--gold-soft), var(--gold)); color: #3a2c0d; }
+.estate-card { background: linear-gradient(160deg, var(--surface), rgba(231, 199, 102, 0.14)); }
+.estate-card.tier-3, .estate-card.tier-4 { background: linear-gradient(160deg, var(--gold-soft), var(--gold)); color: #2e2308; }
+.estate-card.tier-3 .card-sub, .estate-card.tier-4 .card-sub { color: #2e2308; }
 .estate-card .card-value { font-size: 26px; font-weight: 800; }
 
 /* ---------- الإطار الملكي الكلاسيكي: كارت القضية وكارت الحكم ---------- */
 .royal-card, .judgment-card.royal-card {
   border: 2px solid var(--gold) !important;
   position: relative;
+  box-shadow: var(--shadow), 0 0 20px rgba(231, 199, 102, 0.12);
 }
 .royal-card::before {
   content: '';
@@ -311,6 +323,7 @@ button:focus-visible, input:focus-visible {
   border: 1px solid var(--gold-soft);
   border-radius: 10px;
   pointer-events: none;
+  opacity: 0.6;
 }
 .royal-corner {
   position: absolute; font-size: 10px; color: var(--gold); line-height: 1;
@@ -328,7 +341,7 @@ button:focus-visible, input:focus-visible {
   background: var(--bg-deep); flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   font-size: 28px; overflow: hidden;
-  box-shadow: inset 0 0 0 3px var(--surface), var(--shadow-soft);
+  box-shadow: inset 0 0 0 3px var(--surface), var(--shadow-soft), 0 0 14px rgba(231, 199, 102, 0.25);
 }
 .royal-icon-frame img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
 .judgment-card-back .royal-icon-frame {
@@ -347,19 +360,19 @@ button:focus-visible, input:focus-visible {
 .gallery-row .royal-card-title::before, .gallery-row .royal-card-title::after { font-size: 8px; margin: 0 3px; }
 
 .status-card.gender-male { border-top: 6px solid var(--medium); }
-.status-card.gender-female { border-top: 6px solid #C9598A; }
+.status-card.gender-female { border-top: 6px solid #E387B0; }
 
 .pass-overlay {
-  position: fixed; inset: 0; background: rgba(46, 39, 28, 0.92);
+  position: fixed; inset: 0; background: rgba(10, 20, 16, 0.94);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   color: #fff; z-index: 50; text-align: center; padding: 20px; gap: 16px;
 }
 .pass-overlay h2 { font-size: 22px; margin: 0; }
-.pass-overlay .next-player-name { color: var(--gold-soft); font-size: 26px; font-weight: 800; }
+.pass-overlay .next-player-name { color: var(--gold-soft); font-size: 26px; font-weight: 800; text-shadow: 0 0 20px rgba(231, 199, 102, 0.4); }
 
 .hand-area {
   position: fixed; bottom: 0; right: 0; left: 0; background: var(--surface);
-  border-top: 2px solid var(--line); padding: 10px 10px 14px; box-shadow: 0 -6px 18px rgba(0,0,0,0.08);
+  border-top: 2px solid var(--line); padding: 10px 10px 14px; box-shadow: 0 -10px 24px rgba(0,0,0,0.35);
   z-index: 20;
 }
 .hand-label {
@@ -375,18 +388,18 @@ button:focus-visible, input:focus-visible {
 
 .moving-point {
   position: fixed; width: 18px; height: 18px; border-radius: 50%; background: var(--gold);
-  box-shadow: 0 0 0 2px #fff; z-index: 60; pointer-events: none;
+  box-shadow: 0 0 0 2px #fff, 0 0 12px rgba(231, 199, 102, 0.6); z-index: 60; pointer-events: none;
 }
 
 /* ---------- نتيجة الجولة ---------- */
 .result-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0; }
-.result-table th, .result-table td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: center; }
+.result-table th, .result-table td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: center; color: var(--ink); }
 .result-table th { color: var(--gold); font-size: 12px; }
 .status-tag { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; display: inline-block; color: var(--ink); border: 1.5px solid transparent; }
 .status-tag.inherits { background: var(--easy-bg); border-color: var(--easy); }
 .status-tag.blocked { background: var(--expert-bg); border-color: var(--expert); }
 .status-tag.review { background: var(--advanced-bg); border-color: var(--advanced); }
-.status-tag.invalid { background: #eee; border-color: #aaa; }
+.status-tag.invalid { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.25); }
 
 .lesson-box {
   background: var(--medium-bg); border-radius: var(--radius-sm); padding: 12px 14px;
@@ -399,14 +412,14 @@ button:focus-visible, input:focus-visible {
 
 /* ---------- نهاية المباراة ---------- */
 .winner-banner { text-align: center; margin-bottom: 14px; }
-.winner-banner .trophy { font-size: 48px; }
-.winner-banner h2 { margin: 6px 0 2px; }
+.winner-banner .trophy { font-size: 48px; filter: drop-shadow(0 0 16px rgba(231, 199, 102, 0.5)); }
+.winner-banner h2 { margin: 6px 0 2px; color: var(--ink); }
 .rank-list { list-style: none; padding: 0; margin: 0; width: 100%; }
 .rank-list li {
   display: flex; justify-content: space-between; padding: 10px 12px; border-radius: var(--radius-sm);
-  background: var(--bg); margin-bottom: 6px; font-size: 14px;
+  background: var(--surface); border: 1px solid var(--line); margin-bottom: 6px; font-size: 14px; color: var(--ink);
 }
-.rank-list li.first { background: var(--gold-soft); font-weight: 700; }
+.rank-list li.first { border-color: var(--gold); box-shadow: 0 0 14px rgba(231, 199, 102, 0.3); font-weight: 700; }
 
 /* ---------- الأدلة ---------- */
 .guide-list { display: flex; flex-direction: column; gap: 10px; width: 100%; }
@@ -415,32 +428,32 @@ button:focus-visible, input:focus-visible {
 .guide-item p { margin: 0; font-size: 13px; color: var(--ink-soft); }
 
 .top-nav { width: 100%; max-width: 480px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-.top-nav h3 { margin: 0; }
+.top-nav h3 { margin: 0; color: var(--ink); }
 
 /* ---------- احسب حالتك (الحلّال التفاعلي) ---------- */
 .solver-estate-input {
   width: 100%; padding: 10px 12px; margin-top: 8px;
   border-radius: var(--radius-sm); border: 1.5px solid var(--line);
-  background: var(--bg); font-family: inherit; font-size: 16px; color: var(--ink);
+  background: var(--surface-2); font-family: inherit; font-size: 16px; color: var(--ink);
 }
 .solver-heir-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 .solver-heir-row {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  background: var(--bg); border: 1.5px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--surface-2); border: 1.5px solid var(--line); border-radius: var(--radius-sm);
   padding: 10px 12px;
 }
-.solver-heir-row.checked { border-color: var(--gold); background: var(--gold-soft); }
+.solver-heir-row.checked { border-color: var(--gold); background: rgba(231, 199, 102, 0.12); }
 .solver-heir-label { display: flex; align-items: center; gap: 10px; flex: 1; cursor: pointer; }
 .solver-heir-label input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--gold); cursor: pointer; }
 .solver-heir-label .heir-icon { font-size: 22px; }
-.solver-heir-label .heir-name { font-weight: 700; font-size: 14px; }
+.solver-heir-label .heir-name { font-weight: 700; font-size: 14px; color: var(--ink); }
 .solver-stepper { display: flex; align-items: center; gap: 8px; }
 .solver-stepper button {
   width: 32px; height: 32px; border-radius: 8px; background: var(--surface);
   border: 1.5px solid var(--line); font-size: 16px; font-weight: 700; color: var(--ink);
 }
 .solver-stepper button:disabled { opacity: 0.4; }
-.solver-stepper .count { min-width: 20px; text-align: center; font-weight: 700; }
+.solver-stepper .count { min-width: 20px; text-align: center; font-weight: 700; color: var(--ink); }
 
 .ayah-box {
   background: var(--bg-deep); border-radius: var(--radius-sm); padding: 14px 16px;
@@ -457,10 +470,11 @@ button:focus-visible, input:focus-visible {
 .muted { color: var(--ink-soft); font-size: 12px; }
 .center-text { text-align: center; }
 
-/* ---------- شاشة فاصل الأحكام: هوية بصرية مختلفة عن شاشة القضية ---------- */
+/* ---------- شاشة فاصل الأحكام: هوية بصرية مختلفة عن شاشة القضية (دافئة داكنة مقابل
+   الأخضر الغامق البارد للعبة نفسها، مع بقاء الفخامة الذهبية موحّدة بين الاتنين) ---------- */
 .judgment-screen {
   background:
-    radial-gradient(circle at 25% 15%, rgba(231, 214, 168, 0.25), transparent 55%),
+    radial-gradient(circle at 25% 15%, rgba(231, 214, 168, 0.20), transparent 55%),
     linear-gradient(165deg, #241c10 0%, #3a2c14 55%, #6b4f1f 100%);
 }
 .judgment-screen .top-nav h3,
@@ -490,7 +504,11 @@ button:focus-visible, input:focus-visible {
 }
 .judgment-card-story { font-size: 14px; color: var(--ink); text-align: center; }
 .judgment-card-fact { font-size: 12px; color: var(--ink-soft); font-style: italic; background: var(--medium-bg); border-radius: var(--radius-sm); padding: 8px 10px; }
-.judgment-card-ruling { font-size: 14px; font-weight: 700; color: var(--ink); background: var(--gold-soft); border-radius: var(--radius-sm); padding: 10px 12px; text-align: center; margin-top: auto; }
+.judgment-card-ruling {
+  font-size: 14px; font-weight: 700; color: var(--gold-soft);
+  background: rgba(231, 199, 102, 0.12); border: 1px solid var(--gold);
+  border-radius: var(--radius-sm); padding: 10px 12px; text-align: center; margin-top: auto;
+}
 
 .judgment-player-pick { margin-top: 6px; }
 

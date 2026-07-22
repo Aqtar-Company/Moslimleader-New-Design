@@ -252,7 +252,7 @@ button:focus-visible, input:focus-visible {
 .setup-actions { margin-top: 20px; }
 
 /* ---------- شاشة اللعب ---------- */
-.play-screen { padding: 10px 8px 290px; width: 100%; max-width: 720px; margin: 0 auto; }
+.play-screen { padding: 10px 8px 310px; width: 100%; max-width: 720px; margin: 0 auto; }
 /* شريط التحكّم العلوي: أزرار التحكّم أولًا وفي المنتصف، وتحتها معلومات الجولة/الصعوبة. */
 .top-bar {
   display: flex; flex-direction: column; align-items: center; gap: 10px;
@@ -507,6 +507,10 @@ button:focus-visible, input:focus-visible {
   text-align: center; font-size: 11px; font-weight: 700; color: var(--ink-soft);
   letter-spacing: 0.3px; margin-bottom: 4px;
 }
+.hand-hint {
+  text-align: center; font-size: 12px; font-weight: 600; color: var(--gold-soft);
+  margin: 2px 0 10px;
+}
 /* كروت اليد "مروَّحة" زي ماسك ورق حقيقي — كل كارت بميل مختلف ويتراكب مع اللي جنبه،
    وترتفع وتستوي لما تتحوّم/تتاختار عليها. */
 .hand-cards {
@@ -698,7 +702,7 @@ button:focus-visible, input:focus-visible {
   .hand-cards .card.small .card-name { font-size: 11px; }
   .hand-cards .card.small:hover { transform: translateY(-18px) rotate(0deg) scale(1.05) !important; }
   .hand-cards .card.small.selected { transform: translateY(-20px) rotate(0deg) scale(1.06) !important; }
-  .play-screen { padding-bottom: 250px; }
+  .play-screen { padding-bottom: 270px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

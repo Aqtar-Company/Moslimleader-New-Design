@@ -362,7 +362,9 @@ button:focus-visible, input:focus-visible {
   opacity: .7;
   pointer-events: none;
 }
-.table-cards { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; position: relative; }
+.table-cards { display: flex; gap: 14px; align-items: stretch; width: 100%; position: relative; }
+#status-card-slot { flex: 1 1 auto; min-width: 0; display: flex; }
+#estate-card-slot { flex: 0 0 auto; display: flex; }
 .revealed-heirs { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; min-height: 90px; position: relative; }
 
 .card {
@@ -434,24 +436,8 @@ button:focus-visible, input:focus-visible {
 .estate-card.tier-3 .card-sub, .estate-card.tier-4 .card-sub { color: #2e2308; }
 .estate-card .card-value { font-family: 'Georgia', serif; font-size: 30px; font-weight: 800; }
 
-/* ---------- كارت "نيتشة" (محراب) لكروت القضية والتركة — قوس علوي بدل المستطيل ---------- */
+/* ---------- الإطار الملكي الكلاسيكي: كارت القضية والتركة وكارت الحكم ---------- */
 .royal-card { position: relative; }
-.niche-card {
-  border-radius: 90px 90px 16px 16px !important;
-  border: 1px solid var(--gold-dim) !important;
-  padding: 26px 14px 16px !important;
-  box-shadow: 0 10px 24px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,255,255,.02) !important;
-}
-.niche-card::before {
-  content: '';
-  position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
-  width: 70%; height: 1px;
-  background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
-}
-.niche-tag {
-  position: absolute; top: 12px; right: 14px;
-  font-size: 9.5px; font-weight: 700; color: var(--gold-dim); letter-spacing: .4px;
-}
 .royal-icon-frame {
   width: 54px; height: 54px; margin: 2px auto 10px;
   border-radius: 50%; flex-shrink: 0;
@@ -466,11 +452,12 @@ button:focus-visible, input:focus-visible {
 .royal-card-title {
   font-weight: 800; font-size: 14px; color: var(--ink); text-align: center; padding: 0 4px;
 }
+.royal-card-title::before, .royal-card-title::after {
+  content: '✦'; color: var(--gold); font-size: 9px; margin: 0 5px; display: inline-block;
+}
 .judgment-card .royal-icon-frame { width: 66px; height: 66px; font-size: 32px; }
 .gallery-row .royal-icon-frame { width: 42px; height: 42px; font-size: 20px; margin-bottom: 5px; }
 
-/* بطاقة الحكم تفضل شكل كارت مستطيل تقليدي (مش نيتشة) — عندها زخارف أركان خاصة بيها. */
-.judgment-card.royal-card { border: 2px solid var(--gold) !important; box-shadow: var(--shadow), 0 0 20px rgba(217, 169, 52, 0.12); }
 .royal-corner {
   position: absolute; font-size: 10px; color: var(--gold); line-height: 1;
   pointer-events: none; z-index: 1;
@@ -480,12 +467,27 @@ button:focus-visible, input:focus-visible {
 .royal-corner.bl { bottom: 7px; left: 7px; }
 .royal-corner.br { bottom: 7px; right: 7px; }
 .judgment-card-back .royal-corner { color: rgba(255,255,255,0.85); }
-.judgment-card.royal-card .royal-card-title::before, .judgment-card.royal-card .royal-card-title::after {
-  content: '✦'; color: var(--gold); font-size: 9px; margin: 0 5px; display: inline-block;
-}
 
-.status-card.gender-male { border-top: 4px solid var(--medium); }
-.status-card.gender-female { border-top: 4px solid #E387B0; }
+/* كارت القضية: مستطيل عريض (نص أطول)، أفقي — أيقونة في جهة والنص بجانبها.
+   width/height: 100% تملأ #status-card-slot اللي بيتمدّد ويتساوى ارتفاعه مع كارت
+   التركة المربّع عبر align-items:stretch على .table-cards. */
+.status-card {
+  width: 100%; height: 100%;
+  flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px;
+  padding: 14px 18px;
+}
+.status-card .royal-icon-frame { margin: 0; }
+.status-card-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.status-card .royal-card-title, .status-card .card-sub { text-align: right; }
+.status-card .royal-card-title::before, .status-card .royal-card-title::after { display: none; }
+.status-card.gender-male .royal-icon-frame { box-shadow: 0 6px 16px rgba(116, 179, 227, 0.4), inset 0 2px 4px rgba(255,255,255,.4); }
+.status-card.gender-female .royal-icon-frame { box-shadow: 0 6px 16px rgba(227, 135, 176, 0.4), inset 0 2px 4px rgba(255,255,255,.4); }
+
+/* كارت التركة: مربّع، على نفس محاذاة ارتفاع كارت القضية. */
+.estate-card { flex: 0 0 118px; width: 118px; height: 128px; }
+
+/* بطاقة الحكم زخارف أركان بنجمة ✦ إضافية على العنوان (شكلها مستطيل تقليدي أصلًا). */
+.judgment-card.royal-card { border: 2px solid var(--gold) !important; box-shadow: var(--shadow), 0 0 20px rgba(217, 169, 52, 0.12); }
 
 .pass-overlay {
   position: fixed; inset: 0; background: rgba(4, 15, 33, 0.94);
@@ -661,7 +663,6 @@ button:focus-visible, input:focus-visible {
 .gallery-row .judgment-card-fact { font-size: 10px; padding: 6px 8px; }
 .gallery-row .judgment-card-ruling { font-size: 12px; padding: 8px 10px; }
 .gallery-row .judgment-card-back-label { font-size: 13px; }
-.gallery-row .niche-card { width: 150px; min-height: 170px; }
 
 @media (max-width: 420px) {
   .card { width: 92px; height: 130px; }
@@ -672,7 +673,7 @@ button:focus-visible, input:focus-visible {
 
 @media (prefers-reduced-motion: reduce) {
   .player-chip.active-turn, #btn-start-new, .top-bar, .card-deal { animation: none; }
-  .btn, .icon-btn, .card, .niche-card, .hand-cards .card.small { transition: none; }
+  .btn, .icon-btn, .card, .hand-cards .card.small { transition: none; }
 }
 
 .hidden { display: none !important; }

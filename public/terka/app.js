@@ -513,19 +513,23 @@ function renderPlayScreenShell() {
 
   renderPlayersRow();
 
-  // بطاقة الحالة (مقلوبة أولًا ثم تُكشف) — شكل "نيتشة" (محراب) بقوس علوي، استلهامًا من
-  // العمارة الإسلامية، بدل الكارت المستطيل التقليدي.
+  // بطاقة الحالة (مقلوبة أولًا ثم تُكشف) — إطار ملكي كلاسيكي (زخارف ذهبية بالأركان)،
+  // مستطيل عريض (بيتّسع لنص القضية) بجانب كارت التركة المربّع، على نفس المحاذاة.
   $('#status-card-slot').innerHTML = `
-    <div class="card royal-card niche-card status-card gender-${caseObj.deceasedGender} card-flip">
-      <span class="niche-tag">الحالة</span>
+    <div class="card royal-card status-card gender-${caseObj.deceasedGender} card-flip">
+      <span class="royal-corner tl">✦</span><span class="royal-corner tr">✦</span>
+      <span class="royal-corner bl">✦</span><span class="royal-corner br">✦</span>
       <div class="royal-icon-frame">${caseObj.deceasedGender === 'male' ? '🕌' : '🕋'}</div>
-      <div class="royal-card-title">${caseObj.title}</div>
-      <div class="card-sub">${caseObj.note}</div>
+      <div class="status-card-text">
+        <div class="royal-card-title">${caseObj.title}</div>
+        <div class="card-sub">${caseObj.note}</div>
+      </div>
     </div>`;
 
   $('#estate-card-slot').innerHTML = `
-    <div class="card royal-card niche-card estate-card ${estateTierClass(state.currentEstateValue)} card-flip">
-      <span class="niche-tag">التركة</span>
+    <div class="card royal-card estate-card ${estateTierClass(state.currentEstateValue)} card-flip">
+      <span class="royal-corner tl">✦</span><span class="royal-corner tr">✦</span>
+      <span class="royal-corner bl">✦</span><span class="royal-corner br">✦</span>
       <div class="royal-icon-frame">📦</div>
       <div class="card-value">${state.currentEstateValue}</div>
       <div class="card-sub">وزّع التركة بالعدل</div>

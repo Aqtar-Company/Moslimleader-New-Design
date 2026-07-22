@@ -577,6 +577,8 @@ function renderHandForCurrentPlayer() {
   selection = { heirId: null, cardEl: null };
   $('#btn-confirm-choice').classList.remove('hidden');
   $('#btn-confirm-choice').disabled = true;
+  $('#btn-hand-help').classList.remove('hidden');
+  $('#btn-hand-help').disabled = false;
 
   const player = state.players[state.turnIndex];
   const caseObj = DECEASED_CASES.find(c => c.id === state.currentCaseId);
@@ -587,7 +589,10 @@ function renderHandForCurrentPlayer() {
     const heir = getHeirType(heirId);
     const disallowed = caseObj.disallowed.includes(heirId);
     const cardEl = document.createElement('div');
-    cardEl.className = 'card small selectable' + (disallowed ? ' disallowed' : '');
+    // البطاقة "غير المناسبة" لا تُميَّز بصريًا افتراضيًا — اللاعب لازم يكتشفها بنفسه أو
+    // يضغط "طلب المساعدة" (انظر initHandActions()) عشان تظهر شارة التنبيه.
+    cardEl.className = 'card small selectable';
+    if (disallowed) cardEl.dataset.disallowed = 'true';
     cardEl.innerHTML = `
       <button class="info-btn" title="معلومات">؟</button>
       <div class="card-icon">${heir.icon}</div>
@@ -627,6 +632,13 @@ function initHandActions() {
       doConfirmPlay();
     }
   });
+  $('#btn-hand-help').addEventListener('click', () => {
+    // يظهر شارة "غير مناسبة" على البطاقات المؤهَّلة (data-disallowed) فقط عند الطلب —
+    // اكتشاف الحل بنفسه جزء من التحدي، والمساعدة اختيارية بلا أي تكلفة أو عقوبة.
+    $all('#hand-cards .card[data-disallowed="true"]').forEach(c => c.classList.add('disallowed'));
+    $('#btn-hand-help').disabled = true;
+    AudioManager.playClick();
+  });
 }
 
 function doConfirmPlay() {
@@ -662,6 +674,7 @@ function showJokerIdentityPicker() {
   });
 
   $('#btn-confirm-choice').classList.add('hidden');
+  $('#btn-hand-help').classList.add('hidden');
   flashMessage('اختر الوارث اللي هيمثله الجوكر في هذه الحالة.');
 }
 

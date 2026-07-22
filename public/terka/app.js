@@ -513,20 +513,19 @@ function renderPlayScreenShell() {
 
   renderPlayersRow();
 
-  // بطاقة الحالة (مقلوبة أولًا ثم تُكشف) — إطار ملكي كلاسيكي (زخارف ذهبية بالأركان + إطار مزدوج)
+  // بطاقة الحالة (مقلوبة أولًا ثم تُكشف) — شكل "نيتشة" (محراب) بقوس علوي، استلهامًا من
+  // العمارة الإسلامية، بدل الكارت المستطيل التقليدي.
   $('#status-card-slot').innerHTML = `
-    <div class="card royal-card status-card gender-${caseObj.deceasedGender} card-flip">
-      <span class="royal-corner tl">✦</span><span class="royal-corner tr">✦</span>
-      <span class="royal-corner bl">✦</span><span class="royal-corner br">✦</span>
+    <div class="card royal-card niche-card status-card gender-${caseObj.deceasedGender} card-flip">
+      <span class="niche-tag">الحالة</span>
       <div class="royal-icon-frame">${caseObj.deceasedGender === 'male' ? '🕌' : '🕋'}</div>
       <div class="royal-card-title">${caseObj.title}</div>
       <div class="card-sub">${caseObj.note}</div>
     </div>`;
 
   $('#estate-card-slot').innerHTML = `
-    <div class="card royal-card estate-card ${estateTierClass(state.currentEstateValue)} card-flip">
-      <span class="royal-corner tl">✦</span><span class="royal-corner tr">✦</span>
-      <span class="royal-corner bl">✦</span><span class="royal-corner br">✦</span>
+    <div class="card royal-card niche-card estate-card ${estateTierClass(state.currentEstateValue)} card-flip">
+      <span class="niche-tag">التركة</span>
       <div class="royal-icon-frame">📦</div>
       <div class="card-value">${state.currentEstateValue}</div>
       <div class="card-sub">وزّع التركة بالعدل</div>
@@ -544,8 +543,6 @@ function estateTierClass(value) {
   return 'tier-1';
 }
 
-const PLAYER_AVATAR_COLORS = ['#B4903F', '#4C9A6A', '#3E7CB1', '#C97A2E'];
-
 function renderPlayersRow() {
   const row = $('#players-row');
   row.innerHTML = state.players.map((p, i) => {
@@ -554,10 +551,9 @@ function renderPlayersRow() {
     let stateCls = 'state-waiting';
     if (state.roundPlays[i] !== undefined) { stateText = 'جاهز'; stateCls = 'state-ready'; }
     else if (i === state.turnIndex && state.phase === 'acting') { stateText = 'يختار'; stateCls = 'state-picking'; }
-    const avatarColor = PLAYER_AVATAR_COLORS[i % PLAYER_AVATAR_COLORS.length];
     const initial = (p.name || '؟').trim().charAt(0);
     return `<div class="player-chip ${activeCls}">
-      <span class="p-avatar" style="--avatar-color:${avatarColor}">${initial}</span>
+      <span class="p-avatar">${initial}</span>
       <span class="p-name">${p.name}</span>
       <span class="p-balance">${ICON_COIN} ${p.balance} سهم</span>
       <span class="p-state ${stateCls}">${stateText}</span>
@@ -1187,8 +1183,8 @@ function initEndScreen() {
 // ============================================================
 // أزرار شريط اللعب العلوي
 // ============================================================
-const ICON_SPEAKER_ON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9v6h4l5 4V5L9 9H5Z" fill="currentColor" stroke="none"/><path d="M16.5 9.5a4 4 0 0 1 0 5"/><path d="M19 7a7.5 7.5 0 0 1 0 10"/></svg>';
-const ICON_SPEAKER_MUTED = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9v6h4l5 4V5L9 9H5Z" fill="currentColor" stroke="none"/><path d="M17 9l5 5M22 9l-5 5"/></svg>';
+const ICON_SPEAKER_ON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 8a5 5 0 010 8"/><path d="M20 5a9 9 0 010 14"/></svg>';
+const ICON_SPEAKER_MUTED = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9l5 6M21 9l-5 6"/></svg>';
 
 function updateMuteIcon() {
   $('#btn-mute').innerHTML = AudioManager.isMuted() ? ICON_SPEAKER_MUTED : ICON_SPEAKER_ON;

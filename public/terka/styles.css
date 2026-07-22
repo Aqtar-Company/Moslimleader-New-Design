@@ -1,31 +1,29 @@
 /* styles.css — التصميم الكامل: RTL، متجاوب، حركات البطاقات */
-/* هوية بصرية داكنة فاخرة (طاولة لعب حقيقية): خلفية خضراء/كحلية غامقة، حواف وتفاصيل
-   ذهبية مضيئة، نصوص فاتحة — استلهام من ألعاب الطاولة الحية (Jackaroo وأمثالها). */
+/* هوية بصرية ملكية داكنة (كحلي/ذهبي)، استلهامًا من مرجع تصميم اعتمده المستخدم:
+   ألواح كحلية بحواف ذهبية، كروت يد "مروَّحة" زي الماسك الحقيقي، كروت قضية بشكل
+   "نيتشة" (محراب) بقوس علوي، أزرار ثلاثية الأبعاد بلمعة، أفاتار لاعب مخروطي الذهب. */
 
 :root {
-  --bg: #0f1f1a;
-  --bg-deep: #16281f;
-  --surface: #1c352a;
-  --surface-2: #24402f;
-  --ink: #F3EEDD;
-  --ink-soft: #B7CBBB;
-  --gold: #E7C766;
-  --gold-soft: #F3E3A8;
-  --line: rgba(231, 199, 102, 0.22);
+  --bg: #040f21;
+  --bg-deep: #0b2743;
+  --surface: #12395e;
+  --surface-2: #163f63;
+  --ink: #e8eefc;
+  --ink-soft: #a9bcd9;
+  --gold: #d9a934;
+  --gold-soft: #f6dd8e;
+  --gold-dim: #9c7a2c;
+  --line: #1f5480;
 
-  --easy: #6BC48D;
-  --easy-bg: rgba(107, 196, 141, 0.16);
-  --medium: #74B3E3;
-  --medium-bg: rgba(116, 179, 227, 0.16);
-  --advanced: #E6A15C;
-  --advanced-bg: rgba(230, 161, 92, 0.16);
-  --expert: #E37567;
-  --expert-bg: rgba(227, 117, 103, 0.16);
+  --easy: #6BC48D; --easy-bg: rgba(107, 196, 141, 0.16);
+  --medium: #74B3E3; --medium-bg: rgba(116, 179, 227, 0.16);
+  --advanced: #E6A15C; --advanced-bg: rgba(230, 161, 92, 0.16);
+  --expert: #E37567; --expert-bg: rgba(227, 117, 103, 0.16);
 
-  --shadow: 0 10px 28px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(231, 199, 102, 0.06);
-  --shadow-soft: 0 4px 14px rgba(0, 0, 0, 0.4);
-  --radius: 16px;
-  --radius-sm: 10px;
+  --shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  --shadow-soft: 0 6px 16px rgba(0, 0, 0, 0.35);
+  --radius: 18px;
+  --radius-sm: 12px;
 }
 
 * { box-sizing: border-box; }
@@ -44,11 +42,20 @@ html, body {
 
 body {
   background:
-    radial-gradient(circle at 15% 10%, rgba(231, 199, 102, 0.10), transparent 45%),
-    radial-gradient(circle at 85% 90%, rgba(231, 199, 102, 0.08), transparent 45%),
-    linear-gradient(160deg, #0f1f1a 0%, #16281f 60%, #1a2e24 100%);
+    radial-gradient(ellipse at 50% -10%, rgba(20, 53, 96, 0.55) 0%, var(--bg-deep) 55%),
+    var(--bg);
   background-attachment: fixed;
   min-height: 100vh;
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(217, 169, 52, 0.05) 0, transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(217, 169, 52, 0.05) 0, transparent 40%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 button {
@@ -69,6 +76,8 @@ button:focus-visible, input:focus-visible {
   align-items: center;
   padding: 20px 14px 40px;
   animation: fadeIn 0.25s ease;
+  position: relative;
+  z-index: 1;
 }
 .screen.active { display: flex; }
 
@@ -92,7 +101,7 @@ button:focus-visible, input:focus-visible {
       var(--gold) 240deg 270deg, transparent 270deg 300deg,
       var(--gold) 300deg 330deg, transparent 330deg 360deg);
   display: flex; align-items: center; justify-content: center;
-  box-shadow: var(--shadow), 0 0 24px rgba(231, 199, 102, 0.25);
+  box-shadow: var(--shadow), 0 0 24px rgba(217, 169, 52, 0.25);
 }
 .seal::before {
   content: '';
@@ -113,7 +122,7 @@ button:focus-visible, input:focus-visible {
   font-weight: 700;
   color: var(--ink);
   margin: 0 0 4px;
-  text-shadow: 0 0 20px rgba(231, 199, 102, 0.25);
+  text-shadow: 0 0 20px rgba(217, 169, 52, 0.25);
 }
 .game-tagline {
   color: var(--ink-soft);
@@ -122,37 +131,83 @@ button:focus-visible, input:focus-visible {
 }
 .menu-buttons { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 320px; }
 
+/* ---------- أزرار ثلاثية الأبعاد بلمعة (استلهامًا من المرجع) ---------- */
 .btn {
   padding: 14px 20px;
   border-radius: var(--radius-sm);
   font-size: 16px;
-  font-weight: 700;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
-  box-shadow: var(--shadow-soft);
+  font-weight: 800;
+  position: relative;
+  isolation: isolate;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
 }
-.btn:active { transform: scale(0.97); }
-.btn-primary { background: var(--gold); color: #241c08; }
-.btn-primary:hover { background: #efd685; box-shadow: 0 4px 20px rgba(231, 199, 102, 0.4); }
-/* دعوة للعب نابضة بخفة على شاشة البداية بس — بقية أزرار primary تفضل ثابتة عشان
-   ميبقاش في نبض مستمر مشتّت أثناء قرارات اللعب الفعلية. */
+.btn:active { transform: translateY(2px) scale(0.98); }
+.btn-primary {
+  color: #241c08;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.5), rgba(255,255,255,0) 45%),
+    linear-gradient(180deg, var(--gold-soft), var(--gold) 55%, var(--gold-dim));
+  border: 1px solid #8a7433;
+  box-shadow:
+    0 2px 0 rgba(255,255,255,.4) inset,
+    0 -2px 0 rgba(0,0,0,.15) inset,
+    0 6px 0 #7a6220,
+    0 14px 22px rgba(0,0,0,.4);
+}
+.btn-primary::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,.55) 48%, transparent 66%);
+  background-size: 220% 100%;
+  background-position: 120% 0;
+  opacity: 0; z-index: -1;
+  transition: opacity .2s ease;
+}
+.btn-primary:hover {
+  filter: brightness(1.05); transform: translateY(-2px);
+  box-shadow: 0 2px 0 rgba(255,255,255,.4) inset, 0 -2px 0 rgba(0,0,0,.15) inset, 0 8px 0 #7a6220, 0 18px 26px rgba(0,0,0,.45);
+}
+.btn-primary:hover::after { opacity: 1; animation: sheen 1.1s ease forwards; }
+@keyframes sheen { from { background-position: 120% 0; } to { background-position: -40% 0; } }
+.btn-primary:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 rgba(255,255,255,.3) inset, 0 -2px 0 rgba(0,0,0,.15) inset, 0 2px 0 #7a6220, 0 6px 12px rgba(0,0,0,.35);
+}
+/* دعوة للعب نابضة بخفة على شاشة البداية بس. */
 #btn-start-new { animation: ctaPulse 2.2s ease-in-out infinite; }
 @keyframes ctaPulse {
-  0%, 100% { box-shadow: var(--shadow-soft); }
-  50% { box-shadow: var(--shadow-soft), 0 0 22px rgba(231, 199, 102, 0.5); }
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.12); }
 }
-.btn-secondary { background: var(--surface); color: var(--ink); border: 1.5px solid var(--line); }
-.btn-secondary:hover { background: var(--surface-2); }
-.btn-danger { background: var(--expert); color: #fff; }
+.btn-secondary {
+  color: var(--gold-soft);
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 6px 0 #082038, 0 14px 22px rgba(0,0,0,.4);
+}
+.btn-secondary:hover {
+  border-color: var(--gold); transform: translateY(-2px);
+  box-shadow: 0 1px 0 rgba(255,255,255,.08) inset, 0 8px 0 #082038, 0 18px 26px rgba(0,0,0,.45), 0 0 18px rgba(217,169,52,.22);
+}
+.btn-secondary:active {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 2px 0 #082038, 0 6px 12px rgba(0,0,0,.35);
+}
+.btn-danger { background: var(--expert); color: #fff; box-shadow: var(--shadow-soft); }
 .btn-block { width: 100%; }
-.btn-sm { padding: 8px 14px; font-size: 13px; border-radius: 8px; }
-.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-sm { padding: 9px 16px; font-size: 13px; border-radius: 10px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; filter: none !important; transform: none !important; }
+.btn .icn { display: inline-flex; }
+.btn .icn svg { display: block; }
 
 /* ---------- الإعداد ---------- */
 .setup-card, .panel-card {
-  background: var(--surface);
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
   border-radius: var(--radius);
   padding: 20px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.04);
   width: 100%;
   max-width: 480px;
   border: 1px solid var(--line);
@@ -160,7 +215,7 @@ button:focus-visible, input:focus-visible {
 .section-title {
   font-size: 15px;
   font-weight: 700;
-  color: var(--gold);
+  color: var(--gold-soft);
   margin: 18px 0 8px;
 }
 .section-title:first-child { margin-top: 0; }
@@ -169,20 +224,20 @@ button:focus-visible, input:focus-visible {
 .pill {
   padding: 9px 16px;
   border-radius: 999px;
-  border: 1.5px solid var(--line);
-  background: var(--surface-2);
+  border: 1px solid var(--line);
+  background: var(--bg-deep);
   color: var(--ink);
   font-size: 14px;
   font-weight: 600;
 }
-.pill.selected { background: var(--gold); color: #241c08; border-color: var(--gold); box-shadow: 0 0 14px rgba(231, 199, 102, 0.35); }
+.pill.selected { background: var(--gold); color: #241c08; border-color: var(--gold); box-shadow: 0 0 14px rgba(217, 169, 52, 0.35); }
 
 .name-inputs { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 .name-inputs input {
   padding: 10px 12px;
   border-radius: var(--radius-sm);
-  border: 1.5px solid var(--line);
-  background: var(--surface-2);
+  border: 1px solid var(--line);
+  background: var(--bg-deep);
   font-family: inherit;
   font-size: 14px;
   color: var(--ink);
@@ -198,12 +253,12 @@ button:focus-visible, input:focus-visible {
 
 /* ---------- شاشة اللعب ---------- */
 .play-screen { padding: 10px 8px 290px; width: 100%; max-width: 720px; }
-/* شريط التحكّم العلوي: أزرار التحكّم أولًا وفي المنتصف (أهم عنصر بصريًا، أعلى الشاشة)،
-   وتحتها معلومات الجولة/الصعوبة كصف ثانوي أصغر — بدل التوزيع الجانبي القديم. */
+/* شريط التحكّم العلوي: أزرار التحكّم أولًا وفي المنتصف، وتحتها معلومات الجولة/الصعوبة. */
 .top-bar {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  background: var(--surface); border-radius: var(--radius-sm);
-  padding: 12px 14px; box-shadow: var(--shadow-soft);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border-radius: var(--radius);
+  padding: 12px 14px; box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,.04);
   width: 100%; margin-bottom: 10px;
   border: 1px solid var(--line);
   animation: slideDown 0.35s ease;
@@ -211,44 +266,46 @@ button:focus-visible, input:focus-visible {
 .top-bar-info { display: flex; gap: 14px; align-items: center; font-size: 13px; color: var(--ink-soft); flex-wrap: wrap; justify-content: center; }
 .top-bar-info b { color: var(--ink); }
 .diff-badge {
-  padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff;
+  padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff;
+  background: linear-gradient(180deg, rgba(90,160,230,.28), rgba(90,160,230,.08));
+  border: 1px solid rgba(120,180,230,.4);
 }
-.diff-badge.easy { background: var(--easy); color: #0d2417; }
-.diff-badge.medium { background: var(--medium); color: #0d2032; }
-.diff-badge.advanced { background: var(--advanced); color: #2e1a06; }
-.diff-badge.expert { background: var(--expert); }
+.diff-badge.easy { background: linear-gradient(180deg, rgba(107,196,141,.3), rgba(107,196,141,.08)); border-color: rgba(107,196,141,.5); color: var(--easy); }
+.diff-badge.medium { background: linear-gradient(180deg, rgba(116,179,227,.3), rgba(116,179,227,.08)); border-color: rgba(116,179,227,.5); color: var(--medium); }
+.diff-badge.advanced { background: linear-gradient(180deg, rgba(230,161,92,.3), rgba(230,161,92,.08)); border-color: rgba(230,161,92,.5); color: var(--advanced); }
+.diff-badge.expert { background: linear-gradient(180deg, rgba(227,117,103,.3), rgba(227,117,103,.08)); border-color: rgba(227,117,103,.5); color: var(--expert); }
 .top-bar-actions { display: flex; gap: 10px; justify-content: center; }
 
 @keyframes slideDown {
   from { opacity: 0; transform: translateY(-14px); }
   to { opacity: 1; transform: translateY(0); }
 }
-/* ميدالية ذهبية مزدوجة الحلقة — نفس لغة .royal-icon-frame على كروت القضية/الحكم،
-   مطبَّقة هنا على أزرار التحكّم عشان الهوية الملكية تبقى متسقة في كل عناصر الواجهة. */
+
+/* أزرار التحكّم "بوابة" كحلية مضيئة عند التفاعل — نفس لغة المرجع. */
 .icon-btn {
-  width: 38px; height: 38px; border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, rgba(231, 199, 102, 0.16), var(--surface-2) 72%);
-  border: 2px solid var(--gold);
+  width: 40px; height: 40px; border-radius: 50%;
+  background: radial-gradient(circle at 30% 25%, #1d4a76, #0a2138);
+  border: 1px solid var(--line);
   font-size: 16px; display: flex; align-items: center; justify-content: center;
   color: var(--gold-soft);
-  box-shadow: inset 0 0 0 2px var(--bg-deep), var(--shadow-soft), 0 0 8px rgba(231, 199, 102, 0.15);
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
 }
 .icon-btn svg { display: block; }
-.icon-btn:hover { box-shadow: inset 0 0 0 2px var(--bg-deep), var(--shadow-soft), 0 0 16px rgba(231, 199, 102, 0.4); transform: translateY(-1px); }
+.icon-btn:hover { transform: translateY(-2px); border-color: var(--gold); box-shadow: 0 6px 16px rgba(217, 169, 52, 0.25); }
 .icon-btn:active { transform: translateY(0) scale(0.94); }
 
-/* صف اللاعبين يتراكب على حافة الطاولة العلوية (margin سالب) بترتيب متعرّج خفيف —
-   إيحاء بصري إن كل لاعب "قاعد" حوالين الطاولة بدل صف مسطّح فوقها. */
+/* صف اللاعبين يتراكب على حافة الطاولة العلوية بترتيب متعرّج خفيف. */
 .players-row {
   display: flex; gap: 10px; flex-wrap: wrap; width: 100%;
   margin-bottom: -26px; justify-content: center; position: relative; z-index: 2;
 }
 .player-chip {
-  background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius-sm);
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
   padding: 8px 12px; font-size: 13px; min-width: 90px; text-align: center;
   box-shadow: var(--shadow-soft);
   display: flex; flex-direction: column; align-items: center; gap: 1px;
+  transition: box-shadow .25s ease, border-color .25s ease, transform .25s ease;
 }
 .player-chip:nth-child(odd) { transform: translateY(-5px); }
 .player-chip:nth-child(even) { transform: translateY(5px); }
@@ -258,55 +315,59 @@ button:focus-visible, input:focus-visible {
   animation: turnPulse 1.6s ease-in-out infinite;
 }
 @keyframes turnPulse {
-  0%, 100% { box-shadow: 0 0 0 2px var(--gold), 0 0 14px rgba(231, 199, 102, 0.35); }
-  50% { box-shadow: 0 0 0 2px var(--gold), 0 0 24px rgba(231, 199, 102, 0.65); }
+  0%, 100% { box-shadow: 0 0 0 1px var(--gold), 0 0 16px rgba(217, 169, 52, 0.32); }
+  50% { box-shadow: 0 0 0 1px var(--gold-soft), 0 0 26px rgba(217, 169, 52, 0.6); }
 }
+/* أفاتار مخروطي الذهب للاعب صاحب الدور، وكحلي لبقية اللاعبين — تمييز فوري بالحالة. */
 .p-avatar {
   width: 38px; height: 38px; border-radius: 50%;
-  background: var(--avatar-color, var(--gold));
-  color: #fff; font-weight: 800; font-size: 16px;
   display: flex; align-items: center; justify-content: center;
-  border: 2px solid var(--surface); box-shadow: var(--shadow-soft);
-  margin-bottom: 3px;
+  font-weight: 900; font-size: 15px; color: #241c08;
+  background: conic-gradient(from 210deg, var(--gold-soft), var(--gold), var(--gold-dim), var(--gold-soft));
+  border: 2px solid rgba(0,0,0,.25);
+  margin-bottom: 3px; flex-shrink: 0;
 }
-.player-chip.active-turn .p-avatar { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(231, 199, 102, 0.4); }
+.player-chip:not(.active-turn) .p-avatar {
+  background: conic-gradient(from 210deg, #5a9fd6, #2c5f8f, #1a3a58, #5a9fd6);
+  color: #eaf4ff;
+}
 .player-chip .p-name { font-weight: 700; display: block; }
 .player-chip .p-score { color: var(--ink-soft); font-size: 12px; }
-.player-chip .p-balance { display: block; font-size: 11px; color: var(--gold); font-weight: 700; }
+.player-chip .p-balance { display: block; font-size: 11px; color: var(--gold-soft); font-weight: 700; }
 .player-chip .p-state { font-size: 11px; margin-top: 2px; font-weight: 700; color: var(--ink-soft); }
 .player-chip .p-state.state-picking { color: var(--easy); }
-.player-chip .p-state.state-ready { color: var(--gold); }
+.player-chip .p-state.state-ready { color: var(--gold-soft); }
 .player-chip .p-state.state-waiting { color: var(--ink-soft); font-weight: 400; }
 
-/* "طاولة اللعب": سطح غامق بملمس شعوري (felt) + حافة ذهبية سميكة + إطار داخلي ثانٍ،
-   عشان تحس إنك قاعد على طاولة حقيقية مش مجرد صندوق محتوى. padding-top زاد عشان
-   يستوعب صف اللاعبين المتراكب على الحافة العلوية (margin سالب في .players-row). */
+/* "طاولة اللعب": لوح كحلي غامق بحافة ذهبية + نقشة زخرفية خفيفة، تحمل كروت القضية. */
 .table-area {
   position: relative;
   width: 100%;
   background:
-    radial-gradient(ellipse at 50% 15%, rgba(231, 199, 102, 0.08), transparent 60%),
-    radial-gradient(ellipse at center, var(--bg-deep) 0%, #0a1712 100%);
-  border-radius: 40px;
+    radial-gradient(ellipse at 50% 0%, rgba(217, 169, 52, 0.10), transparent 60%),
+    linear-gradient(180deg, var(--surface-2), var(--surface) 65%);
+  border-radius: 30px;
   padding: 40px 18px 20px;
   display: flex; flex-direction: column; align-items: center; gap: 12px;
-  box-shadow: var(--shadow-soft) inset, 0 0 26px rgba(0, 0, 0, 0.3) inset;
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.04);
   margin-bottom: 12px; min-height: 180px;
-  border: 3px solid var(--gold);
+  border: 1px solid var(--line);
+  overflow: hidden;
 }
 .table-area::before {
   content: '';
-  position: absolute; inset: 8px;
-  border: 1px solid rgba(231, 199, 102, 0.3);
-  border-radius: 32px;
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84'%3E%3Cg fill='none' stroke='%23d9a934' stroke-opacity='0.06' stroke-width='1'%3E%3Cpath d='M42 0 L84 42 L42 84 L0 42 Z'/%3E%3Ccircle cx='42' cy='42' r='18'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 84px 84px;
+  opacity: .7;
   pointer-events: none;
 }
-.table-cards { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
-.revealed-heirs { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; min-height: 90px; }
+.table-cards { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; position: relative; }
+.revealed-heirs { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; min-height: 90px; position: relative; }
 
 .card {
   width: 108px; height: 150px; border-radius: 14px; background: var(--surface);
-  box-shadow: var(--shadow); border: 1.5px solid var(--line);
+  box-shadow: var(--shadow); border: 1px solid var(--line);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 8px; position: relative; user-select: none;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -317,9 +378,7 @@ button:focus-visible, input:focus-visible {
 .card .card-name { font-weight: 700; font-size: 14px; text-align: center; color: var(--ink); }
 .card.small .card-name { font-size: 11px; }
 .card .card-sub { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
-/* دائرة ملوَّنة خلف أيقونة الوارث — لون مختلف لكل نوع (من heir.color في data.js)، زي ألوان
-   بدلات الورق في لعبة الكوتشينة، عشان الطفل يميّز نوع الوارث من أول نظرة باللون مش بس بالنص.
-   تُستخدَم بس لو مفيش صورة حقيقية للوارث (احتياطي، الجوكر مثلًا). */
+/* دائرة ملوَّنة خلف أيقونة الوارث — احتياطي لو مفيش صورة حقيقية (الجوكر مثلًا). */
 .card-icon-badge {
   width: 46px; height: 46px; border-radius: 50%;
   background: var(--card-color, var(--gold-soft));
@@ -330,17 +389,15 @@ button:focus-visible, input:focus-visible {
 .card.small .card-icon-badge { width: 34px; height: 34px; margin-bottom: 3px; }
 .card.small .card-icon-badge .card-icon { font-size: 18px; }
 
-/* بطاقة الوارث بصورة حقيقية: الصورة نفسها هي تصميم الكارت الكامل (حدود ذهبية + اسم
-   مطبوعين عليها من التصميم الأصلي)، فتُعرض كاملة بلا أي قص (object-fit: contain) وبلا
-   نص مكرر من عندنا — الكارت بيبقى مجرّد إطار حوالين الصورة، والخلفية غامقة (طاولة اللعب)
-   بدل الكريمي عشان تندمج مع الهوية الجديدة لو ظهر أي هامش حوالين الصورة. */
+/* بطاقة الوارث بصورة حقيقية: الصورة نفسها هي تصميم الكارت الكامل، فتُعرض كاملة بلا
+   أي قص (object-fit: contain) وبلا نص مكرر من عندنا. */
 .card.has-photo { padding: 0; overflow: hidden; background: var(--surface); display: flex; flex-direction: column; }
 .card.has-photo .card-portrait-full { width: 100%; flex: 1 1 auto; min-height: 0; object-fit: contain; display: block; }
 .card.has-photo .card-sub { padding: 4px 4px 6px; text-align: center; background: var(--surface-2); flex-shrink: 0; margin-top: 0; }
 .card.has-photo .info-btn { z-index: 2; }
-.card.selectable:hover { transform: translateY(-6px); box-shadow: var(--shadow), 0 0 16px rgba(231, 199, 102, 0.2); }
+.card.selectable:hover { transform: translateY(-6px); box-shadow: var(--shadow), 0 0 16px rgba(217, 169, 52, 0.2); }
 .card.selected {
-  border-color: var(--gold); box-shadow: 0 0 0 3px rgba(231, 199, 102, 0.5), 0 0 20px rgba(231, 199, 102, 0.4);
+  border-color: var(--gold); box-shadow: 0 0 0 3px rgba(217, 169, 52, 0.5), 0 0 20px rgba(217, 169, 52, 0.4);
   animation: cardPop 0.3s ease;
 }
 @keyframes cardPop {
@@ -348,15 +405,11 @@ button:focus-visible, input:focus-visible {
   45% { transform: scale(1.08) translateY(-4px); }
   100% { transform: scale(1); }
 }
-/* دخول متدرّج لكروت اليد عند عرضها (كل كارت يدخل بعد اللي قبله بفاصل بسيط، ضبطه
-   inline بـ animation-delay من renderHandForCurrentPlayer() في app.js). */
 .card-deal { animation: cardDeal 0.35s ease backwards; }
 @keyframes cardDeal {
   from { opacity: 0; transform: translateY(18px) scale(0.92); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
-/* بطاقة "غير مناسبة" للحالة الحالية: تبقى قابلة للاختيار عمدًا (اختيارها لا يُحسب له نقاط
-   ويُخبَر اللاعب أنه أخطأ عند إعلان توزيع التركة) — تُعرض بتنبيه بصري واضح، لا معطَّلة. */
 .card.disallowed { border: 1.5px dashed var(--advanced); background: var(--advanced-bg); }
 .card.disallowed .card-icon-badge, .card.disallowed .card-name { opacity: 0.55; }
 .card.disallowed::after {
@@ -366,7 +419,7 @@ button:focus-visible, input:focus-visible {
 }
 .card.blocked { opacity: 0.45; }
 .card .info-btn {
-  position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; border-radius: 50%;
+  position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 50%;
   background: var(--surface-2); font-size: 11px; border: 1px solid var(--line); color: var(--ink-soft);
 }
 
@@ -376,25 +429,48 @@ button:focus-visible, input:focus-visible {
   to { transform: rotateY(0deg); opacity: 1; }
 }
 
-.estate-card { background: linear-gradient(160deg, var(--surface), rgba(231, 199, 102, 0.14)); }
+.estate-card { background: linear-gradient(160deg, var(--surface), rgba(217, 169, 52, 0.14)); }
 .estate-card.tier-3, .estate-card.tier-4 { background: linear-gradient(160deg, var(--gold-soft), var(--gold)); color: #2e2308; }
 .estate-card.tier-3 .card-sub, .estate-card.tier-4 .card-sub { color: #2e2308; }
-.estate-card .card-value { font-size: 26px; font-weight: 800; }
+.estate-card .card-value { font-family: 'Georgia', serif; font-size: 30px; font-weight: 800; }
 
-/* ---------- الإطار الملكي الكلاسيكي: كارت القضية وكارت الحكم ---------- */
-.royal-card, .judgment-card.royal-card {
-  border: 2px solid var(--gold) !important;
-  position: relative;
-  box-shadow: var(--shadow), 0 0 20px rgba(231, 199, 102, 0.12);
+/* ---------- كارت "نيتشة" (محراب) لكروت القضية والتركة — قوس علوي بدل المستطيل ---------- */
+.royal-card { position: relative; }
+.niche-card {
+  border-radius: 90px 90px 16px 16px !important;
+  border: 1px solid var(--gold-dim) !important;
+  padding: 26px 14px 16px !important;
+  box-shadow: 0 10px 24px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,255,255,.02) !important;
 }
-.royal-card::before {
+.niche-card::before {
   content: '';
-  position: absolute; inset: 5px;
-  border: 1px solid var(--gold-soft);
-  border-radius: 10px;
-  pointer-events: none;
-  opacity: 0.6;
+  position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
+  width: 70%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
 }
+.niche-tag {
+  position: absolute; top: 12px; right: 14px;
+  font-size: 9.5px; font-weight: 700; color: var(--gold-dim); letter-spacing: .4px;
+}
+.royal-icon-frame {
+  width: 54px; height: 54px; margin: 2px auto 10px;
+  border-radius: 50%; flex-shrink: 0;
+  background: radial-gradient(circle at 35% 30%, var(--gold-soft), var(--gold) 55%, var(--gold-dim));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; overflow: hidden; color: #241c08;
+  box-shadow: 0 6px 16px rgba(217, 169, 52, 0.4), inset 0 2px 4px rgba(255,255,255,.4);
+}
+.judgment-card-back .royal-icon-frame {
+  background: rgba(255,255,255,0.18); color: #fff; box-shadow: inset 0 0 0 3px rgba(255,255,255,0.35);
+}
+.royal-card-title {
+  font-weight: 800; font-size: 14px; color: var(--ink); text-align: center; padding: 0 4px;
+}
+.judgment-card .royal-icon-frame { width: 66px; height: 66px; font-size: 32px; }
+.gallery-row .royal-icon-frame { width: 42px; height: 42px; font-size: 20px; margin-bottom: 5px; }
+
+/* بطاقة الحكم تفضل شكل كارت مستطيل تقليدي (مش نيتشة) — عندها زخارف أركان خاصة بيها. */
+.judgment-card.royal-card { border: 2px solid var(--gold) !important; box-shadow: var(--shadow), 0 0 20px rgba(217, 169, 52, 0.12); }
 .royal-corner {
   position: absolute; font-size: 10px; color: var(--gold); line-height: 1;
   pointer-events: none; z-index: 1;
@@ -404,67 +480,64 @@ button:focus-visible, input:focus-visible {
 .royal-corner.bl { bottom: 7px; left: 7px; }
 .royal-corner.br { bottom: 7px; right: 7px; }
 .judgment-card-back .royal-corner { color: rgba(255,255,255,0.85); }
-
-.royal-icon-frame {
-  width: 58px; height: 58px; margin: 2px auto 8px;
-  border-radius: 50%; border: 2px solid var(--gold);
-  background: var(--bg-deep); flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 28px; overflow: hidden;
-  box-shadow: inset 0 0 0 3px var(--surface), var(--shadow-soft), 0 0 14px rgba(231, 199, 102, 0.25);
-}
-.royal-icon-frame img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
-.judgment-card-back .royal-icon-frame {
-  background: rgba(255,255,255,0.15); border-color: #fff; color: #fff;
-  box-shadow: inset 0 0 0 3px rgba(255,255,255,0.35);
-}
-
-.royal-card-title {
-  font-weight: 800; font-size: 14px; color: var(--ink); text-align: center; padding: 0 4px;
-}
-.royal-card-title::before, .royal-card-title::after {
+.judgment-card.royal-card .royal-card-title::before, .judgment-card.royal-card .royal-card-title::after {
   content: '✦'; color: var(--gold); font-size: 9px; margin: 0 5px; display: inline-block;
 }
-.judgment-card .royal-icon-frame { width: 68px; height: 68px; font-size: 32px; }
-.gallery-row .royal-icon-frame { width: 42px; height: 42px; font-size: 20px; margin-bottom: 5px; }
-.gallery-row .royal-card-title::before, .gallery-row .royal-card-title::after { font-size: 8px; margin: 0 3px; }
 
-.status-card.gender-male { border-top: 6px solid var(--medium); }
-.status-card.gender-female { border-top: 6px solid #E387B0; }
+.status-card.gender-male { border-top: 4px solid var(--medium); }
+.status-card.gender-female { border-top: 4px solid #E387B0; }
 
 .pass-overlay {
-  position: fixed; inset: 0; background: rgba(10, 20, 16, 0.94);
+  position: fixed; inset: 0; background: rgba(4, 15, 33, 0.94);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   color: #fff; z-index: 50; text-align: center; padding: 20px; gap: 16px;
 }
 .pass-overlay h2 { font-size: 22px; margin: 0; }
-.pass-overlay .next-player-name { color: var(--gold-soft); font-size: 26px; font-weight: 800; text-shadow: 0 0 20px rgba(231, 199, 102, 0.4); }
+.pass-overlay .next-player-name { color: var(--gold-soft); font-size: 26px; font-weight: 800; text-shadow: 0 0 20px rgba(217, 169, 52, 0.4); }
 
 .hand-area {
-  position: fixed; bottom: 0; right: 0; left: 0; background: var(--surface);
-  border-top: 2px solid var(--line); padding: 10px 10px 14px; box-shadow: 0 -10px 24px rgba(0,0,0,0.35);
+  position: fixed; bottom: 0; right: 0; left: 0;
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border-top: 1px solid var(--line); padding: 10px 10px 14px; box-shadow: 0 -10px 24px rgba(0,0,0,0.4);
   z-index: 20;
 }
 .hand-label {
   text-align: center; font-size: 11px; font-weight: 700; color: var(--ink-soft);
   letter-spacing: 0.3px; margin-bottom: 4px;
 }
-.hand-cards { display: flex; gap: 14px; overflow-x: auto; justify-content: center; padding: 6px 6px 18px; }
-/* كروت اليد كبيرة وكاملة الظهور (بلا قص) — الأولوية لوضوح الصورة للأطفال وقت اللعب. */
-.hand-cards .card.small { width: 132px; height: 193px; flex-shrink: 0; }
+/* كروت اليد "مروَّحة" زي ماسك ورق حقيقي — كل كارت بميل مختلف ويتراكب مع اللي جنبه،
+   وترتفع وتستوي لما تتحوّم/تتاختار عليها. */
+.hand-cards {
+  display: flex; justify-content: center; align-items: flex-end;
+  flex-wrap: nowrap; padding: 34px 10px 14px; position: relative;
+}
+.hand-cards .card.small {
+  width: 128px; height: 187px; flex-shrink: 0;
+  margin-left: -50px; transform-origin: bottom center;
+  transition: transform 0.3s cubic-bezier(.2,.8,.3,1.2), box-shadow 0.3s ease;
+}
+.hand-cards .card.small:first-child { margin-left: 0; }
+.hand-cards .card.small.card-deal { transition: none; }
+.hand-cards .card.small:nth-child(1) { transform: rotate(-9deg) translateY(10px); z-index: 1; }
+.hand-cards .card.small:nth-child(2) { transform: rotate(-3deg) translateY(0); z-index: 2; }
+.hand-cards .card.small:nth-child(3) { transform: rotate(3deg) translateY(0); z-index: 3; }
+.hand-cards .card.small:nth-child(4) { transform: rotate(9deg) translateY(10px); z-index: 4; }
+.hand-cards .card.small:hover { transform: translateY(-24px) rotate(0deg) scale(1.05) !important; z-index: 20; box-shadow: 0 20px 36px rgba(0,0,0,.5); }
+.hand-cards .card.small.selected { transform: translateY(-28px) rotate(0deg) scale(1.06) !important; z-index: 21; animation: none; }
+.hand-cards .card.small .info-btn { top: 4px; left: 4px; right: auto; }
 .hand-cards .card.small .card-name { font-size: 13px; }
 .revealed-heirs .card.small { width: 104px; height: 152px; }
 .hand-actions { display: flex; gap: 8px; justify-content: center; }
 
 .moving-point {
   position: fixed; width: 18px; height: 18px; border-radius: 50%; background: var(--gold);
-  box-shadow: 0 0 0 2px #fff, 0 0 12px rgba(231, 199, 102, 0.6); z-index: 60; pointer-events: none;
+  box-shadow: 0 0 0 2px #fff, 0 0 12px rgba(217, 169, 52, 0.6); z-index: 60; pointer-events: none;
 }
 
 /* ---------- نتيجة الجولة ---------- */
 .result-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0; }
 .result-table th, .result-table td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: center; color: var(--ink); }
-.result-table th { color: var(--gold); font-size: 12px; }
+.result-table th { color: var(--gold-soft); font-size: 12px; }
 .status-tag { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; display: inline-block; color: var(--ink); border: 1.5px solid transparent; }
 .status-tag.inherits { background: var(--easy-bg); border-color: var(--easy); }
 .status-tag.blocked { background: var(--expert-bg); border-color: var(--expert); }
@@ -482,19 +555,19 @@ button:focus-visible, input:focus-visible {
 
 /* ---------- نهاية المباراة ---------- */
 .winner-banner { text-align: center; margin-bottom: 14px; }
-.winner-banner .trophy { font-size: 48px; filter: drop-shadow(0 0 16px rgba(231, 199, 102, 0.5)); }
+.winner-banner .trophy { font-size: 48px; filter: drop-shadow(0 0 16px rgba(217, 169, 52, 0.5)); }
 .winner-banner h2 { margin: 6px 0 2px; color: var(--ink); }
 .rank-list { list-style: none; padding: 0; margin: 0; width: 100%; }
 .rank-list li {
   display: flex; justify-content: space-between; padding: 10px 12px; border-radius: var(--radius-sm);
   background: var(--surface); border: 1px solid var(--line); margin-bottom: 6px; font-size: 14px; color: var(--ink);
 }
-.rank-list li.first { border-color: var(--gold); box-shadow: 0 0 14px rgba(231, 199, 102, 0.3); font-weight: 700; }
+.rank-list li.first { border-color: var(--gold); box-shadow: 0 0 14px rgba(217, 169, 52, 0.3); font-weight: 700; }
 
 /* ---------- الأدلة ---------- */
 .guide-list { display: flex; flex-direction: column; gap: 10px; width: 100%; }
 .guide-item { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; }
-.guide-item h4 { margin: 0 0 4px; color: var(--gold); }
+.guide-item h4 { margin: 0 0 4px; color: var(--gold-soft); }
 .guide-item p { margin: 0; font-size: 13px; color: var(--ink-soft); }
 
 .top-nav { width: 100%; max-width: 480px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
@@ -503,16 +576,16 @@ button:focus-visible, input:focus-visible {
 /* ---------- احسب حالتك (الحلّال التفاعلي) ---------- */
 .solver-estate-input {
   width: 100%; padding: 10px 12px; margin-top: 8px;
-  border-radius: var(--radius-sm); border: 1.5px solid var(--line);
-  background: var(--surface-2); font-family: inherit; font-size: 16px; color: var(--ink);
+  border-radius: var(--radius-sm); border: 1px solid var(--line);
+  background: var(--bg-deep); font-family: inherit; font-size: 16px; color: var(--ink);
 }
 .solver-heir-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 .solver-heir-row {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  background: var(--surface-2); border: 1.5px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg-deep); border: 1px solid var(--line); border-radius: var(--radius-sm);
   padding: 10px 12px;
 }
-.solver-heir-row.checked { border-color: var(--gold); background: rgba(231, 199, 102, 0.12); }
+.solver-heir-row.checked { border-color: var(--gold); background: rgba(217, 169, 52, 0.12); }
 .solver-heir-label { display: flex; align-items: center; gap: 10px; flex: 1; cursor: pointer; }
 .solver-heir-label input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--gold); cursor: pointer; }
 .solver-heir-label .heir-icon { font-size: 22px; }
@@ -520,16 +593,16 @@ button:focus-visible, input:focus-visible {
 .solver-stepper { display: flex; align-items: center; gap: 8px; }
 .solver-stepper button {
   width: 32px; height: 32px; border-radius: 8px; background: var(--surface);
-  border: 1.5px solid var(--line); font-size: 16px; font-weight: 700; color: var(--ink);
+  border: 1px solid var(--line); font-size: 16px; font-weight: 700; color: var(--ink);
 }
 .solver-stepper button:disabled { opacity: 0.4; }
 .solver-stepper .count { min-width: 20px; text-align: center; font-weight: 700; color: var(--ink); }
 
 .ayah-box {
   background: var(--bg-deep); border-radius: var(--radius-sm); padding: 14px 16px;
-  margin-top: 10px; border: 1.5px solid var(--gold-soft);
+  margin-top: 10px; border: 1px solid var(--gold-dim);
 }
-.ayah-box .ayah-ref { color: var(--gold); font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+.ayah-box .ayah-ref { color: var(--gold-soft); font-weight: 700; font-size: 13px; margin-bottom: 6px; }
 .ayah-box .ayah-text { font-size: 16px; line-height: 2; color: var(--ink); }
 .ayah-box .ayah-note { font-size: 12px; color: var(--ink-soft); margin-top: 8px; border-top: 1px dashed var(--line); padding-top: 8px; }
 
@@ -540,8 +613,7 @@ button:focus-visible, input:focus-visible {
 .muted { color: var(--ink-soft); font-size: 12px; }
 .center-text { text-align: center; }
 
-/* ---------- شاشة فاصل الأحكام: هوية بصرية مختلفة عن شاشة القضية (دافئة داكنة مقابل
-   الأخضر الغامق البارد للعبة نفسها، مع بقاء الفخامة الذهبية موحّدة بين الاتنين) ---------- */
+/* ---------- شاشة فاصل الأحكام: هوية دافئة داكنة مقابل الكحلي البارد للعبة نفسها ---------- */
 .judgment-screen {
   background:
     radial-gradient(circle at 25% 15%, rgba(231, 214, 168, 0.20), transparent 55%),
@@ -560,7 +632,7 @@ button:focus-visible, input:focus-visible {
 /* ---------- بطاقة الحكم (محاكاة كارت لعب فعلي) ---------- */
 .judgment-card {
   width: 240px; height: 336px; border-radius: 16px; box-shadow: var(--shadow);
-  border: 1.5px solid var(--line); overflow: hidden; margin: 0 auto;
+  border: 1px solid var(--line); overflow: hidden; margin: 0 auto;
 }
 .judgment-card-back {
   width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -576,7 +648,7 @@ button:focus-visible, input:focus-visible {
 .judgment-card-fact { font-size: 12px; color: var(--ink-soft); font-style: italic; background: var(--medium-bg); border-radius: var(--radius-sm); padding: 8px 10px; }
 .judgment-card-ruling {
   font-size: 14px; font-weight: 700; color: var(--gold-soft);
-  background: rgba(231, 199, 102, 0.12); border: 1px solid var(--gold);
+  background: rgba(217, 169, 52, 0.12); border: 1px solid var(--gold);
   border-radius: var(--radius-sm); padding: 10px 12px; text-align: center; margin-top: auto;
 }
 
@@ -589,12 +661,18 @@ button:focus-visible, input:focus-visible {
 .gallery-row .judgment-card-fact { font-size: 10px; padding: 6px 8px; }
 .gallery-row .judgment-card-ruling { font-size: 12px; padding: 8px 10px; }
 .gallery-row .judgment-card-back-label { font-size: 13px; }
+.gallery-row .niche-card { width: 150px; min-height: 170px; }
 
 @media (max-width: 420px) {
   .card { width: 92px; height: 130px; }
   .card.small { width: 68px; height: 96px; }
   .game-title { font-size: 28px; }
   .judgment-card { width: 200px; height: 280px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-chip.active-turn, #btn-start-new, .top-bar, .card-deal { animation: none; }
+  .btn, .icon-btn, .card, .niche-card, .hand-cards .card.small { transition: none; }
 }
 
 .hidden { display: none !important; }

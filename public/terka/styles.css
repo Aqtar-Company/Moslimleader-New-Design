@@ -212,17 +212,29 @@ button:focus-visible, input:focus-visible {
   width: 36px; height: 36px; border-radius: 50%;
   background: var(--surface-2); border: 1px solid var(--line);
   font-size: 16px; display: flex; align-items: center; justify-content: center;
-  color: var(--ink);
+  color: var(--ink); transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
+.icon-btn svg { display: block; }
+.icon-btn:hover { border-color: var(--gold); box-shadow: 0 0 10px rgba(231, 199, 102, 0.25); color: var(--gold); }
 
-.players-row { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; margin-bottom: 10px; justify-content: center; }
+/* صف اللاعبين يتراكب على حافة الطاولة العلوية (margin سالب) بترتيب متعرّج خفيف —
+   إيحاء بصري إن كل لاعب "قاعد" حوالين الطاولة بدل صف مسطّح فوقها. */
+.players-row {
+  display: flex; gap: 10px; flex-wrap: wrap; width: 100%;
+  margin-bottom: -26px; justify-content: center; position: relative; z-index: 2;
+}
 .player-chip {
   background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius-sm);
   padding: 8px 12px; font-size: 13px; min-width: 90px; text-align: center;
   box-shadow: var(--shadow-soft);
   display: flex; flex-direction: column; align-items: center; gap: 1px;
 }
-.player-chip.active-turn { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold), 0 0 16px rgba(231, 199, 102, 0.35); }
+.player-chip:nth-child(odd) { transform: translateY(-5px); }
+.player-chip:nth-child(even) { transform: translateY(5px); }
+.player-chip.active-turn {
+  border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold), 0 0 18px rgba(231, 199, 102, 0.4);
+  transform: translateY(-8px) scale(1.04);
+}
 .p-avatar {
   width: 38px; height: 38px; border-radius: 50%;
   background: var(--avatar-color, var(--gold));
@@ -240,11 +252,28 @@ button:focus-visible, input:focus-visible {
 .player-chip .p-state.state-ready { color: var(--gold); }
 .player-chip .p-state.state-waiting { color: var(--ink-soft); font-weight: 400; }
 
+/* "طاولة اللعب": سطح غامق بملمس شعوري (felt) + حافة ذهبية سميكة + إطار داخلي ثانٍ،
+   عشان تحس إنك قاعد على طاولة حقيقية مش مجرد صندوق محتوى. padding-top زاد عشان
+   يستوعب صف اللاعبين المتراكب على الحافة العلوية (margin سالب في .players-row). */
 .table-area {
-  width: 100%; background: var(--bg-deep); border-radius: var(--radius);
-  padding: 18px; display: flex; flex-direction: column; align-items: center; gap: 12px;
-  box-shadow: var(--shadow-soft) inset; margin-bottom: 12px; min-height: 180px;
-  border: 1px solid var(--line);
+  position: relative;
+  width: 100%;
+  background:
+    radial-gradient(ellipse at 50% 15%, rgba(231, 199, 102, 0.08), transparent 60%),
+    radial-gradient(ellipse at center, var(--bg-deep) 0%, #0a1712 100%);
+  border-radius: 40px;
+  padding: 40px 18px 20px;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  box-shadow: var(--shadow-soft) inset, 0 0 26px rgba(0, 0, 0, 0.3) inset;
+  margin-bottom: 12px; min-height: 180px;
+  border: 3px solid var(--gold);
+}
+.table-area::before {
+  content: '';
+  position: absolute; inset: 8px;
+  border: 1px solid rgba(231, 199, 102, 0.3);
+  border-radius: 32px;
+  pointer-events: none;
 }
 .table-cards { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
 .revealed-heirs { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; min-height: 90px; }

@@ -1183,8 +1183,11 @@ function initEndScreen() {
 // ============================================================
 // أزرار شريط اللعب العلوي
 // ============================================================
+const ICON_SPEAKER_ON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9v6h4l5 4V5L9 9H5Z" fill="currentColor" stroke="none"/><path d="M16.5 9.5a4 4 0 0 1 0 5"/><path d="M19 7a7.5 7.5 0 0 1 0 10"/></svg>';
+const ICON_SPEAKER_MUTED = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9v6h4l5 4V5L9 9H5Z" fill="currentColor" stroke="none"/><path d="M17 9l5 5M22 9l-5 5"/></svg>';
+
 function updateMuteIcon() {
-  $('#btn-mute').textContent = AudioManager.isMuted() ? '🔇' : '🔊';
+  $('#btn-mute').innerHTML = AudioManager.isMuted() ? ICON_SPEAKER_MUTED : ICON_SPEAKER_ON;
 }
 
 function initTopBarActions() {

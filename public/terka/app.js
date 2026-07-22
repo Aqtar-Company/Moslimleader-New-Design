@@ -3,20 +3,29 @@
 let state = null; // حالة المباراة الحالية
 let setupChoice = { count: 2, difficulty: 'easy' };
 let selection = { heirId: null, cardEl: null };
-const HAND_SIZE = 5; // عدد بطاقات يد اللاعب
-const EXTRA_CARD_COST = 1; // سهم — تكلفة طلب بطاقة إضافية من البنك (كل كارت يمثل وحدة واحدة)
+const HAND_SIZE = 4; // عدد بطاقات يد اللاعب — لو الأربعة مفيهاش حل، ياخد صفر الجولة دي بس (بلا شراء كارت إضافي)
 // ورثة "فرديون" بطبيعتهم — لا يمكن أن يوجد للمتوفى أكثر من واحد منهم في نفس الوقت
 // (بخلاف الابن/البنت/الأخ/الأخت أو حتى الزوجات الأربع، وهي كلها تعدّديات فقهية حقيقية).
 const SINGULAR_HEIR_TYPES = ['father', 'mother', 'husband', 'grandfather', 'grandmother'];
 
 // لو أكثر من لاعب لعب نفس الوارث "الفردي" في نفس الجولة (مثلًا لاعبان كلاهما "زوج" لنفس
-// المتوفاة)، فهذا وضع مستحيل فقهيًا — لا يمكن معرفة أيهما "الصحيح"، فكلاهما يُعتبَر خطأ.
-function getDuplicateSingularHeirs() {
-  const counts = {};
-  Object.values(state.roundPlays).forEach(play => {
-    if (play) counts[play] = (counts[play] || 0) + 1;
-  });
-  return new Set(SINGULAR_HEIR_TYPES.filter(id => (counts[id] || 0) > 1));
+// المتوفاة)، فهذا وضع مستحيل فقهيًا. الحل: أول لاعب لعب هذا الوارث (بترتيب الدور — يمثّل
+// "الأسرع" في اللعبة الورقية، حيث الأدوار تُلعَب بالتتابع لا في لحظة واحدة) هو صاحب الادّعاء
+// الصحيح؛ أي لاعب لاحق في نفس الجولة يلعب نفس الوارث الفردي يُعتبَر "متأخر" ويُحسب له صفر.
+// يُرجِع هذا مجموعة أرقام أدوار اللاعبين "المتأخرين" (لا أنواع الورثة).
+function getLateSingularClaimPlayers() {
+  const late = new Set();
+  const claimedBy = {}; // heirId -> أول رقم دور لعبه
+  Object.keys(state.roundPlays)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .forEach(i => {
+      const play = state.roundPlays[i];
+      if (!play || !SINGULAR_HEIR_TYPES.includes(play)) return;
+      if (claimedBy[play] === undefined) claimedBy[play] = i;
+      else late.add(i);
+    });
+  return late;
 }
 
 // ---------- أدوات عامة ----------
@@ -528,12 +537,13 @@ function renderPlayersRow() {
   row.innerHTML = state.players.map((p, i) => {
     const activeCls = (i === state.turnIndex && state.phase === 'acting') ? 'active-turn' : '';
     let stateText = 'ينتظر';
-    if (state.roundPlays[i] !== undefined) stateText = 'جاهز';
-    else if (i === state.turnIndex && state.phase === 'acting') stateText = 'يختار';
+    let stateCls = 'state-waiting';
+    if (state.roundPlays[i] !== undefined) { stateText = 'جاهز'; stateCls = 'state-ready'; }
+    else if (i === state.turnIndex && state.phase === 'acting') { stateText = 'يختار'; stateCls = 'state-picking'; }
     return `<div class="player-chip ${activeCls}">
       <span class="p-name">${p.name}</span>
       <span class="p-balance">💰 ${p.balance} سهم</span>
-      <span class="p-state">${stateText}</span>
+      <span class="p-state ${stateCls}">${stateText}</span>
     </div>`;
   }).join('');
 }
@@ -589,8 +599,8 @@ function renderHandForCurrentPlayer() {
     cardEl.addEventListener('click', () => {
       // كل البطاقات قابلة للاختيار دائمًا حتى غير المناسبة — لو اختار اللاعب بطاقة
       // غير مناسبة، لن يُمنَع، لكن عند إعلان توزيع التركة سيُخبَر أنه أخطأ (صفر نقطة،
-      // انظر finalizeRoundScoring()). لو اكتشف اللاعب أن كل بطاقاته غير مناسبة، له أن
-      // يطلب بطاقة إضافية من البنك (بزر منفصل بالأسفل) بتكلفة سهم واحد من رصيده.
+      // انظر finalizeRoundScoring()). لو كل بطاقاته الأربع غير مناسبة، يصفّر الجولة
+      // بلا أي شراء أو سحب إضافي، ثم يسحب بطاقة مجانية من البنك لإكمال يده لاحقًا.
       $all('.card', wrap).forEach(c => c.classList.remove('selected'));
       cardEl.classList.add('selected');
       selection.heirId = heirId;
@@ -601,24 +611,6 @@ function renderHandForCurrentPlayer() {
     });
     wrap.appendChild(cardEl);
   });
-}
-
-// طلب بطاقة إضافية من البنك بتكلفة سهم واحد (كل كارت يمثل وحدة واحدة) — حق اختياري
-// للاعب في أي وقت أثناء دوره، خصوصًا لو اكتشف أن يده كلها غير مناسبة للقضية الحالية.
-// اليد الأصلية لا تُمس؛ البطاقة الجديدة تُضاف إليها فقط.
-function requestExtraCard() {
-  const player = state.players[state.turnIndex];
-  const newCard = drawFrom('heirDeck', 'heirDiscard');
-  if (!newCard) {
-    flashMessage('لا توجد بطاقات إضافية متبقية في البنك حاليًا.');
-    return;
-  }
-  player.balance -= EXTRA_CARD_COST;
-  player.hand.push(newCard);
-  AudioManager.playDraw();
-  saveGame();
-  renderHandForCurrentPlayer();
-  renderPlayersRow();
 }
 
 function flashMessage(text) {
@@ -635,7 +627,6 @@ function initHandActions() {
       doConfirmPlay();
     }
   });
-  $('#btn-request-extra-card').addEventListener('click', requestExtraCard);
 }
 
 function doConfirmPlay() {
@@ -697,7 +688,7 @@ function revealRoundAndCompute() {
   state.phase = 'reveal';
   renderPlayersRow();
   const caseObj = DECEASED_CASES.find(c => c.id === state.currentCaseId);
-  const duplicateSingulars = getDuplicateSingularHeirs();
+  const lateClaimPlayers = getLateSingularClaimPlayers();
   const playedHeirIds = [];
   const revealWrap = $('#revealed-heirs');
   revealWrap.innerHTML = '';
@@ -705,10 +696,10 @@ function revealRoundAndCompute() {
   state.players.forEach((p, i) => {
     const play = state.roundPlays[i];
     if (play) {
-      // بطاقة "ممنوعة" في قصة هذه الحالة، أو ادّعاء مزدوج لوارث فردي (كلاهما لا يدخلان حساب
-      // المحرك الفقهي إطلاقًا (تبقيان تُعرضان بصريًا هنا فقط)، وإلا لأثّرت الهوية الوهمية على
-      // حساب نصيب بقية اللاعبين الذين اختاروا بشكل صحيح.
-      if (!caseObj.disallowed.includes(play) && !duplicateSingulars.has(play)) playedHeirIds.push(play);
+      // بطاقة "ممنوعة" في قصة هذه الحالة، أو ادّعاء متأخر لوارث فردي سبقه إليه لاعب آخر (كلاهما
+      // لا يدخلان حساب المحرك الفقهي إطلاقًا، وتبقيان تُعرضان بصريًا هنا فقط)، وإلا لأثّرت
+      // الهوية الوهمية على حساب نصيب بقية اللاعبين الذين اختاروا بشكل صحيح.
+      if (!caseObj.disallowed.includes(play) && !lateClaimPlayers.has(i)) playedHeirIds.push(play);
       const heir = getHeirType(play);
       const el = document.createElement('div');
       el.className = 'card small card-flip';
@@ -720,17 +711,21 @@ function revealRoundAndCompute() {
 
   const engineResult = computeInheritance(caseObj, playedHeirIds, state.currentEstateValue);
 
-  setTimeout(() => finalizeRoundScoring(caseObj, engineResult, duplicateSingulars), 700);
+  setTimeout(() => finalizeRoundScoring(caseObj, engineResult, lateClaimPlayers), 700);
 }
 
-function finalizeRoundScoring(caseObj, engineResult, duplicateSingulars) {
+function finalizeRoundScoring(caseObj, engineResult, lateClaimPlayers) {
   // توزيع النقاط على اللاعبين حسب البطاقة التي لعبوها
   const perPlayerRows = [];
-  const heirPlayCounts = {}; // لتقسيم النقاط بالتساوي عند تكرار نفس الوارث (مثل تعدد الزوجات)
-  Object.values(state.roundPlays).forEach(v => {
-    if (v) heirPlayCounts[v] = (heirPlayCounts[v] || 0) + 1;
+  lateClaimPlayers = lateClaimPlayers || getLateSingularClaimPlayers();
+  const heirPlayCounts = {}; // لتقسيم النقاط بالتساوي عند تكرار نفس الوارث (مثل تعدد الزوجات) —
+  // اللاعبون "المتأخرون" في ادّعاء وارث فردي لا يُحسَبون هنا، وإلا انقسم نصيب صاحب الادّعاء
+  // الصحيح خطأً كأن هناك أكثر من مستحق شرعي.
+  Object.keys(state.roundPlays).forEach(iStr => {
+    const i = Number(iStr);
+    const v = state.roundPlays[i];
+    if (v && !lateClaimPlayers.has(i)) heirPlayCounts[v] = (heirPlayCounts[v] || 0) + 1;
   });
-  duplicateSingulars = duplicateSingulars || getDuplicateSingularHeirs();
 
   state.players.forEach((p, i) => {
     const play = state.roundPlays[i];
@@ -739,10 +734,10 @@ function finalizeRoundScoring(caseObj, engineResult, duplicateSingulars) {
       return;
     }
     const heir = getHeirType(play);
-    // وارث "فردي" (لا يمكن أن يوجد للمتوفى أكثر من واحد منه) لعبه أكثر من لاعب في نفس
-    // الجولة — وضع مستحيل فقهيًا، فلا أحد منهم يُحسَب له شيء (لا يمكن ترجيح أيهما "الحقيقي").
-    if (duplicateSingulars.has(play)) {
-      perPlayerRows.push({ player: p.name, card: heir.name, status: 'invalid', statusText: `لا يمكن أن يوجد أكثر من ${heir.name} واحد لنفس المتوفى — كل من اختار هذه البطاقة أخطأ.`, ratio: '—', points: 0 });
+    // وارث "فردي" (لا يمكن أن يوجد للمتوفى أكثر من واحد منه) لعبه أكثر من لاعب في نفس الجولة —
+    // هذا اللاعب سبقه لاعب آخر لنفس الوارث (بترتيب الدور)، فلا يُحسَب له شيء هذه الجولة.
+    if (lateClaimPlayers.has(i)) {
+      perPlayerRows.push({ player: p.name, card: heir.name, status: 'invalid', statusText: `سبقك لاعب آخر إلى "${heir.name}" هذه الجولة — لا يمكن أن يوجد أكثر من ${heir.name} واحد لنفس المتوفى.`, ratio: '—', points: 0 });
       return;
     }
     // هذا الوارث غير موجود أصلًا في قصة هذه الحالة (caseObj.disallowed) — محرك الفرائض لا يعرف

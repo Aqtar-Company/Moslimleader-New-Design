@@ -217,7 +217,10 @@ button:focus-visible, input:focus-visible {
 .player-chip .p-name { font-weight: 700; display: block; }
 .player-chip .p-score { color: var(--ink-soft); font-size: 12px; }
 .player-chip .p-balance { display: block; font-size: 11px; color: var(--gold); font-weight: 700; }
-.player-chip .p-state { font-size: 11px; margin-top: 2px; color: var(--medium); }
+.player-chip .p-state { font-size: 11px; margin-top: 2px; font-weight: 700; color: var(--ink-soft); }
+.player-chip .p-state.state-picking { color: var(--easy); }
+.player-chip .p-state.state-ready { color: var(--gold); }
+.player-chip .p-state.state-waiting { color: var(--ink-soft); font-weight: 400; }
 
 .table-area {
   width: 100%; background: var(--bg-deep); border-radius: var(--radius);
@@ -242,12 +245,15 @@ button:focus-visible, input:focus-visible {
 .card .card-sub { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
 .card.selectable:hover { transform: translateY(-6px); box-shadow: var(--shadow); }
 .card.selected { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); }
-/* بطاقة "غير مناسبة" للحالة الحالية: غير قابلة للاختيار (تُمنع من الواجهة)، فتُعرض بمظهر
-   معطَّل واضح + شارة تنبيه توضّح السبب. */
 /* بطاقة "غير مناسبة" للحالة الحالية: تبقى قابلة للاختيار عمدًا (اختيارها لا يُحسب له نقاط
-   ويُخبَر اللاعب أنه أخطأ عند إعلان توزيع التركة) — تُعرض بتنبيه بصري خفيف فقط، لا معطَّلة. */
-.card.disallowed { border: 1.5px dashed var(--advanced); }
-.card.disallowed::after { content: '⚠️'; position: absolute; bottom: 4px; left: 4px; font-size: 11px; }
+   ويُخبَر اللاعب أنه أخطأ عند إعلان توزيع التركة) — تُعرض بتنبيه بصري واضح، لا معطَّلة. */
+.card.disallowed { border: 1.5px dashed var(--advanced); background: var(--advanced-bg); }
+.card.disallowed .card-icon, .card.disallowed .card-name { opacity: 0.55; }
+.card.disallowed::after {
+  content: '⚠️ غير مناسبة'; position: absolute; bottom: -9px; left: 50%; transform: translateX(-50%);
+  font-size: 9px; font-weight: 700; color: #fff; background: var(--advanced);
+  padding: 1px 7px; border-radius: 999px; white-space: nowrap; box-shadow: var(--shadow-soft);
+}
 .card.blocked { opacity: 0.45; }
 .card .info-btn {
   position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; border-radius: 50%;
@@ -280,7 +286,12 @@ button:focus-visible, input:focus-visible {
   border-top: 2px solid var(--line); padding: 10px 10px 14px; box-shadow: 0 -6px 18px rgba(0,0,0,0.08);
   z-index: 20;
 }
-.hand-cards { display: flex; gap: 10px; overflow-x: auto; justify-content: center; padding: 6px 2px 10px; }
+.hand-label {
+  text-align: center; font-size: 11px; font-weight: 700; color: var(--ink-soft);
+  letter-spacing: 0.3px; margin-bottom: 4px;
+}
+.hand-cards { display: flex; gap: 16px; overflow-x: auto; justify-content: center; padding: 6px 6px 18px; }
+.hand-cards .card.small { width: 84px; height: 116px; }
 .hand-actions { display: flex; gap: 8px; justify-content: center; }
 
 .moving-point {
@@ -366,6 +377,22 @@ button:focus-visible, input:focus-visible {
 
 .muted { color: var(--ink-soft); font-size: 12px; }
 .center-text { text-align: center; }
+
+/* ---------- شاشة فاصل الأحكام: هوية بصرية مختلفة عن شاشة القضية ---------- */
+.judgment-screen {
+  background:
+    radial-gradient(circle at 25% 15%, rgba(231, 214, 168, 0.25), transparent 55%),
+    linear-gradient(165deg, #241c10 0%, #3a2c14 55%, #6b4f1f 100%);
+}
+.judgment-screen .top-nav h3,
+.judgment-screen #judgment-turn-label { color: var(--gold-soft); }
+.judgment-screen .muted,
+.judgment-screen #judgment-intro { color: #D8C9A0; }
+.judgment-badge {
+  display: inline-block; margin: 0 auto 10px; padding: 5px 16px; border-radius: 999px;
+  background: rgba(231, 214, 168, 0.15); border: 1px solid var(--gold-soft);
+  color: var(--gold-soft); font-size: 13px; font-weight: 700; letter-spacing: 0.4px;
+}
 
 /* ---------- بطاقة الحكم (محاكاة كارت لعب فعلي) ---------- */
 .judgment-card {

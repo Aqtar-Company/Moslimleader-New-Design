@@ -133,6 +133,13 @@ button:focus-visible, input:focus-visible {
 .btn:active { transform: scale(0.97); }
 .btn-primary { background: var(--gold); color: #241c08; }
 .btn-primary:hover { background: #efd685; box-shadow: 0 4px 20px rgba(231, 199, 102, 0.4); }
+/* دعوة للعب نابضة بخفة على شاشة البداية بس — بقية أزرار primary تفضل ثابتة عشان
+   ميبقاش في نبض مستمر مشتّت أثناء قرارات اللعب الفعلية. */
+#btn-start-new { animation: ctaPulse 2.2s ease-in-out infinite; }
+@keyframes ctaPulse {
+  0%, 100% { box-shadow: var(--shadow-soft); }
+  50% { box-shadow: var(--shadow-soft), 0 0 22px rgba(231, 199, 102, 0.5); }
+}
 .btn-secondary { background: var(--surface); color: var(--ink); border: 1.5px solid var(--line); }
 .btn-secondary:hover { background: var(--surface-2); }
 .btn-danger { background: var(--expert); color: #fff; }
@@ -191,14 +198,17 @@ button:focus-visible, input:focus-visible {
 
 /* ---------- شاشة اللعب ---------- */
 .play-screen { padding: 10px 8px 290px; width: 100%; max-width: 720px; }
+/* شريط التحكّم العلوي: أزرار التحكّم أولًا وفي المنتصف (أهم عنصر بصريًا، أعلى الشاشة)،
+   وتحتها معلومات الجولة/الصعوبة كصف ثانوي أصغر — بدل التوزيع الجانبي القديم. */
 .top-bar {
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
   background: var(--surface); border-radius: var(--radius-sm);
-  padding: 10px 14px; box-shadow: var(--shadow-soft);
-  width: 100%; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;
+  padding: 12px 14px; box-shadow: var(--shadow-soft);
+  width: 100%; margin-bottom: 10px;
   border: 1px solid var(--line);
+  animation: slideDown 0.35s ease;
 }
-.top-bar-info { display: flex; gap: 14px; align-items: center; font-size: 13px; color: var(--ink-soft); flex-wrap: wrap; }
+.top-bar-info { display: flex; gap: 14px; align-items: center; font-size: 13px; color: var(--ink-soft); flex-wrap: wrap; justify-content: center; }
 .top-bar-info b { color: var(--ink); }
 .diff-badge {
   padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff;
@@ -207,7 +217,12 @@ button:focus-visible, input:focus-visible {
 .diff-badge.medium { background: var(--medium); color: #0d2032; }
 .diff-badge.advanced { background: var(--advanced); color: #2e1a06; }
 .diff-badge.expert { background: var(--expert); }
-.top-bar-actions { display: flex; gap: 6px; }
+.top-bar-actions { display: flex; gap: 10px; justify-content: center; }
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 /* ميدالية ذهبية مزدوجة الحلقة — نفس لغة .royal-icon-frame على كروت القضية/الحكم،
    مطبَّقة هنا على أزرار التحكّم عشان الهوية الملكية تبقى متسقة في كل عناصر الواجهة. */
 .icon-btn {
@@ -238,8 +253,13 @@ button:focus-visible, input:focus-visible {
 .player-chip:nth-child(odd) { transform: translateY(-5px); }
 .player-chip:nth-child(even) { transform: translateY(5px); }
 .player-chip.active-turn {
-  border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold), 0 0 18px rgba(231, 199, 102, 0.4);
+  border-color: var(--gold);
   transform: translateY(-8px) scale(1.04);
+  animation: turnPulse 1.6s ease-in-out infinite;
+}
+@keyframes turnPulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--gold), 0 0 14px rgba(231, 199, 102, 0.35); }
+  50% { box-shadow: 0 0 0 2px var(--gold), 0 0 24px rgba(231, 199, 102, 0.65); }
 }
 .p-avatar {
   width: 38px; height: 38px; border-radius: 50%;
@@ -319,7 +339,22 @@ button:focus-visible, input:focus-visible {
 .card.has-photo .card-sub { padding: 4px 4px 6px; text-align: center; background: var(--surface-2); flex-shrink: 0; margin-top: 0; }
 .card.has-photo .info-btn { z-index: 2; }
 .card.selectable:hover { transform: translateY(-6px); box-shadow: var(--shadow), 0 0 16px rgba(231, 199, 102, 0.2); }
-.card.selected { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(231, 199, 102, 0.5), 0 0 20px rgba(231, 199, 102, 0.4); }
+.card.selected {
+  border-color: var(--gold); box-shadow: 0 0 0 3px rgba(231, 199, 102, 0.5), 0 0 20px rgba(231, 199, 102, 0.4);
+  animation: cardPop 0.3s ease;
+}
+@keyframes cardPop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.08) translateY(-4px); }
+  100% { transform: scale(1); }
+}
+/* دخول متدرّج لكروت اليد عند عرضها (كل كارت يدخل بعد اللي قبله بفاصل بسيط، ضبطه
+   inline بـ animation-delay من renderHandForCurrentPlayer() في app.js). */
+.card-deal { animation: cardDeal 0.35s ease backwards; }
+@keyframes cardDeal {
+  from { opacity: 0; transform: translateY(18px) scale(0.92); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
 /* بطاقة "غير مناسبة" للحالة الحالية: تبقى قابلة للاختيار عمدًا (اختيارها لا يُحسب له نقاط
    ويُخبَر اللاعب أنه أخطأ عند إعلان توزيع التركة) — تُعرض بتنبيه بصري واضح، لا معطَّلة. */
 .card.disallowed { border: 1.5px dashed var(--advanced); background: var(--advanced-bg); }

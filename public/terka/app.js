@@ -608,9 +608,10 @@ function renderHandForCurrentPlayer() {
     const cardEl = document.createElement('div');
     // البطاقة "غير المناسبة" لا تُميَّز بصريًا افتراضيًا — اللاعب لازم يكتشفها بنفسه أو
     // يضغط "طلب المساعدة" (انظر initHandActions()) عشان تظهر شارة التنبيه.
-    cardEl.className = 'card small selectable' + heirCardClass(heir);
+    cardEl.className = 'card small selectable card-deal' + heirCardClass(heir);
     if (disallowed) cardEl.dataset.disallowed = 'true';
     cardEl.style.setProperty('--card-color', heir.color);
+    cardEl.style.animationDelay = (idx * 0.07) + 's';
     cardEl.innerHTML = `
       <button class="info-btn" title="معلومات">؟</button>
       ${heirVisualHtml(heir)}`;

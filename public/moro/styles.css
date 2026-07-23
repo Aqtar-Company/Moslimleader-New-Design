@@ -304,12 +304,13 @@ button:focus-visible, input:focus-visible {
 }
 /* أفاتار مخروطي الذهب للاعب صاحب الدور، وكحلي لبقية اللاعبين — تمييز فوري بالحالة. */
 .p-avatar {
-  width: 38px; height: 38px; border-radius: 50%;
+  width: 48px; height: 48px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-weight: 900; font-size: 15px; color: #241c08;
+  font-weight: 900; font-size: 18px; color: #241c08;
   background: conic-gradient(from 210deg, var(--gold-soft), var(--gold), var(--gold-dim), var(--gold-soft));
   border: 2px solid rgba(0,0,0,.25);
   margin-bottom: 3px; flex-shrink: 0;
+  box-shadow: 0 3px 8px rgba(0,0,0,.35);
 }
 .player-chip:not(.active-turn) .p-avatar {
   background: conic-gradient(from 210deg, #5a9fd6, #2c5f8f, #1a3a58, #5a9fd6);
@@ -372,18 +373,22 @@ button:focus-visible, input:focus-visible {
 .sahm-bank-label b { color: var(--gold-soft); font-size: 13px; }
 
 /* "طاولة اللعب": لوح كحلي غامق بحافة ذهبية + نقشة زخرفية خفيفة، تحمل كروت القضية. */
+/* "طاولة اللعب" الحقيقية: سطح "تيلة" بيضاوي من فوق (يستقبل شرائح اللاعبين اللي بتتراكب
+   على حافته العليا عبر margin-bottom السالب في .players-row)، بحافة ذهبية وحلقة داخلية،
+   وظل غاطس يوهم بعمق السطح — استلهامًا من مراجع طاولات البوكر/الكوتشينة الحقيقية. */
 .table-area {
   position: relative;
   width: 100%;
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(217, 169, 52, 0.10), transparent 60%),
-    linear-gradient(180deg, var(--surface-2), var(--surface) 65%);
-  border-radius: 30px;
-  padding: 40px 18px 20px;
+    radial-gradient(ellipse at 50% 30%, rgba(217, 169, 52, 0.16), transparent 55%),
+    radial-gradient(ellipse at 50% 105%, rgba(0, 0, 0, 0.4), transparent 65%),
+    linear-gradient(180deg, var(--surface-2), var(--surface) 70%);
+  border-radius: 46% 46% 26px 26px / 78px 78px 26px 26px;
+  padding: 50px 18px 22px;
   display: flex; flex-direction: column; align-items: center; gap: 12px;
-  box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.04);
-  margin-bottom: 12px; min-height: 180px;
-  border: 1px solid var(--line);
+  box-shadow: var(--shadow), inset 0 2px 0 rgba(255,255,255,.05), inset 0 -22px 36px rgba(0,0,0,.35);
+  margin-bottom: 12px; min-height: 190px;
+  border: 2px solid var(--gold-dim);
   overflow: hidden;
 }
 .table-area::before {
@@ -394,10 +399,23 @@ button:focus-visible, input:focus-visible {
   opacity: .7;
   pointer-events: none;
 }
-.table-cards { display: flex; gap: 14px; align-items: stretch; width: 100%; position: relative; }
+/* حلقة ذهبية داخلية خفيفة — حافة "التيلة" الداخلية زي طاولات القمار الحقيقية. */
+.table-area::after {
+  content: '';
+  position: absolute; inset: 7px;
+  border-radius: inherit;
+  border: 1px solid rgba(217, 169, 52, 0.22);
+  pointer-events: none;
+}
+.table-cards { display: flex; gap: 14px; align-items: stretch; width: 100%; position: relative; z-index: 1; }
 #status-card-slot { flex: 1 1 auto; min-width: 0; display: flex; }
 #estate-card-slot { flex: 0 0 auto; display: flex; }
-.revealed-heirs { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; min-height: 90px; position: relative; }
+.revealed-heirs { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; min-height: 90px; position: relative; z-index: 1; }
+/* كروت المكشوفة بتتلقّى تمايل خفيف بالتبادل، زي ورق حقيقي ملقى على سطح الطاولة —
+   بيدي إحساس "مادي" بدل صف مصفوف بشكل آلي. */
+.revealed-heirs .card.small:nth-child(odd) { transform: rotate(-3deg); }
+.revealed-heirs .card.small:nth-child(even) { transform: rotate(3deg); }
+.revealed-heirs .card.small { box-shadow: 0 10px 18px rgba(0,0,0,.4), var(--shadow-soft); }
 
 .card {
   width: 108px; height: 150px; border-radius: 14px; background: var(--surface);

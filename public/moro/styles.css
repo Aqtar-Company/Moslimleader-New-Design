@@ -601,19 +601,24 @@ button:focus-visible, input:focus-visible {
    width/height: 100% تملأ #status-card-slot، وارتفاعه بقى تلقائي (min-height بس
    كحد أدنى) عشان نص القضية الأكبر ميتقصّش لو طال — و#estate-card-slot بيتمدّد
    لنفس الارتفاع تلقائيًا عبر align-items:stretch على .table-cards. */
+/* لا خلفية/حدود/ظل — نص القضية عايم مباشرة فوق التيلة الخضرا (بعد آخر تكرار في Lovable:
+   "شيل الاوفر لاي بوكس" ألغى صندوق البيج، وبعدها الأوفرلاي الداكن نفسه). الشرائط الذهبية
+   (caseFiligreeBand) هي الإطار الوحيد فوق وتحت النص. */
 .status-card {
   width: 100%; height: 100%; min-height: 128px;
   flex-direction: column; align-items: center; justify-content: center; gap: 8px;
   padding: 16px;
   text-align: center;
+  background: transparent; border: none; box-shadow: none;
 }
 .status-card .royal-icon-frame { margin: 0; }
 .status-card-text { display: flex; flex-direction: column; gap: 5px; min-width: 0; align-items: center; }
 .status-card .royal-card-title, .status-card .card-sub { text-align: center; }
 /* نص القضية (وصف الحالة) هو أهم محتوى في الكارت — بيبني عليه قرار اللاعب، فحجمه أكبر
-   من باقي نصوص الكارت الصغيرة. */
+   من باقي نصوص الكارت الصغيرة. أبيض صريح (بدل --ink-soft الباهت) عشان يتباين بوضوح
+   فوق التيلة الخضرا بلا صندوق خلفه. */
 .status-card .royal-card-title { font-size: 16px; }
-.status-card .card-sub { font-size: 13px; line-height: 1.4; }
+.status-card .card-sub { font-size: 13px; line-height: 1.4; color: #ffffff; font-weight: 600; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
 .status-card.gender-male .royal-icon-frame { box-shadow: 0 6px 16px rgba(116, 179, 227, 0.4), inset 0 2px 4px rgba(255,255,255,.4); }
 .status-card.gender-female .royal-icon-frame { box-shadow: 0 6px 16px rgba(227, 135, 176, 0.4), inset 0 2px 4px rgba(255,255,255,.4); }
 

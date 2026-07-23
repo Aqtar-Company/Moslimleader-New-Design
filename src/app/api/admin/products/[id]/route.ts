@@ -72,6 +72,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if ('minAge' in data) data.minAge = clampAge(data.minAge);
     if ('maxAge' in data) data.maxAge = clampAge(data.maxAge);
     if ('needsParentalGuide' in data) data.needsParentalGuide = !!data.needsParentalGuide;
+    if ('ageGroups' in data) data.ageGroups = Array.isArray(data.ageGroups) && data.ageGroups.length > 0 ? data.ageGroups : null;
+    if ('gender' in data) data.gender = data.gender || null;
     if ('images' in data && Array.isArray(data.images)) data.images = data.images.slice(0, 10);
 
     if (isAdded) {

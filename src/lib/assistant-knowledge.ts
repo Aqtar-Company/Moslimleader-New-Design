@@ -68,8 +68,8 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
         category: true, source: true, shortDescription: true,
         // Sales context fields: age range (B1), stock level (B3),
         // review aggregate (B3 social proof).
-        minAge: true, maxAge: true, ageCategory: true,
-        needsParentalGuide: true,
+        minAge: true, maxAge: true, ageCategory: true, ageGroups: true,
+        needsParentalGuide: true, gender: true,
         stock: true, variantStocks: true,
       },
       orderBy: { name: 'asc' },
@@ -90,9 +90,9 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
       take: 30,
     }).catch(() => []),
     prisma.coupon.findMany({
-      where: { isActive: true },
-      select: { code: true, discount: true, showBanner: true },
-      take: 20,
+      where: { isActive: true, showBanner: true },
+      select: { code: true, discount: true },
+      take: 5,
     }).catch(() => []),
     prisma.setting.findUnique({ where: { key: 'assistant-faqs' } }).catch(() => null),
   ]);
@@ -106,6 +106,8 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
     minAge?: number | null;
     maxAge?: number | null;
     needsParentalGuide?: boolean;
+    gender?: string | null;
+    ageGroups?: unknown;
     stock?: number;
     variantStocks?: unknown;
     reviewCount?: number;
@@ -189,7 +191,9 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
       } else if (p.minAge !== null && p.minAge !== undefined) {
         parts.push(`من عمر ${p.minAge}+`);
       }
-      if (p.needsParentalGuide) parts.push('👨‍👩‍👧 يحتاج مساعدة الوالدين');
+      if (p.gender === 'male') parts.push('👦 للأولاد');
+      else if (p.gender === 'female') parts.push('👧 للبنات');
+      if (p.needsParentalGuide) parts.push('👨‍👩‍👧 يحتاج مشاركة الوالدين');
       // Scarcity — only when low (≤5) so we don't lie about abundance.
       const stockNum = (() => {
         if (p.variantStocks && typeof p.variantStocks === 'object') {
@@ -299,15 +303,23 @@ export async function buildAssistantContext(): Promise<AssistantContext> {
     lines.push('');
   }
 
-  // Active coupons.
+  // Only banner coupons reach the bot — private/test coupons are excluded at query level.
   if (coupons.length > 0) {
-    lines.push(`### كوبونات الخصم الحالية (لا تذكرها إلا إذا سأل العميل عنها):`);
-    for (const c of coupons.slice(0, 5)) {
-      const banner = c.showBanner ? ' [معروض على الموقع]' : '';
-      lines.push(`- ${c.code}: خصم ${Math.round(c.discount)}%${banner}`);
+    lines.push(`### كوبون الخصم المعروض على الموقع حالياً (اذكره فقط عند الاعتراض على السعر):`);
+    for (const c of coupons) {
+      lines.push(`- ${c.code}: خصم ${Math.round(c.discount)}%`);
     }
     lines.push('');
   }
+
+  // Loyalty points system — always present so the bot can explain it.
+  lines.push('### نظام نقاط المكافآت:');
+  lines.push('- كل 10 جنيه في أي طلب = نقطة واحدة');
+  lines.push('- إضافة أول طفل في حسابك = 50 نقطة هدية (مرة واحدة فقط)');
+  lines.push('- كل 100 نقطة = 10 جنيه خصم تُصرف وقت الدفع');
+  lines.push('- لعرض النقاط والسجل: https://moslimleader.com/account (تبويب ⭐ نقاطي)');
+  lines.push('- لإضافة طفل: https://moslimleader.com/account (تبويب 👶 أطفالي)');
+  lines.push('');
 
   // Custom FAQs (admin-curated). Stored in Setting as a string
   // (markdown) so the owner can edit it freely from the admin page.

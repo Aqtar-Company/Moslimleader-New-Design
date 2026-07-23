@@ -6,6 +6,7 @@ import {
   verifyFacebookSignature,
   callAi,
   sendFacebookReply,
+  sendProductCard,
   sendTypingIndicator,
   humanizeDelay,
   replyToComment,
@@ -229,7 +230,7 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
   }
 
   const settings = await getAssistantSettings();
-  if (!shouldAutoReply(input.text, settings)) return;
+  if (!shouldAutoReply(input.text, settings, 'fb')) return;
   // Per-conversation mute — admin can pause auto-reply on a
   // delicate thread without disabling the bot globally.
   if (await isPsidMuted(input.psid)) return;
@@ -322,13 +323,46 @@ async function handleIncomingMessage(input: IncomingMessageInput) {
   // Strip the [[LEAD:...]] and [[INTENT:...]] tags before sending
   // to the user, but keep the parsed values for the inbox view +
   // analytics funnel.
-  const { cleanText: aiText, leadStatus, intent } = extractLeadTag(rawAiText);
+  const { cleanText, leadStatus, intent } = extractLeadTag(rawAiText);
+  // Messenger renders markdown [text](url) as literal broken text —
+  // convert to plain URLs so Facebook shows a proper link preview.
+  const aiText = cleanText
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '$2')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .trim();
 
   // Humanise: pause briefly before sending so it feels like a real
   // person typing. Uses reply length to scale the delay.
   await new Promise(resolve => setTimeout(resolve, humanizeDelay(aiText)));
 
   const sendResult = await sendFacebookReply(input.psid, aiText);
+
+  // After the text reply, detect if the AI recommended a product URL
+  // and send a Generic Template card so the product image appears.
+  // Fire-and-forget — card failure never blocks the audit-log write.
+  const shopUrlMatch = aiText.match(/https:\/\/moslimleader\.com\/shop\/([\w-]+)/);
+  if (shopUrlMatch) {
+    const slug = shopUrlMatch[1];
+    prisma.product.findFirst({
+      where: { slug },
+      select: { name: true, images: true, price: true, slug: true, shortDescription: true, source: true, id: true },
+    }).then(async (p) => {
+      if (!p) return;
+      const rawImages = Array.isArray(p.images) ? p.images as string[] : [];
+      const rawImage = rawImages[0] ?? '';
+      if (!rawImage) return;
+      const base = 'https://moslimleader.com';
+      const imageUrl = rawImage.startsWith('http') ? rawImage : `${base}${rawImage}`;
+      await sendProductCard(input.psid, {
+        name: p.name,
+        imageUrl,
+        price: p.price,
+        slug: p.slug,
+        shortDescription: p.shortDescription,
+      });
+    }).catch(() => { /* card is cosmetic — never surface errors */ });
+  }
+
   await prisma.facebookEvent.create({
     data: {
       psid: input.psid,
@@ -381,7 +415,7 @@ async function handleIncomingComment(input: IncomingCommentInput) {
   }
 
   const settings = await getAssistantSettings();
-  if (!shouldAutoReply(input.text, settings)) return;
+  if (!shouldAutoReply(input.text, settings, 'fb')) return;
 
   // Same RAG context + gender directive as DM handler — comments
   // benefit from the same product/price knowledge.

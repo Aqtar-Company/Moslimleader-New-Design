@@ -139,8 +139,16 @@ export async function POST(req: NextRequest) {
       offline: true,
     });
   }
+  if (!settings.chatEnabled) {
+    return NextResponse.json({
+      ok: true,
+      reply: 'الشات متوقف مؤقتاً. تقدري تتواصلي معانا على ماسنجر أو واتساب.',
+      leadStatus: 'cold',
+      chatDisabled: true,
+    });
+  }
   // The same shouldAutoReply heuristic decides whether to engage.
-  if (!shouldAutoReply(message, settings)) {
+  if (!shouldAutoReply(message, settings, 'chat')) {
     return NextResponse.json({
       ok: true,
       reply: '...',

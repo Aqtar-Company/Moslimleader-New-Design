@@ -170,12 +170,18 @@ function ShopContent({ ssrProducts }: { ssrProducts?: Product[] }) {
         (p.shortDescriptionEn || p.shortDescription).toLowerCase().includes(search.toLowerCase());
     let matchAge = true;
     if (ageFilter === 'parents') {
-      matchAge = !!p.isParentBook;
+      matchAge = !!p.isParentBook || !!(p.ageGroups && p.ageGroups.includes('parents'));
     } else if (ageFilter) {
-      const [lo, hi] = ageFilter.split('-').map(Number);
-      const min = p.minAge ?? 0;
-      const max = p.maxAge ?? 99;
-      matchAge = min <= hi && max >= lo;
+      if (p.ageGroups && p.ageGroups.length > 0) {
+        matchAge = p.ageGroups.includes(ageFilter);
+      } else if (p.minAge != null || p.maxAge != null) {
+        const [lo, hi] = ageFilter.split('-').map(Number);
+        const min = p.minAge ?? 0;
+        const max = p.maxAge ?? 99;
+        matchAge = min <= hi && max >= lo;
+      } else {
+        matchAge = false; // no age data — hide from specific age filters
+      }
     }
     const matchGender = !genderFilter || (() => {
       const g = p.gender || 'both';

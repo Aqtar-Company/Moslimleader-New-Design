@@ -153,6 +153,9 @@ model Product {
   minAge       Int?
   maxAge       Int?
   ageCategory  String?   // 'toddler' | 'preschool' | 'primary' | 'tween' | 'teen'
+  // ageGroups replaces minAge/maxAge for admin-created products.
+  // Array of group IDs: '4-7' | '8-13' | '14-16' | '17-22' | 'parents'
+  ageGroups    Json?
   gender       String?   // 'male' | 'female' | 'both'
   // True when the product needs an adult to use it with the child
   // (board game, craft kit, etc.). Surfaced as a chip on the

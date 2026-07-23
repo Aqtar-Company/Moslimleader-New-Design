@@ -538,6 +538,20 @@ model Setting {
   updatedAt DateTime @updatedAt
 }
 
+model FreeMedia {
+  id            Int      @id @default(autoincrement())
+  title         String
+  titleEn       String?
+  type          String
+  url           String
+  coverUrl      String?
+  description   String?  @db.Text
+  descriptionEn String?  @db.Text
+  sortOrder     Int      @default(0)
+  isPublished   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+}
+
 model Book {
   id            String   @id @default(cuid())
   title         String

@@ -290,6 +290,14 @@ const translations = {
     'library.readerTab': '📖 القارئ',
     'library.infoTab': 'ℹ️ معلومات',
     'library.uploading': 'ملف الكتاب قيد الرفع',
+    'freeMedia.tab': '⬇️ وسائط مجانية',
+    'freeMedia.title': 'وسائط مسلم ليدر المجانية',
+    'freeMedia.desc': 'ملفات صوتية وصور تلوين وكتب PDF مجانية لك ولأطفالك',
+    'freeMedia.download': 'تحميل',
+    'freeMedia.empty': 'لا توجد وسائط متاحة حالياً',
+    'freeMedia.mp3': 'ملف صوتي',
+    'freeMedia.image': 'صورة تلوين',
+    'freeMedia.pdf': 'ملف PDF',
   },
   en: {
     // Nav
@@ -576,6 +584,14 @@ const translations = {
     'library.readerTab': '📖 Reader',
     'library.infoTab': 'ℹ️ Info',
     'library.uploading': 'Book file is being uploaded',
+    'freeMedia.tab': '⬇️ Free Media',
+    'freeMedia.title': 'Muslim Leader Free Media',
+    'freeMedia.desc': 'Free audio files, coloring pages, and PDFs for you and your children',
+    'freeMedia.download': 'Download',
+    'freeMedia.empty': 'No media available yet',
+    'freeMedia.mp3': 'Audio File',
+    'freeMedia.image': 'Coloring Page',
+    'freeMedia.pdf': 'PDF File',
   },
 } as const;
 

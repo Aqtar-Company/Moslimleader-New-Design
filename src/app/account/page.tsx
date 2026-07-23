@@ -17,7 +17,12 @@ const COUNTRIES_LIST = [
     .map(([code, c]) => ({ code, name: c.nameAr, nameEn: c.nameEn }))
 ];
 
-type Tab = 'profile' | 'addresses' | 'orders' | 'books' | 'loyalty' | 'children';
+type Tab = 'profile' | 'addresses' | 'orders' | 'books' | 'loyalty' | 'children' | 'downloads';
+
+interface FreeMediaItem {
+  id: number; title: string; titleEn: string | null; type: string;
+  url: string; coverUrl: string | null; description: string | null; descriptionEn: string | null;
+}
 
 interface ChildRecord { id: string; name: string; birthdate: string; gender: string | null; }
 
@@ -51,6 +56,10 @@ export default function AccountPage() {
   const [booksLoading, setBooksLoading] = useState(false);
   const [loyaltyData, setLoyaltyData] = useState<{ points: number; egpValue: number; transactions: { id: string; points: number; reason: string; createdAt: string }[] } | null>(null);
   const [loyaltyLoading, setLoyaltyLoading] = useState(false);
+
+  // Free media downloads
+  const [freeMedia, setFreeMedia] = useState<FreeMediaItem[]>([]);
+  const [freeMediaLoading, setFreeMediaLoading] = useState(false);
 
   // Children
   const [children, setChildren] = useState<ChildRecord[]>([]);
@@ -128,6 +137,14 @@ export default function AccountPage() {
         .then(d => setChildren(d.children ?? []))
         .catch(() => {})
         .finally(() => setChildrenLoading(false));
+
+      // Load free media
+      setFreeMediaLoading(true);
+      fetch('/api/free-media')
+        .then(r => r.json())
+        .then(d => setFreeMedia(d.items ?? []))
+        .catch(() => {})
+        .finally(() => setFreeMediaLoading(false));
     }
   }, [user, isLoading, router]);
 
@@ -241,7 +258,7 @@ export default function AccountPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-2xl p-1 mb-8 overflow-x-auto">
-        {([['profile', L.profile], ['addresses', L.addresses], ['orders', L.orders], ['books', isRtl ? '📚 كتبي' : '📚 My Books'], ['loyalty', isRtl ? '⭐ نقاطي' : '⭐ Points'], ['children', isRtl ? '👶 أطفالي' : '👶 My Kids']] as [Tab, string][]).map(([t, label]) => (
+        {([['profile', L.profile], ['addresses', L.addresses], ['orders', L.orders], ['books', isRtl ? '📚 كتبي' : '📚 My Books'], ['loyalty', isRtl ? '⭐ نقاطي' : '⭐ Points'], ['children', isRtl ? '👶 أطفالي' : '👶 My Kids'], ['downloads', isRtl ? '⬇️ وسائط مجانية' : '⬇️ Free Media']] as [Tab, string][]).map(([t, label]) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -719,6 +736,65 @@ export default function AccountPage() {
                   {isRtl ? 'إضافة' : 'Add'}
                 </button>
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'downloads' && (
+        <div>
+          <div className="mb-6">
+            <h2 className="text-xl font-black text-gray-900">
+              {isRtl ? 'وسائط مسلم ليدر المجانية' : 'Muslim Leader Free Media'}
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              {isRtl ? 'ملفات صوتية وصور تلوين وكتب PDF مجانية لك ولأطفالك' : 'Free audio files, coloring pages, and PDFs for you and your children'}
+            </p>
+          </div>
+
+          {freeMediaLoading ? (
+            <div className="flex justify-center py-16">
+              <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : freeMedia.length === 0 ? (
+            <div className="text-center py-16 bg-gray-50 rounded-2xl border">
+              <div className="text-5xl mb-3">🎁</div>
+              <p className="text-gray-500">{isRtl ? 'لا توجد وسائط متاحة حالياً' : 'No media available yet'}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {freeMedia.map(item => {
+                const isEn = !isRtl;
+                const title = isEn && item.titleEn ? item.titleEn : item.title;
+                const desc = isEn && item.descriptionEn ? item.descriptionEn : item.description;
+                const typeIcon = item.type === 'mp3' ? '🎵' : item.type === 'image' ? '🖼️' : '📄';
+                const typeLabel = isRtl
+                  ? (item.type === 'mp3' ? 'ملف صوتي' : item.type === 'image' ? 'صورة تلوين' : 'PDF')
+                  : (item.type === 'mp3' ? 'Audio File' : item.type === 'image' ? 'Coloring Page' : 'PDF');
+                return (
+                  <div key={item.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+                    {item.coverUrl ? (
+                      <img src={item.coverUrl} alt={title} className="w-full h-40 object-cover" />
+                    ) : (
+                      <div className="w-full h-32 bg-gradient-to-br from-amber-50 to-amber-100 flex items-center justify-center text-5xl">
+                        {typeIcon}
+                      </div>
+                    )}
+                    <div className="p-4 flex flex-col flex-1">
+                      <span className="text-xs text-amber-600 font-semibold mb-1">{typeIcon} {typeLabel}</span>
+                      <h3 className="font-black text-gray-900 mb-1">{title}</h3>
+                      {desc && <p className="text-sm text-gray-500 mb-3 flex-1">{desc}</p>}
+                      <a
+                        href={item.url}
+                        download
+                        className="mt-auto flex items-center justify-center gap-2 bg-[#F5C518] hover:bg-yellow-400 text-gray-900 font-black py-2.5 rounded-xl text-sm transition"
+                      >
+                        ⬇️ {isRtl ? 'تحميل' : 'Download'}
+                      </a>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

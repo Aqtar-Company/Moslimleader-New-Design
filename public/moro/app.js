@@ -536,8 +536,8 @@ function updateSahmBank() {
   if (fifties > 0) {
     html += `<div class="bank-pile">
       <div class="bank-pile-imgs">
-        <img src="cards/estate-50.png" alt="" class="bank-pile-card bank-pile-card-back">
-        <img src="cards/estate-50.png" alt="" class="bank-pile-card">
+        <img src="/moro/cards/estate-50.png" alt="" class="bank-pile-card bank-pile-card-back">
+        <img src="/moro/cards/estate-50.png" alt="" class="bank-pile-card">
       </div>
       <span class="bank-pile-num">×${fifties}</span>
     </div>`;
@@ -545,7 +545,7 @@ function updateSahmBank() {
   if (ones > 0) {
     const layers = Math.min(ones, 3);
     const cards = Array.from({length: layers}, (_, i) =>
-      `<img src="cards/estate-1.png" alt="" class="bank-pile-card" style="--li:${i}">`
+      `<img src="/moro/cards/estate-1.png" alt="" class="bank-pile-card" style="--li:${i}">`
     ).join('');
     html += `<div class="bank-pile">
       <div class="bank-pile-imgs">${cards}</div>

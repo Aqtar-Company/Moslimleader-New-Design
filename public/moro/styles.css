@@ -335,6 +335,28 @@ button:focus-visible, input:focus-visible {
   box-shadow: 0 1px 2px rgba(0,0,0,.3);
 }
 
+/* كومة كروت اليد المصغّرة (ضهر فقط، بلا كشف محتوى) تحت كل لاعب — تمثيل بصري لعدد
+   الكروت الفعلي في يده دلوقتي، زي مراجع طاولات الكوتشينة الحقيقية (انظر renderPlayersRow). */
+.p-hand-fan { position: relative; height: 20px; width: 34px; margin: 4px auto 0; }
+.hand-fan-card {
+  position: absolute; bottom: 0; left: 50%;
+  width: 15px; height: 20px; border-radius: 3px;
+  background: linear-gradient(160deg, var(--surface-2), var(--bg-deep));
+  border: 1px solid var(--gold-dim);
+  box-shadow: 0 2px 4px rgba(0,0,0,.4);
+}
+.hand-fan-card::after {
+  content: '';
+  position: absolute; inset: 2px;
+  border: 1px solid rgba(217, 169, 52, .35);
+  border-radius: 2px;
+}
+.hand-fan-card:nth-child(1) { transform: translateX(-50%) rotate(-14deg); z-index: 1; }
+.hand-fan-card:nth-child(2) { transform: translateX(-50%) rotate(-5deg) translateY(-1px); z-index: 2; }
+.hand-fan-card:nth-child(3) { transform: translateX(-50%) rotate(4deg) translateY(-1px); z-index: 3; }
+.hand-fan-card:nth-child(4) { transform: translateX(-50%) rotate(13deg); z-index: 4; }
+.p-hand-count { display: block; font-size: 10px; color: var(--ink-soft); margin-top: 2px; }
+
 /* بنك الأسهم: محاكاة بصرية لضهر كروت الورثة (كل ضهر = سهم واحد في النسخة المطبوعة) —
    شريط أفقي مضغوط فوق طاولة اللعب، يعرض عدد الأسهم اللي لسه في "البنك" (مش في يد أي لاعب). */
 .sahm-bank {

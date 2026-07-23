@@ -577,11 +577,19 @@ function renderPlayersRow() {
     const pileHtml = pileLayers > 0
       ? `<span class="p-pile">${'<span class="pile-chip"></span>'.repeat(pileLayers)}</span>`
       : '';
+    // كومة كروت اليد المصغّرة (ضهر فقط، بلا كشف محتوى) — تمثيل بصري لعدد الكروت الفعلي
+    // في يد اللاعب دلوقتي، زي مراجع طاولات الكوتشينة الحقيقية.
+    const handCount = p.hand.length;
+    const fanLayers = Math.min(handCount, 4);
+    const handFanHtml = handCount > 0 ? `
+      <span class="p-hand-fan">${'<span class="hand-fan-card"></span>'.repeat(fanLayers)}</span>
+      <span class="p-hand-count">×${handCount}</span>` : '';
     return `<div class="player-chip ${activeCls}">
       <span class="p-avatar">${initial}</span>
       <span class="p-name">${p.name}</span>
       <span class="p-balance">${ICON_COIN} ${p.balance} سهم${pileHtml}</span>
       <span class="p-state ${stateCls}">${stateText}</span>
+      ${handFanHtml}
     </div>`;
   }).join('');
 }

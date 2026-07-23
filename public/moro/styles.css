@@ -323,6 +323,34 @@ button:focus-visible, input:focus-visible {
 .player-chip .p-state.state-ready { color: var(--gold-soft); }
 .player-chip .p-state.state-waiting { color: var(--ink-soft); font-weight: 400; }
 
+/* كومة الأسهم المكسوبة تحت كل لاعب — محاكاة بصرية للكومة الفيزيائية في النسخة المطبوعة
+   (طبقات متراكمة تكبر مع الرصيد، مش عدد كروت حقيقي — انظر renderPlayersRow). */
+.p-pile { display: inline-flex; margin-right: 4px; vertical-align: middle; }
+.pile-chip {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--gold-soft), var(--gold) 60%, var(--gold-dim));
+  border: 1px solid rgba(0,0,0,.3);
+  margin-right: -4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.3);
+}
+
+/* بنك الأسهم: محاكاة بصرية لضهر كروت الورثة (كل ضهر = سهم واحد في النسخة المطبوعة) —
+   شريط أفقي مضغوط فوق طاولة اللعب، يعرض عدد الأسهم اللي لسه في "البنك" (مش في يد أي لاعب). */
+.sahm-bank {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin: 10px 0 4px; font-size: 12px; color: var(--ink-soft); font-weight: 700;
+}
+.sahm-bank-stack { display: flex; position: relative; width: 28px; height: 18px; }
+.sahm-chip {
+  position: absolute; bottom: 0; width: 18px; height: 18px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--gold-soft), var(--gold) 60%, var(--gold-dim));
+  border: 1px solid rgba(0,0,0,.35); box-shadow: 0 1px 3px rgba(0,0,0,.35);
+}
+.sahm-chip:nth-child(1) { right: 0; }
+.sahm-chip:nth-child(2) { right: 5px; bottom: 3px; }
+.sahm-chip:nth-child(3) { right: 10px; bottom: 6px; }
+.sahm-bank-label b { color: var(--gold-soft); font-size: 13px; }
+
 /* "طاولة اللعب": لوح كحلي غامق بحافة ذهبية + نقشة زخرفية خفيفة، تحمل كروت القضية. */
 .table-area {
   position: relative;

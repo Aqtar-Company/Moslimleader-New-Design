@@ -80,7 +80,12 @@ function drawFrom(deckArrName, discardArrName, avoidValue) {
 // ============================================================
 const SPLASH_DURATION_MS = 1400;
 function initStartScreen() {
-  setTimeout(() => showScreen('screen-setup'), SPLASH_DURATION_MS);
+  // حماية: لو اللاعب (أو استئناف مباراة محفوظة عبر initContinueButton) اتنقّل بعيدًا عن
+  // شاشة البداية قبل ما المؤقّت يخلص (زي متابعة مباراة سريعة)، متجيبوش رجوع للإعداد بالغلط
+  // فوق أي شاشة تانية هو واصلها بالفعل.
+  setTimeout(() => {
+    if ($('#screen-start').classList.contains('active')) showScreen('screen-setup');
+  }, SPLASH_DURATION_MS);
 }
 
 // ============================================================
@@ -487,6 +492,7 @@ function renderPlayScreenShell() {
   diffBadge.className = 'diff-badge ' + diffKey;
 
   renderPlayersRow();
+  updateSahmBank();
 
   // بطاقة الحالة (مقلوبة أولًا ثم تُكشف) — إطار ملكي كلاسيكي (زخارف ذهبية بالأركان)،
   // مستطيل عريض (بيتّسع لنص القضية) بجانب كارت التركة المربّع، على نفس المحاذاة.
@@ -515,6 +521,14 @@ function renderPlayScreenShell() {
   AudioManager.playReveal();
 }
 
+// محاكاة بصرية لـ"بنك الأسهم" المطبوع (ضهر كل كارت وارث = سهم واحد، انظر RULES.md):
+// الرقم = كروت الورثة اللي مش في يد أي لاعب دلوقتي (لسه في الرزمة أو في كومة الاستخدام) —
+// بيقل كل ما الأيدي تتوزّع/تتعبّى، وبيزيد لما كروت تتلعب وترجع كومة الاستخدام.
+function updateSahmBank() {
+  const inBank = state.heirDeck.length + state.heirDiscard.length;
+  $('#sahm-bank-count').textContent = inBank;
+}
+
 function estateTierClass(value) {
   if (value >= 48) return 'tier-4';
   if (value >= 36) return 'tier-3';
@@ -531,10 +545,16 @@ function renderPlayersRow() {
     if (state.roundPlays[i] !== undefined) { stateText = 'جاهز'; stateCls = 'state-ready'; }
     else if (i === state.turnIndex && state.phase === 'acting') { stateText = 'يختار'; stateCls = 'state-picking'; }
     const initial = (p.name || '؟').trim().charAt(0);
+    // كومة الأسهم المكسوبة تحت كل لاعب — محاكاة بصرية بس (طبقات متراكمة تكبر مع الرصيد،
+    // مش عدد كروت فعلي)، بتاخد إحساسها من كومة الأسهم اللي بتتجمّع تحت اللاعب في النسخة المطبوعة.
+    const pileLayers = Math.max(0, Math.min(4, Math.round(p.balance / 15)));
+    const pileHtml = pileLayers > 0
+      ? `<span class="p-pile">${'<span class="pile-chip"></span>'.repeat(pileLayers)}</span>`
+      : '';
     return `<div class="player-chip ${activeCls}">
       <span class="p-avatar">${initial}</span>
       <span class="p-name">${p.name}</span>
-      <span class="p-balance">${ICON_COIN} ${p.balance} سهم</span>
+      <span class="p-balance">${ICON_COIN} ${p.balance} سهم${pileHtml}</span>
       <span class="p-state ${stateCls}">${stateText}</span>
     </div>`;
   }).join('');

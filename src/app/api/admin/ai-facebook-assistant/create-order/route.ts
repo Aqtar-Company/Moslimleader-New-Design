@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import { requirePerm } from '@/lib/permissions';
 import { logActionSafe } from '@/lib/audit-log';
 import { getShipping } from '@/lib/shipping';
+import { sendOrderEmails } from '@/lib/order-email';
 
 async function getDbShipping(governorateId: string): Promise<number> {
   try {
@@ -153,6 +154,37 @@ export async function POST(req: NextRequest) {
     },
     include: { items: true },
   });
+
+  // Send order confirmation email to admin (non-blocking — order is already saved)
+  sendOrderEmails({
+    orderId: order.id,
+    orderNumber: order.id.slice(-8).toUpperCase(),
+    items: orderItemsData.map(oi => ({
+      productName: oi.productName,
+      productImage: null,
+      quantity: oi.quantity,
+      unitPrice: oi.unitPrice,
+    })),
+    subtotal,
+    discount: 0,
+    couponCode: null,
+    shippingCost,
+    total,
+    currency: 'EGP',
+    paymentMethod: 'cod',
+    customerName: name,
+    customerEmail: body.email?.trim() || '—',
+    customerPhone: phone,
+    shippingAddress: {
+      street: address,
+      building: '',
+      city: '',
+      region: '',
+      governorate,
+      country: 'EG',
+    },
+    notes: `أنشئ من محادثة فيسبوك (أمين) psid=${psid}`,
+  }).catch(err => console.error('[create-order] email failed', err));
 
   // Log a visible "outgoing-manual" entry in the FB conversation so
   // the thread shows the action took place. Doesn't actually send a

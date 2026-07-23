@@ -51,6 +51,8 @@ const PERM_LABELS: Record<Permission, string> = {
   'reviews.write': 'الموافقة/حذف التقييمات',
   'books.read': 'عرض المكتبة',
   'books.write': 'إدارة المكتبة',
+  'free-media.read': 'عرض الوسائط المجانية',
+  'free-media.write': 'رفع وإدارة الوسائط المجانية (MP3، PDF، صور)',
   'shipping.read': 'عرض الشحن',
   'shipping.write': 'تعديل أسعار الشحن',
   'payment-methods.read': 'عرض وسائل الدفع',

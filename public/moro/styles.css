@@ -86,50 +86,12 @@ button:focus-visible, input:focus-visible {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ---------- الشعار / الختم الزخرفي (العنصر المميز) ---------- */
-.seal {
-  width: 96px; height: 96px;
-  border-radius: 50%;
-  position: relative;
-  margin: 0 auto 14px;
-  background:
-    conic-gradient(from 0deg,
-      var(--gold) 0deg 30deg, transparent 30deg 60deg,
-      var(--gold) 60deg 90deg, transparent 90deg 120deg,
-      var(--gold) 120deg 150deg, transparent 150deg 180deg,
-      var(--gold) 180deg 210deg, transparent 210deg 240deg,
-      var(--gold) 240deg 270deg, transparent 270deg 300deg,
-      var(--gold) 300deg 330deg, transparent 330deg 360deg);
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: var(--shadow), 0 0 24px rgba(217, 169, 52, 0.25);
-}
-.seal::before {
-  content: '';
-  width: 66px; height: 66px;
-  border-radius: 50%;
-  background: var(--surface);
-  border: 2px solid var(--gold-soft);
-}
-.seal .seal-icon {
-  position: absolute;
-  font-size: 30px;
-}
-
 /* ---------- شاشة البداية ---------- */
 .start-screen { justify-content: center; text-align: center; }
-.game-title {
-  font-size: 40px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  color: var(--ink);
-  margin: 0;
-  text-shadow: 0 0 20px rgba(217, 169, 52, 0.25);
-}
-.game-subtitle {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--gold-soft);
-  margin: 0 0 6px;
+.game-logo {
+  width: 200px; height: 200px; object-fit: contain;
+  margin: 0 auto 8px;
+  filter: drop-shadow(0 0 28px rgba(217, 169, 52, 0.3));
 }
 .game-tagline {
   color: var(--ink-soft);
@@ -688,7 +650,7 @@ button:focus-visible, input:focus-visible {
 @media (max-width: 420px) {
   .card { width: 92px; height: 130px; }
   .card.small { width: 68px; height: 96px; }
-  .game-title { font-size: 28px; }
+  .game-logo { width: 160px; height: 160px; }
   .judgment-card { width: 200px; height: 280px; }
 }
 

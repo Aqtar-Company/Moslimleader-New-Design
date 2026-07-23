@@ -339,6 +339,7 @@ button:focus-visible, input:focus-visible {
 .sahm-bank {
   display: flex; align-items: center; justify-content: center; gap: 8px;
   margin: 10px 0 4px; font-size: 12px; color: var(--ink-soft); font-weight: 700;
+  position: relative; z-index: 3;
 }
 .sahm-bank-stack { display: flex; position: relative; width: 28px; height: 18px; }
 .sahm-chip {

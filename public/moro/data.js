@@ -124,6 +124,7 @@ const HEIR_TYPES = [
     id: 'joker',
     name: 'جوكر',
     icon: '🃏',
+    image: '/moro/cards/heir-generic.png',
     color: '#6B4F8A',
     description: 'بطاقة جوكر: عند لعبها تختار أي وارث مسموح به في حالة المتوفى الحالية لتمثله — تصلح مع أي حالة، ولا تُحجب أبدًا بنفسها.',
     count: 4

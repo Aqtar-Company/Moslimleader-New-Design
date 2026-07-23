@@ -8,29 +8,23 @@
 </head>
 <body>
 
-<!-- ============ شاشة البداية ============ -->
+<!-- ============ شاشة البداية (شعار + تحميل، تنتقل تلقائيًا لشاشة الإعداد) ============ -->
 <section id="screen-start" class="screen start-screen active">
   <img class="game-logo" src="/moro/logo.png" alt="MORO — مواريث">
   <p class="game-tagline">تعلّم المواريث باللعب</p>
-  <div class="menu-buttons">
-    <button class="btn btn-primary btn-block" id="btn-start-new">ابدأ اللعب</button>
-    <button class="btn btn-secondary btn-block hidden" id="btn-continue">متابعة المباراة السابقة</button>
-    <button class="btn btn-secondary btn-block" id="btn-how-to-play">طريقة اللعب</button>
-    <button class="btn btn-secondary btn-block" id="btn-heir-guide">دليل الورثة</button>
-    <button class="btn btn-secondary btn-block" id="btn-solver">❓ احسب حالتك</button>
-    <button class="btn btn-secondary btn-block" id="btn-gallery">🗂️ معرض البطاقات (للمراجعة)</button>
-  </div>
-  <p class="muted" style="margin-top:24px; max-width:340px; text-align:center;">أداة تعليمية مبسطة، وليست مرجعًا شرعيًا نهائيًا.</p>
+  <div class="splash-loader"><div class="splash-loader-bar"></div></div>
 </section>
 
 <!-- ============ شاشة الإعداد ============ -->
 <section id="screen-setup" class="screen">
   <div class="top-nav">
-    <button class="icon-btn" id="setup-back"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></button>
+    <button class="icon-btn" id="setup-menu-btn" title="القائمة"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg></button>
     <h3>إعداد المباراة</h3>
     <span></span>
   </div>
   <div class="setup-card">
+    <button class="btn btn-secondary btn-block hidden" id="btn-continue">متابعة المباراة السابقة</button>
+
     <div class="section-title">عدد اللاعبين</div>
     <div class="pill-group" id="player-count-group">
       <button class="pill" data-count="2">لاعبان</button>
@@ -52,6 +46,21 @@
     <div class="setup-actions">
       <button class="btn btn-primary btn-block" id="btn-launch-match">ابدأ المباراة</button>
     </div>
+    <p class="muted" style="margin-top:20px; text-align:center;">أداة تعليمية مبسطة، وليست مرجعًا شرعيًا نهائيًا.</p>
+  </div>
+</section>
+
+<!-- ============ شاشة القائمة ============ -->
+<section id="screen-menu" class="screen">
+  <div class="top-nav">
+    <button class="icon-btn" id="menu-back"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></button>
+    <h3>القائمة</h3>
+    <span></span>
+  </div>
+  <div class="menu-buttons">
+    <button class="btn btn-secondary btn-block" id="btn-how-to-play">طريقة اللعب</button>
+    <button class="btn btn-secondary btn-block" id="btn-heir-guide">دليل الورثة</button>
+    <button class="btn btn-secondary btn-block" id="btn-solver">❓ احسب حالتك</button>
   </div>
 </section>
 
@@ -216,41 +225,6 @@
     </table>
     <div id="solver-undistributed" class="warning-box hidden"></div>
     <div id="solver-reasons"></div>
-  </div>
-</section>
-
-<!-- ============ معرض البطاقات (للمراجعة خارج اللعب) ============ -->
-<section id="screen-gallery" class="screen">
-  <div class="top-nav">
-    <button class="icon-btn" id="gallery-back"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></button>
-    <h3>معرض البطاقات</h3>
-    <span></span>
-  </div>
-  <p class="muted" style="max-width:420px; text-align:center; margin-bottom:12px;">
-    كل الوجهين لكل نوع بطاقة في اللعبة، للمراجعة قبل الطباعة — بدون الحاجة للعب.
-  </p>
-
-  <div class="panel-card">
-    <div class="section-title">كروت أصحاب الفروض — نموذج الوجه (السهم، مشترك لكل الكروت)</div>
-    <div class="gallery-row" id="gallery-heir-face"></div>
-    <div class="section-title">كروت أصحاب الفروض — الظهور (9 هويات مختلفة، شاملة الجوكر)</div>
-    <div class="gallery-row" id="gallery-heir-backs"></div>
-  </div>
-
-  <div class="panel-card" style="margin-top:16px;">
-    <div class="section-title">بطاقات الأحكام — نموذج الظهر (مقفول، مشترك لكل الـ50 بطاقة)</div>
-    <div class="gallery-row" id="gallery-judgment-back"></div>
-    <div class="section-title">بطاقات الأحكام — كل الأوجه (50 بطاقة)</div>
-    <div class="gallery-row" id="gallery-judgment-fronts"></div>
-  </div>
-
-  <div class="panel-card" style="margin-top:16px;">
-    <div class="section-title">كروت القضايا — بروفة (50 كارت، للمراجعة فقط)</div>
-    <p class="muted" style="max-width:420px; text-align:center; margin-bottom:12px;">
-      اقتراح لوجه كارت "القضية" في التصميم المطبوع (حالة المتوفى + قيمة تركة مختارة تنقسم بلا كسور على ورثتها).
-      هذه بروفة للمراجعة فقط، وغير مستخدَمة في منطق اللعب الحالي، ولا ترتبط ببطاقات الأحكام أعلاه.
-    </p>
-    <div class="gallery-row" id="gallery-case-cards"></div>
   </div>
 </section>
 

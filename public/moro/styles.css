@@ -100,6 +100,21 @@ button:focus-visible, input:focus-visible {
 }
 .menu-buttons { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 320px; }
 
+.splash-loader {
+  width: 140px; height: 4px; border-radius: 4px;
+  background: rgba(255,255,255,0.1);
+  overflow: hidden;
+}
+.splash-loader-bar {
+  width: 40%; height: 100%; border-radius: 4px;
+  background: linear-gradient(90deg, var(--gold-dim), var(--gold-soft));
+  animation: splashLoading 1.4s ease-in-out infinite;
+}
+@keyframes splashLoading {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
 /* ---------- أزرار ثلاثية الأبعاد بلمعة (استلهامًا من المرجع) ---------- */
 .btn {
   padding: 14px 20px;
@@ -144,8 +159,8 @@ button:focus-visible, input:focus-visible {
   transform: translateY(4px);
   box-shadow: 0 2px 0 rgba(255,255,255,.3) inset, 0 -2px 0 rgba(0,0,0,.15) inset, 0 2px 0 #7a6220, 0 6px 12px rgba(0,0,0,.35);
 }
-/* دعوة للعب نابضة بخفة على شاشة البداية بس. */
-#btn-start-new { animation: ctaPulse 2.2s ease-in-out infinite; }
+/* دعوة للعب نابضة بخفة على زر بدء المباراة بس. */
+#btn-launch-match { animation: ctaPulse 2.2s ease-in-out infinite; }
 @keyframes ctaPulse {
   0%, 100% { filter: brightness(1); }
   50% { filter: brightness(1.12); }
@@ -687,7 +702,7 @@ button:focus-visible, input:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .player-chip.active-turn, #btn-start-new, .top-bar, .card-deal { animation: none; }
+  .player-chip.active-turn, #btn-launch-match, .top-bar, .card-deal { animation: none; }
   .btn, .icon-btn, .card, .hand-cards .card.small { transition: none; }
 }
 

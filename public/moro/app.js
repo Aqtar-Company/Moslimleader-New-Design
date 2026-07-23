@@ -72,16 +72,33 @@ function drawFrom(deckArrName, discardArrName, avoidValue) {
 }
 
 // ============================================================
-// شاشة البداية
+// شاشة البداية (شعار + تحميل) — تنتقل تلقائيًا لشاشة الإعداد
 // ============================================================
+const SPLASH_DURATION_MS = 1400;
 function initStartScreen() {
-  if (GameStorage.hasSavedGame()) {
-    $('#btn-continue').classList.remove('hidden');
-  }
-  $('#btn-start-new').addEventListener('click', () => {
-    AudioManager.playClick();
-    showScreen('screen-setup');
-  });
+  setTimeout(() => showScreen('screen-setup'), SPLASH_DURATION_MS);
+}
+
+// ============================================================
+// شاشة القائمة (طريقة اللعب / دليل الورثة / احسب حالتك)
+// ============================================================
+function initMenuScreen() {
+  $('#setup-menu-btn').addEventListener('click', () => { AudioManager.playClick(); showScreen('screen-menu'); });
+  $('#menu-back').addEventListener('click', () => showScreen('screen-setup'));
+  $('#btn-how-to-play').addEventListener('click', () => { renderHowTo(); showScreen('screen-how-to'); });
+  $('#btn-heir-guide').addEventListener('click', () => { renderHeirGuide(); showScreen('screen-heir-guide'); });
+  $('#btn-solver').addEventListener('click', () => { AudioManager.playClick(); resetSolverScreen(); showScreen('screen-solver'); });
+  $('#howto-back').addEventListener('click', () => showScreen('screen-menu'));
+  $('#heirguide-back').addEventListener('click', () => showScreen('screen-menu'));
+  $('#solver-back').addEventListener('click', () => showScreen('screen-menu'));
+}
+
+// زر "متابعة المباراة السابقة" أصبح على شاشة الإعداد نفسها بدل شاشة البداية
+function refreshContinueButton() {
+  $('#btn-continue').classList.toggle('hidden', !GameStorage.hasSavedGame());
+}
+function initContinueButton() {
+  refreshContinueButton();
   $('#btn-continue').addEventListener('click', () => {
     const saved = GameStorage.load();
     if (saved) {
@@ -89,15 +106,6 @@ function initStartScreen() {
       resumeSavedGame();
     }
   });
-  $('#btn-how-to-play').addEventListener('click', () => { renderHowTo(); showScreen('screen-how-to'); });
-  $('#btn-heir-guide').addEventListener('click', () => { renderHeirGuide(); showScreen('screen-heir-guide'); });
-  $('#btn-solver').addEventListener('click', () => { AudioManager.playClick(); resetSolverScreen(); showScreen('screen-solver'); });
-  $('#btn-gallery').addEventListener('click', () => { AudioManager.playClick(); renderGalleryScreen(); showScreen('screen-gallery'); });
-  $('#howto-back').addEventListener('click', () => showScreen('screen-start'));
-  $('#heirguide-back').addEventListener('click', () => showScreen('screen-start'));
-  $('#setup-back').addEventListener('click', () => showScreen('screen-start'));
-  $('#solver-back').addEventListener('click', () => showScreen('screen-start'));
-  $('#gallery-back').addEventListener('click', () => showScreen('screen-start'));
 }
 
 function renderHowTo() {
@@ -118,71 +126,14 @@ function renderHeirGuide() {
 }
 
 // ============================================================
-// معرض البطاقات (مراجعة كل الوجوه خارج اللعب، قبل الطباعة)
-// ============================================================
-function renderGalleryScreen() {
-  // نموذج وجه بطاقة السهم — مشترك لكل كروت أصحاب الفروض (بما فيها الجوكر)
-  $('#gallery-heir-face').innerHTML = `
-    <div class="card">
-      <div class="card-icon">💠</div>
-      <div class="card-name">سهم واحد</div>
-      <div class="card-sub">١ نقطة من التركة</div>
-    </div>`;
-
-  // ظهور الهويات التسعة (8 ورثة + جوكر)
-  $('#gallery-heir-backs').innerHTML = HEIR_TYPES.map(h => `
-    <div class="card${heirCardClass(h)}" style="--card-color:${h.color}">
-      ${heirVisualHtml(h)}
-      <div class="card-sub" style="font-size:10px; line-height:1.3;">${h.description}</div>
-    </div>`).join('');
-
-  // نموذج ظهر بطاقة الحكم — مشترك لكل الـ50 بطاقة
-  $('#gallery-judgment-back').innerHTML = `
-    <div class="judgment-card royal-card">
-      <span class="royal-corner tl">✦</span><span class="royal-corner tr">✦</span>
-      <span class="royal-corner bl">✦</span><span class="royal-corner br">✦</span>
-      <div class="judgment-card-back">
-        <div class="royal-icon-frame">🃏</div>
-        <div class="judgment-card-back-label">بطاقة حكم</div>
-      </div>
-    </div>`;
-
-  // كل أوجه بطاقات الأحكام الخمسين
-  $('#gallery-judgment-fronts').innerHTML = JUDGMENT_CARDS.map(card => `
-    <div class="judgment-card royal-card">
-      <span class="royal-corner tl">✦</span><span class="royal-corner tr">✦</span>
-      <span class="royal-corner bl">✦</span><span class="royal-corner br">✦</span>
-      <div class="judgment-card-front">
-        <div class="royal-card-title">${card.categoryIcon || ''} ${card.title}</div>
-        <div class="judgment-card-story">${card.story}</div>
-        <div class="judgment-card-fact">🌿 ${card.benefit}</div>
-        <div class="judgment-card-ruling">🎮 ${card.ruling}</div>
-      </div>
-    </div>`).join('');
-
-  // بروفة كروت القضايا الخمسين (للمراجعة البصرية فقط — غير مستخدَمة في منطق اللعب)
-  $('#gallery-case-cards').innerHTML = CASE_CARDS_PREVIEW.map(card => `
-    <div class="judgment-card royal-card">
-      <span class="royal-corner tl">✦</span><span class="royal-corner tr">✦</span>
-      <span class="royal-corner bl">✦</span><span class="royal-corner br">✦</span>
-      <div class="judgment-card-front">
-        <div class="royal-card-title">${card.deceasedGender === 'male' ? '👨' : '👩'} ${card.title}</div>
-        <div class="judgment-card-story">${card.note}</div>
-        <div class="judgment-card-fact">${ICON_COIN} قيمة التركة: ${card.estateValue} سهم</div>
-        <div class="judgment-card-ruling">${card.lesson}</div>
-      </div>
-    </div>`).join('');
-}
-
-// ============================================================
 // احسب حالتك (الحلّال التفاعلي)
 // ============================================================
-const SOLVER_MULTI_HEIRS = ['son', 'daughter', 'brother', 'sister', 'wife'];
-const SOLVER_MAX_COUNT = { wife: 4, son: 9, daughter: 9, brother: 9, sister: 9 };
+const SOLVER_MULTI_HEIRS = ['son', 'daughter', 'brother', 'sister', 'wife', 'half-brother', 'half-sister', 'uncle'];
+const SOLVER_MAX_COUNT = { wife: 4, son: 9, daughter: 9, brother: 9, sister: 9, 'half-brother': 9, 'half-sister': 9, uncle: 9 };
 
 let solverState = {
   gender: 'male',
-  selections: { son: 0, daughter: 0, father: 0, mother: 0, husband: 0, wife: 0, brother: 0, sister: 0, grandfather: 0, grandmother: 0 }
+  selections: { son: 0, daughter: 0, father: 0, mother: 0, husband: 0, wife: 0, brother: 0, sister: 0, grandfather: 0, grandmother: 0, 'half-brother': 0, 'half-sister': 0, uncle: 0 }
 };
 
 function initSolverScreen() {
@@ -205,7 +156,7 @@ function initSolverScreen() {
 function resetSolverScreen() {
   solverState = {
     gender: 'male',
-    selections: { son: 0, daughter: 0, father: 0, mother: 0, husband: 0, wife: 0, brother: 0, sister: 0, grandfather: 0, grandmother: 0 }
+    selections: { son: 0, daughter: 0, father: 0, mother: 0, husband: 0, wife: 0, brother: 0, sister: 0, grandfather: 0, grandmother: 0, 'half-brother': 0, 'half-sister': 0, uncle: 0 }
   };
   $all('#solver-gender-group .pill').forEach(b => b.classList.remove('selected'));
   $(`#solver-gender-group [data-gender="male"]`).classList.add('selected');
@@ -685,7 +636,10 @@ function doConfirmPlay() {
 // لكن تُحسَب في الجولة كأي وارث مسموح به يختاره اللاعب وقت اللعب.
 function showJokerIdentityPicker() {
   const caseObj = DECEASED_CASES.find(c => c.id === state.currentCaseId);
-  const allowedHeirs = HEIR_TYPES.filter(h => h.id !== 'joker' && !caseObj.disallowed.includes(h.id));
+  // h.count > 0: يقصر الاختيار على الورثة الموجودين فعليًا في رزمة اللعب — يستبعد تلقائيًا
+  // أي نوع وارث مُضاف لـHEIR_TYPES لأغراض "احسب حالتك"/الدليل فقط بدون رزمة لعب حقيقية
+  // (مثل الإخوة لأم والعم)، لأن حالات المتوفى (DECEASED_CASES) لا تذكرهم في disallowed أصلًا.
+  const allowedHeirs = HEIR_TYPES.filter(h => h.id !== 'joker' && h.count > 0 && !caseObj.disallowed.includes(h.id));
   const wrap = $('#hand-cards');
   wrap.innerHTML = allowedHeirs.map(h => `
     <div class="card small selectable joker-pick-card${heirCardClass(h)}" data-heir="${h.id}" style="--card-color:${h.color}">
@@ -1229,7 +1183,8 @@ function initTopBarActions() {
   $('#btn-exit').addEventListener('click', () => {
     if (confirm('هل تريد العودة للقائمة الرئيسية؟ سيتم حفظ تقدّمك تلقائيًا.')) {
       saveGame();
-      showScreen('screen-start');
+      refreshContinueButton();
+      showScreen('screen-setup');
     }
   });
 }
@@ -1239,6 +1194,8 @@ function initTopBarActions() {
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
   initStartScreen();
+  initMenuScreen();
+  initContinueButton();
   initSetupScreen();
   initPassOverlay();
   initHandActions();

@@ -338,7 +338,9 @@ button:focus-visible, input:focus-visible {
    شريط أفقي مضغوط فوق طاولة اللعب، يعرض عدد الأسهم اللي لسه في "البنك" (مش في يد أي لاعب). */
 .sahm-bank {
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  margin: 10px 0 4px; font-size: 12px; color: var(--ink-soft); font-weight: 700;
+  /* margin-top يعوّض .players-row { margin-bottom: -26px } (مسحوبة عشان تتراكب مع طاولة اللعب) —
+     من غيره العنصر ده كان بيتسحب لفوق تحت شرائح اللاعبين بدل ما يقعد تحتهم بمسافة نضيفة. */
+  margin: 30px 0 4px; font-size: 12px; color: var(--ink-soft); font-weight: 700;
   position: relative; z-index: 3;
 }
 .sahm-bank-stack { display: flex; position: relative; width: 28px; height: 18px; }

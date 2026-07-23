@@ -192,14 +192,19 @@ pm2 save
 ### Backup before any deploy (run this first)
 
 ```bash
-# DB dump + uploaded assets snapshot, kept for 30 days.
+# DB dump + uploaded assets snapshot, kept for 7 days.
+# NOTE: retention was 30 days originally, but /root/backups grew to 6.7GB and was the
+# #1 cause of a disk-full incident (2026-07-23) — full assets re-tar on every deploy,
+# and deploys happen several times a day, so 30-day retention outpaced cleanup. Cut to
+# 7 days. A daily cron at /etc/cron.daily/disk-cleanup also purges this + npm cache +
+# old rotated logs automatically — check it exists if disk fills up again.
 mkdir -p /root/backups
 TS=$(date +%Y%m%d-%H%M%S)
 mysqldump --single-transaction --routines moslimleader \
   | gzip > /root/backups/db-$TS.sql.gz
 tar czf /root/backups/assets-$TS.tar.gz \
   -C /home/moslimleader.com/app private public/products public/covers .env 2>/dev/null
-find /root/backups -type f -mtime +30 -delete
+find /root/backups -type f -mtime +7 -delete
 ls -lh /root/backups | tail
 ```
 

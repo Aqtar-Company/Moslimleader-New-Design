@@ -378,7 +378,7 @@ function startMatch(names, difficulty, totalRounds) {
   totalRounds = totalRounds || setupChoice.totalRounds;
   const heirDeck = buildHeirDeck();
   const players = names.map(name => ({
-    name, roundsWon: 0, blockedCount: 0, hand: [], balance: 30 // رأس المال: 30 سهم ابتدائي، ويتراكم عليه كل ما يُكسَب أو يُخصَم أثناء اللعب (لا يوجد نقاط منفصلة)
+    name, roundsWon: 0, blockedCount: 0, hand: [], balance: 20 // رأس المال: 20 سهم ابتدائي (خُفِّض من 30 بعد مراجعة اقتصاد السهم — انظر RULES.md بند 2)، ويتراكم عليه كل ما يُكسَب أو يُخصَم أثناء اللعب (لا يوجد نقاط منفصلة)
   }));
   // توزيع بطاقات يد كل لاعب — حجم اليد = عدد الجولات المختارة (3/5/7)، ويبقى ثابتًا طول المباراة
   // (اليد تُعبَّى لنفس الحجم بعد كل جولة زي ما هي، انظر renderHandForCurrentPlayer/doConfirmPlay).

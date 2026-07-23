@@ -527,27 +527,31 @@ function renderPlayScreenShell() {
 function updateSahmBank() {
   const inBank = state.heirDeck.length + state.heirDiscard.length;
   $('#sahm-bank-count').textContent = inBank;
-  const fifties = Math.floor(inBank / 50);
-  const ones = inBank % 50;
   const container = $('#sahm-bank-cards');
   if (!container) return;
+  if (inBank === 0) { container.innerHTML = `<span class="bank-empty">نفد</span>`; return; }
+  const fifties = Math.floor(inBank / 50);
+  const ones = inBank % 50;
   let html = '';
-  // كروت الـ50
-  for (let i = 0; i < Math.min(fifties, 4); i++) {
-    html += `<div class="bank-card-stack" style="--offset:${i}"><img src="cards/estate-50.png" alt="50 سهم"></div>`;
+  if (fifties > 0) {
+    html += `<div class="bank-pile">
+      <div class="bank-pile-imgs">
+        <img src="cards/estate-50.png" alt="" class="bank-pile-card bank-pile-card-back">
+        <img src="cards/estate-50.png" alt="" class="bank-pile-card">
+      </div>
+      <span class="bank-pile-num">×${fifties}</span>
+    </div>`;
   }
-  if (fifties > 4) html += `<div class="bank-card-count">×${fifties}</div>`;
-  // فاصل لو الاتنين موجودين
-  if (fifties > 0 && ones > 0) html += `<div class="bank-card-sep"></div>`;
-  // كروت الـ1
   if (ones > 0) {
-    const showOnes = Math.min(ones, 5);
-    for (let i = 0; i < showOnes; i++) {
-      html += `<div class="bank-card-stack" style="--offset:${i}"><img src="cards/estate-1.png" alt="1 سهم"></div>`;
-    }
-    if (ones > 5) html += `<div class="bank-card-count">×${ones}</div>`;
+    const layers = Math.min(ones, 3);
+    const cards = Array.from({length: layers}, (_, i) =>
+      `<img src="cards/estate-1.png" alt="" class="bank-pile-card" style="--li:${i}">`
+    ).join('');
+    html += `<div class="bank-pile">
+      <div class="bank-pile-imgs">${cards}</div>
+      <span class="bank-pile-num">×${ones}</span>
+    </div>`;
   }
-  if (inBank === 0) html = `<span class="bank-empty">نفد</span>`;
   container.innerHTML = html;
 }
 

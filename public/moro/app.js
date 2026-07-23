@@ -17,6 +17,82 @@ const ICON_COIN = '<svg viewBox="0 0 24 24" width="15" height="15" style="vertic
 // صندوق كنز مرسوم لكارت التركة بدل إيموجي 📦 عام — يوحي إن القيمة دي "كنز" مش مجرد طرد.
 const ICON_CHEST = '<svg viewBox="0 0 32 28" width="28" height="24"><path d="M4 13C4 7 9 3 16 3s12 4 12 10" fill="#8a6f2a"/><path d="M4 13C4 7 9 3 16 3s12 4 12 10" fill="none" stroke="#3a2c0d" stroke-width="1.5"/><rect x="3" y="13" width="26" height="12" rx="2" fill="#6b5420" stroke="#3a2c0d" stroke-width="1.5"/><rect x="3" y="12.3" width="26" height="3" fill="#3a2c0d"/><rect x="12.5" y="15" width="7" height="6" rx="1.5" fill="#2a1f08"/><circle cx="16" cy="18" r="1.2" fill="#E7C766"/></svg>';
 
+// صندوق كنز ثلاثي الأبعاد (خشب + غطاء مائل + عملات متساقطة بتكرار) — نسخة أرقى من
+// ICON_CHEST البسيط، تُستخدَم في كارت "قيمة التركة" على طاولة اللعب (انظر estateChestHtml).
+const CHEST_SVG = `<svg viewBox="0 0 64 64" class="estate-chest-svg">
+  <defs>
+    <linearGradient id="moroWood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5a2b"/><stop offset="1" stop-color="#5a3512"/></linearGradient>
+    <linearGradient id="moroLid" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a06a34"/><stop offset="1" stop-color="#6b3f18"/></linearGradient>
+    <linearGradient id="moroGoldG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6dd8e"/><stop offset="1" stop-color="#9c7a2c"/></linearGradient>
+    <radialGradient id="moroGlow" cx="0.5" cy="0.4" r="0.6"><stop offset="0" stop-color="#fff2b8" stop-opacity="0.9"/><stop offset="1" stop-color="#f6dd8e" stop-opacity="0"/></radialGradient>
+  </defs>
+  <ellipse cx="32" cy="30" rx="22" ry="12" fill="url(#moroGlow)"/>
+  <rect x="8" y="32" width="48" height="24" rx="3" fill="url(#moroWood)" stroke="#3a2208" stroke-width="1.2"/>
+  <rect x="8" y="32" width="48" height="4" fill="url(#moroGoldG)" stroke="#3a2208" stroke-width="0.6"/>
+  <rect x="8" y="50" width="48" height="4" fill="url(#moroGoldG)" stroke="#3a2208" stroke-width="0.6"/>
+  <circle cx="20" cy="36" r="4" fill="#f6dd8e" stroke="#9c7a2c" stroke-width="0.6"/>
+  <circle cx="30" cy="35" r="4.5" fill="#f6dd8e" stroke="#9c7a2c" stroke-width="0.6"/>
+  <circle cx="42" cy="36" r="4" fill="#f6dd8e" stroke="#9c7a2c" stroke-width="0.6"/>
+  <rect x="29" y="42" width="6" height="7" rx="1" fill="url(#moroGoldG)" stroke="#3a2208" stroke-width="0.6"/>
+  <circle cx="32" cy="45.5" r="0.9" fill="#3a2208"/>
+  <g transform="rotate(-38 12 32)">
+    <rect x="8" y="20" width="48" height="14" rx="3" fill="url(#moroLid)" stroke="#3a2208" stroke-width="1.2"/>
+    <rect x="8" y="20" width="48" height="3" fill="url(#moroGoldG)" stroke="#3a2208" stroke-width="0.6"/>
+    <rect x="8" y="31" width="48" height="3" fill="url(#moroGoldG)" stroke="#3a2208" stroke-width="0.6"/>
+  </g>
+</svg>`;
+
+function estateChestHtml() {
+  return `<div class="estate-chest-wrap">${CHEST_SVG}<span class="coin-fall c1"></span><span class="coin-fall c2"></span><span class="coin-fall c3"></span><span class="coin-fall c4"></span><span class="coin-fall c5"></span></div>`;
+}
+
+// عنقود زخرفي هندسي واحد (متكرر 3 مرات بمقاسات مختلفة داخل كل شريط) — fill بتاعه بيتحدد
+// بنفس تدرّج الشريط (gradId) بدل currentColor عشان تدرّج SVG مش قيمة صالحة لخاصية color.
+function filigreeCluster(gradId) {
+  return `<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M0,-24 C-2,-20 2,-20 0,-16"/>
+    <circle cx="0" cy="-25" r="0.9" fill="url(#${gradId})" stroke="none"/>
+    <path d="M0,-16 C-6,-18 -14,-16 -18,-10 C-22,-6 -24,-6 -26,-8"/>
+    <path d="M0,-16 C6,-18 14,-16 18,-10 C22,-6 24,-6 26,-8"/>
+    <path d="M-18,-10 C-24,-8 -32,-6 -34,-2 C-36,2 -30,4 -28,0 C-26,-4 -22,-4 -20,-2"/>
+    <path d="M18,-10 C24,-8 32,-6 34,-2 C36,2 30,4 28,0 C26,-4 22,-4 20,-2"/>
+    <path d="M-10,-10 C-8,-6 -12,-4 -14,-6"/>
+    <path d="M10,-10 C8,-6 12,-4 14,-6"/>
+    <path d="M-38,-2 C-42,-6 -44,-4 -42,0"/>
+    <path d="M38,-2 C42,-6 44,-4 42,0"/>
+    <circle cx="-30" cy="4" r="1" fill="url(#${gradId})" stroke="none"/>
+    <circle cx="30" cy="4" r="1" fill="url(#${gradId})" stroke="none"/>
+  </g>`;
+}
+
+// شريط زخرفي ذهبي (filigree) — يوضع فوق وتحت نص كارت القضية (status-card) لإطار أرقى
+// من أركان ✦ المفردة القديمة.
+function caseFiligreeBand(position) {
+  const gradId = `moroFiligreeG-${position}`;
+  const cluster = filigreeCluster(gradId);
+  const rowTransform = position === 'top' ? 'translate(0 34)' : 'translate(0 12) scale(1 -1)';
+  const lineTransform = position === 'top' ? 'translate(0 40)' : 'translate(0 6)';
+  return `<svg class="case-filigree-band ${position}" viewBox="0 0 400 46" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+    <defs>
+      <linearGradient id="${gradId}" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#c99326"/><stop offset="20%" stop-color="#f6dd8e"/>
+        <stop offset="50%" stop-color="#d9a934"/><stop offset="80%" stop-color="#f6dd8e"/>
+        <stop offset="100%" stop-color="#8a6414"/>
+      </linearGradient>
+    </defs>
+    <g transform="${rowTransform}" stroke="url(#${gradId})" stroke-width="1.1">
+      <g transform="translate(70 0) scale(0.72)">${cluster}</g>
+      <g transform="translate(200 0) scale(1.15)">${cluster}</g>
+      <g transform="translate(330 0) scale(-0.72 0.72)">${cluster}</g>
+    </g>
+    <g transform="${lineTransform}" fill="url(#${gradId})" stroke="url(#${gradId})">
+      <line x1="10" y1="0" x2="390" y2="0" stroke-width="1.4"/>
+      <path d="M10,0 L18,-3 L18,3 Z" stroke-width="0.4"/>
+      <path d="M390,0 L382,-3 L382,3 Z" stroke-width="0.4"/>
+    </g>
+  </svg>`;
+}
+
 // لو أكثر من لاعب لعب نفس الوارث "الفردي" في نفس الجولة (مثلًا لاعبان كلاهما "زوج" لنفس
 // المتوفاة)، فهذا وضع مستحيل فقهيًا. الحل: أول لاعب لعب هذا الوارث (بترتيب الدور — يمثّل
 // "الأسرع" في اللعبة الورقية، حيث الأدوار تُلعَب بالتتابع لا في لحظة واحدة) هو صاحب الادّعاء
@@ -498,8 +574,8 @@ function renderPlayScreenShell() {
   // مستطيل عريض (بيتّسع لنص القضية) بجانب كارت التركة المربّع، على نفس المحاذاة.
   $('#status-card-slot').innerHTML = `
     <div class="card royal-card status-card gender-${caseObj.deceasedGender} card-flip">
-      <span class="royal-corner tl">✦</span><span class="royal-corner tr">✦</span>
-      <span class="royal-corner bl">✦</span><span class="royal-corner br">✦</span>
+      ${caseFiligreeBand('top')}
+      ${caseFiligreeBand('bottom')}
       <div class="royal-icon-frame">${caseObj.deceasedGender === 'male' ? '🕌' : '🕋'}</div>
       <div class="status-card-text">
         <div class="royal-card-title">${caseObj.title}</div>
@@ -509,9 +585,7 @@ function renderPlayScreenShell() {
 
   $('#estate-card-slot').innerHTML = `
     <div class="card royal-card estate-card ${estateTierClass(state.currentEstateValue)} card-flip">
-      <span class="royal-corner tl">✦</span><span class="royal-corner tr">✦</span>
-      <span class="royal-corner bl">✦</span><span class="royal-corner br">✦</span>
-      <div class="royal-icon-frame">${ICON_CHEST}</div>
+      ${estateChestHtml()}
       <div class="card-value">${state.currentEstateValue}</div>
       <div class="card-sub">قيمة التركة</div>
     </div>`;

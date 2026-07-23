@@ -401,22 +401,26 @@ button:focus-visible, input:focus-visible {
 .table-area {
   position: relative;
   width: 100%;
-  background:
-    radial-gradient(ellipse at 50% 30%, rgba(217, 169, 52, 0.16), transparent 55%),
-    radial-gradient(ellipse at 50% 105%, rgba(0, 0, 0, 0.4), transparent 65%),
-    linear-gradient(180deg, var(--surface-2), var(--surface) 70%);
+  background: radial-gradient(ellipse at 50% 30%, #14563c 0%, #0e3d2a 60%, #082418 100%);
   border-radius: 46% 46% 26px 26px / 78px 78px 26px 26px;
   padding: 50px 18px 22px;
   display: flex; flex-direction: column; align-items: center; gap: 12px;
-  box-shadow: var(--shadow), inset 0 2px 0 rgba(255,255,255,.05), inset 0 -22px 36px rgba(0,0,0,.35);
+  box-shadow:
+    var(--shadow),
+    inset 0 0 0 2px rgba(217, 169, 52, .35),
+    inset 0 0 0 4px rgba(4, 15, 33, .4),
+    inset 0 6px 20px rgba(0,0,0,.5),
+    inset 0 -22px 36px rgba(0,0,0,.45);
   margin-bottom: 12px; min-height: 190px;
-  border: 2px solid var(--gold-dim);
+  border: none;
+  outline: 3px solid var(--gold);
+  outline-offset: -3px;
   overflow: hidden;
 }
 .table-area::before {
   content: '';
   position: absolute; inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84'%3E%3Cg fill='none' stroke='%23d9a934' stroke-opacity='0.06' stroke-width='1'%3E%3Cpath d='M42 0 L84 42 L42 84 L0 42 Z'/%3E%3Ccircle cx='42' cy='42' r='18'/%3E%3C/g%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84'%3E%3Cg fill='none' stroke='%23f6dd8e' stroke-opacity='0.05' stroke-width='1'%3E%3Cpath d='M42 0 L84 42 L42 84 L0 42 Z'/%3E%3Ccircle cx='42' cy='42' r='18'/%3E%3C/g%3E%3C/svg%3E");
   background-size: 84px 84px;
   opacity: .7;
   pointer-events: none;
@@ -426,7 +430,7 @@ button:focus-visible, input:focus-visible {
   content: '';
   position: absolute; inset: 7px;
   border-radius: inherit;
-  border: 1px solid rgba(217, 169, 52, 0.22);
+  border: 1px solid rgba(246, 221, 142, 0.35);
   pointer-events: none;
 }
 .table-cards { display: flex; gap: 14px; align-items: stretch; width: 100%; position: relative; z-index: 1; }
@@ -517,7 +521,46 @@ button:focus-visible, input:focus-visible {
 .estate-card { background: linear-gradient(160deg, var(--surface), rgba(217, 169, 52, 0.14)); }
 .estate-card.tier-3, .estate-card.tier-4 { background: linear-gradient(160deg, var(--gold-soft), var(--gold)); color: #2e2308; }
 .estate-card.tier-3 .card-sub, .estate-card.tier-4 .card-sub { color: #2e2308; }
-.estate-card .card-value { font-family: 'Georgia', serif; font-size: 30px; font-weight: 800; }
+.estate-card .card-value {
+  font-family: 'Georgia', serif; font-size: 30px; font-weight: 800;
+  background: linear-gradient(180deg, #fff2b8 0%, #f6dd8e 45%, #b9862a 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 4px rgba(246, 221, 142, .35));
+}
+
+/* صندوق الكنز المتحرك (بديل الأيقونة الدائرية الثابتة القديمة لكارت التركة) — عملات
+   ذهبية صغيرة بتتساقط بتكرار جوه هالة توهّج، إحساس "تركة حية" بدل أيقونة جامدة. */
+.estate-chest-wrap {
+  position: relative; width: 100%; height: 56px; margin-bottom: 2px;
+  display: flex; justify-content: center; align-items: flex-end;
+}
+.estate-chest-svg {
+  width: 72px; height: 56px;
+  filter: drop-shadow(0 0 6px rgba(246, 221, 142, .75)) drop-shadow(0 0 14px rgba(246, 221, 142, .45)) drop-shadow(0 2px 3px rgba(0,0,0,.45));
+}
+.coin-fall {
+  position: absolute; width: 7px; height: 7px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff2b8 0%, #f6dd8e 40%, #9c7a2c 100%);
+  box-shadow: 0 0 4px rgba(246, 221, 142, .7), inset 0 -1px 0 rgba(0,0,0,.25);
+  top: 12px; opacity: 0;
+  animation: coinFall 2.4s linear infinite;
+}
+.coin-fall.c1 { left: 44%; animation-delay: 0s; }
+.coin-fall.c2 { left: 52%; animation-delay: .5s; }
+.coin-fall.c3 { left: 48%; animation-delay: 1s; }
+.coin-fall.c4 { left: 56%; animation-delay: 1.4s; }
+.coin-fall.c5 { left: 40%; animation-delay: 1.9s; }
+@keyframes coinFall {
+  0%   { transform: translate(0,-4px) scale(.6); opacity: 0; }
+  15%  { opacity: 1; }
+  60%  { transform: translate(-4px,22px) scale(1); opacity: 1; }
+  100% { transform: translate(-8px,30px) scale(.7); opacity: 0; }
+}
+
+/* شرائط زخرفية ذهبية (filigree) فوق وتحت نص كارت القضية — بديل أرقى لأركان ✦ المفردة. */
+.case-filigree-band { position: absolute; left: 0; right: 0; width: 100%; height: 30px; pointer-events: none; filter: drop-shadow(0 1px 0 rgba(4,15,33,.4)); }
+.case-filigree-band.top { top: 2px; }
+.case-filigree-band.bottom { bottom: 2px; }
 
 /* ---------- الإطار الملكي الكلاسيكي: كارت القضية والتركة وكارت الحكم ---------- */
 .royal-card { position: relative; }
@@ -769,6 +812,12 @@ button:focus-visible, input:focus-visible {
   .game-logo { width: 160px; height: 160px; }
   .judgment-card { width: 200px; height: 280px; }
 }
+/* باگ حقيقي: .status-card (كارت وصف القضية العريض) عنده width:100% أعلى في الملف، لكن
+   القاعدة العامة .card فوق (عند نفس مستوى التحديد، أحدث بترتيب المصدر) كانت بتكسبها
+   عند ≤420px (أغلب شاشات الموبايل الحقيقية) — فبيتقزّق لـ92px بدل ما يمتلئ عرض السلوت،
+   ونص القضية بيتلف بشكل مزنوق. إعادة تثبيت width:100% هنا (بعد الميديا كويري) تضمن
+   إنها الأحدث بترتيب المصدر فتكسب دايمًا، بغض النظر عن عرض الشاشة. */
+.status-card { width: 100%; }
 
 /* ---------- رسبونسيف: شاشات ضيقة (موبايل صغير، و3-4 لاعبين بيلفّوا لصف تاني) ---------- */
 @media (max-width: 480px) {

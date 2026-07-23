@@ -375,6 +375,17 @@ button:focus-visible, input:focus-visible {
 .card.small .card-icon-badge { width: 34px; height: 34px; margin-bottom: 3px; }
 .card.small .card-icon-badge .card-icon { font-size: 18px; }
 
+/* بطاقة بلا صورة حقيقية (الجوكر تحديدًا) — حدود ذهبية + زخرفة أركان ✦ بدل الشكل
+   الفارغ القديم (دائرة ملوَّنة وسط كارت فاتح بلا أي إطار)، لتتّسق مع باقي كروت اللعبة. */
+.card.royal-fallback {
+  border: 2px solid var(--gold);
+  box-shadow: var(--shadow), 0 0 14px rgba(217, 169, 52, 0.18);
+}
+.card.royal-fallback .card-icon-badge {
+  border: 1.5px solid rgba(255,255,255,0.3);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 2px 3px rgba(255,255,255,0.35);
+}
+
 /* بطاقة الوارث بصورة حقيقية: الصورة نفسها هي تصميم الكارت الكامل، فتُعرض كاملة بلا
    أي قص (object-fit: contain) وبلا نص مكرر من عندنا. */
 .card.has-photo { padding: 0; overflow: hidden; background: var(--surface); display: flex; flex-direction: column; }

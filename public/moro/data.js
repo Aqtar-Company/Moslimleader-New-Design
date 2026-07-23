@@ -139,13 +139,15 @@ function getHeirType(id) {
 // مكرر من عندنا. وإلا (الجوكر مثلًا)، رجوع للشكل القديم: دائرة ملوَّنة بالإيموجي + اسم نصي.
 function heirVisualHtml(heir) {
   if (heir.image) return `<img class="card-portrait-full" src="${heir.image}" alt="${heir.name}" draggable="false">`;
-  return `<div class="card-icon-badge"><span class="card-icon">${heir.icon}</span></div><div class="card-name">${heir.name}</div>`;
+  // بلا صورة حقيقية (الجوكر تحديدًا حاليًا): تصميم "ملكي" بأركان ✦ ذهبية بدل الدائرة
+  // المجرّدة القديمة، ليتّسق بصريًا مع باقي عناصر اللعبة (كروت القضية/التركة/الأحكام).
+  return `<span class="royal-corner tl">✦</span><span class="royal-corner tr">✦</span><span class="royal-corner bl">✦</span><span class="royal-corner br">✦</span><div class="card-icon-badge"><span class="card-icon">${heir.icon}</span></div><div class="card-name">${heir.name}</div>`;
 }
 
-// كلاس إضافي على عنصر .card نفسه لو الوارث عنده صورة حقيقية (يُلغي padding الكارت
-// الافتراضي عشان الصورة تملأ الكارت بالكامل بلا حواف بيضاء حوالين حدودها المطبوعة).
+// كلاس إضافي على عنصر .card نفسه: has-photo لو عنده صورة حقيقية (يُلغي padding الكارت
+// الافتراضي عشان الصورة تملأ الكارت بالكامل)، أو royal-fallback لو بلا صورة (حدود ذهبية).
 function heirCardClass(heir) {
-  return heir.image ? ' has-photo' : '';
+  return heir.image ? ' has-photo' : ' royal-fallback';
 }
 
 // ---------- بطاقات حالة المتوفى ----------

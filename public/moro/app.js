@@ -581,6 +581,11 @@ function renderHandForCurrentPlayer() {
   const wrap = $('#hand-cards');
   wrap.innerHTML = '';
 
+  // زاوية "التروحة" محسوبة ديناميكيًا حسب عدد كروت اليد الفعلي (3/5/7 حسب عدد الجولات)
+  // بدل قواعد nth-child ثابتة كانت مبنية على افتراض يد من 4 كروت بالظبط — تتمركز حوالين
+  // الصفر، والكروت الطرفية تنزل شوية لأسفل زي ماسك ورق حقيقي (نفس إحساس التصميم القديم).
+  const fanCount = player.hand.length;
+  const fanMid = (fanCount - 1) / 2;
   player.hand.forEach((heirId, idx) => {
     const heir = getHeirType(heirId);
     const disallowed = caseObj.disallowed.includes(heirId);
@@ -590,6 +595,9 @@ function renderHandForCurrentPlayer() {
     cardEl.className = 'card small selectable card-deal' + heirCardClass(heir);
     if (disallowed) cardEl.dataset.disallowed = 'true';
     cardEl.style.setProperty('--card-color', heir.color);
+    const offsetFromMid = idx - fanMid;
+    cardEl.style.setProperty('--fan-rotate', (offsetFromMid * 6) + 'deg');
+    cardEl.style.setProperty('--fan-y', (Math.abs(offsetFromMid) * 4) + 'px');
     cardEl.style.animationDelay = (idx * 0.07) + 's';
     cardEl.innerHTML = `
       <button class="info-btn" title="معلومات">؟</button>

@@ -517,22 +517,24 @@ button:focus-visible, input:focus-visible {
   margin: 2px 0 10px;
 }
 /* كروت اليد "مروَّحة" زي ماسك ورق حقيقي — كل كارت بميل مختلف ويتراكب مع اللي جنبه،
-   وترتفع وتستوي لما تتحوّم/تتاختار عليها. */
+   وترتفع وتستوي لما تتحوّم/تتاختار عليها. حجم اليد بقى متغيّر (3/5/7 حسب عدد الجولات)،
+   فزاوية الميل بقت محسوبة في JS لكل كارت (--fan-rotate/--fan-y، انظر renderHandForCurrentPlayer)
+   بدل قواعد nth-child ثابتة كانت مبنية على 4 كروت بالظبط. overflow-x:auto + سكرول لمسي
+   يضمن الوصول لكل الكروت لو زادت عن اللي بيتسع في عرض الشاشة (بدل ما تتقص برّه من غير سكرول). */
 .hand-cards {
   display: flex; justify-content: center; align-items: flex-end;
   flex-wrap: nowrap; padding: 34px 10px 14px; position: relative;
+  overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
 }
+.hand-cards::-webkit-scrollbar { display: none; }
 .hand-cards .card.small {
   width: 128px; height: 187px; flex-shrink: 0;
   margin-left: -50px; transform-origin: bottom center;
+  transform: rotate(var(--fan-rotate, 0deg)) translateY(var(--fan-y, 0px));
   transition: transform 0.3s cubic-bezier(.2,.8,.3,1.2), box-shadow 0.3s ease;
 }
 .hand-cards .card.small:first-child { margin-left: 0; }
 .hand-cards .card.small.card-deal { transition: none; }
-.hand-cards .card.small:nth-child(1) { transform: rotate(-9deg) translateY(10px); z-index: 1; }
-.hand-cards .card.small:nth-child(2) { transform: rotate(-3deg) translateY(0); z-index: 2; }
-.hand-cards .card.small:nth-child(3) { transform: rotate(3deg) translateY(0); z-index: 3; }
-.hand-cards .card.small:nth-child(4) { transform: rotate(9deg) translateY(10px); z-index: 4; }
 .hand-cards .card.small:hover { transform: translateY(-24px) rotate(0deg) scale(1.05) !important; z-index: 20; box-shadow: 0 20px 36px rgba(0,0,0,.5); }
 .hand-cards .card.small.selected { transform: translateY(-28px) rotate(0deg) scale(1.06) !important; z-index: 21; animation: none; }
 .hand-cards .card.small .info-btn { top: 4px; left: 4px; right: auto; }
@@ -702,8 +704,8 @@ button:focus-visible, input:focus-visible {
   .estate-card .card-value { font-size: 24px; }
   .estate-card .card-sub { font-size: 10px; }
 
-  /* كروت اليد: تصغير حجم "التروحة" عشان الأربع كروت تتّسع بارتياح بلا ما تخرج
-     برّه حواف الشاشة. */
+  /* كروت اليد: تصغير حجم "التروحة" عشان الكروت تتّسع بارتياح على الموبايل — أي زيادة
+     فوق اللي بيتسع في العرض توصلها بالسكرول الأفقي (.hand-cards { overflow-x: auto }). */
   .hand-cards { padding: 26px 6px 10px; }
   .hand-cards .card.small { width: 96px; height: 140px; margin-left: -36px; }
   .hand-cards .card.small .card-name { font-size: 11px; }

@@ -201,9 +201,9 @@ export default function FreeMediaAdminPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">الترتيب</label>
+            <label className="block text-sm font-medium mb-1">الترتيب <span className="text-gray-400 font-normal text-xs">(رقم أصغر = يظهر أولاً — 0 = الأول)</span></label>
             <input type="number" value={form.sortOrder} onChange={e => setForm(f => ({ ...f, sortOrder: Number(e.target.value) }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm" />
+              className="w-full border rounded-lg px-3 py-2 text-sm" min="0" />
           </div>
         </div>
 

@@ -60,6 +60,7 @@ export default function AccountPage() {
   // Free media downloads
   const [freeMedia, setFreeMedia] = useState<FreeMediaItem[]>([]);
   const [freeMediaLoading, setFreeMediaLoading] = useState(false);
+  const [mediaSubTab, setMediaSubTab] = useState<'all' | 'mp3' | 'image' | 'pdf'>('all');
 
   // Children
   const [children, setChildren] = useState<ChildRecord[]>([]);
@@ -258,15 +259,24 @@ export default function AccountPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-2xl p-1 mb-8 overflow-x-auto">
-        {([['profile', L.profile], ['addresses', L.addresses], ['orders', L.orders], ['books', isRtl ? '📚 كتبي' : '📚 My Books'], ['loyalty', isRtl ? '⭐ نقاطي' : '⭐ Points'], ['children', isRtl ? '👶 أطفالي' : '👶 My Kids'], ['downloads', isRtl ? '⬇️ وسائط مجانية' : '⬇️ Free Media']] as [Tab, string][]).map(([t, label]) => (
+        {([
+          ['profile',   isRtl ? 'بياناتي'    : 'Profile',    <svg key="p" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M10 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-7 8a7 7 0 0 1 14 0H3z"/></svg>],
+          ['addresses', isRtl ? 'العناوين'   : 'Addresses',  <svg key="a" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M10 2a6 6 0 0 0-6 6c0 4.5 6 10 6 10s6-5.5 6-10a6 6 0 0 0-6-6zm0 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" clipRule="evenodd"/></svg>],
+          ['orders',    isRtl ? 'طلباتي'     : 'Orders',     <svg key="o" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M3 3h2l.4 2M7 13h10l2-7H5.4L7 13zm0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm10 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>],
+          ['books',     isRtl ? 'كتبي'       : 'My Books',   <svg key="b" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M9 4.804A7.968 7.968 0 0 0 5.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 0 1 5.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0 1 14.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0 0 14.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 1 1-2 0V4.804z"/></svg>],
+          ['loyalty',   isRtl ? 'نقاطي'      : 'Points',     <svg key="l" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 0 0 .95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 0 0-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 0 0-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 0 0-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 0 0 .951-.69l1.07-3.292z"/></svg>],
+          ['children',  isRtl ? 'أطفالي'     : 'My Kids',    <svg key="c" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><circle cx="10" cy="6" r="3"/><path d="M10 11c-4 0-6 2-6 3v1h12v-1c0-1-2-3-6-3z"/></svg>],
+          ['downloads', isRtl ? 'وسائط مجانية' : 'Free Media', <svg key="d" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M3 17a1 1 0 0 1 1-1h12a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1zm3.293-7.707a1 1 0 0 1 1.414 0L9 10.586V3a1 1 0 1 1 2 0v7.586l1.293-1.293a1 1 0 1 1 1.414 1.414l-3 3a1 1 0 0 1-1.414 0l-3-3a1 1 0 0 1 0-1.414z" clipRule="evenodd"/></svg>],
+        ] as [Tab, string, React.ReactNode][]).map(([t, label, icon]) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition whitespace-nowrap ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${
               tab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            {label}
+            {icon}
+            <span className="hidden sm:inline">{label}</span>
           </button>
         ))}
       </div>
@@ -743,7 +753,7 @@ export default function AccountPage() {
 
       {tab === 'downloads' && (
         <div>
-          <div className="mb-6">
+          <div className="mb-5">
             <h2 className="text-xl font-black text-gray-900">
               {isRtl ? 'وسائط مسلم ليدر المجانية' : 'Muslim Leader Free Media'}
             </h2>
@@ -752,101 +762,143 @@ export default function AccountPage() {
             </p>
           </div>
 
+          {/* Sub-tabs */}
+          {freeMedia.length > 0 && (
+            <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
+              {([
+                ['all',   isRtl ? 'الكل' : 'All',
+                  <svg key="all" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M5 3a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H5zm8 0a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-2zm-8 8a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2H5zm8 0a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-2z"/></svg>],
+                ['mp3',  isRtl ? 'الأناشيد' : 'Nasheeds',
+                  <svg key="mp3" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M18 3a1 1 0 0 0-1.196-.98l-10 2A1 1 0 0 0 6 5v9.114A4.369 4.369 0 0 0 5 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0 0 15 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z"/></svg>],
+                ['image', isRtl ? 'رسومات التلوين' : 'Coloring',
+                  <svg key="img" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M4 3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd"/></svg>],
+                ['pdf',  isRtl ? 'كتب PDF' : 'PDF Books',
+                  <svg key="pdf" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M4 4a2 2 0 0 1 2-2h4.586A2 2 0 0 1 12 2.586L15.414 6A2 2 0 0 1 16 7.414V16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4zm2 6a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1zm1 3a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2H7z" clipRule="evenodd"/></svg>],
+              ] as ['all'|'mp3'|'image'|'pdf', string, React.ReactNode][])
+                .filter(([type]) => type === 'all' || freeMedia.some(m => m.type === type))
+                .map(([type, label, icon]) => (
+                  <button
+                    key={type}
+                    onClick={() => setMediaSubTab(type)}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold border transition whitespace-nowrap ${
+                      mediaSubTab === type
+                        ? 'bg-[#1a1a2e] text-[#F5C518] border-[#1a1a2e]'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                    }`}
+                  >
+                    {icon} {label}
+                    <span className="text-xs opacity-60">
+                      ({type === 'all' ? freeMedia.length : freeMedia.filter(m => m.type === type).length})
+                    </span>
+                  </button>
+                ))
+              }
+            </div>
+          )}
           {freeMediaLoading ? (
             <div className="flex justify-center py-16">
               <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : freeMedia.length === 0 ? (
             <div className="text-center py-16 bg-gray-50 rounded-2xl border">
-              <div className="text-5xl mb-3">🎁</div>
+              <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-14 h-14 text-gray-300 mx-auto mb-3"><rect x="6" y="8" width="36" height="32" rx="3"/><path d="M18 8v32M30 8v32"/></svg>
               <p className="text-gray-500">{isRtl ? 'لا توجد وسائط متاحة حالياً' : 'No media available yet'}</p>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {freeMedia.map(item => {
-                const isEn = !isRtl;
-                const title = isEn && item.titleEn ? item.titleEn : item.title;
-                const desc = isEn && item.descriptionEn ? item.descriptionEn : item.description;
-                const typeLabel = isRtl
-                  ? (item.type === 'mp3' ? 'ملف صوتي' : item.type === 'image' ? 'صورة تلوين' : 'PDF')
-                  : (item.type === 'mp3' ? 'Audio File' : item.type === 'image' ? 'Coloring Page' : 'PDF');
-                const TypeIcon = item.type === 'mp3'
-                  ? () => (
-                    <svg viewBox="0 0 48 48" fill="none" className="w-16 h-16 text-amber-400" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="14" cy="38" r="6" fill="currentColor" opacity="0.25" stroke="none"/>
-                      <circle cx="14" cy="38" r="5"/>
-                      <circle cx="34" cy="34" r="6" fill="currentColor" opacity="0.25" stroke="none"/>
-                      <circle cx="34" cy="34" r="5"/>
-                      <line x1="19" y1="38" x2="19" y2="14"/>
-                      <line x1="39" y1="34" x2="39" y2="10"/>
-                      <line x1="19" y1="14" x2="39" y2="10"/>
-                    </svg>
-                  )
-                  : item.type === 'image'
-                  ? () => (
-                    <svg viewBox="0 0 48 48" fill="none" className="w-16 h-16 text-amber-400" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="6" y="8" width="36" height="32" rx="3" fill="currentColor" opacity="0.12" stroke="currentColor"/>
-                      <circle cx="16" cy="18" r="4" fill="currentColor" opacity="0.4" stroke="none"/>
-                      <path d="M6 32 l10-10 8 8 6-6 12 12" fill="none"/>
-                    </svg>
-                  )
-                  : () => (
-                    <svg viewBox="0 0 48 48" fill="none" className="w-16 h-16 text-amber-400" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 6h16l10 10v26a2 2 0 0 1-2 2H12a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z" fill="currentColor" opacity="0.12"/>
-                      <path d="M28 6v10h10"/>
-                      <line x1="16" y1="26" x2="32" y2="26"/>
-                      <line x1="16" y1="32" x2="28" y2="32"/>
-                    </svg>
-                  );
-                return (
-                  <div key={item.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-                    {item.coverUrl ? (
-                      <img
-                        src={item.coverUrl}
-                        alt={title}
-                        className="w-full h-40 object-cover"
-                        onError={e => {
-                          (e.currentTarget as HTMLImageElement).style.display = 'none';
-                          (e.currentTarget.nextElementSibling as HTMLElement | null)?.removeAttribute('hidden');
-                        }}
-                      />
-                    ) : null}
-                    <div
-                      hidden={!!item.coverUrl}
-                      className="w-full h-36 bg-gradient-to-br from-amber-50 to-amber-100 flex items-center justify-center"
-                    >
-                      <TypeIcon />
-                    </div>
-                    <div className="p-4 flex flex-col flex-1">
-                      <span className="text-xs text-amber-600 font-semibold mb-1 flex items-center gap-1">
-                        <svg viewBox="0 0 16 16" className="w-3.5 h-3.5 inline-block" fill="currentColor">
-                          {item.type === 'mp3'
-                            ? <path d="M9 3v7.5a2.5 2.5 0 1 1-1-2V5l4-1v1.5L9 6.2V3z"/>
-                            : item.type === 'image'
-                            ? <path d="M2 3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3zm5 5.5L5 11h6l-2-3-2 2.5-1-1.5L7 8.5zM5.5 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>
-                            : <path d="M4 0h5.5L13 3.5V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V1a1 1 0 0 1 1-1zm5 0v3.5H12.5L9 0zM5 8h6v1H5V8zm0 2h6v1H5v-1z"/>
-                          }
-                        </svg>
-                        {typeLabel}
-                      </span>
-                      <h3 className="font-black text-gray-900 mb-1">{title}</h3>
-                      {desc && <p className="text-sm text-gray-500 mb-3 flex-1">{desc}</p>}
-                      <a
-                        href={item.url}
-                        download
-                        className="mt-auto flex items-center justify-center gap-2 bg-[#F5C518] hover:bg-yellow-400 text-gray-900 font-black py-2.5 rounded-xl text-sm transition"
+          ) : (() => {
+            const filtered = mediaSubTab === 'all' ? freeMedia : freeMedia.filter(m => m.type === mediaSubTab);
+            return filtered.length === 0 ? (
+              <div className="text-center py-12 bg-gray-50 rounded-2xl border">
+                <p className="text-gray-400 text-sm">{isRtl ? 'لا توجد ملفات في هذا القسم بعد' : 'No files in this section yet'}</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {filtered.map(item => {
+                  const isEn = !isRtl;
+                  const title = isEn && item.titleEn ? item.titleEn : item.title;
+                  const desc = isEn && item.descriptionEn ? item.descriptionEn : item.description;
+                  const typeLabel = isRtl
+                    ? (item.type === 'mp3' ? 'نشيد' : item.type === 'image' ? 'رسمة تلوين' : 'PDF')
+                    : (item.type === 'mp3' ? 'Nasheed' : item.type === 'image' ? 'Coloring Page' : 'PDF');
+                  const ext = item.url.split('.').pop() || (item.type === 'mp3' ? 'mp3' : item.type === 'pdf' ? 'pdf' : 'jpg');
+                  const downloadName = `${item.title} - Muslim Leader.${ext}`;
+                  const TypeIcon = item.type === 'mp3'
+                    ? () => (
+                      <svg viewBox="0 0 48 48" fill="none" className="w-16 h-16 text-amber-400" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="14" cy="38" r="6" fill="currentColor" opacity="0.25" stroke="none"/>
+                        <circle cx="14" cy="38" r="5"/>
+                        <circle cx="34" cy="34" r="6" fill="currentColor" opacity="0.25" stroke="none"/>
+                        <circle cx="34" cy="34" r="5"/>
+                        <line x1="19" y1="38" x2="19" y2="14"/>
+                        <line x1="39" y1="34" x2="39" y2="10"/>
+                        <line x1="19" y1="14" x2="39" y2="10"/>
+                      </svg>
+                    )
+                    : item.type === 'image'
+                    ? () => (
+                      <svg viewBox="0 0 48 48" fill="none" className="w-16 h-16 text-amber-400" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="6" y="8" width="36" height="32" rx="3" fill="currentColor" opacity="0.12" stroke="currentColor"/>
+                        <circle cx="16" cy="18" r="4" fill="currentColor" opacity="0.4" stroke="none"/>
+                        <path d="M6 32 l10-10 8 8 6-6 12 12" fill="none"/>
+                      </svg>
+                    )
+                    : () => (
+                      <svg viewBox="0 0 48 48" fill="none" className="w-16 h-16 text-amber-400" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 6h16l10 10v26a2 2 0 0 1-2 2H12a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z" fill="currentColor" opacity="0.12"/>
+                        <path d="M28 6v10h10"/>
+                        <line x1="16" y1="26" x2="32" y2="26"/>
+                        <line x1="16" y1="32" x2="28" y2="32"/>
+                      </svg>
+                    );
+                  return (
+                    <div key={item.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+                      {item.coverUrl ? (
+                        <img
+                          src={item.coverUrl}
+                          alt={title}
+                          className="w-full h-40 object-cover"
+                          onError={e => {
+                            (e.currentTarget as HTMLImageElement).style.display = 'none';
+                            (e.currentTarget.nextElementSibling as HTMLElement | null)?.removeAttribute('hidden');
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        hidden={!!item.coverUrl}
+                        className="w-full h-36 bg-gradient-to-br from-amber-50 to-amber-100 flex items-center justify-center"
                       >
-                        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                          <path fillRule="evenodd" d="M10 3a1 1 0 0 1 1 1v7.586l2.293-2.293a1 1 0 1 1 1.414 1.414l-4 4a1 1 0 0 1-1.414 0l-4-4a1 1 0 1 1 1.414-1.414L9 11.586V4a1 1 0 0 1 1-1zM3 16a1 1 0 0 1 1-1h12a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1z" clipRule="evenodd"/>
-                        </svg>
-                        {isRtl ? 'تحميل' : 'Download'}
-                      </a>
+                        <TypeIcon />
+                      </div>
+                      <div className="p-4 flex flex-col flex-1">
+                        <span className="text-xs text-amber-600 font-semibold mb-1 flex items-center gap-1">
+                          <svg viewBox="0 0 16 16" className="w-3.5 h-3.5 inline-block" fill="currentColor">
+                            {item.type === 'mp3'
+                              ? <path d="M9 3v7.5a2.5 2.5 0 1 1-1-2V5l4-1v1.5L9 6.2V3z"/>
+                              : item.type === 'image'
+                              ? <path d="M2 3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3zm5 5.5L5 11h6l-2-3-2 2.5-1-1.5L7 8.5zM5.5 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>
+                              : <path d="M4 0h5.5L13 3.5V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V1a1 1 0 0 1 1-1zm5 0v3.5H12.5L9 0zM5 8h6v1H5V8zm0 2h6v1H5v-1z"/>
+                            }
+                          </svg>
+                          {typeLabel}
+                        </span>
+                        <h3 className="font-black text-gray-900 mb-1">{title}</h3>
+                        {desc && <p className="text-sm text-gray-500 mb-3 flex-1">{desc}</p>}
+                        <a
+                          href={item.url}
+                          download={downloadName}
+                          className="mt-auto flex items-center justify-center gap-2 bg-[#F5C518] hover:bg-yellow-400 text-gray-900 font-black py-2.5 rounded-xl text-sm transition"
+                        >
+                          <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                            <path fillRule="evenodd" d="M10 3a1 1 0 0 1 1 1v7.586l2.293-2.293a1 1 0 1 1 1.414 1.414l-4 4a1 1 0 0 1-1.414 0l-4-4a1 1 0 1 1 1.414-1.414L9 11.586V4a1 1 0 0 1 1-1zM3 16a1 1 0 0 1 1-1h12a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1z" clipRule="evenodd"/>
+                          </svg>
+                          {isRtl ? 'تحميل' : 'Download'}
+                        </a>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>

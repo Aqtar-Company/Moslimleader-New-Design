@@ -36,13 +36,15 @@ const nextConfig = {
     return [
       { source: '/auth', destination: '/login', permanent: true },
       { source: '/auth/:path*', destination: '/login/:path*', permanent: true },
+      { source: '/terka', destination: '/moro', permanent: true },
+      { source: '/terka/:path*', destination: '/moro/:path*', permanent: true },
     ];
   },
   async rewrites() {
     return [
       { source: '/partnership', destination: '/strategic-vision.html' },
-      { source: '/terka', destination: '/terka/index.html' },
-      { source: '/terka/', destination: '/terka/index.html' },
+      { source: '/moro', destination: '/moro/index.html' },
+      { source: '/moro/', destination: '/moro/index.html' },
     ];
   },
   async headers() {

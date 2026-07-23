@@ -10,7 +10,7 @@ const HEIR_TYPES = [
     image: '/moro/cards/son.png',
     color: '#3E7CB1',
     description: 'الابن وارث بالتعصيب (يأخذ الباقي بعد أصحاب الفروض)، وللذكر مثل حظ الأنثيين مع البنات.',
-    count: 10
+    count: 3
   },
   {
     id: 'daughter',
@@ -19,7 +19,7 @@ const HEIR_TYPES = [
     image: '/moro/cards/daughter.png',
     color: '#B15C9E',
     description: 'البنت الواحدة تأخذ النصف، والبنتان فأكثر يأخذن الثلثين، وإن وُجد ابن أخذت مع إخوتها الباقي تعصيبًا.',
-    count: 10
+    count: 3
   },
   {
     id: 'father',
@@ -28,7 +28,7 @@ const HEIR_TYPES = [
     image: '/moro/cards/father.png',
     color: '#4C9A6A',
     description: 'الأب يأخذ السدس مع وجود الابن، ويجمع بين السدس والباقي مع وجود البنت فقط، ويأخذ الباقي كله عند عدم وجود فرع وارث.',
-    count: 1 // وارث فردي — لا يمكن أن يوجد للمتوفى أكثر من أب واحد، فنسخة واحدة فقط في الرزمة تمنع تصادم لاعبين على نفس الدور
+    count: 3 // وارث فردي فقهيًا (لا يمكن أن يوجد للمتوفى أكثر من أب واحد)، لكن 3 نُّسخ في الرزمة — تصادم لاعبين على نفس الدور محلول بمنطق "الأسرع" (getLateSingularClaimPlayers)
   },
   {
     id: 'mother',
@@ -37,7 +37,7 @@ const HEIR_TYPES = [
     image: '/moro/cards/mother.png',
     color: '#D98A3D',
     description: 'الأم تأخذ السدس مع وجود فرع وارث أو عدد من الإخوة، وتأخذ الثلث في غير ذلك.',
-    count: 1 // وارث فردي — نفس المنطق
+    count: 3 // وارث فردي فقهيًا — نفس منطق الأب أعلاه
   },
   {
     id: 'grandfather',
@@ -46,7 +46,7 @@ const HEIR_TYPES = [
     image: '/moro/cards/grandfather.png',
     color: '#1F6B4A',
     description: 'الجد (أب الأب) يُحجب كليًا بوجود الأب، ويقوم مقامه تمامًا فرضًا وتعصيبًا عند غيابه. عند اجتماعه مع الإخوة الأشقاء بلا أب ولا ابن: مسألة خلافية بين الصحابة — تُعرض كحالة تحتاج مراجعة.',
-    count: 1 // وارث فردي — نفس المنطق
+    count: 3 // وارث فردي فقهيًا — نفس المنطق
   },
   {
     id: 'grandmother',
@@ -55,7 +55,7 @@ const HEIR_TYPES = [
     image: '/moro/cards/grandmother.png',
     color: '#B8722E',
     description: 'الجدة لأم (أم الأم) تُحجب كليًا بوجود الأم، وتأخذ السدس عند غيابها. ملاحظة: هذه البطاقة تمثّل الجدة لأم تحديدًا؛ الجدة لأب لها حكم حجب مختلف (تُحجب بالأب أيضًا لا بالأم فقط) وغير ممثَّلة في هذه النسخة المبسّطة.',
-    count: 1 // وارث فردي — نفس المنطق
+    count: 3 // وارث فردي فقهيًا — نفس المنطق
   },
   {
     id: 'husband',
@@ -64,7 +64,7 @@ const HEIR_TYPES = [
     image: '/moro/cards/husband.png',
     color: '#7A6FB0',
     description: 'الزوج يأخذ النصف إن لم يوجد فرع وارث للزوجة المتوفاة، والربع إن وُجد.',
-    count: 1 // وارث فردي — المرأة لها زوج واحد فقط وقت وفاتها، بخلاف الزوجة (يصح تعددها حتى 4)
+    count: 3 // وارث فردي فقهيًا — المرأة لها زوج واحد فقط وقت وفاتها، بخلاف الزوجة (يصح تعددها حتى 4)
   },
   {
     id: 'wife',
@@ -73,7 +73,7 @@ const HEIR_TYPES = [
     image: '/moro/cards/wife.png',
     color: '#C9598A',
     description: 'الزوجة تأخذ الربع إن لم يوجد فرع وارث للزوج المتوفى، والثمن إن وُجد، وتشترك الزوجات في النصيب.',
-    count: 5
+    count: 3
   },
   {
     id: 'brother',
@@ -82,7 +82,7 @@ const HEIR_TYPES = [
     image: '/moro/cards/brother.png',
     color: '#3D8F8A',
     description: 'الأخ الشقيق وارث بالتعصيب، يُحجب بالأب أو الابن، وإن وُجدت أخت شقيقة معه اقتسما الباقي للذكر مثل حظ الأنثيين.',
-    count: 8
+    count: 3
   },
   {
     id: 'sister',
@@ -91,7 +91,7 @@ const HEIR_TYPES = [
     image: '/moro/cards/sister.png',
     color: '#A9762E',
     description: 'الأخت الشقيقة تأخذ النصف منفردة أو الثلثين مع أخواتها، وتُحجب بالأب أو الابن.',
-    count: 8
+    count: 3
   },
   {
     id: 'half-brother',
@@ -99,8 +99,8 @@ const HEIR_TYPES = [
     icon: '🧑',
     image: '/moro/cards/half-brother.png',
     color: '#5C8A99',
-    description: 'الأخ لأم (من جهة الأم فقط) يُحجب بالفرع الوارث (ابن أو بنت) وبالأب والجد، ولا يتأثر بوجود الإخوة الأشقاء أو حجبهم — طبقة ميراث مستقلة تمامًا. منفردًا يأخذ السدس، ومع اثنين فأكثر من إخوته لأم (ذكورًا أو إناثًا) يقتسمون الثلث بالتساوي بينهم دون تفضيل للذكر. متاح حاليًا في "احسب حالتك" فقط، وليس ضمن رزمة اللعب الأساسية.',
-    count: 0
+    description: 'الأخ لأم (من جهة الأم فقط) يُحجب بالفرع الوارث (ابن أو بنت) وبالأب والجد، ولا يتأثر بوجود الإخوة الأشقاء أو حجبهم — طبقة ميراث مستقلة تمامًا. منفردًا يأخذ السدس، ومع اثنين فأكثر من إخوته لأم (ذكورًا أو إناثًا) يقتسمون الثلث بالتساوي بينهم دون تفضيل للذكر.',
+    count: 3
   },
   {
     id: 'half-sister',
@@ -108,8 +108,8 @@ const HEIR_TYPES = [
     icon: '👩‍🦱',
     image: '/moro/cards/half-sister.png',
     color: '#8A6C99',
-    description: 'الأخت لأم لها نفس حكم الأخ لأم بالضبط: تُحجب بالفرع الوارث وبالأب والجد، ولا فرق بين الذكر والأنثى في القسمة (بخلاف الإخوة الأشقاء) — تقتسم مع إخوتها لأم الثلث بالتساوي عند التعدد، أو تأخذ السدس منفردة. متاحة حاليًا في "احسب حالتك" فقط، وليست ضمن رزمة اللعب الأساسية.',
-    count: 0
+    description: 'الأخت لأم لها نفس حكم الأخ لأم بالضبط: تُحجب بالفرع الوارث وبالأب والجد، ولا فرق بين الذكر والأنثى في القسمة (بخلاف الإخوة الأشقاء) — تقتسم مع إخوتها لأم الثلث بالتساوي عند التعدد، أو تأخذ السدس منفردة.',
+    count: 3
   },
   {
     id: 'uncle',
@@ -117,8 +117,8 @@ const HEIR_TYPES = [
     icon: '👨‍🦳',
     image: '/moro/cards/uncle.png',
     color: '#7A5230',
-    description: 'العم الشقيق عصبة بنفسه: يأخذ الباقي بعد أصحاب الفروض عند عدم وجود عاصب أقرب، لكنه محجوب كليًا بوجود الابن أو الأب أو الجد أو الإخوة الأشقاء. لا يُحجب بالبنت وحدها ولا بالأخوات فرضًا بلا إخوة ذكور. متاح حاليًا في "احسب حالتك" فقط، وليس ضمن رزمة اللعب الأساسية.',
-    count: 0
+    description: 'العم الشقيق عصبة بنفسه: يأخذ الباقي بعد أصحاب الفروض عند عدم وجود عاصب أقرب، لكنه محجوب كليًا بوجود الابن أو الأب أو الجد أو الإخوة الأشقاء. لا يُحجب بالبنت وحدها ولا بالأخوات فرضًا بلا إخوة ذكور.',
+    count: 3
   },
   {
     id: 'joker',
@@ -127,7 +127,7 @@ const HEIR_TYPES = [
     image: '/moro/cards/heir-generic.png',
     color: '#6B4F8A',
     description: 'بطاقة جوكر: عند لعبها تختار أي وارث مسموح به في حالة المتوفى الحالية لتمثله — تصلح مع أي حالة، ولا تُحجب أبدًا بنفسها.',
-    count: 4
+    count: 2
   }
 ];
 
@@ -151,268 +151,154 @@ function heirCardClass(heir) {
   return heir.image ? ' has-photo' : ' royal-fallback';
 }
 
-// ---------- بطاقات حالة المتوفى ----------
-// difficulty: easy | medium | advanced | expert(قريبًا - غير مفعّلة)
-// disallowed: قائمة معرفات الورثة الممنوع لعبها في هذه الحالة
-//
-// ملاحظة تصميمية بخصوص الجد/الجدة (بعد إضافتهما لاحقًا): أُضيفا لقائمة disallowed في الحالتين
-// 1/2 (الأبسط، وقصتهما ضيقة عمدًا: زوج/ة + ابن + بنت فقط) والحالتين 3/4 (المسألتان العُمَريتان،
-// حيث وجود جد بديل عن الأب كان سيُفسد الدرس المحدد لأن قاعدة المسألة العُمَرية خاصة بالأب حصرًا).
-// أما بقية الحالات (5 إلى 12) فتُبقيهما متاحين عمدًا: قصصها تصف غياب الأب و/أو الأم فقط دون نفي
-// وجود جد/جدة بديل، وإتاحتهما تضيف أبعادًا تعليمية صحيحة (حجب، أو مسألة الجد والإخوة الخلافية)
-// لا تتعارض مع الدرس العام لكل حالة — هذا قرار تصميمي واعٍ، وليس سهوًا.
+// ---------- بطاقات حالة المتوفى (24 قضية، من شيت المراجعة الفقهية — قيمة تركة ثابتة لكل قضية) ----------
+// difficulty مُشتقّة تلقائيًا من عدد أنواع الورثة الفعليين في القضية: 1-2 نوع = سهل، 3-4 = متوسط، 5 = متقدم.
+// estateValue ثابتة لكل قضية (لا تُسحب عشوائيًا بعد الآن) — كل قضية محسوبة يدويًا لتنقسم بلا كسور.
 const DECEASED_CASES = [
-  // ----- سهل (أخضر) -----
   {
-    id: 1, difficulty: 'easy', deceasedGender: 'male',
-    disallowed: ['father', 'mother', 'brother', 'sister', 'husband', 'grandfather', 'grandmother'],
-    title: 'الحالة 1', note: 'متوفى بلا أب ولا أم ولا إخوة.',
-    lesson: 'هذه من أبسط المسائل: الزوجة صاحبة فرض، والابن والبنت يقتسمان الباقي تعصيبًا.'
+    id: 1, difficulty: 'medium', deceasedGender: 'male', estateValue: 48,
+    disallowed: ['brother', 'daughter', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'son', 'uncle'],
+    title: 'قضية رقم 1', note: 'متوفى، لا يوجد أولاد (لا ابن ولا بنت).',
+    lesson: 'زوجة: الربع (1/4) = 12 سهم فرضًا. (مسألة عُمَرية: زوجة+أب+أم بلا فرع وارث) الأم تأخذ ثلث الباقي بعد نصيب الزوجة = 12 سهم، لا السدس، والأب الباقي = 24 سهم تعصيبًا.'
   },
   {
-    id: 2, difficulty: 'easy', deceasedGender: 'female',
-    disallowed: ['father', 'mother', 'brother', 'sister', 'wife', 'grandfather', 'grandmother'],
-    title: 'الحالة 2', note: 'متوفاة بلا أب ولا أم ولا إخوة.',
-    lesson: 'الزوج صاحب فرض، والابن والبنت يقتسمان الباقي تعصيبًا.'
+    id: 2, difficulty: 'medium', deceasedGender: 'female', estateValue: 24,
+    disallowed: ['brother', 'daughter', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'sister', 'son', 'uncle', 'wife'],
+    title: 'قضية رقم 2', note: 'متوفاة، لا يوجد أولاد (لا ابن ولا بنت).',
+    lesson: 'أم: السدس (1/6) = 4 سهم، زوج: النصف (1/2) = 12 سهم فرضًا، وأب: 8 سهم تعصيبًا.'
   },
   {
-    id: 3, difficulty: 'easy', deceasedGender: 'male',
-    disallowed: ['son', 'daughter', 'brother', 'sister', 'husband', 'grandfather', 'grandmother'],
-    title: 'الحالة 3', note: 'متوفى بلا أبناء ولا إخوة.',
-    lesson: 'هذه إحدى "المسألتين العُمَريتين": الأم هنا لا تأخذ ثلث التركة كاملة، بل ثلث ما تبقّى بعد فرض الزوجة، والأب يأخذ الباقي كله.'
+    id: 3, difficulty: 'advanced', deceasedGender: 'male', estateValue: 288,
+    disallowed: ['brother', 'father', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'uncle'],
+    title: 'قضية رقم 3', note: 'متوفى، لا يوجد أب.',
+    lesson: 'أم: السدس (1/6) = 48 سهم، جد: السدس (1/6) = 48 سهم، زوجة: الثمن (1/8) = 36 سهم فرضًا، وابن: 104 سهم، بنت: 52 سهم تعصيبًا.'
   },
   {
-    id: 4, difficulty: 'easy', deceasedGender: 'female',
-    disallowed: ['son', 'daughter', 'brother', 'sister', 'wife', 'grandfather', 'grandmother'],
-    title: 'الحالة 4', note: 'متوفاة بلا أبناء ولا إخوة.',
-    lesson: 'هذه إحدى "المسألتين العُمَريتين": الأم هنا لا تأخذ ثلث التركة كاملة، بل ثلث ما تبقّى بعد فرض الزوج، والأب يأخذ الباقي كله.'
-  },
-  // ----- متوسط (أزرق) -----
-  {
-    id: 5, difficulty: 'medium', deceasedGender: 'male',
-    disallowed: ['father', 'mother', 'husband'],
-    title: 'الحالة 5', note: 'متوفى بلا أب ولا أم.',
-    lesson: 'مع غياب الأب، قد يرث الإخوة الأشقاء إن لم يوجد ابن يحجبهم.'
+    id: 4, difficulty: 'advanced', deceasedGender: 'female', estateValue: 72,
+    disallowed: ['brother', 'father', 'grandmother', 'half-brother', 'half-sister', 'sister', 'uncle', 'wife'],
+    title: 'قضية رقم 4', note: 'متوفاة، لا يوجد أب.',
+    lesson: 'أم: السدس (1/6) = 12 سهم، جد: السدس (1/6) = 12 سهم، زوج: الربع (1/4) = 18 سهم فرضًا، وابن: 20 سهم، بنت: 10 سهم تعصيبًا.'
   },
   {
-    id: 6, difficulty: 'medium', deceasedGender: 'female',
-    disallowed: ['father', 'wife'],
-    title: 'الحالة 6', note: 'متوفاة بلا أب.',
-    lesson: 'الأم قد يتغيّر فرضها بحسب وجود فرع وارث أو عدد الإخوة.'
+    id: 5, difficulty: 'advanced', deceasedGender: 'male', estateValue: 288,
+    disallowed: ['brother', 'grandfather', 'half-brother', 'half-sister', 'husband', 'mother', 'sister', 'uncle'],
+    title: 'قضية رقم 5', note: 'متوفى، لا يوجد أم.',
+    lesson: 'أب: السدس (1/6) = 48 سهم، جدة: السدس (1/6) = 48 سهم، زوجة: الثمن (1/8) = 36 سهم فرضًا، وابن: 104 سهم، بنت: 52 سهم تعصيبًا.'
   },
   {
-    id: 7, difficulty: 'medium', deceasedGender: 'male',
-    disallowed: ['son', 'daughter', 'father', 'husband'],
-    title: 'الحالة 7', note: 'متوفى بلا أبناء ولا أب.',
-    lesson: 'بغياب الأب والفرع الوارث، الإخوة الأشقاء يصبحون عصبة يرثون الباقي.'
+    id: 6, difficulty: 'advanced', deceasedGender: 'female', estateValue: 72,
+    disallowed: ['brother', 'grandfather', 'half-brother', 'half-sister', 'mother', 'sister', 'uncle', 'wife'],
+    title: 'قضية رقم 6', note: 'متوفاة، لا يوجد أم.',
+    lesson: 'أب: السدس (1/6) = 12 سهم، جدة: السدس (1/6) = 12 سهم، زوج: الربع (1/4) = 18 سهم فرضًا، وابن: 20 سهم، بنت: 10 سهم تعصيبًا.'
   },
   {
-    id: 8, difficulty: 'medium', deceasedGender: 'female',
-    disallowed: ['son', 'daughter', 'father', 'wife'],
-    title: 'الحالة 8', note: 'متوفاة بلا أبناء ولا أب.',
-    lesson: 'نفس فكرة الحالة السابقة، مع كون المتوفاة امرأة وصاحب الفرض هو الزوج.'
-  },
-  // ----- متقدم (برتقالي) -----
-  {
-    id: 9, difficulty: 'advanced', deceasedGender: 'male',
-    disallowed: ['husband'],
-    title: 'الحالة 9', note: 'جميع الورثة المناسبين للرجل يمكن حضورهم.',
-    lesson: 'حالة شاملة تجمع أكثر من نوع وارث، وتحتاج تتبع الحجب بدقة.'
+    id: 7, difficulty: 'medium', deceasedGender: 'male', estateValue: 36,
+    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'uncle', 'wife'],
+    title: 'قضية رقم 7', note: 'متوفى، لا يوجد زوج/زوجة.',
+    lesson: 'أب: السدس (1/6) = 6 سهم، أم: السدس (1/6) = 6 سهم فرضًا، وابن: 16 سهم، بنت: 8 سهم تعصيبًا.'
   },
   {
-    id: 10, difficulty: 'advanced', deceasedGender: 'female',
-    disallowed: ['wife'],
-    title: 'الحالة 10', note: 'جميع الورثة المناسبين للمرأة يمكن حضورهم.',
-    lesson: 'حالة شاملة، انتبه لفرض الزوج وتغيّر فرض الأم.'
+    id: 8, difficulty: 'medium', deceasedGender: 'female', estateValue: 36,
+    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'uncle', 'wife'],
+    title: 'قضية رقم 8', note: 'متوفاة، لا يوجد زوج/زوجة.',
+    lesson: 'أب: السدس (1/6) = 6 سهم، أم: السدس (1/6) = 6 سهم فرضًا، وابن: 16 سهم، بنت: 8 سهم تعصيبًا.'
   },
   {
-    id: 11, difficulty: 'advanced', deceasedGender: 'male',
-    disallowed: ['father', 'husband'],
-    title: 'الحالة 11', note: 'متوفى بلا أب.',
-    lesson: 'يمكن أن تجتمع الأم والزوجة والأبناء والإخوة معًا؛ راقب الحجب بعناية.'
+    id: 9, difficulty: 'advanced', deceasedGender: 'male', estateValue: 288,
+    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'uncle'],
+    title: 'قضية رقم 9', note: 'متوفى، لا يوجد إخوة (لا أخ ولا أخت).',
+    lesson: 'أب: السدس (1/6) = 48 سهم، أم: السدس (1/6) = 48 سهم، زوجة: الثمن (1/8) = 36 سهم فرضًا، وابن: 104 سهم، بنت: 52 سهم تعصيبًا.'
   },
   {
-    id: 12, difficulty: 'advanced', deceasedGender: 'female',
-    disallowed: ['mother', 'wife'],
-    title: 'الحالة 12', note: 'متوفاة بلا أم.',
-    lesson: 'يمكن أن يجتمع الأب والزوج والأبناء والإخوة معًا؛ راقب الحجب بعناية.'
-  }
-];
-
-// ---------- بروفة: كروت القضايا الخمسون (للمراجعة البصرية في المعرض فقط) ----------
-// كل بطاقة تمثّل الوجه المقترح لكارت "قضية" في التصميم المطبوع: حالة المتوفى + قيمة تركة
-// مُختارة عمدًا (لا عشوائية) من نفس عائلة القيم الصديقة للكسور الفقهية (12/24/36/48/96)،
-// تم التحقق برمجيًا عبر computeInheritance() أن كل قيمة تنقسم بلا كسور على الورثة
-// المذكورين في note/lesson (أو أنها حالة خلافية "تحتاج مراجعة" بالتصميم، مثل بقية اللعبة).
-// ملاحظة مهمة: هذه المصفوفة للعرض فقط في شاشة المعرض — لا تُستخدم في سحب القضية/التركة
-// الفعلي أثناء اللعب (ذلك يبقى عشوائيًا عبر DECEASED_CASES/ESTATE_VALUES كما هو تمامًا)،
-// ولا ترتبط بأي شكل ببطاقات الأحكام (JUDGMENT_CARDS) — الازدواج بينهما طباعي بحت لا منطقي.
-const CASE_CARDS_PREVIEW = [
-  // ----- سهل -----
-  { id: 1, difficulty: 'easy', deceasedGender: 'male', estateValue: 24,
-    disallowed: ['father','mother','husband','brother','sister','grandfather','grandmother'],
-    title: 'قضية 1', note: 'متوفى، وورثته: زوجة وابن وبنت.', lesson: 'الزوجة صاحبة فرض (الثمن مع وجود الفرع الوارث)، والابن والبنت يقتسمان الباقي تعصيبًا للذكر مثل حظ الأنثيين.' },
-  { id: 2, difficulty: 'easy', deceasedGender: 'female', estateValue: 24,
-    disallowed: ['father','mother','wife','brother','sister','grandfather','grandmother'],
-    title: 'قضية 2', note: 'متوفاة، وورثتها: زوج وابن وبنت.', lesson: 'الزوج صاحب فرض (الربع مع وجود الفرع الوارث)، والابن والبنت يقتسمان الباقي تعصيبًا.' },
-  { id: 3, difficulty: 'easy', deceasedGender: 'male', estateValue: 48,
-    disallowed: ['daughter','father','mother','husband','brother','sister','grandfather','grandmother'],
-    title: 'قضية 3', note: 'متوفى، وورثته: زوجة وابنان اثنان (بلا بنات).', lesson: 'الزوجة تأخذ الثمن، والابنان يقتسمان كل الباقي بينهما بالتساوي (تعصيب بلا بنات ينافسانهما).' },
-  { id: 4, difficulty: 'easy', deceasedGender: 'female', estateValue: 36,
-    disallowed: ['son','father','mother','wife','brother','sister','grandfather','grandmother'],
-    title: 'قضية 4', note: 'متوفاة، وورثتها: زوج وثلاث بنات (بلا ابن).', lesson: 'الزوج يأخذ الربع، والبنات الثلاث فأكثر يقتسمن الثلثين بالتساوي بينهن، والباقي بلا عصبة معروفة.' },
-  { id: 5, difficulty: 'easy', deceasedGender: 'male', estateValue: 24,
-    disallowed: ['daughter','husband','wife','brother','sister','grandfather','grandmother'],
-    title: 'قضية 5', note: 'متوفى، وورثته: أم وأب وابن.', lesson: 'الأم والأب يأخذان السدس لكل منهما مع وجود الابن، والابن يأخذ الباقي تعصيبًا.' },
-  { id: 6, difficulty: 'easy', deceasedGender: 'female', estateValue: 24,
-    disallowed: ['son','father','husband','wife','brother','sister','grandfather','grandmother'],
-    title: 'قضية 6', note: 'متوفاة، وورثتها: أم وبنتان (بلا أب ولا ابن).', lesson: 'الأم تأخذ السدس لوجود الفرع الوارث، والبنتان تقتسمان الثلثين، والباقي بلا عصبة معروفة في هذه النسخة.' },
-  { id: 7, difficulty: 'easy', deceasedGender: 'male', estateValue: 36,
-    disallowed: ['daughter','father','husband','wife','brother','sister','grandfather','grandmother'],
-    title: 'قضية 7', note: 'متوفى، وورثته: أم وثلاثة أبناء (بلا بنات).', lesson: 'الأم تأخذ السدس، والأبناء الثلاثة يقتسمون كل الباقي بينهم بالتساوي.' },
-  { id: 8, difficulty: 'easy', deceasedGender: 'female', estateValue: 12,
-    disallowed: ['son','daughter','mother','husband','wife','brother','sister','grandfather','grandmother'],
-    title: 'قضية 8', note: 'متوفاة، ووارثها الوحيد: الأب.', lesson: 'عند عدم وجود فرع وارث ولا زوج، يأخذ الأب التركة كاملة تعصيبًا.' },
-  { id: 9, difficulty: 'easy', deceasedGender: 'male', estateValue: 12,
-    disallowed: ['son','daughter','father','husband','wife','brother','sister','grandfather','grandmother'],
-    title: 'قضية 9', note: 'متوفى، ووارثته الوحيدة: الأم.', lesson: 'عند عدم وجود فرع وارث ولا إخوة ولا أب، تأخذ الأم الثلث، ويبقى الباقي بلا عصبة معروفة.' },
-  { id: 10, difficulty: 'easy', deceasedGender: 'female', estateValue: 12,
-    disallowed: ['son','daughter','father','mother','wife','brother','sister','grandfather','grandmother'],
-    title: 'قضية 10', note: 'متوفاة، ووارثها الوحيد: الزوج.', lesson: 'عند عدم وجود فرع وارث، يأخذ الزوج نصف التركة، ويبقى النصف الآخر بلا عصبة معروفة.' },
-  { id: 11, difficulty: 'easy', deceasedGender: 'male', estateValue: 12,
-    disallowed: ['son','daughter','father','mother','husband','wife','brother','sister','grandmother'],
-    title: 'قضية 11', note: 'متوفى بلا أب، ووارثه الوحيد: الجد.', lesson: 'عند غياب الأب وعدم وجود فرع وارث ولا إخوة، يقوم الجد مقام الأب تمامًا ويأخذ التركة كاملة.' },
-  { id: 12, difficulty: 'easy', deceasedGender: 'female', estateValue: 12,
-    disallowed: ['son','daughter','father','mother','husband','wife','brother','sister','grandfather'],
-    title: 'قضية 12', note: 'متوفاة بلا أم، ووارثها الوحيد: الجدة.', lesson: 'عند غياب الأم، تأخذ الجدة السدس فرضًا، ويبقى الباقي بلا عصبة معروفة.' },
-  { id: 13, difficulty: 'easy', deceasedGender: 'male', estateValue: 12,
-    disallowed: ['daughter','father','mother','husband','wife','brother','sister','grandfather','grandmother'],
-    title: 'قضية 13', note: 'متوفى، ووارثه الوحيد: الابن.', lesson: 'مع عدم وجود أي صاحب فرض آخر، يأخذ الابن التركة كاملة تعصيبًا.' },
-  { id: 14, difficulty: 'easy', deceasedGender: 'female', estateValue: 12,
-    disallowed: ['son','father','mother','husband','wife','brother','sister','grandfather','grandmother'],
-    title: 'قضية 14', note: 'متوفاة، ووارثتها الوحيدة: البنت.', lesson: 'البنت المنفردة تأخذ النصف فرضًا، ويبقى النصف الآخر بلا عصبة معروفة في هذه النسخة المبسّطة.' },
-  { id: 15, difficulty: 'easy', deceasedGender: 'male', estateValue: 12,
-    disallowed: ['son','daughter','father','mother','husband','brother','sister','grandfather','grandmother'],
-    title: 'قضية 15', note: 'متوفى، ووارثته الوحيدة: الزوجة.', lesson: 'الزوجة المنفردة (بلا فرع وارث) تأخذ الربع، ويبقى الباقي بلا عصبة معروفة.' },
-
-  // ----- متوسط -----
-  { id: 16, difficulty: 'medium', deceasedGender: 'male', estateValue: 24,
-    disallowed: ['son','daughter','husband','brother','sister','grandfather','grandmother'],
-    title: 'قضية 16', note: 'متوفى، وورثته: زوجة وأب وأم (بلا فرع وارث).', lesson: 'إحدى المسألتين العُمَريتين: الأم تأخذ ثلث ما تبقّى بعد فرض الزوجة لا ثلث التركة كاملة، والأب يأخذ الباقي كله.' },
-  { id: 17, difficulty: 'medium', deceasedGender: 'female', estateValue: 24,
-    disallowed: ['son','daughter','wife','brother','sister','grandfather','grandmother'],
-    title: 'قضية 17', note: 'متوفاة، وورثتها: زوج وأب وأم (بلا فرع وارث).', lesson: 'إحدى المسألتين العُمَريتين: الأم تأخذ ثلث ما تبقّى بعد فرض الزوج لا ثلث التركة كاملة، والأب يأخذ الباقي كله.' },
-  { id: 18, difficulty: 'medium', deceasedGender: 'male', estateValue: 24,
-    disallowed: ['son','daughter','father','husband','wife','sister','grandfather','grandmother'],
-    title: 'قضية 18', note: 'متوفى بلا أب، وورثته: أم وأخوان شقيقان.', lesson: 'وجود أخوين فأكثر يردّ فرض الأم من الثلث إلى السدس، ويأخذ الأخوان الباقي بينهما بالتساوي.' },
-  { id: 19, difficulty: 'medium', deceasedGender: 'female', estateValue: 36,
-    disallowed: ['son','daughter','father','husband','wife','brother','grandfather','grandmother'],
-    title: 'قضية 19', note: 'متوفاة بلا أب، وورثتها: أم وثلاث أخوات شقيقات (بلا إخوة ذكور).', lesson: 'الأم تأخذ السدس لوجود أكثر من أخ، والأخوات الثلاث فأكثر يقتسمن الثلثين، والباقي بلا عصبة معروفة.' },
-  { id: 20, difficulty: 'medium', deceasedGender: 'male', estateValue: 36,
-    disallowed: ['son','daughter','father','husband','wife','grandfather','grandmother'],
-    title: 'قضية 20', note: 'متوفى بلا أب، وورثته: أم وأخ شقيق وأخت شقيقة.', lesson: 'الأم تأخذ السدس، والأخ والأخت عصبة، يقتسمان الباقي للذكر مثل حظ الأنثيين.' },
-  { id: 21, difficulty: 'medium', deceasedGender: 'male', estateValue: 12,
-    disallowed: ['son','daughter','father','husband','wife','brother','sister','grandmother'],
-    title: 'قضية 21', note: 'متوفى بلا أب، وورثته: جد وأم (بلا فرع وارث ولا إخوة).', lesson: 'تنبيه مهم: المسألة العُمَرية خاصة بالأب دون الجد — هنا تأخذ الأم ثلث التركة كاملة (لا ثلث الباقي)، ويأخذ الجد الباقي.' },
-  { id: 22, difficulty: 'medium', deceasedGender: 'female', estateValue: 12,
-    disallowed: ['son','daughter','mother','husband','wife','brother','sister','grandfather'],
-    title: 'قضية 22', note: 'متوفاة بلا أم، وورثتها: جدة وأب.', lesson: 'الجدة والأب من جهتين مختلفتين، فلا تحجب إحداهما الأخرى: الجدة تأخذ السدس، والأب الباقي.' },
-  { id: 23, difficulty: 'medium', deceasedGender: 'male', estateValue: 36,
-    disallowed: ['daughter','mother','husband','wife','brother','sister','grandfather','grandmother'],
-    title: 'قضية 23', note: 'متوفى، وورثته: أب وثلاثة أبناء (بلا بنات).', lesson: 'الأب يأخذ السدس فقط لوجود الابن، والأبناء الثلاثة يقتسمون الباقي بينهم بالتساوي.' },
-  { id: 24, difficulty: 'medium', deceasedGender: 'female', estateValue: 24,
-    disallowed: ['son','husband','wife','brother','sister','grandfather','grandmother'],
-    title: 'قضية 24', note: 'متوفاة، وورثتها: أم وأب وبنتان (بلا ابن).', lesson: 'الأم والأب يأخذان السدس لكل منهما، والبنتان يقتسمان الثلثين؛ مجموع الفروض هنا يستوعب التركة كاملة تمامًا بلا زيادة ولا نقصان.' },
-  { id: 25, difficulty: 'medium', deceasedGender: 'male', estateValue: 48,
-    disallowed: ['daughter','father','mother','husband','brother','sister','grandfather','grandmother'],
-    title: 'قضية 25', note: 'متوفى، وورثته: زوجتان وابن (تعدد زوجات).', lesson: 'فرض الثمن يُقسَّم بالتساوي بين الزوجتين، والابن يأخذ كل الباقي تعصيبًا.' },
-  { id: 26, difficulty: 'medium', deceasedGender: 'male', estateValue: 96,
-    disallowed: ['son','father','mother','husband','brother','sister','grandfather','grandmother'],
-    title: 'قضية 26', note: 'متوفى، وورثته: ثلاث زوجات وبنت واحدة (بلا ابن).', lesson: 'الثمن يُقسَّم بالتساوي بين الزوجات الثلاث، والبنت المنفردة تأخذ النصف، والباقي بلا عصبة معروفة.' },
-  { id: 27, difficulty: 'medium', deceasedGender: 'female', estateValue: 24,
-    disallowed: ['daughter','father','wife','brother','sister','grandfather','grandmother'],
-    title: 'قضية 27', note: 'متوفاة، وورثتها: زوج وأم وابنان.', lesson: 'الزوج يأخذ الربع، والأم السدس لوجود الفرع الوارث، والابنان يقتسمان الباقي بالتساوي.' },
-
-  // ----- متقدم -----
-  { id: 28, difficulty: 'advanced', deceasedGender: 'male', estateValue: 24,
-    disallowed: ['daughter','husband','brother','sister','grandfather','grandmother'],
-    title: 'قضية 28', note: 'متوفى، وورثته: زوجة وأم وأب وابن (حالة شاملة).', lesson: 'الزوجة الثمن، والأم والأب السدس لكل منهما، والابن يأخذ كل الباقي — راقب الحجب وتراكم الفروض بدقة.' },
-  { id: 29, difficulty: 'advanced', deceasedGender: 'female', estateValue: 12,
-    disallowed: ['daughter','wife','brother','sister','grandfather','grandmother'],
-    title: 'قضية 29', note: 'متوفاة، وورثتها: زوج وأم وأب وابن (حالة شاملة).', lesson: 'الزوج الربع، والأم والأب السدس لكل منهما، والابن يأخذ كل الباقي.' },
-  { id: 30, difficulty: 'advanced', deceasedGender: 'male', estateValue: 24,
-    disallowed: ['husband','wife','brother','sister','grandfather','grandmother'],
-    title: 'قضية 30', note: 'متوفى، وورثته: أب وأم وابن وبنتان.', lesson: 'الأب والأم السدس لكل منهما، والباقي يُقسَّم بين الابن والبنتين تعصيبًا للذكر مثل حظ الأنثيين.' },
-  { id: 31, difficulty: 'advanced', deceasedGender: 'female', estateValue: 12,
-    disallowed: ['daughter','husband','wife','brother','sister','grandfather','grandmother'],
-    title: 'قضية 31', note: 'متوفاة، وورثتها: أب وأم وابنان (بلا بنات).', lesson: 'الأب والأم السدس لكل منهما، والابنان يقتسمان الباقي بينهما بالتساوي.' },
-  { id: 32, difficulty: 'advanced', deceasedGender: 'male', estateValue: 12,
-    disallowed: ['daughter','father','husband','wife','brother','sister','grandmother'],
-    title: 'قضية 32', note: 'متوفى بلا أب، وورثته: جد وأم وابن.', lesson: 'الجد يقوم مقام الأب فيأخذ السدس لوجود الابن، والأم السدس لوجود الفرع الوارث، والابن الباقي.' },
-  { id: 33, difficulty: 'advanced', deceasedGender: 'female', estateValue: 12,
-    disallowed: ['son','mother','husband','wife','brother','sister','grandfather'],
-    title: 'قضية 33', note: 'متوفاة بلا أم، وورثتها: جدة وأب وبنت (بلا ابن).', lesson: 'الجدة السدس، والأب السدس مع الباقي تعصيبًا لوجود البنت وحدها، والبنت النصف فرضًا.' },
-  { id: 34, difficulty: 'advanced', deceasedGender: 'male', estateValue: 12,
-    disallowed: ['son','daughter','mother','husband','wife','sister','grandmother'],
-    title: 'قضية 34', note: 'متوفى، وورثته: أب وجد وأخ شقيق معًا.', lesson: 'بطاقة حجب مزدوج: وجود الأب يحجب الجد كليًا ويحجب الأخ الشقيق كليًا في آن واحد، فيأخذ الأب التركة كاملة.' },
-  { id: 35, difficulty: 'advanced', deceasedGender: 'female', estateValue: 12,
-    disallowed: ['son','husband','wife','brother','sister','grandfather'],
-    title: 'قضية 35', note: 'متوفاة، وورثتها: أم وجدة وأب وبنت.', lesson: 'وجود الأم يحجب الجدة كليًا؛ الأم السدس، والأب السدس مع الباقي تعصيبًا، والبنت النصف.' },
-  { id: 36, difficulty: 'advanced', deceasedGender: 'male', estateValue: 96,
-    disallowed: ['daughter','father','mother','husband','brother','sister','grandfather','grandmother'],
-    title: 'قضية 36', note: 'متوفى، وورثته: أربع زوجات (الحد الأقصى) وابن.', lesson: 'فرض الثمن يُقسَّم بالتساوي بين الزوجات الأربع، والابن يأخذ كل الباقي تعصيبًا.' },
-  { id: 37, difficulty: 'advanced', deceasedGender: 'male', estateValue: 24,
-    disallowed: ['son','father','mother','husband','brother','sister','grandfather','grandmother'],
-    title: 'قضية 37', note: 'متوفى، وورثته: زوجة وبنتان (بلا ابن).', lesson: 'الزوجة الثمن، والبنتان الثلثان مقسّمَين بينهما بالتساوي، والباقي بلا عصبة معروفة.' },
-  { id: 38, difficulty: 'advanced', deceasedGender: 'female', estateValue: 12,
-    disallowed: ['son','daughter','father','mother','wife','sister','grandfather','grandmother'],
-    title: 'قضية 38', note: 'متوفاة بلا أب ولا ابن، وورثتها: زوج وأخوان شقيقان.', lesson: 'الزوج النصف (بلا فرع وارث)، والأخوان عصبة يقتسمان الباقي بينهما بالتساوي.' },
-  { id: 39, difficulty: 'advanced', deceasedGender: 'male', estateValue: 36,
-    disallowed: ['daughter','husband','wife','brother','sister','grandfather','grandmother'],
-    title: 'قضية 39', note: 'متوفى، وورثته: أب وأم وثلاثة أبناء (بلا بنات).', lesson: 'الأب والأم السدس لكل منهما، والأبناء الثلاثة يقتسمون الباقي بينهم بالتساوي.' },
-  { id: 40, difficulty: 'advanced', deceasedGender: 'female', estateValue: 36,
-    disallowed: ['father','wife','brother','sister','grandfather','grandmother'],
-    title: 'قضية 40', note: 'متوفاة، وورثتها: زوج وأم وابن وبنت.', lesson: 'الزوج الربع، والأم السدس لوجود الفرع الوارث، والباقي بين الابن والبنت تعصيبًا للذكر مثل حظ الأنثيين.' },
-
-  // ----- مختلط / حالات تحتاج مراجعة (لأمانة العرض الفقهي، بلا ترجيح رأي مختلف فيه) -----
-  { id: 41, difficulty: 'mixed', deceasedGender: 'male', estateValue: 24,
-    disallowed: ['son','father','mother','husband','wife','brother','grandfather','grandmother'],
-    title: 'قضية 41', note: 'متوفى بلا أب ولا ابن، وورثته: أخت شقيقة وبنت.', lesson: 'ليست مسألة خلافية: قاعدة "أعصبوهن بالبنات" المتفَق عليها — البنت تأخذ النصف فرضًا، والأخت "عصبة مع الغير" فتأخذ الباقي (النصف) كاملًا لانفرادها.' },
-  { id: 42, difficulty: 'mixed', deceasedGender: 'female', estateValue: 24,
-    disallowed: ['son','father','mother','husband','wife','sister','grandfather','grandmother'],
-    title: 'قضية 42', note: 'متوفاة بلا أب ولا ابن، وورثتها: أخ شقيق وبنت.', lesson: 'مسألة غير خلافية: البنت تأخذ النصف فرضًا، والأخ عصبة بنفسه كعادته (بلا حاجة لبنت أصلًا) فيأخذ الباقي (النصف) كاملًا.' },
-  { id: 43, difficulty: 'mixed', deceasedGender: 'male', estateValue: 24,
-    disallowed: ['son','daughter','father','mother','husband','wife','grandmother'],
-    title: 'قضية 43', note: 'متوفى بلا أب ولا ابن، وورثته: جد وأخ شقيق وأخت شقيقة.', lesson: 'مسألة "الجد والإخوة" الشهيرة، المختلف فيها بين الصحابة أنفسهم (أبو بكر مقابل علي وزيد) — تُعرض تحتاج مراجعة بلا ترجيح.' },
-  { id: 44, difficulty: 'mixed', deceasedGender: 'female', estateValue: 24,
-    disallowed: ['son','daughter','father','mother','husband','wife','brother','grandmother'],
-    title: 'قضية 44', note: 'متوفاة بلا أب ولا ابن، وورثتها: جد وأخت شقيقة.', lesson: 'نفس مسألة "الجد والإخوة" الخلافية — تحدث بصرف النظر عن جنس المتوفى، وتُعرض تحتاج مراجعة.' },
-  { id: 45, difficulty: 'mixed', deceasedGender: 'female', estateValue: 24,
-    disallowed: ['son','daughter','father','mother','wife','brother','grandfather','grandmother'],
-    title: 'قضية 45', note: 'متوفاة بلا فرع وارث، وورثتها: زوج وأختان شقيقتان.', lesson: 'حالة "عول": مجموع الفروض هنا يتجاوز التركة كاملة (نصف + ثلثان) — غير مطبَّق في هذه النسخة، وتُعرض تحتاج مراجعة.' },
-  { id: 46, difficulty: 'mixed', deceasedGender: 'male', estateValue: 24,
-    disallowed: ['son','daughter','father','husband','brother','grandfather','grandmother'],
-    title: 'قضية 46', note: 'متوفى بلا فرع وارث، وورثته: زوجة وأم وثلاث أخوات شقيقات.', lesson: 'حالة "عول" أخرى: مجموع الفروض (ربع + سدس + ثلثان) يتجاوز التركة كاملة — تُعرض تحتاج مراجعة.' },
-  { id: 47, difficulty: 'mixed', deceasedGender: 'male', estateValue: 12,
-    disallowed: ['daughter','father','mother','husband','wife','brother','sister'],
-    title: 'قضية 47', note: 'متوفى بلا أب ولا أم، وورثته: جد وجدة وابن معًا.', lesson: 'الجد والجدة من جهتين مختلفتين فلا يتحاجبان؛ كل منهما يأخذ السدس، والابن يأخذ الباقي.' },
-  { id: 48, difficulty: 'mixed', deceasedGender: 'female', estateValue: 12,
-    disallowed: ['son','father','mother','husband','wife','brother','sister'],
-    title: 'قضية 48', note: 'متوفاة بلا أب ولا أم، وورثتها: جد وجدة وبنت (بلا ابن).', lesson: 'الجدة السدس، والجد السدس مع الباقي تعصيبًا لوجود البنت وحدها، والبنت النصف فرضًا.' },
-  { id: 49, difficulty: 'mixed', deceasedGender: 'male', estateValue: 24,
-    disallowed: ['son','daughter','father','mother','husband','wife','grandmother'],
-    title: 'قضية 49', note: 'متوفى بلا أب ولا ابن، وورثته: جد وأخوان شقيقان وأخت شقيقة.', lesson: 'مسألة "الجد والإخوة" الخلافية تتكرر مهما تغيّر عدد الإخوة أو تركيبهم — تُعرض دائمًا تحتاج مراجعة.' },
-  { id: 50, difficulty: 'mixed', deceasedGender: 'female', estateValue: 36,
-    disallowed: ['wife','brother','sister','grandfather','grandmother'],
-    title: 'قضية 50', note: 'متوفاة، وورثتها: أم وأب وزوج وابن وبنت — العائلة الكاملة.', lesson: 'بطاقة ختامية شاملة: الأم والأب السدس لكل منهما، الزوج الربع، والباقي بين الابن والبنت تعصيبًا للذكر مثل حظ الأنثيين — تستوعب التركة كاملة تمامًا بلا زيادة ولا نقصان.' }
-];
-
-// ---------- بطاقات قيمة التركة ----------
-const ESTATE_VALUES = [
-  { value: 12, count: 8 },
-  { value: 24, count: 8 },
-  { value: 36, count: 5 },
-  { value: 48, count: 3 }
+    id: 10, difficulty: 'advanced', deceasedGender: 'female', estateValue: 72,
+    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'sister', 'uncle', 'wife'],
+    title: 'قضية رقم 10', note: 'متوفاة، لا يوجد إخوة (لا أخ ولا أخت).',
+    lesson: 'أب: السدس (1/6) = 12 سهم، أم: السدس (1/6) = 12 سهم، زوج: الربع (1/4) = 18 سهم فرضًا، وابن: 20 سهم، بنت: 10 سهم تعصيبًا.'
+  },
+  {
+    id: 11, difficulty: 'advanced', deceasedGender: 'male', estateValue: 288,
+    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'uncle'],
+    title: 'قضية رقم 11', note: 'متوفى، لا يوجد جد.',
+    lesson: 'أب: السدس (1/6) = 48 سهم، أم: السدس (1/6) = 48 سهم، زوجة: الثمن (1/8) = 36 سهم فرضًا، وابن: 104 سهم، بنت: 52 سهم تعصيبًا.'
+  },
+  {
+    id: 12, difficulty: 'advanced', deceasedGender: 'female', estateValue: 72,
+    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'sister', 'uncle', 'wife'],
+    title: 'قضية رقم 12', note: 'متوفاة، لا يوجد جد.',
+    lesson: 'أب: السدس (1/6) = 12 سهم، أم: السدس (1/6) = 12 سهم، زوج: الربع (1/4) = 18 سهم فرضًا، وابن: 20 سهم، بنت: 10 سهم تعصيبًا.'
+  },
+  {
+    id: 13, difficulty: 'advanced', deceasedGender: 'male', estateValue: 288,
+    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'uncle'],
+    title: 'قضية رقم 13', note: 'متوفى، لا يوجد جدة.',
+    lesson: 'أب: السدس (1/6) = 48 سهم، أم: السدس (1/6) = 48 سهم، زوجة: الثمن (1/8) = 36 سهم فرضًا، وابن: 104 سهم، بنت: 52 سهم تعصيبًا.'
+  },
+  {
+    id: 14, difficulty: 'advanced', deceasedGender: 'female', estateValue: 36,
+    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'sister', 'uncle', 'wife'],
+    title: 'قضية رقم 14', note: 'متوفاة، لا يوجد جدة.',
+    lesson: 'أب: السدس (1/6) = 6 سهم، أم: السدس (1/6) = 6 سهم، زوج: الربع (1/4) = 9 سهم فرضًا، وابن: 10 سهم، بنت: 5 سهم تعصيبًا.'
+  },
+  {
+    id: 15, difficulty: 'easy', deceasedGender: 'male', estateValue: 36,
+    disallowed: ['brother', 'daughter', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'mother', 'sister', 'son', 'wife'],
+    title: 'قضية رقم 15', note: 'متوفى، العم منفردًا (لا ابن، لا أب، لا جد، لا أخ) — يأخذ التركة كاملة.',
+    lesson: 'عم: 36 سهم تعصيبًا.'
+  },
+  {
+    id: 16, difficulty: 'easy', deceasedGender: 'male', estateValue: 48,
+    disallowed: ['brother', 'daughter', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'mother', 'sister', 'son'],
+    title: 'قضية رقم 16', note: 'متوفى، زوجة + عم (بلا فرع وارث ولا إخوة ولا أب ولا جد ولا ابن).',
+    lesson: 'زوجة: الربع (1/4) = 12 سهم فرضًا، وعم: 36 سهم تعصيبًا.'
+  },
+  {
+    id: 17, difficulty: 'easy', deceasedGender: 'female', estateValue: 96,
+    disallowed: ['brother', 'daughter', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'mother', 'sister', 'son', 'wife'],
+    title: 'قضية رقم 17', note: 'متوفاة، زوج + عم (بلا فرع وارث ولا إخوة ولا أب ولا جد ولا ابن).',
+    lesson: 'زوج: النصف (1/2) = 48 سهم فرضًا، وعم: 48 سهم تعصيبًا.'
+  },
+  {
+    id: 18, difficulty: 'easy', deceasedGender: 'male', estateValue: 72,
+    disallowed: ['brother', 'daughter', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'son', 'wife'],
+    title: 'قضية رقم 18', note: 'متوفى، أم + عم (بلا فرع وارث ولا إخوة ولا أب ولا جد ولا ابن).',
+    lesson: 'أم: الثلث (1/3) = 24 سهم فرضًا، وعم: 48 سهم تعصيبًا.'
+  },
+  {
+    id: 19, difficulty: 'easy', deceasedGender: 'male', estateValue: 12,
+    disallowed: ['brother', 'daughter', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'mother', 'son', 'wife'],
+    title: 'قضية رقم 19', note: 'متوفى، أخت شقيقة (كلالة) + عم معًا.',
+    lesson: 'أخت: النصف (1/2) = 6 سهم فرضًا، وعم: 6 سهم تعصيبًا.'
+  },
+  {
+    id: 20, difficulty: 'easy', deceasedGender: 'female', estateValue: 24,
+    disallowed: ['brother', 'daughter', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'mother', 'son', 'wife'],
+    title: 'قضية رقم 20', note: 'متوفاة، أختان شقيقتان (كلالة) + عم معًا.',
+    lesson: 'أخت(2): الثلثان (2/3) = 16 سهم (8/فرد) فرضًا، وعم: 8 سهم تعصيبًا.'
+  },
+  {
+    id: 21, difficulty: 'easy', deceasedGender: 'male', estateValue: 36,
+    disallowed: ['daughter', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'mother', 'son', 'uncle', 'wife'],
+    title: 'قضية رقم 21', note: 'متوفى، إخوة كلالة (أخ + أخت) بلا أب ولا ابن ولا جد ولا عم.',
+    lesson: 'أخ: 24 سهم، أخت: 12 سهم تعصيبًا.'
+  },
+  {
+    id: 22, difficulty: 'medium', deceasedGender: 'male', estateValue: 144,
+    disallowed: ['daughter', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'son', 'uncle'],
+    title: 'قضية رقم 22', note: 'متوفى، إخوة كلالة مع أم وزوجة (بلا أب ولا ابن ولا جد).',
+    lesson: 'أم: السدس (1/6) = 24 سهم، زوجة: الربع (1/4) = 36 سهم فرضًا، وأخ: 56 سهم، أخت: 28 سهم تعصيبًا.'
+  },
+  {
+    id: 23, difficulty: 'easy', deceasedGender: 'female', estateValue: 72,
+    disallowed: ['brother', 'daughter', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'mother', 'son', 'uncle', 'wife'],
+    title: 'قضية رقم 23', note: 'متوفاة، أخوات كلالة فقط، بلا أخ ولا بنت ولا عم — فرض ثابت بلا تعصيب.',
+    lesson: 'أخت(3): الثلثان (2/3) = 48 سهم (16/فرد) فرضًا. يتبقى 24 سهم بلا عصبة معروفة في هذه النسخة.'
+  },
+  {
+    id: 24, difficulty: 'easy', deceasedGender: 'male', estateValue: 72,
+    disallowed: ['brother', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'mother', 'son', 'uncle', 'wife'],
+    title: 'قضية رقم 24', note: 'متوفى، أخت كلالة + بنت (عصبة مع الغير) بلا أخ ولا عم.',
+    lesson: 'بنت: النصف (1/2) = 36 سهم فرضًا، وأخت: 36 سهم تعصيبًا.'
+  },
 ];
 
 // ---------- الآيات القرآنية المرجعية (رسم إملائي مبسّط، ليتوافق مع خطوط النظام العادية —

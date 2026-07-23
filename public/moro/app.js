@@ -1,9 +1,13 @@
 /* app.js — إدارة الشاشات والأدوار وسحب البطاقات وربط الواجهة بمحرك المواريث */
 
 let state = null; // حالة المباراة الحالية
-let setupChoice = { count: 2, difficulty: 'easy' };
+let setupChoice = { count: 2, difficulty: 'easy', totalRounds: 5 };
 let selection = { heirId: null, cardEl: null };
-const HAND_SIZE = 4; // عدد بطاقات يد اللاعب — لو الأربعة مفيهاش حل، ياخد صفر الجولة دي بس (بلا شراء كارت إضافي)
+// حجم يد اللاعب = عدد الجولات المختارة وقت الإعداد (state.totalRounds) — لا رقم ثابت.
+// لو مفيش state بعد (شاشات ما قبل بدء المباراة)، استخدم القيمة الافتراضية من setupChoice.
+function currentHandSize() {
+  return (state && state.totalRounds) || setupChoice.totalRounds;
+}
 // ورثة "فرديون" بطبيعتهم — لا يمكن أن يوجد للمتوفى أكثر من واحد منهم في نفس الوقت
 // (بخلاف الابن/البنت/الأخ/الأخت أو حتى الزوجات الأربع، وهي كلها تعدّديات فقهية حقيقية).
 const SINGULAR_HEIR_TYPES = ['father', 'mother', 'husband', 'grandfather', 'grandmother'];
@@ -312,14 +316,22 @@ function initSetupScreen() {
       btn.classList.add('selected');
     });
   });
+  $all('#rounds-group .pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setupChoice.totalRounds = parseInt(btn.dataset.rounds, 10);
+      $all('#rounds-group .pill').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    });
+  });
   // إعداد افتراضي
   $(`#player-count-group [data-count="2"]`).classList.add('selected');
   $(`#difficulty-group [data-diff="easy"]`).classList.add('selected');
+  $(`#rounds-group [data-rounds="5"]`).classList.add('selected');
   renderNameInputs();
 
   $('#btn-launch-match').addEventListener('click', () => {
     const names = $all('#name-inputs input').map((inp, i) => inp.value.trim() || `لاعب ${i + 1}`);
-    startMatch(names, setupChoice.difficulty);
+    startMatch(names, setupChoice.difficulty, setupChoice.totalRounds);
   });
 }
 
@@ -346,12 +358,6 @@ function buildHeirDeck() {
   return shuffle(deck);
 }
 
-function buildEstateDeck() {
-  let deck = [];
-  ESTATE_VALUES.forEach(e => { for (let i = 0; i < e.count; i++) deck.push(e.value); });
-  return shuffle(deck);
-}
-
 function buildCaseDeck(difficulty) {
   let pool;
   if (difficulty === 'mixed') pool = DECEASED_CASES.filter(c => c.difficulty !== 'expert');
@@ -363,21 +369,23 @@ function buildJudgmentDeck() {
   return shuffle(JUDGMENT_CARDS.map(c => c.id));
 }
 
-function startMatch(names, difficulty) {
+function startMatch(names, difficulty, totalRounds) {
+  totalRounds = totalRounds || setupChoice.totalRounds;
   const heirDeck = buildHeirDeck();
   const players = names.map(name => ({
     name, roundsWon: 0, blockedCount: 0, hand: [], balance: 30 // رأس المال: 30 سهم ابتدائي، ويتراكم عليه كل ما يُكسَب أو يُخصَم أثناء اللعب (لا يوجد نقاط منفصلة)
   }));
-  // توزيع بطاقات يد كل لاعب
-  players.forEach(p => { for (let i = 0; i < HAND_SIZE; i++) p.hand.push(heirDeck.pop()); });
+  // توزيع بطاقات يد كل لاعب — حجم اليد = عدد الجولات المختارة (3/5/7)، ويبقى ثابتًا طول المباراة
+  // (اليد تُعبَّى لنفس الحجم بعد كل جولة زي ما هي، انظر renderHandForCurrentPlayer/doConfirmPlay).
+  players.forEach(p => { for (let i = 0; i < totalRounds; i++) p.hand.push(heirDeck.pop()); });
 
   state = {
     players,
     difficulty,
+    totalRounds,
     roundNum: 1,
     heirDeck, heirDiscard: [],
     caseDeck: buildCaseDeck(difficulty), caseDiscard: [],
-    estateDeck: buildEstateDeck(), estateDiscard: [],
     judgmentDeck: buildJudgmentDeck(), judgmentDiscard: [],
     judgmentTurnIndex: 0,
     currentJudgmentCardId: null,
@@ -398,6 +406,9 @@ function startMatch(names, difficulty) {
 }
 
 function resumeSavedGame() {
+  // حماية توافقية: مباريات محفوظة من نسخة أقدم (قبل نظام "حجم اليد = عدد الجولات") ما فيهاش
+  // totalRounds خالص — نفترض 4 (القيمة الافتراضية القديمة) بدل ما ينهار الاسترجاع.
+  if (!state.totalRounds) state.totalRounds = 4;
   AudioManager.setMuted(!!state.muted);
   updateMuteIcon();
   if (state.phase === 'result') {
@@ -411,9 +422,9 @@ function resumeSavedGame() {
     // نعيد بدء الجولة الحالية بأمان (تجنبًا لتعقيد استرجاع منتصف الدور).
     // أي لاعب كان قد لعب بطاقته بالفعل قبل الخروج تكون قد خرجت من يده دون أن
     // تدخل كومة الاستخدام (ذلك يحدث فقط عند حساب نتيجة الجولة) — نعوّض يده
-    // حتى تكتمل إلى HAND_SIZE بطاقة قبل إعادة بدء الجولة من أولها.
+    // حتى تكتمل إلى حجم اليد (state.totalRounds) قبل إعادة بدء الجولة من أولها.
     state.players.forEach(p => {
-      while (p.hand.length < HAND_SIZE) {
+      while (p.hand.length < state.totalRounds) {
         const card = drawFrom('heirDeck', 'heirDiscard');
         if (!card) break;
         p.hand.push(card);
@@ -435,7 +446,8 @@ function beginRound() {
 
   const caseId = drawFrom('caseDeck', 'caseDiscard', state.currentCaseId);
   state.currentCaseId = caseId;
-  state.currentEstateValue = drawFrom('estateDeck', 'estateDiscard');
+  // قيمة التركة أصبحت ثابتة وجزءًا من كارت القضية نفسه (لا سحب عشوائي منفصل بعد الآن).
+  state.currentEstateValue = DECEASED_CASES.find(c => c.id === caseId).estateValue;
 
   const dueNotices = applyDueDeferredPayouts();
 
@@ -467,7 +479,7 @@ function saveGame() {
 // ============================================================
 function renderPlayScreenShell() {
   showScreen('screen-play');
-  $('#info-round-num').textContent = state.roundNum;
+  $('#info-round-num').textContent = `${state.roundNum} / ${state.totalRounds}`;
   const diffBadge = $('#info-diff-badge');
   const caseObj = DECEASED_CASES.find(c => c.id === state.currentCaseId);
   const diffKey = caseObj.difficulty;
@@ -547,6 +559,10 @@ function beginTurnFlow() {
 function initPassOverlay() {
   $('#btn-im-ready').addEventListener('click', () => {
     $('#pass-overlay').classList.add('hidden');
+    // حماية: لو الجولة خلصت أصلًا (كل اللاعبين لعبوا) واتحوّلت الحالة لمرحلة الكشف قبل
+    // ما يتنفّذ هذا الكليك (نقرة "أنا جاهز" متأخرة/زائدة)، turnIndex بيبقى خارج نطاق
+    // اللاعبين — ما فيش يد نعرضها، فمنسيبش hand-area تتعرض ولا نستدعي renderHandForCurrentPlayer.
+    if (!state || state.turnIndex >= state.players.length) return;
     $('#hand-area').classList.remove('hidden');
     renderHandForCurrentPlayer();
   });
@@ -607,6 +623,9 @@ function flashMessage(text) {
 
 function initHandActions() {
   $('#btn-confirm-choice').addEventListener('click', () => {
+    // حماية من نقرة متأخرة/مزدوجة بعد ما الدور خلص أصلًا وturnIndex بقى خارج نطاق اللاعبين
+    // (نفس فكرة الحماية في initPassOverlay).
+    if (!state || state.phase !== 'acting' || state.turnIndex >= state.players.length) return;
     if (selection.heirId === 'joker') {
       showJokerIdentityPicker();
     } else {
@@ -662,6 +681,7 @@ function showJokerIdentityPicker() {
 }
 
 function doConfirmJokerPlay(chosenHeirId) {
+  if (!state || state.phase !== 'acting' || state.turnIndex >= state.players.length) return;
   const playerIndex = state.turnIndex;
   const player = state.players[playerIndex];
   state.roundPlays[playerIndex] = chosenHeirId;
@@ -763,7 +783,7 @@ function finalizeRoundScoring(caseObj, engineResult, lateClaimPlayers) {
     perPlayerRows.push({ player: p.name, card: heir.name, status: statusClass, statusText, ratio: ratioText, points });
   });
 
-  // إعادة البطاقات الملعوبة إلى كومة الاستخدام وسحب بطاقات جديدة لإعادة اليد إلى HAND_SIZE
+  // إعادة البطاقات الملعوبة إلى كومة الاستخدام وسحب بطاقات جديدة لإعادة اليد لحجمها (state.totalRounds)
   // (تُعاد هوية البطاقة الفعلية اللي لُعبت، فبطاقة الجوكر ترجع "جوكر" لا هوية الوارث اللي مثّلته)
   Object.entries(state.roundPlays).forEach(([i, play]) => {
     if (play) {
@@ -775,7 +795,6 @@ function finalizeRoundScoring(caseObj, engineResult, lateClaimPlayers) {
     }
   });
   state.caseDiscard.push(state.currentCaseId);
-  state.estateDiscard.push(state.currentEstateValue);
 
   // تحديد الفائز/الفائزين بالجولة (لأعلى نقاط في هذه الجولة تحديدًا)
   const maxRoundPoints = Math.max(...perPlayerRows.map(r => r.points));
@@ -834,6 +853,12 @@ function initRoundResultScreen() {
 function proceedAfterJudgment() {
   state.judgmentTurnIndex = (state.judgmentTurnIndex + 1) % state.players.length;
   state.roundNum++;
+  if (state.roundNum > state.totalRounds) {
+    state.phase = 'end';
+    saveGame();
+    showEndScreen();
+    return;
+  }
   beginRound();
 }
 
@@ -1146,7 +1171,7 @@ function initEndScreen() {
   });
   $('#btn-replay-names').addEventListener('click', () => {
     const names = state.players.map(p => p.name);
-    startMatch(names, setupChoice.difficulty);
+    startMatch(names, state.difficulty, state.totalRounds);
   });
 }
 
@@ -1170,7 +1195,7 @@ function initTopBarActions() {
   $('#btn-restart').addEventListener('click', () => {
     if (confirm('هل تريد إعادة المباراة من البداية بنفس الأسماء؟')) {
       const names = state.players.map(p => p.name);
-      startMatch(names, state.difficulty);
+      startMatch(names, state.difficulty, state.totalRounds);
     }
   });
   $('#btn-end-match').addEventListener('click', () => {

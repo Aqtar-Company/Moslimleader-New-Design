@@ -475,20 +475,22 @@ button:focus-visible, input:focus-visible {
 .royal-corner.br { bottom: 7px; right: 7px; }
 .judgment-card-back .royal-corner { color: rgba(255,255,255,0.85); }
 
-/* كارت القضية: مستطيل عريض (نص أطول)، أفقي — أيقونة في جهة والنص بجانبها.
+/* كارت القضية: مستطيل عريض. الأيقونة في نص الكارت فوق، والنص تحتها ممتد بعرض
+   الكارت بالكامل — جرّبنا تخطيط أفقي (أيقونة جنب النص) بس على الموبايل الحقيقي
+   بيدّيق عمود النص جدًا فيتكسر كل سطر لكلمة واحدة. التخطيط الرأسي بيدّي النص كل
+   عرض الكارت فيتلف بشكل طبيعي (سطرين-تلاتة عاديين) بدل عمود ضيق طويل.
    width/height: 100% تملأ #status-card-slot، وارتفاعه بقى تلقائي (min-height بس
    كحد أدنى) عشان نص القضية الأكبر ميتقصّش لو طال — و#estate-card-slot بيتمدّد
-   لنفس الارتفاع تلقائيًا عبر align-items:stretch على .table-cards (بدل ارتفاع
-   ثابت مضبوط بالتخمين، واللي كان بيقصّ النص لو الحالة طويلة). */
+   لنفس الارتفاع تلقائيًا عبر align-items:stretch على .table-cards. */
 .status-card {
   width: 100%; height: 100%; min-height: 128px;
-  flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px;
-  padding: 14px 18px;
+  flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  padding: 16px;
+  text-align: center;
 }
 .status-card .royal-icon-frame { margin: 0; }
-.status-card-text { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.status-card .royal-card-title, .status-card .card-sub { text-align: right; }
-.status-card .royal-card-title::before, .status-card .royal-card-title::after { display: none; }
+.status-card-text { display: flex; flex-direction: column; gap: 5px; min-width: 0; align-items: center; }
+.status-card .royal-card-title, .status-card .card-sub { text-align: center; }
 /* نص القضية (وصف الحالة) هو أهم محتوى في الكارت — بيبني عليه قرار اللاعب، فحجمه أكبر
    من باقي نصوص الكارت الصغيرة. */
 .status-card .royal-card-title { font-size: 16px; }

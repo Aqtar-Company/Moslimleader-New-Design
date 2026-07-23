@@ -10,6 +10,8 @@ const SINGULAR_HEIR_TYPES = ['father', 'mother', 'husband', 'grandfather', 'gran
 // عملة اللعبة (السهم): عملة مذهَّبة مرسومة بدل إيموجي 💰 عام، عشان تبقى هوية بصرية
 // خاصة باللعبة — بتحمل حرف "س" (اختصار "سهم") منقوشًا في المنتصف زي عملة حقيقية.
 const ICON_COIN = '<svg viewBox="0 0 24 24" width="15" height="15" style="vertical-align:-3px"><circle cx="12" cy="12" r="10.5" fill="#E7C766" stroke="#8a6f2a" stroke-width="1.2"/><circle cx="12" cy="12" r="7.2" fill="none" stroke="#8a6f2a" stroke-width="1"/><text x="12" y="16" font-size="10" font-weight="800" text-anchor="middle" fill="#5c4715">س</text></svg>';
+// صندوق كنز مرسوم لكارت التركة بدل إيموجي 📦 عام — يوحي إن القيمة دي "كنز" مش مجرد طرد.
+const ICON_CHEST = '<svg viewBox="0 0 32 28" width="28" height="24"><path d="M4 13C4 7 9 3 16 3s12 4 12 10" fill="#8a6f2a"/><path d="M4 13C4 7 9 3 16 3s12 4 12 10" fill="none" stroke="#3a2c0d" stroke-width="1.5"/><rect x="3" y="13" width="26" height="12" rx="2" fill="#6b5420" stroke="#3a2c0d" stroke-width="1.5"/><rect x="3" y="12.3" width="26" height="3" fill="#3a2c0d"/><rect x="12.5" y="15" width="7" height="6" rx="1.5" fill="#2a1f08"/><circle cx="16" cy="18" r="1.2" fill="#E7C766"/></svg>';
 
 // لو أكثر من لاعب لعب نفس الوارث "الفردي" في نفس الجولة (مثلًا لاعبان كلاهما "زوج" لنفس
 // المتوفاة)، فهذا وضع مستحيل فقهيًا. الحل: أول لاعب لعب هذا الوارث (بترتيب الدور — يمثّل
@@ -540,7 +542,7 @@ function renderPlayScreenShell() {
     <div class="card royal-card estate-card ${estateTierClass(state.currentEstateValue)} card-flip">
       <span class="royal-corner tl">✦</span><span class="royal-corner tr">✦</span>
       <span class="royal-corner bl">✦</span><span class="royal-corner br">✦</span>
-      <div class="royal-icon-frame">📦</div>
+      <div class="royal-icon-frame">${ICON_CHEST}</div>
       <div class="card-value">${state.currentEstateValue}</div>
       <div class="card-sub">قيمة التركة</div>
     </div>`;

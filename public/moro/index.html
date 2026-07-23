@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>MORO — لعبة المواريث</title>
+<link rel="stylesheet" href="/moro/styles.css">
+</head>
+<body>
+
+<!-- ============ شاشة البداية (شعار + تحميل، تنتقل تلقائيًا لشاشة الإعداد) ============ -->
+<section id="screen-start" class="screen start-screen active">
+  <img class="game-logo" src="/moro/logo.png" alt="MORO — مواريث">
+  <p class="game-tagline">تعلّم المواريث باللعب</p>
+  <div class="splash-loader"><div class="splash-loader-bar"></div></div>
+</section>
+
+<!-- ============ شاشة الإعداد ============ -->
+<section id="screen-setup" class="screen">
+  <div class="top-nav">
+    <button class="icon-btn" id="setup-menu-btn" title="القائمة"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg></button>
+    <h3>إعداد المباراة</h3>
+    <span></span>
+  </div>
+  <div class="setup-card">
+    <button class="btn btn-secondary btn-block hidden" id="btn-continue">متابعة المباراة السابقة</button>
+
+    <div class="section-title">عدد اللاعبين</div>
+    <div class="pill-group" id="player-count-group">
+      <button class="pill" data-count="2">لاعبان</button>
+      <button class="pill" data-count="3">3 لاعبين</button>
+      <button class="pill" data-count="4">4 لاعبين</button>
+    </div>
+
+    <div class="section-title">أسماء اللاعبين</div>
+    <div class="name-inputs" id="name-inputs"></div>
+
+    <div class="section-title">مستوى الصعوبة</div>
+    <div class="pill-group" id="difficulty-group">
+      <button class="pill difficulty-pill" data-diff="easy">سهل</button>
+      <button class="pill difficulty-pill" data-diff="medium">متوسط</button>
+      <button class="pill difficulty-pill" data-diff="advanced">متقدم</button>
+      <button class="pill difficulty-pill" data-diff="mixed">مختلط</button>
+    </div>
+
+    <div class="section-title">عدد الجولات</div>
+    <div class="pill-group" id="rounds-group">
+      <button class="pill" data-rounds="3">3 جولات</button>
+      <button class="pill" data-rounds="5">5 جولات</button>
+      <button class="pill" data-rounds="7">7 جولات</button>
+    </div>
+
+    <div class="setup-actions">
+      <button class="btn btn-primary btn-block" id="btn-launch-match">ابدأ المباراة</button>
+    </div>
+    <p class="muted" style="margin-top:20px; text-align:center;">أداة تعليمية مبسطة، وليست مرجعًا شرعيًا نهائيًا.</p>
+  </div>
+</section>
+
+<!-- ============ شاشة القائمة ============ -->
+<section id="screen-menu" class="screen">
+  <div class="top-nav">
+    <button class="icon-btn" id="menu-back"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></button>
+    <h3>القائمة</h3>
+    <span></span>
+  </div>
+  <div class="menu-buttons">
+    <button class="btn btn-secondary btn-block" id="btn-how-to-play">طريقة اللعب</button>
+    <button class="btn btn-secondary btn-block" id="btn-heir-guide">دليل الورثة</button>
+    <button class="btn btn-secondary btn-block" id="btn-solver">❓ احسب حالتك</button>
+  </div>
+</section>
+
+<!-- ============ شاشة اللعب ============ -->
+<section id="screen-play" class="screen play-screen">
+  <div class="top-bar">
+    <div class="top-bar-actions">
+      <button class="icon-btn" id="btn-mute" title="كتم الصوت"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 8a5 5 0 010 8"/><path d="M20 5a9 9 0 010 14"/></svg></button>
+      <button class="icon-btn" id="btn-end-match" title="إنهاء المباراة"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v18"/><path d="M5 4h13l-2.5 4L18 12H5"/></svg></button>
+      <button class="icon-btn" id="btn-restart" title="إعادة المباراة"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 1 2.6 6.4"/><path d="M3 21v-6h6"/></svg></button>
+      <button class="icon-btn" id="btn-exit" title="العودة للقائمة"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v3"/><circle cx="12" cy="7" r="1.4" fill="currentColor" stroke="none"/><path d="M7 10a5 5 0 0110 0v2H7z"/><path d="M3 21v-6a3 3 0 013-3h1v9M20 21v-6a3 3 0 00-3-3h-1v9"/><path d="M9 21v-5a3 3 0 016 0v5"/><path d="M2 21h20"/></svg></button>
+    </div>
+    <div class="top-bar-info">
+      <span>الجولة <b id="info-round-num" dir="ltr" style="display:inline-block;">1</b></span>
+      <span class="diff-badge" id="info-diff-badge">سهل</span>
+    </div>
+  </div>
+
+  <div class="players-row" id="players-row"></div>
+
+  <!-- محاكاة بصرية لبنك الأسهم (نفس منطق النسخة المطبوعة: ضهر كل كارت وارث = سهم واحد) —
+       الرقم بيقل كل ما الكروت تتوزّع على أيدي اللاعبين، ويرجع يزيد لما تُخصَم/تتلعب وترجع الكومة. -->
+  <div class="sahm-bank" id="sahm-bank">
+    <div class="sahm-bank-stack"><span class="sahm-chip"></span><span class="sahm-chip"></span><span class="sahm-chip"></span></div>
+    <span class="sahm-bank-label">بنك الأسهم: <b id="sahm-bank-count">0</b></span>
+  </div>
+
+  <div class="table-area">
+    <div class="table-cards">
+      <div id="status-card-slot"></div>
+      <div id="estate-card-slot"></div>
+    </div>
+    <div class="revealed-heirs" id="revealed-heirs"></div>
+  </div>
+
+  <div id="round-lesson-box"></div>
+
+  <div class="hand-area" id="hand-area">
+    <div class="hand-label">بطاقاتك</div>
+    <div class="hand-cards" id="hand-cards"></div>
+    <div class="hand-hint">اختر الوارث الذي يحقق لك أكبر نسبة من التركة</div>
+    <div class="hand-actions">
+      <button class="btn btn-secondary btn-sm" id="btn-hand-help"><span class="icn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.4"/><path d="M6.2 6.2l2.7 2.7M17.8 6.2l-2.7 2.7M6.2 17.8l2.7-2.7M17.8 17.8l-2.7-2.7"/></svg></span> طلب المساعدة</button>
+      <button class="btn btn-primary btn-sm" id="btn-confirm-choice" disabled><span class="icn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/></svg></span> تأكيد الاختيار</button>
+    </div>
+  </div>
+</section>
+
+<!-- شاشة تمرير الجهاز -->
+<div class="pass-overlay hidden" id="pass-overlay">
+  <h2 id="pass-overlay-text">أعطِ الجهاز إلى اللاعب التالي</h2>
+  <div class="next-player-name" id="pass-player-name">—</div>
+  <button class="btn btn-primary" id="btn-im-ready">أنا جاهز</button>
+</div>
+
+<!-- ============ شاشة نتيجة الجولة ============ -->
+<section id="screen-round-result" class="screen">
+  <div class="top-nav">
+    <span></span>
+    <h3>نتيجة الجولة</h3>
+    <span></span>
+  </div>
+  <div class="panel-card">
+    <table class="result-table" id="result-table">
+      <thead>
+        <tr><th>اللاعب</th><th>البطاقة</th><th>الحالة</th><th>النسبة</th><th>النقاط</th></tr>
+      </thead>
+      <tbody id="result-table-body"></tbody>
+    </table>
+    <div id="result-undistributed" class="warning-box hidden"></div>
+    <div id="result-lesson" class="lesson-box"></div>
+    <div class="section-title">الرصيد الحالي</div>
+    <ul class="rank-list" id="result-totals"></ul>
+    <button class="btn btn-primary btn-block" id="btn-next-round" style="margin-top:16px;">الجولة التالية</button>
+  </div>
+</section>
+
+<!-- ============ بطاقات الأحكام ============ -->
+<section id="screen-judgment" class="screen judgment-screen">
+  <div class="judgment-badge">⚖️ فاصل الأحكام</div>
+  <div class="top-nav">
+    <span></span>
+    <h3 id="judgment-turn-label">دور كشف الحكم</h3>
+    <span></span>
+  </div>
+  <p class="muted" id="judgment-intro" style="max-width:420px; text-align:center; margin-bottom:12px;"></p>
+  <div class="table-area">
+    <div id="judgment-card" class="judgment-card"></div>
+  </div>
+  <div class="panel-card" style="margin-top:16px;">
+    <div id="judgment-controls"></div>
+    <div id="judgment-summary"></div>
+  </div>
+</section>
+
+<!-- ============ شاشة نهاية المباراة ============ -->
+<section id="screen-end" class="screen">
+  <div class="winner-banner">
+    <div class="trophy">🏆</div>
+    <h2 id="winner-name">الفائز</h2>
+    <div class="muted" id="winner-score"></div>
+  </div>
+  <div class="panel-card">
+    <div class="section-title">الترتيب النهائي</div>
+    <ul class="rank-list" id="final-rank-list"></ul>
+    <div class="menu-buttons" style="margin-top:16px;">
+      <button class="btn btn-primary btn-block" id="btn-new-match">مباراة جديدة</button>
+      <button class="btn btn-secondary btn-block" id="btn-replay-names">إعادة اللعب بنفس الأسماء</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ دليل اللعب ============ -->
+<section id="screen-how-to" class="screen">
+  <div class="top-nav">
+    <button class="icon-btn" id="howto-back"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></button>
+    <h3>طريقة اللعب</h3>
+    <span></span>
+  </div>
+  <div class="panel-card">
+    <div class="guide-list" id="howto-list"></div>
+  </div>
+</section>
+
+<!-- ============ دليل الورثة ============ -->
+<section id="screen-heir-guide" class="screen">
+  <div class="top-nav">
+    <button class="icon-btn" id="heirguide-back"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></button>
+    <h3>دليل الورثة</h3>
+    <span></span>
+  </div>
+  <div class="panel-card">
+    <div class="guide-list" id="heir-guide-list"></div>
+  </div>
+</section>
+
+<!-- ============ احسب حالتك (الحلّال التفاعلي) ============ -->
+<section id="screen-solver" class="screen">
+  <div class="top-nav">
+    <button class="icon-btn" id="solver-back"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></button>
+    <h3>احسب حالتك</h3>
+    <span></span>
+  </div>
+  <div class="setup-card">
+    <div class="section-title">المتوفى</div>
+    <div class="pill-group" id="solver-gender-group">
+      <button class="pill" data-gender="male">رجل</button>
+      <button class="pill" data-gender="female">امرأة</button>
+    </div>
+
+    <div class="section-title">قيمة التركة (بالنقاط/الأسهم)</div>
+    <input type="number" id="solver-estate" min="1" max="9999" value="24" class="solver-estate-input">
+
+    <div class="section-title">الورثة الموجودون</div>
+    <div class="solver-heir-list" id="solver-heir-list"></div>
+
+    <div class="setup-actions">
+      <button class="btn btn-primary btn-block" id="btn-solver-compute">احسب</button>
+    </div>
+  </div>
+
+  <div class="panel-card hidden" id="solver-results-card" style="margin-top:16px;">
+    <div class="section-title">النتيجة</div>
+    <table class="result-table" id="solver-result-table">
+      <thead>
+        <tr><th>الوارث</th><th>النسبة</th><th>النقاط</th><th>الحالة</th></tr>
+      </thead>
+      <tbody id="solver-result-body"></tbody>
+    </table>
+    <div id="solver-undistributed" class="warning-box hidden"></div>
+    <div id="solver-reasons"></div>
+  </div>
+</section>
+
+<script src="/moro/data.js"></script>
+<script src="/moro/inheritance-engine.js"></script>
+<script src="/moro/storage.js"></script>
+<script src="/moro/audio.js"></script>
+<script src="/moro/app.js"></script>
+</body>
+</html>

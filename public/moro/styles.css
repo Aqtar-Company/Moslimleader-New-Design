@@ -1,0 +1,751 @@
+/* styles.css — التصميم الكامل: RTL، متجاوب، حركات البطاقات */
+/* هوية بصرية ملكية داكنة (كحلي/ذهبي)، استلهامًا من مرجع تصميم اعتمده المستخدم:
+   ألواح كحلية بحواف ذهبية، كروت يد "مروَّحة" زي الماسك الحقيقي، كروت قضية بشكل
+   "نيتشة" (محراب) بقوس علوي، أزرار ثلاثية الأبعاد بلمعة، أفاتار لاعب مخروطي الذهب. */
+
+:root {
+  --bg: #040f21;
+  --bg-deep: #0b2743;
+  --surface: #12395e;
+  --surface-2: #163f63;
+  --ink: #e8eefc;
+  --ink-soft: #a9bcd9;
+  --gold: #d9a934;
+  --gold-soft: #f6dd8e;
+  --gold-dim: #9c7a2c;
+  --line: #1f5480;
+
+  --easy: #6BC48D; --easy-bg: rgba(107, 196, 141, 0.16);
+  --medium: #74B3E3; --medium-bg: rgba(116, 179, 227, 0.16);
+  --advanced: #E6A15C; --advanced-bg: rgba(230, 161, 92, 0.16);
+  --expert: #E37567; --expert-bg: rgba(227, 117, 103, 0.16);
+
+  --shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  --shadow-soft: 0 6px 16px rgba(0, 0, 0, 0.35);
+  --radius: 18px;
+  --radius-sm: 12px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Tahoma, Arial, sans-serif;
+  direction: rtl;
+  text-align: right;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(20, 53, 96, 0.55) 0%, var(--bg-deep) 55%),
+    var(--bg);
+  background-attachment: fixed;
+  min-height: 100vh;
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(217, 169, 52, 0.05) 0, transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(217, 169, 52, 0.05) 0, transparent 40%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+button:focus-visible, input:focus-visible {
+  outline: 3px solid var(--medium);
+  outline-offset: 2px;
+}
+
+.screen {
+  min-height: 100vh;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 14px 40px;
+  animation: fadeIn 0.25s ease;
+  position: relative;
+  z-index: 1;
+}
+.screen.active { display: flex; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- شاشة البداية ---------- */
+.start-screen { justify-content: center; text-align: center; }
+.game-logo {
+  width: 200px; height: 200px; object-fit: contain;
+  margin: 0 auto 8px;
+  filter: drop-shadow(0 0 28px rgba(217, 169, 52, 0.3));
+}
+.game-tagline {
+  color: var(--ink-soft);
+  font-size: 16px;
+  margin: 0 0 28px;
+}
+.menu-buttons { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 320px; }
+
+.splash-loader {
+  width: 140px; height: 4px; border-radius: 4px;
+  background: rgba(255,255,255,0.1);
+  overflow: hidden;
+}
+.splash-loader-bar {
+  width: 40%; height: 100%; border-radius: 4px;
+  background: linear-gradient(90deg, var(--gold-dim), var(--gold-soft));
+  animation: splashLoading 1.4s ease-in-out infinite;
+}
+@keyframes splashLoading {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+/* ---------- أزرار ثلاثية الأبعاد بلمعة (استلهامًا من المرجع) ---------- */
+.btn {
+  padding: 14px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+  font-weight: 800;
+  position: relative;
+  isolation: isolate;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+.btn:active { transform: translateY(2px) scale(0.98); }
+.btn-primary {
+  color: #241c08;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.5), rgba(255,255,255,0) 45%),
+    linear-gradient(180deg, var(--gold-soft), var(--gold) 55%, var(--gold-dim));
+  border: 1px solid #8a7433;
+  box-shadow:
+    0 2px 0 rgba(255,255,255,.4) inset,
+    0 -2px 0 rgba(0,0,0,.15) inset,
+    0 6px 0 #7a6220,
+    0 14px 22px rgba(0,0,0,.4);
+}
+.btn-primary::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,.55) 48%, transparent 66%);
+  background-size: 220% 100%;
+  background-position: 120% 0;
+  opacity: 0; z-index: -1;
+  transition: opacity .2s ease;
+}
+.btn-primary:hover {
+  filter: brightness(1.05); transform: translateY(-2px);
+  box-shadow: 0 2px 0 rgba(255,255,255,.4) inset, 0 -2px 0 rgba(0,0,0,.15) inset, 0 8px 0 #7a6220, 0 18px 26px rgba(0,0,0,.45);
+}
+.btn-primary:hover::after { opacity: 1; animation: sheen 1.1s ease forwards; }
+@keyframes sheen { from { background-position: 120% 0; } to { background-position: -40% 0; } }
+.btn-primary:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 rgba(255,255,255,.3) inset, 0 -2px 0 rgba(0,0,0,.15) inset, 0 2px 0 #7a6220, 0 6px 12px rgba(0,0,0,.35);
+}
+/* دعوة للعب نابضة بخفة على زر بدء المباراة بس. */
+#btn-launch-match { animation: ctaPulse 2.2s ease-in-out infinite; }
+@keyframes ctaPulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.12); }
+}
+.btn-secondary {
+  color: var(--gold-soft);
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 6px 0 #082038, 0 14px 22px rgba(0,0,0,.4);
+}
+.btn-secondary:hover {
+  border-color: var(--gold); transform: translateY(-2px);
+  box-shadow: 0 1px 0 rgba(255,255,255,.08) inset, 0 8px 0 #082038, 0 18px 26px rgba(0,0,0,.45), 0 0 18px rgba(217,169,52,.22);
+}
+.btn-secondary:active {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 2px 0 #082038, 0 6px 12px rgba(0,0,0,.35);
+}
+.btn-danger { background: var(--expert); color: #fff; box-shadow: var(--shadow-soft); }
+.btn-block { width: 100%; }
+.btn-sm { padding: 9px 16px; font-size: 13px; border-radius: 10px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; filter: none !important; transform: none !important; }
+.btn .icn { display: inline-flex; }
+.btn .icn svg { display: block; }
+
+/* ---------- الإعداد ---------- */
+.setup-card, .panel-card {
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.04);
+  width: 100%;
+  max-width: 480px;
+  border: 1px solid var(--line);
+}
+.section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gold-soft);
+  margin: 18px 0 8px;
+}
+.section-title:first-child { margin-top: 0; }
+
+.pill-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill {
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg-deep);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+.pill.selected { background: var(--gold); color: #241c08; border-color: var(--gold); box-shadow: 0 0 14px rgba(217, 169, 52, 0.35); }
+
+.name-inputs { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.name-inputs input {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--bg-deep);
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.difficulty-pill[data-diff="easy"].selected { background: var(--easy); border-color: var(--easy); color: #0d2417; }
+.difficulty-pill[data-diff="medium"].selected { background: var(--medium); border-color: var(--medium); color: #0d2032; }
+.difficulty-pill[data-diff="advanced"].selected { background: var(--advanced); border-color: var(--advanced); color: #2e1a06; }
+.difficulty-pill[data-diff="expert"] { opacity: 0.5; }
+.difficulty-pill[data-diff="mixed"].selected { background: #8B7FC7; border-color: #8B7FC7; color: #1b1730; }
+
+.setup-actions { margin-top: 20px; }
+
+/* ---------- شاشة اللعب ---------- */
+.play-screen { padding: 10px 8px 310px; width: 100%; max-width: 720px; margin: 0 auto; }
+/* شريط التحكّم العلوي: أزرار التحكّم أولًا وفي المنتصف، وتحتها معلومات الجولة/الصعوبة. */
+.top-bar {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border-radius: var(--radius);
+  padding: 12px 14px; box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,.04);
+  width: 100%; margin-bottom: 10px;
+  border: 1px solid var(--line);
+  animation: slideDown 0.35s ease;
+}
+.top-bar-info { display: flex; gap: 14px; align-items: center; font-size: 13px; color: var(--ink-soft); flex-wrap: wrap; justify-content: center; }
+.top-bar-info b { color: var(--ink); }
+.diff-badge {
+  padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff;
+  background: linear-gradient(180deg, rgba(90,160,230,.28), rgba(90,160,230,.08));
+  border: 1px solid rgba(120,180,230,.4);
+}
+.diff-badge.easy { background: linear-gradient(180deg, rgba(107,196,141,.3), rgba(107,196,141,.08)); border-color: rgba(107,196,141,.5); color: var(--easy); }
+.diff-badge.medium { background: linear-gradient(180deg, rgba(116,179,227,.3), rgba(116,179,227,.08)); border-color: rgba(116,179,227,.5); color: var(--medium); }
+.diff-badge.advanced { background: linear-gradient(180deg, rgba(230,161,92,.3), rgba(230,161,92,.08)); border-color: rgba(230,161,92,.5); color: var(--advanced); }
+.diff-badge.expert { background: linear-gradient(180deg, rgba(227,117,103,.3), rgba(227,117,103,.08)); border-color: rgba(227,117,103,.5); color: var(--expert); }
+.top-bar-actions { display: flex; gap: 10px; justify-content: center; }
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* أزرار التحكّم "بوابة" كحلية مضيئة عند التفاعل — نفس لغة المرجع. */
+.icon-btn {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: radial-gradient(circle at 30% 25%, #1d4a76, #0a2138);
+  border: 1px solid var(--line);
+  font-size: 16px; display: flex; align-items: center; justify-content: center;
+  color: var(--gold-soft);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.icon-btn svg { display: block; }
+.icon-btn:hover { transform: translateY(-2px); border-color: var(--gold); box-shadow: 0 6px 16px rgba(217, 169, 52, 0.25); }
+.icon-btn:active { transform: translateY(0) scale(0.94); }
+
+/* صف اللاعبين يتراكب على حافة الطاولة العلوية بترتيب متعرّج خفيف. */
+.players-row {
+  display: flex; gap: 10px; flex-wrap: wrap; width: 100%;
+  margin-bottom: -26px; justify-content: center; position: relative; z-index: 2;
+}
+.player-chip {
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 8px 12px; font-size: 13px; min-width: 90px; text-align: center;
+  box-shadow: var(--shadow-soft);
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  transition: box-shadow .25s ease, border-color .25s ease, transform .25s ease;
+}
+.player-chip:nth-child(odd) { transform: translateY(-5px); }
+.player-chip:nth-child(even) { transform: translateY(5px); }
+.player-chip.active-turn {
+  border-color: var(--gold);
+  transform: translateY(-8px) scale(1.04);
+  animation: turnPulse 1.6s ease-in-out infinite;
+}
+@keyframes turnPulse {
+  0%, 100% { box-shadow: 0 0 0 1px var(--gold), 0 0 16px rgba(217, 169, 52, 0.32); }
+  50% { box-shadow: 0 0 0 1px var(--gold-soft), 0 0 26px rgba(217, 169, 52, 0.6); }
+}
+/* أفاتار مخروطي الذهب للاعب صاحب الدور، وكحلي لبقية اللاعبين — تمييز فوري بالحالة. */
+.p-avatar {
+  width: 38px; height: 38px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 15px; color: #241c08;
+  background: conic-gradient(from 210deg, var(--gold-soft), var(--gold), var(--gold-dim), var(--gold-soft));
+  border: 2px solid rgba(0,0,0,.25);
+  margin-bottom: 3px; flex-shrink: 0;
+}
+.player-chip:not(.active-turn) .p-avatar {
+  background: conic-gradient(from 210deg, #5a9fd6, #2c5f8f, #1a3a58, #5a9fd6);
+  color: #eaf4ff;
+}
+.player-chip .p-name { font-weight: 700; display: block; }
+.player-chip .p-score { color: var(--ink-soft); font-size: 12px; }
+.player-chip .p-balance { display: block; font-size: 11px; color: var(--gold-soft); font-weight: 700; }
+.player-chip .p-state { font-size: 11px; margin-top: 2px; font-weight: 700; color: var(--ink-soft); }
+.player-chip .p-state.state-picking { color: var(--easy); }
+.player-chip .p-state.state-ready { color: var(--gold-soft); }
+.player-chip .p-state.state-waiting { color: var(--ink-soft); font-weight: 400; }
+
+/* كومة الأسهم المكسوبة تحت كل لاعب — محاكاة بصرية للكومة الفيزيائية في النسخة المطبوعة
+   (طبقات متراكمة تكبر مع الرصيد، مش عدد كروت حقيقي — انظر renderPlayersRow). */
+.p-pile { display: inline-flex; margin-right: 4px; vertical-align: middle; }
+.pile-chip {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--gold-soft), var(--gold) 60%, var(--gold-dim));
+  border: 1px solid rgba(0,0,0,.3);
+  margin-right: -4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.3);
+}
+
+/* بنك الأسهم: محاكاة بصرية لضهر كروت الورثة (كل ضهر = سهم واحد في النسخة المطبوعة) —
+   شريط أفقي مضغوط فوق طاولة اللعب، يعرض عدد الأسهم اللي لسه في "البنك" (مش في يد أي لاعب). */
+.sahm-bank {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin: 10px 0 4px; font-size: 12px; color: var(--ink-soft); font-weight: 700;
+  position: relative; z-index: 3;
+}
+.sahm-bank-stack { display: flex; position: relative; width: 28px; height: 18px; }
+.sahm-chip {
+  position: absolute; bottom: 0; width: 18px; height: 18px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--gold-soft), var(--gold) 60%, var(--gold-dim));
+  border: 1px solid rgba(0,0,0,.35); box-shadow: 0 1px 3px rgba(0,0,0,.35);
+}
+.sahm-chip:nth-child(1) { right: 0; }
+.sahm-chip:nth-child(2) { right: 5px; bottom: 3px; }
+.sahm-chip:nth-child(3) { right: 10px; bottom: 6px; }
+.sahm-bank-label b { color: var(--gold-soft); font-size: 13px; }
+
+/* "طاولة اللعب": لوح كحلي غامق بحافة ذهبية + نقشة زخرفية خفيفة، تحمل كروت القضية. */
+.table-area {
+  position: relative;
+  width: 100%;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(217, 169, 52, 0.10), transparent 60%),
+    linear-gradient(180deg, var(--surface-2), var(--surface) 65%);
+  border-radius: 30px;
+  padding: 40px 18px 20px;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.04);
+  margin-bottom: 12px; min-height: 180px;
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.table-area::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84'%3E%3Cg fill='none' stroke='%23d9a934' stroke-opacity='0.06' stroke-width='1'%3E%3Cpath d='M42 0 L84 42 L42 84 L0 42 Z'/%3E%3Ccircle cx='42' cy='42' r='18'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 84px 84px;
+  opacity: .7;
+  pointer-events: none;
+}
+.table-cards { display: flex; gap: 14px; align-items: stretch; width: 100%; position: relative; }
+#status-card-slot { flex: 1 1 auto; min-width: 0; display: flex; }
+#estate-card-slot { flex: 0 0 auto; display: flex; }
+.revealed-heirs { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; min-height: 90px; position: relative; }
+
+.card {
+  width: 108px; height: 150px; border-radius: 14px; background: var(--surface);
+  box-shadow: var(--shadow); border: 1px solid var(--line);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 8px; position: relative; user-select: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.card.small { width: 78px; height: 108px; }
+.card .card-icon { font-size: 32px; margin-bottom: 6px; }
+.card.small .card-icon { font-size: 24px; margin-bottom: 3px; }
+.card .card-name { font-weight: 700; font-size: 14px; text-align: center; color: var(--ink); }
+.card.small .card-name { font-size: 11px; }
+.card .card-sub { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
+/* دائرة ملوَّنة خلف أيقونة الوارث — احتياطي لو مفيش صورة حقيقية (الجوكر مثلًا). */
+.card-icon-badge {
+  width: 46px; height: 46px; border-radius: 50%;
+  background: var(--card-color, var(--gold-soft));
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 6px; box-shadow: var(--shadow-soft);
+}
+.card-icon-badge .card-icon { font-size: 24px; margin-bottom: 0; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3)); }
+.card.small .card-icon-badge { width: 34px; height: 34px; margin-bottom: 3px; }
+.card.small .card-icon-badge .card-icon { font-size: 18px; }
+
+/* بطاقة بلا صورة حقيقية (الجوكر تحديدًا) — حدود ذهبية + زخرفة أركان ✦ بدل الشكل
+   الفارغ القديم (دائرة ملوَّنة وسط كارت فاتح بلا أي إطار)، لتتّسق مع باقي كروت اللعبة. */
+.card.royal-fallback {
+  border: 2px solid var(--gold);
+  box-shadow: var(--shadow), 0 0 14px rgba(217, 169, 52, 0.18);
+}
+.card.royal-fallback .card-icon-badge {
+  border: 1.5px solid rgba(255,255,255,0.3);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 2px 3px rgba(255,255,255,0.35);
+}
+
+/* بطاقة الوارث بصورة حقيقية: الصورة نفسها هي تصميم الكارت الكامل، فتُعرض كاملة بلا
+   أي قص (object-fit: contain) وبلا نص مكرر من عندنا. */
+.card.has-photo { padding: 0; overflow: hidden; background: var(--surface); display: flex; flex-direction: column; }
+.card.has-photo .card-portrait-full { width: 100%; flex: 1 1 auto; min-height: 0; object-fit: contain; display: block; }
+.card.has-photo .card-sub { padding: 4px 4px 6px; text-align: center; background: var(--surface-2); flex-shrink: 0; margin-top: 0; }
+.card.has-photo .info-btn { z-index: 2; }
+.card.selectable:hover { transform: translateY(-6px); box-shadow: var(--shadow), 0 0 16px rgba(217, 169, 52, 0.2); }
+.card.selected {
+  border-color: var(--gold); box-shadow: 0 0 0 3px rgba(217, 169, 52, 0.5), 0 0 20px rgba(217, 169, 52, 0.4);
+  animation: cardPop 0.3s ease;
+}
+@keyframes cardPop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.08) translateY(-4px); }
+  100% { transform: scale(1); }
+}
+.card-deal { animation: cardDeal 0.35s ease backwards; }
+@keyframes cardDeal {
+  from { opacity: 0; transform: translateY(18px) scale(0.92); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.card.disallowed { border: 1.5px dashed var(--advanced); background: var(--advanced-bg); }
+.card.disallowed .card-icon-badge, .card.disallowed .card-name { opacity: 0.55; }
+.card.disallowed::after {
+  content: '⚠️ غير مناسبة'; position: absolute; bottom: -9px; left: 50%; transform: translateX(-50%);
+  font-size: 9px; font-weight: 700; color: #fff; background: var(--advanced);
+  padding: 1px 7px; border-radius: 999px; white-space: nowrap; box-shadow: var(--shadow-soft);
+}
+.card.blocked { opacity: 0.45; }
+.card .info-btn {
+  position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--surface-2); font-size: 11px; border: 1px solid var(--line); color: var(--ink-soft);
+}
+
+.card-flip { animation: flipIn 0.5s ease; }
+@keyframes flipIn {
+  from { transform: rotateY(90deg); opacity: 0.2; }
+  to { transform: rotateY(0deg); opacity: 1; }
+}
+
+.estate-card { background: linear-gradient(160deg, var(--surface), rgba(217, 169, 52, 0.14)); }
+.estate-card.tier-3, .estate-card.tier-4 { background: linear-gradient(160deg, var(--gold-soft), var(--gold)); color: #2e2308; }
+.estate-card.tier-3 .card-sub, .estate-card.tier-4 .card-sub { color: #2e2308; }
+.estate-card .card-value { font-family: 'Georgia', serif; font-size: 30px; font-weight: 800; }
+
+/* ---------- الإطار الملكي الكلاسيكي: كارت القضية والتركة وكارت الحكم ---------- */
+.royal-card { position: relative; }
+.royal-icon-frame {
+  width: 54px; height: 54px; margin: 2px auto 10px;
+  border-radius: 50%; flex-shrink: 0;
+  background: radial-gradient(circle at 35% 30%, var(--gold-soft), var(--gold) 55%, var(--gold-dim));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; overflow: hidden; color: #241c08;
+  box-shadow: 0 6px 16px rgba(217, 169, 52, 0.4), inset 0 2px 4px rgba(255,255,255,.4);
+}
+.judgment-card-back .royal-icon-frame {
+  background: rgba(255,255,255,0.18); color: #fff; box-shadow: inset 0 0 0 3px rgba(255,255,255,0.35);
+}
+.royal-card-title {
+  font-weight: 800; font-size: 14px; color: var(--ink); text-align: center; padding: 0 4px;
+}
+.royal-card-title::before, .royal-card-title::after {
+  content: '✦'; color: var(--gold); font-size: 9px; margin: 0 5px; display: inline-block;
+}
+.judgment-card .royal-icon-frame { width: 66px; height: 66px; font-size: 32px; }
+.gallery-row .royal-icon-frame { width: 42px; height: 42px; font-size: 20px; margin-bottom: 5px; }
+
+.royal-corner {
+  position: absolute; font-size: 10px; color: var(--gold); line-height: 1;
+  pointer-events: none; z-index: 1;
+}
+.royal-corner.tl { top: 7px; left: 7px; }
+.royal-corner.tr { top: 7px; right: 7px; }
+.royal-corner.bl { bottom: 7px; left: 7px; }
+.royal-corner.br { bottom: 7px; right: 7px; }
+.judgment-card-back .royal-corner { color: rgba(255,255,255,0.85); }
+
+/* كارت القضية: مستطيل عريض. الأيقونة في نص الكارت فوق، والنص تحتها ممتد بعرض
+   الكارت بالكامل — جرّبنا تخطيط أفقي (أيقونة جنب النص) بس على الموبايل الحقيقي
+   بيدّيق عمود النص جدًا فيتكسر كل سطر لكلمة واحدة. التخطيط الرأسي بيدّي النص كل
+   عرض الكارت فيتلف بشكل طبيعي (سطرين-تلاتة عاديين) بدل عمود ضيق طويل.
+   width/height: 100% تملأ #status-card-slot، وارتفاعه بقى تلقائي (min-height بس
+   كحد أدنى) عشان نص القضية الأكبر ميتقصّش لو طال — و#estate-card-slot بيتمدّد
+   لنفس الارتفاع تلقائيًا عبر align-items:stretch على .table-cards. */
+.status-card {
+  width: 100%; height: 100%; min-height: 128px;
+  flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  padding: 16px;
+  text-align: center;
+}
+.status-card .royal-icon-frame { margin: 0; }
+.status-card-text { display: flex; flex-direction: column; gap: 5px; min-width: 0; align-items: center; }
+.status-card .royal-card-title, .status-card .card-sub { text-align: center; }
+/* نص القضية (وصف الحالة) هو أهم محتوى في الكارت — بيبني عليه قرار اللاعب، فحجمه أكبر
+   من باقي نصوص الكارت الصغيرة. */
+.status-card .royal-card-title { font-size: 16px; }
+.status-card .card-sub { font-size: 13px; line-height: 1.4; }
+.status-card.gender-male .royal-icon-frame { box-shadow: 0 6px 16px rgba(116, 179, 227, 0.4), inset 0 2px 4px rgba(255,255,255,.4); }
+.status-card.gender-female .royal-icon-frame { box-shadow: 0 6px 16px rgba(227, 135, 176, 0.4), inset 0 2px 4px rgba(255,255,255,.4); }
+
+/* كارت التركة: مربّع الشكل عادةً، بس ارتفاعه بيتمدّد تلقائيًا (height:100% على
+   #estate-card-slot اللي بيتساوى مع ارتفاع كارت القضية عبر align-items:stretch)
+   عشان يفضلوا على نفس المحاذاة حتى لو نص القضية طال. */
+.estate-card { flex: 0 0 118px; width: 118px; height: 100%; min-height: 128px; }
+
+/* بطاقة الحكم زخارف أركان بنجمة ✦ إضافية على العنوان (شكلها مستطيل تقليدي أصلًا). */
+.judgment-card.royal-card { border: 2px solid var(--gold) !important; box-shadow: var(--shadow), 0 0 20px rgba(217, 169, 52, 0.12); }
+
+.pass-overlay {
+  position: fixed; inset: 0; background: rgba(4, 15, 33, 0.94);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: #fff; z-index: 50; text-align: center; padding: 20px; gap: 16px;
+}
+.pass-overlay h2 { font-size: 22px; margin: 0; }
+.pass-overlay .next-player-name { color: var(--gold-soft); font-size: 26px; font-weight: 800; text-shadow: 0 0 20px rgba(217, 169, 52, 0.4); }
+
+.hand-area {
+  position: fixed; bottom: 0; right: 0; left: 0;
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border-top: 1px solid var(--line); padding: 10px 10px 14px; box-shadow: 0 -10px 24px rgba(0,0,0,0.4);
+  z-index: 20;
+}
+.hand-label {
+  text-align: center; font-size: 11px; font-weight: 700; color: var(--ink-soft);
+  letter-spacing: 0.3px; margin-bottom: 4px;
+}
+.hand-hint {
+  text-align: center; font-size: 12px; font-weight: 600; color: var(--gold-soft);
+  margin: 2px 0 10px;
+}
+/* كروت اليد "مروَّحة" زي ماسك ورق حقيقي — كل كارت بميل مختلف ويتراكب مع اللي جنبه،
+   وترتفع وتستوي لما تتحوّم/تتاختار عليها. حجم اليد بقى متغيّر (3/5/7 حسب عدد الجولات)،
+   فزاوية الميل بقت محسوبة في JS لكل كارت (--fan-rotate/--fan-y، انظر renderHandForCurrentPlayer)
+   بدل قواعد nth-child ثابتة كانت مبنية على 4 كروت بالظبط. overflow-x:auto + سكرول لمسي
+   يضمن الوصول لكل الكروت لو زادت عن اللي بيتسع في عرض الشاشة (بدل ما تتقص برّه من غير سكرول). */
+.hand-cards {
+  display: flex; justify-content: center; align-items: flex-end;
+  flex-wrap: nowrap; padding: 34px 10px 14px; position: relative;
+  overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.hand-cards::-webkit-scrollbar { display: none; }
+.hand-cards .card.small {
+  width: 128px; height: 187px; flex-shrink: 0;
+  margin-left: -50px; transform-origin: bottom center;
+  transform: rotate(var(--fan-rotate, 0deg)) translateY(var(--fan-y, 0px));
+  transition: transform 0.3s cubic-bezier(.2,.8,.3,1.2), box-shadow 0.3s ease;
+}
+.hand-cards .card.small:first-child { margin-left: 0; }
+.hand-cards .card.small.card-deal { transition: none; }
+.hand-cards .card.small:hover { transform: translateY(-24px) rotate(0deg) scale(1.05) !important; z-index: 20; box-shadow: 0 20px 36px rgba(0,0,0,.5); }
+.hand-cards .card.small.selected { transform: translateY(-28px) rotate(0deg) scale(1.06) !important; z-index: 21; animation: none; }
+.hand-cards .card.small .info-btn { top: 4px; left: 4px; right: auto; }
+.hand-cards .card.small .card-name { font-size: 13px; }
+.revealed-heirs .card.small { width: 104px; height: 152px; }
+.hand-actions { display: flex; gap: 8px; justify-content: center; }
+
+.moving-point {
+  position: fixed; width: 18px; height: 18px; border-radius: 50%; background: var(--gold);
+  box-shadow: 0 0 0 2px #fff, 0 0 12px rgba(217, 169, 52, 0.6); z-index: 60; pointer-events: none;
+}
+
+/* ---------- نتيجة الجولة ---------- */
+.result-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0; }
+.result-table th, .result-table td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: center; color: var(--ink); }
+.result-table th { color: var(--gold-soft); font-size: 12px; }
+.status-tag { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; display: inline-block; color: var(--ink); border: 1.5px solid transparent; }
+.status-tag.inherits { background: var(--easy-bg); border-color: var(--easy); }
+.status-tag.blocked { background: var(--expert-bg); border-color: var(--expert); }
+.status-tag.review { background: var(--advanced-bg); border-color: var(--advanced); }
+.status-tag.invalid { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.25); }
+
+.lesson-box {
+  background: var(--medium-bg); border-radius: var(--radius-sm); padding: 12px 14px;
+  font-size: 13px; color: var(--ink); margin-top: 8px; border-right: 4px solid var(--medium);
+}
+.warning-box {
+  background: var(--advanced-bg); border-radius: var(--radius-sm); padding: 12px 14px;
+  font-size: 13px; color: var(--ink); margin-top: 8px; border-right: 4px solid var(--advanced);
+}
+
+/* ---------- نهاية المباراة ---------- */
+.winner-banner { text-align: center; margin-bottom: 14px; }
+.winner-banner .trophy { font-size: 48px; filter: drop-shadow(0 0 16px rgba(217, 169, 52, 0.5)); }
+.winner-banner h2 { margin: 6px 0 2px; color: var(--ink); }
+.rank-list { list-style: none; padding: 0; margin: 0; width: 100%; }
+.rank-list li {
+  display: flex; justify-content: space-between; padding: 10px 12px; border-radius: var(--radius-sm);
+  background: var(--surface); border: 1px solid var(--line); margin-bottom: 6px; font-size: 14px; color: var(--ink);
+}
+.rank-list li.first { border-color: var(--gold); box-shadow: 0 0 14px rgba(217, 169, 52, 0.3); font-weight: 700; }
+
+/* ---------- الأدلة ---------- */
+.guide-list { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.guide-item { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; }
+.guide-item h4 { margin: 0 0 4px; color: var(--gold-soft); }
+.guide-item p { margin: 0; font-size: 13px; color: var(--ink-soft); }
+
+.top-nav { width: 100%; max-width: 480px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.top-nav h3 { margin: 0; color: var(--ink); }
+
+/* ---------- احسب حالتك (الحلّال التفاعلي) ---------- */
+.solver-estate-input {
+  width: 100%; padding: 10px 12px; margin-top: 8px;
+  border-radius: var(--radius-sm); border: 1px solid var(--line);
+  background: var(--bg-deep); font-family: inherit; font-size: 16px; color: var(--ink);
+}
+.solver-heir-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.solver-heir-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--bg-deep); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+.solver-heir-row.checked { border-color: var(--gold); background: rgba(217, 169, 52, 0.12); }
+.solver-heir-label { display: flex; align-items: center; gap: 10px; flex: 1; cursor: pointer; }
+.solver-heir-label input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--gold); cursor: pointer; }
+.solver-heir-label .heir-icon { font-size: 22px; }
+.solver-heir-label .heir-name { font-weight: 700; font-size: 14px; color: var(--ink); }
+.solver-stepper { display: flex; align-items: center; gap: 8px; }
+.solver-stepper button {
+  width: 32px; height: 32px; border-radius: 8px; background: var(--surface);
+  border: 1px solid var(--line); font-size: 16px; font-weight: 700; color: var(--ink);
+}
+.solver-stepper button:disabled { opacity: 0.4; }
+.solver-stepper .count { min-width: 20px; text-align: center; font-weight: 700; color: var(--ink); }
+
+.ayah-box {
+  background: var(--bg-deep); border-radius: var(--radius-sm); padding: 14px 16px;
+  margin-top: 10px; border: 1px solid var(--gold-dim);
+}
+.ayah-box .ayah-ref { color: var(--gold-soft); font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+.ayah-box .ayah-text { font-size: 16px; line-height: 2; color: var(--ink); }
+.ayah-box .ayah-note { font-size: 12px; color: var(--ink-soft); margin-top: 8px; border-top: 1px dashed var(--line); padding-top: 8px; }
+
+.solver-reason-item { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; margin-top: 10px; }
+.solver-reason-item h4 { margin: 0 0 6px; color: var(--ink); display: flex; align-items: center; gap: 6px; }
+.solver-reason-item p { margin: 0; font-size: 13px; color: var(--ink-soft); }
+
+.muted { color: var(--ink-soft); font-size: 12px; }
+.center-text { text-align: center; }
+
+/* ---------- شاشة فاصل الأحكام: هوية دافئة داكنة مقابل الكحلي البارد للعبة نفسها ---------- */
+.judgment-screen {
+  background:
+    radial-gradient(circle at 25% 15%, rgba(231, 214, 168, 0.20), transparent 55%),
+    linear-gradient(165deg, #241c10 0%, #3a2c14 55%, #6b4f1f 100%);
+}
+.judgment-screen .top-nav h3,
+.judgment-screen #judgment-turn-label { color: var(--gold-soft); }
+.judgment-screen .muted,
+.judgment-screen #judgment-intro { color: #D8C9A0; }
+.judgment-badge {
+  display: inline-block; margin: 0 auto 10px; padding: 5px 16px; border-radius: 999px;
+  background: rgba(231, 214, 168, 0.15); border: 1px solid var(--gold-soft);
+  color: var(--gold-soft); font-size: 13px; font-weight: 700; letter-spacing: 0.4px;
+}
+
+/* ---------- بطاقة الحكم (محاكاة كارت لعب فعلي) ---------- */
+.judgment-card {
+  width: 240px; height: 336px; border-radius: 16px; box-shadow: var(--shadow);
+  border: 1px solid var(--line); overflow: hidden; margin: 0 auto;
+}
+.judgment-card-back {
+  width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; background: conic-gradient(from 45deg, var(--gold) 0deg 90deg, var(--gold-soft) 90deg 180deg, var(--gold) 180deg 270deg, var(--gold-soft) 270deg 360deg);
+  color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.judgment-card-back-label { font-weight: 700; font-size: 15px; }
+.judgment-card-front {
+  width: 100%; height: 100%; background: var(--surface); padding: 16px;
+  display: flex; flex-direction: column; gap: 10px; overflow-y: auto;
+}
+.judgment-card-story { font-size: 14px; color: var(--ink); text-align: center; }
+.judgment-card-fact { font-size: 12px; color: var(--ink-soft); font-style: italic; background: var(--medium-bg); border-radius: var(--radius-sm); padding: 8px 10px; }
+.judgment-card-ruling {
+  font-size: 14px; font-weight: 700; color: var(--gold-soft);
+  background: rgba(217, 169, 52, 0.12); border: 1px solid var(--gold);
+  border-radius: var(--radius-sm); padding: 10px 12px; text-align: center; margin-top: auto;
+}
+
+.judgment-player-pick { margin-top: 6px; }
+
+/* ---------- معرض البطاقات (مراجعة كل الوجوه خارج اللعب) ---------- */
+.gallery-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 18px; }
+.gallery-row .judgment-card { width: 170px; height: 238px; }
+.gallery-row .judgment-card-story { font-size: 12px; }
+.gallery-row .judgment-card-fact { font-size: 10px; padding: 6px 8px; }
+.gallery-row .judgment-card-ruling { font-size: 12px; padding: 8px 10px; }
+.gallery-row .judgment-card-back-label { font-size: 13px; }
+
+@media (max-width: 420px) {
+  .card { width: 92px; height: 130px; }
+  .card.small { width: 68px; height: 96px; }
+  .game-logo { width: 160px; height: 160px; }
+  .judgment-card { width: 200px; height: 280px; }
+}
+
+/* ---------- رسبونسيف: شاشات ضيقة (موبايل صغير، و3-4 لاعبين بيلفّوا لصف تاني) ---------- */
+@media (max-width: 480px) {
+  /* صف اللاعبين: إلغاء تراكب "القعدة حوالين الطاولة" — مع 3-4 لاعبين بيلفّوا لصف
+     تاني على الشاشات الضيقة، والتراكب السالب كان بيخلّي الصف التاني يغطّي كارت
+     القضية. هنا بيرجع صف عادي فوق الطاولة بلا تراكب ولا تعرّج. */
+  .players-row { margin-bottom: 8px; }
+  .players-row .player-chip:nth-child(odd),
+  .players-row .player-chip:nth-child(even) { transform: none; }
+  .players-row .player-chip.active-turn { transform: scale(1.03); }
+  .table-area { padding-top: 20px; }
+
+  /* كارت القضية والتركة: تصغير عشان يتّسعوا جنب بعض بارتياح بدل ما يتزنقوا — نص
+     القضية فضل أكبر نسبيًا من باقي عناصر الكارت لأهميته. الارتفاع تلقائي (مش ثابت)
+     عشان النص الطويل ميتقصّش. */
+  .estate-card { flex: 0 0 92px; width: 92px; height: 100%; min-height: 132px; }
+  .status-card { height: 100%; min-height: 132px; padding: 10px 12px; gap: 8px; }
+  .status-card .royal-icon-frame { width: 42px; height: 42px; font-size: 20px; margin: 0; }
+  .status-card .royal-card-title { font-size: 14px; }
+  .status-card .card-sub { font-size: 11.5px; }
+  .estate-card .card-value { font-size: 24px; }
+  .estate-card .card-sub { font-size: 10px; }
+
+  /* كروت اليد: تصغير حجم "التروحة" عشان الكروت تتّسع بارتياح على الموبايل — أي زيادة
+     فوق اللي بيتسع في العرض توصلها بالسكرول الأفقي (.hand-cards { overflow-x: auto }). */
+  .hand-cards { padding: 26px 6px 10px; }
+  .hand-cards .card.small { width: 96px; height: 140px; margin-left: -36px; }
+  .hand-cards .card.small .card-name { font-size: 11px; }
+  .hand-cards .card.small:hover { transform: translateY(-18px) rotate(0deg) scale(1.05) !important; }
+  .hand-cards .card.small.selected { transform: translateY(-20px) rotate(0deg) scale(1.06) !important; }
+  .play-screen { padding-bottom: 270px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-chip.active-turn, #btn-launch-match, .top-bar, .card-deal { animation: none; }
+  .btn, .icon-btn, .card, .hand-cards .card.small { transition: none; }
+}
+
+.hidden { display: none !important; }

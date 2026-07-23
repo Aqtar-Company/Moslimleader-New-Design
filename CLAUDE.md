@@ -158,7 +158,7 @@ GOOGLE_CLIENT_SECRET=
 - **URL:** https://moslimleader.com
 - **Path:** `/home/moslimleader.com/app`
 - **OS:** CentOS/RHEL 9 (use `yum`/`dnf` for packages)
-- **PM2:** process id `1`, name `moslimleader` — restart with `pm2 restart 1 --update-env`
+- **PM2:** process id `0`, name `moslimleader` — restart with `pm2 restart 0 --update-env` (id drifted from `1`→`0` at some point; always confirm with `pm2 list` before using a hardcoded id — `pm2 stop 1`/`pm2 start 1` fail silently with "Process 1 not found" if it's drifted again, leaving the old build running)
 - **Node:** PM2 fork mode, port 3000, Nginx reverse proxy on 80/443
 - **SSL:** Let's Encrypt via Nginx
 - **Required system packages:** `ghostscript`, `poppler-utils` (for PDF rendering)
@@ -178,26 +178,35 @@ cd /home/moslimleader.com/app
 # Deploy main (now the canonical branch).
 git fetch origin main
 git reset --hard origin/main
-pm2 stop 1                             # stop before npm ci — prevents stale Prisma client window
+pm2 stop 0                             # stop before npm ci — prevents stale Prisma client window (confirm id via `pm2 list` first)
 npm ci
 npx tsc --noEmit                       # fail fast on type errors before the long build
 npx prisma db push --skip-generate     # If it warns about data loss → STOP and answer N.
 npm run build                          # runs prisma generate internally
-pm2 start 1 --update-env
+pm2 start 0 --update-env
 pm2 save
 ```
+
+> If `pm2 stop <id>`/`pm2 start <id>` prints `[PM2][ERROR] Process <id> not found`, the site keeps running on the OLD build the whole time (build files on disk change, but the live process never reloads them) — run `pm2 list` to find the real id, then `pm2 restart <real-id> --update-env` immediately.
 
 ### Backup before any deploy (run this first)
 
 ```bash
-# DB dump + uploaded assets snapshot, kept for 30 days.
+# DB dump + uploaded assets snapshot.
+# NOTE: retention is handled by /etc/cron.daily/disk-cleanup (runs daily), NOT here —
+# it always keeps the newest 3 backups of each type regardless of age, then deletes
+# anything older than 7 days beyond that. Don't add a naive `find -mtime +N -delete`
+# in this block: it would delete the ONLY backup if deploys stop for a while (found
+# during the 2026-07-23 disk-full incident, where /root/backups had grown to 6.7GB —
+# full assets re-tar on every deploy, several times a day, outpacing any age-only
+# cleanup). If /etc/cron.daily/disk-cleanup doesn't exist on this server, recreate it
+# before relying on retention at all.
 mkdir -p /root/backups
 TS=$(date +%Y%m%d-%H%M%S)
 mysqldump --single-transaction --routines moslimleader \
   | gzip > /root/backups/db-$TS.sql.gz
 tar czf /root/backups/assets-$TS.tar.gz \
   -C /home/moslimleader.com/app private public/products public/covers .env 2>/dev/null
-find /root/backups -type f -mtime +30 -delete
 ls -lh /root/backups | tail
 ```
 
@@ -234,7 +243,7 @@ Edit `src/context/LanguageContext.tsx` — add to BOTH `ar` and `en` objects.
 
 ### Check logs
 ```bash
-pm2 logs 1 --lines 50 --nostream
+pm2 logs 0 --lines 50 --nostream
 ```
 
 ### After Prisma schema change

@@ -378,7 +378,7 @@ function startMatch(names, difficulty, totalRounds) {
   totalRounds = totalRounds || setupChoice.totalRounds;
   const heirDeck = buildHeirDeck();
   const players = names.map(name => ({
-    name, roundsWon: 0, blockedCount: 0, hand: [], balance: 30 // رأس المال: 30 سهم ابتدائي، ويتراكم عليه كل ما يُكسَب أو يُخصَم أثناء اللعب (لا يوجد نقاط منفصلة)
+    name, roundsWon: 0, blockedCount: 0, hand: [], balance: 20 // رأس المال: 20 سهم ابتدائي (خُفِّض من 30 بعد مراجعة اقتصاد السهم — انظر RULES.md بند 2)، ويتراكم عليه كل ما يُكسَب أو يُخصَم أثناء اللعب (لا يوجد نقاط منفصلة)
   }));
   // توزيع بطاقات يد كل لاعب — حجم اليد = عدد الجولات المختارة (3/5/7)، ويبقى ثابتًا طول المباراة
   // (اليد تُعبَّى لنفس الحجم بعد كل جولة زي ما هي، انظر renderHandForCurrentPlayer/doConfirmPlay).
@@ -536,8 +536,8 @@ function updateSahmBank() {
   if (fifties > 0) {
     html += `<div class="bank-pile">
       <div class="bank-pile-imgs">
-        <img src="cards/estate-50.png" alt="" class="bank-pile-card bank-pile-card-back">
-        <img src="cards/estate-50.png" alt="" class="bank-pile-card">
+        <img src="/moro/cards/estate-50.png" alt="" class="bank-pile-card bank-pile-card-back">
+        <img src="/moro/cards/estate-50.png" alt="" class="bank-pile-card">
       </div>
       <span class="bank-pile-num">×${fifties}</span>
     </div>`;
@@ -545,7 +545,7 @@ function updateSahmBank() {
   if (ones > 0) {
     const layers = Math.min(ones, 3);
     const cards = Array.from({length: layers}, (_, i) =>
-      `<img src="cards/estate-1.png" alt="" class="bank-pile-card" style="--li:${i}">`
+      `<img src="/moro/cards/estate-1.png" alt="" class="bank-pile-card" style="--li:${i}">`
     ).join('');
     html += `<div class="bank-pile">
       <div class="bank-pile-imgs">${cards}</div>
@@ -577,11 +577,19 @@ function renderPlayersRow() {
     const pileHtml = pileLayers > 0
       ? `<span class="p-pile">${'<span class="pile-chip"></span>'.repeat(pileLayers)}</span>`
       : '';
+    // كومة كروت اليد المصغّرة (ضهر فقط، بلا كشف محتوى) — تمثيل بصري لعدد الكروت الفعلي
+    // في يد اللاعب دلوقتي، زي مراجع طاولات الكوتشينة الحقيقية.
+    const handCount = p.hand.length;
+    const fanLayers = Math.min(handCount, 4);
+    const handFanHtml = handCount > 0 ? `
+      <span class="p-hand-fan">${'<span class="hand-fan-card"></span>'.repeat(fanLayers)}</span>
+      <span class="p-hand-count">×${handCount}</span>` : '';
     return `<div class="player-chip ${activeCls}">
       <span class="p-avatar">${initial}</span>
       <span class="p-name">${p.name}</span>
       <span class="p-balance">${ICON_COIN} ${p.balance} سهم${pileHtml}</span>
       <span class="p-state ${stateCls}">${stateText}</span>
+      ${handFanHtml}
     </div>`;
   }).join('');
 }

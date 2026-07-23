@@ -279,12 +279,22 @@ export default function FreeMediaAdminPage() {
         {items.map(item => (
           <div key={item.id} className="bg-white border rounded-xl p-4 flex items-center gap-4 shadow-sm">
             {item.coverUrl ? (
-              <img src={item.coverUrl} alt="" className="w-14 h-14 object-cover rounded-lg flex-shrink-0" />
-            ) : (
-              <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center text-2xl flex-shrink-0">
-                {[...(TYPE_LABELS[item.type] || '')][0]}
-              </div>
-            )}
+              <img
+                src={item.coverUrl}
+                alt=""
+                className="w-14 h-14 object-cover rounded-lg flex-shrink-0"
+                onError={e => {
+                  (e.currentTarget as HTMLImageElement).style.display = 'none';
+                  (e.currentTarget.nextElementSibling as HTMLElement | null)?.removeAttribute('hidden');
+                }}
+              />
+            ) : null}
+            <div
+              hidden={!!item.coverUrl}
+              className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center text-2xl flex-shrink-0"
+            >
+              {[...(TYPE_LABELS[item.type] || '')][0]}
+            </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
                 <span className="text-xs bg-gray-100 px-2 py-0.5 rounded-full">{TYPE_LABELS[item.type] || item.type}</span>

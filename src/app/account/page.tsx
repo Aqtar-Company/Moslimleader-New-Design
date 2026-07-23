@@ -774,12 +774,22 @@ export default function AccountPage() {
                 return (
                   <div key={item.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden flex flex-col">
                     {item.coverUrl ? (
-                      <img src={item.coverUrl} alt={title} className="w-full h-40 object-cover" />
-                    ) : (
-                      <div className="w-full h-32 bg-gradient-to-br from-amber-50 to-amber-100 flex items-center justify-center text-5xl">
-                        {typeIcon}
-                      </div>
-                    )}
+                      <img
+                        src={item.coverUrl}
+                        alt={title}
+                        className="w-full h-40 object-cover"
+                        onError={e => {
+                          (e.currentTarget as HTMLImageElement).style.display = 'none';
+                          (e.currentTarget.nextElementSibling as HTMLElement | null)?.removeAttribute('hidden');
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      hidden={!!item.coverUrl}
+                      className="w-full h-32 bg-gradient-to-br from-amber-50 to-amber-100 flex items-center justify-center text-5xl"
+                    >
+                      {typeIcon}
+                    </div>
                     <div className="p-4 flex flex-col flex-1">
                       <span className="text-xs text-amber-600 font-semibold mb-1">{typeIcon} {typeLabel}</span>
                       <h3 className="font-black text-gray-900 mb-1">{title}</h3>

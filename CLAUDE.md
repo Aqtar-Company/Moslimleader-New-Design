@@ -192,19 +192,21 @@ pm2 save
 ### Backup before any deploy (run this first)
 
 ```bash
-# DB dump + uploaded assets snapshot, kept for 7 days.
-# NOTE: retention was 30 days originally, but /root/backups grew to 6.7GB and was the
-# #1 cause of a disk-full incident (2026-07-23) — full assets re-tar on every deploy,
-# and deploys happen several times a day, so 30-day retention outpaced cleanup. Cut to
-# 7 days. A daily cron at /etc/cron.daily/disk-cleanup also purges this + npm cache +
-# old rotated logs automatically — check it exists if disk fills up again.
+# DB dump + uploaded assets snapshot.
+# NOTE: retention is handled by /etc/cron.daily/disk-cleanup (runs daily), NOT here —
+# it always keeps the newest 3 backups of each type regardless of age, then deletes
+# anything older than 7 days beyond that. Don't add a naive `find -mtime +N -delete`
+# in this block: it would delete the ONLY backup if deploys stop for a while (found
+# during the 2026-07-23 disk-full incident, where /root/backups had grown to 6.7GB —
+# full assets re-tar on every deploy, several times a day, outpacing any age-only
+# cleanup). If /etc/cron.daily/disk-cleanup doesn't exist on this server, recreate it
+# before relying on retention at all.
 mkdir -p /root/backups
 TS=$(date +%Y%m%d-%H%M%S)
 mysqldump --single-transaction --routines moslimleader \
   | gzip > /root/backups/db-$TS.sql.gz
 tar czf /root/backups/assets-$TS.tar.gz \
   -C /home/moslimleader.com/app private public/products public/covers .env 2>/dev/null
-find /root/backups -type f -mtime +7 -delete
 ls -lh /root/backups | tail
 ```
 

@@ -341,15 +341,27 @@ button:focus-visible, input:focus-visible {
   margin: 10px 0 4px; font-size: 12px; color: var(--ink-soft); font-weight: 700;
   position: relative; z-index: 3;
 }
-.sahm-bank-stack { display: flex; position: relative; width: 28px; height: 18px; }
-.sahm-chip {
-  position: absolute; bottom: 0; width: 18px; height: 18px; border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, var(--gold-soft), var(--gold) 60%, var(--gold-dim));
-  border: 1px solid rgba(0,0,0,.35); box-shadow: 0 1px 3px rgba(0,0,0,.35);
+.sahm-bank-cards {
+  display: flex; align-items: flex-end; gap: 2px; height: 52px;
 }
-.sahm-chip:nth-child(1) { right: 0; }
-.sahm-chip:nth-child(2) { right: 5px; bottom: 3px; }
-.sahm-chip:nth-child(3) { right: 10px; bottom: 6px; }
+.bank-card-stack {
+  position: relative;
+  margin-right: calc(var(--offset, 0) * -10px);
+  z-index: calc(10 - var(--offset, 0));
+  transition: transform .15s;
+}
+.bank-card-stack img {
+  width: 36px; height: 50px; object-fit: cover; border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.5);
+  border: 1px solid rgba(255,255,255,.15);
+}
+.bank-card-stack:hover { transform: translateY(-4px); }
+.bank-card-sep { width: 6px; }
+.bank-card-count {
+  font-size: 11px; color: var(--gold-soft); font-weight: 900;
+  align-self: center; margin-right: 4px;
+}
+.bank-empty { font-size: 11px; color: #888; font-style: italic; }
 .sahm-bank-label b { color: var(--gold-soft); font-size: 13px; }
 
 /* "طاولة اللعب": لوح كحلي غامق بحافة ذهبية + نقشة زخرفية خفيفة، تحمل كروت القضية. */

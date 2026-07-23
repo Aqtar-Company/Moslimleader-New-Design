@@ -527,6 +527,28 @@ function renderPlayScreenShell() {
 function updateSahmBank() {
   const inBank = state.heirDeck.length + state.heirDiscard.length;
   $('#sahm-bank-count').textContent = inBank;
+  const fifties = Math.floor(inBank / 50);
+  const ones = inBank % 50;
+  const container = $('#sahm-bank-cards');
+  if (!container) return;
+  let html = '';
+  // كروت الـ50
+  for (let i = 0; i < Math.min(fifties, 4); i++) {
+    html += `<div class="bank-card-stack" style="--offset:${i}"><img src="cards/estate-50.png" alt="50 سهم"></div>`;
+  }
+  if (fifties > 4) html += `<div class="bank-card-count">×${fifties}</div>`;
+  // فاصل لو الاتنين موجودين
+  if (fifties > 0 && ones > 0) html += `<div class="bank-card-sep"></div>`;
+  // كروت الـ1
+  if (ones > 0) {
+    const showOnes = Math.min(ones, 5);
+    for (let i = 0; i < showOnes; i++) {
+      html += `<div class="bank-card-stack" style="--offset:${i}"><img src="cards/estate-1.png" alt="1 سهم"></div>`;
+    }
+    if (ones > 5) html += `<div class="bank-card-count">×${ones}</div>`;
+  }
+  if (inBank === 0) html = `<span class="bank-empty">نفد</span>`;
+  container.innerHTML = html;
 }
 
 function estateTierClass(value) {

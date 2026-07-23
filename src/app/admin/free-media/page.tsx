@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { getAuthUser } from '@/lib/jwt';
 
 interface FreeMediaItem {
   id: number;
@@ -30,6 +29,7 @@ export default function FreeMediaAdminPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [coverUploading, setCoverUploading] = useState(false);
+  const [coverProgress, setCoverProgress] = useState(0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -61,7 +61,7 @@ export default function FreeMediaAdminPage() {
     setSuccess('');
   }
 
-  async function uploadFile(file: File, type: string): Promise<string | null> {
+  async function uploadMainFile(file: File, type: string): Promise<string | null> {
     return new Promise((resolve) => {
       const fd = new FormData();
       fd.append('file', file);
@@ -86,10 +86,35 @@ export default function FreeMediaAdminPage() {
     });
   }
 
+  async function uploadCoverFile(file: File): Promise<string | null> {
+    return new Promise((resolve) => {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('type', 'cover');
+      const xhr = new XMLHttpRequest();
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) setCoverProgress(Math.round((e.loaded / e.total) * 100));
+      };
+      xhr.onload = () => {
+        setCoverUploading(false);
+        setCoverProgress(0);
+        try {
+          const d = JSON.parse(xhr.responseText);
+          if (d.url) resolve(d.url);
+          else { setError(d.error || 'فشل الرفع'); resolve(null); }
+        } catch { setError('فشل الرفع'); resolve(null); }
+      };
+      xhr.onerror = () => { setCoverUploading(false); setError('فشل الاتصال'); resolve(null); };
+      xhr.open('POST', '/api/admin/free-media/upload');
+      setCoverUploading(true);
+      xhr.send(fd);
+    });
+  }
+
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = await uploadFile(file, form.type);
+    const url = await uploadMainFile(file, form.type);
     if (url) setForm(f => ({ ...f, url }));
     e.target.value = '';
   }
@@ -97,9 +122,7 @@ export default function FreeMediaAdminPage() {
   async function handleCoverSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setCoverUploading(true);
-    const url = await uploadFile(file, 'cover');
-    setCoverUploading(false);
+    const url = await uploadCoverFile(file);
     if (url) setForm(f => ({ ...f, coverUrl: url }));
     e.target.value = '';
   }
@@ -211,7 +234,7 @@ export default function FreeMediaAdminPage() {
                 <img src={form.coverUrl} alt="" className="w-10 h-10 object-cover rounded" />
                 <span className="text-green-600 font-medium">✓ تم رفع الصورة</span>
               </div>
-            ) : coverUploading ? <span>جاري الرفع...</span> : <span>اضغط لاختيار صورة مصغرة</span>}
+            ) : coverUploading ? <span>جاري الرفع... {coverProgress}%</span> : <span>اضغط لاختيار صورة مصغرة</span>}
           </div>
         </div>
 
@@ -259,7 +282,7 @@ export default function FreeMediaAdminPage() {
               <img src={item.coverUrl} alt="" className="w-14 h-14 object-cover rounded-lg flex-shrink-0" />
             ) : (
               <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center text-2xl flex-shrink-0">
-                {TYPE_LABELS[item.type]?.charAt(0)}
+                {[...(TYPE_LABELS[item.type] || '')][0]}
               </div>
             )}
             <div className="flex-1 min-w-0">

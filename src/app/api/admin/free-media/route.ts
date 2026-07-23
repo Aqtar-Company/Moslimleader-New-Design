@@ -3,6 +3,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 
+const VALID_TYPES = ['mp3', 'pdf', 'image'] as const;
+
+function assertSafeFreeMediaPath(p: string | undefined | null) {
+  if (!p) return;
+  if (!p.startsWith('/free-media/') || p.includes('..')) {
+    throw new Error('Invalid media path');
+  }
+}
+
 export async function GET() {
   try {
     const user = await getAuthUser();
@@ -29,6 +38,15 @@ export async function POST(req: NextRequest) {
     const { title, titleEn, type, url, coverUrl, description, descriptionEn, sortOrder, isPublished } = body;
     if (!title || !type || !url) {
       return NextResponse.json({ error: 'العنوان والنوع والملف مطلوبون' }, { status: 400 });
+    }
+    if (!VALID_TYPES.includes(type)) {
+      return NextResponse.json({ error: 'نوع الوسيط غير صالح' }, { status: 400 });
+    }
+    try {
+      assertSafeFreeMediaPath(url);
+      assertSafeFreeMediaPath(coverUrl);
+    } catch {
+      return NextResponse.json({ error: 'مسار الملف غير صالح' }, { status: 400 });
     }
     const item = await prisma.freeMedia.create({
       data: {

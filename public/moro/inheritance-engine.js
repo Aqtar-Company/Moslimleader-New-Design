@@ -330,10 +330,16 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
     const count = countHeir(playedHeirIds, id);
     let status = 'يرث';
     let reason = describeShareReason(id, fixed, fatherGetsResidue, hasSon, hasDaughter, siblingsResiduary, brotherCount > 0, motherSiblingsCount);
+    let originalFraction = null;
+    let originalPoints = null;
+    let raddPoints = null;
     if (raddedIds.has(id)) {
-      reason += ' زاد نصيبه بالرد (نصيبه الأصلي + حصته من الباقي بنفس النسبة، لعدم وجود عصبة).';
+      originalFraction = fixed[id];
+      originalPoints = Math.floor(originalFraction.mul(new Fraction(estateValue, 1)).toDecimal());
+      raddPoints = points - originalPoints;
+      reason += ` زاد نصيبه بالرد: أصله ${originalFraction.toString()} (${originalPoints} سهم) + حصته من الباقي (${raddPoints} سهم) = ${points} سهم، لعدم وجود عصبة.`;
     }
-    setHeir(id, { fraction: fractions[id], points, status, reason, perPersonPoints: count > 0 ? points / count : points });
+    setHeir(id, { fraction: fractions[id], points, status, reason, perPersonPoints: count > 0 ? points / count : points, originalFraction, originalPoints, raddPoints });
   });
 
   result.undistributedPoints = undistributedPoints;

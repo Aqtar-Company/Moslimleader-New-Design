@@ -246,10 +246,10 @@ const DECEASED_CASES = [
     lesson: 'عم: 36 سهم تعصيبًا.'
   },
   {
-    id: 16, difficulty: 'easy', deceasedGender: 'male', estateValue: 48,
-    disallowed: ['brother', 'daughter', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'mother', 'sister', 'son'],
-    title: 'قضية رقم 16', note: 'متوفى، زوجة + عم (بلا فرع وارث ولا إخوة ولا أب ولا جد ولا ابن).',
-    lesson: 'زوجة: الربع (1/4) = 12 سهم فرضًا، وعم: 36 سهم تعصيبًا.'
+    id: 16, difficulty: 'easy', deceasedGender: 'male', estateValue: 72,
+    disallowed: ['brother', 'daughter', 'father', 'grandfather', 'grandmother', 'husband', 'mother', 'sister', 'son', 'uncle'],
+    title: 'قضية رقم 16', note: 'متوفى، زوجة + أخ لأم + أخت لأم (كلالة، بلا فرع وارث ولا إخوة أشقاء ولا أب ولا جد ولا عم).',
+    lesson: 'زوجة: الربع (1/4) = 18 سهم فرضًا. أخ لأم: 12 سهم، أخت لأم: 12 سهم (فرض الإخوة لأم: الثلث مقسوم بينهما بالتساوي، بلا تفضيل للذكر). يتبقى 30 سهم بلا عصبة معروفة في هذه النسخة.'
   },
   {
     id: 17, difficulty: 'easy', deceasedGender: 'female', estateValue: 96,

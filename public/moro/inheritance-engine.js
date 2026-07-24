@@ -18,6 +18,7 @@ class Fraction {
   add(o) { return new Fraction(this.num * o.den + o.num * this.den, this.den * o.den); }
   sub(o) { return new Fraction(this.num * o.den - o.num * this.den, this.den * o.den); }
   mul(o) { return new Fraction(this.num * o.num, this.den * o.den); }
+  div(o) { return new Fraction(this.num * o.den, this.den * o.num); }
   compare(o) { // -1, 0, 1
     const l = this.num * o.den, r = o.num * this.den;
     return l < r ? -1 : (l > r ? 1 : 0);
@@ -271,7 +272,24 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
     if (!leftover.isZero()) fractions['uncle'] = leftover;
     leftover = ZERO;
   }
-  // إن بقي leftover > 0 هنا: لا يوجد عصبة معروفة، يبقى بدون توزيع (بدون رد)
+  // إن بقي leftover > 0 هنا: لا يوجد عصبة معروفة — يُرَدّ الباقي على أصحاب الفروض (عدا
+  // الزوجين، لا يستحقان الرد باتفاق جمهور من يقول به) بنسبة فروضهم الأصلية فيما بينهم.
+  // رأي جمهور الفقهاء المعاصرين ومعظم قوانين الأحوال الشخصية في الدول الإسلامية.
+  const raddedIds = new Set();
+  if (!leftover.isZero()) {
+    const raddEligibleIds = Object.keys(fixed).filter(id => id !== 'husband' && id !== 'wife' && !fixed[id].isZero());
+    let raddBase = ZERO;
+    raddEligibleIds.forEach(id => { raddBase = raddBase.add(fixed[id]); });
+    if (raddEligibleIds.length > 0 && !raddBase.isZero()) {
+      raddEligibleIds.forEach(id => {
+        const share = fixed[id].div(raddBase).mul(leftover);
+        fractions[id] = (fractions[id] || ZERO).add(share);
+        raddedIds.add(id);
+      });
+      result.notes.push(TEXTS.raddMessage || 'تم ردّ الباقي على أصحاب الفروض (عدا الزوجين) بنسبة فروضهم الأصلية، لعدم وجود عصبة معروفة.');
+      leftover = ZERO;
+    }
+  }
 
   if (!leftover.isZero()) {
     result.notes.push(TEXTS.undistributedMessage);
@@ -312,6 +330,9 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
     const count = countHeir(playedHeirIds, id);
     let status = 'يرث';
     let reason = describeShareReason(id, fixed, fatherGetsResidue, hasSon, hasDaughter, siblingsResiduary, brotherCount > 0, motherSiblingsCount);
+    if (raddedIds.has(id)) {
+      reason += ' زاد نصيبه بالرد (نصيبه الأصلي + حصته من الباقي بنفس النسبة، لعدم وجود عصبة).';
+    }
     setHeir(id, { fraction: fractions[id], points, status, reason, perPersonPoints: count > 0 ? points / count : points });
   });
 
@@ -400,8 +421,8 @@ function runInheritanceTests() {
     const caseObj = { deceasedGender: 'male' };
     const r = computeInheritance(caseObj, ['wife', 'daughter'], 24);
     assertEqual('اختبار3-الزوجة', r.perHeirType['wife'].points, 3);
-    assertEqual('اختبار3-البنت', r.perHeirType['daughter'].points, 12);
-    assertEqual('اختبار3-الباقي_غير_موزع', r.undistributedPoints, 9);
+    assertEqual('اختبار3-البنت_بعد_الرد', r.perHeirType['daughter'].points, 21);
+    assertEqual('اختبار3-الباقي_غير_موزع', r.undistributedPoints, 0);
   }
   // اختبار 4
   {
@@ -463,7 +484,7 @@ function runInheritanceTests() {
   {
     const caseObj = { deceasedGender: 'male' };
     const r = computeInheritance(caseObj, ['mother', 'grandmother'], 24);
-    assertEqual('اختبار10-الأم', r.perHeirType['mother'].points, 8);
+    assertEqual('اختبار10-الأم_بعد_الرد', r.perHeirType['mother'].points, 24);
     assertEqual('اختبار10-الجدة_محجوبة_نقاط', r.perHeirType['grandmother'].points, 0);
     assertEqual('اختبار10-الجدة_محجوبة_حالة', r.perHeirType['grandmother'].status, 'محجوب');
   }
@@ -524,8 +545,8 @@ function runInheritanceTests() {
 
     // أخ لأم + أختان لأم: يقتسمون الثلث بالتساوي بينهم (لا فرق بين ذكر وأنثى)
     const r3 = computeInheritance(caseObj, ['half-brother', 'half-sister', 'half-sister'], 36);
-    assertEqual('اختبار15-جماعة_الأخ_لأم', r3.perHeirType['half-brother'].points, 4);
-    assertEqual('اختبار15-جماعة_الأخت_لأم', r3.perHeirType['half-sister'].points, 8);
+    assertEqual('اختبار15-جماعة_الأخ_لأم_بعد_الرد', r3.perHeirType['half-brother'].points, 12);
+    assertEqual('اختبار15-جماعة_الأخت_لأم_بعد_الرد', r3.perHeirType['half-sister'].points, 24);
   }
 
   // اختبار 16 (العم: عصبة بنفسه، يُحجب بالابن/الأب/الجد/الإخوة الأشقاء، يرث الباقي عند عدم وجود عاصب أقرب)

@@ -246,10 +246,10 @@ const DECEASED_CASES = [
     lesson: 'عم: 36 سهم تعصيبًا.'
   },
   {
-    id: 16, difficulty: 'easy', deceasedGender: 'male', estateValue: 48,
-    disallowed: ['brother', 'daughter', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'mother', 'sister', 'son'],
-    title: 'قضية رقم 16', note: 'متوفى، زوجة + عم (بلا فرع وارث ولا إخوة ولا أب ولا جد ولا ابن).',
-    lesson: 'زوجة: الربع (1/4) = 12 سهم فرضًا، وعم: 36 سهم تعصيبًا.'
+    id: 16, difficulty: 'advanced', deceasedGender: 'male', estateValue: 72,
+    disallowed: ['brother', 'daughter', 'father', 'grandfather', 'grandmother', 'husband', 'mother', 'sister', 'son', 'uncle'],
+    title: 'قضية رقم 16', note: 'متوفى، زوجة + أخ لأم + أخت لأم (كلالة، بلا فرع وارث ولا إخوة أشقاء ولا أب ولا جد ولا عم).',
+    lesson: 'زوجة: الربع (1/4) = 18 سهم فرضًا (لا تأخذ ردًا). أخ لأم وأخت لأم: فرضهما الأصلي السدس لكل واحد (12 سهم)، ثم يُرَدّ عليهما الباقي (30 سهم) بالتساوي بينهما لعدم وجود عصبة، فيصبح نصيب كل واحد 27 سهم. مسألة استثنائية نادرة (رد)، مش قضية سهلة.'
   },
   {
     id: 17, difficulty: 'easy', deceasedGender: 'female', estateValue: 96,
@@ -288,10 +288,10 @@ const DECEASED_CASES = [
     lesson: 'أم: السدس (1/6) = 24 سهم، زوجة: الربع (1/4) = 36 سهم فرضًا، وأخ: 56 سهم، أخت: 28 سهم تعصيبًا.'
   },
   {
-    id: 23, difficulty: 'easy', deceasedGender: 'female', estateValue: 72,
-    disallowed: ['brother', 'daughter', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'mother', 'son', 'uncle', 'wife'],
-    title: 'قضية رقم 23', note: 'متوفاة، أخوات كلالة فقط، بلا أخ ولا بنت ولا عم — فرض ثابت بلا تعصيب.',
-    lesson: 'أخت(3): الثلثان (2/3) = 48 سهم (16/فرد) فرضًا. يتبقى 24 سهم بلا عصبة معروفة في هذه النسخة.'
+    id: 25, difficulty: 'medium', deceasedGender: 'male', estateValue: 96,
+    disallowed: ['brother', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'mother', 'sister', 'uncle'],
+    title: 'قضية رقم 25', note: 'متوفى، ابنان وبنتان وزوجة (بلا أب ولا جد ولا إخوة ولا عم).',
+    lesson: 'زوجة: الثمن (1/8) = 12 سهم فرضًا (لوجود الفرع الوارث). ابن (×2): 28 سهم لكل واحد، بنت (×2): 14 سهم لكل واحدة (الباقي تعصيبًا، للذكر مثل حظ الأنثيين).'
   },
   {
     id: 24, difficulty: 'easy', deceasedGender: 'male', estateValue: 72,

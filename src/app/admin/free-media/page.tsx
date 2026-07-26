@@ -32,6 +32,7 @@ export default function FreeMediaAdminPage() {
   const [coverProgress, setCoverProgress] = useState(0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [notifying, setNotifying] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const coverRef = useRef<HTMLInputElement>(null);
 
@@ -162,15 +163,43 @@ export default function FreeMediaAdminPage() {
     await load();
   }
 
+  async function handleNotify() {
+    const published = items.filter(i => i.isPublished);
+    if (published.length === 0) {
+      setError('لا توجد وسائط منشورة لإرسالها');
+      return;
+    }
+    if (!confirm(`سيتم إرسال إيميل إشعار لجميع المستخدمين المسجلين (${published.length} وسيط منشور). هل أنت متأكد؟`)) return;
+    setNotifying(true);
+    setError('');
+    setSuccess('');
+    try {
+      const res = await fetch('/api/admin/free-media/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+      const d = await res.json();
+      if (!res.ok) { setError(d.error || 'فشل الإرسال'); return; }
+      setSuccess(`✓ تم الإرسال بنجاح: ${d.sent} مستخدم${d.failed ? ` (فشل: ${d.failed})` : ''}`);
+    } catch { setError('فشل الاتصال بالسيرفر'); }
+    finally { setNotifying(false); }
+  }
+
   const accept = form.type === 'mp3' ? '.mp3,.ogg,.wav,.m4a' : form.type === 'pdf' ? '.pdf' : '.jpg,.jpeg,.png,.webp';
 
   return (
     <div className="p-6 max-w-4xl mx-auto" dir="rtl">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">🎵 الوسائط المجانية</h1>
-        <button onClick={startAdd} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700">
-          + إضافة وسيط
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleNotify}
+            disabled={notifying}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-50"
+          >
+            {notifying ? 'جاري الإرسال...' : '📧 إشعار المستخدمين'}
+          </button>
+          <button onClick={startAdd} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700">
+            + إضافة وسيط
+          </button>
+        </div>
       </div>
 
       {/* Form */}

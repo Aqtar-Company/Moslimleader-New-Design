@@ -62,6 +62,9 @@ export default function AccountPage() {
   const [freeMediaLoading, setFreeMediaLoading] = useState(false);
   const [mediaSubTab, setMediaSubTab] = useState<'all' | 'mp3' | 'image' | 'pdf'>('all');
 
+  // Child product recommendations — keyed by child.id
+  const [childRecs, setChildRecs] = useState<Record<string, { id: string; slug: string; name: string; nameEn: string; price: number; image: string | null; minAge: number | null; maxAge: number | null }[]>>({});
+
   // Children
   const [children, setChildren] = useState<ChildRecord[]>([]);
   const [childrenLoading, setChildrenLoading] = useState(false);
@@ -131,11 +134,25 @@ export default function AccountPage() {
         .catch(() => {})
         .finally(() => setLoyaltyLoading(false));
 
-      // Load children
+      // Load children + their recommendations
       setChildrenLoading(true);
       fetch('/api/user/children', { credentials: 'include' })
         .then(r => r.json())
-        .then(d => setChildren(d.children ?? []))
+        .then(async d => {
+          const list: ChildRecord[] = d.children ?? [];
+          setChildren(list);
+          // Fetch recommendations for each child (age from birthdate)
+          const recsMap: typeof childRecs = {};
+          await Promise.all(list.map(async child => {
+            const age = Math.max(0, new Date().getFullYear() - new Date(child.birthdate).getFullYear());
+            const res = await fetch(`/api/recommendations?age=${age}&gender=${child.gender || ''}`).catch(() => null);
+            if (res?.ok) {
+              const data = await res.json();
+              recsMap[child.id] = data.products ?? [];
+            }
+          }));
+          setChildRecs(recsMap);
+        })
         .catch(() => {})
         .finally(() => setChildrenLoading(false));
 
@@ -650,24 +667,70 @@ export default function AccountPage() {
                 const bd = new Date(child.birthdate);
                 const age = ageInYears(bd);
                 const gIcon = child.gender === 'boy' ? '👦' : child.gender === 'girl' ? '👧' : '🧒';
+                const recs = childRecs[child.id] ?? [];
                 return (
-                  <div key={child.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{gIcon}</span>
-                      <div>
-                        <p className="font-bold text-gray-900">{child.name}</p>
-                        <p className="text-sm text-gray-500">{age} {isRtl ? 'سنة' : 'years old'}</p>
+                  <div key={child.id} className="space-y-3">
+                    {/* Child card */}
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{gIcon}</span>
+                        <div>
+                          <p className="font-bold text-gray-900">{child.name}</p>
+                          <p className="text-sm text-gray-500">{age} {isRtl ? 'سنة' : 'years old'}</p>
+                        </div>
                       </div>
+                      <button
+                        onClick={async () => {
+                          await fetch(`/api/user/children/${child.id}`, { method: 'DELETE', credentials: 'include' });
+                          setChildren(prev => prev.filter(c => c.id !== child.id));
+                        }}
+                        className="text-xs text-red-400 hover:text-red-600 font-semibold transition"
+                      >
+                        {isRtl ? 'حذف' : 'Delete'}
+                      </button>
                     </div>
-                    <button
-                      onClick={async () => {
-                        await fetch(`/api/user/children/${child.id}`, { method: 'DELETE', credentials: 'include' });
-                        setChildren(prev => prev.filter(c => c.id !== child.id));
-                      }}
-                      className="text-xs text-red-400 hover:text-red-600 font-semibold transition"
-                    >
-                      {isRtl ? 'حذف' : 'Delete'}
-                    </button>
+
+                    {/* Age-appropriate recommendations */}
+                    {recs.length > 0 && (
+                      <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
+                        <p className="text-xs font-bold text-amber-700 mb-3 flex items-center gap-1">
+                          <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 0 0 .95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 0 0-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 0 0-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 0 0-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 0 0 .951-.69l1.07-3.292z"/>
+                          </svg>
+                          {isRtl
+                            ? `منتجات مناسبة لـ ${child.name} (${age} ${age === 1 ? 'سنة' : 'سنوات'})`
+                            : `Picks for ${child.name} (${age} ${age === 1 ? 'year' : 'years'} old)`}
+                        </p>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          {recs.map(rec => (
+                            <a
+                              key={rec.id}
+                              href={`/shop/${rec.slug}`}
+                              className="bg-white rounded-xl overflow-hidden border border-gray-100 hover:shadow-md transition group block"
+                            >
+                              <div className="aspect-square bg-gray-100 overflow-hidden">
+                                {rec.image ? (
+                                  <img
+                                    src={rec.image}
+                                    alt={isRtl ? rec.name : (rec.nameEn || rec.name)}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-3xl bg-gradient-to-br from-amber-100 to-yellow-50">📦</div>
+                                )}
+                              </div>
+                              <div className="p-2">
+                                <p className="text-xs font-bold text-gray-900 line-clamp-2 leading-tight">
+                                  {isRtl ? rec.name : (rec.nameEn || rec.name)}
+                                </p>
+                                <p className="text-xs text-amber-600 font-black mt-1">{rec.price} ج.م</p>
+                              </div>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}

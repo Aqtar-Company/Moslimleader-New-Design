@@ -156,148 +156,148 @@ function heirCardClass(heir) {
 // estateValue ثابتة لكل قضية (لا تُسحب عشوائيًا بعد الآن) — كل قضية محسوبة يدويًا لتنقسم بلا كسور.
 const DECEASED_CASES = [
   {
-    id: 1, difficulty: 'medium', deceasedGender: 'male', estateValue: 48,
-    disallowed: ['brother', 'daughter', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'son', 'uncle'],
-    title: 'قضية رقم 1', note: 'متوفى، لا يوجد أولاد (لا ابن ولا بنت).',
-    lesson: 'زوجة: الربع (1/4) = 12 سهم فرضًا. (مسألة عُمَرية: زوجة+أب+أم بلا فرع وارث) الأم تأخذ ثلث الباقي بعد نصيب الزوجة = 12 سهم، لا السدس، والأب الباقي = 24 سهم تعصيبًا.'
-  },
-  {
-    id: 2, difficulty: 'medium', deceasedGender: 'female', estateValue: 24,
-    disallowed: ['brother', 'daughter', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'sister', 'son', 'uncle', 'wife'],
-    title: 'قضية رقم 2', note: 'متوفاة، لا يوجد أولاد (لا ابن ولا بنت).',
-    lesson: 'أم: السدس (1/6) = 4 سهم، زوج: النصف (1/2) = 12 سهم فرضًا، وأب: 8 سهم تعصيبًا.'
-  },
-  {
-    id: 3, difficulty: 'advanced', deceasedGender: 'male', estateValue: 288,
-    disallowed: ['brother', 'father', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'uncle'],
-    title: 'قضية رقم 3', note: 'متوفى، لا يوجد أب.',
-    lesson: 'أم: السدس (1/6) = 48 سهم، جد: السدس (1/6) = 48 سهم، زوجة: الثمن (1/8) = 36 سهم فرضًا، وابن: 104 سهم، بنت: 52 سهم تعصيبًا.'
-  },
-  {
-    id: 4, difficulty: 'advanced', deceasedGender: 'female', estateValue: 72,
-    disallowed: ['brother', 'father', 'grandmother', 'half-brother', 'half-sister', 'sister', 'uncle', 'wife'],
-    title: 'قضية رقم 4', note: 'متوفاة، لا يوجد أب.',
-    lesson: 'أم: السدس (1/6) = 12 سهم، جد: السدس (1/6) = 12 سهم، زوج: الربع (1/4) = 18 سهم فرضًا، وابن: 20 سهم، بنت: 10 سهم تعصيبًا.'
-  },
-  {
-    id: 5, difficulty: 'advanced', deceasedGender: 'male', estateValue: 288,
-    disallowed: ['brother', 'grandfather', 'half-brother', 'half-sister', 'husband', 'mother', 'sister', 'uncle'],
-    title: 'قضية رقم 5', note: 'متوفى، لا يوجد أم.',
-    lesson: 'أب: السدس (1/6) = 48 سهم، جدة: السدس (1/6) = 48 سهم، زوجة: الثمن (1/8) = 36 سهم فرضًا، وابن: 104 سهم، بنت: 52 سهم تعصيبًا.'
-  },
-  {
-    id: 6, difficulty: 'advanced', deceasedGender: 'female', estateValue: 72,
-    disallowed: ['brother', 'grandfather', 'half-brother', 'half-sister', 'mother', 'sister', 'uncle', 'wife'],
-    title: 'قضية رقم 6', note: 'متوفاة، لا يوجد أم.',
-    lesson: 'أب: السدس (1/6) = 12 سهم، جدة: السدس (1/6) = 12 سهم، زوج: الربع (1/4) = 18 سهم فرضًا، وابن: 20 سهم، بنت: 10 سهم تعصيبًا.'
-  },
-  {
-    id: 7, difficulty: 'medium', deceasedGender: 'male', estateValue: 36,
-    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'uncle', 'wife'],
-    title: 'قضية رقم 7', note: 'متوفى، لا يوجد زوج/زوجة.',
-    lesson: 'أب: السدس (1/6) = 6 سهم، أم: السدس (1/6) = 6 سهم فرضًا، وابن: 16 سهم، بنت: 8 سهم تعصيبًا.'
-  },
-  {
-    id: 8, difficulty: 'medium', deceasedGender: 'female', estateValue: 36,
-    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'uncle', 'wife'],
-    title: 'قضية رقم 8', note: 'متوفاة، لا يوجد زوج/زوجة.',
-    lesson: 'أب: السدس (1/6) = 6 سهم، أم: السدس (1/6) = 6 سهم فرضًا، وابن: 16 سهم، بنت: 8 سهم تعصيبًا.'
-  },
-  {
-    id: 9, difficulty: 'advanced', deceasedGender: 'male', estateValue: 288,
-    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'uncle'],
-    title: 'قضية رقم 9', note: 'متوفى، لا يوجد إخوة (لا أخ ولا أخت).',
-    lesson: 'أب: السدس (1/6) = 48 سهم، أم: السدس (1/6) = 48 سهم، زوجة: الثمن (1/8) = 36 سهم فرضًا، وابن: 104 سهم، بنت: 52 سهم تعصيبًا.'
-  },
-  {
-    id: 10, difficulty: 'advanced', deceasedGender: 'female', estateValue: 72,
-    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'sister', 'uncle', 'wife'],
-    title: 'قضية رقم 10', note: 'متوفاة، لا يوجد إخوة (لا أخ ولا أخت).',
-    lesson: 'أب: السدس (1/6) = 12 سهم، أم: السدس (1/6) = 12 سهم، زوج: الربع (1/4) = 18 سهم فرضًا، وابن: 20 سهم، بنت: 10 سهم تعصيبًا.'
-  },
-  {
-    id: 11, difficulty: 'advanced', deceasedGender: 'male', estateValue: 288,
-    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'uncle'],
-    title: 'قضية رقم 11', note: 'متوفى، لا يوجد جد.',
-    lesson: 'أب: السدس (1/6) = 48 سهم، أم: السدس (1/6) = 48 سهم، زوجة: الثمن (1/8) = 36 سهم فرضًا، وابن: 104 سهم، بنت: 52 سهم تعصيبًا.'
-  },
-  {
-    id: 12, difficulty: 'advanced', deceasedGender: 'female', estateValue: 72,
-    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'sister', 'uncle', 'wife'],
-    title: 'قضية رقم 12', note: 'متوفاة، لا يوجد جد.',
-    lesson: 'أب: السدس (1/6) = 12 سهم، أم: السدس (1/6) = 12 سهم، زوج: الربع (1/4) = 18 سهم فرضًا، وابن: 20 سهم، بنت: 10 سهم تعصيبًا.'
-  },
-  {
-    id: 13, difficulty: 'advanced', deceasedGender: 'male', estateValue: 288,
-    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'uncle'],
-    title: 'قضية رقم 13', note: 'متوفى، لا يوجد جدة.',
-    lesson: 'أب: السدس (1/6) = 48 سهم، أم: السدس (1/6) = 48 سهم، زوجة: الثمن (1/8) = 36 سهم فرضًا، وابن: 104 سهم، بنت: 52 سهم تعصيبًا.'
-  },
-  {
-    id: 14, difficulty: 'advanced', deceasedGender: 'female', estateValue: 36,
-    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'sister', 'uncle', 'wife'],
-    title: 'قضية رقم 14', note: 'متوفاة، لا يوجد جدة.',
-    lesson: 'أب: السدس (1/6) = 6 سهم، أم: السدس (1/6) = 6 سهم، زوج: الربع (1/4) = 9 سهم فرضًا، وابن: 10 سهم، بنت: 5 سهم تعصيبًا.'
-  },
-  {
-    id: 15, difficulty: 'easy', deceasedGender: 'male', estateValue: 36,
+    id: 1, difficulty: 'easy', deceasedGender: 'male', estateValue: 36,
     disallowed: ['brother', 'daughter', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'mother', 'sister', 'son', 'wife'],
-    title: 'قضية رقم 15', note: 'متوفى، العم منفردًا (لا ابن، لا أب، لا جد، لا أخ) — يأخذ التركة كاملة.',
-    lesson: 'عم: 36 سهم تعصيبًا.'
+    title: 'قضية رقم 1', note: 'توفي رجل وليس له ابن ولا أب ولا جد ولا أخ.',
+    lesson: 'عم: الباقي تعصيبًا = 36 سهم'
   },
   {
-    id: 16, difficulty: 'advanced', deceasedGender: 'male', estateValue: 72,
-    disallowed: ['brother', 'daughter', 'father', 'grandfather', 'grandmother', 'husband', 'mother', 'sister', 'son', 'uncle'],
-    title: 'قضية رقم 16', note: 'متوفى، زوجة + أخ لأم + أخت لأم (كلالة، بلا فرع وارث ولا إخوة أشقاء ولا أب ولا جد ولا عم).',
-    lesson: 'زوجة: الربع (1/4) = 18 سهم فرضًا (لا تأخذ ردًا). أخ لأم وأخت لأم: فرضهما الأصلي السدس لكل واحد (12 سهم)، ثم يُرَدّ عليهما الباقي (30 سهم) بالتساوي بينهما لعدم وجود عصبة، فيصبح نصيب كل واحد 27 سهم. مسألة استثنائية نادرة (رد)، مش قضية سهلة.'
-  },
-  {
-    id: 17, difficulty: 'easy', deceasedGender: 'female', estateValue: 96,
+    id: 2, difficulty: 'easy', deceasedGender: 'female', estateValue: 96,
     disallowed: ['brother', 'daughter', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'mother', 'sister', 'son', 'wife'],
-    title: 'قضية رقم 17', note: 'متوفاة، زوج + عم (بلا فرع وارث ولا إخوة ولا أب ولا جد ولا ابن).',
-    lesson: 'زوج: النصف (1/2) = 48 سهم فرضًا، وعم: 48 سهم تعصيبًا.'
+    title: 'قضية رقم 2', note: 'توفيت امرأة وليس لها ولد ولا إخوة ولا أب ولا جد.',
+    lesson: 'زوج: النصف (1/2) = 48 سهم، عم: النصف (1/2) = 48 سهم'
   },
   {
-    id: 18, difficulty: 'easy', deceasedGender: 'male', estateValue: 72,
+    id: 3, difficulty: 'easy', deceasedGender: 'male', estateValue: 72,
     disallowed: ['brother', 'daughter', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'son', 'wife'],
-    title: 'قضية رقم 18', note: 'متوفى، أم + عم (بلا فرع وارث ولا إخوة ولا أب ولا جد ولا ابن).',
-    lesson: 'أم: الثلث (1/3) = 24 سهم فرضًا، وعم: 48 سهم تعصيبًا.'
+    title: 'قضية رقم 3', note: 'توفي رجل وليس له ولد ولا إخوة ولا أب ولا جد.',
+    lesson: 'أم: الثلث (1/3) = 24 سهم، عم: الثلثان (2/3) = 48 سهم'
   },
   {
-    id: 19, difficulty: 'easy', deceasedGender: 'male', estateValue: 12,
+    id: 4, difficulty: 'easy', deceasedGender: 'male', estateValue: 12,
     disallowed: ['brother', 'daughter', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'mother', 'son', 'wife'],
-    title: 'قضية رقم 19', note: 'متوفى، أخت شقيقة (كلالة) + عم معًا.',
-    lesson: 'أخت: النصف (1/2) = 6 سهم فرضًا، وعم: 6 سهم تعصيبًا.'
+    title: 'قضية رقم 4', note: 'توفي رجل وليس له ولد ولا أب ولا جد.',
+    lesson: 'أخت شقيقة: النصف (1/2) = 6 سهم، عم: النصف (1/2) = 6 سهم'
   },
   {
-    id: 20, difficulty: 'easy', deceasedGender: 'female', estateValue: 24,
+    id: 5, difficulty: 'easy', deceasedGender: 'female', estateValue: 24,
     disallowed: ['brother', 'daughter', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'mother', 'son', 'wife'],
-    title: 'قضية رقم 20', note: 'متوفاة، أختان شقيقتان (كلالة) + عم معًا.',
-    lesson: 'أخت(2): الثلثان (2/3) = 16 سهم (8/فرد) فرضًا، وعم: 8 سهم تعصيبًا.'
+    title: 'قضية رقم 5', note: 'توفيت امرأة وليس لها ولد ولا أب ولا جد.',
+    lesson: 'أخت شقيقة (×2): الثلثان (2/3) = 16 سهم، عم: الثلث (1/3) = 8 سهم'
   },
   {
-    id: 21, difficulty: 'easy', deceasedGender: 'male', estateValue: 36,
+    id: 6, difficulty: 'easy', deceasedGender: 'male', estateValue: 36,
     disallowed: ['daughter', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'mother', 'son', 'uncle', 'wife'],
-    title: 'قضية رقم 21', note: 'متوفى، إخوة كلالة (أخ + أخت) بلا أب ولا ابن ولا جد ولا عم.',
-    lesson: 'أخ: 24 سهم، أخت: 12 سهم تعصيبًا.'
+    title: 'قضية رقم 6', note: 'توفي رجل وليس له ولد ولا أب ولا جد ولا عم.',
+    lesson: 'أخ شقيق: الثلثان (2/3) = 24 سهم، أخت شقيقة: الثلث (1/3) = 12 سهم'
   },
   {
-    id: 22, difficulty: 'medium', deceasedGender: 'male', estateValue: 144,
-    disallowed: ['daughter', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'son', 'uncle'],
-    title: 'قضية رقم 22', note: 'متوفى، إخوة كلالة مع أم وزوجة (بلا أب ولا ابن ولا جد).',
-    lesson: 'أم: السدس (1/6) = 24 سهم، زوجة: الربع (1/4) = 36 سهم فرضًا، وأخ: 56 سهم، أخت: 28 سهم تعصيبًا.'
-  },
-  {
-    id: 25, difficulty: 'medium', deceasedGender: 'male', estateValue: 96,
-    disallowed: ['brother', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'mother', 'sister', 'uncle'],
-    title: 'قضية رقم 25', note: 'متوفى، ابنان وبنتان وزوجة (بلا أب ولا جد ولا إخوة ولا عم).',
-    lesson: 'زوجة: الثمن (1/8) = 12 سهم فرضًا (لوجود الفرع الوارث). ابن (×2): 28 سهم لكل واحد، بنت (×2): 14 سهم لكل واحدة (الباقي تعصيبًا، للذكر مثل حظ الأنثيين).'
-  },
-  {
-    id: 24, difficulty: 'easy', deceasedGender: 'male', estateValue: 72,
+    id: 7, difficulty: 'easy', deceasedGender: 'male', estateValue: 72,
     disallowed: ['brother', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'mother', 'son', 'uncle', 'wife'],
-    title: 'قضية رقم 24', note: 'متوفى، أخت كلالة + بنت (عصبة مع الغير) بلا أخ ولا عم.',
-    lesson: 'بنت: النصف (1/2) = 36 سهم فرضًا، وأخت: 36 سهم تعصيبًا.'
+    title: 'قضية رقم 7', note: 'توفي رجل وليس له أخ ولا عم.',
+    lesson: 'بنت: النصف (1/2) = 36 سهم، أخت شقيقة: النصف (1/2) = 36 سهم'
+  },
+  {
+    id: 8, difficulty: 'medium', deceasedGender: 'male', estateValue: 48,
+    disallowed: ['brother', 'daughter', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'son', 'uncle'],
+    title: 'قضية رقم 8', note: 'توفي رجل وليس له أولاد.',
+    lesson: 'أب: النصف (1/2) = 24 سهم، أم: الربع (1/4) = 12 سهم، زوجة: الربع (1/4) = 12 سهم'
+  },
+  {
+    id: 9, difficulty: 'medium', deceasedGender: 'female', estateValue: 24,
+    disallowed: ['brother', 'daughter', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'sister', 'son', 'uncle', 'wife'],
+    title: 'قضية رقم 9', note: 'توفيت امرأة وليس لها أولاد.',
+    lesson: 'أب: الثلث (1/3) = 8 سهم، أم: السدس (1/6) = 4 سهم، زوج: النصف (1/2) = 12 سهم'
+  },
+  {
+    id: 10, difficulty: 'medium', deceasedGender: 'male', estateValue: 36,
+    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'uncle', 'wife'],
+    title: 'قضية رقم 10', note: 'توفي رجل وليس له زوجة.',
+    lesson: 'ابن: الباقي تعصيبًا = 16 سهم، بنت: الباقي تعصيبًا = 8 سهم، أب: السدس (1/6) = 6 سهم، أم: السدس (1/6) = 6 سهم'
+  },
+  {
+    id: 11, difficulty: 'medium', deceasedGender: 'female', estateValue: 36,
+    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'uncle', 'wife'],
+    title: 'قضية رقم 11', note: 'توفيت امرأة وليس لها زوج.',
+    lesson: 'ابن: الباقي تعصيبًا = 16 سهم، بنت: الباقي تعصيبًا = 8 سهم، أب: السدس (1/6) = 6 سهم، أم: السدس (1/6) = 6 سهم'
+  },
+  {
+    id: 12, difficulty: 'medium', deceasedGender: 'male', estateValue: 144,
+    disallowed: ['daughter', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'son', 'uncle'],
+    title: 'قضية رقم 12', note: 'توفي رجل وليس له ولد ولا أب ولا جد.',
+    lesson: 'أم: السدس (1/6) = 24 سهم، زوجة: الربع (1/4) = 36 سهم، أخ شقيق: الباقي تعصيبًا = 56 سهم، أخت شقيقة: الباقي تعصيبًا = 28 سهم'
+  },
+  {
+    id: 13, difficulty: 'medium', deceasedGender: 'male', estateValue: 96,
+    disallowed: ['brother', 'father', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'mother', 'sister', 'uncle'],
+    title: 'قضية رقم 13', note: 'توفي رجل وليس له أب ولا جد ولا إخوة ولا عم.',
+    lesson: 'ابن (×2): الباقي تعصيبًا = 56 سهم، بنت (×2): الباقي تعصيبًا = 28 سهم، زوجة: الثمن (1/8) = 12 سهم'
+  },
+  {
+    id: 14, difficulty: 'advanced', deceasedGender: 'male', estateValue: 288,
+    disallowed: ['brother', 'father', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'uncle'],
+    title: 'قضية رقم 14', note: 'توفي رجل وليس له أب.',
+    lesson: 'ابن: الباقي تعصيبًا = 104 سهم، بنت: الباقي تعصيبًا = 52 سهم، أم: السدس (1/6) = 48 سهم، جد: السدس (1/6) = 48 سهم، زوجة: الثمن (1/8) = 36 سهم'
+  },
+  {
+    id: 15, difficulty: 'advanced', deceasedGender: 'female', estateValue: 72,
+    disallowed: ['brother', 'father', 'grandmother', 'half-brother', 'half-sister', 'sister', 'uncle', 'wife'],
+    title: 'قضية رقم 15', note: 'توفيت امرأة وليس لها أب.',
+    lesson: 'ابن: الباقي تعصيبًا = 20 سهم، بنت: الباقي تعصيبًا = 10 سهم، أم: السدس (1/6) = 12 سهم، جد: السدس (1/6) = 12 سهم، زوج: الربع (1/4) = 18 سهم'
+  },
+  {
+    id: 16, difficulty: 'advanced', deceasedGender: 'male', estateValue: 288,
+    disallowed: ['brother', 'grandfather', 'half-brother', 'half-sister', 'husband', 'mother', 'sister', 'uncle'],
+    title: 'قضية رقم 16', note: 'توفي رجل وليس له أم.',
+    lesson: 'ابن: الباقي تعصيبًا = 104 سهم، بنت: الباقي تعصيبًا = 52 سهم، أب: السدس (1/6) = 48 سهم، جدة (لأم): السدس (1/6) = 48 سهم، زوجة: الثمن (1/8) = 36 سهم'
+  },
+  {
+    id: 17, difficulty: 'advanced', deceasedGender: 'female', estateValue: 72,
+    disallowed: ['brother', 'grandfather', 'half-brother', 'half-sister', 'mother', 'sister', 'uncle', 'wife'],
+    title: 'قضية رقم 17', note: 'توفيت امرأة وليس لها أم.',
+    lesson: 'ابن: الباقي تعصيبًا = 20 سهم، بنت: الباقي تعصيبًا = 10 سهم، أب: السدس (1/6) = 12 سهم، جدة (لأم): السدس (1/6) = 12 سهم، زوج: الربع (1/4) = 18 سهم'
+  },
+  {
+    id: 18, difficulty: 'advanced', deceasedGender: 'male', estateValue: 288,
+    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'uncle'],
+    title: 'قضية رقم 18', note: 'توفي رجل وليس له إخوة.',
+    lesson: 'ابن: الباقي تعصيبًا = 104 سهم، بنت: الباقي تعصيبًا = 52 سهم، أب: السدس (1/6) = 48 سهم، أم: السدس (1/6) = 48 سهم، زوجة: الثمن (1/8) = 36 سهم'
+  },
+  {
+    id: 19, difficulty: 'advanced', deceasedGender: 'female', estateValue: 72,
+    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'sister', 'uncle', 'wife'],
+    title: 'قضية رقم 19', note: 'توفيت امرأة وليس لها إخوة.',
+    lesson: 'ابن: الباقي تعصيبًا = 20 سهم، بنت: الباقي تعصيبًا = 10 سهم، أب: السدس (1/6) = 12 سهم، أم: السدس (1/6) = 12 سهم، زوج: الربع (1/4) = 18 سهم'
+  },
+  {
+    id: 20, difficulty: 'advanced', deceasedGender: 'male', estateValue: 288,
+    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'uncle'],
+    title: 'قضية رقم 20', note: 'توفي رجل وليس له جد.',
+    lesson: 'ابن: الباقي تعصيبًا = 104 سهم، بنت: الباقي تعصيبًا = 52 سهم، أب: السدس (1/6) = 48 سهم، أم: السدس (1/6) = 48 سهم، زوجة: الثمن (1/8) = 36 سهم'
+  },
+  {
+    id: 21, difficulty: 'advanced', deceasedGender: 'female', estateValue: 72,
+    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'sister', 'uncle', 'wife'],
+    title: 'قضية رقم 21', note: 'توفيت امرأة وليس لها جد.',
+    lesson: 'ابن: الباقي تعصيبًا = 20 سهم، بنت: الباقي تعصيبًا = 10 سهم، أب: السدس (1/6) = 12 سهم، أم: السدس (1/6) = 12 سهم، زوج: الربع (1/4) = 18 سهم'
+  },
+  {
+    id: 22, difficulty: 'advanced', deceasedGender: 'male', estateValue: 288,
+    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'husband', 'sister', 'uncle'],
+    title: 'قضية رقم 22', note: 'توفي رجل وليس له جدة.',
+    lesson: 'ابن: الباقي تعصيبًا = 104 سهم، بنت: الباقي تعصيبًا = 52 سهم، أب: السدس (1/6) = 48 سهم، أم: السدس (1/6) = 48 سهم، زوجة: الثمن (1/8) = 36 سهم'
+  },
+  {
+    id: 23, difficulty: 'advanced', deceasedGender: 'female', estateValue: 36,
+    disallowed: ['brother', 'grandfather', 'grandmother', 'half-brother', 'half-sister', 'sister', 'uncle', 'wife'],
+    title: 'قضية رقم 23', note: 'توفيت امرأة وليس لها جدة.',
+    lesson: 'ابن: الباقي تعصيبًا = 10 سهم، بنت: الباقي تعصيبًا = 5 سهم، أب: السدس (1/6) = 6 سهم، أم: السدس (1/6) = 6 سهم، زوج: الربع (1/4) = 9 سهم'
+  },
+  {
+    id: 24, difficulty: 'advanced', deceasedGender: 'male', estateValue: 72,
+    disallowed: ['brother', 'daughter', 'father', 'grandfather', 'grandmother', 'husband', 'mother', 'sister', 'son', 'uncle'],
+    title: 'قضية رقم 24', note: 'توفي رجل وليس له ولد ولا إخوة أشقاء ولا أب ولا جد ولا عم.',
+    lesson: 'زوجة: الربع (1/4) = 18 سهم، أخ لأم: السدس (1/6) أصلًا + رد = 27 سهم، أخت لأم: السدس (1/6) أصلًا + رد = 27 سهم'
   },
 ];
 
@@ -345,65 +345,41 @@ const HEIR_QURAN_REF = {
 // amount: القيمة المطبَّقة (سالبة=دفع، موجبة=أخذ). selfAmount: أثر إضافي على صاحب الدور (نقل مباشر).
 // deferred: { amount, afterRounds } — أثر مؤجَّل يُطبَّق تلقائيًا بعد عدد الجولات المحدد.
 const JUDGMENT_CARDS = [
-  // ⚖️ حقوق التركة (1-15) — تُخصم من اللاعب الحالي نيابةً عن التركة قبل الاستفادة منها
-  { id: 1, category: 'rights', categoryIcon: '⚖️', title: 'دين على المتوفى', story: 'بعد انتهاء الورثة من تقسيم التركة، حضر أحد جيران المتوفى ومعه ورقة قديمة تثبت أن المتوفى اقترض منه مالًا ولم يتمكن من سداده قبل وفاته. نظر الورثة إلى بعضهم، فقد أصبح المال في أيديهم بالفعل.', benefit: 'الدَّين من أعظم الحقوق، ولذلك يُقدَّم سداده على توزيع الميراث. قال تعالى: ﴿مِن بَعْدِ وَصِيَّةٍ يُوصِي بِهَا أَوْ دَيْنٍ﴾', ruling: 'يدفع اللاعب الحالي 5 أسهم نيابة عن التركة.', effects: [{ target: 'self', amount: -5 }] },
-  { id: 2, category: 'rights', categoryIcon: '⚖️', title: 'مؤخر الصداق', story: 'تبين للورثة أن المتوفى لم يكن قد سدد مؤخر صداق زوجته، وكان ينوي أداءه عندما تتيسر أحواله.', benefit: 'مؤخر الصداق دين ثابت في ذمة الزوج حتى يؤديه.', ruling: 'يدفع اللاعب الحالي 4 أسهم نيابة عن التركة.', effects: [{ target: 'self', amount: -4 }] },
-  { id: 3, category: 'rights', categoryIcon: '⚖️', title: 'زكاة المال', story: 'وجد الورثة في أوراق المتوفى حسابًا يبين أن زكاة ماله لم تُخرج في العام الماضي.', benefit: 'حقوق الله المتعلقة بالمال، ومنها الزكاة، تُؤدى قبل تقسيم التركة.', ruling: 'يدفع اللاعب الحالي 3 أسهم نيابة عن التركة.', effects: [{ target: 'self', amount: -3 }] },
-  { id: 4, category: 'rights', categoryIcon: '⚖️', title: 'أمانة', story: 'عثر الورثة داخل خزانة المتوفى على مبلغ من المال مكتوب عليه اسم أحد أصدقائه، فعرفوا أنه أمانة عنده.', benefit: 'الأمانة ليست من التركة، بل يجب ردها إلى صاحبها. قال تعالى: ﴿إِنَّ اللَّهَ يَأْمُرُكُمْ أَنْ تُؤَدُّوا الْأَمَانَاتِ إِلَى أَهْلِهَا﴾', ruling: 'يدفع اللاعب الحالي 3 أسهم ويردها لصاحب الأمانة نيابة عن التركة.', effects: [{ target: 'self', amount: -3 }] },
-  { id: 5, category: 'rights', categoryIcon: '⚖️', title: 'وصية صحيحة', story: 'بعد القسمة، وجد الورثة وصية صحيحة أوصى فيها المتوفى بجزء من ماله لأحد أعمال الخير.', benefit: 'الوصية المشروعة تُنفذ قبل توزيع الميراث.', ruling: 'يدفع اللاعب الحالي 3 أسهم نيابة عن التركة.', effects: [{ target: 'self', amount: -3 }] },
-  { id: 6, category: 'rights', categoryIcon: '⚖️', title: 'أجرة عامل', story: 'كان المتوفى قد استأجر عاملًا لإصلاح منزله، لكنه توفي قبل أن يدفع له أجره.', benefit: 'أجرة العامل حق واجب. قال ﷺ: "أعطوا الأجير أجره قبل أن يجف عرقه."', ruling: 'يدفع اللاعب الحالي 3 أسهم نيابة عن التركة.', effects: [{ target: 'self', amount: -3 }] },
-  { id: 7, category: 'rights', categoryIcon: '⚖️', title: 'رد المظالم', story: 'اعترف أحد الورثة أن جزءًا من المال الموروث كان قد أخذه المتوفى بغير حق، ويجب رده إلى صاحبه.', benefit: 'لا يحل مال امرئ مسلم إلا بطيب نفس منه.', ruling: 'يدفع اللاعب الحالي 4 أسهم مباشرة لصاحب الحق (يُختار لاعب يمثله، أو تُرد للبنك إن لم يوجد).', effects: [{ target: 'self', amount: -4 }] },
-  { id: 8, category: 'rights', categoryIcon: '⚖️', title: 'نفقة تجهيز المتوفى', story: 'بعد القسمة، تذكر الورثة أن بعض تكاليف تجهيز المتوفى ودفنه لم تكن قد سُددت.', benefit: 'تجهيز الميت من الحقوق التي تُقدم على قسمة التركة.', ruling: 'يدفع اللاعب الحالي سهمين نيابة عن التركة.', effects: [{ target: 'self', amount: -2 }] },
-  { id: 9, category: 'rights', categoryIcon: '⚖️', title: 'نذر مالي', story: 'وجد الورثة ورقة بخط المتوفى يذكر فيها أنه نذر صدقة مالية إذا شفى الله ابنه، ثم تحقق ذلك قبل وفاته.', benefit: 'النذر الواجب يجب الوفاء به.', ruling: 'يدفع اللاعب الحالي 3 أسهم نيابة عن التركة.', effects: [{ target: 'self', amount: -3 }] },
-  { id: 10, category: 'rights', categoryIcon: '⚖️', title: 'كفارة واجبة', story: 'تبين أن على المتوفى كفارة مالية لم يكن قد أخرجها.', benefit: 'إذا وجبت كفارة مالية في ذمة الإنسان فإنها تُخرج من تركته وفق أحكامها.', ruling: 'يدفع اللاعب الحالي 3 أسهم نيابة عن التركة.', effects: [{ target: 'self', amount: -3 }] },
-  { id: 11, category: 'rights', categoryIcon: '⚖️', title: 'مال شريك', story: 'بعد مراجعة الأوراق، تبين أن جزءًا من العقار الموروث كان مملوكًا لشريك آخر، وليس للمتوفى وحده.', benefit: 'لا يجوز أن يرث الإنسان ما ليس مملوكًا للمورث.', ruling: 'يدفع اللاعب الحالي 4 أسهم لصاحب الحصة نيابة عن التركة.', effects: [{ target: 'self', amount: -4 }] },
-  { id: 12, category: 'rights', categoryIcon: '⚖️', title: 'دين مجهول', story: 'ظهر شخص يحمل مستندًا يثبت أن للمتوفى دينًا قديمًا لم يكن أحد من الورثة يعلم به.', benefit: 'حقوق العباد لا تسقط بوفاة صاحبها.', ruling: 'يدفع اللاعب الحالي 8 أسهم كاملة نيابة عن كل الورثة (مبلغ أعلى لأن الدين لم يكن متوقعًا).', effects: [{ target: 'self', amount: -8 }] },
-  { id: 13, category: 'rights', categoryIcon: '⚖️', title: 'وديعة مصرفية', story: 'تبين أن جزءًا من المال الموجود في الحساب البنكي كان وديعة لأحد الأقارب وليست ملكًا للمتوفى.', benefit: 'الوديعة أمانة يجب ردها إلى صاحبها.', ruling: 'يدفع اللاعب الحالي 3 أسهم نيابة عن التركة.', effects: [{ target: 'self', amount: -3 }] },
-  { id: 14, category: 'rights', categoryIcon: '⚖️', title: 'سداد قرض حسن', story: 'كان أحد أقارب المتوفى قد أقرضه مالًا دون فوائد، ولم يتمكن من استرداده قبل وفاته.', benefit: 'رد القرض من أداء الأمانة، وهو من أولى الحقوق.', ruling: 'يدفع اللاعب الحالي 4 أسهم نيابة عن التركة.', effects: [{ target: 'self', amount: -4 }] },
-  { id: 15, category: 'rights', categoryIcon: '⚖️', title: 'اجتماع الحقوق', story: 'بعد مراجعة التركة، تبين وجود أكثر من حق مالي على المتوفى؛ دَين، وزكاة، وأجرة عامل لم تُسدَّد.', benefit: 'تُقدَّم الحقوق المتعلقة بالتركة على توزيع الميراث، حتى يصل كل ذي حق إلى حقه.', ruling: 'يدفع اللاعب الحالي 9 أسهم نيابة عن التركة (دين + زكاة + أجرة عامل مجمّعين).', effects: [{ target: 'self', amount: -9 }] },
 
-  // 👨‍👩‍👧 مسؤوليات مالية بعد الميراث (16-25)
-  { id: 16, category: 'responsibilities', categoryIcon: '👨‍👩‍👧', title: 'مؤخر الصداق', story: 'مرت سنوات على زواجك، وحان الوقت للوفاء بمؤخر صداق زوجتك الذي اتفقتما عليه يوم عقد الزواج.', benefit: 'مؤخر الصداق حق للزوجة، وهو دين في ذمة الزوج حتى يؤديه.', ruling: 'ادفع 13 سهمًا إلى البنك.', effects: [{ target: 'self', amount: -13 }] },
-  { id: 17, category: 'responsibilities', categoryIcon: '👨‍👩‍👧', title: 'إتلاف مزرعة الجيران', story: 'كان ابنك يلعب بالألعاب النارية، فتطاير شررها إلى مزرعة الجيران وأتلف جزءًا من المحصول.', benefit: 'يحرم الاعتداء على أموال الناس، ومن تسبب في إتلاف مال غيره فعليه ضمانه.', ruling: 'ادفع 10 أسهم إلى البنك.', effects: [{ target: 'self', amount: -10 }] },
-  { id: 18, category: 'responsibilities', categoryIcon: '👨‍👩‍👧', title: 'سداد دين شخصي', story: 'حل موعد سداد دين كنت قد اقترضته قبل مدة، وجاء صاحبه يطالبك بحقه.', benefit: 'المؤمن يفي بديونه ولا يماطل في أداء الحقوق.', ruling: 'ادفع 5 أسهم إلى البنك.', effects: [{ target: 'self', amount: -5 }] },
-  { id: 19, category: 'responsibilities', categoryIcon: '👨‍👩‍👧', title: 'زكاة مالك', story: 'مر عام كامل على مالك، وبلغ النصاب، فأصبحت الزكاة واجبة عليك.', benefit: 'الزكاة ركن من أركان الإسلام، وهي حق للفقراء في مال الأغنياء.', ruling: 'ادفع 3 أسهم إلى البنك.', effects: [{ target: 'self', amount: -3 }] },
-  { id: 20, category: 'responsibilities', categoryIcon: '👨‍👩‍👧', title: 'نفقة الأسرة', story: 'بدأ العام الدراسي، واحتاج أبناؤك إلى الكتب والملابس والمستلزمات الدراسية.', benefit: 'النفقة على الزوجة والأولاد من مسؤوليات رب الأسرة.', ruling: 'ادفع 5 أسهم إلى البنك.', effects: [{ target: 'self', amount: -5 }] },
-  { id: 21, category: 'responsibilities', categoryIcon: '👨‍👩‍👧', title: 'علاج أحد أبنائك', story: 'مرض أحد أبنائك واحتاج إلى عملية جراحية عاجلة، فبادرت بعلاجه.', benefit: 'الإنفاق على علاج من تعولهم من أعظم صور القيام بالمسؤولية.', ruling: 'ادفع 8 أسهم إلى البنك.', effects: [{ target: 'self', amount: -8 }] },
-  { id: 22, category: 'responsibilities', categoryIcon: '👨‍👩‍👧', title: 'إصلاح المنزل الموروث', story: 'ورثت منزلًا قديمًا، لكنك اكتشفت أنه يحتاج إلى إصلاحات قبل أن يصبح صالحًا للسكن.', benefit: 'حفظ المال واستثماره من الأمور المحمودة، ويحتاج أحيانًا إلى إنفاق قبل الانتفاع به.', ruling: 'ادفع 5 أسهم، ثم في الجولة القادمة خذ 8 أسهم من البنك.', effects: [{ target: 'self', amount: -5, deferred: { amount: 8, afterRounds: 1 } }] },
-  { id: 23, category: 'responsibilities', categoryIcon: '👨‍👩‍👧', title: 'استصلاح أرض موروثة', story: 'ورثت أرضًا مهملة، فأنفقت عليها حتى أصبحت صالحة للزراعة والإنتاج.', benefit: 'إحياء الأرض واستثمارها من الأعمال النافعة التي تعود بالنفع على صاحبها والمجتمع.', ruling: 'ادفع 5 أسهم، ثم خذ 10 أسهم من البنك.', effects: [{ target: 'self', amount: -5 }, { target: 'self', amount: 10 }] },
-  { id: 24, category: 'responsibilities', categoryIcon: '👨‍👩‍👧', title: 'سداد دين عن والدك', story: 'علمت أن والدك توفي وعليه دين لم يتمكن من سداده، فبادرت إلى سداده من مالك تبرعًا وإحسانًا.', benefit: 'قضاء دين الوالد بعد وفاته من أعظم صور البر والإحسان.', ruling: 'ادفع 5 أسهم، ثم خذ 5 أسهم من البنك مكافأة.', effects: [{ target: 'self', amount: -5 }, { target: 'self', amount: 5 }] },
-  { id: 25, category: 'responsibilities', categoryIcon: '👨‍👩‍👧', title: 'توسعة التجارة', story: 'استثمرت جزءًا من المال الذي ورثته في توسيع تجارتك، واشتركت مع تاجر أمين حتى ازداد نشاطك التجاري.', benefit: 'المال نعمة، وأفضل استثماره فيما ينفع صاحبه والناس.', ruling: 'ادفع 5 أسهم الآن، ثم خذ 10 أسهم من البنك.', effects: [{ target: 'self', amount: -5 }, { target: 'self', amount: 10 }] },
+  // ⚖️ حقوق التركة
+  { id: 1, category: 'rights', categoryIcon: '⚖️', title: 'دين على المتوفى', story: 'بعد انتهاء الورثة من تقسيم التركة، حضر أحد جيران المتوفى ومعه ورقة قديمة تثبت أن المتوفى اقترض منه مالًا ولم يتمكن من سداده قبل وفاته.', benefit: 'الدَّين من أعظم الحقوق، ولذلك يجب سداده قبل توزيع الميراث. قال تعالى: ﴿مِن بَعْدِ وَصِيَّةٍ يُوصِي بِهَا أَوْ دَيْنٍ﴾', ruling: 'يدفع اللاعب الحالي 10 أسهم نيابة عن التركة.', effects: [{ target: 'self', amount: -10 }] },
+  { id: 2, category: 'rights', categoryIcon: '⚖️', title: 'زكاة المال', story: 'وجد الورثة في أوراق المتوفى حسابًا يبين أن زكاة ماله لم تُخرج في العام الماضي.', benefit: 'حقوق الله المتعلقة بالمال، ومنها الزكاة، تُؤدى قبل تقسيم التركة.', ruling: 'يدفع اللاعب الحالي 6 أسهم نيابة عن التركة.', effects: [{ target: 'self', amount: -6 }] },
+  { id: 3, category: 'rights', categoryIcon: '⚖️', title: 'أمانة', story: 'عثر الورثة داخل خزانة المتوفى على مبلغ من المال مكتوب عليه اسم أحد أصدقائه، فعرفوا أنه أمانة عنده.', benefit: 'الأمانة ليست من التركة، بل يجب ردها إلى صاحبها. قال تعالى: ﴿إِنَّ اللَّهَ يَأْمُرُكُمْ أَنْ تُؤَدُّوا الْأَمَانَاتِ إِلَى أَهْلِهَا﴾', ruling: 'يدفع اللاعب الحالي 6 أسهم ويردها لصاحب الأمانة نيابة عن التركة.', effects: [{ target: 'self', amount: -6 }] },
+  { id: 4, category: 'rights', categoryIcon: '⚖️', title: 'وصية صحيحة', story: 'بعد القسمة، وجد الورثة وصية صحيحة أوصى فيها المتوفى بجزء من ماله لأحد أعمال الخير.', benefit: 'الوصية المشروعة تُنفذ قبل توزيع الميراث.', ruling: 'يدفع اللاعب الحالي 6 أسهم نيابة عن التركة.', effects: [{ target: 'self', amount: -6 }] },
+  { id: 5, category: 'rights', categoryIcon: '⚖️', title: 'أجرة عامل', story: 'كان المتوفى قد استأجر عاملًا لإصلاح منزله، لكنه توفي قبل أن يدفع له أجره.', benefit: 'أجرة العامل حق واجب. قال ﷺ: "أعطوا الأجير أجره قبل أن يجف عرقه."', ruling: 'يدفع اللاعب الحالي 5 أسهم نيابة عن التركة.', effects: [{ target: 'self', amount: -5 }] },
+  { id: 6, category: 'rights', categoryIcon: '⚖️', title: 'رد المظالم', story: 'اعترف أحد الورثة أن جزءًا من المال الموروث كان قد أخذه المتوفى بغير حق، ويجب رده إلى صاحبه.', benefit: 'لا يحل مال امرئ مسلم إلا بطيب نفس منه.', ruling: 'يدفع اللاعب الحالي 8 أسهم مباشرة لصاحب الحق (يُختار لاعب يمثله، أو تُرد للبنك إن لم يوجد).', effects: [{ target: 'self', amount: -8 }] },
+  { id: 7, category: 'rights', categoryIcon: '⚖️', title: 'مال شريك', story: 'بعد مراجعة الأوراق، تبين أن جزءًا من العقار الموروث كان مملوكًا لشريك آخر، وليس للمتوفى وحده.', benefit: 'لا يجوز أن يرث الإنسان ما ليس مملوكًا للمورث.', ruling: 'يدفع اللاعب الحالي 8 أسهم لصاحب الحصة نيابة عن التركة.', effects: [{ target: 'self', amount: -8 }] },
+  { id: 8, category: 'rights', categoryIcon: '⚖️', title: 'سداد قرض حسن', story: 'كان أحد أقارب المتوفى قد أقرضه مالًا دون فوائد، ولم يتمكن من استرداده قبل وفاته.', benefit: 'رد القرض من أداء الأمانة، وهو من أولى الحقوق.', ruling: 'يدفع اللاعب الحالي 8 أسهم نيابة عن التركة.', effects: [{ target: 'self', amount: -8 }] },
 
-  // 🛡️ العاقلة، القتل الخطأ، الصلح، العفو (26-35)
-  { id: 26, category: 'aqilah', categoryIcon: '🛡️', title: 'دية القتل الخطأ', story: 'وقع حادث سير غير مقصود تسبب في وفاة أحد الناس. وبعد نظر القضية، حكم القاضي بوجوب الدية على الجاني.', benefit: 'في القتل الخطأ، تتحمل العاقلة (العصبة من الذكور) المساهمة في دفع الدية، تخفيفًا عن الجاني وتحقيقًا للتكافل.', ruling: 'كل لاعب من العاقلة يدفع 8 أسهم.', effects: [{ target: 'aqilah', amount: -8 }] },
-  { id: 27, category: 'aqilah', categoryIcon: '🛡️', title: 'العفو عن جزء من الدية', story: 'قرر أولياء الدم العفو عن جزء من الدية، رغبةً في الأجر والإصلاح.', benefit: 'العفو من أفضل الأخلاق، وقد رغب الإسلام في الصلح والإحسان.', ruling: 'كل لاعب من العاقلة يسترد 3 أسهم.', effects: [{ target: 'aqilah', amount: 3 }] },
-  { id: 28, category: 'aqilah', categoryIcon: '🛡️', title: 'صلح بين العائلتين', story: 'اجتمع كبار العائلتين، وانتهت القضية بالصلح والتراضـي دون نزاع.', benefit: 'الصلح خير، ويطفئ كثيرًا من أسباب العداوة.', ruling: 'كل لاعب من العاقلة يسترد سهمين.', effects: [{ target: 'aqilah', amount: 2 }] },
-  { id: 29, category: 'aqilah', categoryIcon: '🛡️', title: 'محسن تكفل بجزء من الدية', story: 'تبرع أحد المحسنين بجزء من مبلغ الدية، تخفيفًا عن أهل الجاني.', benefit: 'تفريج كرب المسلمين من أعظم القربات.', ruling: 'كل لاعب من العاقلة يدفع 5 أسهم فقط بدلًا من 8.', effects: [{ target: 'aqilah', amount: -5 }] },
-  { id: 30, category: 'aqilah', categoryIcon: '🛡️', title: 'إعسار أحد أفراد العاقلة', story: 'كان أحد أفراد العاقلة فقيرًا لا يستطيع المشاركة في دفع نصيبه من الدية.', benefit: 'يراعى حال المعسر، ويتعاون أهل الخير في قضاء الحقوق.', ruling: 'أغنى لاعب من العاقلة يدفع 5 أسهم إضافية بدلًا عنه.', effects: [{ target: 'highestBalanceAqilah', amount: -5 }] },
-  { id: 31, category: 'aqilah', categoryIcon: '🛡️', title: 'توسعت العاقلة', story: 'اشترك عدد أكبر من أفراد العاقلة في تحمل الدية، فتوزع العبء بينهم.', benefit: 'كلما زاد المشاركون، خف العبء عن كل فرد.', ruling: 'كل لاعب من العاقلة يدفع 5 أسهم بدلًا من 8.', effects: [{ target: 'aqilah', amount: -5 }] },
-  { id: 32, category: 'aqilah', categoryIcon: '🛡️', title: 'كبير العائلة', story: 'قرر كبير العائلة أن يتحمل جزءًا أكبر من الدية تخفيفًا عن بقية أفراد الأسرة.', benefit: 'الإحسان والتطوع في تحمل الأعباء من مكارم الأخلاق.', ruling: 'صاحب أكبر رصيد من العاقلة يدفع 5 أسهم إضافية.', effects: [{ target: 'highestBalanceAqilah', amount: -5 }] },
-  { id: 33, category: 'aqilah', categoryIcon: '🛡️', title: 'تنازل عن حقه', story: 'تنازل أحد أفراد العاقلة عن حقه في استرداد ما دفعه، ابتغاءً للأجر.', benefit: 'الإيثار والعفو من أسباب الألفة بين الناس.', ruling: 'اختر لاعبًا من العاقلة، ولا يسترد أي أسهم في هذه البطاقة.', effects: [{ target: 'none', amount: 0 }] },
-  { id: 34, category: 'aqilah', categoryIcon: '🛡️', title: 'القاتل لا يرث', story: 'أثناء مراجعة القضية، ثبت أن أحد الورثة قتل المورث عمدًا بغير حق.', benefit: 'من موانع الإرث في الجملة قتل المورث بغير حق، فلا يجتمع للإنسان أن يستعجل المال بجريمة ثم يرثه.', ruling: 'إذا كانت بطاقة القضية الحالية تتضمن هذه الحالة، يُحرم هذا اللاعب من نصيبه في هذه القضية ويُعاد توزيع التركة وفق الورثة المستحقين. (تُستخدم فقط إذا نصت بطاقة القضية على وجود قاتل — بلا أثر رقمي تلقائي هنا.)', effects: [{ target: 'none', amount: 0 }] },
-  { id: 35, category: 'aqilah', categoryIcon: '🛡️', title: 'عفو كامل', story: 'سامح أولياء الدم أهل الجاني، وتنازلوا عن الدية ابتغاء وجه الله.', benefit: 'العفو والإصلاح من أعظم أسباب الأجر، وقد مدح الله أهلهما.', ruling: 'لا يدفع أفراد العاقلة شيئًا في هذه الجولة.', effects: [{ target: 'none', amount: 0 }] },
+  // 👨‍👩‍👧 مسؤوليات مالية بعد الميراث
+  { id: 9, category: 'responsibilities', categoryIcon: '👨‍👩‍👧', title: 'إتلاف مزرعة الجيران', story: 'كان ابنك يلعب بالألعاب النارية، فتطاير شررها إلى مزرعة الجيران وأتلف جزءًا من المحصول.', benefit: 'يحرم الاعتداء على أموال الناس، ومن تسبب في إتلاف مال غيره فعليه ضمانه.', ruling: 'ادفع 20 سهمًا إلى البنك.', effects: [{ target: 'self', amount: -20 }] },
+  { id: 10, category: 'responsibilities', categoryIcon: '👨‍👩‍👧', title: 'زكاة مالك', story: 'مر عام كامل على مالك، وبلغ النصاب، فأصبحت الزكاة واجبة عليك.', benefit: 'الزكاة ركن من أركان الإسلام، وهي حق للفقراء في مال الأغنياء.', ruling: 'ادفع 5 أسهم إلى البنك.', effects: [{ target: 'self', amount: -5 }] },
+  { id: 11, category: 'responsibilities', categoryIcon: '👨‍👩‍👧', title: 'نفقة الأسرة', story: 'بدأ العام الدراسي، واحتاج أبناؤك إلى الكتب والملابس والمستلزمات الدراسية.', benefit: 'النفقة على الزوجة والأولاد من مسؤوليات رب الأسرة.', ruling: 'ادفع 10 أسهم إلى البنك.', effects: [{ target: 'self', amount: -10 }] },
+  { id: 12, category: 'responsibilities', categoryIcon: '👨‍👩‍👧', title: 'استصلاح أرض موروثة', story: 'ورثت أرضًا مهملة، فأنفقت عليها حتى أصبحت صالحة للزراعة والإنتاج.', benefit: 'إحياء الأرض واستثمارها من الأعمال النافعة التي تعود بالنفع على صاحبها والمجتمع.', ruling: 'ادفع 10 أسهم، ثم خذ 20 سهمًا من البنك.', effects: [{ target: 'self', amount: -10 }, { target: 'self', amount: 20 }] },
+  { id: 13, category: 'responsibilities', categoryIcon: '👨‍👩‍👧', title: 'توسعة التجارة', story: 'استثمرت جزءًا من المال الذي ورثته في توسيع تجارتك، واشتركت مع تاجر أمين حتى ازداد نشاطك التجاري.', benefit: 'المال نعمة، وأفضل استثماره فيما ينفع صاحبه والناس.', ruling: 'ادفع 10 أسهم الآن، ثم خذ 20 سهمًا من البنك.', effects: [{ target: 'self', amount: -10 }, { target: 'self', amount: 20 }] },
 
-  // 💰 التجارة والبركة وإدارة المال (36-45)
-  { id: 36, category: 'trade', categoryIcon: '💰', title: 'بركة الصدقة', story: 'كنت تحرص على إخراج الصدقة كلما وسّع الله عليك في الرزق، ولم تبخل على الفقراء والمحتاجين.', benefit: 'قال ﷺ: "ما نقص مالٌ من صدقة."', ruling: 'خذ 10 أسهم من البنك.', effects: [{ target: 'self', amount: 10 }] },
-  { id: 37, category: 'trade', categoryIcon: '💰', title: 'تجارة ناجحة', story: 'استثمرت جزءًا من المال الذي ورثته في تجارة مباحة، فبارك الله فيها حتى تضاعفت أرباحها.', benefit: 'المال إذا استُثمر بالحلال كان سببًا في زيادة الخير.', ruling: 'خذ 10 أسهم.', effects: [{ target: 'self', amount: 10 }] },
-  { id: 38, category: 'trade', categoryIcon: '💰', title: 'خسارة تجارية', story: 'دخلت تجارة دون دراسة كافية، فتعرضت لخسارة جزء من رأس مالك.', benefit: 'حسن التخطيط والأخذ بالأسباب من أسباب النجاح.', ruling: 'ادفع 8 أسهم.', effects: [{ target: 'self', amount: -8 }] },
-  { id: 39, category: 'trade', categoryIcon: '💰', title: 'ارتفاع قيمة الأرض', story: 'بعد سنوات، ارتفعت قيمة الأرض التي ورثتها، فأصبحت تساوي أضعاف ثمنها.', benefit: 'من نعم الله أن يبارك للإنسان في ماله.', ruling: 'خذ 13 سهمًا من البنك.', effects: [{ target: 'self', amount: 13 }] },
-  { id: 40, category: 'trade', categoryIcon: '💰', title: 'شريك أمين', story: 'دخلت في شراكة مع تاجر عُرف بالأمانة والصدق، فكان ذلك سببًا في نجاح تجارتكما.', benefit: 'الأمانة والصدق من أسباب البركة في البيع والشراء.', ruling: 'اختر لاعبًا، يحصل كل منكما على 5 أسهم من البنك.', effects: [{ target: 'chosenPlayer', amount: 5, selfAmount: 5 }] },
-  { id: 41, category: 'trade', categoryIcon: '💰', title: 'رد جميل', story: 'كنت قد ساعدت أحد أقاربك في بداية مشروعه، وبعد نجاحه أصر على رد الجميل لك.', benefit: '«هل جزاء الإحسان إلا الإحسان».', ruling: 'اختر لاعبًا، يدفع لك 5 أسهم.', effects: [{ target: 'chosenPlayer', amount: -5, selfAmount: 5 }] },
-  { id: 42, category: 'trade', categoryIcon: '💰', title: 'ادخار حكيم', story: 'لم تنفق مالك كله، بل ادخرت جزءًا منه حتى احتجت إليه في وقت الشدة.', benefit: 'الاعتدال في الإنفاق من صفات المؤمن.', ruling: 'إذا كان رصيدك أقل من 20 سهمًا، خذ 8 أسهم من البنك. وإذا كان أكثر، خذ 3 أسهم فقط.', effects: [{ target: 'conditionalBalance', threshold: 20, belowAmount: 8, aboveOrEqualAmount: 3 }] },
-  { id: 43, category: 'trade', categoryIcon: '💰', title: 'مشروع خيري', story: 'خصصت جزءًا من مالك لإنشاء مشروع يعود نفعه على الناس ويستمر أثره.', benefit: 'الصدقة الجارية من أفضل ما يتركه المسلم بعد وفاته.', ruling: 'ادفع 5 أسهم الآن، وفي أول دور لك بعد جولتين خذ 10 أسهم.', effects: [{ target: 'self', amount: -5, deferred: { amount: 10, afterRounds: 2 } }] },
-  { id: 44, category: 'trade', categoryIcon: '💰', title: 'هدية ثمينة', story: 'أهداك أحد أقاربك قطعة أرض تقديرًا لمواقفك معه.', benefit: 'الهدية تزيد المحبة بين الناس.', ruling: 'خذ 8 أسهم من البنك.', effects: [{ target: 'self', amount: 8 }] },
-  { id: 45, category: 'trade', categoryIcon: '💰', title: 'خسارة بسبب الإسراف', story: 'أنفقت أموالًا كثيرة في الكماليات حتى ضاعت عليك فرصة استثمار مربحة.', benefit: 'قال تعالى: ﴿ولا تُسرفوا إنه لا يحب المسرفين﴾', ruling: 'ادفع 8 أسهم.', effects: [{ target: 'self', amount: -8 }] },
+  // 🛡️ العاقلة، القتل الخطأ، الصلح، العفو
+  { id: 14, category: 'aqilah', categoryIcon: '🛡️', title: 'دية القتل الخطأ', story: 'وقع حادث سير غير مقصود تسبب في وفاة أحد الناس. وبعد نظر القضية، حكم القاضي بوجوب الدية على الجاني.', benefit: 'في القتل الخطأ، تتحمل العاقلة (العصبة من الذكور) المساهمة في دفع الدية، تخفيفًا عن الجاني وتحقيقًا للتكافل.', ruling: 'كل لاعب من العاقلة يدفع 15 سهمًا.', effects: [{ target: 'aqilah', amount: -15 }] },
+  { id: 15, category: 'aqilah', categoryIcon: '🛡️', title: 'العفو عن جزء من الدية', story: 'قرر أولياء الدم العفو عن جزء من الدية، رغبةً في الأجر والإصلاح.', benefit: 'العفو من أفضل الأخلاق، وقد رغب الإسلام في الصلح والإحسان.', ruling: 'كل لاعب من العاقلة يسترد 5 اسهم.', effects: [{ target: 'aqilah', amount: 5 }] },
 
-  // 🤝 التكافل الأسري (46-50)
-  { id: 46, category: 'takaful', categoryIcon: '🤝', title: 'مساعدة أخت مطلقة', story: 'تعرضت أختكم للطلاق، وكانت تمر بظروف مالية صعبة، فاتفق أفراد الأسرة على مساعدتها حتى تستقر حياتها.', benefit: 'التكافل بين أفراد الأسرة من أعظم أسباب قوة المجتمع.', ruling: 'كل اللاعبين ما عدا أنت يدفعون لك 3 أسهم.', effects: [{ target: 'allOthersPayToSelf', amount: -3 }] },
-  { id: 47, category: 'takaful', categoryIcon: '🤝', title: 'علاج قريب', story: 'احتاج أحد أقاربكم إلى عملية جراحية عاجلة، فتعاونت الأسرة على تحمل تكاليف العلاج.', benefit: 'قال تعالى: ﴿وتعاونوا على البر والتقوى﴾', ruling: 'اختر لاعبين، يدفع كل واحد منهما 3 أسهم.', effects: [{ target: 'chosenPlayers2', amount: -3 }] },
-  { id: 48, category: 'takaful', categoryIcon: '🤝', title: 'كفالة يتيم', story: 'قررت الأسرة كفالة طفل يتيم من أقاربها حتى يكبر ويعتمد على نفسه.', benefit: 'قال ﷺ: "أنا وكافل اليتيم في الجنة كهاتين."', ruling: 'كل لاعب يدفع سهمين.', effects: [{ target: 'allPlayers', amount: -2 }] },
-  { id: 49, category: 'takaful', categoryIcon: '🤝', title: 'إعادة بناء منزل', story: 'احترق منزل أحد الأقارب، فاجتمع أفراد الأسرة لمساعدته حتى يعود إلى بيته.', benefit: 'تفريج كرب المسلمين من أفضل الأعمال.', ruling: 'صاحب أكبر رصيد يدفع 8 أسهم، وبقية اللاعبين يدفع كل منهم سهمين.', effects: [{ target: 'highestBalance', amount: -8 }, { target: 'allExceptHighestBalance', amount: -2 }] },
-  { id: 50, category: 'takaful', categoryIcon: '🤝', title: 'صندوق الأسرة', story: 'اتفقت الأسرة على إنشاء صندوق مالي للطوارئ، يساهم فيه الجميع ليستفيد منه من يمر بضائقة.', benefit: 'التعاون والتكافل من أسباب استقرار الأسرة وقوتها.', ruling: 'يدفع كل لاعب 3 أسهم، ثم يحصل صاحب أقل رصيد على جميع الأسهم المجموعة.', effects: [{ target: 'allPlayers', amount: -3 }, { target: 'lowestBalancePool', amount: 3 }] }
+  // 💰 التجارة والبركة وإدارة المال
+  { id: 16, category: 'trade', categoryIcon: '💰', title: 'بركة الصدقة', story: 'كنت تحرص على إخراج الصدقة كلما وسّع الله عليك في الرزق، ولم تبخل على الفقراء والمحتاجين.', benefit: 'قال ﷺ: "ما نقص مالٌ من صدقة."', ruling: 'خذ 20 سهمًا من البنك.', effects: [{ target: 'self', amount: 20 }] },
+  { id: 17, category: 'trade', categoryIcon: '💰', title: 'خسارة تجارية', story: 'دخلت تجارة دون دراسة كافية، فتعرضت لخسارة جزء من رأس مالك.', benefit: 'حسن التخطيط والأخذ بالأسباب من أسباب النجاح.', ruling: 'ادفع 15 سهمًا.', effects: [{ target: 'self', amount: -15 }] },
+  { id: 18, category: 'trade', categoryIcon: '💰', title: 'ارتفاع قيمة الأرض', story: 'بعد سنوات، ارتفعت قيمة الأرض التي ورثتها، فأصبحت تساوي أضعاف ثمنها.', benefit: 'من نعم الله أن يبارك للإنسان في ماله.', ruling: 'خذ 25 سهمًا من البنك.', effects: [{ target: 'self', amount: 25 }] },
+  { id: 19, category: 'trade', categoryIcon: '💰', title: 'شريك أمين', story: 'دخلت في شراكة مع تاجر عُرف بالأمانة والصدق، فكان ذلك سببًا في نجاح تجارتكما.', benefit: 'الأمانة والصدق من أسباب البركة في البيع والشراء.', ruling: 'اختر لاعبًا، يحصل كل منكما على 10 أسهم من البنك.', effects: [{ target: 'chosenPlayer', amount: 10, selfAmount: 10 }] },
+  { id: 20, category: 'trade', categoryIcon: '💰', title: 'ادخار حكيم', story: 'لم تنفق مالك كله، بل ادخرت جزءًا منه حتى احتجت إليه في وقت الشدة.', benefit: 'الاعتدال في الإنفاق من صفات المؤمن.', ruling: 'إذا كان رصيدك أقل من 30 سهمًا، خذ 15 سهمًا من البنك. وإذا كان أكثر، خذ 5 أسهم فقط.', effects: [{ target: 'conditionalBalance', threshold: 30, belowAmount: 15, aboveOrEqualAmount: 5 }] },
+  { id: 21, category: 'trade', categoryIcon: '💰', title: 'مشروع خيري', story: 'خصصت جزءًا من مالك لإنشاء مشروع يعود نفعه على الناس ويستمر أثره.', benefit: 'الصدقة الجارية من أفضل ما يتركه المسلم بعد وفاته.', ruling: 'ادفع 10 أسهم الآن، وفي أول دور لك بعد جولتين خذ 20 سهمًا.', effects: [{ target: 'self', amount: -10, deferred: { amount: 20, afterRounds: 2 } }] },
+  { id: 22, category: 'trade', categoryIcon: '💰', title: 'خسارة بسبب الإسراف', story: 'أنفقت أموالًا كثيرة في الكماليات حتى ضاعت عليك فرصة استثمار مربحة.', benefit: 'قال تعالى: ﴿ولا تُسرفوا إنه لا يحب المسرفين﴾', ruling: 'ادفع 15 سهمًا.', effects: [{ target: 'self', amount: -15 }] },
+
+  // 🤝 التكافل الأسري
+  { id: 23, category: 'takaful', categoryIcon: '🤝', title: 'علاج قريب', story: 'احتاج أحد أقاربكم إلى عملية جراحية عاجلة، فتعاونت الأسرة على تحمل تكاليف العلاج.', benefit: 'قال تعالى: ﴿وتعاونوا على البر والتقوى﴾', ruling: 'اختر لاعبين، يدفع كل واحد منهما 5 أسهم.', effects: [{ target: 'chosenPlayers2', amount: -5 }] },
+  { id: 24, category: 'takaful', categoryIcon: '🤝', title: 'كفالة يتيم', story: 'قررت الأسرة كفالة طفل يتيم من أقاربها حتى يكبر ويعتمد على نفسه.', benefit: 'قال ﷺ: "أنا وكافل اليتيم في الجنة كهاتين."', ruling: 'كل لاعب يدفع 3 أسهم.', effects: [{ target: 'allPlayers', amount: -3 }] },
+  { id: 25, category: 'takaful', categoryIcon: '🤝', title: 'صندوق الأسرة', story: 'اتفقت الأسرة على إنشاء صندوق مالي للطوارئ، يساهم فيه الجميع ليستفيد منه من يمر بضائقة.', benefit: 'التعاون والتكافل من أسباب استقرار الأسرة وقوتها.', ruling: 'يدفع كل لاعب 5 أسهم، ثم يحصل صاحب أقل رصيد على جميع الأسهم المجموعة.', effects: [{ target: 'allPlayers', amount: -5 }, { target: 'lowestBalancePool', amount: 5 }] }
 ];
 
 // ---------- نصوص عامة ----------

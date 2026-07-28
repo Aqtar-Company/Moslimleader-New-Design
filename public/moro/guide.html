@@ -84,10 +84,37 @@
   .bg-navy p, .bg-navy li{ color:#c5d1e6; }
   .bg-navy b{ color:var(--gold-soft); }
 
-  .cards-row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin:14px 0 4px; }
-  .cards-row figure{ margin:0; text-align:center; width:82px; }
-  .cards-row img{ width:82px; border-radius:8px; box-shadow:0 6px 14px rgba(0,0,0,.18); }
-  .cards-row figcaption{ margin-top:6px; font-size:.74rem; color:var(--ink-soft); }
+  .stats-row{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:16px 0; }
+  .stat-tile{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px 18px; text-align:center; min-width:88px; box-shadow:0 4px 10px rgba(11,39,67,.08); }
+  .stat-tile .num{ display:block; font-size:1.35rem; font-weight:800; color:var(--navy); }
+  .stat-tile .lbl{ font-size:.72rem; color:var(--ink-soft); font-weight:700; }
+
+  .anatomy-grid{ display:grid; grid-template-columns:1fr; gap:14px; margin:6px 0 4px; }
+  @media (min-width:640px){ .anatomy-grid{ grid-template-columns:1fr 1fr; } }
+  .anatomy-card{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px; text-align:center; }
+  .anatomy-card h4{ margin:0 0 12px; font-size:.95rem; color:var(--navy); }
+  .anatomy-row{ display:flex; align-items:center; justify-content:center; gap:8px; }
+  .anatomy-side{ flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .anatomy-side img{ width:60px; border-radius:8px; box-shadow:0 6px 14px rgba(0,0,0,.18); }
+  .anatomy-side .lbl{ font-size:.68rem; color:var(--ink-soft); font-weight:700; }
+  .anatomy-divider{ flex:0 0 auto; font-size:1.05rem; font-weight:800; color:var(--gold-bright); }
+  .anatomy-caption{ margin-top:12px; font-size:.78rem; color:var(--ink-soft); }
+
+  .case-face,.case-back{
+    width:60px; height:82px; border-radius:8px; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:2px; font-size:.62rem; font-weight:800;
+    text-align:center; padding:4px; box-shadow:0 6px 14px rgba(0,0,0,.18);
+  }
+  .case-face{ background:linear-gradient(160deg,#f6dd8e,#e9c565); color:var(--navy); border:2px solid var(--gold); }
+  .case-back{ background:linear-gradient(160deg,#14563c,#0e3d2a); color:#fff; border:2px solid var(--gold-bright); }
+
+  .note-callout{
+    display:flex; gap:10px; align-items:flex-start; background:rgba(217,169,52,.16);
+    border:1px solid var(--line); border-right:4px solid var(--gold-bright); border-radius:10px;
+    padding:12px 14px; margin-top:14px;
+  }
+  .note-callout .ico{ width:22px; height:22px; flex:0 0 auto; color:var(--gold); margin-top:1px; }
+  .note-callout p{ margin:0; font-size:.88rem; color:var(--ink-soft); }
 
   ul.plain{ margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:10px; }
   ul.plain li{ position:relative; padding-right:22px; }
@@ -121,9 +148,18 @@
     width:36px; height:36px; border-radius:50%; background:var(--navy); color:var(--gold-soft);
     display:grid; place-items:center; font-weight:800; font-size:.76rem; border:2px solid var(--gold-bright);
   }
-  .td-balance{ font-size:.7rem; color:var(--gold-soft); font-weight:700; }
+  .td-balance-label{ font-size:.7rem; color:var(--ink-soft); font-weight:700; }
+  .td-balance-stack{ display:flex; justify-content:center; margin:1px 0; }
+  .td-balance-stack img{
+    width:20px; height:28px; object-fit:cover; border-radius:3px;
+    border:1px solid var(--gold-bright); box-shadow:0 2px 5px rgba(0,0,0,.25);
+  }
+  .td-balance-stack img:not(:first-child){ margin-inline-start:-13px; }
   .td-hand{ display:flex; gap:2px; }
-  .td-hand span{ width:11px; height:16px; background:var(--navy-deep); border:1px solid var(--gold-bright); border-radius:2px; }
+  .td-hand img{
+    width:16px; height:23px; object-fit:cover; border-radius:2px;
+    border:1px solid var(--gold-bright); box-shadow:0 2px 4px rgba(0,0,0,.2);
+  }
   .td-center{ grid-area:c; display:flex; flex-direction:column; align-items:center; gap:6px; }
   .td-case-card{
     width:56px; height:78px; background:linear-gradient(160deg,#14563c,#0e3d2a);
@@ -137,8 +173,8 @@
     border:1px solid var(--gold-bright); box-shadow:0 3px 6px rgba(0,0,0,.3);
   }
   .td-estate img:not(:first-child){ margin-inline-start:-14px; }
-  .td-estate-label{ font-size:.66rem; color:var(--gold-soft); font-weight:700; }
-  .diagram-caption{ text-align:center; font-size:.78rem; color:var(--gold-soft); margin-top:10px; }
+  .td-estate-label{ font-size:.66rem; color:var(--ink-soft); font-weight:700; }
+  .diagram-caption{ text-align:center; font-size:.78rem; color:var(--ink-soft); margin-top:10px; }
 
   .faq{ display:flex; flex-direction:column; gap:12px; }
   .faq-item{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
@@ -180,13 +216,49 @@
           <span class="badge"><svg viewBox="0 0 44 44"><path d="M22 3 L26.5 15.5 L40 15.5 L29 23.5 L33 36 L22 28 L11 36 L15 23.5 L4 15.5 L17.5 15.5 Z" fill="#d9a934" stroke="#0b2743" stroke-width="1.2"/></svg><span>1</span></span>
           <h2>مكوّنات اللعبة</h2>
         </div>
-        <p>اللعبة 100 كارت: <b>76 كارت وارث</b> — كل كارت وشّه اسم وارث، وضهره قيمة <span class="gloss">سهم</span> (وحدة العملة داخل اللعبة) — و<b>24 كارت قضية</b> — وشّها حالة ميراث حقيقية، وضهرها فيه حاجتين مع بعض: <b>حل القضية</b> (مين ياخد كام) و<b>كارت الحكم</b> (درس قصير له تأثير على رصيدك).</p>
-        <p><b>مهم:</b> وش الكارت وضهره وظيفتان منفصلتان تمامًا، ولا علاقة بينهما خالص. وأنت بتختار وارثك في الجولة، بتبص للوش (اسم الوارث) بس. وبعد الحساب — وقت ما تاخد نصيبك أو تدفع خصم أو مكافأة من كارت الحكم — بتستخدم الضهر (قيمة السهم) بس.</p>
-        <div class="cards-row">
-          <figure><img src="/moro/cards/son.png" alt="كارت ابن" /><figcaption>مثال: وش وارث</figcaption></figure>
-          <figure><img src="/moro/cards/daughter.png" alt="كارت بنت" /></figure>
-          <figure><img src="/moro/cards/mother.png" alt="كارت أم" /></figure>
-          <figure><img src="/moro/cards/estate-10.png" alt="كارت قيمة سهم" /><figcaption>مثال: ضهر بقيمة سهم</figcaption></figure>
+        <div class="stats-row">
+          <div class="stat-tile"><span class="num">100</span><span class="lbl">كارت إجمالاً</span></div>
+          <div class="stat-tile"><span class="num">76</span><span class="lbl">كارت وريث</span></div>
+          <div class="stat-tile"><span class="num">24</span><span class="lbl">كارت قضية</span></div>
+        </div>
+
+        <div class="anatomy-grid">
+          <div class="anatomy-card">
+            <h4>كارت الوريث</h4>
+            <div class="anatomy-row">
+              <div class="anatomy-side">
+                <img src="/moro/cards/son.png" alt="وش كارت وريث" />
+                <span class="lbl">الوش: اسم الوريث</span>
+              </div>
+              <div class="anatomy-divider">≠</div>
+              <div class="anatomy-side">
+                <img src="/moro/cards/estate-10.png" alt="ضهر كارت وريث" />
+                <span class="lbl">الضهر: قيمة <span class="gloss">سهم</span></span>
+              </div>
+            </div>
+            <p class="anatomy-caption">وش الكارت بتختاره كوريث في الجولة، وضهره (قيمة السهم) بتستخدمه بعدين كعملة بس.</p>
+          </div>
+
+          <div class="anatomy-card">
+            <h4>كارت القضية</h4>
+            <div class="anatomy-row">
+              <div class="anatomy-side">
+                <div class="case-face">وصف الحالة</div>
+                <span class="lbl">الوش: القضية</span>
+              </div>
+              <div class="anatomy-divider">≠</div>
+              <div class="anatomy-side">
+                <div class="case-back"><span>حل القضية</span><span>+</span><span>كارت الحكم</span></div>
+                <span class="lbl">الضهر: حاجتان مع بعض</span>
+              </div>
+            </div>
+            <p class="anatomy-caption">وش القضية بتقروه وانتوا بتلعبوا، وضهرها فيه حاجتان: <b>حل القضية</b> (مين ياخد كام في نفس الحالة دي)، و<b>كارت الحكم</b> — درس تعليمي عام في أحكام المواريث، مالوش أي علاقة بموضوع القضية اللي على الوش، وله تأثير مستقل على رصيدك.</p>
+          </div>
+        </div>
+
+        <div class="note-callout">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 9v4M12 17h.01M12 3l9 16H3z"/></svg>
+          <p><b>مهم:</b> وش الكارت وضهره وظيفتان منفصلتان تمامًا، ولا علاقة بينهما خالص. وقت الاختيار في الجولة بتبص للوش بس، وبعد الحساب (نصيبك أو خصم/مكافأة كارت الحكم) بتستخدم الضهر بس.</p>
         </div>
       </section>
 
@@ -196,15 +268,25 @@
           <h2>الإعداد قبل أول جولة</h2>
         </div>
         <ul class="plain">
-          <li>عدد اللاعبين: من 2 إلى 4.</li>
-          <li>وزّعوا لكل لاعب يدًا من <b>4 كروت وارث</b>.</li>
+          <li>عدد اللاعبين: من 2 إلى 5 — وأفضل تجربة للاستمتاع من 3 إلى 4.</li>
+          <li>وزّعوا لكل لاعب يدًا من <b>4 كروت وريث</b>.</li>
           <li>اديوا كل لاعب رصيد ابتدائي قدره <b>20 سهم</b> (من كروت الرزمة الاحتياطية).</li>
           <li>رتّبوا رزمة القضايا في نص الطاولة، بحيث يظهر الوش (القضية) بس.</li>
         </ul>
 
         <div class="table-diagram">
-          <div class="td-player p1"><div class="td-avatar">لاعب 1</div><div class="td-balance">💰 رصيد</div><div class="td-hand"><span></span><span></span><span></span><span></span></div></div>
-          <div class="td-player p2"><div class="td-avatar">لاعب 2</div><div class="td-balance">💰 رصيد</div><div class="td-hand"><span></span><span></span><span></span><span></span></div></div>
+          <div class="td-player p1">
+            <div class="td-avatar">لاعب 1</div>
+            <div class="td-balance-label">رصيد</div>
+            <div class="td-balance-stack"><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /></div>
+            <div class="td-hand"><img src="/moro/cards/son.png" alt="" /><img src="/moro/cards/daughter.png" alt="" /><img src="/moro/cards/mother.png" alt="" /><img src="/moro/cards/father.png" alt="" /></div>
+          </div>
+          <div class="td-player p2">
+            <div class="td-avatar">لاعب 2</div>
+            <div class="td-balance-label">رصيد</div>
+            <div class="td-balance-stack"><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /></div>
+            <div class="td-hand"><img src="/moro/cards/wife.png" alt="" /><img src="/moro/cards/brother.png" alt="" /><img src="/moro/cards/sister.png" alt="" /><img src="/moro/cards/grandfather.png" alt="" /></div>
+          </div>
           <div class="td-center">
             <div class="td-case-card">القضية</div>
             <div class="td-estate">
@@ -214,9 +296,14 @@
             </div>
             <div class="td-estate-label">قيمة التركة</div>
           </div>
-          <div class="td-player p3"><div class="td-avatar">لاعب 3</div><div class="td-balance">💰 رصيد</div><div class="td-hand"><span></span><span></span><span></span><span></span></div></div>
+          <div class="td-player p3">
+            <div class="td-avatar">لاعب 3</div>
+            <div class="td-balance-label">رصيد</div>
+            <div class="td-balance-stack"><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /></div>
+            <div class="td-hand"><img src="/moro/cards/uncle.png" alt="" /><img src="/moro/cards/grandmother.png" alt="" /><img src="/moro/cards/half-brother.png" alt="" /><img src="/moro/cards/half-sister.png" alt="" /></div>
+          </div>
         </div>
-        <p class="diagram-caption">رسم توضيحي من أعلى الطاولة (مثال بـ3 لاعبين): كل لاعب معاه رصيده من كروت السهم ويد من 4 كروت وارث قدامه، وفي النص كارت القضية وجنبه كروت النقود اللي بتمثّل قيمة التركة.</p>
+        <p class="diagram-caption">رسم توضيحي من أعلى الطاولة (مثال بـ3 لاعبين): كل لاعب معاه رصيده من كروت السهم ويد من 4 كروت وريث قدامه، وفي النص كارت القضية وجنبه كروت النقود اللي بتمثّل قيمة التركة.</p>
       </section>
 
       <section class="section bg-navy">
@@ -226,10 +313,10 @@
         </div>
         <ol class="steps">
           <li><span class="num">1</span><div><b>اقلبوا قضية جديدة</b>هتلاقوا معاها وصف الحالة وقيمة التركة.</div></li>
-          <li><span class="num">2</span><div><b>اختاروا سرًّا</b>كل لاعب يختار من يده الوارث اللي يظن إنه صاحب أكبر نصيب في القضية دي، من غير ما يشوف اختيار الباقي.</div></li>
-          <li><span class="num">3</span><div><b>اكشفوا مع بعض</b>كل الاختيارات تتكشف في نفس اللحظة.</div></li>
+          <li><span class="num">2</span><div><b>اختاروا سرًّا</b>كل لاعب يختار من يده الوريث اللي يظن إنه صاحب أكبر نصيب في القضية دي، من غير ما يشوف اختيار الباقي.</div></li>
+          <li><span class="num">3</span><div><b>اكشفوا مع بعض</b>كل الاختيارات تتكشف في نفس اللحظة. لو لاعبين اختاروا نفس الوريث الفردي (زي الزوج أو الأب أو الأم أو الجد) في نفس الجولة، بتدّي الأولوية لسرعة الاختيار: الأسرع (الأسبق في ترتيب الدور) بس هو اللي ياخد النصيب.</div></li>
           <li><span class="num">4</span><div><b>احسبوا وادفعوا</b>صاحب الاختيار الصح ياخد المبلغ فعليًا من كروت السهم، ومين اختار غلط يسجّل صفر الجولة دي.</div></li>
-          <li><span class="num">5</span><div><b>اقلبوا الحكم</b>اقلبوا القضية على ضهرها وطبّقوا أثره — زيادة أو خصم سهم — على رصيد اللاعب المعني.</div></li>
+          <li><span class="num">5</span><div><b>اقلبوا الحكم</b>اقلبوا القضية على ضهرها، هتلاقوا "كارت الحكم" — درس تعليمي عام في أحكام المواريث مالوش علاقة بموضوع القضية دي بالذات — وطبّقوا أثره: زيادة أو خصم سهم على رصيد اللاعب المعني.</div></li>
           <li><span class="num">6</span><div><b>جدّدوا يدكم</b>كل لاعب يسحب كارت جديد يعوّض اللي لعبه، عشان ترجع يده لـ4 كروت.</div></li>
         </ol>
       </section>
@@ -242,11 +329,11 @@
         <div class="grid2">
           <div class="mini-card">
             <h3><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l2.2 5.8L20 9l-4.6 4 1.4 6-4.8-3.6L7.2 19l1.4-6L4 9l5.8-.2z"/></svg>بطاقة "وارث"</h3>
-            <p>كارت مفتوح بلا اسم محدد — يمثّل أي وارث تختاره في أي قضية، ولا يُحجب أبدًا.</p>
+            <p>كارت مفتوح بلا اسم محدد — يمثّل أي وريث تختاره في أي قضية، ولا يُحجب أبدًا.</p>
           </div>
           <div class="mini-card">
-            <h3><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="9" r="4"/><circle cx="17" cy="9" r="4"/><path d="M9 20v-3M17 20v-3"/></svg>تعارض الوارث الفردي</h3>
-            <p>ورثة زي الأب والأم والجد والزوج مايتكررش وجودهم فقهيًا. لو اتنين لاعبين اختاروا نفس الوارث، الأسرع في الدور بس ياخد نصيبه.</p>
+            <h3><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="9" r="4"/><circle cx="17" cy="9" r="4"/><path d="M9 20v-3M17 20v-3"/></svg>تعارض الوريث الفردي</h3>
+            <p>ورثة زي الأب والأم والجد والزوج مايتكررش وجودهم فقهيًا. لو اتنين لاعبين اختاروا نفس الوريث، الأسرع في الدور بس ياخد نصيبه.</p>
           </div>
           <div class="mini-card">
             <h3><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 10a8 8 0 0114-5M20 14a8 8 0 01-14 5M18 3v6h-6M6 21v-6h6"/></svg>الاستبدال</h3>
@@ -279,11 +366,11 @@
         <div class="faq">
           <div class="faq-item">
             <div class="q"><span class="qm">؟</span>إيه الفرق بين وش الكارت وضهره بالظبط؟</div>
-            <div class="a">الوش = هوية وارث، بيستخدم وأنت بتختار في الجولة. الضهر = قيمة سهم، بيستخدم بعد كده كعملة للحساب والدفع. مفيش أي علاقة بين الاتنين — كارت "ابن" ممكن يبقى ضهره أي قيمة.</div>
+            <div class="a">الوش = هوية وريث، بيستخدم وأنت بتختار في الجولة. الضهر = قيمة سهم، بيستخدم بعد كده كعملة للحساب والدفع. مفيش أي علاقة بين الاتنين — كارت "ابن" ممكن يبقى ضهره أي قيمة.</div>
           </div>
           <div class="faq-item">
             <div class="q"><span class="qm">؟</span>كارت "وارث" ده إيه بالظبط؟</div>
-            <div class="a">كارت مفتوح بلا اسم وارث محدد — تقدر تلعبه كإجابة لأي وارث مسموح في القضية الحالية. زي بطاقة "كله يصلح"، ولا يُحجب أبدًا.</div>
+            <div class="a">كارت مفتوح بلا اسم وريث محدد — تقدر تلعبه كإجابة لأي وريث مسموح في القضية الحالية. زي بطاقة "كله يصلح"، ولا يُحجب أبدًا.</div>
           </div>
           <div class="faq-item">
             <div class="q"><span class="qm">؟</span>لو مفيش عندي كارت مناسب للقضية، أعمل إيه؟</div>
@@ -291,15 +378,15 @@
           </div>
           <div class="faq-item">
             <div class="q"><span class="qm">؟</span>كارت الحكم غير حل القضية؟</div>
-            <div class="a">أيوه، حاجتان منفصلتان على نفس الضهر: حل القضية بيحدد مين كسب نصيبه من التركة، وكارت الحكم بيدي أثر إضافي (زيادة أو خصم سهم) بمعزل تمامًا عن دقة حل القضية.</div>
+            <div class="a">أيوه، حاجتان منفصلتان تمامًا على نفس الضهر: حل القضية بيحدد مين كسب نصيبه من التركة في نفس الحالة اللي على الوش، أما كارت الحكم فدرس تعليمي عام في أحكام المواريث بشكل عام — مالوش أي علاقة بموضوع القضية دي — وله أثر إضافي (زيادة أو خصم سهم) بمعزل تمامًا عن دقة حل القضية.</div>
           </div>
           <div class="faq-item">
-            <div class="q"><span class="qm">؟</span>لو اتنين لاعبين اختاروا نفس الوارث (زي "الأب") في نفس الجولة؟</div>
+            <div class="q"><span class="qm">؟</span>لو اتنين لاعبين اختاروا نفس الوريث (زي "الأب") في نفس الجولة؟</div>
             <div class="a">بعض الورثة (الأب، الأم، الجد، الزوج) ميتكررش وجودهم فقهيًا. لو اتنين لعبوه، الأسرع في ترتيب الدور بس ياخد النصيب، والتاني يُعتبر "سبقه لاعب" (صفر، مش غلط).</div>
           </div>
           <div class="faq-item">
             <div class="q"><span class="qm">؟</span>ممكن كل التركة متتوزعش بالكامل؟</div>
-            <div class="a">لأ — كل قضايا اللعبة الـ24 محسوبة عشان توزَّع التركة كاملة على مستحقيها، حتى في القضايا اللي مفيهاش عصبة (وارث ياخد الباقي)، بيترد الباقي على أصحاب الفروض بنفس نسبة فروضهم.</div>
+            <div class="a">لأ — كل قضايا اللعبة الـ24 محسوبة عشان توزَّع التركة كاملة على مستحقيها، حتى في القضايا اللي مفيهاش عصبة (وريث ياخد الباقي)، بيترد الباقي على أصحاب الفروض بنفس نسبة فروضهم.</div>
           </div>
         </div>
       </section>

@@ -102,18 +102,18 @@
 
   .note-callout{
     display:flex; gap:10px; align-items:flex-start; background:rgba(217,169,52,.16);
-    border:1px solid var(--line); border-right:4px solid var(--gold-bright); border-radius:10px;
+    border:1px solid var(--line); border-inline-start:4px solid var(--gold-bright); border-radius:10px;
     padding:12px 14px; margin-top:14px;
   }
   .note-callout .ico{ width:22px; height:22px; flex:0 0 auto; color:var(--gold); margin-top:1px; }
   .note-callout p{ margin:0; font-size:.88rem; color:var(--ink-soft); }
 
   ul.plain{ margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:10px; }
-  ul.plain li{ position:relative; padding-right:22px; }
-  ul.plain li::before{ content:"◆"; position:absolute; right:0; top:.2em; font-size:.6em; color:var(--gold-bright); }
+  ul.plain li{ position:relative; padding-inline-start:22px; }
+  ul.plain li::before{ content:"◆"; position:absolute; inset-inline-start:0; top:.2em; font-size:.6em; color:var(--gold-bright); }
 
   ol.steps{ margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:0; position:relative; }
-  ol.steps::before{ content:""; position:absolute; top:6px; bottom:6px; right:17px; width:2px; background:linear-gradient(var(--gold-bright),rgba(217,169,52,.15)); opacity:.55; }
+  ol.steps::before{ content:""; position:absolute; top:6px; bottom:6px; inset-inline-start:17px; width:2px; background:linear-gradient(var(--gold-bright),rgba(217,169,52,.15)); opacity:.55; }
   ol.steps li{ position:relative; display:flex; gap:14px; padding:9px 0; align-items:flex-start; }
   ol.steps .num{
     flex:0 0 auto; width:36px; height:36px; border-radius:50%; z-index:1;
@@ -178,10 +178,19 @@
     flex:0 0 auto; width:22px; height:22px; border-radius:50%; background:var(--gold-bright);
     color:var(--navy); display:grid; place-items:center; font-size:.8rem; font-weight:900;
   }
-  .faq-item .a{ font-size:.92rem; color:var(--ink-soft); padding-right:30px; }
+  .faq-item .a{ font-size:.92rem; color:var(--ink-soft); padding-inline-start:30px; }
 
   footer{ text-align:center; margin-top:24px; padding:0 10px; color:var(--ink-soft); font-size:.85rem; }
   .back-btn{ display:inline-block; margin-top:14px; padding:10px 22px; background:var(--navy); color:#fff; border-radius:999px; text-decoration:none; font-weight:700; font-size:.9rem; }
+
+  .lang-switch{ text-align:center; margin-bottom:6px; }
+  .lang-btn{
+    background:var(--navy); color:#fff; border:1px solid var(--gold-bright); border-radius:999px;
+    padding:6px 18px; font-size:.8rem; font-weight:700; cursor:pointer; font-family:inherit;
+    box-shadow:0 4px 10px rgba(0,0,0,.15);
+  }
+  .lang-btn:hover{ background:var(--navy-deep); }
+  [hidden]{ display:none !important; }
 </style>
 </head>
 <body>
@@ -191,7 +200,11 @@
     <div class="corner bl"><svg viewBox="0 0 24 24"><path d="M12 2 L14 9 L21 9 L15.5 13.5 L17.5 21 L12 16.5 L6.5 21 L8.5 13.5 L3 9 L10 9 Z" fill="none" stroke="#d9a934" stroke-width="1.4"/></svg></div>
     <div class="corner br"><svg viewBox="0 0 24 24"><path d="M12 2 L14 9 L21 9 L15.5 13.5 L17.5 21 L12 16.5 L6.5 21 L8.5 13.5 L3 9 L10 9 Z" fill="none" stroke="#d9a934" stroke-width="1.4"/></svg></div>
 
-    <div class="content">
+    <div class="lang-switch">
+      <button id="lang-toggle" class="lang-btn" type="button" onclick="moroToggleLang()">English</button>
+    </div>
+
+    <div class="content" id="content-ar" lang="ar" dir="rtl">
 
       <header class="hero">
         <div class="hero-fan">
@@ -202,7 +215,7 @@
         </div>
         <img class="hero-logo" src="/moro/logo.png" alt="شعار مورو" />
         <h1>مورو — تعليمات اللعبة</h1>
-        <p>لعبة تعليمية عن قسمة الميراث الشرعي (<span class="gloss">الفرائض</span>: طريقة توزيع تركة المتوفى على ورثته حسب الشريعة الإسلامية) — سهلة التعلّم، ممتعة في اللعب</p>
+        <p>لعبة تعليمية لتوزيع الميراث الشرعي (<span class="gloss">الفرائض</span>: طريقة تقسيم تركة المتوفى على ورثته وفق الشريعة الإسلامية) — سهلة التعلّم، ممتعة عند اللعب.</p>
         <hr class="hr" />
       </header>
 
@@ -212,48 +225,48 @@
           <h2>مكوّنات اللعبة</h2>
         </div>
         <div class="stats-row">
-          <div class="stat-tile"><span class="num">100</span><span class="lbl">كارت إجمالاً</span></div>
-          <div class="stat-tile"><span class="num">76</span><span class="lbl">كارت وريث</span></div>
-          <div class="stat-tile"><span class="num">24</span><span class="lbl">كارت قضية</span></div>
+          <div class="stat-tile"><span class="num">100</span><span class="lbl">بطاقة إجمالًا</span></div>
+          <div class="stat-tile"><span class="num">76</span><span class="lbl">بطاقة وريث</span></div>
+          <div class="stat-tile"><span class="num">24</span><span class="lbl">بطاقة قضية</span></div>
         </div>
 
         <div class="anatomy-grid">
           <div class="anatomy-card">
-            <h4>كارت الوريث</h4>
+            <h4>بطاقة الوريث</h4>
             <div class="anatomy-row">
               <div class="anatomy-side">
-                <img src="/moro/cards/son.png" alt="وش كارت وريث" />
-                <span class="lbl">الوش: اسم الوريث</span>
+                <img src="/moro/cards/son.png" alt="وجه بطاقة وريث" />
+                <span class="lbl">الوجه (الوش): اسم الوريث</span>
               </div>
               <div class="anatomy-divider">≠</div>
               <div class="anatomy-side">
-                <img src="/moro/cards/estate-10.png" alt="ضهر كارت وريث" />
-                <span class="lbl">الضهر: قيمة <span class="gloss">سهم</span></span>
+                <img src="/moro/cards/estate-10.png" alt="ظهر بطاقة وريث" />
+                <span class="lbl">الظهر (الضهر): قيمة <span class="gloss">سهم</span></span>
               </div>
             </div>
-            <p class="anatomy-caption">وش الكارت بتختاره كوريث في الجولة، وضهره (قيمة السهم) بتستخدمه بعدين كعملة بس.</p>
+            <p class="anatomy-caption">تختار الوجه لتمثيل الوريث في الجولة، وتستخدم الظهر (قيمة السهم) بعد ذلك عملةً فقط.</p>
           </div>
 
           <div class="anatomy-card">
-            <h4>كارت القضية</h4>
+            <h4>بطاقة القضية</h4>
             <div class="anatomy-row">
               <div class="anatomy-side">
-                <img src="/moro/cards/Kadia.png" alt="وش كارت القضية" />
-                <span class="lbl">الوش: القضية</span>
+                <img src="/moro/cards/Kadia.png" alt="وجه بطاقة القضية" />
+                <span class="lbl">الوجه: القضية</span>
               </div>
               <div class="anatomy-divider">≠</div>
               <div class="anatomy-side">
-                <img src="/moro/cards/Hokm.png" alt="ضهر كارت القضية: حل القضية وكارت الحكم" />
-                <span class="lbl">الضهر: حل القضية + كارت الحكم</span>
+                <img src="/moro/cards/Hokm.png" alt="ظهر بطاقة القضية: حل القضية وكارت الحكم" />
+                <span class="lbl">الظهر: حل القضية + بطاقة الحكم</span>
               </div>
             </div>
-            <p class="anatomy-caption">وش القضية بتقروه وانتوا بتلعبوا، وضهرها فيه حاجتان: <b>حل القضية</b> (مين ياخد كام في نفس الحالة دي)، و<b>كارت الحكم</b> — درس تعليمي عام في أحكام المواريث، مالوش أي علاقة بموضوع القضية اللي على الوش، وله تأثير مستقل على رصيدك.</p>
+            <p class="anatomy-caption">تُقرأ وجه القضية أثناء اللعب، وفي ظهرها أمران: <b>حل القضية</b> (بيان نصيب كل وريث في هذه الحالة)، و<b>بطاقة الحكم</b> — درس تعليمي عام في أحكام المواريث، لا علاقة له بموضوع القضية التي على الوجه، وله تأثير مستقل على رصيدك.</p>
           </div>
         </div>
 
         <div class="note-callout">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 9v4M12 17h.01M12 3l9 16H3z"/></svg>
-          <p><b>مهم:</b> وش الكارت وضهره وظيفتان منفصلتان تمامًا، ولا علاقة بينهما خالص. وقت الاختيار في الجولة بتبص للوش بس، وبعد الحساب (نصيبك أو خصم/مكافأة كارت الحكم) بتستخدم الضهر بس.</p>
+          <p><b>مهم:</b> وجه البطاقة وظهرها وظيفتان منفصلتان تمامًا، لا علاقة بينهما إطلاقًا. فعند الاختيار في الجولة تنظر إلى الوجه فقط، وبعد الحساب (نصيبك، أو خصم/مكافأة بطاقة الحكم) تستخدم الظهر فقط.</p>
         </div>
       </section>
 
@@ -263,10 +276,10 @@
           <h2>الإعداد قبل أول جولة</h2>
         </div>
         <ul class="plain">
-          <li>عدد اللاعبين: من 2 إلى 5 — وأفضل تجربة للاستمتاع من 3 إلى 4.</li>
-          <li>وزّعوا لكل لاعب يدًا من <b>4 كروت وريث</b>.</li>
-          <li>اديوا كل لاعب رصيد ابتدائي قدره <b>20 سهم</b> (من كروت الرزمة الاحتياطية).</li>
-          <li>رتّبوا رزمة القضايا في نص الطاولة، بحيث يظهر الوش (القضية) بس.</li>
+          <li>عدد اللاعبين: من 2 إلى 5، وأفضل تجربة للمتعة من 3 إلى 4 لاعبين.</li>
+          <li>وزّعوا لكل لاعب يدًا من <b>4 بطاقات وريث (كروت)</b>.</li>
+          <li>امنحوا كل لاعب رصيدًا ابتدائيًا مقداره <b>20 سهمًا</b> (من بطاقات الرزمة الاحتياطية).</li>
+          <li>رتّبوا رزمة القضايا في منتصف الطاولة، بحيث يظهر الوجه (القضية) فقط.</li>
         </ul>
 
         <div class="table-diagram">
@@ -298,21 +311,21 @@
             <div class="td-hand"><img src="/moro/cards/uncle.png" alt="" /><img src="/moro/cards/grandmother.png" alt="" /><img src="/moro/cards/half-brother.png" alt="" /><img src="/moro/cards/half-sister.png" alt="" /></div>
           </div>
         </div>
-        <p class="diagram-caption">رسم توضيحي من أعلى الطاولة (مثال بـ3 لاعبين): كل لاعب معاه رصيده من كروت السهم ويد من 4 كروت وريث قدامه، وفي النص كارت القضية وجنبه كروت النقود اللي بتمثّل قيمة التركة.</p>
+        <p class="diagram-caption">رسم توضيحي لأعلى الطاولة (مثال بثلاثة لاعبين): يحتفظ كل لاعب برصيده من بطاقات السهم، وبيد من 4 بطاقات وريث أمامه، وفي المنتصف بطاقة القضية بجانب بطاقات النقود التي تمثّل قيمة التركة.</p>
       </section>
 
       <section class="section bg-navy">
         <div class="section-head">
           <span class="badge"><svg viewBox="0 0 44 44"><path d="M22 3 L26.5 15.5 L40 15.5 L29 23.5 L33 36 L22 28 L11 36 L15 23.5 L4 15.5 L17.5 15.5 Z" fill="#d9a934" stroke="#0b2743" stroke-width="1.2"/></svg><span>3</span></span>
-          <h2>طريقة اللعب — 3 جولات ثابتة</h2>
+          <h2>طريقة اللعب — ثلاث جولات ثابتة</h2>
         </div>
         <ol class="steps">
-          <li><span class="num">1</span><div><b>اقلبوا قضية جديدة</b>هتلاقوا معاها وصف الحالة وقيمة التركة.</div></li>
-          <li><span class="num">2</span><div><b>اختاروا سرًّا</b>كل لاعب يختار من يده الوريث اللي يظن إنه صاحب أكبر نصيب في القضية دي، من غير ما يشوف اختيار الباقي.</div></li>
-          <li><span class="num">3</span><div><b>اكشفوا مع بعض</b>كل الاختيارات تتكشف في نفس اللحظة. لو لاعبين اختاروا نفس الوريث الفردي (زي الزوج أو الأب أو الأم أو الجد) في نفس الجولة، بتدّي الأولوية لسرعة الاختيار: الأسرع (الأسبق في ترتيب الدور) بس هو اللي ياخد النصيب.</div></li>
-          <li><span class="num">4</span><div><b>احسبوا وادفعوا</b>صاحب الاختيار الصح ياخد المبلغ فعليًا من كروت السهم، ومين اختار غلط يسجّل صفر الجولة دي.</div></li>
-          <li><span class="num">5</span><div><b>اقلبوا الحكم</b>اقلبوا القضية على ضهرها، هتلاقوا "كارت الحكم" — درس تعليمي عام في أحكام المواريث مالوش علاقة بموضوع القضية دي بالذات — وطبّقوا أثره: زيادة أو خصم سهم على رصيد اللاعب المعني.</div></li>
-          <li><span class="num">6</span><div><b>جدّدوا يدكم</b>كل لاعب يسحب كارت جديد يعوّض اللي لعبه، عشان ترجع يده لـ4 كروت.</div></li>
+          <li><span class="num">1</span><div><b>افتحوا قضية جديدة</b>ستجدون معها وصف الحالة وقيمة التركة.</div></li>
+          <li><span class="num">2</span><div><b>اختاروا سرًّا</b>يختار كل لاعب من يده الوريث الذي يظن أنه صاحب أكبر نصيب في هذه القضية، دون أن يرى اختيار البقية.</div></li>
+          <li><span class="num">3</span><div><b>اكشفوا معًا</b>تُكشف جميع الاختيارات في اللحظة نفسها. وإذا اختار لاعبان الوريث الفردي نفسه (كالزوج أو الأب أو الأم أو الجد) في الجولة نفسها، فالأولوية لسرعة الاختيار: الأسرع (الأسبق في ترتيب الدور) هو من يحصل على النصيب.</div></li>
+          <li><span class="num">4</span><div><b>احسبوا وادفعوا</b>يأخذ صاحب الاختيار الصحيح المبلغ فعليًا من بطاقات السهم، ومن اختار خطأً يسجّل صفرًا في هذه الجولة.</div></li>
+          <li><span class="num">5</span><div><b>اقلبوا الحكم</b>اقلبوا بطاقة القضية على ظهرها، فتجدون "بطاقة الحكم" — درس تعليمي عام في أحكام المواريث لا علاقة له بهذه القضية تحديدًا — وطبّقوا أثره: زيادة أو خصم سهم على رصيد اللاعب المعني.</div></li>
+          <li><span class="num">6</span><div><b>جدّدوا يدكم</b>يسحب كل لاعب بطاقة جديدة بدل التي لعبها، لتعود يده إلى 4 بطاقات.</div></li>
         </ol>
       </section>
 
@@ -323,23 +336,23 @@
         </div>
         <div class="grid2">
           <div class="mini-card mini-card-img">
-            <img src="/moro/cards/heir-generic.png" alt="كارت وارث" />
+            <img src="/moro/cards/heir-generic.png" alt="بطاقة وارث" />
             <div class="mini-card-body">
               <h3>بطاقة "وارث"</h3>
-              <p>كارت مفتوح بلا اسم محدد — يمثّل أي وريث تختاره في أي قضية، ولا يُحجب أبدًا.</p>
+              <p>بطاقة مفتوحة بلا اسم محدد — تمثّل أي وريث تختاره في أي قضية، ولا تُحجب (تُلغى) أبدًا.</p>
             </div>
           </div>
           <div class="mini-card">
             <h3><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="9" r="4"/><circle cx="17" cy="9" r="4"/><path d="M9 20v-3M17 20v-3"/></svg>تعارض الوريث الفردي</h3>
-            <p>ورثة زي الأب والأم والجد والزوج مايتكررش وجودهم فقهيًا. لو اتنين لاعبين اختاروا نفس الوريث، الأسرع في الدور بس ياخد نصيبه.</p>
+            <p>بعض الورثة، مثل الأب والأم والجد والزوج، لا يمكن أن يتكرر وجودهم شرعًا للمتوفى نفسه. فإذا اختار لاعبان الوريث نفسه، يحصل على النصيب الأسرع في الدور فقط.</p>
           </div>
           <div class="mini-card">
             <h3><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 10a8 8 0 0114-5M20 14a8 8 0 01-14 5M18 3v6h-6M6 21v-6h6"/></svg>الاستبدال</h3>
-            <p>لو كارتك مش مناسب للقضية، بدّله بكارت جديد من الرزمة — بس هتاخد صفر في نصيب الجولة دي.</p>
+            <p>إن لم تكن بطاقتك مناسبة للقضية، يمكنك استبدالها ببطاقة جديدة من الرزمة — لكنك ستسجّل صفرًا في نصيب هذه الجولة.</p>
           </div>
           <div class="mini-card">
-            <h3><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 12h6"/></svg>اليد الفاضية</h3>
-            <p>لو كل كروتك مش مناسبة، عندك خياران: <b>ادفع 5 سهم</b> من رصيدك وبدّل كارت بكارت جديد من الرزمة فورًا (يمكن يبقى مناسب)، أو <b>حط أي كارت</b> مجانًا (تسجّل صفر الجولة دي بلا خصم). في الحالتين، هتاخد كارت بديل في الدور الجاي زي باقي اللاعبين عشان ترجع يدك لـ4 كروت.</p>
+            <h3><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 12h6"/></svg>اليد الفارغة (الفاضية)</h3>
+            <p>إذا لم تكن أيٌّ من بطاقاتك مناسبة، فأمامك خياران: أن <b>تدفع 5 أسهم</b> من رصيدك وتستبدل بطاقة واحدة فورًا ببطاقة جديدة من الرزمة (وقد تصلح فتلعب بها هذه الجولة)، أو أن <b>تضع أي بطاقة</b> مجانًا (فتسجّل صفرًا في هذه الجولة دون أي خصم). وفي الحالتين تسحب بطاقة بديلة في الدور التالي كبقية اللاعبين، لتعود يدك إلى 4 بطاقات.</p>
           </div>
         </div>
       </section>
@@ -350,9 +363,9 @@
           <h2>النهاية والفوز</h2>
         </div>
         <ul class="plain">
-          <li>المباراة تنتهي تلقائيًا بعد الجولة الثالثة.</li>
-          <li>الفائز: صاحب أعلى رصيد سهم.</li>
-          <li>لو اتنين بنفس الرصيد، يتعتبروا فايزين مع بعض.</li>
+          <li>تنتهي المباراة تلقائيًا بعد الجولة الثالثة.</li>
+          <li>الفائز: صاحب أعلى رصيد من الأسهم.</li>
+          <li>إذا تساوى لاعبان في الرصيد، يُعتبَران فائزَين معًا.</li>
         </ul>
       </section>
 
@@ -363,38 +376,260 @@
         </div>
         <div class="faq">
           <div class="faq-item">
-            <div class="q"><span class="qm">؟</span>إيه الفرق بين وش الكارت وضهره بالظبط؟</div>
-            <div class="a">الوش = هوية وريث، بيستخدم وأنت بتختار في الجولة. الضهر = قيمة سهم، بيستخدم بعد كده كعملة للحساب والدفع. مفيش أي علاقة بين الاتنين — كارت "ابن" ممكن يبقى ضهره أي قيمة.</div>
+            <div class="q"><span class="qm">؟</span>ما الفرق بين وجه البطاقة وظهرها بالضبط؟</div>
+            <div class="a">الوجه هو هوية الوريث، وتستخدمه عند الاختيار في الجولة. أما الظهر فهو قيمة السهم، وتستخدمه بعد ذلك عملةً للحساب والدفع. لا علاقة بين الاثنين إطلاقًا — فبطاقة "ابن" قد يكون ظهرها بأي قيمة.</div>
           </div>
           <div class="faq-item">
-            <div class="q"><span class="qm">؟</span>كارت "وارث" ده إيه بالظبط؟</div>
-            <div class="a">كارت مفتوح بلا اسم وريث محدد — تقدر تلعبه كإجابة لأي وريث مسموح في القضية الحالية. زي بطاقة "كله يصلح"، ولا يُحجب أبدًا.</div>
+            <div class="q"><span class="qm">؟</span>ما بطاقة "وارث" بالضبط؟</div>
+            <div class="a">بطاقة مفتوحة بلا اسم وريث محدد — يمكنك لعبها إجابةً عن أي وريث مسموح به في القضية الحالية. تشبه بطاقة "الكل يصلح" (الجوكر)، ولا تُحجب أبدًا.</div>
           </div>
           <div class="faq-item">
-            <div class="q"><span class="qm">؟</span>لو مفيش عندي كارت مناسب للقضية، أعمل إيه؟</div>
-            <div class="a">لو عندك كارت واحد بس مش مناسب، تقدر تستبدله بكارت جديد من الرزمة (بس هتاخد صفر الجولة دي). لو كل الأربع كروت مش مناسبة، تسجّل صفر من غير أي خصم من رصيدك.</div>
+            <div class="q"><span class="qm">؟</span>إن لم تكن معي بطاقة مناسبة للقضية، ماذا أفعل؟</div>
+            <div class="a">إذا كانت بطاقة واحدة فقط غير مناسبة، يمكنك استبدالها ببطاقة جديدة من الرزمة (لكنك ستسجّل صفرًا في هذه الجولة). وإذا كانت البطاقات الأربع كلها غير مناسبة، تسجّل صفرًا دون أي خصم من رصيدك.</div>
           </div>
           <div class="faq-item">
-            <div class="q"><span class="qm">؟</span>كارت الحكم غير حل القضية؟</div>
-            <div class="a">أيوه، حاجتان منفصلتان تمامًا على نفس الضهر: حل القضية بيحدد مين كسب نصيبه من التركة في نفس الحالة اللي على الوش، أما كارت الحكم فدرس تعليمي عام في أحكام المواريث بشكل عام — مالوش أي علاقة بموضوع القضية دي — وله أثر إضافي (زيادة أو خصم سهم) بمعزل تمامًا عن دقة حل القضية.</div>
+            <div class="q"><span class="qm">؟</span>هل بطاقة الحكم غير حل القضية؟</div>
+            <div class="a">نعم، هما أمران منفصلان تمامًا على الظهر نفسه: حل القضية يحدّد من يستحق نصيبه من التركة في الحالة نفسها التي على الوجه، أما بطاقة الحكم فهي درس تعليمي عام في أحكام المواريث — لا علاقة له بموضوع هذه القضية — وله أثر إضافي (زيادة أو خصم سهم) بمعزل تام (يعني: بعيدًا خالص) عن دقة حل القضية.</div>
           </div>
           <div class="faq-item">
-            <div class="q"><span class="qm">؟</span>لو اتنين لاعبين اختاروا نفس الوريث (زي "الأب") في نفس الجولة؟</div>
-            <div class="a">بعض الورثة (الأب، الأم، الجد، الزوج) ميتكررش وجودهم فقهيًا. لو اتنين لعبوه، الأسرع في ترتيب الدور بس ياخد النصيب، والتاني يُعتبر "سبقه لاعب" (صفر، مش غلط).</div>
+            <div class="q"><span class="qm">؟</span>ماذا لو اختار لاعبان الوريث نفسه (كالأب مثلًا) في الجولة نفسها؟</div>
+            <div class="a">بعض الورثة، كالأب والأم والجد والزوج، لا يتكرر وجودهم شرعًا. فإذا لعبه لاعبان، يحصل على النصيب الأسرع في ترتيب الدور فقط، ويُعتبر الآخر "قد سبقه لاعب آخر" (صفر، وليس خطأً).</div>
           </div>
           <div class="faq-item">
-            <div class="q"><span class="qm">؟</span>ممكن كل التركة متتوزعش بالكامل؟</div>
-            <div class="a">لأ — كل قضايا اللعبة الـ24 محسوبة عشان توزَّع التركة كاملة على مستحقيها، حتى في القضايا اللي مفيهاش عصبة (وريث ياخد الباقي)، بيترد الباقي على أصحاب الفروض بنفس نسبة فروضهم.</div>
+            <div class="q"><span class="qm">؟</span>هل يمكن ألا تُوزَّع التركة بالكامل؟</div>
+            <div class="a">لا — جميع قضايا اللعبة الأربع والعشرون محسوبة بحيث تُوزَّع التركة كاملةً على مستحقيها (أصحاب الحق فيها)، حتى في القضايا التي لا يوجد فيها عصبة (وريث يأخذ الباقي)، إذ يُرَدّ الباقي على أصحاب الفروض بالنسبة نفسها لفروضهم.</div>
           </div>
         </div>
       </section>
 
       <footer>
-        <p>بالتوفيق، واستمتعوا وانتوا بتتعلموا الفرائض 🌙</p>
-        <a class="back-btn" href="/moro">العودة للعبة</a>
+        <p>بالتوفيق، ونتمنى لكم متعة تعلّم الفرائض 🌙</p>
+        <a class="back-btn" href="/moro">العودة إلى اللعبة</a>
+      </footer>
+
+    </div>
+
+    <div class="content" id="content-en" lang="en" dir="ltr" hidden>
+
+      <header class="hero">
+        <div class="hero-fan">
+          <img src="/moro/cards/father.png" alt="" />
+          <img src="/moro/cards/son.png" alt="" />
+          <img src="/moro/cards/daughter.png" alt="" />
+          <img src="/moro/cards/mother.png" alt="" />
+        </div>
+        <img class="hero-logo" src="/moro/logo.png" alt="MORO logo" />
+        <h1>MORO — Game Instructions</h1>
+        <p>An educational game about Islamic inheritance distribution (<span class="gloss">Fara'id</span>: the method of dividing a deceased person's estate among their heirs under Islamic law) — easy to learn, fun to play.</p>
+        <hr class="hr" />
+      </header>
+
+      <section class="section bg-gold">
+        <div class="section-head">
+          <span class="badge"><svg viewBox="0 0 44 44"><path d="M22 3 L26.5 15.5 L40 15.5 L29 23.5 L33 36 L22 28 L11 36 L15 23.5 L4 15.5 L17.5 15.5 Z" fill="#d9a934" stroke="#0b2743" stroke-width="1.2"/></svg><span>1</span></span>
+          <h2>Game Components</h2>
+        </div>
+        <div class="stats-row">
+          <div class="stat-tile"><span class="num">100</span><span class="lbl">cards total</span></div>
+          <div class="stat-tile"><span class="num">76</span><span class="lbl">heir cards</span></div>
+          <div class="stat-tile"><span class="num">24</span><span class="lbl">case cards</span></div>
+        </div>
+
+        <div class="anatomy-grid">
+          <div class="anatomy-card">
+            <h4>Heir Card</h4>
+            <div class="anatomy-row">
+              <div class="anatomy-side">
+                <img src="/moro/cards/son.png" alt="Heir card front" />
+                <span class="lbl">Front: heir's name</span>
+              </div>
+              <div class="anatomy-divider">≠</div>
+              <div class="anatomy-side">
+                <img src="/moro/cards/estate-10.png" alt="Heir card back" />
+                <span class="lbl">Back: <span class="gloss">sahm</span> value</span>
+              </div>
+            </div>
+            <p class="anatomy-caption">You choose the front to represent your heir during a round, and use the back (the sahm value) afterward purely as currency.</p>
+          </div>
+
+          <div class="anatomy-card">
+            <h4>Case Card</h4>
+            <div class="anatomy-row">
+              <div class="anatomy-side">
+                <img src="/moro/cards/Kadia.png" alt="Case card front" />
+                <span class="lbl">Front: the case</span>
+              </div>
+              <div class="anatomy-divider">≠</div>
+              <div class="anatomy-side">
+                <img src="/moro/cards/Hokm.png" alt="Case card back: solution and ruling" />
+                <span class="lbl">Back: solution + ruling card</span>
+              </div>
+            </div>
+            <p class="anatomy-caption">You read the front while playing. The back holds two things: the <b>case solution</b> (who inherits what in this exact case), and the <b>ruling card</b> — a general educational lesson on inheritance law, unrelated to the case on the front, with its own independent effect on your balance.</p>
+          </div>
+        </div>
+
+        <div class="note-callout">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 9v4M12 17h.01M12 3l9 16H3z"/></svg>
+          <p><b>Important:</b> the front and back of a card are two completely separate functions with no relation to each other. When choosing during a round, look only at the front; after scoring (your share, or the ruling card's bonus/penalty), use only the back.</p>
+        </div>
+      </section>
+
+      <section class="section bg-felt">
+        <div class="section-head">
+          <span class="badge"><svg viewBox="0 0 44 44"><path d="M22 3 L26.5 15.5 L40 15.5 L29 23.5 L33 36 L22 28 L11 36 L15 23.5 L4 15.5 L17.5 15.5 Z" fill="#d9a934" stroke="#0b2743" stroke-width="1.2"/></svg><span>2</span></span>
+          <h2>Setup Before the First Round</h2>
+        </div>
+        <ul class="plain">
+          <li>Number of players: 2 to 5 — best enjoyed with 3 to 4.</li>
+          <li>Deal each player a hand of <b>4 heir cards</b>.</li>
+          <li>Give each player a starting balance of <b>20 sahm</b> (from the shared deck).</li>
+          <li>Place the case deck in the middle of the table, showing only the front (the case).</li>
+        </ul>
+
+        <div class="table-diagram">
+          <div class="td-player p1">
+            <div class="td-avatar">P1</div>
+            <div class="td-balance-label">Balance</div>
+            <div class="td-balance-stack"><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /></div>
+            <div class="td-hand"><img src="/moro/cards/son.png" alt="" /><img src="/moro/cards/daughter.png" alt="" /><img src="/moro/cards/mother.png" alt="" /><img src="/moro/cards/father.png" alt="" /></div>
+          </div>
+          <div class="td-player p2">
+            <div class="td-avatar">P2</div>
+            <div class="td-balance-label">Balance</div>
+            <div class="td-balance-stack"><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /></div>
+            <div class="td-hand"><img src="/moro/cards/wife.png" alt="" /><img src="/moro/cards/brother.png" alt="" /><img src="/moro/cards/sister.png" alt="" /><img src="/moro/cards/grandfather.png" alt="" /></div>
+          </div>
+          <div class="td-center">
+            <div class="td-case-card">Case</div>
+            <div class="td-estate">
+              <img src="/moro/cards/estate-50.png" alt="" />
+              <img src="/moro/cards/estate-10.png" alt="" />
+              <img src="/moro/cards/estate-1.png" alt="" />
+            </div>
+            <div class="td-estate-label">Estate value</div>
+          </div>
+          <div class="td-player p3">
+            <div class="td-avatar">P3</div>
+            <div class="td-balance-label">Balance</div>
+            <div class="td-balance-stack"><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /></div>
+            <div class="td-hand"><img src="/moro/cards/uncle.png" alt="" /><img src="/moro/cards/grandmother.png" alt="" /><img src="/moro/cards/half-brother.png" alt="" /><img src="/moro/cards/half-sister.png" alt="" /></div>
+          </div>
+        </div>
+        <p class="diagram-caption">A top-down view of the table (example with 3 players): each player keeps their sahm-card balance and a hand of 4 heir cards in front of them, with the case card and the money cards representing the estate value in the middle.</p>
+      </section>
+
+      <section class="section bg-navy">
+        <div class="section-head">
+          <span class="badge"><svg viewBox="0 0 44 44"><path d="M22 3 L26.5 15.5 L40 15.5 L29 23.5 L33 36 L22 28 L11 36 L15 23.5 L4 15.5 L17.5 15.5 Z" fill="#d9a934" stroke="#0b2743" stroke-width="1.2"/></svg><span>3</span></span>
+          <h2>How to Play — 3 Fixed Rounds</h2>
+        </div>
+        <ol class="steps">
+          <li><span class="num">1</span><div><b>Flip a new case</b>You'll find the case description and the estate value on it.</div></li>
+          <li><span class="num">2</span><div><b>Choose secretly</b>Each player picks the heir from their hand they believe has the largest share in this case, without seeing anyone else's pick.</div></li>
+          <li><span class="num">3</span><div><b>Reveal together</b>All picks are revealed at the same moment. If two players pick the same individual heir (like the husband, father, mother, or grandfather) in the same round, priority goes to speed: whoever picked fastest (earliest in turn order) gets the share.</div></li>
+          <li><span class="num">4</span><div><b>Score and pay</b>Whoever picked correctly is paid the exact amount from the sahm cards; anyone who picked wrong scores zero for the round.</div></li>
+          <li><span class="num">5</span><div><b>Flip the ruling</b>Flip the case card over to find the "ruling card" — a general lesson on inheritance law unrelated to this specific case — and apply its effect: a bonus or penalty in sahm to the relevant player's balance.</div></li>
+          <li><span class="num">6</span><div><b>Refill your hand</b>Each player draws a new card to replace the one played, bringing their hand back to 4.</div></li>
+        </ol>
+      </section>
+
+      <section class="section bg-cream">
+        <div class="section-head">
+          <span class="badge"><svg viewBox="0 0 44 44"><path d="M22 3 L26.5 15.5 L40 15.5 L29 23.5 L33 36 L22 28 L11 36 L15 23.5 L4 15.5 L17.5 15.5 Z" fill="#d9a934" stroke="#0b2743" stroke-width="1.2"/></svg><span>4</span></span>
+          <h2>Special Rules</h2>
+        </div>
+        <div class="grid2">
+          <div class="mini-card mini-card-img">
+            <img src="/moro/cards/heir-generic.png" alt="Wildcard heir card" />
+            <div class="mini-card-body">
+              <h3>The "Heir" Wildcard</h3>
+              <p>An open card with no fixed name — represents any heir you choose in any case, and can never be blocked.</p>
+            </div>
+          </div>
+          <div class="mini-card">
+            <h3><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="9" r="4"/><circle cx="17" cy="9" r="4"/><path d="M9 20v-3M17 20v-3"/></svg>Individual Heir Conflicts</h3>
+            <p>Heirs such as father, mother, grandfather, and husband cannot exist more than once for the same deceased person under Islamic law. If two players pick the same one, only the faster player (by turn order) gets the share.</p>
+          </div>
+          <div class="mini-card">
+            <h3><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 10a8 8 0 0114-5M20 14a8 8 0 01-14 5M18 3v6h-6M6 21v-6h6"/></svg>Swapping</h3>
+            <p>If your card doesn't fit the case, you may swap it for a new one from the deck — but you'll score zero for this round's share.</p>
+          </div>
+          <div class="mini-card">
+            <h3><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 12h6"/></svg>A Fully Unusable Hand</h3>
+            <p>If none of your cards fit, you have two options: <b>pay 5 sahm</b> from your balance to swap one card for a new one from the deck immediately (it might fit this round), or <b>play any card</b> for free (scoring zero this round with no deduction). Either way, you draw a replacement card next turn like everyone else, bringing your hand back to 4.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section bg-gold">
+        <div class="section-head">
+          <span class="badge"><svg viewBox="0 0 44 44"><path d="M22 3 L26.5 15.5 L40 15.5 L29 23.5 L33 36 L22 28 L11 36 L15 23.5 L4 15.5 L17.5 15.5 Z" fill="#d9a934" stroke="#0b2743" stroke-width="1.2"/></svg><span>5</span></span>
+          <h2>Ending and Winning</h2>
+        </div>
+        <ul class="plain">
+          <li>The match ends automatically after the third round.</li>
+          <li>The winner: whoever has the highest sahm balance.</li>
+          <li>If two players are tied, they're both considered winners.</li>
+        </ul>
+      </section>
+
+      <section class="section bg-cream">
+        <div class="section-head">
+          <span class="badge"><svg viewBox="0 0 44 44"><path d="M22 3 L26.5 15.5 L40 15.5 L29 23.5 L33 36 L22 28 L11 36 L15 23.5 L4 15.5 L17.5 15.5 Z" fill="#d9a934" stroke="#0b2743" stroke-width="1.2"/></svg><span>?</span></span>
+          <h2>Frequently Asked Questions</h2>
+        </div>
+        <div class="faq">
+          <div class="faq-item">
+            <div class="q"><span class="qm">?</span>What exactly is the difference between the front and back of a card?</div>
+            <div class="a">The front is the heir's identity, used when choosing during a round. The back is the sahm value, used afterward as currency for scoring and payment. There's no relation between the two — a "son" card can have any value on its back.</div>
+          </div>
+          <div class="faq-item">
+            <div class="q"><span class="qm">?</span>What exactly is the "Heir" wildcard card?</div>
+            <div class="a">An open card with no fixed heir name — you can play it as an answer for any heir allowed in the current case. It's like a "fits anything" card, and it can never be blocked.</div>
+          </div>
+          <div class="faq-item">
+            <div class="q"><span class="qm">?</span>What do I do if I don't have a card that fits the case?</div>
+            <div class="a">If only one card doesn't fit, you can swap it for a new one from the deck (but you'll score zero for the round). If all four cards don't fit, you score zero with no deduction from your balance.</div>
+          </div>
+          <div class="faq-item">
+            <div class="q"><span class="qm">?</span>Is the ruling card different from the case solution?</div>
+            <div class="a">Yes, they're two completely separate things on the same back: the case solution determines who earns their share of the estate in this specific case, while the ruling card is a general lesson on inheritance law — unrelated to this case's subject — with its own additional effect (a bonus or penalty in sahm) entirely independent of whether the case solution was answered correctly.</div>
+          </div>
+          <div class="faq-item">
+            <div class="q"><span class="qm">?</span>What if two players pick the same heir (like "father") in the same round?</div>
+            <div class="a">Some heirs — father, mother, grandfather, husband — cannot exist more than once under Islamic law. If two players play the same one, only the faster player (by turn order) gets the share, and the other is considered "beaten to it" (zero, not a mistake).</div>
+          </div>
+          <div class="faq-item">
+            <div class="q"><span class="qm">?</span>Can an estate ever go undistributed?</div>
+            <div class="a">No — all 24 cases in the game are calculated so the entire estate is distributed to those entitled to it, even in cases with no residuary heir (a heir who takes the remainder): the remainder is returned to the fixed-share heirs in the same proportion as their original shares.</div>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <p>Good luck, and enjoy learning Fara'id! 🌙</p>
+        <a class="back-btn" href="/moro">Back to the game</a>
       </footer>
 
     </div>
   </div>
+  <script>
+    function moroToggleLang(){
+      var ar = document.getElementById('content-ar');
+      var en = document.getElementById('content-en');
+      var btn = document.getElementById('lang-toggle');
+      var showingAr = !ar.hidden;
+      if(showingAr){
+        ar.hidden = true; en.hidden = false;
+        btn.textContent = 'العربية';
+        document.title = "MORO — Game Instructions";
+      } else {
+        en.hidden = true; ar.hidden = false;
+        btn.textContent = 'English';
+        document.title = "مورو — تعليمات اللعبة";
+      }
+    }
+  </script>
 </body>
 </html>

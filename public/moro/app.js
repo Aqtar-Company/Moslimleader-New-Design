@@ -195,11 +195,12 @@ function initContinueButton() {
 
 function renderHowTo() {
   const items = [
-    ['الهدف', 'اجمع أكبر عدد من نقاط التركة عبر عدة جولات بلعب بطاقة الوارث المناسبة لكل حالة.'],
-    ['بداية كل جولة', 'تُكشف بطاقة حالة المتوفى وبطاقة قيمة التركة، ثم يختار كل لاعب بسرّية بطاقة وارث من يده.'],
-    ['الكشف والحساب', 'بعد اختيار الجميع، تُكشف البطاقات ويُحسب نصيب كل وارث حسب قواعد الفرائض المبسطة.'],
-    ['الاستبدال', 'إن لم تناسبك بطاقاتك، استبدل بطاقة واحدة، لكنك تخسر مشاركتك في تلك الجولة.'],
-    ['الفوز', 'يفوز صاحب أكبر مجموع نقاط بعد انتهاء كل الجولات.']
+    ['الهدف', 'اجمع أعلى رصيد من الأسهم حتى نهاية كل الجولات، باختيار الوريث الأنسب لكل قضية وتفادي خصومات بطاقات الحكم. لا يوجد نظام نقاط منفصل — رصيدك هو مقياسك الوحيد.'],
+    ['بداية كل جولة', 'تُكشف بطاقة قضية جديدة بوصف الحالة وقيمة التركة، ثم يختار كل لاعب بسرّية بطاقة وريث من يده يظن أنه صاحب أكبر نصيب فيها.'],
+    ['الكشف والحساب', 'بعد اختيار الجميع، تُكشف البطاقات معًا، ويُدفع لصاحب الاختيار الصحيح نصيبه فعليًا من رصيد الأسهم حسب قواعد الفرائض، ومن اختار خطأً يسجّل صفرًا في هذه الجولة.'],
+    ['تعارض الوريث الفردي', 'لو اختار أكثر من لاعب الوريث نفسه ممن لا يتكرر وجودهم شرعًا (كالأب أو الأم أو الزوج)، يُحتسَب النصيب لأسرع لاعب بترتيب الدور فقط.'],
+    ['بطاقة الحكم', 'بعد الحساب، تُقلَب بطاقة القضية على ظهرها لتظهر بطاقة الحكم — درس تعليمي عام في أحكام المواريث لا علاقة له بهذه القضية تحديدًا — وله أثر مالي (زيادة أو خصم سهم) على رصيد اللاعب الذي عليه دور الحكم هذه الجولة (يتدوّر الدور بين اللاعبين جولة بعد جولة).'],
+    ['الفوز', 'يفوز صاحب أعلى رصيد أسهم بعد انتهاء كل الجولات.']
   ];
   $('#howto-list').innerHTML = items.map(([t, d]) => `<div class="guide-item"><h4>${t}</h4><p>${d}</p></div>`).join('');
 }
@@ -314,7 +315,7 @@ function computeSolverResult() {
     for (let i = 0; i < count; i++) playedHeirIds.push(id);
   });
   if (playedHeirIds.length === 0) {
-    alert('اختر وارثًا واحدًا على الأقل.');
+    alert('اختر وريثًا واحدًا على الأقل.');
     return;
   }
   AudioManager.playReveal();
@@ -346,7 +347,7 @@ function renderSolverResult(result, playedHeirIds) {
   const undistributedBox = $('#solver-undistributed');
   if (result.undistributedPoints > 0) {
     undistributedBox.classList.remove('hidden');
-    undistributedBox.textContent = `⚠️ ${TEXTS.undistributedMessage} (${result.undistributedPoints} نقطة بلا وارث معروف)`;
+    undistributedBox.textContent = `⚠️ ${TEXTS.undistributedMessage} (${result.undistributedPoints} نقطة بلا وريث معروف)`;
   } else {
     undistributedBox.classList.add('hidden');
   }
@@ -813,7 +814,7 @@ function showJokerIdentityPicker() {
 
   $('#btn-confirm-choice').classList.add('hidden');
   $('#btn-hand-help').classList.add('hidden');
-  flashMessage('اختر الوارث اللي هيمثله الجوكر في هذه الحالة.');
+  flashMessage('اختر الوريث اللي هيمثله الجوكر في هذه الحالة.');
 }
 
 function doConfirmJokerPlay(chosenHeirId) {
@@ -965,7 +966,7 @@ function showRoundResult(payload) {
   const undistributedBox = $('#result-undistributed');
   if (engineResult.undistributedPoints > 0) {
     undistributedBox.classList.remove('hidden');
-    undistributedBox.textContent = `⚠️ ${TEXTS.undistributedMessage} (${engineResult.undistributedPoints} نقطة بلا وارث معروف في هذه اللعبة)`;
+    undistributedBox.textContent = `⚠️ ${TEXTS.undistributedMessage} (${engineResult.undistributedPoints} نقطة بلا وريث معروف في هذه اللعبة)`;
   } else {
     undistributedBox.classList.add('hidden');
   }

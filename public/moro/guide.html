@@ -124,9 +124,17 @@
   .td-balance{ font-size:.7rem; color:var(--gold-soft); font-weight:700; }
   .td-hand{ display:flex; gap:2px; }
   .td-hand span{ width:11px; height:16px; background:var(--navy-deep); border:1px solid var(--gold-bright); border-radius:2px; }
-  .td-center{ grid-area:c; background:linear-gradient(160deg,#14563c,#0e3d2a); color:#fff; border:2px solid var(--gold-bright); border-radius:12px; padding:12px 8px; text-align:center; }
-  .td-center b{ display:block; color:var(--gold-soft); font-size:.82rem; margin-bottom:3px; }
-  .td-center span{ font-size:.7rem; color:#dce7d9; }
+  .td-center{ grid-area:c; display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .td-case-card{
+    width:56px; height:78px; background:linear-gradient(160deg,#14563c,#0e3d2a);
+    color:#fff; border:2px solid var(--gold-bright); border-radius:8px;
+    display:grid; place-items:center; text-align:center; font-size:.72rem; font-weight:800;
+    box-shadow:0 6px 14px rgba(0,0,0,.25);
+  }
+  .td-estate-chip{
+    background:var(--gold-bright); color:var(--navy-deep); font-weight:800; font-size:.68rem;
+    padding:4px 10px; border-radius:999px; white-space:nowrap;
+  }
   .diagram-caption{ text-align:center; font-size:.78rem; color:var(--gold-soft); margin-top:10px; }
 
   .faq{ display:flex; flex-direction:column; gap:12px; }
@@ -194,7 +202,10 @@
         <div class="table-diagram">
           <div class="td-player p1"><div class="td-avatar">لاعب 1</div><div class="td-balance">💰 رصيد</div><div class="td-hand"><span></span><span></span><span></span><span></span></div></div>
           <div class="td-player p2"><div class="td-avatar">لاعب 2</div><div class="td-balance">💰 رصيد</div><div class="td-hand"><span></span><span></span><span></span><span></span></div></div>
-          <div class="td-center"><b>القضية</b><span>قيمة التركة: XX سهم</span></div>
+          <div class="td-center">
+            <div class="td-case-card">القضية</div>
+            <div class="td-estate-chip">قيمة التركة: XX سهم</div>
+          </div>
           <div class="td-player p3"><div class="td-avatar">لاعب 3</div><div class="td-balance">💰 رصيد</div><div class="td-hand"><span></span><span></span><span></span><span></span></div></div>
         </div>
         <p class="diagram-caption">رسم توضيحي من أعلى الطاولة (مثال بـ3 لاعبين): كل لاعب معاه رصيده من كروت السهم ويد من 4 كروت وارث قدامه، وكارت القضية وقيمة التركة في النص.</p>
@@ -235,7 +246,7 @@
           </div>
           <div class="mini-card">
             <h3><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 12h6"/></svg>اليد الفاضية</h3>
-            <p>لو كل كروتك مش مناسبة، تسجّل صفر الجولة دي من غير أي خصم من رصيدك.</p>
+            <p>لو كل كروتك مش مناسبة، عندك خياران: <b>ادفع 5 سهم</b> من رصيدك وبدّل كارت بكارت جديد من الرزمة فورًا (يمكن يبقى مناسب)، أو <b>حط أي كارت</b> مجانًا (تسجّل صفر الجولة دي بلا خصم). في الحالتين، هتاخد كارت بديل في الدور الجاي زي باقي اللاعبين عشان ترجع يدك لـ4 كروت.</p>
           </div>
         </div>
       </section>

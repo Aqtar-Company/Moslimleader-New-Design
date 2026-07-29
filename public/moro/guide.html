@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>مورو — تعليمات اللعبة</title>
+<style>
+  :root{
+    --navy:#0b2743;
+    --navy-deep:#071a2e;
+    --cream:#f7efdb;
+    --cream-panel:#fffbf2;
+    --gold:#a97a1f;
+    --gold-bright:#d9a934;
+    --gold-soft:#f6dd8e;
+    --felt-soft:#e3efe6;
+    --ink:#26190a;
+    --ink-soft:#5c4a2e;
+    --line:rgba(169,122,31,.32);
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:#e7ddc9;
+    color:var(--ink);
+    font-family:Tahoma, "Segoe UI", Arial, sans-serif;
+    line-height:1.8;
+    padding:clamp(10px,3vw,30px) clamp(8px,2vw,16px) 40px;
+  }
+  a{ color:inherit; }
+
+  .poster{
+    position:relative;
+    max-width:960px;
+    margin:0 auto;
+    background:
+      radial-gradient(1100px 380px at 50% -8%, rgba(217,169,52,.10), transparent 60%),
+      var(--cream);
+    border:3px solid var(--gold-bright);
+    border-radius:30px;
+    box-shadow:0 24px 60px rgba(7,26,46,.22);
+    padding:clamp(14px,3vw,30px);
+    overflow:hidden;
+  }
+  .poster::before{
+    content:""; position:absolute; inset:10px;
+    border:1.5px solid var(--line); border-radius:20px; pointer-events:none;
+  }
+  .corner{ position:absolute; width:24px; height:24px; z-index:2; opacity:.9; }
+  .corner svg{ width:100%; height:100%; }
+  .corner.tl{ top:12px; right:12px; } .corner.tr{ top:12px; left:12px; }
+  .corner.bl{ bottom:12px; right:12px; } .corner.br{ bottom:12px; left:12px; }
+
+  .content{ position:relative; z-index:1; }
+
+  .hero{ text-align:center; padding:8px 6px 4px; }
+  .hero-fan{ display:flex; justify-content:center; align-items:flex-end; height:clamp(70px,14vw,104px); margin-bottom:6px; }
+  .hero-fan img{ width:clamp(48px,8vw,74px); border-radius:8px; box-shadow:0 10px 20px rgba(7,26,46,.28); border:2px solid #fff; outline:1px solid var(--line); }
+  .hero-fan img:nth-child(1){ transform:rotate(-14deg) translateY(6px); margin-left:-12px; }
+  .hero-fan img:nth-child(2){ transform:rotate(-5deg) translateY(-4px); margin-left:-12px; z-index:2; }
+  .hero-fan img:nth-child(3){ transform:rotate(5deg) translateY(-4px); margin-left:-12px; z-index:2; }
+  .hero-fan img:nth-child(4){ transform:rotate(14deg) translateY(6px); margin-left:-12px; }
+  .hero-logo{ width:60px; height:60px; border-radius:50%; box-shadow:0 8px 20px rgba(0,0,0,.3); margin-bottom:4px; }
+  .hero h1{ margin:2px 0 6px; font-size:clamp(1.5rem,4vw,2.1rem); color:var(--navy); }
+  .hero p{ margin:0 auto; color:var(--ink-soft); font-size:.94rem; max-width:34em; }
+  .gloss{ color:var(--gold); font-weight:700; }
+  .hr{ height:2px; margin:14px 0 0; background:linear-gradient(90deg,transparent,var(--gold-bright) 18%,var(--gold-bright) 82%,transparent); opacity:.55; border:0; }
+
+  .section{
+    border-radius:18px; padding:20px; margin-top:18px;
+    border:1px solid var(--line); box-shadow:0 6px 16px rgba(11,39,67,.08);
+  }
+  .bg-cream{ background:var(--cream-panel); }
+  .bg-gold{ background:linear-gradient(165deg,var(--gold-soft),#fbeec2); }
+  .bg-felt{ background:var(--felt-soft); }
+  .bg-navy{ background:linear-gradient(165deg,var(--navy),var(--navy-deep)); color:#eef1f7; border-color:rgba(217,169,52,.4); }
+
+  .section-head{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .badge{ position:relative; width:38px; height:38px; flex:0 0 auto; display:grid; place-items:center; }
+  .badge svg{ position:absolute; inset:0; width:100%; height:100%; }
+  .badge span{ position:relative; font-weight:800; font-size:.95rem; color:var(--navy); }
+  .section h2{ margin:0; font-size:1.15rem; color:var(--navy); }
+  .bg-navy h2{ color:#eef1f7; }
+  .bg-navy p, .bg-navy li{ color:#c5d1e6; }
+  .bg-navy b{ color:var(--gold-soft); }
+
+  .stats-row{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:16px 0; }
+  .stat-tile{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px 18px; text-align:center; min-width:88px; box-shadow:0 4px 10px rgba(11,39,67,.08); }
+  .stat-tile .num{ display:block; font-size:1.35rem; font-weight:800; color:var(--navy); }
+  .stat-tile .lbl{ font-size:.72rem; color:var(--ink-soft); font-weight:700; }
+
+  .anatomy-grid{ display:grid; grid-template-columns:1fr; gap:14px; margin:6px 0 4px; }
+  @media (min-width:640px){ .anatomy-grid{ grid-template-columns:1fr 1fr; } }
+  .anatomy-card{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px; text-align:center; }
+  .anatomy-card h4{ margin:0 0 12px; font-size:.95rem; color:var(--navy); }
+  .anatomy-row{ display:flex; align-items:center; justify-content:center; gap:8px; }
+  .anatomy-side{ flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .anatomy-side img{ width:60px; border-radius:8px; box-shadow:0 6px 14px rgba(0,0,0,.18); }
+  .anatomy-side .lbl{ font-size:.68rem; color:var(--ink-soft); font-weight:700; }
+  .anatomy-divider{ flex:0 0 auto; font-size:1.05rem; font-weight:800; color:var(--gold-bright); }
+  .anatomy-caption{ margin-top:12px; font-size:.78rem; color:var(--ink-soft); }
+
+  .note-callout{
+    display:flex; gap:10px; align-items:flex-start; background:rgba(217,169,52,.16);
+    border:1px solid var(--line); border-inline-start:4px solid var(--gold-bright); border-radius:10px;
+    padding:12px 14px; margin-top:14px;
+  }
+  .note-callout .ico{ width:22px; height:22px; flex:0 0 auto; color:var(--gold); margin-top:1px; }
+  .note-callout p{ margin:0; font-size:.88rem; color:var(--ink-soft); }
+
+  ul.plain{ margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:10px; }
+  ul.plain li{ position:relative; padding-inline-start:22px; }
+  ul.plain li::before{ content:"◆"; position:absolute; inset-inline-start:0; top:.2em; font-size:.6em; color:var(--gold-bright); }
+
+  ol.steps{ margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:0; position:relative; }
+  ol.steps::before{ content:""; position:absolute; top:6px; bottom:6px; inset-inline-start:17px; width:2px; background:linear-gradient(var(--gold-bright),rgba(217,169,52,.15)); opacity:.55; }
+  ol.steps li{ position:relative; display:flex; gap:14px; padding:9px 0; align-items:flex-start; }
+  ol.steps .num{
+    flex:0 0 auto; width:36px; height:36px; border-radius:50%; z-index:1;
+    background:var(--gold-bright); color:var(--navy-deep); font-weight:800;
+    display:grid; place-items:center; font-size:1rem; border:2px solid var(--navy-deep);
+  }
+  ol.steps b{ display:block; color:#eef1f7; margin-bottom:2px; }
+
+  .grid2{ display:grid; grid-template-columns:1fr; gap:14px; }
+  @media (min-width:640px){ .grid2{ grid-template-columns:1fr 1fr; } }
+  .mini-card{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px; }
+  .mini-card h3{ margin:0 0 6px; font-size:1rem; color:var(--navy); display:flex; align-items:center; gap:8px; }
+  .mini-card h3 .ico{ width:20px; height:20px; flex:0 0 auto; color:var(--gold-bright); }
+  .mini-card p{ margin:0; font-size:.92rem; color:var(--ink-soft); }
+  .mini-card-img{ display:flex; gap:12px; align-items:flex-start; }
+  .mini-card-img img{ width:58px; border-radius:8px; box-shadow:0 6px 14px rgba(0,0,0,.18); flex:0 0 auto; }
+  .mini-card-img .mini-card-body{ flex:1; min-width:0; }
+
+  .table-diagram{
+    display:grid; grid-template-columns:1fr 1fr 1fr;
+    grid-template-areas:".  p1 ." "p2 c  p3";
+    gap:14px; align-items:center; max-width:460px; margin:16px auto 6px;
+  }
+  .td-player{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .td-player.p1{ grid-area:p1; } .td-player.p2{ grid-area:p2; } .td-player.p3{ grid-area:p3; }
+  .td-avatar{
+    width:36px; height:36px; border-radius:50%; background:var(--navy); color:var(--gold-soft);
+    display:grid; place-items:center; font-weight:800; font-size:.76rem; border:2px solid var(--gold-bright);
+  }
+  .td-balance-label{ font-size:.7rem; color:var(--ink-soft); font-weight:700; }
+  .td-balance-stack{ display:flex; justify-content:center; margin:1px 0; }
+  .td-balance-stack img{
+    width:20px; height:28px; object-fit:cover; border-radius:3px;
+    border:1px solid var(--gold-bright); box-shadow:0 2px 5px rgba(0,0,0,.25);
+  }
+  .td-balance-stack img:not(:first-child){ margin-inline-start:-13px; }
+  .td-hand{ display:flex; gap:2px; }
+  .td-hand img{
+    width:16px; height:23px; object-fit:cover; border-radius:2px;
+    border:1px solid var(--gold-bright); box-shadow:0 2px 4px rgba(0,0,0,.2);
+  }
+  .td-center{ grid-area:c; display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .td-case-card{
+    width:56px; height:78px; background:linear-gradient(160deg,#14563c,#0e3d2a);
+    color:#fff; border:2px solid var(--gold-bright); border-radius:8px;
+    display:grid; place-items:center; text-align:center; font-size:.72rem; font-weight:800;
+    box-shadow:0 6px 14px rgba(0,0,0,.25);
+  }
+  .td-estate{ display:flex; align-items:flex-end; }
+  .td-estate img{
+    width:26px; height:37px; object-fit:cover; border-radius:4px;
+    border:1px solid var(--gold-bright); box-shadow:0 3px 6px rgba(0,0,0,.3);
+  }
+  .td-estate img:not(:first-child){ margin-inline-start:-14px; }
+  .td-estate-label{ font-size:.66rem; color:var(--ink-soft); font-weight:700; }
+  .diagram-caption{ text-align:center; font-size:.78rem; color:var(--ink-soft); margin-top:10px; }
+
+  .faq{ display:flex; flex-direction:column; gap:12px; }
+  .faq-item{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+  .faq-item .q{ display:flex; gap:8px; align-items:flex-start; font-weight:800; color:var(--navy); margin-bottom:6px; }
+  .faq-item .q .qm{
+    flex:0 0 auto; width:22px; height:22px; border-radius:50%; background:var(--gold-bright);
+    color:var(--navy); display:grid; place-items:center; font-size:.8rem; font-weight:900;
+  }
+  .faq-item .a{ font-size:.92rem; color:var(--ink-soft); padding-inline-start:30px; }
+
+  footer{ text-align:center; margin-top:24px; padding:0 10px; color:var(--ink-soft); font-size:.85rem; }
+  .back-btn{ display:inline-block; margin-top:14px; padding:10px 22px; background:var(--navy); color:#fff; border-radius:999px; text-decoration:none; font-weight:700; font-size:.9rem; }
+
+  .lang-switch{ text-align:center; margin-bottom:6px; }
+  .lang-btn{
+    background:var(--navy); color:#fff; border:1px solid var(--gold-bright); border-radius:999px;
+    padding:6px 18px; font-size:.8rem; font-weight:700; cursor:pointer; font-family:inherit;
+    box-shadow:0 4px 10px rgba(0,0,0,.15);
+  }
+  .lang-btn:hover{ background:var(--navy-deep); }
+  [hidden]{ display:none !important; }
+</style>
+</head>
+<body>
+  <div class="poster">
+    <div class="corner tl"><svg viewBox="0 0 24 24"><path d="M12 2 L14 9 L21 9 L15.5 13.5 L17.5 21 L12 16.5 L6.5 21 L8.5 13.5 L3 9 L10 9 Z" fill="none" stroke="#d9a934" stroke-width="1.4"/></svg></div>
+    <div class="corner tr"><svg viewBox="0 0 24 24"><path d="M12 2 L14 9 L21 9 L15.5 13.5 L17.5 21 L12 16.5 L6.5 21 L8.5 13.5 L3 9 L10 9 Z" fill="none" stroke="#d9a934" stroke-width="1.4"/></svg></div>
+    <div class="corner bl"><svg viewBox="0 0 24 24"><path d="M12 2 L14 9 L21 9 L15.5 13.5 L17.5 21 L12 16.5 L6.5 21 L8.5 13.5 L3 9 L10 9 Z" fill="none" stroke="#d9a934" stroke-width="1.4"/></svg></div>
+    <div class="corner br"><svg viewBox="0 0 24 24"><path d="M12 2 L14 9 L21 9 L15.5 13.5 L17.5 21 L12 16.5 L6.5 21 L8.5 13.5 L3 9 L10 9 Z" fill="none" stroke="#d9a934" stroke-width="1.4"/></svg></div>
+
+    <div class="lang-switch">
+      <button id="lang-toggle" class="lang-btn" type="button" onclick="moroToggleLang()">English</button>
+    </div>
+
+    <div class="content" id="content-ar" lang="ar" dir="rtl">
+
+      <header class="hero">
+        <div class="hero-fan">
+          <img src="/moro/cards/father.png" alt="" />
+          <img src="/moro/cards/son.png" alt="" />
+          <img src="/moro/cards/daughter.png" alt="" />
+          <img src="/moro/cards/mother.png" alt="" />
+        </div>
+        <img class="hero-logo" src="/moro/logo.png" alt="شعار مورو" />
+        <h1>مورو — تعليمات اللعبة</h1>
+        <p>لعبة تعليمية لتوزيع الميراث الشرعي (<span class="gloss">الفرائض</span>: طريقة تقسيم تركة المتوفى على ورثته وفق الشريعة الإسلامية) — سهلة التعلّم، ممتعة عند اللعب.</p>
+        <hr class="hr" />
+      </header>
+
+      <section class="section bg-gold">
+        <div class="section-head">
+          <span class="badge"><svg viewBox="0 0 44 44"><path d="M22 3 L26.5 15.5 L40 15.5 L29 23.5 L33 36 L22 28 L11 36 L15 23.5 L4 15.5 L17.5 15.5 Z" fill="#d9a934" stroke="#0b2743" stroke-width="1.2"/></svg><span>1</span></span>
+          <h2>مكوّنات اللعبة</h2>
+        </div>
+        <div class="stats-row">
+          <div class="stat-tile"><span class="num">100</span><span class="lbl">بطاقة إجمالًا</span></div>
+          <div class="stat-tile"><span class="num">76</span><span class="lbl">بطاقة وريث</span></div>
+          <div class="stat-tile"><span class="num">24</span><span class="lbl">بطاقة قضية</span></div>
+        </div>
+
+        <div class="anatomy-grid">
+          <div class="anatomy-card">
+            <h4>بطاقة الوريث</h4>
+            <div class="anatomy-row">
+              <div class="anatomy-side">
+                <img src="/moro/cards/son.png" alt="وجه بطاقة وريث" />
+                <span class="lbl">الوجه (الوش): اسم الوريث</span>
+              </div>
+              <div class="anatomy-divider">≠</div>
+              <div class="anatomy-side">
+                <img src="/moro/cards/estate-10.png" alt="ظهر بطاقة وريث" />
+                <span class="lbl">الظهر (الضهر): قيمة <span class="gloss">سهم</span></span>
+              </div>
+            </div>
+            <p class="anatomy-caption">تختار الوجه لتمثيل الوريث في الجولة، وتستخدم الظهر (قيمة السهم) بعد ذلك عملةً فقط.</p>
+          </div>
+
+          <div class="anatomy-card">
+            <h4>بطاقة القضية</h4>
+            <div class="anatomy-row">
+              <div class="anatomy-side">
+                <img src="/moro/cards/Kadia.png" alt="وجه بطاقة القضية" />
+                <span class="lbl">الوجه: القضية</span>
+              </div>
+              <div class="anatomy-divider">≠</div>
+              <div class="anatomy-side">
+                <img src="/moro/cards/Hokm.png" alt="ظهر بطاقة القضية: حل القضية وكارت الحكم" />
+                <span class="lbl">الظهر: حل القضية + بطاقة الحكم</span>
+              </div>
+            </div>
+            <p class="anatomy-caption">تُقرأ وجه القضية أثناء اللعب، وفي ظهرها أمران: <b>حل القضية</b> (بيان نصيب كل وريث في هذه الحالة)، و<b>بطاقة الحكم</b> — درس تعليمي عام في أحكام المواريث، لا علاقة له بموضوع القضية التي على الوجه، وله تأثير مستقل على رصيدك.</p>
+          </div>
+        </div>
+
+        <div class="note-callout">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 9v4M12 17h.01M12 3l9 16H3z"/></svg>
+          <p><b>مهم:</b> وجه البطاقة وظهرها وظيفتان منفصلتان تمامًا، لا علاقة بينهما إطلاقًا. فعند الاختيار في الجولة تنظر إلى الوجه فقط، وبعد الحساب (نصيبك، أو خصم/مكافأة بطاقة الحكم) تستخدم الظهر فقط.</p>
+        </div>
+      </section>
+
+      <section class="section bg-felt">
+        <div class="section-head">
+          <span class="badge"><svg viewBox="0 0 44 44"><path d="M22 3 L26.5 15.5 L40 15.5 L29 23.5 L33 36 L22 28 L11 36 L15 23.5 L4 15.5 L17.5 15.5 Z" fill="#d9a934" stroke="#0b2743" stroke-width="1.2"/></svg><span>2</span></span>
+          <h2>الإعداد قبل أول جولة</h2>
+        </div>
+        <ul class="plain">
+          <li>عدد اللاعبين: من 2 إلى 5، وأفضل تجربة للمتعة من 3 إلى 4 لاعبين.</li>
+          <li>وزّعوا لكل لاعب يدًا من <b>4 بطاقات وريث (كروت)</b>.</li>
+          <li>امنحوا كل لاعب رصيدًا ابتدائيًا مقداره <b>20 سهمًا</b> (من بطاقات الرزمة الاحتياطية).</li>
+          <li>رتّبوا رزمة القضايا في منتصف الطاولة، بحيث يظهر الوجه (القضية) فقط.</li>
+        </ul>
+
+        <div class="table-diagram">
+          <div class="td-player p1">
+            <div class="td-avatar">لاعب 1</div>
+            <div class="td-balance-label">رصيد</div>
+            <div class="td-balance-stack"><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /></div>
+            <div class="td-hand"><img src="/moro/cards/son.png" alt="" /><img src="/moro/cards/daughter.png" alt="" /><img src="/moro/cards/mother.png" alt="" /><img src="/moro/cards/father.png" alt="" /></div>
+          </div>
+          <div class="td-player p2">
+            <div class="td-avatar">لاعب 2</div>
+            <div class="td-balance-label">رصيد</div>
+            <div class="td-balance-stack"><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /></div>
+            <div class="td-hand"><img src="/moro/cards/wife.png" alt="" /><img src="/moro/cards/brother.png" alt="" /><img src="/moro/cards/sister.png" alt="" /><img src="/moro/cards/grandfather.png" alt="" /></div>
+          </div>
+          <div class="td-center">
+            <div class="td-case-card">القضية</div>
+            <div class="td-estate">
+              <img src="/moro/cards/estate-50.png" alt="" />
+              <img src="/moro/cards/estate-10.png" alt="" />
+              <img src="/moro/cards/estate-1.png" alt="" />
+            </div>
+            <div class="td-estate-label">قيمة التركة</div>
+          </div>
+          <div class="td-player p3">
+            <div class="td-avatar">لاعب 3</div>
+            <div class="td-balance-label">رصيد</div>
+            <div class="td-balance-stack"><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /></div>
+            <div class="td-hand"><img src="/moro/cards/uncle.png" alt="" /><img src="/moro/cards/grandmother.png" alt="" /><img src="/moro/cards/half-brother.png" alt="" /><img src="/moro/cards/half-sister.png" alt="" /></div>
+          </div>
+        </div>
+        <p class="diagram-caption">رسم توضيحي لأعلى الطاولة (مثال بثلاثة لاعبين): يحتفظ كل لاعب برصيده من بطاقات السهم، وبيد من 4 بطاقات وريث أمامه، وفي المنتصف بطاقة القضية بجانب بطاقات النقود التي تمثّل قيمة التركة.</p>
+      </section>
+
+      <section class="section bg-navy">
+        <div class="section-head">
+          <span class="badge"><svg viewBox="0 0 44 44"><path d="M22 3 L26.5 15.5 L40 15.5 L29 23.5 L33 36 L22 28 L11 36 L15 23.5 L4 15.5 L17.5 15.5 Z" fill="#d9a934" stroke="#0b2743" stroke-width="1.2"/></svg><span>3</span></span>
+          <h2>طريقة اللعب — ثلاث جولات ثابتة</h2>
+        </div>
+        <ol class="steps">
+          <li><span class="num">1</span><div><b>اسحبوا قضية وضعوها في المنتصف</b>تُقلَب بطاقة قضية جديدة وتُوضع في منتصف الطاولة، تُظهر وصف الحالة وقيمة التركة المكتوبة عليها.</div></li>
+          <li><span class="num">2</span><div><b>تأكّدوا من اكتمال الأيدي</b>يد كل لاعب 4 بطاقات وريث، وُزِّعت عشوائيًا في الإعداد، وتُجدَّد بالطريقة نفسها كل جولة (الخطوة الأخيرة).</div></li>
+          <li><span class="num">3</span><div><b>اختاروا سرًّا</b>يختار كل لاعب من يده الوريث الذي يظن أنه صاحب أكبر نصيب في هذه القضية، دون أن يرى اختيار البقية.</div></li>
+          <li><span class="num">4</span><div><b>اكشفوا معًا</b>تُكشف جميع الاختيارات في اللحظة نفسها. وإذا اختار لاعبان الوريث الفردي نفسه (مثال: المتوفاة امرأة ولها زوج، واختار لاعبان بطاقة "زوج")، فالأولوية لسرعة الاختيار: الأسرع (الأسبق في ترتيب الدور) هو من يحصل على النصيب.</div></li>
+          <li><span class="num">5</span><div><b>احسبوا وادفعوا</b>تُوزَّع التركة على كل لاعب بنسبة نصيبه الصحيح، فعليًا من بطاقات السهم. ومن اختار خطأً يسجّل صفرًا في هذه الجولة.</div></li>
+          <li><span class="num">6</span><div><b>دور الحكم</b>يقلب بطاقة القضية على ظهرها اللاعبُ الذي عليه دور "الحكم" هذه الجولة — يبدأ بأول لاعب، ثم يتدوّر الدور بين اللاعبين جولة بعد جولة — فيتأكد الجميع من حل القضية، ويجدون معه "بطاقة الحكم": درس تعليمي عام في أحكام المواريث لا علاقة له بهذه القضية تحديدًا.</div></li>
+          <li><span class="num">7</span><div><b>نفّذوا الحكم</b>طبّقوا أثر بطاقة الحكم: زيادة أو خصم سهم على رصيد اللاعب الذي قلب البطاقة تحديدًا.</div></li>
+          <li><span class="num">8</span><div><b>جدّدوا يدكم</b>تعود البطاقة التي لعبها كل لاعب إلى الرزمة، ويسحب كل لاعب بطاقة جديدة عشوائية بدلًا منها، لتعود يده إلى 4 بطاقات.</div></li>
+        </ol>
+      </section>
+
+      <section class="section bg-cream">
+        <div class="section-head">
+          <span class="badge"><svg viewBox="0 0 44 44"><path d="M22 3 L26.5 15.5 L40 15.5 L29 23.5 L33 36 L22 28 L11 36 L15 23.5 L4 15.5 L17.5 15.5 Z" fill="#d9a934" stroke="#0b2743" stroke-width="1.2"/></svg><span>4</span></span>
+          <h2>قواعد خاصة</h2>
+        </div>
+        <div class="grid2">
+          <div class="mini-card mini-card-img">
+            <img src="/moro/cards/heir-generic.png" alt="بطاقة وارث" />
+            <div class="mini-card-body">
+              <h3>بطاقة "وارث"</h3>
+              <p>بطاقة مفتوحة بلا اسم محدد — تمثّل أي وريث تختاره في أي قضية، ولا تُحجب (تُلغى) أبدًا.</p>
+            </div>
+          </div>
+          <div class="mini-card">
+            <h3><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="9" r="4"/><circle cx="17" cy="9" r="4"/><path d="M9 20v-3M17 20v-3"/></svg>تعارض الوريث الفردي</h3>
+            <p>بعض الورثة، مثل الأب والأم والجد والزوج، لا يمكن أن يتكرر وجودهم شرعًا للمتوفى نفسه. فإذا اختار لاعبان الوريث نفسه، يحصل على النصيب الأسرع في الدور فقط.</p>
+          </div>
+          <div class="mini-card">
+            <h3><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 10a8 8 0 0114-5M20 14a8 8 0 01-14 5M18 3v6h-6M6 21v-6h6"/></svg>الاستبدال</h3>
+            <p>إن لم تكن بطاقتك مناسبة للقضية، يمكنك استبدالها ببطاقة جديدة من الرزمة — لكنك ستسجّل صفرًا في نصيب هذه الجولة.</p>
+          </div>
+          <div class="mini-card">
+            <h3><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 12h6"/></svg>اليد الفارغة (الفاضية)</h3>
+            <p>إذا لم تكن أيٌّ من بطاقاتك مناسبة، فأمامك خياران: أن <b>تدفع 5 أسهم</b> من رصيدك وتستبدل بطاقة واحدة فورًا ببطاقة جديدة من الرزمة (وقد تصلح فتلعب بها هذه الجولة)، أو أن <b>تضع أي بطاقة</b> مجانًا (فتسجّل صفرًا في هذه الجولة دون أي خصم). وفي الحالتين تسحب بطاقة بديلة في الدور التالي كبقية اللاعبين، لتعود يدك إلى 4 بطاقات.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section bg-gold">
+        <div class="section-head">
+          <span class="badge"><svg viewBox="0 0 44 44"><path d="M22 3 L26.5 15.5 L40 15.5 L29 23.5 L33 36 L22 28 L11 36 L15 23.5 L4 15.5 L17.5 15.5 Z" fill="#d9a934" stroke="#0b2743" stroke-width="1.2"/></svg><span>5</span></span>
+          <h2>النهاية والفوز</h2>
+        </div>
+        <ul class="plain">
+          <li>تنتهي المباراة تلقائيًا بعد الجولة الثالثة.</li>
+          <li>الفائز: صاحب أعلى رصيد من الأسهم.</li>
+          <li>إذا تساوى لاعبان في الرصيد، يُعتبَران فائزَين معًا.</li>
+        </ul>
+      </section>
+
+      <section class="section bg-cream">
+        <div class="section-head">
+          <span class="badge"><svg viewBox="0 0 44 44"><path d="M22 3 L26.5 15.5 L40 15.5 L29 23.5 L33 36 L22 28 L11 36 L15 23.5 L4 15.5 L17.5 15.5 Z" fill="#d9a934" stroke="#0b2743" stroke-width="1.2"/></svg><span>؟</span></span>
+          <h2>أسئلة شائعة</h2>
+        </div>
+        <div class="faq">
+          <div class="faq-item">
+            <div class="q"><span class="qm">؟</span>ما الفرق بين وجه البطاقة وظهرها بالضبط؟</div>
+            <div class="a">الوجه هو هوية الوريث، وتستخدمه عند الاختيار في الجولة. أما الظهر فهو قيمة السهم، وتستخدمه بعد ذلك عملةً للحساب والدفع. لا علاقة بين الاثنين إطلاقًا — فبطاقة "ابن" قد يكون ظهرها بأي قيمة.</div>
+          </div>
+          <div class="faq-item">
+            <div class="q"><span class="qm">؟</span>ما بطاقة "وارث" بالضبط؟</div>
+            <div class="a">بطاقة مفتوحة بلا اسم وريث محدد — يمكنك لعبها إجابةً عن أي وريث مسموح به في القضية الحالية. تشبه بطاقة "الكل يصلح" (الجوكر)، ولا تُحجب أبدًا.</div>
+          </div>
+          <div class="faq-item">
+            <div class="q"><span class="qm">؟</span>إن لم تكن معي بطاقة مناسبة للقضية، ماذا أفعل؟</div>
+            <div class="a">إذا كانت بطاقة واحدة فقط غير مناسبة، يمكنك استبدالها ببطاقة جديدة من الرزمة (لكنك ستسجّل صفرًا في هذه الجولة). وإذا كانت البطاقات الأربع كلها غير مناسبة، تسجّل صفرًا دون أي خصم من رصيدك.</div>
+          </div>
+          <div class="faq-item">
+            <div class="q"><span class="qm">؟</span>هل بطاقة الحكم غير حل القضية؟</div>
+            <div class="a">نعم، هما أمران منفصلان تمامًا على الظهر نفسه: حل القضية يحدّد من يستحق نصيبه من التركة في الحالة نفسها التي على الوجه، أما بطاقة الحكم فهي درس تعليمي عام في أحكام المواريث — لا علاقة له بموضوع هذه القضية — وله أثر إضافي (زيادة أو خصم سهم) بمعزل تام (يعني: بعيدًا خالص) عن دقة حل القضية.</div>
+          </div>
+          <div class="faq-item">
+            <div class="q"><span class="qm">؟</span>ماذا لو اختار لاعبان الوريث نفسه (كالأب مثلًا) في الجولة نفسها؟</div>
+            <div class="a">بعض الورثة، كالأب والأم والجد والزوج، لا يتكرر وجودهم شرعًا. فإذا لعبه لاعبان، يحصل على النصيب الأسرع في ترتيب الدور فقط، ويُعتبر الآخر "قد سبقه لاعب آخر" (صفر، وليس خطأً).</div>
+          </div>
+          <div class="faq-item">
+            <div class="q"><span class="qm">؟</span>هل يمكن ألا تُوزَّع التركة بالكامل؟</div>
+            <div class="a">لا — جميع قضايا اللعبة الأربع والعشرون محسوبة بحيث تُوزَّع التركة كاملةً على مستحقيها (أصحاب الحق فيها)، حتى في القضايا التي لا يوجد فيها عصبة (وريث يأخذ الباقي)، إذ يُرَدّ الباقي على أصحاب الفروض بالنسبة نفسها لفروضهم.</div>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <p>بالتوفيق، ونتمنى لكم متعة تعلّم الفرائض 🌙</p>
+        <a class="back-btn" href="/moro">العودة إلى اللعبة</a>
+      </footer>
+
+    </div>
+
+    <div class="content" id="content-en" lang="en" dir="ltr" hidden>
+
+      <header class="hero">
+        <div class="hero-fan">
+          <img src="/moro/cards/father.png" alt="" />
+          <img src="/moro/cards/son.png" alt="" />
+          <img src="/moro/cards/daughter.png" alt="" />
+          <img src="/moro/cards/mother.png" alt="" />
+        </div>
+        <img class="hero-logo" src="/moro/logo.png" alt="MORO logo" />
+        <h1>MORO — Game Instructions</h1>
+        <p>An educational game about Islamic inheritance distribution (<span class="gloss">Fara'id</span>: the method of dividing a deceased person's estate among their heirs under Islamic law) — easy to learn, fun to play.</p>
+        <hr class="hr" />
+      </header>
+
+      <section class="section bg-gold">
+        <div class="section-head">
+          <span class="badge"><svg viewBox="0 0 44 44"><path d="M22 3 L26.5 15.5 L40 15.5 L29 23.5 L33 36 L22 28 L11 36 L15 23.5 L4 15.5 L17.5 15.5 Z" fill="#d9a934" stroke="#0b2743" stroke-width="1.2"/></svg><span>1</span></span>
+          <h2>Game Components</h2>
+        </div>
+        <div class="stats-row">
+          <div class="stat-tile"><span class="num">100</span><span class="lbl">cards total</span></div>
+          <div class="stat-tile"><span class="num">76</span><span class="lbl">heir cards</span></div>
+          <div class="stat-tile"><span class="num">24</span><span class="lbl">case cards</span></div>
+        </div>
+
+        <div class="anatomy-grid">
+          <div class="anatomy-card">
+            <h4>Heir Card</h4>
+            <div class="anatomy-row">
+              <div class="anatomy-side">
+                <img src="/moro/cards/son.png" alt="Heir card front" />
+                <span class="lbl">Front: heir's name</span>
+              </div>
+              <div class="anatomy-divider">≠</div>
+              <div class="anatomy-side">
+                <img src="/moro/cards/estate-10.png" alt="Heir card back" />
+                <span class="lbl">Back: <span class="gloss">sahm</span> value</span>
+              </div>
+            </div>
+            <p class="anatomy-caption">You choose the front to represent your heir during a round, and use the back (the sahm value) afterward purely as currency.</p>
+          </div>
+
+          <div class="anatomy-card">
+            <h4>Case Card</h4>
+            <div class="anatomy-row">
+              <div class="anatomy-side">
+                <img src="/moro/cards/Kadia.png" alt="Case card front" />
+                <span class="lbl">Front: the case</span>
+              </div>
+              <div class="anatomy-divider">≠</div>
+              <div class="anatomy-side">
+                <img src="/moro/cards/Hokm.png" alt="Case card back: solution and ruling" />
+                <span class="lbl">Back: solution + ruling card</span>
+              </div>
+            </div>
+            <p class="anatomy-caption">You read the front while playing. The back holds two things: the <b>case solution</b> (who inherits what in this exact case), and the <b>ruling card</b> — a general educational lesson on inheritance law, unrelated to the case on the front, with its own independent effect on your balance.</p>
+          </div>
+        </div>
+
+        <div class="note-callout">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 9v4M12 17h.01M12 3l9 16H3z"/></svg>
+          <p><b>Important:</b> the front and back of a card are two completely separate functions with no relation to each other. When choosing during a round, look only at the front; after scoring (your share, or the ruling card's bonus/penalty), use only the back.</p>
+        </div>
+      </section>
+
+      <section class="section bg-felt">
+        <div class="section-head">
+          <span class="badge"><svg viewBox="0 0 44 44"><path d="M22 3 L26.5 15.5 L40 15.5 L29 23.5 L33 36 L22 28 L11 36 L15 23.5 L4 15.5 L17.5 15.5 Z" fill="#d9a934" stroke="#0b2743" stroke-width="1.2"/></svg><span>2</span></span>
+          <h2>Setup Before the First Round</h2>
+        </div>
+        <ul class="plain">
+          <li>Number of players: 2 to 5 — best enjoyed with 3 to 4.</li>
+          <li>Deal each player a hand of <b>4 heir cards</b>.</li>
+          <li>Give each player a starting balance of <b>20 sahm</b> (from the shared deck).</li>
+          <li>Place the case deck in the middle of the table, showing only the front (the case).</li>
+        </ul>
+
+        <div class="table-diagram">
+          <div class="td-player p1">
+            <div class="td-avatar">P1</div>
+            <div class="td-balance-label">Balance</div>
+            <div class="td-balance-stack"><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /></div>
+            <div class="td-hand"><img src="/moro/cards/son.png" alt="" /><img src="/moro/cards/daughter.png" alt="" /><img src="/moro/cards/mother.png" alt="" /><img src="/moro/cards/father.png" alt="" /></div>
+          </div>
+          <div class="td-player p2">
+            <div class="td-avatar">P2</div>
+            <div class="td-balance-label">Balance</div>
+            <div class="td-balance-stack"><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /></div>
+            <div class="td-hand"><img src="/moro/cards/wife.png" alt="" /><img src="/moro/cards/brother.png" alt="" /><img src="/moro/cards/sister.png" alt="" /><img src="/moro/cards/grandfather.png" alt="" /></div>
+          </div>
+          <div class="td-center">
+            <div class="td-case-card">Case</div>
+            <div class="td-estate">
+              <img src="/moro/cards/estate-50.png" alt="" />
+              <img src="/moro/cards/estate-10.png" alt="" />
+              <img src="/moro/cards/estate-1.png" alt="" />
+            </div>
+            <div class="td-estate-label">Estate value</div>
+          </div>
+          <div class="td-player p3">
+            <div class="td-avatar">P3</div>
+            <div class="td-balance-label">Balance</div>
+            <div class="td-balance-stack"><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /><img src="/moro/cards/estate-10.png" alt="" /></div>
+            <div class="td-hand"><img src="/moro/cards/uncle.png" alt="" /><img src="/moro/cards/grandmother.png" alt="" /><img src="/moro/cards/half-brother.png" alt="" /><img src="/moro/cards/half-sister.png" alt="" /></div>
+          </div>
+        </div>
+        <p class="diagram-caption">A top-down view of the table (example with 3 players): each player keeps their sahm-card balance and a hand of 4 heir cards in front of them, with the case card and the money cards representing the estate value in the middle.</p>
+      </section>
+
+      <section class="section bg-navy">
+        <div class="section-head">
+          <span class="badge"><svg viewBox="0 0 44 44"><path d="M22 3 L26.5 15.5 L40 15.5 L29 23.5 L33 36 L22 28 L11 36 L15 23.5 L4 15.5 L17.5 15.5 Z" fill="#d9a934" stroke="#0b2743" stroke-width="1.2"/></svg><span>3</span></span>
+          <h2>How to Play — 3 Fixed Rounds</h2>
+        </div>
+        <ol class="steps">
+          <li><span class="num">1</span><div><b>Draw a case and place it in the middle</b>Flip a new case card and place it in the center of the table, showing the case description and the estate value printed on it.</div></li>
+          <li><span class="num">2</span><div><b>Check every hand is full</b>Each player's hand should hold 4 heir cards, dealt randomly during setup and refilled the same way every round (see step 8).</div></li>
+          <li><span class="num">3</span><div><b>Choose secretly</b>Each player picks the heir from their hand they believe has the largest share in this case, without seeing anyone else's pick.</div></li>
+          <li><span class="num">4</span><div><b>Reveal together</b>All picks are revealed at the same moment. If two players pick the same individual heir (example: the deceased is a woman with a husband, and two players both play "husband"), priority goes to speed: whoever picked fastest (earliest in turn order) gets the share.</div></li>
+          <li><span class="num">5</span><div><b>Score and pay</b>The estate is paid out to each player according to their correct share, actually from the sahm cards; anyone who picked wrong scores zero for the round.</div></li>
+          <li><span class="num">6</span><div><b>The ruling turn</b>The case card is flipped over by whichever player holds the "ruling turn" this round — starting with the first player, then rotating to a different player each round — so everyone confirms the case solution and finds the "ruling card": a general lesson on inheritance law unrelated to this specific case.</div></li>
+          <li><span class="num">7</span><div><b>Apply the ruling</b>Apply the ruling card's effect: a bonus or penalty in sahm, specifically to the balance of the player who flipped the card.</div></li>
+          <li><span class="num">8</span><div><b>Refill your hand</b>The card each player played returns to the deck, and each player draws a new random card in its place, bringing their hand back to 4.</div></li>
+        </ol>
+      </section>
+
+      <section class="section bg-cream">
+        <div class="section-head">
+          <span class="badge"><svg viewBox="0 0 44 44"><path d="M22 3 L26.5 15.5 L40 15.5 L29 23.5 L33 36 L22 28 L11 36 L15 23.5 L4 15.5 L17.5 15.5 Z" fill="#d9a934" stroke="#0b2743" stroke-width="1.2"/></svg><span>4</span></span>
+          <h2>Special Rules</h2>
+        </div>
+        <div class="grid2">
+          <div class="mini-card mini-card-img">
+            <img src="/moro/cards/heir-generic.png" alt="Wildcard heir card" />
+            <div class="mini-card-body">
+              <h3>The "Heir" Wildcard</h3>
+              <p>An open card with no fixed name — represents any heir you choose in any case, and can never be blocked.</p>
+            </div>
+          </div>
+          <div class="mini-card">
+            <h3><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="9" r="4"/><circle cx="17" cy="9" r="4"/><path d="M9 20v-3M17 20v-3"/></svg>Individual Heir Conflicts</h3>
+            <p>Heirs such as father, mother, grandfather, and husband cannot exist more than once for the same deceased person under Islamic law. If two players pick the same one, only the faster player (by turn order) gets the share.</p>
+          </div>
+          <div class="mini-card">
+            <h3><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 10a8 8 0 0114-5M20 14a8 8 0 01-14 5M18 3v6h-6M6 21v-6h6"/></svg>Swapping</h3>
+            <p>If your card doesn't fit the case, you may swap it for a new one from the deck — but you'll score zero for this round's share.</p>
+          </div>
+          <div class="mini-card">
+            <h3><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 12h6"/></svg>A Fully Unusable Hand</h3>
+            <p>If none of your cards fit, you have two options: <b>pay 5 sahm</b> from your balance to swap one card for a new one from the deck immediately (it might fit this round), or <b>play any card</b> for free (scoring zero this round with no deduction). Either way, you draw a replacement card next turn like everyone else, bringing your hand back to 4.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section bg-gold">
+        <div class="section-head">
+          <span class="badge"><svg viewBox="0 0 44 44"><path d="M22 3 L26.5 15.5 L40 15.5 L29 23.5 L33 36 L22 28 L11 36 L15 23.5 L4 15.5 L17.5 15.5 Z" fill="#d9a934" stroke="#0b2743" stroke-width="1.2"/></svg><span>5</span></span>
+          <h2>Ending and Winning</h2>
+        </div>
+        <ul class="plain">
+          <li>The match ends automatically after the third round.</li>
+          <li>The winner: whoever has the highest sahm balance.</li>
+          <li>If two players are tied, they're both considered winners.</li>
+        </ul>
+      </section>
+
+      <section class="section bg-cream">
+        <div class="section-head">
+          <span class="badge"><svg viewBox="0 0 44 44"><path d="M22 3 L26.5 15.5 L40 15.5 L29 23.5 L33 36 L22 28 L11 36 L15 23.5 L4 15.5 L17.5 15.5 Z" fill="#d9a934" stroke="#0b2743" stroke-width="1.2"/></svg><span>?</span></span>
+          <h2>Frequently Asked Questions</h2>
+        </div>
+        <div class="faq">
+          <div class="faq-item">
+            <div class="q"><span class="qm">?</span>What exactly is the difference between the front and back of a card?</div>
+            <div class="a">The front is the heir's identity, used when choosing during a round. The back is the sahm value, used afterward as currency for scoring and payment. There's no relation between the two — a "son" card can have any value on its back.</div>
+          </div>
+          <div class="faq-item">
+            <div class="q"><span class="qm">?</span>What exactly is the "Heir" wildcard card?</div>
+            <div class="a">An open card with no fixed heir name — you can play it as an answer for any heir allowed in the current case. It's like a "fits anything" card, and it can never be blocked.</div>
+          </div>
+          <div class="faq-item">
+            <div class="q"><span class="qm">?</span>What do I do if I don't have a card that fits the case?</div>
+            <div class="a">If only one card doesn't fit, you can swap it for a new one from the deck (but you'll score zero for the round). If all four cards don't fit, you score zero with no deduction from your balance.</div>
+          </div>
+          <div class="faq-item">
+            <div class="q"><span class="qm">?</span>Is the ruling card different from the case solution?</div>
+            <div class="a">Yes, they're two completely separate things on the same back: the case solution determines who earns their share of the estate in this specific case, while the ruling card is a general lesson on inheritance law — unrelated to this case's subject — with its own additional effect (a bonus or penalty in sahm) entirely independent of whether the case solution was answered correctly.</div>
+          </div>
+          <div class="faq-item">
+            <div class="q"><span class="qm">?</span>What if two players pick the same heir (like "father") in the same round?</div>
+            <div class="a">Some heirs — father, mother, grandfather, husband — cannot exist more than once under Islamic law. If two players play the same one, only the faster player (by turn order) gets the share, and the other is considered "beaten to it" (zero, not a mistake).</div>
+          </div>
+          <div class="faq-item">
+            <div class="q"><span class="qm">?</span>Can an estate ever go undistributed?</div>
+            <div class="a">No — all 24 cases in the game are calculated so the entire estate is distributed to those entitled to it, even in cases with no residuary heir (a heir who takes the remainder): the remainder is returned to the fixed-share heirs in the same proportion as their original shares.</div>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <p>Good luck, and enjoy learning Fara'id! 🌙</p>
+        <a class="back-btn" href="/moro">Back to the game</a>
+      </footer>
+
+    </div>
+  </div>
+  <script>
+    function moroToggleLang(){
+      var ar = document.getElementById('content-ar');
+      var en = document.getElementById('content-en');
+      var btn = document.getElementById('lang-toggle');
+      var showingAr = !ar.hidden;
+      if(showingAr){
+        ar.hidden = true; en.hidden = false;
+        btn.textContent = 'العربية';
+        document.title = "MORO — Game Instructions";
+      } else {
+        en.hidden = true; ar.hidden = false;
+        btn.textContent = 'English';
+        document.title = "مورو — تعليمات اللعبة";
+      }
+    }
+  </script>
+</body>
+</html>

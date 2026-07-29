@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>مورو — الدائرة التفاعلية للورثة</title>
+<title>الدائرة التفاعلية للورثة — دليل تعليمي لأحكام الميراث</title>
 <style>
   :root{
     --navy:#0b2743;
@@ -144,6 +144,21 @@
     background:#fdeeee; border:1px solid #e3a9a9; color:#7a2e2e; font-size:.82rem; display:none;
   }
 
+  .detail-panel{ position:relative; z-index:1; display:flex; flex-direction:column; gap:10px; margin-top:16px; }
+  .detail-empty{ text-align:center; color:var(--ink-soft); font-size:.86rem; padding:10px; }
+  .detail-item{ background:var(--cream-panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; }
+  .detail-item.is-blocked{ border-color:var(--blocked); background:#fdf2f2; }
+  .detail-item h4{ margin:0 0 4px; font-size:.94rem; color:var(--navy); display:flex; align-items:center; gap:8px; }
+  .detail-item h4 .di-badge{ font-size:.7rem; font-weight:800; color:var(--gold); background:rgba(217,169,52,.18); padding:2px 8px; border-radius:999px; }
+  .detail-item.is-blocked h4 .di-badge{ color:var(--blocked); background:rgba(176,74,74,.14); }
+  .detail-item p{ margin:0; font-size:.84rem; color:var(--ink-soft); }
+  .detail-item .di-ayah{
+    margin-top:8px; padding:8px 10px; background:rgba(11,39,67,.05); border-radius:8px;
+    font-size:.86rem; color:var(--navy); line-height:2;
+  }
+  .detail-item .di-ayah-ref{ display:block; margin-top:4px; font-size:.72rem; color:var(--gold); font-weight:700; }
+  .detail-item .di-note{ margin-top:4px; font-size:.78rem; color:var(--ink-soft); }
+
   footer{ text-align:center; margin-top:22px; padding:0 10px; color:var(--ink-soft); font-size:.85rem; position:relative; z-index:1; }
   .back-btn{ display:inline-block; margin-top:10px; padding:10px 22px; background:var(--navy); color:#fff; border-radius:999px; text-decoration:none; font-weight:700; font-size:.9rem; }
 </style>
@@ -153,9 +168,13 @@
     <div class="content">
       <header class="hero">
         <h1>الدائرة التفاعلية للورثة</h1>
-        <p>اضغط على أي وريث لتُدخله في المسألة أو تُخرجه منها، وشوف إزاي نصيب كل واحد (وحتى وجوده في الميراث من الأساس) بيتغيّر فورًا حسب باقي الورثة الموجودين.</p>
+        <p>دليل تعليمي تفاعلي لفهم <span style="color:var(--gold); font-weight:700;">الفرائض</span> (قواعد توزيع الميراث الشرعي). اضغط على أي وريث لتُدخله في المسألة أو تُخرجه منها، وشوف إزاي نصيبه — وحتى استحقاقه للميراث من الأساس — بيتغيّر فورًا حسب باقي الورثة الموجودين معه.</p>
         <hr class="hr" />
       </header>
+
+      <div class="note-callout" style="margin-top:16px;">
+        <p><b>ما معنى "الحجب"؟</b> بعض الورثة يمنعهم وريثٌ أقرب من الإرث نهائيًا (<b>حجب حرمان</b>) — مثل الجد الذي يُحجب كليًا بوجود الأب. وبعضهم يبقى وارثًا لكن ينقص نصيبه لوجود غيره (<b>حجب نقصان</b>) — مثل الزوجة التي تنتقل من الربع إلى الثمن بوجود فرع وارث. الدائرة تحتها توضّح الحالتين مباشرة وأنت بتجرّب.</p>
+      </div>
 
       <div class="controls">
         <div class="gender-switch">
@@ -191,13 +210,19 @@
 
       <div id="undistributed"></div>
 
+      <div id="detail-panel" class="detail-panel"></div>
+
       <div class="note-callout">
-        <p><b>مثال سريع:</b> فعّل "زوجة" بس، هتاخد النصف. فعّل معاها "ابن"، هتلاقي نصيبها اتغيّر فورًا للثمن (1/8) — لأن وجود الفرع الوارث بيغيّر فرض الزوجة. بنفس المنطق، فعّل "أب" هتلاقي "جد" يظهر محجوبًا لو فعّلته، لأن الجد يُحجب كليًا بوجود الأب.</p>
+        <p><b>مثال سريع تجرّبه دلوقتي:</b> فعّل "زوجة" بس، هتاخد الربع (1/4). فعّل معاها "ابن"، هتلاقي نصيبها اتغيّر فورًا للثمن (1/8) — لأن وجود الفرع الوارث بيغيّر فرض الزوجة (حجب نقصان). بنفس المنطق، فعّل "أب" هتلاقي "جد" يظهر محجوبًا لو فعّلته بعده، لأن الجد يُحجب كليًا بوجود الأب (حجب حرمان).</p>
+      </div>
+
+      <div class="note-callout">
+        <p><b>تنبيه شرعي:</b> هذا الدليل أداة تعليمية مبسّطة لتقريب مبادئ الفرائض، وليس مرجعًا شرعيًا نهائيًا ولا بديلًا عن سؤال أهل العلم. يُرجى مراجعة عالم شرعي أو مختص في الفرائض لأي حالة ميراث واقعية.</p>
       </div>
 
       <footer>
-        <p>الحساب هنا بنفس محرك الفرائض المستخدم في اللعبة نفسها — مش تقريب.</p>
-        <a class="back-btn" href="/moro">العودة للعبة</a>
+        <p>الحساب هنا بمحرك حسابي دقيق مبني على قواعد الفرائض الفعلية — وليس تقريبًا.</p>
+        <a class="back-btn" href="/moro">الصفحة الرئيسية لمورو</a>
       </footer>
     </div>
   </div>
@@ -355,6 +380,43 @@
     } else {
       box.style.display = 'none';
     }
+
+    renderDetailPanel(result, playedHeirIds);
+  }
+
+  function renderDetailPanel(result, playedHeirIds){
+    var panel = document.getElementById('detail-panel');
+    var uniqueIds = playedHeirIds.filter(function(id, idx){ return playedHeirIds.indexOf(id) === idx; });
+    var orderedIds = HEIR_TYPES.map(function(h){ return h.id; }).filter(function(id){ return uniqueIds.indexOf(id) !== -1; });
+
+    if (!result || orderedIds.length === 0) {
+      panel.innerHTML = '<p class="detail-empty">فعّل وريثًا واحدًا على الأقل من الدائرة عشان تشوف هنا شرح نصيبه وسببه الشرعي.</p>';
+      return;
+    }
+
+    panel.innerHTML = orderedIds.map(function(id){
+      var heir = getHeirType(id);
+      var info = result.perHeirType[id];
+      if (!info) return '';
+      var isBlocked = info.status === 'محجوب' || (info.status || '').indexOf('مراجعة') !== -1;
+      var badgeText = info.status || '';
+      var ref = (typeof HEIR_QURAN_REF !== 'undefined') ? HEIR_QURAN_REF[id] : null;
+      var ayahHtml = '';
+      if (ref && typeof QURAN_AYAT !== 'undefined' && QURAN_AYAT[ref.ayah]) {
+        var ayah = QURAN_AYAT[ref.ayah];
+        ayahHtml =
+          '<div class="di-ayah">﴿' + ayah.text + '﴾' +
+          '<span class="di-ayah-ref">سورة ' + ayah.surah + '، آية ' + ayah.ayah + '</span></div>' +
+          '<p class="di-note">' + ref.note + '</p>';
+      }
+      return (
+        '<div class="detail-item' + (isBlocked ? ' is-blocked' : '') + '">' +
+          '<h4>' + heir.icon + ' ' + heir.name + '<span class="di-badge">' + badgeText + '</span></h4>' +
+          '<p>' + (info.reason || '') + '</p>' +
+          ayahHtml +
+        '</div>'
+      );
+    }).join('');
   }
 
   document.getElementById('gender-male').addEventListener('click', function(){ setGender('male'); });

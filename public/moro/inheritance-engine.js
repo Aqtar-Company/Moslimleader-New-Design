@@ -189,6 +189,14 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
     setHeir('grandfather', { fraction: null, points: null, status: 'تحتاج مراجعة', reason: TEXTS.needsReviewMessage });
     if (brotherCount > 0) setHeir('brother', { fraction: null, points: null, status: 'تحتاج مراجعة', reason: TEXTS.needsReviewMessage });
     if (sisterCount > 0) setHeir('sister', { fraction: null, points: null, status: 'تحتاج مراجعة', reason: TEXTS.needsReviewMessage });
+    // أي وريث آخر لُعب في هذه المسألة (بنت، إخوة لأم، عم، ابن أخ، ابن عم...) لم يُحسَب نصيبه
+    // بعد عند هذه النقطة من الدالة — نصيبه الحقيقي غير محدَّد أصلًا ما دامت مسألة الجد
+    // والإخوة خلافية، فيُعرَّف "تحتاج مراجعة" صراحةً بدل ما يظهر بلا نصيب وكأنه لا يرث إطلاقًا.
+    [...new Set(playedHeirIds)].forEach(id => {
+      if (!result.perHeirType[id]) {
+        setHeir(id, { fraction: null, points: null, status: 'تحتاج مراجعة', reason: TEXTS.needsReviewMessage });
+      }
+    });
     return finalizeUnsupported(result, fixed, estateValue);
   }
 
@@ -661,6 +669,11 @@ function runInheritanceTests() {
     const r3 = computeInheritance(caseObj, ['nephew', 'uncle'], 24);
     assertEqual('اختبار18-ابن_الأخ_ياخذ_الكل', r3.perHeirType['nephew'].points, 24);
     assertEqual('اختبار18-العم_محجوب_بابن_الأخ', r3.perHeirType['uncle'].points, 0);
+
+    // محجوب بالأب أيضًا (لا بالإخوة فقط)
+    const r4 = computeInheritance(caseObj, ['father', 'nephew'], 24);
+    assertEqual('اختبار18-محجوب_بالأب_نقاط', r4.perHeirType['nephew'].points, 0);
+    assertEqual('اختبار18-محجوب_بالأب_حالة', r4.perHeirType['nephew'].status, 'محجوب');
   }
 
   // اختبار 19 (ابن العم الشقيق: آخر مرتبة معتمدة، يُحجب بالعم وبكل من سبقه)
@@ -672,6 +685,22 @@ function runInheritanceTests() {
     const r2 = computeInheritance(caseObj, ['uncle', 'cousin'], 24);
     assertEqual('اختبار19-محجوب_بالعم_نقاط', r2.perHeirType['cousin'].points, 0);
     assertEqual('اختبار19-العم_ياخذ_الكل', r2.perHeirType['uncle'].points, 24);
+
+    // يُحجب بابن الأخ وحده حتى بلا عم (أقرب درجة منه أيضًا)
+    const r3 = computeInheritance(caseObj, ['nephew', 'cousin'], 24);
+    assertEqual('اختبار19-محجوب_بابن_الأخ_نقاط', r3.perHeirType['cousin'].points, 0);
+    assertEqual('اختبار19-ابن_الأخ_ياخذ_الكل', r3.perHeirType['nephew'].points, 24);
+  }
+
+  // اختبار 20 (مسألة الجد + الإخوة الخلافية: كل وريث آخر لُعب معهم يُعلَّم "تحتاج مراجعة"
+  // صراحةً، لا يظهر بلا نصيب وكأنه لا يرث إطلاقًا — تصحيح ثغرة اكتُشفت بالمراجعة الفقهية)
+  {
+    const caseObj = { deceasedGender: 'male' };
+    const r = computeInheritance(caseObj, ['grandfather', 'brother', 'daughter', 'uncle', 'nephew'], 24);
+    assertEqual('اختبار20-البنت_تحتاج_مراجعة', r.perHeirType['daughter'].status, 'تحتاج مراجعة');
+    assertEqual('اختبار20-العم_تحتاج_مراجعة', r.perHeirType['uncle'].status, 'تحتاج مراجعة');
+    assertEqual('اختبار20-ابن_الأخ_تحتاج_مراجعة', r.perHeirType['nephew'].status, 'تحتاج مراجعة');
+    assertEqual('اختبار20-الحالة_غير_مدعومة', r.supported, false);
   }
 
   const passCount = results.filter(r => r.pass).length;

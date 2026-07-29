@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>مورو — الدائرة التفاعلية للورثة</title>
+<style>
+  :root{
+    --navy:#0b2743;
+    --navy-deep:#071a2e;
+    --cream:#f7efdb;
+    --cream-panel:#fffbf2;
+    --gold:#a97a1f;
+    --gold-bright:#d9a934;
+    --gold-soft:#f6dd8e;
+    --ink:#26190a;
+    --ink-soft:#5c4a2e;
+    --line:rgba(169,122,31,.32);
+    --blocked:#b04a4a;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:#e7ddc9;
+    color:var(--ink);
+    font-family:Tahoma, "Segoe UI", Arial, sans-serif;
+    line-height:1.7;
+    padding:clamp(10px,3vw,30px) clamp(8px,2vw,16px) 40px;
+  }
+  a{ color:inherit; }
+
+  .poster{
+    position:relative;
+    max-width:720px;
+    margin:0 auto;
+    background:
+      radial-gradient(1100px 380px at 50% -8%, rgba(217,169,52,.10), transparent 60%),
+      var(--cream);
+    border:3px solid var(--gold-bright);
+    border-radius:30px;
+    box-shadow:0 24px 60px rgba(7,26,46,.22);
+    padding:clamp(14px,3vw,28px);
+    overflow:hidden;
+  }
+  .poster::before{
+    content:""; position:absolute; inset:10px;
+    border:1.5px solid var(--line); border-radius:20px; pointer-events:none;
+  }
+
+  header.hero{ text-align:center; padding:4px 6px 14px; position:relative; z-index:1; }
+  header.hero h1{ margin:0 0 6px; font-size:clamp(1.25rem,4vw,1.7rem); color:var(--navy); }
+  header.hero p{ margin:0 auto; color:var(--ink-soft); font-size:.9rem; max-width:38em; }
+  .hr{ height:2px; margin:12px 0 0; background:linear-gradient(90deg,transparent,var(--gold-bright) 18%,var(--gold-bright) 82%,transparent); opacity:.55; border:0; }
+
+  .controls{
+    position:relative; z-index:1; display:flex; flex-wrap:wrap; gap:10px; justify-content:center;
+    align-items:center; margin:16px 0 6px;
+  }
+  .gender-switch{ display:flex; background:#fff; border:1px solid var(--line); border-radius:999px; padding:3px; box-shadow:0 3px 8px rgba(11,39,67,.08); }
+  .gender-switch button{
+    border:0; background:transparent; padding:7px 16px; border-radius:999px; font-family:inherit;
+    font-size:.85rem; font-weight:700; color:var(--ink-soft); cursor:pointer;
+  }
+  .gender-switch button.active{ background:var(--navy); color:#fff; }
+  .estate-field{ display:flex; align-items:center; gap:6px; background:#fff; border:1px solid var(--line); border-radius:999px; padding:5px 14px; box-shadow:0 3px 8px rgba(11,39,67,.08); }
+  .estate-field label{ font-size:.8rem; color:var(--ink-soft); font-weight:700; }
+  .estate-field input{
+    width:64px; border:0; background:transparent; font-family:inherit; font-size:.9rem; font-weight:800;
+    color:var(--navy); text-align:center;
+  }
+  .estate-field input:focus{ outline:none; }
+  .reset-btn{
+    border:1px solid var(--line); background:#fff; border-radius:999px; padding:7px 16px;
+    font-family:inherit; font-size:.82rem; font-weight:700; color:var(--ink-soft); cursor:pointer;
+    box-shadow:0 3px 8px rgba(11,39,67,.08);
+  }
+  .reset-btn:hover{ background:var(--cream-panel); }
+
+  .stage-wrap{ position:relative; z-index:1; margin:18px auto 8px; }
+  .stage{
+    position:relative; width:100%; max-width:640px; aspect-ratio:1/1; margin:0 auto;
+  }
+  .ring{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    border-radius:50%; border:1.5px dashed var(--line); pointer-events:none;
+  }
+  .ring-label{
+    position:absolute; top:50%; left:50%; font-size:.62rem; color:var(--gold);
+    font-weight:700; background:var(--cream); padding:1px 6px; border-radius:999px;
+    white-space:nowrap; pointer-events:none;
+  }
+
+  .center-node{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:96px; height:96px; border-radius:50%;
+    background:linear-gradient(160deg,var(--navy),var(--navy-deep));
+    border:3px solid var(--gold-bright); box-shadow:0 10px 24px rgba(0,0,0,.3);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    color:#fff; text-align:center; z-index:5;
+  }
+  .center-node .cn-icon{ font-size:1.5rem; }
+  .center-node .cn-label{ font-size:.72rem; font-weight:800; color:var(--gold-soft); }
+
+  .heir-node{
+    position:absolute; top:50%; left:50%; width:64px; height:64px; margin:-32px 0 0 -32px;
+    border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:0; cursor:pointer; border:2.5px solid var(--line); background:#fff;
+    box-shadow:0 6px 14px rgba(11,39,67,.14); transition:transform .15s, box-shadow .15s, opacity .15s;
+    z-index:4; padding:2px; text-align:center;
+  }
+  .heir-node:hover{ transform:translate(-50%,-50%) scale(1.08); transform-origin:center; z-index:6; }
+  .heir-node .hn-icon{ font-size:1rem; line-height:1; }
+  .heir-node .hn-name{ font-size:.6rem; font-weight:800; color:var(--navy); line-height:1.1; }
+  .heir-node .hn-badge{
+    font-size:.52rem; font-weight:800; color:var(--ink-soft); background:var(--cream);
+    border-radius:999px; padding:1px 5px; margin-top:1px; white-space:nowrap;
+  }
+  .heir-node.present{ border-color:var(--gold-bright); box-shadow:0 8px 18px rgba(217,169,52,.35); }
+  .heir-node.present .hn-badge{ background:var(--gold-bright); color:var(--navy-deep); }
+  .heir-node.blocked{ border-color:var(--blocked); }
+  .heir-node.blocked .hn-badge{ background:var(--blocked); color:#fff; }
+  .heir-node.absent{ opacity:.42; }
+  .heir-node.disabled-gender{ display:none; }
+
+  .legend{
+    position:relative; z-index:1; display:flex; flex-wrap:wrap; gap:14px; justify-content:center;
+    margin:18px 0 6px; font-size:.76rem; color:var(--ink-soft);
+  }
+  .legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .legend .dot{ width:12px; height:12px; border-radius:50%; display:inline-block; border:2px solid var(--line); background:#fff; }
+  .legend .dot.present{ border-color:var(--gold-bright); background:var(--gold-soft); }
+  .legend .dot.blocked{ border-color:var(--blocked); background:#e3a9a9; }
+  .legend .dot.absent{ border-color:var(--line); background:#fff; opacity:.5; }
+
+  .note-callout{
+    position:relative; z-index:1; display:flex; gap:10px; align-items:flex-start; background:rgba(217,169,52,.16);
+    border:1px solid var(--line); border-inline-start:4px solid var(--gold-bright); border-radius:10px;
+    padding:12px 14px; margin-top:18px; font-size:.86rem; color:var(--ink-soft);
+  }
+  .note-callout b{ color:var(--navy); }
+
+  #undistributed{
+    position:relative; z-index:1; margin-top:12px; padding:10px 14px; border-radius:10px;
+    background:#fdeeee; border:1px solid #e3a9a9; color:#7a2e2e; font-size:.82rem; display:none;
+  }
+
+  footer{ text-align:center; margin-top:22px; padding:0 10px; color:var(--ink-soft); font-size:.85rem; position:relative; z-index:1; }
+  .back-btn{ display:inline-block; margin-top:10px; padding:10px 22px; background:var(--navy); color:#fff; border-radius:999px; text-decoration:none; font-weight:700; font-size:.9rem; }
+</style>
+</head>
+<body>
+  <div class="poster">
+    <div class="content">
+      <header class="hero">
+        <h1>الدائرة التفاعلية للورثة</h1>
+        <p>اضغط على أي وريث لتُدخله في المسألة أو تُخرجه منها، وشوف إزاي نصيب كل واحد (وحتى وجوده في الميراث من الأساس) بيتغيّر فورًا حسب باقي الورثة الموجودين.</p>
+        <hr class="hr" />
+      </header>
+
+      <div class="controls">
+        <div class="gender-switch">
+          <button id="gender-male" class="active" type="button">المتوفى: ذكر</button>
+          <button id="gender-female" type="button">المتوفى: أنثى</button>
+        </div>
+        <div class="estate-field">
+          <label for="estate-input">قيمة التركة:</label>
+          <input id="estate-input" type="number" min="1" value="96" />
+          <span style="font-size:.78rem;color:var(--ink-soft);">سهم</span>
+        </div>
+        <button class="reset-btn" id="reset-btn" type="button">تصفير الكل</button>
+      </div>
+
+      <div class="stage-wrap">
+        <div class="stage" id="stage">
+          <div class="ring" id="ring1"></div>
+          <div class="ring" id="ring2"></div>
+          <div class="ring" id="ring3"></div>
+          <div class="center-node">
+            <div class="cn-icon">🕊️</div>
+            <div class="cn-label" id="center-label">المتوفى</div>
+          </div>
+          <!-- heir nodes injected by JS -->
+        </div>
+      </div>
+
+      <div class="legend">
+        <span><i class="dot present"></i> موجود ويرث</span>
+        <span><i class="dot blocked"></i> موجود لكنه محجوب</span>
+        <span><i class="dot absent"></i> غير موجود (اضغط لإضافته)</span>
+      </div>
+
+      <div id="undistributed"></div>
+
+      <div class="note-callout">
+        <p><b>مثال سريع:</b> فعّل "زوجة" بس، هتاخد النصف. فعّل معاها "ابن"، هتلاقي نصيبها اتغيّر فورًا للثمن (1/8) — لأن وجود الفرع الوارث بيغيّر فرض الزوجة. بنفس المنطق، فعّل "أب" هتلاقي "جد" يظهر محجوبًا لو فعّلته، لأن الجد يُحجب كليًا بوجود الأب.</p>
+      </div>
+
+      <footer>
+        <p>الحساب هنا بنفس محرك الفرائض المستخدم في اللعبة نفسها — مش تقريب.</p>
+        <a class="back-btn" href="/moro">العودة للعبة</a>
+      </footer>
+    </div>
+  </div>
+
+<script src="/moro/data.js"></script>
+<script src="/moro/inheritance-engine.js"></script>
+<script>
+(function(){
+  // كل نوع وريث موزّع على حلقة (تنظيم بصري فقط — منطق الحجب/الاستحقاق الفعلي من المحرك الحقيقي)
+  var RING_LAYOUT = [
+    { ring: 1, ids: ['son','daughter','wife','mother','father'] },
+    { ring: 2, ids: ['grandfather','grandmother','brother','sister'] },
+    { ring: 3, ids: ['half-brother','half-sister','uncle'] }
+  ];
+  var RING_RADIUS_PCT = { 1: 33, 2: 58, 3: 84 }; // % من نصف قطر المرحلة
+
+  var state = {
+    gender: 'male',
+    present: {}, // heirId -> true/false
+    estateValue: 96
+  };
+
+  function heirIdsForGender(){
+    var ids = [];
+    RING_LAYOUT.forEach(function(r){ ids = ids.concat(r.ids); });
+    // القوائم ثابتة وتفترض "زوجة" افتراضيًا — بدّلها بـ"زوج" لو المتوفى حاليًا أنثى
+    var spouseActual = currentSpouseId();
+    return ids.map(function(id){ return id === 'wife' ? spouseActual : id; });
+  }
+
+  function buildNodes(){
+    var stage = document.getElementById('stage');
+    // امسح أي عُقد قديمة
+    stage.querySelectorAll('.heir-node').forEach(function(n){ n.remove(); });
+
+    RING_LAYOUT.forEach(function(ringDef){
+      var ids = ringDef.ids.slice();
+      var n = ids.length;
+      ids.forEach(function(id, idx){
+        var heir = getHeirType(id);
+        var angle = (-90 + (360 / n) * idx) * Math.PI / 180;
+        var radiusPct = RING_RADIUS_PCT[ringDef.ring];
+        var x = 50 + radiusPct * Math.cos(angle) * 0.5;
+        var y = 50 + radiusPct * Math.sin(angle) * 0.5;
+
+        var node = document.createElement('div');
+        node.className = 'heir-node absent';
+        node.dataset.heirId = id;
+        node.style.left = x + '%';
+        node.style.top = y + '%';
+        node.style.setProperty('--card-color', heir.color);
+        node.innerHTML =
+          '<div class="hn-icon">' + heir.icon + '</div>' +
+          '<div class="hn-name">' + heir.name + '</div>' +
+          '<div class="hn-badge">غير موجود</div>';
+        node.addEventListener('click', function(){
+          togglePresent(node.dataset.heirId);
+        });
+        stage.appendChild(node);
+      });
+    });
+
+    sizeRings();
+  }
+
+  function sizeRings(){
+    var stage = document.getElementById('stage');
+    var size = stage.clientWidth;
+    [1,2,3].forEach(function(r){
+      var el = document.getElementById('ring' + r);
+      var d = size * (RING_RADIUS_PCT[r] / 100);
+      el.style.width = d + 'px';
+      el.style.height = d + 'px';
+    });
+  }
+
+  function togglePresent(id){
+    state.present[id] = !state.present[id];
+    // الزوج والزوجة لا يجتمعان أبدًا لنفس المتوفى
+    if (id === 'husband' && state.present[id]) state.present.wife = false;
+    if (id === 'wife' && state.present[id]) state.present.husband = false;
+    recompute();
+  }
+
+  function currentSpouseId(){ return state.gender === 'male' ? 'wife' : 'husband'; }
+
+  function setGender(g){
+    state.gender = g;
+    document.getElementById('gender-male').classList.toggle('active', g === 'male');
+    document.getElementById('gender-female').classList.toggle('active', g === 'female');
+    // بدّل عقدة الزوج/الزوجة في مكانها بدل إعادة بناء كل الحلقات
+    var spouseSlot = document.querySelector('.heir-node[data-heir-id="wife"], .heir-node[data-heir-id="husband"]');
+    var newId = currentSpouseId();
+    if (spouseSlot && spouseSlot.dataset.heirId !== newId) {
+      var wasPresent = state.present[spouseSlot.dataset.heirId];
+      state.present[spouseSlot.dataset.heirId] = false;
+      spouseSlot.dataset.heirId = newId;
+      var heir = getHeirType(newId);
+      spouseSlot.style.setProperty('--card-color', heir.color);
+      spouseSlot.querySelector('.hn-icon').textContent = heir.icon;
+      spouseSlot.querySelector('.hn-name').textContent = heir.name;
+      state.present[newId] = false;
+    }
+    document.getElementById('center-label').textContent = g === 'male' ? 'المتوفى (ذكر)' : 'المتوفاة (أنثى)';
+    recompute();
+  }
+
+  function recompute(){
+    var estateValue = parseInt(document.getElementById('estate-input').value, 10) || 0;
+    state.estateValue = estateValue;
+
+    var playedHeirIds = heirIdsForGender().filter(function(id){ return state.present[id]; });
+
+    var result = null;
+    if (playedHeirIds.length > 0 && estateValue > 0) {
+      result = computeInheritance({ deceasedGender: state.gender }, playedHeirIds, estateValue);
+    }
+
+    document.querySelectorAll('.heir-node').forEach(function(node){
+      var id = node.dataset.heirId;
+      var isPresent = !!state.present[id];
+      var badge = node.querySelector('.hn-badge');
+      node.classList.remove('present', 'blocked', 'absent');
+
+      if (!isPresent) {
+        node.classList.add('absent');
+        badge.textContent = 'غير موجود';
+        return;
+      }
+      var info = result && result.perHeirType ? result.perHeirType[id] : null;
+      if (!info) {
+        node.classList.add('absent');
+        badge.textContent = '—';
+        return;
+      }
+      if (info.status === 'محجوب') {
+        node.classList.add('blocked');
+        badge.textContent = 'محجوب';
+      } else if (info.status === 'تحتاج مراجعة') {
+        node.classList.add('blocked');
+        badge.textContent = 'تحتاج مراجعة';
+      } else {
+        node.classList.add('present');
+        var isWholeEstate = info.fraction && info.fraction.num === info.fraction.den;
+        var frac = (info.fraction && !isWholeEstate) ? info.fraction.toString() : '';
+        var pts = (info.points != null) ? (info.points + ' سهم') : '';
+        badge.textContent = frac ? (frac + ' = ' + pts) : (isWholeEstate ? ('الباقي = ' + pts) : (pts || 'الباقي'));
+      }
+    });
+
+    var box = document.getElementById('undistributed');
+    if (result && result.undistributedPoints > 0) {
+      box.style.display = 'block';
+      box.textContent = '⚠️ يوجد ' + result.undistributedPoints + ' سهم لم يُوزَّع في هذه التركيبة من الورثة.';
+    } else {
+      box.style.display = 'none';
+    }
+  }
+
+  document.getElementById('gender-male').addEventListener('click', function(){ setGender('male'); });
+  document.getElementById('gender-female').addEventListener('click', function(){ setGender('female'); });
+  document.getElementById('estate-input').addEventListener('input', recompute);
+  document.getElementById('reset-btn').addEventListener('click', function(){
+    state.present = {};
+    recompute();
+  });
+  window.addEventListener('resize', sizeRings);
+
+  buildNodes();
+  recompute();
+})();
+</script>
+</body>
+</html>

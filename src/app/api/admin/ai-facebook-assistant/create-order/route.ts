@@ -155,6 +155,14 @@ export async function POST(req: NextRequest) {
     include: { items: true },
   });
 
+  // Increment salesCount for each purchased product (non-blocking)
+  for (const item of orderItemsData) {
+    prisma.product.updateMany({
+      where: { id: item.productId },
+      data: { salesCount: { increment: item.quantity } },
+    }).catch(() => {});
+  }
+
   // Send order confirmation email to admin (non-blocking — order is already saved)
   sendOrderEmails({
     orderId: order.id,

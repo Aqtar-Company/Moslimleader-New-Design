@@ -268,6 +268,12 @@ export async function POST(req: NextRequest) {
           { reason: 'order_created', orderId: created.id, adminId: auth.userId },
           tx,
         );
+        for (const item of resolvedItems) {
+          await tx.product.updateMany({
+            where: { id: item.productId },
+            data: { salesCount: { increment: item.quantity } },
+          }).catch(() => {});
+        }
         return created;
       });
     } catch (err) {

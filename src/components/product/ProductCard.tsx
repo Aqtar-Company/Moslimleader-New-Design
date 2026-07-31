@@ -62,7 +62,7 @@ export default function ProductCard({ product, priceLoading = false, modelIndex 
         {/* Wishlist heart */}
         <button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(product); }}
-          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm hover:scale-110 transition z-10"
+          className="absolute top-2 right-2 w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm hover:scale-110 transition z-10"
           aria-label={wishlisted ? t('wishlist.remove') : t('wishlist.add')}
         >
           <svg className="w-4 h-4 transition" fill={wishlisted ? '#ef4444' : 'none'} stroke={wishlisted ? '#ef4444' : '#9ca3af'} strokeWidth={2} viewBox="0 0 24 24">
@@ -82,12 +82,12 @@ export default function ProductCard({ product, priceLoading = false, modelIndex 
 
         {/* Sales count badge */}
         {(product.salesCount ?? 0) > 0 && (
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-gray-400 mt-1 truncate">
             👥 {isRtl ? `اشتراه ${product.salesCount} شخص` : `${product.salesCount} people bought this`}
           </p>
         )}
 
-        <div className="mt-auto pt-3 flex items-center justify-between gap-1.5">
+        <div className="mt-auto pt-3 flex items-center justify-between gap-2">
           {/* Price: show skeleton while fresh prices are loading from API */}
           {priceLoading ? (
             <span className="h-6 w-20 bg-gray-200 rounded-lg animate-pulse shrink-0" />
@@ -97,7 +97,7 @@ export default function ProductCard({ product, priceLoading = false, modelIndex 
           {needsNotify && !priceLoading ? (
             <button
               onClick={() => router.push(href)}
-              className={`text-white text-xs sm:text-sm font-semibold px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all whitespace-nowrap shrink-0 active:scale-95 ${
+              className={`text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl transition-all whitespace-nowrap shrink-0 active:scale-95 ${
                 isComingSoon ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-500 hover:bg-gray-600'
               }`}
             >
@@ -117,7 +117,7 @@ export default function ProductCard({ product, priceLoading = false, modelIndex 
                 setAdded(true);
                 setTimeout(() => setAdded(false), 1500);
               }}
-              className={`text-white text-xs sm:text-sm font-semibold px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all whitespace-nowrap shrink-0 ${
+              className={`text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl transition-all whitespace-nowrap shrink-0 ${
                 added
                   ? 'bg-green-500 scale-95'
                   : priceLoading

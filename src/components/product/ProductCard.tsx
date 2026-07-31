@@ -80,6 +80,13 @@ export default function ProductCard({ product, priceLoading = false, modelIndex 
         </Link>
         <p className="text-gray-500 text-sm line-clamp-2">{displayShortDesc}</p>
 
+        {/* Sales count badge */}
+        {(product.salesCount ?? 0) > 0 && (
+          <p className="text-xs text-gray-400 mt-1">
+            👥 {isRtl ? `اشتراه ${product.salesCount} شخص` : `${product.salesCount} people bought this`}
+          </p>
+        )}
+
         <div className="mt-auto pt-3 flex items-center justify-between gap-1.5">
           {/* Price: show skeleton while fresh prices are loading from API */}
           {priceLoading ? (

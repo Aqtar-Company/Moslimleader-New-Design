@@ -281,6 +281,14 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      // Increment salesCount for each purchased product
+      for (const item of resolvedItems) {
+        await tx.product.updateMany({
+          where: { id: item.productId },
+          data: { salesCount: { increment: item.quantity } },
+        }).catch(() => {/* non-fatal */});
+      }
+
       const cart = await tx.cart.findUnique({ where: { userId: resolvedUserId as string } });
       if (cart) {
         await tx.cartItem.deleteMany({ where: { cartId: cart.id } });

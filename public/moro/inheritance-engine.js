@@ -77,16 +77,29 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
   const halfBrotherCount = countHeir(playedHeirIds, 'half-brother'); // أخ لأم
   const halfSisterCount = countHeir(playedHeirIds, 'half-sister'); // أخت لأم
   const uncleCount = countHeir(playedHeirIds, 'uncle');
+  const grandsonCount = countHeir(playedHeirIds, 'grandson'); // ابن الابن
+  const nephewCount = countHeir(playedHeirIds, 'nephew'); // ابن الأخ الشقيق
+  const cousinCount = countHeir(playedHeirIds, 'cousin'); // ابن العم الشقيق
 
   const hasSon = sonCount > 0;
   const hasDaughter = daughterCount > 0;
-  const hasDescendant = hasSon || hasDaughter;
+  // ابن الابن يُحجب كليًا بوجود الابن نفسه (فرع أقرب في الدرجة)، ويقوم مقامه تمامًا فيما عدا
+  // ذلك: تعصيب مع البنات، وحجب الإخوة/الأعمام، وخفض فرض الزوجين والأم — لذلك لا يُعتبَر
+  // "نشطًا" (فرعًا واردًا فعليًا) إلا عند غياب الابن.
+  const hasGrandson = grandsonCount > 0;
+  const grandsonActive = hasGrandson && !hasSon;
+  const hasDescendant = hasSon || hasDaughter || grandsonActive;
   const hasFather = fatherCount > 0;
   const hasMother = motherCount > 0;
   const siblingsCount = brotherCount + sisterCount;
   const hasGrandfather = grandfatherCount > 0;
   const hasGrandmother = grandmotherCount > 0;
   const hasUncle = uncleCount > 0;
+  const hasNephew = nephewCount > 0;
+  const hasCousin = cousinCount > 0;
+  // "الفرع الوارث الذكر" الفعلي في المسألة: الابن إن وُجد، وإلا ابن الابن إن وُجد ولا ابن معه.
+  const maleDescId = hasSon ? 'son' : (grandsonActive ? 'grandson' : null);
+  const maleDescCount = hasSon ? sonCount : (grandsonActive ? grandsonCount : 0);
 
   const fixed = {}; // id -> Fraction (المجموع لكل فئة)
   let fatherGetsResidue = false;
@@ -118,9 +131,14 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
     }
   }
 
+  // ابن الابن محجوب كليًا بوجود الابن — يُسجَّل هنا صراحةً قبل أي استخدام آخر.
+  if (hasGrandson && hasSon) {
+    setHeir('grandson', { fraction: ZERO, points: 0, status: 'محجوب', reason: 'محجوب لوجود الابن (فرع أقرب في الدرجة).' });
+  }
+
   // ---------- الأب ----------
   if (hasFather) {
-    if (hasSon) {
+    if (hasSon || grandsonActive) {
       fixed['father'] = new Fraction(1, 6);
     } else if (hasDaughter) {
       fixed['father'] = new Fraction(1, 6);
@@ -151,9 +169,9 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
   if (hasGrandfather) {
     if (hasFather) {
       setHeir('grandfather', { fraction: ZERO, points: 0, status: 'محجوب', reason: 'الجد محجوب بوجود الأب.' });
-    } else if (siblingsCount > 0 && !hasSon) {
+    } else if (siblingsCount > 0 && !hasSon && !grandsonActive) {
       grandfatherSiblingsDispute = true;
-    } else if (hasSon) {
+    } else if (hasSon || grandsonActive) {
       fixed['grandfather'] = new Fraction(1, 6);
     } else if (hasDaughter) {
       fixed['grandfather'] = new Fraction(1, 6);
@@ -171,21 +189,29 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
     setHeir('grandfather', { fraction: null, points: null, status: 'تحتاج مراجعة', reason: TEXTS.needsReviewMessage });
     if (brotherCount > 0) setHeir('brother', { fraction: null, points: null, status: 'تحتاج مراجعة', reason: TEXTS.needsReviewMessage });
     if (sisterCount > 0) setHeir('sister', { fraction: null, points: null, status: 'تحتاج مراجعة', reason: TEXTS.needsReviewMessage });
+    // أي وريث آخر لُعب في هذه المسألة (بنت، إخوة لأم، عم، ابن أخ، ابن عم...) لم يُحسَب نصيبه
+    // بعد عند هذه النقطة من الدالة — نصيبه الحقيقي غير محدَّد أصلًا ما دامت مسألة الجد
+    // والإخوة خلافية، فيُعرَّف "تحتاج مراجعة" صراحةً بدل ما يظهر بلا نصيب وكأنه لا يرث إطلاقًا.
+    [...new Set(playedHeirIds)].forEach(id => {
+      if (!result.perHeirType[id]) {
+        setHeir(id, { fraction: null, points: null, status: 'تحتاج مراجعة', reason: TEXTS.needsReviewMessage });
+      }
+    });
     return finalizeUnsupported(result, fixed, estateValue);
   }
 
-  // ---------- البنت (فرض ثابت فقط إن لم يوجد ابن) ----------
-  if (hasDaughter && !hasSon) {
+  // ---------- البنت (فرض ثابت فقط إن لم يوجد فرع وارث ذكر: لا ابن ولا ابن ابن نشط) ----------
+  if (hasDaughter && !hasSon && !grandsonActive) {
     fixed['daughter'] = daughterCount === 1 ? new Fraction(1, 2) : new Fraction(2, 3);
   }
 
   // ---------- الإخوة الأشقاء ----------
-  const siblingsBlocked = hasFather || hasSon;
+  const siblingsBlocked = hasFather || hasSon || grandsonActive;
   let siblingsResiduary = false;
 
   if (siblingsCount > 0) {
     if (siblingsBlocked) {
-      const reason = hasFather ? 'محجوب لوجود الأب.' : 'محجوب لوجود الابن.';
+      const reason = hasFather ? 'محجوب لوجود الأب.' : hasSon ? 'محجوب لوجود الابن.' : 'محجوب لوجود ابن الابن.';
       if (brotherCount > 0) setHeir('brother', { fraction: ZERO, points: 0, status: 'محجوب', reason });
       if (sisterCount > 0) setHeir('sister', { fraction: ZERO, points: 0, status: 'محجوب', reason });
     } else if (hasDaughter || brotherCount > 0) {
@@ -218,15 +244,31 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
     }
   }
 
-  // ---------- العم (الشقيق) ----------
-  // عصبة بنفسه، في آخر ترتيب العصبات المعتمدة هنا: يُحجب كليًا بالابن أو الأب أو الجد أو
-  // الإخوة الأشقاء (أو الأخت التي صارت عصبة مع البنت — تُحسب هنا ضمن siblingsResiduary لأنها
-  // ارتقت لمرتبة الإخوة الأشقاء في الحجب). لا يُحجب بالبنت وحدها ولا بالأخوات فرضًا بلا إخوة
-  // ذكور - في الحالتين يأخذ الباقي بعدهنّ بصفته عصبة بنفسه لعدم وجود عاصب أقرب.
-  const uncleBlocked = hasSon || hasFather || hasGrandfather || siblingsResiduary;
+  // ---------- ترتيب العصبات الأبعد: ابن الأخ الشقيق، ثم العم الشقيق، ثم ابن العم الشقيق ----------
+  // كل واحد منهم عصبة بنفسه، ويُحجب كليًا بالابن أو ابن الابن أو الأب أو الجد أو الإخوة
+  // الأشقاء (أو الأخت التي صارت عصبة مع البنت — ضمن siblingsResiduary)، وأيضًا بمن هو أقرب
+  // منه في هذا الترتيب (بنوة > أبوة > إخوة وبنوهم > أعمام وبنوهم). لا يُحجب أيٌّ منهم بالبنت
+  // وحدها ولا بالأخوات فرضًا بلا إخوة ذكور — في الحالتين يأخذ الباقي بعدهنّ لعدم وجود عاصب أقرب.
+  const nearerAsabaBlocked = hasSon || grandsonActive || hasFather || hasGrandfather || siblingsResiduary;
+
+  const nephewBlocked = nearerAsabaBlocked;
+  if (hasNephew && nephewBlocked) {
+    const reason = hasSon ? 'محجوب لوجود الابن.' : grandsonActive ? 'محجوب لوجود ابن الابن.' : hasFather ? 'محجوب لوجود الأب.' : hasGrandfather ? 'محجوب لوجود الجد.' : 'محجوب لوجود الإخوة الأشقاء (أو من في مرتبتهم).';
+    setHeir('nephew', { fraction: ZERO, points: 0, status: 'محجوب', reason });
+  }
+  const nephewActive = hasNephew && !nephewBlocked;
+
+  const uncleBlocked = nearerAsabaBlocked || nephewActive;
   if (hasUncle && uncleBlocked) {
-    const reason = hasSon ? 'محجوب لوجود الابن.' : hasFather ? 'محجوب لوجود الأب.' : hasGrandfather ? 'محجوب لوجود الجد.' : 'محجوب لوجود الإخوة الأشقاء (أو من في مرتبتهم).';
+    const reason = hasSon ? 'محجوب لوجود الابن.' : grandsonActive ? 'محجوب لوجود ابن الابن.' : hasFather ? 'محجوب لوجود الأب.' : hasGrandfather ? 'محجوب لوجود الجد.' : nephewActive ? 'محجوب لوجود ابن الأخ الشقيق (أقرب درجة في ترتيب العصبات).' : 'محجوب لوجود الإخوة الأشقاء (أو من في مرتبتهم).';
     setHeir('uncle', { fraction: ZERO, points: 0, status: 'محجوب', reason });
+  }
+  const uncleActive = hasUncle && !uncleBlocked;
+
+  const cousinBlocked = nearerAsabaBlocked || nephewActive || uncleActive;
+  if (hasCousin && cousinBlocked) {
+    const reason = hasSon ? 'محجوب لوجود الابن.' : grandsonActive ? 'محجوب لوجود ابن الابن.' : hasFather ? 'محجوب لوجود الأب.' : hasGrandfather ? 'محجوب لوجود الجد.' : nephewActive ? 'محجوب لوجود ابن الأخ الشقيق.' : uncleActive ? 'محجوب لوجود العم الشقيق (أقرب درجة في ترتيب العصبات).' : 'محجوب لوجود الإخوة الأشقاء (أو من في مرتبتهم).';
+    setHeir('cousin', { fraction: ZERO, points: 0, status: 'محجوب', reason });
   }
 
   // ---------- مجموع الفروض ----------
@@ -245,12 +287,12 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
   const fractions = Object.assign({}, fixed); // نسخة سنكمل عليها التوزيع التعصيبي
 
   // ---------- توزيع الباقي (التعصيب) ----------
-  if (hasSon) {
-    // إجمالي حصة كل نوع (الأبناء مجتمعين / البنات مجتمعات) لا حصة فرد واحد فقط —
-    // لازم ضرب عدد الأبناء/البنات في وزن كل فرد (2 للابن، 1 للبنت)، لا رقمًا ثابتًا.
-    const totalShares = 2 * sonCount + 1 * daughterCount;
+  if (maleDescId) {
+    // إجمالي حصة كل نوع (الأبناء/بني الابن مجتمعين، والبنات مجتمعات) لا حصة فرد واحد فقط —
+    // لازم ضرب العدد في وزن كل فرد (2 للذكر، 1 للبنت)، لا رقمًا ثابتًا.
+    const totalShares = 2 * maleDescCount + 1 * daughterCount;
     if (totalShares > 0 && !leftover.isZero()) {
-      fractions['son'] = leftover.mul(new Fraction(2 * sonCount, totalShares));
+      fractions[maleDescId] = leftover.mul(new Fraction(2 * maleDescCount, totalShares));
       if (hasDaughter) fractions['daughter'] = leftover.mul(new Fraction(daughterCount, totalShares));
     }
     leftover = ZERO;
@@ -268,8 +310,14 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
       if (sisterCount > 0) fractions['sister'] = leftover.mul(new Fraction(sisterCount, totalShares));
     }
     leftover = ZERO;
-  } else if (hasUncle && !uncleBlocked) {
+  } else if (nephewActive) {
+    if (!leftover.isZero()) fractions['nephew'] = leftover;
+    leftover = ZERO;
+  } else if (uncleActive) {
     if (!leftover.isZero()) fractions['uncle'] = leftover;
+    leftover = ZERO;
+  } else if (hasCousin && !cousinBlocked) {
+    if (!leftover.isZero()) fractions['cousin'] = leftover;
     leftover = ZERO;
   }
   // إن بقي leftover > 0 هنا: لا يوجد عصبة معروفة — يُرَدّ الباقي على أصحاب الفروض (عدا
@@ -329,7 +377,7 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
     const points = rawPoints[id].floorVal;
     const count = countHeir(playedHeirIds, id);
     let status = 'يرث';
-    let reason = describeShareReason(id, fixed, fatherGetsResidue, hasSon, hasDaughter, siblingsResiduary, brotherCount > 0, motherSiblingsCount);
+    let reason = describeShareReason(id, fixed, fatherGetsResidue, hasSon, hasDaughter, siblingsResiduary, brotherCount > 0, motherSiblingsCount, grandsonActive);
     let originalFraction = null;
     let originalPoints = null;
     let raddPoints = null;
@@ -346,7 +394,7 @@ function computeInheritance(caseObj, playedHeirIds, estateValue) {
   return result;
 }
 
-function describeShareReason(id, fixed, fatherGetsResidue, hasSon, hasDaughter, siblingsResiduary, hasBrother, motherSiblingsCount) {
+function describeShareReason(id, fixed, fatherGetsResidue, hasSon, hasDaughter, siblingsResiduary, hasBrother, motherSiblingsCount, grandsonActive) {
   switch (id) {
     case 'half-brother':
     case 'half-sister':
@@ -354,21 +402,24 @@ function describeShareReason(id, fixed, fatherGetsResidue, hasSon, hasDaughter, 
         ? 'فرض الإخوة لأم: السدس لواحد منفرد (ذكرًا كان أو أنثى، لا فرق بينهما هنا).'
         : 'فرض الإخوة لأم: الثلث يُقسَّم بالتساوي بين جميع الإخوة لأم دون تفضيل للذكر على الأنثى.';
     case 'uncle': return 'العم الشقيق عصبة بنفسه، يأخذ الباقي كله بعد أصحاب الفروض لعدم وجود عاصب أقرب منه.';
+    case 'nephew': return 'ابن الأخ الشقيق عصبة بنفسه، يأخذ الباقي كله لعدم وجود عاصب أقرب منه (أقرب درجة من العم في ترتيب العصبات).';
+    case 'cousin': return 'ابن العم الشقيق عصبة بنفسه، يأخذ الباقي كله لعدم وجود عاصب أقرب منه (آخر مرتبة معتمدة في هذا النظام المبسّط).';
     case 'husband': return 'فرض الزوج (نصف أو ربع حسب وجود الفرع الوارث).';
     case 'wife': return 'فرض الزوجة (ربع أو ثمن حسب وجود الفرع الوارث)، مقسّم بين الزوجات إن تعددن.';
     case 'mother': return 'فرض الأم (سدس أو ثلث حسب وجود الفرع الوارث أو عدد الإخوة).';
     case 'father':
-      if (hasSon) return 'فرض الأب: السدس مع وجود الابن.';
+      if (hasSon || grandsonActive) return 'فرض الأب: السدس مع وجود الابن أو ابن الابن.';
       if (hasDaughter) return 'فرض الأب السدس مع وجود البنت، بالإضافة إلى الباقي تعصيبًا.';
       return 'الأب يأخذ الباقي كله تعصيبًا لعدم وجود فرع وارث.';
     case 'grandmother': return 'فرض الجدة لأم: السدس عند عدم وجود الأم (تُحجب كليًا بوجودها).';
     case 'grandfather':
-      if (hasSon) return 'فرض الجد: السدس مع وجود الابن (يقوم مقام الأب تمامًا لغيابه).';
+      if (hasSon || grandsonActive) return 'فرض الجد: السدس مع وجود الابن أو ابن الابن (يقوم مقام الأب تمامًا لغيابه).';
       if (hasDaughter) return 'فرض الجد السدس مع وجود البنت، بالإضافة إلى الباقي تعصيبًا (كالأب تمامًا لغيابه).';
       return 'الجد يأخذ الباقي كله تعصيبًا لعدم وجود فرع وارث ولا أب.';
     case 'son': return 'الابن عصبة، يأخذ الباقي (وللذكر مثل حظ الأنثيين مع البنت).';
+    case 'grandson': return 'ابن الابن يقوم مقام الابن تمامًا عند غيابه: عصبة، يأخذ الباقي (وللذكر مثل حظ الأنثيين مع البنت).';
     case 'daughter':
-      return hasSon ? 'البنت تشارك إخوتها الأبناء في الباقي تعصيبًا.' : 'فرض البنت: النصف منفردة أو الثلثان مع أخواتها.';
+      return (hasSon || grandsonActive) ? 'البنت تشارك إخوتها (الأبناء أو بني الابن) في الباقي تعصيبًا.' : 'فرض البنت: النصف منفردة أو الثلثان مع أخواتها.';
     case 'brother':
       if (!siblingsResiduary) return 'الأخ الشقيق عصبة منفرد، يأخذ الباقي كله.';
       return hasDaughter
@@ -576,6 +627,80 @@ function runInheritanceTests() {
     const r4 = computeInheritance(caseObj, ['brother', 'uncle'], 24);
     assertEqual('اختبار16-محجوب_بالأخ_نقاط', r4.perHeirType['uncle'].points, 0);
     assertEqual('اختبار16-الأخ_ياخذ_الكل', r4.perHeirType['brother'].points, 24);
+  }
+
+  // اختبار 17 (ابن الابن: يقوم مقام الابن تمامًا عند غيابه، ويُحجب كليًا بوجوده)
+  {
+    const caseObj = { deceasedGender: 'male' };
+    const r1 = computeInheritance(caseObj, ['grandson'], 24);
+    assertEqual('اختبار17-ابن_الابن_منفردًا', r1.perHeirType['grandson'].points, 24);
+
+    const r2 = computeInheritance(caseObj, ['son', 'grandson'], 24);
+    assertEqual('اختبار17-محجوب_بالابن_نقاط', r2.perHeirType['grandson'].points, 0);
+    assertEqual('اختبار17-محجوب_بالابن_حالة', r2.perHeirType['grandson'].status, 'محجوب');
+    assertEqual('اختبار17-الابن_ياخذ_الكل', r2.perHeirType['son'].points, 24);
+
+    // تعصيب مع البنت بنفس منطق الابن (للذكر مثل حظ الأنثيين)
+    const r3 = computeInheritance(caseObj, ['grandson', 'daughter'], 24);
+    assertEqual('اختبار17-ابن_الابن_مع_بنت', r3.perHeirType['grandson'].points, 16);
+    assertEqual('اختبار17-البنت_تعصيب', r3.perHeirType['daughter'].points, 8);
+
+    // يحجب الإخوة الأشقاء والإخوة لأم مثل الابن تمامًا
+    const r4 = computeInheritance(caseObj, ['grandson', 'brother'], 24);
+    assertEqual('اختبار17-الأخ_محجوب_بابن_الابن', r4.perHeirType['brother'].points, 0);
+    assertEqual('اختبار17-الأخ_محجوب_حالة', r4.perHeirType['brother'].status, 'محجوب');
+
+    // يخفّض فرض الزوجة والأم مثل الابن تمامًا (فرع وارث)
+    const r5 = computeInheritance(caseObj, ['wife', 'grandson'], 24);
+    assertEqual('اختبار17-الزوجة_الثمن', r5.perHeirType['wife'].points, 3);
+  }
+
+  // اختبار 18 (ابن الأخ الشقيق: عصبة بنفسه، أقرب درجة من العم، يُحجب بمن هو أقرب منه)
+  {
+    const caseObj = { deceasedGender: 'male' };
+    const r1 = computeInheritance(caseObj, ['nephew'], 24);
+    assertEqual('اختبار18-ابن_الأخ_منفردًا', r1.perHeirType['nephew'].points, 24);
+
+    const r2 = computeInheritance(caseObj, ['brother', 'nephew'], 24);
+    assertEqual('اختبار18-محجوب_بالأخ_نقاط', r2.perHeirType['nephew'].points, 0);
+    assertEqual('اختبار18-محجوب_بالأخ_حالة', r2.perHeirType['nephew'].status, 'محجوب');
+
+    // يحجب العم لأنه أقرب درجة منه في ترتيب العصبات
+    const r3 = computeInheritance(caseObj, ['nephew', 'uncle'], 24);
+    assertEqual('اختبار18-ابن_الأخ_ياخذ_الكل', r3.perHeirType['nephew'].points, 24);
+    assertEqual('اختبار18-العم_محجوب_بابن_الأخ', r3.perHeirType['uncle'].points, 0);
+
+    // محجوب بالأب أيضًا (لا بالإخوة فقط)
+    const r4 = computeInheritance(caseObj, ['father', 'nephew'], 24);
+    assertEqual('اختبار18-محجوب_بالأب_نقاط', r4.perHeirType['nephew'].points, 0);
+    assertEqual('اختبار18-محجوب_بالأب_حالة', r4.perHeirType['nephew'].status, 'محجوب');
+  }
+
+  // اختبار 19 (ابن العم الشقيق: آخر مرتبة معتمدة، يُحجب بالعم وبكل من سبقه)
+  {
+    const caseObj = { deceasedGender: 'male' };
+    const r1 = computeInheritance(caseObj, ['cousin'], 24);
+    assertEqual('اختبار19-ابن_العم_منفردًا', r1.perHeirType['cousin'].points, 24);
+
+    const r2 = computeInheritance(caseObj, ['uncle', 'cousin'], 24);
+    assertEqual('اختبار19-محجوب_بالعم_نقاط', r2.perHeirType['cousin'].points, 0);
+    assertEqual('اختبار19-العم_ياخذ_الكل', r2.perHeirType['uncle'].points, 24);
+
+    // يُحجب بابن الأخ وحده حتى بلا عم (أقرب درجة منه أيضًا)
+    const r3 = computeInheritance(caseObj, ['nephew', 'cousin'], 24);
+    assertEqual('اختبار19-محجوب_بابن_الأخ_نقاط', r3.perHeirType['cousin'].points, 0);
+    assertEqual('اختبار19-ابن_الأخ_ياخذ_الكل', r3.perHeirType['nephew'].points, 24);
+  }
+
+  // اختبار 20 (مسألة الجد + الإخوة الخلافية: كل وريث آخر لُعب معهم يُعلَّم "تحتاج مراجعة"
+  // صراحةً، لا يظهر بلا نصيب وكأنه لا يرث إطلاقًا — تصحيح ثغرة اكتُشفت بالمراجعة الفقهية)
+  {
+    const caseObj = { deceasedGender: 'male' };
+    const r = computeInheritance(caseObj, ['grandfather', 'brother', 'daughter', 'uncle', 'nephew'], 24);
+    assertEqual('اختبار20-البنت_تحتاج_مراجعة', r.perHeirType['daughter'].status, 'تحتاج مراجعة');
+    assertEqual('اختبار20-العم_تحتاج_مراجعة', r.perHeirType['uncle'].status, 'تحتاج مراجعة');
+    assertEqual('اختبار20-ابن_الأخ_تحتاج_مراجعة', r.perHeirType['nephew'].status, 'تحتاج مراجعة');
+    assertEqual('اختبار20-الحالة_غير_مدعومة', r.supported, false);
   }
 
   const passCount = results.filter(r => r.pass).length;

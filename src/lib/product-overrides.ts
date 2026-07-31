@@ -67,8 +67,27 @@ export function applyOverride(product: Product, override?: ProductOverride): Pro
 // Drops _deleted entries.
 export async function getMergedStaticProducts(): Promise<Product[]> {
   const overrides = await loadStaticOverrides();
+
+  // Fetch salesCount from DB for all static products in one query
+  let salesCountMap: Record<string, number> = {};
+  try {
+    const ids = staticProducts.map(p => p.id);
+    const rows = await prisma.product.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, salesCount: true },
+    });
+    for (const row of rows) {
+      if (row.salesCount > 0) salesCountMap[row.id] = row.salesCount;
+    }
+  } catch { /* non-fatal — salesCount stays 0 */ }
+
   return staticProducts
-    .map(p => applyOverride(p, overrides[p.id]))
+    .map(p => {
+      const merged = applyOverride(p, overrides[p.id]);
+      if (!merged) return null;
+      if (salesCountMap[p.id]) merged.salesCount = salesCountMap[p.id];
+      return merged;
+    })
     .filter((p): p is Product => p !== null);
 }
 

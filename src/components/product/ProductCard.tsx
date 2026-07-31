@@ -78,8 +78,6 @@ export default function ProductCard({ product, priceLoading = false, modelIndex 
             {displayName}
           </h3>
         </Link>
-        <p className="text-gray-500 text-sm line-clamp-2">{displayShortDesc}</p>
-
         {/* Sales count badge */}
         {(product.salesCount ?? 0) > 0 && (
           <p className="text-xs text-gray-400 mt-1 truncate">

@@ -17,8 +17,6 @@ export default function Header() {
   const { totalItems } = useCart();
   const { user } = useAuth();
 
-  // Tareeq has its own header
-  if (pathname?.startsWith('/tareeq')) return null;
   const [menuOpen, setMenuOpen] = useState(false);
   const [banner, setBanner] = useState<{ code: string; discount: number; bannerText?: string; bannerColor?: string } | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -29,6 +27,9 @@ export default function Header() {
       .then(d => { if (d.banner) setBanner(d.banner); })
       .catch(() => {});
   }, []);
+
+  // Tareeq has its own header
+  if (pathname?.startsWith('/tareeq')) return null;
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 print:hidden">

@@ -9,14 +9,17 @@ export const TAREEQ_CATEGORIES = {
 
 export type TareeqCategoryKey = keyof typeof TAREEQ_CATEGORIES;
 
-// Map any display label (AR or EN) → canonical key stored in DB
+// Map any display label (AR or EN) OR canonical key → canonical key stored in DB
 export const CATEGORY_KEY: Record<string, TareeqCategoryKey> = {
-  تجربة: 'experience', Experience: 'experience',
-  قصة:   'story',      Story:      'story',
-  فكرة:  'idea',       Idea:       'idea',
-  سؤال:  'question',   Question:   'question',
-  مشروع: 'project',    Project:    'project',
-  تأمل:  'reflection', Reflection: 'reflection',
+  // canonical keys (pass-through — modal sends these directly)
+  experience: 'experience', story: 'story', idea: 'idea',
+  question:   'question',   project: 'project', reflection: 'reflection',
+  // Arabic display labels
+  تجربة: 'experience', قصة: 'story', فكرة: 'idea',
+  سؤال:  'question',   مشروع: 'project', تأمل: 'reflection',
+  // English display labels
+  Experience: 'experience', Story: 'story', Idea: 'idea',
+  Question:   'question',   Project: 'project', Reflection: 'reflection',
 };
 
 export const CATEGORY_ICONS: Record<string, string> = {

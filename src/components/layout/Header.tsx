@@ -84,7 +84,7 @@ export default function Header() {
             </Link>
 
             {/* Tareeq community */}
-            <Link href="/tareeq" className="relative hidden md:flex w-10 h-10 rounded-lg overflow-hidden border-2 border-white/70 hover:border-white transition shrink-0" aria-label="طريق">
+            <Link href="/tareeq" className="relative flex w-10 h-10 rounded-lg overflow-hidden border-2 border-white/70 hover:border-white transition shrink-0" aria-label="طريق">
               <img src="/tareeq-logo- small.png" alt="طريق" className="w-full h-full object-cover" />
             </Link>
           </div>
@@ -113,12 +113,12 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* Side B (Left in RTL): Lang + Account + Hamburger */}
+          {/* Side B (Left in RTL): Lang (desktop only) + Account + Hamburger */}
           <div className="flex items-center justify-end gap-2">
-            {/* Language toggle */}
+            {/* Language toggle — desktop only; mobile uses the drawer */}
             <button
               onClick={toggleLang}
-              className={`${iconBtn} font-black text-sm`}
+              className={`${iconBtn} hidden md:flex font-black text-sm`}
               aria-label="Switch language"
             >
               {lang === 'ar' ? 'EN' : 'ع'}

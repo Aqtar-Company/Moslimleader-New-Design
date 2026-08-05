@@ -15,7 +15,7 @@ interface MobileMenuProps {
 export default function MobileMenu({ open, onClose }: MobileMenuProps) {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
-  const { isRtl } = useLang();
+  const { isRtl, lang, toggleLang } = useLang();
   const { totalItems } = useCart();
   const { totalItems: wishlistCount } = useWishlist();
 
@@ -81,8 +81,19 @@ export default function MobileMenu({ open, onClose }: MobileMenuProps) {
           })}
         </nav>
 
+        {/* Language toggle */}
+        <button
+          onClick={toggleLang}
+          className="flex items-center gap-3 w-full px-5 py-3.5 border-t border-gray-100 text-sm font-bold text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition"
+        >
+          <span className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center text-xs font-black text-gray-700">
+            {lang === 'ar' ? 'EN' : 'ع'}
+          </span>
+          {lang === 'ar' ? 'English' : 'العربية'}
+        </button>
+
         {/* Footer: user info or sign in */}
-        <div className="border-t border-gray-100 px-5 py-4">
+        <div className="px-5 py-4">
           {user ? (
             <div className="space-y-2">
               <Link

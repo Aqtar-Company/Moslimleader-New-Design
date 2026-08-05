@@ -11,18 +11,8 @@ export default function TareeqHeader({ onCreateClick }: Props) {
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a1f1a]/95 backdrop-blur-sm border-b border-emerald-900/40 h-11 flex items-center px-4 print:hidden">
       <div className="max-w-6xl mx-auto w-full flex items-center justify-between gap-2">
 
-        {/* Start — ML logo → back to site */}
-        <Link
-          href="/"
-          className="flex items-center gap-1.5 group min-w-[36px] min-h-[36px]"
-          title={isRtl ? 'العودة إلى مسلم ليدر' : 'Back to Moslim Leader'}
-        >
-          <img
-            src="/ml-logo-new.png"
-            alt="مسلم ليدر"
-            className="w-6 h-6 object-contain opacity-80 group-hover:opacity-100 transition shrink-0"
-          />
-        </Link>
+        {/* Start — spacer keeps center identity truly centered */}
+        <div className="w-9" />
 
         {/* Center — Tareeq identity */}
         <Link href="/tareeq" className="flex items-center gap-1.5 absolute left-1/2 -translate-x-1/2">

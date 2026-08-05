@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { CATEGORY_KEY } from '@/lib/tareeq-constants';
 
 // GET /api/tareeq?cursor=xxx&category=xxx&limit=12
 export async function GET(req: NextRequest) {
@@ -17,18 +18,9 @@ export async function GET(req: NextRequest) {
     take: limit + 1,
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     select: {
-      id: true,
-      title: true,
-      summary: true,
-      content: true,
-      category: true,
-      tags: true,
-      imageUrl: true,
-      authorName: true,
-      likeCount: true,
-      commentCount: true,
-      createdAt: true,
-      userId: true,
+      id: true, title: true, summary: true, content: true,
+      category: true, tags: true, imageUrl: true, authorName: true,
+      likeCount: true, commentCount: true, createdAt: true, userId: true,
       user: { select: { id: true, name: true } },
     },
   });
@@ -53,8 +45,20 @@ export async function POST(req: NextRequest) {
   const content = String(body.content ?? '').trim();
   const title = String(body.title ?? '').trim() || null;
   const summary = String(body.summary ?? '').trim() || null;
-  const category = String(body.category ?? '').trim() || null;
-  const tags = Array.isArray(body.tags) ? body.tags.slice(0, 10) : null;
+
+  // Normalize category to canonical English key
+  const rawCategory = String(body.category ?? '').trim();
+  const category = rawCategory ? (CATEGORY_KEY[rawCategory] ?? null) : null;
+
+  // Validate tags — strings only, max 50 chars each, max 10 tags
+  const rawTags = body.tags;
+  const tags = Array.isArray(rawTags)
+    ? rawTags
+        .filter((t): t is string => typeof t === 'string')
+        .map(t => t.trim().slice(0, 50))
+        .filter(Boolean)
+        .slice(0, 10)
+    : null;
 
   if (content.length < 10) {
     return NextResponse.json({ error: 'اكتب أكثر (10 أحرف على الأقل)' }, { status: 400 });

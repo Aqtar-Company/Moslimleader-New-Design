@@ -3,9 +3,10 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useLang } from '@/context/LanguageContext';
 import { useRouter } from 'next/navigation';
+import { TAREEQ_CATEGORIES, CATEGORY_KEY } from '@/lib/tareeq-constants';
+import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 
-const CATEGORIES_AR = ['تجربة', 'قصة', 'فكرة', 'سؤال', 'مشروع', 'تأمل'];
-const CATEGORIES_EN = ['Experience', 'Story', 'Idea', 'Question', 'Project', 'Reflection'];
+const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
 interface Props { onClose: () => void; onCreated: () => void; }
 
@@ -27,8 +28,6 @@ export default function TareeqCreateModal({ onClose, onCreated }: Props) {
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
 
-  const categories = isRtl ? CATEGORIES_AR : CATEGORIES_EN;
-
   async function submit() {
     if (content.trim().length < 10) {
       setError(isRtl ? 'اكتب أكثر (10 أحرف على الأقل)' : 'Write at least 10 characters');
@@ -36,6 +35,7 @@ export default function TareeqCreateModal({ onClose, onCreated }: Props) {
     }
     setLoading(true); setError('');
     const tags = tagsInput.split(/[,،\s]+/).map(t => t.trim().replace(/^#/, '')).filter(Boolean);
+    // Send canonical key — API normalizes but we send key directly for safety
     const res = await fetch('/api/tareeq', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -92,22 +92,22 @@ export default function TareeqCreateModal({ onClose, onCreated }: Props) {
             <span className="text-[10px] text-gray-400">{content.length} / 5000</span>
           </div>
 
-          {/* Category */}
+          {/* Category — stores canonical English key */}
           <div>
             <p className="text-xs text-gray-500 mb-2 font-semibold">{isRtl ? 'نوع العلامة' : 'Category'}</p>
             <div className="flex flex-wrap gap-2">
-              {categories.map((cat) => (
+              {CATEGORY_KEYS.map((key) => (
                 <button
-                  key={cat}
+                  key={key}
                   type="button"
-                  onClick={() => setCategory(category === cat ? '' : cat)}
+                  onClick={() => setCategory(category === key ? '' : key)}
                   className={`text-xs px-3 py-1.5 rounded-full border transition font-semibold ${
-                    category === cat
+                    category === key
                       ? 'bg-[#1a1a2e] text-white border-[#1a1a2e]'
                       : 'border-gray-200 text-gray-600 hover:border-gray-400'
                   }`}
                 >
-                  {cat}
+                  {isRtl ? TAREEQ_CATEGORIES[key].ar : TAREEQ_CATEGORIES[key].en}
                 </button>
               ))}
             </div>

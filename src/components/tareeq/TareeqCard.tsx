@@ -3,6 +3,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
+import { TAREEQ_CATEGORIES, CATEGORY_COLORS } from '@/lib/tareeq-constants';
+import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import TareeqLoginGate from './TareeqLoginGate';
 
 export interface TareeqPostSummary {
@@ -11,7 +13,7 @@ export interface TareeqPostSummary {
   summary?: string | null;
   content: string;
   category?: string | null;
-  tags?: string[] | null;
+  tags?: unknown;
   authorName: string;
   likeCount: number;
   commentCount: number;
@@ -19,19 +21,6 @@ export interface TareeqPostSummary {
   userId?: string | null;
   user?: { id: string; name: string } | null;
 }
-
-const CATEGORY_COLORS: Record<string, string> = {
-  تجربة: 'bg-amber-100 text-amber-700',
-  قصة: 'bg-purple-100 text-purple-700',
-  فكرة: 'bg-blue-100 text-blue-700',
-  سؤال: 'bg-green-100 text-green-700',
-  مشروع: 'bg-orange-100 text-orange-700',
-  تأمل: 'bg-rose-100 text-rose-700',
-  experience: 'bg-amber-100 text-amber-700',
-  story: 'bg-purple-100 text-purple-700',
-  idea: 'bg-blue-100 text-blue-700',
-  question: 'bg-green-100 text-green-700',
-};
 
 function timeAgo(dateStr: string, isRtl: boolean): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -45,18 +34,23 @@ function timeAgo(dateStr: string, isRtl: boolean): string {
 
 interface Props {
   post: TareeqPostSummary;
-  onLikeToggle?: (id: string, liked: boolean) => void;
+  initialLiked?: boolean;
 }
 
-export default function TareeqCard({ post, onLikeToggle }: Props) {
+export default function TareeqCard({ post, initialLiked = false }: Props) {
   const { isRtl } = useLang();
   const { user } = useAuth();
-  const [liked, setLiked] = useState(false);
+  const [liked, setLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [showGate, setShowGate] = useState(false);
 
+  const catKey = post.category as TareeqCategoryKey | null;
+  const catLabel = catKey && TAREEQ_CATEGORIES[catKey]
+    ? (isRtl ? TAREEQ_CATEGORIES[catKey].ar : TAREEQ_CATEGORIES[catKey].en)
+    : post.category;
+  const categoryColor = catKey ? (CATEGORY_COLORS[catKey] ?? 'bg-gray-100 text-gray-600') : 'bg-gray-100 text-gray-600';
   const snippet = post.summary || post.content.slice(0, 160);
-  const categoryColor = CATEGORY_COLORS[post.category ?? ''] ?? 'bg-gray-100 text-gray-600';
+  const tags = Array.isArray(post.tags) ? (post.tags as string[]) : [];
 
   async function handleLike(e: React.MouseEvent) {
     e.preventDefault();
@@ -66,7 +60,6 @@ export default function TareeqCard({ post, onLikeToggle }: Props) {
       const data = await res.json();
       setLiked(data.liked);
       setLikeCount(c => data.liked ? c + 1 : c - 1);
-      onLikeToggle?.(post.id, data.liked);
     }
   }
 
@@ -85,9 +78,9 @@ export default function TareeqCard({ post, onLikeToggle }: Props) {
                 <p className="text-[10px] text-gray-400">{timeAgo(post.createdAt, isRtl)}</p>
               </div>
             </div>
-            {post.category && (
+            {catLabel && (
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${categoryColor}`}>
-                {post.category}
+                {catLabel}
               </span>
             )}
           </div>
@@ -100,14 +93,12 @@ export default function TareeqCard({ post, onLikeToggle }: Props) {
           )}
 
           {/* Snippet */}
-          <p className="text-gray-600 text-xs leading-relaxed line-clamp-4 flex-1">
-            {snippet}
-          </p>
+          <p className="text-gray-600 text-xs leading-relaxed line-clamp-4 flex-1">{snippet}</p>
 
           {/* Tags */}
-          {Array.isArray(post.tags) && post.tags.length > 0 && (
+          {tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
-              {post.tags.slice(0, 4).map((tag) => (
+              {tags.slice(0, 4).map((tag) => (
                 <span key={tag} className="text-[10px] bg-gray-50 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full">
                   #{tag}
                 </span>

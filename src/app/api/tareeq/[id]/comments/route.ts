@@ -6,15 +6,15 @@ import { checkRateLimit } from '@/lib/rate-limit';
 
 // GET /api/tareeq/[id]/comments
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { id: true } });
+  if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
+
   const comments = await prisma.tareeqComment.findMany({
     where: { postId: params.id },
     orderBy: { createdAt: 'asc' },
     take: 100,
     select: {
-      id: true,
-      content: true,
-      createdAt: true,
-      userId: true,
+      id: true, content: true, createdAt: true, userId: true,
       user: { select: { id: true, name: true } },
     },
   });
@@ -39,17 +39,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { id: true } });
   if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
 
-  const dbUser = await prisma.user.findUnique({ where: { id: user.userId }, select: { name: true } });
-
-  const comment = await prisma.tareeqComment.create({
-    data: { postId: params.id, userId: user.userId, content },
-    select: {
-      id: true, content: true, createdAt: true, userId: true,
-      user: { select: { id: true, name: true } },
-    },
-  });
-
-  await prisma.tareeqPost.update({ where: { id: params.id }, data: { commentCount: { increment: 1 } } });
+  const [comment] = await prisma.$transaction([
+    prisma.tareeqComment.create({
+      data: { postId: params.id, userId: user.userId, content },
+      select: {
+        id: true, content: true, createdAt: true, userId: true,
+        user: { select: { id: true, name: true } },
+      },
+    }),
+    prisma.tareeqPost.update({ where: { id: params.id }, data: { commentCount: { increment: 1 } } }),
+  ]);
 
   return NextResponse.json({ ok: true, comment });
 }

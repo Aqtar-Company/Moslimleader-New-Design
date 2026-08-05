@@ -5,9 +5,10 @@ import { useAuth } from '@/context/AuthContext';
 import TareeqCard, { TareeqPostSummary } from '@/components/tareeq/TareeqCard';
 import TareeqCreateModal from '@/components/tareeq/TareeqCreateModal';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
+import { TAREEQ_CATEGORIES, CATEGORY_KEY } from '@/lib/tareeq-constants';
+import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 
-const CATEGORIES_AR = ['الكل', 'تجربة', 'قصة', 'فكرة', 'سؤال', 'مشروع', 'تأمل'];
-const CATEGORIES_EN = ['All', 'Experience', 'Story', 'Idea', 'Question', 'Project', 'Reflection'];
+const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
 interface Props { initialPosts: TareeqPostSummary[]; initialCursor: string | null; }
 
@@ -17,17 +18,24 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const [posts, setPosts] = useState<TareeqPostSummary[]>(initialPosts);
   const [cursor, setCursor] = useState<string | null>(initialCursor);
   const [loading, setLoading] = useState(false);
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState<string>('');
   const [showCreate, setShowCreate] = useState(false);
   const [showGate, setShowGate] = useState(false);
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
 
-  const categories = isRtl ? CATEGORIES_AR : CATEGORIES_EN;
+  // Fetch user's liked posts once when logged in
+  useEffect(() => {
+    if (!user) { setLikedIds(new Set()); return; }
+    fetch('/api/tareeq/me', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setLikedIds(new Set(d.likedIds ?? [])))
+      .catch(() => {});
+  }, [user]);
 
   const loadPosts = useCallback(async (cat: string, fromCursor?: string | null) => {
     setLoading(true);
     const params = new URLSearchParams({ limit: '12' });
-    const mappedCat = isRtl ? cat : cat.toLowerCase();
-    if (mappedCat && mappedCat !== 'الكل' && mappedCat !== 'all') params.set('category', cat);
+    if (cat) params.set('category', cat);
     if (fromCursor) params.set('cursor', fromCursor);
     const res = await fetch(`/api/tareeq?${params}`);
     if (res.ok) {
@@ -36,12 +44,11 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       setCursor(data.nextCursor);
     }
     setLoading(false);
-  }, [isRtl]);
+  }, []);
 
-  function handleCategoryChange(cat: string) {
-    const val = (cat === 'الكل' || cat === 'All') ? '' : cat;
-    setCategory(val);
-    loadPosts(val, null);
+  function handleCategoryChange(key: string) {
+    setCategory(key);
+    loadPosts(key, null);
   }
 
   function handleCreateClick() {
@@ -68,22 +75,26 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b border-gray-100 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3 overflow-x-auto scrollbar-hide">
           <div className="flex gap-2 flex-1 min-w-0">
-            {categories.map((cat) => {
-              const isActive = (cat === 'الكل' || cat === 'All') ? !category : category === cat;
-              return (
-                <button
-                  key={cat}
-                  onClick={() => handleCategoryChange(cat)}
-                  className={`text-xs font-bold px-4 py-2 rounded-full whitespace-nowrap transition shrink-0 ${
-                    isActive
-                      ? 'bg-[#1a1a2e] text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {cat}
-                </button>
-              );
-            })}
+            {/* All filter */}
+            <button
+              onClick={() => handleCategoryChange('')}
+              className={`text-xs font-bold px-4 py-2 rounded-full whitespace-nowrap transition shrink-0 ${
+                !category ? 'bg-[#1a1a2e] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {isRtl ? 'الكل' : 'All'}
+            </button>
+            {CATEGORY_KEYS.map((key) => (
+              <button
+                key={key}
+                onClick={() => handleCategoryChange(key)}
+                className={`text-xs font-bold px-4 py-2 rounded-full whitespace-nowrap transition shrink-0 ${
+                  category === key ? 'bg-[#1a1a2e] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {isRtl ? TAREEQ_CATEGORIES[key].ar : TAREEQ_CATEGORIES[key].en}
+              </button>
+            ))}
           </div>
           <button
             onClick={handleCreateClick}
@@ -103,10 +114,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
             <div className="text-5xl mb-4">✨</div>
             <p className="text-gray-500 font-semibold mb-2">{isRtl ? 'لا توجد علامات بعد' : 'No marks yet'}</p>
             <p className="text-gray-400 text-sm mb-6">{isRtl ? 'كن أول من يترك علامة' : 'Be the first to leave a mark'}</p>
-            <button
-              onClick={handleCreateClick}
-              className="bg-[#1a1a2e] text-[#F5C518] font-black px-8 py-3 rounded-xl text-sm"
-            >
+            <button onClick={handleCreateClick} className="bg-[#1a1a2e] text-[#F5C518] font-black px-8 py-3 rounded-xl text-sm">
               {isRtl ? '⭐ اترك علامتك' : '⭐ Leave Your Mark'}
             </button>
           </div>
@@ -115,12 +123,11 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
             <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
               {posts.map((post) => (
                 <div key={post.id} className="break-inside-avoid">
-                  <TareeqCard post={post} />
+                  <TareeqCard post={post} initialLiked={likedIds.has(post.id)} />
                 </div>
               ))}
             </div>
 
-            {/* Load more */}
             {cursor && (
               <div className="flex justify-center mt-10">
                 <button

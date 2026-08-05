@@ -24,12 +24,12 @@ function timeAgo(dateStr: string, isRtl: boolean): string {
   return isRtl ? `منذ ${m || 1} دقيقة` : `${m || 1}m ago`;
 }
 
-export default function TareeqPostClient({ post }: { post: Post }) {
+export default function TareeqPostClient({ post, userLiked = false, userBookmarked = false }: { post: Post; userLiked?: boolean; userBookmarked?: boolean }) {
   const { isRtl } = useLang();
   const { user } = useAuth();
-  const [liked, setLiked] = useState(false);
+  const [liked, setLiked] = useState(userLiked);
   const [likeCount, setLikeCount] = useState(post.likeCount);
-  const [bookmarked, setBookmarked] = useState(false);
+  const [bookmarked, setBookmarked] = useState(userBookmarked);
   const [comments, setComments] = useState<Comment[]>(post.comments);
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);

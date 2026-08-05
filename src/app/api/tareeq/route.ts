@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
   const cursor = searchParams.get('cursor') || undefined;
   const category = searchParams.get('category') || undefined;
   const search = searchParams.get('search')?.trim() || undefined;
+  const userId = searchParams.get('userId') || undefined;
   const sort = searchParams.get('sort') ?? 'newest';
   const limit = Math.min(Number(searchParams.get('limit') ?? 12), 30);
   const orderBy = sort === 'liked'
@@ -19,6 +20,7 @@ export async function GET(req: NextRequest) {
 
   const where = {
     ...(category ? { category } : {}),
+    ...(userId ? { userId } : {}),
     ...(search ? {
       OR: [
         { title: { contains: search } },

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
@@ -39,10 +39,23 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
   const [commentCount, setCommentCount] = useState(post.commentCount);
   const [showGate, setShowGate] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const shareMenuRef = useRef<HTMLDivElement>(null);
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const commentInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!showShareMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (shareMenuRef.current && !shareMenuRef.current.contains(e.target as Node)) {
+        setShowShareMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showShareMenu]);
 
   const catKey = post.category as TareeqCategoryKey | null;
   const catLabel = catKey && TAREEQ_CATEGORIES[catKey]
@@ -68,17 +81,18 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
     }
   }
 
-  async function handleShare(e: React.MouseEvent) {
+  function handleShareToggle(e: React.MouseEvent) {
+    e.preventDefault();
+    setShowShareMenu(v => !v);
+  }
+
+  async function handleCopyLink(e: React.MouseEvent) {
     e.preventDefault();
     const url = `${window.location.origin}/tareeq/${post.id}`;
-    const text = post.title || post.content.slice(0, 80);
-    if (navigator.share) {
-      await navigator.share({ title: text, url }).catch(() => {});
-    } else {
-      await navigator.clipboard.writeText(url).catch(() => {});
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+    await navigator.clipboard.writeText(url).catch(() => {});
+    setCopied(true);
+    setShowShareMenu(false);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   function handleCommentToggle(e: React.MouseEvent) {
@@ -147,7 +161,17 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
                 </div>
               )}
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-gray-800 truncate">{post.authorName}</p>
+                {post.userId ? (
+                  <Link
+                    href={`/tareeq/u/${post.userId}`}
+                    onClick={e => e.stopPropagation()}
+                    className="text-xs font-semibold text-gray-800 truncate hover:text-purple-700 transition block"
+                  >
+                    {post.authorName}
+                  </Link>
+                ) : (
+                  <p className="text-xs font-semibold text-gray-800 truncate">{post.authorName}</p>
+                )}
                 <p className="text-[10px] text-gray-400">{timeAgo(post.createdAt, isRtl)}</p>
               </div>
             </div>
@@ -216,21 +240,58 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
             <span>{commentCount}</span>
           </button>
 
-          {/* Share */}
-          <button
-            onClick={handleShare}
-            className={`flex items-center gap-1 text-xs font-semibold transition ms-auto ${copied ? 'text-emerald-600' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            {copied ? (
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-              </svg>
-            ) : (
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
-              </svg>
-            )}
-          </button>
+          {/* Share dropdown */}
+          <div ref={shareMenuRef} className="relative ms-auto">
+            <button
+              onClick={handleShareToggle}
+              className={`flex items-center gap-1 text-xs font-semibold transition ${copied ? 'text-emerald-600' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              {copied ? (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+              ) : (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                </svg>
+              )}
+            </button>
+            {showShareMenu && (() => {
+              const postUrl = typeof window !== 'undefined' ? `${window.location.origin}/tareeq/${post.id}` : `/tareeq/${post.id}`;
+              const text = encodeURIComponent(post.title || post.content.slice(0, 80));
+              const url = encodeURIComponent(postUrl);
+              const items = [
+                { label: 'Twitter / X', color: '#000', href: `https://twitter.com/intent/tweet?text=${text}&url=${url}` },
+                { label: 'WhatsApp', color: '#25D366', href: `https://api.whatsapp.com/send?text=${text}%20${url}` },
+                { label: 'Facebook', color: '#1877F2', href: `https://www.facebook.com/sharer/sharer.php?u=${url}` },
+                { label: 'Telegram', color: '#0088CC', href: `https://t.me/share/url?url=${url}&text=${text}` },
+              ];
+              return (
+                <div className="absolute bottom-full end-0 mb-2 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 w-36 z-20">
+                  {items.map(item => (
+                    <a
+                      key={item.label}
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={e => { e.stopPropagation(); setShowShareMenu(false); }}
+                      className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 transition"
+                    >
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: item.color }} />
+                      {item.label}
+                    </a>
+                  ))}
+                  <button
+                    onClick={handleCopyLink}
+                    className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 transition w-full"
+                  >
+                    <span className="w-2 h-2 rounded-full shrink-0 bg-gray-400" />
+                    {isRtl ? 'نسخ الرابط' : 'Copy link'}
+                  </button>
+                </div>
+              );
+            })()}
+          </div>
         </div>
 
         {/* Inline comment form */}

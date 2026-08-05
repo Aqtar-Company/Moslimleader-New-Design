@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import AmeenProductCard from './AmeenProductCard';
@@ -162,6 +163,7 @@ function TypingDots() {
 }
 
 export default function AmeenChat() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [showBadge, setShowBadge] = useState(true);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -456,6 +458,7 @@ export default function AmeenChat() {
   };
 
   // ── Rendering ──
+  if (pathname?.startsWith('/tareeq')) return null;
   return (
     <>
       {/* Floating launcher — pinned to the right (mirror of the

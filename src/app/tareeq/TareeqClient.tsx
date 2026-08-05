@@ -9,6 +9,7 @@ import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
 import { TAREEQ_CATEGORIES, CATEGORY_ICONS } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import TareeqHeader from '@/components/tareeq/TareeqHeader';
+import TareeqSidebar from '@/components/tareeq/TareeqSidebar';
 
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
@@ -29,6 +30,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const [showGate, setShowGate] = useState(false);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [newPostId, setNewPostId] = useState<string | null>(null);
+  const [showSidebar, setShowSidebar] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const feedTopRef = useRef<HTMLDivElement>(null);
@@ -104,7 +106,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
     <div className="min-h-screen bg-gray-50">
       <TareeqHeader onCreateClick={handleCreateClick} />
 
-      <div className="pt-14" />
+      <div className="pt-11" />
 
       {/* Hero */}
       <div className="bg-[#0a1f1a] text-white py-12 px-4">
@@ -122,7 +124,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       </div>
 
       {/* Sticky bar — 2 rows */}
-      <div className="sticky top-14 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm">
+      <div className="sticky top-11 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm">
         {/* Row 1: categories */}
         <div className="max-w-6xl mx-auto px-4 pt-3 pb-2 flex gap-2 overflow-x-auto scrollbar-hide">
           <button
@@ -147,7 +149,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           ))}
         </div>
 
-        {/* Row 2: search + sort */}
+        {/* Row 2: search + sort + sidebar toggle */}
         <div className="max-w-6xl mx-auto px-4 pb-3 flex items-center gap-3">
           <div className="relative flex-1 max-w-sm">
             <svg className="absolute top-1/2 -translate-y-1/2 start-3 w-3.5 h-3.5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -168,11 +170,22 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
             <option value="newest">{isRtl ? 'الأحدث' : 'Newest'}</option>
             <option value="liked">{isRtl ? 'الأكثر إعجاباً' : 'Most Liked'}</option>
           </select>
+          {/* Sidebar toggle — mobile only */}
+          <button
+            onClick={() => setShowSidebar(v => !v)}
+            className="lg:hidden border border-gray-200 rounded-full p-1.5 text-gray-500 hover:bg-gray-50 transition shrink-0"
+            aria-label={isRtl ? 'القائمة' : 'Menu'}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+          </button>
         </div>
       </div>
 
-      {/* Feed */}
-      <div ref={feedTopRef} className="max-w-6xl mx-auto px-4 py-8 pb-28 sm:pb-8">
+      {/* Feed + Sidebar */}
+      <div className="max-w-7xl mx-auto px-4 py-8 pb-28 sm:pb-8 flex gap-6 items-start">
+        <div ref={feedTopRef} className="flex-1 min-w-0">
         {initialLoading ? (
           <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
             {skeletons.map((_, i) => (
@@ -218,7 +231,35 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
             )}
           </>
         )}
-      </div>
+        </div>{/* end feed col */}
+
+        {/* Desktop sidebar */}
+        <aside className="hidden lg:block w-60 shrink-0 sticky top-28 space-y-4">
+          <TareeqSidebar onCreateClick={handleCreateClick} />
+        </aside>
+      </div>{/* end flex row */}
+
+      {/* Mobile sidebar drawer */}
+      {showSidebar && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+            onClick={() => setShowSidebar(false)}
+          />
+          <div className="fixed inset-y-0 end-0 w-72 max-w-[90vw] bg-gray-50 z-50 lg:hidden overflow-y-auto p-4 shadow-2xl">
+            <button
+              onClick={() => setShowSidebar(false)}
+              className="mb-4 text-gray-400 hover:text-gray-600 transition"
+              aria-label="Close"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <TareeqSidebar onCreateClick={() => { setShowSidebar(false); handleCreateClick(); }} />
+          </div>
+        </>
+      )}
 
       {/* Floating button — mobile only */}
       <button

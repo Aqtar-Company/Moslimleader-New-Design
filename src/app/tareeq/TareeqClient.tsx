@@ -62,7 +62,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       <div className="bg-[#0a1f1a] text-white py-14 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <img
-            src="/tareeq-logo.png"
+            src="/tareeq-logo- Rounded.png"
             alt="طريق"
             className="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-4 drop-shadow-[0_0_20px_rgba(0,200,120,0.4)]"
           />
@@ -104,7 +104,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
             onClick={handleCreateClick}
             className="shrink-0 bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs px-4 py-2 rounded-full transition flex items-center gap-2"
           >
-            <img src="/tareeq-logo.png" alt="" className="w-4 h-4 shrink-0" />
+            <img src="/tareeq-logo- Rounded.png" alt="" className="w-4 h-4 shrink-0" />
             <span className="hidden sm:inline">{isRtl ? 'اترك علامة' : 'Leave a Mark'}</span>
             <span className="sm:hidden">+</span>
           </button>
@@ -158,7 +158,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         onClick={handleCreateClick}
         className="fixed bottom-6 left-1/2 -translate-x-1/2 sm:hidden z-30 bg-[#0a1f1a] text-white font-black px-7 py-3.5 rounded-full shadow-xl shadow-emerald-900/40 text-sm flex items-center gap-2 border border-emerald-700/40"
       >
-        <img src="/tareeq-logo.png" alt="" className="w-5 h-5" />
+        <img src="/tareeq-logo- Rounded.png" alt="" className="w-5 h-5" />
         {isRtl ? 'اترك علامة' : 'Leave a Mark'}
       </button>
 

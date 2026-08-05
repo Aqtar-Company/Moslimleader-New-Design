@@ -67,7 +67,7 @@ export default function TareeqCreateModal({ onClose, onCreated }: Props) {
         <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
           <div>
             <h2 className="font-black text-gray-900 text-base flex items-center gap-2">
-            <img src="/tareeq-logo.png" alt="" className="w-6 h-6" />
+            <img src="/tareeq-logo- circle.png" alt="" className="w-6 h-6" />
             {isRtl ? 'اترك علامة' : 'Leave a Mark'}
           </h2>
             <p className="text-xs text-gray-400 mt-0.5">{isRtl ? 'شارك تجربتك مع المجتمع' : 'Share your experience with the community'}</p>

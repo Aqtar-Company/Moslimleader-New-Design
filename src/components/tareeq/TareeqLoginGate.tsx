@@ -24,7 +24,7 @@ export default function TareeqLoginGate({ onClose }: Props) {
         className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center"
         onClick={e => e.stopPropagation()}
       >
-        <img src="/tareeq-logo.png" alt="طريق" className="w-16 h-16 mx-auto mb-4" />
+        <img src="/tareeq-logo- circle.png" alt="طريق" className="w-16 h-16 mx-auto mb-4" />
         <h2 className="font-black text-gray-900 text-xl mb-2">
           {isRtl ? 'انضم إلى طريق' : 'Join Tareeq'}
         </h2>

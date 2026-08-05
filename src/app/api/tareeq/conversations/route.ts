@@ -1,0 +1,81 @@
+export const dynamic = 'force-dynamic';
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { getAuthUser } from '@/lib/jwt';
+
+// GET /api/tareeq/conversations — list current user's conversations
+export async function GET(_req: NextRequest) {
+  const user = await getAuthUser().catch(() => null);
+  if (!user) return NextResponse.json({ conversations: [] });
+
+  const convos = await prisma.tareeqConversation.findMany({
+    where: {
+      OR: [
+        { participantA: user.userId },
+        { participantB: user.userId },
+      ],
+    },
+    orderBy: { lastMessageAt: 'desc' },
+  });
+
+  // Enrich with other participant info
+  const otherIds = convos.map(c =>
+    c.participantA === user.userId ? c.participantB : c.participantA
+  );
+  const uniqueIds = [...new Set(otherIds)];
+  const users = await prisma.user.findMany({
+    where: { id: { in: uniqueIds } },
+    select: { id: true, name: true, avatarUrl: true },
+  });
+  const userMap = Object.fromEntries(users.map(u => [u.id, u]));
+
+  // Count unread messages in each conversation
+  const unreadCounts = await Promise.all(
+    convos.map(c =>
+      prisma.tareeqMessage.count({
+        where: { conversationId: c.id, senderId: { not: user.userId }, read: false },
+      })
+    )
+  );
+
+  const conversations = convos.map((c, i) => {
+    const otherId = c.participantA === user.userId ? c.participantB : c.participantA;
+    return {
+      id: c.id,
+      lastMessage: c.lastMessage,
+      lastMessageAt: c.lastMessageAt,
+      createdAt: c.createdAt,
+      unreadCount: unreadCounts[i],
+      otherUser: userMap[otherId] ?? { id: otherId, name: 'مستخدم', avatarUrl: null },
+    };
+  });
+
+  return NextResponse.json({ conversations });
+}
+
+// POST /api/tareeq/conversations — start/find conversation
+// body: { userId: string }
+export async function POST(req: NextRequest) {
+  const user = await getAuthUser().catch(() => null);
+  if (!user) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
+
+  const body = await req.json().catch(() => ({}));
+  const otherId = String(body.userId ?? '').trim();
+  if (!otherId || otherId === user.userId) {
+    return NextResponse.json({ error: 'معرّف غير صالح' }, { status: 400 });
+  }
+
+  const otherUser = await prisma.user.findUnique({ where: { id: otherId }, select: { id: true } });
+  if (!otherUser) return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 404 });
+
+  // Always sort alphabetically to ensure deduplication
+  const [pA, pB] = [user.userId, otherId].sort();
+
+  const convo = await prisma.tareeqConversation.upsert({
+    where: { participantA_participantB: { participantA: pA, participantB: pB } },
+    create: { participantA: pA, participantB: pB },
+    update: {},
+  });
+
+  return NextResponse.json({ conversationId: convo.id });
+}

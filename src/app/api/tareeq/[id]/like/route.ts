@@ -13,6 +13,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
 
+  const post = await prisma.tareeqPost.findUnique({
+    where: { id: params.id },
+    select: { id: true, userId: true, title: true },
+  });
+  if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
+
   const existing = await prisma.tareeqLike.findUnique({
     where: { postId_userId: { postId: params.id, userId: user.userId } },
   });
@@ -28,6 +34,19 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       prisma.tareeqLike.create({ data: { postId: params.id, userId: user.userId } }),
       prisma.tareeqPost.update({ where: { id: params.id }, data: { likeCount: { increment: 1 } } }),
     ]);
+    // Notify post author (non-blocking, never fail the like)
+    if (post.userId && post.userId !== user.userId) {
+      prisma.tareeqNotification.create({
+        data: {
+          userId: post.userId,
+          type: 'like',
+          actorId: user.userId,
+          actorName: user.name ?? null,
+          postId: post.id,
+          postTitle: post.title ?? null,
+        },
+      }).catch(() => {});
+    }
     return NextResponse.json({ liked: true });
   }
 }

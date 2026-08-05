@@ -11,6 +11,7 @@ import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import TareeqHeader from '@/components/tareeq/TareeqHeader';
 import TareeqSidebar from '@/components/tareeq/TareeqSidebar';
 import TareeqPWA, { TareeqInstallBanner } from '@/components/tareeq/TareeqPWA';
+import { TareeqNotificationsProvider } from '@/context/TareeqNotificationsContext';
 
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
@@ -104,6 +105,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const skeletons = Array.from({ length: 6 });
 
   return (
+    <TareeqNotificationsProvider>
     <div className="min-h-screen bg-gray-50">
       <TareeqPWA />
       <TareeqHeader onCreateClick={handleCreateClick} />
@@ -280,5 +282,6 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       }} />}
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
     </div>
+    </TareeqNotificationsProvider>
   );
 }

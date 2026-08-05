@@ -58,6 +58,8 @@ model User {
   tareeqLikes        TareeqLike[]
   tareeqComments     TareeqComment[]
   tareeqBookmarks    TareeqBookmark[]
+  tareeqNotifications TareeqNotification[] @relation("TareeqNotifRecipient")
+  tareeqSentMessages  TareeqMessage[]      @relation("TareeqMsgSender")
 
   @@index([role])
   @@index([isWholesale])
@@ -957,4 +959,51 @@ model TareeqBookmark {
 
   @@unique([postId, userId])
   @@index([userId])
+}
+
+model TareeqNotification {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation("TareeqNotifRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  type           String
+  actorId        String?
+  actorName      String?
+  actorAvatarUrl String?
+  postId         String?
+  postTitle      String?
+  body           String?  @db.Text
+  read           Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+model TareeqConversation {
+  id            String          @id @default(cuid())
+  participantA  String
+  participantB  String
+  lastMessage   String?         @db.Text
+  lastMessageAt DateTime?
+  createdAt     DateTime        @default(now())
+  messages      TareeqMessage[]
+
+  @@unique([participantA, participantB])
+  @@index([participantA])
+  @@index([participantB])
+}
+
+model TareeqMessage {
+  id             String             @id @default(cuid())
+  conversationId String
+  conversation   TareeqConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User               @relation("TareeqMsgSender", fields: [senderId], references: [id], onDelete: Cascade)
+  content        String             @db.Text
+  read           Boolean            @default(false)
+  createdAt      DateTime           @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
 }

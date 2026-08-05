@@ -7,6 +7,8 @@ import TareeqCardSkeleton from '@/components/tareeq/TareeqCardSkeleton';
 import TareeqCreateModal from '@/components/tareeq/TareeqCreateModal';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
 import TareeqHeader from '@/components/tareeq/TareeqHeader';
+import { TareeqNotificationsProvider } from '@/context/TareeqNotificationsContext';
+import { useRouter } from 'next/navigation';
 
 interface ProfileUser {
   id: string;
@@ -25,6 +27,7 @@ interface Props {
 export default function TareeqUserClient({ profileUser, initialPosts, initialCursor, likedIds: initialLiked }: Props) {
   const { isRtl } = useLang();
   const { user } = useAuth();
+  const router = useRouter();
   const [posts, setPosts] = useState<TareeqPostSummary[]>(initialPosts);
   const [cursor, setCursor] = useState<string | null>(initialCursor);
   const [loading, setLoading] = useState(false);
@@ -63,10 +66,27 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
     setShowCreate(true);
   }
 
+  async function handleSendMessage() {
+    if (!user) { setShowGate(true); return; }
+    try {
+      const res = await fetch('/api/tareeq/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ userId: profileUser.id }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        router.push(`/tareeq/inbox/${d.conversationId}`);
+      }
+    } catch { /* ignore */ }
+  }
+
   const joinYear = new Date(profileUser.createdAt).getFullYear();
   const skeletons = Array.from({ length: 6 });
 
   return (
+    <TareeqNotificationsProvider>
     <div className="min-h-screen bg-gray-50">
       <TareeqHeader onCreateClick={handleCreateClick} />
       <div className="pt-11" />
@@ -86,6 +106,17 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
             <p className="text-emerald-400/70 text-xs mt-1">
               {isRtl ? `انضم ${joinYear}` : `Joined ${joinYear}`} · {posts.length}+ {isRtl ? 'علامة' : 'marks'}
             </p>
+            {user && user.userId !== profileUser.id && (
+              <button
+                onClick={handleSendMessage}
+                className="mt-3 flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-sm px-5 py-2 rounded-full transition mx-auto"
+              >
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+                {isRtl ? 'أرسل رسالة' : 'Send Message'}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -121,5 +152,6 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
       {showCreate && <TareeqCreateModal onClose={() => setShowCreate(false)} onCreated={() => {}} />}
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
     </div>
+    </TareeqNotificationsProvider>
   );
 }

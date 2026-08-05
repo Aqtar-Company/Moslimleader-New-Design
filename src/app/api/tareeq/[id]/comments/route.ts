@@ -36,7 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (content.length < 2) return NextResponse.json({ error: 'اكتب تعليقك' }, { status: 400 });
   if (content.length > 500) return NextResponse.json({ error: 'التعليق طويل جداً' }, { status: 400 });
 
-  const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { id: true } });
+  const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { id: true, userId: true, title: true } });
   if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
 
   const [comment] = await prisma.$transaction([
@@ -49,6 +49,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }),
     prisma.tareeqPost.update({ where: { id: params.id }, data: { commentCount: { increment: 1 } } }),
   ]);
+
+  // Notify post author (non-blocking)
+  if (post.userId && post.userId !== user.userId) {
+    prisma.tareeqNotification.create({
+      data: {
+        userId: post.userId,
+        type: 'comment',
+        actorId: user.userId,
+        actorName: user.name ?? null,
+        postId: post.id,
+        postTitle: post.title ?? null,
+        body: content.slice(0, 120),
+      },
+    }).catch(() => {});
+  }
 
   return NextResponse.json({ ok: true, comment });
 }

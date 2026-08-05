@@ -10,6 +10,7 @@ import { ageInYears } from '@/lib/child-age';
 import { Address } from '@/context/AuthContext';
 import { governorates } from '@/lib/shipping';
 import { COUNTRY_CURRENCIES } from '@/lib/geo-pricing';
+import { compressImage } from '@/lib/compress-image';
 const COUNTRIES_LIST = [
   { code: 'EG', name: 'مصر', nameEn: 'Egypt' },
   ...Object.entries(COUNTRY_CURRENCIES)
@@ -80,6 +81,7 @@ export default function AccountPage() {
   const [email, setEmail] = useState('');
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileError, setProfileError] = useState('');
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   // Address form
   const [showAddressForm, setShowAddressForm] = useState(false);
@@ -216,6 +218,27 @@ export default function AccountPage() {
     setTimeout(() => setProfileSaved(false), 2500);
   }
 
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    const compressed = await compressImage(file, { maxWidth: 400, maxHeight: 400, quality: 0.88 });
+    const form = new FormData();
+    form.append('file', compressed);
+    const res = await fetch('/api/account/avatar', { method: 'POST', credentials: 'include', body: form });
+    const data = await res.json();
+    setAvatarUploading(false);
+    if (res.ok) updateUser({ avatarUrl: data.avatarUrl });
+    e.target.value = '';
+  }
+
+  async function handleAvatarDelete() {
+    setAvatarUploading(true);
+    await fetch('/api/account/avatar', { method: 'DELETE', credentials: 'include' });
+    setAvatarUploading(false);
+    updateUser({ avatarUrl: null });
+  }
+
   function handleAddAddress() {
     const needsGov = addrCountry === 'EG';
     if (!addrLabel.trim() || !addrFullName.trim() || !addrPhone.trim() || !addrCity.trim() || !addrStreet.trim()) return;
@@ -302,6 +325,30 @@ export default function AccountPage() {
       {tab === 'profile' && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <h2 className="text-lg font-black text-gray-900 mb-6">{L.profile}</h2>
+
+          {/* Avatar */}
+          <div className="flex items-center gap-5 mb-8">
+            {user.avatarUrl ? (
+              <img src={user.avatarUrl} alt={user.name} className="w-20 h-20 rounded-full object-cover border-2 border-gray-200" />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-[#1a1a2e] text-white flex items-center justify-center text-2xl font-black">
+                {user.name.charAt(0)}
+              </div>
+            )}
+            <div className="flex flex-col gap-2">
+              <label className="cursor-pointer bg-gray-900 text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-gray-700 transition inline-block text-center">
+                {avatarUploading ? (isRtl ? 'جاري الرفع...' : 'Uploading...') : (isRtl ? 'تغيير الصورة' : 'Change Photo')}
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarUpload} disabled={avatarUploading} />
+              </label>
+              {user.avatarUrl && (
+                <button onClick={handleAvatarDelete} disabled={avatarUploading} className="text-xs text-red-500 hover:text-red-700 transition font-semibold">
+                  {isRtl ? 'حذف الصورة' : 'Remove Photo'}
+                </button>
+              )}
+              <p className="text-[10px] text-gray-400">{isRtl ? 'JPG أو PNG أو WebP — بحد أقصى 5MB' : 'JPG, PNG or WebP — max 5MB'}</p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-lg">
             <div className="sm:col-span-2">
               <label className={labelClass}>{L.name} *</label>

@@ -5,6 +5,7 @@ import { useLang } from '@/context/LanguageContext';
 import { useRouter } from 'next/navigation';
 import { TAREEQ_CATEGORIES, CATEGORY_KEY } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
+import { compressImage } from '@/lib/compress-image';
 
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
@@ -20,6 +21,9 @@ export default function TareeqCreateModal({ onClose, onCreated }: Props) {
   const [tagsInput, setTagsInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
@@ -27,6 +31,26 @@ export default function TareeqCreateModal({ onClose, onCreated }: Props) {
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
+
+  async function handleMedia(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true); setError('');
+    const isImage = file.type.startsWith('image/');
+    const uploadFile = isImage ? await compressImage(file, { maxWidth: 1920, maxHeight: 1920, quality: 0.82 }) : file;
+    const form = new FormData();
+    form.append('file', uploadFile);
+    const res = await fetch('/api/tareeq/upload', { method: 'POST', credentials: 'include', body: form });
+    const data = await res.json();
+    setUploading(false);
+    if (res.ok) {
+      setMediaUrl(data.url);
+      setMediaType(data.type);
+    } else {
+      setError(data.error || (isRtl ? 'فشل رفع الملف' : 'Upload failed'));
+    }
+    e.target.value = '';
+  }
 
   async function submit() {
     if (content.trim().length < 10) {
@@ -40,7 +64,11 @@ export default function TareeqCreateModal({ onClose, onCreated }: Props) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ content: content.trim(), title: title.trim() || null, category: category || null, tags }),
+      body: JSON.stringify({
+        content: content.trim(), title: title.trim() || null, category: category || null, tags,
+        imageUrl: mediaType === 'image' ? mediaUrl : null,
+        videoUrl: mediaType === 'video' ? mediaUrl : null,
+      }),
     });
     const data = await res.json();
     setLoading(false);
@@ -72,7 +100,7 @@ export default function TareeqCreateModal({ onClose, onCreated }: Props) {
           </h2>
             <p className="text-xs text-gray-400 mt-0.5">{isRtl ? 'شارك تجربتك مع المجتمع' : 'Share your experience with the community'}</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none" aria-label="إغلاق">×</button>
+          <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 text-2xl leading-none transition" aria-label="إغلاق">×</button>
         </div>
 
         {/* Body */}
@@ -123,6 +151,46 @@ export default function TareeqCreateModal({ onClose, onCreated }: Props) {
             placeholder={isRtl ? 'الوسوم (مفصولة بفاصلة): صلاة، تربية' : 'Tags (comma separated): prayer, parenting'}
             className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
           />
+
+          {/* Media upload */}
+          <div>
+            <p className="text-xs text-gray-500 mb-2 font-semibold">{isRtl ? 'صورة أو فيديو (اختياري)' : 'Image or Video (optional)'}</p>
+            {mediaUrl ? (
+              <div className="relative rounded-xl overflow-hidden border border-gray-200">
+                {mediaType === 'image' ? (
+                  <img src={mediaUrl} alt="" className="w-full max-h-48 object-cover" />
+                ) : (
+                  <video src={mediaUrl} className="w-full max-h-48" controls />
+                )}
+                <button
+                  type="button"
+                  onClick={() => { setMediaUrl(null); setMediaType(null); }}
+                  className="absolute top-2 right-2 bg-black/60 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm hover:bg-black/80 transition"
+                  aria-label="إزالة الوسائط"
+                >×</button>
+              </div>
+            ) : (
+              <label className="flex items-center gap-2 cursor-pointer border border-dashed border-gray-300 rounded-xl px-4 py-3 hover:border-emerald-400 transition">
+                {uploading ? (
+                  <span className="text-xs text-gray-500">{isRtl ? 'جاري الرفع...' : 'Uploading...'}</span>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-xs text-gray-500">{isRtl ? 'أضف صورة أو فيديو' : 'Add image or video'}</span>
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={handleMedia}
+                />
+              </label>
+            )}
+          </div>
 
           {error && <p className="text-red-500 text-xs">{error}</p>}
         </div>

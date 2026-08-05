@@ -18,6 +18,7 @@ model User {
   verificationToken       String?   @unique
   verificationTokenExpiry DateTime?
   phone          String?
+  avatarUrl      String?
   role           String   @default("customer")
   // For role='staff' users: array of permission keys (e.g. ['orders.read',
   // 'inventory.write']). Null/empty = no admin access. Super-admins

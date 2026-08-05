@@ -14,12 +14,14 @@ export interface TareeqPostSummary {
   content: string;
   category?: string | null;
   tags?: unknown;
+  imageUrl?: string | null;
+  videoUrl?: string | null;
   authorName: string;
   likeCount: number;
   commentCount: number;
   createdAt: string;
   userId?: string | null;
-  user?: { id: string; name: string } | null;
+  user?: { id: string; name: string; avatarUrl?: string | null } | null;
 }
 
 function timeAgo(dateStr: string, isRtl: boolean): string {
@@ -70,9 +72,13 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
           {/* Header */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-[#1a1a2e] text-white flex items-center justify-center text-xs font-bold shrink-0">
-                {post.authorName.charAt(0)}
-              </div>
+              {post.user?.avatarUrl ? (
+                <img src={post.user.avatarUrl} alt={post.authorName} className="w-8 h-8 rounded-full object-cover shrink-0" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-[#1a1a2e] text-white flex items-center justify-center text-xs font-bold shrink-0">
+                  {post.authorName.charAt(0)}
+                </div>
+              )}
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-gray-700 truncate">{post.authorName}</p>
                 <p className="text-[10px] text-gray-400">{timeAgo(post.createdAt, isRtl)}</p>
@@ -94,6 +100,23 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
 
           {/* Snippet */}
           <p className="text-gray-600 text-xs leading-relaxed line-clamp-4 flex-1">{snippet}</p>
+
+          {/* Image thumbnail */}
+          {post.imageUrl && (
+            <div className="rounded-xl overflow-hidden">
+              <img src={post.imageUrl} alt="" className="w-full object-cover max-h-52" />
+            </div>
+          )}
+
+          {/* Video indicator */}
+          {!post.imageUrl && post.videoUrl && (
+            <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 text-xs text-gray-500">
+              <svg className="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+              {isRtl ? 'يحتوي على فيديو' : 'Contains a video'}
+            </div>
+          )}
 
           {/* Tags */}
           {tags.length > 0 && (

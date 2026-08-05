@@ -1,28 +1,26 @@
 'use client';
 import Link from 'next/link';
-import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LanguageContext';
 
 interface Props { onCreateClick: () => void; }
 
 export default function TareeqHeader({ onCreateClick }: Props) {
-  const { user } = useAuth();
   const { isRtl } = useLang();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a1f1a]/95 backdrop-blur-sm border-b border-emerald-900/40 h-14 flex items-center px-4 print:hidden">
-      <div className="max-w-6xl mx-auto w-full flex items-center justify-between">
+      <div className="max-w-6xl mx-auto w-full flex items-center justify-between gap-2">
 
-        {/* Right (RTL) — ML logo → back to site */}
+        {/* Start — ML logo → back to site */}
         <Link
           href="/"
-          className="flex items-center gap-2 group"
+          className="flex items-center gap-2 group min-w-[44px] min-h-[44px]"
           title={isRtl ? 'العودة إلى مسلم ليدر' : 'Back to Moslim Leader'}
         >
           <img
             src="/ml-logo-new.png"
             alt="مسلم ليدر"
-            className="w-8 h-8 object-contain opacity-90 group-hover:opacity-100 transition"
+            className="w-8 h-8 object-contain opacity-90 group-hover:opacity-100 transition shrink-0"
           />
           <span className="hidden sm:block text-xs text-emerald-400/70 group-hover:text-emerald-300 font-semibold transition">
             {isRtl ? 'مسلم ليدر' : 'Moslim Leader'}
@@ -30,20 +28,20 @@ export default function TareeqHeader({ onCreateClick }: Props) {
         </Link>
 
         {/* Center — Tareeq identity */}
-        <Link href="/tareeq" className="flex items-center gap-2">
-          <img src="/tareeq-logo- circle.png" alt="طريق" className="w-7 h-7" />
+        <Link href="/tareeq" className="flex items-center gap-2 absolute left-1/2 -translate-x-1/2">
+          <img src="/tareeq-logo- circle.png" alt="طريق" className="w-7 h-7 shrink-0" />
           <span className="font-black text-white text-base tracking-wide">
             {isRtl ? 'طريق' : 'Tareeq'}
           </span>
         </Link>
 
-        {/* Left (RTL) — create button */}
+        {/* End — create button with icon + label always visible */}
         <button
           onClick={onCreateClick}
-          className="flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs px-3 py-1.5 rounded-full transition"
+          className="flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white font-black text-xs px-3 py-2 rounded-full transition min-h-[36px]"
         >
-          <span className="text-sm leading-none">+</span>
-          <span className="hidden sm:inline">{isRtl ? 'علامة' : 'Mark'}</span>
+          <img src="/tareeq-logo- small.png" alt="" className="w-4 h-4 shrink-0" />
+          <span>{isRtl ? 'اترك علامة' : 'Leave a Mark'}</span>
         </button>
 
       </div>

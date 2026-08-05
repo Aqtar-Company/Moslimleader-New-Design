@@ -84,7 +84,7 @@ export default function Header() {
 
             {/* Tareeq community */}
             <Link href="/tareeq" className={`${iconBtn} hidden md:flex`} aria-label="طريق">
-              <img src="/tareeq-logo- circle.png" alt="طريق" className="w-5 h-5" />
+              <img src="/tareeq-logo- small.png" alt="طريق" className="w-5 h-5" />
             </Link>
           </div>
 

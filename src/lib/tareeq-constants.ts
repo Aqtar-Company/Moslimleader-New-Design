@@ -31,6 +31,17 @@ export const CATEGORY_ICONS: Record<string, string> = {
   reflection: '🌙',
 };
 
+// Hex values for inline borderInlineStartColor on text-only feed cards.
+// Intentionally matches the Tailwind colors in CATEGORY_COLORS below.
+export const CATEGORY_ACCENT_HEX: Record<string, string> = {
+  experience: '#d97706',
+  story:      '#9333ea',
+  idea:       '#2563eb',
+  question:   '#16a34a',
+  project:    '#ea580c',
+  reflection: '#e11d48',
+};
+
 export const CATEGORY_COLORS: Record<string, string> = {
   experience: 'bg-amber-100 text-amber-700',
   story:      'bg-purple-100 text-purple-700',

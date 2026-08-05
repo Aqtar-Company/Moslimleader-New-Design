@@ -11,7 +11,11 @@ export async function GET(req: NextRequest) {
   const cursor = searchParams.get('cursor') || undefined;
   const category = searchParams.get('category') || undefined;
   const search = searchParams.get('search')?.trim() || undefined;
+  const sort = searchParams.get('sort') ?? 'newest';
   const limit = Math.min(Number(searchParams.get('limit') ?? 12), 30);
+  const orderBy = sort === 'liked'
+    ? { likeCount: 'desc' as const }
+    : { createdAt: 'desc' as const };
 
   const where = {
     ...(category ? { category } : {}),
@@ -26,7 +30,7 @@ export async function GET(req: NextRequest) {
 
   const posts = await prisma.tareeqPost.findMany({
     where: Object.keys(where).length ? where : undefined,
-    orderBy: { createdAt: 'desc' },
+    orderBy,
     take: limit + 1,
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     select: {

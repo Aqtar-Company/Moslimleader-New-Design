@@ -6,7 +6,7 @@ import TareeqCard, { TareeqPostSummary } from '@/components/tareeq/TareeqCard';
 import TareeqCardSkeleton from '@/components/tareeq/TareeqCardSkeleton';
 import TareeqCreateModal from '@/components/tareeq/TareeqCreateModal';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
-import { TAREEQ_CATEGORIES } from '@/lib/tareeq-constants';
+import { TAREEQ_CATEGORIES, CATEGORY_ICONS } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import TareeqHeader from '@/components/tareeq/TareeqHeader';
 
@@ -22,6 +22,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
   const [category, setCategory] = useState<string>('');
+  const [sort, setSort] = useState<'newest' | 'liked'>('newest');
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [showCreate, setShowCreate] = useState(false);
@@ -40,13 +41,14 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       .catch(() => {});
   }, [user]);
 
-  const loadPosts = useCallback(async (cat: string, q: string, fromCursor?: string | null) => {
+  const loadPosts = useCallback(async (cat: string, q: string, fromCursor?: string | null, sortBy: 'newest' | 'liked' = 'newest') => {
     if (fromCursor) { setLoading(true); } else { setInitialLoading(true); }
     try {
       const params = new URLSearchParams({ limit: '12' });
       if (cat) params.set('category', cat);
       if (q) params.set('search', q);
       if (fromCursor) params.set('cursor', fromCursor);
+      if (sortBy !== 'newest') params.set('sort', sortBy);
       const res = await fetch(`/api/tareeq?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -63,19 +65,19 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   useEffect(() => {
     if (!sentinelRef.current || !cursor) return;
     const obs = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting && !loading) loadPosts(category, search, cursor); },
+      (entries) => { if (entries[0].isIntersecting && !loading) loadPosts(category, search, cursor, sort); },
       { rootMargin: '200px' },
     );
     obs.observe(sentinelRef.current);
     return () => obs.disconnect();
-  }, [cursor, loading, category, search, loadPosts]);
+  }, [cursor, loading, category, search, sort, loadPosts]);
 
   // Debounced search
   useEffect(() => {
     if (searchRef.current) clearTimeout(searchRef.current);
     searchRef.current = setTimeout(() => {
       setSearch(searchInput);
-      loadPosts(category, searchInput, null);
+      loadPosts(category, searchInput, null, sort);
     }, 400);
     return () => { if (searchRef.current) clearTimeout(searchRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -83,7 +85,12 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
 
   function handleCategoryChange(key: string) {
     setCategory(key);
-    loadPosts(key, search, null);
+    loadPosts(key, search, null, sort);
+  }
+
+  function handleSortChange(newSort: 'newest' | 'liked') {
+    setSort(newSort);
+    loadPosts(category, search, null, newSort);
   }
 
   function handleCreateClick() {
@@ -98,14 +105,12 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       <TareeqHeader onCreateClick={handleCreateClick} />
 
       <div className="pt-14" />
-      <div className="bg-[#0a1f1a] text-white py-14 px-4">
+
+      {/* Hero */}
+      <div className="bg-[#0a1f1a] text-white py-12 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <span className="w-24 h-24 sm:w-32 sm:h-32 rounded-3xl overflow-hidden mx-auto mb-4 block drop-shadow-[0_0_20px_rgba(0,200,120,0.4)]">
-            <img
-              src="/tareeq-logo- Rounded.png"
-              alt="طريق"
-              className="w-full h-full object-cover"
-            />
+          <span className="w-20 h-20 sm:w-28 sm:h-28 rounded-3xl overflow-hidden mx-auto mb-4 block drop-shadow-[0_0_20px_rgba(0,200,120,0.4)]">
+            <img src="/tareeq-logo- Rounded.png" alt="طريق" className="w-full h-full object-cover" />
           </span>
           <h1 className="font-black text-3xl sm:text-4xl mb-2 tracking-wide">{isRtl ? 'طريق' : 'Tareeq'}</h1>
           <p className="text-emerald-300/70 text-sm sm:text-base max-w-lg mx-auto leading-relaxed font-medium">
@@ -113,54 +118,56 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
               ? 'وَبِالنَّجْمِ هُمْ يَهْتَدُونَ — اترك علامة يهتدي بها غيرك'
               : 'وَبِالنَّجْمِ هُمْ يَهْتَدُونَ — Leave a mark to guide others'}
           </p>
+        </div>
+      </div>
 
-          {/* Search bar inside hero */}
-          <div className="mt-6 max-w-sm mx-auto relative">
+      {/* Sticky bar — 2 rows */}
+      <div className="sticky top-14 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm">
+        {/* Row 1: categories */}
+        <div className="max-w-6xl mx-auto px-4 pt-3 pb-2 flex gap-2 overflow-x-auto scrollbar-hide">
+          <button
+            onClick={() => handleCategoryChange('')}
+            className={`text-xs font-bold px-4 py-2 rounded-full whitespace-nowrap transition shrink-0 ${
+              !category ? 'bg-[#1a1a2e] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {isRtl ? 'الكل' : 'All'}
+          </button>
+          {CATEGORY_KEYS.map((key) => (
+            <button
+              key={key}
+              onClick={() => handleCategoryChange(key)}
+              className={`flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-full whitespace-nowrap transition shrink-0 ${
+                category === key ? 'bg-[#1a1a2e] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              <span>{CATEGORY_ICONS[key]}</span>
+              {isRtl ? TAREEQ_CATEGORIES[key].ar : TAREEQ_CATEGORIES[key].en}
+            </button>
+          ))}
+        </div>
+
+        {/* Row 2: search + sort */}
+        <div className="max-w-6xl mx-auto px-4 pb-3 flex items-center gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <svg className="absolute top-1/2 -translate-y-1/2 start-3 w-3.5 h-3.5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
             <input
               value={searchInput}
               onChange={e => setSearchInput(e.target.value)}
               placeholder={isRtl ? 'ابحث في العلامات...' : 'Search marks...'}
-              className="w-full bg-white/10 border border-white/20 text-white placeholder-white/40 rounded-full px-5 py-2.5 text-sm focus:outline-none focus:bg-white/20 focus:border-white/40 transition"
+              className="w-full border border-gray-200 rounded-full ps-8 pe-4 py-1.5 text-xs focus:outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-100 transition bg-white"
             />
-            <svg className="absolute top-1/2 -translate-y-1/2 end-4 w-4 h-4 text-white/40 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-            </svg>
           </div>
-        </div>
-      </div>
-
-      {/* Sticky category bar */}
-      <div className="sticky top-14 z-40 bg-white/90 backdrop-blur-sm border-b border-gray-100 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3 overflow-x-auto scrollbar-hide">
-          <div className="flex gap-2 flex-1 min-w-0">
-            <button
-              onClick={() => handleCategoryChange('')}
-              className={`text-xs font-bold px-4 py-2 rounded-full whitespace-nowrap transition shrink-0 ${
-                !category ? 'bg-[#1a1a2e] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {isRtl ? 'الكل' : 'All'}
-            </button>
-            {CATEGORY_KEYS.map((key) => (
-              <button
-                key={key}
-                onClick={() => handleCategoryChange(key)}
-                className={`text-xs font-bold px-4 py-2 rounded-full whitespace-nowrap transition shrink-0 ${
-                  category === key ? 'bg-[#1a1a2e] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {isRtl ? TAREEQ_CATEGORIES[key].ar : TAREEQ_CATEGORIES[key].en}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={handleCreateClick}
-            className="shrink-0 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white font-black text-xs px-3 sm:px-4 py-2 rounded-full transition flex items-center gap-1.5 min-w-fit"
+          <select
+            value={sort}
+            onChange={e => handleSortChange(e.target.value as 'newest' | 'liked')}
+            className="border border-gray-200 rounded-full px-3 py-1.5 text-xs text-gray-600 focus:outline-none focus:border-purple-300 bg-white shrink-0 cursor-pointer"
           >
-            <span className="w-4 h-4 rounded-sm overflow-hidden shrink-0"><img src="/tareeq-logo- small.png" alt="" className="w-full h-full object-cover" /></span>
-            <span className="hidden sm:inline">{isRtl ? 'اترك علامة' : 'Leave a Mark'}</span>
-            <span className="sm:hidden">{isRtl ? 'علامة' : 'Mark'}</span>
-          </button>
+            <option value="newest">{isRtl ? 'الأحدث' : 'Newest'}</option>
+            <option value="liked">{isRtl ? 'الأكثر إعجاباً' : 'Most Liked'}</option>
+          </select>
         </div>
       </div>
 
@@ -193,13 +200,15 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           <>
             <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
               {posts.map((post) => (
-                <div key={post.id} className={`break-inside-avoid transition-all duration-700 ${newPostId === post.id ? 'ring-2 ring-emerald-400 rounded-2xl shadow-emerald-100 shadow-lg' : ''}`}>
+                <div
+                  key={post.id}
+                  className={`break-inside-avoid transition-all duration-700 ${newPostId === post.id ? 'ring-2 ring-emerald-400 rounded-2xl shadow-lg shadow-emerald-100' : ''}`}
+                >
                   <TareeqCard post={post} initialLiked={likedIds.has(post.id)} />
                 </div>
               ))}
             </div>
 
-            {/* Infinite scroll sentinel */}
             {cursor && <div ref={sentinelRef} className="h-4 mt-8" />}
 
             {loading && (
@@ -211,7 +220,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         )}
       </div>
 
-      {/* Floating button — mobile */}
+      {/* Floating button — mobile only */}
       <button
         onClick={handleCreateClick}
         className="fixed bottom-6 left-1/2 -translate-x-1/2 sm:hidden z-30 bg-[#0a1f1a] text-white font-black px-7 py-3.5 rounded-full shadow-xl shadow-emerald-900/40 text-sm flex items-center gap-2 border border-emerald-700/40"
@@ -221,7 +230,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       </button>
 
       {showCreate && <TareeqCreateModal onClose={() => setShowCreate(false)} onCreated={(id?: string) => {
-        loadPosts(category, search, null);
+        loadPosts(category, search, null, sort);
         if (id) { setNewPostId(id); setTimeout(() => setNewPostId(null), 3000); }
         setTimeout(() => feedTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
       }} />}

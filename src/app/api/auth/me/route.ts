@@ -21,6 +21,7 @@ export async function GET() {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        avatarUrl: user.avatarUrl ?? null,
         savedAddresses: (user.savedAddresses as unknown[]) ?? [],
         role: user.role,
         permissions,

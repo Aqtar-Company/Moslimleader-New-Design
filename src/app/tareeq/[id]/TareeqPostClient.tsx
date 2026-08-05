@@ -9,9 +9,10 @@ import TareeqHeader from '@/components/tareeq/TareeqHeader';
 interface Comment { id: string; content: string; createdAt: string; userId: string; user: { id: string; name: string } | null; }
 interface Post {
   id: string; title: string | null; content: string; summary: string | null;
-  category: string | null; tags: string[] | null; authorName: string;
+  category: string | null; tags: string[] | null; imageUrl: string | null; videoUrl: string | null;
+  authorName: string;
   likeCount: number; commentCount: number; viewCount: number; createdAt: string;
-  userId: string | null; user: { id: string; name: string } | null;
+  userId: string | null; user: { id: string; name: string; avatarUrl?: string | null } | null;
   comments: Comment[];
 }
 
@@ -83,9 +84,13 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
         <article className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 mb-6">
           {/* Author */}
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-full bg-[#1a1a2e] text-white flex items-center justify-center font-bold">
-              {post.authorName.charAt(0)}
-            </div>
+            {post.user?.avatarUrl ? (
+              <img src={post.user.avatarUrl} alt={post.authorName} className="w-10 h-10 rounded-full object-cover" />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-[#1a1a2e] text-white flex items-center justify-center font-bold">
+                {post.authorName.charAt(0)}
+              </div>
+            )}
             <div>
               <p className="font-semibold text-gray-800 text-sm">{post.authorName}</p>
               <p className="text-xs text-gray-400">{timeAgo(post.createdAt, isRtl)}</p>
@@ -106,6 +111,18 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
           <div className="text-gray-700 text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
             {post.content}
           </div>
+
+          {/* Media */}
+          {post.imageUrl && (
+            <div className="mt-6 rounded-2xl overflow-hidden">
+              <img src={post.imageUrl} alt="" className="w-full object-contain max-h-[500px]" />
+            </div>
+          )}
+          {post.videoUrl && (
+            <div className="mt-6 rounded-2xl overflow-hidden bg-black">
+              <video src={post.videoUrl} controls className="w-full max-h-[500px]" />
+            </div>
+          )}
 
           {/* Tags */}
           {Array.isArray(post.tags) && post.tags.length > 0 && (
@@ -176,9 +193,13 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
 
           {/* Comment input */}
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#1a1a2e] text-white flex items-center justify-center text-xs font-bold shrink-0">
-              {user ? user.name.charAt(0) : '?'}
-            </div>
+            {user?.avatarUrl ? (
+              <img src={user.avatarUrl} alt={user.name} className="w-8 h-8 rounded-full object-cover shrink-0" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-[#1a1a2e] text-white flex items-center justify-center text-xs font-bold shrink-0">
+                {user ? user.name.charAt(0) : '?'}
+              </div>
+            )}
             <div className="flex-1 flex gap-2">
               <input
                 value={commentText}

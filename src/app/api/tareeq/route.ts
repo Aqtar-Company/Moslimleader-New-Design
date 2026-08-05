@@ -19,9 +19,9 @@ export async function GET(req: NextRequest) {
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     select: {
       id: true, title: true, summary: true, content: true,
-      category: true, tags: true, imageUrl: true, authorName: true,
+      category: true, tags: true, imageUrl: true, videoUrl: true, authorName: true,
       likeCount: true, commentCount: true, createdAt: true, userId: true,
-      user: { select: { id: true, name: true } },
+      user: { select: { id: true, name: true, avatarUrl: true } },
     },
   });
 
@@ -67,7 +67,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'النص طويل جداً (5000 حرف كحد أقصى)' }, { status: 400 });
   }
 
-  const dbUser = await prisma.user.findUnique({ where: { id: user.userId }, select: { name: true } });
+  // Media URLs (already uploaded via /api/tareeq/upload)
+  const imageUrl = String(body.imageUrl ?? '').trim() || null;
+  const videoUrl = String(body.videoUrl ?? '').trim() || null;
+
+  const dbUser = await prisma.user.findUnique({ where: { id: user.userId }, select: { name: true, avatarUrl: true } });
 
   const post = await prisma.tareeqPost.create({
     data: {
@@ -76,6 +80,8 @@ export async function POST(req: NextRequest) {
       summary,
       category,
       tags,
+      imageUrl,
+      videoUrl,
       userId: user.userId,
       authorName: dbUser?.name ?? 'مجهول',
     },

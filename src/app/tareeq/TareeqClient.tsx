@@ -10,6 +10,7 @@ import { TAREEQ_CATEGORIES, CATEGORY_ICONS } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import TareeqHeader from '@/components/tareeq/TareeqHeader';
 import TareeqSidebar from '@/components/tareeq/TareeqSidebar';
+import TareeqPWA, { TareeqInstallBanner } from '@/components/tareeq/TareeqPWA';
 
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
@@ -104,6 +105,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <TareeqPWA />
       <TareeqHeader onCreateClick={handleCreateClick} />
 
       <div className="pt-11" />
@@ -270,6 +272,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         {isRtl ? 'اترك علامة' : 'Leave a Mark'}
       </button>
 
+      <TareeqInstallBanner />
       {showCreate && <TareeqCreateModal onClose={() => setShowCreate(false)} onCreated={(id?: string) => {
         loadPosts(category, search, null, sort);
         if (id) { setNewPostId(id); setTimeout(() => setNewPostId(null), 3000); }

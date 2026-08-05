@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
+import { TareeqInstallButton } from './TareeqPWA';
 
 interface Props {
   onCreateClick: () => void;
@@ -135,6 +136,9 @@ export default function TareeqSidebar({ onCreateClick, postCount }: Props) {
           ))}
         </div>
       </div>
+
+      {/* Install app */}
+      <TareeqInstallButton variant="full" />
 
       {/* About طريق */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">

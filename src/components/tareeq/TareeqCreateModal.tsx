@@ -5,6 +5,7 @@ import { useLang } from '@/context/LanguageContext';
 import { useRouter } from 'next/navigation';
 import { TAREEQ_CATEGORIES, CATEGORY_KEY } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
+import { compressImage } from '@/lib/compress-image';
 
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
@@ -35,8 +36,10 @@ export default function TareeqCreateModal({ onClose, onCreated }: Props) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true); setError('');
+    const isImage = file.type.startsWith('image/');
+    const uploadFile = isImage ? await compressImage(file, { maxWidth: 1920, maxHeight: 1920, quality: 0.82 }) : file;
     const form = new FormData();
-    form.append('file', file);
+    form.append('file', uploadFile);
     const res = await fetch('/api/tareeq/upload', { method: 'POST', credentials: 'include', body: form });
     const data = await res.json();
     setUploading(false);
@@ -97,7 +100,7 @@ export default function TareeqCreateModal({ onClose, onCreated }: Props) {
           </h2>
             <p className="text-xs text-gray-400 mt-0.5">{isRtl ? 'شارك تجربتك مع المجتمع' : 'Share your experience with the community'}</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none" aria-label="إغلاق">×</button>
+          <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 text-2xl leading-none transition" aria-label="إغلاق">×</button>
         </div>
 
         {/* Body */}

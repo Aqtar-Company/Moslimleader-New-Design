@@ -10,6 +10,7 @@ import { ageInYears } from '@/lib/child-age';
 import { Address } from '@/context/AuthContext';
 import { governorates } from '@/lib/shipping';
 import { COUNTRY_CURRENCIES } from '@/lib/geo-pricing';
+import { compressImage } from '@/lib/compress-image';
 const COUNTRIES_LIST = [
   { code: 'EG', name: 'مصر', nameEn: 'Egypt' },
   ...Object.entries(COUNTRY_CURRENCIES)
@@ -221,8 +222,9 @@ export default function AccountPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setAvatarUploading(true);
+    const compressed = await compressImage(file, { maxWidth: 400, maxHeight: 400, quality: 0.88 });
     const form = new FormData();
-    form.append('file', file);
+    form.append('file', compressed);
     const res = await fetch('/api/account/avatar', { method: 'POST', credentials: 'include', body: form });
     const data = await res.json();
     setAvatarUploading(false);

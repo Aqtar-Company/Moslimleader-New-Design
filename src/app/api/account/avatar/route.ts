@@ -8,6 +8,20 @@ import { prisma } from '@/lib/prisma';
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
+async function processImage(buffer: Buffer): Promise<{ data: Buffer; ext: string }> {
+  try {
+    const sharp = (await import('sharp')).default;
+    const data = await sharp(buffer)
+      .resize(400, 400, { fit: 'cover', position: 'center' })
+      .jpeg({ quality: 88, progressive: true })
+      .toBuffer();
+    return { data, ext: 'jpg' };
+  } catch {
+    // sharp not available — use raw buffer
+    return { data: buffer, ext: 'jpg' };
+  }
+}
+
 export async function POST(req: NextRequest) {
   const auth = await getAuthUser().catch(() => null);
   if (!auth) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
@@ -20,11 +34,13 @@ export async function POST(req: NextRequest) {
   if (!ALLOWED_TYPES.includes(file.type)) return NextResponse.json({ error: 'نوع الملف غير مدعوم' }, { status: 400 });
   if (file.size > MAX_SIZE) return NextResponse.json({ error: 'الحجم الأقصى 5MB' }, { status: 400 });
 
-  const ext = file.type.split('/')[1].replace('jpeg', 'jpg');
+  const raw = Buffer.from(await file.arrayBuffer());
+  const { data, ext } = await processImage(raw);
+
   const filename = `${auth.userId}.${ext}`;
   const dest = path.join(process.cwd(), 'public', 'uploads', 'avatars', filename);
 
-  await writeFile(dest, Buffer.from(await file.arrayBuffer()));
+  await writeFile(dest, data);
   const avatarUrl = `/uploads/avatars/${filename}`;
 
   await prisma.user.update({ where: { id: auth.userId }, data: { avatarUrl } });

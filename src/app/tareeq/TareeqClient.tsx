@@ -106,17 +106,17 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           </div>
           <button
             onClick={handleCreateClick}
-            className="shrink-0 bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs px-4 py-2 rounded-full transition flex items-center gap-2"
+            className="shrink-0 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white font-black text-xs px-3 sm:px-4 py-2 rounded-full transition flex items-center gap-1.5 min-w-fit"
           >
             <img src="/tareeq-logo- Rounded.png" alt="" className="w-4 h-4 shrink-0" />
             <span className="hidden sm:inline">{isRtl ? 'اترك علامة' : 'Leave a Mark'}</span>
-            <span className="sm:hidden">+</span>
+            <span className="sm:hidden">{isRtl ? 'علامة' : 'Mark'}</span>
           </button>
         </div>
       </div>
 
-      {/* Masonry feed */}
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      {/* Masonry feed — pb-28 on mobile so floating button doesn't cover last card */}
+      <div className="max-w-6xl mx-auto px-4 py-8 pb-28 sm:pb-8">
         {posts.length === 0 && !loading ? (
           <div className="text-center py-20">
             <div className="text-5xl mb-4">✨</div>

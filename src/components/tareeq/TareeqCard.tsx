@@ -103,8 +103,8 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
 
           {/* Image thumbnail */}
           {post.imageUrl && (
-            <div className="rounded-xl overflow-hidden -mx-1">
-              <img src={post.imageUrl} alt="" className="w-full object-cover max-h-48" />
+            <div className="rounded-xl overflow-hidden">
+              <img src={post.imageUrl} alt="" className="w-full object-cover max-h-52" />
             </div>
           )}
 

@@ -115,12 +115,12 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
           {/* Media */}
           {post.imageUrl && (
             <div className="mt-6 rounded-2xl overflow-hidden">
-              <img src={post.imageUrl} alt="" className="w-full object-contain max-h-[500px]" />
+              <img src={post.imageUrl} alt="" className="w-full object-contain max-h-[60vw] sm:max-h-[500px]" />
             </div>
           )}
           {post.videoUrl && (
             <div className="mt-6 rounded-2xl overflow-hidden bg-black">
-              <video src={post.videoUrl} controls className="w-full max-h-[500px]" />
+              <video src={post.videoUrl} controls playsInline className="w-full max-h-[60vw] sm:max-h-[500px]" />
             </div>
           )}
 
@@ -154,7 +154,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
               <svg className="w-5 h-5" fill={bookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
               </svg>
-              {isRtl ? (bookmarked ? 'محفوظ' : 'احتفظ بهذه العلامة') : (bookmarked ? 'Saved' : 'Save')}
+              {isRtl ? (bookmarked ? 'محفوظ' : 'حفظ') : (bookmarked ? 'Saved' : 'Save')}
             </button>
 
             <span className="ms-auto text-xs text-gray-400">
@@ -200,13 +200,13 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                 {user ? user.name.charAt(0) : '?'}
               </div>
             )}
-            <div className="flex-1 flex gap-2">
+            <div className="flex-1 flex gap-2 min-w-0">
               <input
                 value={commentText}
                 onChange={e => setCommentText(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitComment(); } }}
                 placeholder={isRtl ? 'أضف تعليقاً...' : 'Add a comment...'}
-                className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
+                className="flex-1 min-w-0 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
                 onClick={() => { if (!user) setShowGate(true); }}
               />
               <button

@@ -10,6 +10,20 @@ const ALLOWED_VIDEO = ['video/mp4', 'video/webm', 'video/quicktime'];
 const MAX_IMAGE = 10 * 1024 * 1024;  // 10MB
 const MAX_VIDEO = 100 * 1024 * 1024; // 100MB
 
+async function compressImageBuffer(buffer: Buffer): Promise<{ data: Buffer; ext: string }> {
+  try {
+    const sharp = (await import('sharp')).default;
+    const data = await sharp(buffer)
+      .resize(1920, 1920, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 82, progressive: true })
+      .toBuffer();
+    // Use compressed only if it saved space
+    return { data: data.length < buffer.length ? data : buffer, ext: 'jpg' };
+  } catch {
+    return { data: buffer, ext: 'jpg' };
+  }
+}
+
 export async function POST(req: NextRequest) {
   const auth = await getAuthUser().catch(() => null);
   if (!auth) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
@@ -33,11 +47,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: isImage ? 'الحجم الأقصى 10MB' : 'الحجم الأقصى 100MB' }, { status: 400 });
   }
 
-  const ext = file.type.split('/')[1].replace('quicktime', 'mov').replace('jpeg', 'jpg');
-  const filename = `${auth.userId}-${Date.now()}.${ext}`;
-  const dest = path.join(process.cwd(), 'public', 'uploads', 'tareeq', filename);
+  const raw = Buffer.from(await file.arrayBuffer());
+  const timestamp = Date.now();
 
-  await writeFile(dest, Buffer.from(await file.arrayBuffer()));
+  let filename: string;
+  let fileData: Buffer;
+
+  if (isImage) {
+    const { data, ext } = await compressImageBuffer(raw);
+    filename = `${auth.userId}-${timestamp}.${ext}`;
+    fileData = data;
+  } else {
+    const ext = file.type.split('/')[1].replace('quicktime', 'mov');
+    filename = `${auth.userId}-${timestamp}.${ext}`;
+    fileData = raw;
+  }
+
+  const dest = path.join(process.cwd(), 'public', 'uploads', 'tareeq', filename);
+  await writeFile(dest, fileData);
   const url = `/uploads/tareeq/${filename}`;
 
   return NextResponse.json({ ok: true, url, type: isImage ? 'image' : 'video' });

@@ -66,7 +66,10 @@ export default function TareeqCreateModal({ onClose, onCreated }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
           <div>
-            <h2 className="font-black text-gray-900 text-base">⭐ {isRtl ? 'اترك علامة' : 'Leave a Mark'}</h2>
+            <h2 className="font-black text-gray-900 text-base flex items-center gap-2">
+            <img src="/tareeq-logo.png" alt="" className="w-6 h-6" />
+            {isRtl ? 'اترك علامة' : 'Leave a Mark'}
+          </h2>
             <p className="text-xs text-gray-400 mt-0.5">{isRtl ? 'شارك تجربتك مع المجتمع' : 'Share your experience with the community'}</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none" aria-label="إغلاق">×</button>
@@ -131,7 +134,7 @@ export default function TareeqCreateModal({ onClose, onCreated }: Props) {
             disabled={loading || content.trim().length < 10}
             className="w-full bg-[#1a1a2e] hover:bg-gray-800 text-[#F5C518] font-black py-3.5 rounded-xl text-sm transition disabled:opacity-40"
           >
-            {loading ? '...' : (isRtl ? '⭐ انشر علامتك' : '⭐ Publish Your Mark')}
+            {loading ? '...' : (isRtl ? 'انشر علامتك' : 'Publish Your Mark')}
           </button>
         </div>
       </div>

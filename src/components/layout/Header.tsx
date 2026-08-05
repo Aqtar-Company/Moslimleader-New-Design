@@ -79,7 +79,7 @@ export default function Header() {
 
             {/* Tareeq community */}
             <Link href="/tareeq" className={`${iconBtn} hidden md:flex`} aria-label="طريق">
-              <span className="text-base leading-none">⭐</span>
+              <img src="/tareeq-logo.png" alt="طريق" className="w-5 h-5" />
             </Link>
           </div>
 

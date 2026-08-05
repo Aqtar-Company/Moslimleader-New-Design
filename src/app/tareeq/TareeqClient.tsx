@@ -59,11 +59,15 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero */}
-      <div className="bg-[#1a1a2e] text-white py-12 px-4">
+      <div className="bg-[#0a1f1a] text-white py-14 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="text-5xl mb-3">⭐</div>
-          <h1 className="font-black text-3xl sm:text-4xl mb-2">{isRtl ? 'طريق' : 'Tareeq'}</h1>
-          <p className="text-gray-400 text-sm sm:text-base max-w-lg mx-auto leading-relaxed">
+          <img
+            src="/tareeq-logo.png"
+            alt="طريق"
+            className="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-4 drop-shadow-[0_0_20px_rgba(0,200,120,0.4)]"
+          />
+          <h1 className="font-black text-3xl sm:text-4xl mb-2 tracking-wide">{isRtl ? 'طريق' : 'Tareeq'}</h1>
+          <p className="text-emerald-300/70 text-sm sm:text-base max-w-lg mx-auto leading-relaxed font-medium">
             {isRtl
               ? 'وَبِالنَّجْمِ هُمْ يَهْتَدُونَ — اترك علامة يهتدي بها غيرك'
               : 'وَبِالنَّجْمِ هُمْ يَهْتَدُونَ — Leave a mark to guide others'}
@@ -98,9 +102,9 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           </div>
           <button
             onClick={handleCreateClick}
-            className="shrink-0 bg-amber-400 hover:bg-amber-500 text-gray-900 font-black text-xs px-4 py-2 rounded-full transition flex items-center gap-1.5"
+            className="shrink-0 bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs px-4 py-2 rounded-full transition flex items-center gap-2"
           >
-            <span className="text-base leading-none">⭐</span>
+            <img src="/tareeq-logo.png" alt="" className="w-4 h-4 shrink-0" />
             <span className="hidden sm:inline">{isRtl ? 'اترك علامة' : 'Leave a Mark'}</span>
             <span className="sm:hidden">+</span>
           </button>
@@ -152,9 +156,10 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       {/* Floating create button (mobile) */}
       <button
         onClick={handleCreateClick}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 sm:hidden z-30 bg-[#1a1a2e] text-[#F5C518] font-black px-8 py-3.5 rounded-full shadow-lg text-sm flex items-center gap-2"
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 sm:hidden z-30 bg-[#0a1f1a] text-white font-black px-7 py-3.5 rounded-full shadow-xl shadow-emerald-900/40 text-sm flex items-center gap-2 border border-emerald-700/40"
       >
-        ⭐ {isRtl ? 'اترك علامة' : 'Leave a Mark'}
+        <img src="/tareeq-logo.png" alt="" className="w-5 h-5" />
+        {isRtl ? 'اترك علامة' : 'Leave a Mark'}
       </button>
 
       {showCreate && <TareeqCreateModal onClose={() => setShowCreate(false)} onCreated={() => loadPosts(category, null)} />}

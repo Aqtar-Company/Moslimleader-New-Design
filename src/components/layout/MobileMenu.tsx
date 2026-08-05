@@ -21,7 +21,7 @@ export default function MobileMenu({ open, onClose }: MobileMenuProps) {
 
   const links = [
     { href: '/',         label: isRtl ? 'الرئيسية'      : 'Home',     icon: '🏠' },
-    { href: '/tareeq',   label: isRtl ? 'طريق'          : 'Tareeq',   icon: '⭐' },
+    { href: '/tareeq',   label: isRtl ? 'طريق'          : 'Tareeq',   icon: '🌟', logoImg: '/tareeq-logo.png' },
     { href: '/library',  label: isRtl ? 'المكتبة الرقمية': 'Library',  icon: '📚' },
     { href: '/cart',     label: isRtl ? `السلة (${totalItems})` : `Cart (${totalItems})`, icon: '🛒' },
     { href: '/wishlist', label: isRtl ? `المفضلة (${wishlistCount})` : `Wishlist (${wishlistCount})`, icon: '❤️' },
@@ -72,7 +72,9 @@ export default function MobileMenu({ open, onClose }: MobileMenuProps) {
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <span className="text-lg">{link.icon}</span>
+                {'logoImg' in link && link.logoImg
+                  ? <img src={link.logoImg as string} alt="" className="w-6 h-6" />
+                  : <span className="text-lg">{link.icon}</span>}
                 {link.label}
               </Link>
             );

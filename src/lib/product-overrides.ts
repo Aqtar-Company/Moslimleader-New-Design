@@ -100,5 +100,15 @@ export async function getMergedStaticProduct(
   const sp = staticProducts.find(p => p.id === idOrSlug || p.slug === idOrSlug);
   if (!sp) return null;
   const overrides = await loadStaticOverrides();
-  return applyOverride(sp, overrides[sp.id]);
+  const merged = applyOverride(sp, overrides[sp.id]);
+  if (!merged) return null;
+  try {
+    const row = await prisma.product.findUnique({
+      where: { id: sp.id },
+      select: { salesCount: true, reviewCount: true },
+    });
+    if (row?.salesCount) merged.salesCount = row.salesCount;
+    if (row?.reviewCount) merged.reviewCount = row.reviewCount;
+  } catch { /* non-fatal */ }
+  return merged;
 }

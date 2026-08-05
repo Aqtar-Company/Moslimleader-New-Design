@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
 // POST /api/reviews — submit a new experience
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
-  const rl = checkRateLimit(`review:${ip}`, 3, 60 * 60 * 1000); // 3 per hour
+  const rl = checkRateLimit(`review:${ip}`, 3, 60 * 60 * 1000);
   if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
 
   const body = await req.json().catch(() => ({}));
@@ -42,16 +42,19 @@ export async function POST(req: NextRequest) {
 
   const user = await getAuthUser().catch(() => null);
 
+  // Prevent duplicate submission from same logged-in user
+  if (user?.userId) {
+    const existing = await prisma.review.findFirst({ where: { productId, userId: user.userId } });
+    if (existing) return NextResponse.json({ error: 'شاركت تجربتك مع هذا المنتج من قبل' }, { status: 409 });
+  }
+
   await prisma.review.create({
-    data: {
-      productId,
-      userId: user?.userId ?? null,
-      author,
-      rating: 5,
-      comment,
-      approved: false, // requires admin approval before showing
-    },
+    data: { productId, userId: user?.userId ?? null, author, rating: 5, comment, approved: true },
   });
 
-  return NextResponse.json({ ok: true, message: 'شكراً! تجربتك ستظهر بعد المراجعة.' });
+  // Update reviewCount on the product
+  const count = await prisma.review.count({ where: { productId, approved: true } });
+  await prisma.product.updateMany({ where: { id: productId }, data: { reviewCount: count } });
+
+  return NextResponse.json({ ok: true, message: 'شكراً على مشاركة تجربتك!' });
 }

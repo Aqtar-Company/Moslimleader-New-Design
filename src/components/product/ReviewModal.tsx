@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLang } from '@/context/LanguageContext';
 
 interface Props {
@@ -15,6 +15,12 @@ export default function ReviewModal({ productId, productName, onClose }: Props) 
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
 
   async function submit() {
     if (comment.trim().length < 10) { setError(isRtl ? 'اكتب تجربتك (10 أحرف على الأقل)' : 'Please write at least 10 characters'); return; }
@@ -32,10 +38,13 @@ export default function ReviewModal({ productId, productName, onClose }: Props) 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4" onClick={onClose} role="presentation">
       <div
         className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-6 shadow-xl"
         onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={isRtl ? 'أضف تجربتك' : 'Share Your Experience'}
       >
         {done ? (
           <div className="text-center py-8">
@@ -48,7 +57,7 @@ export default function ReviewModal({ productId, productName, onClose }: Props) 
           <>
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-black text-gray-900 text-base">💬 {isRtl ? 'أضف تجربتك' : 'Share Your Experience'}</h3>
-              <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+              <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none" aria-label={isRtl ? 'إغلاق' : 'Close'}>×</button>
             </div>
             <p className="text-xs text-gray-400 mb-4">{isRtl ? `تجربتك مع "${productName}"` : `Your experience with "${productName}"`}</p>
             <div className="space-y-3">

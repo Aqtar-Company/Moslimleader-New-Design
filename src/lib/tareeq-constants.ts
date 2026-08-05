@@ -19,6 +19,15 @@ export const CATEGORY_KEY: Record<string, TareeqCategoryKey> = {
   تأمل:  'reflection', Reflection: 'reflection',
 };
 
+export const CATEGORY_ICONS: Record<string, string> = {
+  experience: '✨',
+  story:      '📖',
+  idea:       '💡',
+  question:   '❓',
+  project:    '🚀',
+  reflection: '🌙',
+};
+
 export const CATEGORY_COLORS: Record<string, string> = {
   experience: 'bg-amber-100 text-amber-700',
   story:      'bg-purple-100 text-purple-700',

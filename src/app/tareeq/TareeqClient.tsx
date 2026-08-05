@@ -40,18 +40,21 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
 
   const loadPosts = useCallback(async (cat: string, q: string, fromCursor?: string | null) => {
     if (fromCursor) { setLoading(true); } else { setInitialLoading(true); }
-    const params = new URLSearchParams({ limit: '12' });
-    if (cat) params.set('category', cat);
-    if (q) params.set('search', q);
-    if (fromCursor) params.set('cursor', fromCursor);
-    const res = await fetch(`/api/tareeq?${params}`);
-    if (res.ok) {
-      const data = await res.json();
-      setPosts(prev => fromCursor ? [...prev, ...data.posts] : data.posts);
-      setCursor(data.nextCursor);
+    try {
+      const params = new URLSearchParams({ limit: '12' });
+      if (cat) params.set('category', cat);
+      if (q) params.set('search', q);
+      if (fromCursor) params.set('cursor', fromCursor);
+      const res = await fetch(`/api/tareeq?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPosts(prev => fromCursor ? [...prev, ...data.posts] : data.posts);
+        setCursor(data.nextCursor);
+      }
+    } finally {
+      setLoading(false);
+      setInitialLoading(false);
     }
-    setLoading(false);
-    setInitialLoading(false);
   }, []);
 
   // Infinite scroll
@@ -125,7 +128,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       </div>
 
       {/* Sticky category bar */}
-      <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b border-gray-100 shadow-sm">
+      <div className="sticky top-14 z-40 bg-white/90 backdrop-blur-sm border-b border-gray-100 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3 overflow-x-auto scrollbar-hide">
           <div className="flex gap-2 flex-1 min-w-0">
             <button

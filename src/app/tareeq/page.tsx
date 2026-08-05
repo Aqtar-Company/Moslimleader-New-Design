@@ -18,9 +18,9 @@ export default async function TareeqPage() {
       take: 13,
       select: {
         id: true, title: true, summary: true, content: true,
-        category: true, tags: true, authorName: true,
+        category: true, tags: true, imageUrl: true, videoUrl: true, authorName: true,
         likeCount: true, commentCount: true, createdAt: true, userId: true,
-        user: { select: { id: true, name: true } },
+        user: { select: { id: true, name: true, avatarUrl: true } },
       },
     });
     const hasMore = posts.length > 12;

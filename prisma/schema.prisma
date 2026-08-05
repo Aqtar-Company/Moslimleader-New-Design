@@ -904,6 +904,7 @@ model TareeqPost {
   category     String?
   tags         Json?
   imageUrl     String?
+  videoUrl     String?
   userId       String?
   user         User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
   authorName   String           @default("مجهول")

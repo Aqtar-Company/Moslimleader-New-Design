@@ -61,12 +61,12 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
     // Optimistic update
     const wasLiked = liked;
     setLiked(!wasLiked);
-    setLikeCount(c => wasLiked ? c - 1 : c + 1);
+    setLikeCount(c => Math.max(0, wasLiked ? c - 1 : c + 1));
     const res = await fetch(`/api/tareeq/${post.id}/like`, { method: 'POST', credentials: 'include' });
     if (!res.ok) {
       // Revert on failure
       setLiked(wasLiked);
-      setLikeCount(c => wasLiked ? c + 1 : c - 1);
+      setLikeCount(c => Math.max(0, wasLiked ? c + 1 : c - 1));
     }
   }
 

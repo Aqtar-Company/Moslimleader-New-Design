@@ -60,10 +60,10 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
     if (!user) { setShowGate(true); return; }
     const wasLiked = liked;
     setLiked(!wasLiked);
-    setLikeCount(c => wasLiked ? c - 1 : c + 1);
+    setLikeCount(c => Math.max(0, wasLiked ? c - 1 : c + 1));
     fetch(`/api/tareeq/${post.id}/like`, { method: 'POST', credentials: 'include' })
-      .then(r => { if (!r.ok) { setLiked(wasLiked); setLikeCount(c => wasLiked ? c + 1 : c - 1); } })
-      .catch(() => { setLiked(wasLiked); setLikeCount(c => wasLiked ? c + 1 : c - 1); });
+      .then(r => { if (!r.ok) { setLiked(wasLiked); setLikeCount(c => Math.max(0, wasLiked ? c + 1 : c - 1)); } })
+      .catch(() => { setLiked(wasLiked); setLikeCount(c => Math.max(0, wasLiked ? c + 1 : c - 1)); });
   }
 
   // Optimistic bookmark

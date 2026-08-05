@@ -44,6 +44,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 // PUT /api/tareeq/[id] — edit (owner only)
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
+  const rl = checkRateLimit(`tareeq-edit:${ip}`, 20, 60 * 60 * 1000);
+  if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
+
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 

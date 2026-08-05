@@ -40,7 +40,7 @@ export default function TareeqHeader({ onCreateClick }: Props) {
           onClick={onCreateClick}
           className="flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white font-black text-xs px-3 py-2 rounded-full transition min-h-[36px]"
         >
-          <img src="/tareeq-logo- Rounded.png" alt="" className="w-4 h-4 shrink-0" />
+          <img src="/tareeq-logo- small.png" alt="" className="w-4 h-4 shrink-0" />
           <span>{isRtl ? 'اترك علامة' : 'Leave a Mark'}</span>
         </button>
 

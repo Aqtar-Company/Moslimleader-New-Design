@@ -1,0 +1,81 @@
+export const dynamic = 'force-dynamic';
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { getAuthUser } from '@/lib/jwt';
+import { checkRateLimit } from '@/lib/rate-limit';
+
+// GET /api/tareeq?cursor=xxx&category=xxx&limit=12
+export async function GET(req: NextRequest) {
+  const { searchParams } = req.nextUrl;
+  const cursor = searchParams.get('cursor') || undefined;
+  const category = searchParams.get('category') || undefined;
+  const limit = Math.min(Number(searchParams.get('limit') ?? 12), 30);
+
+  const posts = await prisma.tareeqPost.findMany({
+    where: category ? { category } : undefined,
+    orderBy: { createdAt: 'desc' },
+    take: limit + 1,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    select: {
+      id: true,
+      title: true,
+      summary: true,
+      content: true,
+      category: true,
+      tags: true,
+      imageUrl: true,
+      authorName: true,
+      likeCount: true,
+      commentCount: true,
+      createdAt: true,
+      userId: true,
+      user: { select: { id: true, name: true } },
+    },
+  });
+
+  const hasMore = posts.length > limit;
+  const items = hasMore ? posts.slice(0, limit) : posts;
+  const nextCursor = hasMore ? items[items.length - 1].id : null;
+
+  return NextResponse.json({ posts: items, nextCursor });
+}
+
+// POST /api/tareeq — create a new علامة
+export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
+  const rl = checkRateLimit(`tareeq:${ip}`, 10, 60 * 60 * 1000);
+  if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
+
+  const user = await getAuthUser().catch(() => null);
+  if (!user) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
+
+  const body = await req.json().catch(() => ({}));
+  const content = String(body.content ?? '').trim();
+  const title = String(body.title ?? '').trim() || null;
+  const summary = String(body.summary ?? '').trim() || null;
+  const category = String(body.category ?? '').trim() || null;
+  const tags = Array.isArray(body.tags) ? body.tags.slice(0, 10) : null;
+
+  if (content.length < 10) {
+    return NextResponse.json({ error: 'اكتب أكثر (10 أحرف على الأقل)' }, { status: 400 });
+  }
+  if (content.length > 5000) {
+    return NextResponse.json({ error: 'النص طويل جداً (5000 حرف كحد أقصى)' }, { status: 400 });
+  }
+
+  const dbUser = await prisma.user.findUnique({ where: { id: user.userId }, select: { name: true } });
+
+  const post = await prisma.tareeqPost.create({
+    data: {
+      content,
+      title,
+      summary,
+      category,
+      tags,
+      userId: user.userId,
+      authorName: dbUser?.name ?? 'مجهول',
+    },
+  });
+
+  return NextResponse.json({ ok: true, id: post.id });
+}

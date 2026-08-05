@@ -53,6 +53,10 @@ model User {
   referralRewards    ReferralReward[]
   returnRequests     ReturnRequest[]
   children           Child[]
+  tareeqPosts        TareeqPost[]
+  tareeqLikes        TareeqLike[]
+  tareeqComments     TareeqComment[]
+  tareeqBookmarks    TareeqBookmark[]
 
   @@index([role])
   @@index([isWholesale])
@@ -888,4 +892,67 @@ model ProductionFile {
   @@index([productId])
   @@index([category])
   @@index([isLatest])
+}
+
+// ─── طريق — Community Layer ───────────────────────────────────────────────────
+model TareeqPost {
+  id           String           @id @default(cuid())
+  content      String           @db.Text
+  title        String?
+  summary      String?          @db.Text
+  category     String?
+  tags         Json?
+  imageUrl     String?
+  userId       String?
+  user         User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  authorName   String           @default("مجهول")
+  likeCount    Int              @default(0)
+  commentCount Int              @default(0)
+  viewCount    Int              @default(0)
+  likes        TareeqLike[]
+  comments     TareeqComment[]
+  bookmarks    TareeqBookmark[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([category])
+}
+
+model TareeqLike {
+  id        String     @id @default(cuid())
+  postId    String
+  post      TareeqPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+
+  @@unique([postId, userId])
+  @@index([userId])
+}
+
+model TareeqComment {
+  id        String     @id @default(cuid())
+  postId    String
+  post      TareeqPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String     @db.Text
+  createdAt DateTime   @default(now())
+
+  @@index([postId])
+  @@index([userId])
+}
+
+model TareeqBookmark {
+  id        String     @id @default(cuid())
+  postId    String
+  post      TareeqPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+
+  @@unique([postId, userId])
+  @@index([userId])
 }

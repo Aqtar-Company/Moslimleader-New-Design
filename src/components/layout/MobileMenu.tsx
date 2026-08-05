@@ -21,6 +21,7 @@ export default function MobileMenu({ open, onClose }: MobileMenuProps) {
 
   const links = [
     { href: '/',         label: isRtl ? 'الرئيسية'      : 'Home',     icon: '🏠' },
+    { href: '/tareeq',   label: isRtl ? 'طريق'          : 'Tareeq',   icon: '⭐' },
     { href: '/library',  label: isRtl ? 'المكتبة الرقمية': 'Library',  icon: '📚' },
     { href: '/cart',     label: isRtl ? `السلة (${totalItems})` : `Cart (${totalItems})`, icon: '🛒' },
     { href: '/wishlist', label: isRtl ? `المفضلة (${wishlistCount})` : `Wishlist (${wishlistCount})`, icon: '❤️' },

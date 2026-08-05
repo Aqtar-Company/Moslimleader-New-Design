@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
@@ -11,9 +12,13 @@ import MobileMenu from './MobileMenu';
 const iconBtn = 'relative flex items-center justify-center w-10 h-10 border-2 border-white/70 rounded-lg hover:bg-white/20 transition text-white';
 
 export default function Header() {
+  const pathname = usePathname();
   const { lang, toggleLang } = useLang();
   const { totalItems } = useCart();
   const { user } = useAuth();
+
+  // Tareeq has its own header
+  if (pathname?.startsWith('/tareeq')) return null;
   const [menuOpen, setMenuOpen] = useState(false);
   const [banner, setBanner] = useState<{ code: string; discount: number; bannerText?: string; bannerColor?: string } | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);

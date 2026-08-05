@@ -7,6 +7,7 @@ import TareeqCreateModal from '@/components/tareeq/TareeqCreateModal';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
 import { TAREEQ_CATEGORIES, CATEGORY_KEY } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
+import TareeqHeader from '@/components/tareeq/TareeqHeader';
 
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
@@ -58,7 +59,10 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero */}
+      <TareeqHeader onCreateClick={handleCreateClick} />
+
+      {/* Hero — pt-14 to clear fixed header */}
+      <div className="pt-14" />
       <div className="bg-[#0a1f1a] text-white py-14 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <img

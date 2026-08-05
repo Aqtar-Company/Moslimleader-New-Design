@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
+import TareeqHeader from '@/components/tareeq/TareeqHeader';
 
 interface Comment { id: string; content: string; createdAt: string; userId: string; user: { id: string; name: string } | null; }
 interface Post {
@@ -74,17 +75,8 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Back */}
-      <div className="bg-white border-b border-gray-100 px-4 py-3">
-        <div className="max-w-2xl mx-auto">
-          <Link href="/tareeq" className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-2 transition">
-            <svg className="w-4 h-4 rotate-180 rtl:rotate-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-            </svg>
-            {isRtl ? 'طريق' : 'Tareeq'}
-          </Link>
-        </div>
-      </div>
+      <TareeqHeader onCreateClick={() => setShowGate(!user ? true : false)} />
+      <div className="pt-14" />
 
       <div className="max-w-2xl mx-auto px-4 py-8">
         {/* Post */}

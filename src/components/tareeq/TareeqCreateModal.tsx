@@ -9,7 +9,7 @@ import { compressImage } from '@/lib/compress-image';
 
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
-interface Props { onClose: () => void; onCreated: () => void; }
+interface Props { onClose: () => void; onCreated: (id?: string) => void; }
 
 export default function TareeqCreateModal({ onClose, onCreated }: Props) {
   const { isRtl } = useLang();
@@ -103,7 +103,7 @@ export default function TareeqCreateModal({ onClose, onCreated }: Props) {
     });
     const data = await res.json();
     setLoading(false);
-    if (res.ok) { onCreated(); onClose(); }
+    if (res.ok) { onCreated(data.id); onClose(); }
     else setError(data.error || (isRtl ? 'حدث خطأ' : 'An error occurred'));
   }
 

@@ -10,9 +10,10 @@ function AuthContent() {
   const searchParams = useSearchParams();
   const rawRedirect = searchParams.get('redirect') || '/';
   const redirect = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/';
+  const initMode = searchParams.get('mode') === 'signup' ? 'signup' : 'signin';
   const { signIn, signUp } = useAuth();
   const { lang } = useLang();
-  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>(initMode);
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', marketingOptIn: false });
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');

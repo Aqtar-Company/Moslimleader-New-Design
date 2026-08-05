@@ -41,7 +41,7 @@ export default function TareeqLoginGate({ onClose }: Props) {
             {isRtl ? 'تسجيل الدخول' : 'Sign In'}
           </Link>
           <Link
-            href="/login"
+            href="/login?mode=signup"
             className="flex-1 border-2 border-[#1a1a2e] text-[#1a1a2e] font-bold py-3 rounded-xl text-sm hover:bg-gray-50 transition"
           >
             {isRtl ? 'إنشاء حساب' : 'Register'}

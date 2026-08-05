@@ -27,8 +27,10 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const [showCreate, setShowCreate] = useState(false);
   const [showGate, setShowGate] = useState(false);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [newPostId, setNewPostId] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const feedTopRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!user) { setLikedIds(new Set()); return; }
@@ -163,7 +165,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       </div>
 
       {/* Feed */}
-      <div className="max-w-6xl mx-auto px-4 py-8 pb-28 sm:pb-8">
+      <div ref={feedTopRef} className="max-w-6xl mx-auto px-4 py-8 pb-28 sm:pb-8">
         {initialLoading ? (
           <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
             {skeletons.map((_, i) => (
@@ -191,7 +193,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           <>
             <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
               {posts.map((post) => (
-                <div key={post.id} className="break-inside-avoid">
+                <div key={post.id} className={`break-inside-avoid transition-all duration-700 ${newPostId === post.id ? 'ring-2 ring-emerald-400 rounded-2xl shadow-emerald-100 shadow-lg' : ''}`}>
                   <TareeqCard post={post} initialLiked={likedIds.has(post.id)} />
                 </div>
               ))}
@@ -218,7 +220,11 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         {isRtl ? 'اترك علامة' : 'Leave a Mark'}
       </button>
 
-      {showCreate && <TareeqCreateModal onClose={() => setShowCreate(false)} onCreated={() => loadPosts(category, search, null)} />}
+      {showCreate && <TareeqCreateModal onClose={() => setShowCreate(false)} onCreated={(id?: string) => {
+        loadPosts(category, search, null);
+        if (id) { setNewPostId(id); setTimeout(() => setNewPostId(null), 3000); }
+        setTimeout(() => feedTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+      }} />}
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
     </div>
   );

@@ -81,23 +81,18 @@ export default function ProductCard({ product, priceLoading = false, modelIndex 
             </h3>
           </Link>
 
-          {/* Sales count */}
-          {(product.salesCount ?? 0) > 0 && (
-            <p className="text-xs text-gray-400 truncate">
-              👥 {isRtl ? `اشتراه ${product.salesCount} شخص` : `${product.salesCount} people bought this`}
-            </p>
-          )}
-
-          {/* Reviews row */}
+          {/* Experiences row — salesCount as social proof, reviewCount as written experiences */}
           <div className="flex items-center gap-2">
-            {(product.reviewCount ?? 0) > 0 && (
-              <span className="text-xs text-gray-400">💬 {product.reviewCount} {isRtl ? 'تجربة' : 'reviews'}</span>
+            {((product.salesCount ?? 0) > 0 || (product.reviewCount ?? 0) > 0) && (
+              <span className="text-xs text-gray-400 truncate">
+                💬 {Math.max(product.salesCount ?? 0, product.reviewCount ?? 0)} {isRtl ? 'تجربة' : 'experiences'}
+              </span>
             )}
             <button
               onClick={() => setShowReview(true)}
-              className="text-xs text-amber-600 hover:text-amber-700 font-semibold underline underline-offset-2 transition"
+              className="text-xs text-amber-600 hover:text-amber-700 font-semibold underline underline-offset-2 transition shrink-0"
             >
-              {isRtl ? '+ أضف تجربتك' : '+ Add your experience'}
+              {isRtl ? '+ أضف تجربتك' : '+ Add yours'}
             </button>
           </div>
 

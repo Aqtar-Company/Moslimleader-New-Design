@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useLang } from '@/context/LanguageContext';
 
 interface Props {
@@ -15,6 +16,9 @@ export default function ReviewModal({ productId, productName, onClose }: Props) 
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -37,8 +41,10 @@ export default function ReviewModal({ productId, productName, onClose }: Props) 
     else { setError(data.error || (isRtl ? 'حدث خطأ' : 'An error occurred')); }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4" onClick={onClose} role="presentation">
+  if (!mounted) return null;
+
+  const modal = (
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4" onClick={onClose} role="presentation">
       <div
         className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-6 shadow-xl"
         onClick={e => e.stopPropagation()}
@@ -50,7 +56,7 @@ export default function ReviewModal({ productId, productName, onClose }: Props) 
           <div className="text-center py-8">
             <div className="text-4xl mb-3">🎉</div>
             <h3 className="font-black text-gray-900 text-lg mb-2">{isRtl ? 'شكراً لمشاركتك!' : 'Thank you!'}</h3>
-            <p className="text-sm text-gray-500 mb-6">{isRtl ? 'تجربتك ستظهر بعد المراجعة.' : 'Your experience will appear after review.'}</p>
+            <p className="text-sm text-gray-500 mb-6">{isRtl ? 'تجربتك ستظهر قريباً.' : 'Your experience will appear soon.'}</p>
             <button onClick={onClose} className="bg-[#1a1a2e] text-white font-bold px-8 py-3 rounded-xl text-sm">{isRtl ? 'إغلاق' : 'Close'}</button>
           </div>
         ) : (
@@ -89,4 +95,6 @@ export default function ReviewModal({ productId, productName, onClose }: Props) 
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }

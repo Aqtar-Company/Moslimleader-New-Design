@@ -4,9 +4,24 @@ import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 
 // GET /api/tareeq/conversations — list current user's conversations
-export async function GET(_req: NextRequest) {
+// ?countOnly=true → returns { unreadCount: N } cheaply
+export async function GET(req: NextRequest) {
   const user = await getAuthUser().catch(() => null);
-  if (!user) return NextResponse.json({ conversations: [] });
+  if (!user) return NextResponse.json({ conversations: [], unreadCount: 0 });
+
+  const { searchParams } = new URL(req.url);
+  if (searchParams.get('countOnly') === 'true') {
+    const unreadCount = await prisma.tareeqMessage.count({
+      where: {
+        senderId: { not: user.userId },
+        read: false,
+        conversation: {
+          OR: [{ participantA: user.userId }, { participantB: user.userId }],
+        },
+      },
+    });
+    return NextResponse.json({ unreadCount });
+  }
 
   const convos = await prisma.tareeqConversation.findMany({
     where: {

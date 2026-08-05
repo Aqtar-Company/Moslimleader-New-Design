@@ -33,11 +33,18 @@ function Inner() {
 
   useEffect(() => {
     if (!user) { router.push('/login'); return; }
-    fetch('/api/tareeq/conversations', { credentials: 'include' })
-      .then(r => r.json())
-      .then(d => setConversations(d.conversations ?? []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    function load() {
+      fetch('/api/tareeq/conversations', { credentials: 'include' })
+        .then(r => r.json())
+        .then(d => setConversations(d.conversations ?? []))
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    }
+    load();
+    // Fix 3: re-fetch when user navigates back so unread badges are fresh
+    const onVisible = () => { if (!document.hidden) load(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, [user, router]);
 
   return (

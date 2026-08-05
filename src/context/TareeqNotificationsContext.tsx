@@ -21,7 +21,7 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
     try {
       const [nRes, cRes] = await Promise.all([
         fetch('/api/tareeq/notifications?countOnly=true', { credentials: 'include' }),
-        fetch('/api/tareeq/conversations', { credentials: 'include' }),
+        fetch('/api/tareeq/conversations?countOnly=true', { credentials: 'include' }),
       ]);
       if (nRes.ok) {
         const d = await nRes.json();
@@ -29,8 +29,7 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
       }
       if (cRes.ok) {
         const d = await cRes.json();
-        const total = (d.conversations ?? []).reduce((s: number, c: { unreadCount: number }) => s + (c.unreadCount ?? 0), 0);
-        setMessageCount(total);
+        setMessageCount(d.unreadCount ?? 0);
       }
     } catch { /* ignore */ }
   }, [user]);

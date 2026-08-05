@@ -40,15 +40,27 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }),
   ]);
 
-  // Notify recipient (non-blocking)
-  prisma.tareeqNotification.create({
-    data: {
+  // Notify recipient at most once per 5 minutes per conversation (non-blocking)
+  prisma.tareeqNotification.findFirst({
+    where: {
       userId: otherId,
-      type: 'message',
       actorId: user.userId,
-      actorName: user.name ?? null,
-      body: content.slice(0, 80),
+      type: 'message',
+      createdAt: { gt: new Date(Date.now() - 5 * 60 * 1000) },
     },
+    select: { id: true },
+  }).then(existing => {
+    if (!existing) {
+      return prisma.tareeqNotification.create({
+        data: {
+          userId: otherId,
+          type: 'message',
+          actorId: user.userId,
+          actorName: user.name ?? null,
+          body: content.slice(0, 80),
+        },
+      });
+    }
   }).catch(() => {});
 
   return NextResponse.json({ ok: true, message });

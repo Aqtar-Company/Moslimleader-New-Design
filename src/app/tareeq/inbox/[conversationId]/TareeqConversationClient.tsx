@@ -26,9 +26,11 @@ function Inner({ conversationId }: { conversationId: string }) {
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const latestIdRef = useRef<string | null>(null);
+  // Fix 7: initialize to '' not null so empty-conversation guard works correctly
+  const latestIdRef = useRef<string>('');
 
   const loadMessages = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -37,11 +39,12 @@ function Inner({ conversationId }: { conversationId: string }) {
       if (res.status === 403 || res.status === 404) { router.push('/tareeq/inbox'); return; }
       if (res.ok) {
         const d = await res.json();
-        setMessages(d.messages ?? []);
-        setOtherUser(d.otherUser ?? null);
-        refresh();
         const msgs: Message[] = d.messages ?? [];
-        if (msgs.length) latestIdRef.current = msgs[msgs.length - 1].id;
+        setMessages(msgs);
+        setOtherUser(d.otherUser ?? null);
+        // Always update ref, even on empty array (set to '' to keep guard consistent)
+        latestIdRef.current = msgs.length ? msgs[msgs.length - 1].id : '';
+        refresh();
       }
     } catch { /* ignore */ } finally {
       if (!silent) setLoading(false);
@@ -56,9 +59,10 @@ function Inner({ conversationId }: { conversationId: string }) {
       if (!res || !res.ok) return;
       const d = await res.json();
       const msgs: Message[] = d.messages ?? [];
-      if (msgs.length && msgs[msgs.length - 1].id !== latestIdRef.current) {
+      const newLatest = msgs.length ? msgs[msgs.length - 1].id : '';
+      if (newLatest !== latestIdRef.current) {
         setMessages(msgs);
-        if (msgs.length) latestIdRef.current = msgs[msgs.length - 1].id;
+        latestIdRef.current = newLatest;
         refresh();
       }
     }, 10_000);
@@ -73,6 +77,7 @@ function Inner({ conversationId }: { conversationId: string }) {
     const text = input.trim();
     if (!text || sending) return;
     setSending(true);
+    setSendError('');
     try {
       const res = await fetch(`/api/tareeq/conversations/${conversationId}/messages`, {
         method: 'POST',
@@ -81,10 +86,25 @@ function Inner({ conversationId }: { conversationId: string }) {
         body: JSON.stringify({ content: text }),
       });
       if (res.ok) {
+        // Fix 5: append the returned message instead of a full round-trip reload
+        const d = await res.json();
+        if (d.message) {
+          setMessages(prev => {
+            const updated = [...prev, d.message as Message];
+            latestIdRef.current = d.message.id;
+            return updated;
+          });
+        }
         setInput('');
-        await loadMessages(true);
+        refresh();
+      } else {
+        // Fix 2: surface HTTP errors to the user
+        const d = await res.json().catch(() => ({}));
+        setSendError(d.error || (isRtl ? 'فشل الإرسال' : 'Send failed'));
       }
-    } catch { /* ignore */ } finally {
+    } catch {
+      setSendError(isRtl ? 'خطأ في الشبكة' : 'Network error');
+    } finally {
       setSending(false);
     }
   }
@@ -145,29 +165,34 @@ function Inner({ conversationId }: { conversationId: string }) {
 
       {/* Input bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-3 z-30">
-        <div className="max-w-2xl mx-auto flex items-end gap-2">
-          <textarea
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-            placeholder={isRtl ? 'اكتب رسالتك...' : 'Type a message...'}
-            rows={1}
-            className="flex-1 border border-gray-200 rounded-2xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition"
-            style={{ maxHeight: '120px', overflowY: 'auto' }}
-          />
-          <button
-            onClick={handleSend}
-            disabled={sending || !input.trim()}
-            className="bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-full w-10 h-10 flex items-center justify-center shrink-0 transition"
-          >
-            {sending ? (
-              <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-            ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M11 5l-7 7 7 7M4 12h16' : 'M13 5l7 7-7 7M20 12H4'} />
-              </svg>
-            )}
-          </button>
+        <div className="max-w-2xl mx-auto flex flex-col gap-2">
+          {sendError && (
+            <p className="text-xs text-red-500 text-center font-semibold">{sendError}</p>
+          )}
+          <div className="flex items-end gap-2">
+            <textarea
+              value={input}
+              onChange={e => { setInput(e.target.value); if (sendError) setSendError(''); }}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+              placeholder={isRtl ? 'اكتب رسالتك...' : 'Type a message...'}
+              rows={1}
+              className="flex-1 border border-gray-200 rounded-2xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition"
+              style={{ maxHeight: '120px', overflowY: 'auto' }}
+            />
+            <button
+              onClick={handleSend}
+              disabled={sending || !input.trim()}
+              className="bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-full w-10 h-10 flex items-center justify-center shrink-0 transition"
+            >
+              {sending ? (
+                <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M11 5l-7 7 7 7M4 12h16' : 'M13 5l7 7-7 7M20 12H4'} />
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

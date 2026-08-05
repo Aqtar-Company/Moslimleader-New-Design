@@ -31,11 +31,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     },
   });
 
-  // Mark unread messages from the other participant as read
-  await prisma.tareeqMessage.updateMany({
-    where: { conversationId: params.id, senderId: { not: user.userId }, read: false },
-    data: { read: true },
-  });
+  // Mark only the fetched unread messages as read (not beyond the page window)
+  const unreadIds = messages.filter(m => !m.read && m.senderId !== user.userId).map(m => m.id);
+  if (unreadIds.length > 0) {
+    await prisma.tareeqMessage.updateMany({
+      where: { id: { in: unreadIds } },
+      data: { read: true },
+    });
+  }
 
   const otherId = convo.participantA === user.userId ? convo.participantB : convo.participantA;
   const otherUser = await prisma.user.findUnique({

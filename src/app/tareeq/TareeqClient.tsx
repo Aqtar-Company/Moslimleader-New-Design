@@ -1,11 +1,12 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import TareeqCard, { TareeqPostSummary } from '@/components/tareeq/TareeqCard';
+import TareeqCardSkeleton from '@/components/tareeq/TareeqCardSkeleton';
 import TareeqCreateModal from '@/components/tareeq/TareeqCreateModal';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
-import { TAREEQ_CATEGORIES, CATEGORY_KEY } from '@/lib/tareeq-constants';
+import { TAREEQ_CATEGORIES } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import TareeqHeader from '@/components/tareeq/TareeqHeader';
 
@@ -19,12 +20,16 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const [posts, setPosts] = useState<TareeqPostSummary[]>(initialPosts);
   const [cursor, setCursor] = useState<string | null>(initialCursor);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(false);
   const [category, setCategory] = useState<string>('');
+  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [showGate, setShowGate] = useState(false);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Fetch user's liked posts once when logged in
   useEffect(() => {
     if (!user) { setLikedIds(new Set()); return; }
     fetch('/api/tareeq/me', { credentials: 'include' })
@@ -33,10 +38,11 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       .catch(() => {});
   }, [user]);
 
-  const loadPosts = useCallback(async (cat: string, fromCursor?: string | null) => {
-    setLoading(true);
+  const loadPosts = useCallback(async (cat: string, q: string, fromCursor?: string | null) => {
+    if (fromCursor) { setLoading(true); } else { setInitialLoading(true); }
     const params = new URLSearchParams({ limit: '12' });
     if (cat) params.set('category', cat);
+    if (q) params.set('search', q);
     if (fromCursor) params.set('cursor', fromCursor);
     const res = await fetch(`/api/tareeq?${params}`);
     if (res.ok) {
@@ -45,11 +51,34 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       setCursor(data.nextCursor);
     }
     setLoading(false);
+    setInitialLoading(false);
   }, []);
+
+  // Infinite scroll
+  useEffect(() => {
+    if (!sentinelRef.current || !cursor) return;
+    const obs = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting && !loading) loadPosts(category, search, cursor); },
+      { rootMargin: '200px' },
+    );
+    obs.observe(sentinelRef.current);
+    return () => obs.disconnect();
+  }, [cursor, loading, category, search, loadPosts]);
+
+  // Debounced search
+  useEffect(() => {
+    if (searchRef.current) clearTimeout(searchRef.current);
+    searchRef.current = setTimeout(() => {
+      setSearch(searchInput);
+      loadPosts(category, searchInput, null);
+    }, 400);
+    return () => { if (searchRef.current) clearTimeout(searchRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput]);
 
   function handleCategoryChange(key: string) {
     setCategory(key);
-    loadPosts(key, null);
+    loadPosts(key, search, null);
   }
 
   function handleCreateClick() {
@@ -57,11 +86,12 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
     setShowCreate(true);
   }
 
+  const skeletons = Array.from({ length: 6 });
+
   return (
     <div className="min-h-screen bg-gray-50">
       <TareeqHeader onCreateClick={handleCreateClick} />
 
-      {/* Hero — pt-14 to clear fixed header */}
       <div className="pt-14" />
       <div className="bg-[#0a1f1a] text-white py-14 px-4">
         <div className="max-w-4xl mx-auto text-center">
@@ -76,14 +106,26 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
               ? 'وَبِالنَّجْمِ هُمْ يَهْتَدُونَ — اترك علامة يهتدي بها غيرك'
               : 'وَبِالنَّجْمِ هُمْ يَهْتَدُونَ — Leave a mark to guide others'}
           </p>
+
+          {/* Search bar inside hero */}
+          <div className="mt-6 max-w-sm mx-auto relative">
+            <input
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+              placeholder={isRtl ? 'ابحث في العلامات...' : 'Search marks...'}
+              className="w-full bg-white/10 border border-white/20 text-white placeholder-white/40 rounded-full px-5 py-2.5 text-sm focus:outline-none focus:bg-white/20 focus:border-white/40 transition"
+            />
+            <svg className="absolute top-1/2 -translate-y-1/2 end-4 w-4 h-4 text-white/40 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+          </div>
         </div>
       </div>
 
-      {/* Sticky category bar + create button */}
+      {/* Sticky category bar */}
       <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b border-gray-100 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3 overflow-x-auto scrollbar-hide">
           <div className="flex gap-2 flex-1 min-w-0">
-            {/* All filter */}
             <button
               onClick={() => handleCategoryChange('')}
               className={`text-xs font-bold px-4 py-2 rounded-full whitespace-nowrap transition shrink-0 ${
@@ -115,16 +157,30 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         </div>
       </div>
 
-      {/* Masonry feed — pb-28 on mobile so floating button doesn't cover last card */}
+      {/* Feed */}
       <div className="max-w-6xl mx-auto px-4 py-8 pb-28 sm:pb-8">
-        {posts.length === 0 && !loading ? (
+        {initialLoading ? (
+          <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
+            {skeletons.map((_, i) => (
+              <div key={i} className="break-inside-avoid">
+                <TareeqCardSkeleton />
+              </div>
+            ))}
+          </div>
+        ) : posts.length === 0 ? (
           <div className="text-center py-20">
-            <div className="text-5xl mb-4">✨</div>
-            <p className="text-gray-500 font-semibold mb-2">{isRtl ? 'لا توجد علامات بعد' : 'No marks yet'}</p>
-            <p className="text-gray-400 text-sm mb-6">{isRtl ? 'كن أول من يترك علامة' : 'Be the first to leave a mark'}</p>
-            <button onClick={handleCreateClick} className="bg-[#1a1a2e] text-[#F5C518] font-black px-8 py-3 rounded-xl text-sm">
-              {isRtl ? '⭐ اترك علامتك' : '⭐ Leave Your Mark'}
-            </button>
+            <div className="text-5xl mb-4">{search ? '🔍' : '✨'}</div>
+            <p className="text-gray-500 font-semibold mb-2">
+              {search ? (isRtl ? 'لا نتائج للبحث' : 'No results found') : (isRtl ? 'لا توجد علامات بعد' : 'No marks yet')}
+            </p>
+            {!search && (
+              <>
+                <p className="text-gray-400 text-sm mb-6">{isRtl ? 'كن أول من يترك علامة' : 'Be the first to leave a mark'}</p>
+                <button onClick={handleCreateClick} className="bg-[#1a1a2e] text-[#F5C518] font-black px-8 py-3 rounded-xl text-sm">
+                  {isRtl ? '⭐ اترك علامتك' : '⭐ Leave Your Mark'}
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <>
@@ -136,17 +192,8 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
               ))}
             </div>
 
-            {cursor && (
-              <div className="flex justify-center mt-10">
-                <button
-                  onClick={() => loadPosts(category, cursor)}
-                  disabled={loading}
-                  className="bg-white border border-gray-200 text-gray-700 font-bold px-8 py-3 rounded-full text-sm hover:bg-gray-50 transition disabled:opacity-50"
-                >
-                  {loading ? '...' : (isRtl ? 'تحميل المزيد' : 'Load More')}
-                </button>
-              </div>
-            )}
+            {/* Infinite scroll sentinel */}
+            {cursor && <div ref={sentinelRef} className="h-4 mt-8" />}
 
             {loading && (
               <div className="flex justify-center mt-8">
@@ -157,7 +204,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         )}
       </div>
 
-      {/* Floating create button (mobile) */}
+      {/* Floating button — mobile */}
       <button
         onClick={handleCreateClick}
         className="fixed bottom-6 left-1/2 -translate-x-1/2 sm:hidden z-30 bg-[#0a1f1a] text-white font-black px-7 py-3.5 rounded-full shadow-xl shadow-emerald-900/40 text-sm flex items-center gap-2 border border-emerald-700/40"
@@ -166,7 +213,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         {isRtl ? 'اترك علامة' : 'Leave a Mark'}
       </button>
 
-      {showCreate && <TareeqCreateModal onClose={() => setShowCreate(false)} onCreated={() => loadPosts(category, null)} />}
+      {showCreate && <TareeqCreateModal onClose={() => setShowCreate(false)} onCreated={() => loadPosts(category, search, null)} />}
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
     </div>
   );

@@ -10,10 +10,22 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const cursor = searchParams.get('cursor') || undefined;
   const category = searchParams.get('category') || undefined;
+  const search = searchParams.get('search')?.trim() || undefined;
   const limit = Math.min(Number(searchParams.get('limit') ?? 12), 30);
 
+  const where = {
+    ...(category ? { category } : {}),
+    ...(search ? {
+      OR: [
+        { title: { contains: search } },
+        { content: { contains: search } },
+        { authorName: { contains: search } },
+      ],
+    } : {}),
+  };
+
   const posts = await prisma.tareeqPost.findMany({
-    where: category ? { category } : undefined,
+    where: Object.keys(where).length ? where : undefined,
     orderBy: { createdAt: 'desc' },
     take: limit + 1,
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),

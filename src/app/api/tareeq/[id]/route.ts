@@ -42,6 +42,30 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   return NextResponse.json({ post, userLiked, userBookmarked });
 }
 
+// PUT /api/tareeq/[id] — edit (owner only)
+export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+  const user = await getAuthUser().catch(() => null);
+  if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
+
+  const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { userId: true } });
+  if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
+  if (post.userId !== user.userId) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+
+  const body = await req.json().catch(() => ({}));
+  const content = String(body.content ?? '').trim();
+  const title = String(body.title ?? '').trim() || null;
+
+  if (content.length < 10) return NextResponse.json({ error: 'اكتب أكثر' }, { status: 400 });
+  if (content.length > 5000) return NextResponse.json({ error: 'النص طويل جداً' }, { status: 400 });
+
+  await prisma.tareeqPost.update({
+    where: { id: params.id },
+    data: { content, title, updatedAt: new Date() },
+  });
+
+  return NextResponse.json({ ok: true });
+}
+
 // DELETE /api/tareeq/[id] — owner or admin only
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const ip = req.headers.get('x-forwarded-for') ?? 'unknown';

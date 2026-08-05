@@ -47,6 +47,7 @@ export interface Product {
   gender?: 'male' | 'female' | 'both' | null;
   ageGroups?: string[] | null;
   salesCount?: number | null;
+  reviewCount?: number | null;
   isParentBook?: boolean;
 }
 

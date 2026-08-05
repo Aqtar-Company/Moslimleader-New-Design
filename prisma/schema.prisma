@@ -158,6 +158,7 @@ model Product {
   ageGroups    Json?
   gender       String?   // 'male' | 'female' | 'both'
   salesCount   Int       @default(0)
+  reviewCount  Int       @default(0)
   // True when the product needs an adult to use it with the child
   // (board game, craft kit, etc.). Surfaced as a chip on the
   // product card and in Amin's catalogue context, mirroring the

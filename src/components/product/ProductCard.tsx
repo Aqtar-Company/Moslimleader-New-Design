@@ -10,6 +10,7 @@ import { useWishlist } from '@/context/WishlistContext';
 import { useLang } from '@/context/LanguageContext';
 import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import { useToast } from '@/components/ui/Toast';
+import ReviewModal from './ReviewModal';
 
 export default function ProductCard({ product, priceLoading = false, modelIndex }: { product: Product; priceLoading?: boolean; modelIndex?: number }) {
   const { addItem } = useCart();
@@ -19,6 +20,7 @@ export default function ProductCard({ product, priceLoading = false, modelIndex 
   const { addToast } = useToast();
   const router = useRouter();
   const [added, setAdded] = useState(false);
+  const [showReview, setShowReview] = useState(false);
   const hasVariants = product.variants && product.variants.length > 0;
   const isComingSoon = (product as { comingSoon?: boolean }).comingSoon;
   const needsNotify = isComingSoon || !product.inStock;
@@ -29,7 +31,6 @@ export default function ProductCard({ product, priceLoading = false, modelIndex 
     : undefined;
   const variantLabel = matchedVariant ? (isRtl ? matchedVariant.name : (matchedVariant.nameEn || matchedVariant.name)) : '';
   const displayName = variantLabel ? `${baseName} — ${variantLabel}` : baseName;
-  const displayShortDesc = isRtl ? product.shortDescription : (product.shortDescriptionEn || product.shortDescription);
   const wishlisted = isWishlisted(product.id);
   const priceResult = getProductPrice(product);
   const fullImage = product.images?.[modelIndex ?? 0] || '/logo.png';
@@ -39,95 +40,111 @@ export default function ProductCard({ product, priceLoading = false, modelIndex 
   const href = modelIndex !== undefined ? `/shop/${product.slug}?model=${modelIndex}` : `/shop/${product.slug}`;
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 overflow-hidden flex flex-col">
-      {/* Image */}
-      <Link href={href} target="_blank" rel="noopener noreferrer" className="block relative aspect-square overflow-hidden bg-gray-50">
-        <Image
-          src={displayImage}
-          alt={displayName}
-          fill
-          sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          quality={75}
-          className="object-cover hover:scale-105 transition-transform duration-300"
-        />
-        {isComingSoon ? (
-          <div className="absolute inset-0 bg-orange-500/30 flex items-center justify-center">
-            <span className="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full">{t('product.comingSoon')}</span>
-          </div>
-        ) : (!product.inStock && !priceLoading && (
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-            <span className="bg-white text-gray-800 text-xs font-bold px-3 py-1 rounded-full">{t('product.outOfStock')}</span>
-          </div>
-        ))}
-        {/* Wishlist heart */}
-        <button
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(product); }}
-          className="absolute top-2 right-2 w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm hover:scale-110 transition z-10"
-          aria-label={wishlisted ? t('wishlist.remove') : t('wishlist.add')}
-        >
-          <svg className="w-4 h-4 transition" fill={wishlisted ? '#ef4444' : 'none'} stroke={wishlisted ? '#ef4444' : '#9ca3af'} strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-          </svg>
-        </button>
-      </Link>
-
-      {/* Info */}
-      <div className="p-4 flex flex-col gap-2 flex-1">
-        <Link href={href} target="_blank" rel="noopener noreferrer">
-          <h3 className="font-bold text-gray-900 text-base leading-snug hover:text-purple-700 transition line-clamp-2">
-            {displayName}
-          </h3>
+    <>
+      <div className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 overflow-hidden flex flex-col">
+        {/* Image */}
+        <Link href={href} target="_blank" rel="noopener noreferrer" className="block relative aspect-square overflow-hidden bg-gray-50">
+          <Image
+            src={displayImage}
+            alt={displayName}
+            fill
+            sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            quality={75}
+            className="object-cover hover:scale-105 transition-transform duration-300"
+          />
+          {isComingSoon ? (
+            <div className="absolute inset-0 bg-orange-500/30 flex items-center justify-center">
+              <span className="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full">{t('product.comingSoon')}</span>
+            </div>
+          ) : (!product.inStock && !priceLoading && (
+            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+              <span className="bg-white text-gray-800 text-xs font-bold px-3 py-1 rounded-full">{t('product.outOfStock')}</span>
+            </div>
+          ))}
+          {/* Wishlist heart */}
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(product); }}
+            className="absolute top-2 right-2 w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm hover:scale-110 transition z-10"
+            aria-label={wishlisted ? t('wishlist.remove') : t('wishlist.add')}
+          >
+            <svg className="w-4 h-4 transition" fill={wishlisted ? '#ef4444' : 'none'} stroke={wishlisted ? '#ef4444' : '#9ca3af'} strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+            </svg>
+          </button>
         </Link>
-        {/* Sales count badge */}
-        {(product.salesCount ?? 0) > 0 && (
-          <p className="text-xs text-gray-400 mt-1 truncate">
-            👥 {isRtl ? `اشتراه ${product.salesCount} شخص` : `${product.salesCount} people bought this`}
-          </p>
-        )}
 
-        <div className="mt-auto pt-3 flex items-center justify-between gap-2">
-          {/* Price: show skeleton while fresh prices are loading from API */}
-          {priceLoading ? (
-            <span className="h-6 w-20 bg-gray-200 rounded-lg animate-pulse shrink-0" />
-          ) : (
-            <span className="text-gray-900 font-bold text-sm sm:text-lg shrink-0">{formatPrice(priceResult)}</span>
+        {/* Info */}
+        <div className="p-4 flex flex-col gap-1.5 flex-1">
+          <Link href={href} target="_blank" rel="noopener noreferrer">
+            <h3 className="font-bold text-gray-900 text-base leading-snug hover:text-purple-700 transition line-clamp-2">
+              {displayName}
+            </h3>
+          </Link>
+
+          {/* Sales count */}
+          {(product.salesCount ?? 0) > 0 && (
+            <p className="text-xs text-gray-400 truncate">
+              👥 {isRtl ? `اشتراه ${product.salesCount} شخص` : `${product.salesCount} people bought this`}
+            </p>
           )}
-          {needsNotify && !priceLoading ? (
+
+          {/* Reviews row */}
+          <div className="flex items-center gap-2">
+            {(product.reviewCount ?? 0) > 0 && (
+              <span className="text-xs text-gray-400">💬 {product.reviewCount} {isRtl ? 'تجربة' : 'reviews'}</span>
+            )}
             <button
-              onClick={() => router.push(href)}
-              className={`text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl transition-all whitespace-nowrap shrink-0 active:scale-95 ${
-                isComingSoon ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-500 hover:bg-gray-600'
-              }`}
+              onClick={() => setShowReview(true)}
+              className="text-xs text-amber-600 hover:text-amber-700 font-semibold underline underline-offset-2 transition"
             >
-              {t('product.notifyMe')}
+              {isRtl ? '+ أضف تجربتك' : '+ Add your experience'}
             </button>
-          ) : (
-            <button
-              disabled={added || priceLoading}
-              onClick={() => {
-                if (priceLoading) return;
-                if (hasVariants) {
-                  router.push(href);
-                  return;
-                }
-                addItem(product, modelIndex);
-                addToast(isRtl ? `✓ أُضيف "${displayName}" للسلة` : `✓ "${displayName}" added to cart`, 'success');
-                setAdded(true);
-                setTimeout(() => setAdded(false), 1500);
-              }}
-              className={`text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl transition-all whitespace-nowrap shrink-0 ${
-                added
-                  ? 'bg-green-500 scale-95'
-                  : priceLoading
-                    ? 'bg-gray-300 cursor-not-allowed'
-                    : 'bg-purple-700 hover:bg-purple-800 active:scale-95'
-              }`}
-            >
-              {added ? t('product.added') : priceLoading ? <span className="h-4 w-16 bg-gray-400 rounded inline-block animate-pulse" /> : hasVariants ? (isRtl ? 'اختر الموديل' : 'Choose Model') : t('product.addToCart')}
-            </button>
-          )}
+          </div>
+
+          <div className="mt-auto pt-3 flex items-center justify-between gap-2">
+            {priceLoading ? (
+              <span className="h-6 w-20 bg-gray-200 rounded-lg animate-pulse shrink-0" />
+            ) : (
+              <span className="text-gray-900 font-bold text-sm sm:text-lg shrink-0">{formatPrice(priceResult)}</span>
+            )}
+            {needsNotify && !priceLoading ? (
+              <button
+                onClick={() => router.push(href)}
+                className={`text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl transition-all whitespace-nowrap shrink-0 active:scale-95 ${
+                  isComingSoon ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-500 hover:bg-gray-600'
+                }`}
+              >
+                {t('product.notifyMe')}
+              </button>
+            ) : (
+              <button
+                disabled={added || priceLoading}
+                onClick={() => {
+                  if (priceLoading) return;
+                  if (hasVariants) { router.push(href); return; }
+                  addItem(product, modelIndex);
+                  addToast(isRtl ? `✓ أُضيف "${displayName}" للسلة` : `✓ "${displayName}" added to cart`, 'success');
+                  setAdded(true);
+                  setTimeout(() => setAdded(false), 1500);
+                }}
+                className={`text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl transition-all whitespace-nowrap shrink-0 ${
+                  added ? 'bg-green-500 scale-95' : priceLoading ? 'bg-gray-300 cursor-not-allowed' : 'bg-purple-700 hover:bg-purple-800 active:scale-95'
+                }`}
+              >
+                {added ? t('product.added') : priceLoading ? <span className="h-4 w-16 bg-gray-400 rounded inline-block animate-pulse" /> : hasVariants ? (isRtl ? 'اختر الموديل' : 'Choose Model') : t('product.addToCart')}
+              </button>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {showReview && (
+        <ReviewModal
+          productId={product.id}
+          productName={displayName}
+          onClose={() => setShowReview(false)}
+        />
+      )}
+    </>
   );
 }

@@ -68,24 +68,26 @@ export function applyOverride(product: Product, override?: ProductOverride): Pro
 export async function getMergedStaticProducts(): Promise<Product[]> {
   const overrides = await loadStaticOverrides();
 
-  // Fetch salesCount from DB for all static products in one query
-  let salesCountMap: Record<string, number> = {};
+  // Fetch salesCount + reviewCount from DB for all static products in one query
+  let countsMap: Record<string, { salesCount: number; reviewCount: number }> = {};
   try {
     const ids = staticProducts.map(p => p.id);
     const rows = await prisma.product.findMany({
       where: { id: { in: ids } },
-      select: { id: true, salesCount: true },
+      select: { id: true, salesCount: true, reviewCount: true },
     });
     for (const row of rows) {
-      if (row.salesCount > 0) salesCountMap[row.id] = row.salesCount;
+      countsMap[row.id] = { salesCount: row.salesCount, reviewCount: row.reviewCount };
     }
-  } catch { /* non-fatal — salesCount stays 0 */ }
+  } catch { /* non-fatal */ }
 
   return staticProducts
     .map(p => {
       const merged = applyOverride(p, overrides[p.id]);
       if (!merged) return null;
-      if (salesCountMap[p.id]) merged.salesCount = salesCountMap[p.id];
+      const c = countsMap[p.id];
+      if (c?.salesCount > 0) merged.salesCount = c.salesCount;
+      if (c?.reviewCount > 0) merged.reviewCount = c.reviewCount;
       return merged;
     })
     .filter((p): p is Product => p !== null);

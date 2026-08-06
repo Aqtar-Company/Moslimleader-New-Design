@@ -14,6 +14,44 @@ import TareeqPWA, { TareeqInstallBanner } from '@/components/tareeq/TareeqPWA';
 
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
+/** Modern SVG icon per category — replaces emoji */
+function CategoryIcon({ catKey, color }: { catKey: string; color: string }) {
+  const props = { className: 'w-6 h-6', fill: 'none', stroke: color, strokeWidth: 1.7, viewBox: '0 0 24 24' } as const;
+  switch (catKey) {
+    case 'experience': return (
+      <svg {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+      </svg>
+    );
+    case 'story': return (
+      <svg {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+      </svg>
+    );
+    case 'idea': return (
+      <svg {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+      </svg>
+    );
+    case 'question': return (
+      <svg {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+      </svg>
+    );
+    case 'project': return (
+      <svg {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+      </svg>
+    );
+    case 'reflection': return (
+      <svg {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+      </svg>
+    );
+    default: return <span className="text-lg">{catKey}</span>;
+  }
+}
+
 interface Props { initialPosts: TareeqPostSummary[]; initialCursor: string | null; }
 
 export default function TareeqClient({ initialPosts, initialCursor }: Props) {
@@ -216,14 +254,17 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           className="flex flex-col items-center gap-1.5 shrink-0 active:scale-95 transition-transform"
         >
           <div
-            className="w-14 h-14 rounded-full flex items-center justify-center text-xl transition-all"
+            className="w-14 h-14 rounded-full flex items-center justify-center transition-all"
             style={{
               background: !category ? 'var(--tr-gold-glow)' : 'var(--tr-surface)',
               border: `2px solid ${!category ? 'var(--tr-gold)' : 'var(--tr-border-soft)'}`,
               boxShadow: !category ? '0 0 0 3px var(--tr-gold-glow)' : 'none',
             }}
           >
-            ✨
+            {/* Grid/apps icon for "All" */}
+            <svg className="w-6 h-6" fill="none" stroke={!category ? 'var(--tr-gold)' : 'var(--tr-text-muted)'} strokeWidth={1.7} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+            </svg>
           </div>
           <span className="text-[10px] font-semibold w-14 text-center truncate" style={{ color: !category ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
             {isRtl ? 'الكل' : 'All'}
@@ -241,14 +282,14 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
               className="flex flex-col items-center gap-1.5 shrink-0 active:scale-95 transition-transform"
             >
               <div
-                className="w-14 h-14 rounded-full flex items-center justify-center text-xl transition-all"
+                className="w-14 h-14 rounded-full flex items-center justify-center transition-all"
                 style={{
                   background: active ? `${accent}22` : 'var(--tr-surface)',
                   border: `2px solid ${active ? accent : 'var(--tr-border-soft)'}`,
                   boxShadow: active ? `0 0 0 3px ${accent}22` : 'none',
                 }}
               >
-                {CATEGORY_ICONS[key]}
+                <CategoryIcon catKey={key} color={active ? accent : 'var(--tr-text-muted)'} />
               </div>
               <span className="text-[10px] font-semibold w-14 text-center truncate" style={{ color: active ? accent : 'var(--tr-text-muted)' }}>
                 {isRtl ? TAREEQ_CATEGORIES[key].ar : TAREEQ_CATEGORIES[key].en}

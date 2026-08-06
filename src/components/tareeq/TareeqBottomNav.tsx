@@ -53,8 +53,9 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             }}
             aria-label={isRtl ? 'اترك علامة' : 'Leave a Mark'}
           >
-            <svg className="w-5 h-5" fill="none" stroke="#fff" strokeWidth={2.8} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            {/* 8-pointed star */}
+            <svg className="w-5 h-5" fill="#fff" viewBox="0 0 24 24">
+              <path d="M12 3l1.4 5.6L18.4 5.6l-3 4.4L21 12l-5.6 1.4 2.4 5.4-4.8-2.8L12 21l-1.4-5.6-5.4 2.4 2.8-4.8L3 12l5.6-1.4L6.2 5l4.4 3z" />
             </svg>
           </button>
         </div>

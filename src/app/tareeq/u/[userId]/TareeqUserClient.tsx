@@ -162,23 +162,22 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
       {/* ── Cover ──────────────────────────────────────────────── */}
       <div
         className="relative w-full"
-        style={{ height: 160, background: coverGradient }}
+        style={{ height: 110, background: coverGradient }}
       >
-        {/* subtle overlay */}
-        <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.15)' }} />
+        <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.12)' }} />
       </div>
 
       {/* ── Profile card ───────────────────────────────────────── */}
       <div
         className="max-w-2xl mx-auto px-4"
-        style={{ marginTop: -48 }}
+        style={{ marginTop: -32 }}
       >
         <div
-          className="rounded-3xl px-5 pt-4 pb-6"
+          className="rounded-3xl px-5 pt-3 pb-6"
           style={{ background: 'var(--tr-surface)', boxShadow: '0 4px 32px rgba(0,0,0,0.08)', border: '1px solid var(--tr-border-subtle)' }}
         >
           {/* Avatar row */}
-          <div className="flex items-start justify-between" style={{ marginTop: -52 }}>
+          <div className="flex items-start justify-between" style={{ marginTop: -44 }}>
             {/* Avatar */}
             {profileUser.avatarUrl ? (
               <img

@@ -5,21 +5,29 @@ import { getAuthUser } from '@/lib/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sendPushToUser } from '@/lib/tareeq-push';
 
-// GET /api/tareeq/[id]/comments
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+// GET /api/tareeq/[id]/comments?cursor=xxx
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { id: true } });
   if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
+
+  const cursor = req.nextUrl.searchParams.get('cursor') || undefined;
+  const limit = 50;
 
   const comments = await prisma.tareeqComment.findMany({
     where: { postId: params.id },
     orderBy: { createdAt: 'asc' },
-    take: 100,
+    take: limit + 1,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     select: {
       id: true, content: true, createdAt: true, userId: true,
       user: { select: { id: true, name: true } },
     },
   });
-  return NextResponse.json({ comments });
+
+  const hasMore = comments.length > limit;
+  const items = hasMore ? comments.slice(0, limit) : comments;
+  const nextCursor = hasMore ? items[items.length - 1].id : null;
+  return NextResponse.json({ comments: items, nextCursor });
 }
 
 // POST /api/tareeq/[id]/comments
@@ -51,25 +59,27 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     prisma.tareeqPost.update({ where: { id: params.id }, data: { commentCount: { increment: 1 } } }),
   ]);
 
-  // Parse @mentions and notify mentioned users (non-blocking)
+  // Parse @mentions and notify mentioned users (non-blocking, batched, max 3)
   const commenterName = comment.user?.name ?? 'شخص ما';
-  const mentionMatches = content.match(/@([؀-ۿa-zA-Z0-9_][^\s@]{1,19})/g) ?? [];
-  for (const mention of mentionMatches) {
-    const name = mention.slice(1).trim();
-    prisma.user.findFirst({ where: { name: { equals: name } }, select: { id: true } })
+  const mentionMatches = (content.match(/@([؀-ۿa-zA-Z0-9_][^\s@]{1,19})/g) ?? []).slice(0, 3);
+  if (mentionMatches.length > 0) {
+    const names = mentionMatches.map(m => m.slice(1).trim());
+    prisma.user.findMany({ where: { name: { in: names } }, select: { id: true } })
       .then(mentioned => {
-        if (mentioned && mentioned.id !== user.userId) {
-          prisma.tareeqNotification.create({
-            data: {
-              userId: mentioned.id,
-              type: 'mention',
-              actorId: user.userId,
-              actorName: commenterName,
-              postId: params.id,
-              postTitle: post.title ?? null,
-              body: content.slice(0, 120),
-            },
-          }).catch(() => {});
+        for (const m of mentioned) {
+          if (m.id !== user.userId) {
+            prisma.tareeqNotification.create({
+              data: {
+                userId: m.id,
+                type: 'mention',
+                actorId: user.userId,
+                actorName: commenterName,
+                postId: params.id,
+                postTitle: post.title ?? null,
+                body: content.slice(0, 120),
+              },
+            }).catch(() => {});
+          }
         }
       })
       .catch(() => {});

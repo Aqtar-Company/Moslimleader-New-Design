@@ -64,6 +64,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
+  const [reactedPosts, setReactedPosts] = useState<Record<string, string>>({});
   const [showCreate, setShowCreate] = useState(false);
   const [showGate, setShowGate] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -71,7 +72,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
 
   const isOwnProfile = user?.id === profileUser.id;
 
-  // Load follow state + counts on mount
+  // Load follow state + counts + viewer reactions on mount
   useEffect(() => {
     fetch(`/api/tareeq/follow/${profileUser.id}`, { credentials: 'include' })
       .then(r => r.json())
@@ -80,6 +81,10 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
         setFollowerCount(d.followerCount ?? 0);
         setFollowingCount(d.followingCount ?? 0);
       })
+      .catch(() => {});
+    fetch('/api/tareeq/me', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.reactedPosts) setReactedPosts(d.reactedPosts); })
       .catch(() => {});
   }, [profileUser.id]);
 
@@ -106,16 +111,16 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
       const res = await fetch(`/api/tareeq?${params}`);
       if (res.ok) {
         const data = await res.json();
-        const newPosts = cur ? [...likedPosts, ...data.posts] : data.posts;
-        setLikedPosts(newPosts);
+        // Use functional update to avoid stale closure on likedPosts
+        setLikedPosts(prev => cur ? [...prev, ...data.posts] : data.posts);
         setLikedCursor(data.nextCursor);
-        if (!likedLoaded) setLikedHasImages(newPosts.some((p: TareeqPostSummary) => p.imageUrl));
+        if (!likedLoaded) setLikedHasImages(data.posts.some((p: TareeqPostSummary) => p.imageUrl));
         setLikedLoaded(true);
       }
     } finally {
       setLikedLoading(false);
     }
-  }, [profileUser.id]);
+  }, [profileUser.id, likedLoaded]);
 
   useEffect(() => {
     if (!sentinelRef.current || !cursor) return;
@@ -349,7 +354,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                       <GridImageCard key={post.id} post={post} liked={likedIds.has(post.id)} />
                     ) : (
                       <div key={post.id} className="col-span-2">
-                        <TareeqCard post={post} initialLiked={likedIds.has(post.id)} />
+                        <TareeqCard post={post} initialLiked={likedIds.has(post.id)} initialReaction={reactedPosts[post.id] ?? null} />
                       </div>
                     )
                   ))}

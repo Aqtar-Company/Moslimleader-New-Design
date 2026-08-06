@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 // GET — check if current user follows this profile + counts
 export async function GET(_req: NextRequest, { params }: { params: { userId: string } }) {
@@ -26,6 +27,10 @@ export async function GET(_req: NextRequest, { params }: { params: { userId: str
 
 // POST — toggle follow/unfollow
 export async function POST(_req: NextRequest, { params }: { params: { userId: string } }) {
+  const ip = _req.headers.get('x-forwarded-for') ?? 'unknown';
+  const rl = checkRateLimit(`tareeq-follow:${ip}`, 30, 60 * 1000);
+  if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
+
   const authResult = await getAuthUser().catch(() => null);
   if (!authResult) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const me = authResult;
@@ -40,7 +45,13 @@ export async function POST(_req: NextRequest, { params }: { params: { userId: st
     await prisma.tareeqFollow.delete({ where: { id: existing.id } });
     return NextResponse.json({ following: false });
   } else {
-    await prisma.tareeqFollow.create({ data: { followerId: me.userId, followingId: params.userId } });
+    try {
+      await prisma.tareeqFollow.create({ data: { followerId: me.userId, followingId: params.userId } });
+    } catch (e: any) {
+      // P2002 = unique constraint — concurrent request already created the follow
+      if (e?.code === 'P2002') return NextResponse.json({ following: true });
+      throw e;
+    }
     return NextResponse.json({ following: true });
   }
 }

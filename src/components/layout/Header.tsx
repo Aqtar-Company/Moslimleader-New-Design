@@ -62,8 +62,15 @@ export default function Header() {
       <nav className="bg-gradient-to-b from-[#1a0f00]/80 to-transparent backdrop-blur-sm" style={{ WebkitBackdropFilter: 'blur(8px)', backdropFilter: 'blur(8px)' }}>
         <div className="max-w-6xl mx-auto px-4 h-20 grid grid-cols-3 items-center">
 
-          {/* Side A (Right in RTL): Cart + Library */}
+          {/* Side A (Right in RTL): Library + Cart */}
           <div className="flex items-center gap-2">
+            {/* Digital Library */}
+            <Link href="/library" className={iconBtn} aria-label="المكتبة الرقمية">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+              </svg>
+            </Link>
+
             {/* Cart */}
             <Link href="/cart" className={iconBtn} aria-label="Cart">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -74,18 +81,6 @@ export default function Header() {
                   {totalItems}
                 </span>
               )}
-            </Link>
-
-            {/* Digital Library */}
-            <Link href="/library" className={iconBtn} aria-label="المكتبة الرقمية">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-              </svg>
-            </Link>
-
-            {/* Tareeq community */}
-            <Link href="/tareeq" className="relative flex w-10 h-10 rounded-lg overflow-hidden border-2 border-white/70 hover:border-white transition shrink-0" aria-label="طريق">
-              <img src="/tareeq-logo- small.png" alt="طريق" className="w-full h-full object-cover" />
             </Link>
           </div>
 
@@ -113,9 +108,9 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* Side B (Left in RTL): Lang (desktop only) + Account + Hamburger */}
+          {/* Side B (Left in RTL): Tareeq + Hamburger (mobile) | Lang + Account (desktop) */}
           <div className="flex items-center justify-end gap-2">
-            {/* Language toggle — desktop only; mobile uses the drawer */}
+            {/* Language toggle — desktop only */}
             <button
               onClick={toggleLang}
               className={`${iconBtn} hidden md:flex font-black text-sm`}
@@ -124,7 +119,7 @@ export default function Header() {
               {lang === 'ar' ? 'EN' : 'ع'}
             </button>
 
-            {/* Sign In / Account — hidden on mobile (use drawer instead) */}
+            {/* Sign In / Account — desktop only */}
             {!user ? (
               <Link href='/login' className={`${iconBtn} hidden md:flex`} aria-label="Sign in">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -139,6 +134,15 @@ export default function Header() {
                 <span className="absolute bottom-1 right-1 w-2 h-2 bg-green-400 rounded-full border border-[#1a0f00]" />
               </Link>
             )}
+
+            {/* Tareeq — mobile only */}
+            <Link
+              href="/tareeq"
+              className="md:hidden relative flex w-10 h-10 rounded-lg overflow-hidden border-2 border-white/70 hover:border-white transition shrink-0"
+              aria-label="طريق"
+            >
+              <img src="/tareeq-logo- small.png" alt="طريق" className="w-full h-full object-cover" />
+            </Link>
 
             {/* Hamburger — mobile only */}
             <button

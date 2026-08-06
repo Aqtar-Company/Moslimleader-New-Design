@@ -6,7 +6,7 @@ import TareeqCard, { TareeqPostSummary } from '@/components/tareeq/TareeqCard';
 import TareeqCardSkeleton from '@/components/tareeq/TareeqCardSkeleton';
 import TareeqCreateModal from '@/components/tareeq/TareeqCreateModal';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
-import { TAREEQ_CATEGORIES, CATEGORY_ICONS } from '@/lib/tareeq-constants';
+import { TAREEQ_CATEGORIES, CATEGORY_ICONS, CATEGORY_ACCENT_HEX } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import TareeqHeader from '@/components/tareeq/TareeqHeader';
 import TareeqSidebar from '@/components/tareeq/TareeqSidebar';
@@ -180,65 +180,94 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       <TareeqPWA />
       <TareeqHeader onCreateClick={handleCreateClick} />
 
-      {/* Hero */}
-      <div className="py-12 px-4 relative overflow-hidden">
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div style={{ width: 240, height: 240, background: 'radial-gradient(circle, rgba(212,168,83,0.10) 0%, transparent 70%)', filter: 'blur(48px)' }} />
-        </div>
-        <div className="max-w-4xl mx-auto text-center relative">
-          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl overflow-hidden mx-auto mb-5 shrink-0" style={{ boxShadow: '0 0 0 2px var(--tr-gold-dim), 0 0 32px var(--tr-gold-glow)', border: '1px solid var(--tr-border-soft)' }}>
-            <img src="/tareeq-logo- Rounded.png" alt="طريق" className="w-full h-full object-cover" />
-          </div>
-          <h1 className="font-black text-3xl sm:text-4xl mb-2 tracking-wide" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'طريق' : 'Tareeq'}</h1>
-          <p className="text-sm sm:text-base max-w-lg mx-auto leading-loose font-medium" style={{ color: 'var(--tr-text-muted)' }}>
-            {isRtl
-              ? 'وَبِالنَّجْمِ هُمْ يَهْتَدُونَ — اترك علامة يهتدي بها غيرك'
-              : 'وَبِالنَّجْمِ هُمْ يَهْتَدُونَ — Leave a mark to guide others'}
-          </p>
-        </div>
+      {/* ── Discover title ─────────────────────────────────────────────── */}
+      <div className="max-w-2xl mx-auto px-4 pt-5 pb-2">
+        <h1 className="font-black text-2xl" style={{ color: 'var(--tr-text-primary)' }}>
+          {isRtl ? 'اكتشف' : 'Discover'}
+        </h1>
       </div>
 
-      {/* Sticky filter bar */}
+      {/* ── Story circles — categories ──────────────────────────────────── */}
+      <div className="max-w-2xl mx-auto px-4 pb-5 flex gap-4 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        {/* Add / Create circle */}
+        <button
+          onClick={handleCreateClick}
+          className="flex flex-col items-center gap-1.5 shrink-0 active:scale-95 transition-transform"
+          aria-label={isRtl ? 'إضافة علامة' : 'Add mark'}
+        >
+          <div
+            className="w-14 h-14 rounded-full flex items-center justify-center"
+            style={{ background: 'var(--tr-raised)', border: '2px dashed var(--tr-border-strong)' }}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-secondary)' }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+          </div>
+          <span className="text-[10px] font-semibold w-14 text-center truncate" style={{ color: 'var(--tr-text-muted)' }}>
+            {isRtl ? 'إضافة' : 'Add'}
+          </span>
+        </button>
+
+        {/* All */}
+        <button
+          onClick={() => handleCategoryChange('')}
+          className="flex flex-col items-center gap-1.5 shrink-0 active:scale-95 transition-transform"
+        >
+          <div
+            className="w-14 h-14 rounded-full flex items-center justify-center text-xl transition-all"
+            style={{
+              background: !category ? 'var(--tr-gold-glow)' : 'var(--tr-surface)',
+              border: `2px solid ${!category ? 'var(--tr-gold)' : 'var(--tr-border-soft)'}`,
+              boxShadow: !category ? '0 0 0 3px var(--tr-gold-glow)' : 'none',
+            }}
+          >
+            ✨
+          </div>
+          <span className="text-[10px] font-semibold w-14 text-center truncate" style={{ color: !category ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
+            {isRtl ? 'الكل' : 'All'}
+          </span>
+        </button>
+
+        {/* Category circles */}
+        {CATEGORY_KEYS.map((key) => {
+          const accent = CATEGORY_ACCENT_HEX[key] ?? 'var(--tr-gold)';
+          const active = category === key;
+          return (
+            <button
+              key={key}
+              onClick={() => handleCategoryChange(active ? '' : key)}
+              className="flex flex-col items-center gap-1.5 shrink-0 active:scale-95 transition-transform"
+            >
+              <div
+                className="w-14 h-14 rounded-full flex items-center justify-center text-xl transition-all"
+                style={{
+                  background: active ? `${accent}22` : 'var(--tr-surface)',
+                  border: `2px solid ${active ? accent : 'var(--tr-border-soft)'}`,
+                  boxShadow: active ? `0 0 0 3px ${accent}22` : 'none',
+                }}
+              >
+                {CATEGORY_ICONS[key]}
+              </div>
+              <span className="text-[10px] font-semibold w-14 text-center truncate" style={{ color: active ? accent : 'var(--tr-text-muted)' }}>
+                {isRtl ? TAREEQ_CATEGORIES[key].ar : TAREEQ_CATEGORIES[key].en}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Sticky search + sort bar */}
       <div
         className="sticky z-40"
         style={{
-          top: '4.5rem',
-          background: 'rgba(246,244,240,0.94)',
+          top: '56px',
+          background: 'rgba(249,247,245,0.95)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
           borderBottom: '1px solid var(--tr-border-subtle)',
         }}
       >
-        {/* Row 1: categories */}
-        <div className="max-w-6xl mx-auto px-4 pt-3 pb-2 flex gap-2 overflow-x-auto scrollbar-hide">
-          <button
-            onClick={() => handleCategoryChange('')}
-            className="text-xs font-bold px-4 py-2 rounded-full whitespace-nowrap transition shrink-0"
-            style={!category
-              ? { background: 'var(--tr-gold-glow)', color: 'var(--tr-gold-bright)', border: '1px solid var(--tr-gold-dim)' }
-              : { background: 'var(--tr-border-subtle)', color: 'var(--tr-text-secondary)', border: '1px solid transparent' }
-            }
-          >
-            {isRtl ? 'الكل' : 'All'}
-          </button>
-          {CATEGORY_KEYS.map((key) => (
-            <button
-              key={key}
-              onClick={() => handleCategoryChange(key)}
-              className="flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-full whitespace-nowrap transition shrink-0"
-              style={category === key
-                ? { background: 'var(--tr-gold-glow)', color: 'var(--tr-gold-bright)', border: '1px solid var(--tr-gold-dim)' }
-                : { background: 'var(--tr-border-subtle)', color: 'var(--tr-text-secondary)', border: '1px solid transparent' }
-              }
-            >
-              <span>{CATEGORY_ICONS[key]}</span>
-              {isRtl ? TAREEQ_CATEGORIES[key].ar : TAREEQ_CATEGORIES[key].en}
-            </button>
-          ))}
-        </div>
-
-        {/* Row 2: search + sort + sidebar toggle */}
-        <div className="max-w-6xl mx-auto px-4 pb-3 flex items-center gap-3">
+        <div className="max-w-2xl mx-auto px-4 py-2.5 flex items-center gap-3">
           <div className="relative flex-1 max-w-sm">
             <svg className="absolute top-1/2 -translate-y-1/2 start-3 w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
@@ -287,7 +316,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         <div
           className="fixed sm:hidden z-50 pointer-events-none flex items-center justify-center rounded-full"
           style={{
-            top: `calc(4.5rem + ${Math.min((pullY - 12) * 0.7, 48)}px)`,
+            top: `calc(56px + ${Math.min((pullY - 12) * 0.7, 48)}px)`,
             left: '50%', transform: 'translateX(-50%)',
             width: 36, height: 36,
             background: 'var(--tr-surface)',
@@ -307,12 +336,12 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       )}
 
       {/* Feed + Sidebar */}
-      <div className="max-w-7xl mx-auto px-4 py-8 sm:pb-8 flex gap-6 items-start">
+      <div className="max-w-2xl mx-auto px-4 py-6 sm:pb-8 flex gap-6 items-start">
         <div ref={feedTopRef} className="flex-1 min-w-0">
         {initialLoading ? (
-          <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
+          <div className="flex flex-col gap-4">
             {skeletons.map((_, i) => (
-              <div key={i} className="break-inside-avoid">
+              <div key={i}>
                 <TareeqCardSkeleton />
               </div>
             ))}
@@ -348,11 +377,11 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           </div>
         ) : (
           <>
-            <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
+            <div className="flex flex-col gap-4">
               {posts.map((post) => (
                 <div
                   key={post.id}
-                  className="break-inside-avoid transition-all duration-700"
+                  className="transition-all duration-700"
                   style={newPostId === post.id ? { outline: '2px solid var(--tr-gold)', borderRadius: 16, boxShadow: '0 0 24px var(--tr-gold-glow)' } : undefined}
                 >
                   <TareeqCard post={post} initialLiked={likedIds.has(post.id)} />

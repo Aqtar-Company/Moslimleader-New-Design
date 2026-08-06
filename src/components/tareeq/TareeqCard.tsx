@@ -30,6 +30,11 @@ interface Props {
   initialLiked?: boolean;
 }
 
+function fmt(n: number): string {
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+  return String(n);
+}
+
 export default function TareeqCard({ post, initialLiked = false }: Props) {
   const { isRtl } = useLang();
   const { user } = useAuth();
@@ -40,191 +45,249 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
   const [showGate, setShowGate] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
-  const shareMenuRef = useRef<HTMLDivElement>(null);
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const shareMenuRef = useRef<HTMLDivElement>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!showShareMenu) return;
-    const handler = (e: MouseEvent) => {
-      if (shareMenuRef.current && !shareMenuRef.current.contains(e.target as Node)) {
-        setShowShareMenu(false);
-      }
+    const h = (e: MouseEvent) => {
+      if (shareMenuRef.current && !shareMenuRef.current.contains(e.target as Node)) setShowShareMenu(false);
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
   }, [showShareMenu]);
 
-  const catKey = post.category as TareeqCategoryKey | null;
-  const catLabel = catKey && TAREEQ_CATEGORIES[catKey]
-    ? (isRtl ? TAREEQ_CATEGORIES[catKey].ar : TAREEQ_CATEGORIES[catKey].en)
-    : post.category;
-  const catIcon = catKey ? (CATEGORY_ICONS[catKey] ?? '') : '';
-  const accentHex = catKey ? (CATEGORY_ACCENT_HEX[catKey] ?? '#d4a853') : '#d4a853';
-  const snippet = post.summary || post.content.slice(0, 160);
-  const tags = Array.isArray(post.tags) ? post.tags : [];
-  const hasImage = !!post.imageUrl;
+  const catKey    = post.category as TareeqCategoryKey | null;
+  const catLabel  = catKey && TAREEQ_CATEGORIES[catKey] ? (isRtl ? TAREEQ_CATEGORIES[catKey].ar : TAREEQ_CATEGORIES[catKey].en) : post.category;
+  const catIcon   = catKey ? (CATEGORY_ICONS[catKey] ?? '') : '';
+  const accentHex = catKey ? (CATEGORY_ACCENT_HEX[catKey] ?? '#ff5c38') : '#ff5c38';
+  const snippet   = post.summary || post.content.slice(0, 160);
+  const hasImage  = !!post.imageUrl;
 
   async function handleLike(e: React.MouseEvent) {
-    e.preventDefault();
+    e.preventDefault(); e.stopPropagation();
     if (!user) { setShowGate(true); return; }
     if ('vibrate' in navigator) navigator.vibrate(50);
-    const wasLiked = liked;
-    setLiked(!wasLiked);
-    setLikeCount(c => Math.max(0, wasLiked ? c - 1 : c + 1));
+    const was = liked;
+    setLiked(!was);
+    setLikeCount(c => Math.max(0, was ? c - 1 : c + 1));
     const res = await fetch(`/api/tareeq/${post.id}/like`, { method: 'POST', credentials: 'include' });
-    if (!res.ok) {
-      setLiked(wasLiked);
-      setLikeCount(c => Math.max(0, wasLiked ? c + 1 : c - 1));
-    }
+    if (!res.ok) { setLiked(was); setLikeCount(c => Math.max(0, was ? c + 1 : c - 1)); }
   }
 
   async function handleCopyLink(e: React.MouseEvent) {
-    e.preventDefault();
-    const url = `${window.location.origin}/tareeq/${post.id}`;
-    await navigator.clipboard.writeText(url).catch(() => {});
-    setCopied(true);
-    setShowShareMenu(false);
+    e.preventDefault(); e.stopPropagation();
+    await navigator.clipboard.writeText(`${window.location.origin}/tareeq/${post.id}`).catch(() => {});
+    setCopied(true); setShowShareMenu(false);
     setTimeout(() => setCopied(false), 2000);
   }
 
   async function handleShare(e: React.MouseEvent) {
-    e.preventDefault();
+    e.preventDefault(); e.stopPropagation();
     const url = `${window.location.origin}/tareeq/${post.id}`;
     if (navigator.share) {
-      try {
-        await navigator.share({
-          title: post.title || (isRtl ? 'علامة على طريق' : 'A mark on Tareeq'),
-          text: post.content.slice(0, 100),
-          url,
-        });
-      } catch { /* user cancelled */ }
-    } else {
-      setShowShareMenu(v => !v);
-    }
+      try { await navigator.share({ title: post.title || (isRtl ? 'علامة على طريق' : 'A mark on Tareeq'), text: post.content.slice(0, 100), url }); }
+      catch { /* cancelled */ }
+    } else { setShowShareMenu(v => !v); }
   }
 
   function handleCommentToggle(e: React.MouseEvent) {
-    e.preventDefault();
+    e.preventDefault(); e.stopPropagation();
     if (!user) { setShowGate(true); return; }
-    setShowCommentInput(v => {
-      if (!v) setTimeout(() => commentInputRef.current?.focus(), 30);
-      return !v;
-    });
+    setShowCommentInput(v => { if (!v) setTimeout(() => commentInputRef.current?.focus(), 30); return !v; });
   }
 
   async function handleComment(e: React.FormEvent) {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     if (!user || commentText.trim().length < 2) return;
     setSubmitting(true);
     const res = await fetch(`/api/tareeq/${post.id}/comments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
       body: JSON.stringify({ content: commentText.trim() }),
     });
-    if (res.ok) {
-      setCommentCount(c => c + 1);
-      setCommentText('');
-      setShowCommentInput(false);
-    }
+    if (res.ok) { setCommentCount(c => c + 1); setCommentText(''); setShowCommentInput(false); }
     setSubmitting(false);
   }
 
-  const cardStyle = {
-    background: 'var(--tr-surface)',
-    border: '1px solid var(--tr-border-subtle)',
-    borderRadius: 16,
-    overflow: 'hidden' as const,
-    display: 'flex' as const,
-    flexDirection: 'column' as const,
-    transition: 'box-shadow 0.3s ease, transform 0.25s ease',
-  };
-
-  return (
-    <>
-      <article
-        style={cardStyle}
-        aria-label={post.title || post.content.slice(0, 80)}
-        onMouseEnter={e => {
-          (e.currentTarget as HTMLElement).style.boxShadow = `0 0 20px ${accentHex}20, 0 8px 24px rgba(0,0,0,0.10)`;
-          (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
-        }}
-        onMouseLeave={e => {
-          (e.currentTarget as HTMLElement).style.boxShadow = 'none';
-          (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
-        }}
-      >
-        {/* Category accent line — top glow bar */}
-        {catKey && (
-          <div style={{
-            height: 2,
-            background: `linear-gradient(90deg, ${accentHex}, transparent)`,
-            opacity: 0.8,
-          }} />
-        )}
-
-        {/* Image — full bleed */}
-        {hasImage && (
-          <Link href={`/tareeq/${post.id}`} className="relative w-full shrink-0 overflow-hidden block" style={{ aspectRatio: '4/3', background: 'var(--tr-raised)' }}>
+  // ── Image card — full-bleed portrait ────────────────────────────────
+  if (hasImage) {
+    return (
+      <>
+        <article
+          className="relative overflow-hidden"
+          style={{ borderRadius: 24, aspectRatio: '3/4', background: '#111', display: 'block' }}
+          aria-label={post.title || post.content.slice(0, 80)}
+        >
+          {/* Clickable image area */}
+          <Link href={`/tareeq/${post.id}`} className="absolute inset-0 block">
             <img src={post.imageUrl!} alt="" className="w-full h-full object-cover" loading="lazy" />
-            <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to top, var(--tr-surface) 0%, transparent 40%)` }} />
-            {catLabel && (
+            {/* Dark gradient — heavier at bottom for legibility */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.05) 70%, transparent 100%)',
+            }} />
+          </Link>
+
+          {/* Category badge — top start */}
+          {catLabel && (
+            <div className="absolute top-4 start-4 z-10 pointer-events-none">
               <span
-                className="absolute top-3 start-3 text-[10px] font-bold px-2.5 py-1 rounded-full"
-                style={{
-                  background: 'rgba(0,0,0,0.48)',
-                  backdropFilter: 'blur(6px)',
-                  border: `1px solid ${accentHex}50`,
-                  color: '#fff',
-                }}
+                className="text-[11px] font-bold px-3 py-1 rounded-full text-white"
+                style={{ background: 'rgba(0,0,0,0.40)', backdropFilter: 'blur(8px)', border: `1px solid ${accentHex}70` }}
               >
                 {catIcon} {catLabel}
               </span>
+            </div>
+          )}
+
+          {/* Side engagement icons — vertical stack */}
+          <div className="absolute end-3 z-10 flex flex-col items-center gap-4" style={{ bottom: 96 }}>
+            {/* Like */}
+            <button onClick={handleLike} aria-pressed={liked} aria-label={isRtl ? (liked ? 'إلغاء الإعجاب' : 'إعجاب') : (liked ? 'Unlike' : 'Like')} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+              <div
+                className="w-11 h-11 rounded-full flex items-center justify-center"
+                style={{ background: liked ? 'rgba(244,63,94,0.85)' : 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)' }}
+              >
+                <svg className="w-5 h-5" fill={liked ? '#fff' : 'none'} stroke={liked ? '#fff' : '#fff'} strokeWidth={2} viewBox="0 0 24 24" style={liked ? { filter: 'drop-shadow(0 0 6px rgba(244,63,94,0.8))' } : undefined}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                </svg>
+              </div>
+              <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{fmt(likeCount)}</span>
+            </button>
+
+            {/* Share */}
+            <div ref={shareMenuRef} className="relative flex flex-col items-center gap-1">
+              <button onClick={handleShare} aria-label={isRtl ? 'مشاركة' : 'Share'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+                <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)' }}>
+                  <svg className="w-5 h-5" fill="none" stroke="#fff" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                  </svg>
+                </div>
+                <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>
+                  {copied ? '✓' : (isRtl ? 'شارك' : 'Share')}
+                </span>
+              </button>
+              {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} isRtl={isRtl} />}
+            </div>
+
+            {/* Comment */}
+            <button onClick={handleCommentToggle} aria-label={isRtl ? 'تعليق' : 'Comment'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+              <div
+                className="w-11 h-11 rounded-full flex items-center justify-center"
+                style={{ background: showCommentInput ? 'rgba(255,92,56,0.7)' : 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)' }}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="#fff" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+                </svg>
+              </div>
+              <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{fmt(commentCount)}</span>
+            </button>
+          </div>
+
+          {/* Bottom: author + caption (above link, z-10) */}
+          <div className="absolute bottom-0 inset-x-0 z-10 p-4 pe-16 pointer-events-none">
+            <div className="flex items-center gap-2.5 mb-2 pointer-events-auto">
+              <Link
+                href={post.userId ? `/tareeq/u/${post.userId}` : '#'}
+                onClick={e => e.stopPropagation()}
+                className="flex items-center gap-2"
+              >
+                {post.user?.avatarUrl ? (
+                  <img src={post.user.avatarUrl} alt={post.authorName} className="w-8 h-8 rounded-full object-cover shrink-0" style={{ border: '2px solid rgba(255,255,255,0.4)' }} />
+                ) : (
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0"
+                    style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: '2px solid rgba(255,255,255,0.4)', backdropFilter: 'blur(8px)' }}
+                  >
+                    {post.authorName.charAt(0)}
+                  </div>
+                )}
+                <div>
+                  <p className="text-white font-bold text-sm leading-none">{post.authorName}</p>
+                  <p className="text-white/60 text-[10px] mt-0.5">{timeAgo(post.createdAt, isRtl)}</p>
+                </div>
+              </Link>
+            </div>
+            {(post.title || snippet) && (
+              <p className="text-white/90 text-xs leading-relaxed line-clamp-2">
+                {post.title ? <strong>{post.title} — </strong> : null}{snippet}
+              </p>
             )}
-          </Link>
+          </div>
+
+          {/* Inline comment input */}
+          {showCommentInput && (
+            <div className="absolute bottom-0 inset-x-0 z-20 px-4 pb-4 pt-3" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(12px)' }}>
+              <form onSubmit={handleComment} onClick={e => e.stopPropagation()} className="flex gap-2 items-center">
+                <input
+                  ref={commentInputRef}
+                  value={commentText}
+                  onChange={e => setCommentText(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Escape') setShowCommentInput(false); }}
+                  placeholder={isRtl ? 'أضف تعليقاً...' : 'Add a comment...'}
+                  maxLength={500}
+                  className="flex-1 rounded-full px-4 py-2 text-xs text-white outline-none"
+                  style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }}
+                />
+                <button
+                  type="submit"
+                  disabled={submitting || commentText.trim().length < 2}
+                  className="px-4 py-2 rounded-full text-xs font-bold text-white disabled:opacity-40 transition shrink-0"
+                  style={{ background: 'var(--tr-gold)' }}
+                >
+                  {submitting ? '...' : (isRtl ? 'إرسال' : 'Send')}
+                </button>
+              </form>
+            </div>
+          )}
+        </article>
+        {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
+      </>
+    );
+  }
+
+  // ── Text-only card — clean white card ────────────────────────────────
+  return (
+    <>
+      <article
+        className="overflow-hidden"
+        style={{ borderRadius: 20, background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}
+        aria-label={post.title || post.content.slice(0, 80)}
+      >
+        {/* Category accent top bar */}
+        {catKey && (
+          <div style={{ height: 3, background: `linear-gradient(90deg, ${accentHex}, ${accentHex}40)`, borderRadius: '20px 20px 0 0' }} />
         )}
 
-        {/* Content */}
-        <Link href={`/tareeq/${post.id}`} className="flex flex-col flex-1 p-5 gap-3 min-w-0">
+        <Link href={`/tareeq/${post.id}`} className="block p-5 pb-3">
           {/* Author row */}
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2.5 min-w-0">
-              {post.user?.avatarUrl ? (
-                <img src={post.user.avatarUrl} alt={post.authorName} className="w-7 h-7 rounded-full object-cover shrink-0" />
-              ) : (
-                <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                  style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1px solid var(--tr-border-soft)' }}
-                >
-                  {post.authorName.charAt(0)}
-                </div>
-              )}
-              <div className="min-w-0">
-                {post.userId ? (
-                  <Link
-                    href={`/tareeq/u/${post.userId}`}
-                    onClick={e => e.stopPropagation()}
-                    className="text-xs font-semibold truncate block transition"
-                    style={{ color: 'var(--tr-text-secondary)' }}
-                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--tr-gold)')}
-                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--tr-text-secondary)')}
-                  >
-                    {post.authorName}
-                  </Link>
-                ) : (
-                  <p className="text-xs font-semibold truncate" style={{ color: 'var(--tr-text-secondary)' }}>{post.authorName}</p>
-                )}
-                <p className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(post.createdAt, isRtl)}</p>
+          <div className="flex items-center gap-2.5 mb-3">
+            {post.user?.avatarUrl ? (
+              <img src={post.user.avatarUrl} alt={post.authorName} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold)' }} />
+            ) : (
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black shrink-0"
+                style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}
+              >
+                {post.authorName.charAt(0)}
               </div>
+            )}
+            <div className="flex-1 min-w-0">
+              {post.userId ? (
+                <Link href={`/tareeq/u/${post.userId}`} onClick={e => e.stopPropagation()} className="text-sm font-bold truncate block" style={{ color: 'var(--tr-text-primary)' }}>
+                  {post.authorName}
+                </Link>
+              ) : (
+                <p className="text-sm font-bold truncate" style={{ color: 'var(--tr-text-primary)' }}>{post.authorName}</p>
+              )}
+              <p className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(post.createdAt, isRtl)}</p>
             </div>
-            {/* Category badge — text-only posts */}
-            {!hasImage && catLabel && (
+            {catLabel && (
               <span
-                className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                className="text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0"
                 style={{ color: accentHex, background: `${accentHex}18`, border: `1px solid ${accentHex}35` }}
               >
                 {catIcon} {catLabel}
@@ -233,186 +296,81 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
           </div>
 
           {post.title && (
-            <h3
-              className="font-black text-sm leading-snug line-clamp-2 transition"
-              style={{ color: 'var(--tr-text-primary)' }}
-            >
+            <h3 className="font-black text-sm leading-snug line-clamp-2 mb-2" style={{ color: 'var(--tr-text-primary)' }}>
               {post.title}
             </h3>
           )}
+          <p className="text-xs leading-relaxed line-clamp-4" style={{ color: 'var(--tr-text-secondary)' }}>{snippet}</p>
 
-          <p className="text-xs leading-relaxed line-clamp-4 flex-1" style={{ color: 'var(--tr-text-secondary)' }}>
-            {snippet}
-          </p>
-
-          {/* Video badge */}
-          {!hasImage && post.videoUrl && (
-            <div
-              className="flex items-center gap-2.5 rounded-xl px-4 py-3"
-              style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-subtle)' }}
-            >
-              <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--tr-overlay)' }}>
-                <svg className="w-3.5 h-3.5 ms-0.5" fill="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+          {post.videoUrl && !hasImage && (
+            <div className="mt-3 flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: 'var(--tr-raised)' }}>
+              <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--tr-gold-glow)' }}>
+                <svg className="w-3 h-3 ms-0.5" fill="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
                   <path d="M8 5v14l11-7z" />
                 </svg>
               </div>
-              <span className="text-xs font-medium" style={{ color: 'var(--tr-text-muted)' }}>
-                {isRtl ? 'يحتوي على فيديو' : 'Contains a video'}
-              </span>
-            </div>
-          )}
-
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {tags.slice(0, 4).map((tag) => (
-                <span
-                  key={tag}
-                  className="text-[10px] px-2 py-0.5 rounded-full"
-                  style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-subtle)' }}
-                >
-                  #{tag}
-                </span>
-              ))}
+              <span className="text-[11px]" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'يحتوي على فيديو' : 'Contains a video'}</span>
             </div>
           )}
         </Link>
 
         {/* Footer actions */}
-        <div
-          className="px-5 pb-4 pt-3 flex items-center gap-4"
-          style={{ borderTop: '1px solid var(--tr-border-subtle)' }}
-        >
-          {/* Like */}
+        <div className="px-5 pb-4 pt-2 flex items-center gap-5" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
           <button
-            onClick={handleLike}
-            aria-pressed={liked}
-            aria-label={isRtl ? (liked ? 'إلغاء الإعجاب' : 'إعجاب') : (liked ? 'Unlike' : 'Like')}
+            onClick={handleLike} aria-pressed={liked}
             className="flex items-center gap-1.5 text-xs font-semibold transition active:scale-110"
             style={{ color: liked ? '#f43f5e' : 'var(--tr-text-muted)' }}
-            onMouseEnter={e => { if (!liked) (e.currentTarget as HTMLElement).style.color = '#f43f5e88'; }}
-            onMouseLeave={e => { if (!liked) (e.currentTarget as HTMLElement).style.color = 'var(--tr-text-muted)'; }}
           >
-            <svg className="w-4 h-4" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
-              style={liked ? { filter: 'drop-shadow(0 0 6px rgba(244,63,94,0.6))' } : undefined}>
+            <svg className="w-4 h-4" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={liked ? { filter: 'drop-shadow(0 0 5px rgba(244,63,94,0.5))' } : undefined}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
             </svg>
-            <span>{likeCount}</span>
+            {fmt(likeCount)}
           </button>
 
-          {/* Comment */}
           <button
             onClick={handleCommentToggle}
             className="flex items-center gap-1.5 text-xs font-semibold transition"
-            style={{ color: showCommentInput ? 'var(--tr-teal)' : 'var(--tr-text-muted)' }}
-            onMouseEnter={e => { if (!showCommentInput) (e.currentTarget as HTMLElement).style.color = 'var(--tr-teal)'; }}
-            onMouseLeave={e => { if (!showCommentInput) (e.currentTarget as HTMLElement).style.color = 'var(--tr-text-muted)'; }}
+            style={{ color: showCommentInput ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
             </svg>
-            <span>{commentCount}</span>
+            {fmt(commentCount)}
           </button>
 
-          {/* Share — native on mobile, dropdown on desktop */}
           <div ref={shareMenuRef} className="relative ms-auto">
             <button
               onClick={handleShare}
               className="flex items-center gap-1 text-xs font-semibold transition"
-              style={{ color: copied ? 'var(--tr-teal)' : 'var(--tr-text-muted)' }}
+              style={{ color: copied ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}
             >
-              {copied ? (
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                </svg>
-              ) : (
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
-                </svg>
-              )}
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d={copied ? 'M4.5 12.75l6 6 9-13.5' : 'M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z'} />
+              </svg>
             </button>
-            {showShareMenu && (() => {
-              const postUrl = typeof window !== 'undefined' ? `${window.location.origin}/tareeq/${post.id}` : `/tareeq/${post.id}`;
-              const text = encodeURIComponent(post.title || post.content.slice(0, 80));
-              const url = encodeURIComponent(postUrl);
-              const items = [
-                { label: 'Twitter / X', color: '#ffffff', href: `https://twitter.com/intent/tweet?text=${text}&url=${url}` },
-                { label: 'WhatsApp', color: '#25D366', href: `https://api.whatsapp.com/send?text=${text}%20${url}` },
-                { label: 'Facebook', color: '#4c8ef0', href: `https://www.facebook.com/sharer/sharer.php?u=${url}` },
-                { label: 'Telegram', color: '#4aaed9', href: `https://t.me/share/url?url=${url}&text=${text}` },
-              ];
-              return (
-                <div
-                  className="absolute bottom-full end-0 mb-2 py-1.5 w-36 z-20 rounded-xl"
-                  style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
-                >
-                  {items.map(item => (
-                    <a
-                      key={item.label}
-                      href={item.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={e => { e.stopPropagation(); setShowShareMenu(false); }}
-                      className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-semibold transition"
-                      style={{ color: 'var(--tr-text-secondary)' }}
-                      onMouseEnter={e => (e.currentTarget.style.color = 'var(--tr-text-primary)')}
-                      onMouseLeave={e => (e.currentTarget.style.color = 'var(--tr-text-secondary)')}
-                    >
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: item.color }} />
-                      {item.label}
-                    </a>
-                  ))}
-                  <button
-                    onClick={handleCopyLink}
-                    className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-semibold transition w-full"
-                    style={{ color: 'var(--tr-text-secondary)' }}
-                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--tr-text-primary)')}
-                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--tr-text-secondary)')}
-                  >
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: 'var(--tr-text-muted)' }} />
-                    {isRtl ? 'نسخ الرابط' : 'Copy link'}
-                  </button>
-                </div>
-              );
-            })()}
+            {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} isRtl={isRtl} />}
           </div>
         </div>
 
         {/* Inline comment form */}
         {showCommentInput && (
-          <form
-            onSubmit={handleComment}
-            onClick={e => e.stopPropagation()}
-            className="px-5 pb-4 pt-3 flex gap-2 items-center"
-            style={{ borderTop: '1px solid var(--tr-border-subtle)' }}
-          >
-            <div
-              className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-              style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1px solid var(--tr-border-soft)' }}
-            >
+          <form onSubmit={handleComment} onClick={e => e.stopPropagation()} className="px-5 pb-4 flex gap-2 items-center" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold)' }}>
               {user?.name?.charAt(0) ?? '?'}
             </div>
             <input
               ref={commentInputRef}
               value={commentText}
               onChange={e => setCommentText(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); setShowCommentInput(false); } }}
+              onKeyDown={e => { if (e.key === 'Escape') setShowCommentInput(false); }}
               placeholder={isRtl ? 'أضف تعليقاً...' : 'Add a comment...'}
               maxLength={500}
               className="flex-1 min-w-0 rounded-full px-3 py-1.5 text-xs outline-none transition"
-              style={{
-                background: 'var(--tr-overlay)',
-                border: '1px solid var(--tr-border-soft)',
-                color: 'var(--tr-text-primary)',
-              }}
-              onFocus={e => (e.currentTarget.style.borderColor = 'var(--tr-teal)')}
+              style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
+              onFocus={e => (e.currentTarget.style.borderColor = 'var(--tr-gold)')}
               onBlur={e => (e.currentTarget.style.borderColor = 'var(--tr-border-soft)')}
             />
-            <button
-              type="submit"
-              disabled={submitting || commentText.trim().length < 2}
-              className="px-3 py-1.5 rounded-full text-xs font-bold disabled:opacity-40 transition shrink-0"
-              style={{ background: 'var(--tr-teal-dim)', color: 'var(--tr-teal)', border: '1px solid var(--tr-teal)33' }}
-            >
+            <button type="submit" disabled={submitting || commentText.trim().length < 2} className="px-3 py-1.5 rounded-full text-xs font-bold disabled:opacity-40 transition shrink-0 text-white" style={{ background: 'var(--tr-gold)' }}>
               {submitting ? '...' : (isRtl ? 'إرسال' : 'Send')}
             </button>
           </form>
@@ -421,5 +379,42 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
 
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
     </>
+  );
+}
+
+// ── Shared share dropdown ────────────────────────────────────────────
+function ShareDropdown({ postId, title, content, onCopy, onClose, isRtl }: {
+  postId: string; title?: string | null; content: string;
+  onCopy: (e: React.MouseEvent) => void; onClose: () => void; isRtl: boolean;
+}) {
+  const postUrl  = typeof window !== 'undefined' ? `${window.location.origin}/tareeq/${postId}` : `/tareeq/${postId}`;
+  const text     = encodeURIComponent(title || content.slice(0, 80));
+  const url      = encodeURIComponent(postUrl);
+  const items    = [
+    { label: 'WhatsApp', color: '#25D366', href: `https://api.whatsapp.com/send?text=${text}%20${url}` },
+    { label: 'Twitter / X', color: '#000', href: `https://twitter.com/intent/tweet?text=${text}&url=${url}` },
+    { label: 'Telegram', color: '#4aaed9', href: `https://t.me/share/url?url=${url}&text=${text}` },
+    { label: 'Facebook', color: '#4c8ef0', href: `https://www.facebook.com/sharer/sharer.php?u=${url}` },
+  ];
+  return (
+    <div
+      className="absolute bottom-full end-0 mb-2 py-1.5 w-36 z-30 rounded-2xl"
+      style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', boxShadow: '0 8px 28px rgba(0,0,0,0.14)' }}
+    >
+      {items.map(item => (
+        <a key={item.label} href={item.href} target="_blank" rel="noopener noreferrer"
+          onClick={e => { e.stopPropagation(); onClose(); }}
+          className="flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-semibold hover:opacity-70 transition"
+          style={{ color: 'var(--tr-text-secondary)' }}
+        >
+          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: item.color }} />
+          {item.label}
+        </a>
+      ))}
+      <button onClick={onCopy} className="flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-semibold w-full hover:opacity-70 transition" style={{ color: 'var(--tr-text-secondary)' }}>
+        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: 'var(--tr-text-muted)' }} />
+        {isRtl ? 'نسخ الرابط' : 'Copy link'}
+      </button>
+    </div>
   );
 }

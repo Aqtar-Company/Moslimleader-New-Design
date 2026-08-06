@@ -1,21 +1,24 @@
 @import "tailwindcss";
 
-/* ── Tareeq "Warm Light" design tokens ──────────────────── */
+/* ── Tareeq "Social Coral" design tokens ────────────────── */
 :root {
-  --tr-base:    #f6f4f0;
+  --tr-base:    #f9f7f5;
   --tr-surface: #ffffff;
-  --tr-raised:  #edeae3;
-  --tr-overlay: #e3dfd6;
-  --tr-border-subtle: rgba(26,24,40,0.07);
-  --tr-border-soft:   rgba(26,24,40,0.12);
-  --tr-border-strong: rgba(26,24,40,0.22);
-  --tr-gold:        #b8891e;
-  --tr-gold-bright: #c49620;
-  --tr-gold-dim:    #e8c84a;
-  --tr-gold-glow:   rgba(184,137,30,0.16);
+  --tr-raised:  #f2efea;
+  --tr-overlay: #ebe7e0;
+  --tr-border-subtle: rgba(26,20,18,0.07);
+  --tr-border-soft:   rgba(26,20,18,0.12);
+  --tr-border-strong: rgba(26,20,18,0.22);
+  /* Primary — Coral */
+  --tr-gold:        #ff5c38;
+  --tr-gold-bright: #ff7857;
+  --tr-gold-dim:    #ff9075;
+  --tr-gold-glow:   rgba(255,92,56,0.16);
+  /* Secondary */
   --tr-teal:        #0d9488;
   --tr-teal-dim:    rgba(13,148,136,0.10);
-  --tr-text-primary:   #1a1828;
+  /* Text */
+  --tr-text-primary:   #1a1a2a;
   --tr-text-secondary: #4a4860;
   --tr-text-muted:     #9896a8;
 }

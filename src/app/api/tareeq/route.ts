@@ -5,18 +5,44 @@ import { getAuthUser } from '@/lib/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { CATEGORY_KEY } from '@/lib/tareeq-constants';
 
-// GET /api/tareeq?cursor=xxx&category=xxx&limit=12
+// GET /api/tareeq?cursor=xxx&category=xxx&limit=12&likedBy=userId
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const cursor = searchParams.get('cursor') || undefined;
   const category = searchParams.get('category') || undefined;
   const search = searchParams.get('search')?.trim() || undefined;
   const userId = searchParams.get('userId') || undefined;
+  const likedBy = searchParams.get('likedBy') || undefined;
   const sort = searchParams.get('sort') ?? 'newest';
   const limit = Math.min(Number(searchParams.get('limit') ?? 12), 30);
   const orderBy = sort === 'liked'
     ? { likeCount: 'desc' as const }
     : { createdAt: 'desc' as const };
+
+  // likedBy: return posts liked by a specific user (via TareeqLike join)
+  if (likedBy) {
+    const likes = await prisma.tareeqLike.findMany({
+      where: { userId: likedBy },
+      orderBy: { createdAt: 'desc' },
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      select: {
+        id: true,
+        post: {
+          select: {
+            id: true, title: true, summary: true, content: true,
+            category: true, tags: true, imageUrl: true, videoUrl: true, authorName: true,
+            likeCount: true, commentCount: true, createdAt: true, userId: true,
+            user: { select: { id: true, name: true, avatarUrl: true } },
+          },
+        },
+      },
+    });
+    const hasMore = likes.length > limit;
+    const items = (hasMore ? likes.slice(0, limit) : likes).map(l => l.post);
+    const nextCursor = hasMore ? likes[limit - 1].id : null;
+    return NextResponse.json({ posts: items, nextCursor });
+  }
 
   const where = {
     ...(category ? { category } : {}),

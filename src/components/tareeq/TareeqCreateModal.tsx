@@ -70,16 +70,21 @@ export default function TareeqCreateModal({ onClose, onCreated }: Props) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true); setError('');
-    const isImage = file.type.startsWith('image/');
-    const uploadFile = isImage ? await compressImage(file, { maxWidth: 1920, maxHeight: 1920, quality: 0.82 }) : file;
-    const form = new FormData();
-    form.append('file', uploadFile);
-    const res = await fetch('/api/tareeq/upload', { method: 'POST', credentials: 'include', body: form });
-    const data = await res.json();
-    setUploading(false);
-    if (res.ok) { setMediaUrl(data.url); setMediaType(data.type); }
-    else setError(data.error || (isRtl ? 'فشل رفع الملف' : 'Upload failed'));
-    e.target.value = '';
+    try {
+      const isImage = file.type.startsWith('image/');
+      const uploadFile = isImage ? await compressImage(file, { maxWidth: 1920, maxHeight: 1920, quality: 0.82 }) : file;
+      const form = new FormData();
+      form.append('file', uploadFile);
+      const res = await fetch('/api/tareeq/upload', { method: 'POST', credentials: 'include', body: form });
+      const data = await res.json();
+      if (res.ok) { setMediaUrl(data.url); setMediaType(data.type); }
+      else setError(data.error || (isRtl ? 'فشل رفع الملف' : 'Upload failed'));
+    } catch {
+      setError(isRtl ? 'فشل رفع الملف' : 'Upload failed');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
   }
 
   async function submit() {
@@ -88,23 +93,28 @@ export default function TareeqCreateModal({ onClose, onCreated }: Props) {
       return;
     }
     setLoading(true); setError('');
-    const res = await fetch('/api/tareeq', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
-        content: content.trim(),
-        title: title.trim() || null,
-        category: category || null,
-        tags,
-        imageUrl: mediaType === 'image' ? mediaUrl : null,
-        videoUrl: mediaType === 'video' ? mediaUrl : null,
-      }),
-    });
-    const data = await res.json();
-    setLoading(false);
-    if (res.ok) { onCreated(data.id); onClose(); }
-    else setError(data.error || (isRtl ? 'حدث خطأ' : 'An error occurred'));
+    try {
+      const res = await fetch('/api/tareeq', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          content: content.trim(),
+          title: title.trim() || null,
+          category: category || null,
+          tags,
+          imageUrl: mediaType === 'image' ? mediaUrl : null,
+          videoUrl: mediaType === 'video' ? mediaUrl : null,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) { onCreated(data.id); onClose(); }
+      else setError(data.error || (isRtl ? 'حدث خطأ' : 'An error occurred'));
+    } catch {
+      setError(isRtl ? 'حدث خطأ في الاتصال' : 'Connection error');
+    } finally {
+      setLoading(false);
+    }
   }
 
   const charCount = content.length;

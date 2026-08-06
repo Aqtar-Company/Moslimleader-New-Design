@@ -55,7 +55,7 @@ self.addEventListener('notificationclick', e => {
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       for (const c of list) {
-        if (c.url.includes('/tareeq') && 'focus' in c) return c.focus();
+        if (c.url === url && 'focus' in c) return c.focus();
       }
       return clients.openWindow(url);
     })

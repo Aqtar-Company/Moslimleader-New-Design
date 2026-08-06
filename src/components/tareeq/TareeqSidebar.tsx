@@ -128,7 +128,27 @@ export default function TareeqSidebar({ onCreateClick, postCount }: Props) {
         </div>
       </div>
 
-      {/* Push notifications */}
+      {/* Push notifications — blocked */}
+      {user && pushPermission === 'denied' && (
+        <div
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl"
+          style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)' }}
+        >
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+          </svg>
+          <div className="min-w-0">
+            <p className="text-xs font-bold" style={{ color: 'var(--tr-text-muted)' }}>
+              {isRtl ? 'الإشعارات محظورة' : 'Notifications blocked'}
+            </p>
+            <p className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>
+              {isRtl ? 'فعّلها من إعدادات المتصفح' : 'Enable in browser settings'}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Push notifications — available */}
       {user && pushPermission !== 'unsupported' && pushPermission !== 'denied' && (
         <button
           onClick={pushPermission === 'granted' ? disablePush : enablePush}

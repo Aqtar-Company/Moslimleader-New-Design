@@ -38,28 +38,29 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
     navigator.serviceWorker.register('/tareeq-sw.js', { scope: '/tareeq' }).catch(() => {});
   }, []);
 
-  // Detect initial push permission
+  // Detect initial push permission.
+  // If OS reports 'granted', verify a subscription actually exists — the user may have
+  // called disablePush() which removes the subscription but leaves the OS permission intact.
   useEffect(() => {
     if (typeof window === 'undefined' || !('Notification' in window)) return;
-    setPushPermission(Notification.permission as PushPermission);
-  }, []);
-
-  // Auto-resubscribe if permission already granted (page reload / new device)
-  useEffect(() => {
-    if (!user || pushPermission !== 'granted') return;
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    const perm = Notification.permission as PushPermission;
+    if (perm !== 'granted') { setPushPermission(perm); return; }
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) { setPushPermission(perm); return; }
     navigator.serviceWorker.ready.then(reg =>
       reg.pushManager.getSubscription().then(sub => {
-        if (!sub) return;
-        fetch('/api/tareeq/push-subscribe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ subscription: sub.toJSON() }),
-        }).catch(() => {});
+        setPushPermission(sub ? 'granted' : 'default');
+        // Re-sync active subscription with server on page load
+        if (sub) {
+          fetch('/api/tareeq/push-subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ subscription: sub.toJSON() }),
+          }).catch(() => {});
+        }
       })
-    ).catch(() => {});
-  }, [user, pushPermission]);
+    ).catch(() => setPushPermission(perm));
+  }, []);
 
   // Update PWA app-icon badge (Badging API)
   useEffect(() => {
@@ -73,7 +74,7 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
   }, [notifCount, messageCount]);
 
   const poll = useCallback(async () => {
-    if (!user || typeof document !== 'undefined' && document.hidden) return;
+    if (!user || document.hidden) return;
     try {
       const [nRes, cRes] = await Promise.all([
         fetch('/api/tareeq/notifications?countOnly=true', { credentials: 'include' }),
@@ -99,8 +100,7 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
   const enablePush = useCallback(async () => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
     const permission = await Notification.requestPermission();
-    setPushPermission(permission as PushPermission);
-    if (permission !== 'granted') return;
+    if (permission !== 'granted') { setPushPermission(permission as PushPermission); return; }
     try {
       const reg = await navigator.serviceWorker.ready;
       let sub = await reg.pushManager.getSubscription();
@@ -109,7 +109,7 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
         if (!vapidKey) return;
         sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidKey),
+          applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
         });
       }
       await fetch('/api/tareeq/push-subscribe', {
@@ -118,7 +118,9 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
         credentials: 'include',
         body: JSON.stringify({ subscription: sub.toJSON() }),
       });
-    } catch { /* ignore */ }
+      // Only mark as granted after the subscription is confirmed server-side
+      setPushPermission('granted');
+    } catch { /* subscription failed — don't show "On" */ }
   }, []);
 
   const disablePush = useCallback(async () => {
@@ -126,7 +128,7 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
     try {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
-      if (!sub) return;
+      if (!sub) { setPushPermission('default'); return; }
       await fetch('/api/tareeq/push-unsubscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

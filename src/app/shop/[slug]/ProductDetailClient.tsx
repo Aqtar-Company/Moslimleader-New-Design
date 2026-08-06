@@ -564,7 +564,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               <div className="flex items-center gap-4 mb-6 flex-wrap">
                 <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
                   <span>⭐</span>
-                  {isRtl ? 'آراء العملاء' : 'Customer Reviews'}
+                  {isRtl ? 'تجارب الأعضاء' : 'Member Experiences'}
                 </h2>
                 {allReviews.length > 0 && (() => {
                   const avg = allReviews.reduce((s, r) => s + r.rating, 0) / allReviews.length;

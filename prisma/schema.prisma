@@ -1013,7 +1013,7 @@ model TareeqPushSubscription {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation("TareeqPushSubs", fields: [userId], references: [id], onDelete: Cascade)
-  endpoint  String   @unique @db.Text
+  endpoint  String   @unique @db.VarChar(500)
   p256dh    String   @db.Text
   auth      String   @db.Text
   createdAt DateTime @default(now())

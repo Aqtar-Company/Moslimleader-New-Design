@@ -66,39 +66,6 @@ function ReactionIcon({ type, size = 16 }: { type: string; size?: number }) {
   return null;
 }
 
-// Reaction picker popup
-function ReactionPicker({ onSelect, onClose, isRtl }: {
-  onSelect: (type: ReactionType) => void;
-  onClose: () => void;
-  isRtl: boolean;
-}) {
-  return (
-    <div
-      className="absolute z-30 flex items-center gap-1 px-2 py-1.5 rounded-2xl"
-      style={{
-        bottom: 'calc(100% + 8px)',
-        [isRtl ? 'right' : 'left']: 0,
-        background: 'var(--tr-surface)',
-        border: '1px solid var(--tr-border-soft)',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {REACTIONS.map(r => (
-        <button
-          key={r.type}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSelect(r.type); onClose(); }}
-          className="flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-xl transition active:scale-90"
-          style={{ color: r.color }}
-          title={isRtl ? r.labelAr : r.labelEn}
-        >
-          <ReactionIcon type={r.type} size={22} />
-          <span style={{ fontSize: 9, fontWeight: 700, color: r.color }}>{isRtl ? r.labelAr : r.labelEn}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
 
 function fmt(n: number): string {
   if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
@@ -261,8 +228,8 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
           {/* Side engagement icons — vertical stack */}
           <div className="absolute end-3 z-10 flex flex-col items-center gap-4" style={{ bottom: 96 }}>
-            {/* Reaction button (image card) */}
-            <div ref={pickerRef} className="relative flex flex-col items-center gap-1">
+            {/* Reaction button (image card) — picker opens as bottom overlay */}
+            <div className="flex flex-col items-center gap-1">
               <button
                 onClick={handleReactionAreaClick}
                 aria-label={isRtl ? 'تفاعل' : 'React'}
@@ -286,13 +253,6 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                   {fmt(likeCount)}
                 </span>
               </button>
-              {showPicker && (
-                <ReactionPicker
-                  onSelect={(type) => handleReact(type)}
-                  onClose={() => setShowPicker(false)}
-                  isRtl={isRtl}
-                />
-              )}
             </div>
 
             {/* Share */}
@@ -323,6 +283,36 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{fmt(commentCount)}</span>
             </button>
           </div>
+
+          {/* Reaction picker — bottom overlay (inside overflow bounds) */}
+          {showPicker && (
+            <div
+              ref={pickerRef}
+              className="absolute bottom-0 inset-x-0 z-20 flex justify-around items-center px-3 py-3"
+              style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(16px)' }}
+              onClick={e => e.stopPropagation()}
+            >
+              {REACTIONS.map(r => (
+                <button
+                  key={r.type}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleReact(r.type); setShowPicker(false); }}
+                  className="flex flex-col items-center gap-1 active:scale-90 transition-transform"
+                  style={{ color: currentReaction === r.type ? r.color : '#ffffffcc' }}
+                >
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center"
+                    style={{
+                      background: currentReaction === r.type ? `${r.color}30` : 'rgba(255,255,255,0.10)',
+                      border: `1.5px solid ${currentReaction === r.type ? r.color : 'rgba(255,255,255,0.2)'}`,
+                    }}
+                  >
+                    <ReactionIcon type={r.type} size={20} />
+                  </div>
+                  <span style={{ fontSize: 9, fontWeight: 700 }}>{isRtl ? r.labelAr : r.labelEn}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Bottom: author + caption (above link, z-10) */}
           <div className="absolute bottom-0 inset-x-0 z-10 p-4 pe-16 pointer-events-none">
@@ -454,7 +444,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         {/* Footer actions */}
         <div className="px-5 pb-4 pt-2 flex items-center gap-4" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
           {/* Reactions bar */}
-          <div ref={pickerRef} className="relative flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">
               {REACTIONS.map(r => (
                 <button

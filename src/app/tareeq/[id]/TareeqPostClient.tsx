@@ -20,13 +20,49 @@ interface Post {
   comments: Comment[];
 }
 
-export default function TareeqPostClient({ post, userLiked = false, userBookmarked = false }: { post: Post; userLiked?: boolean; userBookmarked?: boolean }) {
+// ── Reaction config (shared with TareeqCard) ─────────────────────────
+const REACTIONS = [
+  { type: 'inspired', labelAr: 'ألهمني', labelEn: 'Inspiring', color: '#f59e0b' },
+  { type: 'thanks',   labelAr: 'شكرًا',  labelEn: 'Thanks',    color: '#10b981' },
+  { type: 'agree',    labelAr: 'أتفق',   labelEn: 'Agree',     color: '#3b82f6' },
+  { type: 'yarabb',   labelAr: 'يارب',   labelEn: 'Ameen',     color: '#8b5cf6' },
+] as const;
+
+type ReactionType = typeof REACTIONS[number]['type'];
+
+function ReactionIcon({ type, size = 18 }: { type: string; size?: number }) {
+  const s = size;
+  if (type === 'inspired') return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12,3 L14.5,7.7 L19.8,7.5 L17,12 L19.8,16.5 L14.5,16.3 L12,21 L9.5,16.3 L4.2,16.5 L7,12 L4.2,7.5 L9.5,7.7 Z"/>
+    </svg>
+  );
+  if (type === 'thanks') return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.05 4.575a1.575 1.575 0 10-3.15 0v3m3.15-3v-1.5a1.575 1.575 0 013.15 0v1.5m-3.15 0l.075 5.925m3.075.75V4.575m0 0a1.575 1.575 0 013.15 0V15M6.9 7.575a1.575 1.575 0 10-3.15 0v8.175a6.75 6.75 0 006.75 6.75h2.018a5.25 5.25 0 003.712-1.538l1.732-1.732a5.25 5.25 0 001.538-3.712l.003-2.024a.668.668 0 01.198-.471 1.575 1.575 0 10-2.228-2.228 3.818 3.818 0 00-1.12 2.687M6.9 7.575V12m6.27 4.318A4.49 4.49 0 0116.35 15m1.143-3.678a.668.668 0 01.198.471"/>
+    </svg>
+  );
+  if (type === 'agree') return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+  );
+  if (type === 'yarabb') return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/>
+    </svg>
+  );
+  return null;
+}
+
+export default function TareeqPostClient({ post, userLiked = false, userBookmarked = false, userReaction = null }: { post: Post; userLiked?: boolean; userBookmarked?: boolean; userReaction?: string | null }) {
   const { isRtl } = useLang();
   const { user } = useAuth();
   const router = useRouter();
   useWakeLock(); // Keep screen on while reading
 
-  const [liked, setLiked] = useState(userLiked);
+  const startReaction: string | null = userReaction ?? (userLiked ? 'inspired' : null);
+  const [currentReaction, setCurrentReaction] = useState<string | null>(startReaction);
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [bookmarked, setBookmarked] = useState(userBookmarked);
   const [comments, setComments] = useState<Comment[]>(post.comments);
@@ -54,14 +90,31 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
 
   const sortedComments = commentSort === 'asc' ? comments : [...comments].reverse();
 
-  function toggleLike() {
+  async function handleReact(type: ReactionType) {
     if (!user) { setShowGate(true); return; }
-    const wasLiked = liked;
-    setLiked(!wasLiked);
-    setLikeCount(c => Math.max(0, wasLiked ? c - 1 : c + 1));
-    fetch(`/api/tareeq/${post.id}/like`, { method: 'POST', credentials: 'include' })
-      .then(r => { if (!r.ok) { setLiked(wasLiked); setLikeCount(c => Math.max(0, wasLiked ? c + 1 : c - 1)); } })
-      .catch(() => { setLiked(wasLiked); setLikeCount(c => Math.max(0, wasLiked ? c + 1 : c - 1)); });
+    if ('vibrate' in navigator) navigator.vibrate(40);
+    const prev = currentReaction;
+    if (prev === type) {
+      setCurrentReaction(null);
+      setLikeCount(c => Math.max(0, c - 1));
+    } else if (prev) {
+      setCurrentReaction(type);
+    } else {
+      setCurrentReaction(type);
+      setLikeCount(c => c + 1);
+    }
+    const res = await fetch(`/api/tareeq/${post.id}/react`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ type }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setCurrentReaction(data.reaction);
+    } else {
+      setCurrentReaction(prev);
+      if (prev === type) setLikeCount(c => c + 1);
+      else if (!prev) setLikeCount(c => Math.max(0, c - 1));
+    }
   }
 
   function toggleBookmark() {
@@ -246,15 +299,32 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
             {/* Actions */}
             {!editing && (
               <div className="flex items-center gap-3 mt-6 pt-6 border-t border-gray-100 flex-wrap">
-                <button
-                  onClick={toggleLike}
-                  className={`flex items-center gap-2 text-sm font-semibold transition active:scale-110 ${liked ? 'text-rose-500' : 'text-gray-400 hover:text-rose-400'}`}
-                >
-                  <svg className="w-5 h-5" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-                  </svg>
-                  <span>{likeCount}</span>
-                </button>
+                {/* Reactions bar */}
+                <div className="flex items-center gap-1 flex-wrap">
+                  {REACTIONS.map(r => {
+                    const active = currentReaction === r.type;
+                    return (
+                      <button
+                        key={r.type}
+                        onClick={() => handleReact(r.type)}
+                        title={isRtl ? r.labelAr : r.labelEn}
+                        aria-pressed={active}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold transition active:scale-95"
+                        style={{
+                          color: active ? r.color : '#9ca3af',
+                          background: active ? `${r.color}18` : 'transparent',
+                          border: `1.5px solid ${active ? r.color + '60' : 'transparent'}`,
+                        }}
+                      >
+                        <ReactionIcon type={r.type} size={18} />
+                        <span className="text-xs">{isRtl ? r.labelAr : r.labelEn}</span>
+                      </button>
+                    );
+                  })}
+                  <span className="text-sm font-semibold ms-1" style={{ color: currentReaction ? (REACTIONS.find(r => r.type === currentReaction)?.color ?? '#9ca3af') : '#9ca3af' }}>
+                    {likeCount > 0 ? likeCount : ''}
+                  </span>
+                </div>
 
                 <button
                   onClick={toggleBookmark}

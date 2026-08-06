@@ -66,14 +66,18 @@ export default async function TareeqPostPage({ params }: { params: { id: string 
   // Check current user's reactions
   let userLiked = false;
   let userBookmarked = false;
+  let userReaction: string | null = null;
   try {
     const currentUser = await getAuthUser();
-    const [like, bookmark] = await Promise.all([
+    if (!currentUser) throw new Error('');
+    const [like, bookmark, reaction] = await Promise.all([
       prisma.tareeqLike.findUnique({ where: { postId_userId: { postId: params.id, userId: currentUser.userId } } }),
       prisma.tareeqBookmark.findUnique({ where: { postId_userId: { postId: params.id, userId: currentUser.userId } } }),
+      (prisma as any).tareeqReaction?.findUnique({ where: { postId_userId: { postId: params.id, userId: currentUser.userId } } }).catch(() => null) ?? null,
     ]);
     userLiked = !!like;
     userBookmarked = !!bookmark;
+    userReaction = (reaction as any)?.type ?? null;
   } catch { /* not logged in */ }
 
   return (
@@ -86,6 +90,7 @@ export default async function TareeqPostPage({ params }: { params: { id: string 
       }}
       userLiked={userLiked}
       userBookmarked={userBookmarked}
+      userReaction={userReaction}
     />
   );
 }

@@ -70,6 +70,7 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
   async function handleLike(e: React.MouseEvent) {
     e.preventDefault();
     if (!user) { setShowGate(true); return; }
+    if ('vibrate' in navigator) navigator.vibrate(50);
     const wasLiked = liked;
     setLiked(!wasLiked);
     setLikeCount(c => Math.max(0, wasLiked ? c - 1 : c + 1));
@@ -87,6 +88,22 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
     setCopied(true);
     setShowShareMenu(false);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleShare(e: React.MouseEvent) {
+    e.preventDefault();
+    const url = `${window.location.origin}/tareeq/${post.id}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: post.title || (isRtl ? 'علامة على طريق' : 'A mark on Tareeq'),
+          text: post.content.slice(0, 100),
+          url,
+        });
+      } catch { /* user cancelled */ }
+    } else {
+      setShowShareMenu(v => !v);
+    }
   }
 
   function handleCommentToggle(e: React.MouseEvent) {
@@ -293,10 +310,10 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
             <span>{commentCount}</span>
           </button>
 
-          {/* Share dropdown */}
+          {/* Share — native on mobile, dropdown on desktop */}
           <div ref={shareMenuRef} className="relative ms-auto">
             <button
-              onClick={e => { e.preventDefault(); setShowShareMenu(v => !v); }}
+              onClick={handleShare}
               className="flex items-center gap-1 text-xs font-semibold transition"
               style={{ color: copied ? 'var(--tr-teal)' : 'var(--tr-text-muted)' }}
             >

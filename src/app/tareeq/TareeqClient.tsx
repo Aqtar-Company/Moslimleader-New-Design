@@ -10,6 +10,7 @@ import { TAREEQ_CATEGORIES, CATEGORY_ICONS } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import TareeqHeader from '@/components/tareeq/TareeqHeader';
 import TareeqSidebar from '@/components/tareeq/TareeqSidebar';
+import TareeqBottomNav from '@/components/tareeq/TareeqBottomNav';
 import TareeqPWA, { TareeqInstallBanner } from '@/components/tareeq/TareeqPWA';
 import { TareeqNotificationsProvider } from '@/context/TareeqNotificationsContext';
 
@@ -33,9 +34,13 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [newPostId, setNewPostId] = useState<string | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [pullY, setPullY] = useState(0);
+  const [pullRefreshing, setPullRefreshing] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const feedTopRef = useRef<HTMLDivElement>(null);
+  const touchStartY = useRef(0);
+  const PULL_THRESHOLD = 72;
 
   useEffect(() => {
     if (!user) { setLikedIds(new Set()); return; }
@@ -96,6 +101,43 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
     setSort(newSort);
     loadPosts(category, search, null, newSort);
   }
+
+  // App shortcut: /tareeq?action=create
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'create') {
+      window.history.replaceState({}, '', '/tareeq');
+      if (user) setShowCreate(true); else setShowGate(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  // Pull to refresh
+  useEffect(() => {
+    const onStart = (e: TouchEvent) => { touchStartY.current = e.touches[0].clientY; };
+    const onMove = (e: TouchEvent) => {
+      if (window.scrollY > 0 || pullRefreshing) return;
+      const dy = e.touches[0].clientY - touchStartY.current;
+      if (dy > 0) setPullY(Math.min(dy, PULL_THRESHOLD + 24));
+    };
+    const onEnd = async () => {
+      if (pullY >= PULL_THRESHOLD && !pullRefreshing) {
+        if ('vibrate' in navigator) navigator.vibrate(30);
+        setPullRefreshing(true);
+        await loadPosts(category, search, null, sort);
+        setPullRefreshing(false);
+      }
+      setPullY(0);
+    };
+    window.addEventListener('touchstart', onStart, { passive: true });
+    window.addEventListener('touchmove', onMove, { passive: true });
+    window.addEventListener('touchend', onEnd);
+    return () => {
+      window.removeEventListener('touchstart', onStart);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onEnd);
+    };
+  }, [pullY, pullRefreshing, category, search, sort, loadPosts]);
 
   function handleCreateClick() {
     if (!user) { setShowGate(true); return; }
@@ -212,8 +254,32 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         </div>
       </div>
 
+      {/* Pull to Refresh indicator */}
+      {pullY > 12 && (
+        <div
+          className="fixed sm:hidden z-50 pointer-events-none flex items-center justify-center rounded-full"
+          style={{
+            top: `calc(4.5rem + ${Math.min((pullY - 12) * 0.7, 48)}px)`,
+            left: '50%', transform: 'translateX(-50%)',
+            width: 36, height: 36,
+            background: 'var(--tr-surface)',
+            border: '1px solid var(--tr-border-soft)',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.10)',
+            opacity: Math.min(pullY / PULL_THRESHOLD, 1),
+          }}
+        >
+          <svg
+            className={`w-5 h-5 ${pullRefreshing || pullY >= PULL_THRESHOLD ? 'animate-spin' : ''}`}
+            style={{ color: 'var(--tr-gold)', transform: pullRefreshing ? undefined : `rotate(${pullY * 2.5}deg)` }}
+            fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+        </div>
+      )}
+
       {/* Feed + Sidebar */}
-      <div className="max-w-7xl mx-auto px-4 py-8 pb-28 sm:pb-8 flex gap-6 items-start">
+      <div className="max-w-7xl mx-auto px-4 py-8 pb-20 sm:pb-8 flex gap-6 items-start">
         <div ref={feedTopRef} className="flex-1 min-w-0">
         {initialLoading ? (
           <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
@@ -310,21 +376,8 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         </>
       )}
 
-      {/* Floating button — mobile only */}
-      <button
-        onClick={handleCreateClick}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 sm:hidden z-30 font-black px-7 py-3.5 rounded-full text-sm flex items-center gap-2 active:scale-95 transition"
-        style={{
-          background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))',
-          color: '#0a0d06',
-          boxShadow: '0 8px 32px rgba(212,168,83,0.4), 0 2px 8px rgba(0,0,0,0.5)',
-        }}
-      >
-        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-        </svg>
-        {isRtl ? 'اترك علامة' : 'Leave a Mark'}
-      </button>
+      {/* Bottom navigation — mobile only */}
+      <TareeqBottomNav onCreateClick={handleCreateClick} />
 
       <TareeqInstallBanner />
       {showCreate && <TareeqCreateModal onClose={() => setShowCreate(false)} onCreated={(id?: string) => {

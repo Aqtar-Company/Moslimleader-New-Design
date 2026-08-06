@@ -6,8 +6,8 @@
   "scope": "/tareeq",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#0a1f1a",
-  "background_color": "#0a1f1a",
+  "theme_color": "#f6f4f0",
+  "background_color": "#f6f4f0",
   "lang": "ar",
   "dir": "rtl",
   "icons": [
@@ -32,6 +32,29 @@
       "src": "/android-chrome-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "اترك علامة",
+      "short_name": "علامة جديدة",
+      "description": "نشر علامة جديدة على طريق",
+      "url": "/tareeq?action=create",
+      "icons": [{ "src": "/tareeq-logo- Rounded.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "الإشعارات",
+      "short_name": "إشعارات",
+      "description": "عرض الإشعارات",
+      "url": "/tareeq/notifications",
+      "icons": [{ "src": "/tareeq-logo- Rounded.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "الرسائل",
+      "short_name": "رسائل",
+      "description": "عرض صندوق الرسائل",
+      "url": "/tareeq/inbox",
+      "icons": [{ "src": "/tareeq-logo- Rounded.png", "sizes": "192x192", "type": "image/png" }]
     }
   ],
   "categories": ["social", "lifestyle"],

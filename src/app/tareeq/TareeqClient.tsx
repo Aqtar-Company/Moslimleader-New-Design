@@ -62,13 +62,14 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
   const [category, setCategory] = useState<string>('');
-  const [sort, setSort] = useState<'newest' | 'liked'>('newest');
+  const [sort, setSort] = useState<'newest' | 'liked' | 'following'>('newest');
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [showGate, setShowGate] = useState(false);
   const [sharePrefill, setSharePrefill] = useState('');
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [reactedPosts, setReactedPosts] = useState<Record<string, string>>({});
   const [newPostId, setNewPostId] = useState<string | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
   const [pullY, setPullY] = useState(0);
@@ -87,14 +88,17 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const PULL_THRESHOLD = 72;
 
   useEffect(() => {
-    if (!user) { setLikedIds(new Set()); return; }
+    if (!user) { setLikedIds(new Set()); setReactedPosts({}); return; }
     fetch('/api/tareeq/me', { credentials: 'include' })
       .then(r => r.json())
-      .then(d => setLikedIds(new Set(d.likedIds ?? [])))
+      .then(d => {
+        setLikedIds(new Set(d.likedIds ?? []));
+        setReactedPosts(d.reactedPosts ?? {});
+      })
       .catch(() => {});
   }, [user]);
 
-  const loadPosts = useCallback(async (cat: string, q: string, fromCursor?: string | null, sortBy: 'newest' | 'liked' = 'newest') => {
+  const loadPosts = useCallback(async (cat: string, q: string, fromCursor?: string | null, sortBy: 'newest' | 'liked' | 'following' = 'newest') => {
     if (fromCursor) { setLoading(true); } else { setInitialLoading(true); }
     try {
       const params = new URLSearchParams({ limit: '12' });
@@ -139,12 +143,24 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
 
   function handleCategoryChange(key: string) {
     setCategory(key);
-    loadPosts(key, search, null, sort);
+    // Switching to a category clears the "following" feed
+    const effectiveSort = sort === 'following' ? 'newest' : sort;
+    if (sort === 'following') setSort('newest');
+    loadPosts(key, search, null, effectiveSort);
   }
 
-  function handleSortChange(newSort: 'newest' | 'liked') {
+  function handleSortChange(newSort: 'newest' | 'liked' | 'following') {
     setSort(newSort);
     loadPosts(category, search, null, newSort);
+  }
+
+  function handleFollowingCircleClick() {
+    if (!user) { setShowGate(true); return; }
+    if (sort === 'following') {
+      handleSortChange('newest');
+    } else {
+      handleSortChange('following');
+    }
   }
 
   // Keep filter refs in sync so pull-to-refresh onEnd always has fresh values
@@ -248,6 +264,30 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           </span>
         </button>
 
+        {/* Following — only when logged in */}
+        {user && (
+          <button
+            onClick={handleFollowingCircleClick}
+            className="flex flex-col items-center gap-1.5 shrink-0 active:scale-95 transition-transform"
+          >
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center transition-all"
+              style={{
+                background: sort === 'following' ? 'var(--tr-gold-glow)' : 'var(--tr-surface)',
+                border: `2px solid ${sort === 'following' ? 'var(--tr-gold)' : 'var(--tr-border-soft)'}`,
+                boxShadow: sort === 'following' ? '0 0 0 3px var(--tr-gold-glow)' : 'none',
+              }}
+            >
+              <svg className="w-6 h-6" fill="none" stroke={sort === 'following' ? 'var(--tr-gold)' : 'var(--tr-text-muted)'} strokeWidth={1.7} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+              </svg>
+            </div>
+            <span className="text-[10px] font-semibold w-14 text-center truncate" style={{ color: sort === 'following' ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
+              {isRtl ? 'متابَعون' : 'Following'}
+            </span>
+          </button>
+        )}
+
         {/* All */}
         <button
           onClick={() => handleCategoryChange('')}
@@ -329,7 +369,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           </div>
           <select
             value={sort}
-            onChange={e => handleSortChange(e.target.value as 'newest' | 'liked')}
+            onChange={e => handleSortChange(e.target.value as 'newest' | 'liked' | 'following')}
             className="rounded-full px-3 py-1.5 text-xs focus:outline-none shrink-0 cursor-pointer"
             style={{
               background: 'var(--tr-overlay)',
@@ -339,6 +379,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           >
             <option value="newest">{isRtl ? 'الأحدث' : 'Newest'}</option>
             <option value="liked">{isRtl ? 'الأكثر إعجاباً' : 'Most Liked'}</option>
+            {user && <option value="following">{isRtl ? 'من أتابعهم' : 'Following'}</option>}
           </select>
           {/* Sidebar toggle — mobile only */}
           <button
@@ -427,7 +468,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
                   className="transition-all duration-700"
                   style={newPostId === post.id ? { outline: '2px solid var(--tr-gold)', borderRadius: 16, boxShadow: '0 0 24px var(--tr-gold-glow)' } : undefined}
                 >
-                  <TareeqCard post={post} initialLiked={likedIds.has(post.id)} />
+                  <TareeqCard post={post} initialLiked={likedIds.has(post.id)} initialReaction={reactedPosts[post.id] ?? null} />
                 </div>
               ))}
             </div>

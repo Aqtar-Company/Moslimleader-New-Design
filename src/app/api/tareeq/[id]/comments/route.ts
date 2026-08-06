@@ -51,6 +51,30 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     prisma.tareeqPost.update({ where: { id: params.id }, data: { commentCount: { increment: 1 } } }),
   ]);
 
+  // Parse @mentions and notify mentioned users (non-blocking)
+  const commenterName = comment.user?.name ?? 'شخص ما';
+  const mentionMatches = content.match(/@([؀-ۿa-zA-Z0-9_][^\s@]{1,19})/g) ?? [];
+  for (const mention of mentionMatches) {
+    const name = mention.slice(1).trim();
+    prisma.user.findFirst({ where: { name: { equals: name } }, select: { id: true } })
+      .then(mentioned => {
+        if (mentioned && mentioned.id !== user.userId) {
+          prisma.tareeqNotification.create({
+            data: {
+              userId: mentioned.id,
+              type: 'mention',
+              actorId: user.userId,
+              actorName: commenterName,
+              postId: params.id,
+              postTitle: post.title ?? null,
+              body: content.slice(0, 120),
+            },
+          }).catch(() => {});
+        }
+      })
+      .catch(() => {});
+  }
+
   // Notify post author (non-blocking)
   if (post.userId && post.userId !== user.userId) {
     const actorName = user.name ?? 'شخص ما';

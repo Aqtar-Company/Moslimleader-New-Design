@@ -61,6 +61,9 @@ model User {
   tareeqNotifications     TareeqNotification[]     @relation("TareeqNotifRecipient")
   tareeqSentMessages      TareeqMessage[]          @relation("TareeqMsgSender")
   tareeqPushSubscriptions TareeqPushSubscription[] @relation("TareeqPushSubs")
+  tareeqFollowing    TareeqFollow[] @relation("TareeqFollowing")
+  tareeqFollowers    TareeqFollow[] @relation("TareeqFollowers")
+  tareeqReactions    TareeqReaction[]
 
   @@index([role])
   @@index([isWholesale])
@@ -917,6 +920,7 @@ model TareeqPost {
   likes        TareeqLike[]
   comments     TareeqComment[]
   bookmarks    TareeqBookmark[]
+  reactions    TareeqReaction[]
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 
@@ -1018,5 +1022,32 @@ model TareeqPushSubscription {
   auth      String   @db.Text
   createdAt DateTime @default(now())
 
+  @@index([userId])
+}
+
+model TareeqFollow {
+  id          String   @id @default(cuid())
+  followerId  String
+  follower    User     @relation("TareeqFollowing", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String
+  following   User     @relation("TareeqFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+model TareeqReaction {
+  id        String     @id @default(cuid())
+  postId    String
+  post      TareeqPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String     // inspired | thanks | agree | yarabb
+  createdAt DateTime   @default(now())
+
+  @@unique([postId, userId])
+  @@index([postId])
   @@index([userId])
 }

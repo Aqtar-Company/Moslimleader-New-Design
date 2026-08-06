@@ -28,6 +28,76 @@ export interface TareeqPostSummary {
 interface Props {
   post: TareeqPostSummary;
   initialLiked?: boolean;
+  initialReaction?: string | null;
+}
+
+// ── Reaction config ──────────────────────────────────────────────────
+const REACTIONS = [
+  { type: 'inspired', labelAr: 'ألهمني', labelEn: 'Inspiring', color: '#f59e0b' },
+  { type: 'thanks',   labelAr: 'شكرًا',  labelEn: 'Thanks',    color: '#10b981' },
+  { type: 'agree',    labelAr: 'أتفق',   labelEn: 'Agree',     color: '#3b82f6' },
+  { type: 'yarabb',   labelAr: 'يارب',   labelEn: 'Ameen',     color: '#8b5cf6' },
+] as const;
+
+type ReactionType = typeof REACTIONS[number]['type'];
+
+function ReactionIcon({ type, size = 16 }: { type: string; size?: number }) {
+  const s = size;
+  if (type === 'inspired') return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12,3 L14.5,7.7 L19.8,7.5 L17,12 L19.8,16.5 L14.5,16.3 L12,21 L9.5,16.3 L4.2,16.5 L7,12 L4.2,7.5 L9.5,7.7 Z"/>
+    </svg>
+  );
+  if (type === 'thanks') return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.05 4.575a1.575 1.575 0 10-3.15 0v3m3.15-3v-1.5a1.575 1.575 0 013.15 0v1.5m-3.15 0l.075 5.925m3.075.75V4.575m0 0a1.575 1.575 0 013.15 0V15M6.9 7.575a1.575 1.575 0 10-3.15 0v8.175a6.75 6.75 0 006.75 6.75h2.018a5.25 5.25 0 003.712-1.538l1.732-1.732a5.25 5.25 0 001.538-3.712l.003-2.024a.668.668 0 01.198-.471 1.575 1.575 0 10-2.228-2.228 3.818 3.818 0 00-1.12 2.687M6.9 7.575V12m6.27 4.318A4.49 4.49 0 0116.35 15m1.143-3.678a.668.668 0 01.198.471"/>
+    </svg>
+  );
+  if (type === 'agree') return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+  );
+  if (type === 'yarabb') return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/>
+    </svg>
+  );
+  return null;
+}
+
+// Reaction picker popup
+function ReactionPicker({ onSelect, onClose, isRtl }: {
+  onSelect: (type: ReactionType) => void;
+  onClose: () => void;
+  isRtl: boolean;
+}) {
+  return (
+    <div
+      className="absolute z-30 flex items-center gap-1 px-2 py-1.5 rounded-2xl"
+      style={{
+        bottom: 'calc(100% + 8px)',
+        [isRtl ? 'right' : 'left']: 0,
+        background: 'var(--tr-surface)',
+        border: '1px solid var(--tr-border-soft)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {REACTIONS.map(r => (
+        <button
+          key={r.type}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSelect(r.type); onClose(); }}
+          className="flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-xl transition active:scale-90"
+          style={{ color: r.color }}
+          title={isRtl ? r.labelAr : r.labelEn}
+        >
+          <ReactionIcon type={r.type} size={22} />
+          <span style={{ fontSize: 9, fontWeight: 700, color: r.color }}>{isRtl ? r.labelAr : r.labelEn}</span>
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function fmt(n: number): string {
@@ -35,11 +105,14 @@ function fmt(n: number): string {
   return String(n);
 }
 
-export default function TareeqCard({ post, initialLiked = false }: Props) {
+export default function TareeqCard({ post, initialLiked = false, initialReaction = null }: Props) {
   const { isRtl } = useLang();
   const { user } = useAuth();
 
-  const [liked, setLiked] = useState(initialLiked);
+  // Backward compat: if initialLiked=true but no reaction, treat as 'inspired'
+  const startReaction: string | null = initialReaction ?? (initialLiked ? 'inspired' : null);
+
+  const [currentReaction, setCurrentReaction] = useState<string | null>(startReaction);
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [commentCount, setCommentCount] = useState(post.commentCount);
   const [showGate, setShowGate] = useState(false);
@@ -48,7 +121,9 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
   const shareMenuRef = useRef<HTMLDivElement>(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -60,6 +135,15 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
     return () => document.removeEventListener('mousedown', h);
   }, [showShareMenu]);
 
+  useEffect(() => {
+    if (!showPicker) return;
+    const h = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) setShowPicker(false);
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [showPicker]);
+
   const catKey    = post.category as TareeqCategoryKey | null;
   const catLabel  = catKey && TAREEQ_CATEGORIES[catKey] ? (isRtl ? TAREEQ_CATEGORIES[catKey].ar : TAREEQ_CATEGORIES[catKey].en) : post.category;
   const catIcon   = catKey ? (CATEGORY_ICONS[catKey] ?? '') : '';
@@ -67,15 +151,45 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
   const snippet   = post.summary || post.content.slice(0, 160);
   const hasImage  = !!post.imageUrl;
 
-  async function handleLike(e: React.MouseEvent) {
+  async function handleReact(type: ReactionType, e?: React.MouseEvent) {
+    e?.preventDefault(); e?.stopPropagation();
+    if (!user) { setShowGate(true); return; }
+    if ('vibrate' in navigator) navigator.vibrate(40);
+
+    const prev = currentReaction;
+    // Optimistic update
+    if (prev === type) {
+      setCurrentReaction(null);
+      setLikeCount(c => Math.max(0, c - 1));
+    } else if (prev) {
+      setCurrentReaction(type); // count stays the same
+    } else {
+      setCurrentReaction(type);
+      setLikeCount(c => c + 1);
+    }
+
+    const res = await fetch(`/api/tareeq/${post.id}/react`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ type }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      setCurrentReaction(data.reaction);
+    } else {
+      // Rollback
+      setCurrentReaction(prev);
+      if (prev === type) setLikeCount(c => c + 1);
+      else if (!prev) setLikeCount(c => Math.max(0, c - 1));
+    }
+  }
+
+  function handleReactionAreaClick(e: React.MouseEvent) {
     e.preventDefault(); e.stopPropagation();
     if (!user) { setShowGate(true); return; }
-    if ('vibrate' in navigator) navigator.vibrate(50);
-    const was = liked;
-    setLiked(!was);
-    setLikeCount(c => Math.max(0, was ? c - 1 : c + 1));
-    const res = await fetch(`/api/tareeq/${post.id}/like`, { method: 'POST', credentials: 'include' });
-    if (!res.ok) { setLiked(was); setLikeCount(c => Math.max(0, was ? c + 1 : c - 1)); }
+    setShowPicker(v => !v);
   }
 
   async function handleCopyLink(e: React.MouseEvent) {
@@ -112,6 +226,8 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
     setSubmitting(false);
   }
 
+  const reactionConfig = REACTIONS.find(r => r.type === currentReaction);
+
   // ── Image card — full-bleed portrait ────────────────────────────────
   if (hasImage) {
     return (
@@ -145,18 +261,39 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
 
           {/* Side engagement icons — vertical stack */}
           <div className="absolute end-3 z-10 flex flex-col items-center gap-4" style={{ bottom: 96 }}>
-            {/* Like */}
-            <button onClick={handleLike} aria-pressed={liked} aria-label={isRtl ? (liked ? 'إلغاء الإعجاب' : 'إعجاب') : (liked ? 'Unlike' : 'Like')} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-              <div
-                className="w-11 h-11 rounded-full flex items-center justify-center"
-                style={{ background: liked ? 'rgba(244,63,94,0.85)' : 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)' }}
+            {/* Reaction button (image card) */}
+            <div ref={pickerRef} className="relative flex flex-col items-center gap-1">
+              <button
+                onClick={handleReactionAreaClick}
+                aria-label={isRtl ? 'تفاعل' : 'React'}
+                className="flex flex-col items-center gap-1 active:scale-90 transition-transform"
               >
-                <svg className="w-5 h-5" fill={liked ? '#fff' : 'none'} stroke={liked ? '#fff' : '#fff'} strokeWidth={2} viewBox="0 0 24 24" style={liked ? { filter: 'drop-shadow(0 0 6px rgba(244,63,94,0.8))' } : undefined}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-                </svg>
-              </div>
-              <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{fmt(likeCount)}</span>
-            </button>
+                <div
+                  className="w-11 h-11 rounded-full flex items-center justify-center"
+                  style={{
+                    background: currentReaction
+                      ? `${reactionConfig?.color ?? '#f59e0b'}cc`
+                      : 'rgba(255,255,255,0.20)',
+                    backdropFilter: 'blur(10px)',
+                    ...(currentReaction ? { boxShadow: `0 0 10px ${reactionConfig?.color ?? '#f59e0b'}88` } : {}),
+                  }}
+                >
+                  <span style={{ color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ReactionIcon type={currentReaction ?? 'inspired'} size={20} />
+                  </span>
+                </div>
+                <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>
+                  {fmt(likeCount)}
+                </span>
+              </button>
+              {showPicker && (
+                <ReactionPicker
+                  onSelect={(type) => handleReact(type)}
+                  onClose={() => setShowPicker(false)}
+                  isRtl={isRtl}
+                />
+              )}
+            </div>
 
             {/* Share */}
             <div ref={shareMenuRef} className="relative flex flex-col items-center gap-1">
@@ -315,18 +452,34 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
         </Link>
 
         {/* Footer actions */}
-        <div className="px-5 pb-4 pt-2 flex items-center gap-5" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
-          <button
-            onClick={handleLike} aria-pressed={liked}
-            aria-label={liked ? 'Unlike' : 'Like'}
-            className="flex items-center gap-1.5 text-xs font-semibold transition active:scale-110"
-            style={{ color: liked ? '#f43f5e' : 'var(--tr-text-muted)' }}
-          >
-            <svg className="w-4 h-4" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={liked ? { filter: 'drop-shadow(0 0 5px rgba(244,63,94,0.5))' } : undefined}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-            </svg>
-            {fmt(likeCount)}
-          </button>
+        <div className="px-5 pb-4 pt-2 flex items-center gap-4" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
+          {/* Reactions bar */}
+          <div ref={pickerRef} className="relative flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              {REACTIONS.map(r => (
+                <button
+                  key={r.type}
+                  onClick={(e) => handleReact(r.type, e)}
+                  aria-pressed={currentReaction === r.type}
+                  title={isRtl ? r.labelAr : r.labelEn}
+                  className="flex items-center justify-center w-7 h-7 rounded-full transition active:scale-110"
+                  style={{
+                    color: currentReaction === r.type ? r.color : 'var(--tr-text-muted)',
+                    background: currentReaction === r.type ? `${r.color}18` : 'transparent',
+                    border: currentReaction === r.type ? `1.5px solid ${r.color}60` : '1.5px solid transparent',
+                  }}
+                >
+                  <ReactionIcon type={r.type} size={14} />
+                </button>
+              ))}
+            </div>
+            <span
+              className="text-xs font-semibold"
+              style={{ color: reactionConfig ? reactionConfig.color : 'var(--tr-text-muted)' }}
+            >
+              {fmt(likeCount)}
+            </span>
+          </div>
 
           <button
             onClick={handleCommentToggle}

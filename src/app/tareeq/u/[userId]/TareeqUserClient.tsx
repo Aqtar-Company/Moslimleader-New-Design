@@ -61,12 +61,27 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [likedHasImages, setLikedHasImages] = useState(false);
   const [likedIds] = useState<Set<string>>(new Set(initialLiked));
   const [isFollowing, setIsFollowing] = useState(false);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [followLoading, setFollowLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showGate, setShowGate] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const likedSentinelRef = useRef<HTMLDivElement>(null);
 
   const isOwnProfile = user?.id === profileUser.id;
+
+  // Load follow state + counts on mount
+  useEffect(() => {
+    fetch(`/api/tareeq/follow/${profileUser.id}`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => {
+        setIsFollowing(d.isFollowing ?? false);
+        setFollowerCount(d.followerCount ?? 0);
+        setFollowingCount(d.followingCount ?? 0);
+      })
+      .catch(() => {});
+  }, [profileUser.id]);
 
   const loadMore = useCallback(async (cur: string) => {
     setLoading(true);
@@ -204,10 +219,35 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
             {!isOwnProfile && (
               <div className="flex gap-2 mt-14">
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (!user) { setShowGate(true); return; }
-                    setIsFollowing(v => !v);
+                    if (followLoading) return;
+                    setFollowLoading(true);
+                    const wasFollowing = isFollowing;
+                    // Optimistic update
+                    setIsFollowing(!wasFollowing);
+                    setFollowerCount(c => wasFollowing ? Math.max(0, c - 1) : c + 1);
+                    try {
+                      const res = await fetch(`/api/tareeq/follow/${profileUser.id}`, {
+                        method: 'POST',
+                        credentials: 'include',
+                      });
+                      if (res.ok) {
+                        const d = await res.json();
+                        setIsFollowing(d.following);
+                      } else {
+                        // Rollback on error
+                        setIsFollowing(wasFollowing);
+                        setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1));
+                      }
+                    } catch {
+                      setIsFollowing(wasFollowing);
+                      setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1));
+                    } finally {
+                      setFollowLoading(false);
+                    }
                   }}
+                  disabled={followLoading}
                   className="font-bold text-sm px-5 py-2 rounded-full transition active:scale-95"
                   style={isFollowing ? {
                     background: 'var(--tr-raised)',
@@ -246,8 +286,8 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
           {/* Stats row */}
           <div className="flex gap-6 mt-4">
             <StatItem count={postCount ?? posts.length} label={isRtl ? 'علامة' : 'Posts'} />
-            <StatItem count={0} label={isRtl ? 'متابِع' : 'Followers'} />
-            <StatItem count={0} label={isRtl ? 'متابَع' : 'Following'} />
+            <StatItem count={followerCount} label={isRtl ? 'متابِع' : 'Followers'} />
+            <StatItem count={followingCount} label={isRtl ? 'متابَع' : 'Following'} />
           </div>
         </div>
 

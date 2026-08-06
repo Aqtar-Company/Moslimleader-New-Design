@@ -5,7 +5,7 @@ import { getAuthUser } from '@/lib/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { CATEGORY_KEY } from '@/lib/tareeq-constants';
 
-// GET /api/tareeq?cursor=xxx&category=xxx&limit=12&likedBy=userId
+// GET /api/tareeq?cursor=xxx&category=xxx&limit=12&likedBy=userId&sort=newest|liked|following
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const cursor = searchParams.get('cursor') || undefined;
@@ -18,6 +18,55 @@ export async function GET(req: NextRequest) {
   const orderBy = sort === 'liked'
     ? { likeCount: 'desc' as const }
     : { createdAt: 'desc' as const };
+
+  // sort=following — return posts only from users the current viewer follows
+  if (sort === 'following') {
+    let followingIds: string[] = [];
+    const meResult = await getAuthUser().catch(() => null);
+    if (meResult) {
+      try {
+        const follows = await prisma.tareeqFollow.findMany({
+          where: { followerId: meResult.userId },
+          select: { followingId: true },
+        });
+        followingIds = follows.map((f: { followingId: string }) => f.followingId);
+      } catch { /* db error */ }
+    }
+
+    if (followingIds.length === 0) {
+      return NextResponse.json({ posts: [], nextCursor: null });
+    }
+
+    const followWhere = {
+      userId: { in: followingIds },
+      ...(category ? { category } : {}),
+      ...(search ? {
+        OR: [
+          { title: { contains: search } },
+          { content: { contains: search } },
+          { authorName: { contains: search } },
+        ],
+      } : {}),
+    };
+
+    const followPosts = await prisma.tareeqPost.findMany({
+      where: followWhere,
+      orderBy: { createdAt: 'desc' as const },
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      select: {
+        id: true, title: true, summary: true, content: true,
+        category: true, tags: true, imageUrl: true, videoUrl: true, authorName: true,
+        likeCount: true, commentCount: true, createdAt: true, userId: true,
+        user: { select: { id: true, name: true, avatarUrl: true } },
+      },
+    });
+
+    const hasMoreFollow = followPosts.length > limit;
+    const followItems = hasMoreFollow ? followPosts.slice(0, limit) : followPosts;
+    const followNextCursor = hasMoreFollow ? followItems[followItems.length - 1].id : null;
+    return NextResponse.json({ posts: followItems, nextCursor: followNextCursor });
+  }
 
   // likedBy: return posts liked by a specific user (via TareeqLike join)
   if (likedBy) {

@@ -31,6 +31,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   let userBookmarked = false;
   try {
     const currentUser = await getAuthUser();
+    if (!currentUser) throw new Error('not logged in');
     const [like, bookmark] = await Promise.all([
       prisma.tareeqLike.findUnique({ where: { postId_userId: { postId: params.id, userId: currentUser.userId } } }),
       prisma.tareeqBookmark.findUnique({ where: { postId_userId: { postId: params.id, userId: currentUser.userId } } }),

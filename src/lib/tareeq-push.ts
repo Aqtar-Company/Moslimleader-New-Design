@@ -14,6 +14,12 @@ export interface PushPayload {
   body: string;
   url: string;
   tag?: string;
+  // Rich push (Feature 5): post image shown in the notification
+  image?: string;
+  // Notification type drives which action buttons appear in SW (Feature 4)
+  type?: 'like' | 'comment' | 'message' | 'generic';
+  // Used by SW to build the 'reply' action deep-link (/tareeq/:postId#comments)
+  postId?: string;
 }
 
 export async function sendPushToUser(userId: string, payload: PushPayload): Promise<void> {

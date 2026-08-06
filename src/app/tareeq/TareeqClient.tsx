@@ -29,6 +29,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const [searchInput, setSearchInput] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [showGate, setShowGate] = useState(false);
+  const [sharePrefill, setSharePrefill] = useState('');
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [newPostId, setNewPostId] = useState<string | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
@@ -111,12 +112,17 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   useEffect(() => { searchValRef.current = search; }, [search]);
   useEffect(() => { sortRef.current = sort; }, [sort]);
 
-  // App shortcut: /tareeq?action=create — wait for auth to settle before acting
+  // App shortcut / Share Target: /tareeq?action=create — wait for auth to settle
   useEffect(() => {
     if (authLoading) return;
     const params = new URLSearchParams(window.location.search);
     if (params.get('action') === 'create') {
       window.history.replaceState({}, '', '/tareeq');
+      try {
+        const prefill = sessionStorage.getItem('tareeq-share-prefill') ?? '';
+        sessionStorage.removeItem('tareeq-share-prefill');
+        if (prefill) setSharePrefill(prefill);
+      } catch { /* private mode */ }
       if (user) setShowCreate(true); else setShowGate(true);
     }
   }, [authLoading, user]);
@@ -393,11 +399,16 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       )}
 
       <TareeqInstallBanner />
-      {showCreate && <TareeqCreateModal onClose={() => setShowCreate(false)} onCreated={(id?: string) => {
-        loadPosts(category, search, null, sort);
-        if (id) { setNewPostId(id); setTimeout(() => setNewPostId(null), 3000); }
-        setTimeout(() => feedTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
-      }} />}
+      {showCreate && <TareeqCreateModal
+        initialContent={sharePrefill}
+        onClose={() => { setShowCreate(false); setSharePrefill(''); }}
+        onCreated={(id?: string) => {
+          setSharePrefill('');
+          loadPosts(category, search, null, sort);
+          if (id) { setNewPostId(id); setTimeout(() => setNewPostId(null), 3000); }
+          setTimeout(() => feedTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+        }}
+      />}
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
     </div>
   );

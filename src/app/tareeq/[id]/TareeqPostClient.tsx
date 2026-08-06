@@ -8,6 +8,7 @@ import TareeqHeader from '@/components/tareeq/TareeqHeader';
 import { TAREEQ_CATEGORIES, CATEGORY_COLORS, CATEGORY_ICONS } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import { timeAgo } from '@/lib/tareeq-utils';
+import { useWakeLock } from '@/hooks/useWakeLock';
 
 interface Comment { id: string; content: string; createdAt: string; userId: string; user: { id: string; name: string } | null; }
 interface Post {
@@ -23,6 +24,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   const { isRtl } = useLang();
   const { user } = useAuth();
   const router = useRouter();
+  useWakeLock(); // Keep screen on while reading
 
   const [liked, setLiked] = useState(userLiked);
   const [likeCount, setLikeCount] = useState(post.likeCount);

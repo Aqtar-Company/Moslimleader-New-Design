@@ -16,7 +16,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const post = await prisma.tareeqPost.findUnique({
     where: { id: params.id },
-    select: { id: true, userId: true, title: true },
+    select: { id: true, userId: true, title: true, imageUrl: true },
   });
   if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
 
@@ -53,6 +53,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         body: `${actorName} أعجب بعلامتك`,
         url: `/tareeq/${post.id}`,
         tag: `like-${post.id}`,
+        type: 'like',
+        postId: post.id,
+        image: post.imageUrl ?? undefined,
       }).catch(() => {});
     }
     return NextResponse.json({ liked: true });

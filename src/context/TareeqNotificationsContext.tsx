@@ -32,10 +32,25 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
   const [pushPermission, setPushPermission] = useState<PushPermission>('unsupported');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Register service worker
+  // Register service worker + periodic background sync (badge update)
   useEffect(() => {
     if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
-    navigator.serviceWorker.register('/tareeq-sw.js', { scope: '/tareeq' }).catch(() => {});
+    navigator.serviceWorker.register('/tareeq-sw.js', { scope: '/tareeq' })
+      .then(async reg => {
+        type PeriodicSyncReg = ServiceWorkerRegistration & {
+          periodicSync: { register(tag: string, opts: { minInterval: number }): Promise<void> };
+        };
+        const psReg = reg as PeriodicSyncReg;
+        if ('periodicSync' in reg) {
+          const perm = await (navigator.permissions as unknown as {
+            query(d: { name: string }): Promise<{ state: string }>;
+          }).query({ name: 'periodic-background-sync' }).catch(() => ({ state: 'denied' }));
+          if (perm.state === 'granted') {
+            await psReg.periodicSync.register('tareeq-badge', { minInterval: 15 * 60 * 1000 }).catch(() => {});
+          }
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Detect initial push permission.

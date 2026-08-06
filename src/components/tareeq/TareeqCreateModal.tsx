@@ -9,13 +9,13 @@ import { compressImage } from '@/lib/compress-image';
 
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
-interface Props { onClose: () => void; onCreated: (id?: string) => void; }
+interface Props { onClose: () => void; onCreated: (id?: string) => void; initialContent?: string; }
 
-export default function TareeqCreateModal({ onClose, onCreated }: Props) {
+export default function TareeqCreateModal({ onClose, onCreated, initialContent }: Props) {
   const { isRtl } = useLang();
   const { user } = useAuth();
   const [mounted, setMounted] = useState(false);
-  const [content, setContent] = useState('');
+  const [content, setContent] = useState(initialContent ?? '');
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<TareeqCategoryKey | ''>('');
   const [tags, setTags] = useState<string[]>([]);

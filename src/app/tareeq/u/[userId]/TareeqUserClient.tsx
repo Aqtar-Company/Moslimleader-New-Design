@@ -169,8 +169,8 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
 
       {/* ── Profile card ───────────────────────────────────────── */}
       <div
-        className="max-w-2xl mx-auto px-4"
-        style={{ marginTop: -32 }}
+        className="relative max-w-2xl mx-auto px-4"
+        style={{ marginTop: -32, zIndex: 1 }}
       >
         <div
           className="rounded-3xl px-5 pt-3 pb-6"

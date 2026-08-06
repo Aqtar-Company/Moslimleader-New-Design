@@ -106,20 +106,21 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
 
   return (
     <TareeqNotificationsProvider>
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <TareeqPWA />
       <TareeqHeader onCreateClick={handleCreateClick} />
 
-      <div className="pt-11" />
-
       {/* Hero */}
-      <div className="bg-[#0a1f1a] text-white py-12 px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <span className="w-20 h-20 sm:w-28 sm:h-28 rounded-3xl overflow-hidden mx-auto mb-4 block drop-shadow-[0_0_20px_rgba(0,200,120,0.4)]">
+      <div className="py-12 px-4 relative overflow-hidden">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div style={{ width: 240, height: 240, background: 'radial-gradient(circle, rgba(212,168,83,0.10) 0%, transparent 70%)', filter: 'blur(48px)' }} />
+        </div>
+        <div className="max-w-4xl mx-auto text-center relative">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl overflow-hidden mx-auto mb-5 shrink-0" style={{ boxShadow: '0 0 0 2px var(--tr-gold-dim), 0 0 32px var(--tr-gold-glow)', border: '1px solid var(--tr-border-soft)' }}>
             <img src="/tareeq-logo- Rounded.png" alt="طريق" className="w-full h-full object-cover" />
-          </span>
-          <h1 className="font-black text-3xl sm:text-4xl mb-2 tracking-wide">{isRtl ? 'طريق' : 'Tareeq'}</h1>
-          <p className="text-emerald-300/70 text-sm sm:text-base max-w-lg mx-auto leading-relaxed font-medium">
+          </div>
+          <h1 className="font-black text-3xl sm:text-4xl mb-2 tracking-wide" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'طريق' : 'Tareeq'}</h1>
+          <p className="text-sm sm:text-base max-w-lg mx-auto leading-loose font-medium" style={{ color: 'var(--tr-text-muted)' }}>
             {isRtl
               ? 'وَبِالنَّجْمِ هُمْ يَهْتَدُونَ — اترك علامة يهتدي بها غيرك'
               : 'وَبِالنَّجْمِ هُمْ يَهْتَدُونَ — Leave a mark to guide others'}
@@ -127,15 +128,26 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         </div>
       </div>
 
-      {/* Sticky bar — 2 rows */}
-      <div className="sticky top-11 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm">
+      {/* Sticky filter bar */}
+      <div
+        className="sticky z-40"
+        style={{
+          top: '4.5rem',
+          background: 'rgba(7,13,20,0.92)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          borderBottom: '1px solid var(--tr-border-subtle)',
+        }}
+      >
         {/* Row 1: categories */}
         <div className="max-w-6xl mx-auto px-4 pt-3 pb-2 flex gap-2 overflow-x-auto scrollbar-hide">
           <button
             onClick={() => handleCategoryChange('')}
-            className={`text-xs font-bold px-4 py-2 rounded-full whitespace-nowrap transition shrink-0 ${
-              !category ? 'bg-[#1a1a2e] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+            className="text-xs font-bold px-4 py-2 rounded-full whitespace-nowrap transition shrink-0"
+            style={!category
+              ? { background: 'var(--tr-gold-glow)', color: 'var(--tr-gold-bright)', border: '1px solid var(--tr-gold-dim)' }
+              : { background: 'var(--tr-border-subtle)', color: 'var(--tr-text-secondary)', border: '1px solid transparent' }
+            }
           >
             {isRtl ? 'الكل' : 'All'}
           </button>
@@ -143,9 +155,11 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
             <button
               key={key}
               onClick={() => handleCategoryChange(key)}
-              className={`flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-full whitespace-nowrap transition shrink-0 ${
-                category === key ? 'bg-[#1a1a2e] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              className="flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-full whitespace-nowrap transition shrink-0"
+              style={category === key
+                ? { background: 'var(--tr-gold-glow)', color: 'var(--tr-gold-bright)', border: '1px solid var(--tr-gold-dim)' }
+                : { background: 'var(--tr-border-subtle)', color: 'var(--tr-text-secondary)', border: '1px solid transparent' }
+              }
             >
               <span>{CATEGORY_ICONS[key]}</span>
               {isRtl ? TAREEQ_CATEGORIES[key].ar : TAREEQ_CATEGORIES[key].en}
@@ -156,20 +170,30 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         {/* Row 2: search + sort + sidebar toggle */}
         <div className="max-w-6xl mx-auto px-4 pb-3 flex items-center gap-3">
           <div className="relative flex-1 max-w-sm">
-            <svg className="absolute top-1/2 -translate-y-1/2 start-3 w-3.5 h-3.5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <svg className="absolute top-1/2 -translate-y-1/2 start-3 w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
             </svg>
             <input
               value={searchInput}
               onChange={e => setSearchInput(e.target.value)}
               placeholder={isRtl ? 'ابحث في العلامات...' : 'Search marks...'}
-              className="w-full border border-gray-200 rounded-full ps-8 pe-4 py-1.5 text-xs focus:outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-100 transition bg-white"
+              className="w-full rounded-full ps-8 pe-4 py-1.5 text-xs focus:outline-none transition"
+              style={{
+                background: 'var(--tr-overlay)',
+                border: '1px solid var(--tr-border-soft)',
+                color: 'var(--tr-text-primary)',
+              }}
             />
           </div>
           <select
             value={sort}
             onChange={e => handleSortChange(e.target.value as 'newest' | 'liked')}
-            className="border border-gray-200 rounded-full px-3 py-1.5 text-xs text-gray-600 focus:outline-none focus:border-purple-300 bg-white shrink-0 cursor-pointer"
+            className="rounded-full px-3 py-1.5 text-xs focus:outline-none shrink-0 cursor-pointer"
+            style={{
+              background: 'var(--tr-overlay)',
+              border: '1px solid var(--tr-border-soft)',
+              color: 'var(--tr-text-secondary)',
+            }}
           >
             <option value="newest">{isRtl ? 'الأحدث' : 'Newest'}</option>
             <option value="liked">{isRtl ? 'الأكثر إعجاباً' : 'Most Liked'}</option>
@@ -177,7 +201,8 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           {/* Sidebar toggle — mobile only */}
           <button
             onClick={() => setShowSidebar(v => !v)}
-            className="lg:hidden border border-gray-200 rounded-full p-1.5 text-gray-500 hover:bg-gray-50 transition shrink-0"
+            className="lg:hidden rounded-full p-1.5 transition shrink-0"
+            style={{ border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-secondary)' }}
             aria-label={isRtl ? 'القائمة' : 'Menu'}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -201,14 +226,18 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         ) : posts.length === 0 ? (
           <div className="text-center py-20">
             <div className="text-5xl mb-4">{search ? '🔍' : '✨'}</div>
-            <p className="text-gray-500 font-semibold mb-2">
+            <p className="font-semibold mb-2" style={{ color: 'var(--tr-text-secondary)' }}>
               {search ? (isRtl ? 'لا نتائج للبحث' : 'No results found') : (isRtl ? 'لا توجد علامات بعد' : 'No marks yet')}
             </p>
             {!search && (
               <>
-                <p className="text-gray-400 text-sm mb-6">{isRtl ? 'كن أول من يترك علامة' : 'Be the first to leave a mark'}</p>
-                <button onClick={handleCreateClick} className="bg-[#1a1a2e] text-[#F5C518] font-black px-8 py-3 rounded-xl text-sm">
-                  {isRtl ? '⭐ اترك علامتك' : '⭐ Leave Your Mark'}
+                <p className="text-sm mb-6" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'كن أول من يترك علامة' : 'Be the first to leave a mark'}</p>
+                <button
+                  onClick={handleCreateClick}
+                  className="font-black px-8 py-3 rounded-xl text-sm"
+                  style={{ background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))', color: '#0a0d06' }}
+                >
+                  {isRtl ? '★ اترك علامتك' : '★ Leave Your Mark'}
                 </button>
               </>
             )}
@@ -219,7 +248,8 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
               {posts.map((post) => (
                 <div
                   key={post.id}
-                  className={`break-inside-avoid transition-all duration-700 ${newPostId === post.id ? 'ring-2 ring-emerald-400 rounded-2xl shadow-lg shadow-emerald-100' : ''}`}
+                  className="break-inside-avoid transition-all duration-700"
+                  style={newPostId === post.id ? { outline: '2px solid var(--tr-gold)', borderRadius: 16, boxShadow: '0 0 24px var(--tr-gold-glow)' } : undefined}
                 >
                   <TareeqCard post={post} initialLiked={likedIds.has(post.id)} />
                 </div>
@@ -230,7 +260,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
 
             {loading && (
               <div className="flex justify-center mt-8">
-                <div className="w-6 h-6 border-2 border-gray-300 border-t-[#1a1a2e] rounded-full animate-spin" />
+                <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
               </div>
             )}
           </>
@@ -247,13 +277,18 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       {showSidebar && (
         <>
           <div
-            className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+            className="fixed inset-0 z-40 lg:hidden"
+            style={{ background: 'rgba(7,13,20,0.6)' }}
             onClick={() => setShowSidebar(false)}
           />
-          <div className="fixed inset-y-0 end-0 w-72 max-w-[90vw] bg-gray-50 z-50 lg:hidden overflow-y-auto p-4 shadow-2xl">
+          <div
+            className="fixed inset-y-0 end-0 w-72 max-w-[90vw] z-50 lg:hidden overflow-y-auto p-4"
+            style={{ background: 'var(--tr-surface)', boxShadow: '-8px 0 40px rgba(0,0,0,0.5)' }}
+          >
             <button
               onClick={() => setShowSidebar(false)}
-              className="mb-4 text-gray-400 hover:text-gray-600 transition"
+              className="mb-4 transition"
+              style={{ color: 'var(--tr-text-muted)' }}
               aria-label="Close"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -268,9 +303,16 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       {/* Floating button — mobile only */}
       <button
         onClick={handleCreateClick}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 sm:hidden z-30 bg-[#0a1f1a] text-white font-black px-7 py-3.5 rounded-full shadow-xl shadow-emerald-900/40 text-sm flex items-center gap-2 border border-emerald-700/40"
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 sm:hidden z-30 font-black px-7 py-3.5 rounded-full text-sm flex items-center gap-2 active:scale-95 transition"
+        style={{
+          background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))',
+          color: '#0a0d06',
+          boxShadow: '0 8px 32px rgba(212,168,83,0.4), 0 2px 8px rgba(0,0,0,0.5)',
+        }}
       >
-        <span className="w-5 h-5 rounded-sm overflow-hidden shrink-0"><img src="/tareeq-logo- small.png" alt="" className="w-full h-full object-cover" /></span>
+        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
         {isRtl ? 'اترك علامة' : 'Leave a Mark'}
       </button>
 

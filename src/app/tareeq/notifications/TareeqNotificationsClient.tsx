@@ -41,14 +41,14 @@ function NotifText({ n, isRtl }: { n: Notification; isRtl: boolean }) {
     return (
       <span>
         {isRtl ? `${actor} علّق على ${title}` : `${actor} commented on ${title}`}
-        {n.body && <span className="block text-gray-400 text-xs mt-0.5 truncate">{n.body}</span>}
+        {n.body && <span className="block text-xs mt-0.5 truncate" style={{ color: 'var(--tr-text-muted)' }}>{n.body}</span>}
       </span>
     );
   }
   return (
     <span>
       {isRtl ? `رسالة جديدة من ${actor}` : `New message from ${actor}`}
-      {n.body && <span className="block text-gray-400 text-xs mt-0.5 truncate">{n.body}</span>}
+      {n.body && <span className="block text-xs mt-0.5 truncate" style={{ color: 'var(--tr-text-muted)' }}>{n.body}</span>}
     </span>
   );
 }
@@ -83,23 +83,22 @@ function Inner() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <TareeqHeader onCreateClick={() => {}} />
-      <div className="pt-11" />
 
-      <div className="bg-[#0a1f1a] text-white py-8 px-4 text-center">
-        <h1 className="font-black text-2xl">{isRtl ? 'الإشعارات' : 'Notifications'}</h1>
+      <div className="py-8 px-4 text-center">
+        <h1 className="font-black text-2xl" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الإشعارات' : 'Notifications'}</h1>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-6 pb-28">
+      <div className="max-w-2xl mx-auto px-4 py-2 pb-28">
         {loading ? (
           <div className="flex justify-center py-20">
-            <div className="w-6 h-6 border-2 border-gray-300 border-t-emerald-700 rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
           </div>
         ) : notifs.length === 0 ? (
           <div className="text-center py-20">
             <div className="text-5xl mb-4">🔔</div>
-            <p className="text-gray-500 font-semibold">{isRtl ? 'لا إشعارات بعد' : 'No notifications yet'}</p>
+            <p className="font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>{isRtl ? 'لا إشعارات بعد' : 'No notifications yet'}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -107,20 +106,24 @@ function Inner() {
               <button
                 key={n.id}
                 onClick={() => handleClick(n)}
-                className={`w-full text-start flex items-start gap-3 p-4 rounded-2xl border transition hover:shadow-sm ${
-                  n.read ? 'bg-white border-gray-100' : 'bg-emerald-50 border-emerald-100'
-                }`}
+                className="w-full text-start flex items-start gap-3 p-4 rounded-2xl transition"
+                style={{
+                  background: n.read ? 'var(--tr-surface)' : 'var(--tr-raised)',
+                  border: n.read ? '1px solid var(--tr-border-subtle)' : '1px solid var(--tr-gold-dim)',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--tr-overlay)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = n.read ? 'var(--tr-surface)' : 'var(--tr-raised)'; }}
               >
-                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)' }}>
                   <NotifIcon type={n.type} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-800 font-medium leading-snug">
+                  <p className="text-sm font-medium leading-snug" style={{ color: 'var(--tr-text-primary)' }}>
                     <NotifText n={n} isRtl={isRtl} />
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">{timeAgo(n.createdAt, isRtl)}</p>
+                  <p className="text-xs mt-1" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(n.createdAt, isRtl)}</p>
                 </div>
-                {!n.read && <span className="w-2 h-2 bg-emerald-500 rounded-full mt-2 shrink-0" />}
+                {!n.read && <span className="w-2 h-2 rounded-full mt-2 shrink-0" style={{ background: 'var(--tr-gold)' }} />}
               </button>
             ))}
           </div>

@@ -215,7 +215,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                 className="flex flex-col items-center gap-1 active:scale-90 transition-transform"
               >
                 <div
-                  className="w-11 h-11 rounded-full flex items-center justify-center text-2xl"
+                  className="w-11 h-11 rounded-full flex items-center justify-center"
                   style={{
                     background: currentReaction
                       ? `${reactionConfig?.color ?? '#f59e0b'}30`
@@ -223,9 +223,18 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                     backdropFilter: 'blur(10px)',
                     border: currentReaction ? `1.5px solid ${reactionConfig?.color ?? '#f59e0b'}80` : '1.5px solid rgba(255,255,255,0.25)',
                     ...(currentReaction ? { boxShadow: `0 0 14px ${reactionConfig?.color ?? '#f59e0b'}60` } : {}),
+                    fontSize: currentReaction ? 22 : 18,
                   }}
                 >
-                  {reactionEmoji(currentReaction ?? 'inspired')}
+                  {currentReaction
+                    ? reactionEmoji(currentReaction)
+                    : (
+                      // Neutral placeholder when no reaction selected
+                      <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                      </svg>
+                    )
+                  }
                 </div>
                 <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>
                   {fmt(likeCount)}
@@ -288,7 +297,10 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                   <button
                     key={r.type}
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleReact(r.type); setShowPicker(false); }}
-                    className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+                    onPointerDown={e => (e.currentTarget.style.transform = 'scale(0.88)')}
+                    onPointerUp={e => (e.currentTarget.style.transform = active ? 'scale(1.18) translateY(-3px)' : 'scale(1)')}
+                    onPointerLeave={e => (e.currentTarget.style.transform = active ? 'scale(1.18) translateY(-3px)' : 'scale(1)')}
+                    className="flex flex-col items-center gap-0.5 transition-transform"
                     style={{ transform: active ? 'scale(1.18) translateY(-3px)' : 'scale(1)' }}
                   >
                     <div
@@ -450,14 +462,18 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                     onClick={(e) => handleReact(r.type, e)}
                     aria-pressed={active}
                     title={isRtl ? r.labelAr : r.labelEn}
-                    className="flex items-center justify-center transition-all active:scale-110"
+                    onPointerDown={e => (e.currentTarget.style.transform = 'scale(0.85)')}
+                    onPointerUp={e => (e.currentTarget.style.transform = active ? 'scale(1.12)' : 'scale(1)')}
+                    onPointerLeave={e => (e.currentTarget.style.transform = active ? 'scale(1.12)' : 'scale(1)')}
+                    className="flex items-center justify-center transition-transform"
                     style={{
                       fontSize: active ? 20 : 16,
                       opacity: active ? 1 : 0.45,
                       filter: active ? `drop-shadow(0 0 5px ${r.color})` : 'none',
                       transform: active ? 'scale(1.12)' : 'scale(1)',
-                      minWidth: 32,
-                      minHeight: 36,
+                      minWidth: 40,
+                      minHeight: 40,
+                      padding: 4,
                     }}
                   >
                     {r.emoji}

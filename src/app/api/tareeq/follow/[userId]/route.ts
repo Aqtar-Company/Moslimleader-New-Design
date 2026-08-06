@@ -42,7 +42,8 @@ export async function POST(_req: NextRequest, { params }: { params: { userId: st
   });
 
   if (existing) {
-    await prisma.tareeqFollow.delete({ where: { id: existing.id } });
+    // deleteMany is idempotent — avoids P2025 on concurrent unfollow
+    await prisma.tareeqFollow.deleteMany({ where: { followerId: me.userId, followingId: params.userId } });
     return NextResponse.json({ following: false });
   } else {
     try {

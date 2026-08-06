@@ -147,14 +147,11 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
       body: JSON.stringify({ content: commentText.trim() }),
     });
     if (res.ok) {
+      const data = await res.json();
       setCommentText('');
       setCommentCount(c => c + 1);
-      // Refresh full list from server
-      const listRes = await fetch(`/api/tareeq/${post.id}/comments`);
-      if (listRes.ok) {
-        const data = await listRes.json();
-        setComments(data.comments);
-      }
+      // Append directly — avoids re-fetch regression on posts with 50+ comments
+      if (data.comment) setComments(prev => [...prev, data.comment]);
     }
     setSubmitting(false);
   }
@@ -285,7 +282,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                         aria-pressed={active}
                         className="flex items-center gap-2 px-3 py-2 rounded-full transition-all active:scale-95"
                         style={{
-                          background: active ? `${r.color}14` : '#f3f4f6',
+                          background: active ? `${r.color}14` : 'var(--tr-raised, #f3f4f6)',
                           border: `1.5px solid ${active ? r.color + '55' : 'transparent'}`,
                           boxShadow: active ? `0 0 10px ${r.color}30` : 'none',
                         }}

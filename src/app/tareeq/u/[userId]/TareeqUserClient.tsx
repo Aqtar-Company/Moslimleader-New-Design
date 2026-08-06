@@ -56,6 +56,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [likedLoading, setLikedLoading] = useState(false);
   const [likedCursor, setLikedCursor] = useState<string | null>(null);
   const [likedLoaded, setLikedLoaded] = useState(false);
+  const likedLoadedRef = useRef(false);
   // Lock grid vs list layout per-tab once decided — prevents reflow on infinite scroll
   const [postsHasImages, setPostsHasImages] = useState(() => initialPosts.some(p => p.imageUrl));
   const [likedHasImages, setLikedHasImages] = useState(false);
@@ -111,16 +112,18 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
       const res = await fetch(`/api/tareeq?${params}`);
       if (res.ok) {
         const data = await res.json();
-        // Use functional update to avoid stale closure on likedPosts
         setLikedPosts(prev => cur ? [...prev, ...data.posts] : data.posts);
         setLikedCursor(data.nextCursor);
-        if (!likedLoaded) setLikedHasImages(data.posts.some((p: TareeqPostSummary) => p.imageUrl));
-        setLikedLoaded(true);
+        if (!likedLoadedRef.current) {
+          setLikedHasImages(data.posts.some((p: TareeqPostSummary) => p.imageUrl));
+          likedLoadedRef.current = true;
+          setLikedLoaded(true);
+        }
       }
     } finally {
       setLikedLoading(false);
     }
-  }, [profileUser.id, likedLoaded]);
+  }, [profileUser.id]);
 
   useEffect(() => {
     if (!sentinelRef.current || !cursor) return;

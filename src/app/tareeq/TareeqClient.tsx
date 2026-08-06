@@ -10,9 +10,7 @@ import { TAREEQ_CATEGORIES, CATEGORY_ICONS } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import TareeqHeader from '@/components/tareeq/TareeqHeader';
 import TareeqSidebar from '@/components/tareeq/TareeqSidebar';
-import TareeqBottomNav from '@/components/tareeq/TareeqBottomNav';
 import TareeqPWA, { TareeqInstallBanner } from '@/components/tareeq/TareeqPWA';
-import { TareeqNotificationsProvider } from '@/context/TareeqNotificationsContext';
 
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
@@ -20,7 +18,7 @@ interface Props { initialPosts: TareeqPostSummary[]; initialCursor: string | nul
 
 export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const { isRtl } = useLang();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [posts, setPosts] = useState<TareeqPostSummary[]>(initialPosts);
   const [cursor, setCursor] = useState<string | null>(initialCursor);
   const [loading, setLoading] = useState(false);
@@ -40,6 +38,12 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const feedTopRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);
+  // Refs so touch handlers don't form stale closures
+  const pullYRef = useRef(0);
+  const pullRefreshingRef = useRef(false);
+  const categoryRef = useRef(category);
+  const searchValRef = useRef(search);
+  const sortRef = useRef(sort);
   const PULL_THRESHOLD = 72;
 
   useEffect(() => {
@@ -102,42 +106,55 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
     loadPosts(category, search, null, newSort);
   }
 
-  // App shortcut: /tareeq?action=create
+  // Keep filter refs in sync so pull-to-refresh onEnd always has fresh values
+  useEffect(() => { categoryRef.current = category; }, [category]);
+  useEffect(() => { searchValRef.current = search; }, [search]);
+  useEffect(() => { sortRef.current = sort; }, [sort]);
+
+  // App shortcut: /tareeq?action=create — wait for auth to settle before acting
   useEffect(() => {
+    if (authLoading) return;
     const params = new URLSearchParams(window.location.search);
     if (params.get('action') === 'create') {
       window.history.replaceState({}, '', '/tareeq');
       if (user) setShowCreate(true); else setShowGate(true);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [authLoading, user]);
 
-  // Pull to refresh
+  // Pull to refresh — registered once; refs keep state fresh without listener churn
   useEffect(() => {
     const onStart = (e: TouchEvent) => { touchStartY.current = e.touches[0].clientY; };
     const onMove = (e: TouchEvent) => {
-      if (window.scrollY > 0 || pullRefreshing) return;
+      if (window.scrollY > 0 || pullRefreshingRef.current) return;
       const dy = e.touches[0].clientY - touchStartY.current;
-      if (dy > 0) setPullY(Math.min(dy, PULL_THRESHOLD + 24));
+      if (dy > 0) {
+        const clamped = Math.min(dy, PULL_THRESHOLD + 24);
+        pullYRef.current = clamped;
+        setPullY(clamped);
+      }
     };
     const onEnd = async () => {
-      if (pullY >= PULL_THRESHOLD && !pullRefreshing) {
+      const snap = pullYRef.current;
+      if (snap >= PULL_THRESHOLD && !pullRefreshingRef.current) {
         if ('vibrate' in navigator) navigator.vibrate(30);
+        pullRefreshingRef.current = true;
         setPullRefreshing(true);
-        await loadPosts(category, search, null, sort);
+        await loadPosts(categoryRef.current, searchValRef.current, null, sortRef.current);
+        pullRefreshingRef.current = false;
         setPullRefreshing(false);
       }
+      pullYRef.current = 0;
       setPullY(0);
     };
     window.addEventListener('touchstart', onStart, { passive: true });
-    window.addEventListener('touchmove', onMove, { passive: true });
+    window.addEventListener('touchmove', onMove, { passive: false });
     window.addEventListener('touchend', onEnd);
     return () => {
       window.removeEventListener('touchstart', onStart);
       window.removeEventListener('touchmove', onMove);
       window.removeEventListener('touchend', onEnd);
     };
-  }, [pullY, pullRefreshing, category, search, sort, loadPosts]);
+  }, [loadPosts]);
 
   function handleCreateClick() {
     if (!user) { setShowGate(true); return; }
@@ -147,7 +164,6 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const skeletons = Array.from({ length: 6 });
 
   return (
-    <TareeqNotificationsProvider>
     <div className="min-h-screen">
       <TareeqPWA />
       <TareeqHeader onCreateClick={handleCreateClick} />
@@ -279,7 +295,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       )}
 
       {/* Feed + Sidebar */}
-      <div className="max-w-7xl mx-auto px-4 py-8 pb-20 sm:pb-8 flex gap-6 items-start">
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:pb-8 flex gap-6 items-start">
         <div ref={feedTopRef} className="flex-1 min-w-0">
         {initialLoading ? (
           <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
@@ -365,7 +381,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
               onClick={() => setShowSidebar(false)}
               className="mb-4 transition"
               style={{ color: 'var(--tr-text-muted)' }}
-              aria-label="Close"
+              aria-label={isRtl ? 'إغلاق' : 'Close'}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -376,9 +392,6 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         </>
       )}
 
-      {/* Bottom navigation — mobile only */}
-      <TareeqBottomNav onCreateClick={handleCreateClick} />
-
       <TareeqInstallBanner />
       {showCreate && <TareeqCreateModal onClose={() => setShowCreate(false)} onCreated={(id?: string) => {
         loadPosts(category, search, null, sort);
@@ -387,6 +400,5 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       }} />}
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
     </div>
-    </TareeqNotificationsProvider>
   );
 }

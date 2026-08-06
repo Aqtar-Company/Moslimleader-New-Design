@@ -148,6 +148,7 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
     <>
       <article
         style={cardStyle}
+        aria-label={post.title || post.content.slice(0, 80)}
         onMouseEnter={e => {
           (e.currentTarget as HTMLElement).style.boxShadow = `0 0 20px ${accentHex}20, 0 8px 24px rgba(0,0,0,0.10)`;
           (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
@@ -284,6 +285,8 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
           {/* Like */}
           <button
             onClick={handleLike}
+            aria-pressed={liked}
+            aria-label={isRtl ? (liked ? 'إلغاء الإعجاب' : 'إعجاب') : (liked ? 'Unlike' : 'Like')}
             className="flex items-center gap-1.5 text-xs font-semibold transition active:scale-110"
             style={{ color: liked ? '#f43f5e' : 'var(--tr-text-muted)' }}
             onMouseEnter={e => { if (!liked) (e.currentTarget as HTMLElement).style.color = '#f43f5e88'; }}

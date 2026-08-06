@@ -1,3 +1,5 @@
+import TareeqShell from '@/components/tareeq/TareeqShell';
+
 export default function TareeqLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen relative" style={{ background: 'var(--tr-base)' }}>
@@ -12,7 +14,10 @@ export default function TareeqLayout({ children }: { children: React.ReactNode }
           `,
         }}
       />
-      <div className="relative z-10">{children}</div>
+      <TareeqShell>
+        {/* pb-[60px] reserves space for the 60px bottom nav on mobile */}
+        <div className="relative z-10 pb-[60px] sm:pb-0">{children}</div>
+      </TareeqShell>
     </div>
   );
 }

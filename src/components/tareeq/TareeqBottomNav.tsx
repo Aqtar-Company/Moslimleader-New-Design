@@ -17,7 +17,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
     <nav
       className="fixed bottom-0 left-0 right-0 sm:hidden z-40 flex items-center print:hidden"
       style={{
-        background: 'rgba(255,255,255,0.96)',
+        background: 'var(--tr-surface)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
         borderTop: '1px solid var(--tr-border-subtle)',
@@ -77,13 +77,17 @@ function NavItem({
 }: {
   href: string; active: boolean; label: string; badge?: number; children: React.ReactNode;
 }) {
+  const badgeLabel = badge && badge > 0
+    ? `${label} — ${badge > 99 ? '99+' : badge} غير مقروء`
+    : label;
   return (
     <Link
       href={href}
+      aria-label={badgeLabel}
       className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 relative"
       style={{ color: active ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}
     >
-      <div className="relative">
+      <div className="relative" aria-hidden="true">
         {children}
         {!!badge && badge > 0 && (
           <span
@@ -94,7 +98,7 @@ function NavItem({
           </span>
         )}
       </div>
-      <span className="text-[9px] font-semibold leading-none">{label}</span>
+      <span className="text-[9px] font-semibold leading-none" aria-hidden="true">{label}</span>
     </Link>
   );
 }

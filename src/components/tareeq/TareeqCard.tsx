@@ -33,37 +33,16 @@ interface Props {
 
 // ── Reaction config ──────────────────────────────────────────────────
 const REACTIONS = [
-  { type: 'inspired', labelAr: 'ألهمني', labelEn: 'Inspiring', color: '#f59e0b' },
-  { type: 'thanks',   labelAr: 'شكرًا',  labelEn: 'Thanks',    color: '#10b981' },
-  { type: 'agree',    labelAr: 'أتفق',   labelEn: 'Agree',     color: '#3b82f6' },
-  { type: 'yarabb',   labelAr: 'يارب',   labelEn: 'Ameen',     color: '#8b5cf6' },
+  { type: 'inspired', emoji: '⭐', labelAr: 'ألهمني', labelEn: 'Inspiring', color: '#f59e0b' },
+  { type: 'thanks',   emoji: '🙏', labelAr: 'شكرًا',  labelEn: 'Thanks',    color: '#10b981' },
+  { type: 'agree',    emoji: '✊', labelAr: 'أتفق',   labelEn: 'Agree',     color: '#3b82f6' },
+  { type: 'yarabb',   emoji: '🤲', labelAr: 'يارب',   labelEn: 'Ameen',     color: '#8b5cf6' },
 ] as const;
 
 type ReactionType = typeof REACTIONS[number]['type'];
 
-function ReactionIcon({ type, size = 16 }: { type: string; size?: number }) {
-  const s = size;
-  if (type === 'inspired') return (
-    <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12,3 L14.5,7.7 L19.8,7.5 L17,12 L19.8,16.5 L14.5,16.3 L12,21 L9.5,16.3 L4.2,16.5 L7,12 L4.2,7.5 L9.5,7.7 Z"/>
-    </svg>
-  );
-  if (type === 'thanks') return (
-    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10.05 4.575a1.575 1.575 0 10-3.15 0v3m3.15-3v-1.5a1.575 1.575 0 013.15 0v1.5m-3.15 0l.075 5.925m3.075.75V4.575m0 0a1.575 1.575 0 013.15 0V15M6.9 7.575a1.575 1.575 0 10-3.15 0v8.175a6.75 6.75 0 006.75 6.75h2.018a5.25 5.25 0 003.712-1.538l1.732-1.732a5.25 5.25 0 001.538-3.712l.003-2.024a.668.668 0 01.198-.471 1.575 1.575 0 10-2.228-2.228 3.818 3.818 0 00-1.12 2.687M6.9 7.575V12m6.27 4.318A4.49 4.49 0 0116.35 15m1.143-3.678a.668.668 0 01.198.471"/>
-    </svg>
-  );
-  if (type === 'agree') return (
-    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-    </svg>
-  );
-  if (type === 'yarabb') return (
-    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/>
-    </svg>
-  );
-  return null;
+function reactionEmoji(type: string): string {
+  return REACTIONS.find(r => r.type === type)?.emoji ?? '⭐';
 }
 
 
@@ -236,18 +215,17 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                 className="flex flex-col items-center gap-1 active:scale-90 transition-transform"
               >
                 <div
-                  className="w-11 h-11 rounded-full flex items-center justify-center"
+                  className="w-11 h-11 rounded-full flex items-center justify-center text-2xl"
                   style={{
                     background: currentReaction
-                      ? `${reactionConfig?.color ?? '#f59e0b'}cc`
+                      ? `${reactionConfig?.color ?? '#f59e0b'}30`
                       : 'rgba(255,255,255,0.20)',
                     backdropFilter: 'blur(10px)',
-                    ...(currentReaction ? { boxShadow: `0 0 10px ${reactionConfig?.color ?? '#f59e0b'}88` } : {}),
+                    border: currentReaction ? `1.5px solid ${reactionConfig?.color ?? '#f59e0b'}80` : '1.5px solid rgba(255,255,255,0.25)',
+                    ...(currentReaction ? { boxShadow: `0 0 14px ${reactionConfig?.color ?? '#f59e0b'}60` } : {}),
                   }}
                 >
-                  <span style={{ color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <ReactionIcon type={currentReaction ?? 'inspired'} size={20} />
-                  </span>
+                  {reactionEmoji(currentReaction ?? 'inspired')}
                 </div>
                 <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>
                   {fmt(likeCount)}
@@ -284,33 +262,51 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             </button>
           </div>
 
-          {/* Reaction picker — bottom overlay (inside overflow bounds) */}
+          {/* Reaction picker — floating glass pill, centered above author strip */}
           {showPicker && (
             <div
               ref={pickerRef}
-              className="absolute bottom-0 inset-x-0 z-20 flex justify-around items-center px-3 py-3"
-              style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(16px)' }}
+              className="absolute z-20 flex items-end gap-2"
+              style={{
+                bottom: 88,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                background: 'rgba(12,12,12,0.60)',
+                backdropFilter: 'blur(28px)',
+                WebkitBackdropFilter: 'blur(28px)',
+                border: '1px solid rgba(255,255,255,0.14)',
+                borderRadius: 24,
+                padding: '10px 14px',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.45)',
+                whiteSpace: 'nowrap',
+              }}
               onClick={e => e.stopPropagation()}
             >
-              {REACTIONS.map(r => (
-                <button
-                  key={r.type}
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleReact(r.type); setShowPicker(false); }}
-                  className="flex flex-col items-center gap-1 active:scale-90 transition-transform"
-                  style={{ color: currentReaction === r.type ? r.color : '#ffffffcc' }}
-                >
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center"
-                    style={{
-                      background: currentReaction === r.type ? `${r.color}30` : 'rgba(255,255,255,0.10)',
-                      border: `1.5px solid ${currentReaction === r.type ? r.color : 'rgba(255,255,255,0.2)'}`,
-                    }}
+              {REACTIONS.map(r => {
+                const active = currentReaction === r.type;
+                return (
+                  <button
+                    key={r.type}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleReact(r.type); setShowPicker(false); }}
+                    className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+                    style={{ transform: active ? 'scale(1.18) translateY(-3px)' : 'scale(1)' }}
                   >
-                    <ReactionIcon type={r.type} size={20} />
-                  </div>
-                  <span style={{ fontSize: 9, fontWeight: 700 }}>{isRtl ? r.labelAr : r.labelEn}</span>
-                </button>
-              ))}
+                    <div
+                      className="w-11 h-11 rounded-full flex items-center justify-center text-2xl"
+                      style={{
+                        background: active ? `${r.color}22` : 'rgba(255,255,255,0.07)',
+                        border: `1.5px solid ${active ? r.color + '70' : 'rgba(255,255,255,0.12)'}`,
+                        boxShadow: active ? `0 0 14px ${r.color}55` : 'none',
+                      }}
+                    >
+                      {r.emoji}
+                    </div>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: active ? r.color : 'rgba(255,255,255,0.65)' }}>
+                      {isRtl ? r.labelAr : r.labelEn}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -445,23 +441,29 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         <div className="px-5 pb-4 pt-2 flex items-center gap-4" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
           {/* Reactions bar */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              {REACTIONS.map(r => (
-                <button
-                  key={r.type}
-                  onClick={(e) => handleReact(r.type, e)}
-                  aria-pressed={currentReaction === r.type}
-                  title={isRtl ? r.labelAr : r.labelEn}
-                  className="flex items-center justify-center w-7 h-7 rounded-full transition active:scale-110"
-                  style={{
-                    color: currentReaction === r.type ? r.color : 'var(--tr-text-muted)',
-                    background: currentReaction === r.type ? `${r.color}18` : 'transparent',
-                    border: currentReaction === r.type ? `1.5px solid ${r.color}60` : '1.5px solid transparent',
-                  }}
-                >
-                  <ReactionIcon type={r.type} size={14} />
-                </button>
-              ))}
+            <div className="flex items-center gap-0.5">
+              {REACTIONS.map(r => {
+                const active = currentReaction === r.type;
+                return (
+                  <button
+                    key={r.type}
+                    onClick={(e) => handleReact(r.type, e)}
+                    aria-pressed={active}
+                    title={isRtl ? r.labelAr : r.labelEn}
+                    className="flex items-center justify-center transition-all active:scale-110"
+                    style={{
+                      fontSize: active ? 20 : 16,
+                      opacity: active ? 1 : 0.45,
+                      filter: active ? `drop-shadow(0 0 5px ${r.color})` : 'none',
+                      transform: active ? 'scale(1.12)' : 'scale(1)',
+                      minWidth: 32,
+                      minHeight: 36,
+                    }}
+                  >
+                    {r.emoji}
+                  </button>
+                );
+              })}
             </div>
             <span
               className="text-xs font-semibold"

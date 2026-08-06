@@ -27,11 +27,11 @@ export default function TareeqHeader({ onCreateClick }: Props) {
         <div
           className="max-w-2xl mx-auto flex items-center justify-between gap-2 px-4 h-12 rounded-2xl"
           style={{
-            background: 'rgba(13,26,38,0.88)',
+            background: 'rgba(250,248,244,0.92)',
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255,255,255,0.10)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)',
+            border: '1px solid rgba(26,24,40,0.10)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.09), inset 0 -1px 0 rgba(26,24,40,0.05)',
           }}
         >
           {/* Start — notifications + inbox */}

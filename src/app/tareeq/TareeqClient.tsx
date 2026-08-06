@@ -133,7 +133,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         className="sticky z-40"
         style={{
           top: '4.5rem',
-          background: 'rgba(7,13,20,0.92)',
+          background: 'rgba(246,244,240,0.94)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
           borderBottom: '1px solid var(--tr-border-subtle)',
@@ -225,7 +225,17 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           </div>
         ) : posts.length === 0 ? (
           <div className="text-center py-20">
-            <div className="text-5xl mb-4">{search ? '🔍' : '✨'}</div>
+            <div className="flex justify-center mb-4">
+              {search ? (
+                <svg className="w-14 h-14" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+              ) : (
+                <svg className="w-14 h-14" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+                </svg>
+              )}
+            </div>
             <p className="font-semibold mb-2" style={{ color: 'var(--tr-text-secondary)' }}>
               {search ? (isRtl ? 'لا نتائج للبحث' : 'No results found') : (isRtl ? 'لا توجد علامات بعد' : 'No marks yet')}
             </p>

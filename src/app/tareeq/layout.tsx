@@ -7,8 +7,8 @@ export default function TareeqLayout({ children }: { children: React.ReactNode }
         aria-hidden="true"
         style={{
           background: `
-            radial-gradient(ellipse 70% 40% at 50% -10%, rgba(45,212,191,0.05) 0%, transparent 70%),
-            radial-gradient(ellipse 50% 35% at 85% 90%, rgba(212,168,83,0.04) 0%, transparent 60%)
+            radial-gradient(ellipse 80% 50% at 50% -20%, rgba(184,137,30,0.07) 0%, transparent 70%),
+            radial-gradient(ellipse 60% 40% at 90% 100%, rgba(13,148,136,0.04) 0%, transparent 60%)
           `,
         }}
       />

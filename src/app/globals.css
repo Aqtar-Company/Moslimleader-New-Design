@@ -1,23 +1,23 @@
 @import "tailwindcss";
 
-/* ── Tareeq "Celestial Dark" design tokens ──────────────────── */
+/* ── Tareeq "Warm Light" design tokens ──────────────────── */
 :root {
-  --tr-base:    #070d14;
-  --tr-surface: #0d1a26;
-  --tr-raised:  #142030;
-  --tr-overlay: #1a293d;
-  --tr-border-subtle: rgba(255,255,255,0.06);
-  --tr-border-soft:   rgba(255,255,255,0.10);
-  --tr-border-strong: rgba(255,255,255,0.18);
-  --tr-gold:        #d4a853;
-  --tr-gold-bright: #f0c060;
-  --tr-gold-dim:    #a07830;
-  --tr-gold-glow:   rgba(212,168,83,0.22);
-  --tr-teal:        #2dd4bf;
-  --tr-teal-dim:    rgba(45,212,191,0.14);
-  --tr-text-primary:   #eef2f7;
-  --tr-text-secondary: #7a9ab5;
-  --tr-text-muted:     #3d5a72;
+  --tr-base:    #f6f4f0;
+  --tr-surface: #ffffff;
+  --tr-raised:  #edeae3;
+  --tr-overlay: #e3dfd6;
+  --tr-border-subtle: rgba(26,24,40,0.07);
+  --tr-border-soft:   rgba(26,24,40,0.12);
+  --tr-border-strong: rgba(26,24,40,0.22);
+  --tr-gold:        #b8891e;
+  --tr-gold-bright: #c49620;
+  --tr-gold-dim:    #e8c84a;
+  --tr-gold-glow:   rgba(184,137,30,0.16);
+  --tr-teal:        #0d9488;
+  --tr-teal-dim:    rgba(13,148,136,0.10);
+  --tr-text-primary:   #1a1828;
+  --tr-text-secondary: #4a4860;
+  --tr-text-muted:     #9896a8;
 }
 
 body {

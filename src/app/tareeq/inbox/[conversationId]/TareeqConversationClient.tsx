@@ -118,7 +118,7 @@ function Inner({ conversationId }: { conversationId: string }) {
         className="px-4 py-3 flex items-center gap-3 sticky z-30"
         style={{
           top: '4.5rem',
-          background: 'rgba(13,26,38,0.95)',
+          background: 'rgba(250,248,244,0.96)',
           backdropFilter: 'blur(12px)',
           borderBottom: '1px solid var(--tr-border-subtle)',
         }}
@@ -168,8 +168,8 @@ function Inner({ conversationId }: { conversationId: string }) {
                 <div
                   className="max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
                   style={mine ? {
-                    background: 'linear-gradient(135deg, #1a4a3a, #2d7a5a)',
-                    color: '#eef2f7',
+                    background: 'linear-gradient(135deg, #0f766e, #0d9488)',
+                    color: '#ffffff',
                     borderBottomRightRadius: mine && !isRtl ? 4 : undefined,
                     borderBottomLeftRadius: mine && isRtl ? 4 : undefined,
                   } : {

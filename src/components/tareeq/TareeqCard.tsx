@@ -132,7 +132,7 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
       <article
         style={cardStyle}
         onMouseEnter={e => {
-          (e.currentTarget as HTMLElement).style.boxShadow = `0 0 24px ${accentHex}28, 0 8px 32px rgba(0,0,0,0.6)`;
+          (e.currentTarget as HTMLElement).style.boxShadow = `0 0 20px ${accentHex}20, 0 8px 24px rgba(0,0,0,0.10)`;
           (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
         }}
         onMouseLeave={e => {
@@ -158,10 +158,10 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
               <span
                 className="absolute top-3 start-3 text-[10px] font-bold px-2.5 py-1 rounded-full"
                 style={{
-                  background: 'rgba(7,13,20,0.65)',
+                  background: 'rgba(0,0,0,0.48)',
                   backdropFilter: 'blur(6px)',
                   border: `1px solid ${accentHex}50`,
-                  color: accentHex,
+                  color: '#fff',
                 }}
               >
                 {catIcon} {catLabel}
@@ -233,7 +233,7 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
               className="flex items-center gap-2.5 rounded-xl px-4 py-3"
               style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-subtle)' }}
             >
-              <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(255,255,255,0.08)' }}>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--tr-overlay)' }}>
                 <svg className="w-3.5 h-3.5 ms-0.5" fill="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
                   <path d="M8 5v14l11-7z" />
                 </svg>
@@ -323,7 +323,7 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
               return (
                 <div
                   className="absolute bottom-full end-0 mb-2 py-1.5 w-36 z-20 rounded-xl"
-                  style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', boxShadow: '0 12px 40px rgba(0,0,0,0.7)' }}
+                  style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
                 >
                   {items.map(item => (
                     <a

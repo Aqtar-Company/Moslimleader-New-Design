@@ -34,6 +34,17 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
     } catch { /* ignore */ }
   }, [user]);
 
+  // Update PWA app-icon badge when count changes (Badging API)
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('setAppBadge' in navigator)) return;
+    const total = notifCount + messageCount;
+    if (total > 0) {
+      (navigator as Navigator & { setAppBadge: (n: number) => Promise<void> }).setAppBadge(total).catch(() => {});
+    } else {
+      (navigator as Navigator & { clearAppBadge: () => Promise<void> }).clearAppBadge?.().catch(() => {});
+    }
+  }, [notifCount, messageCount]);
+
   useEffect(() => {
     if (!user) {
       setNotifCount(0);

@@ -21,7 +21,7 @@ export default function TareeqLoginGate({ onClose }: Props) {
   return createPortal(
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center px-4"
-      style={{ background: 'rgba(7,13,20,0.88)', backdropFilter: 'blur(8px)' }}
+      style={{ background: 'rgba(26,24,40,0.55)', backdropFilter: 'blur(8px)' }}
       onClick={onClose}
     >
       <div

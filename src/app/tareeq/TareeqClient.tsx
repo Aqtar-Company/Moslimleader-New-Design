@@ -38,6 +38,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const feedTopRef = useRef<HTMLDivElement>(null);
+  const searchMountedRef = useRef(false);
   const touchStartY = useRef(0);
   // Refs so touch handlers don't form stale closures
   const pullYRef = useRef(0);
@@ -86,8 +87,9 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
     return () => obs.disconnect();
   }, [cursor, loading, category, search, sort, loadPosts]);
 
-  // Debounced search
+  // Debounced search — skip the initial mount to avoid overwriting SSR data
   useEffect(() => {
+    if (!searchMountedRef.current) { searchMountedRef.current = true; return; }
     if (searchRef.current) clearTimeout(searchRef.current);
     searchRef.current = setTimeout(() => {
       setSearch(searchInput);
@@ -416,7 +418,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           />
           <div
             className="fixed inset-y-0 end-0 w-72 max-w-[90vw] z-50 lg:hidden overflow-y-auto p-4"
-            style={{ background: 'var(--tr-surface)', boxShadow: '-8px 0 40px rgba(0,0,0,0.5)' }}
+            style={{ background: 'var(--tr-surface)', boxShadow: isRtl ? '8px 0 40px rgba(0,0,0,0.5)' : '-8px 0 40px rgba(0,0,0,0.5)' }}
           >
             <button
               onClick={() => setShowSidebar(false)}

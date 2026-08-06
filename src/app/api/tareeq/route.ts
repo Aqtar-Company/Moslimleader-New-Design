@@ -23,7 +23,9 @@ export async function GET(req: NextRequest) {
   if (likedBy) {
     const likes = await prisma.tareeqLike.findMany({
       where: { userId: likedBy },
-      orderBy: { createdAt: 'desc' },
+      orderBy: orderBy.hasOwnProperty('likeCount')
+        ? { post: { likeCount: 'desc' } }
+        : { createdAt: 'desc' },
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       select: {

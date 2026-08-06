@@ -8,6 +8,7 @@ import TareeqCreateModal from '@/components/tareeq/TareeqCreateModal';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
 import TareeqHeader from '@/components/tareeq/TareeqHeader';
 import { TareeqNotificationsProvider } from '@/context/TareeqNotificationsContext';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 interface ProfileUser {
@@ -22,6 +23,7 @@ interface Props {
   initialPosts: TareeqPostSummary[];
   initialCursor: string | null;
   likedIds: string[];
+  postCount?: number;
 }
 
 /** Deterministic gradient from a string — no Math.random */
@@ -42,7 +44,7 @@ function nameGradient(name: string): string {
 
 type ProfileTab = 'posts' | 'liked';
 
-export default function TareeqUserClient({ profileUser, initialPosts, initialCursor, likedIds: initialLiked }: Props) {
+export default function TareeqUserClient({ profileUser, initialPosts, initialCursor, likedIds: initialLiked, postCount }: Props) {
   const { isRtl } = useLang();
   const { user } = useAuth();
   const router = useRouter();
@@ -54,6 +56,9 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [likedLoading, setLikedLoading] = useState(false);
   const [likedCursor, setLikedCursor] = useState<string | null>(null);
   const [likedLoaded, setLikedLoaded] = useState(false);
+  // Lock grid vs list layout per-tab once decided — prevents reflow on infinite scroll
+  const [postsHasImages, setPostsHasImages] = useState(() => initialPosts.some(p => p.imageUrl));
+  const [likedHasImages, setLikedHasImages] = useState(false);
   const [likedIds] = useState<Set<string>>(new Set(initialLiked));
   const [isFollowing, setIsFollowing] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -86,8 +91,10 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
       const res = await fetch(`/api/tareeq?${params}`);
       if (res.ok) {
         const data = await res.json();
-        setLikedPosts(prev => cur ? [...prev, ...data.posts] : data.posts);
+        const newPosts = cur ? [...likedPosts, ...data.posts] : data.posts;
+        setLikedPosts(newPosts);
         setLikedCursor(data.nextCursor);
+        if (!likedLoaded) setLikedHasImages(newPosts.some((p: TareeqPostSummary) => p.imageUrl));
         setLikedLoaded(true);
       }
     } finally {
@@ -239,7 +246,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
 
           {/* Stats row */}
           <div className="flex gap-6 mt-4">
-            <StatItem count={posts.length} label={isRtl ? 'علامة' : 'Posts'} />
+            <StatItem count={postCount ?? posts.length} label={isRtl ? 'علامة' : 'Posts'} />
             <StatItem count={0} label={isRtl ? 'متابِع' : 'Followers'} />
             <StatItem count={0} label={isRtl ? 'متابَع' : 'Following'} />
           </div>
@@ -295,8 +302,8 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
             </div>
           ) : (
             <>
-              {/* 2-column grid for image posts, single column for text */}
-              {displayPosts.some(p => p.imageUrl) ? (
+              {/* Layout committed on first load per-tab — prevents reflow on infinite scroll */}
+              {(activeTab === 'posts' ? postsHasImages : likedHasImages) ? (
                 <div className="grid grid-cols-2 gap-3">
                   {displayPosts.map(post => (
                     post.imageUrl ? (
@@ -347,7 +354,7 @@ function StatItem({ count, label }: { count: number; label: string }) {
 
 function GridImageCard({ post, liked }: { post: TareeqPostSummary; liked: boolean }) {
   return (
-    <a
+    <Link
       href={`/tareeq/${post.id}`}
       className="block relative rounded-2xl overflow-hidden"
       style={{ aspectRatio: '3/4' }}
@@ -371,6 +378,6 @@ function GridImageCard({ post, liked }: { post: TareeqPostSummary; liked: boolea
         </svg>
         {post.likeCount > 0 && post.likeCount}
       </div>
-    </a>
+    </Link>
   );
 }

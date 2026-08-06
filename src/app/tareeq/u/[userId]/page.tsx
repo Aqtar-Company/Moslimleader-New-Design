@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function TareeqUserPage({ params }: Props) {
   const { userId } = params;
 
-  const [profileUser, rawPosts] = await Promise.all([
+  const [profileUser, rawPosts, postCount] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, name: true, avatarUrl: true, createdAt: true },
@@ -32,6 +32,7 @@ export default async function TareeqUserPage({ params }: Props) {
         user: { select: { id: true, name: true, avatarUrl: true } },
       },
     }),
+    prisma.tareeqPost.count({ where: { userId } }),
   ]);
 
   if (!profileUser) notFound();
@@ -70,6 +71,7 @@ export default async function TareeqUserPage({ params }: Props) {
       initialPosts={serializedPosts}
       initialCursor={nextCursor}
       likedIds={likedIds}
+      postCount={postCount}
     />
   );
 }

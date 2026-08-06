@@ -318,6 +318,7 @@ export default function TareeqCard({ post, initialLiked = false }: Props) {
         <div className="px-5 pb-4 pt-2 flex items-center gap-5" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
           <button
             onClick={handleLike} aria-pressed={liked}
+            aria-label={liked ? 'Unlike' : 'Like'}
             className="flex items-center gap-1.5 text-xs font-semibold transition active:scale-110"
             style={{ color: liked ? '#f43f5e' : 'var(--tr-text-muted)' }}
           >

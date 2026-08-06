@@ -127,6 +127,12 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
     }
   }, [authLoading, user]);
 
+  // Share prefill recovery: if user just logged in while sharePrefill is pending, open the modal
+  useEffect(() => {
+    if (authLoading || !user || !sharePrefill || showCreate) return;
+    setShowCreate(true);
+  }, [authLoading, user, sharePrefill, showCreate]);
+
   // Pull to refresh — registered once; refs keep state fresh without listener churn
   useEffect(() => {
     const onStart = (e: TouchEvent) => { touchStartY.current = e.touches[0].clientY; };

@@ -101,10 +101,18 @@ async function processSyncQueue() {
         headers: { 'Content-Type': 'application/json' },
       };
       if (action.body) opts.body = JSON.stringify(action.body);
-      await fetch(action.url, opts);
-      await deleteAction(db, action.id);
+      const res = await fetch(action.url, opts);
+      if (res.ok) {
+        // Success — remove from queue
+        await deleteAction(db, action.id);
+      } else if (res.status >= 400 && res.status < 500 && res.status !== 429) {
+        // Permanent client error (auth expired, 404, 400…) — discard, can never succeed
+        await deleteAction(db, action.id);
+      }
+      // 429 or 5xx: keep in queue and stop — retry on next sync event
+      if (res.status === 429 || res.status >= 500) break;
     } catch {
-      break; // Network still down — stop; will retry on next sync event
+      break; // Network down — stop; will retry on next sync event
     }
   }
 }
@@ -122,9 +130,10 @@ async function updateBadgeSilently() {
       fetch('/api/tareeq/notifications?countOnly=true', { credentials: 'include' }),
       fetch('/api/tareeq/conversations?countOnly=true', { credentials: 'include' }),
     ]);
-    let total = 0;
-    if (nRes.ok) { const d = await nRes.json(); total += (d.unreadCount ?? 0); }
-    if (cRes.ok) { const d = await cRes.json(); total += (d.unreadCount ?? 0); }
+    let notifCount = 0, messageCount = 0;
+    if (nRes.ok) { const d = await nRes.json(); notifCount  = d.unreadCount ?? 0; }
+    if (cRes.ok) { const d = await cRes.json(); messageCount = d.unreadCount ?? 0; }
+    const total = notifCount + messageCount;
 
     // Update PWA badge (no notification shown, fully silent)
     if ('setAppBadge' in self.navigator) {
@@ -135,10 +144,10 @@ async function updateBadgeSilently() {
       }
     }
 
-    // Notify open clients so they can update their badge state
+    // Notify open clients so they can sync their in-memory counts
     const allClients = await clients.matchAll({ type: 'window' });
     for (const c of allClients) {
-      c.postMessage({ type: 'TAREEQ_BADGE_UPDATE', notifCount: 0, messageCount: total });
+      c.postMessage({ type: 'TAREEQ_BADGE_UPDATE', notifCount, messageCount });
     }
   } catch { /* ignore — network may be unavailable */ }
 }
@@ -190,12 +199,14 @@ self.addEventListener('notificationclick', e => {
 
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-      // Focus existing tab if it's already on tareeq
       for (const c of list) {
-        if (c.url.includes('/tareeq') && 'focus' in c) {
-          return c.focus().then(() => {
-            if ('navigate' in c) return c.navigate(url);
-          });
+        if (c.url.includes('/tareeq')) {
+          if ('navigate' in c) {
+            // Chrome: navigate the existing tab to the target URL
+            return c.focus().then(() => c.navigate(url));
+          }
+          // Safari/Firefox: navigate() unavailable — open target in a new window
+          return clients.openWindow(url);
         }
       }
       return clients.openWindow(url);
@@ -210,8 +221,7 @@ function openIDB() {
     req.onupgradeneeded = ev => {
       const db = ev.target.result;
       if (!db.objectStoreNames.contains('actions')) {
-        const store = db.createObjectStore('actions', { keyPath: 'id', autoIncrement: true });
-        store.createIndex('createdAt', 'createdAt');
+        db.createObjectStore('actions', { keyPath: 'id', autoIncrement: true });
       }
     };
     req.onsuccess = ev => resolve(ev.target.result);

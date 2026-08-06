@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { sendPushToUser } from '@/lib/tareeq-push';
 
 // POST /api/tareeq/[id]/like — toggle like (atomic)
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
@@ -36,15 +37,22 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     ]);
     // Notify post author (non-blocking, never fail the like)
     if (post.userId && post.userId !== user.userId) {
+      const actorName = user.name ?? 'شخص ما';
       prisma.tareeqNotification.create({
         data: {
           userId: post.userId,
           type: 'like',
           actorId: user.userId,
-          actorName: user.name ?? null,
+          actorName: actorName,
           postId: post.id,
           postTitle: post.title ?? null,
         },
+      }).catch(() => {});
+      sendPushToUser(post.userId, {
+        title: 'طريق ★',
+        body: `${actorName} أعجب بعلامتك`,
+        url: `/tareeq/${post.id}`,
+        tag: `like-${post.id}`,
       }).catch(() => {});
     }
     return NextResponse.json({ liked: true });

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { TareeqInstallButton } from './TareeqPWA';
+import { useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 
 interface Props {
   onCreateClick: () => void;
@@ -29,6 +30,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 export default function TareeqSidebar({ onCreateClick, postCount }: Props) {
   const { isRtl } = useLang();
   const { user } = useAuth();
+  const { pushPermission, enablePush, disablePush } = useTareeqNotifications();
 
   const tagline = encodeURIComponent(isRtl
     ? 'وَبِالنَّجْمِ هُمْ يَهْتَدُونَ — اترك علامة يهتدي بها غيرك'
@@ -125,6 +127,40 @@ export default function TareeqSidebar({ onCreateClick, postCount }: Props) {
           ))}
         </div>
       </div>
+
+      {/* Push notifications */}
+      {user && pushPermission !== 'unsupported' && pushPermission !== 'denied' && (
+        <button
+          onClick={pushPermission === 'granted' ? disablePush : enablePush}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition text-start"
+          style={{
+            background: pushPermission === 'granted' ? 'var(--tr-teal-dim)' : 'var(--tr-surface)',
+            border: pushPermission === 'granted' ? '1px solid var(--tr-teal)44' : '1px solid var(--tr-border-soft)',
+          }}
+        >
+          {pushPermission === 'granted' ? (
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-teal)' }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+            </svg>
+          ) : (
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.143 17.082a24.248 24.248 0 003.844.148m-3.844-.148a23.856 23.856 0 01-5.455-1.31 8.964 8.964 0 002.313-6.022v-.75m5.998 7.082A24.248 24.248 0 0015 17.23m0 0a24.255 24.255 0 003.854-.148m-3.854.148a3 3 0 005.714 0m-5.714 0H9.143m8.573-9.33a3 3 0 10-5.142 0M12 3v1.5" />
+            </svg>
+          )}
+          <div className="min-w-0">
+            <p className="text-xs font-bold" style={{ color: pushPermission === 'granted' ? 'var(--tr-teal)' : 'var(--tr-text-secondary)' }}>
+              {pushPermission === 'granted'
+                ? (isRtl ? 'الإشعارات مفعّلة' : 'Notifications On')
+                : (isRtl ? 'فعّل الإشعارات' : 'Enable Notifications')}
+            </p>
+            <p className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>
+              {pushPermission === 'granted'
+                ? (isRtl ? 'اضغط لإلغاء التفعيل' : 'Tap to disable')
+                : (isRtl ? 'تلقّ إشعارات على جهازك' : 'Get notified on your device')}
+            </p>
+          </div>
+        </button>
+      )}
 
       {/* Install app */}
       <TareeqInstallButton variant="full" />

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { sendPushToUser } from '@/lib/tareeq-push';
 
 // GET /api/tareeq/[id]/comments
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
@@ -52,16 +53,23 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   // Notify post author (non-blocking)
   if (post.userId && post.userId !== user.userId) {
+    const actorName = user.name ?? 'شخص ما';
     prisma.tareeqNotification.create({
       data: {
         userId: post.userId,
         type: 'comment',
         actorId: user.userId,
-        actorName: user.name ?? null,
+        actorName: actorName,
         postId: post.id,
         postTitle: post.title ?? null,
         body: content.slice(0, 120),
       },
+    }).catch(() => {});
+    sendPushToUser(post.userId, {
+      title: 'طريق ★',
+      body: `${actorName} علّق على علامتك: ${content.slice(0, 60)}`,
+      url: `/tareeq/${post.id}`,
+      tag: `comment-${post.id}`,
     }).catch(() => {});
   }
 

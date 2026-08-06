@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { sendPushToUser } from '@/lib/tareeq-push';
 
 // POST /api/tareeq/conversations/[id]/messages — send message
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
@@ -40,7 +41,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }),
   ]);
 
-  // Notify recipient at most once per 5 minutes per conversation (non-blocking)
+  // Push notification to recipient (non-blocking, always send — messages feel urgent)
+  sendPushToUser(otherId, {
+    title: user.name ?? 'رسالة جديدة',
+    body: content.slice(0, 80),
+    url: `/tareeq/inbox/${params.id}`,
+    tag: `msg-${params.id}`,
+  }).catch(() => {});
+
+  // In-app notification at most once per 5 minutes (non-blocking)
   prisma.tareeqNotification.findFirst({
     where: {
       userId: otherId,

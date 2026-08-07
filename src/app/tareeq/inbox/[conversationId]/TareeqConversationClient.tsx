@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import TareeqHeader from '@/components/tareeq/TareeqHeader';
 import { TareeqNotificationsProvider, useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 import { compressImage } from '@/lib/compress-image';
+import TareeqCallScreen from '@/components/tareeq/TareeqCallScreen';
 
 interface Message {
   id: string;
@@ -78,6 +79,11 @@ function Inner({ conversationId }: { conversationId: string }) {
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const latestIdRef = useRef<string>('');
 
+  // Call state
+  const [activeCall, setActiveCall] = useState<{
+    callId: string; role: 'caller' | 'callee'; callType: 'audio' | 'video'; offer?: string;
+  } | null>(null);
+
   const loadMessages = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
@@ -146,6 +152,30 @@ function Inner({ conversationId }: { conversationId: string }) {
       });
     } catch { /* error set above */ }
     finally { setUploading(false); e.target.value = ''; }
+  }
+
+  async function startCall(callType: 'audio' | 'video') {
+    if (!otherUser || !user) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(callType === 'video' ? { audio: true, video: true } : { audio: true });
+      const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+      stream.getTracks().forEach(t => pc.addTrack(t, stream));
+      const offerSdp = await pc.createOffer();
+      await pc.setLocalDescription(offerSdp);
+      stream.getTracks().forEach(t => t.stop());
+      pc.close();
+
+      const res = await fetch('/api/tareeq/calls', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ calleeId: otherUser.id, type: callType, offer: offerSdp.sdp }),
+      });
+      if (res.ok) {
+        const { callId } = await res.json();
+        setActiveCall({ callId, role: 'caller', callType });
+      }
+    } catch {
+      // getUserMedia denied or PC failed — silently ignore (user sees nothing opened)
+    }
   }
 
   async function handleSend() {
@@ -230,8 +260,31 @@ function Inner({ conversationId }: { conversationId: string }) {
                 : otherUser.name.charAt(0)
               }
             </div>
-            <div>
-              <p className="font-bold text-sm leading-tight" style={{ color: 'var(--tr-text-primary)' }}>{otherUser.name}</p>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm leading-tight truncate" style={{ color: 'var(--tr-text-primary)' }}>{otherUser.name}</p>
+            </div>
+            {/* Call buttons */}
+            <div className="flex items-center gap-2 ms-auto">
+              <button
+                onClick={() => startCall('audio')}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90"
+                style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}
+                aria-label={isRtl ? 'مكالمة صوتية' : 'Voice call'}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                </svg>
+              </button>
+              <button
+                onClick={() => startCall('video')}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90"
+                style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}
+                aria-label={isRtl ? 'مكالمة فيديو' : 'Video call'}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+              </button>
             </div>
           </>
         )}
@@ -370,6 +423,18 @@ function Inner({ conversationId }: { conversationId: string }) {
           </div>
         </div>
       </div>
+
+      {/* Active call screen */}
+      {activeCall && otherUser && (
+        <TareeqCallScreen
+          callId={activeCall.callId}
+          role={activeCall.role}
+          callType={activeCall.callType}
+          remoteUser={otherUser}
+          offer={activeCall.offer}
+          onEnd={() => setActiveCall(null)}
+        />
+      )}
     </div>
   );
 }

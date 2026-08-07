@@ -68,6 +68,8 @@ model User {
   tareeqGroupsCreated  TareeqGroup[]        @relation("TareeqGroupCreator")
   tareeqGroupMembers   TareeqGroupMember[]  @relation("TareeqGroupMemberships")
   tareeqGroupMessages  TareeqGroupMessage[] @relation("TareeqGroupMsgSender")
+  tareeqCallsOut       TareeqCall[]         @relation("TareeqCallCaller")
+  tareeqCallsIn        TareeqCall[]         @relation("TareeqCallCallee")
 
   @@index([role])
   @@index([isWholesale])
@@ -1116,4 +1118,26 @@ model TareeqGroupMessage {
 
   @@index([groupId, createdAt])
   @@index([senderId])
+}
+
+model TareeqCall {
+  id          String    @id @default(cuid())
+  callerId    String
+  calleeId    String
+  type        String    @default("audio") // audio | video
+  status      String    @default("ringing") // ringing | active | ended | missed | rejected
+  offer       String?   @db.LongText
+  answer      String?   @db.LongText
+  callerIce   Json?     // ICE candidate array from caller
+  calleeIce   Json?     // ICE candidate array from callee
+  startedAt   DateTime?
+  endedAt     DateTime?
+  createdAt   DateTime  @default(now())
+
+  caller      User @relation("TareeqCallCaller", fields: [callerId], references: [id], onDelete: Cascade)
+  callee      User @relation("TareeqCallCallee", fields: [calleeId], references: [id], onDelete: Cascade)
+
+  @@index([callerId])
+  @@index([calleeId])
+  @@index([status])
 }

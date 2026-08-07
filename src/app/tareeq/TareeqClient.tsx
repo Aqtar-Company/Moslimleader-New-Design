@@ -241,6 +241,19 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
     return () => window.removeEventListener('tareeq-open-create', h);
   }, [user]);
 
+  // Home nav tap while already on /tareeq — reset all filters
+  useEffect(() => {
+    const h = () => {
+      setCategory('');
+      setSort('newest');
+      loadPosts('', search, null, 'newest');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    window.addEventListener('tareeq-reset-filters', h);
+    return () => window.removeEventListener('tareeq-reset-filters', h);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, loadPosts]);
+
   // Camera file ready — reads from module store (avoids CustomEvent.detail issues on mobile)
   useEffect(() => {
     function openCameraModal() {
@@ -341,27 +354,33 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           </button>
         )}
 
-        {/* All */}
+        {/* All — active only when no category selected AND not in following mode */}
         <button
-          onClick={() => handleCategoryChange('')}
+          onClick={() => { setSort(s => s === 'following' ? 'newest' : s); handleCategoryChange(''); }}
           className="flex flex-col items-center gap-1.5 shrink-0 active:scale-95 transition-transform"
         >
-          <div
-            className="w-14 h-14 rounded-full flex items-center justify-center transition-all"
-            style={{
-              background: !category ? 'var(--tr-gold-glow)' : 'var(--tr-surface)',
-              border: `2px solid ${!category ? 'var(--tr-gold)' : 'var(--tr-border-soft)'}`,
-              boxShadow: !category ? '0 0 0 3px var(--tr-gold-glow)' : 'none',
-            }}
-          >
-            {/* Grid/apps icon for "All" */}
-            <svg className="w-6 h-6" fill="none" stroke={!category ? 'var(--tr-gold)' : 'var(--tr-text-muted)'} strokeWidth={1.7} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-            </svg>
-          </div>
-          <span className="text-[10px] font-semibold w-14 text-center truncate" style={{ color: !category ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
-            {isRtl ? 'الكل' : 'All'}
-          </span>
+          {(() => {
+            const allActive = !category && sort !== 'following';
+            return (
+              <>
+                <div
+                  className="w-14 h-14 rounded-full flex items-center justify-center transition-all"
+                  style={{
+                    background: allActive ? 'var(--tr-gold-glow)' : 'var(--tr-surface)',
+                    border: `2px solid ${allActive ? 'var(--tr-gold)' : 'var(--tr-border-soft)'}`,
+                    boxShadow: allActive ? '0 0 0 3px var(--tr-gold-glow)' : 'none',
+                  }}
+                >
+                  <svg className="w-6 h-6" fill="none" stroke={allActive ? 'var(--tr-gold)' : 'var(--tr-text-muted)'} strokeWidth={1.7} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                  </svg>
+                </div>
+                <span className="text-[10px] font-semibold w-14 text-center truncate" style={{ color: allActive ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
+                  {isRtl ? 'الكل' : 'All'}
+                </span>
+              </>
+            );
+          })()}
         </button>
 
         {/* Category circles */}

@@ -24,6 +24,14 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
   const isInbox = pathname.startsWith('/tareeq/inbox');
   const isProfile = pathname === '/tareeq/profile' || pathname.startsWith('/tareeq/u/');
 
+  function handleHomeClick(e: React.MouseEvent) {
+    if (isHome) {
+      e.preventDefault();
+      window.dispatchEvent(new Event('tareeq-reset-filters'));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 sm:hidden z-40 print:hidden"
@@ -37,7 +45,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
     >
       <div className="h-16 flex items-center">
         {/* Home */}
-        <NavItem href="/tareeq" active={isHome} label={isRtl ? 'الرئيسية' : 'Home'}>
+        <NavItem href="/tareeq" active={isHome} label={isRtl ? 'الرئيسية' : 'Home'} onClick={handleHomeClick}>
           <HomeIcon filled={isHome} />
         </NavItem>
 
@@ -94,14 +102,15 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
   );
 }
 
-function NavItem({ href, active, label, badge, children }: {
-  href: string; active: boolean; label: string; badge?: number; children: React.ReactNode;
+function NavItem({ href, active, label, badge, onClick, children }: {
+  href: string; active: boolean; label: string; badge?: number; onClick?: (e: React.MouseEvent) => void; children: React.ReactNode;
 }) {
   const badgeLabel = badge && badge > 0 ? `${label} — ${badge > 99 ? '99+' : badge}` : label;
   return (
     <Link
       href={href}
       aria-label={badgeLabel}
+      onClick={onClick}
       className="flex-1 flex flex-col items-center justify-center gap-1 py-2 relative"
       style={{ color: active ? 'var(--tr-gold-bright)' : 'var(--tr-text-muted)' }}
     >

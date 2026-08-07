@@ -25,6 +25,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [showCatPicker, setShowCatPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -41,12 +42,14 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   useEffect(() => {
     if (!initialFile || uploadedForFile.current === initialFile) return;
     uploadedForFile.current = initialFile;
-
-    // Optimistic preview so the user sees the image right away
-    const objectUrl = URL.createObjectURL(initialFile);
-    setLocalPreview(objectUrl);
     setMediaUrl(null);
     setMediaType(null);
+    setUploadProgress(0);
+
+    // Use FileReader for a reliable base64 DataURL preview (works on all mobile browsers)
+    const reader = new FileReader();
+    reader.onload = (ev) => setLocalPreview(ev.target?.result as string ?? null);
+    reader.readAsDataURL(initialFile);
 
     async function upload() {
       setUploading(true); setError('');
@@ -57,18 +60,35 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           : initialFile!;
         const form = new FormData();
         form.append('file', uploadFile);
-        const res = await fetch('/api/tareeq/upload', { method: 'POST', credentials: 'include', body: form });
-        const data = await res.json();
-        if (res.ok) {
-          setMediaUrl(data.url);
-          setMediaType(data.type);
-          setLocalPreview(null);
-          URL.revokeObjectURL(objectUrl);
-        } else {
-          setError(data.error || (isRtl ? 'فشل رفع الصورة' : 'Upload failed'));
-        }
+
+        // Use XHR so we can track upload progress percentage
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', '/api/tareeq/upload');
+          xhr.withCredentials = true;
+          xhr.upload.onprogress = (ev) => {
+            if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+          };
+          xhr.onload = () => {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              if (xhr.status >= 200 && xhr.status < 300) {
+                setMediaUrl(data.url);
+                setMediaType(data.type);
+                setLocalPreview(null);
+                setUploadProgress(100);
+                resolve();
+              } else {
+                setError(data.error || (isRtl ? 'فشل رفع الصورة' : 'Upload failed'));
+                reject();
+              }
+            } catch { setError(isRtl ? 'فشل رفع الصورة' : 'Upload failed'); reject(); }
+          };
+          xhr.onerror = () => { setError(isRtl ? 'فشل رفع الصورة' : 'Upload failed'); reject(); };
+          xhr.send(form);
+        });
       } catch {
-        setError(isRtl ? 'فشل رفع الصورة' : 'Upload failed');
+        // error already set inside promise
       } finally {
         setUploading(false);
       }
@@ -112,18 +132,44 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   async function handleMedia(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploading(true); setError('');
+    setUploading(true); setError(''); setUploadProgress(0);
+    setMediaUrl(null); setMediaType(null);
+
+    // Show preview immediately via FileReader
+    const reader = new FileReader();
+    reader.onload = (ev) => setLocalPreview(ev.target?.result as string ?? null);
+    reader.readAsDataURL(file);
+
     try {
       const isImage = file.type.startsWith('image/');
       const uploadFile = isImage ? await compressImage(file, { maxWidth: 1920, maxHeight: 1920, quality: 0.82 }) : file;
       const form = new FormData();
       form.append('file', uploadFile);
-      const res = await fetch('/api/tareeq/upload', { method: 'POST', credentials: 'include', body: form });
-      const data = await res.json();
-      if (res.ok) { setMediaUrl(data.url); setMediaType(data.type); }
-      else setError(data.error || (isRtl ? 'فشل رفع الملف' : 'Upload failed'));
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/tareeq/upload');
+        xhr.withCredentials = true;
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+        };
+        xhr.onload = () => {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            if (xhr.status >= 200 && xhr.status < 300) {
+              setMediaUrl(data.url); setMediaType(data.type);
+              setLocalPreview(null); setUploadProgress(100);
+              resolve();
+            } else {
+              setError(data.error || (isRtl ? 'فشل رفع الملف' : 'Upload failed')); reject();
+            }
+          } catch { setError(isRtl ? 'فشل رفع الملف' : 'Upload failed'); reject(); }
+        };
+        xhr.onerror = () => { setError(isRtl ? 'فشل رفع الملف' : 'Upload failed'); reject(); };
+        xhr.send(form);
+      });
     } catch {
-      setError(isRtl ? 'فشل رفع الملف' : 'Upload failed');
+      // error already set
     } finally {
       setUploading(false);
       e.target.value = '';
@@ -269,7 +315,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
             </div>
           </div>
 
-          {/* Media preview — shows local objectURL immediately while upload runs */}
+          {/* Media preview — shows FileReader DataURL immediately while XHR upload runs */}
           {(localPreview || mediaUrl) && (
             <div className="mx-5 mb-3 relative rounded-2xl overflow-hidden" style={{ border: '1px solid var(--tr-border-soft)' }}>
               {localPreview
@@ -277,14 +323,36 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                 : mediaType === 'image'
                   ? <img src={mediaUrl!} alt="" className="w-full max-h-60 object-cover" />
                   : <video src={mediaUrl!} className="w-full max-h-60" controls />}
+
+              {/* Upload progress overlay */}
               {uploading && (
-                <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.45)' }}>
-                  <span className="w-9 h-9 border-3 border-white/30 border-t-white rounded-full animate-spin" style={{ borderWidth: 3 }} />
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3" style={{ background: 'rgba(0,0,0,0.55)' }}>
+                  {/* Circular spinner + percentage */}
+                  <div className="relative w-16 h-16">
+                    <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
+                      <circle cx="32" cy="32" r="27" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="5" />
+                      <circle
+                        cx="32" cy="32" r="27" fill="none"
+                        stroke="#fff" strokeWidth="5"
+                        strokeDasharray={`${2 * Math.PI * 27}`}
+                        strokeDashoffset={`${2 * Math.PI * 27 * (1 - uploadProgress / 100)}`}
+                        strokeLinecap="round"
+                        style={{ transition: 'stroke-dashoffset 0.2s ease' }}
+                      />
+                    </svg>
+                    <span className="absolute inset-0 flex items-center justify-center text-white font-black text-sm">
+                      {uploadProgress}%
+                    </span>
+                  </div>
+                  <span className="text-white/90 text-xs font-semibold">
+                    {isRtl ? 'جاري الرفع...' : 'Uploading...'}
+                  </span>
                 </div>
               )}
+
               {!uploading && (
                 <button
-                  onClick={() => { setMediaUrl(null); setMediaType(null); setLocalPreview(null); }}
+                  onClick={() => { setMediaUrl(null); setMediaType(null); setLocalPreview(null); setUploadProgress(0); }}
                   className="absolute top-2 end-2 rounded-full w-7 h-7 flex items-center justify-center text-lg leading-none transition"
                   style={{ background: 'rgba(0,0,0,0.7)', color: '#fff' }}
                 >×</button>

@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
@@ -39,6 +39,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   const startReaction: string | null = userReaction ?? (userLiked ? 'inspired' : null);
   const [currentReaction, setCurrentReaction] = useState<string | null>(startReaction);
   const [likeCount, setLikeCount] = useState(post.likeCount);
+  const [reactionCounts, setReactionCounts] = useState<Record<string, number>>({});
   const [bookmarked, setBookmarked] = useState(userBookmarked);
   const [comments, setComments] = useState<Comment[]>(post.comments);
   const [commentCount, setCommentCount] = useState(post.commentCount);
@@ -54,6 +55,13 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   const [editTitle, setEditTitle] = useState(post.title ?? '');
   const [editContent, setEditContent] = useState(post.content);
   const [editSaving, setEditSaving] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/tareeq/${post.id}/react`)
+      .then(r => r.json())
+      .then(d => setReactionCounts(d.counts ?? {}))
+      .catch(() => {});
+  }, [post.id]);
 
   const isOwner = user && post.userId && user.id === post.userId;
   const catKey = post.category as TareeqCategoryKey | null;
@@ -72,11 +80,18 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
     if (prev === type) {
       setCurrentReaction(null);
       setLikeCount(c => Math.max(0, c - 1));
+      setReactionCounts(rc => ({ ...rc, [type]: Math.max(0, (rc[type] ?? 1) - 1) }));
     } else if (prev) {
       setCurrentReaction(type);
+      setReactionCounts(rc => ({
+        ...rc,
+        [prev]: Math.max(0, (rc[prev] ?? 1) - 1),
+        [type]: (rc[type] ?? 0) + 1,
+      }));
     } else {
       setCurrentReaction(type);
       setLikeCount(c => c + 1);
+      setReactionCounts(rc => ({ ...rc, [type]: (rc[type] ?? 0) + 1 }));
     }
     const res = await fetch(`/api/tareeq/${post.id}/react`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
@@ -87,8 +102,8 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
       setCurrentReaction(data.reaction);
     } else {
       setCurrentReaction(prev);
-      if (prev === type) setLikeCount(c => c + 1);
-      else if (!prev) setLikeCount(c => Math.max(0, c - 1));
+      if (prev === type) { setLikeCount(c => c + 1); setReactionCounts(rc => ({ ...rc, [type]: (rc[type] ?? 0) + 1 })); }
+      else if (!prev) { setLikeCount(c => Math.max(0, c - 1)); setReactionCounts(rc => ({ ...rc, [type]: Math.max(0, (rc[type] ?? 1) - 1) })); }
     }
   }
 
@@ -291,34 +306,42 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
             {!editing && (
               <div className="flex items-center gap-3 mt-6 pt-6 flex-wrap" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
                 {/* Reactions bar */}
-                <div className="flex items-center gap-1 flex-wrap">
-                  {REACTIONS.map(r => {
-                    const active = currentReaction === r.type;
-                    return (
-                      <button
-                        key={r.type}
-                        onClick={() => handleReact(r.type)}
-                        aria-pressed={active}
-                        className="flex items-center gap-2 px-3 py-2 rounded-full transition-all active:scale-95"
-                        style={{
-                          background: active ? `${r.color}14` : 'var(--tr-raised)',
-                          border: `1.5px solid ${active ? r.color + '55' : 'transparent'}`,
-                          boxShadow: active ? `0 0 10px ${r.color}30` : 'none',
-                        }}
-                      >
-                        <span style={{ fontSize: 20, filter: active ? `drop-shadow(0 0 4px ${r.color})` : 'none' }}>
-                          {r.emoji}
-                        </span>
-                        <span className="text-xs font-bold" style={{ color: active ? r.color : 'var(--tr-text-secondary)' }}>
-                          {isRtl ? r.labelAr : r.labelEn}
-                        </span>
-                      </button>
-                    );
-                  })}
+                <div className="flex flex-col gap-2 w-full">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {REACTIONS.map(r => {
+                      const active = currentReaction === r.type;
+                      const count = reactionCounts[r.type] ?? 0;
+                      return (
+                        <button
+                          key={r.type}
+                          onClick={() => handleReact(r.type)}
+                          aria-pressed={active}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-full transition-all active:scale-95"
+                          style={{
+                            background: active ? `${r.color}14` : 'var(--tr-raised)',
+                            border: `1.5px solid ${active ? r.color + '55' : 'transparent'}`,
+                            boxShadow: active ? `0 0 10px ${r.color}30` : 'none',
+                          }}
+                        >
+                          <span style={{ fontSize: 20, filter: active ? `drop-shadow(0 0 4px ${r.color})` : 'none' }}>
+                            {r.emoji}
+                          </span>
+                          <span className="text-xs font-bold" style={{ color: active ? r.color : 'var(--tr-text-secondary)' }}>
+                            {isRtl ? r.labelAr : r.labelEn}
+                          </span>
+                          {count > 0 && (
+                            <span className="text-xs font-black tabular-nums" style={{ color: active ? r.color : 'var(--tr-text-muted)' }}>
+                              {count}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                   {likeCount > 0 && (
-                    <span className="text-sm font-bold ms-1" style={{ color: currentReaction ? (REACTIONS.find(r => r.type === currentReaction)?.color ?? 'var(--tr-text-muted)') : 'var(--tr-text-muted)' }}>
-                      {likeCount}
-                    </span>
+                    <p className="text-xs" style={{ color: 'var(--tr-text-muted)' }}>
+                      {likeCount} {isRtl ? 'تفاعل إجمالاً' : 'total reactions'}
+                    </p>
                   )}
                 </div>
 

@@ -138,7 +138,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent }
           maxHeight: '92dvh',
           background: 'var(--tr-raised)',
           border: '1px solid var(--tr-border-soft)',
-          boxShadow: '0 24px 80px rgba(0,0,0,0.8)',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.14)',
         }}
         onClick={e => e.stopPropagation()}
         role="dialog"
@@ -150,7 +150,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent }
             onClick={onClose}
             className="w-9 h-9 flex items-center justify-center rounded-xl transition"
             style={{ color: 'var(--tr-text-muted)' }}
-            aria-label="إغلاق"
+            aria-label={isRtl ? 'إغلاق' : 'Close'}
             onMouseEnter={e => (e.currentTarget.style.color = 'var(--tr-text-primary)')}
             onMouseLeave={e => (e.currentTarget.style.color = 'var(--tr-text-muted)')}
           >
@@ -172,7 +172,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent }
               boxShadow: loading || charCount < 10 ? 'none' : '0 0 14px var(--tr-gold-glow)',
             }}
           >
-            {loading && <span className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />}
+            {loading && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
             {isRtl ? 'انشر' : 'Publish'}
           </button>
         </div>
@@ -334,7 +334,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent }
             )}
             {charCount > 0 && (
               <svg className="w-8 h-8 -rotate-90" viewBox="0 0 28 28">
-                <circle cx="14" cy="14" r="11" fill="none" stroke="rgba(0,0,0,0.10)" strokeWidth="2.5" />
+                <circle cx="14" cy="14" r="11" fill="none" stroke="var(--tr-border-soft)" strokeWidth="2.5" />
                 <circle
                   cx="14" cy="14" r="11" fill="none"
                   stroke={charLeft < 20 ? '#ef4444' : charLeft < 100 ? '#f59e0b' : 'var(--tr-gold)'}

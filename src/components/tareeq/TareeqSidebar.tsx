@@ -96,7 +96,7 @@ export default function TareeqSidebar({ onCreateClick, postCount }: Props) {
         className="w-full flex items-center justify-center gap-2 font-black text-sm py-3 rounded-2xl transition active:scale-95"
         style={{
           background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))',
-          color: '#0a0d06',
+          color: '#fff',
           boxShadow: '0 4px 24px var(--tr-gold-glow)',
         }}
       >

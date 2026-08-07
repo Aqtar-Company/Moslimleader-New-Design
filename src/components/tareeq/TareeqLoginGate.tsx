@@ -21,7 +21,7 @@ export default function TareeqLoginGate({ onClose }: Props) {
   return createPortal(
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center px-4"
-      style={{ background: 'rgba(26,24,40,0.55)', backdropFilter: 'blur(8px)' }}
+      style={{ background: 'rgba(15,17,30,0.45)', backdropFilter: 'blur(8px)' }}
       onClick={onClose}
     >
       <div
@@ -29,7 +29,7 @@ export default function TareeqLoginGate({ onClose }: Props) {
         style={{
           background: 'var(--tr-raised)',
           border: '1px solid var(--tr-border-soft)',
-          boxShadow: '0 24px 80px rgba(0,0,0,0.7)',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.14)',
         }}
         onClick={e => e.stopPropagation()}
       >
@@ -50,7 +50,7 @@ export default function TareeqLoginGate({ onClose }: Props) {
             className="flex-1 font-bold py-3 rounded-xl text-sm transition"
             style={{
               background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))',
-              color: '#0a0d06',
+              color: '#fff',
             }}
           >
             {isRtl ? 'تسجيل الدخول' : 'Sign In'}

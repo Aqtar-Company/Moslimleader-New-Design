@@ -180,7 +180,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
       <>
         <article
           className="relative overflow-hidden"
-          style={{ borderRadius: 24, aspectRatio: '3/4', background: '#111', display: 'block' }}
+          style={{ borderRadius: 24, aspectRatio: '3/4', background: 'var(--tr-overlay)', display: 'block' }}
           aria-label={post.title || post.content.slice(0, 80)}
         >
           {/* Clickable image area */}

@@ -354,7 +354,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         className="sticky z-40"
         style={{
           top: '56px',
-          background: 'rgba(249,247,245,0.95)',
+          background: 'rgba(242,244,251,0.95)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
           borderBottom: '1px solid var(--tr-border-subtle)',
@@ -462,7 +462,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
                 <button
                   onClick={handleCreateClick}
                   className="font-black px-8 py-3 rounded-xl text-sm"
-                  style={{ background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))', color: '#0a0d06' }}
+                  style={{ background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))', color: '#fff' }}
                 >
                   {isRtl ? '★ اترك علامتك' : '★ Leave Your Mark'}
                 </button>

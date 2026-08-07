@@ -4,12 +4,12 @@ import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(req: NextRequest) {
-  const user = await getAuthUser(req);
+export async function GET(_req: NextRequest) {
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const folders = await prisma.tareeqBookmarkFolder.findMany({
-    where: { userId: user.id },
+    where: { userId: user.userId },
     orderBy: { createdAt: 'asc' },
     include: { _count: { select: { bookmarks: true } } },
   });
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const user = await getAuthUser(req);
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { name } = await req.json();
@@ -26,11 +26,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'اسم التصنيف مطلوب' }, { status: 400 });
   }
 
-  const count = await prisma.tareeqBookmarkFolder.count({ where: { userId: user.id } });
+  const count = await prisma.tareeqBookmarkFolder.count({ where: { userId: user.userId } });
   if (count >= 50) return NextResponse.json({ error: 'الحد الأقصى 50 تصنيفاً' }, { status: 400 });
 
   const folder = await prisma.tareeqBookmarkFolder.create({
-    data: { userId: user.id, name: name.trim() },
+    data: { userId: user.userId, name: name.trim() },
   });
 
   return NextResponse.json({ folder });

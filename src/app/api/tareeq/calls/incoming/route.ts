@@ -4,16 +4,17 @@ import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-// GET — check for an incoming ringing call
-export async function GET(req: NextRequest) {
-  const user = await getAuthUser(req);
+// GET — check for an incoming ringing call that already has an offer
+export async function GET(_req: NextRequest) {
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ call: null });
 
-  // Find the most recent ringing call to this user that is ≤ 45s old
+  // Only surface calls that have an offer set (caller's screen has initialised the PC)
   const call = await prisma.tareeqCall.findFirst({
     where: {
-      calleeId: user.id,
+      calleeId: user.userId,
       status: 'ringing',
+      offer: { not: null },
       createdAt: { gt: new Date(Date.now() - 45_000) },
     },
     orderBy: { createdAt: 'desc' },

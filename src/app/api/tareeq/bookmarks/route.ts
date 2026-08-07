@@ -6,21 +6,21 @@ export const dynamic = 'force-dynamic';
 
 // GET /api/tareeq/bookmarks?folderId=xxx  — list saved posts (optionally in a folder)
 export async function GET(req: NextRequest) {
-  const user = await getAuthUser(req);
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const folderId = searchParams.get('folderId') || undefined;
 
   const bookmarks = await prisma.tareeqBookmark.findMany({
-    where: { userId: user.id, folderId: folderId ?? undefined },
+    where: { userId: user.userId, folderId: folderId ?? undefined },
     orderBy: { createdAt: 'desc' },
     take: 100,
     include: {
       folder: { select: { id: true, name: true } },
       post: {
         include: {
-          author: { select: { id: true, name: true, avatarUrl: true } },
+          user: { select: { id: true, name: true, avatarUrl: true } },
           _count: { select: { likes: true, comments: true } },
         },
       },
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 
 // POST /api/tareeq/bookmarks  — save a post
 export async function POST(req: NextRequest) {
-  const user = await getAuthUser(req);
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { postId, folderId } = await req.json();
@@ -42,14 +42,14 @@ export async function POST(req: NextRequest) {
   if (!post) return NextResponse.json({ error: 'المنشور غير موجود' }, { status: 404 });
 
   if (folderId) {
-    const folder = await prisma.tareeqBookmarkFolder.findFirst({ where: { id: folderId, userId: user.id } });
+    const folder = await prisma.tareeqBookmarkFolder.findFirst({ where: { id: folderId, userId: user.userId } });
     if (!folder) return NextResponse.json({ error: 'التصنيف غير موجود' }, { status: 404 });
   }
 
   const bookmark = await prisma.tareeqBookmark.upsert({
-    where: { postId_userId: { postId, userId: user.id } },
+    where: { postId_userId: { postId, userId: user.userId } },
     update: { folderId: folderId ?? null },
-    create: { postId, userId: user.id, folderId: folderId ?? null },
+    create: { postId, userId: user.userId, folderId: folderId ?? null },
   });
 
   return NextResponse.json({ bookmark });
@@ -57,14 +57,14 @@ export async function POST(req: NextRequest) {
 
 // DELETE /api/tareeq/bookmarks?postId=xxx  — unsave a post
 export async function DELETE(req: NextRequest) {
-  const user = await getAuthUser(req);
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const postId = searchParams.get('postId');
   if (!postId) return NextResponse.json({ error: 'postId مطلوب' }, { status: 400 });
 
-  await prisma.tareeqBookmark.deleteMany({ where: { postId, userId: user.id } });
+  await prisma.tareeqBookmark.deleteMany({ where: { postId, userId: user.userId } });
 
   return NextResponse.json({ ok: true });
 }

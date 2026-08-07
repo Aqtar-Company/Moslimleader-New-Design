@@ -25,7 +25,7 @@ function timeAgo(iso: string, isRtl: boolean): string {
   return isRtl ? `${Math.floor(diff / 86400)} ي` : `${Math.floor(diff / 86400)}d`;
 }
 
-function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreated: (groupId: string) => void }) {
   const { isRtl } = useLang();
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,7 +41,7 @@ function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreat
         body: JSON.stringify({ name: name.trim() }),
       });
       const d = await res.json();
-      if (res.ok) { onCreated(); onClose(); }
+      if (res.ok) { onCreated(d.group?.id ?? ''); onClose(); }
       else setError(d.error || (isRtl ? 'حدث خطأ' : 'Error'));
     } catch { setError(isRtl ? 'خطأ في الاتصال' : 'Connection error'); }
     finally { setLoading(false); }
@@ -223,7 +223,7 @@ function Inner() {
       </div>
 
       {showCreateGroup && (
-        <CreateGroupModal onClose={() => setShowCreateGroup(false)} onCreated={loadAll} />
+        <CreateGroupModal onClose={() => setShowCreateGroup(false)} onCreated={(groupId) => { loadAll(); if (groupId) router.push(`/tareeq/groups/${groupId}`); }} />
       )}
     </div>
   );

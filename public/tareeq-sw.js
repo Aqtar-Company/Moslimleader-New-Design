@@ -1,7 +1,7 @@
 /* tareeq-v3 — Offline, Background Sync, Periodic Sync, Rich Push, Notification Actions */
-const CACHE_STATIC  = 'tareeq-v3-static';
-const CACHE_PAGES   = 'tareeq-v3-pages';
-const CACHE_IMAGES  = 'tareeq-v3-images';
+const CACHE_STATIC  = 'tareeq-v4-static';
+const CACHE_PAGES   = 'tareeq-v4-pages';
+const CACHE_IMAGES  = 'tareeq-v4-images';
 const ALL_CACHES    = [CACHE_STATIC, CACHE_PAGES, CACHE_IMAGES];
 
 const SHELL = [
@@ -157,7 +157,7 @@ self.addEventListener('push', e => {
   try { data = e.data?.json() ?? {}; } catch { /* ignore */ }
 
   const title   = data.title   ?? 'طريق ★';
-  const postType = data.type ?? 'generic'; // 'like' | 'comment' | 'message' | 'generic'
+  const postType = data.type ?? 'generic'; // 'like' | 'comment' | 'message' | 'call' | 'generic'
 
   // Build action buttons based on notification type
   const actions = [];

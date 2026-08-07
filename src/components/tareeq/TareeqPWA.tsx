@@ -64,13 +64,28 @@ export default function TareeqPWA() {
     }
     link.href = '/tareeq.webmanifest';
 
-    // Register service worker
+    // Register service worker + listen for updates
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/tareeq-sw.js', { scope: '/tareeq' }).catch(() => {});
+
+      // When a new SW takes control, reload to get fresh assets
+      let prevController = navigator.serviceWorker.controller;
+      const onControllerChange = () => {
+        if (prevController) {
+          // A new SW replaced the old one → reload for fresh JS/CSS
+          window.location.reload();
+        }
+        prevController = navigator.serviceWorker.controller;
+      };
+      navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+      return () => {
+        navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+        const l = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+        if (l) l.href = original || '/site.webmanifest';
+      };
     }
 
     return () => {
-      // Restore original manifest when leaving Tareeq
       const l = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
       if (l) l.href = original || '/site.webmanifest';
     };

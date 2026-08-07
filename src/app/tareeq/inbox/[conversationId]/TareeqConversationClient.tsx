@@ -16,6 +16,45 @@ interface Message {
 }
 interface OtherUser { id: string; name: string; avatarUrl?: string | null }
 
+interface MsgGroup {
+  senderId: string;
+  mine: boolean;
+  msgs: Message[];
+  senderInfo: { name: string; avatarUrl?: string | null };
+}
+
+function groupMessages(messages: Message[], myId: string): MsgGroup[] {
+  const groups: MsgGroup[] = [];
+  for (const m of messages) {
+    const mine = m.senderId === myId;
+    const last = groups[groups.length - 1];
+    if (last && last.senderId === m.senderId) {
+      last.msgs.push(m);
+    } else {
+      groups.push({ senderId: m.senderId, mine, msgs: [m], senderInfo: m.sender });
+    }
+  }
+  return groups;
+}
+
+function formatTime(dateStr: string) {
+  try {
+    return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  } catch { return ''; }
+}
+
+function formatDay(dateStr: string, isRtl: boolean) {
+  try {
+    const d = new Date(dateStr);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    if (d.toDateString() === today.toDateString()) return isRtl ? 'اليوم' : 'Today';
+    if (d.toDateString() === yesterday.toDateString()) return isRtl ? 'أمس' : 'Yesterday';
+    return d.toLocaleDateString(isRtl ? 'ar' : 'en', { day: 'numeric', month: 'short' });
+  } catch { return ''; }
+}
+
 function Inner({ conversationId }: { conversationId: string }) {
   const { isRtl } = useLang();
   const { user } = useAuth();
@@ -29,7 +68,6 @@ function Inner({ conversationId }: { conversationId: string }) {
   const [sendError, setSendError] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Fix 7: initialize to '' not null so empty-conversation guard works correctly
   const latestIdRef = useRef<string>('');
 
   const loadMessages = useCallback(async (silent = false) => {
@@ -42,7 +80,6 @@ function Inner({ conversationId }: { conversationId: string }) {
         const msgs: Message[] = d.messages ?? [];
         setMessages(msgs);
         setOtherUser(d.otherUser ?? null);
-        // Always update ref, even on empty array (set to '' to keep guard consistent)
         latestIdRef.current = msgs.length ? msgs[msgs.length - 1].id : '';
         refresh();
       }
@@ -86,7 +123,6 @@ function Inner({ conversationId }: { conversationId: string }) {
         body: JSON.stringify({ content: text }),
       });
       if (res.ok) {
-        // Fix 5: append the returned message instead of a full round-trip reload
         const d = await res.json();
         if (d.message) {
           setMessages(prev => {
@@ -98,7 +134,6 @@ function Inner({ conversationId }: { conversationId: string }) {
         setInput('');
         refresh();
       } else {
-        // Fix 2: surface HTTP errors to the user
         const d = await res.json().catch(() => ({}));
         setSendError(d.error || (isRtl ? 'فشل الإرسال' : 'Send failed'));
       }
@@ -109,16 +144,31 @@ function Inner({ conversationId }: { conversationId: string }) {
     }
   }
 
+  const myId = user?.id ?? '';
+  const groups = groupMessages(messages, myId);
+
+  // Group by day for date separators
+  const dayBuckets: { day: string; groups: MsgGroup[] }[] = [];
+  for (const g of groups) {
+    const day = g.msgs[0].createdAt.slice(0, 10);
+    const last = dayBuckets[dayBuckets.length - 1];
+    if (last && last.day === day) {
+      last.groups.push(g);
+    } else {
+      dayBuckets.push({ day, groups: [g] });
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--tr-base)' }}>
       <TareeqHeader onCreateClick={() => {}} />
 
-      {/* Chat header — below floating TareeqHeader */}
+      {/* Chat sub-header */}
       <div
         className="px-4 py-3 flex items-center gap-3 sticky z-30"
         style={{
           top: '4.5rem',
-          background: 'rgba(250,248,244,0.96)',
+          background: 'var(--tr-surface)',
           backdropFilter: 'blur(12px)',
           borderBottom: '1px solid var(--tr-border-subtle)',
         }}
@@ -136,22 +186,22 @@ function Inner({ conversationId }: { conversationId: string }) {
         </button>
         {otherUser && (
           <>
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 overflow-hidden"
-              style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1px solid var(--tr-border-soft)' }}
-            >
+            <div className="w-9 h-9 rounded-full shrink-0 overflow-hidden flex items-center justify-center text-sm font-bold"
+              style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold-dim)' }}>
               {otherUser.avatarUrl
-                ? <img src={otherUser.avatarUrl} alt={otherUser.name} className="w-full h-full rounded-full object-cover" />
+                ? <img src={otherUser.avatarUrl} alt={otherUser.name} className="w-full h-full object-cover" />
                 : otherUser.name.charAt(0)
               }
             </div>
-            <span className="font-bold text-sm" style={{ color: 'var(--tr-text-primary)' }}>{otherUser.name}</span>
+            <div>
+              <p className="font-bold text-sm leading-tight" style={{ color: 'var(--tr-text-primary)' }}>{otherUser.name}</p>
+            </div>
           </>
         )}
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 pb-28 space-y-3 max-w-2xl w-full mx-auto">
+      {/* Messages — dir="ltr" so physical right=sender always, left=receiver always, regardless of UI language */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 pb-32 max-w-2xl w-full mx-auto" dir="ltr">
         {loading ? (
           <div className="flex justify-center py-20">
             <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
@@ -161,30 +211,72 @@ function Inner({ conversationId }: { conversationId: string }) {
             {isRtl ? 'ابدأ المحادثة' : 'Start the conversation'}
           </div>
         ) : (
-          messages.map(m => {
-            const mine = m.senderId === user?.userId;
-            return (
-              <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                <div
-                  className="max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
-                  style={mine ? {
-                    background: 'linear-gradient(135deg, #0f766e, #0d9488)',
-                    color: '#ffffff',
-                    borderBottomRightRadius: mine && !isRtl ? 4 : undefined,
-                    borderBottomLeftRadius: mine && isRtl ? 4 : undefined,
-                  } : {
-                    background: 'var(--tr-raised)',
-                    color: 'var(--tr-text-primary)',
-                    border: '1px solid var(--tr-border-soft)',
-                    borderBottomLeftRadius: !mine && !isRtl ? 4 : undefined,
-                    borderBottomRightRadius: !mine && isRtl ? 4 : undefined,
-                  }}
-                >
-                  {m.content}
-                </div>
+          dayBuckets.map(bucket => (
+            <div key={bucket.day}>
+              {/* Day separator */}
+              <div className="flex items-center gap-2 my-4">
+                <div className="flex-1 h-px" style={{ background: 'var(--tr-border-subtle)' }} />
+                <span className="text-[10px] font-semibold px-2" style={{ color: 'var(--tr-text-muted)' }}>
+                  {formatDay(bucket.day + 'T12:00:00', isRtl)}
+                </span>
+                <div className="flex-1 h-px" style={{ background: 'var(--tr-border-subtle)' }} />
               </div>
-            );
-          })
+
+              {bucket.groups.map((group, gi) => (
+                <div key={gi} className={`flex flex-col mb-2 ${group.mine ? 'items-end' : 'items-start'}`}>
+                  {group.msgs.map((m, mi) => {
+                    const isLast = mi === group.msgs.length - 1;
+                    // Bubble border-radius: tail on last message in group
+                    const mineStyle = {
+                      background: 'linear-gradient(135deg, #115e59, #0d9488)',
+                      color: '#fff',
+                      borderRadius: isLast ? '18px 18px 4px 18px' : '18px',
+                    };
+                    const otherStyle = {
+                      background: 'var(--tr-raised)',
+                      color: 'var(--tr-text-primary)',
+                      border: '1px solid var(--tr-border-soft)',
+                      borderRadius: isLast ? '18px 18px 18px 4px' : '18px',
+                    };
+                    return (
+                      <div key={m.id} className={`flex items-end gap-2 mb-0.5 ${group.mine ? 'flex-row-reverse' : 'flex-row'}`}>
+                        {/* Receiver avatar — only on last message in group */}
+                        {!group.mine && (
+                          <div
+                            className="w-6 h-6 rounded-full shrink-0 overflow-hidden flex items-center justify-center text-[10px] font-bold"
+                            style={{
+                              background: 'var(--tr-overlay)',
+                              color: 'var(--tr-gold)',
+                              border: '1px solid var(--tr-gold-dim)',
+                              visibility: isLast ? 'visible' : 'hidden',
+                            }}
+                          >
+                            {isLast && (group.senderInfo.avatarUrl
+                              ? <img src={group.senderInfo.avatarUrl} alt="" className="w-full h-full object-cover" />
+                              : group.senderInfo.name.charAt(0)
+                            )}
+                          </div>
+                        )}
+                        <div
+                          className="max-w-[72%] px-4 py-2.5 text-sm leading-relaxed"
+                          style={group.mine ? mineStyle : otherStyle}
+                        >
+                          {m.content}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {/* Timestamp below group */}
+                  <p
+                    className="text-[10px] mt-1 px-2"
+                    style={{ color: 'var(--tr-text-muted)', textAlign: group.mine ? 'right' : 'left' }}
+                  >
+                    {formatTime(group.msgs[group.msgs.length - 1].createdAt)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ))
         )}
         <div ref={bottomRef} />
       </div>
@@ -201,7 +293,7 @@ function Inner({ conversationId }: { conversationId: string }) {
           {sendError && (
             <p className="text-xs text-center font-semibold" style={{ color: '#f43f5e' }}>{sendError}</p>
           )}
-          <div className="flex items-end gap-2">
+          <div className="flex items-end gap-2" dir={isRtl ? 'rtl' : 'ltr'}>
             <textarea
               value={input}
               onChange={e => { setInput(e.target.value); if (sendError) setSendError(''); }}
@@ -229,8 +321,8 @@ function Inner({ conversationId }: { conversationId: string }) {
               {sending ? (
                 <div className="w-4 h-4 border-2 border-current/40 border-t-current rounded-full animate-spin" />
               ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M11 5l-7 7 7 7M4 12h16' : 'M13 5l7 7-7 7M20 12H4'} />
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
                 </svg>
               )}
             </button>

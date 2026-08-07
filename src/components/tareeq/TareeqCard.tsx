@@ -68,6 +68,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
+  const [textExpanded, setTextExpanded] = useState(false);
   const shareMenuRef = useRef<HTMLDivElement>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
@@ -435,7 +436,36 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               {post.title}
             </h3>
           )}
-          <p className="text-xs leading-relaxed line-clamp-4" style={{ color: 'var(--tr-text-secondary)' }}>{snippet}</p>
+          {(() => {
+            const isLong = post.content.length > 200 || post.content.split('\n').length > 4;
+            return (
+              <>
+                <p
+                  className="text-xs leading-relaxed"
+                  style={{
+                    color: 'var(--tr-text-secondary)',
+                    ...(isLong && !textExpanded ? {
+                      display: '-webkit-box',
+                      WebkitBoxOrient: 'vertical' as const,
+                      WebkitLineClamp: 4,
+                      overflow: 'hidden',
+                    } : {}),
+                  }}
+                >
+                  {textExpanded ? post.content : snippet}
+                </p>
+                {isLong && !textExpanded && (
+                  <button
+                    onClick={e => { e.preventDefault(); e.stopPropagation(); setTextExpanded(true); }}
+                    className="text-[11px] font-bold mt-1.5 transition"
+                    style={{ color: 'var(--tr-gold)' }}
+                  >
+                    {isRtl ? 'اقرأ أكثر' : 'Read more'}
+                  </button>
+                )}
+              </>
+            );
+          })()}
 
           {post.videoUrl && !hasImage && (
             <div className="mt-3 flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: 'var(--tr-raised)' }}>

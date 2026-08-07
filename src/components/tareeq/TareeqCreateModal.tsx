@@ -75,7 +75,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
               if (xhr.status >= 200 && xhr.status < 300) {
                 setMediaUrl(data.url);
                 setMediaType(data.type);
-                setLocalPreview(null);
+                // Keep localPreview alive so user sees their image without any blank flash
                 setUploadProgress(100);
                 resolve();
               } else {
@@ -158,7 +158,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
             const data = JSON.parse(xhr.responseText);
             if (xhr.status >= 200 && xhr.status < 300) {
               setMediaUrl(data.url); setMediaType(data.type);
-              setLocalPreview(null); setUploadProgress(100);
+              // Keep localPreview alive — no blank flash between base64 and server URL load
+              setUploadProgress(100);
               resolve();
             } else {
               setError(data.error || (isRtl ? 'فشل رفع الملف' : 'Upload failed')); reject();
@@ -351,11 +352,25 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
               )}
 
               {!uploading && (
-                <button
-                  onClick={() => { setMediaUrl(null); setMediaType(null); setLocalPreview(null); setUploadProgress(0); }}
-                  className="absolute top-2 end-2 rounded-full w-7 h-7 flex items-center justify-center text-lg leading-none transition"
-                  style={{ background: 'rgba(0,0,0,0.7)', color: '#fff' }}
-                >×</button>
+                <>
+                  {/* Success badge */}
+                  {mediaUrl && (
+                    <div
+                      className="absolute top-2 start-2 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold"
+                      style={{ background: 'rgba(16,185,129,0.90)', color: '#fff', backdropFilter: 'blur(4px)' }}
+                    >
+                      <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                      {isRtl ? 'تم الرفع' : 'Uploaded'}
+                    </div>
+                  )}
+                  <button
+                    onClick={() => { setMediaUrl(null); setMediaType(null); setLocalPreview(null); setUploadProgress(0); }}
+                    className="absolute top-2 end-2 rounded-full w-7 h-7 flex items-center justify-center text-lg leading-none transition"
+                    style={{ background: 'rgba(0,0,0,0.7)', color: '#fff' }}
+                  >×</button>
+                </>
               )}
             </div>
           )}

@@ -131,7 +131,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   }
 
   async function submit() {
-    if (content.trim().length < 10) {
+    // With a photo/video, caption is optional. Without media, require at least 10 chars.
+    if (!mediaUrl && content.trim().length < 10) {
       setError(isRtl ? 'اكتب أكثر (10 أحرف على الأقل)' : 'Write at least 10 characters');
       return;
     }
@@ -215,12 +216,12 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           </div>
           <button
             onClick={submit}
-            disabled={loading || charCount < 10}
+            disabled={loading || uploading || (!mediaUrl && charCount < 10)}
             className="font-black px-5 py-2 rounded-full text-sm disabled:opacity-40 active:scale-95 transition flex items-center gap-2"
             style={{
               background: 'rgba(255,255,255,0.95)',
               color: '#1e3a8a',
-              boxShadow: loading || charCount < 10 ? 'none' : '0 2px 12px rgba(0,0,0,0.20)',
+              boxShadow: loading || uploading || (!mediaUrl && charCount < 10) ? 'none' : '0 2px 12px rgba(0,0,0,0.20)',
             }}
           >
             {loading && <span className="w-3.5 h-3.5 border-2 border-blue-900/30 border-t-blue-900 rounded-full animate-spin" />}

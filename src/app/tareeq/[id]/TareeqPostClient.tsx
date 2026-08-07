@@ -309,14 +309,14 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                         <span style={{ fontSize: 20, filter: active ? `drop-shadow(0 0 4px ${r.color})` : 'none' }}>
                           {r.emoji}
                         </span>
-                        <span className="text-xs font-bold" style={{ color: active ? r.color : '#6b7280' }}>
+                        <span className="text-xs font-bold" style={{ color: active ? r.color : 'var(--tr-text-secondary)' }}>
                           {isRtl ? r.labelAr : r.labelEn}
                         </span>
                       </button>
                     );
                   })}
                   {likeCount > 0 && (
-                    <span className="text-sm font-bold ms-1" style={{ color: currentReaction ? (REACTIONS.find(r => r.type === currentReaction)?.color ?? '#9ca3af') : '#9ca3af' }}>
+                    <span className="text-sm font-bold ms-1" style={{ color: currentReaction ? (REACTIONS.find(r => r.type === currentReaction)?.color ?? 'var(--tr-text-muted)') : 'var(--tr-text-muted)' }}>
                       {likeCount}
                     </span>
                   )}

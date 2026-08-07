@@ -12,7 +12,6 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
   const { isRtl } = useLang();
 
   const isHome  = pathname === '/tareeq';
-  const isCamera = false; // camera always inactive (opens modal)
   const isInbox = pathname.startsWith('/tareeq/inbox');
   const isProfile = pathname === '/tareeq/profile' || pathname.startsWith('/tareeq/u/');
 
@@ -38,7 +37,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           onClick={onCreateClick}
           className="flex-1 flex flex-col items-center justify-center gap-1 py-2 relative"
           aria-label={isRtl ? 'إضافة صورة' : 'Add photo'}
-          style={{ color: '#7880a0' }}
+          style={{ color: 'var(--tr-text-secondary)' }}
         >
           <CameraIcon />
           <span className="text-[9px] font-semibold leading-none">{isRtl ? 'كاميرا' : 'Camera'}</span>

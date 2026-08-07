@@ -29,7 +29,7 @@ export default function TareeqLandingModal({ onClose }: Props) {
       <div
         className="relative w-full max-w-sm rounded-3xl overflow-hidden flex flex-col items-center text-center py-12 px-8"
         style={{
-          background: 'linear-gradient(160deg, #0b0d18 0%, #111a36 60%, #1a2a55 100%)',
+          background: 'linear-gradient(160deg, #07090f 0%, #0f1428 60%, #16254a 100%)',
           border: '1px solid rgba(255,255,255,0.08)',
           boxShadow: '0 40px 100px rgba(0,0,0,0.7)',
         }}

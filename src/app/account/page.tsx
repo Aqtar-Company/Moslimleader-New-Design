@@ -82,6 +82,8 @@ export default function AccountPage() {
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileError, setProfileError] = useState('');
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarProgress, setAvatarProgress] = useState(0);
 
   // Address form
   const [showAddressForm, setShowAddressForm] = useState(false);
@@ -222,20 +224,51 @@ export default function AccountPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setAvatarUploading(true);
+    setAvatarProgress(0);
+
+    // Show local preview immediately via FileReader (works reliably on all mobile browsers)
+    const reader = new FileReader();
+    reader.onload = (ev) => setAvatarPreview(ev.target?.result as string ?? null);
+    reader.readAsDataURL(file);
+
     const compressed = await compressImage(file, { maxWidth: 400, maxHeight: 400, quality: 0.88 });
     const form = new FormData();
     form.append('file', compressed);
-    const res = await fetch('/api/account/avatar', { method: 'POST', credentials: 'include', body: form });
-    const data = await res.json();
-    setAvatarUploading(false);
-    if (res.ok) updateUser({ avatarUrl: data.avatarUrl });
-    e.target.value = '';
+
+    // Use XHR for upload progress
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/account/avatar');
+        xhr.withCredentials = true;
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) setAvatarProgress(Math.round((ev.loaded / ev.total) * 100));
+        };
+        xhr.onload = () => {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            if (xhr.status >= 200 && xhr.status < 300) {
+              updateUser({ avatarUrl: data.avatarUrl });
+              setAvatarPreview(null);
+              resolve();
+            } else { reject(); }
+          } catch { reject(); }
+        };
+        xhr.onerror = () => reject();
+        xhr.send(form);
+      });
+    } catch { /* upload error — preview remains until cleared */ }
+    finally {
+      setAvatarUploading(false);
+      e.target.value = '';
+    }
   }
 
   async function handleAvatarDelete() {
     setAvatarUploading(true);
     await fetch('/api/account/avatar', { method: 'DELETE', credentials: 'include' });
     setAvatarUploading(false);
+    setAvatarPreview(null);
     updateUser({ avatarUrl: null });
   }
 
@@ -297,26 +330,27 @@ export default function AccountPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 rounded-2xl p-1 mb-8 overflow-x-auto">
+      {/* Tabs — horizontally scrollable on mobile */}
+      <div className="flex gap-1 bg-gray-100 rounded-2xl p-1 mb-8 overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
         {([
-          ['profile',   isRtl ? 'بياناتي'    : 'Profile',    <svg key="p" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M10 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-7 8a7 7 0 0 1 14 0H3z"/></svg>],
-          ['addresses', isRtl ? 'العناوين'   : 'Addresses',  <svg key="a" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M10 2a6 6 0 0 0-6 6c0 4.5 6 10 6 10s6-5.5 6-10a6 6 0 0 0-6-6zm0 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" clipRule="evenodd"/></svg>],
-          ['orders',    isRtl ? 'طلباتي'     : 'Orders',     <svg key="o" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M3 3h2l.4 2M7 13h10l2-7H5.4L7 13zm0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm10 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>],
-          ['books',     isRtl ? 'كتبي'       : 'My Books',   <svg key="b" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M9 4.804A7.968 7.968 0 0 0 5.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 0 1 5.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0 1 14.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0 0 14.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 1 1-2 0V4.804z"/></svg>],
-          ['loyalty',   isRtl ? 'نقاطي'      : 'Points',     <svg key="l" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 0 0 .95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 0 0-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 0 0-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 0 0-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 0 0 .951-.69l1.07-3.292z"/></svg>],
-          ['children',  isRtl ? 'أطفالي'     : 'My Kids',    <svg key="c" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><circle cx="10" cy="6" r="3"/><path d="M10 11c-4 0-6 2-6 3v1h12v-1c0-1-2-3-6-3z"/></svg>],
-          ['downloads', isRtl ? 'وسائط مجانية' : 'Free Media', <svg key="d" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M3 17a1 1 0 0 1 1-1h12a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1zm3.293-7.707a1 1 0 0 1 1.414 0L9 10.586V3a1 1 0 1 1 2 0v7.586l1.293-1.293a1 1 0 1 1 1.414 1.414l-3 3a1 1 0 0 1-1.414 0l-3-3a1 1 0 0 1 0-1.414z" clipRule="evenodd"/></svg>],
-        ] as [Tab, string, React.ReactNode][]).map(([t, label, icon]) => (
+          ['profile',   isRtl ? 'بياناتي'  : 'Profile',  isRtl ? 'بياناتي'    : 'Profile',   <svg key="p" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M10 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-7 8a7 7 0 0 1 14 0H3z"/></svg>],
+          ['addresses', isRtl ? 'العناوين' : 'Addresses', isRtl ? 'العناوين'   : 'Addresses', <svg key="a" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M10 2a6 6 0 0 0-6 6c0 4.5 6 10 6 10s6-5.5 6-10a6 6 0 0 0-6-6zm0 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" clipRule="evenodd"/></svg>],
+          ['orders',    isRtl ? 'طلباتي'   : 'Orders',   isRtl ? 'طلباتي'     : 'Orders',    <svg key="o" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M3 3h2l.4 2M7 13h10l2-7H5.4L7 13zm0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm10 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>],
+          ['books',     isRtl ? 'كتبي'     : 'Books',    isRtl ? 'كتبي'       : 'My Books',  <svg key="b" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M9 4.804A7.968 7.968 0 0 0 5.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 0 1 5.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0 1 14.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0 0 14.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 1 1-2 0V4.804z"/></svg>],
+          ['loyalty',   isRtl ? 'نقاطي'    : 'Points',   isRtl ? 'نقاطي'      : 'Points',    <svg key="l" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 0 0 .95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 0 0-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 0 0-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 0 0-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 0 0 .951-.69l1.07-3.292z"/></svg>],
+          ['children',  isRtl ? 'أطفالي'   : 'Kids',     isRtl ? 'أطفالي'     : 'My Kids',   <svg key="c" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><circle cx="10" cy="6" r="3"/><path d="M10 11c-4 0-6 2-6 3v1h12v-1c0-1-2-3-6-3z"/></svg>],
+          ['downloads', isRtl ? 'وسائط'    : 'Media',    isRtl ? 'وسائط مجانية' : 'Free Media', <svg key="d" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M3 17a1 1 0 0 1 1-1h12a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1zm3.293-7.707a1 1 0 0 1 1.414 0L9 10.586V3a1 1 0 1 1 2 0v7.586l1.293-1.293a1 1 0 1 1 1.414 1.414l-3 3a1 1 0 0 1-1.414 0l-3-3a1 1 0 0 1 0-1.414z" clipRule="evenodd"/></svg>],
+        ] as [Tab, string, string, React.ReactNode][]).map(([t, shortLabel, fullLabel, icon]) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${
+            className={`shrink-0 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-2.5 px-2 sm:px-3 rounded-xl font-bold transition whitespace-nowrap ${
               tab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             {icon}
-            <span className="hidden sm:inline">{label}</span>
+            <span className="text-[9px] sm:hidden leading-none">{shortLabel}</span>
+            <span className="hidden sm:inline text-sm">{fullLabel}</span>
           </button>
         ))}
       </div>
@@ -328,20 +362,44 @@ export default function AccountPage() {
 
           {/* Avatar */}
           <div className="flex items-center gap-5 mb-8">
-            {user.avatarUrl ? (
-              <img src={user.avatarUrl} alt={user.name} className="w-20 h-20 rounded-full object-cover border-2 border-gray-200" />
-            ) : (
-              <div className="w-20 h-20 rounded-full bg-[#1a1a2e] text-white flex items-center justify-center text-2xl font-black">
-                {user.name.charAt(0)}
-              </div>
-            )}
+            {/* Avatar with upload overlay */}
+            <div className="relative shrink-0">
+              {avatarPreview || user.avatarUrl ? (
+                <img
+                  src={avatarPreview ?? user.avatarUrl!}
+                  alt={user.name}
+                  className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-[#1a1a2e] text-white flex items-center justify-center text-2xl font-black">
+                  {user.name.charAt(0)}
+                </div>
+              )}
+              {/* Upload progress ring */}
+              {avatarUploading && (
+                <div className="absolute inset-0 flex items-center justify-center rounded-full" style={{ background: 'rgba(0,0,0,0.55)' }}>
+                  <svg className="w-14 h-14 -rotate-90 absolute" viewBox="0 0 56 56">
+                    <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="4" />
+                    <circle
+                      cx="28" cy="28" r="24" fill="none" stroke="#fff" strokeWidth="4"
+                      strokeDasharray={`${2 * Math.PI * 24}`}
+                      strokeDashoffset={`${2 * Math.PI * 24 * (1 - avatarProgress / 100)}`}
+                      strokeLinecap="round"
+                      style={{ transition: 'stroke-dashoffset 0.2s ease' }}
+                    />
+                  </svg>
+                  <span className="text-white font-black text-xs relative z-10">{avatarProgress}%</span>
+                </div>
+              )}
+            </div>
+
             <div className="flex flex-col gap-2">
-              <label className="cursor-pointer bg-gray-900 text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-gray-700 transition inline-block text-center">
-                {avatarUploading ? (isRtl ? 'جاري الرفع...' : 'Uploading...') : (isRtl ? 'تغيير الصورة' : 'Change Photo')}
+              <label className={`cursor-pointer text-white text-xs font-bold px-4 py-2 rounded-xl transition inline-block text-center ${avatarUploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-gray-900 hover:bg-gray-700'}`}>
+                {avatarUploading ? `${avatarProgress}% ${isRtl ? 'جاري الرفع' : 'uploading'}` : (isRtl ? 'تغيير الصورة' : 'Change Photo')}
                 <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarUpload} disabled={avatarUploading} />
               </label>
-              {user.avatarUrl && (
-                <button onClick={handleAvatarDelete} disabled={avatarUploading} className="text-xs text-red-500 hover:text-red-700 transition font-semibold">
+              {(avatarPreview || user.avatarUrl) && (
+                <button onClick={handleAvatarDelete} disabled={avatarUploading} className="text-xs text-red-500 hover:text-red-700 transition font-semibold disabled:opacity-40">
                   {isRtl ? 'حذف الصورة' : 'Remove Photo'}
                 </button>
               )}

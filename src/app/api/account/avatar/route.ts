@@ -41,7 +41,9 @@ export async function POST(req: NextRequest) {
   const dest = path.join(process.cwd(), 'public', 'uploads', 'avatars', filename);
 
   await writeFile(dest, data);
-  const avatarUrl = `/uploads/avatars/${filename}`;
+  // Append a version timestamp so browsers don't serve a stale cached copy
+  // after the user uploads a new photo to the same filename.
+  const avatarUrl = `/uploads/avatars/${filename}?v=${Date.now()}`;
 
   await prisma.user.update({ where: { id: auth.userId }, data: { avatarUrl } });
 
@@ -54,7 +56,9 @@ export async function DELETE() {
 
   const user = await prisma.user.findUnique({ where: { id: auth.userId }, select: { avatarUrl: true } });
   if (user?.avatarUrl) {
-    const filePath = path.join(process.cwd(), 'public', user.avatarUrl);
+    // Strip query params (e.g. ?v=timestamp) before building the file path
+    const cleanPath = user.avatarUrl.split('?')[0];
+    const filePath = path.join(process.cwd(), 'public', cleanPath);
     await unlink(filePath).catch(() => {});
   }
 

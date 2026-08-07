@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
+import { compressImage } from '@/lib/compress-image';
 import TareeqCard, { TareeqPostSummary } from '@/components/tareeq/TareeqCard';
 import TareeqCardSkeleton from '@/components/tareeq/TareeqCardSkeleton';
 import TareeqCreateModal from '@/components/tareeq/TareeqCreateModal';
@@ -46,7 +47,7 @@ type ProfileTab = 'posts' | 'liked';
 
 export default function TareeqUserClient({ profileUser, initialPosts, initialCursor, likedIds: initialLiked, postCount }: Props) {
   const { isRtl } = useLang();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const [posts, setPosts] = useState<TareeqPostSummary[]>(initialPosts);
@@ -72,6 +73,44 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const likedSentinelRef = useRef<HTMLDivElement>(null);
 
   const isOwnProfile = user?.id === profileUser.id;
+
+  // Avatar upload (own profile only)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarProgress, setAvatarProgress] = useState(0);
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    setAvatarProgress(0);
+    const reader = new FileReader();
+    reader.onload = (ev) => setAvatarPreview(ev.target?.result as string ?? null);
+    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImage(file, { maxWidth: 400, maxHeight: 400, quality: 0.88 });
+      const form = new FormData();
+      form.append('file', compressed);
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/account/avatar');
+        xhr.withCredentials = true;
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) setAvatarProgress(Math.round((ev.loaded / ev.total) * 100));
+        };
+        xhr.onload = () => {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            if (xhr.status >= 200 && xhr.status < 300) { updateUser({ avatarUrl: data.avatarUrl }); setAvatarPreview(null); resolve(); }
+            else reject();
+          } catch { reject(); }
+        };
+        xhr.onerror = () => reject();
+        xhr.send(form);
+      });
+    } catch { /* keep preview */ }
+    finally { setAvatarUploading(false); e.target.value = ''; }
+  }
 
   // Load follow state + counts + viewer reactions on mount
   useEffect(() => {
@@ -201,27 +240,53 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
         >
           {/* Avatar row */}
           <div className="flex items-start justify-between" style={{ marginTop: -44 }}>
-            {/* Avatar */}
-            {profileUser.avatarUrl ? (
-              <img
-                src={profileUser.avatarUrl}
-                alt={profileUser.name}
-                className="w-24 h-24 rounded-full object-cover"
-                style={{ border: '4px solid var(--tr-surface)', boxShadow: '0 0 0 3px var(--tr-gold)' }}
-              />
-            ) : (
-              <div
-                className="w-24 h-24 rounded-full flex items-center justify-center text-4xl font-black"
-                style={{
-                  background: coverGradient,
-                  color: '#fff',
-                  border: '4px solid var(--tr-surface)',
-                  boxShadow: '0 0 0 3px var(--tr-gold)',
-                }}
-              >
-                {profileUser.name.charAt(0)}
-              </div>
-            )}
+            {/* Avatar — tappable for own profile to upload */}
+            <div className="relative shrink-0">
+              {(avatarPreview || user?.avatarUrl || profileUser.avatarUrl) ? (
+                <img
+                  src={avatarPreview ?? (isOwnProfile ? (user?.avatarUrl ?? profileUser.avatarUrl ?? '') : (profileUser.avatarUrl ?? ''))}
+                  alt={profileUser.name}
+                  className="w-24 h-24 rounded-full object-cover"
+                  style={{ border: '4px solid var(--tr-surface)', boxShadow: '0 0 0 3px var(--tr-gold)' }}
+                />
+              ) : (
+                <div
+                  className="w-24 h-24 rounded-full flex items-center justify-center text-4xl font-black"
+                  style={{ background: coverGradient, color: '#fff', border: '4px solid var(--tr-surface)', boxShadow: '0 0 0 3px var(--tr-gold)' }}
+                >
+                  {profileUser.name.charAt(0)}
+                </div>
+              )}
+
+              {/* Upload progress overlay */}
+              {avatarUploading && (
+                <div className="absolute inset-0 rounded-full flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)' }}>
+                  <svg className="w-16 h-16 -rotate-90 absolute" viewBox="0 0 64 64">
+                    <circle cx="32" cy="32" r="27" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="5" />
+                    <circle cx="32" cy="32" r="27" fill="none" stroke="#fff" strokeWidth="5"
+                      strokeDasharray={`${2 * Math.PI * 27}`}
+                      strokeDashoffset={`${2 * Math.PI * 27 * (1 - avatarProgress / 100)}`}
+                      strokeLinecap="round" style={{ transition: 'stroke-dashoffset 0.2s ease' }} />
+                  </svg>
+                  <span className="text-white font-black text-xs relative z-10">{avatarProgress}%</span>
+                </div>
+              )}
+
+              {/* Camera icon overlay — own profile, not uploading */}
+              {isOwnProfile && !avatarUploading && (
+                <label
+                  className="absolute bottom-0 end-0 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition active:scale-90"
+                  style={{ background: 'var(--tr-gold)', border: '2px solid var(--tr-surface)' }}
+                  aria-label={isRtl ? 'تغيير الصورة' : 'Change photo'}
+                >
+                  <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={handleAvatarUpload} />
+                  <svg className="w-4 h-4" fill="none" stroke="#fff" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                  </svg>
+                </label>
+              )}
+            </div>
 
             {/* Action buttons (only for other users) */}
             {!isOwnProfile && (

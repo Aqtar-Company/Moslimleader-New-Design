@@ -52,6 +52,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     body: (imageUrl ? '📷 صورة' : videoUrl ? '🎥 فيديو' : content).slice(0, 80),
     url: `/tareeq/inbox/${params.id}`,
     tag: `msg-${params.id}`,
+    type: 'message',
   }).catch(() => {});
 
   // In-app notification at most once per 5 minutes (non-blocking)

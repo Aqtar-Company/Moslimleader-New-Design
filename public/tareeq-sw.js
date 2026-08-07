@@ -6,9 +6,8 @@ const ALL_CACHES    = [CACHE_STATIC, CACHE_PAGES, CACHE_IMAGES];
 
 const SHELL = [
   '/tareeq',
-  '/tareeq-logo- Rounded.png',
-  '/tareeq-logo- circle.png',
-  '/tareeq-logo- small.png',
+  '/Tareeq-big.png',
+  '/Tareeq-small.png',
 ];
 
 // ── Install: pre-cache shell ────────────────────────────────────────
@@ -167,12 +166,14 @@ self.addEventListener('push', e => {
     actions.push({ action: 'reply', title: '↩ رد'    });
   } else if (postType === 'like' || postType === 'message') {
     actions.push({ action: 'view', title: '👁 عرض' });
+  } else if (postType === 'call') {
+    actions.push({ action: 'view', title: '📞 فتح' });
   }
 
   const options = {
     body:     data.body     ?? '',
-    icon:     '/tareeq-logo- circle.png',
-    badge:    '/tareeq-logo- small.png',
+    icon:     '/Tareeq-big.png',
+    badge:    '/Tareeq-small.png',
     image:    data.image    ?? undefined,
     tag:      data.tag      ?? 'tareeq',
     renotify: true,

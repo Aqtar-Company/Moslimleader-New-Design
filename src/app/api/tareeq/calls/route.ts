@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
+import { sendPushToUser } from '@/lib/tareeq-push';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,15 @@ export async function POST(req: NextRequest) {
   const call = await prisma.tareeqCall.create({
     data: { callerId: user.userId, calleeId, type, callerIce: [] },
   });
+
+  // Push notification to callee so they see the call even when app is closed
+  sendPushToUser(calleeId, {
+    title: user.name ?? 'مكالمة واردة',
+    body: type === 'video' ? '📹 مكالمة فيديو واردة' : '🎙️ مكالمة صوتية واردة',
+    url: '/tareeq',
+    tag: `call-${call.id}`,
+    type: 'call' as const,
+  }).catch(() => {});
 
   return NextResponse.json({ callId: call.id });
 }

@@ -17,7 +17,7 @@ export interface PushPayload {
   // Rich push (Feature 5): post image shown in the notification
   image?: string;
   // Notification type drives which action buttons appear in SW (Feature 4)
-  type?: 'like' | 'comment' | 'message' | 'generic';
+  type?: 'like' | 'comment' | 'message' | 'call' | 'generic';
   // Used by SW to build the 'reply' action deep-link (/tareeq/:postId#comments)
   postId?: string;
 }

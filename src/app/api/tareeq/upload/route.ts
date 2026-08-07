@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile } from 'fs/promises';
+import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { getAuthUser } from '@/lib/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
@@ -63,7 +63,9 @@ export async function POST(req: NextRequest) {
     fileData = raw;
   }
 
-  const dest = path.join(process.cwd(), 'public', 'uploads', 'tareeq', filename);
+  const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'tareeq');
+  await mkdir(uploadDir, { recursive: true });
+  const dest = path.join(uploadDir, filename);
   await writeFile(dest, fileData);
   const url = `/uploads/tareeq/${filename}`;
 

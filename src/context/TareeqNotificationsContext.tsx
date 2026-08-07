@@ -25,12 +25,38 @@ function urlBase64ToUint8Array(base64: string): Uint8Array {
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
 
+function playChime() {
+  try {
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const resume = ctx.state === 'suspended' ? ctx.resume() : Promise.resolve();
+    resume.then(() => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.18);
+      gain.gain.setValueAtTime(0.28, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.35);
+      osc.onended = () => ctx.close().catch(() => {});
+    }).catch(() => {});
+  } catch { /* audio not available */ }
+}
+
 export function TareeqNotificationsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [notifCount, setNotifCount] = useState(0);
   const [messageCount, setMessageCount] = useState(0);
   const [pushPermission, setPushPermission] = useState<PushPermission>('unsupported');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const prevNotifRef = useRef(0);
+  const prevMsgRef = useRef(0);
+  const initialPollDone = useRef(false);
 
   // Register service worker + periodic background sync (badge update)
   useEffect(() => {
@@ -95,8 +121,21 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
         fetch('/api/tareeq/notifications?countOnly=true', { credentials: 'include' }),
         fetch('/api/tareeq/conversations?countOnly=true', { credentials: 'include' }),
       ]);
-      if (nRes.ok) { const d = await nRes.json(); setNotifCount(d.unreadCount ?? 0); }
-      if (cRes.ok) { const d = await cRes.json(); setMessageCount(d.unreadCount ?? 0); }
+      if (nRes.ok) {
+        const d = await nRes.json();
+        const n = d.unreadCount ?? 0;
+        if (initialPollDone.current && n > prevNotifRef.current) playChime();
+        prevNotifRef.current = n;
+        setNotifCount(n);
+      }
+      if (cRes.ok) {
+        const d = await cRes.json();
+        const m = d.unreadCount ?? 0;
+        if (initialPollDone.current && m > prevMsgRef.current) playChime();
+        prevMsgRef.current = m;
+        setMessageCount(m);
+      }
+      initialPollDone.current = true;
     } catch { /* ignore */ }
   }, [user]);
 

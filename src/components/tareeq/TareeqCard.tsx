@@ -444,6 +444,8 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                   className="text-xs leading-relaxed"
                   style={{
                     color: 'var(--tr-text-secondary)',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
                     ...(isLong && !textExpanded ? {
                       display: '-webkit-box',
                       WebkitBoxOrient: 'vertical' as const,

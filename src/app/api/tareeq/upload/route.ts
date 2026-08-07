@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getAuthUser } from '@/lib/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
 
@@ -10,6 +9,15 @@ const ALLOWED_VIDEO = ['video/mp4', 'video/webm', 'video/quicktime'];
 const MAX_IMAGE = 10 * 1024 * 1024;  // 10MB
 const MAX_VIDEO = 100 * 1024 * 1024; // 100MB
 
+const r2 = new S3Client({
+  region: 'auto',
+  endpoint: process.env.R2_ENDPOINT!,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+  },
+});
+
 async function compressImageBuffer(buffer: Buffer): Promise<{ data: Buffer; ext: string }> {
   try {
     const sharp = (await import('sharp')).default;
@@ -17,7 +25,6 @@ async function compressImageBuffer(buffer: Buffer): Promise<{ data: Buffer; ext:
       .resize(1920, 1920, { fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: 82, progressive: true })
       .toBuffer();
-    // Use compressed only if it saved space
     return { data: data.length < buffer.length ? data : buffer, ext: 'jpg' };
   } catch {
     return { data: buffer, ext: 'jpg' };
@@ -50,24 +57,31 @@ export async function POST(req: NextRequest) {
   const raw = Buffer.from(await file.arrayBuffer());
   const timestamp = Date.now();
 
-  let filename: string;
+  let key: string;
   let fileData: Buffer;
+  let contentType: string;
 
   if (isImage) {
     const { data, ext } = await compressImageBuffer(raw);
-    filename = `${auth.userId}-${timestamp}.${ext}`;
+    key = `tareeq/${auth.userId}-${timestamp}.${ext}`;
     fileData = data;
+    contentType = 'image/jpeg';
   } else {
     const ext = file.type.split('/')[1].replace('quicktime', 'mov');
-    filename = `${auth.userId}-${timestamp}.${ext}`;
+    key = `tareeq/${auth.userId}-${timestamp}.${ext}`;
     fileData = raw;
+    contentType = file.type;
   }
 
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'tareeq');
-  await mkdir(uploadDir, { recursive: true });
-  const dest = path.join(uploadDir, filename);
-  await writeFile(dest, fileData);
-  const url = `/uploads/tareeq/${filename}`;
+  await r2.send(new PutObjectCommand({
+    Bucket: process.env.R2_BUCKET_NAME!,
+    Key: key,
+    Body: fileData,
+    ContentType: contentType,
+  }));
+
+  const publicUrl = process.env.R2_PUBLIC_URL!;
+  const url = `${publicUrl}/${key}`;
 
   return NextResponse.json({ ok: true, url, type: isImage ? 'image' : 'video' });
 }

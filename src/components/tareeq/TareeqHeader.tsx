@@ -63,8 +63,10 @@ export default function TareeqHeader({ onCreateClick }: Props) {
           </Link>
 
           {/* Center: wordmark */}
-          <Link href="/tareeq" className="flex items-center gap-1" aria-label="Tareeq Home">
-            <span style={{ color: 'var(--tr-gold)', fontSize: 13 }}>★</span>
+          <Link href="/tareeq" className="flex items-center gap-2" aria-label="Tareeq Home">
+            <span className="w-7 h-7 rounded-lg overflow-hidden shrink-0">
+              <img src="/Tareeq-small.png" alt="" className="w-full h-full object-cover" />
+            </span>
             <span className="font-black text-sm tracking-wide" style={{ color: 'var(--tr-text-primary)' }}>
               {isRtl ? 'طريق' : 'Tareeq'}
             </span>

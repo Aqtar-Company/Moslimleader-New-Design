@@ -182,9 +182,13 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   }
 
   async function submit() {
-    // With a photo/video, caption is optional. Without media, require at least 10 chars.
+    // With media: caption is optional. Without media: require 10+ chars.
     if (!mediaUrl && content.trim().length < 10) {
       setError(isRtl ? 'اكتب أكثر (10 أحرف على الأقل)' : 'Write at least 10 characters');
+      return;
+    }
+    if (!mediaUrl && !content.trim()) {
+      setError(isRtl ? 'أضف نصاً أو صورة' : 'Add text or a photo');
       return;
     }
     setLoading(true); setError('');
@@ -267,7 +271,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           </div>
           <button
             onClick={submit}
-            disabled={loading || uploading || (!mediaUrl && charCount < 10)}
+            disabled={loading || uploading || (!mediaUrl && charCount < 10) || (!mediaUrl && !content.trim())}
             className="font-black px-5 py-2 rounded-full text-sm disabled:opacity-40 active:scale-95 transition flex items-center gap-2"
             style={{
               background: 'rgba(255,255,255,0.95)',
@@ -461,7 +465,10 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
         </div>
 
         {/* ── Footer toolbar ── */}
-        <div className="px-5 py-3 flex items-center gap-3" style={{ borderTop: '1px solid var(--tr-border-subtle)', background: 'var(--tr-surface)' }}>
+        <div className="px-5 pt-3 pb-1 flex flex-col gap-2" style={{ borderTop: '1px solid var(--tr-border-subtle)', background: 'var(--tr-surface)' }}>
+          {error && <p className="text-xs text-center font-semibold py-1 px-3 rounded-lg" style={{ color: '#f87171', background: 'rgba(248,113,113,0.10)' }}>{error}</p>}
+        </div>
+        <div className="px-5 pb-3 flex items-center gap-3" style={{ background: 'var(--tr-surface)' }}>
           <label
             className={`flex items-center gap-2 text-xs font-semibold rounded-full px-3 py-2 transition cursor-pointer ${mediaUrl ? 'cursor-not-allowed opacity-50' : ''}`}
             style={{ color: mediaUrl ? 'var(--tr-teal)' : 'var(--tr-text-muted)', background: mediaUrl ? 'var(--tr-teal-dim)' : 'transparent' }}
@@ -499,7 +506,6 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           </div>
         </div>
 
-        {error && <p className="px-5 pb-4 text-xs text-center" style={{ color: '#f87171' }}>{error}</p>}
       </div>
     </div>,
     document.body,

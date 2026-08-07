@@ -155,16 +155,20 @@ export async function POST(req: NextRequest) {
         .slice(0, 10)
     : null;
 
-  if (content.length < 10) {
+  // Media URLs (already uploaded via /api/tareeq/upload)
+  const imageUrl = String(body.imageUrl ?? '').trim() || null;
+  const videoUrl = String(body.videoUrl ?? '').trim() || null;
+
+  const hasMedia = !!(imageUrl || videoUrl);
+  if (!hasMedia && content.length < 10) {
     return NextResponse.json({ error: 'اكتب أكثر (10 أحرف على الأقل)' }, { status: 400 });
+  }
+  if (!hasMedia && content.length === 0) {
+    return NextResponse.json({ error: 'أضف نصاً أو صورة' }, { status: 400 });
   }
   if (content.length > 5000) {
     return NextResponse.json({ error: 'النص طويل جداً (5000 حرف كحد أقصى)' }, { status: 400 });
   }
-
-  // Media URLs (already uploaded via /api/tareeq/upload)
-  const imageUrl = String(body.imageUrl ?? '').trim() || null;
-  const videoUrl = String(body.videoUrl ?? '').trim() || null;
 
   const dbUser = await prisma.user.findUnique({ where: { id: user.userId }, select: { name: true, avatarUrl: true } });
 

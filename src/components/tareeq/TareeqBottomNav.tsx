@@ -1,15 +1,28 @@
 'use client';
+import { useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 import { useLang } from '@/context/LanguageContext';
 
-interface Props { onCreateClick: () => void; onCameraClick?: () => void; }
+interface Props { onCreateClick: () => void; }
 
-export default function TareeqBottomNav({ onCreateClick, onCameraClick }: Props) {
+export default function TareeqBottomNav({ onCreateClick }: Props) {
   const pathname = usePathname();
   const { notifCount, messageCount } = useTareeqNotifications();
   const { isRtl } = useLang();
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  function handleCameraClick() {
+    cameraInputRef.current?.click();
+  }
+
+  function handleCameraFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    window.dispatchEvent(new CustomEvent('tareeq-camera-capture', { detail: file }));
+    e.target.value = '';
+  }
 
   const isHome  = pathname === '/tareeq';
   const isInbox = pathname.startsWith('/tareeq/inbox');
@@ -26,6 +39,16 @@ export default function TareeqBottomNav({ onCreateClick, onCameraClick }: Props)
         height: 'calc(64px + env(safe-area-inset-bottom))',
       }}
     >
+      {/* Hidden file input — triggered by camera button directly (same user gesture) */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleCameraFileChange}
+      />
+
       <div className="h-16 flex items-center">
         {/* Home */}
         <NavItem href="/tareeq" active={isHome} label={isRtl ? 'الرئيسية' : 'Home'}>
@@ -34,7 +57,7 @@ export default function TareeqBottomNav({ onCreateClick, onCameraClick }: Props)
 
         {/* Camera — opens native device camera */}
         <button
-          onClick={onCameraClick ?? onCreateClick}
+          onClick={handleCameraClick}
           className="flex-1 flex flex-col items-center justify-center gap-1 py-2 relative"
           aria-label={isRtl ? 'صورة' : 'Camera'}
           style={{ color: 'var(--tr-text-secondary)' }}
@@ -43,7 +66,7 @@ export default function TareeqBottomNav({ onCreateClick, onCameraClick }: Props)
           <span className="text-[9px] font-semibold leading-none">{isRtl ? 'كاميرا' : 'Camera'}</span>
         </button>
 
-        {/* Center CTA — dark blue star button */}
+        {/* Center CTA — dark blue 8-pointed star button */}
         <div className="flex-1 flex justify-center items-center">
           <button
             onClick={onCreateClick}
@@ -58,9 +81,9 @@ export default function TareeqBottomNav({ onCreateClick, onCameraClick }: Props)
             }}
             aria-label={isRtl ? 'اترك علامة' : 'Leave a Mark'}
           >
-            {/* 6-pointed star — centered */}
+            {/* 8-pointed star */}
             <svg className="w-5 h-5" fill="#fff" viewBox="0 0 24 24">
-              <polygon points="12,2 14.9,7 20.7,7 17.8,12 20.7,17 14.9,17 12,22 9.1,17 3.3,17 6.2,12 3.3,7 9.1,7" />
+              <path d="M12 3l1.4 5.6L18.4 5.6l-3 4.4L21 12l-5.6 1.4 2.4 5.4-4.8-2.8L12 21l-1.4-5.6-5.4 2.4 2.8-4.8L3 12l5.6-1.4L6.2 5l4.4 3z" />
             </svg>
           </button>
         </div>

@@ -157,49 +157,57 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
         className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl flex flex-col overflow-hidden"
         style={{
           maxHeight: '92dvh',
-          background: 'var(--tr-raised)',
+          background: 'var(--tr-surface)',
           border: '1px solid var(--tr-border-soft)',
-          boxShadow: '0 24px 80px rgba(0,0,0,0.14)',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.18)',
         }}
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
-        {/* ── Header ── */}
-        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+        {/* ── Header — blue gradient ── */}
+        <div
+          className="flex items-center justify-between px-5 py-4"
+          style={{
+            background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #3b82f6 100%)',
+            borderBottom: '1px solid rgba(255,255,255,0.12)',
+          }}
+        >
           <button
             onClick={onClose}
             className="w-9 h-9 flex items-center justify-center rounded-xl transition"
-            style={{ color: 'var(--tr-text-muted)' }}
+            style={{ color: 'rgba(255,255,255,0.7)', background: 'rgba(255,255,255,0.10)' }}
             aria-label={isRtl ? 'إغلاق' : 'Close'}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--tr-text-primary)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--tr-text-muted)')}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.18)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.10)')}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
           <div className="flex items-center gap-2">
-            <span style={{ color: 'var(--tr-gold)', fontSize: 16 }}>★</span>
-            <span className="font-black text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'اترك علامة' : 'Leave a Mark'}</span>
+            <svg className="w-4 h-4" fill="#fff" viewBox="0 0 24 24">
+              <path d="M12 3l1.4 5.6L18.4 5.6l-3 4.4L21 12l-5.6 1.4 2.4 5.4-4.8-2.8L12 21l-1.4-5.6-5.4 2.4 2.8-4.8L3 12l5.6-1.4L6.2 5l4.4 3z" />
+            </svg>
+            <span className="font-black text-sm" style={{ color: '#fff' }}>{isRtl ? 'اترك علامة' : 'Leave a Mark'}</span>
           </div>
           <button
             onClick={submit}
             disabled={loading || charCount < 10}
-            className="font-black px-5 py-2 rounded-full text-sm disabled:opacity-30 active:scale-95 transition flex items-center gap-2"
+            className="font-black px-5 py-2 rounded-full text-sm disabled:opacity-40 active:scale-95 transition flex items-center gap-2"
             style={{
-              background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold))',
-              color: '#fff',
-              boxShadow: loading || charCount < 10 ? 'none' : '0 0 14px var(--tr-gold-glow)',
+              background: 'rgba(255,255,255,0.95)',
+              color: '#1e3a8a',
+              boxShadow: loading || charCount < 10 ? 'none' : '0 2px 12px rgba(0,0,0,0.20)',
             }}
           >
-            {loading && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+            {loading && <span className="w-3.5 h-3.5 border-2 border-blue-900/30 border-t-blue-900 rounded-full animate-spin" />}
             {isRtl ? 'انشر' : 'Publish'}
           </button>
         </div>
 
         {/* ── Body ── */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto" style={{ background: 'var(--tr-surface)' }}>
 
           {/* Compose area */}
           <div className="flex gap-3 px-5 pt-4 pb-2">
@@ -253,7 +261,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           )}
 
           {/* Category + Tags */}
-          <div className="px-5 pb-4 space-y-3 pt-3" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
+          <div className="px-5 pb-4 space-y-3 pt-3" style={{ borderTop: '1px solid var(--tr-border-soft)' }}>
             {/* Category picker */}
             <div className="relative" ref={catPickerRef}>
               <button

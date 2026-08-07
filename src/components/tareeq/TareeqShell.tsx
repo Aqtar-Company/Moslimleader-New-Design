@@ -17,20 +17,12 @@ export default function TareeqShell({ children }: { children: React.ReactNode })
     }
   }
 
-  function handleCameraClick() {
-    if (pathname === '/tareeq') {
-      window.dispatchEvent(new Event('tareeq-open-camera'));
-    } else {
-      router.push('/tareeq?action=create');
-    }
-  }
-
   return (
     <TareeqNotificationsProvider>
       <TareeqSplash />
       <TareeqOfflineBanner />
       {children}
-      <TareeqBottomNav onCreateClick={handleCreateClick} onCameraClick={handleCameraClick} />
+      <TareeqBottomNav onCreateClick={handleCreateClick} />
     </TareeqNotificationsProvider>
   );
 }

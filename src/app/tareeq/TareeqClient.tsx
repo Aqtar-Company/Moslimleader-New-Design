@@ -78,7 +78,6 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const feedTopRef = useRef<HTMLDivElement>(null);
   const searchMountedRef = useRef(false);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [cameraFile, setCameraFile] = useState<File | null>(null);
   const touchStartY = useRef(0);
   // Refs so touch handlers don't form stale closures
@@ -241,38 +240,24 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
     return () => window.removeEventListener('tareeq-open-create', h);
   }, [user]);
 
-  // Bottom nav camera button — trigger native device camera
+  // Bottom nav camera button — file dispatched by TareeqBottomNav after user picks photo
   useEffect(() => {
-    const h = () => {
+    const h = (e: Event) => {
+      const file = (e as CustomEvent<File>).detail;
+      if (!file) return;
       if (!user) { setShowGate(true); return; }
-      cameraInputRef.current?.click();
+      setCameraFile(file);
+      setShowCreate(true);
     };
-    window.addEventListener('tareeq-open-camera', h);
-    return () => window.removeEventListener('tareeq-open-camera', h);
+    window.addEventListener('tareeq-camera-capture', h);
+    return () => window.removeEventListener('tareeq-camera-capture', h);
   }, [user]);
-
-  function handleCameraFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setCameraFile(file);
-    setShowCreate(true);
-    e.target.value = '';
-  }
 
   const skeletons = Array.from({ length: 6 });
 
   return (
     <div className="min-h-screen">
       <TareeqPWA />
-      {/* Hidden camera input — triggers native device camera */}
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={handleCameraFileChange}
-      />
 
       <TareeqHeader
         onCreateClick={handleCreateClick}
@@ -286,16 +271,25 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         <h1 className="font-black text-2xl" style={{ color: 'var(--tr-text-primary)' }}>
           {isRtl ? 'اكتشف' : 'Discover'}
         </h1>
-        <select
-          value={sort}
-          onChange={e => handleSortChange(e.target.value as 'newest' | 'liked' | 'following')}
-          className="rounded-full px-3 py-1.5 text-xs focus:outline-none shrink-0 cursor-pointer"
-          style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-secondary)' }}
-        >
-          <option value="newest">{isRtl ? 'الأحدث' : 'Newest'}</option>
-          <option value="liked">{isRtl ? 'الأكثر إعجاباً' : 'Most Liked'}</option>
-          {user && <option value="following">{isRtl ? 'من أتابعهم' : 'Following'}</option>}
-        </select>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {(['newest', 'liked', ...(user ? ['following'] : [])] as ('newest' | 'liked' | 'following')[]).map(s => {
+            const labels: Record<string, string> = { newest: isRtl ? 'جديد' : 'New', liked: isRtl ? 'الأفضل' : 'Top', following: isRtl ? 'أتابع' : 'Feed' };
+            const active = sort === s;
+            return (
+              <button
+                key={s}
+                onClick={() => handleSortChange(s)}
+                className="text-xs font-bold px-3 py-1.5 rounded-full transition-all"
+                style={active
+                  ? { background: 'var(--tr-gold)', color: '#fff', boxShadow: '0 2px 8px var(--tr-gold-glow)' }
+                  : { background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }
+                }
+              >
+                {labels[s]}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* ── Story circles — categories ──────────────────────────────────── */}

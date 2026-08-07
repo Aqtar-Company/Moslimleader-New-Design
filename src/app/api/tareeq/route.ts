@@ -160,10 +160,7 @@ export async function POST(req: NextRequest) {
   const videoUrl = String(body.videoUrl ?? '').trim() || null;
 
   const hasMedia = !!(imageUrl || videoUrl);
-  if (!hasMedia && content.length < 10) {
-    return NextResponse.json({ error: 'اكتب أكثر (10 أحرف على الأقل)' }, { status: 400 });
-  }
-  if (!hasMedia && content.length === 0) {
+  if (!hasMedia && content.length < 1) {
     return NextResponse.json({ error: 'أضف نصاً أو صورة' }, { status: 400 });
   }
   if (content.length > 5000) {

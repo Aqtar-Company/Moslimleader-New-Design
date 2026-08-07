@@ -2,14 +2,14 @@
 import { useState, useEffect } from 'react';
 
 export default function TareeqSplash() {
-  const [phase, setPhase] = useState<'in' | 'out' | 'gone'>('in');
+  // Start as 'gone' — SSR and first client render both produce null.
+  // useEffect sets to 'in' only on the first visit (no sessionStorage key).
+  const [phase, setPhase] = useState<'in' | 'out' | 'gone'>('gone');
 
   useEffect(() => {
-    if (sessionStorage.getItem('tareeq-splash-shown')) {
-      setPhase('gone');
-      return;
-    }
+    if (sessionStorage.getItem('tareeq-splash-shown')) return;
     sessionStorage.setItem('tareeq-splash-shown', '1');
+    setPhase('in');
     const fadeOut = setTimeout(() => setPhase('out'), 2200);
     const remove  = setTimeout(() => setPhase('gone'), 2900);
     return () => { clearTimeout(fadeOut); clearTimeout(remove); };

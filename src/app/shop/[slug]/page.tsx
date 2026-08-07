@@ -49,7 +49,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const rawDesc = product.shortDescription || product.description?.replace(/<[^>]+>/g, '').slice(0, 160) || '';
     const description = rawDesc ? rawDesc : 'منتج إسلامي تربوي من متجر مسلم ليدر';
     const rawImage = product.images?.[0] || '';
-    const imageUrl = rawImage.startsWith('http') ? rawImage : rawImage ? `${baseUrl}${rawImage}` : `${baseUrl}/logo.png`;
+    const imageUrl = rawImage.startsWith('http') ? rawImage : rawImage ? `${baseUrl}${rawImage}` : `${baseUrl}/ml-logo-new.png`;
     const url = `${baseUrl}/shop/${slug}`;
 
     return {

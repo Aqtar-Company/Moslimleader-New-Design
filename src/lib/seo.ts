@@ -8,7 +8,8 @@ export const SITE_URL =
   process.env.NEXT_PUBLIC_BASE_URL || 'https://moslimleader.com';
 export const SITE_NAME = 'مسلم ليدر';
 export const SITE_NAME_EN = 'Moslim Leader';
-export const ORG_LOGO = `${SITE_URL}/logo.png`;
+export const ORG_LOGO = `${SITE_URL}/ml-logo-new.png`;
+export const ORG_OG_IMAGE = `${SITE_URL}/ml-logo-new.png`;
 export const ORG_DESCRIPTION =
   'منصة مسلم ليدر — متجر متخصص في كتب وألعاب الأطفال الإسلامية، حقائب مدرسية، ومنتجات تعليمية للأمهات اللي بيربّو قادة الغد على القيم.';
 
@@ -21,7 +22,7 @@ export function canonical(path: string): string {
 
 // Resolve a stored image to an absolute URL (Next.js OG + JSON-LD
 // both require absolute paths).
-export function absUrl(maybePath: string | null | undefined, fallback = `${SITE_URL}/logo.png`): string {
+export function absUrl(maybePath: string | null | undefined, fallback = `${SITE_URL}/ml-logo-new.png`): string {
   if (!maybePath) return fallback;
   if (maybePath.startsWith('http://') || maybePath.startsWith('https://')) {
     return maybePath;

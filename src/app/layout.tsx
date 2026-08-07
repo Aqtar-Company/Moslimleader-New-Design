@@ -12,6 +12,8 @@ import WhatsAppButton from '@/components/WhatsAppButton';
 import { ToastProvider } from '@/components/ui/Toast';
 import { ConfirmProvider } from '@/components/ui/ConfirmDialog';
 
+const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://moslimleader.com';
+
 export const metadata: Metadata = {
   // titleTemplate lets child pages set just their unique title and we
   // append the brand suffix automatically. The `default` is shown on
@@ -25,7 +27,12 @@ export const metadata: Metadata = {
   // Absolute base URL for any metadata that uses relative paths
   // (OG images, alternates). Lets product/book pages emit relative
   // image paths and have Next.js resolve them correctly.
-  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://moslimleader.com'),
+  metadataBase: new URL(SITE_URL),
+  openGraph: {
+    siteName: 'مسلم ليدر',
+    locale: 'ar_EG',
+    images: [{ url: `${SITE_URL}/ml-logo-new.png`, width: 512, height: 512, alt: 'مسلم ليدر' }],
+  },
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },

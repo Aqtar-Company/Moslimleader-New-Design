@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import type { Metadata } from 'next';
 import ShopPageClient from './ShopPageClient';
-import { canonical, organizationJsonLd, websiteJsonLd, ORG_DESCRIPTION } from '@/lib/seo';
+import { canonical, organizationJsonLd, websiteJsonLd, ORG_DESCRIPTION, ORG_OG_IMAGE } from '@/lib/seo';
 import { getMergedStaticProducts } from '@/lib/product-overrides';
 import { prisma } from '@/lib/prisma';
 import { products as staticProducts } from '@/lib/products';
@@ -27,6 +27,7 @@ export const metadata: Metadata = {
     siteName: 'مسلم ليدر',
     type: 'website',
     locale: 'ar_EG',
+    images: [{ url: ORG_OG_IMAGE, width: 512, height: 512, alt: 'مسلم ليدر' }],
   },
 };
 

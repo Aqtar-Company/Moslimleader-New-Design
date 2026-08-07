@@ -11,6 +11,7 @@ import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import TareeqHeader from '@/components/tareeq/TareeqHeader';
 import TareeqSidebar from '@/components/tareeq/TareeqSidebar';
 import TareeqPWA, { TareeqInstallBanner } from '@/components/tareeq/TareeqPWA';
+import { consumeCameraFile } from '@/lib/tareeq-camera-store';
 
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
@@ -240,17 +241,20 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
     return () => window.removeEventListener('tareeq-open-create', h);
   }, [user]);
 
-  // Bottom nav camera button — file dispatched by TareeqBottomNav after user picks photo
+  // Camera file ready — reads from module store (avoids CustomEvent.detail issues on mobile)
   useEffect(() => {
-    const h = (e: Event) => {
-      const file = (e as CustomEvent<File>).detail;
+    function openCameraModal() {
+      const file = consumeCameraFile();
       if (!file) return;
       if (!user) { setShowGate(true); return; }
       setCameraFile(file);
       setShowCreate(true);
-    };
-    window.addEventListener('tareeq-camera-capture', h);
-    return () => window.removeEventListener('tareeq-camera-capture', h);
+    }
+    // Handle event fired while already on /tareeq
+    window.addEventListener('tareeq-camera-ready', openCameraModal);
+    // Handle case where we navigated to /tareeq from another page — file may already be in store
+    openCameraModal();
+    return () => window.removeEventListener('tareeq-camera-ready', openCameraModal);
   }, [user]);
 
   const skeletons = Array.from({ length: 6 });

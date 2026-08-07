@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 import { useLang } from '@/context/LanguageContext';
+import { setCameraFile } from '@/lib/tareeq-camera-store';
 
 interface Props { onCreateClick: () => void; }
 
@@ -20,7 +21,8 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
   function handleCameraFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    window.dispatchEvent(new CustomEvent('tareeq-camera-capture', { detail: file }));
+    setCameraFile(file);
+    window.dispatchEvent(new Event('tareeq-camera-ready'));
     e.target.value = '';
   }
 

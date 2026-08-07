@@ -7,8 +7,8 @@ export default function TareeqSplash() {
   const [phase, setPhase] = useState<'in' | 'out' | 'gone'>('gone');
 
   useEffect(() => {
-    if (sessionStorage.getItem('tareeq-splash-shown')) return;
-    sessionStorage.setItem('tareeq-splash-shown', '1');
+    if (localStorage.getItem('tareeq-splash-shown')) return;
+    localStorage.setItem('tareeq-splash-shown', '1');
     setPhase('in');
     const fadeOut = setTimeout(() => setPhase('out'), 2200);
     const remove  = setTimeout(() => setPhase('gone'), 2900);

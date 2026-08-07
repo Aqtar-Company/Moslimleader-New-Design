@@ -48,9 +48,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     setMediaType(null);
     setUploadProgress(0);
     if (initialFile.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (ev) => setLocalPreview(ev.target?.result as string ?? null);
-      reader.readAsDataURL(initialFile);
+      setLocalPreview(URL.createObjectURL(initialFile));
     }
     doUpload(initialFile);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -117,9 +115,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     setMediaType(null);
     setUploadProgress(0);
     if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (ev) => setLocalPreview(ev.target?.result as string ?? null);
-      reader.readAsDataURL(file);
+      setLocalPreview(URL.createObjectURL(file));
     }
     await doUpload(file);
     e.target.value = '';
@@ -224,7 +220,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
               background: canPublish
                 ? 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))'
                 : 'var(--tr-overlay)',
-              color: canPublish ? '#0a0d06' : 'var(--tr-text-muted)',
+              color: canPublish ? '#fff' : 'var(--tr-text-muted)',
               boxShadow: canPublish ? '0 2px 12px var(--tr-gold-glow)' : 'none',
             }}
           >

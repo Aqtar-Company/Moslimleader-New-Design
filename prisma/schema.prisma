@@ -64,6 +64,9 @@ model User {
   tareeqFollowing    TareeqFollow[] @relation("TareeqFollowing")
   tareeqFollowers    TareeqFollow[] @relation("TareeqFollowers")
   tareeqReactions    TareeqReaction[]
+  tareeqGroupsCreated  TareeqGroup[]        @relation("TareeqGroupCreator")
+  tareeqGroupMembers   TareeqGroupMember[]  @relation("TareeqGroupMemberships")
+  tareeqGroupMessages  TareeqGroupMessage[] @relation("TareeqGroupMsgSender")
 
   @@index([role])
   @@index([isWholesale])
@@ -1006,6 +1009,8 @@ model TareeqMessage {
   senderId       String
   sender         User               @relation("TareeqMsgSender", fields: [senderId], references: [id], onDelete: Cascade)
   content        String             @db.Text
+  imageUrl       String?            @db.Text
+  videoUrl       String?            @db.Text
   read           Boolean            @default(false)
   createdAt      DateTime           @default(now())
 
@@ -1050,4 +1055,50 @@ model TareeqReaction {
   @@unique([postId, userId])
   @@index([postId])
   @@index([userId])
+}
+
+model TareeqGroup {
+  id          String               @id @default(cuid())
+  name        String
+  description String?              @db.Text
+  imageUrl    String?              @db.Text
+  createdBy   String
+  creator     User                 @relation("TareeqGroupCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  members     TareeqGroupMember[]
+  messages    TareeqGroupMessage[]
+  lastMessage String?              @db.Text
+  lastMessageAt DateTime?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([createdBy])
+}
+
+model TareeqGroupMember {
+  id       String      @id @default(cuid())
+  groupId  String
+  group    TareeqGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User        @relation("TareeqGroupMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  role     String      @default("member")
+  joinedAt DateTime    @default(now())
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@index([groupId])
+}
+
+model TareeqGroupMessage {
+  id        String      @id @default(cuid())
+  groupId   String
+  group     TareeqGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User        @relation("TareeqGroupMsgSender", fields: [senderId], references: [id], onDelete: Cascade)
+  content   String      @db.Text
+  imageUrl  String?     @db.Text
+  videoUrl  String?     @db.Text
+  createdAt DateTime    @default(now())
+
+  @@index([groupId, createdAt])
+  @@index([senderId])
 }

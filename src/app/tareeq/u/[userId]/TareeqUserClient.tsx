@@ -364,26 +364,17 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
           </div>
         </div>
 
-        {/* ── Tab nav ─────────────────────────────────────────── */}
+        {/* ── Tab nav — Posts only ─────────────────────────── */}
         <div
           className="flex mt-4 rounded-2xl overflow-hidden"
           style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}
         >
-          {(['posts', 'liked'] as ProfileTab[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => handleTabChange(tab)}
-              className="flex-1 py-3 font-bold text-sm transition"
-              style={{
-                color: activeTab === tab ? 'var(--tr-gold)' : 'var(--tr-text-muted)',
-                borderBottom: activeTab === tab ? '2px solid var(--tr-gold)' : '2px solid transparent',
-              }}
-            >
-              {tab === 'posts'
-                ? (isRtl ? 'العلامات' : 'Posts')
-                : (isRtl ? 'الإعجابات' : 'Liked')}
-            </button>
-          ))}
+          <button
+            className="flex-1 py-3 font-bold text-sm"
+            style={{ color: 'var(--tr-gold)', borderBottom: '2px solid var(--tr-gold)' }}
+          >
+            {isRtl ? 'العلامات' : 'Posts'}
+          </button>
         </div>
 
         {/* ── Feed grid ───────────────────────────────────────── */}

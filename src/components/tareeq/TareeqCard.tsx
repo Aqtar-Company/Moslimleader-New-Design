@@ -186,7 +186,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         >
           {/* Clickable image area */}
           <Link href={`/tareeq/${post.id}`} className="absolute inset-0 block">
-            <img src={post.imageUrl!} alt="" className="w-full h-full object-cover" loading="lazy" />
+            <img src={post.imageUrl!} alt="" className="w-full h-full object-cover" loading="eager" referrerPolicy="no-referrer" />
             {/* Dark gradient — heavier at bottom for legibility */}
             <div style={{
               position: 'absolute', inset: 0,

@@ -28,10 +28,10 @@ export default function TareeqHeader({ onCreateClick }: Props) {
       <header
         className="fixed top-0 left-0 right-0 z-50 print:hidden"
         style={{
-          background: 'rgba(255,255,255,0.96)',
+          background: 'rgba(15,15,19,0.90)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
-          borderBottom: '1px solid rgba(26,20,18,0.06)',
+          borderBottom: '1px solid var(--tr-border-subtle)',
         }}
       >
         <div className="max-w-2xl mx-auto flex items-center justify-between px-4 h-14">

@@ -12,7 +12,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
   const { isRtl } = useLang();
 
   const isHome  = pathname === '/tareeq';
-  const isAlert = pathname.startsWith('/tareeq/notifications');
+  const isCamera = false; // camera always inactive (opens modal)
   const isInbox = pathname.startsWith('/tareeq/inbox');
   const isProfile = pathname === '/tareeq/profile' || pathname.startsWith('/tareeq/u/');
 
@@ -20,9 +20,9 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
     <nav
       className="fixed bottom-0 left-0 right-0 sm:hidden z-40 print:hidden"
       style={{
-        background: '#fff',
-        borderTop: '1px solid rgba(26,20,18,0.08)',
-        boxShadow: '0 -4px 20px rgba(0,0,0,0.06)',
+        background: 'var(--tr-surface)',
+        borderTop: '1px solid var(--tr-border-subtle)',
+        boxShadow: '0 -4px 24px rgba(0,0,0,0.30)',
         paddingBottom: 'env(safe-area-inset-bottom)',
         height: 'calc(64px + env(safe-area-inset-bottom))',
       }}
@@ -33,12 +33,18 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           <HomeIcon filled={isHome} />
         </NavItem>
 
-        {/* Search / Explore */}
-        <NavItem href="/tareeq/notifications" active={isAlert} label={isRtl ? 'إشعارات' : 'Alerts'} badge={notifCount}>
-          <BellIcon filled={isAlert} />
-        </NavItem>
+        {/* Camera — opens create modal */}
+        <button
+          onClick={onCreateClick}
+          className="flex-1 flex flex-col items-center justify-center gap-1 py-2 relative"
+          aria-label={isRtl ? 'إضافة صورة' : 'Add photo'}
+          style={{ color: '#7880a0' }}
+        >
+          <CameraIcon />
+          <span className="text-[9px] font-semibold leading-none">{isRtl ? 'كاميرا' : 'Camera'}</span>
+        </button>
 
-        {/* Center CTA — floating coral button */}
+        {/* Center CTA — dark blue star button */}
         <div className="flex-1 flex justify-center items-center">
           <button
             onClick={onCreateClick}
@@ -47,14 +53,19 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
               width: 56, height: 56,
               marginTop: -20,
               borderRadius: '50%',
-              background: 'linear-gradient(135deg, #ff7857, #ff3d1a)',
-              boxShadow: '0 6px 20px rgba(255,92,56,0.45), 0 2px 6px rgba(0,0,0,0.12)',
-              border: '3px solid #fff',
+              background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)',
+              boxShadow: '0 6px 20px rgba(37,99,235,0.45), 0 2px 6px rgba(0,0,0,0.30)',
+              border: '3px solid var(--tr-surface)',
             }}
             aria-label={isRtl ? 'اترك علامة' : 'Leave a Mark'}
           >
-            {/* 8-pointed star */}
-            <svg className="w-5 h-5" fill="#fff" viewBox="0 0 24 24">
+            {/* 8-pointed star — pushed slightly above center */}
+            <svg
+              className="w-5 h-5"
+              fill="#fff"
+              viewBox="0 0 24 24"
+              style={{ marginBottom: 5 }}
+            >
               <path d="M12 3l1.4 5.6L18.4 5.6l-3 4.4L21 12l-5.6 1.4 2.4 5.4-4.8-2.8L12 21l-1.4-5.6-5.4 2.4 2.8-4.8L3 12l5.6-1.4L6.2 5l4.4 3z" />
             </svg>
           </button>
@@ -83,7 +94,7 @@ function NavItem({ href, active, label, badge, children }: {
       href={href}
       aria-label={badgeLabel}
       className="flex-1 flex flex-col items-center justify-center gap-1 py-2 relative"
-      style={{ color: active ? 'var(--tr-gold)' : '#9896a8' }}
+      style={{ color: active ? 'var(--tr-gold-bright)' : 'var(--tr-text-muted)' }}
     >
       <div className="relative" aria-hidden="true">
         {children}
@@ -109,10 +120,11 @@ function HomeIcon({ filled }: { filled: boolean }) {
   );
 }
 
-function BellIcon({ filled }: { filled: boolean }) {
+function CameraIcon() {
   return (
-    <svg className="w-[22px] h-[22px]" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+    <svg className="w-[22px] h-[22px]" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
     </svg>
   );
 }

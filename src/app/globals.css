@@ -1,30 +1,30 @@
 @import "tailwindcss";
 
-/* ── Tareeq "Celestial Gold" design tokens ───────────────── */
+/* ── Tareeq "Modern Dark" design tokens ──────────────────── */
 :root {
-  --tr-base:    #f9f7f5;
-  --tr-surface: #ffffff;
-  --tr-raised:  #f2efea;
-  --tr-overlay: #ebe7e0;
-  --tr-border-subtle: rgba(26,20,18,0.07);
-  --tr-border-soft:   rgba(26,20,18,0.12);
-  --tr-border-strong: rgba(26,20,18,0.22);
-  /* Primary — Star Gold (matches new logo) */
-  --tr-gold:        #c49a3a;
-  --tr-gold-bright: #e8b84b;
-  --tr-gold-dim:    #a07830;
-  --tr-gold-glow:   rgba(196,154,58,0.20);
-  /* Secondary */
-  --tr-teal:        #2d9faa;
-  --tr-teal-dim:    rgba(45,159,170,0.10);
+  --tr-base:    #0f0f13;
+  --tr-surface: #16161d;
+  --tr-raised:  #1d1d28;
+  --tr-overlay: #252535;
+  --tr-border-subtle: rgba(255,255,255,0.05);
+  --tr-border-soft:   rgba(255,255,255,0.09);
+  --tr-border-strong: rgba(255,255,255,0.17);
+  /* Primary — Dark Blue */
+  --tr-gold:        #3d6ce8;
+  --tr-gold-bright: #5d87f5;
+  --tr-gold-dim:    #1e40af;
+  --tr-gold-glow:   rgba(61,108,232,0.18);
+  /* Secondary — Orange accent (lines / highlights) */
+  --tr-teal:        #f97316;
+  --tr-teal-dim:    rgba(249,115,22,0.12);
   /* Text */
-  --tr-text-primary:   #1a1a2a;
-  --tr-text-secondary: #4a4860;
-  --tr-text-muted:     #9896a8;
-  /* Dark-mode splash background (used as PWA splash via manifest) */
-  --tr-night:        #0a1020;
-  --tr-night-mid:    #0f1f3d;
-  --tr-night-horizon:#1a3a6a;
+  --tr-text-primary:   #eef0f8;
+  --tr-text-secondary: #7880a0;
+  --tr-text-muted:     #3d4060;
+  /* Night palette */
+  --tr-night:        #0f0f13;
+  --tr-night-mid:    #111320;
+  --tr-night-horizon:#1a3060;
 }
 
 body {

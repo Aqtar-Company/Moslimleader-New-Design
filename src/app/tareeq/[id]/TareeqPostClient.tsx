@@ -157,15 +157,15 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: 'var(--tr-base)' }}>
       <TareeqHeader onCreateClick={() => { if (!user) setShowGate(true); }} />
       <div className="pt-14" />
 
       <div className="max-w-2xl mx-auto px-4 py-8">
-        <article className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+        <article className="rounded-2xl overflow-hidden mb-6" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}>
           {/* Hero image */}
           {!editing && post.imageUrl && (
-            <div className="w-full overflow-hidden bg-gray-100">
+            <div className="w-full overflow-hidden" style={{ background: 'var(--tr-overlay)' }}>
               <img src={post.imageUrl} alt="" className="w-full object-cover max-h-[60vw] sm:max-h-[480px]" />
             </div>
           )}
@@ -176,13 +176,13 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
               {post.user?.avatarUrl ? (
                 <img src={post.user.avatarUrl} alt={post.authorName} className="w-10 h-10 rounded-full object-cover" />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-[#1a1a2e] text-white flex items-center justify-center font-bold">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold-bright)' }}>
                   {post.authorName.charAt(0)}
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-800 text-sm">{post.authorName}</p>
-                <p className="text-xs text-gray-400">{timeAgo(post.createdAt, isRtl)}</p>
+                <p className="font-semibold text-sm" style={{ color: 'var(--tr-text-primary)' }}>{post.authorName}</p>
+                <p className="text-xs" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(post.createdAt, isRtl)}</p>
               </div>
               <div className="flex items-center gap-2 flex-wrap justify-end">
                 {catLabel && (
@@ -194,16 +194,32 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => setEditing(true)}
-                      className="text-xs text-gray-400 hover:text-gray-700 transition px-2 py-1 rounded-lg hover:bg-gray-100"
+                      className="flex items-center gap-1.5 text-xs transition px-2 py-1.5 rounded-lg"
+                      style={{ color: 'var(--tr-text-muted)', background: 'transparent' }}
+                      onMouseEnter={e => { e.currentTarget.style.color = 'var(--tr-text-secondary)'; e.currentTarget.style.background = 'var(--tr-raised)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.color = 'var(--tr-text-muted)'; e.currentTarget.style.background = 'transparent'; }}
                     >
-                      ✏️ {isRtl ? 'تعديل' : 'Edit'}
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                      </svg>
+                      {isRtl ? 'تعديل' : 'Edit'}
                     </button>
                     <button
                       onClick={deletePost}
                       disabled={deleting}
-                      className="text-xs text-gray-400 hover:text-red-500 transition px-2 py-1 rounded-lg hover:bg-red-50 disabled:opacity-40"
+                      className="flex items-center gap-1.5 text-xs transition px-2 py-1.5 rounded-lg disabled:opacity-40"
+                      style={{ color: 'var(--tr-text-muted)', background: 'transparent' }}
+                      onMouseEnter={e => { e.currentTarget.style.color = '#f43f5e'; e.currentTarget.style.background = 'rgba(244,63,94,0.08)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.color = 'var(--tr-text-muted)'; e.currentTarget.style.background = 'transparent'; }}
                     >
-                      {deleting ? '...' : `🗑 ${isRtl ? 'حذف' : 'Delete'}`}
+                      {deleting ? '...' : (
+                        <>
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                          </svg>
+                          {isRtl ? 'حذف' : 'Delete'}
+                        </>
+                      )}
                     </button>
                   </div>
                 )}
@@ -217,24 +233,27 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                   value={editTitle}
                   onChange={e => setEditTitle(e.target.value)}
                   placeholder={isRtl ? 'عنوان (اختياري)' : 'Title (optional)'}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-amber-300"
+                  className="w-full rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none transition"
+                  style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
                 />
                 <textarea
                   value={editContent}
                   onChange={e => setEditContent(e.target.value)}
                   rows={8}
                   maxLength={5000}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-300 leading-relaxed"
+                  className="w-full rounded-xl px-4 py-3 text-sm resize-none focus:outline-none leading-relaxed transition"
+                  style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
                 />
                 <div className="flex gap-2">
                   <button
                     onClick={saveEdit}
                     disabled={editSaving || editContent.trim().length < 10}
-                    className="bg-[#1a1a2e] text-white px-5 py-2 rounded-xl text-sm font-bold disabled:opacity-40 hover:bg-gray-800 transition"
+                    className="px-5 py-2 rounded-xl text-sm font-bold disabled:opacity-40 transition"
+                    style={{ background: 'var(--tr-gold)', color: '#fff' }}
                   >
                     {editSaving ? '...' : (isRtl ? 'حفظ' : 'Save')}
                   </button>
-                  <button onClick={() => setEditing(false)} className="px-5 py-2 rounded-xl text-sm text-gray-600 hover:bg-gray-100 transition">
+                  <button onClick={() => setEditing(false)} className="px-5 py-2 rounded-xl text-sm transition" style={{ color: 'var(--tr-text-secondary)', background: 'var(--tr-raised)' }}>
                     {isRtl ? 'إلغاء' : 'Cancel'}
                   </button>
                 </div>
@@ -242,9 +261,9 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
             ) : (
               <>
                 {post.title && (
-                  <h1 className="font-black text-gray-900 text-xl sm:text-2xl mb-4 leading-snug">{post.title}</h1>
+                  <h1 className="font-black text-xl sm:text-2xl mb-4 leading-snug" style={{ color: 'var(--tr-text-primary)' }}>{post.title}</h1>
                 )}
-                <div className="text-gray-700 text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
+                <div className="text-sm sm:text-base leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--tr-text-secondary)' }}>
                   {post.content}
                 </div>
               </>
@@ -259,9 +278,9 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
 
             {/* Tags */}
             {!editing && Array.isArray(post.tags) && post.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-6 pt-6 border-t border-gray-100">
+              <div className="flex flex-wrap gap-2 mt-6 pt-6" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
                 {post.tags.map((tag) => (
-                  <span key={tag} className="text-xs bg-gray-100 text-gray-500 border border-gray-200 px-3 py-1 rounded-full">
+                  <span key={tag} className="text-xs px-3 py-1 rounded-full" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}>
                     #{tag}
                   </span>
                 ))}
@@ -270,7 +289,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
 
             {/* Actions */}
             {!editing && (
-              <div className="flex items-center gap-3 mt-6 pt-6 border-t border-gray-100 flex-wrap">
+              <div className="flex items-center gap-3 mt-6 pt-6 flex-wrap" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
                 {/* Reactions bar */}
                 <div className="flex items-center gap-1 flex-wrap">
                   {REACTIONS.map(r => {
@@ -282,7 +301,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                         aria-pressed={active}
                         className="flex items-center gap-2 px-3 py-2 rounded-full transition-all active:scale-95"
                         style={{
-                          background: active ? `${r.color}14` : 'var(--tr-raised, #f3f4f6)',
+                          background: active ? `${r.color}14` : 'var(--tr-raised)',
                           border: `1.5px solid ${active ? r.color + '55' : 'transparent'}`,
                           boxShadow: active ? `0 0 10px ${r.color}30` : 'none',
                         }}
@@ -305,7 +324,8 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
 
                 <button
                   onClick={toggleBookmark}
-                  className={`flex items-center gap-2 text-sm font-semibold transition ${bookmarked ? 'text-purple-600' : 'text-gray-400 hover:text-purple-500'}`}
+                  className="flex items-center gap-2 text-sm font-semibold transition"
+                  style={{ color: bookmarked ? 'var(--tr-gold-bright)' : 'var(--tr-text-muted)' }}
                 >
                   <svg className="w-5 h-5" fill={bookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
@@ -315,7 +335,8 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
 
                 <button
                   onClick={handleShare}
-                  className={`flex items-center gap-2 text-sm font-semibold transition ${copied ? 'text-emerald-600' : 'text-gray-400 hover:text-emerald-500'}`}
+                  className="flex items-center gap-2 text-sm font-semibold transition"
+                  style={{ color: copied ? 'var(--tr-teal)' : 'var(--tr-text-muted)' }}
                 >
                   {copied ? (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
@@ -329,7 +350,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                   {copied ? (isRtl ? 'تم النسخ!' : 'Copied!') : (isRtl ? 'مشاركة' : 'Share')}
                 </button>
 
-                <span className="ms-auto text-xs text-gray-400">
+                <span className="ms-auto text-xs" style={{ color: 'var(--tr-text-muted)' }}>
                   {post.viewCount} {isRtl ? 'مشاهدة' : 'views'}
                 </span>
               </div>
@@ -338,16 +359,17 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
         </article>
 
         {/* Comments */}
-        <section id="comments" className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <section id="comments" className="rounded-2xl p-6" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}>
           <div className="flex items-center justify-between mb-5">
-            <h2 className="font-black text-gray-900 text-base">
-              💬 {isRtl ? 'التعليقات' : 'Comments'}
-              {commentCount > 0 && <span className="ms-2 text-gray-400 font-normal text-sm">({commentCount})</span>}
+            <h2 className="font-black text-base" style={{ color: 'var(--tr-text-primary)' }}>
+              {isRtl ? 'التعليقات' : 'Comments'}
+              {commentCount > 0 && <span className="ms-2 font-normal text-sm" style={{ color: 'var(--tr-text-muted)' }}>({commentCount})</span>}
             </h2>
             {comments.length > 1 && (
               <button
                 onClick={() => setCommentSort(s => s === 'asc' ? 'desc' : 'asc')}
-                className="text-xs text-gray-400 hover:text-gray-600 transition flex items-center gap-1"
+                className="text-xs transition flex items-center gap-1"
+                style={{ color: 'var(--tr-text-muted)' }}
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
@@ -358,20 +380,20 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
           </div>
 
           {comments.length === 0 ? (
-            <p className="text-gray-400 text-sm mb-6">{isRtl ? 'لا توجد تعليقات بعد' : 'No comments yet'}</p>
+            <p className="text-sm mb-6" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'لا توجد تعليقات بعد' : 'No comments yet'}</p>
           ) : (
             <div className="space-y-4 mb-6">
               {sortedComments.map((c) => (
                 <div key={c.id} className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-xs font-bold shrink-0">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
                     {c.user?.name.charAt(0) ?? '?'}
                   </div>
-                  <div className="flex-1 bg-gray-50 rounded-xl px-4 py-3">
+                  <div className="flex-1 rounded-xl px-4 py-3" style={{ background: 'var(--tr-raised)' }}>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-semibold text-gray-700">{c.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}</span>
-                      <span className="text-[10px] text-gray-400">{timeAgo(c.createdAt, isRtl)}</span>
+                      <span className="text-xs font-semibold" style={{ color: 'var(--tr-text-primary)' }}>{c.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}</span>
+                      <span className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(c.createdAt, isRtl)}</span>
                     </div>
-                    <p className="text-sm text-gray-700 leading-relaxed">{c.content}</p>
+                    <p className="text-sm leading-relaxed" style={{ color: 'var(--tr-text-secondary)' }}>{c.content}</p>
                   </div>
                 </div>
               ))}
@@ -382,7 +404,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
             {user?.avatarUrl ? (
               <img src={user.avatarUrl} alt={user.name} className="w-8 h-8 rounded-full object-cover shrink-0" />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-[#1a1a2e] text-white flex items-center justify-center text-xs font-bold shrink-0">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold-bright)' }}>
                 {user ? user.name.charAt(0) : '?'}
               </div>
             )}
@@ -392,13 +414,15 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                 onChange={e => setCommentText(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitComment(); } }}
                 placeholder={isRtl ? 'أضف تعليقاً...' : 'Add a comment...'}
-                className="flex-1 min-w-0 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-300 transition"
+                className="flex-1 min-w-0 rounded-xl px-3 py-2.5 text-sm focus:outline-none transition"
+                style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
                 onClick={() => { if (!user) setShowGate(true); }}
               />
               <button
                 onClick={submitComment}
                 disabled={submitting || commentText.trim().length < 2}
-                className="bg-[#1a1a2e] text-white px-4 py-2.5 rounded-xl text-sm font-bold disabled:opacity-40 hover:bg-gray-800 transition"
+                className="px-4 py-2.5 rounded-xl text-sm font-bold disabled:opacity-40 transition"
+                style={{ background: 'var(--tr-gold)', color: '#fff' }}
               >
                 {submitting ? '...' : (isRtl ? 'إرسال' : 'Send')}
               </button>

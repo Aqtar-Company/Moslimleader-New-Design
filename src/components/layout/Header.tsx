@@ -8,6 +8,9 @@ import { useLang } from '@/context/LanguageContext';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import MobileMenu from './MobileMenu';
+import dynamic from 'next/dynamic';
+
+const TareeqLandingModal = dynamic(() => import('@/components/tareeq/TareeqLandingModal'), { ssr: false });
 
 const iconBtn = 'relative flex items-center justify-center w-10 h-10 border-2 border-white/70 rounded-lg hover:bg-white/20 transition text-white';
 
@@ -20,6 +23,7 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [banner, setBanner] = useState<{ code: string; discount: number; bannerText?: string; bannerColor?: string } | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [tareeqModal, setTareeqModal] = useState(false);
 
   useEffect(() => {
     fetch('/api/coupons', { cache: 'no-store' })
@@ -32,6 +36,7 @@ export default function Header() {
   if (pathname?.startsWith('/tareeq')) return null;
 
   return (
+    <>
     <header className="fixed top-0 left-0 right-0 z-50 print:hidden">
       {banner && !bannerDismissed && (
         <div
@@ -135,14 +140,31 @@ export default function Header() {
               </Link>
             )}
 
-            {/* Tareeq — mobile only */}
-            <Link
-              href="/tareeq"
+            {/* Tareeq CTA — desktop */}
+            <button
+              onClick={() => setTareeqModal(true)}
+              className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black transition active:scale-95 shrink-0"
+              style={{
+                background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #3b82f6 100%)',
+                color: '#fff',
+                boxShadow: '0 2px 16px rgba(37,99,235,0.35)',
+              }}
+              aria-label="طريق"
+            >
+              <svg className="w-3.5 h-3.5 shrink-0" fill="#fff" viewBox="0 0 24 24">
+                <path d="M12 3l1.4 5.6L18.4 5.6l-3 4.4L21 12l-5.6 1.4 2.4 5.4-4.8-2.8L12 21l-1.4-5.6-5.4 2.4 2.8-4.8L3 12l5.6-1.4L6.2 5l4.4 3z" />
+              </svg>
+              {lang === 'ar' ? 'طريق' : 'Tareeq'}
+            </button>
+
+            {/* Tareeq icon — mobile only */}
+            <button
+              onClick={() => setTareeqModal(true)}
               className="md:hidden relative flex w-10 h-10 rounded-lg overflow-hidden border-2 border-white/70 hover:border-white transition shrink-0"
               aria-label="طريق"
             >
-              <img src="/Tareeq-small.png" alt="طريق" className="w-full h-full object-cover" />
-            </Link>
+              <img src="/Tareeq-tiny-usage.png" alt="طريق" className="w-full h-full object-cover" />
+            </button>
 
             {/* Hamburger — mobile only */}
             <button
@@ -159,5 +181,7 @@ export default function Header() {
         </div>
       </nav>
     </header>
+    {tareeqModal && <TareeqLandingModal onClose={() => setTareeqModal(false)} />}
+    </>
   );
 }

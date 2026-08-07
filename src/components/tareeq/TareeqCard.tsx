@@ -29,6 +29,7 @@ interface Props {
   post: TareeqPostSummary;
   initialLiked?: boolean;
   initialReaction?: string | null;
+  initialBookmarked?: boolean;
 }
 
 // ── Reaction config ──────────────────────────────────────────────────
@@ -51,7 +52,7 @@ function fmt(n: number): string {
   return String(n);
 }
 
-export default function TareeqCard({ post, initialLiked = false, initialReaction = null }: Props) {
+export default function TareeqCard({ post, initialLiked = false, initialReaction = null, initialBookmarked = false }: Props) {
   const { isRtl } = useLang();
   const { user } = useAuth();
 
@@ -69,6 +70,12 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   const [submitting, setSubmitting] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [textExpanded, setTextExpanded] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(initialBookmarked);
+  const [showBookmarkPicker, setShowBookmarkPicker] = useState(false);
+  const [bmFolders, setBmFolders] = useState<{ id: string; name: string; _count: { bookmarks: number } }[]>([]);
+  const [bmFoldersLoaded, setBmFoldersLoaded] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [creatingFolder, setCreatingFolder] = useState(false);
   const shareMenuRef = useRef<HTMLDivElement>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
@@ -173,6 +180,49 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     setSubmitting(false);
   }
 
+  async function handleBookmarkClick(e: React.MouseEvent) {
+    e.preventDefault(); e.stopPropagation();
+    if (!user) { setShowGate(true); return; }
+    if (isBookmarked) {
+      setIsBookmarked(false);
+      await fetch(`/api/tareeq/bookmarks?postId=${post.id}`, { method: 'DELETE', credentials: 'include' }).catch(() => setIsBookmarked(true));
+      return;
+    }
+    // Load folders lazily then show picker
+    if (!bmFoldersLoaded) {
+      const res = await fetch('/api/tareeq/bookmark-folders', { credentials: 'include' }).catch(() => null);
+      if (res?.ok) { const d = await res.json(); setBmFolders(d.folders ?? []); }
+      setBmFoldersLoaded(true);
+    }
+    setShowBookmarkPicker(true);
+  }
+
+  async function handleBookmarkSave(folderId: string | null) {
+    setShowBookmarkPicker(false);
+    setIsBookmarked(true);
+    const res = await fetch('/api/tareeq/bookmarks', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ postId: post.id, folderId }),
+    });
+    if (!res.ok) setIsBookmarked(false);
+  }
+
+  async function handleCreateFolder(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newFolderName.trim() || creatingFolder) return;
+    setCreatingFolder(true);
+    const res = await fetch('/api/tareeq/bookmark-folders', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ name: newFolderName.trim() }),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      setBmFolders(prev => [...prev, d.folder]);
+      setNewFolderName('');
+    }
+    setCreatingFolder(false);
+  }
+
   const reactionConfig = REACTIONS.find(r => r.type === currentReaction);
 
   // ── Image card — full-bleed portrait ────────────────────────────────
@@ -269,6 +319,21 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                 </svg>
               </div>
               <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{fmt(commentCount)}</span>
+            </button>
+
+            {/* Bookmark */}
+            <button onClick={handleBookmarkClick} aria-label={isRtl ? 'حفظ' : 'Save'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+              <div
+                className="w-11 h-11 rounded-full flex items-center justify-center transition"
+                style={{ background: isBookmarked ? 'rgba(212,168,83,0.35)' : 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)', border: isBookmarked ? '1.5px solid rgba(212,168,83,0.6)' : 'none' }}
+              >
+                <svg className="w-5 h-5" fill={isBookmarked ? '#d4a853' : 'none'} stroke={isBookmarked ? '#d4a853' : '#fff'} strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+                </svg>
+              </div>
+              <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)', color: isBookmarked ? '#d4a853' : '#fff' }}>
+                {isRtl ? 'حفظ' : 'Save'}
+              </span>
             </button>
           </div>
 
@@ -381,6 +446,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           )}
         </article>
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
+        {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
       </>
     );
   }
@@ -576,6 +642,18 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             {fmt(commentCount)}
           </button>
 
+          {/* Bookmark */}
+          <button
+            onClick={handleBookmarkClick}
+            aria-label={isRtl ? 'حفظ' : 'Save'}
+            className="flex items-center gap-1 text-xs font-semibold transition active:scale-90"
+            style={{ color: isBookmarked ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}
+          >
+            <svg className="w-4 h-4" fill={isBookmarked ? 'var(--tr-gold)' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+            </svg>
+          </button>
+
           <div ref={shareMenuRef} className="relative ms-auto">
             <button
               onClick={handleShare}
@@ -616,7 +694,91 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
       </article>
 
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
+      {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
     </>
+  );
+}
+
+// ── Bookmark folder picker modal ──────────────────────────────────────
+function BookmarkPicker({ isRtl, folders, newFolderName, setNewFolderName, creatingFolder, onSave, onCreate, onClose }: {
+  isRtl: boolean;
+  folders: { id: string; name: string; _count: { bookmarks: number } }[];
+  newFolderName: string;
+  setNewFolderName: (v: string) => void;
+  creatingFolder: boolean;
+  onSave: (folderId: string | null) => void;
+  onCreate: (e: React.FormEvent) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-end justify-center"
+      style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-t-3xl p-6 pb-10"
+        style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-black text-base" style={{ color: 'var(--tr-text-primary)' }}>
+            {isRtl ? 'احفظ في تصنيف' : 'Save to folder'}
+          </h3>
+          <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}>✕</button>
+        </div>
+
+        {/* Save without folder */}
+        <button
+          onClick={() => onSave(null)}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl mb-2 transition text-start"
+          style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}
+        >
+          <span className="text-lg">🔖</span>
+          <span className="text-sm font-semibold">{isRtl ? 'بدون تصنيف' : 'No folder'}</span>
+        </button>
+
+        {/* Existing folders */}
+        {folders.length > 0 && (
+          <div className="flex flex-col gap-2 mb-4 max-h-48 overflow-y-auto">
+            {folders.map(f => (
+              <button
+                key={f.id}
+                onClick={() => onSave(f.id)}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition text-start"
+                style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}
+              >
+                <span className="text-lg">📁</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold truncate" style={{ color: 'var(--tr-text-primary)' }}>{f.name}</p>
+                  <p className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{f._count.bookmarks} {isRtl ? 'علامة' : 'marks'}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Create new folder */}
+        <form onSubmit={onCreate} className="flex gap-2 mt-3">
+          <input
+            value={newFolderName}
+            onChange={e => setNewFolderName(e.target.value)}
+            placeholder={isRtl ? 'تصنيف جديد...' : 'New folder...'}
+            maxLength={40}
+            className="flex-1 rounded-full px-4 py-2 text-sm outline-none transition"
+            style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
+          />
+          <button
+            type="submit"
+            disabled={!newFolderName.trim() || creatingFolder}
+            className="px-4 py-2 rounded-full text-sm font-bold disabled:opacity-40 transition shrink-0"
+            style={{ background: 'linear-gradient(135deg,var(--tr-gold-dim),var(--tr-gold-bright))', color: '#0a0d06' }}
+          >
+            {creatingFolder ? '...' : (isRtl ? 'إنشاء' : 'Create')}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }
 

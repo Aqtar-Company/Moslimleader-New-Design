@@ -27,7 +27,17 @@ interface Props {
   postCount?: number;
 }
 
-/** Deterministic gradient from a string — no Math.random */
+interface BmFolder {
+  id: string;
+  name: string;
+  _count: { bookmarks: number };
+}
+
+interface BmPost {
+  id: string;
+  post: TareeqPostSummary;
+}
+
 function nameGradient(name: string): string {
   const palettes = [
     ['#ff7857', '#ff3d1a'],
@@ -43,7 +53,7 @@ function nameGradient(name: string): string {
   return `linear-gradient(135deg, ${pair[0]}, ${pair[1]})`;
 }
 
-type ProfileTab = 'posts' | 'liked';
+type ProfileTab = 'posts' | 'bookmarks';
 
 export default function TareeqUserClient({ profileUser, initialPosts, initialCursor, likedIds: initialLiked, postCount }: Props) {
   const { isRtl } = useLang();
@@ -53,14 +63,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [posts, setPosts] = useState<TareeqPostSummary[]>(initialPosts);
   const [cursor, setCursor] = useState<string | null>(initialCursor);
   const [loading, setLoading] = useState(false);
-  const [likedPosts, setLikedPosts] = useState<TareeqPostSummary[]>([]);
-  const [likedLoading, setLikedLoading] = useState(false);
-  const [likedCursor, setLikedCursor] = useState<string | null>(null);
-  const [likedLoaded, setLikedLoaded] = useState(false);
-  const likedLoadedRef = useRef(false);
-  // Lock grid vs list layout per-tab once decided — prevents reflow on infinite scroll
-  const [postsHasImages, setPostsHasImages] = useState(() => initialPosts.some(p => p.imageUrl));
-  const [likedHasImages, setLikedHasImages] = useState(false);
+  const [postsHasImages] = useState(() => initialPosts.some(p => p.imageUrl));
   const [likedIds] = useState<Set<string>>(new Set(initialLiked));
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
@@ -70,11 +73,19 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [showCreate, setShowCreate] = useState(false);
   const [showGate, setShowGate] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const likedSentinelRef = useRef<HTMLDivElement>(null);
+
+  // Bookmarks state
+  const [bmFolders, setBmFolders] = useState<BmFolder[]>([]);
+  const [bmFoldersLoaded, setBmFoldersLoaded] = useState(false);
+  const [bmFoldersLoading, setBmFoldersLoading] = useState(false);
+  const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
+  const [activeFolderName, setActiveFolderName] = useState('');
+  const [bmPosts, setBmPosts] = useState<BmPost[]>([]);
+  const [bmPostsLoading, setBmPostsLoading] = useState(false);
 
   const isOwnProfile = user?.id === profileUser.id;
 
-  // Avatar upload (own profile only)
+  // Avatar upload
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarProgress, setAvatarProgress] = useState(0);
@@ -112,7 +123,6 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
     finally { setAvatarUploading(false); e.target.value = ''; }
   }
 
-  // Load follow state + counts + viewer reactions on mount
   useEffect(() => {
     fetch(`/api/tareeq/follow/${profileUser.id}`, { credentials: 'include' })
       .then(r => r.json())
@@ -143,26 +153,28 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
     }
   }, [profileUser.id]);
 
-  const loadLiked = useCallback(async (cur?: string | null) => {
-    setLikedLoading(true);
+  async function loadBmFolders() {
+    if (bmFoldersLoaded || bmFoldersLoading) return;
+    setBmFoldersLoading(true);
     try {
-      const params = new URLSearchParams({ likedBy: profileUser.id, limit: '12' });
-      if (cur) params.set('cursor', cur);
-      const res = await fetch(`/api/tareeq?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setLikedPosts(prev => cur ? [...prev, ...data.posts] : data.posts);
-        setLikedCursor(data.nextCursor);
-        if (!likedLoadedRef.current) {
-          setLikedHasImages(data.posts.some((p: TareeqPostSummary) => p.imageUrl));
-          likedLoadedRef.current = true;
-          setLikedLoaded(true);
-        }
-      }
+      const res = await fetch('/api/tareeq/bookmark-folders', { credentials: 'include' });
+      if (res.ok) { const d = await res.json(); setBmFolders(d.folders ?? []); }
     } finally {
-      setLikedLoading(false);
+      setBmFoldersLoading(false);
+      setBmFoldersLoaded(true);
     }
-  }, [profileUser.id]);
+  }
+
+  async function loadBmPosts(folderId: string | null) {
+    setBmPostsLoading(true);
+    try {
+      const url = folderId ? `/api/tareeq/bookmarks?folderId=${folderId}` : '/api/tareeq/bookmarks';
+      const res = await fetch(url, { credentials: 'include' });
+      if (res.ok) { const d = await res.json(); setBmPosts(d.bookmarks ?? []); }
+    } finally {
+      setBmPostsLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (!sentinelRef.current || !cursor) return;
@@ -174,21 +186,18 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
     return () => obs.disconnect();
   }, [cursor, loading, loadMore]);
 
-  useEffect(() => {
-    if (!likedSentinelRef.current || !likedCursor) return;
-    const obs = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting && !likedLoading) loadLiked(likedCursor); },
-      { rootMargin: '200px' },
-    );
-    obs.observe(likedSentinelRef.current);
-    return () => obs.disconnect();
-  }, [likedCursor, likedLoading, loadLiked]);
-
   function handleTabChange(tab: ProfileTab) {
     setActiveTab(tab);
-    if (tab === 'liked' && !likedLoaded && !likedLoading) {
-      loadLiked();
+    if (tab === 'bookmarks' && isOwnProfile) {
+      loadBmFolders();
+      setActiveFolderId(null);
     }
+  }
+
+  function handleFolderOpen(folder: BmFolder) {
+    setActiveFolderId(folder.id);
+    setActiveFolderName(folder.name);
+    loadBmPosts(folder.id);
   }
 
   function handleCreateClick() {
@@ -214,33 +223,25 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
 
   const coverGradient = nameGradient(profileUser.name);
   const skeletons = Array.from({ length: 6 });
-  const displayPosts = activeTab === 'posts' ? posts : likedPosts;
 
   return (
     <TareeqNotificationsProvider>
     <div className="min-h-screen" style={{ background: 'var(--tr-base)' }}>
       <TareeqHeader onCreateClick={handleCreateClick} />
 
-      {/* ── Cover ──────────────────────────────────────────────── */}
-      <div
-        className="relative w-full"
-        style={{ height: 110, background: coverGradient }}
-      >
+      {/* Cover */}
+      <div className="relative w-full" style={{ height: 110, background: coverGradient }}>
         <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.12)' }} />
       </div>
 
-      {/* ── Profile card ───────────────────────────────────────── */}
-      <div
-        className="relative max-w-2xl mx-auto px-4"
-        style={{ marginTop: -32, zIndex: 1 }}
-      >
+      {/* Profile card */}
+      <div className="relative max-w-2xl mx-auto px-4" style={{ marginTop: -32, zIndex: 1 }}>
         <div
           className="rounded-3xl px-5 pt-3 pb-6"
           style={{ background: 'var(--tr-surface)', boxShadow: '0 4px 32px rgba(0,0,0,0.08)', border: '1px solid var(--tr-border-subtle)' }}
         >
           {/* Avatar row */}
           <div className="flex items-start justify-between" style={{ marginTop: -44 }}>
-            {/* Avatar — tappable for own profile to upload */}
             <div className="relative shrink-0">
               {(avatarPreview || user?.avatarUrl || profileUser.avatarUrl) ? (
                 <img
@@ -257,8 +258,6 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                   {profileUser.name.charAt(0)}
                 </div>
               )}
-
-              {/* Upload progress overlay */}
               {avatarUploading && (
                 <div className="absolute inset-0 rounded-full flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)' }}>
                   <svg className="w-16 h-16 -rotate-90 absolute" viewBox="0 0 64 64">
@@ -271,13 +270,10 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                   <span className="text-white font-black text-xs relative z-10">{avatarProgress}%</span>
                 </div>
               )}
-
-              {/* Camera icon overlay — own profile, not uploading */}
               {isOwnProfile && !avatarUploading && (
                 <label
                   className="absolute bottom-0 end-0 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition active:scale-90"
                   style={{ background: 'var(--tr-gold)', border: '2px solid var(--tr-surface)' }}
-                  aria-label={isRtl ? 'تغيير الصورة' : 'Change photo'}
                 >
                   <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={handleAvatarUpload} />
                   <svg className="w-4 h-4" fill="none" stroke="#fff" strokeWidth={2} viewBox="0 0 24 24">
@@ -288,7 +284,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
               )}
             </div>
 
-            {/* Action buttons (only for other users) */}
+            {/* Follow/Message buttons */}
             {!isOwnProfile && (
               <div className="flex gap-2 mt-14">
                 <button
@@ -297,53 +293,28 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                     if (followLoading) return;
                     setFollowLoading(true);
                     const wasFollowing = isFollowing;
-                    // Optimistic update
                     setIsFollowing(!wasFollowing);
                     setFollowerCount(c => wasFollowing ? Math.max(0, c - 1) : c + 1);
                     try {
-                      const res = await fetch(`/api/tareeq/follow/${profileUser.id}`, {
-                        method: 'POST',
-                        credentials: 'include',
-                      });
-                      if (res.ok) {
-                        const d = await res.json();
-                        setIsFollowing(d.following);
-                      } else {
-                        // Rollback on error
-                        setIsFollowing(wasFollowing);
-                        setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1));
-                      }
+                      const res = await fetch(`/api/tareeq/follow/${profileUser.id}`, { method: 'POST', credentials: 'include' });
+                      if (res.ok) { const d = await res.json(); setIsFollowing(d.following); }
+                      else { setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1)); }
                     } catch {
-                      setIsFollowing(wasFollowing);
-                      setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1));
-                    } finally {
-                      setFollowLoading(false);
-                    }
+                      setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1));
+                    } finally { setFollowLoading(false); }
                   }}
                   disabled={followLoading}
                   className="font-bold text-sm px-5 py-2 rounded-full transition active:scale-95"
-                  style={isFollowing ? {
-                    background: 'var(--tr-raised)',
-                    color: 'var(--tr-text-secondary)',
-                    border: '1px solid var(--tr-border-soft)',
-                  } : {
-                    background: 'var(--tr-gold)',
-                    color: '#fff',
-                    border: '1px solid var(--tr-gold)',
-                  }}
+                  style={isFollowing
+                    ? { background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }
+                    : { background: 'var(--tr-gold)', color: '#fff', border: '1px solid var(--tr-gold)' }}
                 >
-                  {isFollowing
-                    ? (isRtl ? 'متابَع' : 'Following')
-                    : (isRtl ? 'تابع' : 'Follow')}
+                  {isFollowing ? (isRtl ? 'متابَع' : 'Following') : (isRtl ? 'تابع' : 'Follow')}
                 </button>
                 <button
                   onClick={handleSendMessage}
                   className="font-bold text-sm px-5 py-2 rounded-full transition active:scale-95"
-                  style={{
-                    background: 'var(--tr-raised)',
-                    color: 'var(--tr-text-secondary)',
-                    border: '1px solid var(--tr-border-soft)',
-                  }}
+                  style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}
                 >
                   {isRtl ? 'رسالة' : 'Message'}
                 </button>
@@ -351,12 +322,8 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
             )}
           </div>
 
-          {/* Name */}
-          <h1 className="font-black text-xl mt-3" style={{ color: 'var(--tr-text-primary)' }}>
-            {profileUser.name}
-          </h1>
+          <h1 className="font-black text-xl mt-3" style={{ color: 'var(--tr-text-primary)' }}>{profileUser.name}</h1>
 
-          {/* Stats row */}
           <div className="flex gap-6 mt-4">
             <StatItem count={postCount ?? posts.length} label={isRtl ? 'علامة' : 'Posts'} />
             <StatItem count={followerCount} label={isRtl ? 'متابِع' : 'Followers'} />
@@ -364,73 +331,166 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
           </div>
         </div>
 
-        {/* ── Tab nav — Posts only ─────────────────────────── */}
+        {/* Tab nav */}
         <div
           className="flex mt-4 rounded-2xl overflow-hidden"
           style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}
         >
-          <button
-            className="flex-1 py-3 font-bold text-sm"
-            style={{ color: 'var(--tr-gold)', borderBottom: '2px solid var(--tr-gold)' }}
-          >
+          <TabBtn active={activeTab === 'posts'} onClick={() => handleTabChange('posts')}>
             {isRtl ? 'العلامات' : 'Posts'}
-          </button>
+          </TabBtn>
+          {isOwnProfile && (
+            <TabBtn active={activeTab === 'bookmarks'} onClick={() => handleTabChange('bookmarks')}>
+              🔖 {isRtl ? 'المحفوظات' : 'Saved'}
+            </TabBtn>
+          )}
         </div>
 
-        {/* ── Feed grid ───────────────────────────────────────── */}
+        {/* Feed / Bookmarks content */}
         <div className="py-4 pb-28 sm:pb-8">
-          {activeTab === 'liked' && likedLoading && !likedLoaded ? (
-            <div className="flex flex-col gap-4">
-              {skeletons.map((_, i) => <TareeqCardSkeleton key={i} />)}
-            </div>
-          ) : displayPosts.length === 0 ? (
-            <div className="text-center py-20">
-              <svg className="w-14 h-14 mx-auto mb-4" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
-              </svg>
-              <p className="font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>
-                {activeTab === 'liked'
-                  ? (isRtl ? 'لا توجد إعجابات بعد' : 'No liked posts yet')
-                  : (isRtl ? 'لا توجد علامات بعد' : 'No marks yet')}
-              </p>
-              {isOwnProfile && activeTab === 'posts' && (
+
+          {/* POSTS TAB */}
+          {activeTab === 'posts' && (
+            posts.length === 0 ? (
+              <div className="text-center py-20">
+                <svg className="w-14 h-14 mx-auto mb-4" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                </svg>
+                <p className="font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>{isRtl ? 'لا توجد علامات بعد' : 'No marks yet'}</p>
+                {isOwnProfile && (
+                  <button onClick={handleCreateClick} className="mt-5 font-black px-8 py-3 rounded-xl text-sm" style={{ background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))', color: '#fff' }}>
+                    {isRtl ? '★ اترك علامتك' : '★ Leave Your Mark'}
+                  </button>
+                )}
+              </div>
+            ) : (
+              <>
+                {postsHasImages ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    {posts.map(post => (
+                      post.imageUrl ? (
+                        <GridImageCard key={post.id} post={post} liked={likedIds.has(post.id)} />
+                      ) : (
+                        <div key={post.id} className="col-span-2">
+                          <TareeqCard post={post} initialLiked={likedIds.has(post.id)} initialReaction={reactedPosts[post.id] ?? null} />
+                        </div>
+                      )
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-4">
+                    {posts.map(post => (
+                      <TareeqCard key={post.id} post={post} initialLiked={likedIds.has(post.id)} initialReaction={reactedPosts[post.id] ?? null} />
+                    ))}
+                  </div>
+                )}
+                {cursor && <div ref={sentinelRef} className="h-4 mt-8" />}
+                {loading && (
+                  <div className="flex justify-center mt-8">
+                    <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
+                  </div>
+                )}
+              </>
+            )
+          )}
+
+          {/* BOOKMARKS TAB */}
+          {activeTab === 'bookmarks' && isOwnProfile && (
+            <>
+              {/* Folder drill-down header */}
+              {activeFolderId && (
                 <button
-                  onClick={handleCreateClick}
-                  className="mt-5 font-black px-8 py-3 rounded-xl text-sm"
-                  style={{ background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))', color: '#fff' }}
+                  onClick={() => { setActiveFolderId(null); setBmPosts([]); }}
+                  className="flex items-center gap-2 mb-4 text-sm font-bold transition"
+                  style={{ color: 'var(--tr-gold)' }}
                 >
-                  {isRtl ? '★ اترك علامتك' : '★ Leave Your Mark'}
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M9 5l7 7-7 7' : 'M15 19l-7-7 7-7'} />
+                  </svg>
+                  {activeFolderName || (isRtl ? 'المحفوظات' : 'Saved')}
                 </button>
               )}
-            </div>
-          ) : (
-            <>
-              {/* Layout committed on first load per-tab — prevents reflow on infinite scroll */}
-              {(activeTab === 'posts' ? postsHasImages : likedHasImages) ? (
-                <div className="grid grid-cols-2 gap-3">
-                  {displayPosts.map(post => (
-                    post.imageUrl ? (
-                      <GridImageCard key={post.id} post={post} liked={likedIds.has(post.id)} />
-                    ) : (
-                      <div key={post.id} className="col-span-2">
-                        <TareeqCard post={post} initialLiked={likedIds.has(post.id)} initialReaction={reactedPosts[post.id] ?? null} />
+
+              {/* Folder grid view */}
+              {!activeFolderId && (
+                bmFoldersLoading ? (
+                  <div className="flex flex-col gap-3">
+                    {skeletons.slice(0, 3).map((_, i) => (
+                      <div key={i} className="h-16 rounded-2xl animate-pulse" style={{ background: 'var(--tr-surface)' }} />
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    {/* "All saved" shortcut */}
+                    <button
+                      onClick={() => { setActiveFolderId('__all__'); setActiveFolderName(isRtl ? 'كل المحفوظات' : 'All saved'); loadBmPosts(null); }}
+                      className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl mb-3 transition text-start"
+                      style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}
+                    >
+                      <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: 'var(--tr-overlay)' }}>🔖</div>
+                      <div>
+                        <p className="font-bold text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'كل المحفوظات' : 'All saved'}</p>
+                        <p className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'جميع العلامات المحفوظة' : 'All bookmarked marks'}</p>
                       </div>
-                    )
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col gap-4">
-                  {displayPosts.map(post => (
-                    <TareeqCard key={post.id} post={post} initialLiked={likedIds.has(post.id)} />
-                  ))}
-                </div>
+                    </button>
+
+                    {bmFolders.length === 0 && (
+                      <div className="text-center py-12">
+                        <p className="text-2xl mb-3">🔖</p>
+                        <p className="font-semibold text-sm" style={{ color: 'var(--tr-text-secondary)' }}>
+                          {isRtl ? 'لا توجد تصنيفات بعد' : 'No folders yet'}
+                        </p>
+                        <p className="text-[11px] mt-1" style={{ color: 'var(--tr-text-muted)' }}>
+                          {isRtl ? 'اضغط على 🔖 في أي منشور لحفظه وإنشاء تصنيف' : 'Tap 🔖 on any post to save it and create folders'}
+                        </p>
+                      </div>
+                    )}
+
+                    {bmFolders.length > 0 && (
+                      <div className="flex flex-col gap-3">
+                        {bmFolders.map(f => (
+                          <button
+                            key={f.id}
+                            onClick={() => handleFolderOpen(f)}
+                            className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition text-start"
+                            style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}
+                          >
+                            <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: 'var(--tr-overlay)' }}>📁</div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{f.name}</p>
+                              <p className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{f._count.bookmarks} {isRtl ? 'علامة' : 'marks'}</p>
+                            </div>
+                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'} />
+                            </svg>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )
               )}
-              {activeTab === 'posts' && cursor && <div ref={sentinelRef} className="h-4 mt-8" />}
-              {activeTab === 'liked' && likedCursor && <div ref={likedSentinelRef} className="h-4 mt-8" />}
-              {(loading || likedLoading) && (
-                <div className="flex justify-center mt-8">
-                  <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
-                </div>
+
+              {/* Posts inside a folder */}
+              {activeFolderId && (
+                bmPostsLoading ? (
+                  <div className="flex flex-col gap-4">
+                    {skeletons.map((_, i) => <TareeqCardSkeleton key={i} />)}
+                  </div>
+                ) : bmPosts.length === 0 ? (
+                  <div className="text-center py-16">
+                    <p className="text-2xl mb-3">📭</p>
+                    <p className="font-semibold text-sm" style={{ color: 'var(--tr-text-secondary)' }}>
+                      {isRtl ? 'لا توجد علامات في هذا التصنيف' : 'No marks in this folder'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-4">
+                    {bmPosts.map(bm => (
+                      <TareeqCard key={bm.id} post={bm.post} initialBookmarked={true} initialReaction={reactedPosts[bm.post.id] ?? null} />
+                    ))}
+                  </div>
+                )
               )}
             </>
           )}
@@ -441,6 +501,20 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
     </div>
     </TareeqNotificationsProvider>
+  );
+}
+
+function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      className="flex-1 py-3 font-bold text-sm transition"
+      onClick={onClick}
+      style={active
+        ? { color: 'var(--tr-gold)', borderBottom: '2px solid var(--tr-gold)' }
+        : { color: 'var(--tr-text-muted)', borderBottom: '2px solid transparent' }}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -457,25 +531,10 @@ function StatItem({ count, label }: { count: number; label: string }) {
 
 function GridImageCard({ post, liked }: { post: TareeqPostSummary; liked: boolean }) {
   return (
-    <Link
-      href={`/tareeq/${post.id}`}
-      className="block relative rounded-2xl overflow-hidden"
-      style={{ aspectRatio: '3/4' }}
-    >
-      <img
-        src={post.imageUrl!}
-        alt={post.title ?? ''}
-        className="w-full h-full object-cover"
-      />
-      <div
-        className="absolute inset-0"
-        style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 50%)' }}
-      />
-      {/* Like count */}
-      <div
-        className="absolute bottom-2 start-2 flex items-center gap-1 text-white"
-        style={{ fontSize: 11, fontWeight: 700 }}
-      >
+    <Link href={`/tareeq/${post.id}`} className="block relative rounded-2xl overflow-hidden" style={{ aspectRatio: '3/4' }}>
+      <img src={post.imageUrl!} alt={post.title ?? ''} className="w-full h-full object-cover" />
+      <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 50%)' }} />
+      <div className="absolute bottom-2 start-2 flex items-center gap-1 text-white" style={{ fontSize: 11, fontWeight: 700 }}>
         <svg className="w-3.5 h-3.5" fill={liked ? '#f43f5e' : 'none'} stroke={liked ? '#f43f5e' : 'white'} strokeWidth={2} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
         </svg>

@@ -58,6 +58,7 @@ model User {
   tareeqLikes        TareeqLike[]
   tareeqComments     TareeqComment[]
   tareeqBookmarks    TareeqBookmark[]
+  tareeqBookmarkFolders TareeqBookmarkFolder[] @relation("TareeqBmFolders")
   tareeqNotifications     TareeqNotification[]     @relation("TareeqNotifRecipient")
   tareeqSentMessages      TareeqMessage[]          @relation("TareeqMsgSender")
   tareeqPushSubscriptions TareeqPushSubscription[] @relation("TareeqPushSubs")
@@ -957,16 +958,30 @@ model TareeqComment {
   @@index([userId])
 }
 
-model TareeqBookmark {
-  id        String     @id @default(cuid())
-  postId    String
-  post      TareeqPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+model TareeqBookmarkFolder {
+  id        String           @id @default(cuid())
   userId    String
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime   @default(now())
+  user      User             @relation("TareeqBmFolders", fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime         @default(now())
+  bookmarks TareeqBookmark[]
+
+  @@index([userId])
+}
+
+model TareeqBookmark {
+  id        String                @id @default(cuid())
+  postId    String
+  post      TareeqPost            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folderId  String?
+  folder    TareeqBookmarkFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  createdAt DateTime              @default(now())
 
   @@unique([postId, userId])
   @@index([userId])
+  @@index([folderId])
 }
 
 model TareeqNotification {

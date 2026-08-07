@@ -4,7 +4,12 @@ import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 
-interface Props { onCreateClick: () => void; }
+interface Props {
+  onCreateClick: () => void;
+  searchInput?: string;
+  onSearch?: (v: string) => void;
+  onToggleSidebar?: () => void;
+}
 
 function Badge({ count }: { count: number }) {
   if (count <= 0) return null;
@@ -18,7 +23,7 @@ function Badge({ count }: { count: number }) {
   );
 }
 
-export default function TareeqHeader({ onCreateClick }: Props) {
+export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onToggleSidebar }: Props) {
   const { isRtl } = useLang();
   const { user } = useAuth();
   const { notifCount } = useTareeqNotifications();
@@ -63,15 +68,41 @@ export default function TareeqHeader({ onCreateClick }: Props) {
             )}
           </Link>
 
-          {/* Center: wordmark */}
-          <Link href="/tareeq" className="flex items-center gap-2" aria-label="Tareeq Home">
-            <span className="w-8 h-8 shrink-0 flex items-center justify-center">
-              <img src="/Tareeq-small.png" alt="" className="w-full h-full object-contain" />
-            </span>
-            <span className="font-black text-sm tracking-wide" style={{ color: 'var(--tr-text-primary)' }}>
-              {isRtl ? 'طريق' : 'Tareeq'}
-            </span>
-          </Link>
+          {/* Center: search bar on feed, wordmark on other pages */}
+          {onSearch !== undefined ? (
+            <div className="flex items-center gap-2 flex-1 mx-2">
+              <div className="relative flex-1">
+                <svg className="absolute top-1/2 -translate-y-1/2 start-3 w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                <input
+                  value={searchInput ?? ''}
+                  onChange={e => onSearch(e.target.value)}
+                  placeholder={isRtl ? 'ابحث في العلامات...' : 'Search marks...'}
+                  className="w-full rounded-full ps-8 pe-4 py-1.5 text-xs focus:outline-none transition"
+                  style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
+                />
+              </div>
+              {onToggleSidebar && (
+                <button
+                  onClick={onToggleSidebar}
+                  className="lg:hidden shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition"
+                  style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)' }}
+                  aria-label={isRtl ? 'القائمة' : 'Menu'}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          ) : (
+            <Link href="/tareeq" aria-label="Tareeq Home">
+              <span className="font-black text-sm tracking-wide" style={{ color: 'var(--tr-text-primary)' }}>
+                {isRtl ? 'طريق' : 'Tareeq'}
+              </span>
+            </Link>
+          )}
 
           {/* Right: notifications bell */}
           <Link

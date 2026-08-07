@@ -78,6 +78,8 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const feedTopRef = useRef<HTMLDivElement>(null);
   const searchMountedRef = useRef(false);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [cameraFile, setCameraFile] = useState<File | null>(null);
   const touchStartY = useRef(0);
   // Refs so touch handlers don't form stale closures
   const pullYRef = useRef(0);
@@ -229,7 +231,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
     setShowCreate(true);
   }
 
-  // Bottom nav camera/create button dispatches this event when already on /tareeq
+  // Bottom nav star button — open create modal directly when already on /tareeq
   useEffect(() => {
     const h = () => {
       if (!user) { setShowGate(true); return; }
@@ -239,18 +241,61 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
     return () => window.removeEventListener('tareeq-open-create', h);
   }, [user]);
 
+  // Bottom nav camera button — trigger native device camera
+  useEffect(() => {
+    const h = () => {
+      if (!user) { setShowGate(true); return; }
+      cameraInputRef.current?.click();
+    };
+    window.addEventListener('tareeq-open-camera', h);
+    return () => window.removeEventListener('tareeq-open-camera', h);
+  }, [user]);
+
+  function handleCameraFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCameraFile(file);
+    setShowCreate(true);
+    e.target.value = '';
+  }
+
   const skeletons = Array.from({ length: 6 });
 
   return (
     <div className="min-h-screen">
       <TareeqPWA />
-      <TareeqHeader onCreateClick={handleCreateClick} />
+      {/* Hidden camera input — triggers native device camera */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleCameraFileChange}
+      />
 
-      {/* ── Discover title ─────────────────────────────────────────────── */}
-      <div className="max-w-2xl mx-auto px-4 pt-5 pb-2">
+      <TareeqHeader
+        onCreateClick={handleCreateClick}
+        searchInput={searchInput}
+        onSearch={v => setSearchInput(v)}
+        onToggleSidebar={() => setShowSidebar(prev => !prev)}
+      />
+
+      {/* ── Discover title + sort ──────────────────────────────────────── */}
+      <div className="max-w-2xl mx-auto px-4 pt-5 pb-2 flex items-center justify-between gap-3">
         <h1 className="font-black text-2xl" style={{ color: 'var(--tr-text-primary)' }}>
           {isRtl ? 'اكتشف' : 'Discover'}
         </h1>
+        <select
+          value={sort}
+          onChange={e => handleSortChange(e.target.value as 'newest' | 'liked' | 'following')}
+          className="rounded-full px-3 py-1.5 text-xs focus:outline-none shrink-0 cursor-pointer"
+          style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-secondary)' }}
+        >
+          <option value="newest">{isRtl ? 'الأحدث' : 'Newest'}</option>
+          <option value="liked">{isRtl ? 'الأكثر إعجاباً' : 'Most Liked'}</option>
+          {user && <option value="following">{isRtl ? 'من أتابعهم' : 'Following'}</option>}
+        </select>
       </div>
 
       {/* ── Story circles — categories ──────────────────────────────────── */}
@@ -349,61 +394,6 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         })}
       </div>
 
-      {/* Sticky search + sort bar */}
-      <div
-        className="sticky z-40"
-        style={{
-          top: '56px',
-          background: 'rgba(242,244,251,0.95)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          borderBottom: '1px solid var(--tr-border-subtle)',
-        }}
-      >
-        <div className="max-w-2xl mx-auto px-4 py-2.5 flex items-center gap-3">
-          <div className="relative flex-1 max-w-sm">
-            <svg className="absolute top-1/2 -translate-y-1/2 start-3 w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-            </svg>
-            <input
-              value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
-              placeholder={isRtl ? 'ابحث في العلامات...' : 'Search marks...'}
-              className="w-full rounded-full ps-8 pe-4 py-1.5 text-xs focus:outline-none transition"
-              style={{
-                background: 'var(--tr-overlay)',
-                border: '1px solid var(--tr-border-soft)',
-                color: 'var(--tr-text-primary)',
-              }}
-            />
-          </div>
-          <select
-            value={sort}
-            onChange={e => handleSortChange(e.target.value as 'newest' | 'liked' | 'following')}
-            className="rounded-full px-3 py-1.5 text-xs focus:outline-none shrink-0 cursor-pointer"
-            style={{
-              background: 'var(--tr-overlay)',
-              border: '1px solid var(--tr-border-soft)',
-              color: 'var(--tr-text-secondary)',
-            }}
-          >
-            <option value="newest">{isRtl ? 'الأحدث' : 'Newest'}</option>
-            <option value="liked">{isRtl ? 'الأكثر إعجاباً' : 'Most Liked'}</option>
-            {user && <option value="following">{isRtl ? 'من أتابعهم' : 'Following'}</option>}
-          </select>
-          {/* Sidebar toggle — mobile only */}
-          <button
-            onClick={() => setShowSidebar(v => !v)}
-            className="lg:hidden rounded-full p-1.5 transition shrink-0"
-            style={{ border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-secondary)' }}
-            aria-label={isRtl ? 'القائمة' : 'Menu'}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-            </svg>
-          </button>
-        </div>
-      </div>
 
       {/* Pull to Refresh indicator */}
       {pullY > 12 && (
@@ -530,7 +520,8 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       <TareeqInstallBanner />
       {showCreate && <TareeqCreateModal
         initialContent={sharePrefill}
-        onClose={() => { setShowCreate(false); setSharePrefill(''); }}
+        initialFile={cameraFile ?? undefined}
+        onClose={() => { setShowCreate(false); setSharePrefill(''); setCameraFile(null); }}
         onCreated={(id?: string) => {
           setSharePrefill('');
           loadPosts(category, search, null, sort);

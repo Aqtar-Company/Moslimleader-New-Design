@@ -163,7 +163,7 @@ export default function Header() {
               className="md:hidden relative flex w-10 h-10 rounded-lg overflow-hidden border-2 border-white/70 hover:border-white transition shrink-0"
               aria-label="طريق"
             >
-              <img src="/Tareeq-tiny-usage.png" alt="طريق" className="w-full h-full object-cover" />
+              <img src="/Tareeq-tiny-usage.png" alt="طريق" className="w-full h-full object-fill" />
             </button>
 
             {/* Hamburger — mobile only */}

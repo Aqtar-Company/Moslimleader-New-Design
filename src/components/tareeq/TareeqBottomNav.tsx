@@ -4,9 +4,9 @@ import { usePathname } from 'next/navigation';
 import { useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 import { useLang } from '@/context/LanguageContext';
 
-interface Props { onCreateClick: () => void; }
+interface Props { onCreateClick: () => void; onCameraClick?: () => void; }
 
-export default function TareeqBottomNav({ onCreateClick }: Props) {
+export default function TareeqBottomNav({ onCreateClick, onCameraClick }: Props) {
   const pathname = usePathname();
   const { notifCount, messageCount } = useTareeqNotifications();
   const { isRtl } = useLang();
@@ -32,11 +32,11 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           <HomeIcon filled={isHome} />
         </NavItem>
 
-        {/* Camera — opens create modal */}
+        {/* Camera — opens native device camera */}
         <button
-          onClick={onCreateClick}
+          onClick={onCameraClick ?? onCreateClick}
           className="flex-1 flex flex-col items-center justify-center gap-1 py-2 relative"
-          aria-label={isRtl ? 'إضافة صورة' : 'Add photo'}
+          aria-label={isRtl ? 'صورة' : 'Camera'}
           style={{ color: 'var(--tr-text-secondary)' }}
         >
           <CameraIcon />
@@ -58,14 +58,9 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             }}
             aria-label={isRtl ? 'اترك علامة' : 'Leave a Mark'}
           >
-            {/* 5-pointed star — pushed above center */}
-            <svg
-              className="w-5 h-5"
-              fill="#fff"
-              viewBox="0 0 24 24"
-              style={{ marginBottom: 9 }}
-            >
-              <polygon points="12,2 14.8,9.2 22.5,9.2 16.4,13.8 18.7,21 12,16.5 5.3,21 7.6,13.8 1.5,9.2 9.2,9.2" />
+            {/* 6-pointed star — centered */}
+            <svg className="w-5 h-5" fill="#fff" viewBox="0 0 24 24">
+              <polygon points="12,2 14.9,7 20.7,7 17.8,12 20.7,17 14.9,17 12,22 9.1,17 3.3,17 6.2,12 3.3,7 9.1,7" />
             </svg>
           </button>
         </div>
@@ -129,8 +124,19 @@ function CameraIcon() {
 }
 
 function MessageIcon({ filled }: { filled: boolean }) {
+  if (filled) {
+    return (
+      <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24">
+        {/* Solid envelope body */}
+        <path fill="currentColor" d="M1.5 8.67v8.33a3 3 0 003 3h15a3 3 0 003-3V8.67l-8.928 5.493a3 3 0 01-3.144 0L1.5 8.67z" />
+        <path fill="currentColor" d="M22.5 6.908V6.75a3 3 0 00-3-3h-15a3 3 0 00-3 3v.158l9.714 5.978a1.5 1.5 0 001.572 0L22.5 6.908z" />
+        {/* White chevron fold line */}
+        <path fill="none" stroke="white" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" d="M3.5 8.5l8.5 5.2 8.5-5.2" />
+      </svg>
+    );
+  }
   return (
-    <svg className="w-[22px] h-[22px]" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+    <svg className="w-[22px] h-[22px]" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
     </svg>
   );

@@ -11,9 +11,15 @@ export default function TareeqShell({ children }: { children: React.ReactNode })
 
   function handleCreateClick() {
     if (pathname === '/tareeq') {
-      // Already on the feed — signal TareeqClient directly so it opens the modal
-      // without a full route navigation (which wouldn't retrigger the useEffect).
       window.dispatchEvent(new Event('tareeq-open-create'));
+    } else {
+      router.push('/tareeq?action=create');
+    }
+  }
+
+  function handleCameraClick() {
+    if (pathname === '/tareeq') {
+      window.dispatchEvent(new Event('tareeq-open-camera'));
     } else {
       router.push('/tareeq?action=create');
     }
@@ -24,7 +30,7 @@ export default function TareeqShell({ children }: { children: React.ReactNode })
       <TareeqSplash />
       <TareeqOfflineBanner />
       {children}
-      <TareeqBottomNav onCreateClick={handleCreateClick} />
+      <TareeqBottomNav onCreateClick={handleCreateClick} onCameraClick={handleCameraClick} />
     </TareeqNotificationsProvider>
   );
 }

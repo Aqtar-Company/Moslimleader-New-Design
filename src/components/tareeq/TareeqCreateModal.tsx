@@ -9,9 +9,9 @@ import { compressImage } from '@/lib/compress-image';
 
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
-interface Props { onClose: () => void; onCreated: (id?: string) => void; initialContent?: string; }
+interface Props { onClose: () => void; onCreated: (id?: string) => void; initialContent?: string; initialFile?: File; }
 
-export default function TareeqCreateModal({ onClose, onCreated, initialContent }: Props) {
+export default function TareeqCreateModal({ onClose, onCreated, initialContent, initialFile }: Props) {
   const { isRtl } = useLang();
   const { user } = useAuth();
   const [mounted, setMounted] = useState(false);
@@ -32,6 +32,27 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent }
   useEffect(() => {
     setMounted(true);
     setTimeout(() => textareaRef.current?.focus(), 80);
+  }, []);
+
+  // Auto-upload photo captured by camera button
+  useEffect(() => {
+    if (!initialFile) return;
+    async function upload() {
+      setUploading(true); setError('');
+      try {
+        const isImage = initialFile!.type.startsWith('image/');
+        const uploadFile = isImage ? await compressImage(initialFile!, { maxWidth: 1920, maxHeight: 1920, quality: 0.82 }) : initialFile!;
+        const form = new FormData();
+        form.append('file', uploadFile);
+        const res = await fetch('/api/tareeq/upload', { method: 'POST', credentials: 'include', body: form });
+        const data = await res.json();
+        if (res.ok) { setMediaUrl(data.url); setMediaType(data.type); }
+        else setError(data.error || (isRtl ? 'فشل رفع الصورة' : 'Upload failed'));
+      } catch { setError(isRtl ? 'فشل رفع الصورة' : 'Upload failed'); }
+      finally { setUploading(false); }
+    }
+    upload();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

@@ -200,7 +200,7 @@ function Inner({ conversationId }: { conversationId: string }) {
       </div>
 
       {/* Messages — dir="ltr" so physical right=sender always, left=receiver always, regardless of UI language */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 pb-24 max-w-2xl w-full mx-auto" dir="ltr">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 pb-24 max-w-2xl w-full mx-auto" dir="ltr">
         {loading ? (
           <div className="flex justify-center py-20">
             <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />

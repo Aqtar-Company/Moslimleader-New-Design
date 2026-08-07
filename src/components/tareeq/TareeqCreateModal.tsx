@@ -46,10 +46,12 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     setMediaType(null);
     setUploadProgress(0);
 
-    // Use FileReader for a reliable base64 DataURL preview (works on all mobile browsers)
-    const reader = new FileReader();
-    reader.onload = (ev) => setLocalPreview(ev.target?.result as string ?? null);
-    reader.readAsDataURL(initialFile);
+    // FileReader for images only — video DataURL can't be rendered as <img>
+    if (initialFile.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (ev) => setLocalPreview(ev.target?.result as string ?? null);
+      reader.readAsDataURL(initialFile);
+    }
 
     async function upload() {
       setUploading(true); setError('');
@@ -135,10 +137,12 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     setUploading(true); setError(''); setUploadProgress(0);
     setMediaUrl(null); setMediaType(null);
 
-    // Show preview immediately via FileReader
-    const reader = new FileReader();
-    reader.onload = (ev) => setLocalPreview(ev.target?.result as string ?? null);
-    reader.readAsDataURL(file);
+    // FileReader preview only for images; video DataURL can't render as <img>
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (ev) => setLocalPreview(ev.target?.result as string ?? null);
+      reader.readAsDataURL(file);
+    }
 
     try {
       const isImage = file.type.startsWith('image/');
@@ -316,14 +320,17 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
             </div>
           </div>
 
-          {/* Media preview — shows FileReader DataURL immediately while XHR upload runs */}
-          {(localPreview || mediaUrl) && (
-            <div className="mx-5 mb-3 relative rounded-2xl overflow-hidden" style={{ border: '1px solid var(--tr-border-soft)' }}>
-              {localPreview
+          {/* Media preview — show as soon as upload starts, not just after FileReader resolves */}
+          {(localPreview || mediaUrl || uploading) && (
+            <div className="mx-5 mb-3 relative rounded-2xl overflow-hidden" style={{ border: '1px solid var(--tr-border-soft)', minHeight: 140 }}>
+              {localPreview && mediaType !== 'video'
                 ? <img src={localPreview} alt="" className="w-full max-h-60 object-cover" />
-                : mediaType === 'image'
-                  ? <img src={mediaUrl!} alt="" className="w-full max-h-60 object-cover" />
-                  : <video src={mediaUrl!} className="w-full max-h-60" controls />}
+                : mediaUrl
+                  ? mediaType === 'image'
+                    ? <img src={mediaUrl} alt="" className="w-full max-h-60 object-cover" />
+                    : <video src={mediaUrl} className="w-full max-h-60" controls />
+                  : <div className="w-full" style={{ height: 180, background: 'var(--tr-overlay)' }} />
+              }
 
               {/* Upload progress overlay */}
               {uploading && (

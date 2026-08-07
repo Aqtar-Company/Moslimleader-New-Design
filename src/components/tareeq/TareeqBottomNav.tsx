@@ -1,5 +1,4 @@
 'use client';
-import { useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTareeqNotifications } from '@/context/TareeqNotificationsContext';
@@ -12,11 +11,6 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
   const pathname = usePathname();
   const { notifCount, messageCount } = useTareeqNotifications();
   const { isRtl } = useLang();
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-
-  function handleCameraClick() {
-    cameraInputRef.current?.click();
-  }
 
   function handleCameraFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -41,32 +35,28 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
         height: 'calc(64px + env(safe-area-inset-bottom))',
       }}
     >
-      {/* Hidden file input — triggered by camera button directly (same user gesture) */}
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={handleCameraFileChange}
-      />
-
       <div className="h-16 flex items-center">
         {/* Home */}
         <NavItem href="/tareeq" active={isHome} label={isRtl ? 'الرئيسية' : 'Home'}>
           <HomeIcon filled={isHome} />
         </NavItem>
 
-        {/* Camera — opens native device camera */}
-        <button
-          onClick={handleCameraClick}
-          className="flex-1 flex flex-col items-center justify-center gap-1 py-2 relative"
+        {/* Camera — <label> wraps the input directly so the browser opens camera without any programmatic .click() */}
+        <label
+          className="flex-1 flex flex-col items-center justify-center gap-1 py-2 cursor-pointer"
           aria-label={isRtl ? 'صورة' : 'Camera'}
           style={{ color: 'var(--tr-text-secondary)' }}
         >
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="sr-only"
+            onChange={handleCameraFileChange}
+          />
           <CameraIcon />
           <span className="text-[9px] font-semibold leading-none">{isRtl ? 'كاميرا' : 'Camera'}</span>
-        </button>
+        </label>
 
         {/* Center CTA — dark blue 8-pointed star button */}
         <div className="flex-1 flex justify-center items-center">

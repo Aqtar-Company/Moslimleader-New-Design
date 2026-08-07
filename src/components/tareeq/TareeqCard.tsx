@@ -229,9 +229,9 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                   {currentReaction
                     ? reactionEmoji(currentReaction)
                     : (
-                      // Neutral placeholder when no reaction selected
-                      <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.8}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                      // Neutral sparkle — not a heart
+                      <svg width={20} height={20} viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)">
+                        <path d="M12 3l1.2 4.8L18 6.8l-3.6 3.6 1.2 5.4-3.6-2.4-3.6 2.4 1.2-5.4L6 6.8l4.8 1.2z" />
                       </svg>
                     )
                   }
@@ -450,43 +450,87 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         </Link>
 
         {/* Footer actions */}
-        <div className="px-5 pb-4 pt-2 flex items-center gap-4" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
-          {/* Reactions bar */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-0.5">
-              {REACTIONS.map(r => {
-                const active = currentReaction === r.type;
-                return (
-                  <button
-                    key={r.type}
-                    onClick={(e) => handleReact(r.type, e)}
-                    aria-pressed={active}
-                    title={isRtl ? r.labelAr : r.labelEn}
-                    onPointerDown={e => (e.currentTarget.style.transform = 'scale(0.85)')}
-                    onPointerUp={e => (e.currentTarget.style.transform = active ? 'scale(1.12)' : 'scale(1)')}
-                    onPointerLeave={e => (e.currentTarget.style.transform = active ? 'scale(1.12)' : 'scale(1)')}
-                    className="flex items-center justify-center transition-transform"
-                    style={{
-                      fontSize: active ? 20 : 16,
-                      opacity: active ? 1 : 0.45,
-                      filter: active ? `drop-shadow(0 0 5px ${r.color})` : 'none',
-                      transform: active ? 'scale(1.12)' : 'scale(1)',
-                      minWidth: 40,
-                      minHeight: 40,
-                      padding: 4,
-                    }}
-                  >
-                    {r.emoji}
-                  </button>
-                );
-              })}
-            </div>
-            <span
-              className="text-xs font-semibold"
-              style={{ color: reactionConfig ? reactionConfig.color : 'var(--tr-text-muted)' }}
+        <div className="px-5 pb-4 pt-2 flex items-center gap-4 relative" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
+          {/* Single reaction button — opens picker on press */}
+          <div ref={pickerRef} className="relative flex items-center gap-1.5">
+            <button
+              onClick={handleReactionAreaClick}
+              aria-label={isRtl ? 'تفاعل' : 'React'}
+              className="flex items-center gap-1.5 active:scale-90 transition-transform"
             >
-              {fmt(likeCount)}
-            </span>
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center"
+                style={{
+                  background: currentReaction ? `${reactionConfig?.color ?? '#f59e0b'}18` : 'var(--tr-overlay)',
+                  border: `1.5px solid ${currentReaction ? (reactionConfig?.color ?? '#f59e0b') + '50' : 'var(--tr-border-soft)'}`,
+                  fontSize: currentReaction ? 16 : 13,
+                  ...(currentReaction ? { boxShadow: `0 0 8px ${reactionConfig?.color ?? '#f59e0b'}40` } : {}),
+                }}
+              >
+                {currentReaction
+                  ? reactionEmoji(currentReaction)
+                  : (
+                    // Neutral sparkle
+                    <svg width={14} height={14} viewBox="0 0 24 24" fill="currentColor" style={{ color: 'var(--tr-text-muted)' }}>
+                      <path d="M12 3l1.2 4.8L18 6.8l-3.6 3.6 1.2 5.4-3.6-2.4-3.6 2.4 1.2-5.4L6 6.8l4.8 1.2z" />
+                    </svg>
+                  )
+                }
+              </div>
+              <span
+                className="text-xs font-semibold"
+                style={{ color: currentReaction ? (reactionConfig?.color ?? '#f59e0b') : 'var(--tr-text-muted)' }}
+              >
+                {fmt(likeCount)}
+              </span>
+            </button>
+
+            {/* Picker popup for text cards */}
+            {showPicker && (
+              <div
+                className="absolute bottom-full mb-2 start-0 z-20 flex items-end gap-2"
+                style={{
+                  background: 'var(--tr-raised)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  border: '1px solid var(--tr-border-soft)',
+                  borderRadius: 20,
+                  padding: '8px 12px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.14)',
+                  whiteSpace: 'nowrap',
+                }}
+                onClick={e => e.stopPropagation()}
+              >
+                {REACTIONS.map(r => {
+                  const active = currentReaction === r.type;
+                  return (
+                    <button
+                      key={r.type}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleReact(r.type, e); setShowPicker(false); }}
+                      onPointerDown={e => (e.currentTarget.style.transform = 'scale(0.88)')}
+                      onPointerUp={e => (e.currentTarget.style.transform = active ? 'scale(1.18) translateY(-3px)' : 'scale(1)')}
+                      onPointerLeave={e => (e.currentTarget.style.transform = active ? 'scale(1.18) translateY(-3px)' : 'scale(1)')}
+                      className="flex flex-col items-center gap-0.5 transition-transform"
+                      style={{ transform: active ? 'scale(1.18) translateY(-3px)' : 'scale(1)' }}
+                    >
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-xl"
+                        style={{
+                          background: active ? `${r.color}18` : 'var(--tr-overlay)',
+                          border: `1.5px solid ${active ? r.color + '60' : 'var(--tr-border-soft)'}`,
+                          boxShadow: active ? `0 0 10px ${r.color}40` : 'none',
+                        }}
+                      >
+                        {r.emoji}
+                      </div>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: active ? r.color : 'var(--tr-text-muted)' }}>
+                        {isRtl ? r.labelAr : r.labelEn}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <button

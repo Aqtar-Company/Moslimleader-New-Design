@@ -440,7 +440,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
               className="w-full flex items-center justify-center gap-2 font-black text-sm py-2.5 rounded-xl transition active:scale-95 mb-2"
               style={{
                 background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))',
-                color: '#0a0d06',
+                color: '#fff',
                 boxShadow: '0 2px 12px var(--tr-gold-glow)',
               }}
             >

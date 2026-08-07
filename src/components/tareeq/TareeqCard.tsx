@@ -772,7 +772,7 @@ function BookmarkPicker({ isRtl, folders, newFolderName, setNewFolderName, creat
             type="submit"
             disabled={!newFolderName.trim() || creatingFolder}
             className="px-4 py-2 rounded-full text-sm font-bold disabled:opacity-40 transition shrink-0"
-            style={{ background: 'linear-gradient(135deg,var(--tr-gold-dim),var(--tr-gold-bright))', color: '#0a0d06' }}
+            style={{ background: 'linear-gradient(135deg,var(--tr-gold-dim),var(--tr-gold-bright))', color: '#fff' }}
           >
             {creatingFolder ? '...' : (isRtl ? 'إنشاء' : 'Create')}
           </button>

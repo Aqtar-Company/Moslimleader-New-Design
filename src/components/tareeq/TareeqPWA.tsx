@@ -154,7 +154,7 @@ export function TareeqInstallBanner() {
       <button
         onClick={install}
         className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-full transition"
-        style={{ background: 'var(--tr-gold)', color: '#000' }}
+        style={{ background: 'var(--tr-gold)', color: '#fff' }}
       >
         {isRtl ? 'تثبيت' : 'Install'}
       </button>

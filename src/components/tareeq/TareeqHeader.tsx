@@ -95,12 +95,12 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           <button
             onClick={() => rejectCall(incomingCall.id)}
             className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg transition active:scale-90"
-            style={{ background: '#ef4444' }}
+            style={{ background: '#ef4444', color: '#fff' }}
           >✕</button>
           <button
             onClick={() => acceptCall(incomingCall)}
             className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg transition active:scale-90"
-            style={{ background: '#22c55e' }}
+            style={{ background: '#22c55e', color: '#fff' }}
           >✓</button>
         </div>
       )}
@@ -194,7 +194,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
             <button
               onClick={onCreateClick}
               className="hidden lg:flex items-center gap-1.5 font-black text-xs px-4 py-2 rounded-full transition active:scale-95"
-              style={{ background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))', color: '#0a0d06', boxShadow: '0 2px 10px var(--tr-gold-glow)' }}
+              style={{ background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))', color: '#fff', boxShadow: '0 2px 10px var(--tr-gold-glow)' }}
             >
               <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />

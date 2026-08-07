@@ -60,9 +60,9 @@ export default function TareeqSplash() {
         تطبيق تواصل اجتماعي مجاني لأعضاء مجتمع مسلم ليدر
       </p>
 
-      {/* ML logo at bottom */}
-      <div className="absolute bottom-10 flex flex-col items-center gap-2">
-        <img src="/ml-logo-new.png" alt="Moslim Leader" className="h-8 object-contain opacity-30" />
+      {/* ML logo — gold wordmark, visible at bottom */}
+      <div className="absolute bottom-12 flex flex-col items-center gap-2">
+        <img src="/logo gold.png" alt="Moslim Leader" className="h-11 object-contain opacity-70" />
       </div>
     </div>
   );

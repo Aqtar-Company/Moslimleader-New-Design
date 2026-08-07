@@ -168,7 +168,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent }
             className="font-black px-5 py-2 rounded-full text-sm disabled:opacity-30 active:scale-95 transition flex items-center gap-2"
             style={{
               background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold))',
-              color: '#0a0d06',
+              color: '#fff',
               boxShadow: loading || charCount < 10 ? 'none' : '0 0 14px var(--tr-gold-glow)',
             }}
           >

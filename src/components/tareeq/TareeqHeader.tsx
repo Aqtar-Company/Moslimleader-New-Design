@@ -28,10 +28,11 @@ export default function TareeqHeader({ onCreateClick }: Props) {
       <header
         className="fixed top-0 left-0 right-0 z-50 print:hidden"
         style={{
-          background: 'rgba(15,15,19,0.90)',
+          background: 'rgba(255,255,255,0.93)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
           borderBottom: '1px solid var(--tr-border-subtle)',
+          boxShadow: '0 1px 0 rgba(0,0,0,0.05)',
         }}
       >
         <div className="max-w-2xl mx-auto flex items-center justify-between px-4 h-14">
@@ -64,8 +65,8 @@ export default function TareeqHeader({ onCreateClick }: Props) {
 
           {/* Center: wordmark */}
           <Link href="/tareeq" className="flex items-center gap-2" aria-label="Tareeq Home">
-            <span className="w-7 h-7 rounded-lg overflow-hidden shrink-0">
-              <img src="/Tareeq-small.png" alt="" className="w-full h-full object-cover" />
+            <span className="w-8 h-8 shrink-0 flex items-center justify-center">
+              <img src="/Tareeq-small.png" alt="" className="w-full h-full object-fill" />
             </span>
             <span className="font-black text-sm tracking-wide" style={{ color: 'var(--tr-text-primary)' }}>
               {isRtl ? 'طريق' : 'Tareeq'}

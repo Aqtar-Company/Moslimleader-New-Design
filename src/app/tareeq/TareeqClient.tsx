@@ -229,6 +229,16 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
     setShowCreate(true);
   }
 
+  // Bottom nav camera/create button dispatches this event when already on /tareeq
+  useEffect(() => {
+    const h = () => {
+      if (!user) { setShowGate(true); return; }
+      setShowCreate(true);
+    };
+    window.addEventListener('tareeq-open-create', h);
+    return () => window.removeEventListener('tareeq-open-create', h);
+  }, [user]);
+
   const skeletons = Array.from({ length: 6 });
 
   return (

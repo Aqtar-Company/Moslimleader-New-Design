@@ -1,27 +1,27 @@
 @import "tailwindcss";
 
-/* ── Tareeq "Modern Dark" design tokens ──────────────────── */
+/* ── Tareeq "Clean Light" design tokens ──────────────────── */
 :root {
-  --tr-base:    #0f0f13;
-  --tr-surface: #16161d;
-  --tr-raised:  #1d1d28;
-  --tr-overlay: #252535;
-  --tr-border-subtle: rgba(255,255,255,0.05);
-  --tr-border-soft:   rgba(255,255,255,0.09);
-  --tr-border-strong: rgba(255,255,255,0.17);
-  /* Primary — Dark Blue */
-  --tr-gold:        #3d6ce8;
-  --tr-gold-bright: #5d87f5;
+  --tr-base:    #f2f4fb;
+  --tr-surface: #ffffff;
+  --tr-raised:  #eaecf5;
+  --tr-overlay: #e0e3f0;
+  --tr-border-subtle: rgba(0,0,0,0.07);
+  --tr-border-soft:   rgba(0,0,0,0.12);
+  --tr-border-strong: rgba(0,0,0,0.22);
+  /* Primary — Blue */
+  --tr-gold:        #2563eb;
+  --tr-gold-bright: #3b82f6;
   --tr-gold-dim:    #1e40af;
-  --tr-gold-glow:   rgba(61,108,232,0.18);
-  /* Secondary — Orange accent (lines / highlights) */
-  --tr-teal:        #f97316;
-  --tr-teal-dim:    rgba(249,115,22,0.12);
+  --tr-gold-glow:   rgba(37,99,235,0.13);
+  /* Secondary — Orange accent */
+  --tr-teal:        #ea6f0a;
+  --tr-teal-dim:    rgba(234,111,10,0.12);
   /* Text */
-  --tr-text-primary:   #eef0f8;
-  --tr-text-secondary: #7880a0;
-  --tr-text-muted:     #3d4060;
-  /* Night palette */
+  --tr-text-primary:   #0f1117;
+  --tr-text-secondary: #4b5675;
+  --tr-text-muted:     #94a3b8;
+  /* Night palette (kept dark for splash / landing modal) */
   --tr-night:        #0f0f13;
   --tr-night-mid:    #111320;
   --tr-night-horizon:#1a3060;

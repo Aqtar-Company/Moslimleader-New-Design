@@ -2,7 +2,26 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLang } from '@/context/LanguageContext';
 
-const STUN = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
+// STUN: discover public IP. TURN: relay media when direct NAT traversal fails.
+// openrelay.metered.ca is a free open-source TURN for development; replace with
+// a dedicated coturn instance on the VPS for production quality.
+const ICE_CONFIG: RTCConfiguration = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    {
+      urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443'],
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+  ],
+  iceCandidatePoolSize: 10,
+};
 
 export interface CallParty {
   id: string;
@@ -92,7 +111,7 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
     localStreamRef.current = stream;
     if (localVideoRef.current) localVideoRef.current.srcObject = stream;
 
-    const pc = new RTCPeerConnection(STUN);
+    const pc = new RTCPeerConnection(ICE_CONFIG);
     pcRef.current = pc;
     stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
@@ -171,7 +190,7 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
     localStreamRef.current = stream;
     if (localVideoRef.current) localVideoRef.current.srcObject = stream;
 
-    const pc = new RTCPeerConnection(STUN);
+    const pc = new RTCPeerConnection(ICE_CONFIG);
     pcRef.current = pc;
     stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
@@ -308,28 +327,35 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
 
       {/* Controls */}
       <div className="relative z-10 flex items-center gap-6 pb-4">
-        {/* Callee ringing: Accept + Reject */}
-        {callState === 'ringing' && role === 'callee' && (
+        {/* Callee ringing: Accept + Decline */}
+        {callState === 'ringing' && role === 'callee' && !autoAnswer && (
           <>
-            <CtrlBtn icon="✕" label={isRtl ? 'رفض' : 'Decline'} color="#ef4444" size={64} onClick={() => endCall('rejected')} />
-            <CtrlBtn icon="✓" label={isRtl ? 'قبول' : 'Accept'} color="#22c55e" size={64} onClick={answerCall} />
+            <CtrlBtn icon="📵" label={isRtl ? 'رفض' : 'Decline'} color="#ef4444" size={64} onClick={() => endCall('rejected')} />
+            <CtrlBtn icon="📞" label={isRtl ? 'قبول' : 'Accept'} color="#22c55e" size={64} onClick={answerCall} />
           </>
         )}
 
-        {/* Caller ringing (waiting for callee) */}
-        {callState === 'ringing' && role === 'caller' && (
-          <CtrlBtn icon="✕" label={isRtl ? 'إلغاء' : 'Cancel'} color="#ef4444" size={64} onClick={() => endCall('ended')} />
-        )}
-
-        {/* Connecting or active */}
+        {/* Mute/camera controls when active */}
         {(callState === 'connecting' || callState === 'active') && (
           <>
-            <CtrlBtn icon={muted ? '🔇' : '🎙️'} label={muted ? (isRtl ? 'إلغاء الكتم' : 'Unmute') : (isRtl ? 'كتم' : 'Mute')} color="rgba(255,255,255,0.15)" onClick={toggleMute} />
+            <CtrlBtn icon={muted ? '🔇' : '🎙️'} label={muted ? (isRtl ? 'رفع الكتم' : 'Unmute') : (isRtl ? 'كتم' : 'Mute')} color="rgba(255,255,255,0.15)" onClick={toggleMute} />
             {callType === 'video' && (
               <CtrlBtn icon={cameraOff ? '📵' : '📹'} label={cameraOff ? (isRtl ? 'تشغيل' : 'On') : (isRtl ? 'إيقاف' : 'Off')} color="rgba(255,255,255,0.15)" onClick={toggleCamera} />
             )}
-            <CtrlBtn icon="✕" label={isRtl ? 'إنهاء' : 'End'} color="#ef4444" size={64} onClick={() => endCall('ended')} />
           </>
+        )}
+
+        {/* End/Cancel — always visible so user can always exit */}
+        {callState !== 'ended' && callState !== 'rejected' && callState !== 'failed' && (
+          <CtrlBtn
+            icon="📵"
+            label={callState === 'ringing' && role === 'caller' ? (isRtl ? 'إلغاء' : 'Cancel')
+              : callState === 'ringing' && role === 'callee' ? (isRtl ? 'رفض' : 'Decline')
+              : (isRtl ? 'إنهاء' : 'End')}
+            color="#ef4444"
+            size={64}
+            onClick={() => endCall(role === 'callee' && callState === 'ringing' ? 'rejected' : 'ended')}
+          />
         )}
       </div>
     </div>

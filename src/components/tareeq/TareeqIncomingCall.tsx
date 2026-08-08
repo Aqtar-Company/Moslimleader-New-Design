@@ -25,17 +25,33 @@ export default function TareeqIncomingCall() {
     try {
       const ctx = new AudioContext();
       audioCtxRef.current = ctx;
-      const beep = () => {
+
+      // Traditional phone ring: two bursts (400ms on / 200ms off / 400ms on), then 2s silence
+      const playBurst = (t: number, freq: number, dur: number) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain); gain.connect(ctx.destination);
-        osc.frequency.value = 480;
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.25, t + 0.02);
+        gain.gain.setValueAtTime(0.25, t + dur - 0.02);
+        gain.gain.linearRampToValueAtTime(0, t + dur);
+        osc.start(t); osc.stop(t + dur);
       };
-      beep();
-      ringRef.current = setInterval(beep, 2000);
+
+      const ring = () => {
+        const t = ctx.currentTime;
+        // Burst 1: 400ms at 480Hz + 425Hz dual-tone
+        playBurst(t, 480, 0.4);
+        playBurst(t, 425, 0.4);
+        // Burst 2: 400ms starting at 600ms
+        playBurst(t + 0.6, 480, 0.4);
+        playBurst(t + 0.6, 425, 0.4);
+      };
+
+      ring();
+      ringRef.current = setInterval(ring, 3000);
     } catch { /* AudioContext not supported */ }
   }
 

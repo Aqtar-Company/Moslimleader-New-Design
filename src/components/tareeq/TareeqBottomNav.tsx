@@ -23,6 +23,9 @@ function timeAgo(iso: string, isRtl: boolean): string {
   return isRtl ? `${Math.floor(diff / 86400)} ي` : `${Math.floor(diff / 86400)}d`;
 }
 
+/* ─── Nav color ─────────────────────────────────────────────────────────────── */
+const NAV_ACCENT = '#FFCC00'; // yellow 100 + magenta ~20% — slightly warm, not orange
+
 /* ─── SVG Curved Nav Path ───────────────────────────────────────────────────── */
 // viewBox: "0 0 1000 102"
 // y=0 → 40px above nav top edge; y=40 → nav top; y=102 → nav bottom
@@ -31,19 +34,37 @@ function timeAgo(iso: string, isRtl: boolean): string {
 function buildNavPath(dy: number): string {
   const CX = 500;
   const NAV_Y = 40;
-  // Shallower depth + wider span → smoother valley, circle "emerges" rather than sits in a hole
   const depth = 17 + Math.min(Math.max(dy, 0), 90) * 0.20;
   const halfSpan = 238 + Math.min(Math.max(dy, 0), 90) * 0.50;
   const dipY = NAV_Y + depth;
   const lx = CX - halfSpan;
   const rx = CX + halfSpan;
-  const cf = 0.42; // smoother Bézier transition (was 0.38)
+  const cf = 0.42;
   return (
     `M 0 ${NAV_Y} ` +
     `L ${lx} ${NAV_Y} ` +
     `C ${lx + halfSpan * cf} ${NAV_Y} ${CX - 26} ${dipY} ${CX} ${dipY} ` +
     `C ${CX + 26} ${dipY} ${rx - halfSpan * cf} ${NAV_Y} ${rx} ${NAV_Y} ` +
     `L 1000 ${NAV_Y} L 1000 102 L 0 102 Z`
+  );
+}
+
+// Stroke-only path (top curve) — no bottom line
+function buildNavStrokePath(dy: number): string {
+  const CX = 500;
+  const NAV_Y = 40;
+  const depth = 17 + Math.min(Math.max(dy, 0), 90) * 0.20;
+  const halfSpan = 238 + Math.min(Math.max(dy, 0), 90) * 0.50;
+  const dipY = NAV_Y + depth;
+  const lx = CX - halfSpan;
+  const rx = CX + halfSpan;
+  const cf = 0.42;
+  return (
+    `M 0 ${NAV_Y} ` +
+    `L ${lx} ${NAV_Y} ` +
+    `C ${lx + halfSpan * cf} ${NAV_Y} ${CX - 26} ${dipY} ${CX} ${dipY} ` +
+    `C ${CX + 26} ${dipY} ${rx - halfSpan * cf} ${NAV_Y} ${rx} ${NAV_Y} ` +
+    `L 1000 ${NAV_Y}`
   );
 }
 
@@ -228,26 +249,20 @@ function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: P
   const { signOut } = useAuth();
   const router = useRouter();
   const [notifState, setNotifState] = useState<'default' | 'granted' | 'denied'>('default');
-  const [themeMode, setThemeMode] = useState<'system' | 'dark' | 'light'>('system');
+  const [themeMode, setThemeMode] = useState<'dark' | 'light'>('light');
 
   useEffect(() => {
     if (typeof Notification !== 'undefined') {
       setNotifState(Notification.permission === 'granted' ? 'granted' : Notification.permission === 'denied' ? 'denied' : 'default');
     }
     const saved = localStorage.getItem('tareeq-theme');
-    if (saved === 'dark' || saved === 'light') setThemeMode(saved);
-    else setThemeMode('system');
+    setThemeMode(saved === 'dark' ? 'dark' : 'light');
   }, []);
 
-  function applyTheme(mode: 'system' | 'dark' | 'light') {
+  function applyTheme(mode: 'dark' | 'light') {
     setThemeMode(mode);
-    if (mode === 'system') {
-      localStorage.removeItem('tareeq-theme');
-      document.documentElement.removeAttribute('data-theme');
-    } else {
-      localStorage.setItem('tareeq-theme', mode);
-      document.documentElement.setAttribute('data-theme', mode);
-    }
+    localStorage.setItem('tareeq-theme', mode);
+    document.documentElement.setAttribute('data-theme', mode);
   }
 
   const initial = userName.charAt(0).toUpperCase();
@@ -474,16 +489,16 @@ function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: P
               {isRtl ? 'المظهر' : 'Appearance'}
             </span>
             <div className="flex gap-1 p-0.5 rounded-xl" style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)' }}>
-              {(['light', 'system', 'dark'] as const).map(mode => {
+              {(['light', 'dark'] as const).map(mode => {
                 const labels: Record<string, string> = isRtl
-                  ? { light: 'فاتح', system: 'تلقائي', dark: 'داكن' }
-                  : { light: 'Light', system: 'Auto', dark: 'Dark' };
+                  ? { light: 'فاتح', dark: 'داكن' }
+                  : { light: 'Light', dark: 'Dark' };
                 const active = themeMode === mode;
                 return (
                   <button
                     key={mode}
                     onClick={() => applyTheme(mode)}
-                    className="text-[11px] font-bold px-2.5 py-1 rounded-lg transition-all"
+                    className="text-[11px] font-bold px-3 py-1 rounded-lg transition-all"
                     style={active
                       ? { background: 'var(--tr-gold)', color: '#fff', boxShadow: '0 1px 4px var(--tr-gold-glow)' }
                       : { background: 'transparent', color: 'var(--tr-text-muted)' }
@@ -506,9 +521,7 @@ function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: P
             style={{ background: 'var(--tr-overlay)', textDecoration: 'none' }}
           >
             <div style={iconBox('var(--tr-overlay)', 'var(--tr-border-soft)')}>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-secondary)' }}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .415.336.75.75.75z" />
-              </svg>
+              <img src="/ml-logo-new.png" alt="Moslim Leader" className="w-6 h-6 object-contain" />
             </div>
             <div className="flex flex-col gap-0.5 flex-1 min-w-0">
               <span className="font-bold text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'متجر مسلم ليدر' : 'Moslim Leader'}</span>
@@ -586,9 +599,17 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
     setShowHint(count < CAM_HINT_MAX);
   }, []);
 
+  /* ── Open settings via custom event (e.g. from profile page) ── */
+  useEffect(() => {
+    const h = () => setShowProfile(true);
+    window.addEventListener('tareeq:open-settings', h);
+    return () => window.removeEventListener('tareeq:open-settings', h);
+  }, []);
+
   /* ── Gesture refs (no re-render during drag) ─────────── */
   const btnRef = useRef<HTMLButtonElement>(null);
   const svgPathRef = useRef<SVGPathElement>(null);
+  const svgStrokePathRef = useRef<SVGPathElement>(null);
   const hintRef = useRef<HTMLDivElement>(null);
   const animRafRef = useRef<number | null>(null);
 
@@ -673,6 +694,9 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
     if (svgPathRef.current) {
       svgPathRef.current.setAttribute('d', buildNavPath(clamped));
     }
+    if (svgStrokePathRef.current) {
+      svgStrokePathRef.current.setAttribute('d', buildNavStrokePath(clamped));
+    }
     if (hintRef.current) {
       hintRef.current.style.opacity = String(Math.max(0, 1 - dy / 20));
     }
@@ -697,6 +721,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
       const t = Math.min((now - start) / dur, 1);
       const ease = 1 - Math.pow(1 - t, 3);
       if (svgPathRef.current) svgPathRef.current.setAttribute('d', buildNavPath(fromDy * (1 - ease)));
+      if (svgStrokePathRef.current) svgStrokePathRef.current.setAttribute('d', buildNavStrokePath(fromDy * (1 - ease)));
       if (t < 1) {
         animRafRef.current = requestAnimationFrame(step);
       } else {
@@ -739,6 +764,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
       btnRef.current.style.transform = 'translateX(-50%) translateY(0px)';
     }
     if (svgPathRef.current) svgPathRef.current.setAttribute('d', buildNavPath(0));
+    if (svgStrokePathRef.current) svgStrokePathRef.current.setAttribute('d', buildNavStrokePath(0));
     // Show the camera hint when user touches the button
     if (hintRef.current) {
       hintRef.current.style.transition = 'opacity 0.18s ease-out';
@@ -998,9 +1024,9 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           width: CIRCLE_SIZE,
           height: CIRCLE_SIZE,
           borderRadius: '50%',
-          background: '#fff',
-          border: '1px solid rgba(0,0,0,0.08)',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.10)',
+          background: 'linear-gradient(145deg, #1d4ed8, #3b82f6)',
+          border: '2.5px solid #ffffff',
+          boxShadow: `0 0 0 3px ${NAV_ACCENT}, 0 6px 24px rgba(37,99,235,0.50), 0 2px 8px rgba(0,0,0,0.20)`,
           zIndex: 42,
           display: 'flex',
           alignItems: 'center',
@@ -1009,9 +1035,9 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           cursor: 'pointer',
         }}
       >
-        {/* Pen/edit icon */}
-        <svg width="22" height="22" fill="none" stroke="#1a1a2e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-          <path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.862 4.487z" />
+        {/* 8-pointed star icon */}
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+          <path d="M12,3 L13.72,7.84 L18.36,5.64 L16.16,10.28 L21,12 L16.16,13.72 L18.36,18.36 L13.72,16.16 L12,21 L10.28,16.16 L5.64,18.36 L7.84,13.72 L3,12 L7.84,10.28 L5.64,5.64 L10.28,7.84 Z"/>
         </svg>
 
         {/* Swipe-up hint — hidden by default, shown only on touch (opacity driven by DOM refs) */}
@@ -1057,12 +1083,21 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           preserveAspectRatio="none"
           viewBox="0 0 1000 102"
         >
+          {/* Fill — no stroke (eliminates bottom border) */}
           <path
             ref={svgPathRef}
             d={buildNavPath(0)}
             fill="var(--tr-surface)"
-            stroke="var(--tr-border-subtle)"
-            strokeWidth="1"
+            stroke="none"
+          />
+          {/* Top curved line only — stroke, no fill */}
+          <path
+            ref={svgStrokePathRef}
+            d={buildNavStrokePath(0)}
+            fill="none"
+            stroke={NAV_ACCENT}
+            strokeWidth="4"
+            strokeLinecap="round"
           />
         </svg>
 
@@ -1072,49 +1107,53 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           className="relative flex items-end justify-around px-3"
           style={{ height: NAV_H, paddingBottom: 'env(safe-area-inset-bottom, 0px)', zIndex: 1 }}
         >
-          {/* 1 — Profile avatar → opens ProfileSheet (settings inside) */}
+          {/* 1 — Profile avatar → navigates to own profile page */}
           <button
-            onClick={() => user ? setShowProfile(true) : router.push('/login?next=/tareeq')}
+            onClick={() => user ? router.push(`/tareeq/u/${user.id}`) : router.push('/login?next=/tareeq')}
             className="flex flex-col items-center justify-end gap-1 pb-2 transition-all active:scale-90"
             style={{ minWidth: 44, background: 'none', border: 'none', cursor: 'pointer' }}
           >
             {user?.avatarUrl ? (
               <img src={user.avatarUrl} alt={user.name ?? ''}
                 className="w-7 h-7 rounded-full object-cover"
-                style={{ border: `2px solid ${showProfile ? 'var(--tr-gold)' : 'var(--tr-gold-dim)'}`, opacity: showProfile ? 1 : 0.75 }} />
+                style={{ border: '2px solid var(--tr-gold-dim)', opacity: 0.85 }} />
             ) : (
               <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black"
-                style={{
-                  background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)',
-                  border: `2px solid ${showProfile ? 'var(--tr-gold)' : 'var(--tr-gold-dim)'}`, opacity: showProfile ? 1 : 0.75,
-                }}>
+                style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold-dim)', opacity: 0.85 }}>
                 {user?.name?.charAt(0) ?? '?'}
               </div>
             )}
           </button>
 
-          {/* 2 — انتفع (compass/guidance star — 4-pointed N/S/E/W shape) */}
+          {/* 2 — اكتشف (discover — binoculars icon) */}
           <Link
             href="/tareeq"
             className="flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
             style={{ minWidth: 44 }}
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.7} viewBox="0 0 24 24"
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.7} viewBox="0 0 24 24"
               style={{
                 color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
-                filter: isHome ? 'drop-shadow(0 0 5px rgba(212,168,83,0.45))' : 'none',
+                filter: isHome ? 'drop-shadow(0 0 6px var(--tr-gold-glow))' : 'none',
                 transition: 'all 0.2s',
               }}>
-              {/* 4-pointed compass/guidance star: tips at cardinal directions, angled inner corners */}
-              <path strokeLinejoin="round" d="M12 3L15 9L21 12L15 15L12 21L9 15L3 12L9 9Z" />
+              {/* Binoculars — discover/explore icon */}
+              <circle cx="6.5" cy="13" r="4" />
+              <circle cx="17.5" cy="13" r="4" />
+              <path strokeLinecap="round" d="M10.5 13h3" />
+              <path strokeLinecap="round" d="M6.5 9V7l2-2h7l2 2v2" />
             </svg>
             <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
-              {isRtl ? 'انتفع' : 'Home'}
+              {isRtl ? 'اكتشف' : 'Discover'}
             </span>
           </Link>
 
-          {/* 3 — Center spacer (circle button floats above) */}
-          <div style={{ width: CIRCLE_SIZE, minWidth: CIRCLE_SIZE, height: 1 }} aria-hidden />
+          {/* 3 — Center spacer + label */}
+          <div className="flex flex-col items-center justify-end pb-2" style={{ width: CIRCLE_SIZE, minWidth: CIRCLE_SIZE }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--tr-gold)', lineHeight: 1, letterSpacing: '0.02em' }}>
+              {isRtl ? 'ضع علامة' : 'Post'}
+            </span>
+          </div>
 
           {/* 4 — Messages */}
           <Link
@@ -1136,6 +1175,9 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
                 {messageCount > 9 ? '9+' : messageCount}
               </span>
             )}
+            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isInbox ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
+              {isRtl ? 'رسائل' : 'Chat'}
+            </span>
           </Link>
 
           {/* 5 — Contacts / Quick Call */}
@@ -1152,6 +1194,9 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
               }}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
             </svg>
+            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: showContacts ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
+              {isRtl ? 'اتصال' : 'Call'}
+            </span>
           </button>
         </div>
       </nav>

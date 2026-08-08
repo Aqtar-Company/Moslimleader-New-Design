@@ -448,11 +448,17 @@ function Inner({ groupId }: { groupId: string }) {
               onClick={handleSend}
               disabled={sending || uploading || (!input.trim() && !mediaUrl)}
               className="rounded-full w-9 h-9 flex items-center justify-center shrink-0 transition disabled:opacity-40"
-              style={{ background: 'linear-gradient(135deg,var(--tr-gold-dim),var(--tr-gold-bright))', color: '#fff' }}
+              style={{ background: 'linear-gradient(135deg,var(--tr-gold-dim),var(--tr-gold-bright))', color: '#fff', boxShadow: '0 3px 12px var(--tr-gold-glow)' }}
             >
               {sending
                 ? <div className="w-4 h-4 border-2 border-current/40 border-t-current rounded-full animate-spin" />
-                : <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>
+                : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M2,11 L12,7 L22,11 L15,15 L12,11 L9,15 Z"/>
+                    <path d="M12,15 L10,21 L12,18 L14,21 Z"/>
+                    <path d="M16,8 L20,7 L17,11 Z"/>
+                  </svg>
+                )
               }
             </button>
           </div>

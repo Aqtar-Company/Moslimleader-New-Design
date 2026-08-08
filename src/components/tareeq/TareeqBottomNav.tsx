@@ -30,12 +30,13 @@ function timeAgo(iso: string, isRtl: boolean): string {
 function buildNavPath(dy: number): string {
   const CX = 500;
   const NAV_Y = 40;
-  const depth = 22 + Math.min(Math.max(dy, 0), 90) * 0.25;
-  const halfSpan = 210 + Math.min(Math.max(dy, 0), 90) * 0.55;
+  // Shallower depth + wider span → smoother valley, circle "emerges" rather than sits in a hole
+  const depth = 17 + Math.min(Math.max(dy, 0), 90) * 0.20;
+  const halfSpan = 238 + Math.min(Math.max(dy, 0), 90) * 0.50;
   const dipY = NAV_Y + depth;
   const lx = CX - halfSpan;
   const rx = CX + halfSpan;
-  const cf = 0.38; // control-point fraction of halfSpan
+  const cf = 0.42; // smoother Bézier transition (was 0.38)
   return (
     `M 0 ${NAV_Y} ` +
     `L ${lx} ${NAV_Y} ` +
@@ -202,24 +203,6 @@ function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: P
         </div>
 
         <div className="px-4 py-3 flex flex-col gap-2">
-          {/* My Posts */}
-          <Link
-            href={`/tareeq/u/${userId}`}
-            onClick={onClose}
-            className="flex items-center gap-3.5 px-4 py-3 rounded-2xl transition-all active:scale-[0.98]"
-            style={{ background: 'var(--tr-overlay)' }}
-          >
-            <div style={iconBox('var(--tr-overlay)', 'var(--tr-border-soft)')}>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-secondary)' }}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
-              </svg>
-            </div>
-            <span className="font-bold text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'منشوراتي' : 'My Posts'}</span>
-            <svg className="w-4 h-4 ms-auto" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M15.75 19.5L8.25 12l7.5-7.5' : 'M8.25 4.5l7.5 7.5-7.5 7.5'} />
-            </svg>
-          </Link>
-
           {/* Leave your mark */}
           <button
             onClick={handleCreate}
@@ -232,14 +215,86 @@ function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: P
             {isRtl ? 'اترك علامتك' : 'Leave Your Mark'}
           </button>
 
+          {/* Section: Account */}
+          <p className="text-[10px] font-bold px-1 pt-1" style={{ color: 'var(--tr-text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            {isRtl ? 'الحساب' : 'Account'}
+          </p>
+          <div className="rounded-2xl overflow-hidden flex flex-col gap-px" style={{ background: 'var(--tr-overlay)' }}>
+            {/* My Posts */}
+            <Link
+              href={`/tareeq/u/${userId}`}
+              onClick={onClose}
+              className="flex items-center gap-3.5 px-4 py-3 transition-all active:scale-[0.98]"
+              style={{ textDecoration: 'none' }}
+            >
+              <div style={iconBox('var(--tr-overlay)', 'var(--tr-border-soft)')}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-secondary)' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+                </svg>
+              </div>
+              <span className="font-bold text-sm flex-1" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'منشوراتي' : 'My Posts'}</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M15.75 19.5L8.25 12l7.5-7.5' : 'M8.25 4.5l7.5 7.5-7.5 7.5'} />
+              </svg>
+            </Link>
+            {/* Divider */}
+            <div style={{ height: 1, background: 'var(--tr-border-subtle)', marginInline: 16 }} />
+            {/* Edit Profile */}
+            <Link
+              href="/account"
+              onClick={onClose}
+              className="flex items-center gap-3.5 px-4 py-3 transition-all active:scale-[0.98]"
+              style={{ textDecoration: 'none' }}
+            >
+              <div style={iconBox('var(--tr-overlay)', 'var(--tr-border-soft)')}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-secondary)' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.862 4.487z" />
+                </svg>
+              </div>
+              <span className="font-bold text-sm flex-1" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'تعديل الملف الشخصي' : 'Edit Profile'}</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M15.75 19.5L8.25 12l7.5-7.5' : 'M8.25 4.5l7.5 7.5-7.5 7.5'} />
+              </svg>
+            </Link>
+          </div>
+
+          {/* Section: Notifications */}
+          <p className="text-[10px] font-bold px-1 pt-1" style={{ color: 'var(--tr-text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            {isRtl ? 'الإشعارات' : 'Notifications'}
+          </p>
+
+          {/* Enable Notifications */}
+          <button
+            onClick={handleEnableNotifs}
+            style={rowStyle}
+            className="transition-all active:scale-[0.98]"
+          >
+            <div style={iconBox('var(--tr-overlay)', 'var(--tr-border-soft)')}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: notifState === 'granted' ? 'var(--tr-gold)' : 'var(--tr-text-secondary)' }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+              </svg>
+            </div>
+            <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+              <span className="font-bold text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'فعّل الإشعارات' : 'Enable Notifications'}</span>
+              <span className="text-xs" style={{ color: 'var(--tr-text-muted)' }}>
+                {notifState === 'granted' ? (isRtl ? 'مفعّلة ✓' : 'Enabled ✓')
+                  : notifState === 'denied' ? (isRtl ? 'محظورة من الإعدادات' : 'Blocked in browser settings')
+                  : (isRtl ? 'تلقّ إشعارات على جهازك' : 'Get alerts on your device')}
+              </span>
+            </div>
+            {notifState === 'default' && (
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M15.75 19.5L8.25 12l7.5-7.5' : 'M8.25 4.5l7.5 7.5-7.5 7.5'} />
+              </svg>
+            )}
+          </button>
+
+          {/* Section: Share */}
+          <p className="text-[10px] font-bold px-1 pt-1" style={{ color: 'var(--tr-text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            {isRtl ? 'شارك طريق' : 'Share Tareeq'}
+          </p>
           {/* Share section */}
           <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--tr-overlay)' }}>
-            <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
-              </svg>
-              <span className="text-xs font-bold" style={{ color: 'var(--tr-text-secondary)' }}>{isRtl ? 'شارك طريق' : 'Share Tareeq'}</span>
-            </div>
             <div className="grid grid-cols-2 gap-2 p-3">
               {([
                 { key: 'whatsapp', label: 'WhatsApp', color: '#25D366', icon: (
@@ -269,32 +324,10 @@ function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: P
             </div>
           </div>
 
-          {/* Enable Notifications */}
-          <button
-            onClick={handleEnableNotifs}
-            style={rowStyle}
-            className="transition-all active:scale-[0.98]"
-          >
-            <div style={iconBox('var(--tr-overlay)', 'var(--tr-border-soft)')}>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: notifState === 'granted' ? 'var(--tr-gold)' : 'var(--tr-text-secondary)' }}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
-              </svg>
-            </div>
-            <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-              <span className="font-bold text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'فعّل الإشعارات' : 'Enable Notifications'}</span>
-              <span className="text-xs" style={{ color: 'var(--tr-text-muted)' }}>
-                {notifState === 'granted' ? (isRtl ? 'مفعّلة ✓' : 'Enabled ✓')
-                  : notifState === 'denied' ? (isRtl ? 'محظورة من الإعدادات' : 'Blocked in browser settings')
-                  : (isRtl ? 'تلقّ إشعارات على جهازك' : 'Get alerts on your device')}
-              </span>
-            </div>
-            {notifState === 'default' && (
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
-                <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M15.75 19.5L8.25 12l7.5-7.5' : 'M8.25 4.5l7.5 7.5-7.5 7.5'} />
-              </svg>
-            )}
-          </button>
-
+          {/* Section: App */}
+          <p className="text-[10px] font-bold px-1 pt-1" style={{ color: 'var(--tr-text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            {isRtl ? 'التطبيق' : 'App'}
+          </p>
           {/* Moslim Leader Store */}
           <a
             href="https://moslimleader.com"
@@ -328,6 +361,10 @@ function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: P
             </p>
           </div>
 
+          {/* Section: Session */}
+          <p className="text-[10px] font-bold px-1 pt-1" style={{ color: 'var(--tr-text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            {isRtl ? 'الجلسة' : 'Session'}
+          </p>
           {/* Sign Out */}
           <button
             onClick={handleLogout}
@@ -359,6 +396,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
 
   /* ── Notification panel state ────────────────────────── */
   const [showNotifs, setShowNotifs] = useState(false);
+  const [panelVisible, setPanelVisible] = useState(false);
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const [notifsLoading, setNotifsLoading] = useState(false);
   const notifPanelRef = useRef<HTMLDivElement>(null);
@@ -410,6 +448,16 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
 
   useEffect(() => { if (showNotifs) loadNotifs(); }, [showNotifs, loadNotifs]);
 
+  // Panel enter animation — wait one frame so the DOM is rendered before transitioning in
+  useEffect(() => {
+    if (showNotifs) {
+      const id = requestAnimationFrame(() => setPanelVisible(true));
+      return () => cancelAnimationFrame(id);
+    } else {
+      setPanelVisible(false);
+    }
+  }, [showNotifs]);
+
   useEffect(() => {
     if (!showNotifs) return;
     function handle(e: MouseEvent | TouchEvent) {
@@ -455,9 +503,6 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
       btnRef.current.style.transition = 'transform 0.42s cubic-bezier(0.34, 1.56, 0.64, 1)';
       btnRef.current.style.transform = 'translateX(-50%) translateY(0px)';
     }
-    if (hintRef.current) {
-      hintRef.current.style.opacity = '1';
-    }
     // RAF interpolation for SVG path
     if (animRafRef.current) cancelAnimationFrame(animRafRef.current);
     const start = performance.now();
@@ -466,8 +511,19 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
       const t = Math.min((now - start) / dur, 1);
       const ease = 1 - Math.pow(1 - t, 3);
       if (svgPathRef.current) svgPathRef.current.setAttribute('d', buildNavPath(fromDy * (1 - ease)));
-      if (t < 1) animRafRef.current = requestAnimationFrame(step);
-      else { animRafRef.current = null; onDone?.(); }
+      if (t < 1) {
+        animRafRef.current = requestAnimationFrame(step);
+      } else {
+        animRafRef.current = null;
+        // Fade hint out after spring settles
+        setTimeout(() => {
+          if (hintRef.current) {
+            hintRef.current.style.transition = 'opacity 0.5s ease-out';
+            hintRef.current.style.opacity = '0';
+          }
+        }, 800);
+        onDone?.();
+      }
     }
     animRafRef.current = requestAnimationFrame(step);
   }
@@ -497,6 +553,11 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
       btnRef.current.style.transform = 'translateX(-50%) translateY(0px)';
     }
     if (svgPathRef.current) svgPathRef.current.setAttribute('d', buildNavPath(0));
+    // Show the camera hint when user touches the button
+    if (hintRef.current) {
+      hintRef.current.style.transition = 'opacity 0.18s ease-out';
+      hintRef.current.style.opacity = '1';
+    }
     const g = gesture.current;
     g.active = true; g.startY = e.clientY; g.dy = 0;
     g.mode = 'idle'; g.thresholdHit = false; g.pointerId = e.pointerId;
@@ -536,6 +597,13 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
       playTapAnim();
       if (navigator.vibrate) navigator.vibrate(8);
       onCreateClick();
+      // Fade hint after tap
+      setTimeout(() => {
+        if (hintRef.current) {
+          hintRef.current.style.transition = 'opacity 0.5s ease-out';
+          hintRef.current.style.opacity = '0';
+        }
+      }, 300);
     } else if (dy >= CAMERA_THRESHOLD) {
       // SWIPE SUCCESS → camera
       const peakDy = Math.min(dy + 14, 124);
@@ -588,19 +656,23 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
       <div className="fixed z-50 print:hidden" style={{ top: 14, [isRtl ? 'left' : 'right']: 14 }}>
         <button
           ref={bellRef}
-          onClick={() => setShowNotifs(v => !v)}
+          onClick={() => { if (navigator.vibrate) navigator.vibrate(6); setShowNotifs(v => !v); }}
           aria-label={isRtl ? 'الإشعارات' : 'Notifications'}
-          className="relative w-11 h-11 flex items-center justify-center rounded-full transition-all active:scale-90"
+          className="relative w-11 h-11 flex items-center justify-center rounded-full transition-all active:scale-[0.94]"
           style={{
-            background: showNotifs ? 'var(--tr-gold-glow)' : 'color-mix(in srgb, var(--tr-surface) 88%, transparent)',
+            background: showNotifs
+              ? 'rgba(59,130,246,0.30)'
+              : 'rgba(59,130,246,0.14)',
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
-            border: showNotifs ? '1px solid var(--tr-gold-dim)' : '1px solid var(--tr-border-soft)',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.22)',
+            border: '1px solid rgba(255,255,255,0.22)',
+            boxShadow: showNotifs
+              ? '0 4px 20px rgba(59,130,246,0.30), inset 0 1px 0 rgba(255,255,255,0.18)'
+              : '0 2px 14px rgba(59,130,246,0.18), inset 0 1px 0 rgba(255,255,255,0.12)',
           }}
         >
           <svg className="w-[19px] h-[19px]" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"
-            style={{ color: showNotifs ? 'var(--tr-gold)' : 'var(--tr-text-secondary)' }}>
+            style={{ color: '#fff' }}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
           </svg>
           {notifCount > 0 && (
@@ -622,11 +694,16 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
               width: 'min(340px, calc(100vw - 28px))',
               maxHeight: '65vh',
               borderRadius: 20,
-              background: 'color-mix(in srgb, var(--tr-surface) 88%, transparent)',
+              background: 'color-mix(in srgb, var(--tr-surface) 90%, transparent)',
               backdropFilter: 'blur(28px)',
               WebkitBackdropFilter: 'blur(28px)',
               border: '1px solid var(--tr-border-soft)',
               boxShadow: '0 16px 56px rgba(0,0,0,0.28)',
+              // Entry animation
+              opacity: panelVisible ? 1 : 0,
+              transform: panelVisible ? 'translateY(0) scale(1)' : 'translateY(-10px) scale(0.97)',
+              transition: 'opacity 0.26s ease-out, transform 0.26s cubic-bezier(0.34, 1.1, 0.64, 1)',
+              willChange: 'transform, opacity',
             }}
           >
             {/* Panel header */}
@@ -637,7 +714,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
               </span>
               <Link href="/tareeq/notifications" onClick={() => setShowNotifs(false)}
                 className="text-[11px] font-bold px-3 py-1 rounded-full"
-                style={{ color: 'var(--tr-gold)', background: 'var(--tr-gold-glow)' }}>
+                style={{ color: '#3b82f6', background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.22)' }}>
                 {isRtl ? 'الكل' : 'See all'}
               </Link>
             </div>
@@ -659,28 +736,31 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
                   </p>
                 </div>
               ) : (
-                <div className="py-1">
-                  {notifs.map((n, i) => (
+                <div className="p-2.5 flex flex-col gap-2">
+                  {notifs.map((n) => (
                     <button
                       key={n.id}
                       onClick={() => handleNotifClick(n)}
-                      className="w-full text-start px-4 py-3 flex items-start gap-3 transition-all active:scale-[0.98]"
+                      className="w-full text-start p-3 flex items-start gap-3 rounded-2xl transition-all active:scale-[0.98]"
                       style={{
-                        background: n.read ? 'transparent' : 'var(--tr-gold-glow)',
-                        borderBottom: i < notifs.length - 1 ? '1px solid var(--tr-border-subtle)' : 'none',
+                        background: n.read ? 'rgba(255,255,255,0.05)' : 'rgba(59,130,246,0.07)',
+                        border: `1px solid ${n.read ? 'rgba(255,255,255,0.08)' : 'rgba(59,130,246,0.18)'}`,
                       }}
                     >
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-                        style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)' }}>
+                      {/* Icon — blue glass container */}
+                      <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+                        style={{ background: 'rgba(59,130,246,0.14)', border: '1px solid rgba(59,130,246,0.22)' }}>
                         <NotifIcon type={n.type} />
                       </div>
+                      {/* Text */}
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium leading-snug" style={{ color: 'var(--tr-text-primary)' }} dir="auto">
                           <NotifText n={n} isRtl={isRtl} />
                         </p>
-                        <p className="text-[10px] mt-1" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(n.createdAt, isRtl)}</p>
+                        <p className="text-[10px] mt-1.5" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(n.createdAt, isRtl)}</p>
                       </div>
-                      {!n.read && <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: 'var(--tr-gold)' }} />}
+                      {/* Unread dot — blue */}
+                      {!n.read && <span className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: '#3b82f6' }} />}
                     </button>
                   ))}
                 </div>
@@ -729,12 +809,12 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           <path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.862 4.487z" />
         </svg>
 
-        {/* Swipe-up hint */}
+        {/* Swipe-up hint — hidden by default, shown only on touch (opacity driven by DOM refs) */}
         {showHint && (
           <div
             ref={hintRef}
             className="absolute pointer-events-none flex flex-col items-center"
-            style={{ bottom: '110%', marginBottom: 4 }}
+            style={{ bottom: '110%', marginBottom: 4, opacity: 0, transition: 'opacity 0.18s ease-out' }}
           >
             <span style={{ fontSize: 10, color: 'var(--tr-text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>
               {isRtl ? '↑ اسحب للكاميرا' : '↑ swipe for camera'}
@@ -808,19 +888,20 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             )}
           </Link>
 
-          {/* 2 — انتفع (Sparkles) */}
+          {/* 2 — انتفع (compass/guidance star — 4-pointed N/S/E/W shape) */}
           <Link
             href="/tareeq"
             className="flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
             style={{ minWidth: 44 }}
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.7} viewBox="0 0 24 24"
               style={{
                 color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
                 filter: isHome ? 'drop-shadow(0 0 5px rgba(212,168,83,0.45))' : 'none',
                 transition: 'all 0.2s',
               }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+              {/* 4-pointed compass/guidance star: tips at cardinal directions, angled inner corners */}
+              <path strokeLinejoin="round" d="M12 3L15 9L21 12L15 15L12 21L9 15L3 12L9 9Z" />
             </svg>
             <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
               {isRtl ? 'انتفع' : 'Home'}

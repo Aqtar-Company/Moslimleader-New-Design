@@ -527,8 +527,10 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         {/* ━━ CENTER — feed ━━ */}
         <div className="min-w-0" ref={feedTopRef}>
 
-          {/* Discover title + sort */}
-          <div className="max-w-2xl lg:max-w-none mx-auto px-4 pt-5 pb-2 flex items-center justify-between gap-3">
+          {/* Discover title + sort
+               pe-[62px] reserves space for the fixed notification bell (left:14px, w-11=44px → 58px from left).
+               Without it, the "أتابع" pill in RTL overlaps the bell. lg:pe-4 reverts on desktop. */}
+          <div className="max-w-2xl lg:max-w-none mx-auto ps-4 pe-[62px] lg:pe-4 pt-5 pb-2 flex items-center justify-between gap-3">
             <h1 className="font-black text-2xl" style={{ color: 'var(--tr-text-primary)' }}>
               {isRtl ? 'اكتشف' : 'Discover'}
             </h1>

@@ -23,6 +23,9 @@ function timeAgo(iso: string, isRtl: boolean): string {
   return isRtl ? `${Math.floor(diff / 86400)} ي` : `${Math.floor(diff / 86400)}d`;
 }
 
+/* ─── Nav color ─────────────────────────────────────────────────────────────── */
+const NAV_ACCENT = '#FFD000'; // vivid yellow — low magenta, no orange
+
 /* ─── SVG Curved Nav Path ───────────────────────────────────────────────────── */
 // viewBox: "0 0 1000 102"
 // y=0 → 40px above nav top edge; y=40 → nav top; y=102 → nav bottom
@@ -31,19 +34,37 @@ function timeAgo(iso: string, isRtl: boolean): string {
 function buildNavPath(dy: number): string {
   const CX = 500;
   const NAV_Y = 40;
-  // Shallower depth + wider span → smoother valley, circle "emerges" rather than sits in a hole
   const depth = 17 + Math.min(Math.max(dy, 0), 90) * 0.20;
   const halfSpan = 238 + Math.min(Math.max(dy, 0), 90) * 0.50;
   const dipY = NAV_Y + depth;
   const lx = CX - halfSpan;
   const rx = CX + halfSpan;
-  const cf = 0.42; // smoother Bézier transition (was 0.38)
+  const cf = 0.42;
   return (
     `M 0 ${NAV_Y} ` +
     `L ${lx} ${NAV_Y} ` +
     `C ${lx + halfSpan * cf} ${NAV_Y} ${CX - 26} ${dipY} ${CX} ${dipY} ` +
     `C ${CX + 26} ${dipY} ${rx - halfSpan * cf} ${NAV_Y} ${rx} ${NAV_Y} ` +
     `L 1000 ${NAV_Y} L 1000 102 L 0 102 Z`
+  );
+}
+
+// Stroke-only path (top curve) — no bottom line
+function buildNavStrokePath(dy: number): string {
+  const CX = 500;
+  const NAV_Y = 40;
+  const depth = 17 + Math.min(Math.max(dy, 0), 90) * 0.20;
+  const halfSpan = 238 + Math.min(Math.max(dy, 0), 90) * 0.50;
+  const dipY = NAV_Y + depth;
+  const lx = CX - halfSpan;
+  const rx = CX + halfSpan;
+  const cf = 0.42;
+  return (
+    `M 0 ${NAV_Y} ` +
+    `L ${lx} ${NAV_Y} ` +
+    `C ${lx + halfSpan * cf} ${NAV_Y} ${CX - 26} ${dipY} ${CX} ${dipY} ` +
+    `C ${CX + 26} ${dipY} ${rx - halfSpan * cf} ${NAV_Y} ${rx} ${NAV_Y} ` +
+    `L 1000 ${NAV_Y}`
   );
 }
 
@@ -588,6 +609,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
   /* ── Gesture refs (no re-render during drag) ─────────── */
   const btnRef = useRef<HTMLButtonElement>(null);
   const svgPathRef = useRef<SVGPathElement>(null);
+  const svgStrokePathRef = useRef<SVGPathElement>(null);
   const hintRef = useRef<HTMLDivElement>(null);
   const animRafRef = useRef<number | null>(null);
 
@@ -672,6 +694,9 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
     if (svgPathRef.current) {
       svgPathRef.current.setAttribute('d', buildNavPath(clamped));
     }
+    if (svgStrokePathRef.current) {
+      svgStrokePathRef.current.setAttribute('d', buildNavStrokePath(clamped));
+    }
     if (hintRef.current) {
       hintRef.current.style.opacity = String(Math.max(0, 1 - dy / 20));
     }
@@ -696,6 +721,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
       const t = Math.min((now - start) / dur, 1);
       const ease = 1 - Math.pow(1 - t, 3);
       if (svgPathRef.current) svgPathRef.current.setAttribute('d', buildNavPath(fromDy * (1 - ease)));
+      if (svgStrokePathRef.current) svgStrokePathRef.current.setAttribute('d', buildNavStrokePath(fromDy * (1 - ease)));
       if (t < 1) {
         animRafRef.current = requestAnimationFrame(step);
       } else {
@@ -738,6 +764,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
       btnRef.current.style.transform = 'translateX(-50%) translateY(0px)';
     }
     if (svgPathRef.current) svgPathRef.current.setAttribute('d', buildNavPath(0));
+    if (svgStrokePathRef.current) svgStrokePathRef.current.setAttribute('d', buildNavStrokePath(0));
     // Show the camera hint when user touches the button
     if (hintRef.current) {
       hintRef.current.style.transition = 'opacity 0.18s ease-out';
@@ -999,7 +1026,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           borderRadius: '50%',
           background: 'linear-gradient(145deg, #1d4ed8, #3b82f6)',
           border: '2.5px solid #ffffff',
-          boxShadow: '0 0 0 3px #f59e0b, 0 6px 24px rgba(37,99,235,0.50), 0 2px 8px rgba(0,0,0,0.20)',
+          boxShadow: `0 0 0 3px ${NAV_ACCENT}, 0 6px 24px rgba(37,99,235,0.50), 0 2px 8px rgba(0,0,0,0.20)`,
           zIndex: 42,
           display: 'flex',
           alignItems: 'center',
@@ -1056,12 +1083,21 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           preserveAspectRatio="none"
           viewBox="0 0 1000 102"
         >
+          {/* Fill — no stroke (eliminates bottom border) */}
           <path
             ref={svgPathRef}
             d={buildNavPath(0)}
             fill="var(--tr-surface)"
-            stroke="#f59e0b"
-            strokeWidth="5"
+            stroke="none"
+          />
+          {/* Top curved line only — stroke, no fill */}
+          <path
+            ref={svgStrokePathRef}
+            d={buildNavStrokePath(0)}
+            fill="none"
+            stroke={NAV_ACCENT}
+            strokeWidth="7"
+            strokeLinecap="round"
           />
         </svg>
 
@@ -1095,7 +1131,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             className="flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
             style={{ minWidth: 44 }}
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.7} viewBox="0 0 24 24"
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.7} viewBox="0 0 24 24"
               style={{
                 color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
                 filter: isHome ? 'drop-shadow(0 0 6px var(--tr-gold-glow))' : 'none',
@@ -1140,7 +1176,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
               </span>
             )}
             <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isInbox ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
-              {isRtl ? 'رسايل' : 'Chat'}
+              {isRtl ? 'رسائل' : 'Chat'}
             </span>
           </Link>
 

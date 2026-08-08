@@ -88,10 +88,19 @@ export default function TareeqIncomingCall() {
       } catch { /* offline */ }
     }
 
+    // Service worker message: TAREEQ_INCOMING_CALL fires instantly when a push
+    // arrives, bypassing the 3-second polling delay.
+    function onSwMessage(ev: MessageEvent) {
+      if (ev.data?.type !== 'TAREEQ_INCOMING_CALL' || !ev.data.callId) return;
+      poll();
+    }
+    navigator.serviceWorker?.addEventListener('message', onSwMessage);
+
     poll();
     intervalRef.current = setInterval(poll, 3000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      navigator.serviceWorker?.removeEventListener('message', onSwMessage);
       stopRing();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps

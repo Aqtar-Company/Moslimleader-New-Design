@@ -36,9 +36,10 @@ export async function POST(req: NextRequest) {
   sendPushToUser(calleeId, {
     title: user.name ?? 'مكالمة واردة',
     body: type === 'video' ? '📹 مكالمة فيديو واردة' : '🎙️ مكالمة صوتية واردة',
-    url: '/tareeq',
+    url: `/tareeq?callId=${call.id}`,
     tag: `call-${call.id}`,
     type: 'call' as const,
+    callId: call.id,
   }).catch(() => {});
 
   return NextResponse.json({ callId: call.id });

@@ -145,6 +145,7 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
   const appliedCalleeIce = useRef<number>(0);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const endedRef = useRef(false);
 
   function startOutRing() {
@@ -245,7 +246,12 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
     stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
     pc.ontrack = (ev) => {
-      if (remoteVideoRef.current && ev.streams[0]) remoteVideoRef.current.srcObject = ev.streams[0];
+      if (!ev.streams[0]) return;
+      if (callType === 'video' && remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = ev.streams[0];
+      } else if (remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = ev.streams[0];
+      }
     };
 
     const callerIceQueue: RTCIceCandidateInit[] = [];
@@ -332,7 +338,12 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
     stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
     pc.ontrack = (ev) => {
-      if (remoteVideoRef.current && ev.streams[0]) remoteVideoRef.current.srcObject = ev.streams[0];
+      if (!ev.streams[0]) return;
+      if (callType === 'video' && remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = ev.streams[0];
+      } else if (remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = ev.streams[0];
+      }
     };
 
     const calleeIceQueue: RTCIceCandidateInit[] = [];
@@ -446,6 +457,10 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
           50%    { transform:translateY(-6px) scale(1.15); opacity:1; }
         }
       `}</style>
+
+      {/* Remote audio — always rendered so audio calls have a playback element */}
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+      <audio ref={remoteAudioRef} autoPlay playsInline className="sr-only" />
 
       {/* Remote video — full screen, for video calls */}
       {callType === 'video' && (

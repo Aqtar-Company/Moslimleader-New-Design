@@ -20,6 +20,8 @@ export interface PushPayload {
   type?: 'like' | 'comment' | 'message' | 'call' | 'generic';
   // Used by SW to build the 'reply' action deep-link (/tareeq/:postId#comments)
   postId?: string;
+  // For call notifications: passed through to SW so it can wake open windows via postMessage
+  callId?: string;
 }
 
 export async function sendPushToUser(userId: string, payload: PushPayload): Promise<void> {

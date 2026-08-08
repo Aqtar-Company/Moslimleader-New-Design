@@ -181,12 +181,24 @@ self.addEventListener('push', e => {
     image:    data.image    ?? undefined,
     tag:      data.tag      ?? 'tareeq',
     renotify: true,
-    data:     { url: data.url ?? '/tareeq/notifications', postId: data.postId ?? null },
+    data:     { url: data.url ?? '/tareeq/notifications', postId: data.postId ?? null, callId: data.callId ?? null },
     vibrate:  [150, 50, 150],
     actions,
   };
 
-  e.waitUntil(self.registration.showNotification(title, options));
+  const showPromise = self.registration.showNotification(title, options);
+
+  // For incoming calls: wake any open Tareeq windows immediately so they don't
+  // have to wait for the 3-second polling cycle.
+  const wakePromise = postType === 'call' && data.callId
+    ? clients.matchAll({ type: 'window' }).then(list => {
+        for (const c of list) {
+          c.postMessage({ type: 'TAREEQ_INCOMING_CALL', callId: data.callId });
+        }
+      })
+    : Promise.resolve();
+
+  e.waitUntil(Promise.all([showPromise, wakePromise]));
 });
 
 // ── Notification Click: action-aware routing ─────────────────────────

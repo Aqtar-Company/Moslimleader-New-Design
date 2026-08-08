@@ -6,6 +6,7 @@ import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 import { setCameraFile } from '@/lib/tareeq-camera-store';
+import TareeqCallScreen, { CallParty } from './TareeqCallScreen';
 
 /* ─── Types ────────────────────────────────────────────────────────────────── */
 interface Notification {
@@ -92,6 +93,124 @@ function NotifText({ n, isRtl }: { n: Notification; isRtl: boolean }) {
       {isRtl ? `رسالة من ${actor}` : `Message from ${actor}`}
       {n.body && <span className="block text-xs mt-0.5 opacity-60 truncate">{n.body}</span>}
     </span>
+  );
+}
+
+/* ─── Contacts / Call Sheet ─────────────────────────────────────────────── */
+interface ContactsSheetProps {
+  onClose: () => void;
+  onStartCall: (contact: CallParty, type: 'audio' | 'video') => void;
+}
+
+function ContactsSheet({ onClose, onStartCall }: ContactsSheetProps) {
+  const { isRtl } = useLang();
+  const [contacts, setContacts] = useState<CallParty[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/tareeq/conversations', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : { conversations: [] })
+      .then(d => {
+        const list: CallParty[] = (d.conversations ?? []).map((c: { otherUser: { id: string; name: string; avatarUrl?: string | null } }) => ({
+          id: c.otherUser.id,
+          name: c.otherUser.name,
+          avatarUrl: c.otherUser.avatarUrl,
+        }));
+        setContacts(list);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div
+      className="fixed inset-0 z-[9998] flex flex-col justify-end"
+      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg mx-auto rounded-t-3xl overflow-hidden"
+        style={{
+          background: 'var(--tr-surface)',
+          borderTop: '1px solid var(--tr-border-soft)',
+          boxShadow: '0 -16px 64px rgba(0,0,0,0.4)',
+          maxHeight: '80vh',
+          overflowY: 'auto',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Drag handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-9 h-1 rounded-full" style={{ background: 'var(--tr-border-strong)' }} />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+          <p className="font-black text-base" style={{ color: 'var(--tr-text-primary)' }}>
+            {isRtl ? 'اتصال سريع' : 'Quick Call'}
+          </p>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl text-sm font-black"
+            style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)' }}>✕</button>
+        </div>
+
+        {/* List */}
+        <div className="px-3 py-3 flex flex-col gap-2">
+          {loading && (
+            <div className="flex items-center justify-center py-10">
+              <div className="w-5 h-5 border-2 rounded-full animate-spin"
+                style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
+            </div>
+          )}
+          {!loading && contacts.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-10 gap-2">
+              <p className="text-sm font-semibold" style={{ color: 'var(--tr-text-muted)' }}>
+                {isRtl ? 'لا توجد محادثات بعد' : 'No conversations yet'}
+              </p>
+            </div>
+          )}
+          {contacts.map(c => (
+            <div key={c.id}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-2xl"
+              style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-subtle)' }}
+            >
+              {c.avatarUrl ? (
+                <img src={c.avatarUrl} alt={c.name} className="w-10 h-10 rounded-full object-cover shrink-0"
+                  style={{ border: '2px solid var(--tr-border-soft)' }} />
+              ) : (
+                <div className="w-10 h-10 rounded-full flex items-center justify-center font-black shrink-0"
+                  style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold-dim)', fontSize: 16 }}>
+                  {c.name.charAt(0)}
+                </div>
+              )}
+              <span className="font-semibold text-sm flex-1 min-w-0 truncate" style={{ color: 'var(--tr-text-primary)' }}>{c.name}</span>
+              {/* Audio call */}
+              <button
+                onClick={() => { onStartCall(c, 'audio'); }}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"
+                style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)' }}
+                aria-label={isRtl ? 'مكالمة صوتية' : 'Voice call'}
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" style={{ color: '#22c55e' }}>
+                  <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02L6.62 10.79z" />
+                </svg>
+              </button>
+              {/* Video call */}
+              <button
+                onClick={() => { onStartCall(c, 'video'); }}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"
+                style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)' }}
+                aria-label={isRtl ? 'مكالمة فيديو' : 'Video call'}
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" style={{ color: '#3b82f6' }}>
+                  <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" />
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="h-6" />
+      </div>
+    </div>
   );
 }
 
@@ -390,7 +509,7 @@ interface Props { onCreateClick: () => void }
 export default function TareeqBottomNav({ onCreateClick }: Props) {
   const { isRtl } = useLang();
   const { user } = useAuth();
-  const { notifCount, refresh } = useTareeqNotifications();
+  const { notifCount, messageCount, refresh } = useTareeqNotifications();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -404,6 +523,10 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
 
   /* ── Profile sheet state ─────────────────────────────── */
   const [showProfile, setShowProfile] = useState(false);
+  const [showContacts, setShowContacts] = useState(false);
+  const [activeCall, setActiveCall] = useState<{
+    callId: string; callType: 'audio' | 'video'; remoteUser: CallParty;
+  } | null>(null);
 
   /* ── Camera ──────────────────────────────────────────── */
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -476,6 +599,20 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
     if (n.type === 'message' && n.postId) router.push(`/tareeq/inbox/${n.postId}`);
     else if (n.type === 'message') router.push('/tareeq/inbox');
     else if (n.postId) router.push(`/tareeq/${n.postId}`);
+  }
+
+  async function startCallFromContacts(contact: CallParty, callType: 'audio' | 'video') {
+    setShowContacts(false);
+    try {
+      const res = await fetch('/api/tareeq/calls', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ calleeId: contact.id, type: callType }),
+      });
+      if (res.ok) {
+        const { callId } = await res.json();
+        setActiveCall({ callId, callType, remoteUser: contact });
+      }
+    } catch { /* network error */ }
   }
 
   /* ── Gesture helpers ─────────────────────────────────── */
@@ -640,6 +777,25 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
       {/* Hidden camera input */}
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment"
         className="sr-only" onChange={onCameraChange} />
+
+      {/* ── Active call (started from contacts) ─────────── */}
+      {activeCall && (
+        <TareeqCallScreen
+          callId={activeCall.callId}
+          role="caller"
+          callType={activeCall.callType}
+          remoteUser={activeCall.remoteUser}
+          onEnd={() => setActiveCall(null)}
+        />
+      )}
+
+      {/* ── Contacts sheet ───────────────────────────────── */}
+      {showContacts && user && (
+        <ContactsSheet
+          onClose={() => setShowContacts(false)}
+          onStartCall={startCallFromContacts}
+        />
+      )}
 
       {/* ── Profile sheet ─────────────────────────────────── */}
       {showProfile && user && (
@@ -867,26 +1023,26 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           className="relative flex items-end justify-around px-3"
           style={{ height: NAV_H, paddingBottom: 'env(safe-area-inset-bottom, 0px)', zIndex: 1 }}
         >
-          {/* 1 — Profile avatar */}
-          <Link
-            href={user ? `/tareeq/u/${user.id}` : '/login?next=/tareeq'}
+          {/* 1 — Profile avatar → opens ProfileSheet (settings inside) */}
+          <button
+            onClick={() => user ? setShowProfile(true) : router.push('/login?next=/tareeq')}
             className="flex flex-col items-center justify-end gap-1 pb-2 transition-all active:scale-90"
-            style={{ minWidth: 44 }}
+            style={{ minWidth: 44, background: 'none', border: 'none', cursor: 'pointer' }}
           >
             {user?.avatarUrl ? (
               <img src={user.avatarUrl} alt={user.name ?? ''}
                 className="w-7 h-7 rounded-full object-cover"
-                style={{ border: '2px solid var(--tr-gold-dim)', opacity: isOnProfile ? 1 : 0.55 }} />
+                style={{ border: `2px solid ${showProfile ? 'var(--tr-gold)' : 'var(--tr-gold-dim)'}`, opacity: showProfile ? 1 : 0.75 }} />
             ) : (
               <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black"
                 style={{
                   background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)',
-                  border: '2px solid var(--tr-gold-dim)', opacity: isOnProfile ? 1 : 0.55,
+                  border: `2px solid ${showProfile ? 'var(--tr-gold)' : 'var(--tr-gold-dim)'}`, opacity: showProfile ? 1 : 0.75,
                 }}>
                 {user?.name?.charAt(0) ?? '?'}
               </div>
             )}
-          </Link>
+          </button>
 
           {/* 2 — انتفع (compass/guidance star — 4-pointed N/S/E/W shape) */}
           <Link
@@ -925,22 +1081,27 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
               }}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
             </svg>
+            {messageCount > 0 && (
+              <span className="absolute -top-0.5 -end-0.5 min-w-[17px] h-[17px] rounded-full flex items-center justify-center text-[9px] font-black px-0.5"
+                style={{ background: '#3b82f6', color: '#fff' }}>
+                {messageCount > 9 ? '9+' : messageCount}
+              </span>
+            )}
           </Link>
 
-          {/* 5 — Settings gear → opens profile sheet */}
+          {/* 5 — Contacts / Quick Call */}
           <button
-            onClick={() => { if (user) setShowProfile(true); else router.push('/login?next=/tareeq'); }}
+            onClick={() => { if (user) setShowContacts(true); else router.push('/login?next=/tareeq'); }}
             className="flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
             style={{ minWidth: 44, background: 'none', border: 'none', cursor: 'pointer' }}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"
               style={{
-                color: isOnProfile ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
-                filter: isOnProfile ? 'drop-shadow(0 0 5px rgba(212,168,83,0.45))' : 'none',
+                color: showContacts ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
+                filter: showContacts ? 'drop-shadow(0 0 5px rgba(212,168,83,0.45))' : 'none',
                 transition: 'all 0.2s',
               }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
             </svg>
           </button>
         </div>

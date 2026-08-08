@@ -229,7 +229,7 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
         callType === 'video' ? { audio: true, video: true } : { audio: true, video: false }
       );
     } catch {
-      setErrorMsg(isRtl ? 'لم يتم السماح بالوصول إلى الميكروفون' : 'Microphone access denied');
+      setErrorMsg(isRtl ? 'يرجى السماح بالوصول إلى الكاميرا والميكروفون' : 'Camera/microphone access denied');
       return null;
     }
   }
@@ -582,19 +582,18 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
       </div>
 
       {/* Local PiP — video calls */}
-      {callType === 'video' && callState === 'active' && !cameraOff && (
-        <video
-          ref={localVideoRef}
-          autoPlay playsInline muted
-          className="absolute z-20 rounded-2xl object-cover"
-          style={{
-            width: 88, height: 118,
-            bottom: 160, right: 20,
-            border: '2px solid rgba(255,255,255,0.2)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.55)',
-          }}
-        />
-      )}
+      <video
+        ref={localVideoRef}
+        autoPlay playsInline muted
+        className="absolute z-20 rounded-2xl object-cover"
+        style={{
+          width: 88, height: 118,
+          bottom: 160, right: 20,
+          border: '2px solid rgba(255,255,255,0.2)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.55)',
+          display: (callType === 'video' && callState === 'active' && !cameraOff) ? 'block' : 'none',
+        }}
+      />
 
       {/* ── Controls ── */}
       <div

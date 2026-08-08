@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LanguageContext';
 import TareeqCallScreen, { CallParty } from './TareeqCallScreen';
@@ -14,6 +15,7 @@ interface IncomingCall {
 export default function TareeqIncomingCall() {
   const { user } = useAuth();
   const { isRtl } = useLang();
+  const searchParams = useSearchParams();
   const [incoming, setIncoming] = useState<IncomingCall | null>(null);
   const [accepted, setAccepted] = useState(false);
   const seenRef = useRef<Set<string>>(new Set());
@@ -61,6 +63,33 @@ export default function TareeqIncomingCall() {
     audioCtxRef.current?.close().catch(() => {}); audioCtxRef.current = null;
   }
 
+  // When the app opens from a notification tap, the URL has ?callId=...
+  // Burst-poll for up to 10s so we catch the call even if the offer isn't ready yet.
+  const notifCallId = searchParams?.get('callId');
+  useEffect(() => {
+    if (!user || !notifCallId) return;
+    let attempts = 0;
+    const burst = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await fetch('/api/tareeq/calls/incoming', { credentials: 'include' });
+        if (!res.ok) return;
+        const { call } = await res.json();
+        if (call && !seenRef.current.has(call.id)) {
+          setIncoming(prev => {
+            if (prev) return prev;
+            startRing();
+            return call;
+          });
+          clearInterval(burst);
+        }
+      } catch { /* ignore */ }
+      if (attempts >= 10) clearInterval(burst);
+    }, 1000);
+    return () => clearInterval(burst);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, notifCallId]);
+
   useEffect(() => {
     if (!user) return;
 
@@ -90,9 +119,16 @@ export default function TareeqIncomingCall() {
 
     // Service worker message: TAREEQ_INCOMING_CALL fires instantly when a push
     // arrives, bypassing the 3-second polling delay.
+    // We poll rapidly for up to 8s to handle the race where push fires before
+    // the caller's offer is stored (offer creation takes ~1-2s after call init).
     function onSwMessage(ev: MessageEvent) {
       if (ev.data?.type !== 'TAREEQ_INCOMING_CALL' || !ev.data.callId) return;
-      poll();
+      let attempts = 0;
+      const burst = setInterval(async () => {
+        attempts++;
+        await poll();
+        if (attempts >= 8) clearInterval(burst);
+      }, 1000);
     }
     navigator.serviceWorker?.addEventListener('message', onSwMessage);
 

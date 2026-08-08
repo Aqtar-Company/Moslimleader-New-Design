@@ -174,15 +174,18 @@ self.addEventListener('push', e => {
     actions.push({ action: 'view', title: '📞 فتح' });
   }
 
+  const isCall = postType === 'call';
   const options = {
-    body:     data.body     ?? '',
-    icon:     '/Tareeq-big.png',
-    badge:    '/Tareeq-small.png',
-    image:    data.image    ?? undefined,
-    tag:      data.tag      ?? 'tareeq',
-    renotify: true,
-    data:     { url: data.url ?? '/tareeq/notifications', postId: data.postId ?? null, callId: data.callId ?? null },
-    vibrate:  [150, 50, 150],
+    body:              data.body  ?? '',
+    icon:              '/Tareeq-big.png',
+    badge:             '/Tareeq-small.png',
+    image:             data.image ?? undefined,
+    tag:               data.tag   ?? 'tareeq',
+    renotify:          true,
+    requireInteraction: isCall,   // call notifications stay until dismissed
+    silent:            false,
+    data:              { url: data.url ?? '/tareeq/notifications', postId: data.postId ?? null, callId: data.callId ?? null },
+    vibrate:           isCall ? [400, 100, 400, 100, 400, 100, 400] : [150, 50, 150],
     actions,
   };
 

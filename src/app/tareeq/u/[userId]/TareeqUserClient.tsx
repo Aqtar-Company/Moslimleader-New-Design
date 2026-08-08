@@ -471,7 +471,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
         </div>
 
         {/* Feed / Bookmarks content */}
-        <div className="py-4 pb-28 sm:pb-8">
+        <div className="py-4 sm:pb-8">
 
           {/* POSTS TAB */}
           {activeTab === 'posts' && (

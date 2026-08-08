@@ -432,6 +432,7 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
     >
       {/* Keyframes injected once */}
       <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes ringPulse {
           0%   { transform: scale(1); opacity: 0.6; }
           60%  { transform: scale(1.35); opacity: 0; }

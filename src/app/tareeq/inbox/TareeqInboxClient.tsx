@@ -148,7 +148,7 @@ function Inner() {
       </div>
 
       {/* Content */}
-      <div className="max-w-2xl mx-auto px-4 pb-28">
+      <div className="max-w-2xl mx-auto px-4">
         {loading ? (
           <div className="flex justify-center py-20">
             <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />

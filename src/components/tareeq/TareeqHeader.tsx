@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
@@ -32,6 +32,20 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   const { notifCount, messageCount } = useTareeqNotifications();
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const mobileSearchRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Collapse on tap-outside (touchstart so it fires before blur on mobile)
+  useEffect(() => {
+    if (!mobileSearchOpen) return;
+    function onTouch(e: TouchEvent) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setMobileSearchOpen(false);
+        if (!(searchInput ?? '').trim()) onSearch?.('');
+      }
+    }
+    document.addEventListener('touchstart', onTouch, { passive: true });
+    return () => document.removeEventListener('touchstart', onTouch);
+  }, [mobileSearchOpen, searchInput, onSearch]);
 
   return (
     <>
@@ -48,45 +62,99 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
       >
         <div className="max-w-2xl mx-auto lg:max-w-[1180px] flex items-center px-4 h-14 gap-2 lg:gap-3">
 
-          {/* ── MOBILE ONLY: glass search only (bell is in TareeqBottomNav floating) ── */}
-          <div className="lg:hidden flex items-center w-full">
-            {mobileSearchOpen ? (
-              <div className="flex-1 flex items-center gap-2">
-                <div className="relative flex-1">
-                  <svg className="absolute top-1/2 -translate-y-1/2 start-3 w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                  </svg>
-                  <input
-                    ref={mobileSearchRef}
-                    value={searchInput ?? ''}
-                    onChange={e => onSearch?.(e.target.value)}
-                    placeholder={isRtl ? 'ابحث في طريق...' : 'Search Tareeq...'}
-                    className="w-full rounded-full ps-9 pe-4 py-2.5 text-sm focus:outline-none"
-                    style={{ background: 'rgba(255,255,255,0.10)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.18)', color: 'var(--tr-text-primary)' }}
-                    autoFocus
-                  />
-                </div>
-                <button onClick={() => { setMobileSearchOpen(false); onSearch?.(''); }}
-                  className="shrink-0 text-xs font-bold px-3 py-2 rounded-full transition active:scale-90"
-                  style={{ color: 'var(--tr-text-secondary)', background: 'rgba(255,255,255,0.06)' }}>
-                  {isRtl ? 'إلغاء' : 'Cancel'}
-                </button>
-              </div>
-            ) : (
-              <div className="flex-1 flex items-center justify-center">
+          {/* ── MOBILE ONLY: compact icon → expands toward start (RTL=left, LTR=left) ── */}
+          <div className="lg:hidden flex items-center w-full justify-end">
+            <div
+              ref={searchContainerRef}
+              style={{
+                position: 'relative',
+                height: 40,
+                width: mobileSearchOpen ? 'calc(100% - 4px)' : 44,
+                transition: 'width 260ms cubic-bezier(0.4,0,0.2,1)',
+                flexShrink: 0,
+              }}
+            >
+              {/* Glass pill background */}
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                borderRadius: 9999,
+                background: mobileSearchOpen ? 'rgba(59,130,246,0.07)' : 'rgba(255,255,255,0.09)',
+                backdropFilter: 'blur(14px)',
+                WebkitBackdropFilter: 'blur(14px)',
+                border: `1px solid ${mobileSearchOpen ? 'rgba(59,130,246,0.22)' : 'rgba(255,255,255,0.13)'}`,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                transition: 'background 200ms, border-color 200ms',
+                pointerEvents: 'none',
+              }} />
+
+              {/* Input — only interactive when open */}
+              <input
+                ref={mobileSearchRef}
+                value={searchInput ?? ''}
+                onChange={e => onSearch?.(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Escape') { setMobileSearchOpen(false); onSearch?.(''); } }}
+                onBlur={() => { if (!(searchInput ?? '').trim()) setTimeout(() => setMobileSearchOpen(false), 120); }}
+                placeholder={isRtl ? 'ابحث في طريق...' : 'Search Tareeq...'}
+                dir={isRtl ? 'rtl' : 'ltr'}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: 9999,
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  fontSize: 13,
+                  color: 'var(--tr-text-primary)',
+                  paddingRight: 44,
+                  paddingLeft: (searchInput ?? '').length > 0 && mobileSearchOpen ? 36 : 14,
+                  opacity: mobileSearchOpen ? 1 : 0,
+                  transition: 'opacity 180ms ease',
+                  pointerEvents: mobileSearchOpen ? 'auto' : 'none',
+                }}
+              />
+
+              {/* Clear × — visual left when text present */}
+              {mobileSearchOpen && (searchInput ?? '').length > 0 && (
                 <button
-                  onClick={() => { setMobileSearchOpen(true); setTimeout(() => mobileSearchRef.current?.focus(), 50); }}
-                  className="flex items-center gap-2 px-4 py-2 rounded-full transition active:scale-90"
-                  style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--tr-text-muted)', fontSize: 13 }}
-                  aria-label={isRtl ? 'بحث' : 'Search'}
-                >
-                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                  </svg>
-                  <span>{isRtl ? 'ابحث في طريق...' : 'Search Tareeq...'}</span>
-                </button>
-              </div>
-            )}
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={() => { onSearch?.(''); mobileSearchRef.current?.focus(); }}
+                  style={{
+                    position: 'absolute',
+                    left: 8, top: '50%', transform: 'translateY(-50%)',
+                    width: 22, height: 22, borderRadius: '50%',
+                    background: 'rgba(255,255,255,0.13)',
+                    border: 'none',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', zIndex: 2,
+                    color: 'var(--tr-text-secondary)',
+                    fontSize: 11, fontWeight: 700,
+                  }}
+                >✕</button>
+              )}
+
+              {/* Search icon — always on visual right, anchors the pill */}
+              <button
+                onClick={() => { if (!mobileSearchOpen) { setMobileSearchOpen(true); setTimeout(() => mobileSearchRef.current?.focus(), 50); } }}
+                aria-label={isRtl ? 'بحث' : 'Search'}
+                style={{
+                  position: 'absolute',
+                  right: 0, top: 0,
+                  width: 44, height: 40,
+                  background: 'none', border: 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', zIndex: 2, borderRadius: '50%',
+                  color: mobileSearchOpen ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
+                  transition: 'color 200ms',
+                }}
+              >
+                <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* ── DESKTOP ONLY ── */}

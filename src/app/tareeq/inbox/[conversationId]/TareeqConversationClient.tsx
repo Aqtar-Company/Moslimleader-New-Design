@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
@@ -119,6 +119,104 @@ function ReadTick({ read }: { read: boolean }) {
   );
 }
 
+function fmtDuration(s: number) {
+  const m = Math.floor(s / 60);
+  return `${m}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
+}
+
+function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [curTime, setCurTime] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Seeded pseudo-random waveform so it looks consistent every render
+  const bars = useMemo(() => {
+    let h = url.split('').reduce((a, c) => ((a * 31 + c.charCodeAt(0)) | 0), 0x811c9dc5);
+    return Array.from({ length: 32 }, () => {
+      h ^= h << 13; h ^= h >> 7; h ^= h << 17;
+      return 0.15 + (Math.abs(h) % 85) / 100;
+    });
+  }, [url]);
+
+  useEffect(() => {
+    const a = new Audio();
+    a.src = url;
+    a.preload = 'metadata';
+    audioRef.current = a;
+    a.onloadedmetadata = () => setDuration(a.duration || 0);
+    a.ontimeupdate = () => {
+      setCurTime(a.currentTime);
+      setProgress(a.currentTime / (a.duration || 1));
+    };
+    a.onended = () => {
+      setPlaying(false); setProgress(0); setCurTime(0);
+      a.currentTime = 0;
+    };
+    return () => { a.pause(); a.src = ''; };
+  }, [url]);
+
+  function toggle() {
+    const a = audioRef.current;
+    if (!a) return;
+    if (playing) { a.pause(); } else { a.play().catch(() => {}); }
+    setPlaying(p => !p);
+  }
+
+  function seek(e: React.MouseEvent<HTMLDivElement>) {
+    const a = audioRef.current;
+    if (!a || !duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    a.currentTime = ((e.clientX - rect.left) / rect.width) * duration;
+  }
+
+  const fg = mine ? 'rgba(255,255,255,0.92)' : 'var(--tr-text-primary)';
+  const fgDim = mine ? 'rgba(255,255,255,0.35)' : 'var(--tr-text-muted)';
+
+  return (
+    <div className="flex items-center gap-2 py-1 px-0.5" style={{ minWidth: 190, maxWidth: 250 }}>
+      {/* Play / Pause */}
+      <button
+        onClick={toggle}
+        className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90"
+        style={{ background: mine ? 'rgba(255,255,255,0.18)' : 'var(--tr-overlay)' }}
+      >
+        {playing
+          ? <svg width="14" height="14" fill={fg} viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          : <svg width="14" height="14" fill={fg} viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        }
+      </button>
+
+      {/* Waveform + seek */}
+      <div
+        className="flex-1 flex items-center gap-[2px] cursor-pointer"
+        onClick={seek}
+        style={{ height: 28 }}
+      >
+        {bars.map((h, i) => {
+          const played = (i / bars.length) < progress;
+          return (
+            <div key={i} style={{
+              width: 2.5,
+              height: Math.max(3, h * 26),
+              borderRadius: 2,
+              background: played ? fg : fgDim,
+              transition: 'background 80ms',
+              flexShrink: 0,
+            }} />
+          );
+        })}
+      </div>
+
+      {/* Duration */}
+      <span style={{ fontSize: 10, color: fgDim, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+        {playing ? fmtDuration(curTime) : fmtDuration(duration)}
+      </span>
+    </div>
+  );
+}
+
 function Inner({ conversationId }: { conversationId: string }) {
   const { isRtl } = useLang();
   const { user } = useAuth();
@@ -140,11 +238,15 @@ function Inner({ conversationId }: { conversationId: string }) {
   const [micActive, setMicActive] = useState(false);
   const [micSeconds, setMicSeconds] = useState(0);
   const [micError, setMicError] = useState('');
+  const [waveformBars, setWaveformBars] = useState<number[]>(Array(24).fill(0.15));
   const micTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const micIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const cancelledMicRef = useRef(false);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animFrameRef = useRef<number | null>(null);
+  const animAudioCtxRef = useRef<AudioContext | null>(null);
   const conversationIdRef = useRef(conversationId);
   const attachInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -375,6 +477,11 @@ function Inner({ conversationId }: { conversationId: string }) {
   function stopMicCleanup() {
     if (micIntervalRef.current) { clearInterval(micIntervalRef.current); micIntervalRef.current = null; }
     if (micTimerRef.current) { clearTimeout(micTimerRef.current); micTimerRef.current = null; }
+    if (animFrameRef.current) { cancelAnimationFrame(animFrameRef.current); animFrameRef.current = null; }
+    analyserRef.current = null;
+    animAudioCtxRef.current?.close().catch(() => {});
+    animAudioCtxRef.current = null;
+    setWaveformBars(Array(24).fill(0.15));
   }
 
   function cancelMic() {
@@ -406,6 +513,32 @@ function Inner({ conversationId }: { conversationId: string }) {
 
     audioChunksRef.current = [];
     cancelledMicRef.current = false;
+
+    // Real-time waveform from mic stream
+    try {
+      const ACtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (ACtx) {
+        const actx = new ACtx();
+        animAudioCtxRef.current = actx;
+        const analyser = actx.createAnalyser();
+        analyser.fftSize = 64;
+        analyser.smoothingTimeConstant = 0.6;
+        actx.createMediaStreamSource(stream).connect(analyser);
+        analyserRef.current = analyser;
+        const freqData = new Uint8Array(analyser.frequencyBinCount);
+        const drawFrame = () => {
+          if (!analyserRef.current) return;
+          analyserRef.current.getByteFrequencyData(freqData);
+          setWaveformBars(Array.from({ length: 24 }, (_, i) => {
+            const idx = Math.floor((i / 24) * freqData.length);
+            return Math.max(0.1, freqData[idx] / 255);
+          }));
+          animFrameRef.current = requestAnimationFrame(drawFrame);
+        };
+        drawFrame();
+      }
+    } catch { /* AudioContext not supported */ }
+
     const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
       : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm'
       : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus') ? 'audio/ogg;codecs=opus'
@@ -678,11 +811,7 @@ function Inner({ conversationId }: { conversationId: string }) {
                           {m.imageUrl && <img src={m.imageUrl} alt="" className="w-full max-w-xs rounded-xl object-cover" style={{ maxHeight: 220 }} />}
                           {m.videoUrl && <video src={m.videoUrl} className="w-full max-w-xs rounded-xl" style={{ maxHeight: 220 }} controls playsInline />}
                           {m.audioUrl && (
-                            <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(0,0,0,0.12)', minWidth: 200 }}>
-                              <span className="text-base shrink-0">🎙️</span>
-                              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                              <audio src={m.audioUrl} controls className="h-8 flex-1" style={{ minWidth: 0 }} />
-                            </div>
+                            <VoiceMessage url={m.audioUrl} mine={group.mine} />
                           )}
                           {m.content && (
                             <p className="px-3.5 pt-2 pb-1.5 text-sm leading-relaxed" style={{ wordBreak: 'break-word' }} dir="auto">
@@ -804,6 +933,63 @@ function Inner({ conversationId }: { conversationId: string }) {
           {/* Input row */}
           <div className="flex items-center gap-2" dir={isRtl ? 'rtl' : 'ltr'}>
 
+            {/* ── RECORDING BAR (replaces pill when mic is active) ── */}
+            {micActive && (
+              <>
+                {/* Cancel */}
+                <button
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={cancelMic}
+                  className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition active:scale-90"
+                  style={{ background: 'rgba(239,68,68,0.10)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.22)', flexShrink: 0 }}
+                  aria-label={isRtl ? 'إلغاء' : 'Cancel'}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+
+                {/* Waveform pill */}
+                <div
+                  className="flex flex-1 items-center gap-1 px-3 rounded-full overflow-hidden"
+                  style={{ background: 'var(--tr-surface)', border: '1.5px solid rgba(239,68,68,0.18)', minHeight: 44 }}
+                >
+                  {/* Pulsing dot */}
+                  <div className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse" style={{ background: '#ef4444' }} />
+                  {/* Live waveform bars */}
+                  <div className="flex-1 flex items-center justify-center gap-[2.5px]" style={{ height: 32 }}>
+                    {waveformBars.map((h, i) => (
+                      <div key={i} style={{
+                        width: 2.5,
+                        height: Math.max(4, h * 28),
+                        background: `rgba(239,68,68,${0.35 + h * 0.65})`,
+                        borderRadius: 2,
+                        transition: 'height 80ms ease',
+                        flexShrink: 0,
+                      }} />
+                    ))}
+                  </div>
+                  {/* Timer */}
+                  <span className="text-xs font-bold shrink-0 tabular-nums" style={{ color: '#ef4444', minWidth: '2.8rem', textAlign: 'end' }}>
+                    {fmtDuration(micSeconds)}
+                  </span>
+                </div>
+
+                {/* Send button */}
+                <button
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={() => { cancelledMicRef.current = false; mediaRecorderRef.current?.stop(); }}
+                  className="shrink-0 w-11 h-11 flex items-center justify-center rounded-full transition active:scale-90"
+                  style={{ background: 'linear-gradient(135deg,#22c55e,#16a34a)', color: '#fff', boxShadow: '0 4px 16px rgba(34,197,94,0.30)', flexShrink: 0 }}
+                  aria-label={isRtl ? 'إرسال' : 'Send'}
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                  </svg>
+                </button>
+              </>
+            )}
+
             {/* Pill: emoji + textarea + attach + camera */}
             <div
               className="flex flex-1 items-center rounded-full px-2 gap-1"
@@ -812,6 +998,7 @@ function Inner({ conversationId }: { conversationId: string }) {
                 border: '1.5px solid var(--tr-border-soft)',
                 boxShadow: '0 1px 6px var(--tr-shadow-sm)',
                 minHeight: 44,
+                display: micActive ? 'none' : undefined,
               }}
             >
               {/* Emoji */}
@@ -873,10 +1060,11 @@ function Inner({ conversationId }: { conversationId: string }) {
               </button>
             </div>
 
-            {/* Mic / Send button */}
+            {/* Mic / Send button — hidden while recording bar is showing */}
             <button
               onMouseDown={e => e.preventDefault()}
               onClick={canSend ? handleSend : handleMic}
+              style={{ display: micActive ? 'none' : undefined }}
               className="shrink-0 w-11 h-11 flex items-center justify-center rounded-full transition-all active:scale-90"
               style={canSend ? {
                 background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))',

@@ -11,6 +11,7 @@ import { TAREEQ_CATEGORIES, CATEGORY_ICONS, CATEGORY_ACCENT_HEX } from '@/lib/ta
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import TareeqBottomNav from '@/components/tareeq/TareeqBottomNav';
 import TareeqSidebar from '@/components/tareeq/TareeqSidebar';
+import TareeqHeader from '@/components/tareeq/TareeqHeader';
 import TareeqPWA, { TareeqInstallBanner } from '@/components/tareeq/TareeqPWA';
 import { consumeCameraFile } from '@/lib/tareeq-camera-store';
 import { useTareeqNotifications } from '@/context/TareeqNotificationsContext';
@@ -43,64 +44,13 @@ function CategoryIcon({ catKey, color }: { catKey: string; color: string }) {
   }
 }
 
-/** Small category icon for the sidebar list (24→18px) */
-function CategoryIconSm({ catKey, color }: { catKey: string; color: string }) {
-  const props = { className: 'w-[18px] h-[18px]', fill: 'none', stroke: color, strokeWidth: 1.7, viewBox: '0 0 24 24' } as const;
-  switch (catKey) {
-    case 'experience': return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" /></svg>;
-    case 'story': return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>;
-    case 'idea': return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" /></svg>;
-    case 'question': return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" /></svg>;
-    case 'project': return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" /></svg>;
-    case 'reflection': return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>;
-    default: return null;
-  }
-}
-
-/** Desktop left-nav clickable item */
-function DesktopNavItem({ href, icon, labelAr, labelEn, badge = 0, isRtl, onClick }: {
-  href: string;
-  icon: React.ReactNode;
-  labelAr: string;
-  labelEn: string;
-  badge?: number;
-  isRtl: boolean;
-  onClick?: () => void;
-}) {
-  const [hov, setHov] = useState(false);
-  return (
-    <Link
-      href={href}
-      onClick={onClick}
-      className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors w-full"
-      style={{ background: hov ? 'var(--tr-overlay)' : 'transparent' }}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-    >
-      <div
-        className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors"
-        style={{ background: hov ? 'var(--tr-raised)' : 'var(--tr-overlay)' }}
-      >
-        {icon}
-      </div>
-      <span className="text-sm font-semibold flex-1 truncate" style={{ color: hov ? 'var(--tr-text-primary)' : 'var(--tr-text-secondary)' }}>
-        {isRtl ? labelAr : labelEn}
-      </span>
-      {badge > 0 && (
-        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center" style={{ background: '#f43f5e', color: '#fff' }}>
-          {badge > 9 ? '9+' : badge}
-        </span>
-      )}
-    </Link>
-  );
-}
 
 interface Props { initialPosts: TareeqPostSummary[]; initialCursor: string | null; }
 
 export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const { isRtl } = useLang();
   const { user, isLoading: authLoading } = useAuth();
-  const { notifCount } = useTareeqNotifications();
+  useTareeqNotifications(); // keeps NotificationsProvider context alive
   const [posts, setPosts] = useState<TareeqPostSummary[]>(initialPosts);
   const [cursor, setCursor] = useState<string | null>(initialCursor);
   const [loading, setLoading] = useState(false);
@@ -364,6 +314,12 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
 
   return (
     <div className="min-h-screen">
+      <TareeqHeader
+        onCreateClick={handleCreateClick}
+        searchInput={searchInput}
+        onSearch={setSearchInput}
+        onToggleSidebar={() => setShowSidebar(v => !v)}
+      />
       <TareeqPWA />
 
       {/* Pull to refresh indicator — mobile only */}
@@ -391,147 +347,18 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       )}
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          DESKTOP: 3-column Facebook-style layout (lg+)
+          DESKTOP: 2-column layout — center feed + right sidebar (lg+)
+          Nav is in TareeqHeader (Facebook-style top nav)
           MOBILE:  single column with bottom nav (handled by TareeqShell)
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <div className="lg:max-w-[1180px] lg:mx-auto lg:px-4 lg:pt-4 lg:grid lg:grid-cols-[220px_minmax(0,1fr)_256px] lg:gap-4 lg:items-start">
-
-        {/* ━━ LEFT NAV — desktop only ━━ */}
-        <aside className="hidden lg:block sticky top-[62px] max-h-[calc(100vh-66px)] overflow-y-auto py-3 pe-1" style={{ scrollbarWidth: 'none' }}>
-          <div className="space-y-0.5">
-
-            {/* User mini card */}
-            {user ? (
-              <Link
-                href="/tareeq/profile"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors mb-2 group"
-                style={{ background: 'var(--tr-overlay)' }}
-              >
-                {user.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={user.name} className="w-10 h-10 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold-dim)' }} />
-                ) : (
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0" style={{ background: 'var(--tr-raised)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold-dim)' }}>
-                    {user.name.charAt(0)}
-                  </div>
-                )}
-                <div className="min-w-0">
-                  <p className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{user.name}</p>
-                  <p className="text-[11px]" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'عرض الملف الشخصي' : 'View Profile'}</p>
-                </div>
-              </Link>
-            ) : (
-              <div className="px-3 py-2.5 rounded-xl mb-2" style={{ background: 'var(--tr-overlay)' }}>
-                <p className="text-xs font-semibold" style={{ color: 'var(--tr-text-muted)' }}>
-                  {isRtl ? 'سجّل الدخول لتترك علامة' : 'Sign in to leave a mark'}
-                </p>
-              </div>
-            )}
-
-            {/* Leave a Mark CTA */}
-            <button
-              onClick={handleCreateClick}
-              className="w-full flex items-center justify-center gap-2 font-black text-sm py-2.5 rounded-xl transition active:scale-95 mb-2"
-              style={{
-                background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))',
-                color: '#fff',
-                boxShadow: '0 2px 12px var(--tr-gold-glow)',
-              }}
-            >
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-              {isRtl ? 'اترك علامتك' : 'Leave Your Mark'}
-            </button>
-
-            <div className="mx-2 border-t" style={{ borderColor: 'var(--tr-border-subtle)' }} />
-
-            {/* Navigation */}
-            <DesktopNavItem
-              href="/tareeq"
-              isRtl={isRtl}
-              labelAr="الرئيسية"
-              labelEn="Home"
-              onClick={handleResetFilters}
-              icon={
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-secondary)' }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-                </svg>
-              }
-            />
-            <DesktopNavItem
-              href="/tareeq/notifications"
-              isRtl={isRtl}
-              labelAr="الإشعارات"
-              labelEn="Notifications"
-              badge={notifCount}
-              icon={
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-secondary)' }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-              }
-            />
-            <DesktopNavItem
-              href="/tareeq/inbox"
-              isRtl={isRtl}
-              labelAr="الرسائل"
-              labelEn="Messages"
-              icon={
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-secondary)' }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
-                </svg>
-              }
-            />
-            <DesktopNavItem
-              href="/tareeq/profile"
-              isRtl={isRtl}
-              labelAr="ملفي الشخصي"
-              labelEn="My Profile"
-              icon={
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-secondary)' }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                </svg>
-              }
-            />
-
-            <div className="mx-2 border-t my-1" style={{ borderColor: 'var(--tr-border-subtle)' }} />
-
-            {/* Category shortcuts */}
-            <p className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--tr-text-muted)' }}>
-              {isRtl ? 'الفئات' : 'Categories'}
-            </p>
-
-            {/* All */}
-            <DesktopAllItem
-              active={!category && sort !== 'following'}
-              isRtl={isRtl}
-              onClick={() => { if (sort === 'following') setSort('newest'); handleCategoryChange(''); }}
-            />
-
-            {CATEGORY_KEYS.map((key) => {
-              const accent = CATEGORY_ACCENT_HEX[key] ?? 'var(--tr-gold)';
-              const active = category === key;
-              return (
-                <DesktopCatItem
-                  key={key}
-                  catKey={key}
-                  accent={accent}
-                  active={active}
-                  label={isRtl ? TAREEQ_CATEGORIES[key].ar : TAREEQ_CATEGORIES[key].en}
-                  onClick={() => handleCategoryChange(active ? '' : key)}
-                />
-              );
-            })}
-          </div>
-        </aside>
+      <div className="lg:max-w-[900px] lg:mx-auto lg:px-4 lg:pt-4 lg:grid lg:grid-cols-[minmax(0,1fr)_256px] lg:gap-4 lg:items-start">
 
         {/* ━━ CENTER — feed ━━ */}
         <div className="min-w-0" ref={feedTopRef}>
 
-          {/* Discover title + sort
-               pe-[62px] reserves space for the fixed notification bell (left:14px, w-11=44px → 58px from left).
-               Without it, the "أتابع" pill in RTL overlaps the bell. lg:pe-4 reverts on desktop. */}
-          <div className="max-w-2xl lg:max-w-none mx-auto ps-4 pe-[62px] lg:pe-4 pt-5 pb-2 flex items-center justify-between gap-3">
-            <h1 className="font-black text-2xl" style={{ color: 'var(--tr-text-primary)' }}>
+          {/* Sort tabs row */}
+          <div className="max-w-2xl lg:max-w-none mx-auto ps-4 pe-[62px] lg:pe-0 pt-4 pb-2 flex items-center justify-between gap-3">
+            <h1 className="font-black text-xl" style={{ color: 'var(--tr-text-primary)' }}>
               {isRtl ? 'اكتشف' : 'Discover'}
             </h1>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -554,6 +381,53 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
               })}
             </div>
           </div>
+
+          {/* Facebook-style create post box — desktop */}
+          {user && (
+            <div className="hidden lg:block max-w-2xl lg:max-w-none mx-auto px-0 pb-4">
+              <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                {/* Top: avatar + input */}
+                <div className="flex items-center gap-3 p-3 pb-2">
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user.name ?? ''} className="w-10 h-10 rounded-full object-cover shrink-0" style={{ border: '1.5px solid var(--tr-border-soft)' }} />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold-dim)' }}>
+                      {user.name?.charAt(0) ?? '?'}
+                    </div>
+                  )}
+                  <button
+                    onClick={handleCreateClick}
+                    className="flex-1 text-start px-4 py-2.5 rounded-full transition-colors"
+                    style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', fontSize: 14, border: '1px solid var(--tr-border-soft)' }}
+                  >
+                    {isRtl ? 'ما الذي تريد مشاركته؟' : "What's on your mind?"}
+                  </button>
+                </div>
+                {/* Bottom: action buttons */}
+                <div className="flex items-center px-3 py-2" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
+                  <button onClick={handleCreateClick} className="flex flex-1 items-center justify-center gap-2 py-1.5 rounded-xl transition-colors" style={{ color: 'var(--tr-text-secondary)', fontSize: 13, fontWeight: 700 }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--tr-overlay)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: '#22c55e' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                    </svg>
+                    {isRtl ? 'صورة / فيديو' : 'Photo / Video'}
+                  </button>
+                  <div className="w-px h-5 mx-2" style={{ background: 'var(--tr-border-subtle)' }} />
+                  <button onClick={handleCreateClick} className="flex flex-1 items-center justify-center gap-2 py-1.5 rounded-xl transition-colors" style={{ color: 'var(--tr-text-secondary)', fontSize: 13, fontWeight: 700 }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--tr-overlay)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+                    </svg>
+                    {isRtl ? 'اترك علامة' : 'Leave a Mark'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Category story circles — mobile only (desktop uses left nav) */}
           <div className="lg:hidden max-w-2xl mx-auto px-4 pb-5 flex gap-4 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
@@ -616,7 +490,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         </div>
 
         {/* ━━ RIGHT SIDEBAR — desktop only ━━ */}
-        <aside className="hidden lg:block sticky top-[62px] space-y-3">
+        <aside className="hidden lg:block sticky top-[70px] space-y-3">
           <TareeqSidebar onCreateClick={handleCreateClick} />
         </aside>
       </div>
@@ -659,48 +533,3 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   );
 }
 
-/** "All" category button for the desktop left nav — extracted to avoid hooks-in-loop */
-function DesktopAllItem({ active, isRtl, onClick }: { active: boolean; isRtl: boolean; onClick: () => void }) {
-  const [hov, setHov] = useState(false);
-  return (
-    <button
-      onClick={onClick}
-      className="w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-colors text-start"
-      style={{ background: active ? 'var(--tr-gold-glow)' : hov ? 'var(--tr-overlay)' : 'transparent' }}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-    >
-      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: active ? 'var(--tr-gold-glow)' : 'var(--tr-overlay)' }}>
-        <svg className="w-[18px] h-[18px]" fill="none" stroke={active ? 'var(--tr-gold)' : 'var(--tr-text-muted)'} strokeWidth={1.7} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-        </svg>
-      </div>
-      <span className="text-xs font-semibold" style={{ color: active ? 'var(--tr-gold)' : 'var(--tr-text-secondary)' }}>
-        {isRtl ? 'الكل' : 'All'}
-      </span>
-    </button>
-  );
-}
-
-/** Extracted to avoid hooks-in-loop (useState used per-item) */
-function DesktopCatItem({ catKey, accent, active, label, onClick }: {
-  catKey: string; accent: string; active: boolean; label: string; onClick: () => void;
-}) {
-  const [hov, setHov] = useState(false);
-  return (
-    <button
-      onClick={onClick}
-      className="w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-colors text-start"
-      style={{ background: active ? `${accent}18` : hov ? 'var(--tr-overlay)' : 'transparent' }}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-    >
-      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: active ? `${accent}22` : 'var(--tr-overlay)' }}>
-        <CategoryIconSm catKey={catKey} color={active ? accent : 'var(--tr-text-muted)'} />
-      </div>
-      <span className="text-xs font-semibold" style={{ color: active ? accent : 'var(--tr-text-secondary)' }}>
-        {label}
-      </span>
-    </button>
-  );
-}

@@ -7,6 +7,7 @@ import TareeqHeader from '@/components/tareeq/TareeqHeader';
 import { TareeqNotificationsProvider, useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 import { compressImage } from '@/lib/compress-image';
 import TareeqCallScreen from '@/components/tareeq/TareeqCallScreen';
+import TareeqEmojiPicker from '@/components/tareeq/TareeqEmojiPicker';
 
 interface Message {
   id: string;
@@ -111,6 +112,7 @@ function Inner({ conversationId }: { conversationId: string }) {
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [showEmoji, setShowEmoji] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const presenceRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -308,6 +310,7 @@ function Inner({ conversationId }: { conversationId: string }) {
           setMessages(prev => { const updated = [...prev, d.message as Message]; latestIdRef.current = d.message.id; return updated; });
         }
         setInput('');
+        setShowEmoji(false);
         setMediaUrl(null); setMediaType(null); setLocalPreview(null); setUploadProgress(0);
         refresh();
         // Refocus textarea to keep keyboard visible on mobile
@@ -562,7 +565,7 @@ function Inner({ conversationId }: { conversationId: string }) {
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}
       >
-        <div className="max-w-2xl mx-auto px-3 py-2 flex flex-col gap-2">
+        <div className="max-w-2xl mx-auto px-3 py-2 flex flex-col gap-2 relative">
           {sendError && <p className="text-xs text-center font-semibold" style={{ color: '#f43f5e' }}>{sendError}</p>}
 
           {/* Media preview strip */}
@@ -580,6 +583,16 @@ function Inner({ conversationId }: { conversationId: string }) {
             </div>
           )}
 
+          {/* Emoji picker positioned above input bar */}
+          {showEmoji && (
+            <div className="relative">
+              <TareeqEmojiPicker
+                onSelect={em => { setInput(prev => prev + em); textareaRef.current?.focus(); }}
+                onClose={() => setShowEmoji(false)}
+              />
+            </div>
+          )}
+
           <div className="flex items-end gap-2" dir={isRtl ? 'rtl' : 'ltr'}>
             {/* Media picker */}
             <label className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full cursor-pointer transition active:scale-90" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}>
@@ -589,6 +602,18 @@ function Inner({ conversationId }: { conversationId: string }) {
               </svg>
               <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" className="hidden" disabled={uploading} onChange={handleMedia} />
             </label>
+
+            {/* Emoji button */}
+            <button
+              type="button"
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => setShowEmoji(v => !v)}
+              className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition active:scale-90"
+              style={{ background: showEmoji ? 'var(--tr-gold-glow)' : 'var(--tr-overlay)', fontSize: 18 }}
+              aria-label="Emoji"
+            >
+              😊
+            </button>
 
             <textarea
               ref={textareaRef}

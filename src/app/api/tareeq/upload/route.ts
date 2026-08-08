@@ -47,9 +47,10 @@ export async function POST(req: NextRequest) {
   const file = form.get('file') as File | null;
   if (!file) return NextResponse.json({ error: 'لا يوجد ملف' }, { status: 400 });
 
-  const isImage = ALLOWED_IMAGE.includes(file.type);
-  const isVideo = ALLOWED_VIDEO.includes(file.type);
-  const isAudio = ALLOWED_AUDIO.includes(file.type);
+  const baseType = file.type.split(';')[0].trim(); // strip codec params e.g. 'audio/webm;codecs=opus'
+  const isImage = ALLOWED_IMAGE.includes(baseType);
+  const isVideo = ALLOWED_VIDEO.includes(baseType);
+  const isAudio = ALLOWED_AUDIO.includes(baseType);
   if (!isImage && !isVideo && !isAudio) return NextResponse.json({ error: 'نوع الملف غير مدعوم' }, { status: 400 });
 
   const maxSize = isImage ? MAX_IMAGE : isAudio ? MAX_AUDIO : MAX_VIDEO;
@@ -70,7 +71,7 @@ export async function POST(req: NextRequest) {
     fileData = data;
     contentType = 'image/jpeg';
   } else if (isAudio) {
-    const ext = file.type.includes('ogg') ? 'ogg' : file.type.includes('mpeg') ? 'mp3' : file.type.includes('wav') ? 'wav' : 'webm';
+    const ext = baseType.includes('ogg') ? 'ogg' : baseType.includes('mpeg') ? 'mp3' : baseType.includes('wav') ? 'wav' : baseType.includes('mp4') ? 'm4a' : 'webm';
     key = `tareeq/audio/${auth.userId}-${timestamp}.${ext}`;
     fileData = raw;
     contentType = file.type;

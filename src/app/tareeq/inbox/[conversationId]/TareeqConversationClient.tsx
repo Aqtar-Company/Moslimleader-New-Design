@@ -144,6 +144,7 @@ function Inner({ conversationId }: { conversationId: string }) {
   const micIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const cancelledMicRef = useRef(false);
   const attachInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -277,6 +278,16 @@ function Inner({ conversationId }: { conversationId: string }) {
     return () => { vv.removeEventListener('resize', onResize); vv.removeEventListener('scroll', onResize); };
   }, []);
 
+  // Cleanup mic on unmount
+  useEffect(() => {
+    return () => {
+      cancelledMicRef.current = true;
+      if (micTimerRef.current) clearTimeout(micTimerRef.current);
+      if (micIntervalRef.current) clearInterval(micIntervalRef.current);
+      try { mediaRecorderRef.current?.stop(); } catch { /* already stopped */ }
+    };
+  }, []);
+
   async function handleMedia(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -360,9 +371,24 @@ function Inner({ conversationId }: { conversationId: string }) {
     }
   }
 
+  function stopMicCleanup() {
+    if (micIntervalRef.current) { clearInterval(micIntervalRef.current); micIntervalRef.current = null; }
+    if (micTimerRef.current) { clearTimeout(micTimerRef.current); micTimerRef.current = null; }
+  }
+
+  function cancelMic() {
+    // Stop recorder in cancel mode — onstop will see cancelledRef and skip upload
+    cancelledMicRef.current = true;
+    mediaRecorderRef.current?.stop();
+    stopMicCleanup();
+    setMicActive(false);
+    setMicSeconds(0);
+  }
+
   async function handleMic() {
-    // Stop active recording
+    // Tapping mic while recording → send (stop triggers upload)
     if (micActive) {
+      cancelledMicRef.current = false;
       mediaRecorderRef.current?.stop();
       return;
     }
@@ -378,10 +404,12 @@ function Inner({ conversationId }: { conversationId: string }) {
     }
 
     audioChunksRef.current = [];
+    cancelledMicRef.current = false;
     const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
       : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm'
+      : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus') ? 'audio/ogg;codecs=opus'
       : MediaRecorder.isTypeSupported('audio/ogg') ? 'audio/ogg'
-      : '';
+      : ''; // Safari fallback: uses its default (mp4/aac)
     const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
     mediaRecorderRef.current = mr;
 
@@ -389,31 +417,48 @@ function Inner({ conversationId }: { conversationId: string }) {
 
     mr.onstop = async () => {
       stream.getTracks().forEach(t => t.stop());
-      if (micIntervalRef.current) { clearInterval(micIntervalRef.current); micIntervalRef.current = null; }
+      stopMicCleanup();
       setMicActive(false);
       setMicSeconds(0);
 
-      const blob = new Blob(audioChunksRef.current, { type: mimeType || 'audio/webm' });
+      if (cancelledMicRef.current) return; // user cancelled — discard
+
+      // Use the actual mimeType the recorder chose (important for Safari mp4 fallback)
+      const actualMime = mr.mimeType || mimeType || 'audio/webm';
+      const blob = new Blob(audioChunksRef.current, { type: actualMime });
       if (blob.size < 500) return; // too short — discard
 
+      const baseActual = actualMime.split(';')[0];
+      const ext = baseActual.includes('ogg') ? 'ogg' : baseActual.includes('mp4') || baseActual.includes('aac') ? 'm4a' : 'webm';
+
+      let objUrl: string | null = null;
       setUploading(true);
       setUploadProgress(10);
       try {
-        const ext = mimeType.includes('ogg') ? 'ogg' : 'webm';
-        const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: mimeType || 'audio/webm' });
+        const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: actualMime });
         const form = new FormData(); form.append('file', file);
         const res = await fetch('/api/tareeq/upload', { method: 'POST', body: form, credentials: 'include' });
         setUploadProgress(80);
         if (res.ok) {
           const d = await res.json();
+          objUrl = URL.createObjectURL(blob);
           setMediaUrl(d.url);
           setMediaType('audio');
-          setLocalPreview(URL.createObjectURL(blob));
+          setLocalPreview(objUrl);
           setUploadProgress(100);
+        } else {
+          const err = await res.json().catch(() => ({}));
+          setMicError(err.error ?? (isRtl ? 'فشل رفع الصوت' : 'Upload failed'));
+          setTimeout(() => setMicError(''), 3000);
         }
+      } catch {
+        setMicError(isRtl ? 'خطأ في الشبكة' : 'Network error');
+        setTimeout(() => setMicError(''), 3000);
       } finally {
         setUploading(false);
         setUploadProgress(0);
+        // Revoke the object URL after a short delay to allow the audio element to load
+        if (objUrl) setTimeout(() => URL.revokeObjectURL(objUrl!), 60_000);
       }
     };
 
@@ -423,8 +468,7 @@ function Inner({ conversationId }: { conversationId: string }) {
     micIntervalRef.current = setInterval(() => setMicSeconds(s => s + 1), 1000);
 
     // Auto-stop after 3 minutes
-    if (micTimerRef.current) clearTimeout(micTimerRef.current);
-    micTimerRef.current = setTimeout(() => mediaRecorderRef.current?.stop(), 3 * 60 * 1000);
+    micTimerRef.current = setTimeout(() => { cancelledMicRef.current = false; mediaRecorderRef.current?.stop(); }, 3 * 60 * 1000);
   }
 
   const myId = user?.id ?? '';
@@ -683,15 +727,19 @@ function Inner({ conversationId }: { conversationId: string }) {
 
           {/* Recording indicator */}
           {micActive && (
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl"
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
               style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.22)' }}>
               <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
               <span className="text-xs font-black tabular-nums" style={{ color: '#f43f5e' }}>
                 {Math.floor(micSeconds / 60)}:{String(micSeconds % 60).padStart(2, '0')}
               </span>
-              <span className="text-xs font-semibold" style={{ color: 'var(--tr-text-muted)' }}>
-                {isRtl ? 'جاري التسجيل — اضغط مرة أخرى للإرسال' : 'Recording — tap again to send'}
+              <span className="flex-1 text-xs font-semibold" style={{ color: 'var(--tr-text-muted)' }}>
+                {isRtl ? 'جاري التسجيل...' : 'Recording...'}
               </span>
+              <button onClick={cancelMic} className="text-xs font-bold px-2 py-0.5 rounded-full shrink-0"
+                style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)' }}>
+                {isRtl ? 'إلغاء' : 'Cancel'}
+              </button>
             </div>
           )}
 

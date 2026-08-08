@@ -396,18 +396,11 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
                     </div>
                   )}
                   <input
+                    readOnly
                     placeholder={isRtl ? 'ما الذي تريد مشاركته؟' : "What's on your mind?"}
-                    className="flex-1 px-4 py-2.5 rounded-full outline-none cursor-text"
-                    style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-primary)', fontSize: 14, border: '1px solid var(--tr-border-soft)' }}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (!v) return;
-                      e.target.value = '';
-                      e.target.blur();
-                      setSharePrefill(v);
-                      if (user) setShowCreate(true); else setShowGate(true);
-                    }}
-                    onClick={() => { if (!user) setShowGate(true); }}
+                    className="flex-1 px-4 py-2.5 rounded-full outline-none cursor-pointer"
+                    style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', fontSize: 14, border: '1px solid var(--tr-border-soft)' }}
+                    onFocus={(e) => { e.target.blur(); if (user) setShowCreate(true); else setShowGate(true); }}
                   />
                 </div>
                 {/* Bottom: action buttons */}

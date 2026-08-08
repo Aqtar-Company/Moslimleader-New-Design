@@ -136,6 +136,11 @@ function Inner({ conversationId }: { conversationId: string }) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showEmoji, setShowEmoji] = useState(false);
+  const [micActive, setMicActive] = useState(false);
+  const [micToast, setMicToast] = useState(false);
+  const micTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const attachInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const presenceRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -347,6 +352,20 @@ function Inner({ conversationId }: { conversationId: string }) {
     } finally {
       setSending(false);
     }
+  }
+
+  function handleMic() {
+    if (micTimerRef.current) clearTimeout(micTimerRef.current);
+    if (micActive) {
+      setMicActive(false);
+      return;
+    }
+    setMicActive(true);
+    micTimerRef.current = setTimeout(() => {
+      setMicActive(false);
+      setMicToast(true);
+      setTimeout(() => setMicToast(false), 2500);
+    }, 2000);
   }
 
   const myId = user?.id ?? '';
@@ -580,8 +599,42 @@ function Inner({ conversationId }: { conversationId: string }) {
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}
       >
+        {/* Hidden file inputs */}
+        <input ref={attachInputRef} type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+          className="hidden" disabled={uploading} onChange={handleMedia} />
+        <input ref={cameraInputRef} type="file"
+          accept="image/*" capture="environment"
+          className="hidden" disabled={uploading} onChange={handleMedia} />
+
         <div className="max-w-2xl mx-auto px-3 py-2 flex flex-col gap-2 relative">
           {sendError && <p className="text-xs text-center font-semibold" style={{ color: '#f43f5e' }}>{sendError}</p>}
+
+          {/* Mic toast */}
+          {micToast && (
+            <div className="flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs font-bold"
+              style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-muted)', border: '1px solid var(--tr-border-subtle)' }}>
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 1a4 4 0 014 4v7a4 4 0 01-8 0V5a4 4 0 014-4zm-1 17.93V21h-2v2h6v-2h-2v-2.07A8 8 0 0120 12h-2a6 6 0 01-12 0H4a8 8 0 007 7.93z"/>
+              </svg>
+              {isRtl ? 'الرسائل الصوتية قريباً...' : 'Voice messages coming soon...'}
+            </div>
+          )}
+
+          {/* Recording indicator */}
+          {micActive && (
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl"
+              style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.22)' }}>
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-xs font-bold" style={{ color: '#f43f5e' }}>
+                {isRtl ? 'جاري التسجيل...' : 'Recording...'}
+              </span>
+              <button onClick={handleMic} className="ms-auto text-xs font-bold px-2 py-0.5 rounded-full"
+                style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)' }}>
+                {isRtl ? 'إلغاء' : 'Cancel'}
+              </button>
+            </div>
+          )}
 
           {/* Media preview strip */}
           {(localPreview || mediaUrl || uploading) && (
@@ -598,82 +651,119 @@ function Inner({ conversationId }: { conversationId: string }) {
             </div>
           )}
 
-          {/* Emoji picker positioned above input bar */}
+          {/* Emoji picker */}
           {showEmoji && (
-            <div className="relative">
-              <TareeqEmojiPicker
-                onSelect={em => { setInput(prev => prev + em); textareaRef.current?.focus(); }}
-                onClose={() => setShowEmoji(false)}
-              />
-            </div>
+            <TareeqEmojiPicker
+              onSelect={em => { setInput(prev => prev + em); textareaRef.current?.focus(); }}
+              onClose={() => setShowEmoji(false)}
+            />
           )}
 
-          <div className="flex items-end gap-2" dir={isRtl ? 'rtl' : 'ltr'}>
-            {/* Media picker */}
-            <label className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full cursor-pointer transition active:scale-90" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
-              </svg>
-              <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" className="hidden" disabled={uploading} onChange={handleMedia} />
-            </label>
+          {/* Input row */}
+          <div className="flex items-center gap-2" dir={isRtl ? 'rtl' : 'ltr'}>
 
-            {/* Emoji button */}
-            <button
-              type="button"
-              onMouseDown={e => e.preventDefault()}
-              onClick={() => setShowEmoji(v => !v)}
-              className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition active:scale-90"
-              style={{ background: showEmoji ? 'var(--tr-gold-glow)' : 'var(--tr-overlay)', fontSize: 18 }}
-              aria-label="Emoji"
-            >
-              😊
-            </button>
-
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={e => { setInput(e.target.value); if (sendError) setSendError(''); }}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-              placeholder={isRtl ? 'رسالة...' : 'Message...'}
-              rows={1}
-              className="flex-1 rounded-2xl px-4 py-2.5 text-sm resize-none focus:outline-none transition"
+            {/* Pill: emoji + textarea + attach + camera */}
+            <div
+              className="flex flex-1 items-center rounded-full px-2 gap-1"
               style={{
-                background: 'var(--tr-overlay)',
-                border: '1px solid var(--tr-border-soft)',
-                color: 'var(--tr-text-primary)',
-                maxHeight: '120px',
-                overflowY: 'auto',
+                background: 'var(--tr-surface)',
+                border: '1.5px solid var(--tr-border-soft)',
+                boxShadow: '0 1px 6px var(--tr-shadow-sm)',
+                minHeight: 44,
               }}
-            />
+            >
+              {/* Emoji */}
+              <button
+                type="button"
+                onMouseDown={e => e.preventDefault()}
+                onClick={() => setShowEmoji(v => !v)}
+                className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition active:scale-90"
+                style={{ color: showEmoji ? 'var(--tr-gold)' : 'var(--tr-text-muted)', background: showEmoji ? 'var(--tr-gold-glow)' : 'transparent' }}
+                aria-label="Emoji"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="9" />
+                  <path strokeLinecap="round" d="M8.5 14s1 1.5 3.5 1.5 3.5-1.5 3.5-1.5" />
+                  <circle cx="9.5" cy="10.5" r="0.5" fill="currentColor" />
+                  <circle cx="14.5" cy="10.5" r="0.5" fill="currentColor" />
+                </svg>
+              </button>
 
-            {/* Send button — distinct active/inactive states */}
+              {/* Textarea */}
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={e => { setInput(e.target.value); if (sendError) setSendError(''); }}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                placeholder={isRtl ? 'رسالة...' : 'Message...'}
+                rows={1}
+                className="flex-1 bg-transparent border-none focus:outline-none text-sm resize-none py-2.5 px-1"
+                style={{ color: 'var(--tr-text-primary)', maxHeight: '100px', overflowY: 'auto' }}
+              />
+
+              {/* Attach */}
+              <button
+                type="button"
+                onClick={() => attachInputRef.current?.click()}
+                disabled={uploading}
+                className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition active:scale-90"
+                style={{ color: 'var(--tr-text-muted)', background: 'transparent' }}
+                aria-label={isRtl ? 'إرفاق ملف' : 'Attach file'}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+                </svg>
+              </button>
+
+              {/* Camera */}
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                disabled={uploading}
+                className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition active:scale-90"
+                style={{ color: 'var(--tr-text-muted)', background: 'transparent' }}
+                aria-label={isRtl ? 'كاميرا' : 'Camera'}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Mic / Send button */}
             <button
-              onMouseDown={e => e.preventDefault()} // prevent textarea blur on click
-              onClick={handleSend}
-              disabled={!canSend}
-              className="rounded-full w-10 h-10 flex items-center justify-center shrink-0 transition-all active:scale-90"
+              onMouseDown={e => e.preventDefault()}
+              onClick={canSend ? handleSend : handleMic}
+              className="shrink-0 w-11 h-11 flex items-center justify-center rounded-full transition-all active:scale-90"
               style={canSend ? {
                 background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))',
                 color: '#fff',
                 boxShadow: '0 4px 16px var(--tr-gold-glow)',
+              } : micActive ? {
+                background: '#ef4444',
+                color: '#fff',
+                boxShadow: '0 4px 16px rgba(239,68,68,0.4)',
               } : {
-                background: 'var(--tr-overlay)',
-                color: 'var(--tr-text-muted)',
-                opacity: 0.5,
+                background: 'var(--tr-raised)',
+                color: 'var(--tr-text-secondary)',
+                border: '1px solid var(--tr-border-soft)',
               }}
-              aria-label={isRtl ? 'إرسال' : 'Send'}
+              aria-label={canSend ? (isRtl ? 'إرسال' : 'Send') : (isRtl ? 'تسجيل صوت' : 'Voice')}
             >
-              {sending
-                ? <div className="w-4 h-4 border-2 border-current/40 border-t-current rounded-full animate-spin" />
-                : (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M2,11 L12,7 L22,11 L15,15 L12,11 L9,15 Z"/>
-                    <path d="M12,15 L10,21 L12,18 L14,21 Z"/>
-                    <path d="M16,8 L20,7 L17,11 Z"/>
-                  </svg>
-                )
-              }
+              {sending ? (
+                <div className="w-4 h-4 border-2 border-current/40 border-t-current rounded-full animate-spin" />
+              ) : canSend ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M2,11 L12,7 L22,11 L15,15 L12,11 L9,15 Z"/>
+                  <path d="M12,15 L10,21 L12,18 L14,21 Z"/>
+                  <path d="M16,8 L20,7 L17,11 Z"/>
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 1a4 4 0 014 4v7a4 4 0 01-8 0V5a4 4 0 014-4zm-1 17.93V21h-2v2h6v-2h-2v-2.07A8 8 0 0020 12h-2a6 6 0 01-12 0H4a8 8 0 007 7.93z"/>
+                </svg>
+              )}
             </button>
           </div>
         </div>

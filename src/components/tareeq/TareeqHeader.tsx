@@ -40,6 +40,8 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   const { notifCount, messageCount } = useTareeqNotifications();
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
   const [activeCall, setActiveCall] = useState<IncomingCall | null>(null);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const mobileSearchRef = useRef<HTMLInputElement>(null);
   const incomingPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const seenCallRef = useRef<string>('');
 
@@ -131,32 +133,71 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
       >
         <div className="max-w-2xl mx-auto lg:max-w-[1180px] flex items-center px-4 h-14 gap-2 lg:gap-3">
 
-          {/* Left: logo */}
-          <div className="flex items-center gap-3 shrink-0">
-            {/* Mobile: avatar */}
-            <Link href="/tareeq/profile" className="lg:hidden shrink-0" aria-label={isRtl ? 'ملفي الشخصي' : 'My profile'}>
-              {user?.avatarUrl ? (
-                <img src={user.avatarUrl} alt={user.name ?? ''} className="w-9 h-9 rounded-full object-cover" style={{ border: '2px solid var(--tr-gold)' }} />
-              ) : (
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>
-                  {user?.name?.charAt(0) ?? '?'}
+          {/* ── MOBILE ONLY: bell + glass search ── */}
+          <div className="lg:hidden flex items-center gap-2 w-full">
+            {/* Bell */}
+            <Link href="/tareeq/notifications" className="relative w-10 h-10 flex items-center justify-center rounded-full shrink-0 transition active:scale-90"
+              style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.12)' }}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-primary)' }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              <Badge count={notifCount} />
+            </Link>
+
+            {/* Animated search: collapsed = glass icon, expanded = full input */}
+            {mobileSearchOpen ? (
+              <div className="flex-1 flex items-center gap-2">
+                <div className="relative flex-1">
+                  <svg className="absolute top-1/2 -translate-y-1/2 start-3 w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                  </svg>
+                  <input
+                    ref={mobileSearchRef}
+                    value={searchInput ?? ''}
+                    onChange={e => onSearch?.(e.target.value)}
+                    placeholder={isRtl ? 'ابحث في طريق...' : 'Search Tareeq...'}
+                    className="w-full rounded-full ps-9 pe-4 py-2.5 text-sm focus:outline-none"
+                    style={{ background: 'rgba(255,255,255,0.10)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.18)', color: 'var(--tr-text-primary)' }}
+                    autoFocus
+                  />
                 </div>
-              )}
-            </Link>
-            {/* Desktop: wordmark */}
-            <Link href="/tareeq" className="hidden lg:flex items-center gap-2 shrink-0" aria-label="Tareeq">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))', boxShadow: '0 2px 8px var(--tr-gold-glow)' }}>
-                <svg className="w-4 h-4" fill="#fff" viewBox="0 0 24 24">
-                  <path d="M12 3l1.4 5.6L18.4 5.6l-3 4.4L21 12l-5.6 1.4 2.4 5.4-4.8-2.8L12 21l-1.4-5.6-5.4 2.4 2.8-4.8L3 12l5.6-1.4L6.2 5z" />
-                </svg>
+                <button onClick={() => { setMobileSearchOpen(false); onSearch?.(''); }}
+                  className="shrink-0 text-xs font-bold px-3 py-2 rounded-full transition active:scale-90"
+                  style={{ color: 'var(--tr-text-secondary)', background: 'rgba(255,255,255,0.06)' }}>
+                  {isRtl ? 'إلغاء' : 'Cancel'}
+                </button>
               </div>
-              <span className="font-black text-xl tracking-tight" style={{ color: 'var(--tr-text-primary)' }}>
-                {isRtl ? 'طريق' : 'Tareeq'}
-              </span>
-            </Link>
+            ) : (
+              <>
+                <div className="flex-1" /> {/* spacer */}
+                <button
+                  onClick={() => { setMobileSearchOpen(true); setTimeout(() => mobileSearchRef.current?.focus(), 50); }}
+                  className="relative w-10 h-10 flex items-center justify-center rounded-full shrink-0 transition active:scale-90"
+                  style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.12)' }}
+                  aria-label={isRtl ? 'بحث' : 'Search'}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-primary)' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                  </svg>
+                </button>
+              </>
+            )}
           </div>
 
-          {/* Desktop search bar — fixed width, not flex-1 so nav stays centered */}
+          {/* ── DESKTOP ONLY ── */}
+          {/* Wordmark */}
+          <Link href="/tareeq" className="hidden lg:flex items-center gap-2 shrink-0" aria-label="Tareeq">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))', boxShadow: '0 2px 8px var(--tr-gold-glow)' }}>
+              <svg className="w-4 h-4" fill="#fff" viewBox="0 0 24 24">
+                <path d="M12 3l1.4 5.6L18.4 5.6l-3 4.4L21 12l-5.6 1.4 2.4 5.4-4.8-2.8L12 21l-1.4-5.6-5.4 2.4 2.8-4.8L3 12l5.6-1.4L6.2 5z" />
+              </svg>
+            </div>
+            <span className="font-black text-xl tracking-tight" style={{ color: 'var(--tr-text-primary)' }}>
+              {isRtl ? 'طريق' : 'Tareeq'}
+            </span>
+          </Link>
+
+          {/* Desktop search bar */}
           {onSearch !== undefined && (
             <div className="hidden lg:block w-56 shrink-0">
               <div className="relative">
@@ -173,15 +214,6 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
               </div>
             </div>
           )}
-
-          {/* Mobile center: title */}
-          <div className="lg:hidden flex-1 flex justify-center">
-            <Link href="/tareeq" aria-label="Tareeq Home">
-              <span className="font-black text-sm tracking-wide" style={{ color: 'var(--tr-text-primary)' }}>
-                {isRtl ? 'طريق' : 'Tareeq'}
-              </span>
-            </Link>
-          </div>
 
           {/* Desktop center nav — Facebook-style icon tabs */}
           <div className="hidden lg:flex flex-1 items-center justify-center gap-1">
@@ -231,42 +263,11 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
             })}
           </div>
 
-          {/* Right: actions */}
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Mobile search */}
-            {onSearch !== undefined && (
-              <div className="lg:hidden flex items-center gap-2">
-                <div className="relative">
-                  <svg className="absolute top-1/2 -translate-y-1/2 start-3 w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                  </svg>
-                  <input
-                    value={searchInput ?? ''}
-                    onChange={e => onSearch(e.target.value)}
-                    placeholder={isRtl ? 'بحث...' : 'Search...'}
-                    className="w-full rounded-full ps-8 pe-4 py-2 text-xs focus:outline-none transition"
-                    style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)', maxWidth: 160 }}
-                  />
-                </div>
-                {onToggleSidebar && (
-                  <button onClick={onToggleSidebar} className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition" style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)' }}>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                    </svg>
-                  </button>
-                )}
-              </div>
-            )}
-            {/* Mobile: bell */}
-            <Link href="/tareeq/notifications" className="lg:hidden relative w-9 h-9 flex items-center justify-center rounded-full transition" style={{ background: 'var(--tr-raised)' }}>
-              <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-secondary)' }}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-              <Badge count={notifCount} />
-            </Link>
+          {/* Right: desktop actions only */}
+          <div className="hidden lg:flex items-center gap-2 shrink-0">
             {/* Desktop: user avatar + "New Mark" */}
             {user && (
-              <div className="hidden lg:flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={onCreateClick}
                   className="flex items-center gap-1.5 font-black text-xs px-4 py-2 rounded-full transition active:scale-95"

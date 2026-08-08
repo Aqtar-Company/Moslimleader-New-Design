@@ -145,6 +145,7 @@ function Inner({ conversationId }: { conversationId: string }) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const cancelledMicRef = useRef(false);
+  const conversationIdRef = useRef(conversationId);
   const attachInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -431,24 +432,38 @@ function Inner({ conversationId }: { conversationId: string }) {
       const baseActual = actualMime.split(';')[0];
       const ext = baseActual.includes('ogg') ? 'ogg' : baseActual.includes('mp4') || baseActual.includes('aac') ? 'm4a' : 'webm';
 
-      let objUrl: string | null = null;
       setUploading(true);
-      setUploadProgress(10);
+      setUploadProgress(30);
       try {
         const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: actualMime });
         const form = new FormData(); form.append('file', file);
-        const res = await fetch('/api/tareeq/upload', { method: 'POST', body: form, credentials: 'include' });
-        setUploadProgress(80);
-        if (res.ok) {
-          const d = await res.json();
-          objUrl = URL.createObjectURL(blob);
-          setMediaUrl(d.url);
-          setMediaType('audio');
-          setLocalPreview(objUrl);
-          setUploadProgress(100);
-        } else {
-          const err = await res.json().catch(() => ({}));
+        const upRes = await fetch('/api/tareeq/upload', { method: 'POST', body: form, credentials: 'include' });
+        setUploadProgress(70);
+        if (!upRes.ok) {
+          const err = await upRes.json().catch(() => ({}));
           setMicError(err.error ?? (isRtl ? 'فشل رفع الصوت' : 'Upload failed'));
+          setTimeout(() => setMicError(''), 3000);
+          return;
+        }
+        const { url: audioUrl } = await upRes.json();
+        setUploadProgress(90);
+        // Auto-send immediately — no intermediate preview step
+        setSending(true);
+        const sendRes = await fetch(`/api/tareeq/conversations/${conversationIdRef.current}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ content: '', audioUrl }),
+        });
+        if (sendRes.ok) {
+          const d = await sendRes.json();
+          if (d.message) {
+            shouldScrollRef.current = true;
+            setMessages(prev => { const updated = [...prev, d.message as Message]; latestIdRef.current = d.message.id; return updated; });
+          }
+          refresh();
+        } else {
+          setMicError(isRtl ? 'فشل إرسال الصوت' : 'Send failed');
           setTimeout(() => setMicError(''), 3000);
         }
       } catch {
@@ -457,8 +472,7 @@ function Inner({ conversationId }: { conversationId: string }) {
       } finally {
         setUploading(false);
         setUploadProgress(0);
-        // Revoke the object URL after a short delay to allow the audio element to load
-        if (objUrl) setTimeout(() => URL.revokeObjectURL(objUrl!), 60_000);
+        setSending(false);
       }
     };
 

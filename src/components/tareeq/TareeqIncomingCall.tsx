@@ -66,8 +66,11 @@ export default function TareeqIncomingCall() {
   // When the app opens from a notification tap, the URL has ?callId=...
   // Burst-poll for up to 10s so we catch the call even if the offer isn't ready yet.
   const notifCallId = searchParams?.get('callId');
+  // Start burst poll as soon as the notif callId is in the URL — don't wait for user
+  // auth to load. The API returns {call:null} when unauthenticated and we keep polling
+  // until auth resolves and the call appears (up to 30s).
   useEffect(() => {
-    if (!user || !notifCallId) return;
+    if (!notifCallId) return;
     let attempts = 0;
     const burst = setInterval(async () => {
       attempts++;
@@ -84,11 +87,11 @@ export default function TareeqIncomingCall() {
           clearInterval(burst);
         }
       } catch { /* ignore */ }
-      if (attempts >= 20) clearInterval(burst);
+      if (attempts >= 30) clearInterval(burst);
     }, 1000);
     return () => clearInterval(burst);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, notifCallId]);
+  }, [notifCallId]);
 
   useEffect(() => {
     if (!user) return;

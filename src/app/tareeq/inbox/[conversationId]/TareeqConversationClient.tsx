@@ -427,7 +427,7 @@ function Inner({ conversationId }: { conversationId: string }) {
       // Use the actual mimeType the recorder chose (important for Safari mp4 fallback)
       const actualMime = mr.mimeType || mimeType || 'audio/webm';
       const blob = new Blob(audioChunksRef.current, { type: actualMime });
-      if (blob.size < 500) return; // too short — discard
+      if (blob.size < 100) return; // too short — discard
 
       const baseActual = actualMime.split(';')[0];
       const ext = baseActual.includes('ogg') ? 'ogg' : baseActual.includes('mp4') || baseActual.includes('aac') ? 'm4a' : 'webm';
@@ -476,7 +476,7 @@ function Inner({ conversationId }: { conversationId: string }) {
       }
     };
 
-    mr.start();
+    mr.start(250); // timeslice ensures chunks arrive even if onstop fires late (iOS Safari)
     setMicActive(true);
     setMicSeconds(0);
     micIntervalRef.current = setInterval(() => setMicSeconds(s => s + 1), 1000);

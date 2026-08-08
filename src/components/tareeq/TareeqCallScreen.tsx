@@ -160,7 +160,9 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
   const appliedCalleeIce = useRef<number>(0);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteAudioRef = useRef<HTMLAudioElement>(null);
+  // Use video element for audio-only calls: mobile browsers route <video> audio
+  // to the loudspeaker, while <audio> goes to the earpiece by default.
+  const remoteAudioRef = useRef<HTMLVideoElement>(null);
   const endedRef = useRef(false);
 
   function startOutRing() {
@@ -506,9 +508,10 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
         }
       `}</style>
 
-      {/* Remote audio — always rendered so audio calls have a playback element */}
+      {/* Remote audio — video element routes to loudspeaker on mobile (audio element uses earpiece) */}
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-      <audio ref={remoteAudioRef} autoPlay playsInline className="sr-only" />
+      <video ref={remoteAudioRef} autoPlay playsInline
+        style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} />
 
       {/* Remote video — full screen, for video calls */}
       {callType === 'video' && (

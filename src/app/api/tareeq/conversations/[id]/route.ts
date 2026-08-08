@@ -48,8 +48,24 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const nextCursor = messages.length === limit ? messages[messages.length - 1].createdAt.toISOString() : null;
 
+  // Fetch calls between these two participants (no pagination — calls are infrequent)
+  const calls = await prisma.tareeqCall.findMany({
+    where: {
+      OR: [
+        { callerId: user.userId, calleeId: otherId },
+        { callerId: otherId, calleeId: user.userId },
+      ],
+      status: { in: ['ended', 'missed', 'rejected'] },
+      ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),
+    },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true, type: true, status: true, callerId: true, startedAt: true, endedAt: true, createdAt: true },
+    take: 100,
+  });
+
   return NextResponse.json({
     messages: messages.reverse(),
+    calls,
     nextCursor,
     otherUser: otherUser ?? { id: otherId, name: 'مستخدم', avatarUrl: null },
   });

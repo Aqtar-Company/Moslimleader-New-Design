@@ -20,12 +20,24 @@ interface Message {
 }
 interface OtherUser { id: string; name: string; avatarUrl?: string | null }
 
+interface CallEvent {
+  id: string;
+  type: 'audio' | 'video';
+  status: 'ended' | 'missed' | 'rejected';
+  callerId: string;
+  startedAt: string | null;
+  endedAt: string | null;
+  createdAt: string;
+}
+
 interface MsgGroup {
   senderId: string;
   mine: boolean;
   msgs: Message[];
   senderInfo: { name: string; avatarUrl?: string | null };
 }
+
+type DayItem = MsgGroup | { __isCall: true; call: CallEvent };
 
 function groupMessages(messages: Message[], myId: string): MsgGroup[] {
   const groups: MsgGroup[] = [];
@@ -47,6 +59,12 @@ function formatTime(dateStr: string) {
   } catch { return ''; }
 }
 
+function fmtDur(sec: number) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
 function formatDay(dateStr: string, isRtl: boolean) {
   try {
     const d = new Date(dateStr);
@@ -65,6 +83,7 @@ function Inner({ conversationId }: { conversationId: string }) {
   const { refresh } = useTareeqNotifications();
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
+  const [calls, setCalls] = useState<CallEvent[]>([]);
   const [otherUser, setOtherUser] = useState<OtherUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState('');
@@ -93,6 +112,7 @@ function Inner({ conversationId }: { conversationId: string }) {
         const d = await res.json();
         const msgs: Message[] = d.messages ?? [];
         setMessages(msgs);
+        setCalls(d.calls ?? []);
         setOtherUser(d.otherUser ?? null);
         latestIdRef.current = msgs.length ? msgs[msgs.length - 1].id : '';
         refresh();
@@ -113,6 +133,7 @@ function Inner({ conversationId }: { conversationId: string }) {
       const newLatest = msgs.length ? msgs[msgs.length - 1].id : '';
       if (newLatest !== latestIdRef.current) {
         setMessages(msgs);
+        setCalls(d.calls ?? []);
         latestIdRef.current = newLatest;
         refresh();
       }
@@ -205,15 +226,21 @@ function Inner({ conversationId }: { conversationId: string }) {
   const myId = user?.id ?? '';
   const groups = groupMessages(messages, myId);
 
-  // Group by day for date separators
-  const dayBuckets: { day: string; groups: MsgGroup[] }[] = [];
-  for (const g of groups) {
-    const day = g.msgs[0].createdAt.slice(0, 10);
+  // Build unified timeline: message groups + call events sorted by time
+  const flatItems: { time: string; item: DayItem }[] = [
+    ...groups.map(g => ({ time: g.msgs[0].createdAt, item: g as DayItem })),
+    ...calls.map(c => ({ time: c.createdAt, item: { __isCall: true, call: c } as DayItem })),
+  ];
+  flatItems.sort((a, b) => a.time.localeCompare(b.time));
+
+  const dayBuckets: { day: string; items: DayItem[] }[] = [];
+  for (const { time, item } of flatItems) {
+    const day = time.slice(0, 10);
     const last = dayBuckets[dayBuckets.length - 1];
     if (last && last.day === day) {
-      last.groups.push(g);
+      last.items.push(item);
     } else {
-      dayBuckets.push({ day, groups: [g] });
+      dayBuckets.push({ day, items: [item] });
     }
   }
 
@@ -290,7 +317,7 @@ function Inner({ conversationId }: { conversationId: string }) {
           <div className="flex justify-center py-20">
             <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
           </div>
-        ) : messages.length === 0 ? (
+        ) : messages.length === 0 && calls.length === 0 ? (
           <div className="text-center py-20 text-sm" style={{ color: 'var(--tr-text-muted)' }}>
             {isRtl ? 'ابدأ المحادثة' : 'Start the conversation'}
           </div>
@@ -306,7 +333,44 @@ function Inner({ conversationId }: { conversationId: string }) {
                 <div className="flex-1 h-px" style={{ background: 'var(--tr-border-subtle)' }} />
               </div>
 
-              {bucket.groups.map((group, gi) => (
+              {bucket.items.map((item, gi) => {
+                // ── Call event bubble ──────────────────────────────────
+                if ('__isCall' in item) {
+                  const { call } = item;
+                  const isMissed = call.status === 'missed' || call.status === 'rejected';
+                  const iCalled = call.callerId === myId;
+                  const icon = call.type === 'video' ? '📹' : '🎙️';
+                  let dur = 0;
+                  if (call.startedAt && call.endedAt) {
+                    dur = Math.round((new Date(call.endedAt).getTime() - new Date(call.startedAt).getTime()) / 1000);
+                  }
+                  let label = '';
+                  if (isRtl) {
+                    if (isMissed) label = iCalled ? 'مكالمة فائتة (لم يرد)' : 'مكالمة فائتة';
+                    else label = dur > 0 ? `${call.type === 'video' ? 'مكالمة فيديو' : 'مكالمة صوتية'} · ${fmtDur(dur)}` : 'مكالمة منتهية';
+                  } else {
+                    if (isMissed) label = iCalled ? 'Missed call (no answer)' : 'Missed call';
+                    else label = dur > 0 ? `${call.type === 'video' ? 'Video' : 'Voice'} call · ${fmtDur(dur)}` : 'Call ended';
+                  }
+                  return (
+                    <div key={call.id} className="flex justify-center my-3">
+                      <div className="px-4 py-2 rounded-full flex items-center gap-2 text-xs font-semibold"
+                        style={{
+                          background: isMissed ? 'rgba(244,63,94,0.10)' : 'rgba(45,212,191,0.08)',
+                          border: `1px solid ${isMissed ? 'rgba(244,63,94,0.22)' : 'rgba(45,212,191,0.18)'}`,
+                          color: isMissed ? '#f43f5e' : 'var(--tr-teal)',
+                        }}>
+                        <span>{icon}</span>
+                        <span>{label}</span>
+                        <span className="ms-1" style={{ color: 'var(--tr-text-muted)', fontWeight: 400 }}>{formatTime(call.createdAt)}</span>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // ── Message group ──────────────────────────────────────
+                const group = item;
+                return (
                 <div key={gi} className="flex flex-col mb-2 w-full">
                   {group.msgs.map((m, mi) => {
                     const isLast = mi === group.msgs.length - 1;
@@ -358,7 +422,8 @@ function Inner({ conversationId }: { conversationId: string }) {
                     {formatTime(group.msgs[group.msgs.length - 1].createdAt)}
                   </p>
                 </div>
-              ))}
+              );
+              })}
             </div>
           ))
         )}

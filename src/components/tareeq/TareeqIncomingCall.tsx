@@ -67,6 +67,7 @@ export default function TareeqIncomingCall() {
         callType={incoming.type}
         remoteUser={incoming.caller}
         offer={incoming.offer}
+        autoAnswer
         onEnd={dismiss}
       />
     );

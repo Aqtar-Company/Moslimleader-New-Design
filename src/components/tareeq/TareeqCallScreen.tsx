@@ -16,6 +16,7 @@ interface Props {
   callType: 'audio' | 'video';
   remoteUser: CallParty;
   offer?: string; // callee receives the offer
+  autoAnswer?: boolean; // if true, callee skips the ringing screen and answers immediately
   onEnd: () => void;
 }
 
@@ -32,7 +33,7 @@ function Avatar({ user, size = 80 }: { user: CallParty; size?: number }) {
   );
 }
 
-export default function TareeqCallScreen({ callId, role, callType, remoteUser, offer, onEnd }: Props) {
+export default function TareeqCallScreen({ callId, role, callType, remoteUser, offer, autoAnswer, onEnd }: Props) {
   const { isRtl } = useLang();
   // Caller starts at 'ringing' (waiting for callee to answer)
   const [callState, setCallState] = useState<CallState>(role === 'callee' ? 'ringing' : 'ringing');
@@ -45,6 +46,8 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
   const localStreamRef = useRef<MediaStream | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const durationRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const ringRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const appliedCallerIce = useRef<number>(0);
   const appliedCalleeIce = useRef<number>(0);
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -52,9 +55,33 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
   // Guard against multiple concurrent endCall invocations
   const endedRef = useRef(false);
 
+  function playRing() {
+    try {
+      const ctx = new AudioContext();
+      audioCtxRef.current = ctx;
+      const beep = () => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 480;
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+      };
+      beep();
+      ringRef.current = setInterval(beep, 2000);
+    } catch { /* AudioContext not supported */ }
+  }
+
+  function stopRing() {
+    if (ringRef.current) { clearInterval(ringRef.current); ringRef.current = null; }
+    audioCtxRef.current?.close().catch(() => {}); audioCtxRef.current = null;
+  }
+
   function stopAll() {
     if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
     if (durationRef.current) { clearInterval(durationRef.current); durationRef.current = null; }
+    stopRing();
     localStreamRef.current?.getTracks().forEach(t => t.stop());
     pcRef.current?.close();
   }
@@ -163,6 +190,7 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
   // Callee: receive offer, create answer, poll for caller ICE
   const answerCall = useCallback(async () => {
     if (!offer) { setErrorMsg('No offer received'); return; }
+    stopRing();
     setCallState('connecting');
 
     const stream = await getMedia();
@@ -229,9 +257,15 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [callId, callType, offer, endCall, isRtl]);
 
-  // Caller starts on mount
+  // Auto-start on mount: caller creates offer; callee auto-answers if flag is set
   useEffect(() => {
     if (role === 'caller') startCaller();
+    if (role === 'callee' && autoAnswer) {
+      answerCall();
+    } else if (role === 'callee') {
+      // Show ringing screen — play ringtone so callee knows there's an incoming call
+      playRing();
+    }
     return () => stopAll();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

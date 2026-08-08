@@ -48,18 +48,8 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
       >
         <div className="max-w-2xl mx-auto lg:max-w-[1180px] flex items-center px-4 h-14 gap-2 lg:gap-3">
 
-          {/* ── MOBILE ONLY: bell + glass search ── */}
-          <div className="lg:hidden flex items-center gap-2 w-full">
-            {/* Bell */}
-            <Link href="/tareeq/notifications" className="relative w-10 h-10 flex items-center justify-center rounded-full shrink-0 transition active:scale-90"
-              style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.12)' }}>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-primary)' }}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-              <Badge count={notifCount} />
-            </Link>
-
-            {/* Animated search: collapsed = glass icon, expanded = full input */}
+          {/* ── MOBILE ONLY: glass search only (bell is in TareeqBottomNav floating) ── */}
+          <div className="lg:hidden flex items-center w-full">
             {mobileSearchOpen ? (
               <div className="flex-1 flex items-center gap-2">
                 <div className="relative flex-1">
@@ -83,19 +73,19 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                 </button>
               </div>
             ) : (
-              <>
-                <div className="flex-1" /> {/* spacer */}
+              <div className="flex-1 flex items-center justify-center">
                 <button
                   onClick={() => { setMobileSearchOpen(true); setTimeout(() => mobileSearchRef.current?.focus(), 50); }}
-                  className="relative w-10 h-10 flex items-center justify-center rounded-full shrink-0 transition active:scale-90"
-                  style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.12)' }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full transition active:scale-90"
+                  style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--tr-text-muted)', fontSize: 13 }}
                   aria-label={isRtl ? 'بحث' : 'Search'}
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-primary)' }}>
+                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                   </svg>
+                  <span>{isRtl ? 'ابحث في طريق...' : 'Search Tareeq...'}</span>
                 </button>
-              </>
+              </div>
             )}
           </div>
 

@@ -500,9 +500,7 @@ function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: P
             style={{ background: 'var(--tr-overlay)', textDecoration: 'none' }}
           >
             <div style={iconBox('var(--tr-overlay)', 'var(--tr-border-soft)')}>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-secondary)' }}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .415.336.75.75.75z" />
-              </svg>
+              <img src="/ml-logo-new.png" alt="Moslim Leader" className="w-6 h-6 object-contain" />
             </div>
             <div className="flex flex-col gap-0.5 flex-1 min-w-0">
               <span className="font-bold text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'متجر مسلم ليدر' : 'Moslim Leader'}</span>
@@ -578,6 +576,13 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
   useEffect(() => {
     const count = parseInt(localStorage.getItem(CAM_HINT_KEY) ?? '0', 10);
     setShowHint(count < CAM_HINT_MAX);
+  }, []);
+
+  /* ── Open settings via custom event (e.g. from profile page) ── */
+  useEffect(() => {
+    const h = () => setShowProfile(true);
+    window.addEventListener('tareeq:open-settings', h);
+    return () => window.removeEventListener('tareeq:open-settings', h);
   }, []);
 
   /* ── Gesture refs (no re-render during drag) ─────────── */
@@ -1066,22 +1071,19 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           className="relative flex items-end justify-around px-3"
           style={{ height: NAV_H, paddingBottom: 'env(safe-area-inset-bottom, 0px)', zIndex: 1 }}
         >
-          {/* 1 — Profile avatar → opens ProfileSheet (settings inside) */}
+          {/* 1 — Profile avatar → navigates to own profile page */}
           <button
-            onClick={() => user ? setShowProfile(true) : router.push('/login?next=/tareeq')}
+            onClick={() => user ? router.push(`/tareeq/u/${user.id}`) : router.push('/login?next=/tareeq')}
             className="flex flex-col items-center justify-end gap-1 pb-2 transition-all active:scale-90"
             style={{ minWidth: 44, background: 'none', border: 'none', cursor: 'pointer' }}
           >
             {user?.avatarUrl ? (
               <img src={user.avatarUrl} alt={user.name ?? ''}
                 className="w-7 h-7 rounded-full object-cover"
-                style={{ border: `2px solid ${showProfile ? 'var(--tr-gold)' : 'var(--tr-gold-dim)'}`, opacity: showProfile ? 1 : 0.75 }} />
+                style={{ border: '2px solid var(--tr-gold-dim)', opacity: 0.85 }} />
             ) : (
               <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black"
-                style={{
-                  background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)',
-                  border: `2px solid ${showProfile ? 'var(--tr-gold)' : 'var(--tr-gold-dim)'}`, opacity: showProfile ? 1 : 0.75,
-                }}>
+                style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold-dim)', opacity: 0.85 }}>
                 {user?.name?.charAt(0) ?? '?'}
               </div>
             )}

@@ -81,9 +81,9 @@ export default function TareeqLandingModal({ onClose }: Props) {
           onClick={enter}
           className="w-full py-3.5 rounded-2xl font-black text-sm transition active:scale-95"
           style={{
-            background: 'linear-gradient(135deg, #a07830 0%, #d4a853 60%, #f0c060 100%)',
+            background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 60%, #3b82f6 100%)',
             color: '#fff',
-            boxShadow: '0 6px 24px rgba(212,168,83,0.50)',
+            boxShadow: '0 6px 24px rgba(37,99,235,0.45)',
           }}
         >
           <span style={{ marginInlineEnd: 6 }}>

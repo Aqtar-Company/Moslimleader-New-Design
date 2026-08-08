@@ -22,17 +22,35 @@ export default function TareeqIncomingCall() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const ringRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const ringVideoRef = useRef<HTMLVideoElement | null>(null);
 
   function startRing() {
     try {
       const ctx = new AudioContext();
       audioCtxRef.current = ctx;
 
+      // Route audio through a video element to force loudspeaker on mobile.
+      // AudioContext connected directly to ctx.destination uses the earpiece
+      // when a voice-call audio session is active. Routing through a
+      // MediaStreamDestination → HTMLVideoElement claims the media (speaker) route.
+      let dest: AudioNode = ctx.destination;
+      try {
+        const streamDest = ctx.createMediaStreamDestination();
+        const vid = document.createElement('video');
+        vid.srcObject = streamDest.stream;
+        vid.volume = 1;
+        vid.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;top:-9999px;left:-9999px';
+        document.body.appendChild(vid);
+        vid.play().catch(() => {});
+        ringVideoRef.current = vid;
+        dest = streamDest;
+      } catch { /* fallback to ctx.destination */ }
+
       // Traditional phone ring: two bursts (400ms on / 200ms off / 400ms on), then 2s silence
       const playBurst = (t: number, freq: number, dur: number) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
+        osc.connect(gain); gain.connect(dest);
         osc.type = 'sine';
         osc.frequency.value = freq;
         gain.gain.setValueAtTime(0, t);
@@ -61,6 +79,11 @@ export default function TareeqIncomingCall() {
   function stopRing() {
     if (ringRef.current) { clearInterval(ringRef.current); ringRef.current = null; }
     audioCtxRef.current?.close().catch(() => {}); audioCtxRef.current = null;
+    if (ringVideoRef.current) {
+      ringVideoRef.current.srcObject = null;
+      ringVideoRef.current.remove();
+      ringVideoRef.current = null;
+    }
   }
 
   // When the app opens from a notification tap, the URL has ?callId=...

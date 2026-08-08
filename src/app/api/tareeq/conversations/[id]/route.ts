@@ -26,7 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     orderBy: { createdAt: 'desc' },
     take: limit,
     select: {
-      id: true, content: true, imageUrl: true, videoUrl: true, read: true, createdAt: true, senderId: true,
+      id: true, content: true, imageUrl: true, videoUrl: true, audioUrl: true, read: true, createdAt: true, senderId: true,
       sender: { select: { id: true, name: true, avatarUrl: true } },
     },
   });

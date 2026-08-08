@@ -172,12 +172,26 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
       const ctx = new ACtx();
       let stopped = false;
 
+      // Route through video element to force loudspeaker (same as incoming ring fix)
+      let dest: AudioNode = ctx.destination;
+      let ringVid: HTMLVideoElement | null = null;
+      try {
+        const streamDest = ctx.createMediaStreamDestination();
+        ringVid = document.createElement('video');
+        ringVid.srcObject = streamDest.stream;
+        ringVid.volume = 1;
+        ringVid.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;top:-9999px;left:-9999px';
+        document.body.appendChild(ringVid);
+        ringVid.play().catch(() => {});
+        dest = streamDest;
+      } catch { /* fallback to ctx.destination */ }
+
       // PSTN ring-back tone: dual 400 Hz + 450 Hz, two 400ms bursts, 2s silence
       const playBurst = (t: number, dur: number) => {
         [400, 450].forEach(freq => {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
-          osc.connect(gain); gain.connect(ctx.destination);
+          osc.connect(gain); gain.connect(dest);
           osc.type = 'sine';
           osc.frequency.value = freq;
           gain.gain.setValueAtTime(0, t);
@@ -205,6 +219,7 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
           stopped = true;
           clearInterval(interval);
           ctx.close().catch(() => {});
+          if (ringVid) { ringVid.srcObject = null; ringVid.remove(); ringVid = null; }
         },
       };
     } catch { /* AudioContext not supported */ }
@@ -242,6 +257,18 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
   }, [callId, onEnd]);
 
   async function getMedia(): Promise<MediaStream | null> {
+    // Claim loudspeaker audio route BEFORE getUserMedia.
+    // On iOS, calling getUserMedia() first switches the audio session to
+    // "play and record" (earpiece). Playing the video element first
+    // establishes "media playback" (loudspeaker), and the subsequent
+    // getUserMedia call inherits that route.
+    try {
+      if (remoteAudioRef.current && !remoteAudioRef.current.srcObject) {
+        remoteAudioRef.current.srcObject = new MediaStream();
+        await remoteAudioRef.current.play().catch(() => {});
+      }
+    } catch { /* ignore — just a best-effort speaker claim */ }
+
     try {
       return await navigator.mediaDevices.getUserMedia(
         callType === 'video' ? { audio: true, video: true } : { audio: true, video: false }

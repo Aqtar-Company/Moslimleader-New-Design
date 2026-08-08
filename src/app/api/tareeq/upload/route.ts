@@ -6,8 +6,10 @@ import { checkRateLimit } from '@/lib/rate-limit';
 
 const ALLOWED_IMAGE = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const ALLOWED_VIDEO = ['video/mp4', 'video/webm', 'video/quicktime'];
+const ALLOWED_AUDIO = ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg', 'audio/wav'];
 const MAX_IMAGE = 10 * 1024 * 1024;  // 10MB
 const MAX_VIDEO = 100 * 1024 * 1024; // 100MB
+const MAX_AUDIO = 20 * 1024 * 1024;  // 20MB
 
 const r2 = new S3Client({
   region: 'auto',
@@ -47,11 +49,12 @@ export async function POST(req: NextRequest) {
 
   const isImage = ALLOWED_IMAGE.includes(file.type);
   const isVideo = ALLOWED_VIDEO.includes(file.type);
-  if (!isImage && !isVideo) return NextResponse.json({ error: 'نوع الملف غير مدعوم' }, { status: 400 });
+  const isAudio = ALLOWED_AUDIO.includes(file.type);
+  if (!isImage && !isVideo && !isAudio) return NextResponse.json({ error: 'نوع الملف غير مدعوم' }, { status: 400 });
 
-  const maxSize = isImage ? MAX_IMAGE : MAX_VIDEO;
+  const maxSize = isImage ? MAX_IMAGE : isAudio ? MAX_AUDIO : MAX_VIDEO;
   if (file.size > maxSize) {
-    return NextResponse.json({ error: isImage ? 'الحجم الأقصى 10MB' : 'الحجم الأقصى 100MB' }, { status: 400 });
+    return NextResponse.json({ error: isImage ? 'الحجم الأقصى 10MB' : isAudio ? 'الحجم الأقصى 20MB' : 'الحجم الأقصى 100MB' }, { status: 400 });
   }
 
   const raw = Buffer.from(await file.arrayBuffer());
@@ -66,6 +69,11 @@ export async function POST(req: NextRequest) {
     key = `tareeq/${auth.userId}-${timestamp}.${ext}`;
     fileData = data;
     contentType = 'image/jpeg';
+  } else if (isAudio) {
+    const ext = file.type.includes('ogg') ? 'ogg' : file.type.includes('mpeg') ? 'mp3' : file.type.includes('wav') ? 'wav' : 'webm';
+    key = `tareeq/audio/${auth.userId}-${timestamp}.${ext}`;
+    fileData = raw;
+    contentType = file.type;
   } else {
     const ext = file.type.split('/')[1].replace('quicktime', 'mov');
     key = `tareeq/${auth.userId}-${timestamp}.${ext}`;
@@ -83,5 +91,5 @@ export async function POST(req: NextRequest) {
   const publicUrl = process.env.R2_PUBLIC_URL!;
   const url = `${publicUrl}/${key}`;
 
-  return NextResponse.json({ ok: true, url, type: isImage ? 'image' : 'video' });
+  return NextResponse.json({ ok: true, url, type: isImage ? 'image' : isAudio ? 'audio' : 'video' });
 }

@@ -24,19 +24,20 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const content = String(body.content ?? '').trim();
   const imageUrl = String(body.imageUrl ?? '').trim() || null;
   const videoUrl = String(body.videoUrl ?? '').trim() || null;
+  const audioUrl = String(body.audioUrl ?? '').trim() || null;
 
-  const hasMedia = !!(imageUrl || videoUrl);
+  const hasMedia = !!(imageUrl || videoUrl || audioUrl);
   if (!hasMedia && content.length < 1) return NextResponse.json({ error: 'الرسالة فارغة' }, { status: 400 });
   if (content.length > 2000) return NextResponse.json({ error: 'الرسالة طويلة جداً' }, { status: 400 });
 
   const otherId = convo.participantA === user.userId ? convo.participantB : convo.participantA;
-  const lastMsgPreview = imageUrl ? '📷 صورة' : videoUrl ? '🎥 فيديو' : content;
+  const lastMsgPreview = imageUrl ? '📷 صورة' : videoUrl ? '🎥 فيديو' : audioUrl ? '🎙️ رسالة صوتية' : content;
 
   const [message] = await prisma.$transaction([
     prisma.tareeqMessage.create({
-      data: { conversationId: params.id, senderId: user.userId, content, imageUrl, videoUrl },
+      data: { conversationId: params.id, senderId: user.userId, content, imageUrl, videoUrl, audioUrl },
       select: {
-        id: true, content: true, imageUrl: true, videoUrl: true, read: true, createdAt: true, senderId: true,
+        id: true, content: true, imageUrl: true, videoUrl: true, audioUrl: true, read: true, createdAt: true, senderId: true,
         sender: { select: { id: true, name: true, avatarUrl: true } },
       },
     }),
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   // Push notification to recipient (non-blocking, always send — messages feel urgent)
   sendPushToUser(otherId, {
     title: user.name ?? 'رسالة جديدة',
-    body: (imageUrl ? '📷 صورة' : videoUrl ? '🎥 فيديو' : content).slice(0, 80),
+    body: (imageUrl ? '📷 صورة' : videoUrl ? '🎥 فيديو' : audioUrl ? '🎙️ رسالة صوتية' : content).slice(0, 80),
     url: `/tareeq/inbox/${params.id}`,
     tag: `msg-${params.id}`,
     type: 'message',

@@ -1029,6 +1029,7 @@ model TareeqMessage {
   content        String             @db.Text
   imageUrl       String?            @db.Text
   videoUrl       String?            @db.Text
+  audioUrl       String?            @db.Text
   read           Boolean            @default(false)
   createdAt      DateTime           @default(now())
 

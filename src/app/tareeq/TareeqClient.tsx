@@ -395,13 +395,20 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
                       {user.name?.charAt(0) ?? '?'}
                     </div>
                   )}
-                  <button
-                    onClick={handleCreateClick}
-                    className="flex-1 text-start px-4 py-2.5 rounded-full transition-colors"
-                    style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', fontSize: 14, border: '1px solid var(--tr-border-soft)' }}
-                  >
-                    {isRtl ? 'ما الذي تريد مشاركته؟' : "What's on your mind?"}
-                  </button>
+                  <input
+                    placeholder={isRtl ? 'ما الذي تريد مشاركته؟' : "What's on your mind?"}
+                    className="flex-1 px-4 py-2.5 rounded-full outline-none cursor-text"
+                    style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-primary)', fontSize: 14, border: '1px solid var(--tr-border-soft)' }}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (!v) return;
+                      e.target.value = '';
+                      e.target.blur();
+                      setSharePrefill(v);
+                      if (user) setShowCreate(true); else setShowGate(true);
+                    }}
+                    onClick={() => { if (!user) setShowGate(true); }}
+                  />
                 </div>
                 {/* Bottom: action buttons */}
                 <div className="flex items-center px-3 py-2" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
@@ -528,7 +535,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         />
       )}
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
-      <TareeqBottomNav onCreateClick={() => { if (user) setShowCreate(true); else setShowGate(true); }} />
+      <div className="lg:hidden"><TareeqBottomNav onCreateClick={() => { if (user) setShowCreate(true); else setShowGate(true); }} /></div>
     </div>
   );
 }

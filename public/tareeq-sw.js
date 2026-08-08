@@ -209,6 +209,7 @@ self.addEventListener('notificationclick', e => {
   e.notification.close();
   const notifData = e.notification.data ?? {};
   let url = notifData.url ?? '/tareeq/notifications';
+  const isCall = !!notifData.callId;
 
   // Action button overrides
   if (e.action === 'reply' && notifData.postId) {
@@ -219,13 +220,26 @@ self.addEventListener('notificationclick', e => {
 
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      // For calls: always navigate to the call URL so the incoming call UI shows
+      if (isCall) {
+        for (const c of list) {
+          if (c.url.includes('/tareeq')) {
+            return c.focus().then(() => {
+              if ('navigate' in c) return c.navigate(url);
+              // If navigate unavailable, post a message so TareeqIncomingCall triggers burst-poll
+              c.postMessage({ type: 'TAREEQ_INCOMING_CALL', callId: notifData.callId });
+            });
+          }
+        }
+        return clients.openWindow(url);
+      }
+
+      // Non-call notifications: prefer existing tab
       for (const c of list) {
         if (c.url.includes('/tareeq')) {
           if ('navigate' in c) {
-            // Chrome: navigate the existing tab to the target URL
             return c.focus().then(() => c.navigate(url));
           }
-          // Safari/Firefox: navigate() unavailable — open target in a new window
           return clients.openWindow(url);
         }
       }

@@ -1,11 +1,10 @@
 'use client';
 import Link from 'next/link';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { useTareeqNotifications } from '@/context/TareeqNotificationsContext';
-import TareeqCallScreen from './TareeqCallScreen';
 
 interface Props {
   onCreateClick: () => void;
@@ -26,100 +25,16 @@ function Badge({ count }: { count: number }) {
   );
 }
 
-interface IncomingCall {
-  id: string;
-  type: 'audio' | 'video';
-  offer: string;
-  caller: { id: string; name: string; avatarUrl?: string | null };
-}
-
 export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onToggleSidebar }: Props) {
   const { isRtl } = useLang();
   const { user } = useAuth();
   const pathname = usePathname ? usePathname() : '';
   const { notifCount, messageCount } = useTareeqNotifications();
-  const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
-  const [activeCall, setActiveCall] = useState<IncomingCall | null>(null);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const mobileSearchRef = useRef<HTMLInputElement>(null);
-  const incomingPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const seenCallRef = useRef<string>('');
-
-  // Poll for incoming calls when logged in
-  useEffect(() => {
-    if (!user) return;
-    incomingPollRef.current = setInterval(async () => {
-      try {
-        const res = await fetch('/api/tareeq/calls/incoming', { credentials: 'include' });
-        if (!res.ok) return;
-        const { call } = await res.json();
-        if (call && call.id !== seenCallRef.current) {
-          seenCallRef.current = call.id;
-          setIncomingCall(call);
-        } else if (!call) {
-          setIncomingCall(null);
-        }
-      } catch { /* ignore */ }
-    }, 5_000);
-    return () => { if (incomingPollRef.current) clearInterval(incomingPollRef.current); };
-  }, [user]);
-
-  async function rejectCall(callId: string) {
-    setIncomingCall(null);
-    await fetch(`/api/tareeq/calls/${callId}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-      body: JSON.stringify({ action: 'reject' }),
-    }).catch(() => {});
-  }
-
-  function acceptCall(call: IncomingCall) {
-    setIncomingCall(null);
-    setActiveCall(call);
-  }
 
   return (
     <>
-      {/* Incoming call banner */}
-      {incomingCall && !activeCall && (
-        <div
-          className="fixed top-0 left-0 right-0 z-[110] flex items-center gap-3 px-4 py-3"
-          style={{ background: 'rgba(7,13,20,0.97)', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--tr-gold-dim)' }}
-        >
-          <div className="w-10 h-10 rounded-full shrink-0 overflow-hidden flex items-center justify-center font-bold" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold-dim)' }}>
-            {incomingCall.caller.avatarUrl
-              ? <img src={incomingCall.caller.avatarUrl} alt="" className="w-full h-full object-cover" />
-              : incomingCall.caller.name.charAt(0)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{incomingCall.caller.name}</p>
-            <p className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>
-              {incomingCall.type === 'video' ? '📹 ' : '🎙️ '}{isRtl ? 'مكالمة واردة' : 'Incoming call'}
-            </p>
-          </div>
-          <button
-            onClick={() => rejectCall(incomingCall.id)}
-            className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg transition active:scale-90"
-            style={{ background: '#ef4444', color: '#fff' }}
-          >✕</button>
-          <button
-            onClick={() => acceptCall(incomingCall)}
-            className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg transition active:scale-90"
-            style={{ background: '#22c55e', color: '#fff' }}
-          >✓</button>
-        </div>
-      )}
-
-      {/* Active call screen (callee accepted from banner) */}
-      {activeCall && (
-        <TareeqCallScreen
-          callId={activeCall.id}
-          role="callee"
-          callType={activeCall.type}
-          remoteUser={activeCall.caller}
-          offer={activeCall.offer}
-          onEnd={() => setActiveCall(null)}
-        />
-      )}
 
       <header
         className="fixed top-0 left-0 right-0 z-50 print:hidden"

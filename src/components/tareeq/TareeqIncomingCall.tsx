@@ -84,7 +84,7 @@ export default function TareeqIncomingCall() {
           clearInterval(burst);
         }
       } catch { /* ignore */ }
-      if (attempts >= 10) clearInterval(burst);
+      if (attempts >= 20) clearInterval(burst);
     }, 1000);
     return () => clearInterval(burst);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -127,7 +127,7 @@ export default function TareeqIncomingCall() {
       const burst = setInterval(async () => {
         attempts++;
         await poll();
-        if (attempts >= 8) clearInterval(burst);
+        if (attempts >= 15) clearInterval(burst);
       }, 1000);
     }
     navigator.serviceWorker?.addEventListener('message', onSwMessage);

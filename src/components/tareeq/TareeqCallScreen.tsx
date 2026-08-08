@@ -6,6 +6,9 @@ const ICE_CONFIG: RTCConfiguration = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
     {
       urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443'],
       username: 'openrelayproject',
@@ -16,8 +19,19 @@ const ICE_CONFIG: RTCConfiguration = {
       username: 'openrelayproject',
       credential: 'openrelayproject',
     },
+    {
+      urls: 'turn:relay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:relay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
   ],
   iceCandidatePoolSize: 10,
+  iceTransportPolicy: 'all',
 };
 
 export interface CallParty {
@@ -251,23 +265,32 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
       if (!ev.streams[0]) return;
       if (callType === 'video' && remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = ev.streams[0];
+        remoteVideoRef.current.play().catch(() => {});
       } else if (remoteAudioRef.current) {
         remoteAudioRef.current.srcObject = ev.streams[0];
+        remoteAudioRef.current.play().catch(() => {});
       }
     };
 
+    // ICE candidates — debounced flush (500ms) so first candidate is sent within ~1s
     const callerIceQueue: RTCIceCandidateInit[] = [];
-    pc.onicecandidate = (ev) => {
-      if (ev.candidate) callerIceQueue.push(ev.candidate.toJSON());
-    };
+    let callerIceDebounce: ReturnType<typeof setTimeout> | null = null;
     const flushCallerIce = async () => {
+      if (callerIceDebounce) { clearTimeout(callerIceDebounce); callerIceDebounce = null; }
       if (endedRef.current || callerIceQueue.length === 0) return;
       await fetch(`/api/tareeq/calls/${callId}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ action: 'callerIce', candidates: callerIceQueue }),
+        body: JSON.stringify({ action: 'callerIce', candidates: [...callerIceQueue] }),
       }).catch(() => {});
     };
-    const iceFlushTimer = setTimeout(flushCallerIce, 5000);
+    pc.onicecandidate = (ev) => {
+      if (!ev.candidate || endedRef.current) return;
+      callerIceQueue.push(ev.candidate.toJSON());
+      if (callerIceDebounce) clearTimeout(callerIceDebounce);
+      callerIceDebounce = setTimeout(flushCallerIce, 500);
+    };
+    // Fallback: flush after 6s in case debounce never fires
+    const iceFlushTimer = setTimeout(flushCallerIce, 6000);
     pc.onicegatheringstatechange = async () => {
       if (endedRef.current) return;
       if (pc.iceGatheringState === 'complete') { clearTimeout(iceFlushTimer); await flushCallerIce(); }
@@ -305,10 +328,10 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
     setCallState('ringing');
     startOutRing();
 
-    // Auto-cancel after 60 seconds if callee never answers
+    // Auto-cancel after 90 seconds if callee never answers
     ringTimeoutRef.current = setTimeout(() => {
       if (!endedRef.current) endCall('missed');
-    }, 60_000);
+    }, 90_000);
 
     pollingRef.current = setInterval(async () => {
       if (endedRef.current) return;
@@ -350,23 +373,32 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
       if (!ev.streams[0]) return;
       if (callType === 'video' && remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = ev.streams[0];
+        remoteVideoRef.current.play().catch(() => {});
       } else if (remoteAudioRef.current) {
         remoteAudioRef.current.srcObject = ev.streams[0];
+        remoteAudioRef.current.play().catch(() => {});
       }
     };
 
+    // ICE candidates — debounced flush (500ms) so first candidate is sent within ~1s
     const calleeIceQueue: RTCIceCandidateInit[] = [];
-    pc.onicecandidate = (ev) => {
-      if (ev.candidate) calleeIceQueue.push(ev.candidate.toJSON());
-    };
+    let calleeIceDebounce: ReturnType<typeof setTimeout> | null = null;
     const flushCalleeIce = async () => {
+      if (calleeIceDebounce) { clearTimeout(calleeIceDebounce); calleeIceDebounce = null; }
       if (endedRef.current || calleeIceQueue.length === 0) return;
       await fetch(`/api/tareeq/calls/${callId}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ action: 'calleeIce', candidates: calleeIceQueue }),
+        body: JSON.stringify({ action: 'calleeIce', candidates: [...calleeIceQueue] }),
       }).catch(() => {});
     };
-    const iceFlushTimerCallee = setTimeout(flushCalleeIce, 5000);
+    pc.onicecandidate = (ev) => {
+      if (!ev.candidate || endedRef.current) return;
+      calleeIceQueue.push(ev.candidate.toJSON());
+      if (calleeIceDebounce) clearTimeout(calleeIceDebounce);
+      calleeIceDebounce = setTimeout(flushCalleeIce, 500);
+    };
+    // Fallback: flush after 6s in case debounce never fires
+    const iceFlushTimerCallee = setTimeout(flushCalleeIce, 6000);
     pc.onicegatheringstatechange = async () => {
       if (endedRef.current) return;
       if (pc.iceGatheringState === 'complete') { clearTimeout(iceFlushTimerCallee); await flushCalleeIce(); }

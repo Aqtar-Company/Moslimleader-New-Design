@@ -16,7 +16,7 @@ export default function TareeqLayout({ children }: { children: React.ReactNode }
       />
       <TareeqShell>
         {/* pb-[60px] reserves space for the 60px bottom nav on mobile */}
-        <div className="relative z-10 pb-[60px] sm:pb-0">{children}</div>
+        <div className="relative pb-[60px] sm:pb-0">{children}</div>
       </TareeqShell>
     </div>
   );

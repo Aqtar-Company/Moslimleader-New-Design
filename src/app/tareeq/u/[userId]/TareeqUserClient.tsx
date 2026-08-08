@@ -370,8 +370,8 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
 
           <div className="flex gap-6 mt-4">
             <StatItem count={postCount ?? posts.length} label={isRtl ? 'علامة' : 'Posts'} />
-            <StatItem count={followerCount} label={isRtl ? 'متابِع' : 'Followers'} onClick={() => openFollowList('followers')} />
-            <StatItem count={followingCount} label={isRtl ? 'متابَع' : 'Following'} onClick={() => openFollowList('following')} />
+            <StatItem count={followerCount} label={isRtl ? 'تابعوني' : 'Followers'} onClick={() => openFollowList('followers')} />
+            <StatItem count={followingCount} label={isRtl ? 'أتابعهم' : 'Following'} onClick={() => openFollowList('following')} />
           </div>
         </div>
 

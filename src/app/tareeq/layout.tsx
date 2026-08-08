@@ -3,6 +3,8 @@ import TareeqShell from '@/components/tareeq/TareeqShell';
 export default function TareeqLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen relative" style={{ background: 'var(--tr-base)' }}>
+      {/* Runs before paint — applies saved theme to <html> to prevent flash */}
+      <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('tareeq-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();` }} />
       {/* Ambient celestial glow — non-interactive, purely decorative */}
       <div
         className="fixed inset-0 pointer-events-none z-0"

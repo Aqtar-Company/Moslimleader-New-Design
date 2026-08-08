@@ -228,12 +228,27 @@ function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: P
   const { signOut } = useAuth();
   const router = useRouter();
   const [notifState, setNotifState] = useState<'default' | 'granted' | 'denied'>('default');
+  const [themeMode, setThemeMode] = useState<'system' | 'dark' | 'light'>('system');
 
   useEffect(() => {
     if (typeof Notification !== 'undefined') {
       setNotifState(Notification.permission === 'granted' ? 'granted' : Notification.permission === 'denied' ? 'denied' : 'default');
     }
+    const saved = localStorage.getItem('tareeq-theme');
+    if (saved === 'dark' || saved === 'light') setThemeMode(saved);
+    else setThemeMode('system');
   }, []);
+
+  function applyTheme(mode: 'system' | 'dark' | 'light') {
+    setThemeMode(mode);
+    if (mode === 'system') {
+      localStorage.removeItem('tareeq-theme');
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      localStorage.setItem('tareeq-theme', mode);
+      document.documentElement.setAttribute('data-theme', mode);
+    }
+  }
 
   const initial = userName.charAt(0).toUpperCase();
   const shareUrl = 'https://moslimleader.com/tareeq';
@@ -447,6 +462,40 @@ function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: P
           <p className="text-[10px] font-bold px-1 pt-1" style={{ color: 'var(--tr-text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
             {isRtl ? 'التطبيق' : 'App'}
           </p>
+
+          {/* Theme toggle */}
+          <div className="flex items-center gap-3.5 px-4 py-3 rounded-2xl" style={{ background: 'var(--tr-overlay)' }}>
+            <div style={iconBox('var(--tr-overlay)', 'var(--tr-border-soft)')}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-secondary)' }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+              </svg>
+            </div>
+            <span className="font-bold text-sm flex-1" style={{ color: 'var(--tr-text-primary)' }}>
+              {isRtl ? 'المظهر' : 'Appearance'}
+            </span>
+            <div className="flex gap-1 p-0.5 rounded-xl" style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)' }}>
+              {(['light', 'system', 'dark'] as const).map(mode => {
+                const labels: Record<string, string> = isRtl
+                  ? { light: 'فاتح', system: 'تلقائي', dark: 'داكن' }
+                  : { light: 'Light', system: 'Auto', dark: 'Dark' };
+                const active = themeMode === mode;
+                return (
+                  <button
+                    key={mode}
+                    onClick={() => applyTheme(mode)}
+                    className="text-[11px] font-bold px-2.5 py-1 rounded-lg transition-all"
+                    style={active
+                      ? { background: 'var(--tr-gold)', color: '#fff', boxShadow: '0 1px 4px var(--tr-gold-glow)' }
+                      : { background: 'transparent', color: 'var(--tr-text-muted)' }
+                    }
+                  >
+                    {labels[mode]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Moslim Leader Store */}
           <a
             href="https://moslimleader.com"

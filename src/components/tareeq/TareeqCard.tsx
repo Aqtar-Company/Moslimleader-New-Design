@@ -456,7 +456,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     <>
       <article
         className="overflow-hidden"
-        style={{ borderRadius: 20, background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', boxShadow: '0 2px 12px rgba(0,0,0,0.3)' }}
+        style={{ borderRadius: 20, background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', boxShadow: '0 2px 12px var(--tr-shadow-sm)' }}
         aria-label={post.title || post.content.slice(0, 80)}
       >
         {/* Category accent top bar */}
@@ -594,7 +594,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                   border: '1px solid var(--tr-border-soft)',
                   borderRadius: 20,
                   padding: '8px 12px',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                  boxShadow: '0 8px 32px var(--tr-shadow-popup)',
                   whiteSpace: 'nowrap',
                 }}
                 onClick={e => e.stopPropagation()}

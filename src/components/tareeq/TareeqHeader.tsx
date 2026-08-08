@@ -120,7 +120,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
       <header
         className="fixed top-0 left-0 right-0 z-50 print:hidden"
         style={{
-          background: 'rgba(7,13,20,0.88)',
+          background: 'var(--tr-header-bg)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
           borderBottom: '1px solid var(--tr-border-subtle)',

@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
-/* ── Tareeq "Celestial Dark" design tokens ───────────────── */
+/* ── Tareeq design tokens — Light default, Dark via system/setting ── */
 :root {
-  /* Backgrounds — layered depth */
-  --tr-base:    #070d14;
-  --tr-surface: #0d1a26;
-  --tr-raised:  #142030;
-  --tr-overlay: #1a293d;
+  /* Backgrounds */
+  --tr-base:    #f2f4fb;
+  --tr-surface: #ffffff;
+  --tr-raised:  #eaecf5;
+  --tr-overlay: #e0e3f0;
   /* Borders */
-  --tr-border-subtle: rgba(255,255,255,0.06);
-  --tr-border-soft:   rgba(255,255,255,0.10);
-  --tr-border-strong: rgba(255,255,255,0.18);
-  /* Primary — Star Gold */
+  --tr-border-subtle: rgba(0,0,0,0.07);
+  --tr-border-soft:   rgba(0,0,0,0.12);
+  --tr-border-strong: rgba(0,0,0,0.22);
+  /* Primary — Star Gold (same in both modes) */
   --tr-gold:        #d4a853;
   --tr-gold-bright: #f0c060;
   --tr-gold-dim:    #a07830;
@@ -20,9 +20,15 @@
   --tr-teal:        #2dd4bf;
   --tr-teal-dim:    rgba(45,212,191,0.15);
   /* Text */
-  --tr-text-primary:   #eef2f7;
-  --tr-text-secondary: #7a9ab5;
-  --tr-text-muted:     #3d5a72;
+  --tr-text-primary:   #0f1117;
+  --tr-text-secondary: #4b5675;
+  --tr-text-muted:     #94a3b8;
+  /* UI chrome — mode-sensitive */
+  --tr-header-bg:    rgba(255,255,255,0.88);
+  --tr-backdrop:     rgba(15,17,30,0.45);
+  --tr-shadow-sm:    rgba(0,0,0,0.05);
+  --tr-shadow-popup: rgba(0,0,0,0.14);
+  --tr-shadow-card:  rgba(0,0,0,0.08);
   /* Category accent glows */
   --cat-experience: #f59e0b;
   --cat-story:      #a855f7;
@@ -36,9 +42,50 @@
   --tr-warning:  #f59e0b;
 }
 
+/* ── Dark mode — system preference (respects [data-theme="light"] override) ── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --tr-base:    #070d14;
+    --tr-surface: #0d1a26;
+    --tr-raised:  #142030;
+    --tr-overlay: #1a293d;
+    --tr-border-subtle: rgba(255,255,255,0.06);
+    --tr-border-soft:   rgba(255,255,255,0.10);
+    --tr-border-strong: rgba(255,255,255,0.18);
+    --tr-text-primary:   #eef2f7;
+    --tr-text-secondary: #7a9ab5;
+    --tr-text-muted:     #3d5a72;
+    --tr-header-bg:    rgba(7,13,20,0.88);
+    --tr-backdrop:     rgba(7,13,20,0.80);
+    --tr-shadow-sm:    rgba(0,0,0,0.30);
+    --tr-shadow-popup: rgba(0,0,0,0.50);
+    --tr-shadow-card:  rgba(0,0,0,0.40);
+  }
+}
+
+/* ── Dark mode — explicit user preference (overrides system) ── */
+:root[data-theme="dark"] {
+  --tr-base:    #070d14;
+  --tr-surface: #0d1a26;
+  --tr-raised:  #142030;
+  --tr-overlay: #1a293d;
+  --tr-border-subtle: rgba(255,255,255,0.06);
+  --tr-border-soft:   rgba(255,255,255,0.10);
+  --tr-border-strong: rgba(255,255,255,0.18);
+  --tr-text-primary:   #eef2f7;
+  --tr-text-secondary: #7a9ab5;
+  --tr-text-muted:     #3d5a72;
+  --tr-header-bg:    rgba(7,13,20,0.88);
+  --tr-backdrop:     rgba(7,13,20,0.80);
+  --tr-shadow-sm:    rgba(0,0,0,0.30);
+  --tr-shadow-popup: rgba(0,0,0,0.50);
+  --tr-shadow-card:  rgba(0,0,0,0.40);
+}
+
 body {
   background: var(--tr-base);
   color: var(--tr-text-primary);
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 html[dir="rtl"],

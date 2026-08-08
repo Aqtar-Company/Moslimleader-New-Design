@@ -140,6 +140,7 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const durationRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const ringTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const disconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const outRingRef = useRef<{ stop: () => void } | null>(null);
   const appliedCallerIce = useRef<number>(0);
   const appliedCalleeIce = useRef<number>(0);
@@ -202,6 +203,7 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
     if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
     if (durationRef.current) { clearInterval(durationRef.current); durationRef.current = null; }
     if (ringTimeoutRef.current) { clearTimeout(ringTimeoutRef.current); ringTimeoutRef.current = null; }
+    if (disconnectTimerRef.current) { clearTimeout(disconnectTimerRef.current); disconnectTimerRef.current = null; }
     stopOutRing();
     localStreamRef.current?.getTracks().forEach(t => t.stop());
     pcRef.current?.close();
@@ -274,12 +276,19 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === 'connected') {
         if (ringTimeoutRef.current) { clearTimeout(ringTimeoutRef.current); ringTimeoutRef.current = null; }
+        if (disconnectTimerRef.current) { clearTimeout(disconnectTimerRef.current); disconnectTimerRef.current = null; }
         stopOutRing();
         setCallState('active');
         durationRef.current = setInterval(() => setDuration(d => d + 1), 1000);
       }
-      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+      if (pc.connectionState === 'failed') {
         endCall('ended');
+      }
+      if (pc.connectionState === 'disconnected') {
+        // Transient — give 6 s to recover before ending
+        disconnectTimerRef.current = setTimeout(() => {
+          if (!endedRef.current && pcRef.current?.connectionState === 'disconnected') endCall('ended');
+        }, 6000);
       }
     };
 
@@ -365,11 +374,18 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
 
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === 'connected') {
+        if (disconnectTimerRef.current) { clearTimeout(disconnectTimerRef.current); disconnectTimerRef.current = null; }
         setCallState('active');
         durationRef.current = setInterval(() => setDuration(d => d + 1), 1000);
       }
-      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+      if (pc.connectionState === 'failed') {
         endCall('ended');
+      }
+      if (pc.connectionState === 'disconnected') {
+        // Transient — give 6 s to recover before ending
+        disconnectTimerRef.current = setTimeout(() => {
+          if (!endedRef.current && pcRef.current?.connectionState === 'disconnected') endCall('ended');
+        }, 6000);
       }
     };
 

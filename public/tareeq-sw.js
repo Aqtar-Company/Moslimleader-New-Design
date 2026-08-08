@@ -1,7 +1,7 @@
 /* tareeq-v3 — Offline, Background Sync, Periodic Sync, Rich Push, Notification Actions */
-const CACHE_STATIC  = 'tareeq-v4-static';
-const CACHE_PAGES   = 'tareeq-v4-pages';
-const CACHE_IMAGES  = 'tareeq-v4-images';
+const CACHE_STATIC  = 'tareeq-v5-static';
+const CACHE_PAGES   = 'tareeq-v5-pages';
+const CACHE_IMAGES  = 'tareeq-v5-images';
 const ALL_CACHES    = [CACHE_STATIC, CACHE_PAGES, CACHE_IMAGES];
 
 const SHELL = [
@@ -37,6 +37,10 @@ self.addEventListener('fetch', e => {
 
   // API calls: always go to network (never cache)
   if (url.pathname.startsWith('/api/')) return;
+
+  // Cross-origin images (R2, CDN) — let browser handle directly, never cache
+  // Opaque SW responses for cross-origin images cause blank-after-load bugs
+  if (url.origin !== self.location.origin) return;
 
   // Images: cache-first (fast, infrequently changed)
   if (/\.(png|jpg|jpeg|webp|gif|svg|ico)$/i.test(url.pathname)) {

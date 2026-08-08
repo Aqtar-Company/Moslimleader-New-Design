@@ -68,9 +68,22 @@ export default function TareeqIncomingCall() {
         const res = await fetch('/api/tareeq/calls/incoming', { credentials: 'include' });
         if (!res.ok) return;
         const { call } = await res.json();
-        if (!call || seenRef.current.has(call.id)) return;
-        setIncoming(call);
-        startRing();
+
+        setIncoming(prev => {
+          // If we're currently showing a call and the server no longer returns it
+          // (caller cancelled / timed out / marked missed), dismiss the overlay
+          if (prev && !call) {
+            stopRing();
+            seenRef.current.add(prev.id);
+            return null;
+          }
+          // New call arrived
+          if (call && !seenRef.current.has(call.id) && !prev) {
+            startRing();
+            return call;
+          }
+          return prev;
+        });
       } catch { /* offline */ }
     }
 

@@ -65,6 +65,7 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
   const localStreamRef = useRef<MediaStream | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const durationRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const ringTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const appliedCallerIce = useRef<number>(0);
   const appliedCalleeIce = useRef<number>(0);
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -75,19 +76,21 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
   function stopAll() {
     if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
     if (durationRef.current) { clearInterval(durationRef.current); durationRef.current = null; }
+    if (ringTimeoutRef.current) { clearTimeout(ringTimeoutRef.current); ringTimeoutRef.current = null; }
     localStreamRef.current?.getTracks().forEach(t => t.stop());
     pcRef.current?.close();
   }
 
-  const endCall = useCallback(async (status: 'ended' | 'rejected' | 'failed' = 'ended') => {
+  const endCall = useCallback(async (status: 'ended' | 'rejected' | 'failed' | 'missed' = 'ended') => {
     if (endedRef.current) return;
     endedRef.current = true;
     stopAll();
-    setCallState(status);
+    setCallState(status === 'missed' ? 'ended' : status);
     if (status !== 'failed') {
+      const action = status === 'rejected' ? 'reject' : status === 'missed' ? 'missed' : 'end';
       await fetch(`/api/tareeq/calls/${callId}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ action: status === 'rejected' ? 'reject' : 'end' }),
+        body: JSON.stringify({ action }),
       }).catch(() => {});
     }
     setTimeout(onEnd, 1200);
@@ -135,6 +138,8 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
 
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === 'connected') {
+        // Cancel the no-answer timeout — call is live
+        if (ringTimeoutRef.current) { clearTimeout(ringTimeoutRef.current); ringTimeoutRef.current = null; }
         setCallState('active');
         durationRef.current = setInterval(() => setDuration(d => d + 1), 1000);
       }
@@ -151,6 +156,11 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
       body: JSON.stringify({ action: 'setOffer', offer: offerSdp.sdp }),
     }).catch(() => {});
+
+    // Auto-cancel after 60 seconds if callee never answers
+    ringTimeoutRef.current = setTimeout(() => {
+      if (!endedRef.current) endCall('missed');
+    }, 60_000);
 
     // Poll for answer + callee ICE candidates
     pollingRef.current = setInterval(async () => {

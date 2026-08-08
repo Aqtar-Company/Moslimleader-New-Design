@@ -72,6 +72,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ call: updated });
   }
 
+  // Caller marks the call as missed (no answer within timeout)
+  if (action === 'missed' && call.callerId === user.userId) {
+    const updated = await prisma.tareeqCall.update({
+      where: { id: params.id },
+      data: { status: 'missed', endedAt: new Date() },
+    });
+    return NextResponse.json({ call: updated });
+  }
+
   if (action === 'callerIce' && call.callerId === user.userId && Array.isArray(body.candidates)) {
     const updated = await prisma.tareeqCall.update({
       where: { id: params.id },

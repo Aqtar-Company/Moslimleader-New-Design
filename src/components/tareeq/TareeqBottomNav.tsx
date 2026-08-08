@@ -999,7 +999,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           borderRadius: '50%',
           background: 'linear-gradient(145deg, #1d4ed8, #3b82f6)',
           border: '2.5px solid #ffffff',
-          boxShadow: '0 0 0 3px #22c55e, 0 6px 24px rgba(37,99,235,0.50), 0 2px 8px rgba(0,0,0,0.20)',
+          boxShadow: '0 0 0 3px #f59e0b, 0 6px 24px rgba(37,99,235,0.50), 0 2px 8px rgba(0,0,0,0.20)',
           zIndex: 42,
           display: 'flex',
           alignItems: 'center',
@@ -1060,8 +1060,8 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             ref={svgPathRef}
             d={buildNavPath(0)}
             fill="var(--tr-surface)"
-            stroke="var(--tr-border-subtle)"
-            strokeWidth="1"
+            stroke="#f59e0b"
+            strokeWidth="5"
           />
         </svg>
 
@@ -1139,6 +1139,9 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
                 {messageCount > 9 ? '9+' : messageCount}
               </span>
             )}
+            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isInbox ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
+              {isRtl ? 'رسايل' : 'Chat'}
+            </span>
           </Link>
 
           {/* 5 — Contacts / Quick Call */}
@@ -1155,6 +1158,9 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
               }}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
             </svg>
+            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: showContacts ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
+              {isRtl ? 'اتصال' : 'Call'}
+            </span>
           </button>
         </div>
       </nav>

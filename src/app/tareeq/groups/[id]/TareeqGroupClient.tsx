@@ -281,6 +281,9 @@ function Inner({ groupId }: { groupId: string }) {
     <div className="flex flex-col overflow-hidden" style={{ background: 'var(--tr-base)', height: '100dvh' }}>
       <TareeqHeader onCreateClick={() => {}} />
 
+      {/* Spacer for fixed TareeqHeader (h-14) */}
+      <div className="h-14 shrink-0" />
+
       {/* Sub-header */}
       <div className="px-4 py-3 flex items-center gap-3 shrink-0 z-30" style={{ background: 'var(--tr-surface)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
         <button onClick={() => router.push('/tareeq/inbox')} className="transition" style={{ color: 'var(--tr-text-muted)' }}>
@@ -371,7 +374,7 @@ function Inner({ groupId }: { groupId: string }) {
                 <div className="flex-1 h-px" style={{ background: 'var(--tr-border-subtle)' }} />
               </div>
               {bucket.groups.map((group, gi) => (
-                <div key={gi} className={`flex flex-col mb-2 ${group.mine ? 'items-end' : 'items-start'}`}>
+                <div key={gi} className="flex flex-col mb-2 w-full">
                   {!group.mine && (
                     <p className="text-[10px] font-semibold mb-0.5 px-8" style={{ color: 'var(--tr-gold-dim)' }}>{group.senderInfo.name}</p>
                   )}
@@ -380,7 +383,7 @@ function Inner({ groupId }: { groupId: string }) {
                     const mineStyle = { background: 'linear-gradient(135deg,#115e59,#0d9488)', color: '#fff', borderRadius: isLast ? '18px 18px 4px 18px' : '18px' };
                     const otherStyle = { background: 'var(--tr-raised)', color: 'var(--tr-text-primary)', border: '1px solid var(--tr-border-soft)', borderRadius: isLast ? '18px 18px 18px 4px' : '18px' };
                     return (
-                      <div key={m.id} className={`flex items-end gap-2 mb-0.5 ${group.mine ? 'flex-row-reverse' : 'flex-row'}`}>
+                      <div key={m.id} className={`flex items-end gap-2 mb-0.5 ${group.mine ? 'justify-end' : 'justify-start'}`}>
                         <div className="w-6 h-6 rounded-full shrink-0 overflow-hidden flex items-center justify-center text-[10px] font-bold" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1px solid var(--tr-gold-dim)', visibility: (!group.mine && isLast) ? 'visible' : 'hidden' }}>
                           {!group.mine && isLast && (group.senderInfo.avatarUrl ? <img src={group.senderInfo.avatarUrl} alt="" className="w-full h-full object-cover" /> : group.senderInfo.name.charAt(0))}
                         </div>
@@ -393,7 +396,7 @@ function Inner({ groupId }: { groupId: string }) {
                       </div>
                     );
                   })}
-                  <p className="text-[10px] mt-1 px-2" style={{ color: 'var(--tr-text-muted)', textAlign: group.mine ? 'right' : 'left' }}>
+                  <p className={`text-[10px] mt-1 px-2 ${group.mine ? 'text-end' : 'text-start'}`} style={{ color: 'var(--tr-text-muted)' }}>
                     {formatTime(group.msgs[group.msgs.length - 1].createdAt)}
                   </p>
                 </div>

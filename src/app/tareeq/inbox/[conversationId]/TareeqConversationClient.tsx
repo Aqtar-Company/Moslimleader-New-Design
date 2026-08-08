@@ -231,7 +231,10 @@ function Inner({ conversationId }: { conversationId: string }) {
     <div className="flex flex-col overflow-hidden" style={{ background: 'var(--tr-base)', height: '100dvh' }}>
       <TareeqHeader onCreateClick={() => {}} />
 
-      {/* Chat sub-header — sits in normal flow below the h-14 spacer inside TareeqHeader */}
+      {/* Spacer for fixed TareeqHeader (h-14) */}
+      <div className="h-14 shrink-0" />
+
+      {/* Chat sub-header */}
       <div
         className="px-4 py-3 flex items-center gap-3 shrink-0 z-30"
         style={{

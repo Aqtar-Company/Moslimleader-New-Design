@@ -40,18 +40,42 @@ interface MsgGroup {
 
 type DayItem = MsgGroup | { __isCall: true; call: CallEvent };
 
-function groupMessages(messages: Message[], myId: string): MsgGroup[] {
-  const groups: MsgGroup[] = [];
-  for (const m of messages) {
-    const mine = m.senderId === myId;
-    const last = groups[groups.length - 1];
-    if (last && last.senderId === m.senderId) {
-      last.msgs.push(m);
+// Build timeline by walking all events in time order, grouping consecutive same-sender
+// messages, and inserting call events as group-breakers. This ensures call bubbles
+// always appear at their correct chronological position.
+function buildTimeline(messages: Message[], calls: CallEvent[], myId: string): { time: string; item: DayItem }[] {
+  const allEvents: ({ type: 'msg'; msg: Message; t: string } | { type: 'call'; call: CallEvent; t: string })[] = [
+    ...messages.map(m => ({ type: 'msg' as const, msg: m, t: m.createdAt })),
+    ...calls.map(c => ({ type: 'call' as const, call: c, t: c.createdAt })),
+  ];
+  allEvents.sort((a, b) => a.t.localeCompare(b.t));
+
+  const items: { time: string; item: DayItem }[] = [];
+  let currentGroup: MsgGroup | null = null;
+
+  for (const ev of allEvents) {
+    if (ev.type === 'call') {
+      if (currentGroup) {
+        items.push({ time: currentGroup.msgs[currentGroup.msgs.length - 1].createdAt, item: currentGroup as DayItem });
+        currentGroup = null;
+      }
+      items.push({ time: ev.call.createdAt, item: { __isCall: true, call: ev.call } as DayItem });
     } else {
-      groups.push({ senderId: m.senderId, mine, msgs: [m], senderInfo: m.sender });
+      const msg = ev.msg;
+      if (currentGroup && currentGroup.senderId === msg.senderId) {
+        currentGroup.msgs.push(msg);
+      } else {
+        if (currentGroup) {
+          items.push({ time: currentGroup.msgs[currentGroup.msgs.length - 1].createdAt, item: currentGroup as DayItem });
+        }
+        currentGroup = { senderId: msg.senderId, mine: msg.senderId === myId, msgs: [msg], senderInfo: msg.sender };
+      }
     }
   }
-  return groups;
+  if (currentGroup) {
+    items.push({ time: currentGroup.msgs[currentGroup.msgs.length - 1].createdAt, item: currentGroup as DayItem });
+  }
+  return items;
 }
 
 function formatTime(dateStr: string) {
@@ -327,15 +351,9 @@ function Inner({ conversationId }: { conversationId: string }) {
   }
 
   const myId = user?.id ?? '';
-  const groups = groupMessages(messages, myId);
   const canSend = !sending && !uploading && !!(input.trim() || mediaUrl);
 
-  // Build unified timeline: message groups + call events sorted by time
-  const flatItems: { time: string; item: DayItem }[] = [
-    ...groups.map(g => ({ time: g.msgs[0].createdAt, item: g as DayItem })),
-    ...calls.map(c => ({ time: c.createdAt, item: { __isCall: true, call: c } as DayItem })),
-  ];
-  flatItems.sort((a, b) => a.time.localeCompare(b.time));
+  const flatItems = buildTimeline(messages, calls, myId);
 
   const dayBuckets: { day: string; items: DayItem[] }[] = [];
   for (const { time, item } of flatItems) {
@@ -640,7 +658,7 @@ function Inner({ conversationId }: { conversationId: string }) {
               className="rounded-full w-10 h-10 flex items-center justify-center shrink-0 transition-all active:scale-90"
               style={canSend ? {
                 background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))',
-                color: '#0a0d06',
+                color: '#fff',
                 boxShadow: '0 4px 16px rgba(212,168,83,0.35)',
               } : {
                 background: 'var(--tr-overlay)',
@@ -651,7 +669,7 @@ function Inner({ conversationId }: { conversationId: string }) {
             >
               {sending
                 ? <div className="w-4 h-4 border-2 border-current/40 border-t-current rounded-full animate-spin" />
-                : <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>
+                : <span style={{ fontSize: 17, lineHeight: 1, display: 'block' }}>🕊️</span>
               }
             </button>
           </div>

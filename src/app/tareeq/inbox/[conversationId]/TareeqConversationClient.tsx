@@ -99,6 +99,28 @@ function Inner({ conversationId }: { conversationId: string }) {
   const latestIdRef = useRef<string>('');
   const callCountRef = useRef<number>(0);
 
+  function playMsgChime() {
+    try {
+      const ACtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!ACtx) return;
+      const ctx = new ACtx();
+      const resume = ctx.state === 'suspended' ? ctx.resume() : Promise.resolve();
+      resume.then(() => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.18);
+        gain.gain.setValueAtTime(0.28, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.35);
+        osc.onended = () => ctx.close().catch(() => {});
+      }).catch(() => {});
+    } catch { /* ignore */ }
+  }
+
   // Call state
   const [activeCall, setActiveCall] = useState<{
     callId: string; role: 'caller' | 'callee'; callType: 'audio' | 'video'; offer?: string;
@@ -137,6 +159,9 @@ function Inner({ conversationId }: { conversationId: string }) {
       const newLatest = msgs.length ? msgs[msgs.length - 1].id : '';
       const newCallCount = callEvents.length;
       if (newLatest !== latestIdRef.current) {
+        const latestMsg = msgs[msgs.length - 1];
+        // Play chime only for incoming messages (not our own)
+        if (latestMsg && latestMsg.senderId !== user?.id) playMsgChime();
         setMessages(msgs);
         latestIdRef.current = newLatest;
         refresh();
@@ -146,7 +171,7 @@ function Inner({ conversationId }: { conversationId: string }) {
         setCalls(callEvents);
         callCountRef.current = newCallCount;
       }
-    }, 10_000);
+    }, 3_000);
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
   }, [user, router, loadMessages, conversationId, refresh]);
 

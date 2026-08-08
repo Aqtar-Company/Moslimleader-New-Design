@@ -18,6 +18,31 @@ export default function TareeqIncomingCall() {
   const [accepted, setAccepted] = useState(false);
   const seenRef = useRef<Set<string>>(new Set());
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const ringRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  function startRing() {
+    try {
+      const ctx = new AudioContext();
+      audioCtxRef.current = ctx;
+      const beep = () => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 480;
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+      };
+      beep();
+      ringRef.current = setInterval(beep, 2000);
+    } catch { /* AudioContext not supported */ }
+  }
+
+  function stopRing() {
+    if (ringRef.current) { clearInterval(ringRef.current); ringRef.current = null; }
+    audioCtxRef.current?.close().catch(() => {}); audioCtxRef.current = null;
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -29,15 +54,21 @@ export default function TareeqIncomingCall() {
         const { call } = await res.json();
         if (!call || seenRef.current.has(call.id)) return;
         setIncoming(call);
+        startRing();
       } catch { /* offline */ }
     }
 
     poll();
     intervalRef.current = setInterval(poll, 3000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      stopRing();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   function dismiss() {
+    stopRing();
     if (incoming) seenRef.current.add(incoming.id);
     setIncoming(null);
     setAccepted(false);
@@ -45,6 +76,7 @@ export default function TareeqIncomingCall() {
 
   async function decline() {
     if (!incoming) return;
+    stopRing();
     seenRef.current.add(incoming.id);
     await fetch(`/api/tareeq/calls/${incoming.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
@@ -54,6 +86,7 @@ export default function TareeqIncomingCall() {
   }
 
   function accept() {
+    stopRing();
     setAccepted(true);
   }
 

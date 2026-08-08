@@ -97,6 +97,7 @@ function Inner({ conversationId }: { conversationId: string }) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const latestIdRef = useRef<string>('');
+  const callCountRef = useRef<number>(0);
 
   // Call state
   const [activeCall, setActiveCall] = useState<{
@@ -111,10 +112,12 @@ function Inner({ conversationId }: { conversationId: string }) {
       if (res.ok) {
         const d = await res.json();
         const msgs: Message[] = d.messages ?? [];
+        const callEvents: CallEvent[] = d.calls ?? [];
         setMessages(msgs);
-        setCalls(d.calls ?? []);
+        setCalls(callEvents);
         setOtherUser(d.otherUser ?? null);
         latestIdRef.current = msgs.length ? msgs[msgs.length - 1].id : '';
+        callCountRef.current = callEvents.length;
         refresh();
       }
     } catch { /* ignore */ } finally {
@@ -130,12 +133,18 @@ function Inner({ conversationId }: { conversationId: string }) {
       if (!res || !res.ok) return;
       const d = await res.json();
       const msgs: Message[] = d.messages ?? [];
+      const callEvents: CallEvent[] = d.calls ?? [];
       const newLatest = msgs.length ? msgs[msgs.length - 1].id : '';
+      const newCallCount = callEvents.length;
       if (newLatest !== latestIdRef.current) {
         setMessages(msgs);
-        setCalls(d.calls ?? []);
         latestIdRef.current = newLatest;
         refresh();
+      }
+      // Update calls independently so missed-call bubbles appear even with no new messages
+      if (newCallCount !== callCountRef.current) {
+        setCalls(callEvents);
+        callCountRef.current = newCallCount;
       }
     }, 10_000);
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
@@ -333,7 +342,7 @@ function Inner({ conversationId }: { conversationId: string }) {
                 <div className="flex-1 h-px" style={{ background: 'var(--tr-border-subtle)' }} />
               </div>
 
-              {bucket.items.map((item, gi) => {
+              {bucket.items.map((item) => {
                 // ── Call event bubble ──────────────────────────────────
                 if ('__isCall' in item) {
                   const { call } = item;
@@ -371,7 +380,7 @@ function Inner({ conversationId }: { conversationId: string }) {
                 // ── Message group ──────────────────────────────────────
                 const group = item;
                 return (
-                <div key={gi} className="flex flex-col mb-2 w-full">
+                <div key={group.msgs[0].id} className="flex flex-col mb-2 w-full">
                   {group.msgs.map((m, mi) => {
                     const isLast = mi === group.msgs.length - 1;
                     // Bubble border-radius: tail on last message in group

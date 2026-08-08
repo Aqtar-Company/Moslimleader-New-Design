@@ -313,7 +313,7 @@ function Inner({ conversationId }: { conversationId: string }) {
               </div>
 
               {bucket.groups.map((group, gi) => (
-                <div key={gi} className={`flex flex-col mb-2 ${group.mine ? 'items-end' : 'items-start'}`}>
+                <div key={gi} className="flex flex-col mb-2 w-full">
                   {group.msgs.map((m, mi) => {
                     const isLast = mi === group.msgs.length - 1;
                     // Bubble border-radius: tail on last message in group
@@ -329,7 +329,7 @@ function Inner({ conversationId }: { conversationId: string }) {
                       borderRadius: isLast ? '18px 18px 18px 4px' : '18px',
                     };
                     return (
-                      <div key={m.id} className={`flex items-end gap-2 mb-0.5 ${group.mine ? 'flex-row-reverse' : 'flex-row'}`}>
+                      <div key={m.id} className={`flex items-end gap-2 mb-0.5 ${group.mine ? 'justify-end' : 'justify-start'}`}>
                         {/* Receiver avatar — only on last message in group */}
                         {!group.mine && (
                           <div
@@ -358,8 +358,8 @@ function Inner({ conversationId }: { conversationId: string }) {
                   })}
                   {/* Timestamp below group */}
                   <p
-                    className="text-[10px] mt-1 px-2"
-                    style={{ color: 'var(--tr-text-muted)', textAlign: group.mine ? 'right' : 'left' }}
+                    className={`text-[10px] mt-1 px-2 ${group.mine ? 'text-end' : 'text-start'}`}
+                    style={{ color: 'var(--tr-text-muted)' }}
                   >
                     {formatTime(group.msgs[group.msgs.length - 1].createdAt)}
                   </p>

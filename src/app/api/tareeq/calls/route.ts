@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { sendPushToUser } from '@/lib/tareeq-push';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +10,10 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // 5 calls per minute per caller
+  const rl = checkRateLimit(`tareeq-call:${user.userId}`, 5, 60_000);
+  if (!rl.allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
   const { calleeId, type = 'audio' } = await req.json();
   if (!calleeId) return NextResponse.json({ error: 'calleeId required' }, { status: 400 });

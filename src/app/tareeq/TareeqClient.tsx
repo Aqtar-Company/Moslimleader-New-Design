@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import TareeqCard, { TareeqPostSummary } from '@/components/tareeq/TareeqCard';
@@ -50,7 +51,8 @@ interface Props { initialPosts: TareeqPostSummary[]; initialCursor: string | nul
 export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const { isRtl } = useLang();
   const { user, isLoading: authLoading } = useAuth();
-  useTareeqNotifications(); // keeps NotificationsProvider context alive
+  const { notifCount, messageCount } = useTareeqNotifications();
+  const pathname = usePathname();
   const [posts, setPosts] = useState<TareeqPostSummary[]>(initialPosts);
   const [cursor, setCursor] = useState<string | null>(initialCursor);
   const [loading, setLoading] = useState(false);
@@ -73,6 +75,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const feedTopRef = useRef<HTMLDivElement>(null);
   const searchMountedRef = useRef(false);
   const [cameraFile, setCameraFile] = useState<File | null>(null);
+  const [trendingPosts, setTrendingPosts] = useState<TareeqPostSummary[]>([]);
   const touchStartY = useRef(0);
   const pullYRef = useRef(0);
   const pullRefreshingRef = useRef(false);
@@ -80,6 +83,14 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const searchValRef = useRef(search);
   const sortRef = useRef(sort);
   const PULL_THRESHOLD = 72;
+
+  // Fetch top-liked posts for the desktop right sidebar trending widget
+  useEffect(() => {
+    fetch('/api/tareeq?sort=liked&limit=5')
+      .then(r => r.json())
+      .then(d => setTrendingPosts(d.posts ?? []))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!user) { setLikedIds(new Set()); setReactedPosts({}); return; }
@@ -347,11 +358,166 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       )}
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          DESKTOP: 2-column layout — center feed + right sidebar (lg+)
+          DESKTOP: 3-column layout — left nav + center feed + right sidebar (lg+)
           Nav is in TareeqHeader (Facebook-style top nav)
           MOBILE:  single column with bottom nav (handled by TareeqShell)
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <div className="lg:max-w-[900px] lg:mx-auto lg:px-4 lg:pt-4 lg:grid lg:grid-cols-[minmax(0,1fr)_256px] lg:gap-4 lg:items-start">
+      <div className="lg:max-w-[1280px] lg:mx-auto lg:px-4 lg:pt-4 lg:grid lg:grid-cols-[260px_minmax(0,1fr)_280px] lg:gap-5 lg:items-start">
+
+        {/* ━━ LEFT SIDEBAR — desktop only ━━ */}
+        <aside className="hidden lg:flex lg:flex-col sticky top-[70px] max-h-[calc(100vh-80px)] overflow-y-auto pb-4 gap-2" style={{ scrollbarWidth: 'none' }}>
+
+          {/* User profile card */}
+          {user && (
+            <div className="rounded-2xl p-4" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}>
+              <Link href="/tareeq/profile" className="flex items-center gap-3 group mb-3">
+                {user.avatarUrl ? (
+                  <img src={user.avatarUrl} alt={user.name ?? ''} className="w-11 h-11 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold-dim)' }} />
+                ) : (
+                  <div className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-base shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold-dim)' }}>
+                    {user.name?.charAt(0) ?? '?'}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="font-bold text-sm truncate group-hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{user.name}</p>
+                  <p className="text-[11px] mt-0.5" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'عرض الملف الشخصي' : 'View profile'}</p>
+                </div>
+              </Link>
+            </div>
+          )}
+
+          {/* Quick navigation */}
+          <nav className="rounded-2xl py-2 px-2" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}>
+            {([
+              {
+                href: '/tareeq',
+                label: isRtl ? 'الرئيسية' : 'Home',
+                badge: 0,
+                icon: (
+                  <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                  </svg>
+                ),
+              },
+              {
+                href: '/tareeq/notifications',
+                label: isRtl ? 'الإشعارات' : 'Notifications',
+                badge: notifCount,
+                icon: (
+                  <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                ),
+              },
+              {
+                href: '/tareeq/inbox',
+                label: isRtl ? 'الرسائل' : 'Messages',
+                badge: messageCount,
+                icon: (
+                  <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+                  </svg>
+                ),
+              },
+              {
+                href: user ? `/tareeq/u/${user.id}` : '/tareeq/profile',
+                label: isRtl ? 'ملفي' : 'My Profile',
+                badge: 0,
+                icon: (
+                  <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                  </svg>
+                ),
+              },
+            ] as { href: string; label: string; badge: number; icon: React.ReactNode }[]).map(({ href, icon, label, badge }) => {
+              const active = pathname === href || (href !== '/tareeq' && pathname.startsWith(href));
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors"
+                  style={{
+                    background: active ? 'var(--tr-gold-glow)' : 'transparent',
+                    color: active ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
+                    fontWeight: active ? 700 : 600,
+                  }}
+                  onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'var(--tr-overlay)'; }}
+                  onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                >
+                  {icon}
+                  <span className="text-sm truncate flex-1">{label}</span>
+                  {badge > 0 && (
+                    <span className="text-[10px] font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center" style={{ background: '#f43f5e', color: '#fff' }}>
+                      {badge > 9 ? '9+' : badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Category shortcuts */}
+          <div className="rounded-2xl py-3 px-2" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}>
+            <p className="text-[10px] font-black mb-1 px-3" style={{ color: 'var(--tr-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              {isRtl ? 'تصفح حسب' : 'Browse'}
+            </p>
+            {/* All */}
+            <button
+              onClick={() => handleCategoryChange('')}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors"
+              style={{
+                background: !category ? 'var(--tr-gold-glow)' : 'transparent',
+                color: !category ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
+                fontWeight: !category ? 700 : 600,
+              }}
+              onMouseEnter={e => { if (category) (e.currentTarget as HTMLElement).style.background = 'var(--tr-overlay)'; }}
+              onMouseLeave={e => { if (category) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+            >
+              <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: !category ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+              </svg>
+              <span className="text-sm">{isRtl ? 'الكل' : 'All'}</span>
+            </button>
+            {/* Categories */}
+            {CATEGORY_KEYS.map((key) => {
+              const accent = CATEGORY_ACCENT_HEX[key] ?? 'var(--tr-gold)';
+              const active = category === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => handleCategoryChange(active ? '' : key)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors"
+                  style={{
+                    background: active ? `${accent}18` : 'transparent',
+                    color: active ? accent : 'var(--tr-text-secondary)',
+                    fontWeight: active ? 700 : 600,
+                  }}
+                  onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'var(--tr-overlay)'; }}
+                  onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                >
+                  <CategoryIcon catKey={key} color={active ? accent : 'var(--tr-text-muted)'} />
+                  <span className="text-sm">{isRtl ? TAREEQ_CATEGORIES[key].ar : TAREEQ_CATEGORIES[key].en}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* New Mark CTA */}
+          <button
+            onClick={handleCreateClick}
+            className="w-full flex items-center justify-center gap-2 font-black text-sm py-3 rounded-2xl transition active:scale-95"
+            style={{
+              background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))',
+              color: '#fff',
+              boxShadow: '0 4px 24px var(--tr-gold-glow)',
+            }}
+          >
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            {isRtl ? 'اترك علامتك' : 'Leave Your Mark'}
+          </button>
+        </aside>
 
         {/* ━━ CENTER — feed ━━ */}
         <div className="min-w-0" ref={feedTopRef}>
@@ -490,7 +656,69 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         </div>
 
         {/* ━━ RIGHT SIDEBAR — desktop only ━━ */}
-        <aside className="hidden lg:block sticky top-[70px] space-y-3">
+        <aside className="hidden lg:flex lg:flex-col sticky top-[70px] max-h-[calc(100vh-80px)] overflow-y-auto pb-4 gap-3" style={{ scrollbarWidth: 'none' }}>
+
+          {/* Trending posts widget */}
+          {trendingPosts.length > 0 && (
+            <div className="rounded-2xl p-4" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}>
+              <p className="text-[10px] font-black mb-3" style={{ color: 'var(--tr-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                {isRtl ? '⭐ الأكثر تأثيرًا' : '⭐ Trending'}
+              </p>
+              <div className="space-y-0.5">
+                {trendingPosts.map((p, i) => (
+                  <Link
+                    key={p.id}
+                    href={`/tareeq/${p.id}`}
+                    className="flex items-start gap-2.5 p-2 rounded-xl transition-colors"
+                    style={{ color: 'inherit', textDecoration: 'none' }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--tr-overlay)'}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                  >
+                    <span className="text-xs font-black w-5 shrink-0 mt-0.5 text-center" style={{ color: i === 0 ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>{i + 1}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold leading-snug line-clamp-2" style={{ color: 'var(--tr-text-primary)' }}>
+                        {p.title || p.content.slice(0, 70)}
+                      </p>
+                      <p className="text-[10px] mt-1 flex items-center gap-1.5" style={{ color: 'var(--tr-text-muted)' }}>
+                        <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" /></svg>
+                        {p.likeCount}
+                        <span className="truncate">· {p.authorName}</span>
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Suggested users widget — quick discover */}
+          <div className="rounded-2xl p-4" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}>
+            <p className="text-[10px] font-black mb-3" style={{ color: 'var(--tr-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              {isRtl ? 'اكتشف طريق' : 'Discover Tareeq'}
+            </p>
+            <div className="space-y-2">
+              {([
+                { label: isRtl ? 'استكشف التجارب' : 'Explore Experiences', cat: 'experience', accent: CATEGORY_ACCENT_HEX.experience },
+                { label: isRtl ? 'اقرأ القصص' : 'Read Stories', cat: 'story', accent: CATEGORY_ACCENT_HEX.story },
+                { label: isRtl ? 'شارك فكرة' : 'Share an Idea', cat: 'idea', accent: CATEGORY_ACCENT_HEX.idea },
+                { label: isRtl ? 'تصفح الأسئلة' : 'Browse Questions', cat: 'question', accent: CATEGORY_ACCENT_HEX.question },
+              ] as { label: string; cat: string; accent: string }[]).map(({ label, cat, accent }) => (
+                <button
+                  key={cat}
+                  onClick={() => handleCategoryChange(cat)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-start transition-colors"
+                  style={{ background: 'var(--tr-overlay)', border: `1px solid ${accent}22` }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = `${accent}14`; (e.currentTarget as HTMLElement).style.borderColor = `${accent}44`; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--tr-overlay)'; (e.currentTarget as HTMLElement).style.borderColor = `${accent}22`; }}
+                >
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: accent }} />
+                  <span className="text-xs font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Existing sidebar widgets (share, notifications, store, about) */}
           <TareeqSidebar onCreateClick={handleCreateClick} />
         </aside>
       </div>

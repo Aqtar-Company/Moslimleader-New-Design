@@ -24,7 +24,7 @@ function timeAgo(iso: string, isRtl: boolean): string {
 }
 
 /* ─── Nav color ─────────────────────────────────────────────────────────────── */
-const NAV_ACCENT = '#FFD000'; // vivid yellow — low magenta, no orange
+const NAV_ACCENT = '#FFCC00'; // yellow 100 + magenta ~20% — slightly warm, not orange
 
 /* ─── SVG Curved Nav Path ───────────────────────────────────────────────────── */
 // viewBox: "0 0 1000 102"
@@ -1096,7 +1096,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             d={buildNavStrokePath(0)}
             fill="none"
             stroke={NAV_ACCENT}
-            strokeWidth="7"
+            strokeWidth="4"
             strokeLinecap="round"
           />
         </svg>

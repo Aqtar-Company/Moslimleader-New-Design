@@ -41,13 +41,14 @@ export default function TareeqIncomingCall() {
       };
 
       const ring = () => {
-        const t = ctx.currentTime;
-        // Burst 1: 400ms at 480Hz + 425Hz dual-tone
-        playBurst(t, 480, 0.4);
-        playBurst(t, 425, 0.4);
-        // Burst 2: 400ms starting at 600ms
-        playBurst(t + 0.6, 480, 0.4);
-        playBurst(t + 0.6, 425, 0.4);
+        if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') return;
+        try {
+          const t = ctx.currentTime;
+          playBurst(t, 480, 0.4);
+          playBurst(t, 425, 0.4);
+          playBurst(t + 0.6, 480, 0.4);
+          playBurst(t + 0.6, 425, 0.4);
+        } catch { /* context closed mid-ring */ }
       };
 
       ring();
@@ -116,6 +117,10 @@ export default function TareeqIncomingCall() {
 
   function accept() {
     stopRing();
+    // Stop polling — TareeqCallScreen manages signaling from here.
+    // If we keep polling, the call status changes to 'active' and poll
+    // sees call:null (not 'ringing' anymore) → would unmount the active call.
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
     setAccepted(true);
   }
 

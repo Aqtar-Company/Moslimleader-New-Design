@@ -54,8 +54,7 @@ function Avatar({ user, size = 80 }: { user: CallParty; size?: number }) {
 
 export default function TareeqCallScreen({ callId, role, callType, remoteUser, offer, autoAnswer, onEnd }: Props) {
   const { isRtl } = useLang();
-  // Caller starts at 'ringing' (waiting for callee to answer)
-  const [callState, setCallState] = useState<CallState>(role === 'callee' ? 'ringing' : 'ringing');
+  const [callState, setCallState] = useState<CallState>('ringing');
   const [muted, setMuted] = useState(false);
   const [cameraOff, setCameraOff] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -122,17 +121,25 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
       if (remoteVideoRef.current && ev.streams[0]) remoteVideoRef.current.srcObject = ev.streams[0];
     };
 
-    // Collect ICE candidates and send them in one batch after gathering completes
+    // Collect ICE candidates and send them in one batch after gathering completes.
+    // Fallback: flush after 5s in case onicegatheringstatechange never fires 'complete'.
     const callerIceQueue: RTCIceCandidateInit[] = [];
     pc.onicecandidate = (ev) => {
       if (ev.candidate) callerIceQueue.push(ev.candidate.toJSON());
     };
+    const flushCallerIce = async () => {
+      if (endedRef.current || callerIceQueue.length === 0) return;
+      await fetch(`/api/tareeq/calls/${callId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ action: 'callerIce', candidates: callerIceQueue }),
+      }).catch(() => {});
+    };
+    const iceFlushTimer = setTimeout(flushCallerIce, 5000);
     pc.onicegatheringstatechange = async () => {
-      if (pc.iceGatheringState === 'complete' && callerIceQueue.length > 0) {
-        await fetch(`/api/tareeq/calls/${callId}`, {
-          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ action: 'callerIce', candidates: callerIceQueue }),
-        }).catch(() => {});
+      if (endedRef.current) return;
+      if (pc.iceGatheringState === 'complete') {
+        clearTimeout(iceFlushTimer);
+        await flushCallerIce();
       }
     };
 
@@ -152,10 +159,11 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
     const offerSdp = await pc.createOffer();
     await pc.setLocalDescription(offerSdp);
 
-    await fetch(`/api/tareeq/calls/${callId}`, {
+    const offerRes = await fetch(`/api/tareeq/calls/${callId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
       body: JSON.stringify({ action: 'setOffer', offer: offerSdp.sdp }),
-    }).catch(() => {});
+    }).catch(() => null);
+    if (!offerRes?.ok) { endCall('failed'); return; }
 
     // Auto-cancel after 60 seconds if callee never answers
     ringTimeoutRef.current = setTimeout(() => {
@@ -208,17 +216,25 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
       if (remoteVideoRef.current && ev.streams[0]) remoteVideoRef.current.srcObject = ev.streams[0];
     };
 
-    // Collect ICE candidates and send them in one batch after gathering completes
+    // Collect ICE candidates and send them in one batch after gathering completes.
+    // Fallback: flush after 5s in case onicegatheringstatechange never fires 'complete'.
     const calleeIceQueue: RTCIceCandidateInit[] = [];
     pc.onicecandidate = (ev) => {
       if (ev.candidate) calleeIceQueue.push(ev.candidate.toJSON());
     };
+    const flushCalleeIce = async () => {
+      if (endedRef.current || calleeIceQueue.length === 0) return;
+      await fetch(`/api/tareeq/calls/${callId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ action: 'calleeIce', candidates: calleeIceQueue }),
+      }).catch(() => {});
+    };
+    const iceFlushTimerCallee = setTimeout(flushCalleeIce, 5000);
     pc.onicegatheringstatechange = async () => {
-      if (pc.iceGatheringState === 'complete' && calleeIceQueue.length > 0) {
-        await fetch(`/api/tareeq/calls/${callId}`, {
-          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ action: 'calleeIce', candidates: calleeIceQueue }),
-        }).catch(() => {});
+      if (endedRef.current) return;
+      if (pc.iceGatheringState === 'complete') {
+        clearTimeout(iceFlushTimerCallee);
+        await flushCalleeIce();
       }
     };
 
@@ -248,7 +264,7 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
       if (!res?.ok) return;
       const { call } = await res.json();
       if (!call) return;
-      if (call.status === 'ended') { endCall('ended'); return; }
+      if (call.status === 'ended' || call.status === 'missed' || call.status === 'rejected') { endCall('ended'); return; }
 
       const callerIce: RTCIceCandidateInit[] = call.callerIce ?? [];
       for (let i = appliedCallerIce.current; i < callerIce.length; i++) {
@@ -263,7 +279,10 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
   useEffect(() => {
     if (role === 'caller') startCaller();
     if (role === 'callee' && autoAnswer) answerCall();
-    return () => stopAll();
+    return () => {
+      endedRef.current = true; // block stale async callbacks from firing onEnd after unmount
+      stopAll();
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -355,8 +374,9 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
           </>
         )}
 
-        {/* End/Cancel — always visible so user can always exit */}
-        {callState !== 'ended' && callState !== 'rejected' && callState !== 'failed' && (
+        {/* End/Cancel — always visible except when callee sees explicit Accept/Decline buttons */}
+        {callState !== 'ended' && callState !== 'rejected' && callState !== 'failed' &&
+         !(callState === 'ringing' && role === 'callee' && !autoAnswer) && (
           <CtrlBtn
             icon="📵"
             label={callState === 'ringing' && role === 'caller' ? (isRtl ? 'إلغاء' : 'Cancel')
@@ -366,7 +386,7 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
             size={64}
             onClick={() => endCall(role === 'callee' && callState === 'ringing' ? 'rejected' : 'ended')}
           />
-        )}
+        )}{/* closes the !(callee ringing) guard */}
       </div>
     </div>
   );

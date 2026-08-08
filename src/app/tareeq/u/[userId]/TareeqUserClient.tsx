@@ -38,6 +38,84 @@ interface BmPost {
   post: TareeqPostSummary;
 }
 
+// ── Category colours (mirroring globals.css tokens) ─────────────────
+const CAT_COLOR: Record<string, string> = {
+  experience: '#f59e0b', story: '#a855f7', idea: '#3b82f6',
+  question: '#22c55e', project: '#f97316', reflection: '#f43f5e',
+};
+function catColor(cat?: string | null) { return CAT_COLOR[cat ?? ''] ?? '#6366f1'; }
+
+// ── Compact grid card (2-column grid inside bookmarks) ────────────────
+function BmGridCard({ bm }: { bm: BmPost }) {
+  const router = useRouter();
+  const post = bm.post;
+  const firstWords = (post.title || post.content).replace(/\s+/g, ' ').trim().split(' ').slice(0, 4).join(' ');
+  const col = catColor(post.category);
+  return (
+    <button
+      onClick={() => router.push(`/tareeq/${post.id}`)}
+      className="w-full text-start rounded-2xl overflow-hidden active:scale-95 transition-transform"
+      style={{ border: '1px solid var(--tr-border-subtle)', aspectRatio: '3/4', position: 'relative', display: 'block' }}
+    >
+      {post.imageUrl
+        ? <img src={post.imageUrl} alt="" className="w-full h-full object-cover absolute inset-0" />
+        : <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${col}cc, ${col}66)` }} />
+      }
+      {/* dark gradient overlay */}
+      <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.75) 40%, transparent 70%)' }} />
+      <p
+        className="absolute bottom-0 left-0 right-0 px-2.5 pb-2.5 text-[11px] font-bold leading-snug line-clamp-2"
+        style={{ color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}
+      >
+        {firstWords}
+      </p>
+    </button>
+  );
+}
+
+// ── Compact list row (single-column list inside bookmarks) ────────────
+function BmListCard({ bm }: { bm: BmPost }) {
+  const router = useRouter();
+  const post = bm.post;
+  const firstLine = (post.title || post.content).replace(/\s+/g, ' ').trim().slice(0, 70);
+  const col = catColor(post.category);
+  const ago = (() => {
+    const diff = Math.floor((Date.now() - new Date(post.createdAt).getTime()) / 86400000);
+    if (diff === 0) return 'اليوم';
+    if (diff === 1) return 'أمس';
+    return `${diff}د`;
+  })();
+  return (
+    <button
+      onClick={() => router.push(`/tareeq/${post.id}`)}
+      className="w-full text-start flex items-center gap-3 p-3 rounded-2xl transition active:scale-[0.98]"
+      style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--tr-raised)'; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--tr-surface)'; }}
+    >
+      {/* Thumbnail */}
+      <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 relative" style={{ background: `linear-gradient(135deg, ${col}cc, ${col}44)` }}>
+        {post.imageUrl && <img src={post.imageUrl} alt="" className="w-full h-full object-cover" />}
+      </div>
+      {/* Text */}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold leading-snug line-clamp-2" style={{ color: 'var(--tr-text-primary)' }}>{firstLine}</p>
+        <div className="flex items-center gap-2 mt-1">
+          {post.category && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${col}22`, color: col }}>
+              {post.category}
+            </span>
+          )}
+          <span className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{ago}</span>
+        </div>
+      </div>
+      <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+      </svg>
+    </button>
+  );
+}
+
 function nameGradient(name: string): string {
   const palettes = [
     ['#ff7857', '#ff3d1a'],
@@ -85,6 +163,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [creatingFolder, setCreatingFolder] = useState(false);
+  const [bmViewMode, setBmViewMode] = useState<'grid' | 'list'>('grid');
 
   // Follow list modal
   const [followListType, setFollowListType] = useState<'followers' | 'following' | null>(null);
@@ -385,7 +464,10 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
           </TabBtn>
           {isOwnProfile && (
             <TabBtn active={activeTab === 'bookmarks'} onClick={() => handleTabChange('bookmarks')}>
-              🔖 {isRtl ? 'المحفوظات' : 'Saved'}
+              <svg className="inline w-3.5 h-3.5 me-1 -mt-0.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6.32 2.577a49.255 49.255 0 0111.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 01-1.085.67L12 18.089l-7.165 3.583A.75.75 0 013.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93z" />
+              </svg>
+              {isRtl ? 'المحفوظات' : 'Saved'}
             </TabBtn>
           )}
         </div>
@@ -508,8 +590,14 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                       onClick={() => { setActiveFolderId('__all__'); setActiveFolderName(isRtl ? 'كل المحفوظات' : 'All saved'); loadBmPosts(null); }}
                       className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl mb-3 transition text-start"
                       style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--tr-raised)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--tr-surface)'; }}
                     >
-                      <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: 'var(--tr-overlay)' }}>🔖</div>
+                      <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(212,168,83,0.15)' }}>
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+                          <path d="M6.32 2.577a49.255 49.255 0 0111.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 01-1.085.67L12 18.089l-7.165 3.583A.75.75 0 013.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93z" />
+                        </svg>
+                      </div>
                       <div>
                         <p className="font-bold text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'كل المحفوظات' : 'All saved'}</p>
                         <p className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'جميع العلامات المحفوظة' : 'All bookmarked marks'}</p>
@@ -518,12 +606,14 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
 
                     {bmFolders.length === 0 && (
                       <div className="text-center py-12">
-                        <p className="text-2xl mb-3">🔖</p>
+                        <svg className="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6.32 2.577a49.255 49.255 0 0111.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 01-1.085.67L12 18.089l-7.165 3.583A.75.75 0 013.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93z" />
+                        </svg>
                         <p className="font-semibold text-sm" style={{ color: 'var(--tr-text-secondary)' }}>
                           {isRtl ? 'لا توجد تصنيفات بعد' : 'No folders yet'}
                         </p>
                         <p className="text-[11px] mt-1" style={{ color: 'var(--tr-text-muted)' }}>
-                          {isRtl ? 'اضغط على 🔖 في أي منشور لحفظه وإنشاء تصنيف' : 'Tap 🔖 on any post to save it and create folders'}
+                          {isRtl ? 'احفظ أي علامة لتظهر هنا' : 'Save any mark to see it here'}
                         </p>
                       </div>
                     )}
@@ -537,7 +627,11 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                             className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition text-start"
                             style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}
                           >
-                            <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: 'var(--tr-overlay)' }}>📁</div>
+                            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--tr-overlay)' }}>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                        </svg>
+                      </div>
                             <div className="flex-1 min-w-0">
                               <p className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{f.name}</p>
                               <p className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{f._count.bookmarks} {isRtl ? 'علامة' : 'marks'}</p>
@@ -556,22 +650,56 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
               {/* Posts inside a folder */}
               {activeFolderId && (
                 bmPostsLoading ? (
-                  <div className="flex flex-col gap-4">
-                    {skeletons.map((_, i) => <TareeqCardSkeleton key={i} />)}
+                  <div className="flex flex-col gap-3">
+                    {skeletons.slice(0, 6).map((_, i) => (
+                      <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: 'var(--tr-surface)' }} />
+                    ))}
                   </div>
                 ) : bmPosts.length === 0 ? (
                   <div className="text-center py-16">
-                    <p className="text-2xl mb-3">📭</p>
+                    <svg className="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.32 2.577a49.255 49.255 0 0111.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 01-1.085.67L12 18.089l-7.165 3.583A.75.75 0 013.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93z" />
+                    </svg>
                     <p className="font-semibold text-sm" style={{ color: 'var(--tr-text-secondary)' }}>
                       {isRtl ? 'لا توجد علامات في هذا التصنيف' : 'No marks in this folder'}
                     </p>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-4">
-                    {bmPosts.map(bm => (
-                      <TareeqCard key={bm.id} post={bm.post} initialBookmarked={true} initialReaction={reactedPosts[bm.post.id] ?? null} />
-                    ))}
-                  </div>
+                  <>
+                    {/* View mode toggle */}
+                    <div className="flex items-center justify-end gap-1 mb-3">
+                      <button
+                        onClick={() => setBmViewMode('grid')}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center transition"
+                        style={{ background: bmViewMode === 'grid' ? 'var(--tr-gold-glow)' : 'var(--tr-overlay)', color: bmViewMode === 'grid' ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}
+                        aria-label="Grid view"
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path fillRule="evenodd" d="M3 6a3 3 0 013-3h2.25a3 3 0 013 3v2.25a3 3 0 01-3 3H6a3 3 0 01-3-3V6zm9.75 0a3 3 0 013-3H18a3 3 0 013 3v2.25a3 3 0 01-3 3h-2.25a3 3 0 01-3-3V6zM3 15.75a3 3 0 013-3h2.25a3 3 0 013 3V18a3 3 0 01-3 3H6a3 3 0 01-3-3v-2.25zm9.75 0a3 3 0 013-3H18a3 3 0 013 3V18a3 3 0 01-3 3h-2.25a3 3 0 01-3-3v-2.25z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => setBmViewMode('list')}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center transition"
+                        style={{ background: bmViewMode === 'list' ? 'var(--tr-gold-glow)' : 'var(--tr-overlay)', color: bmViewMode === 'list' ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}
+                        aria-label="List view"
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path fillRule="evenodd" d="M2.625 6.75a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zm4.875 0A.75.75 0 018.25 6h12a.75.75 0 010 1.5h-12a.75.75 0 01-.75-.75zM2.625 12a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zM7.5 12a.75.75 0 01.75-.75h12a.75.75 0 010 1.5h-12A.75.75 0 017.5 12zm-4.875 5.25a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zm4.875 0a.75.75 0 01.75-.75h12a.75.75 0 010 1.5h-12a.75.75 0 01-.75-.75z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    {bmViewMode === 'grid' ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        {bmPosts.map(bm => <BmGridCard key={bm.id} bm={bm} />)}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {bmPosts.map(bm => <BmListCard key={bm.id} bm={bm} />)}
+                      </div>
+                    )}
+                  </>
                 )
               )}
             </>

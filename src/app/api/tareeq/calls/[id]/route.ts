@@ -39,8 +39,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const body = await req.json();
   const { action } = body;
 
+  const TERMINAL = new Set(['ended', 'rejected', 'missed']);
+
   // Caller posts the real SDP offer from the live RTCPeerConnection
-  if (action === 'setOffer' && call.callerId === user.userId && !call.offer) {
+  if (action === 'setOffer' && call.callerId === user.userId && !call.offer && !TERMINAL.has(call.status)) {
     const updated = await prisma.tareeqCall.update({
       where: { id: params.id },
       data: { offer: body.offer },
@@ -48,7 +50,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ call: updated });
   }
 
-  if (action === 'answer' && call.calleeId === user.userId) {
+  if (action === 'answer' && call.calleeId === user.userId && call.status === 'ringing') {
     const updated = await prisma.tareeqCall.update({
       where: { id: params.id },
       data: { status: 'active', answer: body.answer, calleeIce: [], startedAt: new Date() },
@@ -56,7 +58,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ call: updated });
   }
 
-  if (action === 'reject' && call.calleeId === user.userId) {
+  if (action === 'reject' && call.calleeId === user.userId && !TERMINAL.has(call.status)) {
     const updated = await prisma.tareeqCall.update({
       where: { id: params.id },
       data: { status: 'rejected', endedAt: new Date() },
@@ -64,7 +66,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ call: updated });
   }
 
-  if (action === 'end') {
+  if (action === 'end' && !TERMINAL.has(call.status)) {
     const updated = await prisma.tareeqCall.update({
       where: { id: params.id },
       data: { status: 'ended', endedAt: new Date() },

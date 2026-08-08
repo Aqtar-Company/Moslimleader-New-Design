@@ -1,35 +1,44 @@
 @import "tailwindcss";
 
-/* ── Tareeq "Clean Light" design tokens ──────────────────── */
+/* ── Tareeq "Celestial Dark" design tokens ───────────────── */
 :root {
-  --tr-base:    #f2f4fb;
-  --tr-surface: #ffffff;
-  --tr-raised:  #eaecf5;
-  --tr-overlay: #e0e3f0;
-  --tr-border-subtle: rgba(0,0,0,0.07);
-  --tr-border-soft:   rgba(0,0,0,0.12);
-  --tr-border-strong: rgba(0,0,0,0.22);
-  /* Primary — Blue */
-  --tr-gold:        #2563eb;
-  --tr-gold-bright: #3b82f6;
-  --tr-gold-dim:    #1e40af;
-  --tr-gold-glow:   rgba(37,99,235,0.13);
-  /* Secondary — Orange accent */
-  --tr-teal:        #ea6f0a;
-  --tr-teal-dim:    rgba(234,111,10,0.12);
+  /* Backgrounds — layered depth */
+  --tr-base:    #070d14;
+  --tr-surface: #0d1a26;
+  --tr-raised:  #142030;
+  --tr-overlay: #1a293d;
+  /* Borders */
+  --tr-border-subtle: rgba(255,255,255,0.06);
+  --tr-border-soft:   rgba(255,255,255,0.10);
+  --tr-border-strong: rgba(255,255,255,0.18);
+  /* Primary — Star Gold */
+  --tr-gold:        #d4a853;
+  --tr-gold-bright: #f0c060;
+  --tr-gold-dim:    #a07830;
+  --tr-gold-glow:   rgba(212,168,83,0.20);
+  /* Secondary — Celestial Teal */
+  --tr-teal:        #2dd4bf;
+  --tr-teal-dim:    rgba(45,212,191,0.15);
   /* Text */
-  --tr-text-primary:   #0f1117;
-  --tr-text-secondary: #4b5675;
-  --tr-text-muted:     #94a3b8;
-  /* Night palette (kept dark for splash / landing modal) */
-  --tr-night:        #0f0f13;
-  --tr-night-mid:    #111320;
-  --tr-night-horizon:#1a3060;
+  --tr-text-primary:   #eef2f7;
+  --tr-text-secondary: #7a9ab5;
+  --tr-text-muted:     #3d5a72;
+  /* Category accent glows */
+  --cat-experience: #f59e0b;
+  --cat-story:      #a855f7;
+  --cat-idea:       #3b82f6;
+  --cat-question:   #22c55e;
+  --cat-project:    #f97316;
+  --cat-reflection: #f43f5e;
+  /* Semantic */
+  --tr-danger:   #f43f5e;
+  --tr-success:  #22c55e;
+  --tr-warning:  #f59e0b;
 }
 
 body {
-  background: #fff;
-  color: #1a1a1a;
+  background: var(--tr-base);
+  color: var(--tr-text-primary);
 }
 
 html[dir="rtl"],

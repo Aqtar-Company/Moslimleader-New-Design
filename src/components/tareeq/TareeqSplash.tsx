@@ -32,14 +32,14 @@ export default function TareeqSplash() {
         position: 'absolute',
         width: 280, height: 280,
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(37,99,235,0.18) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(212,168,83,0.20) 0%, transparent 70%)',
         filter: 'blur(30px)',
       }} />
 
       {/* Logo */}
       <div
         className="relative w-28 h-28 rounded-3xl overflow-hidden mb-7"
-        style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 20px 60px rgba(37,99,235,0.25)' }}
+        style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 20px 60px rgba(212,168,83,0.25)' }}
       >
         <img src="/Tareeq-big.png" alt="طريق" className="w-full h-full object-cover" />
       </div>

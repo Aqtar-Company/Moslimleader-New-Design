@@ -359,7 +359,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
       <div className="relative max-w-2xl mx-auto px-4" style={{ marginTop: -32, zIndex: 1 }}>
         <div
           className="rounded-3xl px-5 pt-3 pb-6"
-          style={{ background: 'var(--tr-surface)', boxShadow: '0 4px 32px rgba(0,0,0,0.08)', border: '1px solid var(--tr-border-subtle)' }}
+          style={{ background: 'var(--tr-surface)', boxShadow: '0 4px 32px rgba(0,0,0,0.4)', border: '1px solid var(--tr-border-subtle)' }}
         >
           {/* Avatar row */}
           <div className="flex items-start justify-between" style={{ marginTop: -44 }}>

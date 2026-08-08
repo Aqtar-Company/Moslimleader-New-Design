@@ -120,11 +120,11 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
       <header
         className="fixed top-0 left-0 right-0 z-50 print:hidden"
         style={{
-          background: 'var(--tr-surface)',
+          background: 'rgba(7,13,20,0.88)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
           borderBottom: '1px solid var(--tr-border-subtle)',
-          boxShadow: '0 1px 12px rgba(0,0,0,0.18)',
+          boxShadow: '0 2px 24px rgba(0,0,0,0.5), inset 0 -1px 0 rgba(255,255,255,0.04)',
         }}
       >
         <div className="max-w-2xl mx-auto lg:max-w-[1180px] flex items-center justify-between px-4 h-14 gap-2 lg:gap-4">

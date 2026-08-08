@@ -50,7 +50,7 @@ export default function TareeqLandingModal({ onClose }: Props) {
         <div style={{
           position: 'absolute', top: -40, left: '50%', transform: 'translateX(-50%)',
           width: 200, height: 200,
-          background: 'radial-gradient(circle, rgba(37,99,235,0.20) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(212,168,83,0.22) 0%, transparent 70%)',
           filter: 'blur(20px)',
           pointerEvents: 'none',
         }} />
@@ -58,7 +58,7 @@ export default function TareeqLandingModal({ onClose }: Props) {
         {/* Logo */}
         <div
           className="relative w-24 h-24 rounded-2xl overflow-hidden mb-6"
-          style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.10), 0 16px 48px rgba(37,99,235,0.30)' }}
+          style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.10), 0 16px 48px rgba(212,168,83,0.30)' }}
         >
           <img src="/Tareeq-big.png" alt="طريق" className="w-full h-full object-cover" />
         </div>
@@ -81,9 +81,9 @@ export default function TareeqLandingModal({ onClose }: Props) {
           onClick={enter}
           className="w-full py-3.5 rounded-2xl font-black text-sm transition active:scale-95"
           style={{
-            background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #3b82f6 100%)',
+            background: 'linear-gradient(135deg, #a07830 0%, #d4a853 60%, #f0c060 100%)',
             color: '#fff',
-            boxShadow: '0 6px 24px rgba(37,99,235,0.40)',
+            boxShadow: '0 6px 24px rgba(212,168,83,0.50)',
           }}
         >
           <span style={{ marginInlineEnd: 6 }}>

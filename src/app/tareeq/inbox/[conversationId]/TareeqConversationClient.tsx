@@ -656,7 +656,7 @@ function Inner({ conversationId }: { conversationId: string }) {
               style={canSend ? {
                 background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))',
                 color: '#fff',
-                boxShadow: '0 4px 16px rgba(212,168,83,0.35)',
+                boxShadow: '0 4px 16px var(--tr-gold-glow)',
               } : {
                 background: 'var(--tr-overlay)',
                 color: 'var(--tr-text-muted)',
@@ -666,7 +666,13 @@ function Inner({ conversationId }: { conversationId: string }) {
             >
               {sending
                 ? <div className="w-4 h-4 border-2 border-current/40 border-t-current rounded-full animate-spin" />
-                : <span style={{ fontSize: 17, lineHeight: 1, display: 'block' }}>🕊️</span>
+                : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M2,11 L12,7 L22,11 L15,15 L12,11 L9,15 Z"/>
+                    <path d="M12,15 L10,21 L12,18 L14,21 Z"/>
+                    <path d="M16,8 L20,7 L17,11 Z"/>
+                  </svg>
+                )
               }
             </button>
           </div>

@@ -3,29 +3,29 @@
 /* ── Tareeq design tokens — Light default, Dark via system/setting ── */
 :root {
   /* Backgrounds */
-  --tr-base:    #f2f4fb;
+  --tr-base:    #f8fafc;
   --tr-surface: #ffffff;
-  --tr-raised:  #eaecf5;
-  --tr-overlay: #e0e3f0;
+  --tr-raised:  #f1f5f9;
+  --tr-overlay: #e8edf5;
   /* Borders */
   --tr-border-subtle: rgba(0,0,0,0.07);
   --tr-border-soft:   rgba(0,0,0,0.12);
   --tr-border-strong: rgba(0,0,0,0.22);
-  /* Primary — Star Gold (same in both modes) */
-  --tr-gold:        #d4a853;
-  --tr-gold-bright: #f0c060;
-  --tr-gold-dim:    #a07830;
-  --tr-gold-glow:   rgba(212,168,83,0.20);
+  /* Primary — Blue (light mode) */
+  --tr-gold:        #2563eb;
+  --tr-gold-bright: #3b82f6;
+  --tr-gold-dim:    #1d4ed8;
+  --tr-gold-glow:   rgba(37,99,235,0.18);
   /* Secondary — Celestial Teal */
-  --tr-teal:        #2dd4bf;
-  --tr-teal-dim:    rgba(45,212,191,0.15);
+  --tr-teal:        #0ea5e9;
+  --tr-teal-dim:    rgba(14,165,233,0.15);
   /* Text */
-  --tr-text-primary:   #0f1117;
-  --tr-text-secondary: #4b5675;
+  --tr-text-primary:   #0f172a;
+  --tr-text-secondary: #475569;
   --tr-text-muted:     #94a3b8;
   /* UI chrome — mode-sensitive */
-  --tr-header-bg:    rgba(255,255,255,0.88);
-  --tr-backdrop:     rgba(15,17,30,0.45);
+  --tr-header-bg:    rgba(255,255,255,0.92);
+  --tr-backdrop:     rgba(15,23,42,0.45);
   --tr-shadow-sm:    rgba(0,0,0,0.05);
   --tr-shadow-popup: rgba(0,0,0,0.14);
   --tr-shadow-card:  rgba(0,0,0,0.08);
@@ -42,44 +42,30 @@
   --tr-warning:  #f59e0b;
 }
 
-/* ── Dark mode — system preference (respects [data-theme="light"] override) ── */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --tr-base:    #070d14;
-    --tr-surface: #0d1a26;
-    --tr-raised:  #142030;
-    --tr-overlay: #1a293d;
-    --tr-border-subtle: rgba(255,255,255,0.06);
-    --tr-border-soft:   rgba(255,255,255,0.10);
-    --tr-border-strong: rgba(255,255,255,0.18);
-    --tr-text-primary:   #eef2f7;
-    --tr-text-secondary: #7a9ab5;
-    --tr-text-muted:     #3d5a72;
-    --tr-header-bg:    rgba(7,13,20,0.88);
-    --tr-backdrop:     rgba(7,13,20,0.80);
-    --tr-shadow-sm:    rgba(0,0,0,0.30);
-    --tr-shadow-popup: rgba(0,0,0,0.50);
-    --tr-shadow-card:  rgba(0,0,0,0.40);
-  }
-}
-
-/* ── Dark mode — explicit user preference (overrides system) ── */
+/* ── Dark mode — explicit user preference only ── */
 :root[data-theme="dark"] {
-  --tr-base:    #070d14;
-  --tr-surface: #0d1a26;
-  --tr-raised:  #142030;
-  --tr-overlay: #1a293d;
+  --tr-base:    #0a0f1a;
+  --tr-surface: #111827;
+  --tr-raised:  #1e2535;
+  --tr-overlay: #252f42;
   --tr-border-subtle: rgba(255,255,255,0.06);
   --tr-border-soft:   rgba(255,255,255,0.10);
   --tr-border-strong: rgba(255,255,255,0.18);
-  --tr-text-primary:   #eef2f7;
-  --tr-text-secondary: #7a9ab5;
-  --tr-text-muted:     #3d5a72;
-  --tr-header-bg:    rgba(7,13,20,0.88);
-  --tr-backdrop:     rgba(7,13,20,0.80);
-  --tr-shadow-sm:    rgba(0,0,0,0.30);
-  --tr-shadow-popup: rgba(0,0,0,0.50);
-  --tr-shadow-card:  rgba(0,0,0,0.40);
+  /* Primary — Blue (dark mode, slightly brighter) */
+  --tr-gold:        #3b82f6;
+  --tr-gold-bright: #60a5fa;
+  --tr-gold-dim:    #2563eb;
+  --tr-gold-glow:   rgba(59,130,246,0.22);
+  --tr-teal:        #38bdf8;
+  --tr-teal-dim:    rgba(56,189,248,0.15);
+  --tr-text-primary:   #f1f5f9;
+  --tr-text-secondary: #94a3b8;
+  --tr-text-muted:     #475569;
+  --tr-header-bg:    rgba(10,15,26,0.92);
+  --tr-backdrop:     rgba(10,15,26,0.82);
+  --tr-shadow-sm:    rgba(0,0,0,0.35);
+  --tr-shadow-popup: rgba(0,0,0,0.55);
+  --tr-shadow-card:  rgba(0,0,0,0.45);
 }
 
 body {

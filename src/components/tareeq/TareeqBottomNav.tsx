@@ -228,26 +228,20 @@ function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: P
   const { signOut } = useAuth();
   const router = useRouter();
   const [notifState, setNotifState] = useState<'default' | 'granted' | 'denied'>('default');
-  const [themeMode, setThemeMode] = useState<'system' | 'dark' | 'light'>('system');
+  const [themeMode, setThemeMode] = useState<'dark' | 'light'>('light');
 
   useEffect(() => {
     if (typeof Notification !== 'undefined') {
       setNotifState(Notification.permission === 'granted' ? 'granted' : Notification.permission === 'denied' ? 'denied' : 'default');
     }
     const saved = localStorage.getItem('tareeq-theme');
-    if (saved === 'dark' || saved === 'light') setThemeMode(saved);
-    else setThemeMode('system');
+    setThemeMode(saved === 'dark' ? 'dark' : 'light');
   }, []);
 
-  function applyTheme(mode: 'system' | 'dark' | 'light') {
+  function applyTheme(mode: 'dark' | 'light') {
     setThemeMode(mode);
-    if (mode === 'system') {
-      localStorage.removeItem('tareeq-theme');
-      document.documentElement.removeAttribute('data-theme');
-    } else {
-      localStorage.setItem('tareeq-theme', mode);
-      document.documentElement.setAttribute('data-theme', mode);
-    }
+    localStorage.setItem('tareeq-theme', mode);
+    document.documentElement.setAttribute('data-theme', mode);
   }
 
   const initial = userName.charAt(0).toUpperCase();
@@ -474,16 +468,16 @@ function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: P
               {isRtl ? 'المظهر' : 'Appearance'}
             </span>
             <div className="flex gap-1 p-0.5 rounded-xl" style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)' }}>
-              {(['light', 'system', 'dark'] as const).map(mode => {
+              {(['light', 'dark'] as const).map(mode => {
                 const labels: Record<string, string> = isRtl
-                  ? { light: 'فاتح', system: 'تلقائي', dark: 'داكن' }
-                  : { light: 'Light', system: 'Auto', dark: 'Dark' };
+                  ? { light: 'فاتح', dark: 'داكن' }
+                  : { light: 'Light', dark: 'Dark' };
                 const active = themeMode === mode;
                 return (
                   <button
                     key={mode}
                     onClick={() => applyTheme(mode)}
-                    className="text-[11px] font-bold px-2.5 py-1 rounded-lg transition-all"
+                    className="text-[11px] font-bold px-3 py-1 rounded-lg transition-all"
                     style={active
                       ? { background: 'var(--tr-gold)', color: '#fff', boxShadow: '0 1px 4px var(--tr-gold-glow)' }
                       : { background: 'transparent', color: 'var(--tr-text-muted)' }
@@ -998,9 +992,9 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           width: CIRCLE_SIZE,
           height: CIRCLE_SIZE,
           borderRadius: '50%',
-          background: '#fff',
-          border: '1px solid rgba(0,0,0,0.08)',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.10)',
+          background: 'linear-gradient(145deg, #1d4ed8, #3b82f6)',
+          border: '2.5px solid #ffffff',
+          boxShadow: '0 0 0 3px #22c55e, 0 6px 24px rgba(37,99,235,0.50), 0 2px 8px rgba(0,0,0,0.20)',
           zIndex: 42,
           display: 'flex',
           alignItems: 'center',
@@ -1009,9 +1003,9 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           cursor: 'pointer',
         }}
       >
-        {/* Pen/edit icon */}
-        <svg width="22" height="22" fill="none" stroke="#1a1a2e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-          <path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.862 4.487z" />
+        {/* 8-pointed star icon */}
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+          <path d="M12,3 L13.72,7.84 L18.36,5.64 L16.16,10.28 L21,12 L16.16,13.72 L18.36,18.36 L13.72,16.16 L12,21 L10.28,16.16 L5.64,18.36 L7.84,13.72 L3,12 L7.84,10.28 L5.64,5.64 L10.28,7.84 Z"/>
         </svg>
 
         {/* Swipe-up hint — hidden by default, shown only on touch (opacity driven by DOM refs) */}
@@ -1093,7 +1087,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             )}
           </button>
 
-          {/* 2 — انتفع (compass/guidance star — 4-pointed N/S/E/W shape) */}
+          {/* 2 — اكتشف (discover — binoculars icon) */}
           <Link
             href="/tareeq"
             className="flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
@@ -1102,19 +1096,26 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.7} viewBox="0 0 24 24"
               style={{
                 color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
-                filter: isHome ? 'drop-shadow(0 0 5px rgba(212,168,83,0.45))' : 'none',
+                filter: isHome ? 'drop-shadow(0 0 6px var(--tr-gold-glow))' : 'none',
                 transition: 'all 0.2s',
               }}>
-              {/* 4-pointed compass/guidance star: tips at cardinal directions, angled inner corners */}
-              <path strokeLinejoin="round" d="M12 3L15 9L21 12L15 15L12 21L9 15L3 12L9 9Z" />
+              {/* Binoculars — discover/explore icon */}
+              <circle cx="6.5" cy="13" r="4" />
+              <circle cx="17.5" cy="13" r="4" />
+              <path strokeLinecap="round" d="M10.5 13h3" />
+              <path strokeLinecap="round" d="M6.5 9V7l2-2h7l2 2v2" />
             </svg>
             <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
-              {isRtl ? 'انتفع' : 'Home'}
+              {isRtl ? 'اكتشف' : 'Discover'}
             </span>
           </Link>
 
-          {/* 3 — Center spacer (circle button floats above) */}
-          <div style={{ width: CIRCLE_SIZE, minWidth: CIRCLE_SIZE, height: 1 }} aria-hidden />
+          {/* 3 — Center spacer + label */}
+          <div className="flex flex-col items-center justify-end pb-2" style={{ width: CIRCLE_SIZE, minWidth: CIRCLE_SIZE }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--tr-gold)', lineHeight: 1, letterSpacing: '0.02em' }}>
+              {isRtl ? 'ضع علامة' : 'Post'}
+            </span>
+          </div>
 
           {/* 4 — Messages */}
           <Link

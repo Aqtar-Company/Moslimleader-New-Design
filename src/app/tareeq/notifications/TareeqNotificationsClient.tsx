@@ -87,7 +87,9 @@ function Inner() {
   }, [user, refresh]);
 
   function handleClick(n: Notification) {
-    if (n.type === 'message') {
+    if (n.type === 'message' && n.postId) {
+      router.push(`/tareeq/inbox/${n.postId}`);
+    } else if (n.type === 'message') {
       router.push('/tareeq/inbox');
     } else if (n.postId) {
       router.push(`/tareeq/${n.postId}`);

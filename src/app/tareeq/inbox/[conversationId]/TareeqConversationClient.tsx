@@ -18,7 +18,7 @@ interface Message {
   senderId: string;
   sender: { id: string; name: string; avatarUrl?: string | null };
 }
-interface OtherUser { id: string; name: string; avatarUrl?: string | null }
+interface OtherUser { id: string; name: string; avatarUrl?: string | null; tareeqLastSeen?: string | null }
 
 interface CallEvent {
   id: string;
@@ -77,6 +77,23 @@ function formatDay(dateStr: string, isRtl: boolean) {
   } catch { return ''; }
 }
 
+function isOnline(lastSeen: string | null | undefined) {
+  if (!lastSeen) return false;
+  return Date.now() - new Date(lastSeen).getTime() < 3 * 60 * 1000;
+}
+
+// WhatsApp-style double tick SVG
+function ReadTick({ read }: { read: boolean }) {
+  return (
+    <svg width="16" height="11" viewBox="0 0 16 11" fill="none" style={{ display: 'inline', verticalAlign: 'middle', marginInlineStart: 3 }}>
+      {/* First tick */}
+      <path d="M1 5.5L4.5 9L10 3" stroke={read ? '#34d399' : 'rgba(255,255,255,0.55)'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Second tick (only visible when delivered/read) */}
+      <path d="M5 5.5L8.5 9L14 3" stroke={read ? '#34d399' : 'rgba(255,255,255,0.55)'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function Inner({ conversationId }: { conversationId: string }) {
   const { isRtl } = useLang();
   const { user } = useAuth();
@@ -96,8 +113,17 @@ function Inner({ conversationId }: { conversationId: string }) {
   const [uploadProgress, setUploadProgress] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const presenceRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const latestIdRef = useRef<string>('');
   const callCountRef = useRef<number>(0);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputBarRef = useRef<HTMLDivElement>(null);
+  const shouldScrollRef = useRef(true);
+
+  // Call state
+  const [activeCall, setActiveCall] = useState<{
+    callId: string; role: 'caller' | 'callee'; callType: 'audio' | 'video'; offer?: string;
+  } | null>(null);
 
   function playMsgChime() {
     try {
@@ -121,11 +147,6 @@ function Inner({ conversationId }: { conversationId: string }) {
     } catch { /* ignore */ }
   }
 
-  // Call state
-  const [activeCall, setActiveCall] = useState<{
-    callId: string; role: 'caller' | 'callee'; callType: 'audio' | 'video'; offer?: string;
-  } | null>(null);
-
   const loadMessages = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
@@ -147,6 +168,15 @@ function Inner({ conversationId }: { conversationId: string }) {
     }
   }, [conversationId, router, refresh]);
 
+  // Ping own presence every 30s while conversation is open
+  useEffect(() => {
+    if (!user) return;
+    const ping = () => fetch('/api/tareeq/presence', { method: 'POST', credentials: 'include' }).catch(() => {});
+    ping();
+    presenceRef.current = setInterval(ping, 30_000);
+    return () => { if (presenceRef.current) clearInterval(presenceRef.current); };
+  }, [user]);
+
   useEffect(() => {
     if (!user) { router.push('/login'); return; }
     loadMessages();
@@ -158,26 +188,59 @@ function Inner({ conversationId }: { conversationId: string }) {
       const callEvents: CallEvent[] = d.calls ?? [];
       const newLatest = msgs.length ? msgs[msgs.length - 1].id : '';
       const newCallCount = callEvents.length;
+
       if (newLatest !== latestIdRef.current) {
         const latestMsg = msgs[msgs.length - 1];
-        // Play chime only for incoming messages (not our own)
         if (latestMsg && latestMsg.senderId !== user?.id) playMsgChime();
+        shouldScrollRef.current = true;
         setMessages(msgs);
         latestIdRef.current = newLatest;
         refresh();
+      } else {
+        // Still update messages to reflect changed read statuses (seen ticks)
+        setMessages(msgs);
       }
-      // Update calls independently so missed-call bubbles appear even with no new messages
+
       if (newCallCount !== callCountRef.current) {
         setCalls(callEvents);
         callCountRef.current = newCallCount;
       }
+
+      // Update other user's presence from poll response
+      if (d.otherUser) setOtherUser(d.otherUser);
     }, 3_000);
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
   }, [user, router, loadMessages, conversationId, refresh]);
 
+  // Scroll to bottom on new messages (but not on read-status updates)
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (shouldScrollRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      shouldScrollRef.current = false;
+    }
   }, [messages]);
+
+  // Initial scroll
+  useEffect(() => {
+    if (!loading) {
+      shouldScrollRef.current = true;
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'auto' }), 50);
+    }
+  }, [loading]);
+
+  // Push input bar above iOS keyboard using visualViewport
+  useEffect(() => {
+    const bar = inputBarRef.current;
+    if (!bar || typeof window === 'undefined' || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    const onResize = () => {
+      const offset = window.innerHeight - (vv.height + vv.offsetTop);
+      bar.style.bottom = offset > 0 ? `${offset}px` : '0px';
+    };
+    vv.addEventListener('resize', onResize);
+    vv.addEventListener('scroll', onResize);
+    return () => { vv.removeEventListener('resize', onResize); vv.removeEventListener('scroll', onResize); };
+  }, []);
 
   async function handleMedia(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -241,11 +304,14 @@ function Inner({ conversationId }: { conversationId: string }) {
       if (res.ok) {
         const d = await res.json();
         if (d.message) {
+          shouldScrollRef.current = true;
           setMessages(prev => { const updated = [...prev, d.message as Message]; latestIdRef.current = d.message.id; return updated; });
         }
         setInput('');
         setMediaUrl(null); setMediaType(null); setLocalPreview(null); setUploadProgress(0);
         refresh();
+        // Refocus textarea to keep keyboard visible on mobile
+        setTimeout(() => textareaRef.current?.focus(), 0);
       } else {
         const d = await res.json().catch(() => ({}));
         setSendError(d.error || (isRtl ? 'فشل الإرسال' : 'Send failed'));
@@ -259,6 +325,7 @@ function Inner({ conversationId }: { conversationId: string }) {
 
   const myId = user?.id ?? '';
   const groups = groupMessages(messages, myId);
+  const canSend = !sending && !uploading && !!(input.trim() || mediaUrl);
 
   // Build unified timeline: message groups + call events sorted by time
   const flatItems: { time: string; item: DayItem }[] = [
@@ -278,6 +345,8 @@ function Inner({ conversationId }: { conversationId: string }) {
     }
   }
 
+  const online = isOnline(otherUser?.tareeqLastSeen);
+
   return (
     <div className="flex flex-col overflow-hidden" style={{ background: 'var(--tr-base)', height: '100dvh' }}>
       <TareeqHeader onCreateClick={() => {}} />
@@ -285,7 +354,7 @@ function Inner({ conversationId }: { conversationId: string }) {
       {/* Spacer for both fixed bars: TareeqHeader (h-14=56px) + sub-header (~60px) */}
       <div className="h-[116px] shrink-0" />
 
-      {/* Chat sub-header — fixed below TareeqHeader so keyboard never hides it */}
+      {/* Chat sub-header */}
       <div
         className="fixed top-14 left-0 right-0 px-4 py-3 flex items-center gap-3 z-40"
         style={{
@@ -308,15 +377,29 @@ function Inner({ conversationId }: { conversationId: string }) {
         </button>
         {otherUser && (
           <>
-            <div className="w-9 h-9 rounded-full shrink-0 overflow-hidden flex items-center justify-center text-sm font-bold"
-              style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold-dim)' }}>
-              {otherUser.avatarUrl
-                ? <img src={otherUser.avatarUrl} alt={otherUser.name} className="w-full h-full object-cover" />
-                : otherUser.name.charAt(0)
-              }
+            {/* Avatar + online dot */}
+            <div className="relative shrink-0">
+              <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center text-sm font-bold"
+                style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold-dim)' }}>
+                {otherUser.avatarUrl
+                  ? <img src={otherUser.avatarUrl} alt={otherUser.name} className="w-full h-full object-cover" />
+                  : otherUser.name.charAt(0)
+                }
+              </div>
+              {online && (
+                <span
+                  className="absolute bottom-0 end-0 w-2.5 h-2.5 rounded-full"
+                  style={{ background: '#22c55e', border: '2px solid var(--tr-surface)' }}
+                />
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-bold text-sm leading-tight truncate" style={{ color: 'var(--tr-text-primary)' }}>{otherUser.name}</p>
+              {online && (
+                <p className="text-[10px] leading-none mt-0.5" style={{ color: '#22c55e' }}>
+                  {isRtl ? 'متصل الآن' : 'Online'}
+                </p>
+              )}
             </div>
             {/* Call buttons */}
             <div className="flex items-center gap-2 ms-auto">
@@ -345,7 +428,7 @@ function Inner({ conversationId }: { conversationId: string }) {
         )}
       </div>
 
-      {/* Messages — dir="ltr" so physical right=sender always, left=receiver always, regardless of UI language */}
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 pb-24 max-w-2xl w-full mx-auto" dir="ltr">
         {loading ? (
           <div className="flex justify-center py-20">
@@ -405,23 +488,13 @@ function Inner({ conversationId }: { conversationId: string }) {
                 // ── Message group ──────────────────────────────────────
                 const group = item;
                 return (
-                <div key={group.msgs[0].id} className="flex flex-col mb-2 w-full">
+                <div key={group.msgs[0].id} className="flex flex-col mb-1 w-full">
                   {group.msgs.map((m, mi) => {
                     const isLast = mi === group.msgs.length - 1;
-                    // Bubble border-radius: tail on last message in group
-                    const mineStyle = {
-                      background: 'linear-gradient(135deg, #115e59, #0d9488)',
-                      color: '#fff',
-                      borderRadius: isLast ? '18px 18px 4px 18px' : '18px',
-                    };
-                    const otherStyle = {
-                      background: 'var(--tr-raised)',
-                      color: 'var(--tr-text-primary)',
-                      border: '1px solid var(--tr-border-soft)',
-                      borderRadius: isLast ? '18px 18px 18px 4px' : '18px',
-                    };
+                    const mineRadius = isLast ? '18px 18px 4px 18px' : '18px';
+                    const otherRadius = isLast ? '18px 18px 18px 4px' : '18px';
                     return (
-                      <div key={m.id} className={`flex items-end gap-2 mb-0.5 ${group.mine ? 'justify-end' : 'justify-start'}`}>
+                      <div key={m.id} className={`flex items-end gap-1.5 mb-0.5 ${group.mine ? 'justify-end' : 'justify-start'}`}>
                         {/* Receiver avatar — only on last message in group */}
                         {!group.mine && (
                           <div
@@ -439,22 +512,36 @@ function Inner({ conversationId }: { conversationId: string }) {
                             )}
                           </div>
                         )}
-                        <div className="max-w-[72%]" style={group.mine ? mineStyle : otherStyle}>
+                        <div
+                          className="max-w-[72%] relative"
+                          style={{
+                            background: group.mine ? 'linear-gradient(135deg, #115e59, #0d9488)' : 'var(--tr-raised)',
+                            color: group.mine ? '#fff' : 'var(--tr-text-primary)',
+                            ...(group.mine ? {} : { border: '1px solid var(--tr-border-soft)' }),
+                            borderRadius: group.mine ? mineRadius : otherRadius,
+                          }}
+                        >
                           {m.imageUrl && <img src={m.imageUrl} alt="" className="w-full max-w-xs rounded-xl object-cover" style={{ maxHeight: 220 }} />}
                           {m.videoUrl && <video src={m.videoUrl} className="w-full max-w-xs rounded-xl" style={{ maxHeight: 220 }} controls playsInline />}
-                          {m.content && <p className="px-4 py-2.5 text-sm leading-relaxed" style={{ wordBreak: 'break-word' }} dir="auto">{m.content}</p>}
-                          {!m.content && (m.imageUrl || m.videoUrl) && <div className="px-1 py-1" />}
+                          {m.content && (
+                            <p className="px-3.5 pt-2 pb-1.5 text-sm leading-relaxed" style={{ wordBreak: 'break-word' }} dir="auto">
+                              {m.content}
+                            </p>
+                          )}
+                          {/* Time + read tick inside bubble (WhatsApp style) */}
+                          <div
+                            className={`flex items-center gap-0.5 px-3 pb-1.5 ${group.mine ? 'justify-end' : 'justify-start'}`}
+                            style={{ marginTop: m.content ? -4 : 2 }}
+                          >
+                            <span className="text-[10px]" style={{ color: group.mine ? 'rgba(255,255,255,0.6)' : 'var(--tr-text-muted)' }}>
+                              {formatTime(m.createdAt)}
+                            </span>
+                            {group.mine && <ReadTick read={m.read} />}
+                          </div>
                         </div>
                       </div>
                     );
                   })}
-                  {/* Timestamp below group */}
-                  <p
-                    className={`text-[10px] mt-1 px-2 ${group.mine ? 'text-end' : 'text-start'}`}
-                    style={{ color: 'var(--tr-text-muted)' }}
-                  >
-                    {formatTime(group.msgs[group.msgs.length - 1].createdAt)}
-                  </p>
                 </div>
               );
               })}
@@ -464,8 +551,17 @@ function Inner({ conversationId }: { conversationId: string }) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-30" style={{ background: 'var(--tr-surface)', borderTop: '1px solid var(--tr-border-subtle)' }}>
+      {/* Input bar — pushed above keyboard via visualViewport */}
+      <div
+        ref={inputBarRef}
+        className="fixed left-0 right-0 z-30"
+        style={{
+          bottom: 0,
+          background: 'var(--tr-surface)',
+          borderTop: '1px solid var(--tr-border-subtle)',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        }}
+      >
         <div className="max-w-2xl mx-auto px-3 py-2 flex flex-col gap-2">
           {sendError && <p className="text-xs text-center font-semibold" style={{ color: '#f43f5e' }}>{sendError}</p>}
 
@@ -486,7 +582,7 @@ function Inner({ conversationId }: { conversationId: string }) {
 
           <div className="flex items-end gap-2" dir={isRtl ? 'rtl' : 'ltr'}>
             {/* Media picker */}
-            <label className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full cursor-pointer" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}>
+            <label className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full cursor-pointer transition active:scale-90" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
@@ -495,21 +591,41 @@ function Inner({ conversationId }: { conversationId: string }) {
             </label>
 
             <textarea
+              ref={textareaRef}
               value={input}
               onChange={e => { setInput(e.target.value); if (sendError) setSendError(''); }}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
               placeholder={isRtl ? 'رسالة...' : 'Message...'}
               rows={1}
               className="flex-1 rounded-2xl px-4 py-2.5 text-sm resize-none focus:outline-none transition"
-              style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)', maxHeight: '120px', overflowY: 'auto' }}
+              style={{
+                background: 'var(--tr-overlay)',
+                border: '1px solid var(--tr-border-soft)',
+                color: 'var(--tr-text-primary)',
+                maxHeight: '120px',
+                overflowY: 'auto',
+              }}
             />
+
+            {/* Send button — distinct active/inactive states */}
             <button
+              onMouseDown={e => e.preventDefault()} // prevent textarea blur on click
               onClick={handleSend}
-              disabled={sending || uploading || (!input.trim() && !mediaUrl)}
-              className="rounded-full w-9 h-9 flex items-center justify-center shrink-0 transition disabled:opacity-40"
-              style={{ background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))', color: '#0a0d06' }}
+              disabled={!canSend}
+              className="rounded-full w-10 h-10 flex items-center justify-center shrink-0 transition-all active:scale-90"
+              style={canSend ? {
+                background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))',
+                color: '#0a0d06',
+                boxShadow: '0 4px 16px rgba(212,168,83,0.35)',
+              } : {
+                background: 'var(--tr-overlay)',
+                color: 'var(--tr-text-muted)',
+                opacity: 0.5,
+              }}
+              aria-label={isRtl ? 'إرسال' : 'Send'}
             >
-              {sending ? <div className="w-4 h-4 border-2 border-current/40 border-t-current rounded-full animate-spin" />
+              {sending
+                ? <div className="w-4 h-4 border-2 border-current/40 border-t-current rounded-full animate-spin" />
                 : <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>
               }
             </button>

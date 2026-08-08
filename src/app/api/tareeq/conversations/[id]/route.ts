@@ -43,7 +43,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const otherId = convo.participantA === user.userId ? convo.participantB : convo.participantA;
   const otherUser = await prisma.user.findUnique({
     where: { id: otherId },
-    select: { id: true, name: true, avatarUrl: true },
+    select: { id: true, name: true, avatarUrl: true, tareeqLastSeen: true },
   });
 
   const nextCursor = messages.length === limit ? messages[messages.length - 1].createdAt.toISOString() : null;

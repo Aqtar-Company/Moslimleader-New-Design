@@ -72,6 +72,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           type: 'message',
           actorId: user.userId,
           actorName: user.name ?? null,
+          postId: params.id,   // conversationId — used to navigate directly on click
           body: content.slice(0, 80),
         },
       });

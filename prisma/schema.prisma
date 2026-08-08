@@ -37,6 +37,7 @@ model User {
   // customer list and surfaced as a separate count on the valuation page.
   isWholesale    Boolean  @default(false)
   loyaltyPoints  Int      @default(0)
+  tareeqLastSeen DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

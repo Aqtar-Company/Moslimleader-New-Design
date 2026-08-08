@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest) {
       calleeId: user.userId,
       status: 'ringing',
       offer: { not: null },
-      createdAt: { gt: new Date(Date.now() - 45_000) },
+      createdAt: { gt: new Date(Date.now() - 90_000) },
     },
     orderBy: { createdAt: 'desc' },
     include: {

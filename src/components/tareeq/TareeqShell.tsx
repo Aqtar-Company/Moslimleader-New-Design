@@ -38,7 +38,7 @@ export default function TareeqShell({ children }: { children: React.ReactNode })
       <TareeqSplash />
       <TareeqOfflineBanner />
       {children}
-      {!hideNav && <TareeqBottomNav onCreateClick={handleCreateClick} />}
+      {!hideNav && <div className="lg:hidden"><TareeqBottomNav onCreateClick={handleCreateClick} /></div>}
       {/* Global incoming-call overlay — works from any page in the app */}
       <TareeqIncomingCall />
     </TareeqNotificationsProvider>

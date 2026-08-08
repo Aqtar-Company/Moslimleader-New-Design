@@ -6,8 +6,10 @@ import { checkRateLimit } from '@/lib/rate-limit';
 
 const ALLOWED_IMAGE = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const ALLOWED_VIDEO = ['video/mp4', 'video/webm', 'video/quicktime'];
+const ALLOWED_AUDIO = ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg', 'audio/wav'];
 const MAX_IMAGE = 10 * 1024 * 1024;  // 10MB
 const MAX_VIDEO = 100 * 1024 * 1024; // 100MB
+const MAX_AUDIO = 20 * 1024 * 1024;  // 20MB
 
 const r2 = new S3Client({
   region: 'auto',
@@ -45,13 +47,15 @@ export async function POST(req: NextRequest) {
   const file = form.get('file') as File | null;
   if (!file) return NextResponse.json({ error: 'لا يوجد ملف' }, { status: 400 });
 
-  const isImage = ALLOWED_IMAGE.includes(file.type);
-  const isVideo = ALLOWED_VIDEO.includes(file.type);
-  if (!isImage && !isVideo) return NextResponse.json({ error: 'نوع الملف غير مدعوم' }, { status: 400 });
+  const baseType = file.type.split(';')[0].trim(); // strip codec params e.g. 'audio/webm;codecs=opus'
+  const isImage = ALLOWED_IMAGE.includes(baseType);
+  const isVideo = ALLOWED_VIDEO.includes(baseType);
+  const isAudio = ALLOWED_AUDIO.includes(baseType);
+  if (!isImage && !isVideo && !isAudio) return NextResponse.json({ error: 'نوع الملف غير مدعوم' }, { status: 400 });
 
-  const maxSize = isImage ? MAX_IMAGE : MAX_VIDEO;
+  const maxSize = isImage ? MAX_IMAGE : isAudio ? MAX_AUDIO : MAX_VIDEO;
   if (file.size > maxSize) {
-    return NextResponse.json({ error: isImage ? 'الحجم الأقصى 10MB' : 'الحجم الأقصى 100MB' }, { status: 400 });
+    return NextResponse.json({ error: isImage ? 'الحجم الأقصى 10MB' : isAudio ? 'الحجم الأقصى 20MB' : 'الحجم الأقصى 100MB' }, { status: 400 });
   }
 
   const raw = Buffer.from(await file.arrayBuffer());
@@ -66,6 +70,11 @@ export async function POST(req: NextRequest) {
     key = `tareeq/${auth.userId}-${timestamp}.${ext}`;
     fileData = data;
     contentType = 'image/jpeg';
+  } else if (isAudio) {
+    const ext = baseType.includes('ogg') ? 'ogg' : baseType.includes('mpeg') ? 'mp3' : baseType.includes('wav') ? 'wav' : baseType.includes('mp4') ? 'm4a' : 'webm';
+    key = `tareeq/audio/${auth.userId}-${timestamp}.${ext}`;
+    fileData = raw;
+    contentType = file.type;
   } else {
     const ext = file.type.split('/')[1].replace('quicktime', 'mov');
     key = `tareeq/${auth.userId}-${timestamp}.${ext}`;
@@ -83,5 +92,5 @@ export async function POST(req: NextRequest) {
   const publicUrl = process.env.R2_PUBLIC_URL!;
   const url = `${publicUrl}/${key}`;
 
-  return NextResponse.json({ ok: true, url, type: isImage ? 'image' : 'video' });
+  return NextResponse.json({ ok: true, url, type: isImage ? 'image' : isAudio ? 'audio' : 'video' });
 }

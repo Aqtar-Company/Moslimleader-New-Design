@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   // End any stale ringing calls from this caller (> 60s old)
   await prisma.tareeqCall.updateMany({
-    where: { callerId: user.userId, status: 'ringing', createdAt: { lt: new Date(Date.now() - 60_000) } },
+    where: { callerId: user.userId, status: 'ringing', createdAt: { lt: new Date(Date.now() - 90_000) } },
     data: { status: 'missed' },
   });
 

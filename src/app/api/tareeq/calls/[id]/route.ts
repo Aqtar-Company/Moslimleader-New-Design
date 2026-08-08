@@ -72,20 +72,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ call: updated });
   }
 
-  if (action === 'callerIce' && call.callerId === user.userId && body.candidate) {
-    const existing = (call.callerIce as unknown[]) ?? [];
+  if (action === 'callerIce' && call.callerId === user.userId && Array.isArray(body.candidates)) {
     const updated = await prisma.tareeqCall.update({
       where: { id: params.id },
-      data: { callerIce: [...existing, body.candidate] },
+      data: { callerIce: body.candidates },
     });
     return NextResponse.json({ call: updated });
   }
 
-  if (action === 'calleeIce' && call.calleeId === user.userId && body.candidate) {
-    const existing = (call.calleeIce as unknown[]) ?? [];
+  if (action === 'calleeIce' && call.calleeId === user.userId && Array.isArray(body.candidates)) {
     const updated = await prisma.tareeqCall.update({
       where: { id: params.id },
-      data: { calleeIce: [...existing, body.candidate] },
+      data: { calleeIce: body.candidates },
     });
     return NextResponse.json({ call: updated });
   }

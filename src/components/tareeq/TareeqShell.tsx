@@ -5,6 +5,7 @@ import { TareeqNotificationsProvider } from '@/context/TareeqNotificationsContex
 import TareeqBottomNav from './TareeqBottomNav';
 import TareeqOfflineBanner from './TareeqOfflineBanner';
 import TareeqSplash from './TareeqSplash';
+import TareeqIncomingCall from './TareeqIncomingCall';
 
 export default function TareeqShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -38,6 +39,8 @@ export default function TareeqShell({ children }: { children: React.ReactNode })
       <TareeqOfflineBanner />
       {children}
       {!hideNav && <TareeqBottomNav onCreateClick={handleCreateClick} />}
+      {/* Global incoming-call overlay — works from any page in the app */}
+      <TareeqIncomingCall />
     </TareeqNotificationsProvider>
   );
 }

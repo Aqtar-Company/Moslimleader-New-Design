@@ -99,11 +99,16 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
       if (remoteVideoRef.current && ev.streams[0]) remoteVideoRef.current.srcObject = ev.streams[0];
     };
 
-    pc.onicecandidate = async (ev) => {
-      if (ev.candidate) {
+    // Collect ICE candidates and send them in one batch after gathering completes
+    const callerIceQueue: RTCIceCandidateInit[] = [];
+    pc.onicecandidate = (ev) => {
+      if (ev.candidate) callerIceQueue.push(ev.candidate.toJSON());
+    };
+    pc.onicegatheringstatechange = async () => {
+      if (pc.iceGatheringState === 'complete' && callerIceQueue.length > 0) {
         await fetch(`/api/tareeq/calls/${callId}`, {
           method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ action: 'callerIce', candidate: ev.candidate.toJSON() }),
+          body: JSON.stringify({ action: 'callerIce', candidates: callerIceQueue }),
         }).catch(() => {});
       }
     };
@@ -173,11 +178,16 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
       if (remoteVideoRef.current && ev.streams[0]) remoteVideoRef.current.srcObject = ev.streams[0];
     };
 
-    pc.onicecandidate = async (ev) => {
-      if (ev.candidate) {
+    // Collect ICE candidates and send them in one batch after gathering completes
+    const calleeIceQueue: RTCIceCandidateInit[] = [];
+    pc.onicecandidate = (ev) => {
+      if (ev.candidate) calleeIceQueue.push(ev.candidate.toJSON());
+    };
+    pc.onicegatheringstatechange = async () => {
+      if (pc.iceGatheringState === 'complete' && calleeIceQueue.length > 0) {
         await fetch(`/api/tareeq/calls/${callId}`, {
           method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ action: 'calleeIce', candidate: ev.candidate.toJSON() }),
+          body: JSON.stringify({ action: 'calleeIce', candidates: calleeIceQueue }),
         }).catch(() => {});
       }
     };

@@ -157,25 +157,15 @@ function Inner({ conversationId }: { conversationId: string }) {
   async function startCall(callType: 'audio' | 'video') {
     if (!otherUser || !user) return;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia(callType === 'video' ? { audio: true, video: true } : { audio: true });
-      const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-      stream.getTracks().forEach(t => pc.addTrack(t, stream));
-      const offerSdp = await pc.createOffer();
-      await pc.setLocalDescription(offerSdp);
-      stream.getTracks().forEach(t => t.stop());
-      pc.close();
-
       const res = await fetch('/api/tareeq/calls', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ calleeId: otherUser.id, type: callType, offer: offerSdp.sdp }),
+        body: JSON.stringify({ calleeId: otherUser.id, type: callType }),
       });
       if (res.ok) {
         const { callId } = await res.json();
         setActiveCall({ callId, role: 'caller', callType });
       }
-    } catch {
-      // getUserMedia denied or PC failed — silently ignore (user sees nothing opened)
-    }
+    } catch { /* network error — ignore */ }
   }
 
   async function handleSend() {

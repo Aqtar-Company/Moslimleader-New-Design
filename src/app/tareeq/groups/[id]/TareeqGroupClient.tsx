@@ -281,11 +281,11 @@ function Inner({ groupId }: { groupId: string }) {
     <div className="flex flex-col overflow-hidden" style={{ background: 'var(--tr-base)', height: '100dvh' }}>
       <TareeqHeader onCreateClick={() => {}} />
 
-      {/* Spacer for fixed TareeqHeader (h-14) */}
-      <div className="h-14 shrink-0" />
+      {/* Spacer for both fixed bars: TareeqHeader (h-14=56px) + sub-header (~60px) */}
+      <div className="h-[116px] shrink-0" />
 
-      {/* Sub-header */}
-      <div className="px-4 py-3 flex items-center gap-3 shrink-0 z-30" style={{ background: 'var(--tr-surface)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
+      {/* Sub-header — fixed below TareeqHeader so keyboard never hides it */}
+      <div className="fixed top-14 left-0 right-0 px-4 py-3 flex items-center gap-3 z-40" style={{ background: 'var(--tr-surface)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
         <button onClick={() => router.push('/tareeq/inbox')} className="transition" style={{ color: 'var(--tr-text-muted)' }}>
           <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M9 5l7 7-7 7' : 'M15 19l-7-7 7-7'} />

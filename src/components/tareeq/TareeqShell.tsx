@@ -29,15 +29,15 @@ export default function TareeqShell({ children }: { children: React.ReactNode })
     return () => window.removeEventListener('tareeq-camera-ready', h);
   }, [pathname, router]);
 
-  // Hide bottom nav inside a conversation so the chat input bar isn't buried under it
-  const isConversation = /^\/tareeq\/inbox\/.+/.test(pathname ?? '');
+  // Hide bottom nav inside conversations and group chats (they have their own fixed input bars)
+  const hideNav = /^\/tareeq\/inbox\/.+/.test(pathname ?? '') || /^\/tareeq\/groups\/.+/.test(pathname ?? '');
 
   return (
     <TareeqNotificationsProvider>
       <TareeqSplash />
       <TareeqOfflineBanner />
       {children}
-      {!isConversation && <TareeqBottomNav onCreateClick={handleCreateClick} />}
+      {!hideNav && <TareeqBottomNav onCreateClick={handleCreateClick} />}
     </TareeqNotificationsProvider>
   );
 }

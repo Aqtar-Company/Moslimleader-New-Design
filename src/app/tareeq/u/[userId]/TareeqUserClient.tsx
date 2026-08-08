@@ -82,6 +82,14 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [activeFolderName, setActiveFolderName] = useState('');
   const [bmPosts, setBmPosts] = useState<BmPost[]>([]);
   const [bmPostsLoading, setBmPostsLoading] = useState(false);
+  const [showCreateFolder, setShowCreateFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [creatingFolder, setCreatingFolder] = useState(false);
+
+  // Follow list modal
+  const [followListType, setFollowListType] = useState<'followers' | 'following' | null>(null);
+  const [followListUsers, setFollowListUsers] = useState<{ id: string; name: string; avatarUrl?: string | null; isFollowedByViewer: boolean }[]>([]);
+  const [followListLoading, setFollowListLoading] = useState(false);
 
   const isOwnProfile = user?.id === profileUser.id;
 
@@ -165,6 +173,24 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
     }
   }
 
+  async function createFolder() {
+    if (!newFolderName.trim() || creatingFolder) return;
+    setCreatingFolder(true);
+    try {
+      const res = await fetch('/api/tareeq/bookmark-folders', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newFolderName.trim() }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setBmFolders(prev => [...prev, { ...d.folder, _count: { bookmarks: 0 } }]);
+        setNewFolderName(''); setShowCreateFolder(false);
+      }
+    } catch { /* ignore */ }
+    finally { setCreatingFolder(false); }
+  }
+
   async function loadBmPosts(folderId: string | null) {
     setBmPostsLoading(true);
     try {
@@ -203,6 +229,24 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   function handleCreateClick() {
     if (!user) { setShowGate(true); return; }
     setShowCreate(true);
+  }
+
+  async function openFollowList(type: 'followers' | 'following') {
+    setFollowListType(type);
+    setFollowListLoading(true);
+    setFollowListUsers([]);
+    try {
+      const res = await fetch(`/api/tareeq/follow/${profileUser.id}/list?type=${type}`, { credentials: 'include' });
+      if (res.ok) { const d = await res.json(); setFollowListUsers(d.users ?? []); }
+    } catch { /* ignore */ }
+    finally { setFollowListLoading(false); }
+  }
+
+  async function toggleFollowFromList(targetId: string, currentlyFollowing: boolean) {
+    setFollowListUsers(prev => prev.map(u => u.id === targetId ? { ...u, isFollowedByViewer: !currentlyFollowing } : u));
+    await fetch(`/api/tareeq/follow/${targetId}`, { method: 'POST', credentials: 'include' }).catch(() => {
+      setFollowListUsers(prev => prev.map(u => u.id === targetId ? { ...u, isFollowedByViewer: currentlyFollowing } : u));
+    });
   }
 
   async function handleSendMessage() {
@@ -326,8 +370,8 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
 
           <div className="flex gap-6 mt-4">
             <StatItem count={postCount ?? posts.length} label={isRtl ? 'علامة' : 'Posts'} />
-            <StatItem count={followerCount} label={isRtl ? 'متابِع' : 'Followers'} />
-            <StatItem count={followingCount} label={isRtl ? 'متابَع' : 'Following'} />
+            <StatItem count={followerCount} label={isRtl ? 'متابِع' : 'Followers'} onClick={() => openFollowList('followers')} />
+            <StatItem count={followingCount} label={isRtl ? 'متابَع' : 'Following'} onClick={() => openFollowList('following')} />
           </div>
         </div>
 
@@ -421,6 +465,44 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                   </div>
                 ) : (
                   <>
+                    {/* Create folder button + inline input */}
+                    <div className="mb-4">
+                      {showCreateFolder ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            autoFocus
+                            value={newFolderName}
+                            onChange={e => setNewFolderName(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') createFolder(); if (e.key === 'Escape') { setShowCreateFolder(false); setNewFolderName(''); } }}
+                            placeholder={isRtl ? 'اسم الفولدر...' : 'Folder name...'}
+                            maxLength={40}
+                            className="flex-1 rounded-xl px-4 py-2.5 text-sm outline-none"
+                            style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
+                          />
+                          <button
+                            onClick={createFolder}
+                            disabled={!newFolderName.trim() || creatingFolder}
+                            className="px-4 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-40"
+                            style={{ background: 'var(--tr-gold)', color: '#fff' }}
+                          >
+                            {creatingFolder ? '...' : (isRtl ? 'إنشاء' : 'Create')}
+                          </button>
+                          <button onClick={() => { setShowCreateFolder(false); setNewFolderName(''); }} className="p-2 rounded-xl" style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)' }}>✕</button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setShowCreateFolder(true)}
+                          className="flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-xl w-full transition"
+                          style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1px dashed var(--tr-border-soft)' }}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                          </svg>
+                          {isRtl ? 'فولدر جديد' : 'New Folder'}
+                        </button>
+                      )}
+                    </div>
+
                     {/* "All saved" shortcut */}
                     <button
                       onClick={() => { setActiveFolderId('__all__'); setActiveFolderName(isRtl ? 'كل المحفوظات' : 'All saved'); loadBmPosts(null); }}
@@ -499,6 +581,52 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
 
       {showCreate && <TareeqCreateModal onClose={() => setShowCreate(false)} onCreated={() => {}} />}
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
+
+      {/* Followers / Following modal */}
+      {followListType && (
+        <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center" style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }} onClick={() => setFollowListType(null)}>
+          <div className="w-full sm:max-w-sm sm:mx-4 rounded-t-3xl sm:rounded-2xl flex flex-col" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', maxHeight: '75dvh' }} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--tr-border-subtle)' }}>
+              <h3 className="font-black text-base" style={{ color: 'var(--tr-text-primary)' }}>
+                {followListType === 'followers' ? (isRtl ? 'المتابِعون' : 'Followers') : (isRtl ? 'المتابَعون' : 'Following')}
+              </h3>
+              <button onClick={() => setFollowListType(null)} className="w-8 h-8 flex items-center justify-center rounded-xl text-sm" style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)' }}>✕</button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-4 flex flex-col gap-2">
+              {followListLoading ? (
+                <div className="flex justify-center py-10">
+                  <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
+                </div>
+              ) : followListUsers.length === 0 ? (
+                <p className="text-center py-10 text-sm" style={{ color: 'var(--tr-text-muted)' }}>
+                  {isRtl ? 'لا يوجد أحد بعد' : 'Nobody yet'}
+                </p>
+              ) : followListUsers.map(u => (
+                <div key={u.id} className="flex items-center gap-3">
+                  <button onClick={() => { setFollowListType(null); router.push(`/tareeq/u/${u.id}`); }} className="w-10 h-10 rounded-full shrink-0 overflow-hidden flex items-center justify-center font-bold text-sm" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-border-soft)' }}>
+                    {u.avatarUrl ? <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" /> : u.name.charAt(0)}
+                  </button>
+                  <button onClick={() => { setFollowListType(null); router.push(`/tareeq/u/${u.id}`); }} className="flex-1 min-w-0 text-start">
+                    <p className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{u.name}</p>
+                  </button>
+                  {user && u.id !== user.id && (
+                    <button
+                      onClick={() => toggleFollowFromList(u.id, u.isFollowedByViewer)}
+                      className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-full transition"
+                      style={u.isFollowedByViewer
+                        ? { background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', border: '1px solid var(--tr-border-soft)' }
+                        : { background: 'var(--tr-gold)', color: '#fff' }
+                      }
+                    >
+                      {u.isFollowedByViewer ? (isRtl ? 'تتابعه ✓' : 'Following') : (isRtl ? 'متابعة' : 'Follow')}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     </TareeqNotificationsProvider>
   );
@@ -518,8 +646,8 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
   );
 }
 
-function StatItem({ count, label }: { count: number; label: string }) {
-  return (
+function StatItem({ count, label, onClick }: { count: number; label: string; onClick?: () => void }) {
+  const content = (
     <div className="flex flex-col items-center gap-0.5">
       <span className="font-black text-lg" style={{ color: 'var(--tr-text-primary)' }}>
         {count > 999 ? `${(count / 1000).toFixed(1)}k` : count}
@@ -527,6 +655,8 @@ function StatItem({ count, label }: { count: number; label: string }) {
       <span className="text-[11px]" style={{ color: 'var(--tr-text-muted)' }}>{label}</span>
     </div>
   );
+  if (onClick) return <button onClick={onClick} className="transition active:scale-95">{content}</button>;
+  return content;
 }
 
 function GridImageCard({ post, liked }: { post: TareeqPostSummary; liked: boolean }) {

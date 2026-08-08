@@ -9,7 +9,7 @@ import TareeqCreateModal from '@/components/tareeq/TareeqCreateModal';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
 import { TAREEQ_CATEGORIES, CATEGORY_ICONS, CATEGORY_ACCENT_HEX } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
-import TareeqHeader from '@/components/tareeq/TareeqHeader';
+import TareeqBottomNav from '@/components/tareeq/TareeqBottomNav';
 import TareeqSidebar from '@/components/tareeq/TareeqSidebar';
 import TareeqPWA, { TareeqInstallBanner } from '@/components/tareeq/TareeqPWA';
 import { consumeCameraFile } from '@/lib/tareeq-camera-store';
@@ -366,13 +366,6 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
     <div className="min-h-screen">
       <TareeqPWA />
 
-      <TareeqHeader
-        onCreateClick={handleCreateClick}
-        searchInput={searchInput}
-        onSearch={v => setSearchInput(v)}
-        onToggleSidebar={() => setShowSidebar(prev => !prev)}
-      />
-
       {/* Pull to refresh indicator — mobile only */}
       {pullY > 12 && (
         <div
@@ -659,6 +652,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         />
       )}
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
+      <TareeqBottomNav onCreateClick={() => { if (user) setShowCreate(true); else setShowGate(true); }} />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
-import TareeqHeader from '@/components/tareeq/TareeqHeader';
+import TareeqBottomNav from '@/components/tareeq/TareeqBottomNav';
 import { TareeqNotificationsProvider } from '@/context/TareeqNotificationsContext';
 
 interface OtherUser { id: string; name: string; avatarUrl?: string | null }
@@ -116,8 +116,6 @@ function Inner() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--tr-base)' }}>
-      <TareeqHeader onCreateClick={() => {}} />
-
       {/* Title + tabs */}
       <div className="pt-6 pb-3 px-4 max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-4">
@@ -225,6 +223,7 @@ function Inner() {
       {showCreateGroup && (
         <CreateGroupModal onClose={() => setShowCreateGroup(false)} onCreated={(groupId) => { loadAll(); if (groupId) router.push(`/tareeq/groups/${groupId}`); }} />
       )}
+      <TareeqBottomNav onCreateClick={() => {}} />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
-import TareeqHeader from '@/components/tareeq/TareeqHeader';
+import TareeqBottomNav from '@/components/tareeq/TareeqBottomNav';
 import { TAREEQ_CATEGORIES, CATEGORY_COLORS, CATEGORY_ICONS } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import { timeAgo } from '@/lib/tareeq-utils';
@@ -173,9 +173,6 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--tr-base)' }}>
-      <TareeqHeader onCreateClick={() => { if (!user) setShowGate(true); }} />
-      <div className="pt-14" />
-
       <div className="max-w-2xl mx-auto px-4 py-8">
         <article className="rounded-2xl overflow-hidden mb-6" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}>
           {/* Hero image */}
@@ -455,6 +452,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
       </div>
 
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
+      <TareeqBottomNav onCreateClick={() => {}} />
     </div>
   );
 }

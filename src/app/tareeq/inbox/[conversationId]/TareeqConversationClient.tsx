@@ -3,7 +3,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
-import TareeqHeader from '@/components/tareeq/TareeqHeader';
 import { TareeqNotificationsProvider, useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 import { compressImage } from '@/lib/compress-image';
 import TareeqCallScreen from '@/components/tareeq/TareeqCallScreen';
@@ -370,14 +369,12 @@ function Inner({ conversationId }: { conversationId: string }) {
 
   return (
     <div className="flex flex-col overflow-hidden" style={{ background: 'var(--tr-base)', height: '100dvh' }}>
-      <TareeqHeader onCreateClick={() => {}} />
-
-      {/* Spacer for both fixed bars: TareeqHeader (h-14=56px) + sub-header (~60px) */}
-      <div className="h-[116px] shrink-0" />
+      {/* Spacer for sub-header (~60px) */}
+      <div className="h-[60px] shrink-0" />
 
       {/* Chat sub-header */}
       <div
-        className="fixed top-14 left-0 right-0 px-4 py-3 flex items-center gap-3 z-40"
+        className="fixed top-0 left-0 right-0 px-4 py-3 flex items-center gap-3 z-40"
         style={{
           background: 'var(--tr-surface)',
           backdropFilter: 'blur(12px)',

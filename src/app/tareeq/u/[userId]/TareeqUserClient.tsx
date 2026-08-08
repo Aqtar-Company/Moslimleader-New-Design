@@ -7,7 +7,7 @@ import TareeqCard, { TareeqPostSummary } from '@/components/tareeq/TareeqCard';
 import TareeqCardSkeleton from '@/components/tareeq/TareeqCardSkeleton';
 import TareeqCreateModal from '@/components/tareeq/TareeqCreateModal';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
-import TareeqHeader from '@/components/tareeq/TareeqHeader';
+import TareeqBottomNav from '@/components/tareeq/TareeqBottomNav';
 import { TareeqNotificationsProvider } from '@/context/TareeqNotificationsContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -350,8 +350,6 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   return (
     <TareeqNotificationsProvider>
     <div className="min-h-screen" style={{ background: 'var(--tr-base)' }}>
-      <TareeqHeader onCreateClick={handleCreateClick} />
-
       {/* Cover */}
       <div className="relative w-full" style={{ height: 110, background: coverGradient }}>
         <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.12)' }} />
@@ -709,6 +707,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
 
       {showCreate && <TareeqCreateModal onClose={() => setShowCreate(false)} onCreated={() => {}} />}
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
+      <TareeqBottomNav onCreateClick={() => setShowCreate(true)} />
 
       {/* Followers / Following modal */}
       {followListType && (

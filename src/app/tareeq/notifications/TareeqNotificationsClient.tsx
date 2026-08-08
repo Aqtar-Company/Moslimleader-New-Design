@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
-import TareeqHeader from '@/components/tareeq/TareeqHeader';
+import TareeqBottomNav from '@/components/tareeq/TareeqBottomNav';
 import { TareeqNotificationsProvider, useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 
 interface Notification {
@@ -98,8 +98,6 @@ function Inner() {
 
   return (
     <div className="min-h-screen">
-      <TareeqHeader onCreateClick={() => {}} />
-
       <div className="py-8 px-4 text-center">
         <h1 className="font-black text-2xl" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الإشعارات' : 'Notifications'}</h1>
       </div>
@@ -145,6 +143,7 @@ function Inner() {
           </div>
         )}
       </div>
+      <TareeqBottomNav onCreateClick={() => {}} />
     </div>
   );
 }

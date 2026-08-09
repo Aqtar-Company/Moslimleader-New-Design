@@ -25,6 +25,8 @@
   --tr-text-muted:     #94a3b8;
   /* UI chrome — mode-sensitive */
   --tr-header-bg:    rgba(255,255,255,0.62);
+  --tr-glass-bg:     rgba(255,255,255,0.70);
+  --tr-glass-border: rgba(0,0,0,0.10);
   --tr-backdrop:     rgba(15,23,42,0.45);
   --tr-shadow-sm:    rgba(0,0,0,0.05);
   --tr-shadow-popup: rgba(0,0,0,0.14);
@@ -62,6 +64,8 @@
   --tr-text-secondary: #94a3b8;
   --tr-text-muted:     #475569;
   --tr-header-bg:    rgba(10,15,26,0.92);
+  --tr-glass-bg:     rgba(12,18,36,0.80);
+  --tr-glass-border: rgba(255,255,255,0.12);
   --tr-backdrop:     rgba(10,15,26,0.82);
   --tr-shadow-sm:    rgba(0,0,0,0.35);
   --tr-shadow-popup: rgba(0,0,0,0.55);

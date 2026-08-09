@@ -115,7 +115,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       if (res.ok) {
         const data = await res.json();
         setPosts(prev => {
-          const combined = fromCursor ? [...prev, ...data.posts] : data.posts;
+          const combined: TareeqPostSummary[] = fromCursor ? [...prev, ...data.posts] : data.posts;
           const seen = new Set<string>();
           return combined.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
         });

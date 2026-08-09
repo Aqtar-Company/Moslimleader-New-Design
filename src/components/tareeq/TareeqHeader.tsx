@@ -266,10 +266,140 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
     overflowY: 'auto',
   };
 
+  /* ── State for mobile notification panel ── */
+  const [showMobileNotifPanel, setShowMobileNotifPanel] = useState(false);
+
   return (
     <>
+      {/* ═══════════════════════════════════════════════════════════════
+          MOBILE: transparent floating glass buttons — no header bar.
+          Content scrolls under them. Bell opens inline glass panel.
+      ═══════════════════════════════════════════════════════════════ */}
+      <div
+        className="lg:hidden fixed top-0 left-0 right-0 z-50 print:hidden"
+        style={{ pointerEvents: 'none' }}
+      >
+        <div className="flex items-center px-4 pt-3 pb-2 gap-2.5 w-full" style={{ pointerEvents: 'auto' }}>
+
+          {/* Search: collapsed = icon button; expanded = full glass pill */}
+          {mobileSearchOpen ? (
+            <div ref={searchContainerRef} className="flex-1 relative" style={{ height: 44 }}>
+              <div style={{
+                position: 'absolute', inset: 0, borderRadius: 22,
+                background: 'var(--tr-glass-bg)',
+                backdropFilter: 'blur(18px) saturate(140%)',
+                WebkitBackdropFilter: 'blur(18px) saturate(140%)',
+                border: '1px solid var(--tr-glass-border)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.10)',
+                pointerEvents: 'none',
+              }} />
+              <span style={{
+                position: 'absolute',
+                [isRtl ? 'left' : 'right']: 0, top: 0,
+                width: 44, height: 44,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--tr-text-muted)', pointerEvents: 'none',
+              }}>
+                <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+              </span>
+              <input
+                ref={mobileSearchRef}
+                value={searchInput ?? ''}
+                onChange={e => onSearch?.(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Escape') { setMobileSearchOpen(false); onSearch?.(''); } }}
+                onBlur={() => { if (!(searchInput ?? '').trim()) setTimeout(() => setMobileSearchOpen(false), 120); }}
+                placeholder={isRtl ? 'ابحث في طريق...' : 'Search Tareeq...'}
+                dir={isRtl ? 'rtl' : 'ltr'}
+                style={{
+                  position: 'absolute', inset: 0,
+                  borderRadius: 22, background: 'transparent', border: 'none', outline: 'none',
+                  fontSize: 13, color: 'var(--tr-text-primary)',
+                  paddingRight: isRtl ? 48 : ((searchInput ?? '').length > 0 ? 34 : 14),
+                  paddingLeft: isRtl ? ((searchInput ?? '').length > 0 ? 34 : 14) : 48,
+                }}
+              />
+              {(searchInput ?? '').length > 0 && (
+                <button
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={() => { onSearch?.(''); mobileSearchRef.current?.focus(); }}
+                  style={{
+                    position: 'absolute',
+                    [isRtl ? 'right' : 'left']: 8, top: '50%', transform: 'translateY(-50%)',
+                    width: 22, height: 22, borderRadius: '50%',
+                    background: 'var(--tr-overlay)', border: 'none',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', zIndex: 2, color: 'var(--tr-text-muted)',
+                    fontSize: 11, fontWeight: 700,
+                  }}
+                >✕</button>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={() => { setMobileSearchOpen(true); setTimeout(() => mobileSearchRef.current?.focus(), 50); }}
+              aria-label={isRtl ? 'بحث' : 'Search'}
+              className="shrink-0 flex items-center justify-center rounded-2xl transition-all active:scale-[0.93]"
+              style={{
+                width: 44, height: 44,
+                background: 'var(--tr-glass-bg)',
+                backdropFilter: 'blur(18px) saturate(140%)',
+                WebkitBackdropFilter: 'blur(18px) saturate(140%)',
+                border: '1px solid var(--tr-glass-border)',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+                cursor: 'pointer',
+              }}
+            >
+              <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"
+                style={{ color: 'var(--tr-text-secondary)' }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              </svg>
+            </button>
+          )}
+
+          {/* Glass bell button → inline notification panel */}
+          <button
+            onClick={() => { if (!showMobileNotifPanel) loadNotifs(); setShowMobileNotifPanel(p => !p); }}
+            className="relative shrink-0 flex items-center justify-center rounded-2xl transition-all active:scale-[0.93]"
+            style={{
+              width: 44, height: 44,
+              background: 'var(--tr-glass-bg)',
+              backdropFilter: 'blur(18px) saturate(140%)',
+              WebkitBackdropFilter: 'blur(18px) saturate(140%)',
+              border: showMobileNotifPanel
+                ? '1px solid var(--tr-gold)'
+                : '1px solid var(--tr-glass-border)',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+              cursor: 'pointer',
+            }}
+            aria-label={isRtl ? 'الإشعارات' : 'Notifications'}
+          >
+            <svg width="19" height="19" fill="none" stroke="currentColor" strokeWidth={1.9} viewBox="0 0 24 24"
+              style={{ color: (notifCount > 0 || showMobileNotifPanel) ? 'var(--tr-gold)' : 'var(--tr-text-secondary)' }}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            {notifCount > 0 && (
+              <span style={{
+                position: 'absolute', top: -3, right: -3,
+                width: 16, height: 16, borderRadius: '50%',
+                background: '#f43f5e', color: '#fff', fontSize: 9, fontWeight: 800,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: '2px solid var(--tr-base)',
+              }}>
+                {notifCount > 9 ? '9+' : notifCount}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          DESKTOP: full glass header bar
+      ═══════════════════════════════════════════════════════════════ */}
       <header
-        className="fixed top-0 left-0 right-0 z-50 print:hidden"
+        className="hidden lg:block fixed top-0 left-0 right-0 z-50 print:hidden"
         style={{
           background: 'var(--tr-header-bg)',
           backdropFilter: 'blur(20px)',
@@ -278,145 +408,12 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           boxShadow: '0 2px 24px rgba(0,0,0,0.5), inset 0 -1px 0 rgba(255,255,255,0.04)',
         }}
       >
-        <div className="max-w-2xl mx-auto lg:max-w-[1180px] flex items-center px-4 h-14 lg:h-16 gap-2 lg:gap-3">
+        <div className="max-w-[1180px] mx-auto flex items-center px-4 h-16 gap-3">
 
-          {/* ── MOBILE ONLY: search icon (collapsed) or pill (expanded) + bell ── */}
-          <div className="lg:hidden flex items-center w-full gap-2.5">
-
-            {/* Search: collapsed = icon button only; expanded = full glass pill */}
-            {mobileSearchOpen ? (
-              <div
-                ref={searchContainerRef}
-                className="flex-1 relative"
-                style={{ height: 44 }}
-              >
-                {/* Glass background */}
-                <div style={{
-                  position: 'absolute', inset: 0, borderRadius: 22,
-                  background: 'rgba(255,255,255,0.60)',
-                  backdropFilter: 'blur(14px) saturate(130%)',
-                  WebkitBackdropFilter: 'blur(14px) saturate(130%)',
-                  border: '1px solid rgba(100,140,210,0.28)',
-                  boxShadow: '0 4px 20px rgba(30,70,120,0.12)',
-                  pointerEvents: 'none',
-                }} />
-                {/* Search icon inside pill */}
-                <span style={{
-                  position: 'absolute',
-                  [isRtl ? 'left' : 'right']: 0, top: 0,
-                  width: 44, height: 44,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: 'rgba(30,80,180,0.85)', pointerEvents: 'none',
-                }}>
-                  <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                  </svg>
-                </span>
-                {/* Input */}
-                <input
-                  ref={mobileSearchRef}
-                  value={searchInput ?? ''}
-                  onChange={e => onSearch?.(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Escape') { setMobileSearchOpen(false); onSearch?.(''); } }}
-                  onBlur={() => { if (!(searchInput ?? '').trim()) setTimeout(() => setMobileSearchOpen(false), 120); }}
-                  placeholder={isRtl ? 'ابحث في طريق...' : 'Search Tareeq...'}
-                  dir={isRtl ? 'rtl' : 'ltr'}
-                  style={{
-                    position: 'absolute', inset: 0,
-                    borderRadius: 22, background: 'transparent', border: 'none', outline: 'none',
-                    fontSize: 13, color: 'rgba(10,15,30,0.90)',
-                    paddingRight: isRtl ? 48 : ((searchInput ?? '').length > 0 ? 34 : 14),
-                    paddingLeft: isRtl ? ((searchInput ?? '').length > 0 ? 34 : 14) : 48,
-                  }}
-                />
-                {/* Clear × */}
-                {(searchInput ?? '').length > 0 && (
-                  <button
-                    onMouseDown={e => e.preventDefault()}
-                    onClick={() => { onSearch?.(''); mobileSearchRef.current?.focus(); }}
-                    style={{
-                      position: 'absolute',
-                      [isRtl ? 'right' : 'left']: 8, top: '50%', transform: 'translateY(-50%)',
-                      width: 22, height: 22, borderRadius: '50%',
-                      background: 'rgba(0,0,0,0.10)', border: 'none',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer', zIndex: 2, color: 'rgba(10,15,30,0.55)',
-                      fontSize: 11, fontWeight: 700,
-                    }}
-                  >✕</button>
-                )}
-              </div>
-            ) : (
-              /* Collapsed: small glass icon button */
-              <button
-                onClick={() => { setMobileSearchOpen(true); setTimeout(() => mobileSearchRef.current?.focus(), 50); }}
-                aria-label={isRtl ? 'بحث' : 'Search'}
-                className="shrink-0 flex items-center justify-center rounded-2xl transition-all active:scale-[0.93]"
-                style={{
-                  width: 44, height: 44,
-                  background: 'rgba(255,255,255,0.24)',
-                  backdropFilter: 'blur(14px) saturate(130%)',
-                  WebkitBackdropFilter: 'blur(14px) saturate(130%)',
-                  border: '1px solid rgba(255,255,255,0.28)',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
-                  cursor: 'pointer',
-                }}
-              >
-                <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"
-                  style={{ color: 'rgba(20,30,60,0.62)' }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                </svg>
-              </button>
-            )}
-
-            {/* Glass notification bell button */}
-            <Link
-              href="/tareeq/notifications"
-              className="relative shrink-0 flex items-center justify-center rounded-2xl transition-all active:scale-[0.93]"
-              style={{
-                width: 44, height: 44,
-                background: 'rgba(255,255,255,0.24)',
-                backdropFilter: 'blur(14px) saturate(130%)',
-                WebkitBackdropFilter: 'blur(14px) saturate(130%)',
-                border: '1px solid rgba(255,255,255,0.28)',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
-              }}
-              aria-label={isRtl ? 'الإشعارات' : 'Notifications'}
-            >
-              <svg width="19" height="19" fill="none" stroke="currentColor" strokeWidth={1.9} viewBox="0 0 24 24"
-                style={{ color: notifCount > 0 ? 'var(--tr-gold)' : 'rgba(20,30,60,0.70)' }}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-              {notifCount > 0 && (
-                <span style={{
-                  position: 'absolute', top: -3, right: -3,
-                  width: 16, height: 16, borderRadius: '50%',
-                  background: '#f43f5e', color: '#fff', fontSize: 9, fontWeight: 800,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: '2px solid var(--tr-header-bg)',
-                }}>
-                  {notifCount > 9 ? '9+' : notifCount}
-                </span>
-              )}
-            </Link>
-          </div>
-
-          {/* ── DESKTOP ONLY ── */}
           {/* Wordmark */}
-          <Link href="/tareeq" className="hidden lg:flex items-center gap-1.5 shrink-0" aria-label="Tareeq">
-            <img
-              src="/Tareeq-big.png"
-              alt=""
-              className="h-9 w-auto object-contain shrink-0"
-              draggable={false}
-            />
-            <img
-              src="/Tareeq-Typo.png"
-              alt="طريق"
-              className="h-7 w-auto object-contain shrink-0"
-              draggable={false}
-            />
+          <Link href="/tareeq" className="flex items-center gap-1.5 shrink-0" aria-label="Tareeq">
+            <img src="/Tareeq-big.png" alt="" className="h-9 w-auto object-contain shrink-0" draggable={false} />
+            <img src="/Tareeq-Typo.png" alt="طريق" className="h-7 w-auto object-contain shrink-0" draggable={false} />
           </Link>
 
           {/* Desktop search bar */}
@@ -673,7 +670,90 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           </div>
         </div>
       </header>
-      <div className="h-14 lg:h-16" />
+      {/* Spacer: 0 on mobile (glass buttons float over content), 64px on desktop */}
+      <div className="h-0 lg:h-16" />
+
+      {/* ═══════════════════════════════════════════════════════════════
+          MOBILE: inline notification panel — glass strips with gaps
+      ═══════════════════════════════════════════════════════════════ */}
+      {showMobileNotifPanel && (
+        <>
+          <div
+            className="fixed inset-0 z-[48] lg:hidden"
+            onClick={() => setShowMobileNotifPanel(false)}
+          />
+          <div
+            className="fixed left-0 right-0 z-[49] lg:hidden px-3"
+            style={{ top: 58, maxHeight: 'calc(100svh - 120px)', overflowY: 'auto', scrollbarWidth: 'none' }}
+          >
+            <div className="flex flex-col gap-2.5 pt-1 pb-4">
+              {notifsLoading ? (
+                <div className="flex justify-center py-10">
+                  <div className="w-5 h-5 border-2 rounded-full animate-spin"
+                    style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
+                </div>
+              ) : notifs.filter(n => n.type !== 'message').length === 0 ? (
+                <div
+                  className="text-center py-8 rounded-2xl"
+                  style={{
+                    background: 'var(--tr-glass-bg)',
+                    backdropFilter: 'blur(20px) saturate(140%)',
+                    WebkitBackdropFilter: 'blur(20px) saturate(140%)',
+                    border: '1px solid var(--tr-glass-border)',
+                  }}
+                >
+                  <svg className="w-10 h-10 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                  </svg>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>
+                    {isRtl ? 'لا إشعارات جديدة' : 'No new notifications'}
+                  </p>
+                </div>
+              ) : (
+                notifs.filter(n => n.type !== 'message').map(n => (
+                  <button
+                    key={n.id}
+                    onClick={() => {
+                      setShowMobileNotifPanel(false);
+                      if (n.postId) router.push(`/tareeq/${n.postId}`);
+                      fetch('/api/tareeq/notifications', { method: 'POST', credentials: 'include' }).catch(() => {});
+                    }}
+                    className="w-full flex items-start gap-3 text-start transition-all active:scale-[0.98]"
+                    style={{
+                      background: 'var(--tr-glass-bg)',
+                      backdropFilter: 'blur(20px) saturate(140%)',
+                      WebkitBackdropFilter: 'blur(20px) saturate(140%)',
+                      border: n.read
+                        ? '1px solid var(--tr-glass-border)'
+                        : '1px solid var(--tr-gold-dim)',
+                      borderRadius: 16,
+                      padding: '12px 14px',
+                      boxShadow: n.read ? '0 2px 12px rgba(0,0,0,0.06)' : '0 2px 12px rgba(0,0,0,0.06)',
+                    }}
+                  >
+                    <NotifIcon type={n.type} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs leading-relaxed" style={{ color: 'var(--tr-text-primary)' }}>
+                        {n.type === 'like' && (
+                          <>{isRtl ? `${n.actorName || 'شخص ما'} أعجب بعلامتك` : `${n.actorName || 'Someone'} liked your mark`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>
+                        )}
+                        {n.type === 'comment' && (
+                          <>{isRtl ? `${n.actorName || 'شخص ما'} علّق على` : `${n.actorName || 'Someone'} commented on`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>
+                        )}
+                        {n.type !== 'like' && n.type !== 'comment' && (
+                          <>{isRtl ? `رسالة من ${n.actorName || 'شخص ما'}` : `Message from ${n.actorName || 'Someone'}`}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>
+                        )}
+                      </p>
+                      <p className="text-[10px] mt-1" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(n.createdAt, isRtl)}</p>
+                    </div>
+                    {!n.read && <div className="w-2 h-2 rounded-full shrink-0 self-center" style={{ background: 'var(--tr-gold)' }} />}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }

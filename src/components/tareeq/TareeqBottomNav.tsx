@@ -55,10 +55,10 @@ function buildNavStrokePath(dy: number): string {
 
 /* ─── Constants ─────────────────────────────────────────────────────────────── */
 const NAV_H = 62;
-const CIRCLE_SIZE = 64;
+const CIRCLE_SIZE = 72;
 const CIRCLE_RADIUS = CIRCLE_SIZE / 2;
-// Circle center sits 6px above nav top edge: bottom_css = 62 + 6 - 32 = 36
-const CIRCLE_BTN_BOTTOM = NAV_H + 6 - CIRCLE_RADIUS; // 36
+// Circle center sits 6px above nav top edge: bottom_css = 62 + 6 - 36 = 32
+const CIRCLE_BTN_BOTTOM = NAV_H + 6 - CIRCLE_RADIUS; // 32
 
 const DRAG_TOL = 10;        // px before entering drag mode
 const CAMERA_THRESHOLD = 68; // px upward to trigger camera
@@ -826,8 +826,8 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
         <img
           ref={addIconRef}
           src="/Add-sign.svg"
-          width="54"
-          height="54"
+          width="62"
+          height="62"
           alt=""
           draggable={false}
           style={{ transition: 'opacity 0.18s ease', userSelect: 'none', pointerEvents: 'none', flexShrink: 0 }}
@@ -960,7 +960,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
 
           {/* 3 — Center spacer + label */}
           <div className="flex flex-col items-center justify-end pb-2" style={{ width: CIRCLE_SIZE, minWidth: CIRCLE_SIZE }}>
-            <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--tr-gold)', lineHeight: 1, letterSpacing: '0.02em' }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--tr-gold)', lineHeight: 1, letterSpacing: '0.02em' }}>
               {isRtl ? 'ضع علامة' : 'Post'}
             </span>
           </div>

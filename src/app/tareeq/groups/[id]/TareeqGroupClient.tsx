@@ -3,7 +3,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
-import TareeqBottomNav from '@/components/tareeq/TareeqBottomNav';
 import { TareeqNotificationsProvider } from '@/context/TareeqNotificationsContext';
 import { compressImage } from '@/lib/compress-image';
 
@@ -474,7 +473,6 @@ function Inner({ groupId }: { groupId: string }) {
           onAdded={() => load(true)}
         />
       )}
-      <TareeqBottomNav onCreateClick={() => {}} />
     </div>
   );
 }

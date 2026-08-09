@@ -438,14 +438,26 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
       }
     };
 
-    await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: offer }));
-    const answerSdp = await pc.createAnswer();
-    await pc.setLocalDescription(answerSdp);
+    try {
+      await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: offer }));
+    } catch {
+      setErrorMsg(isRtl ? 'خطأ في بيانات المكالمة' : 'Invalid call offer');
+      endCall('failed'); return;
+    }
+    let answerSdp: RTCSessionDescriptionInit;
+    try {
+      answerSdp = await pc.createAnswer();
+      await pc.setLocalDescription(answerSdp);
+    } catch {
+      setErrorMsg(isRtl ? 'تعذر إنشاء الاتصال' : 'Could not create answer');
+      endCall('failed'); return;
+    }
 
-    await fetch(`/api/tareeq/calls/${callId}`, {
+    const answerRes = await fetch(`/api/tareeq/calls/${callId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
       body: JSON.stringify({ action: 'answer', answer: answerSdp.sdp }),
-    });
+    }).catch(() => null);
+    if (!answerRes?.ok) { endCall('failed'); return; }
 
     pollingRef.current = setInterval(async () => {
       if (endedRef.current) return;

@@ -944,18 +944,14 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             className="flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
             style={{ minWidth: 44 }}
           >
-            <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.65} viewBox="0 0 24 24"
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"
               style={{
                 color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
                 filter: isHome ? 'drop-shadow(0 0 6px var(--tr-gold-glow))' : 'none',
                 transition: 'all 0.2s',
               }}>
-              {/* Telescope — discover/explore icon */}
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 9l3-5 13 4-3 5z" />
-              <path strokeLinecap="round" d="M6 9l-2 8" />
-              <path strokeLinecap="round" d="M3.5 17h5" />
-              <path strokeLinecap="round" strokeWidth={2} d="M16 8l2.5-4" />
-              <circle cx="10.5" cy="10.5" r="1.2" fill="currentColor" stroke="none" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
               {isRtl ? 'اكتشف' : 'Discover'}

@@ -24,7 +24,7 @@
   --tr-text-secondary: #475569;
   --tr-text-muted:     #94a3b8;
   /* UI chrome — mode-sensitive */
-  --tr-header-bg:    rgba(255,255,255,0.92);
+  --tr-header-bg:    rgba(255,255,255,0.62);
   --tr-backdrop:     rgba(15,23,42,0.45);
   --tr-shadow-sm:    rgba(0,0,0,0.05);
   --tr-shadow-popup: rgba(0,0,0,0.14);

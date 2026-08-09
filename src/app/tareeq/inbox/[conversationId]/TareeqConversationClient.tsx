@@ -146,26 +146,28 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
 
   useEffect(() => {
     const a = new Audio();
-    a.src = url;
     a.preload = 'metadata';
     audioRef.current = a;
+    // metaReady: false while seeking for duration — onerror during this phase is suppressed
+    let metaReady = false;
+    let durationDiscovered = false;
     a.onloadedmetadata = () => {
       if (isFinite(a.duration) && a.duration > 0) {
+        metaReady = true;
         setDuration(a.duration);
       } else {
-        // WebM from MediaRecorder has no duration header — seek to end to discover length
         a.currentTime = 1e10;
       }
     };
-    let durationDiscovered = false;
     a.onseeked = () => {
-      if (durationDiscovered) return; // prevent loop when we reset currentTime to 0
+      if (durationDiscovered) return;
       if (!isFinite(a.duration) || a.duration <= 0) {
         durationDiscovered = true;
         const discovered = a.currentTime;
         if (discovered > 0) setDuration(discovered);
         a.currentTime = 0;
       }
+      metaReady = true;
     };
     a.ontimeupdate = () => {
       setCurTime(a.currentTime);
@@ -181,7 +183,13 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
       setPlaying(false); setProgress(0); setCurTime(0);
       a.currentTime = 0;
     };
-    a.onerror = () => { if (activeAudioEl === a) activeAudioEl = null; setPlaying(false); setHasError(true); };
+    // Only show error if it happens after metadata is ready (i.e. during playback)
+    a.onerror = () => {
+      if (activeAudioEl === a) activeAudioEl = null;
+      setPlaying(false);
+      if (metaReady) setHasError(true);
+    };
+    a.src = url; // set src after handlers to avoid missing early events
     return () => { a.pause(); a.src = ''; if (activeAudioEl === a) activeAudioEl = null; };
   }, [url]);
 

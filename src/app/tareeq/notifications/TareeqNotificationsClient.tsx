@@ -76,7 +76,7 @@ function Inner() {
     if (!user) return;
     fetch('/api/tareeq/notifications?limit=50', { credentials: 'include' })
       .then(r => r.json())
-      .then(d => setNotifs(d.notifications ?? []))
+      .then(d => setNotifs((d.notifications ?? []).filter((n: Notification) => n.type !== 'message')))
       .catch(() => {})
       .finally(() => setLoading(false));
     // Mark all read

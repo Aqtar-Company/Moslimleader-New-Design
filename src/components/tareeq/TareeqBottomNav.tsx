@@ -612,6 +612,8 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
   const svgStrokePathRef = useRef<SVGPathElement>(null);
   const hintRef = useRef<HTMLDivElement>(null);
   const animRafRef = useRef<number | null>(null);
+  const addIconRef = useRef<HTMLImageElement>(null);
+  const camIconRef = useRef<HTMLDivElement>(null);
 
   const gesture = useRef({
     active: false, startY: 0, dy: 0,
@@ -791,6 +793,9 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
         if (btnRef.current) {
           btnRef.current.style.boxShadow = '0 0 28px rgba(255,255,255,0.45), 0 4px 14px rgba(0,0,0,0.2)';
         }
+        // Swap to camera icon
+        if (addIconRef.current) addIconRef.current.style.opacity = '0';
+        if (camIconRef.current) camIconRef.current.style.opacity = '1';
       }
     }
   }
@@ -801,8 +806,10 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
     g.active = false; g.pointerId = null;
     const { mode, dy } = g;
     g.mode = 'idle';
-    // Reset glow
+    // Reset glow + restore add icon
     if (btnRef.current) btnRef.current.style.boxShadow = '';
+    if (addIconRef.current) addIconRef.current.style.opacity = '1';
+    if (camIconRef.current) camIconRef.current.style.opacity = '0';
 
     if (mode !== 'drag') {
       // TAP → animate + create post
@@ -1012,6 +1019,8 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           if (!g.active) return;
           g.active = false; g.pointerId = null; g.mode = 'idle';
           if (btnRef.current) btnRef.current.style.boxShadow = '';
+          if (addIconRef.current) addIconRef.current.style.opacity = '1';
+          if (camIconRef.current) camIconRef.current.style.opacity = '0';
           springReturn(Math.min(g.dy, 110));
         }}
         aria-label={isRtl ? 'نشر علامة' : 'Post mark'}
@@ -1024,21 +1033,43 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           width: CIRCLE_SIZE,
           height: CIRCLE_SIZE,
           borderRadius: '50%',
-          background: 'linear-gradient(145deg, #1d4ed8, #3b82f6)',
-          border: '2.5px solid #ffffff',
-          boxShadow: `0 0 0 3px ${NAV_ACCENT}, 0 6px 24px rgba(37,99,235,0.50), 0 2px 8px rgba(0,0,0,0.20)`,
+          background: 'linear-gradient(145deg, #020e22, #051c3a)',
+          border: '2.5px solid rgba(255,255,255,0.90)',
+          boxShadow: `0 0 0 3px ${NAV_ACCENT}, 0 6px 24px rgba(5,28,58,0.70), 0 2px 8px rgba(0,0,0,0.30)`,
           zIndex: 42,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           willChange: 'transform',
           cursor: 'pointer',
+          overflow: 'hidden',
+          position: 'fixed',
         }}
       >
-        {/* 8-pointed star icon */}
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
-          <path d="M12,3 L13.72,7.84 L18.36,5.64 L16.16,10.28 L21,12 L16.16,13.72 L18.36,18.36 L13.72,16.16 L12,21 L10.28,16.16 L5.64,18.36 L7.84,13.72 L3,12 L7.84,10.28 L5.64,5.64 L10.28,7.84 Z"/>
-        </svg>
+        {/* Add-sign icon */}
+        <img
+          ref={addIconRef}
+          src="/Add-sign.svg"
+          width="38"
+          height="38"
+          alt=""
+          draggable={false}
+          style={{ transition: 'opacity 0.18s ease', userSelect: 'none', pointerEvents: 'none', flexShrink: 0 }}
+        />
+        {/* Camera icon — revealed on swipe-up */}
+        <div
+          ref={camIconRef}
+          style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            opacity: 0, transition: 'opacity 0.18s ease', pointerEvents: 'none',
+          }}
+        >
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+          </svg>
+        </div>
 
         {/* Swipe-up hint — hidden by default, shown only on touch (opacity driven by DOM refs) */}
         {showHint && (
@@ -1131,17 +1162,18 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             className="flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
             style={{ minWidth: 44 }}
           >
-            <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.7} viewBox="0 0 24 24"
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.65} viewBox="0 0 24 24"
               style={{
                 color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
                 filter: isHome ? 'drop-shadow(0 0 6px var(--tr-gold-glow))' : 'none',
                 transition: 'all 0.2s',
               }}>
-              {/* Binoculars — discover/explore icon */}
-              <circle cx="6.5" cy="13" r="4" />
-              <circle cx="17.5" cy="13" r="4" />
-              <path strokeLinecap="round" d="M10.5 13h3" />
-              <path strokeLinecap="round" d="M6.5 9V7l2-2h7l2 2v2" />
+              {/* Telescope — discover/explore icon */}
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 9l3-5 13 4-3 5z" />
+              <path strokeLinecap="round" d="M6 9l-2 8" />
+              <path strokeLinecap="round" d="M3.5 17h5" />
+              <path strokeLinecap="round" strokeWidth={2} d="M16 8l2.5-4" />
+              <circle cx="10.5" cy="10.5" r="1.2" fill="currentColor" stroke="none" />
             </svg>
             <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
               {isRtl ? 'اكتشف' : 'Discover'}

@@ -13,6 +13,8 @@ import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import { Product, ProductVariant } from '@/types';
 import ProductCard from '@/components/product/ProductCard';
 import { sanitizeHtml } from '@/lib/sanitize';
+import { SupportRequestButton } from '@/components/support/SupportRequestButton';
+import { SponsorCopySection } from '@/components/support/SponsorCopySection';
 
 const MODEL_CATEGORIES = ['الأدوات والمستلزمات الدراسية'];
 // Slugs where images[0] is overview and images[1+] are models
@@ -434,6 +436,24 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
                   </svg>
                 </button>
+              </div>
+            )}
+
+            {/* Support request + sponsor copy */}
+            {!product.comingSoon && (
+              <div className="space-y-2 pt-1">
+                <SupportRequestButton
+                  productId={product.id}
+                  productName={product.name}
+                  productPrice={priceResult.price}
+                  currency={priceResult.currency}
+                />
+                <SponsorCopySection
+                  productId={product.id}
+                  productName={product.name}
+                  productPrice={priceResult.price}
+                  currency={priceResult.currency}
+                />
               </div>
             )}
 

@@ -83,12 +83,49 @@ export const AUDIT_ACTIONS = {
   'production-file.upload': 'رفع ملف إنتاج',
   'production-file.version-replace': 'تحديث نسخة ملف إنتاج',
   'production-file.delete': 'حذف ملف إنتاج',
+  // Support system — Support Requests
+  'support-request.create': 'إنشاء طلب دعم سعر',
+  'support-request.under-review': 'وضع طلب دعم قيد المراجعة',
+  'support-request.approve-ml': 'الموافقة على دعم ML لطلب دعم',
+  'support-request.approve-copy': 'تخصيص نسخة مدعومة لطلب دعم',
+  'support-request.reject': 'رفض طلب دعم',
+  'support-request.expire': 'انتهاء صلاحية طلب دعم',
+  'support-request.consume': 'استخدام دعم في أوردر',
+  'support-request.cancel': 'إلغاء طلب دعم',
+  // Support system — Sponsored Copies
+  'sponsored-copy.create': 'إنشاء نسخة مدعومة',
+  'sponsored-copy.assign': 'تخصيص نسخة مدعومة لمستفيد',
+  'sponsored-copy.unassign': 'إلغاء تخصيص نسخة مدعومة',
+  'sponsored-copy.preparation-start': 'بدء تجهيز نسخة مدعومة',
+  'sponsored-copy.ship': 'شحن نسخة مدعومة',
+  'sponsored-copy.deliver': 'تسليم نسخة مدعومة',
+  'sponsored-copy.beneficiary-confirm': 'تأكيد استلام المستفيد',
+  'sponsored-copy.complete': 'اكتمال رحلة نسخة مدعومة',
+  'sponsored-copy.refund': 'استرداد نسخة مدعومة',
+  'sponsored-copy.cancel': 'إلغاء نسخة مدعومة',
+  // Support system — Sponsors
+  'sponsor.create': 'إضافة داعم',
+  'sponsor.update': 'تعديل بيانات داعم',
+  'sponsor.deactivate': 'تعطيل داعم',
+  // Support system — Sponsored Orders
+  'sponsored-order.create': 'إنشاء طلب شراء نسخ مدعومة',
+  'sponsored-order.mark-paid': 'تأكيد دفع طلب نسخ مدعومة',
+  'sponsored-order.refund': 'استرداد طلب نسخ مدعومة',
+  // Support system — Impact content moderation
+  'impact-message.approve': 'الموافقة على رسالة شكر',
+  'impact-message.reject': 'رفض رسالة شكر',
+  'impact-media.approve': 'الموافقة على صورة استلام',
+  'impact-media.reject': 'رفض صورة استلام',
+  // Support system — Settings
+  'support-settings.update': 'تحديث إعدادات نظام الدعم',
+  // Support system — ML Budget
+  'ml-budget.adjust': 'تعديل ميزانية دعم Muslim Leader',
 } as const;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
 
 export interface LogActionInput {
-  actor: AuthedUser | { userId: string; role: string; name?: string; email: string } | null;
+  actor: AuthedUser | { userId: string; role: string; name?: string; email?: string } | null;
   action: AuditAction;
   entity?: string;
   entityId?: string;

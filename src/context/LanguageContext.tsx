@@ -298,6 +298,16 @@ const translations = {
     'freeMedia.mp3': 'ملف صوتي',
     'freeMedia.image': 'صورة تلوين',
     'freeMedia.pdf': 'ملف PDF',
+
+    // Support system
+    'support.requestBtn': 'طلب دعم السعر',
+    'support.requestTitle': 'طلب دعم السعر',
+    'support.requestSent': 'تم إرسال طلب الدعم — سيُراجع قريباً',
+    'support.activeRequest': 'لديك طلب دعم نشط لهذا المنتج',
+    'support.myRequests': 'طلبات الدعم',
+    'support.sponsorTitle': 'أريد أن أتبرع بنسخ لمن يحتاجها',
+    'support.sponsorDesc': 'ادعم شخصاً آخر بشراء نسخة من هذا المنتج',
+    'support.sponsorImpact': 'أثر تبرعاتي',
   },
   en: {
     // Nav
@@ -592,6 +602,16 @@ const translations = {
     'freeMedia.mp3': 'Audio File',
     'freeMedia.image': 'Coloring Page',
     'freeMedia.pdf': 'PDF File',
+
+    // Support system
+    'support.requestBtn': 'Request Price Support',
+    'support.requestTitle': 'Request Price Support',
+    'support.requestSent': 'Your request has been sent — we will review it soon',
+    'support.activeRequest': 'You have an active support request for this product',
+    'support.myRequests': 'My Support Requests',
+    'support.sponsorTitle': 'Sponsor a copy for someone in need',
+    'support.sponsorDesc': 'Purchase a copy of this product and we will deliver it to someone who requested support',
+    'support.sponsorImpact': 'My Sponsorship Impact',
   },
 } as const;
 

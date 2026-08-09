@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
-import TareeqBottomNav from '@/components/tareeq/TareeqBottomNav';
 import { TareeqNotificationsProvider } from '@/context/TareeqNotificationsContext';
 
 interface OtherUser { id: string; name: string; avatarUrl?: string | null }
@@ -87,6 +86,8 @@ function Inner() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
 
   function loadAll() {
     setLoading(true);
@@ -122,6 +123,36 @@ function Inner() {
           <h1 className="font-black text-xl" style={{ color: 'var(--tr-text-primary)' }}>
             {isRtl ? 'الرسائل' : 'Messages'}
           </h1>
+          <div className="flex items-center gap-2">
+            {/* Search toggle — DMs only */}
+            {tab === 'dms' && (
+              <div className="flex items-center overflow-hidden rounded-full transition-all duration-300"
+                style={{
+                  background: searchOpen ? 'var(--tr-overlay)' : 'transparent',
+                  border: searchOpen ? '1px solid var(--tr-border-soft)' : '1px solid transparent',
+                  width: searchOpen ? 180 : 36, height: 36,
+                }}>
+                <button
+                  onClick={() => { setSearchOpen(o => !o); if (searchOpen) setSearchQuery(''); }}
+                  className="shrink-0 w-9 h-9 flex items-center justify-center transition"
+                  style={{ color: searchOpen ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                  </svg>
+                </button>
+                {searchOpen && (
+                  <input
+                    autoFocus
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder={isRtl ? 'ابحث...' : 'Search...'}
+                    className="flex-1 bg-transparent text-xs outline-none pe-3"
+                    style={{ color: 'var(--tr-text-primary)' }}
+                  />
+                )}
+              </div>
+            )}
           {tab === 'groups' && (
             <button
               onClick={() => setShowCreateGroup(true)}
@@ -134,6 +165,7 @@ function Inner() {
               {isRtl ? 'مجموعة جديدة' : 'New Group'}
             </button>
           )}
+          </div>
         </div>
 
         {/* Tabs */}
@@ -153,8 +185,11 @@ function Inner() {
           <div className="flex justify-center py-20">
             <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
           </div>
-        ) : tab === 'dms' ? (
-          conversations.length === 0 ? (
+        ) : tab === 'dms' ? (() => {
+          const filtered = conversations.filter(c =>
+            !searchQuery || c.otherUser.name.toLowerCase().includes(searchQuery.toLowerCase())
+          );
+          return filtered.length === 0 ? (
             <div className="text-center py-20">
               <svg className="w-14 h-14 mx-auto mb-4" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
@@ -164,7 +199,7 @@ function Inner() {
             </div>
           ) : (
             <div className="space-y-2">
-              {conversations.map(c => (
+              {filtered.map(c => (
                 <Link key={c.id} href={`/tareeq/inbox/${c.id}`}
                   className="flex items-center gap-3 p-4 rounded-2xl transition"
                   style={{ background: c.unreadCount > 0 ? 'var(--tr-raised)' : 'var(--tr-surface)', border: c.unreadCount > 0 ? '1px solid var(--tr-gold-dim)' : '1px solid var(--tr-border-subtle)' }}
@@ -183,8 +218,8 @@ function Inner() {
                 </Link>
               ))}
             </div>
-          )
-        ) : (
+          );
+        })() : (
           groups.length === 0 ? (
             <div className="text-center py-20">
               <div className="w-14 h-14 mx-auto mb-4 rounded-2xl flex items-center justify-center text-2xl" style={{ background: 'var(--tr-overlay)' }}>👥</div>
@@ -223,7 +258,6 @@ function Inner() {
       {showCreateGroup && (
         <CreateGroupModal onClose={() => setShowCreateGroup(false)} onCreated={(groupId) => { loadAll(); if (groupId) router.push(`/tareeq/groups/${groupId}`); }} />
       )}
-      <TareeqBottomNav onCreateClick={() => {}} />
     </div>
   );
 }

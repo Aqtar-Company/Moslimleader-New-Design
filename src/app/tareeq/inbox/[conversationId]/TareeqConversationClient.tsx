@@ -120,9 +120,12 @@ function ReadTick({ read }: { read: boolean }) {
 }
 
 function fmtDuration(s: number) {
+  if (!isFinite(s) || s < 0) return '0:00';
   const m = Math.floor(s / 60);
   return `${m}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
 }
+
+let activeAudioEl: HTMLAudioElement | null = null;
 
 function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
   const [playing, setPlaying] = useState(false);
@@ -145,23 +148,48 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
     a.src = url;
     a.preload = 'metadata';
     audioRef.current = a;
-    a.onloadedmetadata = () => setDuration(a.duration || 0);
+    a.onloadedmetadata = () => {
+      if (isFinite(a.duration) && a.duration > 0) {
+        setDuration(a.duration);
+      } else {
+        // WebM from MediaRecorder has no duration header — seek to end to discover length
+        a.currentTime = 1e10;
+      }
+    };
+    a.onseeked = () => {
+      if (!isFinite(a.duration) || a.duration <= 0) {
+        const discovered = a.currentTime;
+        if (discovered > 0) setDuration(discovered);
+        a.currentTime = 0;
+      }
+    };
     a.ontimeupdate = () => {
       setCurTime(a.currentTime);
-      setProgress(a.currentTime / (a.duration || 1));
+      setProgress(a.duration > 0 ? a.currentTime / a.duration : 0);
+    };
+    a.onpause = () => {
+      if (activeAudioEl === a) activeAudioEl = null;
+      setPlaying(false);
     };
     a.onended = () => {
+      if (activeAudioEl === a) activeAudioEl = null;
       setPlaying(false); setProgress(0); setCurTime(0);
       a.currentTime = 0;
     };
-    return () => { a.pause(); a.src = ''; };
+    return () => { a.pause(); a.src = ''; if (activeAudioEl === a) activeAudioEl = null; };
   }, [url]);
 
   function toggle() {
     const a = audioRef.current;
     if (!a) return;
-    if (playing) { a.pause(); } else { a.play().catch(() => {}); }
-    setPlaying(p => !p);
+    if (playing) {
+      a.pause();
+    } else {
+      if (activeAudioEl && activeAudioEl !== a) activeAudioEl.pause();
+      activeAudioEl = a;
+      a.play().catch(() => {});
+      setPlaying(true);
+    }
   }
 
   function seek(e: React.MouseEvent<HTMLDivElement>) {

@@ -10,7 +10,6 @@ import TareeqCreateModal from '@/components/tareeq/TareeqCreateModal';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
 import { TAREEQ_CATEGORIES, CATEGORY_ICONS, CATEGORY_ACCENT_HEX } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
-import TareeqBottomNav from '@/components/tareeq/TareeqBottomNav';
 import TareeqSidebar from '@/components/tareeq/TareeqSidebar';
 import TareeqHeader from '@/components/tareeq/TareeqHeader';
 import TareeqPWA, { TareeqInstallBanner } from '@/components/tareeq/TareeqPWA';
@@ -756,7 +755,6 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         />
       )}
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
-      <div className="lg:hidden"><TareeqBottomNav onCreateClick={() => { if (user) setShowCreate(true); else setShowGate(true); }} /></div>
     </div>
   );
 }

@@ -170,6 +170,7 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
       setCurTime(a.currentTime);
       setProgress(a.duration > 0 ? a.currentTime / a.duration : 0);
     };
+    a.onplay = () => setPlaying(true);
     a.onpause = () => {
       if (activeAudioEl === a) activeAudioEl = null;
       setPlaying(false);
@@ -179,6 +180,7 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
       setPlaying(false); setProgress(0); setCurTime(0);
       a.currentTime = 0;
     };
+    a.onerror = () => { if (activeAudioEl === a) activeAudioEl = null; setPlaying(false); };
     return () => { a.pause(); a.src = ''; if (activeAudioEl === a) activeAudioEl = null; };
   }, [url]);
 
@@ -190,8 +192,7 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
     } else {
       if (activeAudioEl && activeAudioEl !== a) activeAudioEl.pause();
       activeAudioEl = a;
-      a.play().catch(() => {});
-      setPlaying(true);
+      a.play().catch(() => { if (activeAudioEl === a) activeAudioEl = null; });
     }
   }
 
@@ -1095,20 +1096,18 @@ function Inner({ conversationId }: { conversationId: string }) {
             <button
               onMouseDown={e => e.preventDefault()}
               onClick={canSend ? handleSend : handleMic}
-              style={{ display: micActive ? 'none' : undefined }}
               className="shrink-0 w-11 h-11 flex items-center justify-center rounded-full transition-all active:scale-90"
-              style={canSend ? {
-                background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))',
-                color: '#fff',
-                boxShadow: '0 4px 16px var(--tr-gold-glow)',
-              } : micActive ? {
-                background: '#ef4444',
-                color: '#fff',
-                boxShadow: '0 4px 16px rgba(239,68,68,0.4)',
-              } : {
-                background: 'var(--tr-raised)',
-                color: 'var(--tr-text-secondary)',
-                border: '1px solid var(--tr-border-soft)',
+              style={{
+                display: micActive ? 'none' : undefined,
+                ...(canSend ? {
+                  background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))',
+                  color: '#fff',
+                  boxShadow: '0 4px 16px var(--tr-gold-glow)',
+                } : {
+                  background: 'var(--tr-raised)',
+                  color: 'var(--tr-text-secondary)',
+                  border: '1px solid var(--tr-border-soft)',
+                }),
               }}
               aria-label={canSend ? (isRtl ? 'إرسال' : 'Send') : (isRtl ? 'تسجيل صوت' : 'Voice')}
             >

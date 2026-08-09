@@ -891,7 +891,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
       )}
 
       {/* ── Floating notification bell ─────────────────────── */}
-      <div className="fixed z-50 print:hidden" style={{ top: 14, [isRtl ? 'left' : 'right']: 14 }}>
+      <div className="fixed z-50 print:hidden" style={{ top: 14, right: 14 }}>
         <button
           ref={bellRef}
           onClick={() => { if (navigator.vibrate) navigator.vibrate(6); setShowNotifs(v => !v); }}
@@ -928,7 +928,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             className="absolute mt-2 flex flex-col overflow-hidden"
             style={{
               top: '100%',
-              [isRtl ? 'left' : 'right']: 0,
+              right: 0,
               width: 'min(340px, calc(100vw - 28px))',
               maxHeight: '65vh',
               borderRadius: 20,
@@ -1033,9 +1033,9 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           width: CIRCLE_SIZE,
           height: CIRCLE_SIZE,
           borderRadius: '50%',
-          background: 'linear-gradient(145deg, #020e22, #051c3a)',
-          border: '2.5px solid rgba(255,255,255,0.90)',
-          boxShadow: `0 0 0 3px ${NAV_ACCENT}, 0 6px 24px rgba(5,28,58,0.70), 0 2px 8px rgba(0,0,0,0.30)`,
+          background: 'transparent',
+          border: 'none',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.22)',
           zIndex: 42,
           display: 'flex',
           alignItems: 'center',
@@ -1043,15 +1043,14 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           willChange: 'transform',
           cursor: 'pointer',
           overflow: 'hidden',
-          position: 'fixed',
         }}
       >
         {/* Add-sign icon */}
         <img
           ref={addIconRef}
           src="/Add-sign.svg"
-          width="38"
-          height="38"
+          width="52"
+          height="52"
           alt=""
           draggable={false}
           style={{ transition: 'opacity 0.18s ease', userSelect: 'none', pointerEvents: 'none', flexShrink: 0 }}

@@ -171,11 +171,10 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
       setCurTime(a.currentTime);
       setProgress(a.duration > 0 ? a.currentTime / a.duration : 0);
     };
-    a.onplay = () => setPlaying(true);
-    a.onpause = () => {
-      if (activeAudioEl === a) activeAudioEl = null;
-      setPlaying(false);
-    };
+    // Note: onplay is intentionally NOT used — the 'play' event can silently not
+    // fire on mobile browsers (esp. Chrome Android). setPlaying(true) is set
+    // optimistically in toggle() at the moment play() is called instead.
+    a.onpause = () => { if (activeAudioEl === a) activeAudioEl = null; setPlaying(false); };
     a.onended = () => {
       if (activeAudioEl === a) activeAudioEl = null;
       setPlaying(false); setProgress(0); setCurTime(0);
@@ -193,7 +192,12 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
     } else {
       if (activeAudioEl && activeAudioEl !== a) activeAudioEl.pause();
       activeAudioEl = a;
-      a.play().catch(() => { if (activeAudioEl === a) activeAudioEl = null; });
+      setPlaying(true); // optimistic — don't wait for 'play' event which may not fire on mobile
+      a.play().catch(() => {
+        setPlaying(false);
+        if (activeAudioEl === a) activeAudioEl = null;
+        setHasError(true);
+      });
     }
   }
 
@@ -744,16 +748,6 @@ function Inner({ conversationId }: { conversationId: string }) {
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-                </svg>
-              </button>
-              <button
-                onClick={() => startCall('video')}
-                className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90"
-                style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}
-                aria-label={isRtl ? 'مكالمة فيديو' : 'Video call'}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
                 </svg>
               </button>
             </div>

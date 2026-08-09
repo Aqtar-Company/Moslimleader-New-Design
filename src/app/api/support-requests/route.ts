@@ -75,11 +75,11 @@ export async function POST(req: NextRequest) {
 
   // H-4: apply product-overrides for static products so the snapshot
   // reflects the admin-configured price, not the stale DB copy.
-  let product = rawProduct as typeof rawProduct & { price: number };
+  let product = rawProduct as unknown as typeof rawProduct & { price: number };
   if (rawProduct.source === 'static') {
     const overrides = await loadStaticOverrides();
-    const merged = applyOverride(rawProduct as Parameters<typeof applyOverride>[0], overrides[rawProduct.id]);
-    if (merged) product = merged as typeof product;
+    const merged = applyOverride(rawProduct as unknown as Parameters<typeof applyOverride>[0], overrides[rawProduct.id]);
+    if (merged) product = merged as unknown as typeof product;
   }
 
   const dbUser = await prisma.user.findUnique({

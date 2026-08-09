@@ -110,6 +110,7 @@ export const AUDIT_ACTIONS = {
   // Support system — Sponsored Orders
   'sponsored-order.create': 'إنشاء طلب شراء نسخ مدعومة',
   'sponsored-order.mark-paid': 'تأكيد دفع طلب نسخ مدعومة',
+  'sponsored-order.cancel': 'إلغاء طلب نسخ مدعومة',
   'sponsored-order.refund': 'استرداد طلب نسخ مدعومة',
   // Support system — Impact content moderation
   'impact-message.approve': 'الموافقة على رسالة شكر',

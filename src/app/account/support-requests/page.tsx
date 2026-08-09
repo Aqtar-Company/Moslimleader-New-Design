@@ -50,6 +50,83 @@ const REASON_LABELS: Record<string, string> = {
   other: 'أخرى',
 };
 
+function ThankYouForm({ copyId, currentStatus, onDone }: { copyId: string; currentStatus: string; onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+  const [sent, setSent] = useState(false);
+
+  const alreadyConfirmed = currentStatus === 'CONFIRMED' || currentStatus === 'COMPLETED';
+
+  const handleSubmit = async () => {
+    setSending(true); setError('');
+    const res = await fetch('/api/beneficiary/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ copyId, message: message.trim() || undefined }),
+    });
+    if (res.ok) {
+      setSent(true);
+      onDone();
+    } else {
+      const d = await res.json();
+      setError(d.error ?? 'حدث خطأ');
+    }
+    setSending(false);
+  };
+
+  if (sent) return (
+    <div className="mt-3 bg-green-50 border border-green-200 rounded-xl p-3 text-sm text-green-800">
+      ✓ شكراً — تم إرسال رسالتك وستُراجع قبل وصولها للداعم.
+    </div>
+  );
+
+  return (
+    <div className="mt-3">
+      {!open ? (
+        <button
+          onClick={() => setOpen(true)}
+          className="text-xs text-blue-600 hover:text-blue-800 underline"
+        >
+          {alreadyConfirmed ? 'إرسال رسالة شكر للداعم' : 'تأكيد الاستلام وإرسال رسالة شكر'}
+        </button>
+      ) : (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+          <p className="text-sm font-medium text-amber-900">
+            {alreadyConfirmed ? 'رسالة شكر للداعم (اختياري)' : 'تأكيد استلام النسخة'}
+          </p>
+          <p className="text-xs text-amber-700">
+            رسالتك ستُراجع من فريقنا أولاً قبل أن يراها الداعم. هويتك تبقى مجهولة تماماً.
+          </p>
+          <textarea
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            maxLength={1000}
+            rows={3}
+            placeholder="مثال: الحمد لله وصلني الكتاب، جزاك الله خيراً..."
+            className="w-full border border-amber-300 rounded-lg px-3 py-2 text-sm bg-white resize-none"
+          />
+          <p className="text-xs text-gray-400 text-left">{message.length}/1000</p>
+          {error && <p className="text-red-600 text-xs">{error}</p>}
+          <div className="flex gap-2">
+            <button
+              onClick={handleSubmit}
+              disabled={sending}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm rounded-lg font-medium disabled:opacity-50"
+            >
+              {sending ? '...' : alreadyConfirmed ? 'إرسال' : 'تأكيد الاستلام وإرسال'}
+            </button>
+            <button onClick={() => setOpen(false)} className="text-sm text-gray-400 hover:text-gray-600">
+              إلغاء
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AccountSupportRequestsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
@@ -144,6 +221,20 @@ export default function AccountSupportRequestsPage() {
                               رقم التتبع: <span className="font-mono">{req.sponsoredCopy.trackingNumber}</span>
                               {req.sponsoredCopy.shippingProvider && ` (${req.sponsoredCopy.shippingProvider})`}
                             </p>
+                          )}
+                          {/* Thank-you form — show when delivered or already confirmed */}
+                          {['DELIVERED', 'CONFIRMED', 'COMPLETED'].includes(req.sponsoredCopy.status) && (
+                            <ThankYouForm
+                              copyId={req.sponsoredCopy.id}
+                              currentStatus={req.sponsoredCopy.status}
+                              onDone={() => {
+                                setRequests(prev => prev.map(r =>
+                                  r.id === req.id && r.sponsoredCopy
+                                    ? { ...r, sponsoredCopy: { ...r.sponsoredCopy!, status: 'CONFIRMED' } }
+                                    : r
+                                ));
+                              }}
+                            />
                           )}
                         </div>
                       )}

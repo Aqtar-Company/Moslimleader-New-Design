@@ -33,7 +33,7 @@ export function SponsorCopySection({ productId, productName, productPrice, curre
     });
     if (res.ok) {
       const d = await res.json();
-      setOrderCreated({ orderId: d.orderId, total: d.totalPaid });
+      setOrderCreated({ orderId: d.sponsoredOrder?.id ?? '', total: d.sponsoredOrder?.totalPaid ?? 0 });
     } else {
       const d = await res.json();
       setError(d.error ?? 'حدث خطأ');

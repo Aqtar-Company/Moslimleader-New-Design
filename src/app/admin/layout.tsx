@@ -47,6 +47,12 @@ const NAV: NavItem[] = [
   { href: '/admin/ai-facebook-assistant', label: 'مساعد فيسبوك',     icon: '🤖', requireAny: ['ai-assistant.read'] },
   { href: '/admin/coupons',           label: 'الكوبونات',         icon: '🎟️', requireAny: ['coupons.read'] },
   { href: '/admin/reviews',           label: 'التقييمات',         icon: '⭐', requireAny: ['reviews.read'] },
+  // —— Support system ——
+  { href: '/admin/support-requests',   label: 'طلبات الدعم',        icon: '🤲', superAdminOnly: true },
+  { href: '/admin/sponsored-orders',   label: 'طلبات الرعاية',      icon: '🎁', superAdminOnly: true },
+  { href: '/admin/sponsors',           label: 'الداعمون',           icon: '💛', superAdminOnly: true },
+  { href: '/admin/impact-content',     label: 'محتوى التأثير',      icon: '📸', superAdminOnly: true },
+  { href: '/admin/support-settings',   label: 'إعدادات الدعم',      icon: '⚙️', superAdminOnly: true },
   // —— Reports ——
   { href: '/admin/reports/sales-by-product', label: 'توزيع المبيعات', icon: '📊', requireAny: ['valuation.read'] },
   { href: '/admin/reports/bosta-orphans',    label: 'مطابقة طلبات بوسطة',  icon: '📦', requireAny: ['inventory.read'] },

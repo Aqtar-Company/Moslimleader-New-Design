@@ -353,6 +353,14 @@ export default function AccountPage() {
             <span className="hidden sm:inline text-sm">{fullLabel}</span>
           </button>
         ))}
+        <Link
+          href="/account/support-requests"
+          className="shrink-0 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-2.5 px-2 sm:px-3 rounded-xl font-bold transition whitespace-nowrap text-gray-500 hover:text-gray-700"
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm1-11a1 1 0 1 0-2 0v3.586l-1.293-1.293a1 1 0 0 0-1.414 1.414l3 3a1 1 0 0 0 1.414 0l3-3a1 1 0 0 0-1.414-1.414L11 10.586V7z" clipRule="evenodd"/></svg>
+          <span className="text-[9px] sm:hidden leading-none">{isRtl ? 'دعم' : 'Support'}</span>
+          <span className="hidden sm:inline text-sm">{isRtl ? 'طلبات الدعم' : 'Support'}</span>
+        </Link>
       </div>
 
       {/* Profile Tab */}

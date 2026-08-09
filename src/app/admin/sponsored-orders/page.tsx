@@ -21,6 +21,9 @@ export default function AdminSponsoredOrdersPage() {
   const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [marking, setMarking] = useState<string | null>(null);
+  const [actionTarget, setActionTarget] = useState<{ id: string; action: 'cancel' | 'refund' } | null>(null);
+  const [actionReason, setActionReason] = useState('');
+  const [actionError, setActionError] = useState('');
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
@@ -49,6 +52,22 @@ export default function AdminSponsoredOrdersPage() {
     setMarking(null);
   };
 
+  const submitAction = async () => {
+    if (!actionTarget) return;
+    setActionError('');
+    const res = await fetch(`/api/admin/sponsored-orders/${actionTarget.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: actionTarget.action, reason: actionReason }),
+    });
+    if (res.ok) {
+      setActionTarget(null); setActionReason('');
+      await load();
+    } else {
+      const d = await res.json();
+      setActionError(d.error ?? 'حدث خطأ');
+    }
+  };
+
   const createOrder = async () => {
     setSaving(true); setFormError('');
     const res = await fetch('/api/admin/sponsored-orders', {
@@ -64,6 +83,40 @@ export default function AdminSponsoredOrdersPage() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto" dir="rtl">
+
+      {/* Reason modal */}
+      {actionTarget && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl" dir="rtl">
+            <h3 className="font-bold text-gray-900 mb-1">
+              {actionTarget.action === 'cancel' ? 'إلغاء الطلب' : 'التراجع عن تأكيد الدفع'}
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">
+              {actionTarget.action === 'refund'
+                ? 'سيتم إلغاء النسخ المتاحة وتحويل الطلب إلى "مُسترد". لا يمكن التراجع إن كانت نسخ مخصصة لمستفيدين.'
+                : 'سيتم تحويل الطلب إلى "ملغى".'}
+            </p>
+            <textarea
+              value={actionReason}
+              onChange={e => setActionReason(e.target.value)}
+              placeholder="السبب (اختياري)"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm h-20 mb-3"
+            />
+            {actionError && <p className="text-red-600 text-sm mb-3">{actionError}</p>}
+            <div className="flex gap-2">
+              <button onClick={submitAction}
+                className={`px-4 py-2 rounded-lg text-sm text-white font-medium ${actionTarget.action === 'cancel' ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'}`}>
+                تأكيد
+              </button>
+              <button onClick={() => { setActionTarget(null); setActionReason(''); setActionError(''); }}
+                className="px-4 py-2 rounded-lg text-sm text-gray-600 border border-gray-200 hover:bg-gray-50">
+                رجوع
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">طلبات شراء النسخ المدعومة</h1>
@@ -160,15 +213,33 @@ export default function AdminSponsoredOrdersPage() {
                   <td className="p-3 text-center text-gray-600">{o._count.copies} / {o.quantity}</td>
                   <td className="p-3 text-gray-400 text-xs">{new Date(o.createdAt).toLocaleDateString('ar-EG')}</td>
                   <td className="p-3">
-                    {o.paymentStatus === 'pending' && (
-                      <button
-                        onClick={() => markPaid(o.id)}
-                        disabled={marking === o.id}
-                        className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 disabled:opacity-50"
-                      >
-                        {marking === o.id ? '...' : 'تأكيد الدفع'}
-                      </button>
-                    )}
+                    <div className="flex flex-col gap-1">
+                      {o.paymentStatus === 'pending' && (
+                        <>
+                          <button
+                            onClick={() => markPaid(o.id)}
+                            disabled={marking === o.id}
+                            className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 disabled:opacity-50"
+                          >
+                            {marking === o.id ? '...' : 'تأكيد الدفع'}
+                          </button>
+                          <button
+                            onClick={() => { setActionTarget({ id: o.id, action: 'cancel' }); setActionError(''); }}
+                            className="text-xs text-red-500 hover:text-red-700 underline"
+                          >
+                            إلغاء
+                          </button>
+                        </>
+                      )}
+                      {o.paymentStatus === 'paid' && (
+                        <button
+                          onClick={() => { setActionTarget({ id: o.id, action: 'refund' }); setActionError(''); }}
+                          className="text-xs text-orange-600 hover:text-orange-800 underline"
+                        >
+                          تراجع / استرداد
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

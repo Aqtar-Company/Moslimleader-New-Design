@@ -14,9 +14,10 @@ interface Props {
   onCreated: (id?: string) => void;
   initialContent?: string;
   initialFile?: File;
+  mode?: 'text' | 'media';
 }
 
-export default function TareeqCreateModal({ onClose, onCreated, initialContent, initialFile }: Props) {
+export default function TareeqCreateModal({ onClose, onCreated, initialContent, initialFile, mode = 'text' }: Props) {
   const { isRtl } = useLang();
   const { user } = useAuth();
   const [mounted, setMounted] = useState(false);
@@ -37,7 +38,10 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
 
   useEffect(() => {
     setMounted(true);
-    setTimeout(() => textareaRef.current?.focus(), 80);
+    if (mode !== 'media') {
+      setTimeout(() => textareaRef.current?.focus(), 80);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -208,7 +212,9 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
 
           {/* Title */}
           <span className="font-black text-sm" style={{ color: 'var(--tr-text-primary)' }}>
-            {isRtl ? '★ اترك علامة' : '★ Leave a Mark'}
+            {mode === 'media'
+              ? (isRtl ? '🖼 صورة / فيديو' : '🖼 Photo / Video')
+              : (isRtl ? '★ اترك علامة' : '★ Leave a Mark')}
           </span>
 
           {/* Publish */}
@@ -269,9 +275,9 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                 ref={textareaRef}
                 value={content}
                 onChange={e => { setContent(e.target.value); autoResize(); if (error) setError(''); }}
-                placeholder={isRtl
-                  ? 'شارك تجربتك أو فكرتك أو سؤالك...'
-                  : 'Share your experience, idea, or question...'}
+                placeholder={mode === 'media'
+                  ? (isRtl ? 'أضف وصفاً أو تعليقاً (اختياري)...' : 'Add a caption (optional)...')
+                  : (isRtl ? 'شارك تجربتك أو فكرتك أو سؤالك...' : 'Share your experience, idea, or question...')}
                 maxLength={5000}
                 rows={4}
                 className="w-full text-sm outline-none resize-none bg-transparent leading-relaxed"
@@ -341,20 +347,41 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
             </div>
           ) : (
             /* Upload trigger area — tappable card */
-            <label className="mx-4 mb-4 flex flex-col items-center justify-center gap-2 rounded-2xl cursor-pointer transition"
+            <label
+              className="mx-4 mb-4 flex flex-col items-center justify-center gap-3 rounded-2xl cursor-pointer transition"
               style={{
-                height: 90,
-                border: '1.5px dashed var(--tr-border-soft)',
-                background: 'var(--tr-overlay)',
-                color: 'var(--tr-text-muted)',
+                height: mode === 'media' ? 148 : 90,
+                border: mode === 'media' ? '2px solid var(--tr-gold-dim)' : '1.5px dashed var(--tr-border-soft)',
+                background: mode === 'media' ? 'var(--tr-gold-glow)' : 'var(--tr-overlay)',
+                color: mode === 'media' ? 'var(--tr-gold)' : 'var(--tr-text-muted)',
+                boxShadow: mode === 'media' ? 'inset 0 0 0 3px var(--tr-gold-glow)' : 'none',
               }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--tr-gold-dim)'; (e.currentTarget as HTMLElement).style.color = 'var(--tr-gold)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--tr-border-soft)'; (e.currentTarget as HTMLElement).style.color = 'var(--tr-text-muted)'; }}
+              onMouseEnter={e => {
+                const el = e.currentTarget as HTMLElement;
+                el.style.borderColor = 'var(--tr-gold-bright)';
+                el.style.color = mode === 'media' ? 'var(--tr-gold-bright)' : 'var(--tr-gold)';
+              }}
+              onMouseLeave={e => {
+                const el = e.currentTarget as HTMLElement;
+                el.style.borderColor = mode === 'media' ? 'var(--tr-gold-dim)' : 'var(--tr-border-soft)';
+                el.style.color = mode === 'media' ? 'var(--tr-gold)' : 'var(--tr-text-muted)';
+              }}
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              <svg className={mode === 'media' ? 'w-8 h-8' : 'w-6 h-6'} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 10.5h.008v.008H3V10.5zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM4.875 18h14.25a1.875 1.875 0 001.875-1.875V7.875A1.875 1.875 0 0019.125 6H4.875A1.875 1.875 0 003 7.875v8.25A1.875 1.875 0 004.875 18z" />
               </svg>
-              <span className="text-xs font-semibold">{isRtl ? 'اضغط لإضافة صورة أو فيديو' : 'Tap to add photo or video'}</span>
+              <div className="flex flex-col items-center gap-1">
+                <span className={`font-bold ${mode === 'media' ? 'text-sm' : 'text-xs'}`}>
+                  {mode === 'media'
+                    ? (isRtl ? 'اضغط لاختيار صورة أو فيديو' : 'Tap to select photo or video')
+                    : (isRtl ? 'اضغط لإضافة صورة أو فيديو' : 'Tap to add photo or video')}
+                </span>
+                {mode === 'media' && (
+                  <span className="text-[11px] font-medium" style={{ color: 'var(--tr-text-muted)' }}>
+                    {isRtl ? 'JPG, PNG, GIF, MP4' : 'JPG, PNG, GIF, MP4'}
+                  </span>
+                )}
+              </div>
               <input
                 ref={fileInputRef}
                 type="file"

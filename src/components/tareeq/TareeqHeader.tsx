@@ -409,14 +409,12 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           {/* ── DESKTOP ONLY ── */}
           {/* Wordmark */}
           <Link href="/tareeq" className="hidden lg:flex items-center gap-2 shrink-0" aria-label="Tareeq">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))', boxShadow: '0 2px 8px var(--tr-gold-glow)' }}>
-              <svg className="w-4 h-4" fill="#fff" viewBox="0 0 24 24">
-                <path d="M12 3l1.4 5.6L18.4 5.6l-3 4.4L21 12l-5.6 1.4 2.4 5.4-4.8-2.8L12 21l-1.4-5.6-5.4 2.4 2.8-4.8L3 12l5.6-1.4L6.2 5z" />
-              </svg>
-            </div>
-            <span className="font-black text-xl tracking-tight" style={{ color: 'var(--tr-text-primary)' }}>
-              {isRtl ? 'طريق' : 'Tareeq'}
-            </span>
+            <img
+              src="/Tareeq-tiny-usage.png"
+              alt="Tareeq"
+              className="h-8 w-auto object-contain shrink-0"
+              draggable={false}
+            />
           </Link>
 
           {/* Desktop search bar */}

@@ -337,7 +337,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         <div
           className="fixed sm:hidden z-50 pointer-events-none flex items-center justify-center rounded-full"
           style={{
-            top: `calc(56px + ${Math.min((pullY - 12) * 0.7, 48)}px)`,
+            top: `calc(64px + ${Math.min((pullY - 12) * 0.7, 48)}px)`,
             left: '50%', transform: 'translateX(-50%)',
             width: 36, height: 36,
             background: 'var(--tr-surface)',
@@ -364,16 +364,19 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       <div className="lg:max-w-[1280px] lg:mx-auto lg:px-4 lg:pt-4 lg:grid lg:grid-cols-[260px_minmax(0,1fr)_280px] lg:gap-5 lg:items-start">
 
         {/* ━━ LEFT SIDEBAR — desktop only ━━ */}
-        <aside className="hidden lg:flex lg:flex-col sticky top-[70px] max-h-[calc(100vh-80px)] overflow-y-auto pb-4 gap-2" style={{ scrollbarWidth: 'none' }}>
+        <aside className="hidden lg:flex lg:flex-col sticky top-[72px] max-h-[calc(100vh-80px)] overflow-y-auto pb-4 gap-2" style={{ scrollbarWidth: 'none' }}>
+
+          {/* Unified card: profile + nav + categories */}
+          <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}>
 
           {/* User profile card */}
           {user && (
-            <div className="rounded-2xl p-4" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}>
-              <Link href="/tareeq/profile" className="flex items-center gap-3 group mb-3">
+            <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+              <Link href={`/tareeq/u/${user.id}`} className="flex items-center gap-3 group">
                 {user.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={user.name ?? ''} className="w-11 h-11 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold-dim)' }} />
+                  <img src={user.avatarUrl} alt={user.name ?? ''} className="w-10 h-10 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold-dim)' }} />
                 ) : (
-                  <div className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-base shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold-dim)' }}>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-base shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold-dim)' }}>
                     {user.name?.charAt(0) ?? '?'}
                   </div>
                 )}
@@ -386,7 +389,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           )}
 
           {/* Quick navigation */}
-          <nav className="rounded-2xl py-2 px-2" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}>
+          <nav className="py-1 px-2" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
             {([
               {
                 href: '/tareeq',
@@ -456,7 +459,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           </nav>
 
           {/* Category shortcuts */}
-          <div className="rounded-2xl py-3 px-2" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}>
+          <div className="py-2 px-2">
             <p className="text-[10px] font-black mb-1 px-3" style={{ color: 'var(--tr-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
               {isRtl ? 'تصفح حسب' : 'Browse'}
             </p>
@@ -500,6 +503,8 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
               );
             })}
           </div>
+
+          </div>{/* end unified sidebar card */}
 
           {/* New Mark CTA */}
           <button
@@ -655,7 +660,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         </div>
 
         {/* ━━ RIGHT SIDEBAR — desktop only ━━ */}
-        <aside className="hidden lg:flex lg:flex-col sticky top-[70px] max-h-[calc(100vh-80px)] overflow-y-auto pb-4 gap-3" style={{ scrollbarWidth: 'none' }}>
+        <aside className="hidden lg:flex lg:flex-col sticky top-[72px] max-h-[calc(100vh-80px)] overflow-y-auto pb-4 gap-3" style={{ scrollbarWidth: 'none' }}>
 
           {/* Trending posts widget */}
           {trendingPosts.length > 0 && (

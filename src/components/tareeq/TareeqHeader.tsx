@@ -241,7 +241,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
     borderRadius: 16,
     background: 'var(--tr-surface)',
     border: '1px solid var(--tr-border-soft)',
-    boxShadow: '0 16px 60px rgba(0,0,0,0.7), 0 4px 16px rgba(0,0,0,0.4)',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.10)',
     overflow: 'hidden',
     zIndex: 200,
     transformOrigin: 'top center',
@@ -278,7 +278,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           boxShadow: '0 2px 24px rgba(0,0,0,0.5), inset 0 -1px 0 rgba(255,255,255,0.04)',
         }}
       >
-        <div className="max-w-2xl mx-auto lg:max-w-[1180px] flex items-center px-4 h-14 gap-2 lg:gap-3">
+        <div className="max-w-2xl mx-auto lg:max-w-[1180px] flex items-center px-4 h-16 gap-2 lg:gap-3">
 
           {/* ── MOBILE ONLY: compact icon → expands toward start (RTL=left, LTR=left) ── */}
           <div className="lg:hidden flex items-center w-full justify-end">
@@ -420,16 +420,12 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                       ref={key === 'notifications' ? notifBtnRef : msgBtnRef}
                       onClick={onClick}
                       title={label}
-                      className="relative flex items-center justify-center w-24 h-12 rounded-xl transition-colors"
+                      className="relative flex items-center justify-center w-24 h-12 rounded-xl transition-all hover:bg-[var(--tr-overlay)]"
                       style={{
                         color: (active || isPanelOpen) ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
-                        borderBottom: (active || isPanelOpen) ? '3px solid var(--tr-gold)' : '3px solid transparent',
+                        borderBottom: `3px solid ${(active || isPanelOpen) ? 'var(--tr-gold)' : 'transparent'}`,
                         background: 'transparent',
-                        border: 'none',
                         cursor: 'pointer',
-                        borderBottomStyle: 'solid',
-                        borderBottomWidth: 3,
-                        borderBottomColor: (active || isPanelOpen) ? 'var(--tr-gold)' : 'transparent',
                       }}
                     >
                       {icon}
@@ -443,10 +439,10 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                     <Link
                       href={href}
                       title={label}
-                      className="relative flex items-center justify-center w-24 h-12 rounded-xl transition-colors group"
+                      className="relative flex items-center justify-center w-24 h-12 rounded-xl transition-all hover:bg-[var(--tr-overlay)] group"
                       style={{
                         color: active ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
-                        borderBottom: active ? '3px solid var(--tr-gold)' : '3px solid transparent',
+                        borderBottom: `3px solid ${active ? 'var(--tr-gold)' : 'transparent'}`,
                         background: 'transparent',
                       }}
                     >
@@ -641,7 +637,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           </div>
         </div>
       </header>
-      <div className="h-14" />
+      <div className="h-16" />
     </>
   );
 }

@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
-import TareeqBottomNav from '@/components/tareeq/TareeqBottomNav';
 import { TAREEQ_CATEGORIES, CATEGORY_COLORS, CATEGORY_ICONS } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import { timeAgo } from '@/lib/tareeq-utils';
@@ -452,7 +451,6 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
       </div>
 
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
-      <TareeqBottomNav onCreateClick={() => {}} />
     </div>
   );
 }

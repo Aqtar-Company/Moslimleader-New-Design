@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
     const ext = baseType.includes('ogg') ? 'ogg' : baseType.includes('mpeg') ? 'mp3' : baseType.includes('wav') ? 'wav' : baseType.includes('mp4') ? 'm4a' : 'webm';
     key = `tareeq/audio/${auth.userId}-${timestamp}.${ext}`;
     fileData = raw;
-    contentType = file.type;
+    contentType = baseType; // strip codec params — 'audio/webm;codecs=opus' → 'audio/webm'
   } else {
     const ext = file.type.split('/')[1].replace('quicktime', 'mov');
     key = `tareeq/${auth.userId}-${timestamp}.${ext}`;

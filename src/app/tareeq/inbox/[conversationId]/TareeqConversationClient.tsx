@@ -132,6 +132,7 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [curTime, setCurTime] = useState(0);
+  const [hasError, setHasError] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Seeded pseudo-random waveform so it looks consistent every render
@@ -180,7 +181,7 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
       setPlaying(false); setProgress(0); setCurTime(0);
       a.currentTime = 0;
     };
-    a.onerror = () => { if (activeAudioEl === a) activeAudioEl = null; setPlaying(false); };
+    a.onerror = () => { if (activeAudioEl === a) activeAudioEl = null; setPlaying(false); setHasError(true); };
     return () => { a.pause(); a.src = ''; if (activeAudioEl === a) activeAudioEl = null; };
   }, [url]);
 
@@ -205,6 +206,19 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
 
   const fg = mine ? 'rgba(255,255,255,0.92)' : 'var(--tr-text-primary)';
   const fgDim = mine ? 'rgba(255,255,255,0.35)' : 'var(--tr-text-muted)';
+
+  if (hasError) {
+    return (
+      <div className="flex items-center gap-2 py-1 px-0.5" style={{ minWidth: 190, maxWidth: 250 }}>
+        <div className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center" style={{ background: mine ? 'rgba(255,255,255,0.12)' : 'var(--tr-overlay)' }}>
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke={mine ? 'rgba(255,255,255,0.55)' : 'var(--tr-text-muted)'} strokeWidth="1.8" strokeLinecap="round"/></svg>
+        </div>
+        <span style={{ fontSize: 11, color: mine ? 'rgba(255,255,255,0.55)' : 'var(--tr-text-muted)' }}>
+          تعذّر تشغيل الصوت
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-2 py-1 px-0.5" style={{ minWidth: 190, maxWidth: 250 }}>

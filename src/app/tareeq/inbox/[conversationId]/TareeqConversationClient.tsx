@@ -156,8 +156,11 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
         a.currentTime = 1e10;
       }
     };
+    let durationDiscovered = false;
     a.onseeked = () => {
+      if (durationDiscovered) return; // prevent loop when we reset currentTime to 0
       if (!isFinite(a.duration) || a.duration <= 0) {
+        durationDiscovered = true;
         const discovered = a.currentTime;
         if (discovered > 0) setDuration(discovered);
         a.currentTime = 0;

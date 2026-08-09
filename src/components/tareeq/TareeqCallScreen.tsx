@@ -257,18 +257,6 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
   }, [callId, onEnd]);
 
   async function getMedia(): Promise<MediaStream | null> {
-    // Claim loudspeaker audio route BEFORE getUserMedia.
-    // On iOS, calling getUserMedia() first switches the audio session to
-    // "play and record" (earpiece). Playing the video element first
-    // establishes "media playback" (loudspeaker), and the subsequent
-    // getUserMedia call inherits that route.
-    try {
-      if (remoteAudioRef.current && !remoteAudioRef.current.srcObject) {
-        remoteAudioRef.current.srcObject = new MediaStream();
-        await remoteAudioRef.current.play().catch(() => {});
-      }
-    } catch { /* ignore — just a best-effort speaker claim */ }
-
     try {
       return await navigator.mediaDevices.getUserMedia(
         callType === 'video' ? { audio: true, video: true } : { audio: true, video: false }

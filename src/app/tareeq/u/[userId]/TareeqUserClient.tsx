@@ -4,11 +4,9 @@ import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { compressImage } from '@/lib/compress-image';
 import TareeqCard, { TareeqPostSummary } from '@/components/tareeq/TareeqCard';
-import TareeqCardSkeleton from '@/components/tareeq/TareeqCardSkeleton';
 import TareeqCreateModal from '@/components/tareeq/TareeqCreateModal';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
-import TareeqBottomNav from '@/components/tareeq/TareeqBottomNav';
-import { TareeqNotificationsProvider } from '@/context/TareeqNotificationsContext';
+import TareeqHeader from '@/components/tareeq/TareeqHeader';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -61,7 +59,6 @@ function BmGridCard({ bm }: { bm: BmPost }) {
         ? <img src={post.imageUrl} alt="" className="w-full h-full object-cover absolute inset-0" />
         : <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${col}cc, ${col}66)` }} />
       }
-      {/* dark gradient overlay */}
       <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.75) 40%, transparent 70%)' }} />
       <p
         className="absolute bottom-0 left-0 right-0 px-2.5 pb-2.5 text-[11px] font-bold leading-snug line-clamp-2"
@@ -93,11 +90,9 @@ function BmListCard({ bm }: { bm: BmPost }) {
       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--tr-raised)'; }}
       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--tr-surface)'; }}
     >
-      {/* Thumbnail */}
       <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 relative" style={{ background: `linear-gradient(135deg, ${col}cc, ${col}44)` }}>
         {post.imageUrl && <img src={post.imageUrl} alt="" className="w-full h-full object-cover" />}
       </div>
-      {/* Text */}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold leading-snug line-clamp-2" style={{ color: 'var(--tr-text-primary)' }}>{firstLine}</p>
         <div className="flex items-center gap-2 mt-1">
@@ -347,382 +342,571 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const coverGradient = nameGradient(profileUser.name);
   const skeletons = Array.from({ length: 6 });
 
-  return (
-    <TareeqNotificationsProvider>
-    <div className="min-h-screen" style={{ background: 'var(--tr-base)' }}>
-      {/* Cover */}
-      <div className="relative w-full" style={{ height: 110, background: coverGradient }}>
-        <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.12)' }} />
-      </div>
+  const joinedLabel = (() => {
+    const d = new Date(profileUser.createdAt);
+    return d.toLocaleDateString(isRtl ? 'ar-EG' : 'en-US', { year: 'numeric', month: 'long' });
+  })();
 
-      {/* Profile card */}
-      <div className="relative max-w-2xl mx-auto px-4" style={{ marginTop: -32, zIndex: 1 }}>
-        <div
-          className="rounded-3xl px-5 pt-3 pb-6"
-          style={{ background: 'var(--tr-surface)', boxShadow: '0 4px 32px var(--tr-shadow-card)', border: '1px solid var(--tr-border-subtle)' }}
+  // Shared avatar JSX — rendered at two sizes
+  function AvatarEl({ size }: { size: number }) {
+    const border = size >= 110 ? 5 : 4;
+    const ring = size >= 110 ? 3 : 3;
+    const camSize = size >= 110 ? 9 : 8;
+    const src = avatarPreview ?? (isOwnProfile ? (user?.avatarUrl ?? profileUser.avatarUrl ?? '') : (profileUser.avatarUrl ?? ''));
+    return (
+      <div className="relative shrink-0" style={{ width: size, height: size }}>
+        {src ? (
+          <img
+            src={src}
+            alt={profileUser.name}
+            className="rounded-full object-cover w-full h-full"
+            style={{ border: `${border}px solid var(--tr-surface)`, boxShadow: `0 0 0 ${ring}px var(--tr-gold)` }}
+          />
+        ) : (
+          <div
+            className="rounded-full flex items-center justify-center font-black w-full h-full"
+            style={{
+              fontSize: size * 0.38,
+              background: coverGradient, color: '#fff',
+              border: `${border}px solid var(--tr-surface)`,
+              boxShadow: `0 0 0 ${ring}px var(--tr-gold)`,
+            }}
+          >
+            {profileUser.name.charAt(0)}
+          </div>
+        )}
+        {avatarUploading && (
+          <div className="absolute inset-0 rounded-full flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)' }}>
+            <svg className="absolute -rotate-90" style={{ width: size, height: size }} viewBox={`0 0 ${size} ${size}`}>
+              <circle cx={size / 2} cy={size / 2} r={size / 2 - 5} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="5" />
+              <circle cx={size / 2} cy={size / 2} r={size / 2 - 5} fill="none" stroke="#fff" strokeWidth="5"
+                strokeDasharray={`${2 * Math.PI * (size / 2 - 5)}`}
+                strokeDashoffset={`${2 * Math.PI * (size / 2 - 5) * (1 - avatarProgress / 100)}`}
+                strokeLinecap="round" style={{ transition: 'stroke-dashoffset 0.2s ease' }} />
+            </svg>
+            <span className="text-white font-black text-xs relative z-10">{avatarProgress}%</span>
+          </div>
+        )}
+        {isOwnProfile && !avatarUploading && (
+          <label
+            className={`absolute bottom-0 end-0 w-${camSize} h-${camSize} rounded-full flex items-center justify-center cursor-pointer transition active:scale-90`}
+            style={{ background: 'var(--tr-gold)', border: '2px solid var(--tr-surface)', width: camSize * 4, height: camSize * 4 }}
+          >
+            <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={handleAvatarUpload} />
+            <svg className="w-4 h-4" fill="none" stroke="#fff" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+            </svg>
+          </label>
+        )}
+      </div>
+    );
+  }
+
+  // Settings button (shared)
+  function SettingsBtn({ className }: { className?: string }) {
+    return (
+      <button
+        onClick={() => window.dispatchEvent(new Event('tareeq:open-settings'))}
+        className={`flex items-center gap-1.5 font-bold text-xs px-4 py-2 rounded-full transition-all active:scale-95 ${className ?? ''}`}
+        style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        {isRtl ? 'الإعدادات' : 'Settings'}
+      </button>
+    );
+  }
+
+  // ── Bookmarks content (shared between desktop and mobile) ─────────────
+  const bookmarkContent = (
+    <>
+      {activeFolderId && (
+        <button
+          onClick={() => { setActiveFolderId(null); setBmPosts([]); }}
+          className="flex items-center gap-2 mb-4 text-sm font-bold transition"
+          style={{ color: 'var(--tr-gold)' }}
         >
-          {/* Avatar row */}
-          <div className="flex items-start justify-between" style={{ marginTop: -44 }}>
-            <div className="relative shrink-0">
-              {(avatarPreview || user?.avatarUrl || profileUser.avatarUrl) ? (
-                <img
-                  src={avatarPreview ?? (isOwnProfile ? (user?.avatarUrl ?? profileUser.avatarUrl ?? '') : (profileUser.avatarUrl ?? ''))}
-                  alt={profileUser.name}
-                  className="w-24 h-24 rounded-full object-cover"
-                  style={{ border: '4px solid var(--tr-surface)', boxShadow: '0 0 0 3px var(--tr-gold)' }}
-                />
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M9 5l7 7-7 7' : 'M15 19l-7-7 7-7'} />
+          </svg>
+          {activeFolderName || (isRtl ? 'المحفوظات' : 'Saved')}
+        </button>
+      )}
+
+      {!activeFolderId && (
+        bmFoldersLoading ? (
+          <div className="flex flex-col gap-3">
+            {skeletons.slice(0, 3).map((_, i) => (
+              <div key={i} className="h-16 rounded-2xl animate-pulse" style={{ background: 'var(--tr-surface)' }} />
+            ))}
+          </div>
+        ) : (
+          <>
+            <div className="mb-4">
+              {showCreateFolder ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    autoFocus
+                    value={newFolderName}
+                    onChange={e => setNewFolderName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') createFolder(); if (e.key === 'Escape') { setShowCreateFolder(false); setNewFolderName(''); } }}
+                    placeholder={isRtl ? 'اسم الفولدر...' : 'Folder name...'}
+                    maxLength={40}
+                    className="flex-1 rounded-xl px-4 py-2.5 text-sm outline-none"
+                    style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
+                  />
+                  <button
+                    onClick={createFolder}
+                    disabled={!newFolderName.trim() || creatingFolder}
+                    className="px-4 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-40"
+                    style={{ background: 'var(--tr-gold)', color: '#fff' }}
+                  >
+                    {creatingFolder ? '...' : (isRtl ? 'إنشاء' : 'Create')}
+                  </button>
+                  <button onClick={() => { setShowCreateFolder(false); setNewFolderName(''); }} className="p-2 rounded-xl" style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)' }}>✕</button>
+                </div>
               ) : (
-                <div
-                  className="w-24 h-24 rounded-full flex items-center justify-center text-4xl font-black"
-                  style={{ background: coverGradient, color: '#fff', border: '4px solid var(--tr-surface)', boxShadow: '0 0 0 3px var(--tr-gold)' }}
+                <button
+                  onClick={() => setShowCreateFolder(true)}
+                  className="flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-xl w-full transition"
+                  style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1px dashed var(--tr-border-soft)' }}
                 >
-                  {profileUser.name.charAt(0)}
-                </div>
-              )}
-              {avatarUploading && (
-                <div className="absolute inset-0 rounded-full flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)' }}>
-                  <svg className="w-16 h-16 -rotate-90 absolute" viewBox="0 0 64 64">
-                    <circle cx="32" cy="32" r="27" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="5" />
-                    <circle cx="32" cy="32" r="27" fill="none" stroke="#fff" strokeWidth="5"
-                      strokeDasharray={`${2 * Math.PI * 27}`}
-                      strokeDashoffset={`${2 * Math.PI * 27 * (1 - avatarProgress / 100)}`}
-                      strokeLinecap="round" style={{ transition: 'stroke-dashoffset 0.2s ease' }} />
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                   </svg>
-                  <span className="text-white font-black text-xs relative z-10">{avatarProgress}%</span>
-                </div>
-              )}
-              {isOwnProfile && !avatarUploading && (
-                <label
-                  className="absolute bottom-0 end-0 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition active:scale-90"
-                  style={{ background: 'var(--tr-gold)', border: '2px solid var(--tr-surface)' }}
-                >
-                  <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={handleAvatarUpload} />
-                  <svg className="w-4 h-4" fill="none" stroke="#fff" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
-                  </svg>
-                </label>
+                  {isRtl ? 'فولدر جديد' : 'New Folder'}
+                </button>
               )}
             </div>
 
-            {/* Settings button — own profile only */}
-            {isOwnProfile && (
-              <button
-                onClick={() => window.dispatchEvent(new Event('tareeq:open-settings'))}
-                className="flex items-center gap-1.5 mt-14 font-bold text-xs px-4 py-2 rounded-full transition-all active:scale-95"
-                style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <button
+              onClick={() => { setActiveFolderId('__all__'); setActiveFolderName(isRtl ? 'كل المحفوظات' : 'All saved'); loadBmPosts(null); }}
+              className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl mb-3 transition text-start"
+              style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--tr-raised)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--tr-surface)'; }}
+            >
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(212,168,83,0.15)' }}>
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+                  <path d="M6.32 2.577a49.255 49.255 0 0111.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 01-1.085.67L12 18.089l-7.165 3.583A.75.75 0 013.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93z" />
                 </svg>
-                {isRtl ? 'الإعدادات' : 'Settings'}
-              </button>
-            )}
+              </div>
+              <div>
+                <p className="font-bold text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'كل المحفوظات' : 'All saved'}</p>
+                <p className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'جميع العلامات المحفوظة' : 'All bookmarked marks'}</p>
+              </div>
+            </button>
 
-            {/* Follow/Message buttons */}
-            {!isOwnProfile && (
-              <div className="flex gap-2 mt-14">
-                <button
-                  onClick={async () => {
-                    if (!user) { setShowGate(true); return; }
-                    if (followLoading) return;
-                    setFollowLoading(true);
-                    const wasFollowing = isFollowing;
-                    setIsFollowing(!wasFollowing);
-                    setFollowerCount(c => wasFollowing ? Math.max(0, c - 1) : c + 1);
-                    try {
-                      const res = await fetch(`/api/tareeq/follow/${profileUser.id}`, { method: 'POST', credentials: 'include' });
-                      if (res.ok) { const d = await res.json(); setIsFollowing(d.following); }
-                      else { setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1)); }
-                    } catch {
-                      setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1));
-                    } finally { setFollowLoading(false); }
-                  }}
-                  disabled={followLoading}
-                  className="font-bold text-sm px-5 py-2 rounded-full transition active:scale-95"
-                  style={isFollowing
-                    ? { background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }
-                    : { background: 'var(--tr-gold)', color: '#fff', border: '1px solid var(--tr-gold)' }}
-                >
-                  {isFollowing ? (isRtl ? 'متابَع' : 'Following') : (isRtl ? 'تابع' : 'Follow')}
-                </button>
-                <button
-                  onClick={handleSendMessage}
-                  className="font-bold text-sm px-5 py-2 rounded-full transition active:scale-95"
-                  style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}
-                >
-                  {isRtl ? 'رسالة' : 'Message'}
-                </button>
+            {bmFolders.length === 0 && (
+              <div className="text-center py-12">
+                <svg className="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.32 2.577a49.255 49.255 0 0111.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 01-1.085.67L12 18.089l-7.165 3.583A.75.75 0 013.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93z" />
+                </svg>
+                <p className="font-semibold text-sm" style={{ color: 'var(--tr-text-secondary)' }}>
+                  {isRtl ? 'لا توجد تصنيفات بعد' : 'No folders yet'}
+                </p>
+                <p className="text-[11px] mt-1" style={{ color: 'var(--tr-text-muted)' }}>
+                  {isRtl ? 'احفظ أي علامة لتظهر هنا' : 'Save any mark to see it here'}
+                </p>
               </div>
             )}
-          </div>
 
-          <h1 className="font-black text-xl mt-3" style={{ color: 'var(--tr-text-primary)' }}>{profileUser.name}</h1>
-
-          <div className="flex gap-6 mt-4">
-            <StatItem count={postCount ?? posts.length} label={isRtl ? 'علامة' : 'Posts'} />
-            <StatItem count={followerCount} label={isRtl ? 'تابعوني' : 'Followers'} onClick={() => openFollowList('followers')} />
-            <StatItem count={followingCount} label={isRtl ? 'أتابعهم' : 'Following'} onClick={() => openFollowList('following')} />
-          </div>
-        </div>
-
-        {/* Tab nav */}
-        <div
-          className="flex mt-4 rounded-2xl overflow-hidden"
-          style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}
-        >
-          <TabBtn active={activeTab === 'posts'} onClick={() => handleTabChange('posts')}>
-            {isRtl ? 'العلامات' : 'Posts'}
-          </TabBtn>
-          {isOwnProfile && (
-            <TabBtn active={activeTab === 'bookmarks'} onClick={() => handleTabChange('bookmarks')}>
-              <svg className="inline w-3.5 h-3.5 me-1 -mt-0.5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M6.32 2.577a49.255 49.255 0 0111.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 01-1.085.67L12 18.089l-7.165 3.583A.75.75 0 013.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93z" />
-              </svg>
-              {isRtl ? 'المحفوظات' : 'Saved'}
-            </TabBtn>
-          )}
-        </div>
-
-        {/* Feed / Bookmarks content */}
-        <div className="py-4 sm:pb-8">
-
-          {/* POSTS TAB */}
-          {activeTab === 'posts' && (
-            posts.length === 0 ? (
-              <div className="text-center py-20">
-                <svg className="w-14 h-14 mx-auto mb-4" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                </svg>
-                <p className="font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>{isRtl ? 'لا توجد علامات بعد' : 'No marks yet'}</p>
-                {isOwnProfile && (
-                  <button onClick={handleCreateClick} className="mt-5 font-black px-8 py-3 rounded-xl text-sm" style={{ background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))', color: '#fff' }}>
-                    {isRtl ? '★ اترك علامتك' : '★ Leave Your Mark'}
+            {bmFolders.length > 0 && (
+              <div className="flex flex-col gap-3">
+                {bmFolders.map(f => (
+                  <button
+                    key={f.id}
+                    onClick={() => handleFolderOpen(f)}
+                    className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition text-start"
+                    style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}
+                  >
+                    <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--tr-overlay)' }}>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{f.name}</p>
+                      <p className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{f._count.bookmarks} {isRtl ? 'علامة' : 'marks'}</p>
+                    </div>
+                    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'} />
+                    </svg>
                   </button>
-                )}
+                ))}
+              </div>
+            )}
+          </>
+        )
+      )}
+
+      {activeFolderId && (
+        bmPostsLoading ? (
+          <div className="flex flex-col gap-3">
+            {skeletons.slice(0, 6).map((_, i) => (
+              <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: 'var(--tr-surface)' }} />
+            ))}
+          </div>
+        ) : bmPosts.length === 0 ? (
+          <div className="text-center py-16">
+            <svg className="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.32 2.577a49.255 49.255 0 0111.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 01-1.085.67L12 18.089l-7.165 3.583A.75.75 0 013.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93z" />
+            </svg>
+            <p className="font-semibold text-sm" style={{ color: 'var(--tr-text-secondary)' }}>
+              {isRtl ? 'لا توجد علامات في هذا التصنيف' : 'No marks in this folder'}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-end gap-1 mb-3">
+              <button
+                onClick={() => setBmViewMode('grid')}
+                className="w-8 h-8 rounded-xl flex items-center justify-center transition"
+                style={{ background: bmViewMode === 'grid' ? 'var(--tr-gold-glow)' : 'var(--tr-overlay)', color: bmViewMode === 'grid' ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}
+                aria-label="Grid view"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path fillRule="evenodd" d="M3 6a3 3 0 013-3h2.25a3 3 0 013 3v2.25a3 3 0 01-3 3H6a3 3 0 01-3-3V6zm9.75 0a3 3 0 013-3H18a3 3 0 013 3v2.25a3 3 0 01-3 3h-2.25a3 3 0 01-3-3V6zM3 15.75a3 3 0 013-3h2.25a3 3 0 013 3V18a3 3 0 01-3 3H6a3 3 0 01-3-3v-2.25zm9.75 0a3 3 0 013-3H18a3 3 0 013 3V18a3 3 0 01-3 3h-2.25a3 3 0 01-3-3v-2.25z" clipRule="evenodd" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setBmViewMode('list')}
+                className="w-8 h-8 rounded-xl flex items-center justify-center transition"
+                style={{ background: bmViewMode === 'list' ? 'var(--tr-gold-glow)' : 'var(--tr-overlay)', color: bmViewMode === 'list' ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}
+                aria-label="List view"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path fillRule="evenodd" d="M2.625 6.75a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zm4.875 0A.75.75 0 018.25 6h12a.75.75 0 010 1.5h-12a.75.75 0 01-.75-.75zM2.625 12a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zM7.5 12a.75.75 0 01.75-.75h12a.75.75 0 010 1.5h-12A.75.75 0 017.5 12zm-4.875 5.25a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zm4.875 0a.75.75 0 01.75-.75h12a.75.75 0 010 1.5h-12a.75.75 0 01-.75-.75z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+
+            {bmViewMode === 'grid' ? (
+              <div className="grid grid-cols-2 gap-2">
+                {bmPosts.map(bm => <BmGridCard key={bm.id} bm={bm} />)}
               </div>
             ) : (
-              <>
-                {postsHasImages ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    {posts.map(post => (
-                      post.imageUrl ? (
-                        <GridImageCard key={post.id} post={post} liked={likedIds.has(post.id)} />
-                      ) : (
-                        <div key={post.id} className="col-span-2">
-                          <TareeqCard post={post} initialLiked={likedIds.has(post.id)} initialReaction={reactedPosts[post.id] ?? null} />
-                        </div>
-                      )
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-4">
-                    {posts.map(post => (
-                      <TareeqCard key={post.id} post={post} initialLiked={likedIds.has(post.id)} initialReaction={reactedPosts[post.id] ?? null} />
-                    ))}
-                  </div>
-                )}
-                {cursor && <div ref={sentinelRef} className="h-4 mt-8" />}
-                {loading && (
-                  <div className="flex justify-center mt-8">
-                    <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
-                  </div>
-                )}
-              </>
-            )
-          )}
+              <div className="flex flex-col gap-2">
+                {bmPosts.map(bm => <BmListCard key={bm.id} bm={bm} />)}
+              </div>
+            )}
+          </>
+        )
+      )}
+    </>
+  );
 
-          {/* BOOKMARKS TAB */}
-          {activeTab === 'bookmarks' && isOwnProfile && (
-            <>
-              {/* Folder drill-down header */}
-              {activeFolderId && (
-                <button
-                  onClick={() => { setActiveFolderId(null); setBmPosts([]); }}
-                  className="flex items-center gap-2 mb-4 text-sm font-bold transition"
-                  style={{ color: 'var(--tr-gold)' }}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M9 5l7 7-7 7' : 'M15 19l-7-7 7-7'} />
+  // ── Posts empty state ─────────────────────────────────────────────────
+  const postsEmpty = (
+    <div className="text-center py-20">
+      <svg className="w-14 h-14 mx-auto mb-4" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+      </svg>
+      <p className="font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>{isRtl ? 'لا توجد علامات بعد' : 'No marks yet'}</p>
+      {isOwnProfile && (
+        <button onClick={handleCreateClick} className="mt-5 font-black px-8 py-3 rounded-xl text-sm" style={{ background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))', color: '#fff' }}>
+          {isRtl ? '★ اترك علامتك' : '★ Leave Your Mark'}
+        </button>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen" style={{ background: 'var(--tr-base)' }}>
+
+      {/* ════════════════════════════════════════════════════════════
+          DESKTOP LAYOUT
+      ════════════════════════════════════════════════════════════ */}
+      <div className="hidden lg:flex flex-col min-h-screen">
+        <TareeqHeader onCreateClick={handleCreateClick} />
+        {/* Header spacer */}
+        <div style={{ height: 64 }} />
+
+        <div className="flex-1">
+          <div className="max-w-[1100px] mx-auto px-6 py-6">
+
+            {/* ── Cover ── */}
+            <div
+              className="relative rounded-2xl overflow-hidden"
+              style={{ height: 240, background: coverGradient }}
+            >
+              <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.18)' }} />
+              {/* Decorative circles */}
+              <div className="absolute rounded-full opacity-20" style={{ width: 280, height: 280, bottom: -80, insetInlineEnd: -40, background: 'rgba(255,255,255,0.25)' }} />
+              <div className="absolute rounded-full opacity-15" style={{ width: 180, height: 180, top: -50, insetInlineStart: '30%', background: 'rgba(255,255,255,0.3)' }} />
+              <div className="absolute rounded-full opacity-10" style={{ width: 100, height: 100, top: 20, insetInlineStart: '60%', background: 'rgba(255,255,255,0.4)' }} />
+              {/* Gold star */}
+              <div className="absolute" style={{ bottom: 20, insetInlineStart: 24, fontSize: 28, opacity: 0.6 }}>★</div>
+            </div>
+
+            {/* ── Avatar + identity row ── */}
+            <div className="flex items-end gap-5" style={{ marginTop: -56, position: 'relative', zIndex: 1 }}>
+              <AvatarEl size={120} />
+
+              {/* Identity section */}
+              <div className="flex-1 min-w-0 pb-2 flex items-end justify-between gap-4">
+                <div className="min-w-0">
+                  <h1 className="font-black text-2xl leading-tight truncate" style={{ color: 'var(--tr-text-primary)', textShadow: '0 1px 8px rgba(0,0,0,0.18)' }}>
+                    {profileUser.name}
+                  </h1>
+                  <div className="flex gap-6 mt-2">
+                    <StatItem count={postCount ?? posts.length} label={isRtl ? 'علامة' : 'Posts'} />
+                    <StatItem count={followerCount} label={isRtl ? 'تابعوني' : 'Followers'} onClick={() => openFollowList('followers')} />
+                    <StatItem count={followingCount} label={isRtl ? 'أتابعهم' : 'Following'} onClick={() => openFollowList('following')} />
+                  </div>
+                </div>
+
+                {/* Action buttons beside identity */}
+                <div className="flex items-center gap-2 shrink-0">
+                  {isOwnProfile ? (
+                    <SettingsBtn />
+                  ) : (
+                    <>
+                      <button
+                        onClick={async () => {
+                          if (!user) { setShowGate(true); return; }
+                          if (followLoading) return;
+                          setFollowLoading(true);
+                          const wasFollowing = isFollowing;
+                          setIsFollowing(!wasFollowing);
+                          setFollowerCount(c => wasFollowing ? Math.max(0, c - 1) : c + 1);
+                          try {
+                            const res = await fetch(`/api/tareeq/follow/${profileUser.id}`, { method: 'POST', credentials: 'include' });
+                            if (res.ok) { const d = await res.json(); setIsFollowing(d.following); }
+                            else { setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1)); }
+                          } catch {
+                            setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1));
+                          } finally { setFollowLoading(false); }
+                        }}
+                        disabled={followLoading}
+                        className="font-bold text-sm px-5 py-2 rounded-full transition active:scale-95"
+                        style={isFollowing
+                          ? { background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }
+                          : { background: 'var(--tr-gold)', color: '#fff', border: '1px solid var(--tr-gold)' }}
+                      >
+                        {isFollowing ? (isRtl ? 'متابَع' : 'Following') : (isRtl ? 'تابع' : 'Follow')}
+                      </button>
+                      <button
+                        onClick={handleSendMessage}
+                        className="font-bold text-sm px-5 py-2 rounded-full transition active:scale-95"
+                        style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}
+                      >
+                        {isRtl ? 'رسالة' : 'Message'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* ── Tab row ── */}
+            <div className="flex mt-6" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+              <DeskTabBtn active={activeTab === 'posts'} onClick={() => handleTabChange('posts')}>
+                {isRtl ? 'العلامات' : 'Posts'}
+              </DeskTabBtn>
+              {isOwnProfile && (
+                <DeskTabBtn active={activeTab === 'bookmarks'} onClick={() => handleTabChange('bookmarks')}>
+                  <svg className="inline w-3.5 h-3.5 me-1 -mt-0.5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M6.32 2.577a49.255 49.255 0 0111.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 01-1.085.67L12 18.089l-7.165 3.583A.75.75 0 013.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93z" />
                   </svg>
-                  {activeFolderName || (isRtl ? 'المحفوظات' : 'Saved')}
-                </button>
+                  {isRtl ? 'المحفوظات' : 'Saved'}
+                </DeskTabBtn>
               )}
+            </div>
 
-              {/* Folder grid view */}
-              {!activeFolderId && (
-                bmFoldersLoading ? (
-                  <div className="flex flex-col gap-3">
-                    {skeletons.slice(0, 3).map((_, i) => (
-                      <div key={i} className="h-16 rounded-2xl animate-pulse" style={{ background: 'var(--tr-surface)' }} />
-                    ))}
-                  </div>
-                ) : (
-                  <>
-                    {/* Create folder button + inline input */}
-                    <div className="mb-4">
-                      {showCreateFolder ? (
-                        <div className="flex items-center gap-2">
-                          <input
-                            autoFocus
-                            value={newFolderName}
-                            onChange={e => setNewFolderName(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter') createFolder(); if (e.key === 'Escape') { setShowCreateFolder(false); setNewFolderName(''); } }}
-                            placeholder={isRtl ? 'اسم الفولدر...' : 'Folder name...'}
-                            maxLength={40}
-                            className="flex-1 rounded-xl px-4 py-2.5 text-sm outline-none"
-                            style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
-                          />
-                          <button
-                            onClick={createFolder}
-                            disabled={!newFolderName.trim() || creatingFolder}
-                            className="px-4 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-40"
-                            style={{ background: 'var(--tr-gold)', color: '#fff' }}
-                          >
-                            {creatingFolder ? '...' : (isRtl ? 'إنشاء' : 'Create')}
-                          </button>
-                          <button onClick={() => { setShowCreateFolder(false); setNewFolderName(''); }} className="p-2 rounded-xl" style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)' }}>✕</button>
+            {/* ── 2-column body ── */}
+            <div className="flex gap-6 items-start mt-6 pb-12">
+
+              {/* Feed column */}
+              <div className="flex-1 min-w-0">
+                {activeTab === 'posts' && (
+                  posts.length === 0 ? postsEmpty : (
+                    <>
+                      <div className="flex flex-col gap-4">
+                        {posts.map(post => (
+                          <TareeqCard key={post.id} post={post} initialLiked={likedIds.has(post.id)} initialReaction={reactedPosts[post.id] ?? null} />
+                        ))}
+                      </div>
+                      {cursor && <div ref={sentinelRef} className="h-4 mt-8" />}
+                      {loading && (
+                        <div className="flex justify-center mt-8">
+                          <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
                         </div>
-                      ) : (
-                        <button
-                          onClick={() => setShowCreateFolder(true)}
-                          className="flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-xl w-full transition"
-                          style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1px dashed var(--tr-border-soft)' }}
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                          </svg>
-                          {isRtl ? 'فولدر جديد' : 'New Folder'}
-                        </button>
                       )}
-                    </div>
+                    </>
+                  )
+                )}
+                {activeTab === 'bookmarks' && isOwnProfile && bookmarkContent}
+              </div>
 
-                    {/* "All saved" shortcut */}
-                    <button
-                      onClick={() => { setActiveFolderId('__all__'); setActiveFolderName(isRtl ? 'كل المحفوظات' : 'All saved'); loadBmPosts(null); }}
-                      className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl mb-3 transition text-start"
-                      style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--tr-raised)'; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--tr-surface)'; }}
-                    >
-                      <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(212,168,83,0.15)' }}>
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
-                          <path d="M6.32 2.577a49.255 49.255 0 0111.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 01-1.085.67L12 18.089l-7.165 3.583A.75.75 0 013.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93z" />
+              {/* Info sidebar */}
+              <div className="w-[300px] shrink-0 sticky" style={{ top: 80 }}>
+                <div className="rounded-2xl p-5" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}>
+                  <h3 className="font-bold text-sm mb-4" style={{ color: 'var(--tr-text-primary)' }}>
+                    {isRtl ? 'عن الحساب' : 'About'}
+                  </h3>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--tr-overlay)' }}>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5" />
                         </svg>
                       </div>
                       <div>
-                        <p className="font-bold text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'كل المحفوظات' : 'All saved'}</p>
-                        <p className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'جميع العلامات المحفوظة' : 'All bookmarked marks'}</p>
+                        <p className="text-[10px] font-medium" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'عضو منذ' : 'Member since'}</p>
+                        <p className="text-sm font-semibold" style={{ color: 'var(--tr-text-primary)' }}>{joinedLabel}</p>
                       </div>
-                    </button>
-
-                    {bmFolders.length === 0 && (
-                      <div className="text-center py-12">
-                        <svg className="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6.32 2.577a49.255 49.255 0 0111.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 01-1.085.67L12 18.089l-7.165 3.583A.75.75 0 013.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93z" />
-                        </svg>
-                        <p className="font-semibold text-sm" style={{ color: 'var(--tr-text-secondary)' }}>
-                          {isRtl ? 'لا توجد تصنيفات بعد' : 'No folders yet'}
-                        </p>
-                        <p className="text-[11px] mt-1" style={{ color: 'var(--tr-text-muted)' }}>
-                          {isRtl ? 'احفظ أي علامة لتظهر هنا' : 'Save any mark to see it here'}
-                        </p>
-                      </div>
-                    )}
-
-                    {bmFolders.length > 0 && (
-                      <div className="flex flex-col gap-3">
-                        {bmFolders.map(f => (
-                          <button
-                            key={f.id}
-                            onClick={() => handleFolderOpen(f)}
-                            className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition text-start"
-                            style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}
-                          >
-                            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--tr-overlay)' }}>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
-                        </svg>
-                      </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{f.name}</p>
-                              <p className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{f._count.bookmarks} {isRtl ? 'علامة' : 'marks'}</p>
-                            </div>
-                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'} />
-                            </svg>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )
-              )}
-
-              {/* Posts inside a folder */}
-              {activeFolderId && (
-                bmPostsLoading ? (
-                  <div className="flex flex-col gap-3">
-                    {skeletons.slice(0, 6).map((_, i) => (
-                      <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: 'var(--tr-surface)' }} />
-                    ))}
-                  </div>
-                ) : bmPosts.length === 0 ? (
-                  <div className="text-center py-16">
-                    <svg className="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.32 2.577a49.255 49.255 0 0111.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 01-1.085.67L12 18.089l-7.165 3.583A.75.75 0 013.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93z" />
-                    </svg>
-                    <p className="font-semibold text-sm" style={{ color: 'var(--tr-text-secondary)' }}>
-                      {isRtl ? 'لا توجد علامات في هذا التصنيف' : 'No marks in this folder'}
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    {/* View mode toggle */}
-                    <div className="flex items-center justify-end gap-1 mb-3">
-                      <button
-                        onClick={() => setBmViewMode('grid')}
-                        className="w-8 h-8 rounded-xl flex items-center justify-center transition"
-                        style={{ background: bmViewMode === 'grid' ? 'var(--tr-gold-glow)' : 'var(--tr-overlay)', color: bmViewMode === 'grid' ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}
-                        aria-label="Grid view"
-                      >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                          <path fillRule="evenodd" d="M3 6a3 3 0 013-3h2.25a3 3 0 013 3v2.25a3 3 0 01-3 3H6a3 3 0 01-3-3V6zm9.75 0a3 3 0 013-3H18a3 3 0 013 3v2.25a3 3 0 01-3 3h-2.25a3 3 0 01-3-3V6zM3 15.75a3 3 0 013-3h2.25a3 3 0 013 3V18a3 3 0 01-3 3H6a3 3 0 01-3-3v-2.25zm9.75 0a3 3 0 013-3H18a3 3 0 013 3V18a3 3 0 01-3 3h-2.25a3 3 0 01-3-3v-2.25z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => setBmViewMode('list')}
-                        className="w-8 h-8 rounded-xl flex items-center justify-center transition"
-                        style={{ background: bmViewMode === 'list' ? 'var(--tr-gold-glow)' : 'var(--tr-overlay)', color: bmViewMode === 'list' ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}
-                        aria-label="List view"
-                      >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                          <path fillRule="evenodd" d="M2.625 6.75a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zm4.875 0A.75.75 0 018.25 6h12a.75.75 0 010 1.5h-12a.75.75 0 01-.75-.75zM2.625 12a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zM7.5 12a.75.75 0 01.75-.75h12a.75.75 0 010 1.5h-12A.75.75 0 017.5 12zm-4.875 5.25a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zm4.875 0a.75.75 0 01.75-.75h12a.75.75 0 010 1.5h-12a.75.75 0 01-.75-.75z" clipRule="evenodd" />
-                        </svg>
-                      </button>
                     </div>
-
-                    {bmViewMode === 'grid' ? (
-                      <div className="grid grid-cols-2 gap-2">
-                        {bmPosts.map(bm => <BmGridCard key={bm.id} bm={bm} />)}
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--tr-overlay)' }}>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                        </svg>
                       </div>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        {bmPosts.map(bm => <BmListCard key={bm.id} bm={bm} />)}
+                      <div>
+                        <p className="text-[10px] font-medium" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'إجمالي العلامات' : 'Total marks'}</p>
+                        <p className="text-sm font-semibold" style={{ color: 'var(--tr-text-primary)' }}>{postCount ?? posts.length}</p>
                       </div>
-                    )}
-                  </>
-                )
-              )}
-            </>
-          )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* ════════════════════════════════════════════════════════════
+          MOBILE LAYOUT
+      ════════════════════════════════════════════════════════════ */}
+      <div className="lg:hidden">
+        {/* Cover */}
+        <div className="relative w-full" style={{ height: 110, background: coverGradient }}>
+          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.12)' }} />
+        </div>
+
+        {/* Profile card */}
+        <div className="relative max-w-2xl mx-auto px-4" style={{ marginTop: -32, zIndex: 1 }}>
+          <div
+            className="rounded-3xl px-5 pt-3 pb-6"
+            style={{ background: 'var(--tr-surface)', boxShadow: '0 4px 32px var(--tr-shadow-card)', border: '1px solid var(--tr-border-subtle)' }}
+          >
+            {/* Avatar row */}
+            <div className="flex items-start justify-between" style={{ marginTop: -44 }}>
+              <AvatarEl size={96} />
+
+              {/* Settings button — own profile only */}
+              {isOwnProfile && <SettingsBtn className="mt-14" />}
+
+              {/* Follow/Message buttons */}
+              {!isOwnProfile && (
+                <div className="flex gap-2 mt-14">
+                  <button
+                    onClick={async () => {
+                      if (!user) { setShowGate(true); return; }
+                      if (followLoading) return;
+                      setFollowLoading(true);
+                      const wasFollowing = isFollowing;
+                      setIsFollowing(!wasFollowing);
+                      setFollowerCount(c => wasFollowing ? Math.max(0, c - 1) : c + 1);
+                      try {
+                        const res = await fetch(`/api/tareeq/follow/${profileUser.id}`, { method: 'POST', credentials: 'include' });
+                        if (res.ok) { const d = await res.json(); setIsFollowing(d.following); }
+                        else { setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1)); }
+                      } catch {
+                        setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1));
+                      } finally { setFollowLoading(false); }
+                    }}
+                    disabled={followLoading}
+                    className="font-bold text-sm px-5 py-2 rounded-full transition active:scale-95"
+                    style={isFollowing
+                      ? { background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }
+                      : { background: 'var(--tr-gold)', color: '#fff', border: '1px solid var(--tr-gold)' }}
+                  >
+                    {isFollowing ? (isRtl ? 'متابَع' : 'Following') : (isRtl ? 'تابع' : 'Follow')}
+                  </button>
+                  <button
+                    onClick={handleSendMessage}
+                    className="font-bold text-sm px-5 py-2 rounded-full transition active:scale-95"
+                    style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}
+                  >
+                    {isRtl ? 'رسالة' : 'Message'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <h1 className="font-black text-xl mt-3" style={{ color: 'var(--tr-text-primary)' }}>{profileUser.name}</h1>
+
+            <div className="flex gap-6 mt-4">
+              <StatItem count={postCount ?? posts.length} label={isRtl ? 'علامة' : 'Posts'} />
+              <StatItem count={followerCount} label={isRtl ? 'تابعوني' : 'Followers'} onClick={() => openFollowList('followers')} />
+              <StatItem count={followingCount} label={isRtl ? 'أتابعهم' : 'Following'} onClick={() => openFollowList('following')} />
+            </div>
+          </div>
+
+          {/* Tab nav */}
+          <div
+            className="flex mt-4 rounded-2xl overflow-hidden"
+            style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}
+          >
+            <TabBtn active={activeTab === 'posts'} onClick={() => handleTabChange('posts')}>
+              {isRtl ? 'العلامات' : 'Posts'}
+            </TabBtn>
+            {isOwnProfile && (
+              <TabBtn active={activeTab === 'bookmarks'} onClick={() => handleTabChange('bookmarks')}>
+                <svg className="inline w-3.5 h-3.5 me-1 -mt-0.5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M6.32 2.577a49.255 49.255 0 0111.36 0c1.497.174 2.57 1.46 2.57 2.93V21a.75.75 0 01-1.085.67L12 18.089l-7.165 3.583A.75.75 0 013.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93z" />
+                </svg>
+                {isRtl ? 'المحفوظات' : 'Saved'}
+              </TabBtn>
+            )}
+          </div>
+
+          {/* Feed / Bookmarks content */}
+          <div className="py-4 pb-24">
+            {activeTab === 'posts' && (
+              posts.length === 0 ? postsEmpty : (
+                <>
+                  {postsHasImages ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      {posts.map(post => (
+                        post.imageUrl ? (
+                          <GridImageCard key={post.id} post={post} liked={likedIds.has(post.id)} />
+                        ) : (
+                          <div key={post.id} className="col-span-2">
+                            <TareeqCard post={post} initialLiked={likedIds.has(post.id)} initialReaction={reactedPosts[post.id] ?? null} />
+                          </div>
+                        )
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-4">
+                      {posts.map(post => (
+                        <TareeqCard key={post.id} post={post} initialLiked={likedIds.has(post.id)} initialReaction={reactedPosts[post.id] ?? null} />
+                      ))}
+                    </div>
+                  )}
+                  {cursor && <div ref={sentinelRef} className="h-4 mt-8" />}
+                  {loading && (
+                    <div className="flex justify-center mt-8">
+                      <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
+                    </div>
+                  )}
+                </>
+              )
+            )}
+            {activeTab === 'bookmarks' && isOwnProfile && bookmarkContent}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Shared modals ── */}
       {showCreate && <TareeqCreateModal onClose={() => setShowCreate(false)} onCreated={() => {}} />}
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
-      <TareeqBottomNav onCreateClick={() => setShowCreate(true)} />
 
       {/* Followers / Following modal */}
       {followListType && (
@@ -770,7 +954,20 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
         </div>
       )}
     </div>
-    </TareeqNotificationsProvider>
+  );
+}
+
+function DeskTabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className="px-5 py-3 font-bold text-sm transition"
+      style={active
+        ? { color: 'var(--tr-gold)', borderBottom: '2px solid var(--tr-gold)', marginBottom: -1 }
+        : { color: 'var(--tr-text-muted)', borderBottom: '2px solid transparent', marginBottom: -1 }}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -780,8 +977,8 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
       className="flex-1 py-3 font-bold text-sm transition"
       onClick={onClick}
       style={active
-        ? { color: 'var(--tr-gold)', borderBottom: '2px solid var(--tr-gold)' }
-        : { color: 'var(--tr-text-muted)', borderBottom: '2px solid transparent' }}
+        ? { color: 'var(--tr-gold)', background: 'var(--tr-gold-glow)' }
+        : { color: 'var(--tr-text-muted)' }}
     >
       {children}
     </button>

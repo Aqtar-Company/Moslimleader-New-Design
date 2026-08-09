@@ -20,13 +20,22 @@ export async function POST(
     return NextResponse.json({ error: 'invalid_mode' }, { status: 400 });
   }
 
+  // F-03: reject NaN / negative / infinite inputs before they corrupt the ledger
+  const isValidFinitePositive = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v >= 0;
+
   try {
     if (mode === 'percent') {
-      await approveMLSupport(params.id, user.userId, user.role, { mode, percent: Number(percent) });
+      const pct = Number(percent);
+      if (!isValidFinitePositive(pct) || pct > 100) return NextResponse.json({ error: 'invalid_percent' }, { status: 400 });
+      await approveMLSupport(params.id, user.userId, user.role, { mode, percent: pct });
     } else if (mode === 'fixed') {
-      await approveMLSupport(params.id, user.userId, user.role, { mode, amount: Number(amount) });
+      const amt = Number(amount);
+      if (!isValidFinitePositive(amt)) return NextResponse.json({ error: 'invalid_amount' }, { status: 400 });
+      await approveMLSupport(params.id, user.userId, user.role, { mode, amount: amt });
     } else {
-      await approveMLSupport(params.id, user.userId, user.role, { mode, customerPays: Number(customerPays) });
+      const cp = Number(customerPays);
+      if (!isValidFinitePositive(cp)) return NextResponse.json({ error: 'invalid_customer_pays' }, { status: 400 });
+      await approveMLSupport(params.id, user.userId, user.role, { mode, customerPays: cp });
     }
     return NextResponse.json({ ok: true });
   } catch (err: unknown) {

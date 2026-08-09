@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   const pending = await prisma.setting.findUnique({ where: { key: `pp_sp_${paypalOrderId}` } });
   if (!pending) return NextResponse.json({ error: 'unknown_paypal_order' }, { status: 400 });
 
-  const { sponsoredOrderId } = pending.value as { sponsoredOrderId: string; expectedUsd: number };
+  const { sponsoredOrderId, expectedUsd } = pending.value as { sponsoredOrderId: string; expectedUsd: number };
 
   const sponsoredOrder = await prisma.sponsoredOrder.findUnique({
     where: { id: sponsoredOrderId },
@@ -29,8 +29,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
-  // Idempotency: already paid
-  if (sponsoredOrder.paymentStatus === 'paid') {
+  // H-5 / C-2: atomically claim the payment slot by transitioning from
+  // 'pending' → 'paid'. Only the first concurrent request succeeds
+  // (count=1); subsequent calls see count=0 and return existing copies.
+  const claimed = await prisma.sponsoredOrder.updateMany({
+    where: { id: sponsoredOrderId, paymentStatus: 'pending' },
+    data: { paymentStatus: 'paid' },
+  });
+
+  if (claimed.count === 0) {
+    // Already processed — return existing copies idempotently
     const copies = await prisma.sponsoredCopy.findMany({
       where: { sponsoredOrderId },
       select: { id: true, code: true },
@@ -38,14 +46,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, copies });
   }
 
-  // Capture PayPal payment
-  await capturePayPalOrder(paypalOrderId);
+  try {
+    // Capture PayPal payment
+    const capture = await capturePayPalOrder(paypalOrderId);
 
-  // Mark order as paid and create copies
-  await prisma.sponsoredOrder.update({
-    where: { id: sponsoredOrderId },
-    data: { paymentStatus: 'paid' },
-  });
+    // F-01: verify the captured amount matches what we expected
+    const capturedValue = Number(
+      capture?.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value ?? 0,
+    );
+    if (expectedUsd > 0 && Math.abs(capturedValue - expectedUsd) > 0.02) {
+      // Rollback: revert order to pending so admin can investigate
+      await prisma.sponsoredOrder.update({
+        where: { id: sponsoredOrderId },
+        data: { paymentStatus: 'pending', adminNote: `Amount mismatch: expected $${expectedUsd}, got $${capturedValue}` },
+      });
+      return NextResponse.json({ error: 'amount_mismatch' }, { status: 422 });
+    }
+  } catch (err) {
+    // PayPal capture failed — rollback to pending
+    await prisma.sponsoredOrder.update({
+      where: { id: sponsoredOrderId },
+      data: { paymentStatus: 'pending' },
+    });
+    throw err;
+  }
 
   const copies = await createSponsoredCopies(sponsoredOrderId);
 

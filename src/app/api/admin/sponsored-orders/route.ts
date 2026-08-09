@@ -56,11 +56,25 @@ export async function POST(req: NextRequest) {
   let resolvedSponsorId = sponsorId;
 
   if (!resolvedSponsorId && sponsorData) {
-    const sponsor = await getOrCreateSponsorForUser(
-      sponsorData.userId ?? `admin-${Date.now()}`,
-      { name: sponsorData.name, phone: sponsorData.phone, email: sponsorData.email },
-    );
-    resolvedSponsorId = sponsor.id;
+    if (sponsorData.userId) {
+      // Linked to an existing user account
+      const sponsor = await getOrCreateSponsorForUser(
+        sponsorData.userId,
+        { name: sponsorData.name, phone: sponsorData.phone, email: sponsorData.email },
+      );
+      resolvedSponsorId = sponsor.id;
+    } else {
+      // C-4: anonymous offline donor — create without userId to avoid FK violation
+      const sponsor = await prisma.sponsor.create({
+        data: {
+          userId: null,
+          name: sponsorData.name ?? 'داعم مجهول',
+          phone: sponsorData.phone ?? null,
+          email: sponsorData.email ?? null,
+        },
+      });
+      resolvedSponsorId = sponsor.id;
+    }
   }
 
   if (!resolvedSponsorId) {

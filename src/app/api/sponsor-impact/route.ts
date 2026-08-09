@@ -17,14 +17,16 @@ export async function GET(req: Request) {
 
   if (!sponsor) return NextResponse.json({ error: 'not_sponsor' }, { status: 404 });
 
+  // M-1: use relation filter instead of nested findMany + IN to avoid N+1
   const copies = await prisma.sponsoredCopy.findMany({
-    where: { sponsoredOrderId: { in: await prisma.sponsoredOrder.findMany({ where: { sponsorId: sponsor.id }, select: { id: true } }).then(ords => ords.map(o => o.id)) } },
+    where: { sponsoredOrder: { sponsorId: sponsor.id } },
     include: {
       product: { select: { name: true } },
       impactMessages: { where: { status: 'APPROVED' }, select: { id: true, message: true, status: true } },
       impactMedia: { where: { status: 'APPROVED' }, select: { id: true, mediaUrl: true, status: true } },
     },
     orderBy: { purchasedAt: 'desc' },
+    take: 50,
   });
 
   const delivered = copies.filter(c => ['DELIVERED', 'CONFIRMED', 'COMPLETED'].includes(c.status)).length;

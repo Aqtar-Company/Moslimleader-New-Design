@@ -3,11 +3,17 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { createPayPalOrder } from '@/lib/paypal';
 
 export async function POST(req: NextRequest) {
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // F-05: rate limit — max 10 PayPal order creations per user per hour
+  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
+  const { allowed } = checkRateLimit(`paypal-create-sp:${user.userId}:${ip}`, 10, 60 * 60 * 1000);
+  if (!allowed) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
 
   const { sponsoredOrderId } = await req.json();
   if (!sponsoredOrderId) return NextResponse.json({ error: 'missing_fields' }, { status: 400 });

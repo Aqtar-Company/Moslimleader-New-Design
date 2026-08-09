@@ -13,6 +13,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { getOrCreateSponsorForUser, getSupportSettings } from '@/lib/support-system';
 
 export async function POST(req: NextRequest) {
@@ -23,6 +24,11 @@ export async function POST(req: NextRequest) {
   if (!settings.featureEnabled) {
     return NextResponse.json({ error: 'feature_disabled' }, { status: 403 });
   }
+
+  // F-05: rate limit — max 5 sponsored orders per user per hour
+  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
+  const { allowed } = checkRateLimit(`sponsored-purchase:${user.userId}:${ip}`, 5, 60 * 60 * 1000);
+  if (!allowed) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
 
   const body = await req.json();
   const { productId, variantIndex, quantity = 1, policyAgreed } = body;

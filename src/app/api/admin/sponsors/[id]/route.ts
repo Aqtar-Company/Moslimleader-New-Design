@@ -42,7 +42,7 @@ export async function GET(
     available: copies.filter(c => c.status === 'AVAILABLE').length,
     assigned: copies.filter(c => ['ASSIGNED', 'IN_PREPARATION', 'READY_TO_SHIP'].includes(c.status)).length,
     shipped: copies.filter(c => c.status === 'SHIPPED').length,
-    delivered: copies.filter(c => ['DELIVERED', 'CONFIRMED', 'COMPLETED'].length > 0 && ['DELIVERED', 'CONFIRMED', 'COMPLETED'].includes(c.status)).length,
+    delivered: copies.filter(c => ['DELIVERED', 'CONFIRMED', 'COMPLETED'].includes(c.status)).length,
     confirmed: copies.filter(c => ['CONFIRMED', 'COMPLETED'].includes(c.status)).length,
     totalRetailValue: copies.reduce((s, c) => s + c.originalPrice, 0),
     currency: 'EGP',

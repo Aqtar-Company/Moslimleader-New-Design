@@ -29,7 +29,7 @@ export function SponsorCopySection({ productId, productName, productPrice, curre
     const res = await fetch('/api/sponsored-purchases', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ productId, quantity }),
+      body: JSON.stringify({ productId, quantity, policyAgreed: true }),
     });
     if (res.ok) {
       const d = await res.json();

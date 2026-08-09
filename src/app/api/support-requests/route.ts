@@ -3,11 +3,13 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
+import { checkRateLimit } from '@/lib/rate-limit';
 import {
   createSupportRequest,
   getSupportSettings,
   checkRequestEligibility,
 } from '@/lib/support-system';
+import { loadStaticOverrides, applyOverride } from '@/lib/product-overrides';
 
 // GET /api/support-requests — user's own requests
 export async function GET() {
@@ -37,21 +39,48 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'feature_disabled' }, { status: 403 });
   }
 
+  // F-02/F-05: rate limit — max 5 requests per user per hour
+  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
+  const { allowed } = checkRateLimit(`support-req:${user.userId}:${ip}`, 5, 60 * 60 * 1000);
+  if (!allowed) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+
   const body = await req.json();
   const { productId, variantIndex, quantity = 1, reason, note, country } = body;
 
-  if (!productId || !reason) {
+  // F-06: validate reason against allowed enum
+  const ALLOWED_REASONS = ['financial_hardship', 'low_income', 'large_family', 'student', 'other'];
+  if (!productId || !reason || !ALLOWED_REASONS.includes(reason)) {
     return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
   }
 
-  const eligibility = await checkRequestEligibility(user.userId, productId, country ?? 'EG');
+  // F-13: server-side length limits
+  if (note && note.length > 500) {
+    return NextResponse.json({ error: 'note_too_long' }, { status: 400 });
+  }
+
+  // F-12: validate country is ISO-3166-1 alpha-2 (exactly 2 uppercase letters)
+  const resolvedCountry = country ?? 'EG';
+  if (!/^[A-Z]{2}$/.test(resolvedCountry)) {
+    return NextResponse.json({ error: 'invalid_country' }, { status: 400 });
+  }
+
+  const eligibility = await checkRequestEligibility(user.userId, productId, resolvedCountry);
   if (!eligibility.eligible) {
     return NextResponse.json({ error: eligibility.reason }, { status: 422 });
   }
 
   // Load product and compute price snapshot server-side
-  const product = await prisma.product.findUnique({ where: { id: productId } });
-  if (!product) return NextResponse.json({ error: 'product_not_found' }, { status: 404 });
+  const rawProduct = await prisma.product.findUnique({ where: { id: productId } });
+  if (!rawProduct) return NextResponse.json({ error: 'product_not_found' }, { status: 404 });
+
+  // H-4: apply product-overrides for static products so the snapshot
+  // reflects the admin-configured price, not the stale DB copy.
+  let product = rawProduct as typeof rawProduct & { price: number };
+  if (rawProduct.source === 'static') {
+    const overrides = await loadStaticOverrides();
+    const merged = applyOverride(rawProduct as Parameters<typeof applyOverride>[0], overrides[rawProduct.id]);
+    if (merged) product = merged as typeof product;
+  }
 
   const dbUser = await prisma.user.findUnique({
     where: { id: user.userId },
@@ -70,7 +99,7 @@ export async function POST(req: NextRequest) {
       quantity: Number(quantity),
       reason,
       note: note?.trim() || undefined,
-      country: country ?? 'EG',
+      country: resolvedCountry,
       snapshotProductPrice,
       snapshotDiscount,
       snapshotEligiblePrice,

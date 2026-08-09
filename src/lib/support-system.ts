@@ -52,7 +52,30 @@ export async function updateSupportSettings(
   actorRole: string,
 ): Promise<SupportSettings> {
   const current = await getSupportSettings();
-  const next = { ...current, ...patch };
+  // F-10: only apply known keys with range validation — never spread raw input
+  const safe: Partial<SupportSettings> = {};
+  if (patch.featureEnabled !== undefined) safe.featureEnabled = Boolean(patch.featureEnabled);
+  if (patch.eligibleCountries !== undefined)
+    safe.eligibleCountries = Array.isArray(patch.eligibleCountries)
+      ? patch.eligibleCountries.filter((s): s is string => typeof s === 'string' && /^[A-Z]{2}$/.test(s))
+      : current.eligibleCountries;
+  if (patch.requestCooldownDays !== undefined)
+    safe.requestCooldownDays = Math.max(0, Math.min(365, Math.trunc(Number(patch.requestCooldownDays))));
+  if (patch.maxActiveRequests !== undefined)
+    safe.maxActiveRequests = Math.max(1, Math.min(20, Math.trunc(Number(patch.maxActiveRequests))));
+  if (patch.maxMLSupportPercent !== undefined)
+    safe.maxMLSupportPercent = Math.max(1, Math.min(100, Number(patch.maxMLSupportPercent)));
+  if (patch.maxMLSupportAmount !== undefined)
+    safe.maxMLSupportAmount = patch.maxMLSupportAmount === null ? null : Math.max(0, Number(patch.maxMLSupportAmount));
+  if (patch.approvalExpiryHours !== undefined)
+    safe.approvalExpiryHours = Math.max(1, Math.min(8760, Math.trunc(Number(patch.approvalExpiryHours))));
+  if (patch.maxSponsoredCopiesPerProduct !== undefined)
+    safe.maxSponsoredCopiesPerProduct = Math.max(1, Math.min(10000, Math.trunc(Number(patch.maxSponsoredCopiesPerProduct))));
+  if (patch.sponsoredCopyCoversShipping !== undefined)
+    safe.sponsoredCopyCoversShipping = Boolean(patch.sponsoredCopyCoversShipping);
+  if (patch.mlMonthlyBudget !== undefined)
+    safe.mlMonthlyBudget = patch.mlMonthlyBudget === null ? null : Math.max(0, Number(patch.mlMonthlyBudget));
+  const next = { ...current, ...safe };
   await prisma.setting.upsert({
     where: { key: 'support-settings' },
     create: { key: 'support-settings', value: next as object },
@@ -111,14 +134,14 @@ export async function checkRequestEligibility(
     return { eligible: false, reason: 'duplicate_active_request' };
   }
 
-  // Check cooldown
+  // Check cooldown — only 'USED' has usedAt set; 'APPROVED' never does
   if (settings.requestCooldownDays > 0) {
     const cooldownDate = new Date();
     cooldownDate.setDate(cooldownDate.getDate() - settings.requestCooldownDays);
     const recentUsed = await prisma.supportRequest.findFirst({
       where: {
         userId,
-        status: { in: ['USED', 'APPROVED'] },
+        status: 'USED',
         usedAt: { gte: cooldownDate },
       },
     });
@@ -307,10 +330,11 @@ export async function approveMLSupport(
     supportPercent = (supportAmount / eligible) * 100;
   }
 
-  // Apply max amount cap
-  if (settings.maxMLSupportAmount !== null) {
-    supportAmount = Math.min(supportAmount, settings.maxMLSupportAmount);
-    customerPays = eligible - supportAmount;
+  // Apply max amount cap — recompute percent to reflect the capped value
+  if (settings.maxMLSupportAmount !== null && supportAmount > settings.maxMLSupportAmount) {
+    supportAmount = settings.maxMLSupportAmount;
+    customerPays = Math.max(0, eligible - supportAmount);
+    supportPercent = eligible > 0 ? (supportAmount / eligible) * 100 : 0;
   }
 
   const expiresAt = new Date(Date.now() + settings.approvalExpiryHours * 3600 * 1000);
@@ -389,17 +413,11 @@ export async function assignSponsoredCopy(
   const expiresAt = new Date(Date.now() + settings.approvalExpiryHours * 3600 * 1000);
 
   await prisma.$transaction(async (tx) => {
-    // Atomic: read copy with lock and verify still AVAILABLE
-    const locked = await tx.sponsoredCopy.findUnique({
-      where: { id: copyId },
-      select: { status: true },
-    });
-    if (locked?.status !== 'AVAILABLE') {
-      throw new Error('copy_no_longer_available');
-    }
-
-    await tx.sponsoredCopy.update({
-      where: { id: copyId },
+    // C-1: atomic conditional update — only succeeds if status is still AVAILABLE.
+    // Plain findUnique inside a transaction does NOT lock in MySQL REPEATABLE READ,
+    // so we replace read+update with a single updateMany + count check.
+    const claimed = await tx.sponsoredCopy.updateMany({
+      where: { id: copyId, status: 'AVAILABLE' },
       data: {
         status: 'ASSIGNED',
         beneficiaryUserId: req.userId,
@@ -407,6 +425,9 @@ export async function assignSponsoredCopy(
         assignedAt: new Date(),
       },
     });
+    if (claimed.count === 0) {
+      throw new Error('copy_no_longer_available');
+    }
 
     await tx.supportRequest.update({
       where: { id: requestId },
@@ -544,8 +565,10 @@ export async function releaseMLSupport(requestId: string) {
 // ─── Sponsored Copy code generation ──────────────────────────────────────────
 
 export async function generateCopyCode(): Promise<string> {
-  // Atomic: insert into sequence table, use returned id
+  // Atomic: insert into sequence table, use returned id.
+  // L-1: delete the row immediately after reading to prevent unbounded table growth.
   const seq = await prisma.sponsoredCopySeq.create({ data: {} });
+  await prisma.sponsoredCopySeq.delete({ where: { id: seq.id } });
   return `ML-SP-${String(seq.id).padStart(6, '0')}`;
 }
 
@@ -577,28 +600,32 @@ export async function createSponsoredCopies(
 
   for (let i = 0; i < needed; i++) {
     const code = await generateCopyCode();
-    const copy = await prisma.sponsoredCopy.create({
-      data: {
-        code,
-        sponsorId: order.sponsorId,
-        sponsoredOrderId,
-        productId: order.productId,
-        variantIndex: order.variantIndex ?? null,
-        originalPrice: order.pricePerCopy,
-        paidPrice: order.pricePerCopy,
-        currency: order.currency,
-        status: 'AVAILABLE',
-        purchasedAt: new Date(),
-      },
-    });
-
-    await prisma.sponsoredCopyEvent.create({
-      data: {
-        copyId: copy.id,
-        event: 'COPY_CREATED',
-        actorUserId: adminUserId ?? order.sponsor.userId ?? undefined,
-        metadata: { sponsoredOrderId },
-      },
+    // C-2: wrap copy + first event in a single transaction so a crash
+    // between them never leaves an orphaned copy without an event.
+    const copy = await prisma.$transaction(async (tx) => {
+      const c = await tx.sponsoredCopy.create({
+        data: {
+          code,
+          sponsorId: order.sponsorId,
+          sponsoredOrderId,
+          productId: order.productId,
+          variantIndex: order.variantIndex ?? null,
+          originalPrice: order.pricePerCopy,
+          paidPrice: order.pricePerCopy,
+          currency: order.currency,
+          status: 'AVAILABLE',
+          purchasedAt: new Date(),
+        },
+      });
+      await tx.sponsoredCopyEvent.create({
+        data: {
+          copyId: c.id,
+          event: 'COPY_CREATED',
+          actorUserId: adminUserId ?? order.sponsor.userId ?? undefined,
+          metadata: { sponsoredOrderId } as never,
+        },
+      });
+      return c;
     });
 
     created.push({ id: copy.id, code: copy.code });
@@ -725,27 +752,29 @@ export async function refundCopy(
   const copy = await getCopyOrThrow(copyId);
   assertStatus(copy.status, ['AVAILABLE', 'RESERVED', 'ASSIGNED'], 'refund copy');
 
-  // If assigned to a beneficiary, un-assign the support request too
-  if (copy.supportRequestId) {
-    await prisma.supportRequest.update({
-      where: { id: copy.supportRequestId },
-      data: { status: 'CANCELLED' },
+  // H-1: wrap both updates in one transaction — a crash between them
+  // would leave the SupportRequest cancelled but the copy still ASSIGNED.
+  await prisma.$transaction(async (tx) => {
+    if (copy.supportRequestId) {
+      await tx.supportRequest.update({
+        where: { id: copy.supportRequestId },
+        data: { status: 'CANCELLED' },
+      });
+    }
+    await tx.sponsoredCopy.update({
+      where: { id: copyId },
+      data: {
+        status: 'REFUNDED',
+        refundAmount: data.amount,
+        refundReason: data.reason,
+        refundPaymentRef: data.paymentRef ?? null,
+        refundedByUserId: adminUserId,
+        refundedAt: new Date(),
+        beneficiaryUserId: null,
+        supportRequestId: null,
+        assignedAt: null,
+      },
     });
-  }
-
-  await prisma.sponsoredCopy.update({
-    where: { id: copyId },
-    data: {
-      status: 'REFUNDED',
-      refundAmount: data.amount,
-      refundReason: data.reason,
-      refundPaymentRef: data.paymentRef ?? null,
-      refundedByUserId: adminUserId,
-      refundedAt: new Date(),
-      beneficiaryUserId: null,
-      supportRequestId: null,
-      assignedAt: null,
-    },
   });
 
   await recordCopyEvent(copyId, 'REFUNDED', adminUserId, data as Record<string, unknown>);
@@ -806,15 +835,17 @@ export async function getMLBudgetSummary(): Promise<MLBudgetSummary> {
 export async function getOrCreateSponsorForUser(userId: string, userData: {
   name: string; phone?: string; email?: string;
 }) {
-  const existing = await prisma.sponsor.findUnique({ where: { userId } });
-  if (existing) return existing;
-  return prisma.sponsor.create({
-    data: {
+  // C-3: use upsert to avoid unique-constraint race when two concurrent
+  // requests both find no existing sponsor and both attempt to create one.
+  return prisma.sponsor.upsert({
+    where: { userId },
+    create: {
       userId,
       name: userData.name,
       phone: userData.phone ?? null,
       email: userData.email ?? null,
     },
+    update: {},
   });
 }
 

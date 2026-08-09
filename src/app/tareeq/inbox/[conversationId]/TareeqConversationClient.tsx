@@ -145,51 +145,57 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
   }, [url]);
 
   useEffect(() => {
+    // ── Playback element — never touched by duration discovery ──────
+    // Mobile browsers revoke the "user-gesture" audio unlock when the
+    // element is seeked programmatically (seek-to-end trick). Keeping
+    // two separate elements (one for discovery, one for play) avoids
+    // this: the playback element stays pristine until the user taps.
     const a = new Audio();
-    a.preload = 'metadata';
     audioRef.current = a;
-    // seekingForDuration: true while we seek to 1e10 — onerror suppressed during this phase
-    let seekingForDuration = false;
-    let durationDiscovered = false;
-    a.onloadedmetadata = () => {
-      if (isFinite(a.duration) && a.duration > 0) {
-        setDuration(a.duration);
-      } else {
-        seekingForDuration = true;
-        a.currentTime = 1e10;
-      }
-    };
-    a.onseeked = () => {
-      if (durationDiscovered) return;
-      if (seekingForDuration) {
-        durationDiscovered = true;
-        seekingForDuration = false;
-        const discovered = a.currentTime;
-        if (discovered > 0) setDuration(discovered);
-        a.currentTime = 0;
-      }
-    };
+    a.preload = 'none'; // don't load until user taps play
     a.ontimeupdate = () => {
       setCurTime(a.currentTime);
-      setProgress(a.duration > 0 ? a.currentTime / a.duration : 0);
+      if (isFinite(a.duration) && a.duration > 0) {
+        setProgress(a.currentTime / a.duration);
+        setDuration(d => d > 0 ? d : a.duration); // update duration from playback if still 0
+      }
     };
     a.onplay = () => setPlaying(true);
-    a.onpause = () => {
-      if (activeAudioEl === a) activeAudioEl = null;
-      setPlaying(false);
-    };
+    a.onpause = () => { if (activeAudioEl === a) activeAudioEl = null; setPlaying(false); };
     a.onended = () => {
       if (activeAudioEl === a) activeAudioEl = null;
-      setPlaying(false); setProgress(0); setCurTime(0);
-      a.currentTime = 0;
+      setPlaying(false); setProgress(0); setCurTime(0); a.currentTime = 0;
     };
-    a.onerror = () => {
-      if (activeAudioEl === a) activeAudioEl = null;
-      setPlaying(false);
-      if (!seekingForDuration) setHasError(true);
-    };
+    a.onerror = () => { if (activeAudioEl === a) activeAudioEl = null; setPlaying(false); setHasError(true); };
     a.src = url;
-    return () => { a.pause(); a.src = ''; if (activeAudioEl === a) activeAudioEl = null; };
+
+    // ── Duration-discovery element — separate, never played ─────────
+    const d = new Audio();
+    d.preload = 'metadata';
+    let seeking = false;
+    let done = false;
+    d.onloadedmetadata = () => {
+      if (isFinite(d.duration) && d.duration > 0) {
+        setDuration(d.duration);
+        d.src = '';
+      } else {
+        seeking = true;
+        d.currentTime = 1e10; // seek to EOF to discover real duration
+      }
+    };
+    d.onseeked = () => {
+      if (done || !seeking) return;
+      done = true; seeking = false;
+      if (d.currentTime > 0) setDuration(d.currentTime);
+      d.src = '';
+    };
+    d.onerror = () => { d.src = ''; };
+    d.src = url;
+
+    return () => {
+      a.pause(); a.src = ''; if (activeAudioEl === a) activeAudioEl = null;
+      d.src = '';
+    };
   }, [url]);
 
   function toggle() {

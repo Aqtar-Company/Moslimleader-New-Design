@@ -278,35 +278,63 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           boxShadow: '0 2px 24px rgba(0,0,0,0.5), inset 0 -1px 0 rgba(255,255,255,0.04)',
         }}
       >
-        <div className="max-w-2xl mx-auto lg:max-w-[1180px] flex items-center px-4 h-16 gap-2 lg:gap-3">
+        <div className="max-w-2xl mx-auto lg:max-w-[1180px] flex items-center px-4 h-14 lg:h-16 gap-2 lg:gap-3">
 
-          {/* ── MOBILE ONLY: compact icon → expands toward start (RTL=left, LTR=left) ── */}
-          <div className="lg:hidden flex items-center w-full justify-end">
+          {/* ── MOBILE ONLY: glass search pill + glass bell button ── */}
+          <div className="lg:hidden flex items-center w-full gap-2.5">
+
+            {/* Glass search pill — flex-1 */}
             <div
               ref={searchContainerRef}
-              style={{
-                position: 'relative',
-                height: 40,
-                width: mobileSearchOpen ? 'calc(100% - 4px)' : 44,
-                transition: 'width 260ms cubic-bezier(0.4,0,0.2,1)',
-                flexShrink: 0,
-              }}
+              className="flex-1 relative"
+              style={{ height: 44 }}
             >
-              {/* Glass pill background */}
+              {/* Glass background */}
               <div style={{
-                position: 'absolute',
-                inset: 0,
-                borderRadius: 9999,
-                background: mobileSearchOpen ? 'rgba(59,130,246,0.07)' : 'rgba(255,255,255,0.09)',
-                backdropFilter: 'blur(14px)',
-                WebkitBackdropFilter: 'blur(14px)',
-                border: `1px solid ${mobileSearchOpen ? 'rgba(59,130,246,0.22)' : 'rgba(255,255,255,0.13)'}`,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-                transition: 'background 200ms, border-color 200ms',
+                position: 'absolute', inset: 0, borderRadius: 22,
+                background: mobileSearchOpen ? 'rgba(255,255,255,0.60)' : 'rgba(255,255,255,0.28)',
+                backdropFilter: 'blur(14px) saturate(130%)',
+                WebkitBackdropFilter: 'blur(14px) saturate(130%)',
+                border: `1px solid ${mobileSearchOpen ? 'rgba(100,140,210,0.28)' : 'rgba(255,255,255,0.28)'}`,
+                boxShadow: mobileSearchOpen ? '0 4px 20px rgba(30,70,120,0.12)' : '0 2px 10px rgba(0,0,0,0.07)',
+                transition: 'background 200ms ease, border-color 200ms ease, box-shadow 200ms ease',
                 pointerEvents: 'none',
               }} />
 
-              {/* Input — only interactive when open */}
+              {/* Search icon — anchored to visual right (right in LTR, left in RTL) */}
+              <button
+                onClick={() => { if (!mobileSearchOpen) { setMobileSearchOpen(true); setTimeout(() => mobileSearchRef.current?.focus(), 50); } }}
+                aria-label={isRtl ? 'بحث' : 'Search'}
+                style={{
+                  position: 'absolute',
+                  [isRtl ? 'left' : 'right']: 0, top: 0,
+                  width: 44, height: 44,
+                  background: 'none', border: 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', zIndex: 2,
+                  color: mobileSearchOpen ? 'rgba(30,80,180,0.85)' : 'rgba(20,30,60,0.62)',
+                  transition: 'color 200ms',
+                }}
+              >
+                <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+              </button>
+
+              {/* Placeholder label when closed */}
+              {!mobileSearchOpen && (
+                <span style={{
+                  position: 'absolute', top: '50%', transform: 'translateY(-50%)',
+                  [isRtl ? 'right' : 'left']: 48,
+                  fontSize: 13, color: 'rgba(20,30,60,0.40)',
+                  pointerEvents: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  maxWidth: 'calc(100% - 60px)',
+                }}>
+                  {isRtl ? 'ابحث في طريق...' : 'Search Tareeq...'}
+                </span>
+              )}
+
+              {/* Input */}
               <input
                 ref={mobileSearchRef}
                 value={searchInput ?? ''}
@@ -316,63 +344,66 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                 placeholder={isRtl ? 'ابحث في طريق...' : 'Search Tareeq...'}
                 dir={isRtl ? 'rtl' : 'ltr'}
                 style={{
-                  position: 'absolute',
-                  inset: 0,
-                  width: '100%',
-                  height: '100%',
-                  borderRadius: 9999,
-                  background: 'transparent',
-                  border: 'none',
-                  outline: 'none',
-                  fontSize: 13,
-                  color: 'var(--tr-text-primary)',
-                  paddingRight: 44,
-                  paddingLeft: (searchInput ?? '').length > 0 && mobileSearchOpen ? 36 : 14,
+                  position: 'absolute', inset: 0,
+                  borderRadius: 22, background: 'transparent', border: 'none', outline: 'none',
+                  fontSize: 13, color: 'rgba(10,15,30,0.90)',
+                  paddingRight: isRtl ? 48 : ((searchInput ?? '').length > 0 && mobileSearchOpen ? 34 : 14),
+                  paddingLeft: isRtl ? ((searchInput ?? '').length > 0 && mobileSearchOpen ? 34 : 14) : 48,
                   opacity: mobileSearchOpen ? 1 : 0,
                   transition: 'opacity 180ms ease',
                   pointerEvents: mobileSearchOpen ? 'auto' : 'none',
                 }}
               />
 
-              {/* Clear × — visual left when text present */}
+              {/* Clear × */}
               {mobileSearchOpen && (searchInput ?? '').length > 0 && (
                 <button
                   onMouseDown={e => e.preventDefault()}
                   onClick={() => { onSearch?.(''); mobileSearchRef.current?.focus(); }}
                   style={{
                     position: 'absolute',
-                    left: 8, top: '50%', transform: 'translateY(-50%)',
+                    [isRtl ? 'right' : 'left']: 8, top: '50%', transform: 'translateY(-50%)',
                     width: 22, height: 22, borderRadius: '50%',
-                    background: 'rgba(255,255,255,0.13)',
-                    border: 'none',
+                    background: 'rgba(0,0,0,0.10)', border: 'none',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', zIndex: 2,
-                    color: 'var(--tr-text-secondary)',
+                    cursor: 'pointer', zIndex: 2, color: 'rgba(10,15,30,0.55)',
                     fontSize: 11, fontWeight: 700,
                   }}
                 >✕</button>
               )}
-
-              {/* Search icon — always on visual right, anchors the pill */}
-              <button
-                onClick={() => { if (!mobileSearchOpen) { setMobileSearchOpen(true); setTimeout(() => mobileSearchRef.current?.focus(), 50); } }}
-                aria-label={isRtl ? 'بحث' : 'Search'}
-                style={{
-                  position: 'absolute',
-                  right: 0, top: 0,
-                  width: 44, height: 40,
-                  background: 'none', border: 'none',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', zIndex: 2, borderRadius: '50%',
-                  color: mobileSearchOpen ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
-                  transition: 'color 200ms',
-                }}
-              >
-                <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                </svg>
-              </button>
             </div>
+
+            {/* Glass notification bell button */}
+            <Link
+              href="/tareeq/notifications"
+              className="relative shrink-0 flex items-center justify-center rounded-2xl transition-all active:scale-[0.93]"
+              style={{
+                width: 44, height: 44,
+                background: 'rgba(255,255,255,0.24)',
+                backdropFilter: 'blur(14px) saturate(130%)',
+                WebkitBackdropFilter: 'blur(14px) saturate(130%)',
+                border: '1px solid rgba(255,255,255,0.28)',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
+              }}
+              aria-label={isRtl ? 'الإشعارات' : 'Notifications'}
+            >
+              <svg width="19" height="19" fill="none" stroke="currentColor" strokeWidth={1.9} viewBox="0 0 24 24"
+                style={{ color: notifCount > 0 ? 'var(--tr-gold)' : 'rgba(20,30,60,0.70)' }}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              {notifCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: -3, right: -3,
+                  width: 16, height: 16, borderRadius: '50%',
+                  background: '#f43f5e', color: '#fff', fontSize: 9, fontWeight: 800,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: '2px solid var(--tr-header-bg)',
+                }}>
+                  {notifCount > 9 ? '9+' : notifCount}
+                </span>
+              )}
+            </Link>
           </div>
 
           {/* ── DESKTOP ONLY ── */}
@@ -637,7 +668,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           </div>
         </div>
       </header>
-      <div className="h-16" />
+      <div className="h-14 lg:h-16" />
     </>
   );
 }

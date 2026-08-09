@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
@@ -7,21 +7,6 @@ import { useAuth } from '@/context/AuthContext';
 import { useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 import { setCameraFile } from '@/lib/tareeq-camera-store';
 import TareeqCallScreen, { CallParty } from './TareeqCallScreen';
-
-/* ─── Types ────────────────────────────────────────────────────────────────── */
-interface Notification {
-  id: string; type: string; actorName?: string | null; postId?: string | null;
-  postTitle?: string | null; body?: string | null; read: boolean; createdAt: string;
-}
-
-/* ─── Utils ─────────────────────────────────────────────────────────────────── */
-function timeAgo(iso: string, isRtl: boolean): string {
-  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (diff < 60) return isRtl ? 'الآن' : 'now';
-  if (diff < 3600) return isRtl ? `${Math.floor(diff / 60)} د` : `${Math.floor(diff / 60)}m`;
-  if (diff < 86400) return isRtl ? `${Math.floor(diff / 3600)} س` : `${Math.floor(diff / 3600)}h`;
-  return isRtl ? `${Math.floor(diff / 86400)} ي` : `${Math.floor(diff / 86400)}d`;
-}
 
 /* ─── Nav color ─────────────────────────────────────────────────────────────── */
 const NAV_ACCENT = '#FFCC00'; // yellow 100 + magenta ~20% — slightly warm, not orange
@@ -70,52 +55,16 @@ function buildNavStrokePath(dy: number): string {
 
 /* ─── Constants ─────────────────────────────────────────────────────────────── */
 const NAV_H = 62;
-const CIRCLE_SIZE = 56;
+const CIRCLE_SIZE = 64;
 const CIRCLE_RADIUS = CIRCLE_SIZE / 2;
-// Circle center sits 6px above nav top edge: bottom_css = 62 + 6 - 28 = 40
-const CIRCLE_BTN_BOTTOM = NAV_H + 6 - CIRCLE_RADIUS; // 40
+// Circle center sits 6px above nav top edge: bottom_css = 62 + 6 - 32 = 36
+const CIRCLE_BTN_BOTTOM = NAV_H + 6 - CIRCLE_RADIUS; // 36
 
 const DRAG_TOL = 10;        // px before entering drag mode
 const CAMERA_THRESHOLD = 68; // px upward to trigger camera
 const CAM_HINT_KEY = 'tr_cam_hint_count';
 const CAM_HINT_MAX = 10;
 
-/* ─── Notification Icons ────────────────────────────────────────────────────── */
-function NotifIcon({ type }: { type: string }) {
-  if (type === 'like') return (
-    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" style={{ color: '#f43f5e' }}>
-      <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
-    </svg>
-  );
-  if (type === 'comment') return (
-    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-teal)' }}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
-    </svg>
-  );
-  return (
-    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-    </svg>
-  );
-}
-
-function NotifText({ n, isRtl }: { n: Notification; isRtl: boolean }) {
-  const actor = n.actorName || (isRtl ? 'شخص ما' : 'Someone');
-  const title = n.postTitle ? `«${n.postTitle}»` : '';
-  if (n.type === 'like') return <span>{isRtl ? `${actor} أعجب بعلامتك ${title}` : `${actor} liked your mark ${title}`}</span>;
-  if (n.type === 'comment') return (
-    <span>
-      {isRtl ? `${actor} علّق على ${title}` : `${actor} commented on ${title}`}
-      {n.body && <span className="block text-xs mt-0.5 opacity-60 truncate">{n.body}</span>}
-    </span>
-  );
-  return (
-    <span>
-      {isRtl ? `رسالة من ${actor}` : `Message from ${actor}`}
-      {n.body && <span className="block text-xs mt-0.5 opacity-60 truncate">{n.body}</span>}
-    </span>
-  );
-}
 
 /* ─── Contacts / Call Sheet ─────────────────────────────────────────────── */
 interface ContactsSheetProps {
@@ -571,17 +520,9 @@ interface Props { onCreateClick: () => void }
 export default function TareeqBottomNav({ onCreateClick }: Props) {
   const { isRtl } = useLang();
   const { user } = useAuth();
-  const { notifCount, messageCount, refresh } = useTareeqNotifications();
+  const { notifCount, messageCount } = useTareeqNotifications();
   const pathname = usePathname();
   const router = useRouter();
-
-  /* ── Notification panel state ────────────────────────── */
-  const [showNotifs, setShowNotifs] = useState(false);
-  const [panelVisible, setPanelVisible] = useState(false);
-  const [notifs, setNotifs] = useState<Notification[]>([]);
-  const [notifsLoading, setNotifsLoading] = useState(false);
-  const notifPanelRef = useRef<HTMLDivElement>(null);
-  const bellRef = useRef<HTMLButtonElement>(null);
 
   /* ── Profile sheet state ─────────────────────────────── */
   const [showProfile, setShowProfile] = useState(false);
@@ -612,7 +553,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
   const svgStrokePathRef = useRef<SVGPathElement>(null);
   const hintRef = useRef<HTMLDivElement>(null);
   const animRafRef = useRef<number | null>(null);
-  const addIconRef = useRef<HTMLImageElement>(null);
+  const addIconRef = useRef<HTMLDivElement>(null);
   const camIconRef = useRef<HTMLDivElement>(null);
 
   const gesture = useRef({
@@ -626,52 +567,6 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
   useEffect(() => {
     prefersReduced.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }, []);
-
-  /* ── Notification loading ────────────────────────────── */
-  const loadNotifs = useCallback(async () => {
-    if (!user) return;
-    setNotifsLoading(true);
-    try {
-      const res = await fetch('/api/tareeq/notifications?limit=20', { credentials: 'include' });
-      if (res.ok) setNotifs((await res.json()).notifications ?? []);
-      await fetch('/api/tareeq/notifications', {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' }, body: '{}',
-      }).then(() => refresh()).catch(() => {});
-    } catch { /* offline */ } finally { setNotifsLoading(false); }
-  }, [user, refresh]);
-
-  useEffect(() => { if (showNotifs) loadNotifs(); }, [showNotifs, loadNotifs]);
-
-  // Panel enter animation — wait one frame so the DOM is rendered before transitioning in
-  useEffect(() => {
-    if (showNotifs) {
-      const id = requestAnimationFrame(() => setPanelVisible(true));
-      return () => cancelAnimationFrame(id);
-    } else {
-      setPanelVisible(false);
-    }
-  }, [showNotifs]);
-
-  useEffect(() => {
-    if (!showNotifs) return;
-    function handle(e: MouseEvent | TouchEvent) {
-      if (notifPanelRef.current && !notifPanelRef.current.contains(e.target as Node) &&
-          bellRef.current && !bellRef.current.contains(e.target as Node)) {
-        setShowNotifs(false);
-      }
-    }
-    document.addEventListener('mousedown', handle);
-    document.addEventListener('touchstart', handle);
-    return () => { document.removeEventListener('mousedown', handle); document.removeEventListener('touchstart', handle); };
-  }, [showNotifs]);
-
-  function handleNotifClick(n: Notification) {
-    setShowNotifs(false);
-    if (n.type === 'message' && n.postId) router.push(`/tareeq/inbox/${n.postId}`);
-    else if (n.type === 'message') router.push('/tareeq/inbox');
-    else if (n.postId) router.push(`/tareeq/${n.postId}`);
-  }
 
   async function startCallFromContacts(contact: CallParty, callType: 'audio' | 'video') {
     setShowContacts(false);
@@ -890,124 +785,6 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
         />
       )}
 
-      {/* ── Floating notification bell ─────────────────────── */}
-      <div className="fixed z-50 print:hidden" style={{ top: 14, right: 14 }}>
-        <button
-          ref={bellRef}
-          onClick={() => { if (navigator.vibrate) navigator.vibrate(6); setShowNotifs(v => !v); }}
-          aria-label={isRtl ? 'الإشعارات' : 'Notifications'}
-          className="relative w-11 h-11 flex items-center justify-center rounded-full transition-all active:scale-[0.94]"
-          style={{
-            background: showNotifs
-              ? 'rgba(59,130,246,0.30)'
-              : 'rgba(59,130,246,0.14)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255,255,255,0.22)',
-            boxShadow: showNotifs
-              ? '0 4px 20px rgba(59,130,246,0.30), inset 0 1px 0 rgba(255,255,255,0.18)'
-              : '0 2px 14px rgba(59,130,246,0.18), inset 0 1px 0 rgba(255,255,255,0.12)',
-          }}
-        >
-          <svg className="w-[19px] h-[19px]" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"
-            style={{ color: '#fff' }}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-          </svg>
-          {notifCount > 0 && (
-            <span className="absolute -top-0.5 -end-0.5 min-w-[17px] h-[17px] rounded-full flex items-center justify-center text-[9px] font-black px-0.5"
-              style={{ background: '#f43f5e', color: '#fff' }}>
-              {notifCount > 9 ? '9+' : notifCount}
-            </span>
-          )}
-        </button>
-
-        {/* ── Glass notification panel ───────────────────── */}
-        {showNotifs && (
-          <div
-            ref={notifPanelRef}
-            className="absolute mt-2 flex flex-col overflow-hidden"
-            style={{
-              top: '100%',
-              right: 0,
-              width: 'min(340px, calc(100vw - 28px))',
-              maxHeight: '65vh',
-              borderRadius: 20,
-              background: 'color-mix(in srgb, var(--tr-surface) 90%, transparent)',
-              backdropFilter: 'blur(28px)',
-              WebkitBackdropFilter: 'blur(28px)',
-              border: '1px solid var(--tr-border-soft)',
-              boxShadow: '0 16px 56px rgba(0,0,0,0.28)',
-              // Entry animation
-              opacity: panelVisible ? 1 : 0,
-              transform: panelVisible ? 'translateY(0) scale(1)' : 'translateY(-10px) scale(0.97)',
-              transition: 'opacity 0.26s ease-out, transform 0.26s cubic-bezier(0.34, 1.1, 0.64, 1)',
-              willChange: 'transform, opacity',
-            }}
-          >
-            {/* Panel header */}
-            <div className="px-4 py-3 flex items-center justify-between shrink-0"
-              style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
-              <span className="font-black text-sm" style={{ color: 'var(--tr-text-primary)' }}>
-                {isRtl ? 'الإشعارات' : 'Notifications'}
-              </span>
-              <Link href="/tareeq/notifications" onClick={() => setShowNotifs(false)}
-                className="text-[11px] font-bold px-3 py-1 rounded-full"
-                style={{ color: '#3b82f6', background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.22)' }}>
-                {isRtl ? 'الكل' : 'See all'}
-              </Link>
-            </div>
-
-            {/* Scrollable list */}
-            <div className="overflow-y-auto flex-1">
-              {notifsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="w-5 h-5 border-2 rounded-full animate-spin"
-                    style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
-                </div>
-              ) : notifs.filter(n => n.type !== 'message').length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 gap-2">
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--tr-text-muted)' }}>
-                    {isRtl ? 'لا إشعارات' : 'No notifications'}
-                  </p>
-                </div>
-              ) : (
-                <div className="p-2.5 flex flex-col gap-2">
-                  {notifs.filter(n => n.type !== 'message').map((n) => (
-                    <button
-                      key={n.id}
-                      onClick={() => handleNotifClick(n)}
-                      className="w-full text-start p-3 flex items-start gap-3 rounded-2xl transition-all active:scale-[0.98]"
-                      style={{
-                        background: n.read ? 'rgba(255,255,255,0.05)' : 'rgba(59,130,246,0.07)',
-                        border: `1px solid ${n.read ? 'rgba(255,255,255,0.08)' : 'rgba(59,130,246,0.18)'}`,
-                      }}
-                    >
-                      {/* Icon — blue glass container */}
-                      <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-                        style={{ background: 'rgba(59,130,246,0.14)', border: '1px solid rgba(59,130,246,0.22)' }}>
-                        <NotifIcon type={n.type} />
-                      </div>
-                      {/* Text */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium leading-snug" style={{ color: 'var(--tr-text-primary)' }} dir="auto">
-                          <NotifText n={n} isRtl={isRtl} />
-                        </p>
-                        <p className="text-[10px] mt-1.5" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(n.createdAt, isRtl)}</p>
-                      </div>
-                      {/* Unread dot — blue */}
-                      {!n.read && <span className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: '#3b82f6' }} />}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* ── Center circle button (fixed, above nav) ───────── */}
       <button
         ref={btnRef}
@@ -1033,9 +810,9 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           width: CIRCLE_SIZE,
           height: CIRCLE_SIZE,
           borderRadius: '50%',
-          background: 'transparent',
-          border: 'none',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.22)',
+          background: 'linear-gradient(145deg, #1a3a6e, #0d2044)',
+          border: '1px solid rgba(255,255,255,0.12)',
+          boxShadow: '0 10px 28px rgba(20,60,120,0.28), 0 4px 12px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.10)',
           zIndex: 42,
           display: 'flex',
           alignItems: 'center',
@@ -1045,22 +822,33 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           overflow: 'hidden',
         }}
       >
-        {/* Add-sign icon */}
-        <img
+        {/* Gold star icon */}
+        <div
           ref={addIconRef}
-          src="/Add-sign.svg"
-          width="52"
-          height="52"
-          alt=""
-          draggable={false}
-          style={{ transition: 'opacity 0.18s ease', userSelect: 'none', pointerEvents: 'none', flexShrink: 0 }}
-        />
-        {/* Camera icon — revealed on swipe-up */}
+          style={{ transition: 'opacity 0.18s ease', pointerEvents: 'none', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path
+              d="M12 2l2.83 6.27L22 9.27l-5.5 5.11 1.3 7.12L12 17.77l-5.8 3.73 1.3-7.12L2 9.27l7.17-1L12 2z"
+              fill="var(--tr-gold)"
+              stroke="rgba(255,200,0,0.4)"
+              strokeWidth="0.8"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+        {/* Camera overlay — glassy blue, revealed on swipe-up */}
         <div
           ref={camIconRef}
           style={{
             position: 'absolute', inset: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: '50%',
+            background: 'rgba(170,205,255,0.22)',
+            backdropFilter: 'blur(14px) saturate(135%)',
+            WebkitBackdropFilter: 'blur(14px) saturate(135%)',
+            border: '1px solid rgba(255,255,255,0.32)',
+            boxShadow: '0 8px 24px rgba(70,120,210,0.18)',
             opacity: 0, transition: 'opacity 0.18s ease', pointerEvents: 'none',
           }}
         >

@@ -553,7 +553,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
   const svgStrokePathRef = useRef<SVGPathElement>(null);
   const hintRef = useRef<HTMLDivElement>(null);
   const animRafRef = useRef<number | null>(null);
-  const addIconRef = useRef<HTMLDivElement>(null);
+  const addIconRef = useRef<HTMLImageElement>(null);
   const camIconRef = useRef<HTMLDivElement>(null);
 
   const gesture = useRef({
@@ -822,21 +822,16 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           overflow: 'hidden',
         }}
       >
-        {/* Gold star icon */}
-        <div
+        {/* 8-pointed star icon */}
+        <img
           ref={addIconRef}
-          style={{ transition: 'opacity 0.18s ease', pointerEvents: 'none', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path
-              d="M12 2l2.83 6.27L22 9.27l-5.5 5.11 1.3 7.12L12 17.77l-5.8 3.73 1.3-7.12L2 9.27l7.17-1L12 2z"
-              fill="var(--tr-gold)"
-              stroke="rgba(255,200,0,0.4)"
-              strokeWidth="0.8"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
+          src="/Add-sign.svg"
+          width="38"
+          height="38"
+          alt=""
+          draggable={false}
+          style={{ transition: 'opacity 0.18s ease', userSelect: 'none', pointerEvents: 'none', flexShrink: 0 }}
+        />
         {/* Camera overlay — glassy blue, revealed on swipe-up */}
         <div
           ref={camIconRef}

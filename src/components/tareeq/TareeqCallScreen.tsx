@@ -148,6 +148,8 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
   const [cameraOff, setCameraOff] = useState(false);
   const [duration, setDuration] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
+  const [permissionDenied, setPermissionDenied] = useState(false);
+  const permissionDeniedRef = useRef(false);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -261,8 +263,14 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
       return await navigator.mediaDevices.getUserMedia(
         callType === 'video' ? { audio: true, video: true } : { audio: true, video: false }
       );
-    } catch {
-      setErrorMsg(isRtl ? 'يرجى السماح بالوصول إلى الكاميرا والميكروفون' : 'Camera/microphone access denied');
+    } catch (err) {
+      const name = err instanceof Error ? err.name : '';
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError' || name === 'SecurityError') {
+        permissionDeniedRef.current = true;
+        setPermissionDenied(true);
+      } else {
+        setErrorMsg(isRtl ? 'تعذر الوصول للكاميرا والميكروفون' : 'Camera/microphone unavailable');
+      }
       return null;
     }
   }
@@ -270,7 +278,7 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
   const startCaller = useCallback(async () => {
     setCallState('connecting');
     const stream = await getMedia();
-    if (!stream) { endCall('failed'); return; }
+    if (!stream) { if (!permissionDeniedRef.current) endCall('failed'); return; }
     localStreamRef.current = stream;
     if (localVideoRef.current) localVideoRef.current.srcObject = stream;
 
@@ -378,7 +386,7 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
     setCallState('connecting');
 
     const stream = await getMedia();
-    if (!stream) { endCall('failed'); return; }
+    if (!stream) { if (!permissionDeniedRef.current) endCall('failed'); return; }
     localStreamRef.current = stream;
     if (localVideoRef.current) localVideoRef.current.srcObject = stream;
 
@@ -672,6 +680,74 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
           display: (callType === 'video' && callState === 'active' && !cameraOff) ? 'block' : 'none',
         }}
       />
+
+      {/* ── Permission denied guide ── */}
+      {permissionDenied && (
+        <div className="absolute inset-0 z-[200] flex items-center justify-center p-6"
+          style={{ background: 'rgba(4,11,18,0.88)', backdropFilter: 'blur(12px)' }}>
+          <div className="w-full max-w-sm rounded-3xl p-6 flex flex-col items-center gap-4 text-center"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
+            {/* Icon */}
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl"
+              style={{ background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.25)' }}>
+              {callType === 'video' ? '📹' : '🎙️'}
+            </div>
+            {/* Title */}
+            <h3 className="font-black text-lg text-white leading-snug">
+              {isRtl
+                ? `يلزم الإذن ${callType === 'video' ? 'بالكاميرا والميكروفون' : 'بالميكروفون'}`
+                : `${callType === 'video' ? 'Camera & Microphone' : 'Microphone'} Access Required`}
+            </h3>
+            {/* Description */}
+            <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>
+              {isRtl
+                ? 'التطبيق يحتاج إذن الوصول للمكالمة. اتبع الخطوات التالية:'
+                : 'The app needs permission to access your device. Follow these steps:'}
+            </p>
+            {/* Steps */}
+            <div className="w-full flex flex-col gap-2.5 text-right" dir={isRtl ? 'rtl' : 'ltr'}>
+              {(isRtl ? [
+                { n: '١', t: 'اضغط على رمز 🔒 في شريط العنوان بالمتصفح' },
+                { n: '٢', t: 'اختر "أذونات الموقع" أو "إعدادات الموقع"' },
+                { n: '٣', t: `فعّل "${callType === 'video' ? 'الكاميرا و' : ''}الميكروفون"` },
+                { n: '٤', t: 'ارجع للتطبيق واضغط "إعادة المحاولة"' },
+              ] : [
+                { n: '1', t: 'Tap the 🔒 lock icon in your browser\'s address bar' },
+                { n: '2', t: 'Select "Site settings" or "Permissions"' },
+                { n: '3', t: `Enable "${callType === 'video' ? 'Camera &' : ''} Microphone"` },
+                { n: '4', t: 'Come back and tap Retry below' },
+              ]).map(({ n, t }) => (
+                <div key={n} className="flex items-start gap-3">
+                  <span className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black"
+                    style={{ background: 'rgba(251,191,36,0.18)', color: '#fbbf24' }}>{n}</span>
+                  <span className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.75)' }}>{t}</span>
+                </div>
+              ))}
+            </div>
+            {/* Retry button */}
+            <button
+              onClick={() => {
+                permissionDeniedRef.current = false;
+                setPermissionDenied(false);
+                if (role === 'caller') startCaller();
+                else answerCall();
+              }}
+              className="w-full py-3.5 rounded-2xl font-black text-sm transition active:scale-95"
+              style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#000' }}
+            >
+              {isRtl ? 'إعادة المحاولة' : 'Retry'}
+            </button>
+            {/* Cancel */}
+            <button
+              onClick={() => endCall('failed')}
+              className="text-sm font-semibold transition"
+              style={{ color: 'rgba(255,255,255,0.35)' }}
+            >
+              {isRtl ? 'إلغاء المكالمة' : 'Cancel call'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Controls ── */}
       <div

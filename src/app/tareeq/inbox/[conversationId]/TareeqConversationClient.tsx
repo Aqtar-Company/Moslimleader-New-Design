@@ -292,6 +292,7 @@ function Inner({ conversationId }: { conversationId: string }) {
   const [micActive, setMicActive] = useState(false);
   const [micSeconds, setMicSeconds] = useState(0);
   const [micError, setMicError] = useState('');
+  const [micPermissionDenied, setMicPermissionDenied] = useState(false);
   const [waveformBars, setWaveformBars] = useState<number[]>(Array(24).fill(0.15));
   const micTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const micIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -559,9 +560,14 @@ function Inner({ conversationId }: { conversationId: string }) {
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      setMicError(isRtl ? 'يرجى السماح بالوصول للميكروفون' : 'Microphone access denied');
-      setTimeout(() => setMicError(''), 3000);
+    } catch (err) {
+      const name = err instanceof Error ? err.name : '';
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError' || name === 'SecurityError') {
+        setMicPermissionDenied(true);
+      } else {
+        setMicError(isRtl ? 'تعذر الوصول للميكروفون' : 'Microphone unavailable');
+        setTimeout(() => setMicError(''), 3000);
+      }
       return;
     }
 
@@ -1151,6 +1157,56 @@ function Inner({ conversationId }: { conversationId: string }) {
           </div>
         </div>
       </div>
+
+      {/* Microphone permission guide modal */}
+      {micPermissionDenied && (
+        <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)' }}
+          onClick={() => setMicPermissionDenied(false)}>
+          <div className="w-full max-w-sm rounded-3xl p-6 flex flex-col items-center gap-4 text-center"
+            style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)' }}
+            onClick={e => e.stopPropagation()}>
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl"
+              style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.2)' }}>
+              🎙️
+            </div>
+            <h3 className="font-black text-lg" style={{ color: 'var(--tr-text-primary)' }}>
+              {isRtl ? 'يلزم إذن الميكروفون' : 'Microphone Permission Required'}
+            </h3>
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--tr-text-secondary)' }}>
+              {isRtl
+                ? 'لتسجيل رسائل صوتية، منح الإذن للمتصفح باستخدام الميكروفون:'
+                : 'To record voice messages, grant your browser microphone access:'}
+            </p>
+            <div className="w-full flex flex-col gap-2.5" dir={isRtl ? 'rtl' : 'ltr'}>
+              {(isRtl ? [
+                { n: '١', t: 'اضغط على رمز 🔒 في شريط العنوان' },
+                { n: '٢', t: 'اختر "أذونات الموقع" أو "إعدادات الموقع"' },
+                { n: '٣', t: 'فعّل خيار "الميكروفون"' },
+                { n: '٤', t: 'أغلق هذه النافذة وحاول مجدداً' },
+              ] : [
+                { n: '1', t: 'Tap the 🔒 lock icon in your browser\'s address bar' },
+                { n: '2', t: 'Select "Site settings" or "Permissions"' },
+                { n: '3', t: 'Enable "Microphone"' },
+                { n: '4', t: 'Close this dialog and try again' },
+              ]).map(({ n, t }) => (
+                <div key={n} className="flex items-start gap-3 text-right">
+                  <span className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black"
+                    style={{ background: 'rgba(251,191,36,0.12)', color: '#f59e0b' }}>{n}</span>
+                  <span className="text-sm leading-relaxed text-right" style={{ color: 'var(--tr-text-primary)' }}>{t}</span>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setMicPermissionDenied(false)}
+              className="w-full py-3 rounded-2xl font-bold text-sm transition active:scale-95"
+              style={{ background: 'var(--tr-gold)', color: '#fff' }}
+            >
+              {isRtl ? 'حسناً، سأمنح الإذن' : 'OK, I\'ll grant permission'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Active call screen */}
       {activeCall && otherUser && (

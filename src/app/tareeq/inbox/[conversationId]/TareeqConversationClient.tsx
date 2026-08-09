@@ -148,26 +148,26 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
     const a = new Audio();
     a.preload = 'metadata';
     audioRef.current = a;
-    // metaReady: false while seeking for duration — onerror during this phase is suppressed
-    let metaReady = false;
+    // seekingForDuration: true while we seek to 1e10 — onerror suppressed during this phase
+    let seekingForDuration = false;
     let durationDiscovered = false;
     a.onloadedmetadata = () => {
       if (isFinite(a.duration) && a.duration > 0) {
-        metaReady = true;
         setDuration(a.duration);
       } else {
+        seekingForDuration = true;
         a.currentTime = 1e10;
       }
     };
     a.onseeked = () => {
       if (durationDiscovered) return;
-      if (!isFinite(a.duration) || a.duration <= 0) {
+      if (seekingForDuration) {
         durationDiscovered = true;
+        seekingForDuration = false;
         const discovered = a.currentTime;
         if (discovered > 0) setDuration(discovered);
         a.currentTime = 0;
       }
-      metaReady = true;
     };
     a.ontimeupdate = () => {
       setCurTime(a.currentTime);
@@ -183,13 +183,12 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
       setPlaying(false); setProgress(0); setCurTime(0);
       a.currentTime = 0;
     };
-    // Only show error if it happens after metadata is ready (i.e. during playback)
     a.onerror = () => {
       if (activeAudioEl === a) activeAudioEl = null;
       setPlaying(false);
-      if (metaReady) setHasError(true);
+      if (!seekingForDuration) setHasError(true);
     };
-    a.src = url; // set src after handlers to avoid missing early events
+    a.src = url;
     return () => { a.pause(); a.src = ''; if (activeAudioEl === a) activeAudioEl = null; };
   }, [url]);
 
@@ -201,7 +200,10 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
     } else {
       if (activeAudioEl && activeAudioEl !== a) activeAudioEl.pause();
       activeAudioEl = a;
-      a.play().catch(() => { if (activeAudioEl === a) activeAudioEl = null; });
+      a.play().catch(() => {
+        if (activeAudioEl === a) activeAudioEl = null;
+        setHasError(true);
+      });
     }
   }
 
@@ -1166,9 +1168,14 @@ function Inner({ conversationId }: { conversationId: string }) {
           <div className="w-full max-w-sm rounded-3xl p-6 flex flex-col items-center gap-4 text-center"
             style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)' }}
             onClick={e => e.stopPropagation()}>
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl"
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
               style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.2)' }}>
-              🎙️
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="22"/>
+                <line x1="8" y1="22" x2="16" y2="22"/>
+              </svg>
             </div>
             <h3 className="font-black text-lg" style={{ color: 'var(--tr-text-primary)' }}>
               {isRtl ? 'يلزم إذن الميكروفون' : 'Microphone Permission Required'}
@@ -1180,12 +1187,12 @@ function Inner({ conversationId }: { conversationId: string }) {
             </p>
             <div className="w-full flex flex-col gap-2.5" dir={isRtl ? 'rtl' : 'ltr'}>
               {(isRtl ? [
-                { n: '١', t: 'اضغط على رمز 🔒 في شريط العنوان' },
+                { n: '١', t: 'اضغط على رمز القفل في شريط عنوان المتصفح' },
                 { n: '٢', t: 'اختر "أذونات الموقع" أو "إعدادات الموقع"' },
                 { n: '٣', t: 'فعّل خيار "الميكروفون"' },
                 { n: '٤', t: 'أغلق هذه النافذة وحاول مجدداً' },
               ] : [
-                { n: '1', t: 'Tap the 🔒 lock icon in your browser\'s address bar' },
+                { n: '1', t: 'Tap the lock icon in your browser\'s address bar' },
                 { n: '2', t: 'Select "Site settings" or "Permissions"' },
                 { n: '3', t: 'Enable "Microphone"' },
                 { n: '4', t: 'Close this dialog and try again' },

@@ -410,10 +410,9 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
       >
         <div className="max-w-[1180px] mx-auto flex items-center px-4 h-16 gap-3">
 
-          {/* Wordmark */}
-          <Link href="/tareeq" className="flex items-center gap-1.5 shrink-0" aria-label="Tareeq">
-            <img src="/Tareeq-big.png" alt="" className="h-9 w-auto object-contain shrink-0" draggable={false} />
-            <img src="/Tareeq-Typo.png" alt="طريق" className="h-7 w-auto object-contain shrink-0" draggable={false} />
+          {/* Wordmark — typography only, no icon */}
+          <Link href="/tareeq" className="flex items-center shrink-0" aria-label="Tareeq">
+            <img src="/Tareeq-Typo.png" alt="طريق" className="h-8 w-auto object-contain shrink-0" draggable={false} />
           </Link>
 
           {/* Desktop search bar */}

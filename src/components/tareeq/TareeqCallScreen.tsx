@@ -688,9 +688,21 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
           <div className="w-full max-w-sm rounded-3xl p-6 flex flex-col items-center gap-4 text-center"
             style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
             {/* Icon */}
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl"
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
               style={{ background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.25)' }}>
-              {callType === 'video' ? '📹' : '🎙️'}
+              {callType === 'video' ? (
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 10l4.553-2.277A1 1 0 0121 8.678v6.644a1 1 0 01-1.447.894L15 14"/>
+                  <rect x="3" y="6" width="12" height="12" rx="2"/>
+                </svg>
+              ) : (
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="22"/>
+                  <line x1="8" y1="22" x2="16" y2="22"/>
+                </svg>
+              )}
             </div>
             {/* Title */}
             <h3 className="font-black text-lg text-white leading-snug">
@@ -707,12 +719,12 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
             {/* Steps */}
             <div className="w-full flex flex-col gap-2.5 text-right" dir={isRtl ? 'rtl' : 'ltr'}>
               {(isRtl ? [
-                { n: '١', t: 'اضغط على رمز 🔒 في شريط العنوان بالمتصفح' },
+                { n: '١', t: 'اضغط على رمز القفل في شريط عنوان المتصفح' },
                 { n: '٢', t: 'اختر "أذونات الموقع" أو "إعدادات الموقع"' },
                 { n: '٣', t: `فعّل "${callType === 'video' ? 'الكاميرا و' : ''}الميكروفون"` },
                 { n: '٤', t: 'ارجع للتطبيق واضغط "إعادة المحاولة"' },
               ] : [
-                { n: '1', t: 'Tap the 🔒 lock icon in your browser\'s address bar' },
+                { n: '1', t: 'Tap the lock icon in your browser\'s address bar' },
                 { n: '2', t: 'Select "Site settings" or "Permissions"' },
                 { n: '3', t: `Enable "${callType === 'video' ? 'Camera &' : ''} Microphone"` },
                 { n: '4', t: 'Come back and tap Retry below' },

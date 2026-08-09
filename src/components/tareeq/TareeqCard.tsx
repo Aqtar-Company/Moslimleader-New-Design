@@ -404,7 +404,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
       <>
         {/* ── MOBILE: full-bleed portrait with floating actions ── */}
         <article
-          className="relative overflow-hidden lg:hidden"
+          className="relative overflow-hidden tr-card-mobile"
           style={{ borderRadius: 24, aspectRatio: '3/4', background: 'var(--tr-overlay)', display: 'block' }}
           aria-label={post.title || post.content.slice(0, 80)}
         >
@@ -497,7 +497,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
         {/* ── DESKTOP: standard feed card layout ── */}
         <article
-          className="hidden lg:block overflow-hidden"
+          className="tr-card-desktop overflow-hidden"
           style={{ borderRadius: 14, background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
           aria-label={post.title || post.content.slice(0, 80)}
         >

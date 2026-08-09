@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
-import TareeqBottomNav from '@/components/tareeq/TareeqBottomNav';
 import { TareeqNotificationsProvider, useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 
 interface Notification {
@@ -143,7 +142,6 @@ function Inner() {
           </div>
         )}
       </div>
-      <TareeqBottomNav onCreateClick={() => {}} />
     </div>
   );
 }

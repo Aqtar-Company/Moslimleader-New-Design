@@ -61,6 +61,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [showCreate, setShowCreate] = useState(false);
+  const [createMode, setCreateMode] = useState<'text' | 'media'>('text');
   const [showGate, setShowGate] = useState(false);
   const [sharePrefill, setSharePrefill] = useState('');
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
@@ -224,13 +225,14 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
     };
   }, [loadPosts]);
 
-  function handleCreateClick() {
+  function handleCreateClick(mode: 'text' | 'media' = 'text') {
     if (!user) { setShowGate(true); return; }
+    setCreateMode(mode);
     setShowCreate(true);
   }
 
   useEffect(() => {
-    const h = () => { if (!user) { setShowGate(true); return; } setShowCreate(true); };
+    const h = () => { if (!user) { setShowGate(true); return; } setCreateMode('text'); setShowCreate(true); };
     window.addEventListener('tareeq-open-create', h);
     return () => window.removeEventListener('tareeq-open-create', h);
   }, [user]);
@@ -253,6 +255,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       if (!file) return;
       if (!user) { setShowGate(true); return; }
       setCameraFile(file);
+      setCreateMode('media');
       setShowCreate(true);
     }
     window.addEventListener('tareeq-camera-ready', openCameraModal);
@@ -289,7 +292,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
             <>
               <p className="text-sm mb-6" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'كن أول من يترك علامة' : 'Be the first to leave a mark'}</p>
               <button
-                onClick={handleCreateClick}
+                onClick={() => handleCreateClick('text')}
                 className="font-black px-8 py-3 rounded-xl text-sm"
                 style={{ background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))', color: '#fff' }}
               >
@@ -505,22 +508,6 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           </div>
 
           </div>{/* end unified sidebar card */}
-
-          {/* New Mark CTA */}
-          <button
-            onClick={handleCreateClick}
-            className="w-full flex items-center justify-center gap-2 font-black text-sm py-3 rounded-2xl transition active:scale-95"
-            style={{
-              background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))',
-              color: '#fff',
-              boxShadow: '0 4px 24px var(--tr-gold-glow)',
-            }}
-          >
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            {isRtl ? 'اترك علامتك' : 'Leave Your Mark'}
-          </button>
         </aside>
 
         {/* ━━ CENTER — feed ━━ */}
@@ -570,12 +557,12 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
                     placeholder={isRtl ? 'ما الذي تريد مشاركته؟' : "What's on your mind?"}
                     className="flex-1 px-4 py-2.5 rounded-full outline-none cursor-pointer"
                     style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', fontSize: 14, border: '1px solid var(--tr-border-soft)' }}
-                    onFocus={(e) => { e.target.blur(); if (user) setShowCreate(true); else setShowGate(true); }}
+                    onFocus={(e) => { e.target.blur(); if (user) { setCreateMode('text'); setShowCreate(true); } else setShowGate(true); }}
                   />
                 </div>
                 {/* Bottom: action buttons */}
                 <div className="flex items-center px-3 py-2" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
-                  <button onClick={handleCreateClick} className="flex flex-1 items-center justify-center gap-2 py-1.5 rounded-xl transition-colors" style={{ color: 'var(--tr-text-secondary)', fontSize: 13, fontWeight: 700 }}
+                  <button onClick={() => handleCreateClick('media')} className="flex flex-1 items-center justify-center gap-2 py-1.5 rounded-xl transition-colors" style={{ color: 'var(--tr-text-secondary)', fontSize: 13, fontWeight: 700 }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--tr-overlay)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >
@@ -585,7 +572,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
                     {isRtl ? 'صورة / فيديو' : 'Photo / Video'}
                   </button>
                   <div className="w-px h-5 mx-2" style={{ background: 'var(--tr-border-subtle)' }} />
-                  <button onClick={handleCreateClick} className="flex flex-1 items-center justify-center gap-2 py-1.5 rounded-xl transition-colors" style={{ color: 'var(--tr-text-secondary)', fontSize: 13, fontWeight: 700 }}
+                  <button onClick={() => handleCreateClick('text')} className="flex flex-1 items-center justify-center gap-2 py-1.5 rounded-xl transition-colors" style={{ color: 'var(--tr-text-secondary)', fontSize: 13, fontWeight: 700 }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--tr-overlay)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >
@@ -601,7 +588,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
 
           {/* Category story circles — mobile only (desktop uses left nav) */}
           <div className="lg:hidden max-w-2xl mx-auto px-4 pb-5 flex gap-4 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            <button onClick={handleCreateClick} className="flex flex-col items-center gap-1.5 shrink-0 active:scale-95 transition-transform" aria-label={isRtl ? 'إضافة علامة' : 'Add mark'}>
+            <button onClick={() => handleCreateClick('text')} className="flex flex-col items-center gap-1.5 shrink-0 active:scale-95 transition-transform" aria-label={isRtl ? 'إضافة علامة' : 'Add mark'}>
               <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: 'var(--tr-raised)', border: '2px dashed var(--tr-border-strong)' }}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-secondary)' }}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -750,7 +737,8 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         <TareeqCreateModal
           initialContent={sharePrefill}
           initialFile={cameraFile ?? undefined}
-          onClose={() => { setShowCreate(false); setSharePrefill(''); setCameraFile(null); }}
+          mode={createMode}
+          onClose={() => { setShowCreate(false); setSharePrefill(''); setCameraFile(null); setCreateMode('text'); }}
           onCreated={(id?: string) => {
             setSharePrefill('');
             loadPosts(category, search, null, sort);

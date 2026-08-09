@@ -337,7 +337,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         <div
           className="fixed sm:hidden z-50 pointer-events-none flex items-center justify-center rounded-full"
           style={{
-            top: `calc(64px + ${Math.min((pullY - 12) * 0.7, 48)}px)`,
+            top: `calc(56px + ${Math.min((pullY - 12) * 0.7, 48)}px)`,
             left: '50%', transform: 'translateX(-50%)',
             width: 36, height: 36,
             background: 'var(--tr-surface)',
@@ -527,7 +527,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         <div className="min-w-0" ref={feedTopRef}>
 
           {/* Sort tabs row */}
-          <div className="max-w-2xl lg:max-w-none mx-auto ps-4 pe-[62px] lg:pe-0 pt-4 pb-2 flex items-center justify-between gap-3">
+          <div className="max-w-2xl lg:max-w-none mx-auto ps-4 pe-4 lg:pe-0 pt-4 pb-2 flex items-center justify-between gap-3">
             <h1 className="font-black text-xl" style={{ color: 'var(--tr-text-primary)' }}>
               {isRtl ? 'اكتشف' : 'Discover'}
             </h1>

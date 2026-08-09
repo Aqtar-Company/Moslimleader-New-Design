@@ -404,11 +404,17 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
 
           {/* ── DESKTOP ONLY ── */}
           {/* Wordmark */}
-          <Link href="/tareeq" className="hidden lg:flex items-center gap-2 shrink-0" aria-label="Tareeq">
+          <Link href="/tareeq" className="hidden lg:flex items-center gap-1.5 shrink-0" aria-label="Tareeq">
             <img
-              src="/Tareeq-tiny-usage.png"
-              alt="Tareeq"
-              className="h-8 w-auto object-contain shrink-0"
+              src="/Tareeq-big.png"
+              alt=""
+              className="h-9 w-auto object-contain shrink-0"
+              draggable={false}
+            />
+            <img
+              src="/Tareeq-Typo.png"
+              alt="طريق"
+              className="h-7 w-auto object-contain shrink-0"
               draggable={false}
             />
           </Link>
@@ -448,12 +454,15 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                       className="relative flex items-center justify-center w-24 h-12 rounded-xl transition-all hover:bg-[var(--tr-overlay)]"
                       style={{
                         color: (active || isPanelOpen) ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
-                        borderBottom: `3px solid ${(active || isPanelOpen) ? 'var(--tr-gold)' : 'transparent'}`,
                         background: 'transparent',
+                        border: 'none',
                         cursor: 'pointer',
                       }}
                     >
                       {icon}
+                      {(active || isPanelOpen) && (
+                        <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full" style={{ background: 'var(--tr-gold)' }} />
+                      )}
                       {badge > 0 && (
                         <span className="absolute top-1.5 end-3 min-w-[17px] h-[17px] rounded-full flex items-center justify-center text-[9px] font-black px-0.5" style={{ background: '#f43f5e', color: '#fff' }}>
                           {badge > 9 ? '9+' : badge}
@@ -467,11 +476,13 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                       className="relative flex items-center justify-center w-24 h-12 rounded-xl transition-all hover:bg-[var(--tr-overlay)] group"
                       style={{
                         color: active ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
-                        borderBottom: `3px solid ${active ? 'var(--tr-gold)' : 'transparent'}`,
                         background: 'transparent',
                       }}
                     >
                       {icon}
+                      {active && (
+                        <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full" style={{ background: 'var(--tr-gold)' }} />
+                      )}
                       {badge > 0 && (
                         <span className="absolute top-1.5 end-3 min-w-[17px] h-[17px] rounded-full flex items-center justify-center text-[9px] font-black px-0.5" style={{ background: '#f43f5e', color: '#fff' }}>
                           {badge > 9 ? '9+' : badge}

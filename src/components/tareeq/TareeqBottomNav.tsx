@@ -810,9 +810,9 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           width: CIRCLE_SIZE,
           height: CIRCLE_SIZE,
           borderRadius: '50%',
-          background: 'linear-gradient(145deg, #1a3a6e, #0d2044)',
-          border: '1px solid rgba(255,255,255,0.12)',
-          boxShadow: '0 10px 28px rgba(20,60,120,0.28), 0 4px 12px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.10)',
+          background: 'transparent',
+          border: 'none',
+          boxShadow: 'none',
           zIndex: 42,
           display: 'flex',
           alignItems: 'center',
@@ -826,8 +826,8 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
         <img
           ref={addIconRef}
           src="/Add-sign.svg"
-          width="38"
-          height="38"
+          width="54"
+          height="54"
           alt=""
           draggable={false}
           style={{ transition: 'opacity 0.18s ease', userSelect: 'none', pointerEvents: 'none', flexShrink: 0 }}

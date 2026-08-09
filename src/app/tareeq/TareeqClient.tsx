@@ -114,7 +114,11 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       const res = await fetch(`/api/tareeq?${params}`);
       if (res.ok) {
         const data = await res.json();
-        setPosts(prev => fromCursor ? [...prev, ...data.posts] : data.posts);
+        setPosts(prev => {
+          const combined = fromCursor ? [...prev, ...data.posts] : data.posts;
+          const seen = new Set<string>();
+          return combined.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
+        });
         setCursor(data.nextCursor);
       }
     } finally {

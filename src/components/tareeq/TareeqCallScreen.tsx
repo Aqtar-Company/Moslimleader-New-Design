@@ -171,20 +171,25 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
     try {
       const ACtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!ACtx) return;
-      const ctx = new ACtx();
+      const ctx = new ACtx({ latencyHint: 'playback' });
       let stopped = false;
 
-      // Route through video element to force loudspeaker (same as incoming ring fix)
+      // Route through a video element to use the media (loudspeaker) audio route.
+      // playsInline + webkit-playsinline prevent iOS from going fullscreen.
+      // If play() fails (autoplay policy), fall back to ctx.destination.
       let dest: AudioNode = ctx.destination;
       let ringVid: HTMLVideoElement | null = null;
       try {
         const streamDest = ctx.createMediaStreamDestination();
         ringVid = document.createElement('video');
-        ringVid.srcObject = streamDest.stream;
+        ringVid.setAttribute('playsinline', '');
+        ringVid.setAttribute('webkit-playsinline', '');
+        ringVid.muted = false;
         ringVid.volume = 1;
         ringVid.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;top:-9999px;left:-9999px';
         document.body.appendChild(ringVid);
-        ringVid.play().catch(() => {});
+        ringVid.srcObject = streamDest.stream;
+        ringVid.play().catch(() => { /* autoplay blocked — audio stays on ctx.destination */ });
         dest = streamDest;
       } catch { /* fallback to ctx.destination */ }
 
@@ -261,7 +266,9 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
   async function getMedia(): Promise<MediaStream | null> {
     try {
       return await navigator.mediaDevices.getUserMedia(
-        callType === 'video' ? { audio: true, video: true } : { audio: true, video: false }
+        callType === 'video'
+          ? { audio: true, video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } } }
+          : { audio: true, video: false }
       );
     } catch (err) {
       const name = err instanceof Error ? err.name : '';
@@ -667,7 +674,9 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
         </div>
       </div>
 
-      {/* Local PiP — video calls */}
+      {/* Local PiP — video calls.
+          Use visibility/opacity instead of display:none — some mobile browsers stop
+          the video track when the element is display:none, breaking the srcObject pipeline. */}
       <video
         ref={localVideoRef}
         autoPlay playsInline muted
@@ -677,7 +686,9 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
           bottom: 160, right: 20,
           border: '2px solid rgba(255,255,255,0.2)',
           boxShadow: '0 8px 32px rgba(0,0,0,0.55)',
-          display: (callType === 'video' && callState === 'active' && !cameraOff) ? 'block' : 'none',
+          visibility: (callType === 'video' && callState === 'active' && !cameraOff) ? 'visible' : 'hidden',
+          opacity: (callType === 'video' && callState === 'active' && !cameraOff) ? 1 : 0,
+          pointerEvents: (callType === 'video' && callState === 'active' && !cameraOff) ? 'auto' : 'none',
         }}
       />
 

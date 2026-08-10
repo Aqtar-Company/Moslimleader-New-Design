@@ -32,10 +32,10 @@ export async function POST(req: NextRequest) {
     data: { callerId: user.userId, calleeId, type, callerIce: [] },
   });
 
-  // Push notification to callee so they see the call even when app is closed
+  // Push notification to callee — title = call type, body = caller name
   sendPushToUser(calleeId, {
-    title: user.name ?? 'مكالمة واردة',
-    body: type === 'video' ? '📹 مكالمة فيديو واردة' : '🎙️ مكالمة صوتية واردة',
+    title: type === 'video' ? '📹 مكالمة فيديو واردة' : '📞 مكالمة صوتية واردة',
+    body: `${user.name ?? ''} يتصل بك`,
     url: `/tareeq?callId=${call.id}`,
     tag: `call-${call.id}`,
     type: 'call' as const,

@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import TareeqCard, { TareeqPostSummary } from '@/components/tareeq/TareeqCard';
@@ -14,7 +13,6 @@ import TareeqSidebar from '@/components/tareeq/TareeqSidebar';
 import TareeqHeader from '@/components/tareeq/TareeqHeader';
 import TareeqPWA, { TareeqInstallBanner } from '@/components/tareeq/TareeqPWA';
 import { consumeCameraFile } from '@/lib/tareeq-camera-store';
-import { useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
@@ -50,8 +48,6 @@ interface Props { initialPosts: TareeqPostSummary[]; initialCursor: string | nul
 export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const { isRtl } = useLang();
   const { user, isLoading: authLoading } = useAuth();
-  const { notifCount, messageCount } = useTareeqNotifications();
-  const pathname = usePathname();
   const [posts, setPosts] = useState<TareeqPostSummary[]>(initialPosts);
   const [cursor, setCursor] = useState<string | null>(initialCursor);
   const [loading, setLoading] = useState(false);
@@ -395,76 +391,6 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
             </div>
           )}
 
-          {/* Quick navigation */}
-          <nav className="py-1 px-2" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
-            {([
-              {
-                href: '/tareeq',
-                label: isRtl ? 'الرئيسية' : 'Home',
-                badge: 0,
-                icon: (
-                  <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-                  </svg>
-                ),
-              },
-              {
-                href: '/tareeq/notifications',
-                label: isRtl ? 'الإشعارات' : 'Notifications',
-                badge: notifCount,
-                icon: (
-                  <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg>
-                ),
-              },
-              {
-                href: '/tareeq/inbox',
-                label: isRtl ? 'الرسائل' : 'Messages',
-                badge: messageCount,
-                icon: (
-                  <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
-                  </svg>
-                ),
-              },
-              {
-                href: user ? `/tareeq/u/${user.id}` : '/tareeq/profile',
-                label: isRtl ? 'ملفي' : 'My Profile',
-                badge: 0,
-                icon: (
-                  <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                  </svg>
-                ),
-              },
-            ] as { href: string; label: string; badge: number; icon: React.ReactNode }[]).map(({ href, icon, label, badge }) => {
-              const active = pathname === href || (href !== '/tareeq' && pathname.startsWith(href));
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors"
-                  style={{
-                    background: active ? 'var(--tr-gold-glow)' : 'transparent',
-                    color: active ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
-                    fontWeight: active ? 700 : 600,
-                  }}
-                  onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'var(--tr-overlay)'; }}
-                  onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                >
-                  {icon}
-                  <span className="text-sm truncate flex-1">{label}</span>
-                  {badge > 0 && (
-                    <span className="text-[10px] font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center" style={{ background: '#f43f5e', color: '#fff' }}>
-                      {badge > 9 ? '9+' : badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
-
           {/* Category shortcuts */}
           <div className="py-2 px-2">
             <p className="text-[10px] font-black mb-1 px-3" style={{ color: 'var(--tr-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -713,8 +639,8 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
             </div>
           </div>
 
-          {/* Existing sidebar widgets (share, notifications, store, about) */}
-          <TareeqSidebar onCreateClick={handleCreateClick} />
+          {/* Utility widgets (share, notifications, install, store, about) */}
+          <TareeqSidebar />
         </aside>
       </div>
 
@@ -731,7 +657,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <TareeqSidebar onCreateClick={() => { setShowSidebar(false); handleCreateClick(); }} />
+            <TareeqSidebar />
           </div>
         </>
       )}

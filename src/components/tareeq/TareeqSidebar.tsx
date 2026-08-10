@@ -1,14 +1,8 @@
 'use client';
-import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { TareeqInstallButton } from './TareeqPWA';
 import { useTareeqNotifications } from '@/context/TareeqNotificationsContext';
-
-interface Props {
-  onCreateClick: () => void;
-  postCount?: number;
-}
 
 const PLATFORM_URL = 'https://moslimleader.com/tareeq';
 
@@ -27,7 +21,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function TareeqSidebar({ onCreateClick, postCount }: Props) {
+export default function TareeqSidebar() {
   const { isRtl } = useLang();
   const { user } = useAuth();
   const { pushPermission, enablePush, disablePush } = useTareeqNotifications();
@@ -47,65 +41,6 @@ export default function TareeqSidebar({ onCreateClick, postCount }: Props) {
 
   return (
     <div className="space-y-3">
-      {/* Profile card */}
-      {user && (
-        <div style={widgetStyle}>
-          <div className="flex items-center gap-3 mb-3">
-            {user.avatarUrl ? (
-              <img
-                src={user.avatarUrl}
-                alt={user.name}
-                className="w-10 h-10 rounded-full object-cover shrink-0"
-                style={{ boxShadow: '0 0 0 2px var(--tr-gold-dim)' }}
-              />
-            ) : (
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0"
-                style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', boxShadow: '0 0 0 2px var(--tr-gold-dim)', border: '1px solid var(--tr-border-soft)' }}
-              >
-                {user.name.charAt(0)}
-              </div>
-            )}
-            <div className="min-w-0">
-              <p className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{user.name}</p>
-              {postCount != null && (
-                <p className="text-[11px]" style={{ color: 'var(--tr-text-muted)' }}>
-                  {isRtl ? `${postCount} علامة` : `${postCount} marks`}
-                </p>
-              )}
-            </div>
-          </div>
-          <Link
-            href="/tareeq/profile"
-            className="flex items-center justify-center gap-1.5 w-full text-xs font-bold py-2 rounded-xl transition"
-            style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--tr-gold)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--tr-gold-dim)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--tr-text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--tr-border-soft)'; }}
-          >
-            {isRtl ? 'منشوراتي' : 'My Posts'}
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'} />
-            </svg>
-          </Link>
-        </div>
-      )}
-
-      {/* Leave a mark CTA */}
-      <button
-        onClick={onCreateClick}
-        className="w-full flex items-center justify-center gap-2 font-black text-sm py-3 rounded-2xl transition active:scale-95"
-        style={{
-          background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))',
-          color: '#fff',
-          boxShadow: '0 4px 24px var(--tr-gold-glow)',
-        }}
-      >
-        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-        </svg>
-        {isRtl ? 'اترك علامتك' : 'Leave Your Mark'}
-      </button>
-
       {/* Share */}
       <div style={widgetStyle}>
         <SectionLabel>{isRtl ? 'شارك طريق' : 'Share Tareeq'}</SectionLabel>

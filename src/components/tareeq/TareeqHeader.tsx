@@ -346,14 +346,12 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   const navItems = [
     {
       key: 'home',
-      href: '/tareeq',
-      label: isRtl ? 'الرئيسية' : 'Home',
+      href: undefined as string | undefined,
+      label: isRtl ? 'إضافة' : 'Add',
       badge: 0,
-      onClick: undefined as ((e: React.MouseEvent) => void) | undefined,
+      onClick: ((e: React.MouseEvent) => { e.preventDefault(); onCreateClick(); }) as ((e: React.MouseEvent) => void) | undefined,
       icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-        </svg>
+        <img src="/Add-sign.svg" alt="" className="w-6 h-6" draggable={false} style={{ filter: 'var(--tr-add-icon-filter, none)' }} />
       ),
     },
     {
@@ -682,63 +680,50 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           <div className="hidden lg:flex flex-1 items-center justify-center gap-1">
             {navItems.map(({ key, href, icon, label, badge, onClick }) => {
               if (key === 'messages' || key === 'notifications' || key === 'profile') return null;
-              const active = pathname === href || (href !== '/tareeq' && pathname.startsWith(href));
+              const active = href ? (pathname === href || (href !== '/tareeq' && pathname.startsWith(href))) : false;
               const isPanelOpen = false;
-              const isPanel = false;
+              const isButton = !href || !!onClick;
+
+              const sharedBtnStyle = {
+                color: active ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
+                background: 'transparent',
+                gap: 2,
+              };
+              const dotStyle = {
+                width: 4, height: 4, borderRadius: '50%' as const,
+                background: active ? 'var(--tr-gold)' : 'transparent',
+                transition: 'background 0.2s',
+                flexShrink: 0,
+              };
+              const badgeEl = badge > 0 ? (
+                <span className="absolute top-1.5 end-3 min-w-[17px] h-[17px] rounded-full flex items-center justify-center text-[9px] font-black px-0.5" style={{ background: '#f43f5e', color: '#fff' }}>
+                  {badge > 9 ? '9+' : badge}
+                </span>
+              ) : null;
 
               return (
                 <div key={key} className="relative">
-                  {isPanel ? (
+                  {isButton ? (
                     <button
-                      ref={key === 'notifications' ? notifBtnRef : msgBtnRef}
                       onClick={onClick}
                       title={label}
                       className="relative flex flex-col items-center justify-center w-24 h-12 rounded-xl transition-all hover:bg-[var(--tr-overlay)]"
-                      style={{
-                        color: (active || isPanelOpen) ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
-                        background: 'transparent',
-                        cursor: 'pointer',
-                        gap: 2,
-                      }}
+                      style={{ ...sharedBtnStyle, cursor: 'pointer' }}
                     >
                       {icon}
-                      {/* Gold dot indicator */}
-                      <span style={{
-                        width: 4, height: 4, borderRadius: '50%',
-                        background: (active || isPanelOpen) ? 'var(--tr-gold)' : 'transparent',
-                        transition: 'background 0.2s',
-                        flexShrink: 0,
-                      }} />
-                      {badge > 0 && (
-                        <span className="absolute top-1.5 end-3 min-w-[17px] h-[17px] rounded-full flex items-center justify-center text-[9px] font-black px-0.5" style={{ background: '#f43f5e', color: '#fff' }}>
-                          {badge > 9 ? '9+' : badge}
-                        </span>
-                      )}
+                      <span style={dotStyle} />
+                      {badgeEl}
                     </button>
                   ) : (
                     <Link
-                      href={href}
+                      href={href!}
                       title={label}
                       className="relative flex flex-col items-center justify-center w-24 h-12 rounded-xl transition-all hover:bg-[var(--tr-overlay)] group"
-                      style={{
-                        color: active ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
-                        background: 'transparent',
-                        gap: 2,
-                      }}
+                      style={sharedBtnStyle}
                     >
                       {icon}
-                      {/* Gold dot indicator */}
-                      <span style={{
-                        width: 4, height: 4, borderRadius: '50%',
-                        background: active ? 'var(--tr-gold)' : 'transparent',
-                        transition: 'background 0.2s',
-                        flexShrink: 0,
-                      }} />
-                      {badge > 0 && (
-                        <span className="absolute top-1.5 end-3 min-w-[17px] h-[17px] rounded-full flex items-center justify-center text-[9px] font-black px-0.5" style={{ background: '#f43f5e', color: '#fff' }}>
-                          {badge > 9 ? '9+' : badge}
-                        </span>
-                      )}
+                      <span style={dotStyle} />
+                      {badgeEl}
                     </Link>
                   )}
 

@@ -550,8 +550,17 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         {/* ━━ CENTER — feed ━━ */}
         <div className="min-w-0" ref={feedTopRef}>
 
-          {/* Sort tabs row */}
-          <div className="max-w-2xl lg:max-w-none mx-auto ps-4 pe-4 lg:pe-0 pt-4 pb-2 flex items-center justify-between gap-3">
+          {/* Sort tabs row — sticky glass strip below the 64px header */}
+          <div
+            className="sticky z-20 max-w-2xl lg:max-w-none mx-auto ps-4 pe-4 lg:pe-0 py-2 flex items-center justify-between gap-3"
+            style={{
+              top: 64,
+              backdropFilter: 'blur(14px) saturate(160%)',
+              WebkitBackdropFilter: 'blur(14px) saturate(160%)',
+              background: 'var(--tr-glass-strip, rgba(var(--tr-bg-rgb, 255,255,255), 0.75))',
+              borderBottom: '1px solid var(--tr-border-subtle)',
+            }}
+          >
             <h1 className="font-black text-xl" style={{ color: 'var(--tr-text-primary)' }}>
               {isRtl ? 'اكتشف' : 'Discover'}
             </h1>
@@ -575,53 +584,6 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
               })}
             </div>
           </div>
-
-          {/* Facebook-style create post box — desktop */}
-          {user && (
-            <div className="hidden lg:block max-w-2xl lg:max-w-none mx-auto px-0 pb-4">
-              <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                {/* Top: avatar + input */}
-                <div className="flex items-center gap-3 p-3 pb-2">
-                  {user.avatarUrl ? (
-                    <img src={user.avatarUrl} alt={user.name ?? ''} className="w-10 h-10 rounded-full object-cover shrink-0" style={{ border: '1.5px solid var(--tr-border-soft)' }} />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold-dim)' }}>
-                      {user.name?.charAt(0) ?? '?'}
-                    </div>
-                  )}
-                  <input
-                    readOnly
-                    placeholder={isRtl ? 'ما الذي تريد مشاركته؟' : "What's on your mind?"}
-                    className="flex-1 px-4 py-2.5 rounded-full outline-none cursor-pointer"
-                    style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', fontSize: 14, border: '1px solid var(--tr-border-soft)' }}
-                    onFocus={(e) => { e.target.blur(); if (user) { setCreateMode('text'); setShowCreate(true); } else setShowGate(true); }}
-                  />
-                </div>
-                {/* Bottom: action buttons */}
-                <div className="flex items-center px-3 py-2" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
-                  <button onClick={() => handleCreateClick('media')} className="flex flex-1 items-center justify-center gap-2 py-1.5 rounded-xl transition-colors" style={{ color: 'var(--tr-text-secondary)', fontSize: 13, fontWeight: 700 }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--tr-overlay)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: '#22c55e' }}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                    </svg>
-                    {isRtl ? 'صورة / فيديو' : 'Photo / Video'}
-                  </button>
-                  <div className="w-px h-5 mx-2" style={{ background: 'var(--tr-border-subtle)' }} />
-                  <button onClick={() => handleCreateClick('text')} className="flex flex-1 items-center justify-center gap-2 py-1.5 rounded-xl transition-colors" style={{ color: 'var(--tr-text-secondary)', fontSize: 13, fontWeight: 700 }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--tr-overlay)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
-                    </svg>
-                    {isRtl ? 'اترك علامة' : 'Leave a Mark'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Category story circles — mobile only (desktop uses left nav) */}
           <div className="lg:hidden max-w-2xl mx-auto px-4 pb-5 flex gap-4 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>

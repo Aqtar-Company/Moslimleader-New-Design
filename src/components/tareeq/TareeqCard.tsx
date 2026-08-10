@@ -539,12 +539,24 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
   /* ── TEXT CARD ──────────────────────────────────────────────────── */
   const isLong = post.content.length > 220 || post.content.split('\n').length > 4;
+  const isTextOnly = !post.imageUrl && !post.videoUrl;
 
   return (
     <>
       <article
         className="overflow-hidden"
-        style={{ borderRadius: 14, background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
+        style={{
+          borderRadius: 14,
+          background: isTextOnly
+            ? 'linear-gradient(135deg, rgba(251,191,36,0.13) 0%, rgba(236,72,153,0.09) 60%, rgba(251,191,36,0.07) 100%)'
+            : 'var(--tr-surface)',
+          border: isTextOnly
+            ? '1px solid rgba(251,191,36,0.22)'
+            : '1px solid var(--tr-border-subtle)',
+          boxShadow: isTextOnly
+            ? '0 1px 8px rgba(251,191,36,0.08), 0 1px 4px rgba(0,0,0,0.04)'
+            : '0 1px 4px rgba(0,0,0,0.05)',
+        }}
         aria-label={post.title || post.content.slice(0, 80)}
       >
         {/* Category accent top bar */}

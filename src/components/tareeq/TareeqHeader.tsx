@@ -35,6 +35,10 @@ interface Conversation {
   id: string; lastMessage?: string | null; lastMessageAt?: string | null;
   unreadCount: number; otherUser: OtherUser;
 }
+interface ChatMessage {
+  id: string; content: string; senderId: string; createdAt: string;
+  sender: { id: string; name: string; avatarUrl?: string | null };
+}
 
 function timeAgo(iso: string, isRtl: boolean): string {
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -96,6 +100,18 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   const [msgsLoading, setMsgsLoading] = useState(false);
   const msgPanelRef = useRef<HTMLDivElement>(null);
   const msgBtnRef = useRef<HTMLButtonElement>(null);
+
+  /* ── Inline chat within message panel ── */
+  const [msgPanelView, setMsgPanelView] = useState<'list' | 'chat'>('list');
+  const [activeChatConv, setActiveChatConv] = useState<Conversation | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [chatSending, setChatSending] = useState(false);
+  const chatPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
+  const [msgSearch, setMsgSearch] = useState('');
 
   // Collapse on tap-outside (touchstart so it fires before blur on mobile)
   useEffect(() => {
@@ -165,6 +181,50 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
     setMsgsLoading(false);
   }, []);
 
+  const openChat = useCallback(async (conv: Conversation) => {
+    setMsgPanelView('chat');
+    setActiveChatConv(conv);
+    setChatMessages([]);
+    setChatLoading(true);
+    const fetchMsgs = async () => {
+      try {
+        const res = await fetch(`/api/tareeq/conversations/${conv.id}`, { credentials: 'include' });
+        if (res.ok) { const d = await res.json(); setChatMessages((d.messages ?? []).slice().reverse()); }
+      } catch { /* offline */ }
+    };
+    await fetchMsgs();
+    setChatLoading(false);
+    setTimeout(() => { chatBottomRef.current?.scrollIntoView({ behavior: 'instant' }); chatInputRef.current?.focus(); }, 50);
+    if (chatPollingRef.current) clearInterval(chatPollingRef.current);
+    chatPollingRef.current = setInterval(fetchMsgs, 3000);
+  }, []);
+
+  const closeChat = useCallback(() => {
+    setMsgPanelView('list');
+    setActiveChatConv(null);
+    setChatMessages([]);
+    setChatInput('');
+    if (chatPollingRef.current) { clearInterval(chatPollingRef.current); chatPollingRef.current = null; }
+  }, []);
+
+  const sendChatMessage = useCallback(async () => {
+    if (!chatInput.trim() || !activeChatConv || chatSending) return;
+    setChatSending(true);
+    const content = chatInput.trim();
+    setChatInput('');
+    try {
+      const res = await fetch(`/api/tareeq/conversations/${activeChatConv.id}/messages`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ content }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        if (d.message) { setChatMessages(prev => [...prev, d.message]); setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50); }
+      }
+    } catch { /* offline */ }
+    setChatSending(false);
+  }, [chatInput, activeChatConv, chatSending]);
+
   function toggleMobileNotifPanel(e: React.MouseEvent) {
     e.preventDefault();
     if (!showMobileNotifPanel) loadNotifs();
@@ -182,9 +242,12 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
 
   function toggleMsgPanel(e: React.MouseEvent) {
     e.preventDefault();
-    if (!showMsgPanel) {
+    if (showMsgPanel) {
+      closeChat();
+    } else {
       loadConversations();
       setShowNotifPanel(false);
+      setMsgSearch('');
     }
     setShowMsgPanel(p => !p);
   }
@@ -619,39 +682,43 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                           </p>
                         </div>
                       ) : (
-                        <div>
-                          {notifs.filter(n => n.type !== 'message').map(n => (
-                            <button
-                              key={n.id}
-                              onClick={() => {
-                                setShowNotifPanel(false);
-                                if (n.postId) router.push(`/tareeq/p/${n.postId}`);
-                              }}
+                        (() => {
+                          const allNotifs = notifs.filter(n => n.type !== 'message');
+                          const newNotifs = allNotifs.filter(n => !n.read);
+                          const earlierNotifs = allNotifs.filter(n => n.read);
+                          const renderNotif = (n: Notification) => (
+                            <button key={n.id} onClick={() => { setShowNotifPanel(false); if (n.postId) router.push(`/tareeq/p/${n.postId}`); }}
                               className="w-full flex items-start gap-3 px-4 py-3 text-start transition"
-                              style={{
-                                background: n.read ? 'transparent' : 'rgba(212,168,83,0.04)',
-                                borderBottom: '1px solid var(--tr-border-subtle)',
-                              }}
-                            >
+                              style={{ background: n.read ? 'transparent' : 'rgba(212,168,83,0.04)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
                               <NotifIcon type={n.type} />
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs leading-relaxed" style={{ color: 'var(--tr-text-primary)' }}>
-                                  {n.type === 'like' && (
-                                    <>{isRtl ? `${n.actorName || 'شخص ما'} أعجب بعلامتك` : `${n.actorName || 'Someone'} liked your mark`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>
-                                  )}
-                                  {n.type === 'comment' && (
-                                    <>{isRtl ? `${n.actorName || 'شخص ما'} علّق على` : `${n.actorName || 'Someone'} commented on`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>
-                                  )}
-                                  {n.type !== 'like' && n.type !== 'comment' && (
-                                    <>{isRtl ? `رسالة من ${n.actorName || 'شخص ما'}` : `Message from ${n.actorName || 'Someone'}`}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>
-                                  )}
+                                  {n.type === 'like' && <>{isRtl ? `${n.actorName || 'شخص ما'} أعجب بعلامتك` : `${n.actorName || 'Someone'} liked your mark`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
+                                  {n.type === 'comment' && <>{isRtl ? `${n.actorName || 'شخص ما'} علّق على` : `${n.actorName || 'Someone'} commented on`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}
+                                  {n.type !== 'like' && n.type !== 'comment' && <>{isRtl ? `رسالة من ${n.actorName || 'شخص ما'}` : `Message from ${n.actorName || 'Someone'}`}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}
                                 </p>
                                 <p className="text-[10px] mt-1" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(n.createdAt, isRtl)}</p>
                               </div>
                               {!n.read && <div className="w-2 h-2 rounded-full shrink-0 mt-1" style={{ background: 'var(--tr-gold)' }} />}
                             </button>
-                          ))}
-                        </div>
+                          );
+                          return (
+                            <div>
+                              {newNotifs.length > 0 && (
+                                <>
+                                  <p className="px-4 py-2 text-[10px] font-black" style={{ color: 'var(--tr-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', background: 'var(--tr-base)' }}>{isRtl ? 'جديد' : 'New'}</p>
+                                  {newNotifs.map(renderNotif)}
+                                </>
+                              )}
+                              {earlierNotifs.length > 0 && (
+                                <>
+                                  <p className="px-4 py-2 text-[10px] font-black" style={{ color: 'var(--tr-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', background: 'var(--tr-base)' }}>{isRtl ? 'سابق' : 'Earlier'}</p>
+                                  {earlierNotifs.map(renderNotif)}
+                                </>
+                              )}
+                            </div>
+                          );
+                        })()
                       )}
                     </div>
                   )}
@@ -660,73 +727,134 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                   {key === 'messages' && showMsgPanel && (
                     <div ref={msgPanelRef} style={msgPanelStyle}>
                       {/* Header */}
-                      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
-                        <span className="font-black text-sm" style={{ color: 'var(--tr-text-primary)' }}>
-                          {isRtl ? 'الرسائل' : 'Messages'}
-                        </span>
-                        <Link
-                          href="/tareeq/inbox"
-                          onClick={() => setShowMsgPanel(false)}
-                          className="text-xs font-semibold"
-                          style={{ color: 'var(--tr-gold)' }}
-                        >
-                          {isRtl ? 'عرض الكل' : 'See all'}
-                        </Link>
-                      </div>
-
-                      {msgsLoading ? (
-                        <div className="flex justify-center py-10">
-                          <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
-                        </div>
-                      ) : conversations.length === 0 ? (
-                        <div className="text-center py-10 px-4">
-                          <svg className="w-10 h-10 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
-                          </svg>
-                          <p className="text-sm font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>
-                            {isRtl ? 'لا رسائل بعد' : 'No messages yet'}
-                          </p>
-                          <p className="text-xs mt-1.5" style={{ color: 'var(--tr-text-muted)' }}>
-                            {isRtl ? 'ابدأ محادثة من صفحة أي مستخدم' : 'Start a chat from any profile'}
-                          </p>
+                      {msgPanelView === 'list' ? (
+                        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                          <span className="font-black text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الرسائل' : 'Messages'}</span>
+                          <Link href="/tareeq/inbox" onClick={() => setShowMsgPanel(false)} className="text-xs font-semibold" style={{ color: 'var(--tr-gold)' }}>
+                            {isRtl ? 'عرض الكل' : 'See all'}
+                          </Link>
                         </div>
                       ) : (
-                        <div>
-                          {conversations.map(c => (
-                            <Link
-                              key={c.id}
-                              href={`/tareeq/inbox/${c.id}`}
-                              onClick={() => setShowMsgPanel(false)}
-                              className="flex items-center gap-3 px-4 py-3 transition"
-                              style={{
-                                background: c.unreadCount > 0 ? 'rgba(212,168,83,0.04)' : 'transparent',
-                                borderBottom: '1px solid var(--tr-border-subtle)',
-                              }}
-                            >
-                              <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-border-soft)' }}>
-                                {c.otherUser.avatarUrl
-                                  ? <img src={c.otherUser.avatarUrl} alt={c.otherUser.name} className="w-full h-full object-cover" />
-                                  : c.otherUser.name.charAt(0)}
+                        <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                          <button onClick={closeChat} className="w-8 h-8 rounded-full flex items-center justify-center transition" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3' : 'M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18'} />
+                            </svg>
+                          </button>
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            {activeChatConv?.otherUser.avatarUrl ? (
+                              <img src={activeChatConv.otherUser.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                            ) : (
+                              <div className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)' }}>
+                                {activeChatConv?.otherUser.name.charAt(0)}
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{c.otherUser.name}</p>
-                                {c.lastMessage && (
-                                  <p className="text-xs truncate mt-0.5" style={{ color: 'var(--tr-text-muted)' }}>{c.lastMessage}</p>
-                                )}
-                              </div>
-                              <div className="flex flex-col items-end gap-1 shrink-0">
-                                {c.lastMessageAt && (
-                                  <span className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(c.lastMessageAt, isRtl)}</span>
-                                )}
-                                {c.unreadCount > 0 && (
-                                  <span className="text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center" style={{ background: 'var(--tr-gold)', color: '#0a0d06' }}>
-                                    {c.unreadCount}
-                                  </span>
-                                )}
-                              </div>
-                            </Link>
-                          ))}
+                            )}
+                            <span className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{activeChatConv?.otherUser.name}</span>
+                          </div>
+                          <Link href={`/tareeq/inbox/${activeChatConv?.id}`} onClick={() => setShowMsgPanel(false)} className="w-8 h-8 rounded-full flex items-center justify-center transition" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                            </svg>
+                          </Link>
                         </div>
+                      )}
+
+                      {/* Content */}
+                      {msgPanelView === 'list' ? (
+                        <>
+                          {/* Search */}
+                          <div className="px-3 py-2" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                            <div className="relative">
+                              <svg className="absolute top-1/2 -translate-y-1/2 start-3 w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                              </svg>
+                              <input
+                                value={msgSearch}
+                                onChange={e => setMsgSearch(e.target.value)}
+                                placeholder={isRtl ? 'بحث في الرسائل...' : 'Search messages...'}
+                                className="w-full rounded-full ps-8 pe-3 py-1.5 text-xs focus:outline-none"
+                                style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
+                              />
+                            </div>
+                          </div>
+                          {msgsLoading ? (
+                            <div className="flex justify-center py-10"><div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} /></div>
+                          ) : conversations.filter(c => !msgSearch || c.otherUser.name.toLowerCase().includes(msgSearch.toLowerCase())).length === 0 ? (
+                            <div className="text-center py-10 px-4">
+                              <p className="text-sm font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>{isRtl ? 'لا رسائل بعد' : 'No messages yet'}</p>
+                              <p className="text-xs mt-1.5" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'ابدأ محادثة من صفحة أي مستخدم' : 'Start a chat from any profile'}</p>
+                            </div>
+                          ) : (
+                            <div>
+                              {conversations.filter(c => !msgSearch || c.otherUser.name.toLowerCase().includes(msgSearch.toLowerCase())).map(c => (
+                                <button key={c.id} onClick={() => openChat(c)} className="w-full flex items-center gap-3 px-4 py-3 text-start transition" style={{ background: c.unreadCount > 0 ? 'rgba(212,168,83,0.04)' : 'transparent', borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden relative" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-border-soft)' }}>
+                                    {c.otherUser.avatarUrl ? <img src={c.otherUser.avatarUrl} alt={c.otherUser.name} className="w-full h-full object-cover" /> : c.otherUser.name.charAt(0)}
+                                    {c.unreadCount > 0 && <span className="absolute bottom-0 end-0 w-3 h-3 rounded-full border-2" style={{ background: 'var(--tr-gold)', borderColor: 'var(--tr-surface)' }} />}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{c.otherUser.name}</p>
+                                    {c.lastMessage && <p className="text-xs truncate mt-0.5" style={{ color: c.unreadCount > 0 ? 'var(--tr-text-primary)' : 'var(--tr-text-muted)', fontWeight: c.unreadCount > 0 ? 600 : 400 }}>{c.lastMessage}</p>}
+                                  </div>
+                                  <div className="flex flex-col items-end gap-1 shrink-0">
+                                    {c.lastMessageAt && <span className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(c.lastMessageAt, isRtl)}</span>}
+                                    {c.unreadCount > 0 && <span className="text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center" style={{ background: 'var(--tr-gold)', color: '#0a0d06' }}>{c.unreadCount}</span>}
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        /* Chat view */
+                        <>
+                          <div className="overflow-y-auto flex flex-col gap-1 p-3" style={{ minHeight: 200, maxHeight: 360 }}>
+                            {chatLoading ? (
+                              <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} /></div>
+                            ) : chatMessages.length === 0 ? (
+                              <p className="text-center text-xs py-6" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'ابدأ المحادثة...' : 'Start the conversation...'}</p>
+                            ) : (
+                              chatMessages.map(msg => {
+                                const isMine = msg.senderId === user?.id;
+                                return (
+                                  <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                                    <div className="max-w-[80%] px-3 py-2 rounded-2xl text-xs leading-relaxed" style={{
+                                      background: isMine ? 'var(--tr-gold)' : 'var(--tr-overlay)',
+                                      color: isMine ? '#fff' : 'var(--tr-text-primary)',
+                                      borderRadius: isMine ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                                    }}>
+                                      {msg.content}
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                            <div ref={chatBottomRef} />
+                          </div>
+                          {/* Input */}
+                          <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
+                            <input
+                              ref={chatInputRef}
+                              value={chatInput}
+                              onChange={e => setChatInput(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } }}
+                              placeholder={isRtl ? 'اكتب رسالة...' : 'Type a message...'}
+                              disabled={chatSending}
+                              className="flex-1 rounded-full px-3 py-2 text-xs focus:outline-none"
+                              style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
+                            />
+                            <button
+                              onClick={sendChatMessage}
+                              disabled={!chatInput.trim() || chatSending}
+                              className="w-8 h-8 rounded-full flex items-center justify-center transition shrink-0"
+                              style={{ background: chatInput.trim() ? 'var(--tr-gold)' : 'var(--tr-overlay)', color: chatInput.trim() ? '#fff' : 'var(--tr-text-muted)' }}
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                              </svg>
+                            </button>
+                          </div>
+                        </>
                       )}
                     </div>
                   )}

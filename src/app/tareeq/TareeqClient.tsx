@@ -43,6 +43,9 @@ function CategoryIcon({ catKey, color }: { catKey: string; color: string }) {
 }
 
 
+interface MyGroup { id: string; name: string; imageUrl?: string | null; lastMessage?: string | null; memberCount: number; }
+interface BookmarkFolder { id: string; name: string; _count: { bookmarks: number }; }
+
 interface Props { initialPosts: TareeqPostSummary[]; initialCursor: string | null; }
 
 export default function TareeqClient({ initialPosts, initialCursor }: Props) {
@@ -72,6 +75,9 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const searchMountedRef = useRef(false);
   const [cameraFile, setCameraFile] = useState<File | null>(null);
   const [trendingPosts, setTrendingPosts] = useState<TareeqPostSummary[]>([]);
+  const [myGroups, setMyGroups] = useState<MyGroup[]>([]);
+  const [bookmarkFolders, setBookmarkFolders] = useState<BookmarkFolder[]>([]);
+  const [totalSaved, setTotalSaved] = useState(0);
   const touchStartY = useRef(0);
   const pullYRef = useRef(0);
   const pullRefreshingRef = useRef(false);
@@ -87,6 +93,16 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       .then(d => setTrendingPosts(d.posts ?? []))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!user) { setMyGroups([]); setBookmarkFolders([]); setTotalSaved(0); return; }
+    fetch('/api/tareeq/groups', { credentials: 'include' })
+      .then(r => r.json()).then(d => setMyGroups(d.groups ?? [])).catch(() => {});
+    fetch('/api/tareeq/bookmark-folders', { credentials: 'include' })
+      .then(r => r.json()).then(d => setBookmarkFolders(d.folders ?? [])).catch(() => {});
+    fetch('/api/tareeq/bookmarks', { credentials: 'include' })
+      .then(r => r.json()).then(d => setTotalSaved((d.bookmarks ?? []).length)).catch(() => {});
+  }, [user]);
 
   useEffect(() => {
     if (!user) { setLikedIds(new Set()); setReactedPosts({}); return; }
@@ -438,6 +454,97 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           </div>
 
           </div>{/* end unified sidebar card */}
+
+          {/* My Groups widget */}
+          {user && myGroups.length > 0 && (
+            <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}>
+              <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                <p className="text-[10px] font-black" style={{ color: 'var(--tr-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  {isRtl ? 'مجموعاتي' : 'My Groups'}
+                </p>
+                <Link href="/tareeq/groups" className="text-xs font-semibold" style={{ color: 'var(--tr-gold)' }}>
+                  {isRtl ? 'الكل' : 'All'}
+                </Link>
+              </div>
+              <div className="py-1">
+                {myGroups.slice(0, 5).map(g => (
+                  <Link key={g.id} href={`/tareeq/groups/${g.id}`}
+                    className="flex items-center gap-3 px-4 py-2.5 transition-colors rounded-xl mx-1"
+                    style={{ color: 'inherit', textDecoration: 'none' }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--tr-overlay)'}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                  >
+                    {g.imageUrl ? (
+                      <img src={g.imageUrl} alt={g.name} className="w-9 h-9 rounded-2xl object-cover shrink-0" style={{ border: '1px solid var(--tr-border-soft)' }} />
+                    ) : (
+                      <div className="w-9 h-9 rounded-2xl flex items-center justify-center font-bold text-sm shrink-0" style={{ background: 'rgba(45,212,191,0.12)', color: 'var(--tr-teal)', border: '1px solid rgba(45,212,191,0.2)' }}>
+                        {g.name.charAt(0)}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold truncate" style={{ color: 'var(--tr-text-primary)' }}>{g.name}</p>
+                      <p className="text-[11px] truncate" style={{ color: 'var(--tr-text-muted)' }}>
+                        {g.lastMessage ?? `${g.memberCount} ${isRtl ? 'عضو' : 'members'}`}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Saved Posts widget */}
+          {user && (totalSaved > 0 || bookmarkFolders.length > 0) && (
+            <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}>
+              <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                <p className="text-[10px] font-black" style={{ color: 'var(--tr-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  {isRtl ? 'المحفوظات' : 'Saved'}
+                </p>
+                <Link href="/tareeq/saved" className="text-xs font-semibold" style={{ color: 'var(--tr-gold)' }}>
+                  {isRtl ? 'عرض الكل' : 'See all'}
+                </Link>
+              </div>
+              <div className="py-1">
+                {/* All saved */}
+                <Link href="/tareeq/saved"
+                  className="flex items-center gap-3 px-4 py-2.5 transition-colors rounded-xl mx-1"
+                  style={{ color: 'inherit', textDecoration: 'none' }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--tr-overlay)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                >
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--tr-gold-glow)' }}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'كل المحفوظات' : 'All Saved'}</p>
+                    {totalSaved > 0 && <p className="text-[11px]" style={{ color: 'var(--tr-text-muted)' }}>{totalSaved} {isRtl ? 'علامة' : 'marks'}</p>}
+                  </div>
+                </Link>
+                {/* Folders */}
+                {bookmarkFolders.map(f => (
+                  <Link key={f.id} href={`/tareeq/saved?folder=${f.id}`}
+                    className="flex items-center gap-3 px-4 py-2.5 transition-colors rounded-xl mx-1"
+                    style={{ color: 'inherit', textDecoration: 'none' }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--tr-overlay)'}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                  >
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)' }}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold truncate" style={{ color: 'var(--tr-text-primary)' }}>{f.name}</p>
+                      <p className="text-[11px]" style={{ color: 'var(--tr-text-muted)' }}>{f._count.bookmarks} {isRtl ? 'علامة' : 'marks'}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
         </aside>
 
         {/* ━━ CENTER — feed ━━ */}

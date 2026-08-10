@@ -347,11 +347,20 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
     {
       key: 'home',
       href: undefined as string | undefined,
-      label: isRtl ? 'إضافة' : 'Add',
+      label: isRtl ? 'ضع علامة' : 'Leave a Mark',
       badge: 0,
       onClick: ((e: React.MouseEvent) => { e.preventDefault(); onCreateClick(); }) as ((e: React.MouseEvent) => void) | undefined,
       icon: (
-        <img src="/Add-sign.svg" alt="" className="w-6 h-6" draggable={false} style={{ filter: 'var(--tr-add-icon-filter, none)' }} />
+        <img
+          src="/Add-sign.svg"
+          alt=""
+          draggable={false}
+          style={{
+            width: 30,
+            height: 30,
+            animation: 'tareeq-star-breathe 2.8s ease-in-out infinite',
+          }}
+        />
       ),
     },
     {
@@ -430,6 +439,12 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
 
   return (
     <>
+      <style>{`
+        @keyframes tareeq-star-breathe {
+          0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 4px rgba(251,191,36,0.45)); }
+          50%       { transform: scale(1.14); filter: drop-shadow(0 0 10px rgba(251,191,36,0.80)); }
+        }
+      `}</style>
       {/* Mobile notification overlay — glass strips floating above content */}
       {showMobileNotifPanel && (
         <div
@@ -707,12 +722,20 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                     <button
                       onClick={onClick}
                       title={label}
-                      className="relative flex flex-col items-center justify-center w-24 h-12 rounded-xl transition-all hover:bg-[var(--tr-overlay)]"
+                      className="group relative flex flex-col items-center justify-center w-24 h-12 rounded-xl transition-all hover:bg-[var(--tr-overlay)]"
                       style={{ ...sharedBtnStyle, cursor: 'pointer' }}
                     >
                       {icon}
                       <span style={dotStyle} />
                       {badgeEl}
+                      {key === 'home' && (
+                        <span
+                          className="pointer-events-none absolute -bottom-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg px-2.5 py-1 text-xs font-bold opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+                          style={{ background: 'var(--tr-raised)', color: 'var(--tr-gold)', border: '1px solid var(--tr-border-soft)', boxShadow: '0 4px 14px rgba(0,0,0,0.18)' }}
+                        >
+                          {isRtl ? 'ضع علامة' : 'Leave a Mark'}
+                        </span>
+                      )}
                     </button>
                   ) : (
                     <Link

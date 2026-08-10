@@ -398,147 +398,137 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     );
   }
 
-  /* ── IMAGE CARD ─────────────────────────────────────────────────── */
+  /* ── IMAGE CARD (single responsive article) ────────────────────── */
   if (hasImage) {
     return (
       <>
-        {/* ── MOBILE: full-bleed portrait with floating actions ── */}
         <article
-          className="relative overflow-hidden lg:hidden"
-          style={{ borderRadius: 24, aspectRatio: '3/4', background: 'var(--tr-overlay)', display: 'block' }}
+          className="relative overflow-hidden rounded-[24px] lg:rounded-[14px]"
+          style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
           aria-label={post.title || post.content.slice(0, 80)}
         >
-          <Link href={`/tareeq/${post.id}`} className="absolute inset-0 block">
-            <img src={post.imageUrl!} alt="" className="w-full h-full object-cover" loading="eager" referrerPolicy="no-referrer" />
-            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.05) 70%, transparent 100%)' }} />
-          </Link>
+          {/* Image container: portrait on mobile, landscape on desktop */}
+          <div className="relative aspect-[3/4] lg:aspect-auto lg:h-[320px] overflow-hidden">
+            <Link href={`/tareeq/${post.id}`} className="block w-full h-full">
+              <img src={post.imageUrl!} alt="" className="w-full h-full object-cover" loading="eager" referrerPolicy="no-referrer" />
+              {/* Mobile gradient — bottom-heavy overlay */}
+              <div className="absolute inset-0 lg:hidden" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.05) 70%, transparent 100%)' }} />
+              {/* Desktop gradient — subtle top-to-bottom */}
+              <div className="absolute inset-0 hidden lg:block" style={{ background: 'linear-gradient(to bottom, transparent 55%, rgba(0,0,0,0.10) 100%)', pointerEvents: 'none' }} />
+            </Link>
 
-          {catLabel && (
-            <div className="absolute top-4 start-4 z-10 pointer-events-none">
-              <span className="text-[11px] font-bold px-3 py-1 rounded-full text-white" style={{ background: 'rgba(0,0,0,0.40)', backdropFilter: 'blur(8px)', border: `1px solid ${accentHex}70` }}>
-                {catIcon} {catLabel}
-              </span>
-            </div>
-          )}
-
-          {/* Side engagement icons */}
-          <div className="absolute end-3 z-10 flex flex-col items-center gap-4" style={{ bottom: 96 }}>
-            <div className="relative flex flex-col items-center gap-1">
-              <button onClick={handleReactionAreaClick} aria-label={isRtl ? 'تفاعل' : 'React'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-                <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: currentReaction ? `${reactionConfig?.color ?? '#f59e0b'}30` : 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)', border: currentReaction ? `1.5px solid ${reactionConfig?.color ?? '#f59e0b'}80` : '1.5px solid rgba(255,255,255,0.25)', fontSize: currentReaction ? 22 : 18 }}>
-                  {currentReaction ? reactionEmoji(currentReaction) : <svg width={20} height={20} viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)"><path d="M12 3l1.2 4.8L18 6.8l-3.6 3.6 1.2 5.4-3.6-2.4-3.6 2.4 1.2-5.4L6 6.8l4.8 1.2z" /></svg>}
-                </div>
-                <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{fmt(likeCount)}</span>
-              </button>
-              {showPicker && (
-                <div className="absolute end-full me-2 bottom-0 z-20" onClick={e => e.stopPropagation()}>
-                  <ReactionPicker currentReaction={currentReaction} onReact={(t) => handleReact(t)} onClose={() => setShowPicker(false)} isRtl={isRtl} dark />
-                </div>
-              )}
-            </div>
-
-            <div ref={shareMenuRef} className="relative flex flex-col items-center gap-1">
-              <button onClick={handleShare} aria-label={isRtl ? 'مشاركة' : 'Share'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-                <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)' }}>
-                  <IconShare size={20} check={copied} />
-                </div>
-                <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{copied ? '✓' : (isRtl ? 'شارك' : 'Share')}</span>
-              </button>
-              {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} isRtl={isRtl} />}
-            </div>
-
-            <button onClick={handleCommentToggle} aria-label={isRtl ? 'تعليق' : 'Comment'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-              <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: showCommentInput ? 'rgba(255,92,56,0.7)' : 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)' }}>
-                <IconComment size={20} />
-              </div>
-              <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{fmt(commentCount)}</span>
-            </button>
-
-            <button onClick={handleBookmarkClick} aria-label={isRtl ? 'حفظ' : 'Save'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-              <div className="w-11 h-11 rounded-full flex items-center justify-center transition" style={{ background: isBookmarked ? 'rgba(212,168,83,0.35)' : 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)', border: isBookmarked ? '1.5px solid rgba(212,168,83,0.6)' : 'none', color: isBookmarked ? '#d4a853' : '#fff' }}>
-                <IconBookmark filled={isBookmarked} size={20} />
-              </div>
-              <span className="text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)', color: isBookmarked ? '#d4a853' : '#fff' }}>{isRtl ? 'حفظ' : 'Save'}</span>
-            </button>
-          </div>
-
-          {/* Bottom: author + caption */}
-          <div className="absolute bottom-0 inset-x-0 z-10 p-4 pe-16 pointer-events-none">
-            <div className="flex items-center gap-2.5 mb-2 pointer-events-auto">
-              <Link href={post.userId ? `/tareeq/u/${post.userId}` : '#'} onClick={e => e.stopPropagation()} className="flex items-center gap-2">
-                {post.user?.avatarUrl
-                  ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-8 h-8 rounded-full object-cover shrink-0" style={{ border: '2px solid rgba(255,255,255,0.4)' }} />
-                  : <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: '2px solid rgba(255,255,255,0.4)', backdropFilter: 'blur(8px)' }}>{post.authorName.charAt(0)}</div>
-                }
-                <div>
-                  <p className="text-white font-bold text-sm leading-none">{post.authorName}</p>
-                  <p className="text-white/60 text-[10px] mt-0.5">{timeAgo(post.createdAt, isRtl)}</p>
-                </div>
-              </Link>
-            </div>
-            {(post.title || snippet) && (
-              <p className="text-white/90 text-xs leading-relaxed line-clamp-2">
-                {post.title ? <strong>{post.title} — </strong> : null}{snippet}
-              </p>
-            )}
-          </div>
-
-          {showCommentInput && (
-            <div className="absolute bottom-0 inset-x-0 z-20 px-4 pb-4 pt-3" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(12px)' }}>
-              <form onSubmit={handleComment} onClick={e => e.stopPropagation()} className="flex gap-2 items-center">
-                <input ref={commentInputRef} value={commentText} onChange={e => setCommentText(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') setShowCommentInput(false); }} placeholder={isRtl ? 'أضف تعليقاً...' : 'Add a comment...'} maxLength={500} className="flex-1 rounded-full px-4 py-2 text-xs text-white outline-none" style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }} />
-                <button type="submit" disabled={submitting || commentText.trim().length < 2} className="px-4 py-2 rounded-full text-xs font-bold text-white disabled:opacity-40 transition shrink-0" style={{ background: 'var(--tr-gold)' }}>
-                  {submitting ? '...' : (isRtl ? 'إرسال' : 'Send')}
-                </button>
-              </form>
-            </div>
-          )}
-        </article>
-
-        {/* ── DESKTOP: standard feed card layout ── */}
-        <article
-          className="hidden lg:block overflow-hidden"
-          style={{ borderRadius: 14, background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
-          aria-label={post.title || post.content.slice(0, 80)}
-        >
-          {/* Image */}
-          <Link href={`/tareeq/${post.id}`} className="block relative overflow-hidden" style={{ borderRadius: '14px 14px 0 0' }}>
-            <img src={post.imageUrl!} alt="" className="w-full object-cover" style={{ height: 320, display: 'block' }} loading="eager" referrerPolicy="no-referrer" />
-            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 55%, rgba(0,0,0,0.10) 100%)', pointerEvents: 'none' }} />
+            {/* Category badge */}
             {catLabel && (
-              <div className="absolute top-3 start-3 z-10">
-                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ color: accentHex, background: 'rgba(255,255,255,0.95)', border: `1px solid ${accentHex}35` }}>
+              <div className="absolute top-4 start-4 z-10 pointer-events-none">
+                <span className="lg:hidden text-[11px] font-bold px-3 py-1 rounded-full text-white" style={{ background: 'rgba(0,0,0,0.40)', backdropFilter: 'blur(8px)', border: `1px solid ${accentHex}70` }}>
+                  {catIcon} {catLabel}
+                </span>
+                <span className="hidden lg:inline text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ color: accentHex, background: 'rgba(255,255,255,0.95)', border: `1px solid ${accentHex}35` }}>
                   {catIcon} {catLabel}
                 </span>
               </div>
             )}
-          </Link>
 
-          {/* Author + content */}
-          <div className="px-4 pt-3.5 pb-2">
-            <div className="flex items-center gap-2.5 mb-2.5">
-              {post.user?.avatarUrl
-                ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold)' }} />
-                : <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
-              }
-              <div className="flex-1 min-w-0">
-                {post.userId
-                  ? <Link href={`/tareeq/u/${post.userId}`} onClick={e => e.stopPropagation()} className="text-sm font-semibold truncate block hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{post.authorName}</Link>
-                  : <p className="text-sm font-semibold truncate" style={{ color: 'var(--tr-text-primary)' }}>{post.authorName}</p>
-                }
-                <p className="text-xs mt-0.5" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(post.createdAt, isRtl)}</p>
+            {/* ── MOBILE ONLY: floating side engagement icons ── */}
+            <div className="absolute end-3 z-10 flex flex-col items-center gap-4 lg:hidden" style={{ bottom: 96 }}>
+              <div className="relative flex flex-col items-center gap-1">
+                <button onClick={handleReactionAreaClick} aria-label={isRtl ? 'تفاعل' : 'React'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+                  <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: currentReaction ? `${reactionConfig?.color ?? '#f59e0b'}30` : 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)', border: currentReaction ? `1.5px solid ${reactionConfig?.color ?? '#f59e0b'}80` : '1.5px solid rgba(255,255,255,0.25)', fontSize: currentReaction ? 22 : 18 }}>
+                    {currentReaction ? reactionEmoji(currentReaction) : <svg width={20} height={20} viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)"><path d="M12 3l1.2 4.8L18 6.8l-3.6 3.6 1.2 5.4-3.6-2.4-3.6 2.4 1.2-5.4L6 6.8l4.8 1.2z" /></svg>}
+                  </div>
+                  <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{fmt(likeCount)}</span>
+                </button>
+                {showPicker && (
+                  <div className="absolute end-full me-2 bottom-0 z-20" onClick={e => e.stopPropagation()}>
+                    <ReactionPicker currentReaction={currentReaction} onReact={(t) => handleReact(t)} onClose={() => setShowPicker(false)} isRtl={isRtl} dark />
+                  </div>
+                )}
               </div>
+
+              <div ref={shareMenuRef} className="relative flex flex-col items-center gap-1">
+                <button onClick={handleShare} aria-label={isRtl ? 'مشاركة' : 'Share'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+                  <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)' }}>
+                    <IconShare size={20} check={copied} />
+                  </div>
+                  <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{copied ? '✓' : (isRtl ? 'شارك' : 'Share')}</span>
+                </button>
+                {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} isRtl={isRtl} />}
+              </div>
+
+              <button onClick={handleCommentToggle} aria-label={isRtl ? 'تعليق' : 'Comment'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+                <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: showCommentInput ? 'rgba(255,92,56,0.7)' : 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)' }}>
+                  <IconComment size={20} />
+                </div>
+                <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{fmt(commentCount)}</span>
+              </button>
+
+              <button onClick={handleBookmarkClick} aria-label={isRtl ? 'حفظ' : 'Save'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+                <div className="w-11 h-11 rounded-full flex items-center justify-center transition" style={{ background: isBookmarked ? 'rgba(212,168,83,0.35)' : 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)', border: isBookmarked ? '1.5px solid rgba(212,168,83,0.6)' : 'none', color: isBookmarked ? '#d4a853' : '#fff' }}>
+                  <IconBookmark filled={isBookmarked} size={20} />
+                </div>
+                <span className="text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)', color: isBookmarked ? '#d4a853' : '#fff' }}>{isRtl ? 'حفظ' : 'Save'}</span>
+              </button>
             </div>
 
-            <Link href={`/tareeq/${post.id}`} className="block">
-              {post.title && <h3 className="font-bold text-sm leading-snug mb-1.5 hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{post.title}</h3>}
-              {snippet && <p className="text-sm leading-relaxed line-clamp-3" style={{ color: 'var(--tr-text-secondary)' }}>{snippet}</p>}
-            </Link>
+            {/* ── MOBILE ONLY: bottom author + caption overlay ── */}
+            <div className="absolute bottom-0 inset-x-0 z-10 p-4 pe-16 pointer-events-none lg:hidden">
+              <div className="flex items-center gap-2.5 mb-2 pointer-events-auto">
+                <Link href={post.userId ? `/tareeq/u/${post.userId}` : '#'} onClick={e => e.stopPropagation()} className="flex items-center gap-2">
+                  {post.user?.avatarUrl
+                    ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-8 h-8 rounded-full object-cover shrink-0" style={{ border: '2px solid rgba(255,255,255,0.4)' }} />
+                    : <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: '2px solid rgba(255,255,255,0.4)', backdropFilter: 'blur(8px)' }}>{post.authorName.charAt(0)}</div>
+                  }
+                  <div>
+                    <p className="text-white font-bold text-sm leading-none">{post.authorName}</p>
+                    <p className="text-white/60 text-[10px] mt-0.5">{timeAgo(post.createdAt, isRtl)}</p>
+                  </div>
+                </Link>
+              </div>
+              {(post.title || snippet) && (
+                <p className="text-white/90 text-xs leading-relaxed line-clamp-2">
+                  {post.title ? <strong>{post.title} — </strong> : null}{snippet}
+                </p>
+              )}
+            </div>
+
+            {/* ── MOBILE ONLY: comment input overlay ── */}
+            {showCommentInput && (
+              <div className="absolute bottom-0 inset-x-0 z-20 px-4 pb-4 pt-3 lg:hidden" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(12px)' }}>
+                <form onSubmit={handleComment} onClick={e => e.stopPropagation()} className="flex gap-2 items-center">
+                  <input ref={commentInputRef} value={commentText} onChange={e => setCommentText(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') setShowCommentInput(false); }} placeholder={isRtl ? 'أضف تعليقاً...' : 'Add a comment...'} maxLength={500} className="flex-1 rounded-full px-4 py-2 text-xs text-white outline-none" style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }} />
+                  <button type="submit" disabled={submitting || commentText.trim().length < 2} className="px-4 py-2 rounded-full text-xs font-bold text-white disabled:opacity-40 transition shrink-0" style={{ background: 'var(--tr-gold)' }}>
+                    {submitting ? '...' : (isRtl ? 'إرسال' : 'Send')}
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
 
-          <SocialSummary />
-          <DesktopActionBar />
-          {commentForm}
+          {/* ── DESKTOP ONLY: author + text + action bars ── */}
+          <div className="hidden lg:block">
+            <div className="px-4 pt-3.5 pb-2">
+              <div className="flex items-center gap-2.5 mb-2.5">
+                {post.user?.avatarUrl
+                  ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold)' }} />
+                  : <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
+                }
+                <div className="flex-1 min-w-0">
+                  {post.userId
+                    ? <Link href={`/tareeq/u/${post.userId}`} onClick={e => e.stopPropagation()} className="text-sm font-semibold truncate block hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{post.authorName}</Link>
+                    : <p className="text-sm font-semibold truncate" style={{ color: 'var(--tr-text-primary)' }}>{post.authorName}</p>
+                  }
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(post.createdAt, isRtl)}</p>
+                </div>
+              </div>
+              <Link href={`/tareeq/${post.id}`} className="block">
+                {post.title && <h3 className="font-bold text-sm leading-snug mb-1.5 hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{post.title}</h3>}
+                {snippet && <p className="text-sm leading-relaxed line-clamp-3" style={{ color: 'var(--tr-text-secondary)' }}>{snippet}</p>}
+              </Link>
+            </div>
+            <SocialSummary />
+            <DesktopActionBar />
+            {commentForm}
+          </div>
         </article>
 
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}

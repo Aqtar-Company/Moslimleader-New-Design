@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { TareeqNotificationsProvider } from '@/context/TareeqNotificationsContext';
@@ -14,10 +15,24 @@ interface GroupMessage {
   sender: { id: string; name: string; avatarUrl?: string | null };
 }
 interface UserResult { id: string; name: string; avatarUrl?: string | null }
+interface SidebarGroup { id: string; name: string; imageUrl?: string | null; lastMessage?: string | null; lastMessageAt?: string | null; memberCount: number }
 
 interface MsgGroup {
   senderId: string; mine: boolean; msgs: GroupMessage[];
   senderInfo: { name: string; avatarUrl?: string | null };
+}
+
+const BLUE      = '#1a6ed4';
+const BLUE_SOFT = 'rgba(26,110,212,0.10)';
+const BLUE_ROW  = 'rgba(26,110,212,0.055)';
+
+function timeAgo(iso: string, isRtl: boolean): string {
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (diff < 60)    return isRtl ? 'الآن'                     : 'now';
+  if (diff < 3600)  return isRtl ? `${Math.floor(diff/60)} د`  : `${Math.floor(diff/60)}m`;
+  if (diff < 86400) return isRtl ? `${Math.floor(diff/3600)} س`: `${Math.floor(diff/3600)}h`;
+  if (diff < 86400*2) return isRtl ? 'أمس' : 'Yesterday';
+  return isRtl ? `${Math.floor(diff/86400)} ي` : `${Math.floor(diff/86400)}d`;
 }
 
 function groupMessages(messages: GroupMessage[], myId: string): MsgGroup[] {
@@ -47,7 +62,7 @@ function formatDay(dateStr: string, isRtl: boolean) {
   } catch { return ''; }
 }
 
-// ── Add Member Sheet ─────────────────────────────────────────────────
+// ── Add Member Sheet ──────────────────────────────────────────────────
 function AddMemberSheet({ groupId, existingIds, onClose, onAdded }: {
   groupId: string; existingIds: Set<string>; onClose: () => void; onAdded: () => void;
 }) {
@@ -68,8 +83,7 @@ function AddMemberSheet({ groupId, existingIds, onClose, onAdded }: {
         const res = await fetch(`/api/tareeq/users/search?q=${encodeURIComponent(q.trim())}`, { credentials: 'include' });
         const d = await res.json();
         setResults(d.users ?? []);
-      } catch { /* ignore */ }
-      finally { setSearching(false); }
+      } catch { /* ignore */ } finally { setSearching(false); }
     }, 350);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [q]);
@@ -82,38 +96,37 @@ function AddMemberSheet({ groupId, existingIds, onClose, onAdded }: {
         credentials: 'include', body: JSON.stringify({ userId }),
       });
       if (res.ok) { setAdded(prev => new Set([...prev, userId])); onAdded(); }
-    } catch { /* ignore */ }
-    finally { setAdding(null); }
+    } catch { /* ignore */ } finally { setAdding(null); }
   }
 
   return (
-    <div className="fixed inset-0 z-[999] flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }} onClick={onClose}>
-      <div className="w-full max-w-lg rounded-t-3xl p-5 flex flex-col gap-4" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', maxHeight: '70dvh' }} onClick={e => e.stopPropagation()}>
-        {/* Handle + title */}
+    <div className="fixed inset-0 z-[999] flex items-end justify-center"
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)' }} onClick={onClose}>
+      <div className="w-full max-w-lg rounded-t-3xl p-5 flex flex-col gap-4"
+        style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', maxHeight: '70dvh' }}
+        onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h3 className="font-black text-base" style={{ color: 'var(--tr-text-primary)' }}>
             {isRtl ? 'إضافة عضو' : 'Add Member'}
           </h3>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl text-sm" style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)' }}>×</button>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl text-sm"
+            style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)' }}>×</button>
         </div>
-
-        {/* Search input */}
         <div className="relative">
-          <svg className="absolute top-1/2 -translate-y-1/2 start-3 w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
+          <svg className="absolute top-1/2 -translate-y-1/2 start-3 w-4 h-4 pointer-events-none"
+            fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
           </svg>
-          <input
-            autoFocus
-            value={q}
-            onChange={e => setQ(e.target.value)}
+          <input autoFocus value={q} onChange={e => setQ(e.target.value)}
             placeholder={isRtl ? 'ابحث بالاسم...' : 'Search by name...'}
             className="w-full rounded-xl ps-9 pe-4 py-2.5 text-sm outline-none"
             style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
           />
-          {searching && <div className="absolute top-1/2 -translate-y-1/2 end-3 w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />}
+          {searching && (
+            <div className="absolute top-1/2 -translate-y-1/2 end-3 w-3.5 h-3.5 border-2 rounded-full animate-spin"
+              style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: BLUE }} />
+          )}
         </div>
-
-        {/* Results */}
         <div className="overflow-y-auto flex flex-col gap-2">
           {results.length === 0 && q.length >= 2 && !searching && (
             <p className="text-center text-sm py-4" style={{ color: 'var(--tr-text-muted)' }}>
@@ -126,21 +139,20 @@ function AddMemberSheet({ groupId, existingIds, onClose, onAdded }: {
             const isLoading = adding === u.id;
             return (
               <div key={u.id} className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: 'var(--tr-overlay)' }}>
-                <div className="w-10 h-10 rounded-full shrink-0 overflow-hidden flex items-center justify-center font-bold text-sm" style={{ background: 'var(--tr-raised)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-border-soft)' }}>
+                <div className="w-10 h-10 rounded-full shrink-0 overflow-hidden flex items-center justify-center font-bold text-sm"
+                  style={{ background: 'var(--tr-raised)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-border-soft)' }}>
                   {u.avatarUrl ? <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" /> : u.name.charAt(0)}
                 </div>
                 <p className="flex-1 font-semibold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{u.name}</p>
                 {isExisting || isAdded ? (
-                  <span className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: 'rgba(45,212,191,0.12)', color: 'var(--tr-teal)' }}>
+                  <span className="text-xs font-bold px-3 py-1.5 rounded-full"
+                    style={{ background: BLUE_SOFT, color: BLUE }}>
                     {isRtl ? '✓ عضو' : '✓ Added'}
                   </span>
                 ) : (
-                  <button
-                    onClick={() => addMember(u.id)}
-                    disabled={isLoading}
+                  <button onClick={() => addMember(u.id)} disabled={isLoading}
                     className="text-xs font-bold px-3 py-1.5 rounded-full transition disabled:opacity-50"
-                    style={{ background: 'linear-gradient(135deg,var(--tr-gold-dim),var(--tr-gold-bright))', color: '#fff' }}
-                  >
+                    style={{ background: BLUE, color: '#fff' }}>
                     {isLoading ? '...' : (isRtl ? 'إضافة' : 'Add')}
                   </button>
                 )}
@@ -158,13 +170,68 @@ function AddMemberSheet({ groupId, existingIds, onClose, onAdded }: {
   );
 }
 
-// ── Main component ───────────────────────────────────────────────────
+// ── Desktop create-group modal ────────────────────────────────────────
+function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreated: (groupId: string) => void }) {
+  const { isRtl } = useLang();
+  const [name, setName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function submit() {
+    if (!name.trim()) { setError(isRtl ? 'أدخل اسم المجموعة' : 'Enter group name'); return; }
+    setLoading(true); setError('');
+    try {
+      const res = await fetch('/api/tareeq/groups', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', body: JSON.stringify({ name: name.trim() }),
+      });
+      const d = await res.json();
+      if (res.ok) { onCreated(d.group?.id ?? ''); onClose(); }
+      else setError(d.error || (isRtl ? 'حدث خطأ' : 'Error'));
+    } catch { setError(isRtl ? 'خطأ في الاتصال' : 'Connection error'); }
+    finally { setLoading(false); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)' }} onClick={onClose}>
+      <div className="w-full max-w-sm mx-4 rounded-2xl p-6 flex flex-col gap-4"
+        style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)' }}
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h2 className="font-black text-base" style={{ color: 'var(--tr-text-primary)' }}>
+            {isRtl ? 'مجموعة جديدة' : 'New Group'}
+          </h2>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl"
+            style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)' }}>&times;</button>
+        </div>
+        {error && (
+          <p className="text-xs text-center py-1 px-3 rounded-lg font-semibold"
+            style={{ color: '#f87171', background: 'rgba(248,113,113,0.10)' }}>{error}</p>
+        )}
+        <input value={name} onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit(); }}
+          placeholder={isRtl ? 'اسم المجموعة' : 'Group name'} autoFocus maxLength={50}
+          className="w-full rounded-xl px-4 py-3 text-sm outline-none"
+          style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
+        />
+        <button onClick={submit} disabled={loading || !name.trim()}
+          className="w-full py-3 rounded-xl font-black text-sm transition disabled:opacity-40"
+          style={{ background: BLUE, color: '#fff' }}>
+          {loading ? (isRtl ? 'جاري الإنشاء...' : 'Creating...') : (isRtl ? 'إنشاء المجموعة' : 'Create Group')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────
 function Inner({ groupId }: { groupId: string }) {
   const { isRtl } = useLang();
   const { user } = useAuth();
   const router = useRouter();
   const [group, setGroup] = useState<GroupInfo | null>(null);
   const [messages, setMessages] = useState<GroupMessage[]>([]);
+  const [sidebarGroups, setSidebarGroups] = useState<SidebarGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -176,10 +243,12 @@ function Inner({ groupId }: { groupId: string }) {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showMembers, setShowMembers] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const latestIdRef = useRef<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const myId = user?.id ?? '';
 
   const load = useCallback(async (silent = false) => {
@@ -194,9 +263,14 @@ function Inner({ groupId }: { groupId: string }) {
         setMessages(msgs);
         latestIdRef.current = msgs.length ? msgs[msgs.length - 1].id : '';
       }
-    } catch { /* ignore */ }
-    finally { if (!silent) setLoading(false); }
+    } catch { /* ignore */ } finally { if (!silent) setLoading(false); }
   }, [groupId, router]);
+
+  // Fetch sidebar groups list (desktop only, but always so state is ready)
+  useEffect(() => {
+    fetch('/api/tareeq/groups', { credentials: 'include' })
+      .then(r => r.json()).then(d => setSidebarGroups(d.groups ?? [])).catch(() => {});
+  }, [groupId]);
 
   useEffect(() => {
     if (!user) { router.push('/login'); return; }
@@ -208,7 +282,7 @@ function Inner({ groupId }: { groupId: string }) {
       const msgs: GroupMessage[] = d.messages ?? [];
       const newLatest = msgs.length ? msgs[msgs.length - 1].id : '';
       if (newLatest !== latestIdRef.current) { setMessages(msgs); latestIdRef.current = newLatest; }
-    }, 8_000);
+    }, 6_000);
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
   }, [user, router, load, groupId]);
 
@@ -238,8 +312,7 @@ function Inner({ groupId }: { groupId: string }) {
         xhr.onerror = () => { setSendError('فشل رفع الملف'); reject(); };
         xhr.send(form);
       });
-    } catch { /* error set */ }
-    finally { setUploading(false); e.target.value = ''; }
+    } catch { /* error set */ } finally { setUploading(false); e.target.value = ''; }
   }
 
   async function handleSend() {
@@ -260,8 +333,7 @@ function Inner({ groupId }: { groupId: string }) {
         const d = await res.json().catch(() => ({}));
         setSendError(d.error || 'فشل الإرسال');
       }
-    } catch { setSendError('خطأ في الشبكة'); }
-    finally { setSending(false); }
+    } catch { setSendError('خطأ في الشبكة'); } finally { setSending(false); }
   }
 
   const isAdmin = group?.members.find(m => m.user.id === myId)?.role === 'admin';
@@ -276,39 +348,40 @@ function Inner({ groupId }: { groupId: string }) {
     else dayBuckets.push({ day, groups: [g] });
   }
 
-  return (
-    <div className="flex flex-col overflow-hidden" style={{ background: 'var(--tr-base)', height: '100dvh' }}>
-      {/* Spacer for sub-header (~60px) */}
-      <div className="h-[60px] shrink-0" />
-
-      {/* Sub-header — fixed at top */}
-      <div className="fixed top-0 left-0 right-0 px-4 py-3 flex items-center gap-3 z-40" style={{ background: 'var(--tr-surface)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
-        <button onClick={() => router.push('/tareeq/inbox')} className="transition" style={{ color: 'var(--tr-text-muted)' }}>
+  // ── Chat area (shared by mobile full-screen and desktop main column) ─
+  const chatArea = (
+    <div className="flex flex-col overflow-hidden" style={{ height: '100%', minHeight: 0 }}>
+      {/* Sub-header */}
+      <div className="px-4 py-2.5 flex items-center gap-3 shrink-0"
+        style={{ background: 'var(--tr-surface)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
+        <button onClick={() => router.push('/tareeq/inbox')}
+          className="transition lg:hidden" style={{ color: 'var(--tr-text-muted)' }}>
           <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M9 5l7 7-7 7' : 'M15 19l-7-7 7-7'} />
           </svg>
         </button>
         {group && (
           <button className="flex items-center gap-3 flex-1 min-w-0 text-start" onClick={() => setShowMembers(v => !v)}>
-            <div className="w-9 h-9 rounded-full shrink-0 overflow-hidden flex items-center justify-center text-sm font-bold" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold-dim)' }}>
-              {group.imageUrl ? <img src={group.imageUrl} alt={group.name} className="w-full h-full object-cover" /> : group.name.charAt(0)}
+            <div className="w-9 h-9 rounded-full shrink-0 overflow-hidden flex items-center justify-center text-sm font-bold"
+              style={{ background: BLUE_SOFT, border: `1.5px solid ${BLUE_SOFT}` }}>
+              {group.imageUrl
+                ? <img src={group.imageUrl} alt={group.name} className="w-full h-full object-cover" />
+                : <span style={{ fontSize: 16 }}>👥</span>
+              }
             </div>
             <div className="min-w-0">
-              <p className="font-bold text-sm leading-tight truncate" style={{ color: 'var(--tr-text-primary)' }}>{group.name}</p>
-              <p className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>
+              <p className="font-bold text-[15px] leading-tight truncate" style={{ color: 'var(--tr-text-primary)' }}>{group.name}</p>
+              <p className="text-[11px]" style={{ color: 'var(--tr-text-muted)' }}>
                 {group.members.length} {isRtl ? 'أعضاء' : 'members'}
               </p>
             </div>
           </button>
         )}
-        {/* Add member button — admin only */}
         {isAdmin && (
-          <button
-            onClick={() => setShowAddMember(true)}
-            className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition active:scale-90"
-            style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)' }}
-            title={isRtl ? 'إضافة عضو' : 'Add member'}
-          >
+          <button onClick={() => setShowAddMember(true)}
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition active:scale-90"
+            style={{ background: BLUE_SOFT, color: BLUE }}
+            title={isRtl ? 'إضافة عضو' : 'Add member'}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z" />
             </svg>
@@ -316,28 +389,41 @@ function Inner({ groupId }: { groupId: string }) {
         )}
       </div>
 
-      {/* Members strip (tap header to toggle) */}
+      {/* Members strip */}
       {showMembers && group && (
-        <div className="shrink-0 px-4 py-3 overflow-x-auto" style={{ background: 'var(--tr-raised)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
-          <div className="flex gap-3">
+        <div className="shrink-0 px-4 py-3 overflow-x-auto"
+          style={{ background: 'var(--tr-overlay)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
+          <div className="flex gap-4">
             {group.members.map(m => (
-              <div key={m.user.id} className="flex flex-col items-center gap-1 shrink-0">
-                <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center font-bold text-sm relative" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-border-soft)' }}>
-                  {m.user.avatarUrl ? <img src={m.user.avatarUrl} alt={m.user.name} className="w-full h-full object-cover" /> : m.user.name.charAt(0)}
-                  {m.role === 'admin' && <span className="absolute bottom-0 end-0 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px]" style={{ background: 'var(--tr-gold)', color: '#0a0d06' }}>★</span>}
+              <div key={m.user.id} className="flex flex-col items-center gap-1.5 shrink-0">
+                <div className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center font-bold text-sm relative"
+                  style={{ background: 'var(--tr-surface)', color: 'var(--tr-text-muted)', border: '1.5px solid var(--tr-border-soft)' }}>
+                  {m.user.avatarUrl
+                    ? <img src={m.user.avatarUrl} alt={m.user.name} className="w-full h-full object-cover" />
+                    : m.user.name.charAt(0)
+                  }
+                  {m.role === 'admin' && (
+                    <span className="absolute bottom-0 end-0 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px]"
+                      style={{ background: BLUE, color: '#fff' }}>★</span>
+                  )}
                 </div>
-                <span className="text-[10px] font-medium max-w-[56px] text-center truncate" style={{ color: 'var(--tr-text-muted)' }}>{m.user.name.split(' ')[0]}</span>
+                <span className="text-[11px] font-medium max-w-[52px] text-center truncate" style={{ color: 'var(--tr-text-muted)' }}>
+                  {m.user.name.split(' ')[0]}
+                </span>
               </div>
             ))}
-            {/* Add member shortcut inside strip */}
             {isAdmin && (
-              <button onClick={() => { setShowMembers(false); setShowAddMember(true); }} className="flex flex-col items-center gap-1 shrink-0">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'var(--tr-overlay)', border: '1.5px dashed var(--tr-gold-dim)', color: 'var(--tr-gold)' }}>
+              <button onClick={() => { setShowMembers(false); setShowAddMember(true); }}
+                className="flex flex-col items-center gap-1.5 shrink-0">
+                <div className="w-11 h-11 rounded-full flex items-center justify-center"
+                  style={{ background: 'var(--tr-surface)', border: `1.5px dashed ${BLUE}`, color: BLUE }}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                   </svg>
                 </div>
-                <span className="text-[10px] font-medium" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'إضافة' : 'Add'}</span>
+                <span className="text-[11px] font-medium" style={{ color: BLUE }}>
+                  {isRtl ? 'إضافة' : 'Add'}
+                </span>
               </button>
             )}
           </div>
@@ -345,19 +431,22 @@ function Inner({ groupId }: { groupId: string }) {
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 pb-28 max-w-2xl w-full mx-auto" dir="ltr">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 max-w-2xl w-full mx-auto" dir="ltr"
+        style={{ paddingBottom: 80 }}>
         {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
+          <div className="flex justify-center py-16">
+            <div className="w-5 h-5 border-2 rounded-full animate-spin"
+              style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: BLUE }} />
           </div>
         ) : messages.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl flex items-center justify-center text-2xl" style={{ background: 'var(--tr-overlay)' }}>💬</div>
-            <p className="text-sm font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>
+          <div className="flex flex-col items-center" style={{ paddingTop: '20dvh' }}>
+            <div className="w-14 h-14 mb-3 rounded-2xl flex items-center justify-center text-2xl"
+              style={{ background: BLUE_SOFT }}>💬</div>
+            <p className="text-[14px] font-semibold" style={{ color: 'var(--tr-text-primary)' }}>
               {isRtl ? 'ابدأ المحادثة في المجموعة' : 'Start the group conversation'}
             </p>
             {isAdmin && group && group.members.length < 2 && (
-              <p className="text-xs mt-2" style={{ color: 'var(--tr-text-muted)' }}>
+              <p className="text-xs mt-1.5" style={{ color: 'var(--tr-text-muted)' }}>
                 {isRtl ? 'أضف أعضاء من الزر أعلاه ↑' : 'Add members using the button above ↑'}
               </p>
             )}
@@ -365,36 +454,55 @@ function Inner({ groupId }: { groupId: string }) {
         ) : (
           dayBuckets.map(bucket => (
             <div key={bucket.day}>
-              <div className="flex items-center gap-2 my-4">
+              <div className="flex items-center gap-2 my-3">
                 <div className="flex-1 h-px" style={{ background: 'var(--tr-border-subtle)' }} />
-                <span className="text-[10px] font-semibold px-2" style={{ color: 'var(--tr-text-muted)' }}>{formatDay(bucket.day + 'T12:00:00', isRtl)}</span>
+                <span className="text-[10px] font-semibold px-2" style={{ color: 'var(--tr-text-muted)' }}>
+                  {formatDay(bucket.day + 'T12:00:00', isRtl)}
+                </span>
                 <div className="flex-1 h-px" style={{ background: 'var(--tr-border-subtle)' }} />
               </div>
-              {bucket.groups.map((group, gi) => (
+              {bucket.groups.map((grp, gi) => (
                 <div key={gi} className="flex flex-col mb-2 w-full">
-                  {!group.mine && (
-                    <p className="text-[10px] font-semibold mb-0.5 px-8" style={{ color: 'var(--tr-gold-dim)' }}>{group.senderInfo.name}</p>
+                  {!grp.mine && (
+                    <p className="text-[10px] font-semibold mb-0.5 px-8" style={{ color: BLUE }}>
+                      {grp.senderInfo.name}
+                    </p>
                   )}
-                  {group.msgs.map((m, mi) => {
-                    const isLast = mi === group.msgs.length - 1;
-                    const mineStyle = { background: 'linear-gradient(135deg,#115e59,#0d9488)', color: '#fff', borderRadius: isLast ? '18px 18px 4px 18px' : '18px' };
-                    const otherStyle = { background: 'var(--tr-raised)', color: 'var(--tr-text-primary)', border: '1px solid var(--tr-border-soft)', borderRadius: isLast ? '18px 18px 18px 4px' : '18px' };
+                  {grp.msgs.map((m, mi) => {
+                    const isLast = mi === grp.msgs.length - 1;
+                    const mineRadius = isLast ? '18px 18px 4px 18px' : '18px';
+                    const otherRadius = isLast ? '18px 18px 18px 4px' : '18px';
                     return (
-                      <div key={m.id} className={`flex items-end gap-2 mb-0.5 ${group.mine ? 'justify-end' : 'justify-start'}`}>
-                        <div className="w-6 h-6 rounded-full shrink-0 overflow-hidden flex items-center justify-center text-[10px] font-bold" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1px solid var(--tr-gold-dim)', visibility: (!group.mine && isLast) ? 'visible' : 'hidden' }}>
-                          {!group.mine && isLast && (group.senderInfo.avatarUrl ? <img src={group.senderInfo.avatarUrl} alt="" className="w-full h-full object-cover" /> : group.senderInfo.name.charAt(0))}
+                      <div key={m.id} className={`flex items-end gap-2 mb-0.5 ${grp.mine ? 'justify-end' : 'justify-start'}`}>
+                        <div className="w-6 h-6 rounded-full shrink-0 overflow-hidden flex items-center justify-center text-[10px] font-bold"
+                          style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', border: '1px solid var(--tr-border-soft)', visibility: (!grp.mine && isLast) ? 'visible' : 'hidden' }}>
+                          {!grp.mine && isLast && (grp.senderInfo.avatarUrl
+                            ? <img src={grp.senderInfo.avatarUrl} alt="" className="w-full h-full object-cover" />
+                            : grp.senderInfo.name.charAt(0)
+                          )}
                         </div>
-                        <div className="max-w-[72%]" style={group.mine ? mineStyle : otherStyle}>
+                        <div className="max-w-[72%]"
+                          style={{
+                            background: grp.mine ? `linear-gradient(160deg, #1356bd, #1c72e8)` : 'var(--tr-raised)',
+                            color: grp.mine ? '#fff' : 'var(--tr-text-primary)',
+                            ...(grp.mine ? {} : { border: '1px solid var(--tr-border-soft)' }),
+                            borderRadius: grp.mine ? mineRadius : otherRadius,
+                          }}>
                           {m.imageUrl && <img src={m.imageUrl} alt="" className="w-full max-w-xs rounded-xl object-cover" style={{ maxHeight: 220 }} />}
                           {m.videoUrl && <video src={m.videoUrl} className="w-full max-w-xs rounded-xl" style={{ maxHeight: 220 }} controls playsInline />}
-                          {m.content && <p className="px-4 py-2.5 text-sm leading-relaxed" style={{ wordBreak: 'break-word' }} dir="auto">{m.content}</p>}
+                          {m.content && (
+                            <p className="px-3.5 py-2.5 text-sm leading-relaxed" style={{ wordBreak: 'break-word' }} dir="auto">
+                              {m.content}
+                            </p>
+                          )}
                           {!m.content && (m.imageUrl || m.videoUrl) && <div className="px-1 py-1" />}
                         </div>
                       </div>
                     );
                   })}
-                  <p className={`text-[10px] mt-1 px-2 ${group.mine ? 'text-end' : 'text-start'}`} style={{ color: 'var(--tr-text-muted)' }}>
-                    {formatTime(group.msgs[group.msgs.length - 1].createdAt)}
+                  <p className={`text-[10px] mt-1 px-2 ${grp.mine ? 'text-end' : 'text-start'}`}
+                    style={{ color: 'var(--tr-text-muted)' }}>
+                    {formatTime(grp.msgs[grp.msgs.length - 1].createdAt)}
                   </p>
                 </div>
               ))}
@@ -404,58 +512,59 @@ function Inner({ groupId }: { groupId: string }) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-30" style={{ background: 'var(--tr-surface)', borderTop: '1px solid var(--tr-border-subtle)' }}>
+      {/* Composer */}
+      <div className="shrink-0" style={{ background: 'var(--tr-surface)', borderTop: '1px solid var(--tr-border-subtle)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="max-w-2xl mx-auto px-3 py-2 flex flex-col gap-2">
           {sendError && <p className="text-xs text-center font-semibold" style={{ color: '#f43f5e' }}>{sendError}</p>}
           {(localPreview || mediaUrl || uploading) && (
             <div className="relative w-16 h-16 rounded-xl overflow-hidden" style={{ border: '1px solid var(--tr-border-soft)' }}>
               {localPreview && mediaType !== 'video'
                 ? <img src={localPreview} alt="" className="w-full h-full object-cover" />
-                : mediaUrl
-                  ? mediaType === 'image'
+                : mediaUrl ? (mediaType === 'image'
                     ? <img src={mediaUrl} alt="" className="w-full h-full object-cover" />
-                    : <video src={mediaUrl} className="w-full h-full object-cover" />
+                    : <video src={mediaUrl} className="w-full h-full object-cover" />)
                   : <div className="w-full h-full" style={{ background: 'var(--tr-overlay)' }} />
               }
               {uploading && (
-                <div className="absolute inset-0 flex items-center justify-center text-xs font-black" style={{ background: 'rgba(0,0,0,0.6)', color: 'var(--tr-gold-bright)' }}>{uploadProgress}%</div>
+                <div className="absolute inset-0 flex items-center justify-center text-xs font-black"
+                  style={{ background: 'rgba(0,0,0,0.6)', color: '#fff' }}>{uploadProgress}%</div>
               )}
               {!uploading && (
-                <button onClick={() => { setMediaUrl(null); setMediaType(null); setLocalPreview(null); setUploadProgress(0); }} className="absolute top-0.5 end-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: 'rgba(0,0,0,0.75)', color: '#fff' }}>×</button>
+                <button onClick={() => { setMediaUrl(null); setMediaType(null); setLocalPreview(null); setUploadProgress(0); }}
+                  className="absolute top-0.5 end-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
+                  style={{ background: 'rgba(0,0,0,0.75)', color: '#fff' }}>×</button>
               )}
             </div>
           )}
           <div className="flex items-end gap-2" dir={isRtl ? 'rtl' : 'ltr'}>
-            <label className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full cursor-pointer transition" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <label className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full cursor-pointer transition active:scale-90"
+              style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}>
+              <svg className="w-4.5 h-4.5" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
               </svg>
-              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" className="hidden" disabled={uploading} onChange={handleMedia} />
+              <input ref={fileInputRef} type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+                className="hidden" disabled={uploading} onChange={handleMedia} />
             </label>
-            <textarea
-              value={input}
-              onChange={e => { setInput(e.target.value); if (sendError) setSendError(''); }}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-              placeholder={isRtl ? 'رسالة...' : 'Message...'}
-              rows={1}
-              className="flex-1 rounded-2xl px-4 py-2.5 text-sm resize-none focus:outline-none transition"
-              style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)', maxHeight: '120px', overflowY: 'auto' }}
-            />
-            <button
-              onClick={handleSend}
-              disabled={sending || uploading || (!input.trim() && !mediaUrl)}
-              className="rounded-full w-9 h-9 flex items-center justify-center shrink-0 transition disabled:opacity-40"
-              style={{ background: 'linear-gradient(135deg,var(--tr-gold-dim),var(--tr-gold-bright))', color: '#fff', boxShadow: '0 3px 12px var(--tr-gold-glow)' }}
-            >
+            <div className="flex flex-1 items-center rounded-full px-3 gap-2"
+              style={{ background: 'var(--tr-overlay)', border: '1.5px solid var(--tr-border-soft)', minHeight: 44 }}>
+              <textarea ref={textareaRef} value={input}
+                onChange={e => { setInput(e.target.value); if (sendError) setSendError(''); }}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                placeholder={isRtl ? 'رسالة...' : 'Message...'}
+                rows={1} className="flex-1 bg-transparent border-none focus:outline-none text-sm resize-none py-2.5"
+                style={{ color: 'var(--tr-text-primary)', maxHeight: '100px', overflowY: 'auto' }}
+              />
+            </div>
+            <button onClick={handleSend} disabled={sending || uploading || (!input.trim() && !mediaUrl)}
+              className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition disabled:opacity-40 active:scale-90"
+              style={{ background: BLUE, color: '#fff', boxShadow: `0 4px 16px ${BLUE_SOFT}` }}>
               {sending
-                ? <div className="w-4 h-4 border-2 border-current/40 border-t-current rounded-full animate-spin" />
+                ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                 : (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M2,11 L12,7 L22,11 L15,15 L12,11 L9,15 Z"/>
-                    <path d="M12,15 L10,21 L12,18 L14,21 Z"/>
-                    <path d="M16,8 L20,7 L17,11 Z"/>
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
                   </svg>
                 )
               }
@@ -463,14 +572,95 @@ function Inner({ groupId }: { groupId: string }) {
           </div>
         </div>
       </div>
+    </div>
+  );
 
-      {/* Add member sheet */}
+  return (
+    <div style={{ background: 'var(--tr-base)', height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Spacer: global Tareeq header (mobile only — desktop header is handled by layout) */}
+      <div className="h-[60px] shrink-0 lg:hidden" />
+
+      {/* ── Desktop: sidebar + chat ── */}
+      <div className="hidden lg:flex flex-1 min-h-0 max-w-[1100px] mx-auto w-full px-6 pt-6 gap-4">
+        {/* Groups sidebar */}
+        <div className="w-[300px] shrink-0 rounded-2xl flex flex-col overflow-hidden"
+          style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', maxHeight: 'calc(100dvh - 96px)', position: 'sticky', top: 80 }}>
+          <div className="flex items-center justify-between px-4 pt-4 pb-3 shrink-0"
+            style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+            <h2 className="font-black text-[14px]" style={{ color: 'var(--tr-text-primary)' }}>
+              {isRtl ? 'المجموعات' : 'Groups'}
+            </h2>
+            <button onClick={() => setShowCreateGroup(true)}
+              className="w-7 h-7 flex items-center justify-center rounded-full transition"
+              style={{ background: BLUE, color: '#fff' }}>
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            </button>
+          </div>
+          <div className="overflow-y-auto flex-1" style={{ scrollbarWidth: 'none' }}>
+            {sidebarGroups.length === 0 ? (
+              <div className="flex flex-col items-center py-10 px-4">
+                <span className="text-2xl mb-2">👥</span>
+                <p className="text-[13px] text-center" style={{ color: 'var(--tr-text-muted)' }}>
+                  {isRtl ? 'لا مجموعات بعد' : 'No groups yet'}
+                </p>
+              </div>
+            ) : (
+              sidebarGroups.map((g, idx) => (
+                <Link key={g.id} href={`/tareeq/groups/${g.id}`}
+                  className="flex items-center gap-3 px-4 py-3 transition-colors"
+                  style={{
+                    background: g.id === groupId ? BLUE_ROW : 'transparent',
+                    borderBottom: idx < sidebarGroups.length - 1 ? '1px solid var(--tr-border-subtle)' : 'none',
+                    borderInlineStart: g.id === groupId ? `3px solid ${BLUE}` : '3px solid transparent',
+                  }}>
+                  <div className="w-10 h-10 rounded-full shrink-0 overflow-hidden flex items-center justify-center"
+                    style={{ background: BLUE_SOFT, fontSize: 16 }}>
+                    {g.imageUrl
+                      ? <img src={g.imageUrl} alt={g.name} className="w-full h-full object-cover" />
+                      : '👥'
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-semibold truncate"
+                      style={{ color: g.id === groupId ? BLUE : 'var(--tr-text-primary)' }}>{g.name}</p>
+                    <p className="text-[12px] truncate" style={{ color: 'var(--tr-text-muted)' }}>
+                      {g.lastMessage || (isRtl ? `${g.memberCount} أعضاء` : `${g.memberCount} members`)}
+                    </p>
+                  </div>
+                  {g.lastMessageAt && (
+                    <span className="text-[10px] shrink-0" style={{ color: 'var(--tr-text-muted)' }}>
+                      {timeAgo(g.lastMessageAt, isRtl)}
+                    </span>
+                  )}
+                </Link>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Desktop chat panel */}
+        <div className="flex-1 min-w-0 rounded-2xl overflow-hidden flex flex-col"
+          style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', maxHeight: 'calc(100dvh - 96px)' }}>
+          {chatArea}
+        </div>
+      </div>
+
+      {/* ── Mobile: full-screen ── */}
+      <div className="lg:hidden flex-1 min-h-0 flex flex-col overflow-hidden"
+        style={{ position: 'fixed', top: 60, left: 0, right: 0, bottom: 0 }}>
+        {chatArea}
+      </div>
+
       {showAddMember && group && (
-        <AddMemberSheet
-          groupId={groupId}
-          existingIds={existingMemberIds}
-          onClose={() => setShowAddMember(false)}
-          onAdded={() => load(true)}
+        <AddMemberSheet groupId={groupId} existingIds={existingMemberIds}
+          onClose={() => setShowAddMember(false)} onAdded={() => load(true)} />
+      )}
+      {showCreateGroup && (
+        <CreateGroupModal
+          onClose={() => setShowCreateGroup(false)}
+          onCreated={(newGroupId) => { setSidebarGroups([]); fetch('/api/tareeq/groups', { credentials: 'include' }).then(r => r.json()).then(d => setSidebarGroups(d.groups ?? [])).catch(() => {}); if (newGroupId) router.push(`/tareeq/groups/${newGroupId}`); }}
         />
       )}
     </div>

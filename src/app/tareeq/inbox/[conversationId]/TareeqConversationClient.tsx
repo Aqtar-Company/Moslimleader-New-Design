@@ -125,6 +125,9 @@ function fmtDuration(s: number) {
   return `${m}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
 }
 
+const MSG_BLUE      = '#1a6ed4';
+const MSG_BLUE_SOFT = 'rgba(26,110,212,0.10)';
+
 let activeAudioEl: HTMLAudioElement | null = null;
 
 function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
@@ -139,10 +142,10 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
   // the user tries to play — we don't want to flash the error bubble immediately.
   const triedRef = useRef(false);
 
-  // Seeded pseudo-random waveform so it looks consistent every render
+  // Seeded pseudo-random waveform — 24 bars for a cleaner, less dense look
   const bars = useMemo(() => {
     let h = url.split('').reduce((a, c) => ((a * 31 + c.charCodeAt(0)) | 0), 0x811c9dc5);
-    return Array.from({ length: 32 }, () => {
+    return Array.from({ length: 24 }, () => {
       h ^= h << 13; h ^= h >> 7; h ^= h << 17;
       return 0.15 + (Math.abs(h) % 85) / 100;
     });
@@ -234,42 +237,37 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
   }
 
   return (
-    <div className="flex items-center gap-2 py-1 px-0.5" style={{ minWidth: 190, maxWidth: 250 }}>
+    <div className="flex items-center gap-2.5 py-2 px-1" style={{ minWidth: 180, maxWidth: 240 }}>
       {/* Play / Pause */}
       <button
         onClick={toggle}
-        className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90"
-        style={{ background: mine ? 'rgba(255,255,255,0.18)' : 'var(--tr-overlay)' }}
+        className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90"
+        style={{ background: mine ? 'rgba(255,255,255,0.20)' : MSG_BLUE_SOFT }}
       >
         {playing
-          ? <svg width="14" height="14" fill={fg} viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-          : <svg width="14" height="14" fill={fg} viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          ? <svg width="13" height="13" fill={mine ? '#fff' : MSG_BLUE} viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          : <svg width="13" height="13" fill={mine ? '#fff' : MSG_BLUE} viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
         }
       </button>
 
       {/* Waveform + seek */}
-      <div
-        className="flex-1 flex items-center gap-[2px] cursor-pointer"
-        onClick={seek}
-        style={{ height: 28 }}
-      >
+      <div className="flex-1 flex items-center gap-[2.5px] cursor-pointer relative" onClick={seek} style={{ height: 24 }}>
+        {/* Track */}
+        <div className="absolute inset-0 rounded-full" style={{ background: mine ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)' }} />
         {bars.map((h, i) => {
           const played = (i / bars.length) < progress;
           return (
             <div key={i} style={{
-              width: 2.5,
-              height: Math.max(3, h * 26),
-              borderRadius: 2,
-              background: played ? fg : fgDim,
-              transition: 'background 80ms',
-              flexShrink: 0,
+              width: 2, height: Math.max(3, h * 22), borderRadius: 2,
+              background: played ? (mine ? '#fff' : MSG_BLUE) : (mine ? 'rgba(255,255,255,0.30)' : 'var(--tr-border-soft)'),
+              transition: 'background 80ms', flexShrink: 0, position: 'relative',
             }} />
           );
         })}
       </div>
 
       {/* Duration */}
-      <span style={{ fontSize: 10, color: fgDim, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+      <span style={{ fontSize: 10, color: fgDim, flexShrink: 0, fontVariantNumeric: 'tabular-nums', minWidth: 28 }}>
         {playing ? fmtDuration(curTime) : fmtDuration(duration)}
       </span>
     </div>
@@ -747,12 +745,12 @@ function Inner({ conversationId }: { conversationId: string }) {
                 </p>
               )}
             </div>
-            {/* Call buttons */}
+            {/* Call buttons — glass blue */}
             <div className="flex items-center gap-2 ms-auto">
               <button
                 onClick={() => startCall('video')}
                 className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90"
-                style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}
+                style={{ background: MSG_BLUE_SOFT, color: MSG_BLUE }}
                 aria-label={isRtl ? 'مكالمة فيديو' : 'Video call'}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -762,7 +760,7 @@ function Inner({ conversationId }: { conversationId: string }) {
               <button
                 onClick={() => startCall('audio')}
                 className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90"
-                style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}
+                style={{ background: MSG_BLUE_SOFT, color: MSG_BLUE }}
                 aria-label={isRtl ? 'مكالمة صوتية' : 'Voice call'}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -777,12 +775,16 @@ function Inner({ conversationId }: { conversationId: string }) {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 pb-24 max-w-2xl w-full mx-auto" dir="ltr">
         {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
+          <div className="flex justify-center py-16">
+            <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: MSG_BLUE }} />
           </div>
         ) : messages.length === 0 && calls.length === 0 ? (
-          <div className="text-center py-20 text-sm" style={{ color: 'var(--tr-text-muted)' }}>
-            {isRtl ? 'ابدأ المحادثة' : 'Start the conversation'}
+          <div className="flex flex-col items-center" style={{ paddingTop: '20dvh' }}>
+            <div className="w-12 h-12 mb-3 rounded-2xl flex items-center justify-center text-xl"
+              style={{ background: MSG_BLUE_SOFT }}>💬</div>
+            <p className="text-[14px] font-semibold" style={{ color: 'var(--tr-text-primary)' }}>
+              {isRtl ? 'ابدأ المحادثة' : 'Start the conversation'}
+            </p>
           </div>
         ) : (
           dayBuckets.map(bucket => (
@@ -861,7 +863,7 @@ function Inner({ conversationId }: { conversationId: string }) {
                         <div
                           className="max-w-[72%] relative"
                           style={{
-                            background: group.mine ? 'linear-gradient(135deg, #115e59, #0d9488)' : 'var(--tr-raised)',
+                            background: group.mine ? `linear-gradient(160deg, #1356bd, #1c72e8)` : 'var(--tr-raised)',
                             color: group.mine ? '#fff' : 'var(--tr-text-primary)',
                             ...(group.mine ? {} : { border: '1px solid var(--tr-border-soft)' }),
                             borderRadius: group.mine ? mineRadius : otherRadius,

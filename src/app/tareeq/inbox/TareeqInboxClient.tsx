@@ -16,12 +16,18 @@ interface Group {
   lastMessageAt?: string | null; memberCount: number; role: string;
 }
 
+// Tareeq messaging blue — used throughout this screen
+const BLUE      = '#1a6ed4';
+const BLUE_SOFT = 'rgba(26,110,212,0.10)';
+const BLUE_ROW  = 'rgba(26,110,212,0.055)';
+
 function timeAgo(iso: string, isRtl: boolean): string {
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (diff < 60) return isRtl ? 'الآن' : 'now';
-  if (diff < 3600) return isRtl ? `${Math.floor(diff / 60)} د` : `${Math.floor(diff / 60)}m`;
-  if (diff < 86400) return isRtl ? `${Math.floor(diff / 3600)} س` : `${Math.floor(diff / 3600)}h`;
-  return isRtl ? `${Math.floor(diff / 86400)} ي` : `${Math.floor(diff / 86400)}d`;
+  if (diff < 60)    return isRtl ? 'الآن'                     : 'now';
+  if (diff < 3600)  return isRtl ? `${Math.floor(diff/60)} د`  : `${Math.floor(diff/60)}m`;
+  if (diff < 86400) return isRtl ? `${Math.floor(diff/3600)} س`: `${Math.floor(diff/3600)}h`;
+  if (diff < 86400*2) return isRtl ? 'أمس' : 'Yesterday';
+  return isRtl ? `${Math.floor(diff/86400)} ي` : `${Math.floor(diff/86400)}d`;
 }
 
 function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreated: (groupId: string) => void }) {
@@ -36,8 +42,7 @@ function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreat
     try {
       const res = await fetch('/api/tareeq/groups', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ name: name.trim() }),
+        credentials: 'include', body: JSON.stringify({ name: name.trim() }),
       });
       const d = await res.json();
       if (res.ok) { onCreated(d.group?.id ?? ''); onClose(); }
@@ -47,32 +52,50 @@ function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreat
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center" style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }} onClick={onClose}>
-      <div className="w-full sm:max-w-sm sm:mx-4 rounded-t-3xl sm:rounded-2xl p-6 flex flex-col gap-4" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)' }} onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)' }} onClick={onClose}>
+      <div className="w-full sm:max-w-sm sm:mx-4 rounded-t-3xl sm:rounded-2xl p-6 flex flex-col gap-4"
+        style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)' }}
+        onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <h2 className="font-black text-base" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'مجموعة جديدة' : 'New Group'}</h2>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl" style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)' }}>&times;</button>
+          <h2 className="font-black text-base" style={{ color: 'var(--tr-text-primary)' }}>
+            {isRtl ? 'مجموعة جديدة' : 'New Group'}
+          </h2>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl"
+            style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)' }}>&times;</button>
         </div>
-        {error && <p className="text-xs text-center py-1 px-3 rounded-lg font-semibold" style={{ color: '#f87171', background: 'rgba(248,113,113,0.10)' }}>{error}</p>}
+        {error && (
+          <p className="text-xs text-center py-1 px-3 rounded-lg font-semibold"
+            style={{ color: '#f87171', background: 'rgba(248,113,113,0.10)' }}>{error}</p>
+        )}
         <input
-          value={name}
-          onChange={e => setName(e.target.value)}
+          value={name} onChange={e => setName(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') submit(); }}
           placeholder={isRtl ? 'اسم المجموعة' : 'Group name'}
-          autoFocus
-          maxLength={50}
+          autoFocus maxLength={50}
           className="w-full rounded-xl px-4 py-3 text-sm outline-none"
           style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
         />
-        <button
-          onClick={submit}
-          disabled={loading || !name.trim()}
+        <button onClick={submit} disabled={loading || !name.trim()}
           className="w-full py-3 rounded-xl font-black text-sm transition disabled:opacity-40"
-          style={{ background: 'linear-gradient(135deg,var(--tr-gold-dim),var(--tr-gold-bright))', color: '#0a0d06' }}
-        >
+          style={{ background: BLUE, color: '#fff' }}>
           {loading ? (isRtl ? 'جاري الإنشاء...' : 'Creating...') : (isRtl ? 'إنشاء المجموعة' : 'Create Group')}
         </button>
       </div>
+    </div>
+  );
+}
+
+function RowAvatar({ url, name, emoji }: { url?: string | null; name: string; emoji?: string }) {
+  return (
+    <div className="w-[50px] h-[50px] rounded-full shrink-0 overflow-hidden flex items-center justify-center font-bold text-base"
+      style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', border: '1.5px solid var(--tr-border-soft)' }}>
+      {url
+        ? <img src={url} alt={name} className="w-full h-full object-cover" />
+        : emoji
+        ? <span>{emoji}</span>
+        : <span style={{ fontSize: 18 }}>{name.charAt(0)}</span>
+      }
     </div>
   );
 }
@@ -109,103 +132,136 @@ function Inner() {
   }, [user, router]);
 
   const tabStyle = (active: boolean) => ({
-    flex: 1, padding: '8px 0', fontWeight: 800, fontSize: 13, borderRadius: 12,
-    background: active ? 'var(--tr-gold-glow)' : 'transparent',
-    color: active ? 'var(--tr-gold-bright)' : 'var(--tr-text-muted)',
-    border: 'none', cursor: 'pointer', transition: 'all 0.2s',
+    flex: 1, padding: '9px 0', fontWeight: 700, fontSize: 13, borderRadius: 10,
+    background: active ? BLUE_SOFT : 'transparent',
+    color: active ? BLUE : 'var(--tr-text-muted)',
+    border: 'none', cursor: 'pointer', transition: 'all 0.18s',
   } as React.CSSProperties);
 
+  const hasUnread = conversations.some(c => c.unreadCount > 0);
+
+  // ── Conversation list (shared between mobile + desktop panel) ──────
   const conversationList = (
     <div>
       {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
+        <div className="flex justify-center py-16">
+          <div className="w-5 h-5 border-2 rounded-full animate-spin"
+            style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: BLUE }} />
         </div>
       ) : tab === 'dms' ? (() => {
         const filtered = conversations.filter(c =>
           !searchQuery || c.otherUser.name.toLowerCase().includes(searchQuery.toLowerCase())
         );
-        return filtered.length === 0 ? (
-          <div className="text-center py-20 px-4">
-            <svg className="w-14 h-14 mx-auto mb-4" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
-            </svg>
-            <p className="font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>{isRtl ? 'لا رسائل بعد' : 'No messages yet'}</p>
-            <p className="text-sm mt-2" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'ابدأ محادثة من صفحة أي مستخدم' : 'Start a conversation from any profile'}</p>
+        if (filtered.length === 0) return (
+          <div className="flex flex-col items-center px-6" style={{ paddingTop: '15dvh' }}>
+            <div className="w-14 h-14 mb-4 rounded-2xl flex items-center justify-center text-2xl"
+              style={{ background: BLUE_SOFT }}>💬</div>
+            <p className="font-bold text-[15px]" style={{ color: 'var(--tr-text-primary)' }}>
+              {isRtl ? 'لا رسائل بعد' : 'No messages yet'}
+            </p>
+            <p className="text-[13px] mt-1.5 text-center" style={{ color: 'var(--tr-text-muted)' }}>
+              {isRtl ? 'ابدأ محادثة من صفحة أي مستخدم' : 'Start a conversation from any profile'}
+            </p>
           </div>
-        ) : (
-          <div className="px-3 pb-4 space-y-1">
-            {filtered.map(c => (
+        );
+        return (
+          <div className="pb-2">
+            {filtered.map((c, idx) => (
               <Link key={c.id} href={`/tareeq/inbox/${c.id}`}
-                className="flex items-center gap-3 px-3 py-3 rounded-2xl transition"
-                style={{ background: c.unreadCount > 0 ? 'var(--tr-gold-glow)' : 'transparent' }}
-                onMouseEnter={e => { if (!c.unreadCount) (e.currentTarget as HTMLElement).style.background = 'var(--tr-overlay)'; }}
-                onMouseLeave={e => { if (!c.unreadCount) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-              >
-                <div className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-border-soft)' }}>
-                  {c.otherUser.avatarUrl ? <img src={c.otherUser.avatarUrl} alt={c.otherUser.name} className="w-full h-full object-cover" /> : c.otherUser.name.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm truncate" style={{ color: 'var(--tr-text-primary)', fontWeight: c.unreadCount > 0 ? 800 : 700 }}>{c.otherUser.name}</p>
-                  {c.lastMessage && <p className="text-xs truncate mt-0.5" style={{ color: c.unreadCount > 0 ? 'var(--tr-text-secondary)' : 'var(--tr-text-muted)', fontWeight: c.unreadCount > 0 ? 600 : 400 }}>{c.lastMessage}</p>}
-                </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  {c.lastMessageAt && <span className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(c.lastMessageAt, isRtl)}</span>}
-                  {c.unreadCount > 0 && <span className="text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center" style={{ background: 'var(--tr-gold)', color: '#0a0d06' }}>{c.unreadCount}</span>}
+                className="flex items-center gap-3 px-4 py-3 transition-colors"
+                style={{
+                  background: c.unreadCount > 0 ? BLUE_ROW : 'transparent',
+                  borderBottom: idx < filtered.length - 1 ? '1px solid var(--tr-border-subtle)' : 'none',
+                }}>
+                <RowAvatar url={c.otherUser.avatarUrl} name={c.otherUser.name} />
+                <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="text-[15px] truncate"
+                      style={{ color: 'var(--tr-text-primary)', fontWeight: c.unreadCount > 0 ? 700 : 600 }}>
+                      {c.otherUser.name}
+                    </p>
+                    {c.lastMessageAt && (
+                      <span className="text-[11px] shrink-0"
+                        style={{ color: c.unreadCount > 0 ? BLUE : 'var(--tr-text-muted)' }}>
+                        {timeAgo(c.lastMessageAt, isRtl)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[13px] truncate"
+                      style={{ color: 'var(--tr-text-muted)', fontWeight: c.unreadCount > 0 ? 500 : 400 }}>
+                      {c.lastMessage || (isRtl ? 'لا رسائل بعد' : 'No messages yet')}
+                    </p>
+                    {c.unreadCount > 0 && (
+                      <span className="text-[11px] font-black shrink-0 rounded-full flex items-center justify-center"
+                        style={{ background: BLUE, color: '#fff', minWidth: 20, height: 20, padding: '0 4px' }}>
+                        {c.unreadCount > 9 ? '9+' : c.unreadCount}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </Link>
             ))}
           </div>
         );
-      })() : (
-        groups.length === 0 ? (
-          <div className="text-center py-20 px-4">
-            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl flex items-center justify-center text-2xl" style={{ background: 'var(--tr-overlay)' }}>&#x1F465;</div>
-            <p className="font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>{isRtl ? 'لا مجموعات بعد' : 'No groups yet'}</p>
-            <p className="text-sm mt-2 mb-6" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'أنشئ مجموعة وادعُ أصدقاءك' : 'Create a group and invite friends'}</p>
-            <button onClick={() => setShowCreateGroup(true)} className="font-black px-6 py-3 rounded-full text-sm transition" style={{ background: 'linear-gradient(135deg,var(--tr-gold-dim),var(--tr-gold-bright))', color: '#0a0d06' }}>
-              {isRtl ? '+ أنشئ مجموعة' : '+ Create Group'}
+      })() : (() => {
+        if (groups.length === 0) return (
+          <div className="flex flex-col items-center px-6" style={{ paddingTop: '15dvh' }}>
+            <div className="w-14 h-14 mb-4 rounded-2xl flex items-center justify-center text-2xl"
+              style={{ background: BLUE_SOFT }}>👥</div>
+            <p className="font-bold text-[15px]" style={{ color: 'var(--tr-text-primary)' }}>
+              {isRtl ? 'لا مجموعات بعد' : 'No groups yet'}
+            </p>
+            <p className="text-[13px] mt-1.5 text-center" style={{ color: 'var(--tr-text-muted)' }}>
+              {isRtl ? 'أنشئ مجموعة وادعُ أصدقاءك' : 'Create a group and invite friends'}
+            </p>
+            <button onClick={() => setShowCreateGroup(true)}
+              className="mt-5 font-black px-5 py-2.5 rounded-full text-sm transition"
+              style={{ background: BLUE, color: '#fff' }}>
+              {isRtl ? '+ مجموعة جديدة' : '+ New Group'}
             </button>
           </div>
-        ) : (
-          <div className="px-3 pb-4 space-y-1">
-            {groups.map(g => (
+        );
+        return (
+          <div className="pb-2">
+            {groups.map((g, idx) => (
               <Link key={g.id} href={`/tareeq/groups/${g.id}`}
-                className="flex items-center gap-3 px-3 py-3 rounded-2xl transition"
-                style={{ background: 'transparent' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--tr-overlay)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-              >
-                <div className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-base shrink-0 overflow-hidden" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold-dim)' }}>
-                  {g.imageUrl ? <img src={g.imageUrl} alt={g.name} className="w-full h-full object-cover" /> : '👥'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{g.name}</p>
-                  <p className="text-xs truncate mt-0.5" style={{ color: 'var(--tr-text-muted)' }}>
+                className="flex items-center gap-3 px-4 py-3 transition-colors"
+                style={{ borderBottom: idx < groups.length - 1 ? '1px solid var(--tr-border-subtle)' : 'none' }}>
+                <RowAvatar url={g.imageUrl} name={g.name} emoji={g.imageUrl ? undefined : '👥'} />
+                <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="text-[15px] font-semibold truncate" style={{ color: 'var(--tr-text-primary)' }}>{g.name}</p>
+                    {g.lastMessageAt && (
+                      <span className="text-[11px] shrink-0" style={{ color: 'var(--tr-text-muted)' }}>
+                        {timeAgo(g.lastMessageAt, isRtl)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[13px] truncate" style={{ color: 'var(--tr-text-muted)' }}>
                     {g.lastMessage || (isRtl ? `${g.memberCount} أعضاء` : `${g.memberCount} members`)}
                   </p>
                 </div>
-                {g.lastMessageAt && (
-                  <span className="text-[10px] shrink-0" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(g.lastMessageAt, isRtl)}</span>
-                )}
               </Link>
             ))}
           </div>
-        )
-      )}
+        );
+      })()}
     </div>
   );
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--tr-base)' }}>
 
-      {/* ── Desktop: 2-column split layout ── */}
-      <div className="hidden lg:flex lg:max-w-[1100px] lg:mx-auto lg:px-6 lg:pt-6 lg:gap-4" style={{ minHeight: 'calc(100vh - 64px)', alignItems: 'flex-start' }}>
+      {/* ── Desktop: 2-column split ── */}
+      <div className="hidden lg:flex lg:max-w-[1100px] lg:mx-auto lg:px-6 lg:pt-6 lg:gap-4"
+        style={{ minHeight: 'calc(100vh - 64px)', alignItems: 'flex-start' }}>
 
-        {/* Left: conversation list panel */}
-        <div className="w-[360px] shrink-0 rounded-2xl overflow-hidden flex flex-col sticky top-[80px]" style={{ maxHeight: 'calc(100vh - 96px)', background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}>
-          {/* Panel header */}
-          <div className="flex items-center justify-between px-4 pt-4 pb-3 shrink-0" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+        {/* List panel */}
+        <div className="w-[340px] shrink-0 rounded-2xl overflow-hidden flex flex-col sticky top-[80px]"
+          style={{ maxHeight: 'calc(100vh - 96px)', background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}>
+          <div className="flex items-center justify-between px-4 pt-4 pb-3 shrink-0"
+            style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
             <h1 className="font-black text-base" style={{ color: 'var(--tr-text-primary)' }}>
               {isRtl ? 'الرسائل' : 'Messages'}
             </h1>
@@ -213,42 +269,54 @@ function Inner() {
               {tab === 'dms' && (
                 <div className="flex items-center overflow-hidden rounded-full transition-all duration-300"
                   style={{ background: searchOpen ? 'var(--tr-overlay)' : 'transparent', border: searchOpen ? '1px solid var(--tr-border-soft)' : '1px solid transparent', width: searchOpen ? 140 : 32, height: 32 }}>
-                  <button onClick={() => { setSearchOpen(o => !o); if (searchOpen) setSearchQuery(''); }} className="shrink-0 w-8 h-8 flex items-center justify-center transition" style={{ color: searchOpen ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
+                  <button onClick={() => { setSearchOpen(o => !o); if (searchOpen) setSearchQuery(''); }}
+                    className="shrink-0 w-8 h-8 flex items-center justify-center transition"
+                    style={{ color: searchOpen ? BLUE : 'var(--tr-text-muted)' }}>
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
                     </svg>
                   </button>
-                  {searchOpen && <input autoFocus value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder={isRtl ? 'ابحث...' : 'Search...'} className="flex-1 bg-transparent text-xs outline-none pe-2" style={{ color: 'var(--tr-text-primary)' }} />}
+                  {searchOpen && (
+                    <input autoFocus value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                      placeholder={isRtl ? 'ابحث...' : 'Search...'} className="flex-1 bg-transparent text-xs outline-none pe-2"
+                      style={{ color: 'var(--tr-text-primary)' }} />
+                  )}
                 </div>
               )}
               {tab === 'groups' && (
-                <button onClick={() => setShowCreateGroup(true)} className="w-8 h-8 flex items-center justify-center rounded-full transition" style={{ background: 'var(--tr-gold)', color: '#0a0d06' }}>
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                <button onClick={() => setShowCreateGroup(true)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full transition"
+                  style={{ background: BLUE, color: '#fff' }}>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
                 </button>
               )}
             </div>
           </div>
-          {/* Tabs */}
           <div className="flex gap-1 p-2 shrink-0" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
             <button style={tabStyle(tab === 'dms')} onClick={() => setTab('dms')}>
-              {isRtl ? 'الرسائل' : 'Chats'}{conversations.some(c => c.unreadCount > 0) && <span className="ms-1.5 inline-flex w-4 h-4 rounded-full text-[9px] font-black items-center justify-center" style={{ background: 'var(--tr-gold)', color: '#0a0d06' }}>&bull;</span>}
+              {isRtl ? 'الرسائل' : 'Chats'}
+              {hasUnread && (
+                <span className="ms-1.5 inline-flex w-4 h-4 rounded-full text-[9px] font-black items-center justify-center"
+                  style={{ background: BLUE, color: '#fff' }}>&bull;</span>
+              )}
             </button>
             <button style={tabStyle(tab === 'groups')} onClick={() => setTab('groups')}>
               {isRtl ? 'المجموعات' : 'Groups'}
             </button>
           </div>
-          {/* Scrollable list */}
           <div className="overflow-y-auto flex-1" style={{ scrollbarWidth: 'none' }}>
             {conversationList}
           </div>
         </div>
 
-        {/* Right: empty state */}
-        <div className="flex-1 rounded-2xl flex flex-col items-center justify-center sticky top-[80px]" style={{ minHeight: 'calc(100vh - 96px)', background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}>
-          <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" strokeWidth={1} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)', opacity: 0.25 }}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
-          </svg>
-          <p className="font-black text-base" style={{ color: 'var(--tr-text-muted)', opacity: 0.4 }}>
+        {/* Empty state */}
+        <div className="flex-1 rounded-2xl flex flex-col items-center justify-center sticky top-[80px]"
+          style={{ minHeight: 'calc(100vh - 96px)', background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}>
+          <div className="w-16 h-16 mb-4 rounded-2xl flex items-center justify-center text-3xl"
+            style={{ background: BLUE_SOFT }}>💬</div>
+          <p className="font-black text-base" style={{ color: 'var(--tr-text-muted)', opacity: 0.45 }}>
             {isRtl ? 'اختر محادثة' : 'Select a conversation'}
           </p>
         </div>
@@ -256,47 +324,69 @@ function Inner() {
 
       {/* ── Mobile: single column ── */}
       <div className="lg:hidden">
-        <div className="pt-6 pb-3 px-4">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="font-black text-xl" style={{ color: 'var(--tr-text-primary)' }}>
-              {isRtl ? 'الرسائل' : 'Messages'}
-            </h1>
-            <div className="flex items-center gap-2">
-              {tab === 'dms' && (
-                <div className="flex items-center overflow-hidden rounded-full transition-all duration-300"
-                  style={{ background: searchOpen ? 'var(--tr-overlay)' : 'transparent', border: searchOpen ? '1px solid var(--tr-border-soft)' : '1px solid transparent', width: searchOpen ? 180 : 36, height: 36 }}>
-                  <button onClick={() => { setSearchOpen(o => !o); if (searchOpen) setSearchQuery(''); }} className="shrink-0 w-9 h-9 flex items-center justify-center transition" style={{ color: searchOpen ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-                    </svg>
-                  </button>
-                  {searchOpen && <input autoFocus value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder={isRtl ? 'ابحث...' : 'Search...'} className="flex-1 bg-transparent text-xs outline-none pe-3" style={{ color: 'var(--tr-text-primary)' }} />}
-                </div>
-              )}
-              {tab === 'groups' && (
-                <button onClick={() => setShowCreateGroup(true)} className="flex items-center gap-1.5 text-xs font-black px-4 py-2 rounded-full transition" style={{ background: 'linear-gradient(135deg,var(--tr-gold-dim),var(--tr-gold-bright))', color: '#0a0d06' }}>
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                  {isRtl ? 'مجموعة جديدة' : 'New Group'}
+        {/* Compact header */}
+        <div className="px-4 pt-3 pb-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {tab === 'dms' && (
+              <div className="flex items-center overflow-hidden rounded-full transition-all duration-300"
+                style={{ background: searchOpen ? 'var(--tr-overlay)' : BLUE_SOFT, border: `1px solid ${searchOpen ? 'var(--tr-border-soft)' : BLUE_SOFT}`, width: searchOpen ? 190 : 36, height: 36 }}>
+                <button onClick={() => { setSearchOpen(o => !o); if (searchOpen) setSearchQuery(''); }}
+                  className="shrink-0 w-9 h-9 flex items-center justify-center transition" style={{ color: BLUE }}>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                  </svg>
                 </button>
-              )}
-            </div>
+                {searchOpen && (
+                  <input autoFocus value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                    placeholder={isRtl ? 'ابحث في الرسائل...' : 'Search...'}
+                    className="flex-1 bg-transparent text-sm outline-none pe-3"
+                    style={{ color: 'var(--tr-text-primary)' }} />
+                )}
+              </div>
+            )}
+            {tab === 'groups' && (
+              <button onClick={() => setShowCreateGroup(true)}
+                className="flex items-center gap-1.5 text-[13px] font-bold px-4 py-2 rounded-full transition"
+                style={{ background: BLUE, color: '#fff' }}>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                {isRtl ? 'مجموعة' : 'Group'}
+              </button>
+            )}
           </div>
+          <h1 className="font-black text-xl" style={{ color: 'var(--tr-text-primary)' }}>
+            {isRtl ? 'الرسائل' : 'Messages'}
+          </h1>
+        </div>
+
+        {/* Segmented tab control */}
+        <div className="px-4 pb-3">
           <div className="flex gap-1 p-1 rounded-2xl" style={{ background: 'var(--tr-overlay)' }}>
             <button style={tabStyle(tab === 'dms')} onClick={() => setTab('dms')}>
-              {isRtl ? 'الرسائل' : 'Chats'}{conversations.some(c => c.unreadCount > 0) && <span className="ms-1.5 inline-flex w-4 h-4 rounded-full text-[9px] font-black items-center justify-center" style={{ background: 'var(--tr-gold)', color: '#0a0d06' }}>&bull;</span>}
+              {isRtl ? 'الرسائل' : 'Chats'}
+              {hasUnread && (
+                <span className="ms-1.5 inline-flex w-4 h-4 rounded-full text-[9px] font-black items-center justify-center"
+                  style={{ background: BLUE, color: '#fff' }}>&bull;</span>
+              )}
             </button>
             <button style={tabStyle(tab === 'groups')} onClick={() => setTab('groups')}>
               {isRtl ? 'المجموعات' : 'Groups'}
             </button>
           </div>
         </div>
-        <div className="px-4 pb-24">
+
+        {/* List — bottom padding accounts for global bottom nav */}
+        <div style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
           {conversationList}
         </div>
       </div>
 
       {showCreateGroup && (
-        <CreateGroupModal onClose={() => setShowCreateGroup(false)} onCreated={(groupId) => { loadAll(); if (groupId) router.push(`/tareeq/groups/${groupId}`); }} />
+        <CreateGroupModal
+          onClose={() => setShowCreateGroup(false)}
+          onCreated={(groupId) => { loadAll(); if (groupId) router.push(`/tareeq/groups/${groupId}`); }}
+        />
       )}
     </div>
   );

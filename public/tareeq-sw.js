@@ -192,6 +192,9 @@ self.addEventListener('push', e => {
   if (isCall && data.callId) {
     // Repeated ringing: show notification + wake windows, then re-ring every 4s
     // for up to 24 seconds (6 iterations) — stop early if call is no longer ringing.
+    // Each iteration uses a UNIQUE tag so the OS treats it as a new notification
+    // and plays the system sound again (reusing the same tag silences subsequent rings
+    // on Android/iOS even with renotify:true).
     e.waitUntil((async () => {
       // Wake open windows immediately
       const windowList = await clients.matchAll({ type: 'window' });
@@ -199,14 +202,32 @@ self.addEventListener('push', e => {
         c.postMessage({ type: 'TAREEQ_INCOMING_CALL', callId: data.callId });
       }
 
+      const baseTag = data.tag ?? `call-${data.callId}`;
+
       for (let i = 0; i < 6; i++) {
-        await self.registration.showNotification(title, options);
+        // Close previous ring notification so only one is visible at a time
+        if (i > 0) {
+          const prev = await self.registration.getNotifications({ tag: `${baseTag}-r${i - 1}` });
+          prev.forEach(n => n.close());
+        }
+
+        await self.registration.showNotification(title, {
+          ...options,
+          tag: `${baseTag}-r${i}`,   // unique tag → OS triggers sound each time
+          renotify: false,            // not needed with unique tags
+        });
+
         if (i < 5) {
           await new Promise(r => setTimeout(r, 4000));
           try {
             const res = await fetch('/api/tareeq/calls/' + data.callId + '/ringing');
             const json = await res.json();
-            if (!json.ringing) break;
+            if (!json.ringing) {
+              // Call ended — close the last ring notification
+              const last = await self.registration.getNotifications({ tag: `${baseTag}-r${i}` });
+              last.forEach(n => n.close());
+              break;
+            }
           } catch { break; }
         }
       }

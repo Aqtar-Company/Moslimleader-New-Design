@@ -189,19 +189,40 @@ self.addEventListener('push', e => {
     actions,
   };
 
-  const showPromise = self.registration.showNotification(title, options);
+  if (isCall && data.callId) {
+    // Repeated ringing: show notification + wake windows, then re-ring every 4s
+    // for up to 24 seconds (6 iterations) — stop early if call is no longer ringing.
+    e.waitUntil((async () => {
+      // Wake open windows immediately
+      const windowList = await clients.matchAll({ type: 'window' });
+      for (const c of windowList) {
+        c.postMessage({ type: 'TAREEQ_INCOMING_CALL', callId: data.callId });
+      }
 
-  // For incoming calls: wake any open Tareeq windows immediately so they don't
-  // have to wait for the 3-second polling cycle.
-  const wakePromise = postType === 'call' && data.callId
-    ? clients.matchAll({ type: 'window' }).then(list => {
-        for (const c of list) {
-          c.postMessage({ type: 'TAREEQ_INCOMING_CALL', callId: data.callId });
+      for (let i = 0; i < 6; i++) {
+        await self.registration.showNotification(title, options);
+        if (i < 5) {
+          await new Promise(r => setTimeout(r, 4000));
+          try {
+            const res = await fetch('/api/tareeq/calls/' + data.callId + '/ringing');
+            const json = await res.json();
+            if (!json.ringing) break;
+          } catch { break; }
         }
-      })
-    : Promise.resolve();
-
-  e.waitUntil(Promise.all([showPromise, wakePromise]));
+      }
+    })());
+  } else {
+    // Non-call notification: single shot
+    const wakePromise = postType === 'message'
+      ? clients.matchAll({ type: 'window' }).then(list => {
+          for (const c of list) c.postMessage({ type: 'TAREEQ_NEW_MESSAGE' });
+        })
+      : Promise.resolve();
+    e.waitUntil(Promise.all([
+      self.registration.showNotification(title, options),
+      wakePromise,
+    ]));
+  }
 });
 
 // ── Notification Click: action-aware routing ─────────────────────────

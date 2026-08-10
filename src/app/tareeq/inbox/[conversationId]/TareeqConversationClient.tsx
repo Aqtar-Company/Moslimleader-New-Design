@@ -750,6 +750,16 @@ function Inner({ conversationId }: { conversationId: string }) {
             {/* Call buttons */}
             <div className="flex items-center gap-2 ms-auto">
               <button
+                onClick={() => startCall('video')}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90"
+                style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}
+                aria-label={isRtl ? 'مكالمة فيديو' : 'Video call'}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+              </button>
+              <button
                 onClick={() => startCall('audio')}
                 className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90"
                 style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}

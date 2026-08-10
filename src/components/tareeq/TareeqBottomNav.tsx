@@ -153,7 +153,16 @@ function ContactsSheet({ onClose, onStartCall }: ContactsSheetProps) {
                 </div>
               )}
               <span className="font-semibold text-sm flex-1 min-w-0 truncate" style={{ color: 'var(--tr-text-primary)' }}>{c.name}</span>
-              {/* Audio call only — video call disabled */}
+              <button
+                onClick={() => { onStartCall(c, 'video'); }}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"
+                style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)' }}
+                aria-label={isRtl ? 'مكالمة فيديو' : 'Video call'}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: '#6366f1' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+              </button>
               <button
                 onClick={() => { onStartCall(c, 'audio'); }}
                 className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"

@@ -19,28 +19,29 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!member) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));
-  const content = String(body.content ?? '').trim();
+  const content  = String(body.content  ?? '').trim();
   const imageUrl = String(body.imageUrl ?? '').trim() || null;
   const videoUrl = String(body.videoUrl ?? '').trim() || null;
+  const audioUrl = String(body.audioUrl ?? '').trim() || null;
 
-  const hasMedia = !!(imageUrl || videoUrl);
+  const hasMedia = !!(imageUrl || videoUrl || audioUrl);
   if (!hasMedia && content.length < 1) return NextResponse.json({ error: 'الرسالة فارغة' }, { status: 400 });
   if (content.length > 2000) return NextResponse.json({ error: 'الرسالة طويلة جداً' }, { status: 400 });
 
+  const lastPreview = audioUrl ? '🎙 رسالة صوتية' : imageUrl ? '📷 صورة' : videoUrl ? '🎥 فيديو' : content;
+
   const [message] = await prisma.$transaction([
     prisma.tareeqGroupMessage.create({
-      data: { groupId: params.id, senderId: user.userId, content, imageUrl, videoUrl },
+      data: { groupId: params.id, senderId: user.userId, content, imageUrl, videoUrl, audioUrl },
       select: {
-        id: true, content: true, imageUrl: true, videoUrl: true, createdAt: true, senderId: true,
+        id: true, content: true, imageUrl: true, videoUrl: true, audioUrl: true,
+        createdAt: true, senderId: true,
         sender: { select: { id: true, name: true, avatarUrl: true } },
       },
     }),
     prisma.tareeqGroup.update({
       where: { id: params.id },
-      data: {
-        lastMessage: (imageUrl ? '📷 صورة' : videoUrl ? '🎥 فيديو' : content).slice(0, 100),
-        lastMessageAt: new Date(),
-      },
+      data: { lastMessage: lastPreview.slice(0, 100), lastMessageAt: new Date() },
     }),
   ]);
 
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     where: { groupId: params.id, userId: { not: user.userId } },
     select: { userId: true },
   }).then(others => {
-    const preview = imageUrl ? '📷 صورة' : videoUrl ? '🎥 فيديو' : content.slice(0, 80);
+    const preview = audioUrl ? '🎙 رسالة صوتية' : imageUrl ? '📷 صورة' : videoUrl ? '🎥 فيديو' : content.slice(0, 80);
     for (const o of others) {
       sendPushToUser(o.userId, {
         title: user.name ?? 'رسالة مجموعة',

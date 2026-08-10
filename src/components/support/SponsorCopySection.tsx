@@ -197,15 +197,14 @@ export function SponsorCopySection({ productId, productName, productPrice, curre
       {expanded && (
         <div className="border-t border-gray-100 p-5 space-y-4 bg-gray-50/50">
           <p className="text-sm text-gray-600">
-            ستشتري نسخة كاملة من <strong>{productName}</strong> ونوصلها لمستفيد يطلب الدعم.
-            لن تعرف هويته ولن يعرف هويتك — لكنك ستعرف أنها وصلت.
+            ستتكفّل بنسخة كاملة من <strong>{productName}</strong> لمستفيد طلب الدعم، وسنؤكد لك وصولها إليه. 💙
           </p>
 
           {currency !== 'EGP' && (
             <div className="flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
               <span className="text-base mt-0.5">💙</span>
               <p className="text-xs text-blue-700 leading-relaxed">
-                أنت تدفع بعملتك المحلية ({currency}). الفرق بين سعر بلدك وسعر مصر يُستخدم لدعم المنصة بشكل مستمر — فتوفير المحتوى التربوي يحتاج إلى استدامة.
+                وإذا وُجد فرق ناتج عن العملة، يُوجَّه كاملًا لدعم المتعففين، ولا تحقق المنصة منه أي ربح.
               </p>
             </div>
           )}

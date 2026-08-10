@@ -811,21 +811,12 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           overflow: 'hidden',
         }}
       >
-        {/* Gold star icon */}
+        {/* Add-sign star icon */}
         <div
           ref={addIconRef}
           style={{ transition: 'opacity 0.18s ease', pointerEvents: 'none', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          <svg width="52" height="52" viewBox="0 0 24 24" fill="none" aria-hidden>
-            {/* 8-pointed star */}
-            <path
-              d="M12 2L14.39 7.72L20.78 6.18L17.56 12L20.78 17.82L14.39 16.28L12 22L9.61 16.28L3.22 17.82L6.44 12L3.22 6.18L9.61 7.72Z"
-              fill="var(--tr-gold)"
-              stroke="rgba(255,200,0,0.35)"
-              strokeWidth="0.6"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <img src="/Add-sign.svg" width={72} height={72} alt="" aria-hidden draggable={false} style={{ display: 'block', userSelect: 'none' }} />
         </div>
         {/* Camera overlay — glassy blue, revealed on swipe-up */}
         <div

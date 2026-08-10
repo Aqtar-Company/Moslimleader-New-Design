@@ -158,6 +158,8 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
   const ringTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const disconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const outRingRef = useRef<{ stop: () => void } | null>(null);
+  const outRingCtxRef = useRef<AudioContext | null>(null);
+  const outRingStreamDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   const appliedCallerIce = useRef<number>(0);
   const appliedCalleeIce = useRef<number>(0);
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -169,76 +171,49 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
 
   function startOutRing() {
     try {
-      const ACtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (!ACtx) return;
-      const ctx = new ACtx({ latencyHint: 'playback' });
-      ctx.resume().catch(() => {});
+      const ctx = outRingCtxRef.current;
+      if (!ctx || ctx.state === 'closed') return;
+      const dest: AudioNode = outRingStreamDestRef.current ?? ctx.destination;
+
       let stopped = false;
       let ringInterval: ReturnType<typeof setInterval> | null = null;
-      let ringVid: HTMLVideoElement | null = null;
-      let dest: AudioNode = ctx.destination;
 
-      const playBurst = (t: number, dur: number) => {
-        [400, 450].forEach(freq => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain); gain.connect(dest);
-          osc.type = 'sine';
-          osc.frequency.value = freq;
-          gain.gain.setValueAtTime(0, t);
-          gain.gain.linearRampToValueAtTime(0.15, t + 0.02);
-          gain.gain.setValueAtTime(0.15, t + dur - 0.02);
-          gain.gain.linearRampToValueAtTime(0, t + dur);
-          osc.start(t); osc.stop(t + dur);
-        });
-      };
+      ctx.resume().then(() => {
+        const playBurst = (t: number, dur: number) => {
+          [400, 450].forEach(freq => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(dest);
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(0.15, t + 0.02);
+            gain.gain.setValueAtTime(0.15, t + dur - 0.02);
+            gain.gain.linearRampToValueAtTime(0, t + dur);
+            osc.start(t); osc.stop(t + dur);
+          });
+        };
 
-      const ring = () => {
-        if (stopped || ctx.state === 'closed') return;
-        try {
-          // Schedule 50ms ahead so dest is settled before oscillators fire
-          const t = ctx.currentTime + 0.05;
-          playBurst(t, 0.4);
-          playBurst(t + 0.6, 0.4);
-        } catch { /* ctx closed */ }
-      };
+        const ring = () => {
+          if (stopped || ctx.state === 'closed') return;
+          try {
+            const t = ctx.currentTime + 0.05;
+            playBurst(t, 0.4);
+            playBurst(t + 0.6, 0.4);
+          } catch { /* ctx closed */ }
+        };
 
-      // Start ringing — only called after play() settles so dest is correctly set
-      const beginRinging = () => {
-        if (stopped) return;
-        ring();
-        ringInterval = setInterval(() => { if (stopped) { if (ringInterval) clearInterval(ringInterval); return; } ring(); }, 3000);
-      };
-
-      // Route through a video element for loudspeaker audio path.
-      // Wait for play() to resolve/reject before starting ring so dest is correct.
-      try {
-        const streamDest = ctx.createMediaStreamDestination();
-        ringVid = document.createElement('video');
-        ringVid.setAttribute('playsinline', '');
-        ringVid.setAttribute('webkit-playsinline', '');
-        ringVid.muted = false;
-        ringVid.volume = 1;
-        ringVid.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;top:-9999px;left:-9999px';
-        document.body.appendChild(ringVid);
-        ringVid.srcObject = streamDest.stream;
-        ringVid.play().then(() => {
-          dest = streamDest; // loudspeaker path active
-          beginRinging();
-        }).catch(() => {
-          // play() blocked by autoplay policy — fall back to ctx.destination
-          beginRinging();
-        });
-      } catch {
-        beginRinging();
-      }
+        if (!stopped) {
+          ring();
+          ringInterval = setInterval(() => { if (stopped) { if (ringInterval) clearInterval(ringInterval); return; } ring(); }, 3000);
+        }
+      }).catch(() => {});
 
       outRingRef.current = {
         stop: () => {
           stopped = true;
           if (ringInterval) { clearInterval(ringInterval); ringInterval = null; }
-          ctx.close().catch(() => {});
-          if (ringVid) { ringVid.srcObject = null; ringVid.remove(); ringVid = null; }
+          // ctx and streamDest are owned by the mount-effect — don't close them here
         },
       };
     } catch { /* AudioContext not supported */ }
@@ -502,6 +477,37 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
     }, 1500);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [callId, callType, offer, endCall, isRtl]);
+
+  // Pre-wire the loudspeaker audio pipeline on mount — we're still very close
+  // to the user's gesture (they just tapped "call"), so play() succeeds here.
+  // startOutRing() later just connects oscillators to the already-live streamDest.
+  useEffect(() => {
+    const ACtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!ACtx) return;
+    try {
+      const ctx = new ACtx({ latencyHint: 'playback' });
+      const streamDest = ctx.createMediaStreamDestination();
+      const vid = document.createElement('video');
+      vid.setAttribute('playsinline', '');
+      vid.setAttribute('webkit-playsinline', '');
+      vid.muted = false;
+      vid.volume = 1;
+      vid.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;top:-9999px;left:-9999px';
+      document.body.appendChild(vid);
+      vid.srcObject = streamDest.stream;
+      vid.play().catch(() => {});        // plays silence; keeps loudspeaker route open
+      outRingCtxRef.current = ctx;
+      outRingStreamDestRef.current = streamDest;
+      return () => {
+        vid.srcObject = null;
+        vid.remove();
+        ctx.close().catch(() => {});
+        outRingCtxRef.current = null;
+        outRingStreamDestRef.current = null;
+      };
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (role === 'caller') startCaller();

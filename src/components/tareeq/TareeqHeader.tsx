@@ -655,10 +655,9 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           </div>
 
           {/* ── DESKTOP ONLY ── */}
-          {/* Wordmark: colored icon + Arabic text side by side */}
-          <Link href="/tareeq" className="hidden lg:flex items-center gap-2 shrink-0" aria-label="Tareeq">
-            <img src="/Tareeq-big.png" alt="Tareeq" className="h-9 w-auto object-contain shrink-0" draggable={false} />
-            <img src="/Tareeq-Typo.png" alt="طريق" className="h-7 w-auto object-contain shrink-0" draggable={false} />
+          {/* Wordmark */}
+          <Link href="/tareeq" className="hidden lg:flex items-center shrink-0" aria-label="Tareeq">
+            <img src="/Tareek-logo%20desktop.png" alt="طريق" className="h-10 w-auto object-contain shrink-0" draggable={false} />
           </Link>
 
           {/* Desktop search bar */}
@@ -682,7 +681,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           {/* Desktop center nav — Facebook-style icon tabs */}
           <div className="hidden lg:flex flex-1 items-center justify-center gap-1">
             {navItems.map(({ key, href, icon, label, badge, onClick }) => {
-              if (key === 'messages' || key === 'notifications') return null;
+              if (key === 'messages' || key === 'notifications' || key === 'profile') return null;
               const active = pathname === href || (href !== '/tareeq' && pathname.startsWith(href));
               const isPanelOpen = false;
               const isPanel = false;

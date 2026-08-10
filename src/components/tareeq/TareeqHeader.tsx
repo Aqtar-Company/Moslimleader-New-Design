@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { useTareeqNotifications } from '@/context/TareeqNotificationsContext';
+import TareeqCallScreen from '@/components/tareeq/TareeqCallScreen';
 
 interface Props {
   onCreateClick: () => void;
@@ -112,6 +113,23 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
   const [msgSearch, setMsgSearch] = useState('');
+
+  /* ── Call initiated from desktop chat panel ── */
+  const [desktopCall, setDesktopCall] = useState<{
+    callId: string; callType: 'audio' | 'video';
+    remoteUser: { id: string; name: string; avatarUrl?: string | null };
+  } | null>(null);
+  const [callStarting, setCallStarting] = useState(false);
+
+  /* ── Voice message recording ── */
+  const [micActive, setMicActive] = useState(false);
+  const [micSeconds, setMicSeconds] = useState(0);
+  const [voiceUploading, setVoiceUploading] = useState(false);
+  const [voiceError, setVoiceError] = useState('');
+  const micTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const cancelMicRef = useRef(false);
 
   // Collapse on tap-outside (touchstart so it fires before blur on mobile)
   useEffect(() => {
@@ -224,6 +242,78 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
     } catch { /* offline */ }
     setChatSending(false);
   }, [chatInput, activeChatConv, chatSending]);
+
+  const startDesktopCall = async (callType: 'audio' | 'video') => {
+    if (!activeChatConv || callStarting) return;
+    setCallStarting(true);
+    try {
+      const res = await fetch('/api/tareeq/calls', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ calleeId: activeChatConv.otherUser.id, type: callType }),
+      });
+      const d = await res.json();
+      if (res.ok && d.callId) {
+        setDesktopCall({ callId: d.callId, callType, remoteUser: activeChatConv.otherUser });
+      }
+    } catch { /* offline */ }
+    setCallStarting(false);
+  };
+
+  const startVoiceRecording = async () => {
+    if (!activeChatConv || micActive || voiceUploading) return;
+    cancelMicRef.current = false;
+    audioChunksRef.current = [];
+    const convId = activeChatConv.id;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm'
+        : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus') ? 'audio/ogg;codecs=opus'
+        : '';
+      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      mediaRecorderRef.current = mr;
+      mr.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+      mr.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        setMicActive(false);
+        setMicSeconds(0);
+        if (micTimerRef.current) { clearInterval(micTimerRef.current); micTimerRef.current = null; }
+        if (cancelMicRef.current) return;
+        const actualMime = mr.mimeType || mimeType || 'audio/webm';
+        const blob = new Blob(audioChunksRef.current, { type: actualMime });
+        if (blob.size < 100) return;
+        const ext = actualMime.includes('ogg') ? 'ogg' : (actualMime.includes('mp4') || actualMime.includes('aac')) ? 'm4a' : 'webm';
+        setVoiceUploading(true);
+        try {
+          const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: actualMime });
+          const form = new FormData(); form.append('file', file);
+          const upRes = await fetch('/api/tareeq/upload', { method: 'POST', body: form, credentials: 'include' });
+          if (!upRes.ok) { setVoiceError(isRtl ? 'فشل رفع الصوت' : 'Upload failed'); setTimeout(() => setVoiceError(''), 3000); setVoiceUploading(false); return; }
+          const { url: audioUrl } = await upRes.json();
+          const sendRes = await fetch(`/api/tareeq/conversations/${convId}/messages`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+            body: JSON.stringify({ content: '', audioUrl }),
+          });
+          if (sendRes.ok) {
+            const d = await sendRes.json();
+            if (d.message) { setChatMessages(prev => [...prev, d.message]); setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50); }
+          } else { setVoiceError(isRtl ? 'فشل الإرسال' : 'Send failed'); setTimeout(() => setVoiceError(''), 3000); }
+        } catch { setVoiceError(isRtl ? 'خطأ في الشبكة' : 'Network error'); setTimeout(() => setVoiceError(''), 3000); }
+        setVoiceUploading(false);
+      };
+      mr.start(250);
+      setMicActive(true);
+      micTimerRef.current = setInterval(() => setMicSeconds(s => s + 1), 1000);
+    } catch { /* permission denied or not supported */ }
+  };
+
+  const stopVoiceRecording = (cancel = false) => {
+    cancelMicRef.current = cancel;
+    if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop();
+    if (micTimerRef.current) { clearInterval(micTimerRef.current); micTimerRef.current = null; }
+  };
 
   function toggleMobileNotifPanel(e: React.MouseEvent) {
     e.preventDefault();
@@ -900,9 +990,30 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                           )}
                           <span className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{activeChatConv?.otherUser.name}</span>
                         </div>
-                        <Link href={`/tareeq/inbox/${activeChatConv?.id}`} onClick={() => setShowMsgPanel(false)} className="w-8 h-8 rounded-full flex items-center justify-center transition" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
-                        </Link>
+                        <div className="flex items-center gap-1">
+                          {/* Audio call */}
+                          <button onClick={() => startDesktopCall('audio')} disabled={callStarting}
+                            title={isRtl ? 'مكالمة صوتية' : 'Audio call'}
+                            className="w-8 h-8 rounded-full flex items-center justify-center transition hover:bg-[var(--tr-overlay)]"
+                            style={{ color: 'var(--tr-text-secondary)', background: 'transparent' }}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                            </svg>
+                          </button>
+                          {/* Video call */}
+                          <button onClick={() => startDesktopCall('video')} disabled={callStarting}
+                            title={isRtl ? 'مكالمة فيديو' : 'Video call'}
+                            className="w-8 h-8 rounded-full flex items-center justify-center transition hover:bg-[var(--tr-overlay)]"
+                            style={{ color: 'var(--tr-text-secondary)', background: 'transparent' }}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                            </svg>
+                          </button>
+                          {/* Expand to full page */}
+                          <Link href={`/tareeq/inbox/${activeChatConv?.id}`} onClick={() => setShowMsgPanel(false)} className="w-8 h-8 rounded-full flex items-center justify-center transition hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-text-muted)' }}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
+                          </Link>
+                        </div>
                       </div>
                     )}
                     {msgPanelView === 'list' ? (
@@ -964,17 +1075,63 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                           )}
                           <div ref={chatBottomRef} />
                         </div>
+                        {voiceError && (
+                          <div className="px-3 pb-1">
+                            <p className="text-[10px] text-red-500 text-center">{voiceError}</p>
+                          </div>
+                        )}
                         <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
-                          <input ref={chatInputRef} value={chatInput} onChange={e => setChatInput(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } }}
-                            placeholder={isRtl ? 'اكتب رسالة...' : 'Type a message...'} disabled={chatSending}
-                            className="flex-1 rounded-full px-3 py-2 text-xs focus:outline-none"
-                            style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }} />
-                          <button onClick={sendChatMessage} disabled={!chatInput.trim() || chatSending}
-                            className="w-8 h-8 rounded-full flex items-center justify-center transition shrink-0"
-                            style={{ background: chatInput.trim() ? 'var(--tr-gold)' : 'var(--tr-overlay)', color: chatInput.trim() ? '#fff' : 'var(--tr-text-muted)' }}>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
-                          </button>
+                          {micActive ? (
+                            /* Recording UI */
+                            <div className="flex-1 flex items-center gap-2">
+                              <div className="flex items-center gap-1.5 flex-1 rounded-full px-3 py-2 text-xs" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
+                                <span style={{ color: 'var(--tr-text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                                  {`${Math.floor(micSeconds / 60)}:${String(micSeconds % 60).padStart(2, '0')}`}
+                                </span>
+                              </div>
+                              {/* Cancel */}
+                              <button onClick={() => stopVoiceRecording(true)} title={isRtl ? 'إلغاء' : 'Cancel'}
+                                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                                style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                              </button>
+                              {/* Send */}
+                              <button onClick={() => stopVoiceRecording(false)} title={isRtl ? 'إرسال' : 'Send'}
+                                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                                style={{ background: 'var(--tr-gold)', color: '#fff' }}>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
+                              </button>
+                            </div>
+                          ) : voiceUploading ? (
+                            <div className="flex-1 flex items-center justify-center gap-2 py-1">
+                              <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
+                              <span className="text-xs" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'جاري الإرسال...' : 'Sending...'}</span>
+                            </div>
+                          ) : (
+                            <>
+                              {/* Mic button */}
+                              <button onClick={startVoiceRecording} title={isRtl ? 'رسالة صوتية' : 'Voice message'}
+                                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition"
+                                style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                                </svg>
+                              </button>
+                              {/* Text input */}
+                              <input ref={chatInputRef} value={chatInput} onChange={e => setChatInput(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } }}
+                                placeholder={isRtl ? 'اكتب رسالة...' : 'Type a message...'} disabled={chatSending}
+                                className="flex-1 rounded-full px-3 py-2 text-xs focus:outline-none"
+                                style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }} />
+                              {/* Send button */}
+                              <button onClick={sendChatMessage} disabled={!chatInput.trim() || chatSending}
+                                className="w-8 h-8 rounded-full flex items-center justify-center transition shrink-0"
+                                style={{ background: chatInput.trim() ? 'var(--tr-gold)' : 'var(--tr-overlay)', color: chatInput.trim() ? '#fff' : 'var(--tr-text-muted)' }}>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
+                              </button>
+                            </>
+                          )}
                         </div>
                       </>
                     )}
@@ -1081,6 +1238,17 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
       </header>
       {/* No spacer on mobile — content scrolls under the transparent floating buttons */}
       <div className="hidden lg:block lg:h-16" />
+
+      {/* Call overlay — initiated from desktop chat panel */}
+      {desktopCall && (
+        <TareeqCallScreen
+          callId={desktopCall.callId}
+          role="caller"
+          callType={desktopCall.callType}
+          remoteUser={desktopCall.remoteUser}
+          onEnd={() => setDesktopCall(null)}
+        />
+      )}
     </>
   );
 }

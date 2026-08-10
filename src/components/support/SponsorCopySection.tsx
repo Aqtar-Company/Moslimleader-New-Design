@@ -202,7 +202,6 @@ export function SponsorCopySection({ productId, productName, productPrice, curre
 
           {currency !== 'EGP' && (
             <div className="flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
-              <span className="text-base mt-0.5">💙</span>
               <p className="text-xs text-blue-700 leading-relaxed">
                 وإذا وُجد فرق ناتج عن العملة، يُوجَّه كاملًا لدعم المتعففين، ولا تحقق المنصة منه أي ربح.
               </p>

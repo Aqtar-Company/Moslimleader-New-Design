@@ -356,8 +356,8 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           alt=""
           draggable={false}
           style={{
-            width: 30,
-            height: 30,
+            width: 42,
+            height: 42,
             animation: 'tareeq-star-breathe 2.8s ease-in-out infinite',
           }}
         />

@@ -282,7 +282,7 @@ function Inner({ groupId }: { groupId: string }) {
       const msgs: GroupMessage[] = d.messages ?? [];
       const newLatest = msgs.length ? msgs[msgs.length - 1].id : '';
       if (newLatest !== latestIdRef.current) { setMessages(msgs); latestIdRef.current = newLatest; }
-    }, 6_000);
+    }, 8_000);
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
   }, [user, router, load, groupId]);
 
@@ -348,8 +348,8 @@ function Inner({ groupId }: { groupId: string }) {
     else dayBuckets.push({ day, groups: [g] });
   }
 
-  // ── Chat area (shared by mobile full-screen and desktop main column) ─
-  const chatArea = (
+  // ── Single-render layout (sidebar CSS-hidden on mobile, chat panel exists once so refs are reliable) ──
+  const chatPanel = (
     <div className="flex flex-col overflow-hidden" style={{ height: '100%', minHeight: 0 }}>
       {/* Sub-header */}
       <div className="px-4 py-2.5 flex items-center gap-3 shrink-0"
@@ -577,14 +577,15 @@ function Inner({ groupId }: { groupId: string }) {
 
   return (
     <div style={{ background: 'var(--tr-base)', height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* Spacer: global Tareeq header (mobile only — desktop header is handled by layout) */}
+      {/* Spacer for global Tareeq header on mobile */}
       <div className="h-[60px] shrink-0 lg:hidden" />
 
-      {/* ── Desktop: sidebar + chat ── */}
-      <div className="hidden lg:flex flex-1 min-h-0 max-w-[1100px] mx-auto w-full px-6 pt-6 gap-4">
-        {/* Groups sidebar */}
-        <div className="w-[300px] shrink-0 rounded-2xl flex flex-col overflow-hidden"
-          style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', maxHeight: 'calc(100dvh - 96px)', position: 'sticky', top: 80 }}>
+      {/* ── Unified layout: sidebar CSS-hidden on mobile, chat panel rendered once ── */}
+      <div className="flex-1 min-h-0 flex overflow-hidden lg:max-w-[1100px] lg:w-full lg:mx-auto lg:px-6 lg:pt-6 lg:gap-4">
+
+        {/* Groups sidebar — desktop only via CSS */}
+        <aside className="hidden lg:flex flex-col w-[300px] shrink-0 rounded-2xl overflow-hidden"
+          style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', maxHeight: 'calc(100dvh - 96px)', alignSelf: 'flex-start', position: 'sticky', top: 80 }}>
           <div className="flex items-center justify-between px-4 pt-4 pb-3 shrink-0"
             style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
             <h2 className="font-black text-[14px]" style={{ color: 'var(--tr-text-primary)' }}>
@@ -638,19 +639,13 @@ function Inner({ groupId }: { groupId: string }) {
               ))
             )}
           </div>
-        </div>
+        </aside>
 
-        {/* Desktop chat panel */}
-        <div className="flex-1 min-w-0 rounded-2xl overflow-hidden flex flex-col"
-          style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', maxHeight: 'calc(100dvh - 96px)' }}>
-          {chatArea}
+        {/* Chat panel — single instance, wraps with lg styles on desktop */}
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden lg:rounded-2xl"
+          style={{ background: 'var(--tr-surface)' }}>
+          {chatPanel}
         </div>
-      </div>
-
-      {/* ── Mobile: full-screen ── */}
-      <div className="lg:hidden flex-1 min-h-0 flex flex-col overflow-hidden"
-        style={{ position: 'fixed', top: 60, left: 0, right: 0, bottom: 0 }}>
-        {chatArea}
       </div>
 
       {showAddMember && group && (

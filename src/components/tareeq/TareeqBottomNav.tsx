@@ -817,11 +817,12 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           style={{ transition: 'opacity 0.18s ease', pointerEvents: 'none', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <svg width="52" height="52" viewBox="0 0 24 24" fill="none" aria-hidden>
+            {/* 8-pointed star */}
             <path
-              d="M12 2l2.83 6.27L22 9.27l-5.5 5.11 1.3 7.12L12 17.77l-5.8 3.73 1.3-7.12L2 9.27l7.17-1L12 2z"
+              d="M12 2L14.39 7.72L20.78 6.18L17.56 12L20.78 17.82L14.39 16.28L12 22L9.61 16.28L3.22 17.82L6.44 12L3.22 6.18L9.61 7.72Z"
               fill="var(--tr-gold)"
-              stroke="rgba(255,200,0,0.4)"
-              strokeWidth="0.8"
+              stroke="rgba(255,200,0,0.35)"
+              strokeWidth="0.6"
               strokeLinejoin="round"
             />
           </svg>
@@ -944,12 +945,8 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
                 filter: isHome ? 'drop-shadow(0 0 6px var(--tr-gold-glow))' : 'none',
                 transition: 'all 0.2s',
               }}>
-              {/* Telescope — discover/explore icon */}
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 9l3-5 13 4-3 5z" />
-              <path strokeLinecap="round" d="M6 9l-2 8" />
-              <path strokeLinecap="round" d="M3.5 17h5" />
-              <path strokeLinecap="round" strokeWidth={2} d="M16 8l2.5-4" />
-              <circle cx="10.5" cy="10.5" r="1.2" fill="currentColor" stroke="none" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
               {isRtl ? 'اكتشف' : 'Discover'}

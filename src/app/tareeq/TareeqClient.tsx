@@ -368,7 +368,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           Nav is in TareeqHeader (Facebook-style top nav)
           MOBILE:  single column with bottom nav (handled by TareeqShell)
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <div className="lg:max-w-[1280px] lg:mx-auto lg:px-4 lg:pt-4 lg:grid lg:grid-cols-[260px_minmax(0,1fr)_280px] lg:gap-5 lg:items-start">
+      <div className="pt-16 lg:max-w-[1280px] lg:mx-auto lg:px-4 lg:pt-4 lg:grid lg:grid-cols-[260px_minmax(0,1fr)_280px] lg:gap-5 lg:items-start">
 
         {/* ━━ LEFT SIDEBAR — desktop only ━━ */}
         <aside className="hidden lg:flex lg:flex-col sticky top-[72px] max-h-[calc(100vh-80px)] overflow-y-auto pb-4 gap-2" style={{ scrollbarWidth: 'none' }}>

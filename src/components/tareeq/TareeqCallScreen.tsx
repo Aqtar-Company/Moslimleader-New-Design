@@ -597,10 +597,19 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
       </div>
 
       {/* ── Avatar section ── */}
-      <div className="flex-1 flex flex-col items-center justify-center relative z-10" style={{ paddingTop: 48 }}>
-
+      <div
+        className="flex-1 flex flex-col items-center relative z-10 transition-all duration-700"
+        style={{
+          paddingTop: callState === 'active' ? 52 : 48,
+          justifyContent: callState === 'active' ? 'flex-start' : 'center',
+        }}
+      >
         {/* Ripple rings — only while ringing / connecting */}
-        <div className="relative flex items-center justify-center" style={{ width: 200, height: 200, marginBottom: 32 }}>
+        {(() => {
+          const sz = callState === 'active' ? (callType === 'video' ? 72 : 110) : 200;
+          return (
+        <div className="relative flex items-center justify-center transition-all duration-700"
+          style={{ width: sz, height: sz, marginBottom: callState === 'active' ? 12 : 32 }}>
           {isWaiting && (
             <>
               <div className="absolute inset-0 rounded-full" style={{
@@ -634,8 +643,9 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
             {remoteUser.avatarUrl
               ? <img src={remoteUser.avatarUrl} alt={remoteUser.name} className="w-full h-full object-cover" />
               : (
-                <div className="w-full h-full flex items-center justify-center font-black" style={{
-                  fontSize: 56, background: 'linear-gradient(135deg,#1a4a3a,#0d9488)', color: '#fff',
+                <div className="w-full h-full flex items-center justify-center font-black transition-all duration-700" style={{
+                  fontSize: callState === 'active' ? 28 : 56,
+                  background: 'linear-gradient(135deg,#1a4a3a,#0d9488)', color: '#fff',
                 }}>
                   {remoteUser.name.charAt(0)}
                 </div>
@@ -643,27 +653,44 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
             }
           </div>
         </div>
+          ); // end IIFE return
+        })()}
 
         {/* Name */}
-        <h2 className="font-black text-3xl text-white text-center px-6 mb-2" style={{ textShadow: '0 2px 24px rgba(0,0,0,0.6)', letterSpacing: '-0.02em' }}>
+        <h2
+          className="font-black text-white text-center px-6 mb-1 transition-all duration-700"
+          style={{
+            fontSize: callState === 'active' ? 16 : 30,
+            textShadow: '0 2px 24px rgba(0,0,0,0.6)',
+            letterSpacing: '-0.02em',
+            opacity: (callState === 'active' && callType === 'video') ? 0.8 : 1,
+          }}
+        >
           {remoteUser.name}
         </h2>
 
-        {/* Call type badge */}
-        <div
-          className="flex items-center gap-1.5 px-3 py-1 rounded-full mb-4"
-          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
-        >
-          <span style={{ fontSize: 13 }}>{callType === 'video' ? '📹' : '🎙️'}</span>
-          <span className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.45)' }}>
-            {callType === 'video' ? (isRtl ? 'مكالمة فيديو' : 'Video call') : (isRtl ? 'مكالمة صوتية' : 'Voice call')}
-          </span>
-        </div>
+        {/* Call type badge — hidden when active */}
+        {!isWaiting ? null : (
+          <div
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full mb-4"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            <span style={{ fontSize: 13 }}>{callType === 'video' ? '📹' : '🎙️'}</span>
+            <span className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.45)' }}>
+              {callType === 'video' ? (isRtl ? 'مكالمة فيديو' : 'Video call') : (isRtl ? 'مكالمة صوتية' : 'Voice call')}
+            </span>
+          </div>
+        )}
 
         {/* Status line */}
-        <div className="h-10 flex items-center justify-center">
+        <div className="flex items-center justify-center mt-1" style={{ minHeight: 36 }}>
           {callState === 'active' ? (
-            <p className="text-xl font-black tabular-nums" style={{ color: '#2dd4bf', textShadow: '0 0 20px rgba(45,212,191,0.4)' }}>
+            <p className="font-black tabular-nums transition-all duration-700"
+              style={{
+                fontSize: callType === 'video' ? 14 : 22,
+                color: '#2dd4bf',
+                textShadow: '0 0 20px rgba(45,212,191,0.4)',
+              }}>
               {fmtDuration(duration)}
             </p>
           ) : (

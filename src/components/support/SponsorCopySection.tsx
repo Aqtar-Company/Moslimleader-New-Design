@@ -25,7 +25,9 @@ export function SponsorCopySection({ productId, productName, productPrice, curre
   const [error, setError] = useState('');
 
   const total = quantity * productPrice;
-  const totalUsd = parseFloat((total / 50).toFixed(2));
+  // USD equivalent is only meaningful when the local price is in EGP (≈50 EGP per USD).
+  // For non-EGP currencies the parent already passes the local-currency price — no conversion needed.
+  const totalUsd = currency === 'EGP' ? parseFloat((total / 50).toFixed(2)) : null;
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? '';
 
   const handleCreateOrder = async () => {
@@ -115,8 +117,7 @@ export function SponsorCopySection({ productId, productName, productPrice, curre
             {quantity} نسخة من <strong>{productName}</strong>
             {' — '}
             <span className="font-bold">{total.toLocaleString('ar-EG')} {currency === 'EGP' ? 'ج.م' : currency}</span>
-            {' ≈ '}
-            <span className="font-bold">${totalUsd} USD</span>
+            {totalUsd !== null && <>{' ≈ '}<span className="font-bold">${totalUsd} USD</span></>}
           </p>
         </div>
 
@@ -228,8 +229,7 @@ export function SponsorCopySection({ productId, productName, productPrice, curre
             <span className="text-gray-500">الإجمالي:</span>
             <span className="font-bold text-gray-900">
               {total.toLocaleString('ar-EG')} {currency === 'EGP' ? 'ج.م' : currency}
-              {' ≈ '}
-              <span className="text-gray-500">${totalUsd} USD</span>
+              {totalUsd !== null && <><span className="text-gray-400">{' ≈ '}</span><span className="text-gray-500">${totalUsd} USD</span></>}
             </span>
           </div>
 

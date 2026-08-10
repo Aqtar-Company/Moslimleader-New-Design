@@ -80,8 +80,8 @@ export async function POST(req: NextRequest) {
       currency: 'EGP',
       ...(isLocalCurrency && {
         localCurrency,
-        localPricePerCopy: Number(localPricePerCopy) || null,
-        localTotalPaid: Number(localTotalPaid) || null,
+        localPricePerCopy: localPricePerCopy != null ? Number(localPricePerCopy) : null,
+        localTotalPaid: localTotalPaid != null ? Number(localTotalPaid) : null,
       }),
       paymentMethod: 'paypal',
       paymentStatus: 'pending',

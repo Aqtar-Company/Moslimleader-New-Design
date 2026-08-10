@@ -15,10 +15,6 @@ interface Props {
 export function SupportRequestButton({ productId, productName, productPrice, currency }: Props) {
   const { user } = useAuth();
   const { zone } = useRegionalPricing();
-
-  // Support requests are only for Egyptian users — other zones pay higher regional prices
-  // that already fund platform support; they don't apply for price assistance.
-  if (zone !== 'egypt') return null;
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState(false);
   const [hasActive, setHasActive] = useState(false);
@@ -26,7 +22,6 @@ export function SupportRequestButton({ productId, productName, productPrice, cur
 
   useEffect(() => {
     if (!user) { setEligible(null); return; }
-    // Check if user already has an active request for this product
     fetch('/api/support-requests')
       .then(r => r.json())
       .then(d => {
@@ -38,6 +33,9 @@ export function SupportRequestButton({ productId, productName, productPrice, cur
       .catch(() => setEligible(false));
   }, [user, productId]);
 
+  // Support requests are only for Egyptian users — non-Egyptians pay higher regional
+  // prices that already fund platform support; they don't apply for price assistance.
+  if (zone !== 'egypt') return null;
   if (!user) return null;
   if (eligible === null) return null;
 

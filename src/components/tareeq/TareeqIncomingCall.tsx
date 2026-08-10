@@ -28,6 +28,11 @@ export default function TareeqIncomingCall() {
     try {
       const ctx = new AudioContext();
       audioCtxRef.current = ctx;
+      // iOS creates AudioContext in 'suspended' state when not triggered by a
+      // user gesture. Resume immediately — it resolves when allowed, and the
+      // ring scheduling below still works because oscillator start times are
+      // relative to ctx.currentTime which advances once resumed.
+      ctx.resume().catch(() => {});
 
       // Route audio through a video element to force loudspeaker on mobile.
       // AudioContext connected directly to ctx.destination uses the earpiece

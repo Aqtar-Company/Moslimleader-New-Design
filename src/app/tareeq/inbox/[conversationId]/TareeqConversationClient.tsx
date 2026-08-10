@@ -134,6 +134,10 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
   const [curTime, setCurTime] = useState(0);
   const [hasError, setHasError] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Only show error state after the user has explicitly tapped play.
+  // onerror can fire from preload='metadata' failing (R2 CORS / network) before
+  // the user tries to play — we don't want to flash the error bubble immediately.
+  const triedRef = useRef(false);
 
   // Seeded pseudo-random waveform so it looks consistent every render
   const bars = useMemo(() => {
@@ -145,57 +149,47 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
   }, [url]);
 
   useEffect(() => {
-    // ── Playback element — never touched by duration discovery ──────
-    // Mobile browsers revoke the "user-gesture" audio unlock when the
-    // element is seeked programmatically (seek-to-end trick). Keeping
-    // two separate elements (one for discovery, one for play) avoids
-    // this: the playback element stays pristine until the user taps.
     const a = new Audio();
+    a.src = url;
+    a.preload = 'metadata';
     audioRef.current = a;
-    a.preload = 'none'; // don't load until user taps play
-    a.ontimeupdate = () => {
-      setCurTime(a.currentTime);
+    a.onloadedmetadata = () => {
       if (isFinite(a.duration) && a.duration > 0) {
-        setProgress(a.currentTime / a.duration);
-        setDuration(d => d > 0 ? d : a.duration); // update duration from playback if still 0
+        setDuration(a.duration);
+      } else {
+        // WebM from MediaRecorder has no duration header — seek to end to discover length
+        a.currentTime = 1e10;
       }
     };
-    a.onplay = () => setPlaying(true);
+    let durationDiscovered = false;
+    a.onseeked = () => {
+      if (durationDiscovered) return; // prevent loop when we reset currentTime to 0
+      if (!isFinite(a.duration) || a.duration <= 0) {
+        durationDiscovered = true;
+        const discovered = a.currentTime;
+        if (discovered > 0) setDuration(discovered);
+        a.currentTime = 0;
+      }
+    };
+    a.ontimeupdate = () => {
+      setCurTime(a.currentTime);
+      setProgress(a.duration > 0 ? a.currentTime / a.duration : 0);
+    };
+    // Note: onplay is intentionally NOT used — the 'play' event can silently not
+    // fire on mobile browsers (esp. Chrome Android). setPlaying(true) is set
+    // optimistically in toggle() at the moment play() is called instead.
     a.onpause = () => { if (activeAudioEl === a) activeAudioEl = null; setPlaying(false); };
     a.onended = () => {
       if (activeAudioEl === a) activeAudioEl = null;
-      setPlaying(false); setProgress(0); setCurTime(0); a.currentTime = 0;
+      setPlaying(false); setProgress(0); setCurTime(0);
+      a.currentTime = 0;
     };
-    a.onerror = () => { if (activeAudioEl === a) activeAudioEl = null; setPlaying(false); setHasError(true); };
-    a.src = url;
-
-    // ── Duration-discovery element — separate, never played ─────────
-    const d = new Audio();
-    d.preload = 'metadata';
-    let seeking = false;
-    let done = false;
-    d.onloadedmetadata = () => {
-      if (isFinite(d.duration) && d.duration > 0) {
-        setDuration(d.duration);
-        d.src = '';
-      } else {
-        seeking = true;
-        d.currentTime = 1e10; // seek to EOF to discover real duration
-      }
+    a.onerror = () => {
+      if (activeAudioEl === a) activeAudioEl = null;
+      setPlaying(false);
+      if (triedRef.current) setHasError(true); // only show error bubble if user already tapped play
     };
-    d.onseeked = () => {
-      if (done || !seeking) return;
-      done = true; seeking = false;
-      if (d.currentTime > 0) setDuration(d.currentTime);
-      d.src = '';
-    };
-    d.onerror = () => { d.src = ''; };
-    d.src = url;
-
-    return () => {
-      a.pause(); a.src = ''; if (activeAudioEl === a) activeAudioEl = null;
-      d.src = '';
-    };
+    return () => { a.pause(); a.src = ''; if (activeAudioEl === a) activeAudioEl = null; };
   }, [url]);
 
   function toggle() {
@@ -206,7 +200,10 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
     } else {
       if (activeAudioEl && activeAudioEl !== a) activeAudioEl.pause();
       activeAudioEl = a;
+      triedRef.current = true;
+      setPlaying(true); // optimistic — don't wait for 'play' event which may not fire on mobile
       a.play().catch(() => {
+        setPlaying(false);
         if (activeAudioEl === a) activeAudioEl = null;
         setHasError(true);
       });
@@ -300,7 +297,6 @@ function Inner({ conversationId }: { conversationId: string }) {
   const [micActive, setMicActive] = useState(false);
   const [micSeconds, setMicSeconds] = useState(0);
   const [micError, setMicError] = useState('');
-  const [micPermissionDenied, setMicPermissionDenied] = useState(false);
   const [waveformBars, setWaveformBars] = useState<number[]>(Array(24).fill(0.15));
   const micTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const micIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -568,14 +564,9 @@ function Inner({ conversationId }: { conversationId: string }) {
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (err) {
-      const name = err instanceof Error ? err.name : '';
-      if (name === 'NotAllowedError' || name === 'PermissionDeniedError' || name === 'SecurityError') {
-        setMicPermissionDenied(true);
-      } else {
-        setMicError(isRtl ? 'تعذر الوصول للميكروفون' : 'Microphone unavailable');
-        setTimeout(() => setMicError(''), 3000);
-      }
+    } catch {
+      setMicError(isRtl ? 'يرجى السماح بالوصول للميكروفون' : 'Microphone access denied');
+      setTimeout(() => setMicError(''), 3000);
       return;
     }
 
@@ -766,16 +757,6 @@ function Inner({ conversationId }: { conversationId: string }) {
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-                </svg>
-              </button>
-              <button
-                onClick={() => startCall('video')}
-                className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90"
-                style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}
-                aria-label={isRtl ? 'مكالمة فيديو' : 'Video call'}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
                 </svg>
               </button>
             </div>
@@ -1165,61 +1146,6 @@ function Inner({ conversationId }: { conversationId: string }) {
           </div>
         </div>
       </div>
-
-      {/* Microphone permission guide modal */}
-      {micPermissionDenied && (
-        <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)' }}
-          onClick={() => setMicPermissionDenied(false)}>
-          <div className="w-full max-w-sm rounded-3xl p-6 flex flex-col items-center gap-4 text-center"
-            style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)' }}
-            onClick={e => e.stopPropagation()}>
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
-              style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.2)' }}>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                <line x1="12" y1="19" x2="12" y2="22"/>
-                <line x1="8" y1="22" x2="16" y2="22"/>
-              </svg>
-            </div>
-            <h3 className="font-black text-lg" style={{ color: 'var(--tr-text-primary)' }}>
-              {isRtl ? 'يلزم إذن الميكروفون' : 'Microphone Permission Required'}
-            </h3>
-            <p className="text-sm leading-relaxed" style={{ color: 'var(--tr-text-secondary)' }}>
-              {isRtl
-                ? 'لتسجيل رسائل صوتية، منح الإذن للمتصفح باستخدام الميكروفون:'
-                : 'To record voice messages, grant your browser microphone access:'}
-            </p>
-            <div className="w-full flex flex-col gap-2.5" dir={isRtl ? 'rtl' : 'ltr'}>
-              {(isRtl ? [
-                { n: '١', t: 'اضغط على رمز القفل في شريط عنوان المتصفح' },
-                { n: '٢', t: 'اختر "أذونات الموقع" أو "إعدادات الموقع"' },
-                { n: '٣', t: 'فعّل خيار "الميكروفون"' },
-                { n: '٤', t: 'أغلق هذه النافذة وحاول مجدداً' },
-              ] : [
-                { n: '1', t: 'Tap the lock icon in your browser\'s address bar' },
-                { n: '2', t: 'Select "Site settings" or "Permissions"' },
-                { n: '3', t: 'Enable "Microphone"' },
-                { n: '4', t: 'Close this dialog and try again' },
-              ]).map(({ n, t }) => (
-                <div key={n} className="flex items-start gap-3 text-right">
-                  <span className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black"
-                    style={{ background: 'rgba(251,191,36,0.12)', color: '#f59e0b' }}>{n}</span>
-                  <span className="text-sm leading-relaxed text-right" style={{ color: 'var(--tr-text-primary)' }}>{t}</span>
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={() => setMicPermissionDenied(false)}
-              className="w-full py-3 rounded-2xl font-bold text-sm transition active:scale-95"
-              style={{ background: 'var(--tr-gold)', color: '#fff' }}
-            >
-              {isRtl ? 'حسناً، سأمنح الإذن' : 'OK, I\'ll grant permission'}
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Active call screen */}
       {activeCall && otherUser && (

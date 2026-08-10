@@ -57,8 +57,8 @@ function buildNavStrokePath(dy: number): string {
 const NAV_H = 62;
 const CIRCLE_SIZE = 72;
 const CIRCLE_RADIUS = CIRCLE_SIZE / 2;
-// Circle center sits 6px above nav top edge: bottom_css = 62 + 6 - 36 = 32
-const CIRCLE_BTN_BOTTOM = NAV_H + 6 - CIRCLE_RADIUS; // 32
+// Circle center sits 6px above nav top edge: bottom_css = 62 + 6 - 32 = 36
+const CIRCLE_BTN_BOTTOM = NAV_H + 6 - CIRCLE_RADIUS; // 36
 
 const DRAG_TOL = 10;        // px before entering drag mode
 const CAMERA_THRESHOLD = 68; // px upward to trigger camera
@@ -153,7 +153,7 @@ function ContactsSheet({ onClose, onStartCall }: ContactsSheetProps) {
                 </div>
               )}
               <span className="font-semibold text-sm flex-1 min-w-0 truncate" style={{ color: 'var(--tr-text-primary)' }}>{c.name}</span>
-              {/* Audio call */}
+              {/* Audio call only — video call disabled */}
               <button
                 onClick={() => { onStartCall(c, 'audio'); }}
                 className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"
@@ -162,17 +162,6 @@ function ContactsSheet({ onClose, onStartCall }: ContactsSheetProps) {
               >
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" style={{ color: '#22c55e' }}>
                   <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02L6.62 10.79z" />
-                </svg>
-              </button>
-              {/* Video call */}
-              <button
-                onClick={() => { onStartCall(c, 'video'); }}
-                className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"
-                style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)' }}
-                aria-label={isRtl ? 'مكالمة فيديو' : 'Video call'}
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" style={{ color: '#3b82f6' }}>
-                  <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" />
                 </svg>
               </button>
             </div>
@@ -553,7 +542,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
   const svgStrokePathRef = useRef<SVGPathElement>(null);
   const hintRef = useRef<HTMLDivElement>(null);
   const animRafRef = useRef<number | null>(null);
-  const addIconRef = useRef<HTMLImageElement>(null);
+  const addIconRef = useRef<HTMLDivElement>(null);
   const camIconRef = useRef<HTMLDivElement>(null);
 
   const gesture = useRef({
@@ -822,16 +811,13 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           overflow: 'hidden',
         }}
       >
-        {/* 8-pointed star icon */}
-        <img
+        {/* Add-sign star icon */}
+        <div
           ref={addIconRef}
-          src="/Add-sign.svg"
-          width="62"
-          height="62"
-          alt=""
-          draggable={false}
-          style={{ transition: 'opacity 0.18s ease', userSelect: 'none', pointerEvents: 'none', flexShrink: 0 }}
-        />
+          style={{ transition: 'opacity 0.18s ease', pointerEvents: 'none', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <img src="/Add-sign.svg" width={72} height={72} alt="" aria-hidden draggable={false} style={{ display: 'block', userSelect: 'none' }} />
+        </div>
         {/* Camera overlay — glassy blue, revealed on swipe-up */}
         <div
           ref={camIconRef}
@@ -944,13 +930,13 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             className="flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
             style={{ minWidth: 44 }}
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.65} viewBox="0 0 24 24"
               style={{
                 color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
                 filter: isHome ? 'drop-shadow(0 0 6px var(--tr-gold-glow))' : 'none',
                 transition: 'all 0.2s',
               }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
@@ -960,7 +946,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
 
           {/* 3 — Center spacer + label */}
           <div className="flex flex-col items-center justify-end pb-2" style={{ width: CIRCLE_SIZE, minWidth: CIRCLE_SIZE }}>
-            <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--tr-gold)', lineHeight: 1, letterSpacing: '0.02em' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--tr-gold)', lineHeight: 1, letterSpacing: '0.02em' }}>
               {isRtl ? 'ضع علامة' : 'Post'}
             </span>
           </div>

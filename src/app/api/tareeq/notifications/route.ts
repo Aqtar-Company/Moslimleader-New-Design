@@ -12,8 +12,9 @@ export async function GET(req: NextRequest) {
   const countOnly = searchParams.get('countOnly') === 'true';
 
   if (countOnly) {
+    // Exclude message-type notifications — those count under the inbox badge, not the bell
     const unreadCount = await prisma.tareeqNotification.count({
-      where: { userId: user.userId, read: false },
+      where: { userId: user.userId, read: false, type: { not: 'message' } },
     });
     return NextResponse.json({ unreadCount });
   }
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
       take: limit,
       skip: (page - 1) * limit,
     }),
-    prisma.tareeqNotification.count({ where: { userId: user.userId, read: false } }),
+    prisma.tareeqNotification.count({ where: { userId: user.userId, read: false, type: { not: 'message' } } }),
   ]);
 
   return NextResponse.json({ notifications, unreadCount });

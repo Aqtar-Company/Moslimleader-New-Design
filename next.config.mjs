@@ -65,7 +65,7 @@ const nextConfig = {
       // HSTS — force HTTPS for 1 year
       { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
       // CSP
-      { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.paypal.com https://www.sandbox.paypal.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://www.paypal.com https://www.sandbox.paypal.com https://api.paypal.com https://formsubmit.co https://challenges.cloudflare.com; frame-src https://www.paypal.com https://www.sandbox.paypal.com https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'" },
+      { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.paypal.com https://www.sandbox.paypal.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; media-src 'self' blob: https:; connect-src 'self' https://www.paypal.com https://www.sandbox.paypal.com https://api.paypal.com https://formsubmit.co https://challenges.cloudflare.com https:; frame-src https://www.paypal.com https://www.sandbox.paypal.com https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'" },
     ];
 
     return [

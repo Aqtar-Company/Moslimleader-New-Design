@@ -58,10 +58,10 @@ const nextConfig = {
       { key: 'X-XSS-Protection', value: '1; mode=block' },
       // Referrer policy
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-      // Permissions policy — disable unused browser features
-      // microphone=(self) so the Ameen on-site chat can record voice
-      // messages via getUserMedia. Camera + geolocation stay blocked.
-      { key: 'Permissions-Policy', value: 'camera=(), microphone=(self), geolocation=(), payment=(self "https://www.paypal.com")' },
+      // Permissions policy — camera=(self) required for Tareeq video calls.
+      // Users are still prompted by the browser before camera activates.
+      // microphone=(self) for Tareeq voice calls and Ameen voice chat.
+      { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self), geolocation=(), payment=(self "https://www.paypal.com")' },
       // HSTS — force HTTPS for 1 year
       { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
       // CSP

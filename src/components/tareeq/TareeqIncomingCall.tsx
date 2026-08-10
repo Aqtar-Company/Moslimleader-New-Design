@@ -21,6 +21,7 @@ export default function TareeqIncomingCall() {
   const seenRef = useRef<Set<string>>(new Set());
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const ringRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const ringActiveRef = useRef(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
   // Pre-created video element for loudspeaker routing — unlocked on first user interaction.
   // Kept alive for the component lifetime so autoplay policy doesn't block it on ring start.
@@ -45,13 +46,25 @@ export default function TareeqIncomingCall() {
 
     const unlock = () => {
       if (audioUnlockedRef.current) return;
-      // Briefly play and pause to unlock autoplay policy for this element
-      vid.play().then(() => { vid.pause(); audioUnlockedRef.current = true; }).catch(() => {});
-      // Also prime a fresh AudioContext if one isn't active yet
+      audioUnlockedRef.current = true;
+      // Briefly play and pause to unlock autoplay policy for this video element
+      vid.play().then(() => vid.pause()).catch(() => {});
+      // Create and keep an AudioContext running — reused by startRing() so it's
+      // already in 'running' state when the call arrives (no gesture needed later).
       try {
         const ctx = new ACtx({ latencyHint: 'playback' });
-        ctx.resume().catch(() => {});
-        ctx.close().catch(() => {}); // we only need to unlock; ring creates its own ctx
+        // Play a silent buffer to fully unlock the context in this gesture
+        const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.connect(ctx.destination);
+        src.start(0);
+        // Keep ctx alive for startRing() — do NOT close it here
+        if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+          audioCtxRef.current = ctx;
+        } else {
+          ctx.close().catch(() => {});
+        }
       } catch { /* ignore */ }
     };
     document.addEventListener('touchstart', unlock, { once: true, passive: true });
@@ -60,6 +73,8 @@ export default function TareeqIncomingCall() {
     return () => {
       document.removeEventListener('touchstart', unlock);
       document.removeEventListener('click',      unlock);
+      audioCtxRef.current?.close().catch(() => {});
+      audioCtxRef.current = null;
       if (ringVideoRef.current) {
         ringVideoRef.current.srcObject = null;
         ringVideoRef.current.remove();
@@ -69,41 +84,26 @@ export default function TareeqIncomingCall() {
   }, []);
 
   function startRing() {
+    ringActiveRef.current = true;
     try {
       const ACtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!ACtx) return;
-      // latencyHint:'playback' hints to the browser that this is media output,
-      // not real-time communication — influences audio routing on Android toward loudspeaker.
-      const ctx = new ACtx({ latencyHint: 'playback' });
-      audioCtxRef.current = ctx;
+
+      // Reuse the pre-unlocked context from the gesture handler — already running.
+      // Fall back to a fresh context if none exists (may be suspended without prior gesture).
+      let ctx = audioCtxRef.current;
+      if (!ctx || ctx.state === 'closed') {
+        ctx = new ACtx({ latencyHint: 'playback' });
+        audioCtxRef.current = ctx;
+      }
       ctx.resume().catch(() => {});
 
-      // Route audio through the pre-created video element (media route = loudspeaker).
-      // Fall back to ctx.destination if routing fails — earpiece is better than silence.
       let dest: AudioNode = ctx.destination;
       const vid = ringVideoRef.current;
-      if (vid) {
-        try {
-          const streamDest = ctx.createMediaStreamDestination();
-          vid.srcObject = streamDest.stream;
-          vid.play().then(() => {
-            // Play succeeded — audio will route through media (loudspeaker) path.
-          }).catch(() => {
-            // Play failed (autoplay policy) — fall back to ctx.destination.
-            // Audio will still be audible through whatever the system chooses (often earpiece).
-            dest = ctx.destination;
-          });
-          // Optimistically route through video; if play() fails the catch above reassigns dest.
-          // Oscillators are scheduled 50ms from now to give play() time to resolve.
-          dest = streamDest;
-        } catch { /* use ctx.destination */ }
-      }
 
-      // Traditional phone ring: two bursts (400ms on / 200ms off / 400ms on), then 2s silence.
-      // Schedule oscillators 50ms out so the vid.play() promise has time to resolve first.
       const playBurst = (t: number, freq: number, dur: number) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
+        const osc = ctx!.createOscillator();
+        const gain = ctx!.createGain();
         osc.connect(gain); gain.connect(dest);
         osc.type = 'sine';
         osc.frequency.value = freq;
@@ -115,9 +115,9 @@ export default function TareeqIncomingCall() {
       };
 
       const ring = () => {
-        if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') return;
+        if (!ringActiveRef.current || !audioCtxRef.current || audioCtxRef.current.state === 'closed') return;
         try {
-          const t = ctx.currentTime + 0.05; // 50ms scheduling offset
+          const t = ctx!.currentTime + 0.05;
           playBurst(t, 480, 0.4);
           playBurst(t, 425, 0.4);
           playBurst(t + 0.6, 480, 0.4);
@@ -125,15 +125,34 @@ export default function TareeqIncomingCall() {
         } catch { /* context closed mid-ring */ }
       };
 
-      ring();
-      ringRef.current = setInterval(ring, 3000);
+      // Start ringing only after play() settles so dest is correctly set before oscillators fire
+      const beginRinging = () => {
+        if (!ringActiveRef.current) return;
+        ring();
+        ringRef.current = setInterval(ring, 3000);
+      };
+
+      if (vid) {
+        try {
+          const streamDest = ctx.createMediaStreamDestination();
+          vid.srcObject = streamDest.stream;
+          vid.play().then(() => {
+            dest = streamDest; // loudspeaker path confirmed
+            beginRinging();
+          }).catch(() => {
+            beginRinging(); // falls back to ctx.destination
+          });
+          return;
+        } catch { /* use ctx.destination */ }
+      }
+      beginRinging();
     } catch { /* AudioContext not supported */ }
   }
 
   function stopRing() {
+    ringActiveRef.current = false;
     if (ringRef.current) { clearInterval(ringRef.current); ringRef.current = null; }
-    audioCtxRef.current?.close().catch(() => {}); audioCtxRef.current = null;
-    // Detach the stream but keep the video element alive for reuse
+    // Keep audioCtxRef alive — it's the pre-unlocked context for the next ring
     if (ringVideoRef.current) {
       ringVideoRef.current.pause();
       ringVideoRef.current.srcObject = null;

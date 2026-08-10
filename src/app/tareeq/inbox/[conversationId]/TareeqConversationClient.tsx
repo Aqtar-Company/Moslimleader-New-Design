@@ -134,6 +134,10 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
   const [curTime, setCurTime] = useState(0);
   const [hasError, setHasError] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Only show error state after the user has explicitly tapped play.
+  // onerror can fire from preload='metadata' failing (R2 CORS / network) before
+  // the user tries to play — we don't want to flash the error bubble immediately.
+  const triedRef = useRef(false);
 
   // Seeded pseudo-random waveform so it looks consistent every render
   const bars = useMemo(() => {
@@ -180,7 +184,11 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
       setPlaying(false); setProgress(0); setCurTime(0);
       a.currentTime = 0;
     };
-    a.onerror = () => { if (activeAudioEl === a) activeAudioEl = null; setPlaying(false); setHasError(true); };
+    a.onerror = () => {
+      if (activeAudioEl === a) activeAudioEl = null;
+      setPlaying(false);
+      if (triedRef.current) setHasError(true); // only show error bubble if user already tapped play
+    };
     return () => { a.pause(); a.src = ''; if (activeAudioEl === a) activeAudioEl = null; };
   }, [url]);
 
@@ -192,6 +200,7 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
     } else {
       if (activeAudioEl && activeAudioEl !== a) activeAudioEl.pause();
       activeAudioEl = a;
+      triedRef.current = true;
       setPlaying(true); // optimistic — don't wait for 'play' event which may not fire on mobile
       a.play().catch(() => {
         setPlaying(false);

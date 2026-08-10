@@ -55,7 +55,7 @@ function buildNavStrokePath(dy: number): string {
 
 /* ─── Constants ─────────────────────────────────────────────────────────────── */
 const NAV_H = 62;
-const CIRCLE_SIZE = 64;
+const CIRCLE_SIZE = 72;
 const CIRCLE_RADIUS = CIRCLE_SIZE / 2;
 // Circle center sits 6px above nav top edge: bottom_css = 62 + 6 - 32 = 36
 const CIRCLE_BTN_BOTTOM = NAV_H + 6 - CIRCLE_RADIUS; // 36
@@ -799,9 +799,9 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           width: CIRCLE_SIZE,
           height: CIRCLE_SIZE,
           borderRadius: '50%',
-          background: 'linear-gradient(145deg, #1a3a6e, #0d2044)',
-          border: '1px solid rgba(255,255,255,0.12)',
-          boxShadow: '0 10px 28px rgba(20,60,120,0.28), 0 4px 12px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.10)',
+          background: 'transparent',
+          border: 'none',
+          boxShadow: 'none',
           zIndex: 42,
           display: 'flex',
           alignItems: 'center',
@@ -816,7 +816,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           ref={addIconRef}
           style={{ transition: 'opacity 0.18s ease', pointerEvents: 'none', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <svg width="52" height="52" viewBox="0 0 24 24" fill="none" aria-hidden>
             <path
               d="M12 2l2.83 6.27L22 9.27l-5.5 5.11 1.3 7.12L12 17.77l-5.8 3.73 1.3-7.12L2 9.27l7.17-1L12 2z"
               fill="var(--tr-gold)"
@@ -958,7 +958,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
 
           {/* 3 — Center spacer + label */}
           <div className="flex flex-col items-center justify-end pb-2" style={{ width: CIRCLE_SIZE, minWidth: CIRCLE_SIZE }}>
-            <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--tr-gold)', lineHeight: 1, letterSpacing: '0.02em' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--tr-gold)', lineHeight: 1, letterSpacing: '0.02em' }}>
               {isRtl ? 'ضع علامة' : 'Post'}
             </span>
           </div>

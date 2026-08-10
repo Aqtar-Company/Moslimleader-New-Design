@@ -78,6 +78,9 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   const mobileSearchRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
+  /* ── Mobile notification panel state ── */
+  const [showMobileNotifPanel, setShowMobileNotifPanel] = useState(false);
+
   /* ── Desktop notification panel state ── */
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [notifPanelVisible, setNotifPanelVisible] = useState(false);
@@ -161,6 +164,12 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
     } catch { /* offline */ }
     setMsgsLoading(false);
   }, []);
+
+  function toggleMobileNotifPanel(e: React.MouseEvent) {
+    e.preventDefault();
+    if (!showMobileNotifPanel) loadNotifs();
+    setShowMobileNotifPanel(p => !p);
+  }
 
   function toggleNotifPanel(e: React.MouseEvent) {
     e.preventDefault();
@@ -268,17 +277,102 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
 
   return (
     <>
+      {/* Mobile notification overlay — glass strips floating above content */}
+      {showMobileNotifPanel && (
+        <div
+          className="lg:hidden fixed inset-0 z-[110]"
+          onClick={() => setShowMobileNotifPanel(false)}
+        >
+          <div
+            className="absolute left-3 right-3 flex flex-col gap-2"
+            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 62px)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {notifsLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="w-5 h-5 border-2 rounded-full animate-spin"
+                  style={{ borderColor: 'rgba(255,255,255,0.2)', borderTopColor: 'var(--tr-gold)' }} />
+              </div>
+            ) : notifs.filter(n => n.type !== 'message').length === 0 ? (
+              <div className="rounded-2xl px-5 py-6 text-center"
+                style={{
+                  background: 'rgba(255,255,255,0.10)',
+                  backdropFilter: 'blur(24px) saturate(140%)',
+                  WebkitBackdropFilter: 'blur(24px) saturate(140%)',
+                  border: '1px solid rgba(255,255,255,0.16)',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.22)',
+                }}>
+                <p className="text-sm font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>
+                  {isRtl ? 'لا إشعارات جديدة' : 'No new notifications'}
+                </p>
+              </div>
+            ) : (
+              notifs.filter(n => n.type !== 'message').slice(0, 10).map(n => (
+                <button
+                  key={n.id}
+                  className="w-full flex items-start gap-3 px-4 py-3.5 rounded-2xl text-start transition-all active:scale-[0.98]"
+                  style={{
+                    background: n.read ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.13)',
+                    backdropFilter: 'blur(24px) saturate(140%)',
+                    WebkitBackdropFilter: 'blur(24px) saturate(140%)',
+                    border: `1px solid ${n.read ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.22)'}`,
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+                  }}
+                  onClick={() => {
+                    setShowMobileNotifPanel(false);
+                    if (n.postId) router.push(`/tareeq/p/${n.postId}`);
+                    else router.push('/tareeq/notifications');
+                  }}
+                >
+                  <NotifIcon type={n.type} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.90)' }}>
+                      {n.type === 'like' && (
+                        <>{isRtl ? `${n.actorName || 'شخص ما'} أعجب بعلامتك` : `${n.actorName || 'Someone'} liked your mark`}
+                          {n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>
+                      )}
+                      {n.type === 'comment' && (
+                        <>{isRtl ? `${n.actorName || 'شخص ما'} علّق على` : `${n.actorName || 'Someone'} commented on`}
+                          {n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}
+                          {n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>
+                      )}
+                      {n.type !== 'like' && n.type !== 'comment' && (
+                        <>{isRtl ? `رسالة من ${n.actorName || 'شخص ما'}` : `Message from ${n.actorName || 'Someone'}`}
+                          {n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>
+                      )}
+                    </p>
+                    <p className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                      {timeAgo(n.createdAt, isRtl)}
+                    </p>
+                  </div>
+                  {!n.read && <div className="w-2 h-2 rounded-full shrink-0 mt-1" style={{ background: 'var(--tr-gold)' }} />}
+                </button>
+              ))
+            )}
+            {/* Close hint */}
+            <button
+              onClick={() => setShowMobileNotifPanel(false)}
+              className="text-center py-2 text-xs font-semibold"
+              style={{ color: 'rgba(255,255,255,0.45)' }}
+            >
+              {isRtl ? 'اضغط للإغلاق' : 'Tap to close'}
+            </button>
+          </div>
+        </div>
+      )}
+
       <header
         className="fixed top-0 left-0 right-0 z-50 print:hidden"
-        style={{
+      >
+        {/* Desktop glass background — invisible on mobile so content extends under floating buttons */}
+        <div className="hidden lg:block absolute inset-0" style={{
           background: 'var(--tr-header-bg)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
           borderBottom: '1px solid var(--tr-border-subtle)',
           boxShadow: '0 2px 24px rgba(0,0,0,0.5), inset 0 -1px 0 rgba(255,255,255,0.04)',
-        }}
-      >
-        <div className="max-w-2xl mx-auto lg:max-w-[1180px] flex items-center px-4 h-14 lg:h-16 gap-2 lg:gap-3">
+        }} />
+        <div className="relative max-w-2xl mx-auto lg:max-w-[1180px] flex items-center px-4 h-14 lg:h-16 gap-2 lg:gap-3">
 
           {/* ── MOBILE ONLY: glass search pill + glass bell button ── */}
           <div className="lg:hidden flex items-center w-full gap-2.5">
@@ -373,22 +467,22 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
               )}
             </div>
 
-            {/* Glass notification bell button */}
-            <Link
-              href="/tareeq/notifications"
+            {/* Glass notification bell button — opens inline panel */}
+            <button
+              onClick={toggleMobileNotifPanel}
               className="relative shrink-0 flex items-center justify-center rounded-2xl transition-all active:scale-[0.93]"
               style={{
                 width: 44, height: 44,
-                background: 'rgba(255,255,255,0.24)',
+                background: showMobileNotifPanel ? 'rgba(255,255,255,0.32)' : 'rgba(255,255,255,0.22)',
                 backdropFilter: 'blur(14px) saturate(130%)',
                 WebkitBackdropFilter: 'blur(14px) saturate(130%)',
-                border: '1px solid rgba(255,255,255,0.28)',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
+                border: `1px solid ${showMobileNotifPanel ? 'rgba(212,168,83,0.45)' : 'rgba(255,255,255,0.28)'}`,
+                boxShadow: showMobileNotifPanel ? '0 2px 12px rgba(212,168,83,0.22)' : '0 2px 10px rgba(0,0,0,0.07)',
               }}
               aria-label={isRtl ? 'الإشعارات' : 'Notifications'}
             >
               <svg width="19" height="19" fill="none" stroke="currentColor" strokeWidth={1.9} viewBox="0 0 24 24"
-                style={{ color: notifCount > 0 ? 'var(--tr-gold)' : 'rgba(20,30,60,0.70)' }}
+                style={{ color: (notifCount > 0 || showMobileNotifPanel) ? 'var(--tr-gold)' : 'rgba(20,30,60,0.70)' }}
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
@@ -398,23 +492,18 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                   width: 16, height: 16, borderRadius: '50%',
                   background: '#f43f5e', color: '#fff', fontSize: 9, fontWeight: 800,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: '2px solid var(--tr-header-bg)',
                 }}>
                   {notifCount > 9 ? '9+' : notifCount}
                 </span>
               )}
-            </Link>
+            </button>
           </div>
 
           {/* ── DESKTOP ONLY ── */}
-          {/* Wordmark */}
+          {/* Wordmark: colored icon + Arabic text side by side */}
           <Link href="/tareeq" className="hidden lg:flex items-center gap-2 shrink-0" aria-label="Tareeq">
-            <img
-              src="/Tareeq-tiny-usage.png"
-              alt="Tareeq"
-              className="h-8 w-auto object-contain shrink-0"
-              draggable={false}
-            />
+            <img src="/Tareeq-big.png" alt="Tareeq" className="h-9 w-auto object-contain shrink-0" draggable={false} />
+            <img src="/Tareeq-Typo.png" alt="طريق" className="h-7 w-auto object-contain shrink-0" draggable={false} />
           </Link>
 
           {/* Desktop search bar */}
@@ -449,15 +538,22 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                       ref={key === 'notifications' ? notifBtnRef : msgBtnRef}
                       onClick={onClick}
                       title={label}
-                      className="relative flex items-center justify-center w-24 h-12 rounded-xl transition-all hover:bg-[var(--tr-overlay)]"
+                      className="relative flex flex-col items-center justify-center w-24 h-12 rounded-xl transition-all hover:bg-[var(--tr-overlay)]"
                       style={{
                         color: (active || isPanelOpen) ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
-                        borderBottom: `3px solid ${(active || isPanelOpen) ? 'var(--tr-gold)' : 'transparent'}`,
                         background: 'transparent',
                         cursor: 'pointer',
+                        gap: 2,
                       }}
                     >
                       {icon}
+                      {/* Gold dot indicator */}
+                      <span style={{
+                        width: 4, height: 4, borderRadius: '50%',
+                        background: (active || isPanelOpen) ? 'var(--tr-gold)' : 'transparent',
+                        transition: 'background 0.2s',
+                        flexShrink: 0,
+                      }} />
                       {badge > 0 && (
                         <span className="absolute top-1.5 end-3 min-w-[17px] h-[17px] rounded-full flex items-center justify-center text-[9px] font-black px-0.5" style={{ background: '#f43f5e', color: '#fff' }}>
                           {badge > 9 ? '9+' : badge}
@@ -468,14 +564,21 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                     <Link
                       href={href}
                       title={label}
-                      className="relative flex items-center justify-center w-24 h-12 rounded-xl transition-all hover:bg-[var(--tr-overlay)] group"
+                      className="relative flex flex-col items-center justify-center w-24 h-12 rounded-xl transition-all hover:bg-[var(--tr-overlay)] group"
                       style={{
                         color: active ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
-                        borderBottom: `3px solid ${active ? 'var(--tr-gold)' : 'transparent'}`,
                         background: 'transparent',
+                        gap: 2,
                       }}
                     >
                       {icon}
+                      {/* Gold dot indicator */}
+                      <span style={{
+                        width: 4, height: 4, borderRadius: '50%',
+                        background: active ? 'var(--tr-gold)' : 'transparent',
+                        transition: 'background 0.2s',
+                        flexShrink: 0,
+                      }} />
                       {badge > 0 && (
                         <span className="absolute top-1.5 end-3 min-w-[17px] h-[17px] rounded-full flex items-center justify-center text-[9px] font-black px-0.5" style={{ background: '#f43f5e', color: '#fff' }}>
                           {badge > 9 ? '9+' : badge}
@@ -666,7 +769,8 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           </div>
         </div>
       </header>
-      <div className="h-14 lg:h-16" />
+      {/* No spacer on mobile — content scrolls under the transparent floating buttons */}
+      <div className="hidden lg:block lg:h-16" />
     </>
   );
 }

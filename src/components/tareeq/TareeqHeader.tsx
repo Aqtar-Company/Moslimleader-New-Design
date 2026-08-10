@@ -322,8 +322,9 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
 
   const notifPanelStyle: React.CSSProperties = {
     ...panelBase,
-    left: '50%',
-    transform: notifPanelVisible ? 'translateX(-50%) scaleY(1)' : 'translateX(-50%) scaleY(0.92)',
+    transformOrigin: isRtl ? 'top left' : 'top right',
+    ...(isRtl ? { left: 0 } : { right: 0 }),
+    transform: notifPanelVisible ? 'scaleY(1)' : 'scaleY(0.92)',
     opacity: notifPanelVisible ? 1 : 0,
     maxHeight: 480,
     overflowY: 'auto',
@@ -331,8 +332,9 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
 
   const msgPanelStyle: React.CSSProperties = {
     ...panelBase,
-    left: '50%',
-    transform: msgPanelVisible ? 'translateX(-50%) scaleY(1)' : 'translateX(-50%) scaleY(0.92)',
+    transformOrigin: isRtl ? 'top left' : 'top right',
+    ...(isRtl ? { left: 0 } : { right: 0 }),
+    transform: msgPanelVisible ? 'scaleY(1)' : 'scaleY(0.92)',
     opacity: msgPanelVisible ? 1 : 0,
     maxHeight: 520,
     overflowY: 'auto',
@@ -383,7 +385,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                   }}
                   onClick={() => {
                     setShowMobileNotifPanel(false);
-                    if (n.postId) router.push(`/tareeq/p/${n.postId}`);
+                    if (n.postId) router.push(`/tareeq/${n.postId}`);
                     else router.push('/tareeq/notifications');
                   }}
                 >
@@ -590,9 +592,10 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           {/* Desktop center nav — Facebook-style icon tabs */}
           <div className="hidden lg:flex flex-1 items-center justify-center gap-1">
             {navItems.map(({ key, href, icon, label, badge, onClick }) => {
+              if (key === 'messages' || key === 'notifications') return null;
               const active = pathname === href || (href !== '/tareeq' && pathname.startsWith(href));
-              const isPanelOpen = (key === 'notifications' && showNotifPanel) || (key === 'messages' && showMsgPanel);
-              const isPanel = key === 'notifications' || key === 'messages';
+              const isPanelOpen = false;
+              const isPanel = false;
 
               return (
                 <div key={key} className="relative">
@@ -687,7 +690,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                           const newNotifs = allNotifs.filter(n => !n.read);
                           const earlierNotifs = allNotifs.filter(n => n.read);
                           const renderNotif = (n: Notification) => (
-                            <button key={n.id} onClick={() => { setShowNotifPanel(false); if (n.postId) router.push(`/tareeq/p/${n.postId}`); }}
+                            <button key={n.id} onClick={() => { setShowNotifPanel(false); if (n.postId) router.push(`/tareeq/${n.postId}`); }}
                               className="w-full flex items-start gap-3 px-4 py-3 text-start transition"
                               style={{ background: n.read ? 'transparent' : 'rgba(212,168,83,0.04)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
                               <NotifIcon type={n.type} />
@@ -863,11 +866,190 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
             })}
           </div>
 
-          {/* Right: desktop actions only */}
-          <div className="hidden lg:flex items-center gap-2 shrink-0">
-            {/* Desktop: user avatar + "New Mark" */}
+          {/* Right: messages icon, notifications icon, create button, avatar */}
+          <div className="hidden lg:flex items-center gap-1 shrink-0">
+
+            {/* Messages icon + panel */}
             {user && (
-              <div className="flex items-center gap-2">
+              <div className="relative">
+                <button ref={msgBtnRef} onClick={toggleMsgPanel} title={isRtl ? 'الرسائل' : 'Messages'}
+                  className="relative flex items-center justify-center w-10 h-10 rounded-full transition-all hover:bg-[var(--tr-overlay)]"
+                  style={{ color: showMsgPanel ? 'var(--tr-gold)' : 'var(--tr-text-secondary)' }}>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+                  </svg>
+                  <Badge count={messageCount} />
+                </button>
+                {showMsgPanel && (
+                  <div ref={msgPanelRef} style={msgPanelStyle} dir="rtl">
+                    {msgPanelView === 'list' ? (
+                      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                        <span className="font-black text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الرسائل' : 'Messages'}</span>
+                        <Link href="/tareeq/inbox" onClick={() => setShowMsgPanel(false)} className="text-xs font-semibold" style={{ color: 'var(--tr-gold)' }}>{isRtl ? 'عرض الكل' : 'See all'}</Link>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                        <button onClick={closeChat} className="w-8 h-8 rounded-full flex items-center justify-center transition" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3' : 'M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18'} /></svg>
+                        </button>
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          {activeChatConv?.otherUser.avatarUrl ? (
+                            <img src={activeChatConv.otherUser.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)' }}>{activeChatConv?.otherUser.name.charAt(0)}</div>
+                          )}
+                          <span className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{activeChatConv?.otherUser.name}</span>
+                        </div>
+                        <Link href={`/tareeq/inbox/${activeChatConv?.id}`} onClick={() => setShowMsgPanel(false)} className="w-8 h-8 rounded-full flex items-center justify-center transition" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
+                        </Link>
+                      </div>
+                    )}
+                    {msgPanelView === 'list' ? (
+                      <>
+                        <div className="px-3 py-2" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                          <div className="relative">
+                            <svg className="absolute top-1/2 -translate-y-1/2 start-3 w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                            <input value={msgSearch} onChange={e => setMsgSearch(e.target.value)} placeholder={isRtl ? 'بحث في الرسائل...' : 'Search messages...'}
+                              className="w-full rounded-full ps-8 pe-3 py-1.5 text-xs focus:outline-none"
+                              style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }} />
+                          </div>
+                        </div>
+                        {msgsLoading ? (
+                          <div className="flex justify-center py-10"><div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} /></div>
+                        ) : conversations.filter(c => !msgSearch || c.otherUser.name.toLowerCase().includes(msgSearch.toLowerCase())).length === 0 ? (
+                          <div className="text-center py-10 px-4">
+                            <p className="text-sm font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>{isRtl ? 'لا رسائل بعد' : 'No messages yet'}</p>
+                            <p className="text-xs mt-1.5" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'ابدأ محادثة من صفحة أي مستخدم' : 'Start a chat from any profile'}</p>
+                          </div>
+                        ) : (
+                          <div>
+                            {conversations.filter(c => !msgSearch || c.otherUser.name.toLowerCase().includes(msgSearch.toLowerCase())).map(c => (
+                              <button key={c.id} onClick={() => openChat(c)} className="w-full flex items-center gap-3 px-4 py-3 text-start transition" style={{ background: c.unreadCount > 0 ? 'rgba(212,168,83,0.04)' : 'transparent', borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden relative" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-border-soft)' }}>
+                                  {c.otherUser.avatarUrl ? <img src={c.otherUser.avatarUrl} alt={c.otherUser.name} className="w-full h-full object-cover" /> : c.otherUser.name.charAt(0)}
+                                  {c.unreadCount > 0 && <span className="absolute bottom-0 end-0 w-3 h-3 rounded-full border-2" style={{ background: 'var(--tr-gold)', borderColor: 'var(--tr-surface)' }} />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{c.otherUser.name}</p>
+                                  {c.lastMessage && <p className="text-xs truncate mt-0.5" style={{ color: c.unreadCount > 0 ? 'var(--tr-text-primary)' : 'var(--tr-text-muted)', fontWeight: c.unreadCount > 0 ? 600 : 400 }}>{c.lastMessage}</p>}
+                                </div>
+                                <div className="flex flex-col items-end gap-1 shrink-0">
+                                  {c.lastMessageAt && <span className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(c.lastMessageAt, isRtl)}</span>}
+                                  {c.unreadCount > 0 && <span className="text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center" style={{ background: 'var(--tr-gold)', color: '#0a0d06' }}>{c.unreadCount}</span>}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="overflow-y-auto flex flex-col gap-1 p-3" style={{ minHeight: 200, maxHeight: 360 }}>
+                          {chatLoading ? (
+                            <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} /></div>
+                          ) : chatMessages.length === 0 ? (
+                            <p className="text-center text-xs py-6" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'ابدأ المحادثة...' : 'Start the conversation...'}</p>
+                          ) : (
+                            chatMessages.map(msg => {
+                              const isMine = msg.senderId === user?.id;
+                              return (
+                                <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                                  <div className="max-w-[80%] px-3 py-2 rounded-2xl text-xs leading-relaxed" style={{ background: isMine ? 'var(--tr-gold)' : 'var(--tr-overlay)', color: isMine ? '#fff' : 'var(--tr-text-primary)', borderRadius: isMine ? '18px 18px 4px 18px' : '18px 18px 18px 4px' }}>
+                                    {msg.content}
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                          <div ref={chatBottomRef} />
+                        </div>
+                        <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
+                          <input ref={chatInputRef} value={chatInput} onChange={e => setChatInput(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } }}
+                            placeholder={isRtl ? 'اكتب رسالة...' : 'Type a message...'} disabled={chatSending}
+                            className="flex-1 rounded-full px-3 py-2 text-xs focus:outline-none"
+                            style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }} />
+                          <button onClick={sendChatMessage} disabled={!chatInput.trim() || chatSending}
+                            className="w-8 h-8 rounded-full flex items-center justify-center transition shrink-0"
+                            style={{ background: chatInput.trim() ? 'var(--tr-gold)' : 'var(--tr-overlay)', color: chatInput.trim() ? '#fff' : 'var(--tr-text-muted)' }}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Notifications icon + panel */}
+            {user && (
+              <div className="relative">
+                <button ref={notifBtnRef} onClick={toggleNotifPanel} title={isRtl ? 'الإشعارات' : 'Notifications'}
+                  className="relative flex items-center justify-center w-10 h-10 rounded-full transition-all hover:bg-[var(--tr-overlay)]"
+                  style={{ color: showNotifPanel ? 'var(--tr-gold)' : 'var(--tr-text-secondary)' }}>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  <Badge count={notifCount} />
+                </button>
+                {showNotifPanel && (
+                  <div ref={notifPanelRef} style={notifPanelStyle} dir="rtl">
+                    <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                      <span className="font-black text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الإشعارات' : 'Notifications'}</span>
+                      <Link href="/tareeq/notifications" onClick={() => setShowNotifPanel(false)} className="text-xs font-semibold" style={{ color: 'var(--tr-gold)' }}>{isRtl ? 'عرض الكل' : 'See all'}</Link>
+                    </div>
+                    {notifsLoading ? (
+                      <div className="flex justify-center py-10"><div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} /></div>
+                    ) : notifs.filter(n => n.type !== 'message').length === 0 ? (
+                      <div className="text-center py-10 px-4">
+                        <svg className="w-10 h-10 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}><path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg>
+                        <p className="text-sm font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>{isRtl ? 'لا إشعارات جديدة' : 'No new notifications'}</p>
+                      </div>
+                    ) : (
+                      (() => {
+                        const allNotifs = notifs.filter(n => n.type !== 'message');
+                        const newNotifs = allNotifs.filter(n => !n.read);
+                        const earlierNotifs = allNotifs.filter(n => n.read);
+                        const renderNotif = (n: Notification) => (
+                          <button key={n.id} onClick={() => { setShowNotifPanel(false); if (n.postId) router.push(`/tareeq/${n.postId}`); }}
+                            className="w-full flex items-start gap-3 px-4 py-3 text-start transition"
+                            style={{ background: n.read ? 'transparent' : 'rgba(212,168,83,0.04)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                            <NotifIcon type={n.type} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs leading-relaxed" style={{ color: 'var(--tr-text-primary)' }}>
+                                {n.type === 'like' && <>{isRtl ? `${n.actorName || 'شخص ما'} أعجب بعلامتك` : `${n.actorName || 'Someone'} liked your mark`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
+                                {n.type === 'comment' && <>{isRtl ? `${n.actorName || 'شخص ما'} علّق على` : `${n.actorName || 'Someone'} commented on`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}
+                                {n.type !== 'like' && n.type !== 'comment' && <>{isRtl ? `رسالة من ${n.actorName || 'شخص ما'}` : `Message from ${n.actorName || 'Someone'}`}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}
+                              </p>
+                              <p className="text-[10px] mt-1" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(n.createdAt, isRtl)}</p>
+                            </div>
+                            {!n.read && <div className="w-2 h-2 rounded-full shrink-0 mt-1" style={{ background: 'var(--tr-gold)' }} />}
+                          </button>
+                        );
+                        return (
+                          <div>
+                            {newNotifs.length > 0 && (<>
+                              <p className="px-4 py-2 text-[10px] font-black" style={{ color: 'var(--tr-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', background: 'var(--tr-base)' }}>{isRtl ? 'جديد' : 'New'}</p>
+                              {newNotifs.map(renderNotif)}
+                            </>)}
+                            {earlierNotifs.length > 0 && (<>
+                              <p className="px-4 py-2 text-[10px] font-black" style={{ color: 'var(--tr-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', background: 'var(--tr-base)' }}>{isRtl ? 'سابق' : 'Earlier'}</p>
+                              {earlierNotifs.map(renderNotif)}
+                            </>)}
+                          </div>
+                        );
+                      })()
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Create button + avatar */}
+            {user && (
+              <div className="flex items-center gap-2 ms-1">
                 <button
                   onClick={onCreateClick}
                   className="flex items-center gap-1.5 font-black text-xs px-4 py-2 rounded-full transition active:scale-95"

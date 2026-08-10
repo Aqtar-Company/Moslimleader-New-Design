@@ -441,8 +441,8 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
     <>
       <style>{`
         @keyframes tareeq-star-breathe {
-          0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 4px rgba(251,191,36,0.45)); }
-          50%       { transform: scale(1.14); filter: drop-shadow(0 0 10px rgba(251,191,36,0.80)); }
+          0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 4px rgba(248,167,59,0.50)); }
+          50%       { transform: scale(1.14); filter: drop-shadow(0 0 11px rgba(248,152,72,0.85)); }
         }
       `}</style>
       {/* Mobile notification overlay — glass strips floating above content */}

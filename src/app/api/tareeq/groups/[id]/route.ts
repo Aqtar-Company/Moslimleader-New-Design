@@ -40,6 +40,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
         content: true,
         imageUrl: true,
         videoUrl: true,
+        audioUrl: true,
         createdAt: true,
         senderId: true,
         sender: { select: { id: true, name: true, avatarUrl: true } },

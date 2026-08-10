@@ -1124,6 +1124,7 @@ model TareeqGroupMessage {
   content   String      @db.Text
   imageUrl  String?     @db.Text
   videoUrl  String?     @db.Text
+  audioUrl  String?     @db.Text
   createdAt DateTime    @default(now())
 
   @@index([groupId, createdAt])

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 
 interface SponsoredOrder {
   id: string; quantity: number; pricePerCopy: number; totalPaid: number; currency: string;
+  localCurrency?: string | null; localPricePerCopy?: number | null; localTotalPaid?: number | null;
   paymentMethod: string; paymentStatus: string; paymentRef?: string;
   adminNote?: string; createdAt: string;
   sponsor: { id: string; name: string; organization?: string };
@@ -204,7 +205,14 @@ export default function AdminSponsoredOrdersPage() {
                   </td>
                   <td className="p-3 text-gray-700">{o.product.name}</td>
                   <td className="p-3 text-center font-bold">{o.quantity}</td>
-                  <td className="p-3 font-medium">{fmt(o.totalPaid)}</td>
+                  <td className="p-3 font-medium">
+                    {fmt(o.totalPaid)}
+                    {o.localCurrency && o.localCurrency !== 'EGP' && o.localTotalPaid && (
+                      <div className="text-xs text-blue-600 font-semibold mt-0.5">
+                        {o.localTotalPaid.toLocaleString()} {o.localCurrency}
+                      </div>
+                    )}
+                  </td>
                   <td className="p-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${PAYMENT_COLORS[o.paymentStatus] ?? ''}`}>
                       {PAYMENT_STATUS[o.paymentStatus] ?? o.paymentStatus}

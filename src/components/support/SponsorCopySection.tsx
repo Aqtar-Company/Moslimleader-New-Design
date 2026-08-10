@@ -37,7 +37,14 @@ export function SponsorCopySection({ productId, productName, productPrice, curre
     const res = await fetch('/api/sponsored-purchases', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ productId, quantity, policyAgreed: true }),
+      body: JSON.stringify({
+        productId,
+        quantity,
+        policyAgreed: true,
+        localCurrency: currency,
+        localPricePerCopy: productPrice,
+        localTotalPaid: total,
+      }),
     });
     const d = await res.json();
     if (res.ok) {
@@ -192,6 +199,15 @@ export function SponsorCopySection({ productId, productName, productPrice, curre
             ستشتري نسخة كاملة من <strong>{productName}</strong> ونوصلها لمستفيد يطلب الدعم.
             لن تعرف هويته ولن يعرف هويتك — لكنك ستعرف أنها وصلت.
           </p>
+
+          {currency !== 'EGP' && (
+            <div className="flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+              <span className="text-base mt-0.5">💙</span>
+              <p className="text-xs text-blue-700 leading-relaxed">
+                أنت تدفع بعملتك المحلية ({currency}). الفرق بين سعر بلدك وسعر مصر يُستخدم لدعم المنصة بشكل مستمر — فتوفير المحتوى التربوي يحتاج إلى استدامة.
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">عدد النسخ</label>

@@ -1299,6 +1299,11 @@ model SponsoredOrder {
   totalPaid       Float
   currency        String         @default("EGP")
 
+  // Donor's local currency (non-EGP donors — SAR, USD, etc.)
+  localCurrency      String?
+  localPricePerCopy  Float?
+  localTotalPaid     Float?
+
   // paypal | bank | admin-entry
   paymentMethod   String
   // pending | paid | failed | refunded

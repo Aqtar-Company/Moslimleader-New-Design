@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useRegionalPricing } from '@/context/RegionalPricingContext';
 import { SupportRequestModal } from './SupportRequestModal';
 
 interface Props {
@@ -13,6 +14,11 @@ interface Props {
 
 export function SupportRequestButton({ productId, productName, productPrice, currency }: Props) {
   const { user } = useAuth();
+  const { zone } = useRegionalPricing();
+
+  // Support requests are only for Egyptian users — other zones pay higher regional prices
+  // that already fund platform support; they don't apply for price assistance.
+  if (zone !== 'egypt') return null;
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState(false);
   const [hasActive, setHasActive] = useState(false);

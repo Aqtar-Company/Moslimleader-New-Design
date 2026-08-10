@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   if (!allowed) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
 
   const body = await req.json();
-  const { productId, variantIndex, quantity = 1, policyAgreed } = body;
+  const { productId, variantIndex, quantity = 1, policyAgreed, localCurrency, localPricePerCopy, localTotalPaid } = body;
 
   if (!productId || !policyAgreed) {
     return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
@@ -68,6 +68,7 @@ export async function POST(req: NextRequest) {
     email: dbUser?.email ?? user.email,
   });
 
+  const isLocalCurrency = localCurrency && localCurrency !== 'EGP';
   const sponsoredOrder = await prisma.sponsoredOrder.create({
     data: {
       sponsorId: sponsor.id,
@@ -77,6 +78,11 @@ export async function POST(req: NextRequest) {
       pricePerCopy: product.price,
       totalPaid: product.price * qty,
       currency: 'EGP',
+      ...(isLocalCurrency && {
+        localCurrency,
+        localPricePerCopy: Number(localPricePerCopy) || null,
+        localTotalPaid: Number(localTotalPaid) || null,
+      }),
       paymentMethod: 'paypal',
       paymentStatus: 'pending',
       policyAgreed: true,

@@ -6,6 +6,7 @@ import TareeqBottomNav from './TareeqBottomNav';
 import TareeqOfflineBanner from './TareeqOfflineBanner';
 import TareeqSplash from './TareeqSplash';
 import TareeqIncomingCall from './TareeqIncomingCall';
+import { prewireInRingPipeline } from '@/lib/tareeq-ring-pipeline';
 
 export default function TareeqShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -18,6 +19,21 @@ export default function TareeqShell({ children }: { children: React.ReactNode })
       router.push('/tareeq?action=create');
     }
   }
+
+  // Pre-wire the loudspeaker pipeline for incoming call ringtone.
+  // Tries immediately on mount (works on Android when app opens via notification tap).
+  // Also listens for any user gesture on the page — this fires before a call ever
+  // arrives, so startRing() in TareeqIncomingCall gets the loudspeaker route ready.
+  useEffect(() => {
+    prewireInRingPipeline();
+    const onGesture = () => prewireInRingPipeline();
+    document.addEventListener('touchstart', onGesture, { passive: true });
+    document.addEventListener('click', onGesture);
+    return () => {
+      document.removeEventListener('touchstart', onGesture);
+      document.removeEventListener('click', onGesture);
+    };
+  }, []);
 
   // When camera captures a file on a non-feed page, navigate to /tareeq.
   // TareeqClient will consume the file from the store on arrival.

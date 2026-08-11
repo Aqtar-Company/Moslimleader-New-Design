@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LanguageContext';
 import TareeqCallScreen, { CallParty } from './TareeqCallScreen';
+import { consumeInRingPipeline } from '@/lib/tareeq-ring-pipeline';
 
 interface IncomingCall {
   id: string;
@@ -22,83 +23,9 @@ export default function TareeqIncomingCall() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const ringRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const ringActiveRef = useRef(false);
+  // audioCtxRef is only used for cleanup on unmount; the actual context lives
+  // in the module-level pipeline (consumeInRingPipeline), pre-wired by TareeqShell.
   const audioCtxRef = useRef<AudioContext | null>(null);
-  // StreamDestination permanently wired to the video element from the first gesture.
-  // Kept alive so startRing() never calls vid.play() again (no gesture = earpiece).
-  const streamDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
-  const ringVideoRef = useRef<HTMLVideoElement | null>(null);
-  const audioUnlockedRef = useRef(false);
-
-  useEffect(() => {
-    const ACtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!ACtx) return;
-
-    const vid = document.createElement('video');
-    vid.setAttribute('playsinline', '');
-    vid.setAttribute('webkit-playsinline', '');
-    vid.muted = false;
-    vid.volume = 1;
-    vid.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;top:-9999px;left:-9999px';
-    document.body.appendChild(vid);
-    ringVideoRef.current = vid;
-
-    // Wire AudioContext → MediaStreamDestination → video to lock loudspeaker route.
-    // Closes any old AudioContext first (stops earpiece ring if already running).
-    // If ring is active, restarts it through the new loudspeaker pipeline.
-    function wireToLoudspeaker() {
-      if (audioUnlockedRef.current) return;
-      try {
-        const oldCtx = audioCtxRef.current;
-        const ctx = new ACtx({ latencyHint: 'playback' });
-        const streamDest = ctx.createMediaStreamDestination();
-        vid.srcObject = streamDest.stream;
-        vid.play()
-          .then(() => {
-            audioUnlockedRef.current = true;
-            // Stop earpiece ring by closing old context
-            if (oldCtx && oldCtx.state !== 'closed') oldCtx.close().catch(() => {});
-            audioCtxRef.current = ctx;
-            streamDestRef.current = streamDest;
-            // Silence oscillator keeps pipeline alive between rings
-            const silenceOsc = ctx.createOscillator();
-            const silenceGain = ctx.createGain();
-            silenceGain.gain.value = 0;
-            silenceOsc.connect(silenceGain);
-            silenceGain.connect(streamDest);
-            silenceOsc.start();
-            // If ring already started through earpiece, restart it via loudspeaker now
-            if (ringActiveRef.current) {
-              if (ringRef.current) { clearInterval(ringRef.current); ringRef.current = null; }
-              startRing();
-            }
-          })
-          .catch(() => { ctx.close().catch(() => {}); });
-      } catch { /* ignore */ }
-    }
-
-    // Try immediately — works on Android when app is opened via notification tap
-    // (the navigation gesture satisfies autoplay policy).
-    wireToLoudspeaker();
-
-    // Fallback: wait for first real user gesture on the page
-    const onGesture = () => { wireToLoudspeaker(); };
-    document.addEventListener('touchstart', onGesture, { passive: true });
-    document.addEventListener('click',      onGesture);
-
-    return () => {
-      document.removeEventListener('touchstart', onGesture);
-      document.removeEventListener('click',      onGesture);
-      audioCtxRef.current?.close().catch(() => {});
-      audioCtxRef.current = null;
-      streamDestRef.current = null;
-      if (ringVideoRef.current) {
-        ringVideoRef.current.srcObject = null;
-        ringVideoRef.current.remove();
-        ringVideoRef.current = null;
-      }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   function startRing() {
     ringActiveRef.current = true;
@@ -106,22 +33,20 @@ export default function TareeqIncomingCall() {
       const ACtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!ACtx) return;
 
-      let ctx = audioCtxRef.current;
-      if (!ctx || ctx.state === 'closed') {
-        ctx = new ACtx({ latencyHint: 'playback' });
-        audioCtxRef.current = ctx;
-      }
+      // Use the pre-wired loudspeaker pipeline from TareeqShell (established on any
+      // gesture anywhere on the page before this call arrived). Falls back to a fresh
+      // AudioContext routed to ctx.destination (earpiece) only if no gesture has fired.
+      const { ctx: prewiredCtx, dest: prewiredDest } = consumeInRingPipeline();
+      const ctx = prewiredCtx ?? new ACtx({ latencyHint: 'playback' });
+      audioCtxRef.current = ctx;
+      const dest: AudioNode = prewiredDest ?? ctx.destination;
 
       ctx.resume().then(() => {
         if (!ringActiveRef.current) return;
 
-        // Prefer the pre-wired loudspeaker pipeline; fall back to earpiece only if
-        // the gesture unlock never fired (e.g. programmatic call arrival before any touch).
-        const dest: AudioNode = streamDestRef.current ?? ctx!.destination;
-
         const playBurst = (t: number, freq: number, dur: number) => {
-          const osc = ctx!.createOscillator();
-          const gain = ctx!.createGain();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
           osc.connect(gain); gain.connect(dest);
           osc.type = 'sine';
           osc.frequency.value = freq;
@@ -133,9 +58,9 @@ export default function TareeqIncomingCall() {
         };
 
         const ring = () => {
-          if (!ringActiveRef.current || !audioCtxRef.current || audioCtxRef.current.state === 'closed') return;
+          if (!ringActiveRef.current || ctx.state === 'closed') return;
           try {
-            const t = ctx!.currentTime + 0.05;
+            const t = ctx.currentTime + 0.05;
             playBurst(t,       480, 0.4);
             playBurst(t,       425, 0.4);
             playBurst(t + 0.6, 480, 0.4);

@@ -1,7 +1,7 @@
-/* tareeq-v3 — Offline, Background Sync, Periodic Sync, Rich Push, Notification Actions */
-const CACHE_STATIC  = 'tareeq-v5-static';
-const CACHE_PAGES   = 'tareeq-v5-pages';
-const CACHE_IMAGES  = 'tareeq-v5-images';
+/* tareeq-v6 — Offline, Background Sync, Periodic Sync, Rich Push, Notification Actions */
+const CACHE_STATIC  = 'tareeq-v6-static';
+const CACHE_PAGES   = 'tareeq-v6-pages';
+const CACHE_IMAGES  = 'tareeq-v6-images';
 const ALL_CACHES    = [CACHE_STATIC, CACHE_PAGES, CACHE_IMAGES];
 
 const SHELL = [

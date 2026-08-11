@@ -550,11 +550,10 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         {/* ━━ CENTER — feed ━━ */}
         <div className="min-w-0" ref={feedTopRef}>
 
-          {/* Sort tabs row — scrolls with content, space above clears the fixed header */}
+          {/* Sort tabs row — scrolls with content */}
           <div
             className="max-w-2xl lg:max-w-none mx-auto ps-4 pe-4 lg:pe-0 py-2 flex items-center justify-between gap-3"
             style={{
-              marginTop: 72,
               borderBottom: '1px solid var(--tr-border-subtle)',
             }}
           >

@@ -62,11 +62,14 @@ let _inCtx: AudioContext | null = null;
 let _inDest: MediaStreamAudioDestinationNode | null = null;
 let _inVid: HTMLVideoElement | null = null;
 let _inUnlocked = false;
+// Tracks the pending vid.play() promise so callers can await readiness
+let _inReady: Promise<void> | null = null;
 
 export function prewireInRingPipeline() {
   if (typeof window === 'undefined') return;
   if (_inUnlocked) return;
-  // If a previous attempt left a context open, don't re-create
+  // Already in progress — don't spawn a second context
+  if (_inReady) return;
   if (_inCtx && _inCtx.state !== 'closed') return;
   try {
     const ACtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -81,27 +84,43 @@ export function prewireInRingPipeline() {
     vid.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;top:-9999px;left:-9999px';
     vid.srcObject = dest.stream;
     document.body.appendChild(vid);
-    vid.play()
+    _inReady = vid.play()
       .then(() => {
         _inUnlocked = true;
         _inCtx = ctx;
         _inDest = dest;
         _inVid = vid;
-        // Silence oscillator keeps ctx + streamDest alive permanently
+        _inReady = null;
+        // Tiny non-zero gain keeps the media route alive (browser won't stall a silent stream)
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        gain.gain.value = 0;
+        gain.gain.value = 0.0001;
         osc.connect(gain);
         gain.connect(dest);
         osc.start();
       })
       .catch(() => {
         // play() failed (no gesture yet) — tear down and retry on next gesture
+        _inReady = null;
         ctx.close().catch(() => {});
         vid.srcObject = null;
         vid.remove();
       });
   } catch { /* AudioContext not supported */ }
+}
+
+// Waits up to timeoutMs for the loudspeaker pipeline to become ready.
+// Returns { ctx, dest } once ready, or { ctx: null, dest: null } on timeout.
+export function waitForInRingPipeline(timeoutMs = 800): Promise<{
+  ctx: AudioContext | null;
+  dest: MediaStreamAudioDestinationNode | null;
+}> {
+  if (_inUnlocked) return Promise.resolve({ ctx: _inCtx, dest: _inDest });
+  const ready = _inReady ?? Promise.resolve();
+  return Promise.race([
+    ready,
+    new Promise<void>(r => setTimeout(r, timeoutMs)),
+  ]).then(() => ({ ctx: _inCtx, dest: _inDest }));
 }
 
 export function consumeInRingPipeline(): {
@@ -116,5 +135,6 @@ export function releaseInRingPipeline() {
   _inCtx = null;
   _inDest = null;
   _inUnlocked = false;
+  _inReady = null;
   if (_inVid) { _inVid.srcObject = null; _inVid.remove(); _inVid = null; }
 }

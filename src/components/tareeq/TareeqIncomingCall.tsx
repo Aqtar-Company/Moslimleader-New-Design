@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LanguageContext';
 import TareeqCallScreen, { CallParty } from './TareeqCallScreen';
-import { consumeInRingPipeline } from '@/lib/tareeq-ring-pipeline';
+import { waitForInRingPipeline } from '@/lib/tareeq-ring-pipeline';
 
 interface IncomingCall {
   id: string;
@@ -27,16 +27,17 @@ export default function TareeqIncomingCall() {
   // in the module-level pipeline (consumeInRingPipeline), pre-wired by TareeqShell.
   const audioCtxRef = useRef<AudioContext | null>(null);
 
-  function startRing() {
+  async function startRing() {
     ringActiveRef.current = true;
     try {
       const ACtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!ACtx) return;
 
-      // Use the pre-wired loudspeaker pipeline from TareeqShell (established on any
-      // gesture anywhere on the page before this call arrived). Falls back to a fresh
-      // AudioContext routed to ctx.destination (earpiece) only if no gesture has fired.
-      const { ctx: prewiredCtx, dest: prewiredDest } = consumeInRingPipeline();
+      // Wait up to 800ms for the loudspeaker pipeline (vid.play() is async — startRing may
+      // run before prewireInRingPipeline resolves when opening from a notification tap).
+      const { ctx: prewiredCtx, dest: prewiredDest } = await waitForInRingPipeline(800);
+      if (!ringActiveRef.current) return; // declined while waiting
+
       const ctx = prewiredCtx ?? new ACtx({ latencyHint: 'playback' });
       audioCtxRef.current = ctx;
       const dest: AudioNode = prewiredDest ?? ctx.destination;

@@ -34,50 +34,36 @@ export default function TareeqSplash() {
         filter: 'blur(28px)',
       }} />
 
-      {/* Logo — smaller */}
+      {/* Logo */}
       <div
-        className="relative w-20 h-20 rounded-2xl overflow-hidden mb-6"
+        className="relative w-20 h-20 rounded-2xl overflow-hidden mb-5"
         style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 16px 48px rgba(212,168,83,0.25)' }}
       >
         <img src="/Tareeq-big.png" alt="طريق" className="w-full h-full object-cover" />
       </div>
 
-      {/* Typography — Arabic + English */}
-      <div className="flex flex-col items-center mb-5" style={{ gap: '4px' }}>
-        <span style={{
-          fontFamily: "'Georgia', 'Times New Roman', serif",
-          fontSize: '2.8rem',
-          fontWeight: 700,
-          color: '#ffffff',
-          letterSpacing: '0.03em',
-          direction: 'rtl',
-          lineHeight: 1,
-        }}>
-          طريق
-        </span>
-        <span style={{
-          fontFamily: "'Georgia', 'Times New Roman', serif",
-          fontSize: '0.78rem',
-          fontWeight: 400,
-          color: 'rgba(212,168,83,0.80)',
-          letterSpacing: '0.38em',
-          textTransform: 'uppercase' as const,
-        }}>
-          TAREEQ
-        </span>
-      </div>
+      {/* Arabic typography image */}
+      <img
+        src="/Tareeq-Typo.png"
+        alt="طريق"
+        className="w-36 object-contain mb-1"
+        style={{ filter: 'brightness(1.15)' }}
+      />
 
-      {/* Taglines */}
-      <p className="text-xs font-medium mb-1" style={{ color: 'rgba(255,255,255,0.40)', letterSpacing: '0.05em' }}>
-        Free Social App for Moslim Leader Community
-      </p>
-      <p className="text-xs" style={{ color: 'rgba(255,255,255,0.25)', direction: 'rtl' }}>
-        تطبيق تواصل اجتماعي مجاني لأعضاء مجتمع مسلم ليدر
-      </p>
+      {/* English */}
+      <span style={{
+        color: 'rgba(212,168,83,0.75)',
+        letterSpacing: '0.38em',
+        fontSize: '0.72rem',
+        fontFamily: 'inherit',
+        textTransform: 'uppercase',
+      }}>
+        TAREEQ
+      </span>
 
-      {/* ML logo */}
-      <div className="absolute bottom-12 flex flex-col items-center gap-2">
-        <img src="/logo gold.png" alt="Moslim Leader" className="h-11 object-contain opacity-70" />
+      {/* ML logo — bottom */}
+      <div className="absolute bottom-10 flex flex-col items-center">
+        <img src="/logo gold.png" alt="Moslim Leader" className="h-8 object-contain opacity-55" />
       </div>
     </div>
   );

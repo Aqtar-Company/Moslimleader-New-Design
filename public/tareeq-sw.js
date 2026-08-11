@@ -198,14 +198,15 @@ self.addEventListener('push', e => {
     e.waitUntil((async () => {
       // Wake open windows immediately
       const windowList = await clients.matchAll({ type: 'window', includeUncontrolled: true });
-      const hasFocusedWindow = windowList.some(c => c.focused);
+      // visibilityState === 'visible' is more reliable than .focused on Android PWA
+      const hasVisibleWindow = windowList.some(c => c.visibilityState === 'visible');
       for (const c of windowList) {
         c.postMessage({ type: 'TAREEQ_INCOMING_CALL', callId: data.callId });
       }
 
-      // If the app is already in the foreground, the in-app ring handles audio.
+      // If the app is visible in the foreground, the in-app ring handles audio.
       // Showing an OS notification on top would cause dual sound (OS chime + Web Audio ring).
-      if (hasFocusedWindow) return;
+      if (hasVisibleWindow) return;
 
       const baseTag = data.tag ?? `call-${data.callId}`;
 
@@ -225,7 +226,7 @@ self.addEventListener('push', e => {
         if (i < 5) {
           await new Promise(r => setTimeout(r, 2000));
           try {
-            const res = await fetch('/api/tareeq/calls/' + data.callId + '/ringing');
+            const res = await fetch('/api/tareeq/calls/' + data.callId + '/ringing', { credentials: 'include' });
             const json = await res.json();
             if (!json.ringing) {
               // Call ended — close the last ring notification
@@ -233,7 +234,7 @@ self.addEventListener('push', e => {
               last.forEach(n => n.close());
               break;
             }
-          } catch { break; }
+          } catch { /* network error — keep ringing */ }
         }
       }
     })());

@@ -84,8 +84,10 @@ export function prewireInRingPipeline() {
     vid.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;top:-9999px;left:-9999px';
     vid.srcObject = dest.stream;
     document.body.appendChild(vid);
+    console.log('[TareeqRing] prewireInRingPipeline: calling vid.play()');
     _inReady = vid.play()
       .then(() => {
+        console.log('[TareeqRing] prewireInRingPipeline: vid.play() SUCCEEDED → loudspeaker route established');
         _inUnlocked = true;
         _inCtx = ctx;
         _inDest = dest;
@@ -99,7 +101,8 @@ export function prewireInRingPipeline() {
         gain.connect(dest);
         osc.start();
       })
-      .catch(() => {
+      .catch((err) => {
+        console.log('[TareeqRing] prewireInRingPipeline: vid.play() FAILED (no gesture yet):', err?.name);
         // play() failed (no gesture yet) — tear down and retry on next gesture
         _inReady = null;
         ctx.close().catch(() => {});

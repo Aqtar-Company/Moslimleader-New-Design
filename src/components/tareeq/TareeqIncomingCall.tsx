@@ -38,6 +38,8 @@ export default function TareeqIncomingCall() {
       const { ctx: prewiredCtx, dest: prewiredDest } = await waitForInRingPipeline(800);
       if (!ringActiveRef.current) return; // declined while waiting
 
+      console.log('[TareeqRing] startRing: prewiredCtx=', prewiredCtx ? 'YES (loudspeaker)' : 'NULL (fallback earpiece)', '| prewiredDest=', prewiredDest ? 'YES' : 'NULL');
+
       const ctx = prewiredCtx ?? new ACtx({ latencyHint: 'playback' });
       audioCtxRef.current = ctx;
       const dest: AudioNode = prewiredDest ?? ctx.destination;

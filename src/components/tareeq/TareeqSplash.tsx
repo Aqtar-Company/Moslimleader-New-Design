@@ -2,8 +2,6 @@
 import { useState, useEffect } from 'react';
 
 export default function TareeqSplash() {
-  // Start as 'gone' — SSR and first client render both produce null.
-  // useEffect sets to 'in' only on the first visit (no sessionStorage key).
   const [phase, setPhase] = useState<'in' | 'out' | 'gone'>('gone');
 
   useEffect(() => {
@@ -27,40 +25,57 @@ export default function TareeqSplash() {
         pointerEvents: phase === 'out' ? 'none' : 'auto',
       }}
     >
-      {/* Ambient glow behind logo */}
+      {/* Ambient glow */}
       <div style={{
         position: 'absolute',
-        width: 280, height: 280,
+        width: 240, height: 240,
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(212,168,83,0.20) 0%, transparent 70%)',
-        filter: 'blur(30px)',
+        background: 'radial-gradient(circle, rgba(212,168,83,0.18) 0%, transparent 70%)',
+        filter: 'blur(28px)',
       }} />
 
-      {/* Logo */}
+      {/* Logo — smaller */}
       <div
-        className="relative w-28 h-28 rounded-3xl overflow-hidden mb-7"
-        style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 20px 60px rgba(212,168,83,0.25)' }}
+        className="relative w-20 h-20 rounded-2xl overflow-hidden mb-6"
+        style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 16px 48px rgba(212,168,83,0.25)' }}
       >
         <img src="/Tareeq-big.png" alt="طريق" className="w-full h-full object-cover" />
       </div>
 
-      {/* Arabic typography from brand asset */}
-      <img
-        src="/Tareeq-Typo.png"
-        alt="طريق TAREEQ"
-        className="w-44 object-contain mb-3"
-        style={{ filter: 'brightness(1.1)' }}
-      />
+      {/* Typography — Arabic + English */}
+      <div className="flex flex-col items-center mb-5" style={{ gap: '4px' }}>
+        <span style={{
+          fontFamily: "'Georgia', 'Times New Roman', serif",
+          fontSize: '2.8rem',
+          fontWeight: 700,
+          color: '#ffffff',
+          letterSpacing: '0.03em',
+          direction: 'rtl',
+          lineHeight: 1,
+        }}>
+          طريق
+        </span>
+        <span style={{
+          fontFamily: "'Georgia', 'Times New Roman', serif",
+          fontSize: '0.78rem',
+          fontWeight: 400,
+          color: 'rgba(212,168,83,0.80)',
+          letterSpacing: '0.38em',
+          textTransform: 'uppercase' as const,
+        }}>
+          TAREEQ
+        </span>
+      </div>
 
       {/* Taglines */}
-      <p className="text-sm font-semibold mb-1" style={{ color: 'rgba(255,255,255,0.55)', letterSpacing: '0.06em' }}>
+      <p className="text-xs font-medium mb-1" style={{ color: 'rgba(255,255,255,0.40)', letterSpacing: '0.05em' }}>
         Free Social App for Moslim Leader Community
       </p>
-      <p className="text-xs" style={{ color: 'rgba(255,255,255,0.30)', direction: 'rtl' }}>
+      <p className="text-xs" style={{ color: 'rgba(255,255,255,0.25)', direction: 'rtl' }}>
         تطبيق تواصل اجتماعي مجاني لأعضاء مجتمع مسلم ليدر
       </p>
 
-      {/* ML logo — gold wordmark, visible at bottom */}
+      {/* ML logo */}
       <div className="absolute bottom-12 flex flex-col items-center gap-2">
         <img src="/logo gold.png" alt="Moslim Leader" className="h-11 object-contain opacity-70" />
       </div>

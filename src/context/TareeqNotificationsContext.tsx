@@ -79,27 +79,38 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
       .catch(() => {});
   }, []);
 
-  // Detect initial push permission.
-  // Re-runs when user auth resolves so the re-sync POST is sent while authenticated.
+  // Detect initial push permission and keep subscription in sync with server.
+  // Re-runs when user auth resolves. If the browser subscription was dropped
+  // (SW update, VAPID key change, device switch), auto-recovers without a gesture
+  // because Notification.permission is already 'granted' — only requestPermission()
+  // needs a gesture, not subscribe().
   useEffect(() => {
     if (typeof window === 'undefined' || !('Notification' in window)) return;
     const perm = Notification.permission as PushPermission;
     if (perm !== 'granted') { setPushPermission(perm); return; }
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) { setPushPermission(perm); return; }
-    navigator.serviceWorker.ready.then(reg =>
-      reg.pushManager.getSubscription().then(sub => {
-        setPushPermission(sub ? 'granted' : 'default');
-        // Re-sync active subscription with server — only when user is authenticated
-        if (sub && user) {
-          fetch('/api/tareeq/push-subscribe', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ subscription: sub.toJSON() }),
-          }).catch(() => {});
+    navigator.serviceWorker.ready.then(async reg => {
+      let sub = await reg.pushManager.getSubscription();
+      // Auto-recover: permission granted but no active subscription → re-subscribe silently
+      if (!sub && user) {
+        const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        if (vapidKey) {
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
+          }).catch(() => null);
         }
-      })
-    ).catch(() => setPushPermission(perm));
+      }
+      setPushPermission(sub ? 'granted' : perm);
+      if (sub && user) {
+        fetch('/api/tareeq/push-subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ subscription: sub.toJSON() }),
+        }).catch(() => {});
+      }
+    }).catch(() => setPushPermission(perm));
   }, [user]);
 
   // Update PWA app-icon badge (Badging API)

@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
   const denied = await requirePerm('sponsors.write');
   if (denied) return denied;
   const user = await getAuthUser();
+  if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
   const body = await req.json();
   const {

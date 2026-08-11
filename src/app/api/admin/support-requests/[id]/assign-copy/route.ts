@@ -12,6 +12,7 @@ export async function POST(
   const denied = await requirePerm('support-requests.write');
   if (denied) return denied;
   const user = await getAuthUser();
+  if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
   const { copyId } = await req.json();
   if (!copyId) return NextResponse.json({ error: 'missing_copyId' }, { status: 400 });

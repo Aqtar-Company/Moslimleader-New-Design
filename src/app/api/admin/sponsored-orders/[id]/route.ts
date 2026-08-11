@@ -14,6 +14,7 @@ export async function PATCH(
   const denied = await requirePerm('sponsors.write');
   if (denied) return denied;
   const user = await getAuthUser();
+  if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
   const { action, paymentRef, reason } = await req.json();
 

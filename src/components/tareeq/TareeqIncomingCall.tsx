@@ -42,36 +42,52 @@ export default function TareeqIncomingCall() {
     document.body.appendChild(vid);
     ringVideoRef.current = vid;
 
-    const unlock = () => {
+    // Wire AudioContext → MediaStreamDestination → video to lock loudspeaker route.
+    // Closes any old AudioContext first (stops earpiece ring if already running).
+    // If ring is active, restarts it through the new loudspeaker pipeline.
+    function wireToLoudspeaker() {
       if (audioUnlockedRef.current) return;
-      audioUnlockedRef.current = true;
       try {
+        const oldCtx = audioCtxRef.current;
         const ctx = new ACtx({ latencyHint: 'playback' });
-        audioCtxRef.current = ctx;
-
-        // Wire the pipeline inside the gesture: ctx → streamDest → video.
-        // Keep video playing silence permanently — this locks the loudspeaker route
-        // so startRing() can connect oscillators to streamDest without a new gesture.
         const streamDest = ctx.createMediaStreamDestination();
-        streamDestRef.current = streamDest;
         vid.srcObject = streamDest.stream;
-        vid.play().catch(() => {});
-
-        // Silence node keeps the pipeline alive
-        const silenceOsc = ctx.createOscillator();
-        const silenceGain = ctx.createGain();
-        silenceGain.gain.value = 0;
-        silenceOsc.connect(silenceGain);
-        silenceGain.connect(streamDest);
-        silenceOsc.start();
+        vid.play()
+          .then(() => {
+            audioUnlockedRef.current = true;
+            // Stop earpiece ring by closing old context
+            if (oldCtx && oldCtx.state !== 'closed') oldCtx.close().catch(() => {});
+            audioCtxRef.current = ctx;
+            streamDestRef.current = streamDest;
+            // Silence oscillator keeps pipeline alive between rings
+            const silenceOsc = ctx.createOscillator();
+            const silenceGain = ctx.createGain();
+            silenceGain.gain.value = 0;
+            silenceOsc.connect(silenceGain);
+            silenceGain.connect(streamDest);
+            silenceOsc.start();
+            // If ring already started through earpiece, restart it via loudspeaker now
+            if (ringActiveRef.current) {
+              if (ringRef.current) { clearInterval(ringRef.current); ringRef.current = null; }
+              startRing();
+            }
+          })
+          .catch(() => { ctx.close().catch(() => {}); });
       } catch { /* ignore */ }
-    };
-    document.addEventListener('touchstart', unlock, { once: true, passive: true });
-    document.addEventListener('click',      unlock, { once: true });
+    }
+
+    // Try immediately — works on Android when app is opened via notification tap
+    // (the navigation gesture satisfies autoplay policy).
+    wireToLoudspeaker();
+
+    // Fallback: wait for first real user gesture on the page
+    const onGesture = () => { wireToLoudspeaker(); };
+    document.addEventListener('touchstart', onGesture, { passive: true });
+    document.addEventListener('click',      onGesture);
 
     return () => {
-      document.removeEventListener('touchstart', unlock);
-      document.removeEventListener('click',      unlock);
+      document.removeEventListener('touchstart', onGesture);
+      document.removeEventListener('click',      onGesture);
       audioCtxRef.current?.close().catch(() => {});
       audioCtxRef.current = null;
       streamDestRef.current = null;
@@ -81,6 +97,7 @@ export default function TareeqIncomingCall() {
         ringVideoRef.current = null;
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function startRing() {

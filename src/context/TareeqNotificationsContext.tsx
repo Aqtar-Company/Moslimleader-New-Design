@@ -187,6 +187,28 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
     } catch { /* subscription failed — don't show "On" */ }
   }, []);
 
+  // Auto-request push permission on first user gesture when permission is 'default'.
+  // Fires once after login — subsequent opens skip this because permission is no longer 'default'.
+  useEffect(() => {
+    if (!user) return;
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    if (Notification.permission !== 'default') return;
+    let fired = false;
+    const onFirstGesture = async () => {
+      if (fired) return;
+      fired = true;
+      document.removeEventListener('touchstart', onFirstGesture);
+      document.removeEventListener('click', onFirstGesture);
+      await enablePush();
+    };
+    document.addEventListener('touchstart', onFirstGesture, { passive: true });
+    document.addEventListener('click', onFirstGesture);
+    return () => {
+      document.removeEventListener('touchstart', onFirstGesture);
+      document.removeEventListener('click', onFirstGesture);
+    };
+  }, [user, enablePush]);
+
   const disablePush = useCallback(async () => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
     try {

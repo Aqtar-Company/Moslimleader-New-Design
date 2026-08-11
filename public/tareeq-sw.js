@@ -197,10 +197,15 @@ self.addEventListener('push', e => {
     // on Android/iOS even with renotify:true).
     e.waitUntil((async () => {
       // Wake open windows immediately
-      const windowList = await clients.matchAll({ type: 'window' });
+      const windowList = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const hasFocusedWindow = windowList.some(c => c.focused);
       for (const c of windowList) {
         c.postMessage({ type: 'TAREEQ_INCOMING_CALL', callId: data.callId });
       }
+
+      // If the app is already in the foreground, the in-app ring handles audio.
+      // Showing an OS notification on top would cause dual sound (OS chime + Web Audio ring).
+      if (hasFocusedWindow) return;
 
       const baseTag = data.tag ?? `call-${data.callId}`;
 

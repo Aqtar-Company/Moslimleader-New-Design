@@ -1,14 +1,12 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
+import { requirePerm } from '@/lib/permissions';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(req: NextRequest) {
-  const user = await getAuthUser();
-  if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = await requirePerm('support-requests.read');
+  if (denied) return denied;
 
   const { searchParams } = new URL(req.url);
   const status    = searchParams.get('status') ?? undefined;

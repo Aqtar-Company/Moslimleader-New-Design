@@ -48,9 +48,9 @@ const NAV: NavItem[] = [
   { href: '/admin/coupons',           label: 'الكوبونات',         icon: '🎟️', requireAny: ['coupons.read'] },
   { href: '/admin/reviews',           label: 'التقييمات',         icon: '⭐', requireAny: ['reviews.read'] },
   // —— Support system ——
-  { href: '/admin/support-requests',   label: 'طلبات الدعم',        icon: '🤲', superAdminOnly: true },
-  { href: '/admin/sponsored-orders',   label: 'طلبات الرعاية',      icon: '🎁', superAdminOnly: true },
-  { href: '/admin/sponsors',           label: 'الداعمون',           icon: '💛', superAdminOnly: true },
+  { href: '/admin/support-requests',   label: 'طلبات الدعم',        icon: '🤲', requireAny: ['support-requests.read'] },
+  { href: '/admin/sponsored-orders',   label: 'طلبات الرعاية',      icon: '🎁', requireAny: ['support-requests.read'] },
+  { href: '/admin/sponsors',           label: 'الداعمون',           icon: '💛', requireAny: ['sponsors.read'] },
   { href: '/admin/impact-content',     label: 'محتوى التأثير',      icon: '📸', superAdminOnly: true },
   { href: '/admin/support-settings',   label: 'إعدادات الدعم',      icon: '⚙️', superAdminOnly: true },
   // —— Reports ——

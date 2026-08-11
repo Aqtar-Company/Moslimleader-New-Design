@@ -27,6 +27,8 @@ export const PERMISSIONS = [
   'accounting.read', 'accounting.write',
   'ai-assistant.read', 'ai-assistant.write',
   'production-files.read', 'production-files.write',
+  'sponsors.read', 'sponsors.write',
+  'support-requests.read', 'support-requests.write',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -40,4 +42,5 @@ export const PERMISSION_GROUPS: Array<{ label: string; perms: Permission[] }> = 
   { label: 'مالي', perms: ['valuation.read', 'valuation.write', 'accounting.read', 'accounting.write', 'zakat.read', 'zakat.write', 'team.read', 'team.write', 'ip.read', 'ip.write', 'partners.read', 'partners.write'] },
   { label: 'مساعدات الذكاء الاصطناعي', perms: ['ai-assistant.read', 'ai-assistant.write'] },
   { label: 'الموردون والإنتاج', perms: ['suppliers.read', 'suppliers.write', 'production.read', 'production.write', 'production-files.read', 'production-files.write'] },
+  { label: 'الدعم والرعاية', perms: ['sponsors.read', 'sponsors.write', 'support-requests.read', 'support-requests.write'] },
 ];

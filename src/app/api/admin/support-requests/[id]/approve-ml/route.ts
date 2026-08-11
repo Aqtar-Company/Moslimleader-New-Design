@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
+import { requirePerm } from '@/lib/permissions';
 import { getAuthUser } from '@/lib/jwt';
 import { approveMLSupport } from '@/lib/support-system';
 
@@ -8,10 +9,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } },
 ) {
+  const denied = await requirePerm('support-requests.write');
+  if (denied) return denied;
   const user = await getAuthUser();
-  if (!user || user.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
 
   const body = await req.json();
   const { mode, percent, amount, customerPays } = body;

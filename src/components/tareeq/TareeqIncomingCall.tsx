@@ -23,17 +23,12 @@ export default function TareeqIncomingCall() {
   const ringRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const ringActiveRef = useRef(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
-  // Pre-created video element for loudspeaker routing — unlocked on first user interaction.
-  // Kept alive for the component lifetime so autoplay policy doesn't block it on ring start.
-  const ringVideoRef = useRef<HTMLVideoElement | null>(null);
+  // StreamDestination permanently wired to the video element from the first gesture.
+  // Kept alive so startRing() never calls vid.play() again (no gesture = earpiece).
   const streamDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const ringVideoRef = useRef<HTMLVideoElement | null>(null);
   const audioUnlockedRef = useRef(false);
 
-  // On mount: create the ring video element and unlock it on first touch/click.
-  // Key insight: we wire AudioContext → MediaStreamDestination → video element ONCE
-  // during the gesture (when play() is allowed), and keep the video playing silently.
-  // startRing() then just connects oscillators to the already-live streamDest —
-  // no second play() call needed, so the loudspeaker route is guaranteed.
   useEffect(() => {
     const ACtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!ACtx) return;
@@ -52,25 +47,23 @@ export default function TareeqIncomingCall() {
       audioUnlockedRef.current = true;
       try {
         const ctx = new ACtx({ latencyHint: 'playback' });
-        // Play a silent buffer to fully unlock the context in this gesture
-        const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
-        const src = ctx.createBufferSource();
-        src.buffer = buf;
-        src.connect(ctx.destination);
-        src.start(0);
+        audioCtxRef.current = ctx;
 
-        // Wire the loudspeaker path: ctx → streamDest → video (keeps playing silence).
-        // Future oscillators connect to streamDest; no new play() call ever needed.
+        // Wire the pipeline inside the gesture: ctx → streamDest → video.
+        // Keep video playing silence permanently — this locks the loudspeaker route
+        // so startRing() can connect oscillators to streamDest without a new gesture.
         const streamDest = ctx.createMediaStreamDestination();
-        vid.srcObject = streamDest.stream;
-        vid.play().catch(() => {});        // plays silence; stays alive in background
-
         streamDestRef.current = streamDest;
-        if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
-          audioCtxRef.current = ctx;
-        } else {
-          ctx.close().catch(() => {});
-        }
+        vid.srcObject = streamDest.stream;
+        vid.play().catch(() => {});
+
+        // Silence node keeps the pipeline alive
+        const silenceOsc = ctx.createOscillator();
+        const silenceGain = ctx.createGain();
+        silenceGain.gain.value = 0;
+        silenceOsc.connect(silenceGain);
+        silenceGain.connect(streamDest);
+        silenceOsc.start();
       } catch { /* ignore */ }
     };
     document.addEventListener('touchstart', unlock, { once: true, passive: true });
@@ -105,8 +98,8 @@ export default function TareeqIncomingCall() {
       ctx.resume().then(() => {
         if (!ringActiveRef.current) return;
 
-        // Prefer the pre-wired loudspeaker path (streamDest → video element, already playing).
-        // Fall back to ctx.destination only if the gesture-unlock never ran.
+        // Prefer the pre-wired loudspeaker pipeline; fall back to earpiece only if
+        // the gesture unlock never fired (e.g. programmatic call arrival before any touch).
         const dest: AudioNode = streamDestRef.current ?? ctx!.destination;
 
         const playBurst = (t: number, freq: number, dur: number) => {
@@ -142,8 +135,7 @@ export default function TareeqIncomingCall() {
   function stopRing() {
     ringActiveRef.current = false;
     if (ringRef.current) { clearInterval(ringRef.current); ringRef.current = null; }
-    // Keep audioCtxRef + streamDestRef + video alive — they stay wired for the next ring.
-    // Oscillators auto-stop (osc.stop was already scheduled); no need to touch the video.
+    // Leave audioCtx + video alive — pipeline stays warm for next ring
   }
 
   // When the app opens from a notification tap, the URL has ?callId=...

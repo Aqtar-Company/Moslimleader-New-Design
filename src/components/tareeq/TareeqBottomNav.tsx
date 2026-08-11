@@ -6,6 +6,7 @@ import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 import { setCameraFile } from '@/lib/tareeq-camera-store';
+import { prewireOutRingPipeline } from '@/lib/tareeq-ring-pipeline';
 import TareeqCallScreen, { CallParty } from './TareeqCallScreen';
 
 /* ─── Nav color ─────────────────────────────────────────────────────────────── */
@@ -567,6 +568,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
   }, []);
 
   async function startCallFromContacts(contact: CallParty, callType: 'audio' | 'video') {
+    prewireOutRingPipeline(); // sync, within gesture frame — locks loudspeaker route
     setShowContacts(false);
     try {
       const res = await fetch('/api/tareeq/calls', {

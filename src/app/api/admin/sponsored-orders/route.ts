@@ -1,16 +1,15 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
+import { requirePerm } from '@/lib/permissions';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { createSponsoredCopies, getOrCreateSponsorForUser } from '@/lib/support-system';
 import { logActionSafe } from '@/lib/audit-log';
 
 export async function GET(req: NextRequest) {
-  const user = await getAuthUser();
-  if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = await requirePerm('support-requests.read');
+  if (denied) return denied;
 
   const { searchParams } = new URL(req.url);
   const page  = Math.max(1, parseInt(searchParams.get('page') ?? '1'));
@@ -35,10 +34,9 @@ export async function GET(req: NextRequest) {
 
 // Admin creates a sponsored order (for large donors who pay offline)
 export async function POST(req: NextRequest) {
+  const denied = await requirePerm('sponsors.write');
+  if (denied) return denied;
   const user = await getAuthUser();
-  if (!user || user.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
 
   const body = await req.json();
   const {

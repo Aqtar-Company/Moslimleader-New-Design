@@ -81,6 +81,10 @@ const PERM_LABELS: Record<Permission, string> = {
   'ai-assistant.write': 'إدارة مساعد الذكاء الاصطناعي والرد على المحادثات',
   'production-files.read': 'عرض ملفات الإنتاج (Google Drive)',
   'production-files.write': 'رفع وحذف ملفات الإنتاج',
+  'sponsors.read': 'عرض الداعمين',
+  'sponsors.write': 'إدارة الداعمين وطلبات الرعاية',
+  'support-requests.read': 'عرض طلبات الدعم',
+  'support-requests.write': 'إدارة وتنفيذ طلبات الدعم',
 };
 
 export default function StaffPage() {

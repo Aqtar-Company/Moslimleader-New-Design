@@ -1,15 +1,14 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
+import { requirePerm } from '@/lib/permissions';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { logActionSafe } from '@/lib/audit-log';
 
 export async function GET(req: NextRequest) {
-  const user = await getAuthUser();
-  if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = await requirePerm('sponsors.read');
+  if (denied) return denied;
 
   const { searchParams } = new URL(req.url);
   const search = searchParams.get('search') ?? undefined;
@@ -43,10 +42,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const denied = await requirePerm('sponsors.write');
+  if (denied) return denied;
   const user = await getAuthUser();
-  if (!user || user.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
 
   const body = await req.json();
   const { name, phone, email, organization, notes, userId } = body;

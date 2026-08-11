@@ -8,92 +8,99 @@ datasource db {
 }
 
 model User {
-  id             String   @id @default(cuid())
-  name           String
-  email          String   @unique
-  passwordHash      String
-  resetToken        String?  @unique
-  resetTokenExpiry  DateTime?
+  id                      String    @id @default(cuid())
+  name                    String
+  email                   String    @unique
+  passwordHash            String
+  resetToken              String?   @unique
+  resetTokenExpiry        DateTime?
   emailVerified           Boolean   @default(false)
   verificationToken       String?   @unique
   verificationTokenExpiry DateTime?
-  phone          String?
-  avatarUrl      String?
-  role           String   @default("customer")
+  phone                   String?
+  avatarUrl               String?
+  role                    String    @default("customer")
   // For role='staff' users: array of permission keys (e.g. ['orders.read',
   // 'inventory.write']). Null/empty = no admin access. Super-admins
   // (role='admin') bypass this and have implicit access to everything.
-  permissions    Json?
+  permissions             Json?
   // Bumped on staff revoke / explicit force-logout. JWT carries the
   // version it was signed with; verifyToken rejects when the User row's
   // current version is higher → forces re-login.
-  tokenVersion   Int      @default(0)
-  lastLoginAt    DateTime?
-  savedAddresses Json?
-  wishlistIds    Json?
-  marketingOptIn Boolean  @default(false)
-  marketingToken String?  @unique
+  tokenVersion            Int       @default(0)
+  lastLoginAt             DateTime?
+  savedAddresses          Json?
+  wishlistIds             Json?
+  marketingOptIn          Boolean   @default(false)
+  marketingToken          String?   @unique
   // Marks the customer as a wholesale dealer (تاجر جملة). Filterable on the
   // customer list and surfaced as a separate count on the valuation page.
-  isWholesale    Boolean  @default(false)
-  loyaltyPoints  Int      @default(0)
-  tareeqLastSeen DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  isWholesale             Boolean   @default(false)
+  loyaltyPoints           Int       @default(0)
+  tareeqLastSeen          DateTime?
+  tareeqSuspended         Boolean   @default(false)
+  tareeqSuspendedAt       DateTime?
+  tareeqSuspendReason     String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
-  orders  Order[]
-  cart    Cart?
-  reviews Review[]
-  bookAccesses BookAccess[]
-  oauthAccounts OAuthAccount[]
-  bookOrders    BookOrder[]
-  devices       BookDevice[]
-  supportRequests   SupportRequest[]  @relation("UserSupportRequests")
-  sponsorProfile    Sponsor?          @relation("UserSponsorProfile")
-  beneficiaryCopies SponsoredCopy[]   @relation("BeneficiaryCopies")
-  customerTransactions CustomerTransaction[]
-  campaignRecipients CampaignRecipient[]
-  wishlistShareLinks WishlistShareLink[]
-  loyaltyTransactions LoyaltyTransaction[]
-  referralRewards    ReferralReward[]
-  returnRequests     ReturnRequest[]
-  children           Child[]
-  tareeqPosts        TareeqPost[]
-  tareeqLikes        TareeqLike[]
-  tareeqComments     TareeqComment[]
-  tareeqBookmarks    TareeqBookmark[]
-  tareeqBookmarkFolders TareeqBookmarkFolder[] @relation("TareeqBmFolders")
+  orders                  Order[]
+  cart                    Cart?
+  reviews                 Review[]
+  bookAccesses            BookAccess[]
+  oauthAccounts           OAuthAccount[]
+  bookOrders              BookOrder[]
+  devices                 BookDevice[]
+  supportRequests         SupportRequest[]         @relation("UserSupportRequests")
+  sponsorProfile          Sponsor?                 @relation("UserSponsorProfile")
+  beneficiaryCopies       SponsoredCopy[]          @relation("BeneficiaryCopies")
+  customerTransactions    CustomerTransaction[]
+  campaignRecipients      CampaignRecipient[]
+  wishlistShareLinks      WishlistShareLink[]
+  loyaltyTransactions     LoyaltyTransaction[]
+  referralRewards         ReferralReward[]
+  returnRequests          ReturnRequest[]
+  children                Child[]
+  tareeqPosts             TareeqPost[]
+  tareeqLikes             TareeqLike[]
+  tareeqComments          TareeqComment[]
+  tareeqBookmarks         TareeqBookmark[]
+  tareeqBookmarkFolders   TareeqBookmarkFolder[]   @relation("TareeqBmFolders")
   tareeqNotifications     TareeqNotification[]     @relation("TareeqNotifRecipient")
   tareeqSentMessages      TareeqMessage[]          @relation("TareeqMsgSender")
   tareeqPushSubscriptions TareeqPushSubscription[] @relation("TareeqPushSubs")
-  tareeqFollowing    TareeqFollow[] @relation("TareeqFollowing")
-  tareeqFollowers    TareeqFollow[] @relation("TareeqFollowers")
-  tareeqReactions    TareeqReaction[]
-  tareeqGroupsCreated  TareeqGroup[]        @relation("TareeqGroupCreator")
-  tareeqGroupMembers   TareeqGroupMember[]  @relation("TareeqGroupMemberships")
-  tareeqGroupMessages  TareeqGroupMessage[] @relation("TareeqGroupMsgSender")
-  tareeqCallsOut       TareeqCall[]         @relation("TareeqCallCaller")
-  tareeqCallsIn        TareeqCall[]         @relation("TareeqCallCallee")
+  tareeqFollowing         TareeqFollow[]           @relation("TareeqFollowing")
+  tareeqFollowers         TareeqFollow[]           @relation("TareeqFollowers")
+  tareeqReactions         TareeqReaction[]
+  tareeqGroupsCreated     TareeqGroup[]            @relation("TareeqGroupCreator")
+  tareeqGroupMembers      TareeqGroupMember[]      @relation("TareeqGroupMemberships")
+  tareeqGroupMessages     TareeqGroupMessage[]     @relation("TareeqGroupMsgSender")
+  tareeqCallsOut          TareeqCall[]             @relation("TareeqCallCaller")
+  tareeqCallsIn           TareeqCall[]             @relation("TareeqCallCallee")
+  tareeqReports           TareeqReport[]           @relation("TareeqUserReports")
+  tareeqReportsFiled      TareeqReport[]           @relation("TareeqReporter")
+  tareeqBans              TareeqBan[]              @relation("TareeqBans")
+  tareeqTickets           TareeqSupportTicket[]    @relation("TareeqTickets")
 
   @@index([role])
   @@index([isWholesale])
 }
 
 model Campaign {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   name            String
-  channel         String   @default("email") // email | whatsapp (placeholder)
-  segmentKey      String   @default("all")   // matches segments in /api/admin/customers
-  segmentFilters  Json?    // { boughtProduct?, notBoughtProduct?, governorate? }
+  channel         String    @default("email") // email | whatsapp (placeholder)
+  segmentKey      String    @default("all") // matches segments in /api/admin/customers
+  segmentFilters  Json? // { boughtProduct?, notBoughtProduct?, governorate? }
   subject         String
-  bodyHtml        String   @db.LongText
-  couponCode      String?  @unique // optional coupon to attach; unique so an order's coupon maps to at most one campaign for conversion attribution
-  status          String   @default("draft") // draft | sending | sent | failed
-  recipientCount  Int      @default(0)
-  sentCount       Int      @default(0)
-  openedCount     Int      @default(0)
-  clickedCount    Int      @default(0)
-  conversionCount Int      @default(0)
+  bodyHtml        String    @db.LongText
+  couponCode      String?   @unique // optional coupon to attach; unique so an order's coupon maps to at most one campaign for conversion attribution
+  status          String    @default("draft") // draft | sending | sent | failed
+  recipientCount  Int       @default(0)
+  sentCount       Int       @default(0)
+  openedCount     Int       @default(0)
+  clickedCount    Int       @default(0)
+  conversionCount Int       @default(0)
   startedAt       DateTime?
   finishedAt      DateTime?
   // Attribution: which admin/staff created the campaign.
@@ -103,34 +110,35 @@ model Campaign {
   // is derived from it at send time via renderPlainTextEmail() so the
   // assistant doesn't have to write HTML. Legacy campaigns whose
   // bodyText is null still send via the legacy bodyHtml path.
-  bodyText        String?  @db.LongText
+  bodyText        String?   @db.LongText
   ctaLabel        String?
   ctaUrl          String?
   // dailyLimit recipients per "send-daily-batch" click — defaults to 5
   // so the inbox doesn't look algorithmic. Drops to 0 to disable drip.
-  dailyLimit      Int      @default(5)
+  dailyLimit      Int       @default(5)
   lastBatchAt     DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   recipients CampaignRecipient[]
+
   @@index([status])
 }
 
 model CampaignRecipient {
-  id          String   @id @default(cuid())
-  campaignId  String
-  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  email       String
-  status      String   @default("queued") // queued | sent | failed | bounced
-  errorMessage String? @db.Text
-  sentAt      DateTime?
-  openedAt    DateTime?
-  clickedAt   DateTime?
-  orderId     String?  // attribution if a conversion happened
-  createdAt   DateTime @default(now())
+  id           String    @id @default(cuid())
+  campaignId   String
+  campaign     Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email        String
+  status       String    @default("queued") // queued | sent | failed | bounced
+  errorMessage String?   @db.Text
+  sentAt       DateTime?
+  openedAt     DateTime?
+  clickedAt    DateTime?
+  orderId      String? // attribution if a conversion happened
+  createdAt    DateTime  @default(now())
 
   @@unique([campaignId, userId])
   @@index([campaignId])
@@ -158,7 +166,7 @@ model Product {
   images             Json
   inStock            Boolean  @default(true)
   stock              Int      @default(500)
-  variantStocks      Json?    // { "0": 250, "1": 250 } — per-variant stock by index. Total `stock` = sum.
+  variantStocks      Json? // { "0": 250, "1": 250 } — per-variant stock by index. Total `stock` = sum.
   featured           Boolean  @default(false)
   videos             Json?
   videoUrl           String?
@@ -171,15 +179,15 @@ model Product {
   // Optional age range — used by the FB AI assistant to filter the
   // catalogue to age-appropriate items when a buyer says "my kid
   // is 5". Products without these still appear under "all ages".
-  minAge       Int?
-  maxAge       Int?
-  ageCategory  String?   // 'toddler' | 'preschool' | 'primary' | 'tween' | 'teen'
+  minAge             Int?
+  maxAge             Int?
+  ageCategory        String? // 'toddler' | 'preschool' | 'primary' | 'tween' | 'teen'
   // ageGroups replaces minAge/maxAge for admin-created products.
   // Array of group IDs: '4-7' | '8-13' | '14-16' | '17-22' | 'parents'
-  ageGroups    Json?
-  gender       String?   // 'male' | 'female' | 'both'
-  salesCount   Int       @default(0)
-  reviewCount  Int       @default(0)
+  ageGroups          Json?
+  gender             String? // 'male' | 'female' | 'both'
+  salesCount         Int     @default(0)
+  reviewCount        Int     @default(0)
   // True when the product needs an adult to use it with the child
   // (board game, craft kit, etc.). Surfaced as a chip on the
   // product card and in Amin's catalogue context, mirroring the
@@ -187,18 +195,18 @@ model Product {
   needsParentalGuide Boolean @default(false)
   // When true, the product is not yet available for purchase.
   // The add-to-cart button is replaced by a "Notify Me" button.
-  comingSoon Boolean @default(false)
+  comingSoon         Boolean @default(false)
 
-  orderItems OrderItem[]
-  cartItems  CartItem[]
-  reviews    Review[]
-  stockMovements StockMovement[]
+  orderItems        OrderItem[]
+  cartItems         CartItem[]
+  reviews           Review[]
+  stockMovements    StockMovement[]
   productionBatches ProductionBatch[]
-  notifyRequests NotifyRequest[]
-  productionFiles ProductionFile[]
-  supportRequests  SupportRequest[] @relation("ProductSupportRequests")
-  sponsoredOrders  SponsoredOrder[] @relation("ProductSponsoredOrders")
-  sponsoredCopies  SponsoredCopy[]  @relation("ProductSponsoredCopies")
+  notifyRequests    NotifyRequest[]
+  productionFiles   ProductionFile[]
+  supportRequests   SupportRequest[]  @relation("ProductSupportRequests")
+  sponsoredOrders   SponsoredOrder[]  @relation("ProductSponsoredOrders")
+  sponsoredCopies   SponsoredCopy[]   @relation("ProductSponsoredCopies")
 
   @@index([source])
   @@index([inStock])
@@ -209,15 +217,15 @@ model Product {
 // Stores requests from users who want to be notified when a coming-soon
 // product becomes available. Supports email and WhatsApp contact methods.
 model NotifyRequest {
-  id          String    @id @default(cuid())
-  productId   String
-  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  name        String?
-  email       String?
-  phone       String?   // WhatsApp number
-  notified    Boolean   @default(false)
-  notifiedAt  DateTime?
-  createdAt   DateTime  @default(now())
+  id         String    @id @default(cuid())
+  productId  String
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name       String?
+  email      String?
+  phone      String? // WhatsApp number
+  notified   Boolean   @default(false)
+  notifiedAt DateTime?
+  createdAt  DateTime  @default(now())
 
   @@index([productId])
   @@index([notified])
@@ -227,19 +235,19 @@ model NotifyRequest {
 // transaction as the corresponding Product update so the log is always
 // in sync with the actual stock figures.
 model StockMovement {
-  id                  String   @id @default(cuid())
-  productId           String
-  variantIndex        Int?     // null when product has no variants
-  delta               Int      // negative for decrement, positive for restore
-  reason              String   // order_created | order_cancelled | order_uncancelled | manual_adjustment
-  orderId             String?
-  adminId             String?
-  stockBefore         Int
-  stockAfter          Int
-  variantStockBefore  Int?
-  variantStockAfter   Int?
-  note                String?  @db.Text
-  createdAt           DateTime @default(now())
+  id                 String   @id @default(cuid())
+  productId          String
+  variantIndex       Int? // null when product has no variants
+  delta              Int // negative for decrement, positive for restore
+  reason             String // order_created | order_cancelled | order_uncancelled | manual_adjustment
+  orderId            String?
+  adminId            String?
+  stockBefore        Int
+  stockAfter         Int
+  variantStockBefore Int?
+  variantStockAfter  Int?
+  note               String?  @db.Text
+  createdAt          DateTime @default(now())
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
@@ -253,17 +261,18 @@ model StockMovement {
 // computed at read-time as SUM(invoice) - SUM(payment) - SUM(credit-note).
 // Soft-delete via isActive — hard delete is blocked by the FK on transactions.
 model Supplier {
-  id           String   @id @default(cuid())
-  name         String   @unique
-  type         String   // 'paper' | 'supervision' | 'manufacturing' | 'other'
+  id           String                @id @default(cuid())
+  name         String                @unique
+  type         String // 'paper' | 'supervision' | 'manufacturing' | 'other'
   contactPhone String?
   contactEmail String?
-  notes        String?  @db.Text
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  notes        String?               @db.Text
+  isActive     Boolean               @default(true)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
   transactions SupplierTransaction[]
   batches      ProductionBatch[]
+
   @@index([type])
   @@index([isActive])
 }
@@ -280,9 +289,10 @@ model SupplierTransaction {
   kind              String
   amount            Float
   description       String?
-  productionBatchId String?  // set when the row was auto-created from a batch
+  productionBatchId String? // set when the row was auto-created from a batch
   createdByUserId   String?
   createdAt         DateTime @default(now())
+
   @@index([supplierId, createdAt])
   @@index([productionBatchId])
 }
@@ -296,12 +306,13 @@ model CustomerTransaction {
   id              String   @id @default(cuid())
   customerId      String
   customer        User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  kind            String   // 'invoice' | 'payment' | 'credit-note'
+  kind            String // 'invoice' | 'payment' | 'credit-note'
   amount          Float
   description     String?  @db.Text
-  orderId         String?  // optional link to the originating Order (for invoice kind)
+  orderId         String? // optional link to the originating Order (for invoice kind)
   createdByUserId String?
   createdAt       DateTime @default(now())
+
   @@index([customerId, createdAt])
   @@index([orderId])
 }
@@ -311,35 +322,36 @@ model CustomerTransaction {
 // All four valuation methods are stored alongside the chosen one so a
 // future audit can see why the admin picked their method.
 model ZakatSnapshot {
-  id                       String   @id @default(cuid())
-  hijriYear                String   @unique // e.g. "1446"
-  hijriDateLabel           String   // "1 ذو الحجة 1446"
+  id                       String              @id @default(cuid())
+  hijriYear                String              @unique // e.g. "1446"
+  hijriDateLabel           String // "1 ذو الحجة 1446"
   gregorianDate            DateTime
-  inventoryValuationMethod String   // 'retail' | 'wholesale' | 'avg-actual' | 'manual'
+  inventoryValuationMethod String // 'retail' | 'wholesale' | 'avg-actual' | 'manual'
   inventoryValueRetail     Float
   inventoryValueWholesale  Float
   inventoryValueAvgActual  Float
   inventoryValueManual     Float?
   inventoryValueUsed       Float
-  cashOnHand               Float    @default(0)
-  receivables              Float    @default(0)
-  liabilities              Float    @default(0)
+  cashOnHand               Float               @default(0)
+  receivables              Float               @default(0)
+  liabilities              Float               @default(0)
   zakatPool                Float
   zakatAmount              Float
   // Gold-based nisab snapshot. Captured at save time so a future audit
   // can see what gold price was used and whether Zakat was due.
-  goldPricePerGram24K      Float?   // EGP per gram of 24K gold at snapshot time
-  goldPriceSource          String?  // 'manual' | 'goldprice.org' | etc.
-  nisabGrams               Float?   @default(85)
-  nisabValue               Float?   // = nisabGrams × goldPricePerGram24K
-  zakatDue                 Boolean? @default(true) // false when pool < nisab
-  excludedBatchIds         Json?    // string[] — batch IDs excluded from this calculation
-  paymentStatus            String   @default("unpaid") // 'unpaid' | 'paid'
+  goldPricePerGram24K      Float? // EGP per gram of 24K gold at snapshot time
+  goldPriceSource          String? // 'manual' | 'goldprice.org' | etc.
+  nisabGrams               Float?              @default(85)
+  nisabValue               Float? // = nisabGrams × goldPricePerGram24K
+  zakatDue                 Boolean?            @default(true) // false when pool < nisab
+  excludedBatchIds         Json? // string[] — batch IDs excluded from this calculation
+  paymentStatus            String              @default("unpaid") // 'unpaid' | 'paid'
   paymentDate              DateTime?
-  notes                    String?  @db.Text
+  notes                    String?             @db.Text
   createdByUserId          String?
-  createdAt                DateTime @default(now())
+  createdAt                DateTime            @default(now())
   items                    ZakatSnapshotItem[]
+
   @@index([gregorianDate])
 }
 
@@ -355,26 +367,28 @@ model ZakatSnapshotItem {
   unitValue       Float
   totalValue      Float
   valuationMethod String
+
   @@index([snapshotId])
 }
 
 // Team / payroll directory.
 model Employee {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   name            String
   role            String
   customRole      String?
   employmentType  String
-  monthlySalary   Float    @default(0)
+  monthlySalary   Float     @default(0)
   startDate       DateTime
   endDate         DateTime?
-  isActive        Boolean  @default(true)
-  notes           String?  @db.Text
+  isActive        Boolean   @default(true)
+  notes           String?   @db.Text
   contactPhone    String?
   contactEmail    String?
   createdByUserId String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
   @@index([isActive])
   @@index([role])
 }
@@ -394,6 +408,7 @@ model RoyaltyAgreement {
   createdByUserId String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+
   @@index([isActive])
 }
 
@@ -412,24 +427,26 @@ model Partner {
   createdByUserId     String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+
   @@index([isActive])
 }
 
 model ProductionBatch {
-  id              String    @id @default(cuid())
-  productId       String
-  product         Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
-  supplierId      String?
-  supplier        Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  variantIndex    Int?
-  quantity        Int
-  unitCost        Float
-  totalCost       Float
-  batchDate       DateTime  @default(now())
-  notes           String?   @db.Text
-  isOpeningBalance Boolean  @default(false)
-  createdByUserId String?
-  createdAt       DateTime  @default(now())
+  id               String    @id @default(cuid())
+  productId        String
+  product          Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  supplierId       String?
+  supplier         Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  variantIndex     Int?
+  quantity         Int
+  unitCost         Float
+  totalCost        Float
+  batchDate        DateTime  @default(now())
+  notes            String?   @db.Text
+  isOpeningBalance Boolean   @default(false)
+  createdByUserId  String?
+  createdAt        DateTime  @default(now())
+
   @@index([productId, batchDate])
   @@index([supplierId])
   @@index([isOpeningBalance])
@@ -455,11 +472,11 @@ model Order {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  items          OrderItem[]
-  shipment       Shipment?
-  returnRequests ReturnRequest[]
+  items            OrderItem[]
+  shipment         Shipment?
+  returnRequests   ReturnRequest[]
   mlSupportAmount  Float?
-  supportRequestId String? @unique
+  supportRequestId String?         @unique
 
   @@index([createdAt])
   @@index([status, createdAt])
@@ -532,15 +549,15 @@ model ShippingRate {
 }
 
 model Coupon {
-  code              String   @id
-  discount          Float
-  isActive          Boolean  @default(true)
-  showBanner        Boolean  @default(false)
-  bannerText        String?
-  bannerColor       String?
-  createdByUserId   String?
+  code               String   @id
+  discount           Float
+  isActive           Boolean  @default(true)
+  showBanner         Boolean  @default(false)
+  bannerText         String?
+  bannerColor        String?
+  createdByUserId    String?
   lastEditedByUserId String?
-  createdAt         DateTime @default(now())
+  createdAt          DateTime @default(now())
 }
 
 model Review {
@@ -581,41 +598,41 @@ model FreeMedia {
 }
 
 model Book {
-  id            String   @id @default(cuid())
-  title         String
-  titleEn       String?
-  description   String   @db.Text
-  descriptionEn String?  @db.Text
-  cover         String   @default("")
-  filePath      String   @default("")
-  totalPages    Int      @default(0)
-  freePages     Int      @default(10)
-  price         Float    @default(0)
-  priceUSD      Float?
-  author        String?
-  authorEn      String?
-  category      String?
-  language      String?  @default("ar")
-  section       String?  @default("books")
-  minAge        Int?
-  maxAge        Int?
-  needsParentalGuide Boolean @default(false)
-  isPublished   Boolean  @default(false)
-  allowQuoteShare   Boolean @default(true)
-  allowFriendShare  Boolean @default(true)
-  friendShareHours  Int     @default(48)
-  enableReferral    Boolean @default(true)
-  referralDiscount  Int     @default(20)
-  enableWatermark   Boolean @default(true)
-  enableForensic    Boolean @default(true)
-  paperProductSlug  String?
-  seriesId          String?
-  series            BookSeries? @relation(fields: [seriesId], references: [id])
-  seriesOrder       Int?
-  bgmUrl            String?
-  promoVideoUrl     String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                 String      @id @default(cuid())
+  title              String
+  titleEn            String?
+  description        String      @db.Text
+  descriptionEn      String?     @db.Text
+  cover              String      @default("")
+  filePath           String      @default("")
+  totalPages         Int         @default(0)
+  freePages          Int         @default(10)
+  price              Float       @default(0)
+  priceUSD           Float?
+  author             String?
+  authorEn           String?
+  category           String?
+  language           String?     @default("ar")
+  section            String?     @default("books")
+  minAge             Int?
+  maxAge             Int?
+  needsParentalGuide Boolean     @default(false)
+  isPublished        Boolean     @default(false)
+  allowQuoteShare    Boolean     @default(true)
+  allowFriendShare   Boolean     @default(true)
+  friendShareHours   Int         @default(48)
+  enableReferral     Boolean     @default(true)
+  referralDiscount   Int         @default(20)
+  enableWatermark    Boolean     @default(true)
+  enableForensic     Boolean     @default(true)
+  paperProductSlug   String?
+  seriesId           String?
+  series             BookSeries? @relation(fields: [seriesId], references: [id])
+  seriesOrder        Int?
+  bgmUrl             String?
+  promoVideoUrl      String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
 
   accesses   BookAccess[]
   shareLinks BookShareLink[]
@@ -623,22 +640,22 @@ model Book {
   accessLogs BookAccessLog[]
 }
 
-
 model BookSeries {
-  id            String   @id @default(cuid())
-  name          String
-  nameEn        String?
-  slug          String   @unique
-  description   String?  @db.Text
-  descriptionEn String?  @db.Text
-  cover         String?
-  seriesPrice   Float?
+  id             String   @id @default(cuid())
+  name           String
+  nameEn         String?
+  slug           String   @unique
+  description    String?  @db.Text
+  descriptionEn  String?  @db.Text
+  cover          String?
+  seriesPrice    Float?
   seriesPriceUSD Float?
-  language      String?  @default("ar")
-  isPublished   Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  books         Book[]
+  language       String?  @default("ar")
+  isPublished    Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  books          Book[]
+
   @@index([slug])
 }
 
@@ -669,12 +686,12 @@ model BookShareLink {
 }
 
 model OAuthAccount {
-  id           String   @id @default(cuid())
-  provider     String
+  id                String   @id @default(cuid())
+  provider          String
   providerAccountId String
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt    DateTime @default(now())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
 
   @@unique([provider, providerAccountId])
 }
@@ -694,23 +711,25 @@ model BookOrder {
   referrerToken String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
   @@index([userId])
   @@index([bookId])
 }
 
 model BookAccessLog {
-  id          String   @id @default(cuid())
-  bookId      String
-  book        Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  userId      String?
-  ipAddress   String?
-  userAgent   String?  @db.Text
-  country     String?
-  city        String?
-  region      String?
-  latitude    Float?
-  longitude   Float?
-  accessedAt  DateTime @default(now())
+  id         String   @id @default(cuid())
+  bookId     String
+  book       Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  userId     String?
+  ipAddress  String?
+  userAgent  String?  @db.Text
+  country    String?
+  city       String?
+  region     String?
+  latitude   Float?
+  longitude  Float?
+  accessedAt DateTime @default(now())
+
   @@index([bookId])
   @@index([userId])
   @@index([ipAddress])
@@ -725,6 +744,7 @@ model BookDevice {
   ipAddress   String?
   lastSeen    DateTime @default(now())
   createdAt   DateTime @default(now())
+
   @@unique([userId, fingerprint])
   @@index([userId])
 }
@@ -736,6 +756,7 @@ model BookSession {
   ipAddress String?
   startedAt DateTime @default(now())
   lastPing  DateTime @default(now())
+
   @@index([userId, bookId])
   @@index([lastPing])
 }
@@ -784,6 +805,7 @@ model FacebookEvent {
   kidAges         Json?
   intentSignal    String?
   createdAt       DateTime @default(now())
+
   @@index([psid, createdAt])
   @@index([direction, createdAt])
   @@index([kind, createdAt])
@@ -842,14 +864,14 @@ model LoyaltyTransaction {
 
 // ─── Referral Rewards ────────────────────────────────────────────────────────
 model ReferralReward {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   referrerId  String
-  referrer    User      @relation(fields: [referrerId], references: [id], onDelete: Cascade)
-  bookOrderId String    @unique
+  referrer    User     @relation(fields: [referrerId], references: [id], onDelete: Cascade)
+  bookOrderId String   @unique
   discountPct Int
-  couponCode  String?   @unique
-  isUsed      Boolean   @default(false)
-  createdAt   DateTime  @default(now())
+  couponCode  String?  @unique
+  isUsed      Boolean  @default(false)
+  createdAt   DateTime @default(now())
 
   @@index([referrerId])
 }
@@ -894,21 +916,21 @@ model Child {
 // version shown by default. Files are stored only on Google Drive — no local
 // disk copy is kept on the server.
 model ProductionFile {
-  id                String   @id @default(cuid())
-  groupId           String   // stable across all versions of the same file
-  version           Int      @default(1)
-  isLatest          Boolean  @default(true)
-  fileName          String
-  mimeType          String
-  fileSize          Int      // bytes
-  category          String   // 'print-ready' | 'cover' | 'proof' | 'other'
-  productId         String?
-  product           Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
-  driveFileId       String
-  driveWebViewLink  String?
-  notes             String?  @db.Text
-  uploadedByUserId  String?
-  createdAt         DateTime @default(now())
+  id               String   @id @default(cuid())
+  groupId          String // stable across all versions of the same file
+  version          Int      @default(1)
+  isLatest         Boolean  @default(true)
+  fileName         String
+  mimeType         String
+  fileSize         Int // bytes
+  category         String // 'print-ready' | 'cover' | 'proof' | 'other'
+  productId        String?
+  product          Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  driveFileId      String
+  driveWebViewLink String?
+  notes            String?  @db.Text
+  uploadedByUserId String?
+  createdAt        DateTime @default(now())
 
   @@unique([groupId, version])
   @@index([productId])
@@ -924,24 +946,29 @@ model TareeqPost {
   summary      String?          @db.Text
   category     String?
   tags         Json?
-  imageUrl     String?  @db.Text
-  videoUrl     String?  @db.Text
+  imageUrl     String?          @db.Text
+  videoUrl     String?          @db.Text
   userId       String?
   user         User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
   authorName   String           @default("مجهول")
   likeCount    Int              @default(0)
   commentCount Int              @default(0)
   viewCount    Int              @default(0)
+  isHidden     Boolean          @default(false)
+  hiddenBy     String?
+  hiddenReason String?
   likes        TareeqLike[]
   comments     TareeqComment[]
   bookmarks    TareeqBookmark[]
   reactions    TareeqReaction[]
+  reports      TareeqReport[]   @relation("TareeqPostReports")
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 
   @@index([userId])
   @@index([createdAt])
   @@index([category])
+  @@index([isHidden])
 }
 
 model TareeqLike {
@@ -957,13 +984,16 @@ model TareeqLike {
 }
 
 model TareeqComment {
-  id        String     @id @default(cuid())
+  id        String         @id @default(cuid())
   postId    String
-  post      TareeqPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post      TareeqPost     @relation(fields: [postId], references: [id], onDelete: Cascade)
   userId    String
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  content   String     @db.Text
-  createdAt DateTime   @default(now())
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String         @db.Text
+  isHidden  Boolean        @default(false)
+  hiddenBy  String?
+  reports   TareeqReport[] @relation("TareeqCommentReports")
+  createdAt DateTime       @default(now())
 
   @@index([postId])
   @@index([userId])
@@ -1076,7 +1106,7 @@ model TareeqReaction {
   post      TareeqPost @relation(fields: [postId], references: [id], onDelete: Cascade)
   userId    String
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      String     // inspired | thanks | agree | yarabb
+  type      String // inspired | thanks | agree | yarabb
   createdAt DateTime   @default(now())
 
   @@unique([postId, userId])
@@ -1085,18 +1115,18 @@ model TareeqReaction {
 }
 
 model TareeqGroup {
-  id          String               @id @default(cuid())
-  name        String
-  description String?              @db.Text
-  imageUrl    String?              @db.Text
-  createdBy   String
-  creator     User                 @relation("TareeqGroupCreator", fields: [createdBy], references: [id], onDelete: Cascade)
-  members     TareeqGroupMember[]
-  messages    TareeqGroupMessage[]
-  lastMessage String?              @db.Text
+  id            String               @id @default(cuid())
+  name          String
+  description   String?              @db.Text
+  imageUrl      String?              @db.Text
+  createdBy     String
+  creator       User                 @relation("TareeqGroupCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  members       TareeqGroupMember[]
+  messages      TareeqGroupMessage[]
+  lastMessage   String?              @db.Text
   lastMessageAt DateTime?
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
 
   @@index([createdBy])
 }
@@ -1132,21 +1162,21 @@ model TareeqGroupMessage {
 }
 
 model TareeqCall {
-  id          String    @id @default(cuid())
-  callerId    String
-  calleeId    String
-  type        String    @default("audio") // audio | video
-  status      String    @default("ringing") // ringing | active | ended | missed | rejected
-  offer       String?   @db.LongText
-  answer      String?   @db.LongText
-  callerIce   Json?     // ICE candidate array from caller
-  calleeIce   Json?     // ICE candidate array from callee
-  startedAt   DateTime?
-  endedAt     DateTime?
-  createdAt   DateTime  @default(now())
+  id        String    @id @default(cuid())
+  callerId  String
+  calleeId  String
+  type      String    @default("audio") // audio | video
+  status    String    @default("ringing") // ringing | active | ended | missed | rejected
+  offer     String?   @db.LongText
+  answer    String?   @db.LongText
+  callerIce Json? // ICE candidate array from caller
+  calleeIce Json? // ICE candidate array from callee
+  startedAt DateTime?
+  endedAt   DateTime?
+  createdAt DateTime  @default(now())
 
-  caller      User @relation("TareeqCallCaller", fields: [callerId], references: [id], onDelete: Cascade)
-  callee      User @relation("TareeqCallCallee", fields: [calleeId], references: [id], onDelete: Cascade)
+  caller User @relation("TareeqCallCaller", fields: [callerId], references: [id], onDelete: Cascade)
+  callee User @relation("TareeqCallCallee", fields: [calleeId], references: [id], onDelete: Cascade)
 
   @@index([callerId])
   @@index([calleeId])
@@ -1162,55 +1192,55 @@ model SponsoredCopySeq {
 
 // Customer request for price support
 model SupportRequest {
-  id                    String   @id @default(cuid())
-  userId                String
-  user                  User     @relation("UserSupportRequests", fields: [userId], references: [id])
-  productId             String
-  product               Product  @relation("ProductSupportRequests", fields: [productId], references: [id])
-  variantIndex          Int?
-  quantity              Int      @default(1)
+  id           String  @id @default(cuid())
+  userId       String
+  user         User    @relation("UserSupportRequests", fields: [userId], references: [id])
+  productId    String
+  product      Product @relation("ProductSupportRequests", fields: [productId], references: [id])
+  variantIndex Int?
+  quantity     Int     @default(1)
 
   // Reason: student | multiple_children | temp_financial | price_barrier | other
-  reason                String
-  note                  String?  @db.Text
+  reason String
+  note   String? @db.Text
 
   // Price snapshot at request time (never changes)
   snapshotProductPrice  Float
-  snapshotDiscount      Float    @default(0)
+  snapshotDiscount      Float  @default(0)
   snapshotEligiblePrice Float
-  snapshotShipping      Float    @default(0)
-  currency              String   @default("EGP")
+  snapshotShipping      Float  @default(0)
+  currency              String @default("EGP")
 
   // Customer snapshot
-  customerName          String
-  customerPhone         String?
-  customerEmail         String
-  country               String   @default("EG")
+  customerName  String
+  customerPhone String?
+  customerEmail String
+  country       String  @default("EG")
 
   // Status: PENDING | UNDER_REVIEW | APPROVED | REJECTED |
   //         MATCHED_WITH_SPONSORED_COPY | READY_FOR_CHECKOUT | USED | EXPIRED | CANCELLED
-  status                String   @default("PENDING")
+  status String @default("PENDING")
 
   // Admin decision: ML_SUPPORT | SPONSORED_COPY
-  supportType           String?
+  supportType String?
 
   // If ML_SUPPORT approved
-  mlSupportAmount       Float?
-  mlSupportPercent      Float?
-  customerPayAmount     Float?
+  mlSupportAmount   Float?
+  mlSupportPercent  Float?
+  customerPayAmount Float?
 
-  approvedAt            DateTime?
-  expiresAt             DateTime?
-  usedAt                DateTime?
-  rejectedAt            DateTime?
-  rejectionReason       String?
-  reviewedByUserId      String?
+  approvedAt       DateTime?
+  expiresAt        DateTime?
+  usedAt           DateTime?
+  rejectedAt       DateTime?
+  rejectionReason  String?
+  reviewedByUserId String?
 
-  mlAllocation          MuslimLeaderSupportAllocation?
-  assignedCopy          SponsoredCopy?
+  mlAllocation MuslimLeaderSupportAllocation?
+  assignedCopy SponsoredCopy?
 
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([productId])
@@ -1220,43 +1250,43 @@ model SupportRequest {
 
 // ML budget allocation for one approved support request
 model MuslimLeaderSupportAllocation {
-  id                String         @id @default(cuid())
-  supportRequestId  String         @unique
-  supportRequest    SupportRequest @relation(fields: [supportRequestId], references: [id])
+  id               String         @id @default(cuid())
+  supportRequestId String         @unique
+  supportRequest   SupportRequest @relation(fields: [supportRequestId], references: [id])
 
   originalPrice     Float
   supportAmount     Float
   customerPayAmount Float
-  currency          String   @default("EGP")
+  currency          String @default("EGP")
 
   // RESERVED | CONSUMED | RELEASED | EXPIRED
-  status            String   @default("RESERVED")
-  orderId           String?  @unique
+  status  String  @default("RESERVED")
+  orderId String? @unique
 
-  approvedByUserId  String
-  reservedAt        DateTime @default(now())
-  consumedAt        DateTime?
-  releasedAt        DateTime?
+  approvedByUserId String
+  reservedAt       DateTime  @default(now())
+  consumedAt       DateTime?
+  releasedAt       DateTime?
 
-  ledgerEntries     MuslimLeaderSupportLedger[]
+  ledgerEntries MuslimLeaderSupportLedger[]
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status])
 }
 
 // Internal ledger of ML support budget movements
 model MuslimLeaderSupportLedger {
-  id           String                          @id @default(cuid())
+  id           String                         @id @default(cuid())
   // ML_SUPPORT_RESERVED | ML_SUPPORT_CONSUMED | ML_SUPPORT_RELEASED | ML_SUPPORT_ADJUSTMENT
   type         String
   amount       Float
   allocationId String?
-  allocation   MuslimLeaderSupportAllocation?  @relation(fields: [allocationId], references: [id])
+  allocation   MuslimLeaderSupportAllocation? @relation(fields: [allocationId], references: [id])
   description  String?
   actorUserId  String?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime                       @default(now())
 
   @@index([allocationId])
   @@index([type, createdAt])
@@ -1264,18 +1294,18 @@ model MuslimLeaderSupportLedger {
 
 // Sponsor/donor profile
 model Sponsor {
-  id              String         @id @default(cuid())
-  userId          String?        @unique
-  user            User?          @relation("UserSponsorProfile", fields: [userId], references: [id])
+  id              String   @id @default(cuid())
+  userId          String?  @unique
+  user            User?    @relation("UserSponsorProfile", fields: [userId], references: [id])
   name            String
   phone           String?
   email           String?
   organization    String?
-  notes           String?        @db.Text
-  isActive        Boolean        @default(true)
+  notes           String?  @db.Text
+  isActive        Boolean  @default(true)
   createdByUserId String?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   sponsoredOrders SponsoredOrder[]
   copies          SponsoredCopy[]
@@ -1286,40 +1316,40 @@ model Sponsor {
 
 // One purchase event that creates N sponsored copies
 model SponsoredOrder {
-  id              String         @id @default(cuid())
-  sponsorId       String
-  sponsor         Sponsor        @relation(fields: [sponsorId], references: [id])
+  id        String  @id @default(cuid())
+  sponsorId String
+  sponsor   Sponsor @relation(fields: [sponsorId], references: [id])
 
-  productId       String
-  product         Product        @relation("ProductSponsoredOrders", fields: [productId], references: [id])
-  variantIndex    Int?
-  quantity        Int            @default(1)
+  productId    String
+  product      Product @relation("ProductSponsoredOrders", fields: [productId], references: [id])
+  variantIndex Int?
+  quantity     Int     @default(1)
 
-  pricePerCopy    Float
-  totalPaid       Float
-  currency        String         @default("EGP")
+  pricePerCopy Float
+  totalPaid    Float
+  currency     String @default("EGP")
 
   // Donor's local currency (non-EGP donors — SAR, USD, etc.)
-  localCurrency      String?
-  localPricePerCopy  Float?
-  localTotalPaid     Float?
+  localCurrency     String?
+  localPricePerCopy Float?
+  localTotalPaid    Float?
 
   // paypal | bank | admin-entry
-  paymentMethod   String
+  paymentMethod String
   // pending | paid | failed | refunded
-  paymentStatus   String         @default("pending")
-  paypalOrderId   String?        @unique
-  paymentRef      String?
+  paymentStatus String  @default("pending")
+  paypalOrderId String? @unique
+  paymentRef    String?
 
   personalOrderId String?
-  adminNote       String?        @db.Text
+  adminNote       String? @db.Text
   createdByUserId String?
-  policyAgreed    Boolean        @default(false)
+  policyAgreed    Boolean @default(false)
 
-  copies          SponsoredCopy[]
+  copies SponsoredCopy[]
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([sponsorId])
   @@index([productId])
@@ -1328,59 +1358,59 @@ model SponsoredOrder {
 
 // Individual sponsored copy — unique, fully trackable unit
 model SponsoredCopy {
-  id               String          @id @default(cuid())
-  code             String          @unique  // ML-SP-000001
+  id   String @id @default(cuid())
+  code String @unique // ML-SP-000001
 
-  sponsorId        String
-  sponsor          Sponsor         @relation(fields: [sponsorId], references: [id])
+  sponsorId String
+  sponsor   Sponsor @relation(fields: [sponsorId], references: [id])
 
   sponsoredOrderId String
-  sponsoredOrder   SponsoredOrder  @relation(fields: [sponsoredOrderId], references: [id])
+  sponsoredOrder   SponsoredOrder @relation(fields: [sponsoredOrderId], references: [id])
 
-  productId        String
-  product          Product         @relation("ProductSponsoredCopies", fields: [productId], references: [id])
-  variantIndex     Int?
+  productId    String
+  product      Product @relation("ProductSponsoredCopies", fields: [productId], references: [id])
+  variantIndex Int?
 
-  originalPrice    Float
-  paidPrice        Float
-  currency         String          @default("EGP")
+  originalPrice Float
+  paidPrice     Float
+  currency      String @default("EGP")
 
   // AVAILABLE | RESERVED | ASSIGNED | IN_PREPARATION | READY_TO_SHIP |
   // SHIPPED | DELIVERED | CONFIRMED | COMPLETED | CANCELLED | REFUNDED
-  status           String          @default("AVAILABLE")
+  status String @default("AVAILABLE")
 
-  beneficiaryUserId    String?
-  beneficiaryUser      User?           @relation("BeneficiaryCopies", fields: [beneficiaryUserId], references: [id])
-  supportRequestId     String?         @unique
-  supportRequest       SupportRequest? @relation(fields: [supportRequestId], references: [id])
-  beneficiaryOrderId   String?         @unique
+  beneficiaryUserId  String?
+  beneficiaryUser    User?           @relation("BeneficiaryCopies", fields: [beneficiaryUserId], references: [id])
+  supportRequestId   String?         @unique
+  supportRequest     SupportRequest? @relation(fields: [supportRequestId], references: [id])
+  beneficiaryOrderId String?         @unique
 
-  shippingProvider     String?
-  shipmentId           String?
-  trackingNumber       String?
+  shippingProvider String?
+  shipmentId       String?
+  trackingNumber   String?
 
-  purchasedAt          DateTime  @default(now())
-  reservedAt           DateTime?
-  assignedAt           DateTime?
-  preparationStartedAt DateTime?
-  shippedAt            DateTime?
-  deliveredAt          DateTime?
+  purchasedAt            DateTime  @default(now())
+  reservedAt             DateTime?
+  assignedAt             DateTime?
+  preparationStartedAt   DateTime?
+  shippedAt              DateTime?
+  deliveredAt            DateTime?
   beneficiaryConfirmedAt DateTime?
-  completedAt          DateTime?
-  refundedAt           DateTime?
+  completedAt            DateTime?
+  refundedAt             DateTime?
 
-  refundAmount         Float?
-  refundReason         String?   @db.Text
-  refundedByUserId     String?
-  refundPaymentRef     String?
+  refundAmount     Float?
+  refundReason     String? @db.Text
+  refundedByUserId String?
+  refundPaymentRef String?
 
   events         SponsoredCopyEvent[]
   impactMessages BeneficiaryImpactMessage[]
   impactMedia    BeneficiaryImpactMedia[]
   consents       SupportConsent[]
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([sponsorId])
   @@index([productId])
@@ -1451,4 +1481,163 @@ model SupportConsent {
 
   @@unique([copyId, userId, consentType])
   @@index([copyId])
+}
+
+// ─── Tareeq Admin Panel ───────────────────────────────────────────────────────
+
+enum TareeqAdminRole {
+  SUPER_ADMIN
+  MODERATOR
+  SUPPORT
+  SECURITY
+}
+
+model TareeqAdmin {
+  id          String               @id @default(cuid())
+  email       String               @unique
+  password    String
+  name        String
+  role        TareeqAdminRole      @default(MODERATOR)
+  totpSecret  String?
+  totpEnabled Boolean              @default(false)
+  isActive    Boolean              @default(true)
+  lastLoginAt DateTime?
+  lastLoginIp String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  sessions    TareeqAdminSession[]
+  auditLogs   TareeqAuditLog[]
+}
+
+model TareeqAdminSession {
+  id        String      @id @default(cuid())
+  adminId   String
+  admin     TareeqAdmin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  token     String      @unique
+  ip        String?
+  userAgent String?
+  expiresAt DateTime
+  createdAt DateTime    @default(now())
+
+  @@index([adminId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+model TareeqAuditLog {
+  id         String      @id @default(cuid())
+  adminId    String
+  admin      TareeqAdmin @relation(fields: [adminId], references: [id])
+  action     String
+  targetType String?
+  targetId   String?
+  details    Json?
+  ip         String?
+  createdAt  DateTime    @default(now())
+
+  @@index([adminId])
+  @@index([createdAt])
+  @@index([action])
+}
+
+enum TareeqReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
+model TareeqReport {
+  id              String             @id @default(cuid())
+  reporterId      String
+  reporter        User               @relation("TareeqReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetType      String
+  targetId        String
+  targetPostId    String?
+  targetPost      TareeqPost?        @relation("TareeqPostReports", fields: [targetPostId], references: [id], onDelete: SetNull)
+  targetCommentId String?
+  targetComment   TareeqComment?     @relation("TareeqCommentReports", fields: [targetCommentId], references: [id], onDelete: SetNull)
+  targetUserId    String?
+  targetUser      User?              @relation("TareeqUserReports", fields: [targetUserId], references: [id], onDelete: SetNull)
+  reason          String
+  description     String?            @db.Text
+  status          TareeqReportStatus @default(PENDING)
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  resolution      String?
+  createdAt       DateTime           @default(now())
+
+  @@index([status])
+  @@index([reporterId])
+  @@index([targetType])
+  @@index([createdAt])
+}
+
+enum TareeqBanType {
+  TEMPORARY
+  PERMANENT
+  RESTRICTED
+}
+
+model TareeqBan {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation("TareeqBans", fields: [userId], references: [id], onDelete: Cascade)
+  type      TareeqBanType
+  reason    String        @db.Text
+  bannedBy  String
+  expiresAt DateTime?
+  isActive  Boolean       @default(true)
+  liftedBy  String?
+  liftedAt  DateTime?
+  createdAt DateTime      @default(now())
+
+  @@index([userId])
+  @@index([isActive])
+}
+
+model TareeqFeatureFlag {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  label       String
+  description String?
+  enabled     Boolean  @default(true)
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TareeqPlatformSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String   @db.Text
+  label       String
+  description String?
+  type        String   @default("string")
+  updatedBy   String?
+  updatedAt   DateTime @updatedAt
+}
+
+enum TareeqTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model TareeqSupportTicket {
+  id         String             @id @default(cuid())
+  userId     String
+  user       User               @relation("TareeqTickets", fields: [userId], references: [id], onDelete: Cascade)
+  subject    String
+  body       String             @db.Text
+  status     TareeqTicketStatus @default(OPEN)
+  assignedTo String?
+  resolution String?            @db.Text
+  notes      String?            @db.Text
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@index([status])
+  @@index([userId])
 }

@@ -80,8 +80,7 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
   }, []);
 
   // Detect initial push permission.
-  // If OS reports 'granted', verify a subscription actually exists — the user may have
-  // called disablePush() which removes the subscription but leaves the OS permission intact.
+  // Re-runs when user auth resolves so the re-sync POST is sent while authenticated.
   useEffect(() => {
     if (typeof window === 'undefined' || !('Notification' in window)) return;
     const perm = Notification.permission as PushPermission;
@@ -90,8 +89,8 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
     navigator.serviceWorker.ready.then(reg =>
       reg.pushManager.getSubscription().then(sub => {
         setPushPermission(sub ? 'granted' : 'default');
-        // Re-sync active subscription with server on page load
-        if (sub) {
+        // Re-sync active subscription with server — only when user is authenticated
+        if (sub && user) {
           fetch('/api/tareeq/push-subscribe', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -101,7 +100,7 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
         }
       })
     ).catch(() => setPushPermission(perm));
-  }, []);
+  }, [user]);
 
   // Update PWA app-icon badge (Badging API)
   useEffect(() => {

@@ -5,6 +5,7 @@ import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { TareeqNotificationsProvider, useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 import { compressImage } from '@/lib/compress-image';
+import { prewireOutRingPipeline } from '@/lib/tareeq-ring-pipeline';
 import TareeqCallScreen from '@/components/tareeq/TareeqCallScreen';
 import TareeqEmojiPicker from '@/components/tareeq/TareeqEmojiPicker';
 
@@ -480,6 +481,7 @@ function Inner({ conversationId }: { conversationId: string }) {
 
   async function startCall(callType: 'audio' | 'video') {
     if (!otherUser || !user) return;
+    prewireOutRingPipeline(); // sync, within gesture frame — locks loudspeaker route
     try {
       const res = await fetch('/api/tareeq/calls', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',

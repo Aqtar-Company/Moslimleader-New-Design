@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLang } from '@/context/LanguageContext';
+import { consumeOutRingPipeline, releaseOutRingPipeline } from '@/lib/tareeq-ring-pipeline';
 
 const ICE_CONFIG: RTCConfiguration = {
   iceServers: [
@@ -169,14 +170,21 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
 
   function startOutRing() {
     try {
+      // Use the pre-wired loudspeaker pipeline (wired synchronously in the gesture handler
+      // before any awaits — ensures vid.play() ran within the browser's gesture frame).
+      // Fall back to a fresh AudioContext routing to ctx.destination (earpiece) if the
+      // pipeline was never prewired (e.g. autoAnswer from notification tap).
+      const { ctx: prewiredCtx, dest: prewiredDest } = consumeOutRingPipeline();
+
       const ACtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!ACtx) return;
-      const ctx = new ACtx({ latencyHint: 'playback' });
+
+      const ctx = prewiredCtx ?? new ACtx({ latencyHint: 'playback' });
+      const dest: AudioNode = prewiredDest ?? ctx.destination;
+
       ctx.resume().catch(() => {});
       let stopped = false;
       let ringInterval: ReturnType<typeof setInterval> | null = null;
-      let ringVid: HTMLVideoElement | null = null;
-      let dest: AudioNode = ctx.destination;
 
       const playBurst = (t: number, dur: number) => {
         [400, 450].forEach(freq => {
@@ -196,49 +204,24 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
       const ring = () => {
         if (stopped || ctx.state === 'closed') return;
         try {
-          // Schedule 50ms ahead so dest is settled before oscillators fire
           const t = ctx.currentTime + 0.05;
           playBurst(t, 0.4);
           playBurst(t + 0.6, 0.4);
         } catch { /* ctx closed */ }
       };
 
-      // Start ringing — only called after play() settles so dest is correctly set
-      const beginRinging = () => {
-        if (stopped) return;
+      ring();
+      ringInterval = setInterval(() => {
+        if (stopped) { if (ringInterval) clearInterval(ringInterval); return; }
         ring();
-        ringInterval = setInterval(() => { if (stopped) { if (ringInterval) clearInterval(ringInterval); return; } ring(); }, 3000);
-      };
-
-      // Route through a video element for loudspeaker audio path.
-      // Wait for play() to resolve/reject before starting ring so dest is correct.
-      try {
-        const streamDest = ctx.createMediaStreamDestination();
-        ringVid = document.createElement('video');
-        ringVid.setAttribute('playsinline', '');
-        ringVid.setAttribute('webkit-playsinline', '');
-        ringVid.muted = false;
-        ringVid.volume = 1;
-        ringVid.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;top:-9999px;left:-9999px';
-        document.body.appendChild(ringVid);
-        ringVid.srcObject = streamDest.stream;
-        ringVid.play().then(() => {
-          dest = streamDest; // loudspeaker path active
-          beginRinging();
-        }).catch(() => {
-          // play() blocked by autoplay policy — fall back to ctx.destination
-          beginRinging();
-        });
-      } catch {
-        beginRinging();
-      }
+      }, 3000);
 
       outRingRef.current = {
         stop: () => {
           stopped = true;
           if (ringInterval) { clearInterval(ringInterval); ringInterval = null; }
-          ctx.close().catch(() => {});
-          if (ringVid) { ringVid.srcObject = null; ringVid.remove(); ringVid = null; }
+          releaseOutRingPipeline();
+          if (!prewiredCtx) ctx.close().catch(() => {});
         },
       };
     } catch { /* AudioContext not supported */ }

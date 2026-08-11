@@ -6,6 +6,7 @@ import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 import TareeqCallScreen from '@/components/tareeq/TareeqCallScreen';
+import { prewireOutRingPipeline } from '@/lib/tareeq-ring-pipeline';
 
 interface Props {
   onCreateClick: () => void;
@@ -245,6 +246,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
 
   const startDesktopCall = async (callType: 'audio' | 'video') => {
     if (!activeChatConv || callStarting) return;
+    prewireOutRingPipeline(); // sync, within gesture frame — locks loudspeaker route
     setCallStarting(true);
     try {
       const res = await fetch('/api/tareeq/calls', {

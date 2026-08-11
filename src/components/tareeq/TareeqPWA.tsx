@@ -158,25 +158,44 @@ export function TareeqInstallBanner() {
   }
 
   return (
-    <div className="fixed bottom-20 sm:bottom-6 left-4 right-4 sm:hidden z-30 rounded-2xl shadow-2xl shadow-black/40 p-3 flex items-center gap-3" style={{ background: '#0a1020', border: '1px solid rgba(196,154,58,0.25)' }}>
-      <span className="w-10 h-10 rounded-xl overflow-hidden shrink-0" style={{ background: '#0f1f3d' }}>
-        <img src="/Tareeq-small.png" alt="" className="w-full h-full object-cover" />
-      </span>
-      <div className="flex-1 min-w-0">
-        <p className="text-white font-black text-sm">{isRtl ? 'حمّل تطبيق طريق' : 'Install Tareeq'}</p>
-        <p className="text-[11px]" style={{ color: 'var(--tr-gold-dim)' }}>{isRtl ? 'أضفه للشاشة الرئيسية' : 'Add to home screen'}</p>
+    <div
+      className="fixed bottom-20 sm:bottom-6 left-3 right-3 sm:hidden z-30 rounded-2xl"
+      style={{
+        background: 'linear-gradient(135deg, #0d1a35 0%, #0a1228 100%)',
+        border: '1.5px solid rgba(212,168,83,0.55)',
+        boxShadow: '0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(212,168,83,0.12), 0 0 24px rgba(212,168,83,0.10)',
+        padding: '14px 14px 14px 14px',
+      }}
+    >
+      <div className="flex items-center gap-3">
+        <span className="w-12 h-12 rounded-xl overflow-hidden shrink-0" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.4)' }}>
+          <img src="/Tareeq-big.png" alt="" className="w-full h-full object-cover" />
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="font-black text-base" style={{ color: '#ffffff' }}>
+            {isRtl ? 'حمّل تطبيق طريق' : 'Install Tareeq'}
+          </p>
+          <p className="text-xs mt-0.5" style={{ color: 'rgba(212,168,83,0.80)' }}>
+            {isRtl ? 'أضفه للشاشة الرئيسية — يعمل بدون إنترنت' : 'Add to home screen · Works offline'}
+          </p>
+        </div>
+        <button onClick={dismiss} className="shrink-0 p-1.5 rounded-full transition" style={{ color: 'rgba(255,255,255,0.35)' }}>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
       <button
         onClick={install}
-        className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-full transition"
-        style={{ background: 'var(--tr-gold)', color: '#fff' }}
+        className="mt-3 w-full font-bold text-sm py-2.5 rounded-xl transition active:scale-95"
+        style={{
+          background: 'linear-gradient(90deg, #c49a3a 0%, #e0bc5a 50%, #c49a3a 100%)',
+          color: '#0a0e1a',
+          letterSpacing: '0.02em',
+          boxShadow: '0 4px 16px rgba(196,154,58,0.35)',
+        }}
       >
-        {isRtl ? 'تثبيت' : 'Install'}
-      </button>
-      <button onClick={dismiss} className="shrink-0 text-emerald-600 hover:text-emerald-400 transition p-1">
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
+        {isRtl ? '✦ تثبيت التطبيق' : '✦ Install App'}
       </button>
     </div>
   );

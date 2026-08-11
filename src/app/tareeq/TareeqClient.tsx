@@ -550,14 +550,11 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         {/* ━━ CENTER — feed ━━ */}
         <div className="min-w-0" ref={feedTopRef}>
 
-          {/* Sort tabs row — sticky glass strip below the 64px header */}
+          {/* Sort tabs row — scrolls with content, space above clears the fixed header */}
           <div
-            className="sticky z-20 max-w-2xl lg:max-w-none mx-auto ps-4 pe-4 lg:pe-0 py-2 flex items-center justify-between gap-3"
+            className="max-w-2xl lg:max-w-none mx-auto ps-4 pe-4 lg:pe-0 py-2 flex items-center justify-between gap-3"
             style={{
-              top: 64,
-              backdropFilter: 'blur(14px) saturate(160%)',
-              WebkitBackdropFilter: 'blur(14px) saturate(160%)',
-              background: 'var(--tr-glass-strip, rgba(var(--tr-bg-rgb, 255,255,255), 0.75))',
+              marginTop: 72,
               borderBottom: '1px solid var(--tr-border-subtle)',
             }}
           >

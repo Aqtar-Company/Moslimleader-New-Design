@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
-import { authenticator } from 'otplib';
+import { verifySync } from 'otplib';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import {
@@ -45,7 +45,8 @@ export async function POST(req: Request) {
       if (!admin.totpSecret) {
         return Response.json({ error: 'TOTP not configured' }, { status: 500 });
       }
-      const valid = authenticator.verify({ token: totpCode, secret: admin.totpSecret });
+      const result = verifySync({ token: totpCode, secret: admin.totpSecret });
+      const valid = result?.valid ?? false;
       if (!valid) {
         return Response.json({ error: 'Invalid TOTP code' }, { status: 401 });
       }

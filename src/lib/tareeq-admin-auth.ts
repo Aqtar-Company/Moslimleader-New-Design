@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify } from 'jose';
-import { TareeqAdminRole } from '@prisma/client';
+import { Prisma, TareeqAdminRole } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 
 const COOKIE_NAME = 'ta_session';
@@ -110,7 +110,7 @@ export async function logAudit(
         action,
         targetType: opts?.targetType ?? null,
         targetId: opts?.targetId ?? null,
-        details: opts?.details ?? undefined,
+        details: opts?.details ? (opts.details as Prisma.InputJsonValue) : undefined,
         ip: opts?.ip ?? null,
       },
     });

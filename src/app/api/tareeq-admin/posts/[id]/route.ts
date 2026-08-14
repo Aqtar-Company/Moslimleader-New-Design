@@ -9,8 +9,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } },
 ) {
-  const admin = await requireAdmin(request);
-  if (!admin) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    await requireAdmin(request);
+  } catch (e) {
+    return e as Response;
+  }
 
   const post = await prisma.tareeqPost.findUnique({
     where: { id: params.id },
@@ -32,7 +35,7 @@ export async function GET(
 
   if (!post) return Response.json({ error: 'Post not found' }, { status: 404 });
 
-  return Response.json({ post });
+  return Response.json({ ok: true, post });
 }
 
 // PATCH /api/tareeq-admin/posts/[id]
@@ -41,47 +44,60 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } },
 ) {
-  const admin = await requireAdmin(request);
-  if (!admin) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  let admin;
+  try {
+    admin = await requireAdmin(request);
+  } catch (e) {
+    return e as Response;
+  }
 
   const body = await request.json().catch(() => ({}));
   const { action, reason } = body as { action?: string; reason?: string };
 
   if (!action || !['hide', 'unhide', 'delete'].includes(action)) {
-    return Response.json({ error: 'Invalid action' }, { status: 400 });
+    return Response.json({ error: 'Invalid action — must be hide, unhide, or delete' }, { status: 400 });
   }
 
   const existing = await prisma.tareeqPost.findUnique({ where: { id: params.id } });
   if (!existing) return Response.json({ error: 'Post not found' }, { status: 404 });
 
+  const ip = request.headers.get('x-forwarded-for') ?? undefined;
+
   if (action === 'delete') {
     await prisma.tareeqPost.delete({ where: { id: params.id } });
-    await logAudit(admin.id, 'posts.delete', { postId: params.id });
+    await logAudit(admin.id, 'post.delete', {
+      targetType: 'post',
+      targetId: params.id,
+      details: { postId: params.id },
+      ip,
+    });
     return Response.json({ ok: true });
   }
 
   if (action === 'hide') {
-    await prisma.tareeqPost.update({
+    const post = await prisma.tareeqPost.update({
       where: { id: params.id },
-      data: {
-        isHidden: true,
-        hiddenBy: admin.id,
-        hiddenReason: reason ?? null,
-      },
+      data: { isHidden: true, hiddenBy: admin.id, hiddenReason: reason ?? null },
     });
-    await logAudit(admin.id, 'posts.hide', { postId: params.id, reason });
-    return Response.json({ ok: true });
+    await logAudit(admin.id, 'post.hide', {
+      targetType: 'post',
+      targetId: params.id,
+      details: { postId: params.id, reason },
+      ip,
+    });
+    return Response.json({ ok: true, post });
   }
 
   // unhide
-  await prisma.tareeqPost.update({
+  const post = await prisma.tareeqPost.update({
     where: { id: params.id },
-    data: {
-      isHidden: false,
-      hiddenBy: null,
-      hiddenReason: null,
-    },
+    data: { isHidden: false, hiddenBy: null, hiddenReason: null },
   });
-  await logAudit(admin.id, 'posts.unhide', { postId: params.id });
-  return Response.json({ ok: true });
+  await logAudit(admin.id, 'post.unhide', {
+    targetType: 'post',
+    targetId: params.id,
+    details: { postId: params.id },
+    ip,
+  });
+  return Response.json({ ok: true, post });
 }

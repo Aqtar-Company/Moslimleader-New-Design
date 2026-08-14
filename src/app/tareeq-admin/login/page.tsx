@@ -209,6 +209,12 @@ export default function TareeqAdminLogin() {
             >
               {loading ? 'جارٍ التحقق...' : 'تسجيل الدخول'}
             </button>
+            <a
+              href="/tareeq-admin/forgot-password"
+              style={{ textAlign: 'center', color: '#64748b', fontSize: '0.8rem', textDecoration: 'underline', cursor: 'pointer', display: 'block' }}
+            >
+              نسيت كلمة المرور؟
+            </a>
           </form>
         ) : (
           <form onSubmit={handleTotp} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

@@ -75,7 +75,6 @@ export async function POST(req: Request) {
 
     // ── 4. Create session ─────────────────────────────────────────────────────
     const userAgent = req.headers.get('user-agent') ?? undefined;
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown';
     const sessionToken = randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + ADMIN_COOKIE_MAX_AGE * 1000);
 

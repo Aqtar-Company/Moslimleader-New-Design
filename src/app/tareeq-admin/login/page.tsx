@@ -32,7 +32,7 @@ export default function TareeqAdminLogin() {
         router.push('/tareeq-admin/setup-2fa');
         return;
       }
-      if (data.requireTotp) {
+      if (data.needsTotp) {
         setStep('totp');
         return;
       }

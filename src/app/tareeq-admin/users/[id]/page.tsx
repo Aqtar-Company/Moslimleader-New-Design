@@ -157,34 +157,65 @@ function UserDetailContent() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      fetch(`/api/tareeq-admin/users/${userId}`, { credentials: 'include' }).then(r => r.json()),
-      fetch(`/api/tareeq-admin/users/${userId}/posts?limit=5`, { credentials: 'include' }).then(r => r.json()),
-      fetch(`/api/tareeq-admin/users/${userId}/ban-history`, { credentials: 'include' }).then(r => r.json()),
-    ])
-      .then(([ud, pd, bd]) => {
-        setUser(ud.user ?? ud);
-        setPosts(pd.posts ?? []);
-        setBanHistory(bd.history ?? []);
+    fetch(`/api/tareeq-admin/users/${userId}`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => {
+        const raw = d.user ?? d;
+        setUser({
+          id: raw.id,
+          name: raw.name,
+          email: raw.email,
+          avatarUrl: raw.avatarUrl,
+          joinedAt: raw.createdAt,
+          lastSeen: raw.tareeqLastSeen,
+          status: raw.tareeqSuspended ? 'SUSPENDED' : 'ACTIVE',
+          postCount: raw._count?.tareeqPosts ?? 0,
+          commentCount: raw._count?.tareeqComments ?? 0,
+          followerCount: raw._count?.tareeqFollowers ?? 0,
+          suspensionReason: raw.tareeqSuspendReason,
+        });
+        setBanHistory(
+          (raw.tareeqBans ?? []).map((b: Record<string, unknown>) => ({
+            id: b.id,
+            reason: b.reason,
+            type: b.type,
+            createdAt: b.createdAt,
+            adminName: String(b.bannedBy ?? '—'),
+            liftedAt: b.liftedAt,
+          }))
+        );
       })
       .catch(() => setError('تعذّر تحميل بيانات المستخدم'))
       .finally(() => setLoading(false));
   }, [userId]);
 
-  async function doAction(action: string, body?: object) {
+  async function doAction(action: string, extra?: object) {
+    // Map UI action names to API action names
+    const apiAction = action === 'force-logout' ? 'force_logout' : action;
     setActionLoading(action);
     try {
-      const res = await fetch(`/api/tareeq-admin/users/${userId}/${action}`, {
-        method: 'POST',
+      const res = await fetch(`/api/tareeq-admin/users/${userId}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: body ? JSON.stringify(body) : undefined,
+        body: JSON.stringify({ action: apiAction, ...extra }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'خطأ');
       // Refresh user data
       const ud = await fetch(`/api/tareeq-admin/users/${userId}`, { credentials: 'include' }).then(r => r.json());
-      setUser(ud.user ?? ud);
+      const raw = ud.user ?? ud;
+      setUser(prev => prev ? {
+        ...prev,
+        status: raw.tareeqSuspended ? 'SUSPENDED' : 'ACTIVE',
+        suspensionReason: raw.tareeqSuspendReason,
+      } : prev);
+      setBanHistory(
+        (raw.tareeqBans ?? []).map((b: Record<string, unknown>) => ({
+          id: b.id, reason: b.reason, type: b.type, createdAt: b.createdAt,
+          adminName: String(b.bannedBy ?? '—'), liftedAt: b.liftedAt,
+        }))
+      );
     } catch (err) {
       alert(err instanceof Error ? err.message : 'حدث خطأ');
     } finally {
@@ -229,9 +260,9 @@ function UserDetailContent() {
       {modal && (
         <SuspendModal
           type={modal}
-          onConfirm={(reason, days) => {
+          onConfirm={(reason) => {
             setModal(null);
-            doAction('suspend', { type: modal, reason, days });
+            doAction('suspend', { reason });
           }}
           onCancel={() => setModal(null)}
         />

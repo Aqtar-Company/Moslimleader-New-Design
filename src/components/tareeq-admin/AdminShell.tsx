@@ -24,7 +24,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, string[]> = {
   ],
   MODERATOR: [
     'dashboard', 'users.view', 'content.moderate', 'reports.view',
-    'audit.view', 'support.view',
+    'notifications.send', 'support.view',
   ],
   SUPPORT: [
     'dashboard', 'users.view', 'reports.view', 'support.view',

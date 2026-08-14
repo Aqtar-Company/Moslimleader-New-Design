@@ -87,14 +87,14 @@ function UsersContent() {
   const fetchUsers = useCallback(() => {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: '20' });
-    if (search) params.set('search', search);
-    if (statusFilter !== 'ALL') params.set('status', statusFilter);
+    if (search) params.set('q', search);
+    if (statusFilter !== 'ALL') params.set('status', statusFilter.toLowerCase());
 
     fetch(`/api/tareeq-admin/users?${params}`, { credentials: 'include' })
       .then(r => r.json())
       .then(d => {
         setUsers(d.users ?? []);
-        setTotalPages(d.totalPages ?? 1);
+        setTotalPages(d.pages ?? 1);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -109,14 +109,19 @@ function UsersContent() {
 
   async function toggleSuspend(user: User) {
     if (!can('users.view')) return;
-    setActionLoading(user.id);
     const isSuspended = user.status === 'SUSPENDED';
+    if (!isSuspended) {
+      // Suspension needs a reason — navigate to detail page
+      router.push(`/tareeq-admin/users/${user.id}`);
+      return;
+    }
+    setActionLoading(user.id);
     try {
-      await fetch(`/api/tareeq-admin/users/${user.id}/suspend`, {
+      await fetch(`/api/tareeq-admin/users/${user.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ action: isSuspended ? 'unsuspend' : 'suspend' }),
+        body: JSON.stringify({ action: 'unsuspend' }),
       });
       fetchUsers();
     } catch {}

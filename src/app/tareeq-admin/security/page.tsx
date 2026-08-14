@@ -34,12 +34,9 @@ interface ReportRecord {
 }
 
 interface SecurityData {
-  stats: {
-    activeBans: number;
-    pendingReports: number;
-    activeSessions: number;
-  };
-  suspendedUsers?: number;
+  suspendedUsers: number;
+  activeBans: number;
+  activeSessions: number;
   recentBans: BanRecord[];
   recentReports: ReportRecord[];
 }
@@ -184,27 +181,27 @@ export default function SecurityPage() {
               }}
             >
               <StatCard
-                label="المحظورون النشطون"
-                value={data.stats?.activeBans ?? data.suspendedUsers ?? 0}
+                label="الحظر النشط"
+                value={data.activeBans ?? 0}
                 color="#ef4444"
                 icon="🚫"
               />
               <StatCard
                 label="البلاغات المعلقة"
-                value={data.stats?.pendingReports ?? 0}
+                value={data.recentReports?.length ?? 0}
                 color="#f59e0b"
                 icon="⚠️"
               />
               <StatCard
                 label="جلسات المشرفين النشطة"
-                value={data.stats?.activeSessions ?? 0}
+                value={data.activeSessions ?? 0}
                 color="#3b82f6"
                 icon="👤"
               />
             </div>
 
             {/* Alert banner if pending reports > 0 */}
-            {(data.stats?.pendingReports ?? 0) > 0 && (
+            {(data.recentReports?.length ?? 0) > 0 && (
               <div
                 style={{
                   background: '#451a03',
@@ -221,7 +218,7 @@ export default function SecurityPage() {
               >
                 <span style={{ fontSize: 20 }}>⚠️</span>
                 <span>
-                  يوجد <strong>{data.stats?.pendingReports}</strong> بلاغ معلق يحتاج مراجعة
+                  يوجد <strong>{data.recentReports?.length}</strong> بلاغ معلق يحتاج مراجعة
                 </span>
               </div>
             )}

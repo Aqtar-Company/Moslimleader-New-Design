@@ -3,6 +3,9 @@ export const dynamic = 'force-dynamic';
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin, logAudit } from '@/lib/tareeq-admin-auth';
+import { TareeqAdminRole } from '@prisma/client';
+
+const ALLOWED = [TareeqAdminRole.SUPER_ADMIN, TareeqAdminRole.MODERATOR];
 
 // GET /api/tareeq-admin/posts/[id]
 export async function GET(
@@ -10,7 +13,7 @@ export async function GET(
   { params }: { params: { id: string } },
 ) {
   try {
-    await requireAdmin(request);
+    await requireAdmin(request, ALLOWED);
   } catch (e) {
     return e as Response;
   }
@@ -46,7 +49,7 @@ export async function PATCH(
 ) {
   let admin;
   try {
-    admin = await requireAdmin(request);
+    admin = await requireAdmin(request, ALLOWED);
   } catch (e) {
     return e as Response;
   }

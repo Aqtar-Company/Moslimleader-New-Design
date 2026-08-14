@@ -5,7 +5,7 @@ import AdminShell from '@/components/tareeq-admin/AdminShell';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type ReportStatus = 'PENDING' | 'UNDER_REVIEW' | 'RESOLVED' | 'REJECTED';
+type ReportStatus = 'PENDING' | 'REVIEWED' | 'RESOLVED' | 'DISMISSED';
 
 interface Report {
   id: string;
@@ -53,10 +53,10 @@ const TARGET_LABELS: Record<string, string> = {
 };
 
 const STATUS_TABS: { key: ReportStatus; label: string; icon: string }[] = [
-  { key: 'PENDING',      label: 'معلق',         icon: '🟡' },
-  { key: 'UNDER_REVIEW', label: 'قيد المراجعة', icon: '🔵' },
-  { key: 'RESOLVED',     label: 'محلول',         icon: '✅' },
-  { key: 'REJECTED',     label: 'مرفوض',         icon: '❌' },
+  { key: 'PENDING',   label: 'معلق',         icon: '🟡' },
+  { key: 'REVIEWED',  label: 'قيد المراجعة', icon: '🔵' },
+  { key: 'RESOLVED',  label: 'محلول',         icon: '✅' },
+  { key: 'DISMISSED', label: 'مرفوض',         icon: '❌' },
 ];
 
 // ── Report card ────────────────────────────────────────────────────────────────
@@ -170,7 +170,7 @@ function ReportCard({
           </div>
 
           {/* Actions — only for pending/under_review */}
-          {(report.status === 'PENDING' || report.status === 'UNDER_REVIEW') && (
+          {(report.status === 'PENDING' || report.status === 'REVIEWED') && (
             <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, alignItems: 'flex-start' }}>
               <button
                 onClick={() => onAction(report.id, 'resolve')}
@@ -200,9 +200,9 @@ function ReportCard({
           )}
 
           {/* Resolved info */}
-          {(report.status === 'RESOLVED' || report.status === 'REJECTED') && report.resolvedBy && (
+          {(report.status === 'RESOLVED' || report.status === 'DISMISSED') && report.resolvedBy && (
             <div style={{ fontSize: '0.75rem', color: '#64748b', flexShrink: 0 }}>
-              {report.status === 'RESOLVED' ? '✅' : '❌'} {report.resolvedBy}
+              {report.status === 'RESOLVED' ? '✅' : '🚫'} {report.resolvedBy}
             </div>
           )}
         </div>
@@ -228,8 +228,15 @@ function ReportsContent() {
     fetch(`/api/tareeq-admin/reports?${params}`, { credentials: 'include' })
       .then(r => r.json())
       .then(d => {
-        setReports(d.reports ?? []);
-        setTotalPages(d.totalPages ?? 1);
+        setReports((d.reports ?? []).map((r: Record<string, unknown>) => ({
+          ...r,
+          reporterName: (r.reporter as { name?: string } | null)?.name ?? 'مجهول',
+          targetPreview: (r.targetPost as { content?: string } | null)?.content
+            ?? (r.targetComment as { content?: string } | null)?.content
+            ?? (r.targetUser as { name?: string } | null)?.name
+            ?? '—',
+        })));
+        setTotalPages(d.pages ?? 1);
         if (d.counts) setCounts(d.counts);
       })
       .catch(() => {})
@@ -245,13 +252,14 @@ function ReportsContent() {
   }, [fetchReports]);
 
   async function handleAction(id: string, action: 'resolve' | 'reject') {
+    const status = action === 'resolve' ? 'RESOLVED' : 'DISMISSED';
     setActionLoading(id);
     try {
       await fetch(`/api/tareeq-admin/reports/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ status }),
       });
       // Remove from current list
       setReports(prev => prev.filter(r => r.id !== id));
@@ -259,7 +267,7 @@ function ReportsContent() {
       setCounts(prev => ({
         ...prev,
         [activeTab]: Math.max(0, (prev[activeTab] ?? 1) - 1),
-        [action === 'resolve' ? 'RESOLVED' : 'REJECTED']: (prev[action === 'resolve' ? 'RESOLVED' : 'REJECTED'] ?? 0) + 1,
+        [status]: (prev[status as ReportStatus] ?? 0) + 1,
       }));
     } catch {}
     finally { setActionLoading(null); }

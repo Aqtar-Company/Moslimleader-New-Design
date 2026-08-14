@@ -26,8 +26,9 @@ export default function TicketDetailPage() {
   useEffect(() => {
     fetch(`/api/tareeq-admin/support/${id}`, { credentials: 'include' })
       .then(r => r.json()).then(d => {
-        setTicket(d);
-        setForm({ status: d.status, assignedTo: d.assignedTo ?? '', resolution: d.resolution ?? '', notes: d.notes ?? '' });
+        const t = d.ticket ?? d;
+        setTicket(t);
+        setForm({ status: t.status, assignedTo: t.assignedTo ?? '', resolution: t.resolution ?? '', notes: t.notes ?? '' });
       }).finally(() => setLoading(false));
   }, [id]);
 

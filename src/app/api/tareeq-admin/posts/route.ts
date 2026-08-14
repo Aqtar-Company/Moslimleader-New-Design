@@ -3,12 +3,15 @@ export const dynamic = 'force-dynamic';
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/tareeq-admin-auth';
+import { TareeqAdminRole } from '@prisma/client';
+
+const ALLOWED = [TareeqAdminRole.SUPER_ADMIN, TareeqAdminRole.MODERATOR];
 
 // GET /api/tareeq-admin/posts
 // Params: q, page, limit=20, hidden (all|visible|hidden), category
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin(request);
+    await requireAdmin(request, ALLOWED);
   } catch (e) {
     return e as Response;
   }

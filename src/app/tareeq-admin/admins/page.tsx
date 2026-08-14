@@ -28,7 +28,7 @@ export default function AdminsPage() {
   const load = async () => {
     setLoading(true);
     const r = await fetch('/api/tareeq-admin/roles', { credentials: 'include' });
-    if (r.ok) setAdmins(await r.json());
+    if (r.ok) { const d = await r.json(); setAdmins(d.admins ?? []); }
     setLoading(false);
   };
   useEffect(() => { load(); }, []);

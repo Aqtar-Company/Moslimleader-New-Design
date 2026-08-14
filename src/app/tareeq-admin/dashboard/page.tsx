@@ -120,13 +120,33 @@ export default function DashboardPage() {
   useEffect(() => {
     fetch('/api/tareeq-admin/stats', { credentials: 'include' })
       .then(r => r.json())
-      .then(d => setStats(d.stats ?? d))
+      .then(d => {
+        if (!d.stats) return;
+        const s = d.stats;
+        setStats({
+          totalUsers: s.users?.total ?? 0,
+          activeUsers24h: s.users?.active24h ?? 0,
+          registrationsToday: s.users?.newToday ?? 0,
+          bannedUsers: s.users?.suspended ?? 0,
+          totalPosts: s.posts?.total ?? 0,
+          postsToday: s.posts?.today ?? 0,
+          hiddenPosts: s.posts?.hidden ?? 0,
+          pendingReports: s.reports?.pending ?? 0,
+        });
+      })
       .catch(() => {})
       .finally(() => setStatsLoading(false));
 
     fetch('/api/tareeq-admin/reports?status=PENDING&limit=5', { credentials: 'include' })
       .then(r => r.json())
-      .then(d => setReports(d.reports ?? d ?? []))
+      .then(d => setReports((d.reports ?? []).map((r: Record<string, unknown>) => ({
+        ...r,
+        reporterName: (r.reporter as { name?: string } | null)?.name ?? 'مجهول',
+        targetPreview: (r.targetPost as { content?: string } | null)?.content
+          ?? (r.targetComment as { content?: string } | null)?.content
+          ?? (r.targetUser as { name?: string } | null)?.name
+          ?? '—',
+      }))))
       .catch(() => {})
       .finally(() => setReportsLoading(false));
   }, []);

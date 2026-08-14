@@ -3,11 +3,12 @@ export const dynamic = 'force-dynamic';
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/tareeq-admin-auth';
+import { TareeqAdminRole } from '@prisma/client';
 
 // GET /api/tareeq-admin/health
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin(request);
+    await requireAdmin(request, [TareeqAdminRole.SUPER_ADMIN, TareeqAdminRole.SECURITY]);
   } catch (e) {
     return e as Response;
   }

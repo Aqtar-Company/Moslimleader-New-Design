@@ -4,13 +4,14 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin, logAudit } from '@/lib/tareeq-admin-auth';
 import { sendPushToUser } from '@/lib/tareeq-push';
+import { TareeqAdminRole } from '@prisma/client';
 
 // POST /api/tareeq-admin/notifications/send
 // Body: { title, body, url?, targetType: 'all' | 'user', userId? }
 export async function POST(request: NextRequest) {
   let admin;
   try {
-    admin = await requireAdmin(request);
+    admin = await requireAdmin(request, [TareeqAdminRole.SUPER_ADMIN, TareeqAdminRole.MODERATOR]);
   } catch (e) {
     return e as Response;
   }

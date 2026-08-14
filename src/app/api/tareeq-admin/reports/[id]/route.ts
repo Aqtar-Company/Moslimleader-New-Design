@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin, logAudit } from '@/lib/tareeq-admin-auth';
+import { TareeqAdminRole } from '@prisma/client';
 
 // PATCH /api/tareeq-admin/reports/[id]
 // Body: { status: 'RESOLVED' | 'DISMISSED', resolution? }
@@ -12,7 +13,7 @@ export async function PATCH(
 ) {
   let admin;
   try {
-    admin = await requireAdmin(request);
+    admin = await requireAdmin(request, [TareeqAdminRole.SUPER_ADMIN, TareeqAdminRole.MODERATOR]);
   } catch (e) {
     return e as Response;
   }

@@ -3,14 +3,16 @@ export const dynamic = 'force-dynamic';
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/tareeq-admin-auth';
+import { TareeqAdminRole } from '@prisma/client';
 
+const ALLOWED = [TareeqAdminRole.SUPER_ADMIN, TareeqAdminRole.MODERATOR];
 const VALID_STATUSES = ['PENDING', 'REVIEWED', 'RESOLVED', 'DISMISSED'];
 
 // GET /api/tareeq-admin/reports
 // Params: status (PENDING|REVIEWED|RESOLVED|DISMISSED), page, limit=20
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin(request);
+    await requireAdmin(request, ALLOWED);
   } catch (e) {
     return e as Response;
   }

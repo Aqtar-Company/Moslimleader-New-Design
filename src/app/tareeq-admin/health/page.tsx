@@ -6,7 +6,7 @@ interface HealthData {
   database: 'ok' | 'error';
   timestamp: string;
   uptime: number;
-  memory: { used: number; total: number; percent: number };
+  memory: { used: number; total: number; rss: number };
   pushSubscriptions: number;
   activeCalls: number;
 }
@@ -68,26 +68,32 @@ export default function HealthPage() {
           <div style={{ color: '#f87171', textAlign: 'center', padding: 40 }}>فشل تحميل البيانات</div>
         ) : (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 32 }}>
-              {card('قاعدة البيانات', data.database === 'ok' ? '✓ متصلة' : '✗ خطأ', data.database === 'ok' ? 'ok' : 'error')}
-              {card('وقت التشغيل', fmtUptime(data.uptime), 'ok')}
-              {card('الذاكرة المستخدمة', fmt(data.memory.used), data.memory.percent > 85 ? 'error' : data.memory.percent > 65 ? 'warn' : 'ok', `من ${fmt(data.memory.total)} (${data.memory.percent}%)`)}
-              {card('اشتراكات Push', data.pushSubscriptions.toString(), 'ok')}
-              {card('مكالمات نشطة', data.activeCalls.toString(), data.activeCalls > 50 ? 'warn' : 'ok')}
-            </div>
-
-            {/* Memory bar */}
-            <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 12, padding: 24 }}>
-              <div style={{ fontSize: 14, color: '#94a3b8', marginBottom: 12 }}>استخدام الذاكرة</div>
-              <div style={{ background: '#0f172a', borderRadius: 99, height: 12, overflow: 'hidden' }}>
-                <div style={{ width: `${data.memory.percent}%`, height: '100%', background: data.memory.percent > 85 ? '#ef4444' : data.memory.percent > 65 ? '#f59e0b' : '#22c55e', transition: 'width 0.5s ease', borderRadius: 99 }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: '#64748b' }}>
-                <span>{fmt(data.memory.used)} مستخدم</span>
-                <span>{data.memory.percent}%</span>
-                <span>{fmt(data.memory.total)} إجمالي</span>
-              </div>
-            </div>
+            {(() => {
+              const pct = Math.round((data.memory.used / data.memory.total) * 100);
+              return (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 32 }}>
+                    {card('قاعدة البيانات', data.database === 'ok' ? '✓ متصلة' : '✗ خطأ', data.database === 'ok' ? 'ok' : 'error')}
+                    {card('وقت التشغيل', fmtUptime(data.uptime), 'ok')}
+                    {card('الذاكرة المستخدمة', fmt(data.memory.used), pct > 85 ? 'error' : pct > 65 ? 'warn' : 'ok', `من ${fmt(data.memory.total)} (${pct}%)`)}
+                    {card('اشتراكات Push', data.pushSubscriptions.toString(), 'ok')}
+                    {card('مكالمات نشطة', data.activeCalls.toString(), data.activeCalls > 50 ? 'warn' : 'ok')}
+                  </div>
+                  {/* Memory bar */}
+                  <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 12, padding: 24 }}>
+                    <div style={{ fontSize: 14, color: '#94a3b8', marginBottom: 12 }}>استخدام الذاكرة</div>
+                    <div style={{ background: '#0f172a', borderRadius: 99, height: 12, overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: pct > 85 ? '#ef4444' : pct > 65 ? '#f59e0b' : '#22c55e', transition: 'width 0.5s ease', borderRadius: 99 }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: '#64748b' }}>
+                      <span>{fmt(data.memory.used)} مستخدم</span>
+                      <span>{pct}%</span>
+                      <span>{fmt(data.memory.total)} إجمالي</span>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </>
         )}
       </div>

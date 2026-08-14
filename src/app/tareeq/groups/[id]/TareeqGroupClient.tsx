@@ -623,6 +623,7 @@ function Inner({ groupId }: { groupId: string }) {
 
   // Refs
   const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const latestIdRef = useRef<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -667,7 +668,10 @@ function Inner({ groupId }: { groupId: string }) {
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
   }, [user, router, load, groupId]);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  useEffect(() => {
+    const el = messagesContainerRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+  }, [messages]);
 
   // Mic cleanup on unmount
   useEffect(() => {
@@ -962,7 +966,7 @@ function Inner({ groupId }: { groupId: string }) {
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 max-w-2xl w-full mx-auto" dir="ltr"
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 max-w-2xl w-full mx-auto" dir="ltr"
         style={{ paddingBottom: 80 }}>
         {loading ? (
           <div className="flex justify-center py-16">

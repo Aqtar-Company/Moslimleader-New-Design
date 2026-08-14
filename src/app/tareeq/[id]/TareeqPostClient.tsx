@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
+import { ReportModal } from '@/components/tareeq/TareeqCard';
 import { TAREEQ_CATEGORIES, CATEGORY_COLORS, CATEGORY_ICONS } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import { timeAgo } from '@/lib/tareeq-utils';
@@ -48,6 +49,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   const [copied, setCopied] = useState(false);
   const [commentSort, setCommentSort] = useState<'asc' | 'desc'>('asc');
   const [deleting, setDeleting] = useState(false);
+  const [reportTarget, setReportTarget] = useState<{ type: 'post' | 'comment'; id: string } | null>(null);
 
   // Edit state
   const [editing, setEditing] = useState(false);
@@ -403,7 +405,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
           ) : (
             <div className="space-y-4 mb-6">
               {sortedComments.map((c) => (
-                <div key={c.id} className="flex gap-3">
+                <div key={c.id} className="flex gap-3 group">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
                     {c.user?.name.charAt(0) ?? '?'}
                   </div>
@@ -411,6 +413,18 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-semibold" style={{ color: 'var(--tr-text-primary)' }}>{c.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}</span>
                       <span className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(c.createdAt, isRtl)}</span>
+                      {user && user.id !== c.userId && (
+                        <button
+                          onClick={() => setReportTarget({ type: 'comment', id: c.id })}
+                          title={isRtl ? 'بلاغ' : 'Report'}
+                          className="ms-auto transition opacity-0 group-hover:opacity-100"
+                          style={{ color: 'var(--tr-text-muted)' }}
+                        >
+                          <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18M3 7l9-4 9 4v8l-9 4-9-4V7z" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                     <p className="text-sm leading-relaxed" style={{ color: 'var(--tr-text-secondary)' }}>{c.content}</p>
                   </div>
@@ -451,6 +465,14 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
       </div>
 
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
+      {reportTarget && (
+        <ReportModal
+          targetType={reportTarget.type}
+          targetId={reportTarget.id}
+          isRtl={isRtl}
+          onClose={() => setReportTarget(null)}
+        />
+      )}
     </div>
   );
 }

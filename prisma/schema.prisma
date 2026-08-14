@@ -84,6 +84,8 @@ model User {
 
   @@index([role])
   @@index([isWholesale])
+  @@index([tareeqLastSeen])
+  @@index([tareeqSuspended])
 }
 
 model Campaign {

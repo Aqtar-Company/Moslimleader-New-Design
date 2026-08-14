@@ -376,7 +376,8 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--tr-text-muted)'; }}
           >
             <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18M3 7l9-4 9 4v8l-9 4-9-4V7z" />
+              <circle cx="12" cy="12" r="9" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 9l6 6M15 9l-6 6" />
             </svg>
           </button>
         )}
@@ -681,7 +682,8 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               style={{ color: 'var(--tr-text-muted)' }}
             >
               <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18M3 7l9-4 9 4v8l-9 4-9-4V7z" />
+                <circle cx="12" cy="12" r="9" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 9l6 6M15 9l-6 6" />
               </svg>
             </button>
           )}
@@ -698,8 +700,8 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 }
 
 /* ── Report modal ─────────────────────────────────────────────────── */
-const REPORT_REASONS_AR = ['محتوى مسيء أو مخالف', 'مضايقة أو تحرش', 'معلومات مضللة', 'انتهاك الخصوصية', 'بريد عشوائي', 'أخرى'];
-const REPORT_REASONS_EN = ['Offensive or violating content', 'Harassment', 'Misinformation', 'Privacy violation', 'Spam', 'Other'];
+const REPORT_REASONS_AR = ['محتوى مسيء أو غير لائق', 'سخرية أو مضايقة', 'كراهية أو تمييز', 'عنف أو إيذاء', 'معلومات مضللة', 'احتيال أو انتحال', 'انتهاك الخصوصية', 'محتوى مزعج أو متكرر', 'أخرى'];
+const REPORT_REASONS_EN = ['Offensive or inappropriate content', 'Mockery or harassment', 'Hate or discrimination', 'Violence or harm', 'Misinformation', 'Fraud or impersonation', 'Privacy violation', 'Spam or repetitive content', 'Other'];
 
 export function ReportModal({ targetType, targetId, isRtl, onClose }: {
   targetType: 'post' | 'comment' | 'user';

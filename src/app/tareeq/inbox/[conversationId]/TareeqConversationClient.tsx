@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
@@ -420,10 +420,10 @@ function Inner({ conversationId }: { conversationId: string }) {
     }
   }
 
-  // Scroll to bottom on new messages (but not on read-status updates)
-  useEffect(() => {
+  // Scroll to bottom on new messages — useLayoutEffect fires before paint, no visible flash
+  useLayoutEffect(() => {
     if (shouldScrollRef.current) {
-      scrollToBottom(true);
+      scrollToBottom(false);
       shouldScrollRef.current = false;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

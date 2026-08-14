@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
@@ -668,9 +668,9 @@ function Inner({ groupId }: { groupId: string }) {
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
   }, [user, router, load, groupId]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = messagesContainerRef.current;
-    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   // Mic cleanup on unmount

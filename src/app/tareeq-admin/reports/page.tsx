@@ -14,6 +14,7 @@ interface Report {
   targetType: 'POST' | 'COMMENT' | 'USER';
   targetPreview: string;
   targetId: string;
+  commentPostId?: string | null;
   reason: string;
   description?: string;
   createdAt: string;
@@ -131,7 +132,10 @@ function ReportCard({
             {(() => {
               const href = report.targetType === 'USER'
                 ? `https://moslimleader.com/tareeq/u/${report.targetId}`
-                : `https://moslimleader.com/tareeq/post/${report.targetId}`;
+                : report.targetType === 'COMMENT'
+                  ? (report.commentPostId ? `https://moslimleader.com/tareeq/${report.commentPostId}` : null)
+                  : `https://moslimleader.com/tareeq/${report.targetId}`;
+              if (!href) return null;
               return (
                 <a
                   href={href}
@@ -262,6 +266,7 @@ function ReportsContent() {
             ?? (r.targetComment as { content?: string } | null)?.content
             ?? (r.targetUser as { name?: string } | null)?.name
             ?? '—',
+          commentPostId: (r.targetComment as { postId?: string } | null)?.postId ?? null,
         })));
         setTotalPages(d.pages ?? 1);
         if (d.counts) setCounts(d.counts);

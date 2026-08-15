@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
             content: true,
             isHidden: true,
             createdAt: true,
+            postId: true,
             user: { select: { id: true, name: true } },
           },
         },

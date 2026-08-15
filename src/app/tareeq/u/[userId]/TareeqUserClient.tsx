@@ -14,6 +14,7 @@ interface ProfileUser {
   id: string;
   name: string;
   avatarUrl?: string | null;
+  coverUrl?: string | null;
   createdAt: string;
 }
 
@@ -172,6 +173,11 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarProgress, setAvatarProgress] = useState(0);
 
+  // Cover photo upload
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [coverUrl, setCoverUrl] = useState<string | null | undefined>(profileUser.coverUrl);
+
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -203,6 +209,27 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
       });
     } catch { /* keep preview */ }
     finally { setAvatarUploading(false); e.target.value = ''; }
+  }
+
+  async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCoverUploading(true);
+    const reader = new FileReader();
+    reader.onload = (ev) => setCoverPreview(ev.target?.result as string ?? null);
+    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImage(file, { maxWidth: 1200, maxHeight: 400, quality: 0.85 });
+      const form = new FormData();
+      form.append('file', compressed);
+      const res = await fetch('/api/account/cover', { method: 'POST', credentials: 'include', body: form });
+      if (res.ok) {
+        const data = await res.json();
+        setCoverUrl(data.coverUrl);
+        setCoverPreview(null);
+      }
+    } catch { /* keep preview */ }
+    finally { setCoverUploading(false); e.target.value = ''; }
   }
 
   useEffect(() => {
@@ -630,16 +657,43 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
 
             {/* ── Cover ── */}
             <div
-              className="relative rounded-2xl overflow-hidden"
+              className="relative rounded-2xl overflow-hidden group"
               style={{ height: 240, background: coverGradient }}
             >
-              <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.18)' }} />
-              {/* Decorative circles */}
-              <div className="absolute rounded-full opacity-20" style={{ width: 280, height: 280, bottom: -80, insetInlineEnd: -40, background: 'rgba(255,255,255,0.25)' }} />
-              <div className="absolute rounded-full opacity-15" style={{ width: 180, height: 180, top: -50, insetInlineStart: '30%', background: 'rgba(255,255,255,0.3)' }} />
-              <div className="absolute rounded-full opacity-10" style={{ width: 100, height: 100, top: 20, insetInlineStart: '60%', background: 'rgba(255,255,255,0.4)' }} />
-              {/* Gold star */}
-              <div className="absolute" style={{ bottom: 20, insetInlineStart: 24, fontSize: 28, opacity: 0.6 }}>★</div>
+              {/* Cover image or gradient */}
+              {(coverPreview ?? coverUrl) ? (
+                <img
+                  src={coverPreview ?? coverUrl!}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              ) : (
+                <>
+                  <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.18)' }} />
+                  <div className="absolute rounded-full opacity-20" style={{ width: 280, height: 280, bottom: -80, insetInlineEnd: -40, background: 'rgba(255,255,255,0.25)' }} />
+                  <div className="absolute rounded-full opacity-15" style={{ width: 180, height: 180, top: -50, insetInlineStart: '30%', background: 'rgba(255,255,255,0.3)' }} />
+                  <div className="absolute rounded-full opacity-10" style={{ width: 100, height: 100, top: 20, insetInlineStart: '60%', background: 'rgba(255,255,255,0.4)' }} />
+                  <div className="absolute" style={{ bottom: 20, insetInlineStart: 24, fontSize: 28, opacity: 0.6 }}>★</div>
+                </>
+              )}
+              {/* Cover upload button — own profile only */}
+              {isOwnProfile && (
+                <label
+                  className="absolute bottom-3 end-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full cursor-pointer transition-all opacity-0 group-hover:opacity-100"
+                  style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)', color: '#fff', fontSize: 12, fontWeight: 600 }}
+                >
+                  <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={handleCoverUpload} />
+                  {coverUploading ? (
+                    <div className="w-3.5 h-3.5 border border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                    </svg>
+                  )}
+                  {coverUploading ? (isRtl ? 'جاري الرفع...' : 'Uploading...') : (isRtl ? 'تغيير الغلاف' : 'Change cover')}
+                </label>
+              )}
             </div>
 
             {/* ── Avatar + identity row ── */}
@@ -785,7 +839,28 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
       <div className="lg:hidden">
         {/* Cover */}
         <div className="relative w-full" style={{ height: 110, background: coverGradient }}>
-          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.12)' }} />
+          {(coverPreview ?? coverUrl) ? (
+            <img src={coverPreview ?? coverUrl!} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          ) : (
+            <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.12)' }} />
+          )}
+          {isOwnProfile && (
+            <label
+              className="absolute bottom-2 end-3 flex items-center gap-1 px-2.5 py-1 rounded-full cursor-pointer"
+              style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', color: '#fff', fontSize: 11, fontWeight: 600 }}
+            >
+              <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={handleCoverUpload} />
+              {coverUploading ? (
+                <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                </svg>
+              )}
+              {isRtl ? 'غلاف' : 'Cover'}
+            </label>
+          )}
         </div>
 
         {/* Profile card */}

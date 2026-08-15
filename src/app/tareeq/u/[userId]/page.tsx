@@ -19,7 +19,7 @@ export default async function TareeqUserPage({ params }: Props) {
   const [profileUser, rawPosts, postCount] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, avatarUrl: true, createdAt: true },
+      select: { id: true, name: true, avatarUrl: true, coverUrl: true, createdAt: true },
     }),
     prisma.tareeqPost.findMany({
       where: { userId },
@@ -49,6 +49,7 @@ export default async function TareeqUserPage({ params }: Props) {
 
   const serializedUser = {
     ...profileUser,
+    coverUrl: profileUser.coverUrl ?? null,
     createdAt: profileUser.createdAt.toISOString(),
   };
 

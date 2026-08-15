@@ -99,21 +99,58 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   const [showMsgPanel, setShowMsgPanel] = useState(false);
   const [msgPanelVisible, setMsgPanelVisible] = useState(false);
   const [panelSize, setPanelSize] = useState({ w: 340, h: 520 });
+  const [panelPos, setPanelPos] = useState<{ x: number; y: number } | null>(null);
   const resizingRef = useRef(false);
   const resizeStartRef = useRef({ x: 0, y: 0, w: 340, h: 520 });
+  const panelDraggingRef = useRef(false);
+  const panelDragStartRef = useRef({ mx: 0, my: 0, px: 0, py: 0 });
+
+  function startPanelDrag(e: React.MouseEvent) {
+    if ((e.target as HTMLElement).closest('button, a, input')) return;
+    e.preventDefault();
+    const rect = msgPanelRef.current?.getBoundingClientRect();
+    const startPx = rect ? rect.left : Math.max(0, window.innerWidth - panelSize.w - 16);
+    const startPy = rect ? rect.top : 72;
+    panelDraggingRef.current = true;
+    panelDragStartRef.current = { mx: e.clientX, my: e.clientY, px: startPx, py: startPy };
+    setPanelPos({ x: startPx, y: startPy });
+    function onMove(ev: MouseEvent) {
+      if (!panelDraggingRef.current) return;
+      const dx = ev.clientX - panelDragStartRef.current.mx;
+      const dy = ev.clientY - panelDragStartRef.current.my;
+      setPanelPos({
+        x: Math.max(0, Math.min(window.innerWidth - panelSize.w, panelDragStartRef.current.px + dx)),
+        y: Math.max(0, Math.min(window.innerHeight - 60, panelDragStartRef.current.py + dy)),
+      });
+    }
+    function onUp() {
+      panelDraggingRef.current = false;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
 
   function startPanelResize(e: React.MouseEvent) {
     e.preventDefault();
     resizingRef.current = true;
     resizeStartRef.current = { x: e.clientX, y: e.clientY, w: panelSize.w, h: panelSize.h };
+    const startPos = panelPos ? { ...panelPos } : null;
     function onMove(ev: MouseEvent) {
       if (!resizingRef.current) return;
       const dx = ev.clientX - resizeStartRef.current.x;
       const dy = ev.clientY - resizeStartRef.current.y;
-      // Panel anchors to insetInlineEnd:0 (right in RTL), so drag left = wider
-      const newW = Math.max(280, Math.min(640, resizeStartRef.current.w + (isRtl ? -dx : dx)));
       const newH = Math.max(300, Math.min(700, resizeStartRef.current.h + dy));
-      setPanelSize({ w: newW, h: newH });
+      if (startPos) {
+        // Floating mode: resize from bottom-right corner, keep left/top fixed
+        const newW = Math.max(280, Math.min(640, resizeStartRef.current.w + dx));
+        setPanelSize({ w: newW, h: newH });
+      } else {
+        // Anchored mode: panel anchors insetInlineEnd:0, drag inlineStart = wider
+        const newW = Math.max(280, Math.min(640, resizeStartRef.current.w + (isRtl ? -dx : dx)));
+        setPanelSize({ w: newW, h: newH });
+      }
     }
     function onUp() {
       resizingRef.current = false;
@@ -466,21 +503,24 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
 
   // Desktop header: drops down from button (absolute, positioned by wrapper's relative)
   const msgPanelStyle: React.CSSProperties = {
-    position: 'absolute',
-    top: 'calc(100% + 8px)',
-    insetInlineEnd: 0,
+    ...(panelPos
+      ? { position: 'fixed' as const, left: panelPos.x, top: panelPos.y }
+      : { position: 'absolute' as const, top: 'calc(100% + 8px)', insetInlineEnd: 0 }
+    ),
     width: panelSize.w,
     borderRadius: 16,
     background: 'var(--tr-surface)',
     border: '1px solid var(--tr-border-soft)',
-    boxShadow: '0 8px 32px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.10)',
+    boxShadow: panelPos
+      ? '0 16px 48px rgba(0,0,0,0.32), 0 4px 16px rgba(0,0,0,0.14), 0 0 0 1px rgba(255,255,255,0.04)'
+      : '0 8px 32px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.10)',
     overflow: 'hidden',
     overflowY: 'auto',
-    zIndex: 200,
+    zIndex: panelPos ? 9999 : 200,
     transform: msgPanelVisible ? 'translateY(0)' : 'translateY(10px)',
     opacity: msgPanelVisible ? 1 : 0,
     maxHeight: `min(${panelSize.h}px, calc(100dvh - 100px))`,
-    transition: resizingRef.current ? 'none' : 'opacity 180ms ease, transform 180ms ease',
+    transition: (resizingRef.current || panelDraggingRef.current) ? 'none' : 'opacity 180ms ease, transform 180ms ease',
     display: 'flex',
     flexDirection: 'column',
   };
@@ -876,14 +916,14 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                     <div ref={msgPanelRef} style={msgPanelStyle}>
                       {/* Header */}
                       {msgPanelView === 'list' ? (
-                        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                        <div onMouseDown={startPanelDrag} className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
                           <span className="font-black text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الرسائل' : 'Messages'}</span>
                           <Link href="/tareeq/inbox" onClick={() => setShowMsgPanel(false)} className="text-xs font-semibold" style={{ color: 'var(--tr-gold)' }}>
                             {isRtl ? 'عرض الكل' : 'See all'}
                           </Link>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                        <div onMouseDown={startPanelDrag} className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
                           <button onClick={closeChat} className="w-8 h-8 rounded-full flex items-center justify-center transition" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
@@ -1036,12 +1076,12 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                 {showMsgPanel && (
                   <div ref={msgPanelRef} style={msgPanelStyle} dir={isRtl ? 'rtl' : 'ltr'}>
                     {msgPanelView === 'list' ? (
-                      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                      <div onMouseDown={startPanelDrag} className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
                         <span className="font-black text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الرسائل' : 'Messages'}</span>
                         <Link href="/tareeq/inbox" onClick={() => setShowMsgPanel(false)} className="text-xs font-semibold" style={{ color: 'var(--tr-gold)' }}>{isRtl ? 'عرض الكل' : 'See all'}</Link>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                      <div onMouseDown={startPanelDrag} className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
                         <button onClick={closeChat} className="w-8 h-8 rounded-full flex items-center justify-center transition" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
                         </button>

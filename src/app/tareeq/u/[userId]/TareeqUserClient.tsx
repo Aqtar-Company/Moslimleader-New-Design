@@ -681,7 +681,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
               {/* Cover upload button — own profile only */}
               {isOwnProfile && (
                 <label
-                  className="absolute bottom-3 end-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full cursor-pointer transition-all opacity-0 group-hover:opacity-100"
+                  className="absolute top-3 end-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full cursor-pointer transition-opacity duration-150 opacity-0 group-hover:opacity-100"
                   style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)', color: '#fff', fontSize: 12, fontWeight: 600 }}
                 >
                   <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={handleCoverUpload} />
@@ -861,7 +861,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
           )}
           {isOwnProfile && (
             <label
-              className="absolute bottom-2 end-3 flex items-center gap-1 px-2.5 py-1 rounded-full cursor-pointer"
+              className="absolute top-2 end-3 flex items-center gap-1 px-2.5 py-1 rounded-full cursor-pointer"
               style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', color: '#fff', fontSize: 11, fontWeight: 600 }}
             >
               <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={handleCoverUpload} />

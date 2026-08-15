@@ -839,8 +839,8 @@ function BookmarkPicker({ isRtl, folders, newFolderName, setNewFolderName, creat
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
-      <div className="w-full max-w-md rounded-t-3xl p-6 pb-10" style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)' }} onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
+      <div className="w-full max-w-md rounded-t-3xl p-6 pb-10 sm:rounded-3xl sm:pb-6" style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)' }} onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="font-black text-base" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'احفظ في تصنيف' : 'Save to folder'}</h3>
           <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}>✕</button>

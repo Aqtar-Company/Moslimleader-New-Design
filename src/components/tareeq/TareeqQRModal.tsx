@@ -39,6 +39,7 @@ export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose 
   const [brandedBlob, setBrandedBlob] = useState<Blob | null>(null);
   const [brandedUrl,  setBrandedUrl]  = useState<string | null>(null);
   const [sharing,    setSharing]    = useState(false);
+  const [copied,     setCopied]     = useState(false);
   const profileUrl = `https://moslimleader.com/tareeq/u/${userId}`;
 
   useEffect(() => { setMounted(true); }, []);
@@ -219,6 +220,14 @@ export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose 
     });
   }, [qrReady, generateBrandedCard]);
 
+  async function handleCopyLink() {
+    try {
+      await navigator.clipboard.writeText(profileUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* ignore */ }
+  }
+
   function handleDownload() {
     if (!brandedUrl) return;
     const a = document.createElement('a');
@@ -232,11 +241,11 @@ export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose 
     setSharing(true);
     try {
       if (!navigator.share) return;
-      // Try file share (branded card) first
+      // Try file share (branded card) — no URL so apps show the image, not OG metadata
       if (brandedBlob) {
         const file = new File([brandedBlob], `tareeq-${name}.png`, { type: 'image/png' });
         if (navigator.canShare?.({ files: [file] })) {
-          await navigator.share({ files: [file], title: name, url: profileUrl });
+          await navigator.share({ files: [file], title: name });
           return;
         }
       }
@@ -298,6 +307,23 @@ export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose 
               : (isRtl ? 'مشاركة' : 'Share')}
           </button>
         </div>
+
+        {/* Copy link */}
+        <button
+          onClick={handleCopyLink}
+          style={{ width: '100%', padding: '9px 0', borderRadius: 10, background: copied ? 'rgba(212,168,83,0.15)' : 'var(--tr-overlay)', color: copied ? 'var(--tr-gold)' : 'var(--tr-text-secondary)', fontWeight: 600, fontSize: 13, border: '1px solid var(--tr-border-soft)', cursor: 'pointer', transition: 'background 0.2s, color 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+        >
+          {copied ? (
+            <>{isRtl ? '✓ تم النسخ' : '✓ Copied!'}</>
+          ) : (
+            <>
+              <svg width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+              </svg>
+              {isRtl ? 'نسخ الرابط' : 'Copy Link'}
+            </>
+          )}
+        </button>
 
         <button onClick={onClose} style={{ color: 'var(--tr-text-muted)', fontSize: 13, background: 'none', border: 'none', cursor: 'pointer', paddingTop: 2 }}>
           {isRtl ? 'إغلاق' : 'Close'}

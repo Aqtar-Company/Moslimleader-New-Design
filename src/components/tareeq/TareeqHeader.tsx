@@ -112,7 +112,12 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   const [chatSending, setChatSending] = useState(false);
   const chatPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const chatMsgsRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
+
+  function scrollChatToBottom() {
+    if (chatMsgsRef.current) chatMsgsRef.current.scrollTop = chatMsgsRef.current.scrollHeight;
+  }
   const [msgSearch, setMsgSearch] = useState('');
 
   /* ── Call initiated from desktop chat panel ── */
@@ -213,7 +218,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
     };
     await fetchMsgs();
     setChatLoading(false);
-    setTimeout(() => { chatBottomRef.current?.scrollIntoView({ behavior: 'instant' }); chatInputRef.current?.focus(); }, 50);
+    setTimeout(() => { scrollChatToBottom(); chatInputRef.current?.focus(); }, 50);
     if (chatPollingRef.current) clearInterval(chatPollingRef.current);
     chatPollingRef.current = setInterval(fetchMsgs, 3000);
   }, []);
@@ -238,7 +243,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
       });
       if (res.ok) {
         const d = await res.json();
-        if (d.message) { setChatMessages(prev => [...prev, d.message]); setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50); }
+        if (d.message) { setChatMessages(prev => [...prev, d.message]); setTimeout(() => scrollChatToBottom(), 50); }
       }
     } catch { /* offline */ }
     setChatSending(false);
@@ -300,7 +305,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           });
           if (sendRes.ok) {
             const d = await sendRes.json();
-            if (d.message) { setChatMessages(prev => [...prev, d.message]); setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50); }
+            if (d.message) { setChatMessages(prev => [...prev, d.message]); setTimeout(() => scrollChatToBottom(), 50); }
           } else { setVoiceError(isRtl ? 'فشل الإرسال' : 'Send failed'); setTimeout(() => setVoiceError(''), 3000); }
         } catch { setVoiceError(isRtl ? 'خطأ في الشبكة' : 'Network error'); setTimeout(() => setVoiceError(''), 3000); }
         setVoiceUploading(false);
@@ -910,7 +915,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                       ) : (
                         /* Chat view */
                         <>
-                          <div className="overflow-y-auto flex flex-col gap-1 p-3" style={{ minHeight: 200, maxHeight: 360 }}>
+                          <div ref={chatMsgsRef} className="overflow-y-auto flex flex-col gap-1 p-3" style={{ minHeight: 200, maxHeight: 360 }}>
                             {chatLoading ? (
                               <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} /></div>
                             ) : chatMessages.length === 0 ? (
@@ -1065,7 +1070,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                       </>
                     ) : (
                       <>
-                        <div className="overflow-y-auto flex flex-col gap-1 p-3" style={{ minHeight: 200, maxHeight: 360 }}>
+                        <div ref={chatMsgsRef} className="overflow-y-auto flex flex-col gap-1 p-3" style={{ minHeight: 200, maxHeight: 360 }}>
                           {chatLoading ? (
                             <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} /></div>
                           ) : chatMessages.length === 0 ? (

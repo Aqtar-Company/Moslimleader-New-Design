@@ -175,13 +175,14 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   const chatPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const chatMsgsRef = useRef<HTMLDivElement>(null);
+  const isAtBottomRef = useRef(true);
   const chatInputRef = useRef<HTMLInputElement>(null);
 
   function scrollChatToBottom() {
     if (chatMsgsRef.current) chatMsgsRef.current.scrollTop = 0;
   }
   useEffect(() => {
-    scrollChatToBottom();
+    if (isAtBottomRef.current) scrollChatToBottom();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatMessages]);
 
@@ -310,7 +311,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
       });
       if (res.ok) {
         const d = await res.json();
-        if (d.message) { setChatMessages(prev => [d.message, ...prev]); }
+        if (d.message) { isAtBottomRef.current = true; setChatMessages(prev => [d.message, ...prev]); }
       }
     } catch { /* offline */ }
     setChatSending(false);
@@ -996,7 +997,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                       ) : (
                         /* Chat view */
                         <>
-                          <div ref={chatMsgsRef} className="overflow-y-auto flex flex-col-reverse gap-1 p-3" style={{ minHeight: 200, maxHeight: 360 }}>
+                          <div ref={chatMsgsRef} onScroll={e => { isAtBottomRef.current = e.currentTarget.scrollTop <= 5; }} className="overflow-y-auto flex flex-col-reverse gap-1 p-3" style={{ minHeight: 200, maxHeight: Math.max(200, panelSize.h - 130) }}>
                             {chatLoading ? (
                               <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} /></div>
                             ) : chatMessages.length === 0 ? (

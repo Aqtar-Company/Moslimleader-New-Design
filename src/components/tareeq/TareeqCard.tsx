@@ -39,6 +39,7 @@ interface Props {
   initialLiked?: boolean;
   initialReaction?: string | null;
   initialBookmarked?: boolean;
+  onMobileOpen?: (postId: string, focusComments?: boolean) => void;
 }
 
 const REACTIONS = [
@@ -148,10 +149,17 @@ function ReactionPicker({ currentReaction, onReact, onClose, isRtl, dark = false
   );
 }
 
-export default function TareeqCard({ post, initialLiked = false, initialReaction = null, initialBookmarked = false }: Props) {
+export default function TareeqCard({ post, initialLiked = false, initialReaction = null, initialBookmarked = false, onMobileOpen }: Props) {
   const { isRtl } = useLang();
   const { user } = useAuth();
   const { trackPost } = useSatisfactionCounter();
+
+  function handlePostLinkClick(e: React.MouseEvent, focusComments = false) {
+    if (onMobileOpen && typeof window !== 'undefined' && window.innerWidth < 1024) {
+      e.preventDefault();
+      onMobileOpen(post.id, focusComments);
+    }
+  }
 
   // Track this post for the daily satisfaction counter
   useEffect(() => { trackPost(post.id); }, [post.id, trackPost]);
@@ -542,7 +550,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           aria-label={post.title || post.content.slice(0, 80)}
         >
           {/* Gallery grid — links to post */}
-          <Link href={`/tareeq/${post.id}`} className="block overflow-hidden relative">
+          <Link href={`/tareeq/${post.id}`} className="block overflow-hidden relative" onClick={handlePostLinkClick}>
             {/* Category badge — frosted on mobile (readable over any image), light on desktop */}
             {catLabel && (
               <div className="absolute top-3 start-3 z-10 pointer-events-none">
@@ -582,7 +590,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               </div>
             </div>
             {(post.title || snippet) && (
-              <Link href={`/tareeq/${post.id}`} className="block">
+              <Link href={`/tareeq/${post.id}`} className="block" onClick={handlePostLinkClick}>
                 {post.title && <h3 className="font-bold text-sm leading-snug mb-1 hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{post.title}</h3>}
                 {snippet && <p className="text-sm leading-relaxed line-clamp-3" style={{ color: 'var(--tr-text-secondary)' }}>{snippet}</p>}
               </Link>
@@ -609,7 +617,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               )}
             </div>
 
-            <button onClick={handleCommentToggle} className="flex items-center gap-1.5 text-xs font-semibold transition" style={{ color: showCommentInput ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
+            <button onClick={(e) => { if (onMobileOpen && window.innerWidth < 1024) { onMobileOpen(post.id, true); return; } handleCommentToggle(e); }} className="flex items-center gap-1.5 text-xs font-semibold transition" style={{ color: showCommentInput ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
               <IconComment size={16} />
               {fmt(commentCount)}
             </button>
@@ -656,7 +664,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         >
           {/* Image container: portrait on mobile, landscape on desktop */}
           <div className="relative aspect-[3/4] lg:aspect-auto lg:h-[320px] overflow-hidden">
-            <Link href={`/tareeq/${post.id}`} className="block w-full h-full">
+            <Link href={`/tareeq/${post.id}`} className="block w-full h-full" onClick={handlePostLinkClick}>
               <img src={post.imageUrl!} alt="" className="w-full h-full object-cover" loading="eager" referrerPolicy="no-referrer" />
               {/* Mobile gradient — bottom-heavy overlay */}
               <div className="absolute inset-0 lg:hidden" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.05) 70%, transparent 100%)' }} />
@@ -776,7 +784,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                   <p className="text-xs mt-0.5" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(post.createdAt, isRtl)}</p>
                 </div>
               </div>
-              <Link href={`/tareeq/${post.id}`} className="block">
+              <Link href={`/tareeq/${post.id}`} className="block" onClick={handlePostLinkClick}>
                 {post.title && <h3 className="font-bold text-sm leading-snug mb-1.5 hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{post.title}</h3>}
                 {snippet && <p className="text-sm leading-relaxed line-clamp-3" style={{ color: 'var(--tr-text-secondary)' }}>{snippet}</p>}
               </Link>
@@ -821,7 +829,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           <div style={{ height: 3, background: `linear-gradient(90deg, ${accentHex}, ${accentHex}40)`, borderRadius: '14px 14px 0 0' }} />
         )}
 
-        <Link href={`/tareeq/${post.id}`} className="block px-4 pt-4 pb-3">
+        <Link href={`/tareeq/${post.id}`} className="block px-4 pt-4 pb-3" onClick={handlePostLinkClick}>
           {/* Author row */}
           <div className="flex items-center gap-2.5 mb-3">
             {post.user?.avatarUrl
@@ -914,7 +922,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             )}
           </div>
 
-          <button onClick={handleCommentToggle} className="flex items-center gap-1.5 text-xs font-semibold transition" style={{ color: showCommentInput ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
+          <button onClick={(e) => { if (onMobileOpen && window.innerWidth < 1024) { onMobileOpen(post.id, true); return; } handleCommentToggle(e); }} className="flex items-center gap-1.5 text-xs font-semibold transition" style={{ color: showCommentInput ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
             <IconComment size={16} />
             {fmt(commentCount)}
           </button>

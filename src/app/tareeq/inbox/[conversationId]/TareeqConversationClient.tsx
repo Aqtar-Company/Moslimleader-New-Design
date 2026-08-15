@@ -8,6 +8,7 @@ import { compressImage } from '@/lib/compress-image';
 import { prewireOutRingPipeline } from '@/lib/tareeq-ring-pipeline';
 import TareeqCallScreen from '@/components/tareeq/TareeqCallScreen';
 import TareeqEmojiPicker from '@/components/tareeq/TareeqEmojiPicker';
+import TareeqNotebookPopup from '@/components/tareeq/TareeqNotebookPopup';
 
 interface Message {
   id: string;
@@ -297,6 +298,7 @@ function Inner({ conversationId }: { conversationId: string }) {
   const [micSeconds, setMicSeconds] = useState(0);
   const [micError, setMicError] = useState('');
   const [waveformBars, setWaveformBars] = useState<number[]>(Array(24).fill(0.15));
+  const [showNotebook, setShowNotebook] = useState(false);
   const micTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const micIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -1274,6 +1276,33 @@ function Inner({ conversationId }: { conversationId: string }) {
           offer={activeCall.offer}
           onEnd={() => setActiveCall(null)}
         />
+      )}
+
+      {/* Notebook FAB */}
+      {user && (
+        <>
+          <button
+            onClick={() => setShowNotebook(true)}
+            className="fixed z-40 flex items-center justify-center rounded-2xl shadow-lg transition-all active:scale-95 hover:scale-105"
+            style={{
+              right: 16,
+              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
+              width: 48, height: 48,
+              background: 'var(--tr-surface)',
+              border: '1px solid var(--tr-gold-dim)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.18), 0 0 0 1px var(--tr-gold-dim)',
+              color: 'var(--tr-gold)',
+            }}
+            title={isRtl ? 'دفتري' : 'My Notebook'}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 3.75H7.5A2.25 2.25 0 005.25 6v12A2.25 2.25 0 007.5 20.25h9a2.25 2.25 0 002.25-2.25V6A2.25 2.25 0 0016.5 3.75z"/>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 7.5h7.5M8.25 10.5h7.5M8.25 13.5h4.5"/>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 3.75v3.75a.75.75 0 01-.75.75h-3a.75.75 0 01-.75-.75V3.75"/>
+            </svg>
+          </button>
+          {showNotebook && <TareeqNotebookPopup onClose={() => setShowNotebook(false)} />}
+        </>
       )}
       </div> {/* end chat area */}
     </div>

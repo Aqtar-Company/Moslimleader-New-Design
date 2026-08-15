@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { TareeqNotificationsProvider } from '@/context/TareeqNotificationsContext';
+import TareeqNotebookPopup from '@/components/tareeq/TareeqNotebookPopup';
 
 interface OtherUser { id: string; name: string; avatarUrl?: string | null }
 interface Conversation {
@@ -111,6 +112,7 @@ function Inner() {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
+  const [showNotebook, setShowNotebook] = useState(false);
 
   function loadAll() {
     setLoading(true);
@@ -387,6 +389,33 @@ function Inner() {
           onClose={() => setShowCreateGroup(false)}
           onCreated={(groupId) => { loadAll(); if (groupId) router.push(`/tareeq/groups/${groupId}`); }}
         />
+      )}
+
+      {/* Notebook FAB */}
+      {user && (
+        <>
+          <button
+            onClick={() => setShowNotebook(true)}
+            className="fixed z-40 flex items-center justify-center rounded-2xl shadow-lg transition-all active:scale-95 hover:scale-105"
+            style={{
+              right: 16,
+              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
+              width: 48, height: 48,
+              background: 'var(--tr-surface)',
+              border: '1px solid var(--tr-gold-dim)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.18), 0 0 0 1px var(--tr-gold-dim)',
+              color: 'var(--tr-gold)',
+            }}
+            title={isRtl ? 'دفتري' : 'My Notebook'}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 3.75H7.5A2.25 2.25 0 005.25 6v12A2.25 2.25 0 007.5 20.25h9a2.25 2.25 0 002.25-2.25V6A2.25 2.25 0 0016.5 3.75z"/>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 7.5h7.5M8.25 10.5h7.5M8.25 13.5h4.5"/>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 3.75v3.75a.75.75 0 01-.75.75h-3a.75.75 0 01-.75-.75V3.75"/>
+            </svg>
+          </button>
+          {showNotebook && <TareeqNotebookPopup onClose={() => setShowNotebook(false)} />}
+        </>
       )}
     </div>
   );

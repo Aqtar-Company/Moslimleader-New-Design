@@ -7,6 +7,7 @@ import TareeqCard, { TareeqPostSummary } from '@/components/tareeq/TareeqCard';
 import TareeqCardSkeleton from '@/components/tareeq/TareeqCardSkeleton';
 import TareeqCreateModal from '@/components/tareeq/TareeqCreateModal';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
+import TareeqPostSheet from '@/components/tareeq/TareeqPostSheet';
 import { TAREEQ_CATEGORIES, CATEGORY_ICONS, CATEGORY_ACCENT_HEX } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import TareeqSidebar from '@/components/tareeq/TareeqSidebar';
@@ -75,6 +76,8 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const searchMountedRef = useRef(false);
   const [cameraFile, setCameraFile] = useState<File | null>(null);
   const [isOffline, setIsOffline] = useState(false);
+  const [sheetPostId, setSheetPostId] = useState<string | null>(null);
+  const [sheetFocusComments, setSheetFocusComments] = useState(false);
   const [trendingPosts, setTrendingPosts] = useState<TareeqPostSummary[]>([]);
   const [myGroups, setMyGroups] = useState<MyGroup[]>([]);
   const [bookmarkFolders, setBookmarkFolders] = useState<BookmarkFolder[]>([]);
@@ -365,7 +368,12 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
                 className="transition-all duration-700"
                 style={newPostId === post.id ? { outline: '2px solid var(--tr-gold)', borderRadius: 16, boxShadow: '0 0 24px var(--tr-gold-glow)' } : undefined}
               >
-                <TareeqCard post={post} initialLiked={likedIds.has(post.id)} initialReaction={reactedPosts[post.id] ?? null} />
+                <TareeqCard
+                  post={post}
+                  initialLiked={likedIds.has(post.id)}
+                  initialReaction={reactedPosts[post.id] ?? null}
+                  onMobileOpen={(postId, focusComments) => { setSheetPostId(postId); setSheetFocusComments(!!focusComments); }}
+                />
               </div>
             ))}
           </div>
@@ -832,6 +840,13 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         />
       )}
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
+      {sheetPostId && (
+        <TareeqPostSheet
+          postId={sheetPostId}
+          focusComments={sheetFocusComments}
+          onClose={() => { setSheetPostId(null); setSheetFocusComments(false); }}
+        />
+      )}
     </div>
   );
 }

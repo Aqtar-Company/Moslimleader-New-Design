@@ -67,52 +67,89 @@ export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose 
     const qr = qrCanvasRef.current;
     if (!qr) return null;
 
-    const W = 560, H = 720;
+    const W = 560, H = 780;
     const card = document.createElement('canvas');
     card.width = W; card.height = H;
     const ctx = card.getContext('2d');
     if (!ctx) return null;
 
-    // Background
+    // ── Background ──
     ctx.fillStyle = BG;
     ctx.fillRect(0, 0, W, H);
 
     // Subtle gold glow top-right
-    const grd = ctx.createRadialGradient(W, 0, 0, W, 0, 200);
-    grd.addColorStop(0, 'rgba(212,168,83,0.12)');
+    const grd = ctx.createRadialGradient(W, 0, 0, W, 0, 220);
+    grd.addColorStop(0, 'rgba(212,168,83,0.13)');
     grd.addColorStop(1, 'rgba(212,168,83,0)');
     ctx.fillStyle = grd;
     ctx.fillRect(0, 0, W, H);
 
-    // "طريق" title (right-to-left)
+    // ── Tareeq logo image ──
+    const LOGO = 80;
+    const LX = W / 2 - LOGO / 2;
+    const LY = 30;
+    try {
+      const logoImg = new Image();
+      await new Promise<void>((res, rej) => {
+        logoImg.onload = () => res();
+        logoImg.onerror = () => rej();
+        logoImg.src = '/Tareeq-big.png';
+      });
+      // Rounded-square clip
+      ctx.save();
+      ctx.beginPath();
+      const R = 18;
+      ctx.moveTo(LX + R, LY);
+      ctx.lineTo(LX + LOGO - R, LY);
+      ctx.quadraticCurveTo(LX + LOGO, LY, LX + LOGO, LY + R);
+      ctx.lineTo(LX + LOGO, LY + LOGO - R);
+      ctx.quadraticCurveTo(LX + LOGO, LY + LOGO, LX + LOGO - R, LY + LOGO);
+      ctx.lineTo(LX + R, LY + LOGO);
+      ctx.quadraticCurveTo(LX, LY + LOGO, LX, LY + LOGO - R);
+      ctx.lineTo(LX, LY + R);
+      ctx.quadraticCurveTo(LX, LY, LX + R, LY);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(logoImg, LX, LY, LOGO, LOGO);
+      ctx.restore();
+    } catch {
+      // Fallback: gold star
+      ctx.fillStyle = GOLD;
+      ctx.font = 'bold 54px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('★', W / 2, LY + LOGO / 2);
+    }
+
+    // ── "طريق" text below logo ──
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = GOLD;
-    ctx.font = 'bold 52px Georgia, serif';
-    ctx.fillText('طريق', W / 2, 62);
+    ctx.font = 'bold 40px Georgia, serif';
+    ctx.fillText('طريق', W / 2, LY + LOGO + 28);
 
-    // Star row
-    ctx.fillStyle = 'rgba(212,168,83,0.55)';
-    ctx.font = '16px serif';
-    ctx.fillText('★  ★  ★', W / 2, 104);
+    // Thin gold divider line
+    ctx.strokeStyle = 'rgba(212,168,83,0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(W / 2 - 60, LY + LOGO + 52);
+    ctx.lineTo(W / 2 + 60, LY + LOGO + 52);
+    ctx.stroke();
 
-    // Avatar
-    const AVY = 192, AVR = 52;
+    // ── Avatar ──
+    const AVY = 232, AVR = 52;
 
-    // Gold ring
     ctx.beginPath();
     ctx.arc(W / 2, AVY, AVR + 3.5, 0, Math.PI * 2);
     ctx.strokeStyle = GOLD;
     ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    // Avatar background
     ctx.beginPath();
     ctx.arc(W / 2, AVY, AVR, 0, Math.PI * 2);
     ctx.fillStyle = '#1a2540';
     ctx.fill();
 
-    // Try to draw avatar image
     let imgLoaded = false;
     if (avatarUrl) {
       try {
@@ -129,18 +166,17 @@ export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose 
         ctx.drawImage(img, W / 2 - AVR, AVY - AVR, AVR * 2, AVR * 2);
         ctx.restore();
         imgLoaded = true;
-      } catch { /* fallback to initial */ }
+      } catch { /* fallback */ }
     }
-
     if (!imgLoaded) {
       ctx.fillStyle = GOLD;
-      ctx.font = 'bold 40px sans-serif';
+      ctx.font = 'bold 38px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(name[0] ?? '?', W / 2, AVY);
     }
 
-    // Name (truncate if long)
+    // ── Name ──
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 26px sans-serif';
     ctx.textAlign = 'center';
@@ -150,27 +186,26 @@ export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose 
       displayName = displayName.slice(0, -1);
     }
     if (displayName !== name) displayName += '…';
-    ctx.fillText(displayName, W / 2, 266);
+    ctx.fillText(displayName, W / 2, 304);
 
-    // QR white card
-    const QR = 262, QX = (W - QR) / 2, QY = 306, PAD = 16;
+    // ── QR white card ──
+    const QR = 256, QX = (W - QR) / 2, QY = 340, PAD = 16;
     ctx.fillStyle = '#ffffff';
     fillRoundRect(ctx, QX - PAD, QY - PAD, QR + PAD * 2, QR + PAD * 2, 16);
     ctx.drawImage(qr, QX, QY, QR, QR);
 
-    // Thin gold border around QR card
-    ctx.strokeStyle = 'rgba(212,168,83,0.25)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.roundRect?.(QX - PAD, QY - PAD, QR + PAD * 2, QR + PAD * 2, 16);
-    ctx.stroke();
-
-    // URL at bottom
-    ctx.fillStyle = 'rgba(212,168,83,0.65)';
-    ctx.font = '14px monospace';
+    // ── Footer ──
+    // "مجتمع مسلم ليدر"
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = '13px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('moslimleader.com/tareeq', W / 2, H - 34);
+    ctx.fillText('مجتمع مسلم ليدر', W / 2, H - 44);
+
+    // "moslimleader.com"
+    ctx.fillStyle = 'rgba(212,168,83,0.6)';
+    ctx.font = '12px monospace';
+    ctx.fillText('moslimleader.com', W / 2, H - 24);
 
     return new Promise(resolve => card.toBlob(resolve, 'image/png'));
   }, [avatarUrl, name]);

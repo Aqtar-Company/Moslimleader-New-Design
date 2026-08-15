@@ -1075,7 +1075,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
         <TareeqQRModal
           userId={profileUser.id}
           name={profileUser.name}
-          avatarUrl={avatarPreview ?? profileUser.avatarUrl ?? null}
+          avatarUrl={avatarPreview ?? (isOwnProfile ? (user?.avatarUrl ?? profileUser.avatarUrl) : profileUser.avatarUrl) ?? null}
           isRtl={isRtl}
           onClose={() => setShowQR(false)}
         />

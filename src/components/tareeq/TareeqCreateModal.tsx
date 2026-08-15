@@ -46,8 +46,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     if (mode !== 'media') {
       setTimeout(() => textareaRef.current?.focus(), 80);
     }
-    // Restore draft if no initial content provided
-    if (!initialContent) {
+    // Restore draft only when no initialContent was explicitly provided
+    if (initialContent == null) {
       try {
         const raw = localStorage.getItem(DRAFT_KEY);
         if (raw) {

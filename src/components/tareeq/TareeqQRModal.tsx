@@ -20,7 +20,7 @@ export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose 
   useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (!mounted || !canvasRef.current) return;
     QRCode.toCanvas(canvasRef.current, profileUrl, {
       width: 240,
       margin: 2,
@@ -28,7 +28,7 @@ export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose 
     }).then(() => {
       setDataUrl(canvasRef.current!.toDataURL('image/png'));
     }).catch(() => {});
-  }, [profileUrl]);
+  }, [mounted, profileUrl]);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };

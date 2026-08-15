@@ -805,7 +805,7 @@ function Inner({ conversationId }: { conversationId: string }) {
 
       {/* Chat sub-header */}
       <div
-        className="fixed top-0 left-0 right-0 lg:left-[320px] px-4 py-3 flex items-center gap-3 z-40"
+        className="fixed top-0 left-0 right-0 lg:right-[320px] px-4 py-3 flex items-center gap-3 z-40"
         style={{
           background: 'var(--tr-surface)',
           backdropFilter: 'blur(12px)',
@@ -821,7 +821,7 @@ function Inner({ conversationId }: { conversationId: string }) {
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--tr-text-muted)'; }}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M9 5l7 7-7 7' : 'M15 19l-7-7 7-7'} />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
         {otherUser && (

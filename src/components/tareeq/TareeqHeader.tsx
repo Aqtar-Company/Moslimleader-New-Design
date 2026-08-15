@@ -116,7 +116,6 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   const chatInputRef = useRef<HTMLInputElement>(null);
 
   function scrollChatToBottom() {
-    chatBottomRef.current?.scrollIntoView({ block: 'end' });
     if (chatMsgsRef.current) chatMsgsRef.current.scrollTop = chatMsgsRef.current.scrollHeight;
   }
   const prevChatLenRef = useRef(0);
@@ -444,10 +443,11 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
     overflowY: 'auto',
   };
 
+  // Desktop header: drops down from button (absolute, positioned by wrapper's relative)
   const msgPanelStyle: React.CSSProperties = {
-    position: 'fixed',
-    bottom: 72,
-    left: 16,
+    position: 'absolute',
+    top: 'calc(100% + 8px)',
+    insetInlineEnd: 0,
     width: 340,
     borderRadius: 16,
     background: 'var(--tr-surface)',
@@ -455,7 +455,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
     boxShadow: '0 8px 32px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.10)',
     overflow: 'hidden',
     zIndex: 200,
-    transformOrigin: 'bottom left',
+    transformOrigin: 'top right',
     transform: msgPanelVisible ? 'scaleY(1)' : 'scaleY(0.92)',
     opacity: msgPanelVisible ? 1 : 0,
     maxHeight: 'min(520px, calc(100dvh - 100px))',
@@ -866,7 +866,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                         <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
                           <button onClick={closeChat} className="w-8 h-8 rounded-full flex items-center justify-center transition" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3' : 'M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18'} />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
                             </svg>
                           </button>
                           <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -945,8 +945,8 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                               chatMessages.map(msg => {
                                 const isMine = msg.senderId === user?.id;
                                 return (
-                                  <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                                    <div className="max-w-[80%] px-3 py-2 rounded-2xl text-xs leading-relaxed" style={{
+                                  <div key={msg.id} className={`flex ${isMine ? 'justify-start' : 'justify-end'}`}>
+                                    <div className="max-w-[80%] px-3 py-2 text-xs leading-relaxed" style={{
                                       background: isMine ? 'var(--tr-gold)' : 'var(--tr-overlay)',
                                       color: isMine ? '#fff' : 'var(--tr-text-primary)',
                                       borderRadius: isMine ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
@@ -1115,8 +1115,8 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                             chatMessages.map(msg => {
                               const isMine = msg.senderId === user?.id;
                               return (
-                                <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                                  <div className="max-w-[80%] px-3 py-2 rounded-2xl text-xs leading-relaxed" style={{ background: isMine ? 'var(--tr-gold)' : 'var(--tr-overlay)', color: isMine ? '#fff' : 'var(--tr-text-primary)', borderRadius: isMine ? '18px 18px 4px 18px' : '18px 18px 18px 4px' }}>
+                                <div key={msg.id} className={`flex ${isMine ? 'justify-start' : 'justify-end'}`}>
+                                  <div className="max-w-[80%] px-3 py-2 text-xs leading-relaxed" style={{ background: isMine ? 'var(--tr-gold)' : 'var(--tr-overlay)', color: isMine ? '#fff' : 'var(--tr-text-primary)', borderRadius: isMine ? '4px 18px 18px 18px' : '18px 4px 18px 18px' }}>
                                     {msg.content}
                                   </div>
                                 </div>

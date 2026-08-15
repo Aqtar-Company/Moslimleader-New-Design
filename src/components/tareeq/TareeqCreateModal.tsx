@@ -575,8 +575,9 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                   )}
                   <button
                     onClick={removeMedia}
-                    className="absolute top-2 end-2 w-8 h-8 rounded-full flex items-center justify-center text-base font-bold transition"
-                    style={{ background: 'rgba(0,0,0,0.75)', color: '#fff' }}
+                    className="absolute top-2 end-2 w-11 h-11 rounded-full flex items-center justify-center text-lg font-bold transition active:scale-90"
+                    style={{ background: 'rgba(0,0,0,0.72)', color: '#fff' }}
+                    aria-label={isRtl ? 'حذف الصورة' : 'Remove media'}
                   >×</button>
                 </>
               )}
@@ -584,7 +585,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
 
             {/* ── Extra images strip (only when main is an image) ── */}
             {mediaType === 'image' && !uploading && (
-              <div className="mx-4 mb-3">
+              <div className="mx-4 mb-3" style={{ animation: 'tareeq-fadein 0.25s ease' }}>
                 {/* Slot counter */}
                 <div className="flex items-center justify-between mb-2 px-0.5">
                   <span className="text-[11px] font-semibold" style={{ color: 'var(--tr-text-muted)' }}>
@@ -637,13 +638,13 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                     )}
                   </div>
                 ))}
-                {/* Add more button — max 9 total */}
+                {/* Add more button — matches active gold theme, max 9 total */}
                 {extraImages.length < 8 && (
                   <label
-                    className="w-16 h-16 rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer shrink-0 transition"
-                    style={{ border: '1.5px dashed var(--tr-border-soft)', background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--tr-gold)'; (e.currentTarget as HTMLElement).style.color = 'var(--tr-gold)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--tr-border-soft)'; (e.currentTarget as HTMLElement).style.color = 'var(--tr-text-muted)'; }}
+                    className="w-16 h-16 rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer shrink-0 transition active:scale-95"
+                    style={{ border: '1.5px solid var(--tr-gold-dim)', background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--tr-gold-bright)'; (e.currentTarget as HTMLElement).style.color = 'var(--tr-gold-bright)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--tr-gold-dim)'; (e.currentTarget as HTMLElement).style.color = 'var(--tr-gold)'; }}
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />

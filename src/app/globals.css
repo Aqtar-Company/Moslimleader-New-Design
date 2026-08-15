@@ -156,6 +156,7 @@ html[dir="ltr"],
 @keyframes fade-out  { from { opacity:1 } to { opacity:0 } }
 @keyframes modal-in  { from { opacity:0; transform:scale(0.92) translateY(8px) } to { opacity:1; transform:scale(1) translateY(0) } }
 @keyframes modal-out { from { opacity:1; transform:scale(1) } to { opacity:0; transform:scale(0.96) } }
+@keyframes tareeq-fadein { from { opacity:0; transform:translateY(-6px) } to { opacity:1; transform:translateY(0) } }
 
 /* ── Tareeq post card: one layout per breakpoint ───────────────── */
 /* TareeqCard renders two <article> elements: one for mobile, one for desktop.

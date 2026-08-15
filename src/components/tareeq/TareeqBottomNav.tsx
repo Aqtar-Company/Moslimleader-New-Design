@@ -8,6 +8,7 @@ import { useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 import { setCameraFile } from '@/lib/tareeq-camera-store';
 import { prewireOutRingPipeline } from '@/lib/tareeq-ring-pipeline';
 import TareeqCallScreen, { CallParty } from './TareeqCallScreen';
+import { TareeqSatisfactionSettings } from './TareeqSatisfactionMode';
 
 /* ─── Nav color ─────────────────────────────────────────────────────────────── */
 const NAV_ACCENT = '#FFCC00'; // yellow 100 + magenta ~20% — slightly warm, not orange
@@ -475,6 +476,9 @@ function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: P
               })}
             </div>
           </div>
+
+          {/* Satisfaction mode */}
+          <TareeqSatisfactionSettings />
 
           {/* Moslim Leader Store */}
           <a

@@ -8,6 +8,7 @@ import { savePostOffline, removePostOffline, isPostSavedOffline } from '@/lib/ta
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import { timeAgo } from '@/lib/tareeq-utils';
 import TareeqLoginGate from './TareeqLoginGate';
+import { useSatisfactionCounter } from './TareeqSatisfactionMode';
 
 export interface TareeqPostSummary {
   id: string;
@@ -150,6 +151,10 @@ function ReactionPicker({ currentReaction, onReact, onClose, isRtl, dark = false
 export default function TareeqCard({ post, initialLiked = false, initialReaction = null, initialBookmarked = false }: Props) {
   const { isRtl } = useLang();
   const { user } = useAuth();
+  const { trackPost } = useSatisfactionCounter();
+
+  // Track this post for the daily satisfaction counter
+  useEffect(() => { trackPost(post.id); }, [post.id, trackPost]);
 
   const startReaction: string | null = initialReaction ?? (initialLiked ? 'inspired' : null);
 

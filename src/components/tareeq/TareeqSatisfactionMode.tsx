@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 
 /* ── Constants ───────────────────────────────────────────────────────────── */
@@ -41,35 +41,35 @@ function writeCfg(cfg: SatisfactionCfg): void {
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
 }
 
+/* ── Singleton counter (module-level so all cards share one Set) ─────────── */
+const _seenPosts = new Set<string>();
+let _firedToday = false;
+
 /* ── Hook: useSatisfactionCounter ────────────────────────────────────────── */
 
 /**
- * Returns a `trackPost(postId)` function. Call it whenever a post enters the
- * viewport. When the unique-posts-seen count reaches the configured daily
- * limit, dispatches `tareeq-satisfaction-reached` on `window`.
+ * Returns a `trackPost(postId)` function. Call it inside each TareeqCard.
+ * All cards share a single module-level Set so the count accumulates across
+ * the whole feed session, not per-card.
  */
 export function useSatisfactionCounter() {
-  const seenRef   = useRef<Set<string>>(new Set());
-  const firedRef  = useRef(false);
-
   const trackPost = useCallback((postId: string) => {
     const cfg = readCfg();
     if (!cfg.enabled) return;
 
-    if (seenRef.current.has(postId)) return;
-    seenRef.current.add(postId);
+    if (_seenPosts.has(postId)) return;
+    _seenPosts.add(postId);
 
-    const count = seenRef.current.size;
+    const count = _seenPosts.size;
 
-    // Persist today's count
     try {
       localStorage.setItem(todayKey(), String(count));
     } catch {
       // quota exceeded — non-fatal
     }
 
-    if (!firedRef.current && count >= cfg.limit) {
-      firedRef.current = true;
+    if (!_firedToday && count >= cfg.limit) {
+      _firedToday = true;
       window.dispatchEvent(
         new CustomEvent('tareeq-satisfaction-reached', { detail: { count } }),
       );

@@ -8,6 +8,7 @@ import TareeqCreateModal from '@/components/tareeq/TareeqCreateModal';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
 import TareeqHeader from '@/components/tareeq/TareeqHeader';
 import TareeqQRModal from '@/components/tareeq/TareeqQRModal';
+import TareeqCoverEditor from '@/components/tareeq/TareeqCoverEditor';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -179,6 +180,8 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [coverUploading, setCoverUploading] = useState(false);
   const [coverUrl, setCoverUrl] = useState<string | null | undefined>(profileUser.coverUrl);
+  const [coverLoadError, setCoverLoadError] = useState(false);
+  const [showCoverEditor, setShowCoverEditor] = useState(false);
 
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -213,25 +216,26 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
     finally { setAvatarUploading(false); e.target.value = ''; }
   }
 
-  async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function handleCoverBlob(blob: Blob) {
+    const previewUrl = URL.createObjectURL(blob);
+    setCoverPreview(previewUrl);
+    setCoverLoadError(false);
     setCoverUploading(true);
-    const reader = new FileReader();
-    reader.onload = (ev) => setCoverPreview(ev.target?.result as string ?? null);
-    reader.readAsDataURL(file);
+    setShowCoverEditor(false);
     try {
-      const compressed = await compressImage(file, { maxWidth: 1200, maxHeight: 400, quality: 0.85 });
       const form = new FormData();
-      form.append('file', compressed);
+      form.append('file', blob, 'cover.jpg');
       const res = await fetch('/api/account/cover', { method: 'POST', credentials: 'include', body: form });
       if (res.ok) {
         const data = await res.json();
         setCoverUrl(data.coverUrl);
         setCoverPreview(null);
       }
-    } catch { /* keep preview */ }
-    finally { setCoverUploading(false); e.target.value = ''; }
+    } catch { /* keep preview on error */ }
+    finally {
+      setCoverUploading(false);
+      URL.revokeObjectURL(previewUrl);
+    }
   }
 
   useEffect(() => {
@@ -663,11 +667,12 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
               style={{ height: 240, background: coverGradient }}
             >
               {/* Cover image or gradient */}
-              {(coverPreview ?? coverUrl) ? (
+              {(coverPreview ?? (coverLoadError ? null : coverUrl)) ? (
                 <img
                   src={coverPreview ?? coverUrl!}
                   alt=""
                   className="absolute inset-0 w-full h-full object-cover"
+                  onError={() => setCoverLoadError(true)}
                 />
               ) : (
                 <>
@@ -680,11 +685,11 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
               )}
               {/* Cover upload button — own profile only */}
               {isOwnProfile && (
-                <label
-                  className="absolute top-3 end-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full cursor-pointer transition-opacity duration-150 opacity-0 group-hover:opacity-100"
-                  style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)', color: '#fff', fontSize: 12, fontWeight: 600 }}
+                <button
+                  onClick={() => !coverUploading && setShowCoverEditor(true)}
+                  className="absolute top-3 end-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-opacity duration-150 opacity-0 group-hover:opacity-100"
+                  style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)', color: '#fff', fontSize: 12, fontWeight: 600, border: 'none', cursor: coverUploading ? 'default' : 'pointer' }}
                 >
-                  <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={handleCoverUpload} />
                   {coverUploading ? (
                     <div className="w-3.5 h-3.5 border border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
@@ -694,7 +699,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                     </svg>
                   )}
                   {coverUploading ? (isRtl ? 'جاري الرفع...' : 'Uploading...') : (isRtl ? 'تغيير الغلاف' : 'Change cover')}
-                </label>
+                </button>
               )}
             </div>
 
@@ -854,17 +859,17 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
       <div className="lg:hidden">
         {/* Cover */}
         <div className="relative w-full" style={{ height: 110, background: coverGradient }}>
-          {(coverPreview ?? coverUrl) ? (
-            <img src={coverPreview ?? coverUrl!} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          {(coverPreview ?? (coverLoadError ? null : coverUrl)) ? (
+            <img src={coverPreview ?? coverUrl!} alt="" className="absolute inset-0 w-full h-full object-cover" onError={() => setCoverLoadError(true)} />
           ) : (
             <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.12)' }} />
           )}
           {isOwnProfile && (
-            <label
-              className="absolute top-2 end-3 flex items-center gap-1 px-2.5 py-1 rounded-full cursor-pointer"
-              style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', color: '#fff', fontSize: 11, fontWeight: 600 }}
+            <button
+              onClick={() => !coverUploading && setShowCoverEditor(true)}
+              className="absolute top-2 end-3 flex items-center gap-1 px-2.5 py-1 rounded-full"
+              style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', color: '#fff', fontSize: 11, fontWeight: 600, border: 'none', cursor: coverUploading ? 'default' : 'pointer' }}
             >
-              <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={handleCoverUpload} />
               {coverUploading ? (
                 <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
               ) : (
@@ -874,7 +879,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                 </svg>
               )}
               {isRtl ? 'غلاف' : 'Cover'}
-            </label>
+            </button>
           )}
         </div>
 
@@ -1068,6 +1073,15 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
             </div>
           </div>
         </div>
+      )}
+
+      {/* Cover editor (camera/gallery picker + crop) */}
+      {showCoverEditor && (
+        <TareeqCoverEditor
+          isRtl={isRtl}
+          onFile={handleCoverBlob}
+          onCancel={() => setShowCoverEditor(false)}
+        />
       )}
 
       {/* QR Profile Modal */}

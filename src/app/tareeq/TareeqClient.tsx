@@ -420,7 +420,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           href="/tareeq/notebook"
           className="fixed z-40 flex items-center justify-center rounded-2xl shadow-lg transition-all active:scale-95 hover:scale-105"
           style={{
-            insetInlineEnd: 16,
+            right: 16,
             bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
             width: 48,
             height: 48,

@@ -648,7 +648,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           {trendingPosts.length > 0 && (
             <div className="rounded-2xl p-4" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}>
               <p className="text-[10px] font-black mb-3" style={{ color: 'var(--tr-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                {isRtl ? '⭐ الأكثر تأثيرًا' : '⭐ Trending'}
+                {isRtl ? '⭐ الأكثر نفعًا' : '⭐ Trending'}
               </p>
               <div className="space-y-0.5">
                 {trendingPosts.map((p, i) => (

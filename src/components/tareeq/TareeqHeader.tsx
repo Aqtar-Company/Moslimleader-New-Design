@@ -122,7 +122,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   useEffect(() => {
     if (chatMessages.length > prevChatLenRef.current) {
       prevChatLenRef.current = chatMessages.length;
-      scrollChatToBottom();
+      requestAnimationFrame(() => scrollChatToBottom());
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatMessages]);
@@ -455,12 +455,11 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
     boxShadow: '0 8px 32px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.10)',
     overflow: 'hidden',
     zIndex: 200,
-    transformOrigin: 'top right',
-    transform: msgPanelVisible ? 'scaleY(1)' : 'scaleY(0.92)',
+    transform: msgPanelVisible ? 'translateY(0)' : 'translateY(10px)',
     opacity: msgPanelVisible ? 1 : 0,
     maxHeight: 'min(520px, calc(100dvh - 100px))',
     overflowY: 'auto',
-    transition: 'opacity 200ms ease, transform 200ms ease',
+    transition: 'opacity 180ms ease, transform 180ms ease',
     display: 'flex',
     flexDirection: 'column',
   };

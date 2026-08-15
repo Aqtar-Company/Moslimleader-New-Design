@@ -127,6 +127,33 @@ function ReportCard({
               {report.targetPreview}
             </div>
 
+            {/* View link */}
+            {(() => {
+              const href = report.targetType === 'USER'
+                ? `https://moslimleader.com/tareeq/u/${report.targetId}`
+                : `https://moslimleader.com/tareeq/post/${report.targetId}`;
+              return (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                    color: '#f59e0b', fontSize: '0.775rem', fontWeight: 600,
+                    textDecoration: 'none', marginBottom: '0.5rem',
+                    background: 'rgba(245,158,11,0.08)',
+                    border: '1px solid rgba(245,158,11,0.2)',
+                    borderRadius: '6px', padding: '2px 10px',
+                  }}
+                >
+                  <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  عرض المحتوى
+                </a>
+              );
+            })()}
+
             {report.description && (
               <div style={{ color: '#64748b', fontSize: '0.775rem', marginBottom: '0.5rem' }}>
                 <span style={{ color: '#94a3b8' }}>ملاحظة: </span>{report.description}

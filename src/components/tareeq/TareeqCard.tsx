@@ -367,19 +367,26 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
         {/* Report — only for other users' posts */}
         {user && user.id !== post.userId && (
-          <button
-            onClick={e => { e.preventDefault(); e.stopPropagation(); setShowReport(true); }}
-            aria-label={isRtl ? 'بلاغ' : 'Report'}
-            title={isRtl ? 'إبلاغ عن المحتوى' : 'Report content'}
-            style={{ ...btnBase, color: 'var(--tr-text-muted)', padding: '8px 10px' }}
-            onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, { ...hover, color: '#f43f5e' })}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--tr-text-muted)'; }}
-          >
-            <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="9" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 9l6 6M15 9l-6 6" />
-            </svg>
-          </button>
+          <div className="relative group/report">
+            <button
+              onClick={e => { e.preventDefault(); e.stopPropagation(); setShowReport(true); }}
+              aria-label={isRtl ? 'بلاغ' : 'Report'}
+              style={{ ...btnBase, color: 'var(--tr-text-muted)', padding: '8px 10px' }}
+              onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, { ...hover, color: '#f43f5e' })}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--tr-text-muted)'; }}
+            >
+              <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 9l6 6M15 9l-6 6" />
+              </svg>
+            </button>
+            <span
+              className="pointer-events-none absolute bottom-full mb-1.5 start-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-semibold opacity-0 group-hover/report:opacity-100 transition-opacity duration-150 z-30"
+              style={{ background: 'rgba(244,63,94,0.92)', color: '#fff', backdropFilter: 'blur(6px)', boxShadow: '0 2px 8px rgba(244,63,94,0.3)' }}
+            >
+              {isRtl ? 'إبلاغ عن المحتوى' : 'Report content'}
+            </span>
+          </div>
         )}
 
         {/* Bookmark */}
@@ -486,6 +493,16 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                 </div>
                 <span className="text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)', color: isBookmarked ? '#d4a853' : '#fff' }}>{isRtl ? 'حفظ' : 'Save'}</span>
               </button>
+
+              {/* Report — mobile floating icon */}
+              {user && user.id !== post.userId && (
+                <button onClick={e => { e.preventDefault(); e.stopPropagation(); setShowReport(true); }} aria-label={isRtl ? 'بلاغ' : 'Report'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+                  <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: 'rgba(244,63,94,0.18)', backdropFilter: 'blur(10px)', color: '#f9a8b4' }}>
+                    <svg width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path strokeLinecap="round" strokeLinejoin="round" d="M9 9l6 6M15 9l-6 6" /></svg>
+                  </div>
+                  <span className="text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)', color: '#f9a8b4' }}>{isRtl ? 'بلاغ' : 'Report'}</span>
+                </button>
+              )}
             </div>
 
             {/* ── MOBILE ONLY: bottom author + caption overlay ── */}
@@ -551,6 +568,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
+        {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
       </>
     );
   }

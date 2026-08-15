@@ -513,8 +513,52 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             )}
           </div>
 
-          <SocialSummary />
-          <DesktopActionBar />
+          {/* Desktop: social summary + action bar */}
+          <div className="hidden lg:block">
+            <SocialSummary />
+            <DesktopActionBar />
+          </div>
+
+          {/* Mobile: compact action bar — mirrors text card */}
+          <div className="lg:hidden px-4 pb-3 pt-2 flex items-center gap-3 relative" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
+            <div className="relative flex items-center gap-1.5">
+              <button onClick={handleReactionAreaClick} aria-label={isRtl ? 'تفاعل' : 'React'} className="flex items-center gap-1.5 active:scale-90 transition-transform">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: currentReaction ? `${reactionConfig?.color ?? '#f59e0b'}18` : 'var(--tr-overlay)', border: `1.5px solid ${currentReaction ? (reactionConfig?.color ?? '#f59e0b') + '50' : 'var(--tr-border-soft)'}`, fontSize: currentReaction ? 16 : 13 }}>
+                  {currentReaction ? reactionEmoji(currentReaction) : <svg width={14} height={14} viewBox="0 0 24 24" fill="currentColor" style={{ color: 'var(--tr-text-muted)' }}><path d="M12 3l1.2 4.8L18 6.8l-3.6 3.6 1.2 5.4-3.6-2.4-3.6 2.4 1.2-5.4L6 6.8l4.8 1.2z" /></svg>}
+                </div>
+                <span className="text-xs font-semibold" style={{ color: currentReaction ? (reactionConfig?.color ?? '#f59e0b') : 'var(--tr-text-muted)' }}>{fmt(likeCount)}</span>
+              </button>
+              {showPicker && (
+                <ReactionPicker currentReaction={currentReaction} onReact={(t) => handleReact(t)} onClose={() => setShowPicker(false)} isRtl={isRtl} />
+              )}
+            </div>
+
+            <button onClick={handleCommentToggle} className="flex items-center gap-1.5 text-xs font-semibold transition" style={{ color: showCommentInput ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
+              <IconComment size={16} />
+              {fmt(commentCount)}
+            </button>
+
+            <button onClick={handleBookmarkClick} aria-label={isRtl ? 'حفظ' : 'Save'} className="flex items-center gap-1 text-xs font-semibold transition active:scale-90" style={{ color: isBookmarked ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
+              <IconBookmark filled={isBookmarked} size={16} />
+            </button>
+
+            <div className="ms-auto flex items-center gap-2">
+              <div ref={shareMenuRef} className="relative">
+                <button onClick={handleShare} className="flex items-center gap-1 text-xs font-semibold transition" style={{ color: copied ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
+                  <IconShare size={16} check={copied} />
+                </button>
+                {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} isRtl={isRtl} />}
+              </div>
+              {user && user.id !== post.userId && (
+                <button onClick={e => { e.preventDefault(); e.stopPropagation(); setShowReport(true); }} aria-label={isRtl ? 'بلاغ' : 'Report'} className="flex items-center gap-1 text-xs font-semibold transition active:scale-90" style={{ color: 'var(--tr-text-muted)' }}>
+                  <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="9" /><path strokeLinecap="round" strokeLinejoin="round" d="M9 9l6 6M15 9l-6 6" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+
           {commentForm}
         </article>
 

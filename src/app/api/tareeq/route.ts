@@ -38,6 +38,7 @@ export async function GET(req: NextRequest) {
     }
 
     const followWhere = {
+      isHidden: false,
       userId: { in: followingIds },
       ...(category ? { category } : {}),
       ...(search ? {
@@ -71,7 +72,7 @@ export async function GET(req: NextRequest) {
   // likedBy: return posts liked by a specific user (via TareeqLike join)
   if (likedBy) {
     const likes = await prisma.tareeqLike.findMany({
-      where: { userId: likedBy },
+      where: { userId: likedBy, post: { isHidden: false } },
       orderBy: orderBy.hasOwnProperty('likeCount')
         ? { post: { likeCount: 'desc' } }
         : { createdAt: 'desc' },
@@ -96,6 +97,7 @@ export async function GET(req: NextRequest) {
   }
 
   const where = {
+    isHidden: false,
     ...(category ? { category } : {}),
     ...(userId ? { userId } : {}),
     ...(search ? {

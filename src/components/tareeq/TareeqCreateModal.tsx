@@ -11,7 +11,13 @@ const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
 const DRAFT_KEY = 'tareeq_draft';
 const QUEUE_KEY = 'tareeq-post-queue';
-interface Draft { content: string; category: string; savedAt: number; }
+interface Draft {
+  content: string;
+  category: string;
+  savedAt: number;
+  imageUrl?: string | null;
+  imageUrls?: string[] | null;
+}
 
 interface Props {
   onClose: () => void;
@@ -34,8 +40,11 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
-  const [extraImages, setExtraImages] = useState<{ id: string; previewUrl: string; url: string | null; progress: number }[]>([]);
+  const [extraImages, setExtraImages] = useState<{ id: string; previewUrl: string; url: string | null; progress: number; failed?: boolean }[]>([]);
   const extraFileInputRef = useRef<HTMLInputElement>(null);
+  // Track all object URLs for cleanup on unmount
+  const localPreviewRef = useRef<string | null>(null);
+  const extraPreviewUrlsRef = useRef<string[]>([]);
   const [showCatPicker, setShowCatPicker] = useState(false);
   const [draftBanner, setDraftBanner] = useState<Draft | null>(null);
   const [draftSaved, setDraftSaved] = useState(false);
@@ -44,7 +53,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   const uploadedForFile = useRef<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const latestDraftRef = useRef({ content: '', category: '' });
+  const latestDraftRef = useRef<{ content: string; category: string; imageUrl: string | null; imageUrls: string[] | null }>({ content: '', category: '', imageUrl: null, imageUrls: null });
 
   useEffect(() => {
     setMounted(true);
@@ -57,7 +66,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
         const raw = localStorage.getItem(DRAFT_KEY);
         if (raw) {
           const d: Draft = JSON.parse(raw);
-          if (d.content?.trim()) setDraftBanner(d);
+          if (d.content?.trim() || d.imageUrl) setDraftBanner(d);
         }
       } catch { /* ignore */ }
     }
@@ -92,29 +101,39 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     return () => document.removeEventListener('mousedown', h);
   }, [showCatPicker]);
 
-  // Keep ref in sync for immediate save on unmount
-  useEffect(() => { latestDraftRef.current = { content, category }; }, [content, category]);
+  // Keep refs in sync for cleanup and immediate save on unmount
+  useEffect(() => {
+    const extraUrls = extraImages.filter(e => e.url).map(e => e.url!);
+    const allUrls = mediaType === 'image' && mediaUrl ? [mediaUrl, ...extraUrls] : null;
+    latestDraftRef.current = { content, category, imageUrl: mediaType === 'image' ? mediaUrl : null, imageUrls: allUrls };
+  }, [content, category, mediaUrl, mediaType, extraImages]);
+
+  useEffect(() => { localPreviewRef.current = localPreview; }, [localPreview]);
+  useEffect(() => { extraPreviewUrlsRef.current = extraImages.map(e => e.previewUrl); }, [extraImages]);
 
   useEffect(() => {
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     draftTimerRef.current = setTimeout(() => {
-      if (content.trim() || category) {
+      const { content: c, category: cat, imageUrl: imgUrl, imageUrls: imgUrls } = latestDraftRef.current;
+      if (c.trim() || cat || imgUrl) {
         try {
-          localStorage.setItem(DRAFT_KEY, JSON.stringify({ content, category, savedAt: Date.now() }));
+          localStorage.setItem(DRAFT_KEY, JSON.stringify({ content: c, category: cat, imageUrl: imgUrl, imageUrls: imgUrls, savedAt: Date.now() }));
           setDraftSaved(true);
           setTimeout(() => setDraftSaved(false), 2000);
         } catch { /* storage full or blocked */ }
       }
     }, 1500);
     return () => { if (draftTimerRef.current) clearTimeout(draftTimerRef.current); };
-  }, [content, category]);
+  }, [content, category, mediaUrl, mediaType, extraImages]);
 
-  // Save draft immediately on unmount (catches close-before-debounce)
+  // On unmount: revoke all object URLs + save draft immediately
   useEffect(() => {
     return () => {
-      const { content: c, category: cat } = latestDraftRef.current;
-      if (c.trim()) {
-        try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ content: c, category: cat, savedAt: Date.now() })); } catch { /* ignore */ }
+      if (localPreviewRef.current) URL.revokeObjectURL(localPreviewRef.current);
+      extraPreviewUrlsRef.current.forEach(u => URL.revokeObjectURL(u));
+      const { content: c, category: cat, imageUrl: imgUrl, imageUrls: imgUrls } = latestDraftRef.current;
+      if (c.trim() || imgUrl) {
+        try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ content: c, category: cat, imageUrl: imgUrl, imageUrls: imgUrls, savedAt: Date.now() })); } catch { /* ignore */ }
       }
     };
   }, []);
@@ -161,10 +180,13 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   async function handleMedia(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Revoke existing preview before creating a new one
+    if (localPreviewRef.current) { URL.revokeObjectURL(localPreviewRef.current); }
     setLocalPreview(null);
     setMediaUrl(null);
     setMediaType(null);
     setUploadProgress(0);
+    setExtraImages([]);
     if (file.type.startsWith('image/')) {
       setLocalPreview(URL.createObjectURL(file));
     }
@@ -180,6 +202,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   }
 
   function removeMedia() {
+    if (localPreviewRef.current) URL.revokeObjectURL(localPreviewRef.current);
+    extraPreviewUrlsRef.current.forEach(u => URL.revokeObjectURL(u));
     setMediaUrl(null);
     setMediaType(null);
     setLocalPreview(null);
@@ -234,12 +258,14 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           xhr.send(form);
         });
       } catch {
-        setExtraImages(prev => prev.filter(x => x.id !== item.id));
+        setExtraImages(prev => prev.map(x => x.id === item.id ? { ...x, failed: true, progress: 0 } : x));
       }
     }
   }
 
   function removeExtraImage(id: string) {
+    const item = extraImages.find(x => x.id === id);
+    if (item) URL.revokeObjectURL(item.previewUrl);
     setExtraImages(prev => prev.filter(x => x.id !== id));
   }
 
@@ -376,6 +402,11 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                   <span className="w-3.5 h-3.5 border-2 border-current/30 border-t-current rounded-full animate-spin" />
                   {isRtl ? 'جاري النشر...' : 'Publishing...'}
                 </span>
+              : extraUploading
+              ? <span className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                  {isRtl ? 'جاري الرفع...' : 'Uploading...'}
+                </span>
               : (isRtl ? 'انشر' : 'Publish')
             }
           </button>
@@ -410,6 +441,19 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
               onClick={() => {
                 setContent(draftBanner.content);
                 if (draftBanner.category) setCategory(draftBanner.category as TareeqCategoryKey);
+                // Restore media if saved in draft
+                if (draftBanner.imageUrl) {
+                  setMediaUrl(draftBanner.imageUrl);
+                  setMediaType('image');
+                  if (draftBanner.imageUrls && draftBanner.imageUrls.length > 1) {
+                    setExtraImages(draftBanner.imageUrls.slice(1).map(url => ({
+                      id: Math.random().toString(36).slice(2),
+                      previewUrl: url,
+                      url,
+                      progress: 100,
+                    })));
+                  }
+                }
                 setDraftBanner(null);
                 try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
                 setTimeout(() => textareaRef.current?.focus(), 50);
@@ -530,18 +574,39 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
             {mediaType === 'image' && !uploading && (
               <div className="mx-4 mb-4 flex items-center gap-2 flex-wrap">
                 {extraImages.map(ex => (
-                  <div key={ex.id} className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0" style={{ border: '1px solid var(--tr-border-soft)' }}>
+                  <div key={ex.id} className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0" style={{ border: `1px solid ${ex.failed ? 'rgba(248,113,113,0.6)' : 'var(--tr-border-soft)'}` }}>
                     <img src={ex.previewUrl} alt="" className="w-full h-full object-cover" />
-                    {ex.url === null && (
+                    {/* Uploading progress */}
+                    {!ex.failed && ex.url === null && (
                       <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)' }}>
-                        <span className="text-white text-[10px] font-bold">{ex.progress}%</span>
+                        <svg className="w-8 h-8 -rotate-90" viewBox="0 0 32 32">
+                          <circle cx="16" cy="16" r="12" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="3" />
+                          <circle cx="16" cy="16" r="12" fill="none" stroke="var(--tr-gold-bright)" strokeWidth="3"
+                            strokeDasharray={`${2 * Math.PI * 12}`}
+                            strokeDashoffset={`${2 * Math.PI * 12 * (1 - ex.progress / 100)}`}
+                            strokeLinecap="round" style={{ transition: 'stroke-dashoffset 0.2s ease' }} />
+                        </svg>
                       </div>
                     )}
-                    {ex.url !== null && (
+                    {/* Failed state */}
+                    {ex.failed && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1" style={{ background: 'rgba(239,68,68,0.82)' }}>
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        <button
+                          onClick={() => removeExtraImage(ex.id)}
+                          className="text-white text-[10px] font-bold underline"
+                        >{isRtl ? 'حذف' : 'Remove'}</button>
+                      </div>
+                    )}
+                    {/* Uploaded — large enough × tap target */}
+                    {!ex.failed && ex.url !== null && (
                       <button
                         onClick={() => removeExtraImage(ex.id)}
-                        className="absolute top-0.5 end-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
-                        style={{ background: 'rgba(0,0,0,0.75)', color: '#fff' }}
+                        className="absolute top-0.5 end-0.5 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+                        style={{ background: 'rgba(0,0,0,0.72)', color: '#fff' }}
+                        aria-label={isRtl ? 'حذف' : 'Remove'}
                       >×</button>
                     )}
                   </div>

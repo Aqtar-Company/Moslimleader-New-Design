@@ -1,4 +1,12 @@
+import type { Metadata } from 'next';
 import TareeqShell from '@/components/tareeq/TareeqShell';
+
+export const metadata: Metadata = {
+  icons: {
+    icon: '/Tareeq-small.png',
+    apple: '/Tareeq-small.png',
+  },
+};
 
 export default function TareeqLayout({ children }: { children: React.ReactNode }) {
   return (

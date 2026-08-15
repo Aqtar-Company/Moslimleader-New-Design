@@ -6,6 +6,7 @@ import { TareeqNotificationsProvider, useTareeqNotifications } from '@/context/T
 import { useAuth } from '@/context/AuthContext';
 import TareeqBottomNav from './TareeqBottomNav';
 import TareeqOfflineBanner from './TareeqOfflineBanner';
+import TareeqQueueBanner from './TareeqQueueBanner';
 import TareeqSplash from './TareeqSplash';
 import TareeqIncomingCall from './TareeqIncomingCall';
 import { prewireInRingPipeline } from '@/lib/tareeq-ring-pipeline';
@@ -174,6 +175,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
     <>
       <TareeqSplash />
       <TareeqOfflineBanner />
+      <TareeqQueueBanner />
 
       {/* Layout: on desktop (non-main-feed), wrap in flex to show the nav sidebar */}
       {isMainFeed ? (

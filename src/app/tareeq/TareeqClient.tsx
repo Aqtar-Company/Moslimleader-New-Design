@@ -74,6 +74,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const feedTopRef = useRef<HTMLDivElement>(null);
   const searchMountedRef = useRef(false);
   const [cameraFile, setCameraFile] = useState<File | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
   const [trendingPosts, setTrendingPosts] = useState<TareeqPostSummary[]>([]);
   const [myGroups, setMyGroups] = useState<MyGroup[]>([]);
   const [bookmarkFolders, setBookmarkFolders] = useState<BookmarkFolder[]>([]);
@@ -85,6 +86,24 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const searchValRef = useRef(search);
   const sortRef = useRef(sort);
   const PULL_THRESHOLD = 72;
+
+  // Offline detection + reading cache
+  useEffect(() => {
+    const updateOnline = () => setIsOffline(!navigator.onLine);
+    window.addEventListener('online', updateOnline);
+    window.addEventListener('offline', updateOnline);
+    if (!navigator.onLine) {
+      setIsOffline(true);
+      try {
+        const cached: TareeqPostSummary[] = JSON.parse(localStorage.getItem('tareeq-offline-posts') ?? '[]');
+        if (cached.length > 0) setPosts(cached);
+      } catch { /* ignore */ }
+    }
+    return () => {
+      window.removeEventListener('online', updateOnline);
+      window.removeEventListener('offline', updateOnline);
+    };
+  }, []);
 
   // Fetch top-liked posts for the desktop right sidebar trending widget
   useEffect(() => {
@@ -127,7 +146,11 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       if (res.ok) {
         const data = await res.json();
         setPosts(prev => {
-          if (!fromCursor) return data.posts;
+          if (!fromCursor) {
+            // Cache first page for offline reading
+            try { localStorage.setItem('tareeq-offline-posts', JSON.stringify((data.posts as TareeqPostSummary[]).slice(0, 30))); } catch { /* ignore */ }
+            return data.posts;
+          }
           const seen = new Set(prev.map((p: TareeqPostSummary) => p.id));
           return [...prev, ...(data.posts as TareeqPostSummary[]).filter((p: TareeqPostSummary) => !seen.has(p.id))];
         });
@@ -138,6 +161,13 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       setInitialLoading(false);
     }
   }, []);
+
+  // Refresh feed after queued posts are successfully sent
+  useEffect(() => {
+    const h = () => loadPosts('', '', null, 'newest');
+    window.addEventListener('tareeq-refresh-feed', h);
+    return () => window.removeEventListener('tareeq-refresh-feed', h);
+  }, [loadPosts]);
 
   useEffect(() => {
     if (!sentinelRef.current || !cursor) return;
@@ -284,6 +314,15 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   // ── Feed content (shared between mobile and desktop center col) ──
   const feedContent = (
     <>
+      {isOffline && posts.length > 0 && (
+        <div className="flex items-center gap-2 px-4 py-2.5 mb-2 rounded-xl text-xs font-semibold"
+          style={{ background: 'rgba(212,168,83,0.1)', color: 'var(--tr-gold)', border: '1px solid rgba(212,168,83,0.2)' }}>
+          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 8.688c0-.864.933-1.405 1.683-.977l7.108 4.062a1.125 1.125 0 010 1.953l-7.108 4.062A1.125 1.125 0 013 16.81V8.688zM12.75 8.688c0-.864.933-1.405 1.683-.977l7.108 4.062a1.125 1.125 0 010 1.953l-7.108 4.062a1.125 1.125 0 01-1.683-.977V8.688z" />
+          </svg>
+          {isRtl ? 'عرض آخر منشورات محفوظة — أنت غير متصل' : 'Showing cached posts — you are offline'}
+        </div>
+      )}
       {initialLoading ? (
         <div className="flex flex-col gap-4">
           {skeletons.map((_, i) => <div key={i}><TareeqCardSkeleton /></div>)}

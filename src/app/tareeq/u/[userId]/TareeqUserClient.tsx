@@ -372,6 +372,21 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
     } catch { /* ignore */ }
   }
 
+  async function handleExport() {
+    try {
+      const res = await fetch('/api/tareeq/export', { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tareeq-posts-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch { /* ignore */ }
+  }
+
   const coverGradient = nameGradient(profileUser.name);
   const skeletons = Array.from({ length: 6 });
 
@@ -736,7 +751,19 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                     </svg>
                   </button>
                   {isOwnProfile ? (
-                    <SettingsBtn />
+                    <>
+                      <button
+                        onClick={handleExport}
+                        className="w-9 h-9 flex items-center justify-center rounded-full transition active:scale-95"
+                        style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-muted)', border: '1px solid var(--tr-border-soft)' }}
+                        title={isRtl ? 'تصدير المنشورات' : 'Export posts'}
+                      >
+                        <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                      </button>
+                      <SettingsBtn />
+                    </>
                   ) : (
                     <>
                       <button
@@ -893,7 +920,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
             <div className="flex items-start justify-between" style={{ marginTop: -44 }}>
               <AvatarEl size={96} />
 
-              {/* Settings + QR (own profile) */}
+              {/* Settings + QR + Export (own profile) */}
               {isOwnProfile && (
                 <div className="flex items-center gap-2 mt-14">
                   <button
@@ -905,6 +932,16 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                       <rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/>
                       <rect x="3" y="14" width="7" height="7" rx="1.2"/>
                       <path strokeLinecap="round" d="M14 14h2M14 17h2M17 14v3M20 14v2M20 17v3M17 20h3"/>
+                    </svg>
+                  </button>
+                  <button
+                    onClick={handleExport}
+                    className="w-9 h-9 flex items-center justify-center rounded-full transition active:scale-95"
+                    style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-muted)', border: '1px solid var(--tr-border-soft)' }}
+                    title={isRtl ? 'تصدير المنشورات' : 'Export posts'}
+                  >
+                    <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                     </svg>
                   </button>
                   <SettingsBtn />

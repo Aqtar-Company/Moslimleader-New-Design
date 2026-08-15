@@ -192,6 +192,22 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
         onClose();
       } else setError(data.error || (isRtl ? 'حدث خطأ' : 'An error occurred'));
     } catch {
+      // Network failure — queue for retry when back online
+      try {
+        const q = JSON.parse(localStorage.getItem('tareeq-post-queue') ?? '[]');
+        q.push({
+          id: Math.random().toString(36).slice(2),
+          content: content.trim(),
+          category: category || null,
+          imageUrl: mediaType === 'image' ? mediaUrl : null,
+          videoUrl: mediaType === 'video' ? mediaUrl : null,
+          queuedAt: Date.now(),
+        });
+        localStorage.setItem('tareeq-post-queue', JSON.stringify(q));
+        window.dispatchEvent(new Event('tareeq-queue-changed'));
+        onClose();
+        return;
+      } catch { /* ignore */ }
       setError(isRtl ? 'خطأ في الاتصال' : 'Connection error');
     } finally {
       setLoading(false);

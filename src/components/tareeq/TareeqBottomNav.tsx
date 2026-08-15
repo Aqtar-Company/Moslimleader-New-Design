@@ -313,6 +313,29 @@ function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: P
             {isRtl ? 'اترك علامتك' : 'Leave Your Mark'}
           </button>
 
+          {/* Notebook quick card */}
+          <Link
+            href="/tareeq/notebook"
+            onClick={onClose}
+            className="flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all active:scale-[0.98]"
+            style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-gold-dim)', textDecoration: 'none' }}
+          >
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--tr-gold-glow)' }}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 3.75H7.5A2.25 2.25 0 005.25 6v12A2.25 2.25 0 007.5 20.25h9a2.25 2.25 0 002.25-2.25V6A2.25 2.25 0 0016.5 3.75z"/>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 7.5h7.5M8.25 10.5h7.5M8.25 13.5h4.5"/>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 3.75v3.75a.75.75 0 01-.75.75h-3a.75.75 0 01-.75-.75V3.75"/>
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold leading-tight" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'دفتري' : 'My Notebook'}</p>
+              <p className="text-[11px] mt-0.5" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'مساحة خاصة لأفكارك' : 'Private space for your thoughts'}</p>
+            </div>
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M15.75 19.5L8.25 12l7.5-7.5' : 'M8.25 4.5l7.5 7.5-7.5 7.5'} />
+            </svg>
+          </Link>
+
           {/* Section: Account */}
           <p className="text-[10px] font-bold px-1 pt-1" style={{ color: 'var(--tr-text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
             {isRtl ? 'الحساب' : 'Account'}
@@ -331,23 +354,6 @@ function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: P
                 </svg>
               </div>
               <span className="font-bold text-sm flex-1" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'منشوراتي' : 'My Posts'}</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
-                <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M15.75 19.5L8.25 12l7.5-7.5' : 'M8.25 4.5l7.5 7.5-7.5 7.5'} />
-              </svg>
-            </Link>
-            {/* Divider */}
-            <div style={{ height: 1, background: 'var(--tr-border-subtle)', marginInline: 16 }} />
-            {/* Notebook */}
-            <Link
-              href="/tareeq/notebook"
-              onClick={onClose}
-              className="flex items-center gap-3.5 px-4 py-3 transition-all active:scale-[0.98]"
-              style={{ textDecoration: 'none' }}
-            >
-              <div style={iconBox('var(--tr-gold-glow)', 'var(--tr-gold-dim)')}>
-                <span style={{ fontSize: 18, lineHeight: 1 }}>📓</span>
-              </div>
-              <span className="font-bold text-sm flex-1" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'دفتري' : 'My Notebook'}</span>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
                 <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M15.75 19.5L8.25 12l7.5-7.5' : 'M8.25 4.5l7.5 7.5-7.5 7.5'} />
               </svg>

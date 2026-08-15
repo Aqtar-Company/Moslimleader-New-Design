@@ -414,6 +414,31 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         </div>
       )}
 
+      {/* Notebook FAB — fixed right side */}
+      {user && (
+        <Link
+          href="/tareeq/notebook"
+          className="fixed z-40 flex items-center justify-center rounded-2xl shadow-lg transition-all active:scale-95 hover:scale-105"
+          style={{
+            insetInlineEnd: 16,
+            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
+            width: 48,
+            height: 48,
+            background: 'var(--tr-surface)',
+            border: '1px solid var(--tr-gold-dim)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.18), 0 0 0 1px var(--tr-gold-dim)',
+            color: 'var(--tr-gold)',
+          }}
+          title={isRtl ? 'دفتري' : 'My Notebook'}
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 3.75H7.5A2.25 2.25 0 005.25 6v12A2.25 2.25 0 007.5 20.25h9a2.25 2.25 0 002.25-2.25V6A2.25 2.25 0 0016.5 3.75z"/>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 7.5h7.5M8.25 10.5h7.5M8.25 13.5h4.5"/>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 3.75v3.75a.75.75 0 01-.75.75h-3a.75.75 0 01-.75-.75V3.75"/>
+          </svg>
+        </Link>
+      )}
+
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           DESKTOP: 3-column layout — left nav + center feed + right sidebar (lg+)
           Nav is in TareeqHeader (Facebook-style top nav)
@@ -593,7 +618,11 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
               onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = 'var(--tr-border-subtle)'}
             >
               <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--tr-gold-glow)' }}>
-                <span style={{ fontSize: 18, lineHeight: 1 }}>📓</span>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 3.75H7.5A2.25 2.25 0 005.25 6v12A2.25 2.25 0 007.5 20.25h9a2.25 2.25 0 002.25-2.25V6A2.25 2.25 0 0016.5 3.75z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 7.5h7.5M8.25 10.5h7.5M8.25 13.5h4.5"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 3.75v3.75a.75.75 0 01-.75.75h-3a.75.75 0 01-.75-.75V3.75"/>
+                </svg>
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-bold" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'دفتري' : 'My Notebook'}</p>

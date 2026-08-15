@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { TAREEQ_CATEGORIES, CATEGORY_ICONS, CATEGORY_ACCENT_HEX } from '@/lib/tareeq-constants';
+import { savePostOffline, removePostOffline, isPostSavedOffline } from '@/lib/tareeq-idb';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import { timeAgo } from '@/lib/tareeq-utils';
 import TareeqLoginGate from './TareeqLoginGate';
@@ -164,6 +165,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   const [newFolderName, setNewFolderName] = useState('');
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [isSavedOffline, setIsSavedOffline] = useState(false);
   const shareMenuRef = useRef<HTMLDivElement>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
 
@@ -175,6 +177,31 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
   }, [showShareMenu]);
+
+  // Check if post is pinned offline on mount
+  useEffect(() => {
+    isPostSavedOffline(post.id).then(setIsSavedOffline).catch(() => {});
+  }, [post.id]);
+
+  async function handleOfflineToggle(e: React.MouseEvent) {
+    e.preventDefault(); e.stopPropagation();
+    if (isSavedOffline) {
+      setIsSavedOffline(false);
+      await removePostOffline(post.id).catch(() => {});
+    } else {
+      setIsSavedOffline(true);
+      await savePostOffline({
+        id: post.id,
+        title: post.title ?? null,
+        content: post.content,
+        imageUrl: post.imageUrl ?? null,
+        imageUrls: Array.isArray(post.imageUrls) ? (post.imageUrls as string[]) : null,
+        authorName: post.authorName,
+        category: post.category ?? null,
+        createdAt: post.createdAt,
+      }).catch(() => setIsSavedOffline(false));
+    }
+  }
 
   const catKey    = post.category as TareeqCategoryKey | null;
   const catLabel  = catKey && TAREEQ_CATEGORIES[catKey] ? (isRtl ? TAREEQ_CATEGORIES[catKey].ar : TAREEQ_CATEGORIES[catKey].en) : post.category;
@@ -401,6 +428,23 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
         >
           <IconBookmark filled={isBookmarked} size={17} />
+        </button>
+
+        {/* Offline pin */}
+        <button
+          onClick={handleOfflineToggle}
+          aria-label={isRtl ? (isSavedOffline ? 'إزالة من الحفظ بدون إنترنت' : 'حفظ للقراءة بدون إنترنت') : (isSavedOffline ? 'Remove offline' : 'Save offline')}
+          title={isRtl ? (isSavedOffline ? 'إزالة من الحفظ بدون إنترنت' : 'حفظ للقراءة بدون إنترنت') : (isSavedOffline ? 'Remove offline' : 'Save offline')}
+          style={{ ...btnBase, color: isSavedOffline ? 'var(--tr-gold)' : 'var(--tr-text-muted)', padding: '8px 10px' }}
+          onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, hover)}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+        >
+          {/* Download-to-device icon */}
+          <svg width={17} height={17} fill="none" stroke="currentColor" strokeWidth={isSavedOffline ? 2.2 : 1.8} viewBox="0 0 24 24">
+            {isSavedOffline
+              ? <><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></>
+              : <><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></>}
+          </svg>
         </button>
       </div>
     );

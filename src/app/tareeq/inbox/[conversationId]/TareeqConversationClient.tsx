@@ -878,7 +878,7 @@ function Inner({ conversationId }: { conversationId: string }) {
       </div>
 
       {/* Messages */}
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 pb-24 max-w-2xl w-full mx-auto" dir="ltr">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 pb-24 w-full" dir="ltr">
         {loading ? (
           <div className="flex justify-center py-16">
             <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: MSG_BLUE }} />
@@ -1010,7 +1010,7 @@ function Inner({ conversationId }: { conversationId: string }) {
       {/* Input bar — pushed above keyboard via visualViewport */}
       <div
         ref={inputBarRef}
-        className="fixed left-0 right-0 lg:left-[320px] z-30"
+        className="fixed left-0 right-0 lg:right-[320px] z-30"
         style={{
           bottom: 0,
           background: 'var(--tr-surface)',
@@ -1026,7 +1026,7 @@ function Inner({ conversationId }: { conversationId: string }) {
           accept="image/*" capture="environment"
           className="hidden" disabled={uploading} onChange={handleMedia} />
 
-        <div className="max-w-2xl mx-auto px-3 py-2 flex flex-col gap-2 relative">
+        <div className="w-full px-3 py-2 flex flex-col gap-2 relative">
           {sendError && <p className="text-xs text-center font-semibold" style={{ color: '#f43f5e' }}>{sendError}</p>}
 
           {/* Mic error */}

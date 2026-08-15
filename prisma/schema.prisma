@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
 }
 
 datasource db {
@@ -1660,4 +1661,5 @@ model TareeqNote {
   user      User     @relation("TareeqNotes", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, updatedAt(sort: Desc)])
+  @@fulltext([title, content])
 }

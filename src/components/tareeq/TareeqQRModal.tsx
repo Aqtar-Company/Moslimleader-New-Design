@@ -232,10 +232,26 @@ export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose 
     } catch { /* ignore */ }
   }
 
-  function handleDownload() {
-    if (!brandedUrl) return;
+  async function handleDownload() {
+    if (!brandedBlob && !brandedUrl) return;
+    // iOS Safari ignores <a download> — use Share Sheet → "Save Image" / "Save to Files" instead
+    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIos && brandedBlob) {
+      try {
+        const file = new File([brandedBlob], `tareeq-${name}.png`, { type: 'image/png' });
+        if (navigator.share && navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title: name });
+          return;
+        }
+      } catch { /* user dismissed share sheet */ }
+      // Last resort on iOS: open in new tab so user can long-press → Save Image
+      if (brandedUrl) window.open(brandedUrl, '_blank');
+      return;
+    }
+    // Standard browsers: anchor download
     const a = document.createElement('a');
-    a.href = brandedUrl;
+    a.href = brandedUrl!;
     a.download = `tareeq-${name}.png`;
     a.click();
   }
@@ -262,6 +278,9 @@ export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose 
   if (!mounted) return null;
 
   const ready = !!brandedUrl;
+  const isIos = typeof navigator !== 'undefined' &&
+    (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
 
   return createPortal(
     <div
@@ -304,7 +323,7 @@ export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose 
             disabled={!ready}
             style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', fontWeight: 600, fontSize: 14, border: '1px solid var(--tr-border-soft)', cursor: ready ? 'pointer' : 'default', opacity: ready ? 1 : 0.45 }}
           >
-            {isRtl ? 'حفظ' : 'Save'}
+            {isIos ? (isRtl ? 'حفظ ↗' : 'Save ↗') : (isRtl ? 'حفظ' : 'Save')}
           </button>
           <button
             onClick={handleShare}

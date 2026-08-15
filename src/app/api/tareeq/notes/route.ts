@@ -19,14 +19,17 @@ export async function GET(req: NextRequest) {
     ? { updatedAt: 'asc' as const }
     : { updatedAt: 'desc' as const };
 
+  // MySQL FULLTEXT search (BOOLEAN MODE) for queries >= 2 chars.
+  // ft_min_word_len defaults to 4 on InnoDB — Arabic words < 4 chars may not be indexed.
+  // Queries < 2 chars fall back to LIKE to avoid empty results on short terms.
+  const useFulltext = !!q && q.length >= 2;
   const where = {
     userId: user.userId,
-    ...(q ? {
-      OR: [
-        { title:   { contains: q } },
-        { content: { contains: q } },
-      ],
-    } : {}),
+    ...(q
+      ? useFulltext
+        ? { OR: [{ title: { search: q } }, { content: { search: q } }] }
+        : { OR: [{ title: { contains: q } }, { content: { contains: q } }] }
+      : {}),
   };
 
   const notes = await prisma.tareeqNote.findMany({

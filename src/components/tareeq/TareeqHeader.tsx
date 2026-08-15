@@ -116,10 +116,10 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   const chatInputRef = useRef<HTMLInputElement>(null);
 
   function scrollChatToBottom() {
-    if (chatMsgsRef.current) chatMsgsRef.current.scrollTop = chatMsgsRef.current.scrollHeight;
+    if (chatMsgsRef.current) chatMsgsRef.current.scrollTop = 0;
   }
   useEffect(() => {
-    requestAnimationFrame(() => scrollChatToBottom());
+    scrollChatToBottom();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatMessages]);
 
@@ -931,13 +931,13 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                       ) : (
                         /* Chat view */
                         <>
-                          <div ref={chatMsgsRef} className="overflow-y-auto flex flex-col gap-1 p-3" style={{ minHeight: 200, maxHeight: 360 }}>
+                          <div ref={chatMsgsRef} className="overflow-y-auto flex flex-col-reverse gap-1 p-3" style={{ minHeight: 200, maxHeight: 360 }}>
                             {chatLoading ? (
                               <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} /></div>
                             ) : chatMessages.length === 0 ? (
                               <p className="text-center text-xs py-6" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'ابدأ المحادثة...' : 'Start the conversation...'}</p>
                             ) : (
-                              chatMessages.map(msg => {
+                              [...chatMessages].reverse().map(msg => {
                                 const isMine = msg.senderId === user?.id;
                                 return (
                                   <div key={msg.id} className={`flex ${isMine ? 'justify-start' : 'justify-end'}`}>
@@ -952,7 +952,6 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                                 );
                               })
                             )}
-                            <div ref={chatBottomRef} />
                           </div>
                           {/* Input */}
                           <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
@@ -1101,24 +1100,23 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                       </>
                     ) : (
                       <>
-                        <div ref={chatMsgsRef} className="overflow-y-auto flex flex-col gap-1 p-3" style={{ minHeight: 200, maxHeight: 360 }}>
+                        <div ref={chatMsgsRef} className="overflow-y-auto flex flex-col-reverse gap-1 p-3" style={{ minHeight: 200, maxHeight: 360 }}>
                           {chatLoading ? (
                             <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} /></div>
                           ) : chatMessages.length === 0 ? (
                             <p className="text-center text-xs py-6" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'ابدأ المحادثة...' : 'Start the conversation...'}</p>
                           ) : (
-                            chatMessages.map(msg => {
+                            [...chatMessages].reverse().map(msg => {
                               const isMine = msg.senderId === user?.id;
                               return (
                                 <div key={msg.id} className={`flex ${isMine ? 'justify-start' : 'justify-end'}`}>
-                                  <div className="max-w-[80%] px-3 py-2 text-xs leading-relaxed" style={{ background: isMine ? 'var(--tr-gold)' : 'var(--tr-overlay)', color: isMine ? '#fff' : 'var(--tr-text-primary)', borderRadius: isMine ? '4px 18px 18px 18px' : '18px 4px 18px 18px' }}>
+                                  <div className="max-w-[80%] px-3 py-2 text-xs leading-relaxed" style={{ background: isMine ? 'var(--tr-gold)' : 'var(--tr-overlay)', color: isMine ? '#fff' : 'var(--tr-text-primary)', borderRadius: isMine ? '18px 18px 4px 18px' : '18px 18px 18px 4px' }}>
                                     {msg.content}
                                   </div>
                                 </div>
                               );
                             })
                           )}
-                          <div ref={chatBottomRef} />
                         </div>
                         {voiceError && (
                           <div className="px-3 pb-1">

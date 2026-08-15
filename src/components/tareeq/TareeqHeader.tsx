@@ -118,12 +118,8 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   function scrollChatToBottom() {
     if (chatMsgsRef.current) chatMsgsRef.current.scrollTop = chatMsgsRef.current.scrollHeight;
   }
-  const prevChatLenRef = useRef(0);
   useEffect(() => {
-    if (chatMessages.length > prevChatLenRef.current) {
-      prevChatLenRef.current = chatMessages.length;
-      requestAnimationFrame(() => scrollChatToBottom());
-    }
+    requestAnimationFrame(() => scrollChatToBottom());
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatMessages]);
 

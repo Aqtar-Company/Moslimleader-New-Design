@@ -453,12 +453,13 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
               onClick={() => {
                 setContent(draftBanner.content);
                 if (draftBanner.category) setCategory(draftBanner.category as TareeqCategoryKey);
-                // Restore media if saved in draft
-                if (draftBanner.imageUrl) {
+                // Restore media if saved in draft — only allow relative or same-origin URLs
+                const isSafeUrl = (u: string) => u.startsWith('/') || u.startsWith(window.location.origin);
+                if (draftBanner.imageUrl && isSafeUrl(draftBanner.imageUrl)) {
                   setMediaUrl(draftBanner.imageUrl);
                   setMediaType('image');
                   if (draftBanner.imageUrls && draftBanner.imageUrls.length > 1) {
-                    setExtraImages(draftBanner.imageUrls.slice(1).map(url => ({
+                    setExtraImages(draftBanner.imageUrls.slice(1).filter(isSafeUrl).map(url => ({
                       id: Math.random().toString(36).slice(2),
                       previewUrl: url,
                       url,

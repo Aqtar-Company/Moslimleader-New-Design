@@ -40,6 +40,7 @@ export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose 
   const [brandedUrl,  setBrandedUrl]  = useState<string | null>(null);
   const [sharing,    setSharing]    = useState(false);
   const [copied,     setCopied]     = useState(false);
+  const [cardError,  setCardError]  = useState(false);
   const profileUrl = `https://moslimleader.com/tareeq/u/${userId}`;
 
   useEffect(() => { setMounted(true); }, []);
@@ -155,6 +156,7 @@ export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose 
     if (avatarUrl) {
       try {
         const img = new Image();
+        img.crossOrigin = 'anonymous';
         await new Promise<void>((res, rej) => {
           img.onload = () => res();
           img.onerror = () => rej();
@@ -213,11 +215,13 @@ export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose 
 
   useEffect(() => {
     if (!qrReady) return;
-    generateBrandedCard().then(blob => {
-      if (!blob) return;
-      setBrandedBlob(blob);
-      setBrandedUrl(URL.createObjectURL(blob));
-    });
+    generateBrandedCard()
+      .then(blob => {
+        if (!blob) { setCardError(true); return; }
+        setBrandedBlob(blob);
+        setBrandedUrl(URL.createObjectURL(blob));
+      })
+      .catch(() => setCardError(true));
   }, [qrReady, generateBrandedCard]);
 
   async function handleCopyLink() {
@@ -280,12 +284,17 @@ export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose 
         {/* QR canvas */}
         <canvas ref={qrCanvasRef} style={{ borderRadius: 12, border: '1px solid var(--tr-border-soft)', display: 'block' }} />
 
-        {/* Generating indicator */}
-        {qrReady && !ready && (
+        {/* Generating indicator / error */}
+        {qrReady && !ready && !cardError && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--tr-text-muted)' }}>
             <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
             {isRtl ? 'جاري التجهيز...' : 'Preparing...'}
           </div>
+        )}
+        {cardError && (
+          <p style={{ fontSize: 12, color: '#f87171', margin: 0, textAlign: 'center' }}>
+            {isRtl ? 'تعذّر توليد البطاقة — جرّب المشاركة عبر الرابط' : 'Could not generate card — try sharing the link'}
+          </p>
         )}
 
         {/* Action buttons */}
@@ -325,7 +334,7 @@ export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose 
           )}
         </button>
 
-        <button onClick={onClose} style={{ color: 'var(--tr-text-muted)', fontSize: 13, background: 'none', border: 'none', cursor: 'pointer', paddingTop: 2 }}>
+        <button onClick={onClose} style={{ color: 'var(--tr-text-muted)', fontSize: 13, background: 'none', border: 'none', cursor: 'pointer', minHeight: 44, display: 'flex', alignItems: 'center', padding: '0 16px' }}>
           {isRtl ? 'إغلاق' : 'Close'}
         </button>
       </div>

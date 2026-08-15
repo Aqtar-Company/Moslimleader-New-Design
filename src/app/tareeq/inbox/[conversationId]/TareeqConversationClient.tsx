@@ -806,7 +806,7 @@ function Inner({ conversationId }: { conversationId: string }) {
       >
         <button
           onClick={() => router.push('/tareeq/inbox')}
-          className="transition"
+          className="w-10 h-10 flex items-center justify-center rounded-full transition shrink-0"
           style={{ color: 'var(--tr-text-muted)' }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--tr-gold)'; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--tr-text-muted)'; }}

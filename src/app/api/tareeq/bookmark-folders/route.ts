@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +21,9 @@ export async function GET(_req: NextRequest) {
 export async function POST(req: NextRequest) {
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const limited = checkRateLimit(`bm-folder:${user.userId}`, 10, 60_000);
+  if (!limited.allowed) return NextResponse.json({ error: 'الرجاء الانتظار قليلاً' }, { status: 429 });
 
   const { name } = await req.json();
   if (!name || typeof name !== 'string' || !name.trim()) {

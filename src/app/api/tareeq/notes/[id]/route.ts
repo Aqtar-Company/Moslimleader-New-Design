@@ -34,6 +34,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
 
+  const limited = checkRateLimit(`note-del:${user.userId}`, 30, 60_000);
+  if (!limited.allowed) return NextResponse.json({ error: 'الرجاء الانتظار قليلاً' }, { status: 429 });
+
   const note = await prisma.tareeqNote.findUnique({ where: { id: params.id }, select: { userId: true } });
   if (!note || note.userId !== user.userId) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 

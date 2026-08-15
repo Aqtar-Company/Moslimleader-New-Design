@@ -34,6 +34,7 @@ export default function TareeqNotebookClient() {
   const autosaveTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedTitle = useRef('');
   const lastSavedContent = useRef('');
+  const requestIdRef   = useRef(0);
 
   // Auth guard
   useEffect(() => {
@@ -42,12 +43,16 @@ export default function TareeqNotebookClient() {
 
   const fetchNotes = useCallback(async (q?: string, s?: string) => {
     setLoading(true);
+    const reqId = ++requestIdRef.current;
     const params = new URLSearchParams({ sort: s ?? sort, limit: '50' });
     if (q) params.set('q', q);
-    const res = await fetch(`/api/tareeq/notes?${params}`, { credentials: 'include' });
-    const data = await res.json().catch(() => ({}));
-    setNotes(data.notes ?? []);
-    setLoading(false);
+    try {
+      const res = await fetch(`/api/tareeq/notes?${params}`, { credentials: 'include' });
+      const data = await res.json().catch(() => ({}));
+      if (reqId !== requestIdRef.current) return; // stale — newer request already in flight
+      setNotes(data.notes ?? []);
+    } catch { /* ignore */ }
+    finally { if (reqId === requestIdRef.current) setLoading(false); }
   }, [sort]);
 
   useEffect(() => {
@@ -93,27 +98,28 @@ export default function TareeqNotebookClient() {
     if (!editContent.trim() && !editTitle.trim()) return;
     setSaving(true);
     const body = { title: editTitle.trim() || null, content: editContent.trim() };
-
-    if (isNew) {
-      const res  = await fetch('/api/tareeq/notes', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      const data = await res.json().catch(() => ({}));
-      if (data.note) {
-        setNotes(prev => [data.note, ...prev]);
-        setActiveId(data.note.id);
-        setIsNew(false);
-        lastSavedTitle.current   = editTitle;
-        lastSavedContent.current = editContent;
+    try {
+      if (isNew) {
+        const res  = await fetch('/api/tareeq/notes', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const data = await res.json().catch(() => ({}));
+        if (data.note) {
+          setNotes(prev => [data.note, ...prev]);
+          setActiveId(data.note.id);
+          setIsNew(false);
+          lastSavedTitle.current   = editTitle;
+          lastSavedContent.current = editContent;
+        }
+      } else if (activeId) {
+        const res  = await fetch(`/api/tareeq/notes/${activeId}`, { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const data = await res.json().catch(() => ({}));
+        if (data.note) {
+          setNotes(prev => prev.map(n => n.id === activeId ? data.note : n));
+          lastSavedTitle.current   = editTitle;
+          lastSavedContent.current = editContent;
+        }
       }
-    } else if (activeId) {
-      const res  = await fetch(`/api/tareeq/notes/${activeId}`, { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      const data = await res.json().catch(() => ({}));
-      if (data.note) {
-        setNotes(prev => prev.map(n => n.id === activeId ? data.note : n));
-        lastSavedTitle.current   = editTitle;
-        lastSavedContent.current = editContent;
-      }
-    }
-    setSaving(false);
+    } catch { /* network error — saving indicator cleared below */ }
+    finally { setSaving(false); }
   }, [editContent, editTitle, isNew, activeId]);
 
   // Autosave on change — depends on saveNote so closure is always fresh
@@ -139,19 +145,21 @@ export default function TareeqNotebookClient() {
     }
   }
 
-  // Convert note to post — pre-fill create modal via sessionStorage
-  function convertToPost() {
+  // Convert note to post — flush pending autosave first, then pre-fill create modal
+  async function convertToPost() {
     if (!editContent.trim()) return;
-    const payload = { content: editContent.trim(), title: editTitle.trim() || undefined };
+    if (autosaveTimer.current) { clearTimeout(autosaveTimer.current); autosaveTimer.current = null; }
+    await saveNote();
     try { sessionStorage.setItem('tareeq-share-prefill', [editTitle.trim(), editContent.trim()].filter(Boolean).join('\n')); } catch { /* private mode */ }
     router.push('/tareeq?action=create');
   }
 
-  function closeMobileEditor() {
+  async function closeMobileEditor() {
     if (autosaveTimer.current) {
       clearTimeout(autosaveTimer.current);
-      saveNote();
+      autosaveTimer.current = null;
     }
+    await saveNote();
     setShowMobileEditor(false);
     setActiveId(null);
     setIsNew(false);
@@ -274,7 +282,7 @@ export default function TareeqNotebookClient() {
           <>
             <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
               {/* Mobile back */}
-              <button onClick={closeMobileEditor} className="lg:hidden w-8 h-8 rounded-full flex items-center justify-center" style={{ color: 'var(--tr-text-muted)' }}>
+              <button onClick={closeMobileEditor} className="lg:hidden w-11 h-11 rounded-full flex items-center justify-center" style={{ color: 'var(--tr-text-muted)' }}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M9 5l7 7-7 7' : 'M15 19l-7-7 7-7'} />
                 </svg>
@@ -319,7 +327,7 @@ export default function TareeqNotebookClient() {
               placeholder={isRtl ? 'العنوان (اختياري)' : 'Title (optional)'}
               className="w-full px-5 pt-4 pb-2 text-lg font-bold outline-none bg-transparent"
               style={{ color: 'var(--tr-text-primary)' }}
-              dir={isRtl ? 'rtl' : 'ltr'}
+              dir="auto"
             />
 
             {/* Content */}
@@ -329,7 +337,7 @@ export default function TareeqNotebookClient() {
               placeholder={isRtl ? 'اكتب فكرتك هنا…\n\nمساحة خاصة لأفكارك قبل أن تتحول إلى علامة.' : 'Write your thoughts here…\n\nA private space for ideas before they become a post.'}
               className="flex-1 w-full px-5 py-2 resize-none outline-none bg-transparent text-sm leading-relaxed"
               style={{ color: 'var(--tr-text-primary)', minHeight: 380 }}
-              dir={isRtl ? 'rtl' : 'ltr'}
+              dir="auto"
               autoFocus
             />
           </>

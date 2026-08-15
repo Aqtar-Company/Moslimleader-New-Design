@@ -917,7 +917,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           className="relative flex items-end justify-around px-3"
           style={{ height: NAV_H, paddingBottom: 'env(safe-area-inset-bottom, 0px)', zIndex: 1 }}
         >
-          {/* 1 — Profile avatar → navigates to own profile page */}
+            {/* 1 (far RIGHT in RTL) — Profile avatar */}
           <button
             onClick={() => user ? router.push(`/tareeq/u/${user.id}`) : router.push('/login?next=/tareeq')}
             className="flex flex-col items-center justify-end gap-1 pb-2 transition-all active:scale-90"
@@ -926,68 +926,16 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             {user?.avatarUrl ? (
               <img src={user.avatarUrl} alt={user.name ?? ''}
                 className="w-7 h-7 rounded-full object-cover"
-                style={{ border: '2px solid var(--tr-gold-dim)', opacity: 0.85 }} />
+                style={{ border: '2px solid var(--tr-gold-dim)', opacity: isOnProfile ? 1 : 0.75 }} />
             ) : (
               <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black"
-                style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold-dim)', opacity: 0.85 }}>
+                style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: `2px solid ${isOnProfile ? 'var(--tr-gold)' : 'var(--tr-gold-dim)'}`, opacity: isOnProfile ? 1 : 0.75 }}>
                 {user?.name?.charAt(0) ?? '?'}
               </div>
             )}
           </button>
 
-          {/* 2 — اكتشف (discover — binoculars icon) */}
-          <Link
-            href="/tareeq"
-            className="flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
-            style={{ minWidth: 44 }}
-          >
-            <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.65} viewBox="0 0 24 24"
-              style={{
-                color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
-                filter: isHome ? 'drop-shadow(0 0 6px var(--tr-gold-glow))' : 'none',
-                transition: 'all 0.2s',
-              }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
-              {isRtl ? 'اكتشف' : 'Discover'}
-            </span>
-          </Link>
-
-          {/* 3 — Center spacer + label */}
-          <div className="flex flex-col items-center justify-end pb-2" style={{ width: CIRCLE_SIZE, minWidth: CIRCLE_SIZE }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--tr-gold)', lineHeight: 1, letterSpacing: '0.02em' }}>
-              {isRtl ? 'ضع علامة' : 'Post'}
-            </span>
-          </div>
-
-          {/* 4 — Messages */}
-          <Link
-            href="/tareeq/inbox"
-            className="relative flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
-            style={{ minWidth: 44 }}
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"
-              style={{
-                color: isInbox ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
-                filter: isInbox ? 'drop-shadow(0 0 5px rgba(212,168,83,0.45))' : 'none',
-                transition: 'all 0.2s',
-              }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
-            </svg>
-            {messageCount > 0 && (
-              <span className="absolute -top-0.5 -end-0.5 min-w-[17px] h-[17px] rounded-full flex items-center justify-center text-[9px] font-black px-0.5"
-                style={{ background: '#f43f5e', color: '#fff' }}>
-                {messageCount > 9 ? '9+' : messageCount}
-              </span>
-            )}
-            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isInbox ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
-              {isRtl ? 'رسائل' : 'Chat'}
-            </span>
-          </Link>
-
-          {/* 5 — Contacts / Quick Call */}
+          {/* 2 — Contacts / Quick Call */}
           <button
             onClick={() => { if (user) setShowContacts(true); else router.push('/login?next=/tareeq'); }}
             className="flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
@@ -1005,6 +953,58 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
               {isRtl ? 'اتصال' : 'Call'}
             </span>
           </button>
+
+          {/* 3 — Center spacer + label */}
+          <div className="flex flex-col items-center justify-end pb-2" style={{ width: CIRCLE_SIZE, minWidth: CIRCLE_SIZE }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--tr-gold)', lineHeight: 1, letterSpacing: '0.02em' }}>
+              {isRtl ? 'ضع علامة' : 'Post'}
+            </span>
+          </div>
+
+          {/* 4 — اكتشف (discover) */}
+          <Link
+            href="/tareeq"
+            className="flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
+            style={{ minWidth: 44 }}
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.65} viewBox="0 0 24 24"
+              style={{
+                color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
+                filter: isHome ? 'drop-shadow(0 0 6px var(--tr-gold-glow))' : 'none',
+                transition: 'all 0.2s',
+              }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
+              {isRtl ? 'اكتشف' : 'Discover'}
+            </span>
+          </Link>
+
+          {/* 5 (far LEFT in RTL) — Chat / Messages */}
+          <Link
+            href="/tareeq/inbox"
+            className="relative flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
+            style={{ minWidth: 44 }}
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"
+              style={{
+                color: isInbox ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
+                filter: isInbox ? 'drop-shadow(0 0 5px rgba(212,168,83,0.45))' : 'none',
+                transition: 'all 0.2s',
+              }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+            </svg>
+            {messageCount > 0 && (
+              <span className="absolute top-0 end-0 min-w-[17px] h-[17px] rounded-full flex items-center justify-center text-[9px] font-black px-0.5"
+                style={{ background: '#f43f5e', color: '#fff' }}>
+                {messageCount > 9 ? '9+' : messageCount}
+              </span>
+            )}
+            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isInbox ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
+              {isRtl ? 'الشات' : 'Chat'}
+            </span>
+          </Link>
         </div>
       </nav>
 

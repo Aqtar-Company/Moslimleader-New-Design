@@ -2,7 +2,7 @@
   "name": "طريق — مسلم ليدر",
   "short_name": "طريق",
   "description": "وَبِالنَّجْمِ هُمْ يَهْتَدُونَ — اترك علامة يهتدي بها غيرك",
-  "start_url": "/tareeq",
+  "start_url": "/tareeq/inbox",
   "scope": "/tareeq",
   "display": "standalone",
   "orientation": "portrait",

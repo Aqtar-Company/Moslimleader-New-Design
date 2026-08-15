@@ -116,8 +116,18 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   const chatInputRef = useRef<HTMLInputElement>(null);
 
   function scrollChatToBottom() {
+    chatBottomRef.current?.scrollIntoView({ block: 'end' });
     if (chatMsgsRef.current) chatMsgsRef.current.scrollTop = chatMsgsRef.current.scrollHeight;
   }
+  const prevChatLenRef = useRef(0);
+  useEffect(() => {
+    if (chatMessages.length > prevChatLenRef.current) {
+      prevChatLenRef.current = chatMessages.length;
+      scrollChatToBottom();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatMessages]);
+
   const [msgSearch, setMsgSearch] = useState('');
 
   /* ── Call initiated from desktop chat panel ── */
@@ -435,13 +445,24 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   };
 
   const msgPanelStyle: React.CSSProperties = {
-    ...panelBase,
-    transformOrigin: isRtl ? 'top left' : 'top right',
-    ...(isRtl ? { left: 0 } : { right: 0 }),
+    position: 'fixed',
+    bottom: 72,
+    ...(isRtl ? { right: 16 } : { left: 16 }),
+    width: 340,
+    borderRadius: 16,
+    background: 'var(--tr-surface)',
+    border: '1px solid var(--tr-border-soft)',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.10)',
+    overflow: 'hidden',
+    zIndex: 200,
+    transformOrigin: isRtl ? 'bottom right' : 'bottom left',
     transform: msgPanelVisible ? 'scaleY(1)' : 'scaleY(0.92)',
     opacity: msgPanelVisible ? 1 : 0,
-    maxHeight: 520,
+    maxHeight: 'min(520px, calc(100dvh - 100px))',
     overflowY: 'auto',
+    transition: 'opacity 200ms ease, transform 200ms ease',
+    display: 'flex',
+    flexDirection: 'column',
   };
 
   return (
@@ -1024,8 +1045,9 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                             </svg>
                           </button>
                           {/* Expand to full page */}
-                          <Link href={`/tareeq/inbox/${activeChatConv?.id}`} onClick={() => setShowMsgPanel(false)} className="w-8 h-8 rounded-full flex items-center justify-center transition hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-text-muted)' }}>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
+                          <Link href={`/tareeq/inbox/${activeChatConv?.id}`} onClick={() => setShowMsgPanel(false)} className="flex items-center gap-1 px-2 h-8 rounded-full transition hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-text-muted)', fontSize: 11, fontWeight: 600 }}>
+                            <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
+                            {isRtl ? 'عرض الكل' : 'See all'}
                           </Link>
                         </div>
                       </div>

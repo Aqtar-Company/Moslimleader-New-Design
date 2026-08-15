@@ -36,11 +36,13 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [showCatPicker, setShowCatPicker] = useState(false);
   const [draftBanner, setDraftBanner] = useState<Draft | null>(null);
+  const [draftSaved, setDraftSaved] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const catPickerRef = useRef<HTMLDivElement>(null);
   const uploadedForFile = useRef<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestDraftRef = useRef({ content: '', category: '' });
 
   useEffect(() => {
     setMounted(true);
@@ -88,17 +90,32 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     return () => document.removeEventListener('mousedown', h);
   }, [showCatPicker]);
 
+  // Keep ref in sync for immediate save on unmount
+  useEffect(() => { latestDraftRef.current = { content, category }; }, [content, category]);
+
   useEffect(() => {
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     draftTimerRef.current = setTimeout(() => {
       if (content.trim() || category) {
         try {
           localStorage.setItem(DRAFT_KEY, JSON.stringify({ content, category, savedAt: Date.now() }));
+          setDraftSaved(true);
+          setTimeout(() => setDraftSaved(false), 2000);
         } catch { /* storage full or blocked */ }
       }
     }, 1500);
     return () => { if (draftTimerRef.current) clearTimeout(draftTimerRef.current); };
   }, [content, category]);
+
+  // Save draft immediately on unmount (catches close-before-debounce)
+  useEffect(() => {
+    return () => {
+      const { content: c, category: cat } = latestDraftRef.current;
+      if (c.trim()) {
+        try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ content: c, category: cat, savedAt: Date.now() })); } catch { /* ignore */ }
+      }
+    };
+  }, []);
 
   async function doUpload(file: File) {
     setUploading(true);
@@ -261,12 +278,19 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
             </svg>
           </button>
 
-          {/* Title */}
-          <span className="font-black text-sm" style={{ color: 'var(--tr-text-primary)' }}>
-            {mode === 'media'
-              ? (isRtl ? '🖼 صورة / فيديو' : '🖼 Photo / Video')
-              : (isRtl ? '★ اترك علامة' : '★ Leave a Mark')}
-          </span>
+          {/* Title + draft-saved flash */}
+          <div className="flex flex-col items-center gap-0.5">
+            <span className="font-black text-sm" style={{ color: 'var(--tr-text-primary)' }}>
+              {mode === 'media'
+                ? (isRtl ? '🖼 صورة / فيديو' : '🖼 Photo / Video')
+                : (isRtl ? '★ اترك علامة' : '★ Leave a Mark')}
+            </span>
+            {draftSaved && (
+              <span className="text-[10px] font-semibold" style={{ color: 'var(--tr-gold)', opacity: 0.8 }}>
+                {isRtl ? '✓ تم حفظ المسودة' : '✓ Draft saved'}
+              </span>
+            )}
+          </div>
 
           {/* Publish */}
           <button
@@ -304,46 +328,46 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           </div>
         )}
 
+        {/* ── Draft restore banner (sticky, always visible) ── */}
+        {draftBanner && (
+          <div
+            className="shrink-0 flex items-center gap-2 px-4 py-2.5"
+            style={{ background: 'rgba(212,168,83,0.1)', borderBottom: '1px solid rgba(212,168,83,0.25)' }}
+          >
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
+            </svg>
+            <span className="flex-1 text-xs font-semibold" style={{ color: 'var(--tr-gold)' }}>
+              {isRtl ? 'لديك مسودة محفوظة' : 'You have a saved draft'}
+            </span>
+            <button
+              onClick={() => {
+                setContent(draftBanner.content);
+                if (draftBanner.category) setCategory(draftBanner.category as TareeqCategoryKey);
+                setDraftBanner(null);
+                try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+                setTimeout(() => textareaRef.current?.focus(), 50);
+              }}
+              className="text-xs font-bold px-2.5 py-1 rounded-lg transition"
+              style={{ background: 'var(--tr-gold)', color: '#fff' }}
+            >
+              {isRtl ? 'استكمال' : 'Restore'}
+            </button>
+            <button
+              onClick={() => {
+                setDraftBanner(null);
+                try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+              }}
+              className="text-xs px-2 py-1 rounded-lg transition"
+              style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)' }}
+            >
+              {isRtl ? 'تجاهل' : 'Discard'}
+            </button>
+          </div>
+        )}
+
         {/* ── Scrollable body ── */}
         <div className="flex-1 overflow-y-auto">
-
-          {/* Draft restore banner */}
-          {draftBanner && (
-            <div
-              className="shrink-0 mx-4 mt-3 flex items-center gap-2 px-3 py-2.5 rounded-xl"
-              style={{ background: 'rgba(212,168,83,0.1)', border: '1px solid rgba(212,168,83,0.25)' }}
-            >
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
-              </svg>
-              <span className="flex-1 text-xs font-semibold" style={{ color: 'var(--tr-gold)' }}>
-                {isRtl ? 'لديك مسودة محفوظة' : 'You have a saved draft'}
-              </span>
-              <button
-                onClick={() => {
-                  setContent(draftBanner.content);
-                  if (draftBanner.category) setCategory(draftBanner.category as TareeqCategoryKey);
-                  setDraftBanner(null);
-                  try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
-                  setTimeout(() => textareaRef.current?.focus(), 50);
-                }}
-                className="text-xs font-bold px-2.5 py-1 rounded-lg transition"
-                style={{ background: 'var(--tr-gold)', color: '#fff' }}
-              >
-                {isRtl ? 'استكمال' : 'Restore'}
-              </button>
-              <button
-                onClick={() => {
-                  setDraftBanner(null);
-                  try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
-                }}
-                className="text-xs px-2 py-1 rounded-lg transition"
-                style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)' }}
-              >
-                {isRtl ? 'تجاهل' : 'Discard'}
-              </button>
-            </div>
-          )}
 
           {/* Compose: avatar + textarea */}
           <div className="flex gap-3 px-4 pt-4 pb-3">

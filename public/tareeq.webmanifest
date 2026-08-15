@@ -57,6 +57,20 @@
       "description": "عرض صندوق الرسائل",
       "url": "/tareeq/inbox",
       "icons": [{ "src": "/Tareeq-small.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "المحفوظات",
+      "short_name": "محفوظات",
+      "description": "عرض المنشورات المحفوظة",
+      "url": "/tareeq/saved",
+      "icons": [{ "src": "/Tareeq-small.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "دفتري",
+      "short_name": "دفتري",
+      "description": "مساحة خاصة لأفكارك",
+      "url": "/tareeq/notebook",
+      "icons": [{ "src": "/Tareeq-small.png", "sizes": "192x192", "type": "image/png" }]
     }
   ],
   "share_target": {

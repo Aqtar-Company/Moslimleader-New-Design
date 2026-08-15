@@ -336,6 +336,23 @@ function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: P
             </Link>
             {/* Divider */}
             <div style={{ height: 1, background: 'var(--tr-border-subtle)', marginInline: 16 }} />
+            {/* Notebook */}
+            <Link
+              href="/tareeq/notebook"
+              onClick={onClose}
+              className="flex items-center gap-3.5 px-4 py-3 transition-all active:scale-[0.98]"
+              style={{ textDecoration: 'none' }}
+            >
+              <div style={iconBox('var(--tr-gold-glow)', 'var(--tr-gold-dim)')}>
+                <span style={{ fontSize: 18, lineHeight: 1 }}>📓</span>
+              </div>
+              <span className="font-bold text-sm flex-1" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'دفتري' : 'My Notebook'}</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M15.75 19.5L8.25 12l7.5-7.5' : 'M8.25 4.5l7.5 7.5-7.5 7.5'} />
+              </svg>
+            </Link>
+            {/* Divider */}
+            <div style={{ height: 1, background: 'var(--tr-border-subtle)', marginInline: 16 }} />
             {/* Edit Profile */}
             <Link
               href="/account"

@@ -82,6 +82,7 @@ model User {
   tareeqReportsFiled      TareeqReport[]           @relation("TareeqReporter")
   tareeqBans              TareeqBan[]              @relation("TareeqBans")
   tareeqTickets           TareeqSupportTicket[]    @relation("TareeqTickets")
+  tareeqNotes             TareeqNote[]             @relation("TareeqNotes")
 
   @@index([role])
   @@index([isWholesale])
@@ -1646,4 +1647,17 @@ model TareeqSupportTicket {
 
   @@index([status])
   @@index([userId])
+}
+
+model TareeqNote {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String?  @db.Text
+  content   String   @db.Text
+  imageUrl  String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation("TareeqNotes", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt(sort: Desc)])
 }

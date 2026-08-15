@@ -584,6 +584,27 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
             </div>
           )}
 
+          {/* Notebook widget */}
+          {user && (
+            <Link href="/tareeq/notebook"
+              className="flex items-center gap-3 px-4 py-3.5 rounded-2xl transition"
+              style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', color: 'inherit', textDecoration: 'none' }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = 'var(--tr-gold-dim)'}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = 'var(--tr-border-subtle)'}
+            >
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--tr-gold-glow)' }}>
+                <span style={{ fontSize: 18, lineHeight: 1 }}>📓</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'دفتري' : 'My Notebook'}</p>
+                <p className="text-[11px]" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'مساحة خاصة لأفكارك' : 'Private space for your thoughts'}</p>
+              </div>
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'} />
+              </svg>
+            </Link>
+          )}
+
         </aside>
 
         {/* ━━ CENTER — feed ━━ */}

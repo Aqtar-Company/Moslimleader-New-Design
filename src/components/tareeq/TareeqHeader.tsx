@@ -98,6 +98,31 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   /* ── Desktop messages panel state ── */
   const [showMsgPanel, setShowMsgPanel] = useState(false);
   const [msgPanelVisible, setMsgPanelVisible] = useState(false);
+  const [panelSize, setPanelSize] = useState({ w: 340, h: 520 });
+  const resizingRef = useRef(false);
+  const resizeStartRef = useRef({ x: 0, y: 0, w: 340, h: 520 });
+
+  function startPanelResize(e: React.MouseEvent) {
+    e.preventDefault();
+    resizingRef.current = true;
+    resizeStartRef.current = { x: e.clientX, y: e.clientY, w: panelSize.w, h: panelSize.h };
+    function onMove(ev: MouseEvent) {
+      if (!resizingRef.current) return;
+      const dx = ev.clientX - resizeStartRef.current.x;
+      const dy = ev.clientY - resizeStartRef.current.y;
+      // Panel anchors to insetInlineEnd:0 (right in RTL), so drag left = wider
+      const newW = Math.max(280, Math.min(640, resizeStartRef.current.w + (isRtl ? -dx : dx)));
+      const newH = Math.max(300, Math.min(700, resizeStartRef.current.h + dy));
+      setPanelSize({ w: newW, h: newH });
+    }
+    function onUp() {
+      resizingRef.current = false;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [msgsLoading, setMsgsLoading] = useState(false);
   const msgPanelRef = useRef<HTMLDivElement>(null);
@@ -444,18 +469,18 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
     position: 'absolute',
     top: 'calc(100% + 8px)',
     insetInlineEnd: 0,
-    width: 340,
+    width: panelSize.w,
     borderRadius: 16,
     background: 'var(--tr-surface)',
     border: '1px solid var(--tr-border-soft)',
     boxShadow: '0 8px 32px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.10)',
     overflow: 'hidden',
+    overflowY: 'auto',
     zIndex: 200,
     transform: msgPanelVisible ? 'translateY(0)' : 'translateY(10px)',
     opacity: msgPanelVisible ? 1 : 0,
-    maxHeight: 'min(520px, calc(100dvh - 100px))',
-    overflowY: 'auto',
-    transition: 'opacity 180ms ease, transform 180ms ease',
+    maxHeight: `min(${panelSize.h}px, calc(100dvh - 100px))`,
+    transition: resizingRef.current ? 'none' : 'opacity 180ms ease, transform 180ms ease',
     display: 'flex',
     flexDirection: 'column',
   };
@@ -861,7 +886,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                         <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
                           <button onClick={closeChat} className="w-8 h-8 rounded-full flex items-center justify-center transition" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
                             </svg>
                           </button>
                           <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -978,6 +1003,15 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                           </div>
                         </>
                       )}
+                      {/* Resize handle — bottom-start corner */}
+                      <div
+                        onMouseDown={startPanelResize}
+                        style={{ position: 'absolute', bottom: 0, insetInlineStart: 0, width: 20, height: 20, cursor: isRtl ? 'nesw-resize' : 'nwse-resize', zIndex: 10, display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-start', padding: 4, opacity: 0.35 }}
+                      >
+                        <svg width={10} height={10} viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth={1.5} style={{ color: 'var(--tr-text-muted)' }}>
+                          <path d="M1 9L9 1M5 9L9 5M1 5L5 1" />
+                        </svg>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1009,7 +1043,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                     ) : (
                       <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
                         <button onClick={closeChat} className="w-8 h-8 rounded-full flex items-center justify-center transition" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3' : 'M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18'} /></svg>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
                         </button>
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           {activeChatConv?.otherUser.avatarUrl ? (
@@ -1164,6 +1198,15 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                         </div>
                       </>
                     )}
+                    {/* Resize handle — bottom-start corner */}
+                    <div
+                      onMouseDown={startPanelResize}
+                      style={{ position: 'absolute', bottom: 0, insetInlineStart: 0, width: 20, height: 20, cursor: isRtl ? 'nesw-resize' : 'nwse-resize', zIndex: 10, display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-start', padding: 4, opacity: 0.35 }}
+                    >
+                      <svg width={10} height={10} viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth={1.5} style={{ color: 'var(--tr-text-muted)' }}>
+                        <path d="M1 9L9 1M5 9L9 5M1 5L5 1" />
+                      </svg>
+                    </div>
                   </div>
                 )}
               </div>

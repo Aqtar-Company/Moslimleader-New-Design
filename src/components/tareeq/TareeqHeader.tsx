@@ -248,7 +248,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
       });
       if (res.ok) {
         const d = await res.json();
-        if (d.message) { setChatMessages(prev => [...prev, d.message]); setTimeout(() => scrollChatToBottom(), 50); }
+        if (d.message) { setChatMessages(prev => [d.message, ...prev]); }
       }
     } catch { /* offline */ }
     setChatSending(false);
@@ -310,7 +310,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           });
           if (sendRes.ok) {
             const d = await sendRes.json();
-            if (d.message) { setChatMessages(prev => [...prev, d.message]); setTimeout(() => scrollChatToBottom(), 50); }
+            if (d.message) { setChatMessages(prev => [d.message, ...prev]); }
           } else { setVoiceError(isRtl ? 'فشل الإرسال' : 'Send failed'); setTimeout(() => setVoiceError(''), 3000); }
         } catch { setVoiceError(isRtl ? 'خطأ في الشبكة' : 'Network error'); setTimeout(() => setVoiceError(''), 3000); }
         setVoiceUploading(false);

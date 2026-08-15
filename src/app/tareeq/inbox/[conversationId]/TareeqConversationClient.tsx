@@ -405,6 +405,15 @@ function Inner({ conversationId }: { conversationId: string }) {
         setMessages(msgs);
         latestIdRef.current = newLatest;
         refresh();
+        // Keep sidebar in sync with active conversation's latest message
+        if (latestMsg) {
+          const preview = latestMsg.content || (latestMsg.imageUrl ? '📷' : latestMsg.audioUrl ? '🎙️' : '');
+          setSidebarConvs(prev => prev.map(c =>
+            c.id === conversationId
+              ? { ...c, lastMessage: preview, lastMessageAt: latestMsg.createdAt, unreadCount: 0 }
+              : c
+          ));
+        }
       } else {
         // Still update messages to reflect changed read statuses (seen ticks)
         setMessages(msgs);

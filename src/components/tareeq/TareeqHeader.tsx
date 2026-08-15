@@ -991,8 +991,22 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
             })}
           </div>
 
-          {/* Right: messages icon, notifications icon, create button, avatar */}
+          {/* Right: messages icon, notifications icon, notebook, create button, avatar */}
           <div className="hidden lg:flex items-center gap-1 shrink-0">
+
+            {/* Notebook shortcut */}
+            {user && (
+              <Link
+                href="/tareeq/notebook"
+                title={isRtl ? 'دفتري' : 'My Notebook'}
+                className="relative flex items-center justify-center w-10 h-10 rounded-full transition-all hover:bg-[var(--tr-overlay)]"
+                style={{ color: 'var(--tr-text-secondary)' }}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                </svg>
+              </Link>
+            )}
 
             {/* Messages icon + panel */}
             {user && (

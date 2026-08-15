@@ -446,8 +446,26 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
             <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
             </svg>
-            <span className="flex-1 text-xs font-semibold" style={{ color: 'var(--tr-gold)' }}>
-              {isRtl ? 'لديك مسودة محفوظة' : 'You have a saved draft'}
+            <span className="flex-1 min-w-0 text-xs font-semibold" style={{ color: 'var(--tr-gold)' }}>
+              <span>
+                {isRtl ? 'مسودة محفوظة' : 'Saved draft'}
+                {draftBanner.savedAt ? (
+                  <span className="font-normal" style={{ opacity: 0.7 }}>
+                    {' · '}{(() => {
+                      const diff = Math.floor((Date.now() - draftBanner.savedAt) / 1000);
+                      if (diff < 60) return isRtl ? 'الآن' : 'just now';
+                      if (diff < 3600) return isRtl ? `منذ ${Math.floor(diff/60)} د` : `${Math.floor(diff/60)}m ago`;
+                      if (diff < 86400) return isRtl ? `منذ ${Math.floor(diff/3600)} س` : `${Math.floor(diff/3600)}h ago`;
+                      return isRtl ? `منذ ${Math.floor(diff/86400)} ي` : `${Math.floor(diff/86400)}d ago`;
+                    })()}
+                  </span>
+                ) : null}
+              </span>
+              {draftBanner.content && (
+                <span className="block truncate font-normal mt-0.5" style={{ color: 'var(--tr-text-muted)', fontSize: 10 }}>
+                  {draftBanner.content.slice(0, 60)}
+                </span>
+              )}
             </span>
             <button
               onClick={() => {

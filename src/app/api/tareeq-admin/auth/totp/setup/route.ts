@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-import { authenticator } from 'otplib';
+import { generateSecret, generateURI, verifySync } from 'otplib';
 import QRCode from 'qrcode';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/tareeq-admin-auth';
@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const secret = authenticator.generateSecret();
+    const secret = generateSecret();
 
     // Store the secret immediately (totpEnabled stays false until POST verifies it)
     await prisma.tareeqAdmin.update({
@@ -26,7 +26,12 @@ export async function GET(req: Request) {
       data: { totpSecret: secret },
     });
 
-    const otpauthUrl = authenticator.keyuri(admin.email, 'Tareeq Admin', secret);
+    const otpauthUrl = generateURI({
+      issuer: 'Tareeq Admin',
+      label: admin.email,
+      secret,
+      type: 'totp',
+    });
     const qrDataUrl = await QRCode.toDataURL(otpauthUrl);
 
     return Response.json({ ok: true, secret, otpauthUrl, qrDataUrl });
@@ -66,7 +71,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const valid = authenticator.verify({ token: totpCode, secret: fresh.totpSecret });
+    const result = verifySync({ token: totpCode, secret: fresh.totpSecret });
+    const valid = result?.valid ?? false;
     if (!valid) {
       return Response.json({ error: 'Invalid TOTP code' }, { status: 400 });
     }

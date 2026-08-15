@@ -84,6 +84,8 @@ model User {
 
   @@index([role])
   @@index([isWholesale])
+  @@index([tareeqLastSeen])
+  @@index([tareeqSuspended])
 }
 
 model Campaign {
@@ -1493,20 +1495,22 @@ enum TareeqAdminRole {
 }
 
 model TareeqAdmin {
-  id          String               @id @default(cuid())
-  email       String               @unique
-  password    String
-  name        String
-  role        TareeqAdminRole      @default(MODERATOR)
-  totpSecret  String?
-  totpEnabled Boolean              @default(false)
-  isActive    Boolean              @default(true)
-  lastLoginAt DateTime?
-  lastLoginIp String?
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-  sessions    TareeqAdminSession[]
-  auditLogs   TareeqAuditLog[]
+  id               String               @id @default(cuid())
+  email            String               @unique
+  password         String
+  name             String
+  role             TareeqAdminRole      @default(MODERATOR)
+  totpSecret       String?
+  totpEnabled      Boolean              @default(false)
+  isActive         Boolean              @default(true)
+  lastLoginAt      DateTime?
+  lastLoginIp      String?
+  resetToken       String?              @unique
+  resetTokenExpiry DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  sessions         TareeqAdminSession[]
+  auditLogs        TareeqAuditLog[]
 }
 
 model TareeqAdminSession {

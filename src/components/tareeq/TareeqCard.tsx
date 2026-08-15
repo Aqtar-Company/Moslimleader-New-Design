@@ -162,6 +162,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   const [bmFoldersLoaded, setBmFoldersLoaded] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [creatingFolder, setCreatingFolder] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const shareMenuRef = useRef<HTMLDivElement>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
 
@@ -363,6 +364,23 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           </button>
           {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} isRtl={isRtl} />}
         </div>
+
+        {/* Report — only for other users' posts */}
+        {user && user.id !== post.userId && (
+          <button
+            onClick={e => { e.preventDefault(); e.stopPropagation(); setShowReport(true); }}
+            aria-label={isRtl ? 'بلاغ' : 'Report'}
+            title={isRtl ? 'إبلاغ عن المحتوى' : 'Report content'}
+            style={{ ...btnBase, color: 'var(--tr-text-muted)', padding: '8px 10px' }}
+            onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, { ...hover, color: '#f43f5e' })}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--tr-text-muted)'; }}
+          >
+            <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 9l6 6M15 9l-6 6" />
+            </svg>
+          </button>
+        )}
 
         {/* Bookmark */}
         <button
@@ -655,6 +673,20 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             </button>
             {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} isRtl={isRtl} />}
           </div>
+
+          {user && user.id !== post.userId && (
+            <button
+              onClick={e => { e.preventDefault(); e.stopPropagation(); setShowReport(true); }}
+              aria-label={isRtl ? 'بلاغ' : 'Report'}
+              className="flex items-center gap-1 text-xs font-semibold transition active:scale-90"
+              style={{ color: 'var(--tr-text-muted)' }}
+            >
+              <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 9l6 6M15 9l-6 6" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {commentForm}
@@ -662,7 +694,123 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
       {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
+      {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
     </>
+  );
+}
+
+/* ── Report modal ─────────────────────────────────────────────────── */
+const REPORT_REASONS_AR = ['محتوى مسيء أو غير لائق', 'سخرية أو مضايقة', 'كراهية أو تمييز', 'عنف أو إيذاء', 'معلومات مضللة', 'احتيال أو انتحال', 'انتهاك الخصوصية', 'محتوى مزعج أو متكرر', 'أخرى'];
+const REPORT_REASONS_EN = ['Offensive or inappropriate content', 'Mockery or harassment', 'Hate or discrimination', 'Violence or harm', 'Misinformation', 'Fraud or impersonation', 'Privacy violation', 'Spam or repetitive content', 'Other'];
+
+export function ReportModal({ targetType, targetId, isRtl, onClose }: {
+  targetType: 'post' | 'comment' | 'user';
+  targetId: string;
+  isRtl: boolean;
+  onClose: () => void;
+}) {
+  const [reason, setReason] = useState('');
+  const [description, setDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState('');
+
+  async function submit() {
+    if (!reason) { setError(isRtl ? 'اختر سبب البلاغ' : 'Select a reason'); return; }
+    setSubmitting(true); setError('');
+    try {
+      const res = await fetch('/api/tareeq/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ targetType, targetId, reason, description: description.trim() }),
+      });
+      if (res.ok) { setDone(true); setTimeout(onClose, 1800); }
+      else { const d = await res.json().catch(() => ({})); setError(d.error || (isRtl ? 'حدث خطأ' : 'Error')); }
+    } catch { setError(isRtl ? 'خطأ في الاتصال' : 'Connection error'); }
+    finally { setSubmitting(false); }
+  }
+
+  const reasons = isRtl ? REPORT_REASONS_AR : REPORT_REASONS_EN;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl p-5 flex flex-col gap-4"
+        style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', maxHeight: '90dvh', overflowY: 'auto' }}
+        dir={isRtl ? 'rtl' : 'ltr'}
+        onClick={e => e.stopPropagation()}
+      >
+        {done ? (
+          <div className="flex flex-col items-center py-4 gap-3">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl" style={{ background: 'rgba(34,197,94,0.12)' }}>✅</div>
+            <p className="font-bold text-sm" style={{ color: 'var(--tr-text-primary)' }}>
+              {isRtl ? 'تم استلام بلاغك، شكرًا لمساعدتنا' : 'Report received, thank you'}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <h3 className="font-black text-base" style={{ color: 'var(--tr-text-primary)' }}>
+                {isRtl ? 'إبلاغ عن المحتوى' : 'Report Content'}
+              </h3>
+              <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full transition" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}>
+                <svg width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <p className="text-xs" style={{ color: 'var(--tr-text-muted)' }}>
+              {isRtl ? 'اختر سبب البلاغ وسيراجعه فريق الإشراف' : 'Choose a reason and our moderation team will review it'}
+            </p>
+
+            <div className="flex flex-col gap-2">
+              {reasons.map((r, i) => (
+                <button
+                  key={i}
+                  onClick={() => setReason(reasons[i])}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-start transition"
+                  style={{
+                    background: reason === reasons[i] ? 'rgba(244,63,94,0.10)' : 'var(--tr-raised)',
+                    border: `1px solid ${reason === reasons[i] ? 'rgba(244,63,94,0.35)' : 'var(--tr-border-subtle)'}`,
+                    color: reason === reasons[i] ? '#f43f5e' : 'var(--tr-text-secondary)',
+                    fontWeight: reason === reasons[i] ? 600 : 400,
+                  }}
+                >
+                  <span className="w-4 h-4 rounded-full shrink-0 flex items-center justify-center" style={{ border: `2px solid ${reason === reasons[i] ? '#f43f5e' : 'var(--tr-border-soft)'}` }}>
+                    {reason === reasons[i] && <span className="w-2 h-2 rounded-full" style={{ background: '#f43f5e' }} />}
+                  </span>
+                  {r}
+                </button>
+              ))}
+            </div>
+
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder={isRtl ? 'تفاصيل إضافية (اختياري)' : 'Additional details (optional)'}
+              rows={2}
+              className="w-full rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none transition"
+              style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
+            />
+
+            {error && <p className="text-xs font-semibold text-center" style={{ color: '#f43f5e' }}>{error}</p>}
+
+            <button
+              onClick={submit}
+              disabled={submitting || !reason}
+              className="w-full py-2.5 rounded-xl text-sm font-bold disabled:opacity-40 transition"
+              style={{ background: '#f43f5e', color: '#fff' }}
+            >
+              {submitting ? '...' : (isRtl ? 'إرسال البلاغ' : 'Submit Report')}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 

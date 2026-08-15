@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
@@ -309,6 +309,7 @@ function Inner({ conversationId }: { conversationId: string }) {
   const attachInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const presenceRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const latestIdRef = useRef<string>('');
@@ -409,20 +410,32 @@ function Inner({ conversationId }: { conversationId: string }) {
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
   }, [user, router, loadMessages, conversationId, refresh]);
 
-  // Scroll to bottom on new messages (but not on read-status updates)
-  useEffect(() => {
+  function scrollToBottom(smooth = false) {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    if (smooth) {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    } else {
+      el.scrollTop = el.scrollHeight;
+    }
+  }
+
+  // Scroll to bottom on new messages — useLayoutEffect fires before paint, no visible flash
+  useLayoutEffect(() => {
     if (shouldScrollRef.current) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      scrollToBottom(false);
       shouldScrollRef.current = false;
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
   // Initial scroll
   useEffect(() => {
     if (!loading) {
       shouldScrollRef.current = true;
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'auto' }), 50);
+      setTimeout(() => scrollToBottom(false), 80);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
 
   // Push input bar above iOS keyboard using visualViewport
@@ -775,7 +788,7 @@ function Inner({ conversationId }: { conversationId: string }) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 pb-24 max-w-2xl w-full mx-auto" dir="ltr">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 pb-24 max-w-2xl w-full mx-auto" dir="ltr">
         {loading ? (
           <div className="flex justify-center py-16">
             <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: MSG_BLUE }} />

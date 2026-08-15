@@ -19,9 +19,9 @@ export async function GET(req: Request) {
 
     const skip = (page - 1) * limit;
 
-    // Build where clause
+    // Build where clause — only users who have used Tareeq
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: any = {};
+    const where: any = { tareeqLastSeen: { not: null } };
 
     if (q.trim()) {
       where.OR = [

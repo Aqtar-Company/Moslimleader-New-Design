@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تحديث جاري — مسلم ليدر</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0a0f1e;
+    --surface:  #111827;
+    --border:   rgba(201,168,76,0.18);
+    --gold:     #c9a84c;
+    --gold-lt:  #e8c96a;
+    --gold-dim: rgba(201,168,76,0.12);
+    --cream:    #e8d5a3;
+    --muted:    #94a3b8;
+    --white:    #f8f4ec;
+  }
+
+  html, body {
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--cream);
+    font-family: -apple-system, 'Segoe UI', system-ui, Tahoma, Arial, sans-serif;
+    line-height: 1.7;
+  }
+
+  /* ── Stars background ─────────────────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 12% 18%, rgba(232,201,106,0.6) 0%, transparent 100%),
+      radial-gradient(1px 1px at 34% 6%,  rgba(255,255,255,0.35) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 56% 24%, rgba(232,201,106,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 78% 11%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 91% 33%, rgba(232,201,106,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 7%  45%, rgba(255,255,255,0.25) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 23% 55%, rgba(232,201,106,0.35) 0%, transparent 100%),
+      radial-gradient(1px 1px at 65% 48%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 82% 62%, rgba(232,201,106,0.45) 0%, transparent 100%),
+      radial-gradient(1px 1px at 45% 74%, rgba(255,255,255,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 18% 82%, rgba(232,201,106,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 72% 88%, rgba(255,255,255,0.25) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Subtle radial glow behind image area */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -10%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 500px;
+    background: radial-gradient(ellipse at center, rgba(201,168,76,0.07) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Layout ────────────────────────────────────────────────── */
+  .page {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.25rem 3rem;
+    gap: 0;
+  }
+
+  /* ── Character image ──────────────────────────────────────── */
+  .hero-image {
+    width: 260px;
+    max-width: 70vw;
+    margin-bottom: -28px;
+    position: relative;
+    z-index: 2;
+    filter: drop-shadow(0 24px 48px rgba(201,168,76,0.22));
+    animation: floatIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .hero-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* ── Card ─────────────────────────────────────────────────── */
+  .card {
+    width: 100%;
+    max-width: 520px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 3rem 2.25rem 2.25rem;
+    text-align: center;
+    box-shadow:
+      0 0 0 1px rgba(201,168,76,0.06),
+      0 32px 80px rgba(0,0,0,0.55),
+      inset 0 1px 0 rgba(201,168,76,0.08);
+    animation: riseIn 1s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+  }
+
+  /* ── Gold rule ──────────────────────────────────────────── */
+  .gold-rule {
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    border-radius: 99px;
+    margin: 0 auto 1.5rem;
+  }
+
+  /* ── Heading ─────────────────────────────────────────────── */
+  .heading {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: clamp(2rem, 7vw, 2.75rem);
+    font-weight: 700;
+    color: var(--gold-lt);
+    line-height: 1.2;
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.01em;
+    text-shadow: 0 2px 24px rgba(201,168,76,0.3);
+  }
+
+  .emoji-trophy {
+    display: inline-block;
+    font-style: normal;
+    animation: wiggle 2.5s ease-in-out 1.2s infinite;
+  }
+
+  /* ── Body text ───────────────────────────────────────────── */
+  .body-text {
+    font-size: 1rem;
+    color: var(--cream);
+    margin-bottom: 1.5rem;
+    opacity: 0.9;
+  }
+
+  /* ── WhatsApp callout ────────────────────────────────────── */
+  .wa-callout {
+    background: var(--gold-dim);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.1rem 1.4rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+    color: var(--cream);
+  }
+
+  .wa-callout .camera {
+    font-size: 1.5rem;
+    display: block;
+    margin-bottom: 0.4rem;
+  }
+
+  /* ── WhatsApp button ─────────────────────────────────────── */
+  .btn-wa {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #25d366;
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding: 0.75rem 1.75rem;
+    border-radius: 50px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+    box-shadow: 0 4px 20px rgba(37,211,102,0.3);
+    margin-bottom: 1.75rem;
+  }
+
+  .btn-wa:hover { background: #1fbc59; transform: translateY(-2px); }
+  .btn-wa:active { transform: translateY(0); }
+
+  .btn-wa svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  /* ── Divider ─────────────────────────────────────────────── */
+  .divider {
+    border: none;
+    border-top: 1px solid rgba(201,168,76,0.12);
+    margin-bottom: 1.5rem;
+  }
+
+  /* ── Reassurance text ────────────────────────────────────── */
+  .reassure {
+    font-size: 0.92rem;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+  }
+
+  /* ── Countdown ───────────────────────────────────────────── */
+  .countdown-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .countdown-label {
+    font-size: 0.8rem;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .countdown-ring {
+    position: relative;
+    width: 72px;
+    height: 72px;
+  }
+
+  .countdown-ring svg {
+    transform: rotate(-90deg);
+    width: 72px;
+    height: 72px;
+  }
+
+  .countdown-ring .track {
+    fill: none;
+    stroke: rgba(201,168,76,0.12);
+    stroke-width: 4;
+  }
+
+  .countdown-ring .progress {
+    fill: none;
+    stroke: var(--gold);
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: 188.5;
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 1s linear;
+  }
+
+  .countdown-number {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--gold-lt);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Refresh button ──────────────────────────────────────── */
+  .btn-refresh {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    color: var(--gold);
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0.55rem 1.4rem;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    font-family: inherit;
+  }
+
+  .btn-refresh:hover {
+    background: var(--gold-dim);
+    border-color: rgba(201,168,76,0.35);
+  }
+
+  /* ── Footer logo ─────────────────────────────────────────── */
+  .footer {
+    margin-top: 2rem;
+    font-size: 0.78rem;
+    color: rgba(148,163,184,0.5);
+    letter-spacing: 0.05em;
+    text-align: center;
+  }
+
+  /* ── Animations ───────────────────────────────────────────── */
+  @keyframes floatIn {
+    from { opacity: 0; transform: translateY(30px) scale(0.94); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes riseIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(0deg); }
+    20%  { transform: rotate(-14deg); }
+    40%  { transform: rotate(12deg); }
+    60%  { transform: rotate(-8deg); }
+    80%  { transform: rotate(6deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-image, .card { animation: none; }
+    .emoji-trophy { animation: none; }
+  }
+
+  @media (max-width: 480px) {
+    .card { padding: 2.5rem 1.5rem 1.75rem; }
+    .hero-image { width: 200px; margin-bottom: -22px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- Character image -->
+  <div class="hero-image" aria-hidden="true">
+    <img src="/Error.png" alt="" onerror="this.parentElement.style.display='none'">
+  </div>
+
+  <!-- Main card -->
+  <div class="card" role="main">
+    <div class="gold-rule"></div>
+
+    <h1 class="heading">
+      مبروك! <span class="emoji-trophy">🎉</span>
+    </h1>
+
+    <p class="body-text">
+      دخلت الموقع في اللحظة التي يقوم فيها فريق البرمجة برفع تحديثات جديدة.
+    </p>
+
+    <div class="wa-callout">
+      <span class="camera">📸</span>
+      خُذ لقطة شاشة لهذه الصفحة، وأرسلها لنا عبر واتساب لتحصل على هدية خاصة لأنك صادفت وقت التحديث.
+    </div>
+
+    <a
+      href="https://wa.me/201000000000?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%20%F0%9F%91%8B%20%D9%88%D8%AC%D8%AF%D8%AA%20%D8%B5%D9%81%D8%AD%D8%A9%20%D8%A7%D9%84%D8%B5%D9%8A%D8%A7%D9%86%D8%A9%21"
+      class="btn-wa"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/>
+      </svg>
+      أرسل لقطة الشاشة عبر واتساب
+    </a>
+
+    <hr class="divider">
+
+    <p class="reassure">
+      لا تقلق، الموقع سيعود للعمل خلال دقائق.<br>
+      حدّث الصفحة بعد قليل وحاول مرة أخرى.
+    </p>
+
+    <!-- Countdown ring -->
+    <div class="countdown-wrap">
+      <span class="countdown-label">تحديث تلقائي بعد</span>
+      <div class="countdown-ring" aria-live="polite" aria-label="عداد تنازلي">
+        <svg viewBox="0 0 72 72">
+          <circle class="track"    cx="36" cy="36" r="30"/>
+          <circle class="progress" cx="36" cy="36" r="30" id="ring"/>
+        </svg>
+        <div class="countdown-number" id="timer">60</div>
+      </div>
+    </div>
+
+    <button class="btn-refresh" onclick="location.reload()" type="button">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"/>
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+      </svg>
+      حدّث الصفحة الآن
+    </button>
+  </div>
+
+  <div class="footer">
+    moslimleader.com &nbsp;·&nbsp; فريق مسلم ليدر
+  </div>
+
+</div>
+
+<script>
+  (function () {
+    var total   = 60;
+    var left    = total;
+    var ring    = document.getElementById('ring');
+    var display = document.getElementById('timer');
+    var circumference = 2 * Math.PI * 30; // 188.495
+
+    function tick() {
+      left--;
+      if (left <= 0) { location.reload(); return; }
+      var offset = circumference * (1 - left / total);
+      ring.style.strokeDashoffset = offset;
+      display.textContent = left;
+      setTimeout(tick, 1000);
+    }
+
+    ring.style.strokeDasharray  = circumference;
+    ring.style.strokeDashoffset = 0;
+    display.textContent = total;
+    setTimeout(tick, 1000);
+  })();
+</script>
+
+</body>
+</html>

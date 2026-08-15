@@ -3,33 +3,31 @@ export const dynamic = 'force-dynamic';
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/tareeq-admin-auth';
+import { TareeqAdminRole } from '@prisma/client';
+
+const ALLOWED = [TareeqAdminRole.SUPER_ADMIN, TareeqAdminRole.MODERATOR];
 
 // GET /api/tareeq-admin/posts
 // Params: q, page, limit=20, hidden (all|visible|hidden), category
 export async function GET(request: NextRequest) {
-  const admin = await requireAdmin(request);
-  if (!admin) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    await requireAdmin(request, ALLOWED);
+  } catch (e) {
+    return e as Response;
+  }
 
   const { searchParams } = new URL(request.url);
-  const q       = searchParams.get('q') ?? '';
-  const page    = Math.max(1, Number(searchParams.get('page') ?? '1'));
-  const limit   = Math.min(100, Math.max(1, Number(searchParams.get('limit') ?? '20')));
-  const hidden  = searchParams.get('hidden') ?? 'all'; // all | visible | hidden
+  const q        = searchParams.get('q') ?? '';
+  const page     = Math.max(1, Number(searchParams.get('page') ?? '1'));
+  const limit    = Math.min(100, Math.max(1, Number(searchParams.get('limit') ?? '20')));
+  const hidden   = searchParams.get('hidden') ?? 'all'; // all | visible | hidden
   const category = searchParams.get('category') ?? '';
 
   const where: Record<string, unknown> = {};
-
-  if (q) {
-    where.content = { contains: q };
-  }
-  if (hidden === 'visible') {
-    where.isHidden = false;
-  } else if (hidden === 'hidden') {
-    where.isHidden = true;
-  }
-  if (category) {
-    where.category = category;
-  }
+  if (q)                  where.content  = { contains: q };
+  if (hidden === 'visible') where.isHidden = false;
+  if (hidden === 'hidden')  where.isHidden = true;
+  if (category)           where.category = category;
 
   const [posts, total] = await Promise.all([
     prisma.tareeqPost.findMany({
@@ -44,9 +42,5 @@ export async function GET(request: NextRequest) {
     prisma.tareeqPost.count({ where }),
   ]);
 
-  return Response.json({
-    posts,
-    total,
-    pages: Math.ceil(total / limit),
-  });
+  return Response.json({ posts, total, pages: Math.ceil(total / limit) });
 }

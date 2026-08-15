@@ -89,19 +89,7 @@ export default function TareeqNotebookClient() {
     setShowMobileEditor(true);
   }
 
-  // Autosave on change
-  useEffect(() => {
-    const dirty = editTitle !== lastSavedTitle.current || editContent !== lastSavedContent.current;
-    if (!dirty) return;
-    if (!editContent.trim() && !editTitle.trim()) return;
-
-    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-    autosaveTimer.current = setTimeout(() => saveNote(), AUTOSAVE_DELAY);
-    return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editTitle, editContent]);
-
-  async function saveNote() {
+  const saveNote = useCallback(async () => {
     if (!editContent.trim() && !editTitle.trim()) return;
     setSaving(true);
     const body = { title: editTitle.trim() || null, content: editContent.trim() };
@@ -126,11 +114,23 @@ export default function TareeqNotebookClient() {
       }
     }
     setSaving(false);
-  }
+  }, [editContent, editTitle, isNew, activeId]);
+
+  // Autosave on change — depends on saveNote so closure is always fresh
+  useEffect(() => {
+    const dirty = editTitle !== lastSavedTitle.current || editContent !== lastSavedContent.current;
+    if (!dirty) return;
+    if (!editContent.trim() && !editTitle.trim()) return;
+
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(() => saveNote(), AUTOSAVE_DELAY);
+    return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
+  }, [editTitle, editContent, saveNote]);
 
   async function deleteNote(id: string) {
     if (!confirm(isRtl ? 'حذف هذه الملاحظة؟' : 'Delete this note?')) return;
-    await fetch(`/api/tareeq/notes/${id}`, { method: 'DELETE', credentials: 'include' });
+    const res = await fetch(`/api/tareeq/notes/${id}`, { method: 'DELETE', credentials: 'include' });
+    if (!res.ok) return;
     setNotes(prev => prev.filter(n => n.id !== id));
     if (activeId === id) {
       setActiveId(null);

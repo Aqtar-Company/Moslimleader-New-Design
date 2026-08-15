@@ -1,21 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
-// GET /api/tareeq/bookmarks?folderId=xxx  — list saved posts (optionally in a folder)
+const LIMIT = 50;
+
+// GET /api/tareeq/bookmarks?folderId=xxx&cursor=xxx  — list saved posts
 export async function GET(req: NextRequest) {
-  const user = await getAuthUser();
+  const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const folderId = searchParams.get('folderId') || undefined;
+  const cursor   = searchParams.get('cursor') || undefined;
 
   const bookmarks = await prisma.tareeqBookmark.findMany({
     where: { userId: user.userId, folderId: folderId ?? undefined },
     orderBy: { createdAt: 'desc' },
-    take: 100,
+    take: LIMIT + 1,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     include: {
       folder: { select: { id: true, name: true } },
       post: {
@@ -27,13 +32,20 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ bookmarks });
+  const hasMore    = bookmarks.length > LIMIT;
+  const items      = hasMore ? bookmarks.slice(0, LIMIT) : bookmarks;
+  const nextCursor = hasMore ? items[items.length - 1].id : null;
+
+  return NextResponse.json({ bookmarks: items, nextCursor });
 }
 
 // POST /api/tareeq/bookmarks  — save a post
 export async function POST(req: NextRequest) {
-  const user = await getAuthUser();
+  const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const limited = checkRateLimit(`bookmark:${user.userId}`, 60, 60_000);
+  if (!limited.allowed) return NextResponse.json({ error: 'الرجاء الانتظار قليلاً' }, { status: 429 });
 
   const { postId, folderId } = await req.json();
   if (!postId) return NextResponse.json({ error: 'postId مطلوب' }, { status: 400 });
@@ -57,7 +69,7 @@ export async function POST(req: NextRequest) {
 
 // DELETE /api/tareeq/bookmarks?postId=xxx  — unsave a post
 export async function DELETE(req: NextRequest) {
-  const user = await getAuthUser();
+  const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);

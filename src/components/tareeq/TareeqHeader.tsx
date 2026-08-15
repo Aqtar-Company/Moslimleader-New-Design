@@ -447,7 +447,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   const msgPanelStyle: React.CSSProperties = {
     position: 'fixed',
     bottom: 72,
-    ...(isRtl ? { right: 16 } : { left: 16 }),
+    left: 16,
     width: 340,
     borderRadius: 16,
     background: 'var(--tr-surface)',
@@ -455,7 +455,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
     boxShadow: '0 8px 32px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.10)',
     overflow: 'hidden',
     zIndex: 200,
-    transformOrigin: isRtl ? 'bottom right' : 'bottom left',
+    transformOrigin: 'bottom left',
     transform: msgPanelVisible ? 'scaleY(1)' : 'scaleY(0.92)',
     opacity: msgPanelVisible ? 1 : 0,
     maxHeight: 'min(520px, calc(100dvh - 100px))',
@@ -1006,7 +1006,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                   <Badge count={messageCount} />
                 </button>
                 {showMsgPanel && (
-                  <div ref={msgPanelRef} style={msgPanelStyle} dir="rtl">
+                  <div ref={msgPanelRef} style={msgPanelStyle} dir={isRtl ? 'rtl' : 'ltr'}>
                     {msgPanelView === 'list' ? (
                       <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
                         <span className="font-black text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الرسائل' : 'Messages'}</span>

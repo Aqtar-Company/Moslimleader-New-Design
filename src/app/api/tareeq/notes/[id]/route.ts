@@ -2,11 +2,15 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 // PUT /api/tareeq/notes/[id] — update note
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
+
+  const limited = checkRateLimit(`note-put:${user.userId}`, 120, 60_000);
+  if (!limited.allowed) return NextResponse.json({ error: 'الرجاء الانتظار قليلاً' }, { status: 429 });
 
   const note = await prisma.tareeqNote.findUnique({ where: { id: params.id }, select: { userId: true } });
   if (!note || note.userId !== user.userId) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });

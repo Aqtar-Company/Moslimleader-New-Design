@@ -323,6 +323,17 @@ function Inner({ conversationId }: { conversationId: string }) {
     callId: string; role: 'caller' | 'callee'; callType: 'audio' | 'video'; offer?: string;
   } | null>(null);
 
+  // Desktop sidebar — conversations list
+  interface SidebarConv { id: string; lastMessage?: string | null; lastMessageAt?: string | null; unreadCount: number; otherUser: { id: string; name: string; avatarUrl?: string | null } }
+  const [sidebarConvs, setSidebarConvs] = useState<SidebarConv[]>([]);
+  const [sidebarLoading, setSidebarLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/tareeq/conversations', { credentials: 'include' })
+      .then(r => r.json()).then(d => setSidebarConvs(d.conversations ?? [])).catch(() => {})
+      .finally(() => setSidebarLoading(false));
+  }, []);
+
   function playMsgChime() {
     try {
       const ACtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -708,14 +719,84 @@ function Inner({ conversationId }: { conversationId: string }) {
 
   const online = isOnline(otherUser?.tareeqLastSeen);
 
+  function sidebarTimeAgo(iso: string) {
+    const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (diff < 60)    return isRtl ? 'الآن' : 'now';
+    if (diff < 3600)  return isRtl ? `${Math.floor(diff/60)} د` : `${Math.floor(diff/60)}m`;
+    if (diff < 86400) return isRtl ? `${Math.floor(diff/3600)} س` : `${Math.floor(diff/3600)}h`;
+    if (diff < 86400*2) return isRtl ? 'أمس' : 'Yest.';
+    return isRtl ? `${Math.floor(diff/86400)} ي` : `${Math.floor(diff/86400)}d`;
+  }
+
   return (
-    <div className="flex flex-col overflow-hidden" style={{ background: 'var(--tr-base)', height: '100dvh' }}>
+    <div className="flex overflow-hidden" style={{ background: 'var(--tr-base)', height: '100dvh' }}>
+
+      {/* ── Desktop sidebar ── */}
+      <aside className="hidden lg:flex flex-col shrink-0 overflow-hidden" style={{ width: 320, borderInlineEnd: '1px solid var(--tr-border-subtle)', background: 'var(--tr-surface)' }}>
+        {/* Sidebar header */}
+        <div className="flex items-center justify-between px-4 py-3.5 shrink-0" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+          <span className="font-black text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الرسائل' : 'Messages'}</span>
+        </div>
+
+        {/* Sidebar conversations */}
+        <div className="flex-1 overflow-y-auto">
+          {sidebarLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: MSG_BLUE }} />
+            </div>
+          ) : sidebarConvs.length === 0 ? (
+            <p className="text-center py-10 text-sm" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'لا رسائل بعد' : 'No messages yet'}</p>
+          ) : sidebarConvs.map(c => (
+            <button
+              key={c.id}
+              onClick={() => router.push(`/tareeq/inbox/${c.id}`)}
+              className="w-full flex items-center gap-3 px-4 py-3 text-start transition"
+              style={{
+                background: c.id === conversationId
+                  ? 'rgba(26,110,212,0.07)'
+                  : c.unreadCount > 0 ? 'rgba(212,168,83,0.04)' : 'transparent',
+                borderBottom: '1px solid var(--tr-border-subtle)',
+                borderInlineStart: c.id === conversationId ? `3px solid ${MSG_BLUE}` : '3px solid transparent',
+              }}
+            >
+              <div className="w-10 h-10 rounded-full shrink-0 overflow-hidden flex items-center justify-center font-bold text-sm relative"
+                style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-border-soft)' }}>
+                {c.otherUser.avatarUrl
+                  ? <img src={c.otherUser.avatarUrl} alt={c.otherUser.name} className="w-full h-full object-cover" />
+                  : c.otherUser.name.charAt(0)}
+                {c.unreadCount > 0 && (
+                  <span className="absolute bottom-0 end-0 w-3 h-3 rounded-full border-2" style={{ background: 'var(--tr-gold)', borderColor: 'var(--tr-surface)' }} />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{c.otherUser.name}</p>
+                {c.lastMessage && (
+                  <p className="text-xs truncate mt-0.5" style={{ color: c.unreadCount > 0 ? 'var(--tr-text-primary)' : 'var(--tr-text-muted)', fontWeight: c.unreadCount > 0 ? 600 : 400 }}>
+                    {c.lastMessage}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                {c.lastMessageAt && <span className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{sidebarTimeAgo(c.lastMessageAt)}</span>}
+                {c.unreadCount > 0 && (
+                  <span className="text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center" style={{ background: 'var(--tr-gold)', color: '#0a0d06' }}>
+                    {c.unreadCount}
+                  </span>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      </aside>
+
+      {/* ── Chat area ── */}
+      <div className="flex flex-col flex-1 overflow-hidden relative">
       {/* Spacer for sub-header (~60px) */}
       <div className="h-[60px] shrink-0" />
 
       {/* Chat sub-header */}
       <div
-        className="fixed top-0 left-0 right-0 px-4 py-3 flex items-center gap-3 z-40"
+        className="fixed top-0 left-0 right-0 lg:left-[320px] px-4 py-3 flex items-center gap-3 z-40"
         style={{
           background: 'var(--tr-surface)',
           backdropFilter: 'blur(12px)',
@@ -920,7 +1001,7 @@ function Inner({ conversationId }: { conversationId: string }) {
       {/* Input bar — pushed above keyboard via visualViewport */}
       <div
         ref={inputBarRef}
-        className="fixed left-0 right-0 z-30"
+        className="fixed left-0 right-0 lg:left-[320px] z-30"
         style={{
           bottom: 0,
           background: 'var(--tr-surface)',
@@ -1185,6 +1266,7 @@ function Inner({ conversationId }: { conversationId: string }) {
           onEnd={() => setActiveCall(null)}
         />
       )}
+      </div> {/* end chat area */}
     </div>
   );
 }

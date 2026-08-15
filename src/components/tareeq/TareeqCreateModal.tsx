@@ -10,6 +10,7 @@ import { compressImage } from '@/lib/compress-image';
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
 const DRAFT_KEY = 'tareeq_draft';
+const QUEUE_KEY = 'tareeq-post-queue';
 interface Draft { content: string; category: string; savedAt: number; }
 
 interface Props {
@@ -171,6 +172,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
       setError(isRtl ? 'اكتب شيئاً أو أضف صورة' : 'Write something or add a photo');
       return;
     }
+    // Clear draft timer before network call to prevent race with onClose
+    if (draftTimerRef.current) { clearTimeout(draftTimerRef.current); draftTimerRef.current = null; }
     setLoading(true);
     setError('');
     try {
@@ -194,7 +197,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     } catch {
       // Network failure — queue for retry when back online
       try {
-        const q = JSON.parse(localStorage.getItem('tareeq-post-queue') ?? '[]');
+        const q = JSON.parse(localStorage.getItem(QUEUE_KEY) ?? '[]');
         q.push({
           id: Math.random().toString(36).slice(2),
           content: content.trim(),
@@ -203,7 +206,9 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           videoUrl: mediaType === 'video' ? mediaUrl : null,
           queuedAt: Date.now(),
         });
-        localStorage.setItem('tareeq-post-queue', JSON.stringify(q));
+        localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+        // Also clear draft so the queued content doesn't surface as a restore banner
+        try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
         window.dispatchEvent(new Event('tareeq-queue-changed'));
         onClose();
         return;

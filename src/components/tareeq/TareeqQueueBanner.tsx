@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LanguageContext';
 
-const QUEUE_KEY = 'tareeq-post-queue';
+export const QUEUE_KEY = 'tareeq-post-queue';
 
 interface QueuedPost {
   id: string;
@@ -33,6 +33,7 @@ export default function TareeqQueueBanner() {
   const { isRtl } = useLang();
   const [queue, setQueue] = useState<QueuedPost[]>([]);
   const [retrying, setRetrying] = useState(false);
+  const [confirmDismiss, setConfirmDismiss] = useState(false);
 
   const refresh = useCallback(() => setQueue(loadQueue()), []);
 
@@ -96,7 +97,16 @@ export default function TareeqQueueBanner() {
           ? (isRtl ? 'جاري الإرسال...' : 'Sending...')
           : (isRtl ? 'إعادة الإرسال' : 'Retry')}
       </button>
-      <button onClick={dismiss} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tr-text-muted)', padding: '2px 4px', fontSize: 18, lineHeight: 1 }}>×</button>
+      {confirmDismiss ? (
+        <>
+          <button onClick={dismiss} className="text-xs font-bold px-2 py-1 rounded-lg" style={{ background: 'rgba(244,63,94,0.15)', color: '#f43f5e', border: 'none', cursor: 'pointer' }}>
+            {isRtl ? 'تجاهل' : 'Discard'}
+          </button>
+          <button onClick={() => setConfirmDismiss(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tr-text-muted)', padding: '2px 6px', fontSize: 18, lineHeight: 1 }}>×</button>
+        </>
+      ) : (
+        <button onClick={() => setConfirmDismiss(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tr-text-muted)', padding: '2px 6px', fontSize: 18, lineHeight: 1 }} title={isRtl ? 'تجاهل المنشورات' : 'Discard posts'}>×</button>
+      )}
     </div>
   );
 }

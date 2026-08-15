@@ -162,9 +162,9 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
     }
   }, []);
 
-  // Refresh feed after queued posts are successfully sent
+  // Refresh feed after queued posts are successfully sent — preserve active filters
   useEffect(() => {
-    const h = () => loadPosts('', '', null, 'newest');
+    const h = () => loadPosts(categoryRef.current, searchValRef.current, null, sortRef.current);
     window.addEventListener('tareeq-refresh-feed', h);
     return () => window.removeEventListener('tareeq-refresh-feed', h);
   }, [loadPosts]);
@@ -262,7 +262,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       setPullY(0);
     };
     window.addEventListener('touchstart', onStart, { passive: true });
-    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchmove', onMove, { passive: true });
     window.addEventListener('touchend', onEnd);
     return () => {
       window.removeEventListener('touchstart', onStart);

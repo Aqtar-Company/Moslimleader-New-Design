@@ -18,6 +18,9 @@ export async function POST(
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
 
+  const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { id: true } });
+  if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
+
   const existing = await prisma.tareeqPostSubscription.findUnique({
     where: { postId_userId: { postId: params.id, userId: user.userId } },
   });

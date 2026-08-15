@@ -115,10 +115,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     where: { postId: params.id },
     select: { userId: true },
   }).then(async (subs) => {
-    const commenterName = comment.user?.name ?? 'شخص ما';
     for (const sub of subs) {
-      if (sub.userId === user.userId) continue;  // don't notify the commenter
-      if (sub.userId === post.userId) continue;  // post author already notified above
+      if (sub.userId === user.userId) continue;
+      if (sub.userId === post.userId) continue;
       await prisma.tareeqNotification.create({
         data: {
           userId: sub.userId,
@@ -129,6 +128,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           postTitle: post.title ?? null,
           body: content.slice(0, 120),
         },
+      }).catch(() => {});
+      sendPushToUser(sub.userId, {
+        title: `${commenterName} — طريق`,
+        body: content.slice(0, 80),
+        url: `/tareeq/${post.id}`,
+        tag: `sub-comment-${post.id}`,
+        type: 'comment',
+        postId: post.id,
+        image: post.imageUrl ?? undefined,
       }).catch(() => {});
     }
   }).catch(() => {});

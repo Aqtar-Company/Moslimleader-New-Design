@@ -186,18 +186,18 @@ export async function POST(req: NextRequest) {
   let seriesId: string | null = null;
   let seriesOrder: number | null = null;
   if (rawSeriesTitle) {
-    const existing = await prisma.tareeqPost.findFirst({
-      where: { userId: user.userId, seriesTitle: rawSeriesTitle },
-      orderBy: { seriesOrder: 'desc' },
-      select: { seriesId: true, seriesOrder: true },
-    });
-    if (existing?.seriesId) {
-      seriesId = existing.seriesId;
-      seriesOrder = (existing.seriesOrder ?? 1) + 1;
-    } else {
-      seriesId = crypto.randomUUID();
-      seriesOrder = 1;
-    }
+    // Count existing posts in this series atomically to derive seriesOrder
+    const [existing, seriesCount] = await Promise.all([
+      prisma.tareeqPost.findFirst({
+        where: { userId: user.userId, seriesTitle: rawSeriesTitle },
+        select: { seriesId: true },
+      }),
+      prisma.tareeqPost.count({
+        where: { userId: user.userId, seriesTitle: rawSeriesTitle },
+      }),
+    ]);
+    seriesId = existing?.seriesId ?? crypto.randomUUID();
+    seriesOrder = seriesCount + 1;
   }
 
   const post = await prisma.tareeqPost.create({

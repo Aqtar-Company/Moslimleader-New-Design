@@ -533,11 +533,15 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
           {comments.length === 0 ? (
             <p className="text-sm mb-6" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'لا توجد تعليقات بعد' : 'No comments yet'}</p>
           ) : (
-            <div className="space-y-4 mb-6">
-              {sortedComments.map((c) => {
+            <div className="flex flex-col gap-4 mb-6">
+              {[...sortedComments].sort((a, b) => {
+                if (a.id === pinnedCommentId) return -1;
+                if (b.id === pinnedCommentId) return 1;
+                return 0;
+              }).map((c) => {
                 const isPinned = c.id === pinnedCommentId;
                 return (
-                  <div key={c.id} className="flex gap-3 group" style={isPinned ? { order: -1 } : {}}>
+                  <div key={c.id} className="flex gap-3 group">
                     <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                       style={{ background: isPinned ? 'rgba(212,168,83,0.18)' : 'var(--tr-overlay)', color: isPinned ? 'var(--tr-gold)' : 'var(--tr-text-secondary)', border: isPinned ? '1.5px solid rgba(212,168,83,0.4)' : 'none' }}>
                       {c.user?.name.charAt(0) ?? '?'}

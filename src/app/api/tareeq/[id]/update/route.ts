@@ -59,10 +59,16 @@ export async function PATCH(
         }),
       ]);
 
+      const subscribers = await prisma.tareeqPostSubscription.findMany({
+        where: { postId: params.id },
+        select: { userId: true },
+      });
+
       const recipientIds = [
         ...new Set([
           ...likers.map((l) => l.userId),
           ...commenters.map((c) => c.userId),
+          ...subscribers.map((s) => s.userId),
         ]),
       ].filter((uid) => uid !== user.userId);
 

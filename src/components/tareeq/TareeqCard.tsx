@@ -181,9 +181,13 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   const catIcon   = catKey ? (CATEGORY_ICONS[catKey] ?? '') : '';
   const accentHex = catKey ? (CATEGORY_ACCENT_HEX[catKey] ?? '#ff5c38') : '#ff5c38';
   const snippet   = post.summary || post.content.slice(0, 200);
-  // allImages: normalised list — imageUrls takes priority when it has ≥2 items
-  const allImages: string[] = (post.imageUrls && post.imageUrls.length >= 2)
-    ? post.imageUrls
+  // Safe cast from Prisma JsonValue (string[] at runtime, but typed loosely)
+  const parsedImageUrls: string[] | null = Array.isArray(post.imageUrls)
+    ? (post.imageUrls as unknown[]).filter((u): u is string => typeof u === 'string')
+    : null;
+  // allImages: prefer parsedImageUrls when present, fallback to imageUrl
+  const allImages: string[] = (parsedImageUrls && parsedImageUrls.length >= 1)
+    ? parsedImageUrls
     : post.imageUrl ? [post.imageUrl] : [];
   const hasImage  = allImages.length > 0;
   const isGallery = allImages.length >= 2;
@@ -426,12 +430,13 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   if (isGallery) {
     const shown = allImages.slice(0, 4);
     const extra = allImages.length - 4;
+    const totalCount = allImages.length;
 
     function GalleryGrid() {
       const count = shown.length;
       if (count === 2) {
         return (
-          <div className="grid grid-cols-2 gap-0.5">
+          <div className="grid grid-cols-2 gap-1">
             {shown.map((url, i) => (
               <div key={i} className="relative aspect-square overflow-hidden">
                 <img src={url} alt="" className="w-full h-full object-cover" loading={i === 0 ? 'eager' : 'lazy'} referrerPolicy="no-referrer" />
@@ -441,14 +446,16 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         );
       }
       if (count === 3) {
+        // Left cell spans 2 rows; right column has 2 equal cells.
+        // Use explicit row height so all browsers agree.
         return (
-          <div className="grid grid-cols-2 gap-0.5" style={{ gridTemplateRows: 'repeat(2, 1fr)' }}>
-            <div className="relative overflow-hidden" style={{ gridRow: 'span 2', aspectRatio: '1 / 1' }}>
+          <div className="grid grid-cols-2 gap-1" style={{ gridTemplateRows: '120px 120px' }}>
+            <div className="relative overflow-hidden" style={{ gridRow: 'span 2' }}>
               <img src={shown[0]} alt="" className="absolute inset-0 w-full h-full object-cover" loading="eager" referrerPolicy="no-referrer" />
             </div>
             {shown.slice(1).map((url, i) => (
-              <div key={i} className="relative aspect-square overflow-hidden">
-                <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+              <div key={i} className="relative overflow-hidden">
+                <img src={url} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
               </div>
             ))}
           </div>
@@ -456,13 +463,14 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
       }
       // 4 images (2×2)
       return (
-        <div className="grid grid-cols-2 gap-0.5">
+        <div className="grid grid-cols-2 gap-1">
           {shown.map((url, i) => (
             <div key={i} className="relative aspect-square overflow-hidden">
               <img src={url} alt="" className="w-full h-full object-cover" loading={i === 0 ? 'eager' : 'lazy'} referrerPolicy="no-referrer" />
               {i === 3 && extra > 0 && (
-                <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)' }}>
-                  <span className="text-white font-black text-2xl">+{extra}</span>
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1" style={{ background: 'rgba(0,0,0,0.62)' }}>
+                  <span className="text-white font-black text-2xl leading-none">+{extra}</span>
+                  <span className="text-white/80 text-[11px] font-semibold">{isRtl ? 'عرض الكل' : 'View all'}</span>
                 </div>
               )}
             </div>
@@ -479,14 +487,27 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           aria-label={post.title || post.content.slice(0, 80)}
         >
           {/* Gallery grid — links to post */}
-          <Link href={`/tareeq/${post.id}`} className="block overflow-hidden">
+          <Link href={`/tareeq/${post.id}`} className="block overflow-hidden relative">
+            {/* Category badge — frosted on mobile (readable over any image), light on desktop */}
             {catLabel && (
-              <div className="absolute top-4 start-4 z-10 pointer-events-none">
-                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ color: accentHex, background: 'rgba(255,255,255,0.95)', border: `1px solid ${accentHex}35` }}>
+              <div className="absolute top-3 start-3 z-10 pointer-events-none">
+                <span className="lg:hidden text-[11px] font-bold px-2.5 py-1 rounded-full text-white" style={{ background: 'rgba(0,0,0,0.40)', backdropFilter: 'blur(8px)', border: `1px solid ${accentHex}70` }}>
+                  {catIcon} {catLabel}
+                </span>
+                <span className="hidden lg:inline text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ color: accentHex, background: 'rgba(255,255,255,0.95)', border: `1px solid ${accentHex}35` }}>
                   {catIcon} {catLabel}
                 </span>
               </div>
             )}
+            {/* Image count pill — top-end corner */}
+            <div className="absolute top-3 end-3 z-10 pointer-events-none">
+              <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-full text-white" style={{ background: 'rgba(0,0,0,0.40)', backdropFilter: 'blur(8px)' }}>
+                <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                  <rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/>
+                </svg>
+                {totalCount}
+              </span>
+            </div>
             <GalleryGrid />
           </Link>
 
@@ -508,7 +529,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             {(post.title || snippet) && (
               <Link href={`/tareeq/${post.id}`} className="block">
                 {post.title && <h3 className="font-bold text-sm leading-snug mb-1 hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{post.title}</h3>}
-                {snippet && <p className="text-sm leading-relaxed line-clamp-2" style={{ color: 'var(--tr-text-secondary)' }}>{snippet}</p>}
+                {snippet && <p className="text-sm leading-relaxed line-clamp-3" style={{ color: 'var(--tr-text-secondary)' }}>{snippet}</p>}
               </Link>
             )}
           </div>

@@ -203,6 +203,18 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
 
   function removeMedia() {
     if (localPreviewRef.current) URL.revokeObjectURL(localPreviewRef.current);
+    // If extras exist, promote the first completed one as the new main image
+    const firstDone = extraImages.find(e => e.url !== null && !e.failed);
+    if (firstDone) {
+      setMediaUrl(firstDone.url);
+      setMediaType('image');
+      setLocalPreview(null);
+      setUploadProgress(100);
+      URL.revokeObjectURL(firstDone.previewUrl);
+      setExtraImages(prev => prev.filter(x => x.id !== firstDone.id));
+      return;
+    }
+    // No usable extra: clear everything
     extraPreviewUrlsRef.current.forEach(u => URL.revokeObjectURL(u));
     setMediaUrl(null);
     setMediaType(null);
@@ -572,7 +584,21 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
 
             {/* ── Extra images strip (only when main is an image) ── */}
             {mediaType === 'image' && !uploading && (
-              <div className="mx-4 mb-4 flex items-center gap-2 flex-wrap">
+              <div className="mx-4 mb-3">
+                {/* Slot counter */}
+                <div className="flex items-center justify-between mb-2 px-0.5">
+                  <span className="text-[11px] font-semibold" style={{ color: 'var(--tr-text-muted)' }}>
+                    {isRtl
+                      ? `${1 + extraImages.filter(e => !e.failed).length} / 9 صور`
+                      : `${1 + extraImages.filter(e => !e.failed).length} / 9 photos`}
+                  </span>
+                  {extraImages.length >= 8 && (
+                    <span className="text-[11px] font-semibold" style={{ color: '#f59e0b' }}>
+                      {isRtl ? 'وصلت للحد الأقصى' : 'Max reached'}
+                    </span>
+                  )}
+                </div>
+              <div className="flex items-center gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
                 {extraImages.map(ex => (
                   <div key={ex.id} className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0" style={{ border: `1px solid ${ex.failed ? 'rgba(248,113,113,0.6)' : 'var(--tr-border-soft)'}` }}>
                     <img src={ex.previewUrl} alt="" className="w-full h-full object-cover" />
@@ -634,6 +660,19 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                   </label>
                 )}
               </div>
+              </div>
+            )}
+
+            {/* ── Video: multi-image not available chip ── */}
+            {mediaType === 'video' && !uploading && (
+              <div className="mx-4 mb-3 flex items-center gap-1.5 px-3 py-2 rounded-xl" style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)' }}>
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+                <span className="text-[11px] font-medium" style={{ color: 'var(--tr-text-muted)' }}>
+                  {isRtl ? 'تعدد الصور للصور فقط — الفيديو لا يدعمه' : 'Multi-photo is for images only'}
+                </span>
+              </div>
             )}
             </>
           ) : (
@@ -670,6 +709,11 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                 {mode === 'media' && (
                   <span className="text-[11px] font-medium" style={{ color: 'var(--tr-text-muted)' }}>
                     {isRtl ? 'JPG, PNG, GIF, MP4' : 'JPG, PNG, GIF, MP4'}
+                  </span>
+                )}
+                {mode !== 'media' && (
+                  <span className="text-[10px]" style={{ color: 'var(--tr-text-muted)', opacity: 0.75 }}>
+                    {isRtl ? 'أو أضف حتى 9 صور معاً' : 'or add up to 9 photos'}
                   </span>
                 )}
               </div>

@@ -34,6 +34,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
+  const [extraImages, setExtraImages] = useState<{ id: string; previewUrl: string; url: string | null; progress: number }[]>([]);
+  const extraFileInputRef = useRef<HTMLInputElement>(null);
   const [showCatPicker, setShowCatPicker] = useState(false);
   const [draftBanner, setDraftBanner] = useState<Draft | null>(null);
   const [draftSaved, setDraftSaved] = useState(false);
@@ -182,6 +184,63 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     setMediaType(null);
     setLocalPreview(null);
     setUploadProgress(0);
+    setExtraImages([]);
+  }
+
+  async function handleExtraImages(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    if (!files.length) return;
+    // Allow up to 9 total (main + extras)
+    const slots = 9 - 1 - extraImages.length; // 9 max minus main image slot
+    const toAdd = files.slice(0, Math.max(0, slots));
+    if (!toAdd.length) return;
+
+    const newItems = toAdd.map(f => ({
+      id: Math.random().toString(36).slice(2),
+      previewUrl: URL.createObjectURL(f),
+      url: null as string | null,
+      progress: 0,
+    }));
+    setExtraImages(prev => [...prev, ...newItems]);
+
+    for (let i = 0; i < toAdd.length; i++) {
+      const file = toAdd[i];
+      const item = newItems[i];
+      try {
+        const compressed = await compressImage(file, { maxWidth: 1920, maxHeight: 1920, quality: 0.82 });
+        const form = new FormData();
+        form.append('file', compressed);
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', '/api/tareeq/upload');
+          xhr.withCredentials = true;
+          xhr.upload.onprogress = (ev) => {
+            if (ev.lengthComputable) {
+              const pct = Math.round((ev.loaded / ev.total) * 100);
+              setExtraImages(prev => prev.map(x => x.id === item.id ? { ...x, progress: pct } : x));
+            }
+          };
+          xhr.onload = () => {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              if (xhr.status >= 200 && xhr.status < 300) {
+                setExtraImages(prev => prev.map(x => x.id === item.id ? { ...x, url: data.url, progress: 100 } : x));
+                resolve();
+              } else { reject(); }
+            } catch { reject(); }
+          };
+          xhr.onerror = () => reject();
+          xhr.send(form);
+        });
+      } catch {
+        setExtraImages(prev => prev.filter(x => x.id !== item.id));
+      }
+    }
+  }
+
+  function removeExtraImage(id: string) {
+    setExtraImages(prev => prev.filter(x => x.id !== id));
   }
 
   async function submit() {
@@ -194,6 +253,10 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     setLoading(true);
     setError('');
     try {
+      const extraUrls = extraImages.map(e => e.url).filter(Boolean) as string[];
+      const allImageUrls = mediaType === 'image' && mediaUrl
+        ? [mediaUrl, ...extraUrls]
+        : null;
       const res = await fetch('/api/tareeq', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -203,6 +266,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           category: category || null,
           imageUrl: mediaType === 'image' ? mediaUrl : null,
           videoUrl: mediaType === 'video' ? mediaUrl : null,
+          imageUrls: allImageUrls,
         }),
       });
       const data = await res.json();
@@ -221,6 +285,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           category: category || null,
           imageUrl: mediaType === 'image' ? mediaUrl : null,
           videoUrl: mediaType === 'video' ? mediaUrl : null,
+          imageUrls: mediaType === 'image' && mediaUrl ? [mediaUrl, ...extraImages.map(e => e.url).filter(Boolean)] : null,
           queuedAt: Date.now(),
         });
         localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
@@ -236,7 +301,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     }
   }
 
-  const canPublish = !loading && !uploading && !!(mediaUrl || content.trim());
+  const extraUploading = extraImages.some(e => e.url === null);
+  const canPublish = !loading && !uploading && !extraUploading && !!(mediaUrl || content.trim());
   const catObj = category ? TAREEQ_CATEGORIES[category] : null;
   const charCount = content.length;
   const charLeft = 5000 - charCount;
@@ -402,7 +468,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
 
           {/* ── Media zone ── */}
           {(localPreview || mediaUrl || uploading) ? (
-            /* Active media preview */
+            <>
+            {/* Active media preview */}
             <div className="mx-4 mb-4 relative rounded-2xl overflow-hidden" style={{ border: '1px solid var(--tr-border-soft)', minHeight: 180 }}>
               {/* Image or video */}
               {localPreview && mediaType !== 'video'
@@ -458,6 +525,52 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                 </>
               )}
             </div>
+
+            {/* ── Extra images strip (only when main is an image) ── */}
+            {mediaType === 'image' && !uploading && (
+              <div className="mx-4 mb-4 flex items-center gap-2 flex-wrap">
+                {extraImages.map(ex => (
+                  <div key={ex.id} className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0" style={{ border: '1px solid var(--tr-border-soft)' }}>
+                    <img src={ex.previewUrl} alt="" className="w-full h-full object-cover" />
+                    {ex.url === null && (
+                      <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)' }}>
+                        <span className="text-white text-[10px] font-bold">{ex.progress}%</span>
+                      </div>
+                    )}
+                    {ex.url !== null && (
+                      <button
+                        onClick={() => removeExtraImage(ex.id)}
+                        className="absolute top-0.5 end-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
+                        style={{ background: 'rgba(0,0,0,0.75)', color: '#fff' }}
+                      >×</button>
+                    )}
+                  </div>
+                ))}
+                {/* Add more button — max 9 total */}
+                {extraImages.length < 8 && (
+                  <label
+                    className="w-16 h-16 rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer shrink-0 transition"
+                    style={{ border: '1.5px dashed var(--tr-border-soft)', background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--tr-gold)'; (e.currentTarget as HTMLElement).style.color = 'var(--tr-gold)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--tr-border-soft)'; (e.currentTarget as HTMLElement).style.color = 'var(--tr-text-muted)'; }}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    <span className="text-[10px] font-bold">{isRtl ? 'إضافة' : 'Add'}</span>
+                    <input
+                      ref={extraFileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      multiple
+                      className="hidden"
+                      onChange={handleExtraImages}
+                    />
+                  </label>
+                )}
+              </div>
+            )}
+            </>
           ) : (
             /* Upload trigger area — tappable card */
             <label

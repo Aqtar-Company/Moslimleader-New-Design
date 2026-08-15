@@ -16,6 +16,7 @@ export interface TareeqPostSummary {
   category?: string | null;
   tags?: string[] | null;
   imageUrl?: string | null;
+  imageUrls?: string[] | null;
   videoUrl?: string | null;
   authorName: string;
   likeCount: number;
@@ -180,7 +181,12 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   const catIcon   = catKey ? (CATEGORY_ICONS[catKey] ?? '') : '';
   const accentHex = catKey ? (CATEGORY_ACCENT_HEX[catKey] ?? '#ff5c38') : '#ff5c38';
   const snippet   = post.summary || post.content.slice(0, 200);
-  const hasImage  = !!post.imageUrl;
+  // allImages: normalised list — imageUrls takes priority when it has ≥2 items
+  const allImages: string[] = (post.imageUrls && post.imageUrls.length >= 2)
+    ? post.imageUrls
+    : post.imageUrl ? [post.imageUrl] : [];
+  const hasImage  = allImages.length > 0;
+  const isGallery = allImages.length >= 2;
 
   const reactionConfig = REACTIONS.find(r => r.type === currentReaction);
 
@@ -413,6 +419,109 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           </button>
         )}
       </div>
+    );
+  }
+
+  /* ── MULTI-IMAGE GALLERY CARD ──────────────────────────────────── */
+  if (isGallery) {
+    const shown = allImages.slice(0, 4);
+    const extra = allImages.length - 4;
+
+    function GalleryGrid() {
+      const count = shown.length;
+      if (count === 2) {
+        return (
+          <div className="grid grid-cols-2 gap-0.5">
+            {shown.map((url, i) => (
+              <div key={i} className="relative aspect-square overflow-hidden">
+                <img src={url} alt="" className="w-full h-full object-cover" loading={i === 0 ? 'eager' : 'lazy'} referrerPolicy="no-referrer" />
+              </div>
+            ))}
+          </div>
+        );
+      }
+      if (count === 3) {
+        return (
+          <div className="grid grid-cols-2 gap-0.5" style={{ gridTemplateRows: 'repeat(2, 1fr)' }}>
+            <div className="relative overflow-hidden" style={{ gridRow: 'span 2', aspectRatio: '1 / 1' }}>
+              <img src={shown[0]} alt="" className="absolute inset-0 w-full h-full object-cover" loading="eager" referrerPolicy="no-referrer" />
+            </div>
+            {shown.slice(1).map((url, i) => (
+              <div key={i} className="relative aspect-square overflow-hidden">
+                <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+              </div>
+            ))}
+          </div>
+        );
+      }
+      // 4 images (2×2)
+      return (
+        <div className="grid grid-cols-2 gap-0.5">
+          {shown.map((url, i) => (
+            <div key={i} className="relative aspect-square overflow-hidden">
+              <img src={url} alt="" className="w-full h-full object-cover" loading={i === 0 ? 'eager' : 'lazy'} referrerPolicy="no-referrer" />
+              {i === 3 && extra > 0 && (
+                <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)' }}>
+                  <span className="text-white font-black text-2xl">+{extra}</span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <article
+          className="relative overflow-hidden rounded-[24px] lg:rounded-[14px]"
+          style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
+          aria-label={post.title || post.content.slice(0, 80)}
+        >
+          {/* Gallery grid — links to post */}
+          <Link href={`/tareeq/${post.id}`} className="block overflow-hidden">
+            {catLabel && (
+              <div className="absolute top-4 start-4 z-10 pointer-events-none">
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ color: accentHex, background: 'rgba(255,255,255,0.95)', border: `1px solid ${accentHex}35` }}>
+                  {catIcon} {catLabel}
+                </span>
+              </div>
+            )}
+            <GalleryGrid />
+          </Link>
+
+          {/* Author + caption strip */}
+          <div className="px-4 pt-3.5 pb-2">
+            <div className="flex items-center gap-2.5 mb-2">
+              {post.user?.avatarUrl
+                ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-8 h-8 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold)' }} />
+                : <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
+              }
+              <div className="flex-1 min-w-0">
+                {post.userId
+                  ? <Link href={`/tareeq/u/${post.userId}`} onClick={e => e.stopPropagation()} className="text-sm font-semibold truncate block hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{post.authorName}</Link>
+                  : <p className="text-sm font-semibold truncate" style={{ color: 'var(--tr-text-primary)' }}>{post.authorName}</p>
+                }
+                <p className="text-xs mt-0.5" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(post.createdAt, isRtl)}</p>
+              </div>
+            </div>
+            {(post.title || snippet) && (
+              <Link href={`/tareeq/${post.id}`} className="block">
+                {post.title && <h3 className="font-bold text-sm leading-snug mb-1 hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{post.title}</h3>}
+                {snippet && <p className="text-sm leading-relaxed line-clamp-2" style={{ color: 'var(--tr-text-secondary)' }}>{snippet}</p>}
+              </Link>
+            )}
+          </div>
+
+          <SocialSummary />
+          <DesktopActionBar />
+          {commentForm}
+        </article>
+
+        {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
+        {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
+        {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
+      </>
     );
   }
 

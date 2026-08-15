@@ -950,6 +950,7 @@ model TareeqPost {
   category     String?
   tags         Json?
   imageUrl     String?          @db.Text
+  imageUrls    Json?
   videoUrl     String?          @db.Text
   userId       String?
   user         User?            @relation(fields: [userId], references: [id], onDelete: SetNull)

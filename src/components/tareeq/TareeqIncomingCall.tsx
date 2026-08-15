@@ -21,11 +21,26 @@ export default function TareeqIncomingCall() {
   const [acceptedAs, setAcceptedAs] = useState<'audio' | 'video' | null>(null);
   const seenRef = useRef<Set<string>>(new Set());
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const ringRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const ringTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ringSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const ringActiveRef = useRef(false);
-  // audioCtxRef is only used for cleanup on unmount; the actual context lives
-  // in the module-level pipeline (consumeInRingPipeline), pre-wired by TareeqShell.
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const ringBufRef = useRef<AudioBuffer | null>(null);
+
+  // Build a pre-decoded phone-ring AudioBuffer (440 Hz + 480 Hz, 2 s burst, US standard)
+  function buildRingBuffer(ctx: AudioContext): AudioBuffer {
+    const sr = ctx.sampleRate;
+    const ON = 2.0;
+    const buf = ctx.createBuffer(1, Math.floor(sr * ON), sr);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) {
+      const t = i / sr;
+      // 40 ms fade-in / fade-out to avoid clicks
+      const fade = Math.min(t / 0.04, 1) * Math.min((ON - t) / 0.04, 1);
+      d[i] = fade * 0.28 * (Math.sin(2 * Math.PI * 440 * t) + Math.sin(2 * Math.PI * 480 * t));
+    }
+    return buf;
+  }
 
   async function startRing() {
     ringActiveRef.current = true;
@@ -42,44 +57,52 @@ export default function TareeqIncomingCall() {
       audioCtxRef.current = ctx;
       const dest: AudioNode = prewiredDest ?? ctx.destination;
 
-      ctx.resume().then(() => {
-        if (!ringActiveRef.current) return;
+      // Build the ringtone buffer once per context (cached in ref)
+      if (!ringBufRef.current || ringBufRef.current.sampleRate !== ctx.sampleRate) {
+        ringBufRef.current = buildRingBuffer(ctx);
+      }
+      const buf = ringBufRef.current;
 
-        const playBurst = (t: number, freq: number, dur: number) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain); gain.connect(dest);
-          osc.type = 'sine';
-          osc.frequency.value = freq;
-          gain.gain.setValueAtTime(0, t);
-          gain.gain.linearRampToValueAtTime(0.28, t + 0.02);
-          gain.gain.setValueAtTime(0.28, t + dur - 0.02);
-          gain.gain.linearRampToValueAtTime(0, t + dur);
-          osc.start(t); osc.stop(t + dur);
-        };
+      const playRing = () => {
+        if (!ringActiveRef.current || ctx.state === 'closed') return;
+        try {
+          ctx.resume().catch(() => {});
+          const src = ctx.createBufferSource();
+          src.buffer = buf;
+          src.connect(dest);
+          ringSourceRef.current = src;
+          src.start();
+          // 2 s ring on + 2 s pause = 4 s cycle
+          src.onended = () => {
+            ringSourceRef.current = null;
+            if (ringActiveRef.current) {
+              ringTimerRef.current = setTimeout(playRing, 2000);
+            }
+          };
+        } catch { /* context closed mid-ring */ }
+      };
 
-        const ring = () => {
-          if (!ringActiveRef.current || ctx.state === 'closed') return;
-          try {
-            const t = ctx.currentTime + 0.05;
-            playBurst(t,       480, 0.4);
-            playBurst(t,       425, 0.4);
-            playBurst(t + 0.6, 480, 0.4);
-            playBurst(t + 0.6, 425, 0.4);
-          } catch { /* context closed mid-ring */ }
-        };
-
-        ring();
-        ringRef.current = setInterval(ring, 3000);
-      }).catch(() => {});
+      ctx.resume().then(playRing).catch(() => {});
     } catch { /* AudioContext not supported */ }
   }
 
   function stopRing() {
     ringActiveRef.current = false;
-    if (ringRef.current) { clearInterval(ringRef.current); ringRef.current = null; }
+    if (ringTimerRef.current) { clearTimeout(ringTimerRef.current); ringTimerRef.current = null; }
+    if (ringSourceRef.current) { try { ringSourceRef.current.stop(); } catch { /* already stopped */ } ringSourceRef.current = null; }
     // Leave audioCtx + video alive — pipeline stays warm for next ring
   }
+
+  // Resume AudioContext when tab comes back to foreground (iOS suspends ctx on background)
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === 'visible' && ringActiveRef.current && audioCtxRef.current?.state === 'suspended') {
+        audioCtxRef.current.resume().catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
 
   // When the app opens from a notification tap, the URL has ?callId=...
   // Burst-poll for up to 10s so we catch the call even if the offer isn't ready yet.

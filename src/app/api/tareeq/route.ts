@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       select: {
         id: true, title: true, summary: true, content: true,
-        category: true, tags: true, imageUrl: true, videoUrl: true, authorName: true,
+        category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true, authorName: true,
         likeCount: true, commentCount: true, createdAt: true, userId: true,
         user: { select: { id: true, name: true, avatarUrl: true } },
       },
@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
         post: {
           select: {
             id: true, title: true, summary: true, content: true,
-            category: true, tags: true, imageUrl: true, videoUrl: true, authorName: true,
+            category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true, authorName: true,
             likeCount: true, commentCount: true, createdAt: true, userId: true,
             user: { select: { id: true, name: true, avatarUrl: true } },
           },
@@ -114,7 +114,7 @@ export async function GET(req: NextRequest) {
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     select: {
       id: true, title: true, summary: true, content: true,
-      category: true, tags: true, imageUrl: true, videoUrl: true, authorName: true,
+      category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true, authorName: true,
       likeCount: true, commentCount: true, createdAt: true, userId: true,
       user: { select: { id: true, name: true, avatarUrl: true } },
     },
@@ -157,9 +157,13 @@ export async function POST(req: NextRequest) {
 
   // Media URLs (already uploaded via /api/tareeq/upload)
   const imageUrl = String(body.imageUrl ?? '').trim() || null;
+  const rawImageUrls = body.imageUrls;
+  const imageUrls: string[] | null = Array.isArray(rawImageUrls)
+    ? rawImageUrls.filter((u): u is string => typeof u === 'string' && u.trim().length > 0).slice(0, 9)
+    : null;
   const videoUrl = String(body.videoUrl ?? '').trim() || null;
 
-  const hasMedia = !!(imageUrl || videoUrl);
+  const hasMedia = !!(imageUrl || (imageUrls?.length) || videoUrl);
   if (!hasMedia && content.length < 1) {
     return NextResponse.json({ error: 'أضف نصاً أو صورة' }, { status: 400 });
   }
@@ -175,8 +179,9 @@ export async function POST(req: NextRequest) {
       title,
       summary,
       category,
-      tags,
-      imageUrl,
+      tags: tags ?? undefined,
+      imageUrl: imageUrl ?? (imageUrls?.[0] ?? null),
+      imageUrls: imageUrls ?? undefined,
       videoUrl,
       userId: user.userId,
       authorName: dbUser?.name ?? 'مجهول',

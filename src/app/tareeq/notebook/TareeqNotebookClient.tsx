@@ -240,6 +240,13 @@ export default function TareeqNotebookClient() {
                   ? (isRtl ? 'لا نتائج' : 'No results')
                   : (isRtl ? 'لا ملاحظات بعد — ابدأ بكتابة أفكارك' : 'No notes yet — start writing')}
               </p>
+              {searchQ && searchQ.trim().length < 4 && (
+                <p className="text-xs text-center px-4" style={{ color: 'var(--tr-text-muted)', opacity: 0.7 }}>
+                  {isRtl
+                    ? 'جرّب كلمة أطول (٤ أحرف فأكثر) للحصول على نتائج أدق'
+                    : 'Try a longer term (4+ chars) for better results'}
+                </p>
+              )}
               {!searchQ && (
                 <button onClick={startNew} className="text-sm font-bold px-4 py-2 rounded-xl transition active:scale-95" style={{ background: 'var(--tr-gold)', color: '#fff' }}>
                   {isRtl ? '+ ملاحظة جديدة' : '+ New note'}
@@ -248,7 +255,7 @@ export default function TareeqNotebookClient() {
             </div>
           )}
 
-          {notes.map(note => (
+          {!loading && notes.map(note => (
             <button
               key={note.id}
               onClick={() => openNote(note)}

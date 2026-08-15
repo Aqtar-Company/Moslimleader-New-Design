@@ -233,27 +233,32 @@ export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose 
   }
 
   async function handleDownload() {
-    if (!brandedBlob && !brandedUrl) return;
-    // iOS Safari ignores <a download> — use Share Sheet → "Save Image" / "Save to Files" instead
-    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    if (isIos && brandedBlob) {
-      try {
+    if (!brandedUrl) return; // brandedBlob is always set together with brandedUrl
+    if (sharing) return;     // share already in progress (Share button shares the same file)
+    setSharing(true);
+    try {
+      if (isIos && brandedBlob) {
+        // iOS Safari ignores <a download> — open Share Sheet → "Save Image" / "Save to Files"
         const file = new File([brandedBlob], `tareeq-${name}.png`, { type: 'image/png' });
         if (navigator.share && navigator.canShare?.({ files: [file] })) {
           await navigator.share({ files: [file], title: name });
           return;
         }
-      } catch { /* user dismissed share sheet */ }
-      // Last resort on iOS: open in new tab so user can long-press → Save Image
-      if (brandedUrl) window.open(brandedUrl, '_blank');
-      return;
-    }
-    // Standard browsers: anchor download
-    const a = document.createElement('a');
-    a.href = brandedUrl!;
-    a.download = `tareeq-${name}.png`;
-    a.click();
+        // Last resort: blob URLs can't be opened in new tabs on iOS — convert to data URI first
+        await new Promise<void>(res => {
+          const reader = new FileReader();
+          reader.onload = () => { window.open(reader.result as string, '_blank'); res(); };
+          reader.readAsDataURL(brandedBlob);
+        });
+        return;
+      }
+      // Standard browsers: anchor download
+      const a = document.createElement('a');
+      a.href = brandedUrl;
+      a.download = `tareeq-${name}.png`;
+      a.click();
+    } catch { /* user dismissed share sheet */ }
+    finally { setSharing(false); }
   }
 
   async function handleShare() {
@@ -277,10 +282,10 @@ export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose 
 
   if (!mounted) return null;
 
+  // mounted=true guarantees we're in the browser — navigator is always available here
   const ready = !!brandedUrl;
-  const isIos = typeof navigator !== 'undefined' &&
-    (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+  const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
   return createPortal(
     <div
@@ -320,15 +325,22 @@ export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose 
         <div style={{ display: 'flex', gap: 10, width: '100%' }}>
           <button
             onClick={handleDownload}
-            disabled={!ready}
-            style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', fontWeight: 600, fontSize: 14, border: '1px solid var(--tr-border-soft)', cursor: ready ? 'pointer' : 'default', opacity: ready ? 1 : 0.45 }}
+            disabled={!ready || sharing}
+            style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', fontWeight: 600, fontSize: 14, border: '1px solid var(--tr-border-soft)', cursor: ready && !sharing ? 'pointer' : 'default', opacity: ready && !sharing ? 1 : 0.45, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}
           >
-            {isIos ? (isRtl ? 'حفظ ↗' : 'Save ↗') : (isRtl ? 'حفظ' : 'Save')}
+            {qrReady && !ready && !cardError
+              ? (isRtl ? 'جارٍ التجهيز…' : 'Preparing…')
+              : isIos
+                ? <>
+                    <span>{isRtl ? 'مشاركة / حفظ' : 'Share / Save'}</span>
+                    <span style={{ fontSize: 10, fontWeight: 400, opacity: 0.65 }}>{isRtl ? 'عبر قائمة المشاركة' : 'via Share Sheet'}</span>
+                  </>
+                : (isRtl ? 'حفظ' : 'Save')}
           </button>
           <button
             onClick={handleShare}
-            disabled={!ready || sharing}
-            style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: 'var(--tr-gold)', color: '#fff', fontWeight: 600, fontSize: 14, border: 'none', cursor: ready && !sharing ? 'pointer' : 'default', opacity: ready && !sharing ? 1 : 0.45, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+            disabled={(!ready && !cardError) || sharing}
+            style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: 'var(--tr-gold)', color: '#fff', fontWeight: 600, fontSize: 14, border: 'none', cursor: (ready || cardError) && !sharing ? 'pointer' : 'default', opacity: (ready || cardError) && !sharing ? 1 : 0.45, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
           >
             {sharing
               ? <><div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />{isRtl ? '...' : '...'}</>

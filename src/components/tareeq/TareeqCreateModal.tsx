@@ -9,6 +9,9 @@ import { compressImage } from '@/lib/compress-image';
 
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
+const DRAFT_KEY = 'tareeq_draft';
+interface Draft { content: string; category: string; savedAt: number; }
+
 interface Props {
   onClose: () => void;
   onCreated: (id?: string) => void;
@@ -31,15 +34,27 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   const [uploadProgress, setUploadProgress] = useState(0);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [showCatPicker, setShowCatPicker] = useState(false);
+  const [draftBanner, setDraftBanner] = useState<Draft | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const catPickerRef = useRef<HTMLDivElement>(null);
   const uploadedForFile = useRef<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setMounted(true);
     if (mode !== 'media') {
       setTimeout(() => textareaRef.current?.focus(), 80);
+    }
+    // Restore draft if no initial content provided
+    if (!initialContent) {
+      try {
+        const raw = localStorage.getItem(DRAFT_KEY);
+        if (raw) {
+          const d: Draft = JSON.parse(raw);
+          if (d.content?.trim()) setDraftBanner(d);
+        }
+      } catch { /* ignore */ }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -71,6 +86,18 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     if (showCatPicker) document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
   }, [showCatPicker]);
+
+  useEffect(() => {
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => {
+      if (content.trim() || category) {
+        try {
+          localStorage.setItem(DRAFT_KEY, JSON.stringify({ content, category, savedAt: Date.now() }));
+        } catch { /* storage full or blocked */ }
+      }
+    }, 1500);
+    return () => { if (draftTimerRef.current) clearTimeout(draftTimerRef.current); };
+  }, [content, category]);
 
   async function doUpload(file: File) {
     setUploading(true);
@@ -159,8 +186,11 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
         }),
       });
       const data = await res.json();
-      if (res.ok) { onCreated(data.id); onClose(); }
-      else setError(data.error || (isRtl ? 'حدث خطأ' : 'An error occurred'));
+      if (res.ok) {
+        try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+        onCreated(data.id);
+        onClose();
+      } else setError(data.error || (isRtl ? 'حدث خطأ' : 'An error occurred'));
     } catch {
       setError(isRtl ? 'خطأ في الاتصال' : 'Connection error');
     } finally {
@@ -255,6 +285,44 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
 
         {/* ── Scrollable body ── */}
         <div className="flex-1 overflow-y-auto">
+
+          {/* Draft restore banner */}
+          {draftBanner && (
+            <div
+              className="shrink-0 mx-4 mt-3 flex items-center gap-2 px-3 py-2.5 rounded-xl"
+              style={{ background: 'rgba(212,168,83,0.1)', border: '1px solid rgba(212,168,83,0.25)' }}
+            >
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
+              </svg>
+              <span className="flex-1 text-xs font-semibold" style={{ color: 'var(--tr-gold)' }}>
+                {isRtl ? 'لديك مسودة محفوظة' : 'You have a saved draft'}
+              </span>
+              <button
+                onClick={() => {
+                  setContent(draftBanner.content);
+                  if (draftBanner.category) setCategory(draftBanner.category as TareeqCategoryKey);
+                  setDraftBanner(null);
+                  try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+                  setTimeout(() => textareaRef.current?.focus(), 50);
+                }}
+                className="text-xs font-bold px-2.5 py-1 rounded-lg transition"
+                style={{ background: 'var(--tr-gold)', color: '#fff' }}
+              >
+                {isRtl ? 'استكمال' : 'Restore'}
+              </button>
+              <button
+                onClick={() => {
+                  setDraftBanner(null);
+                  try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+                }}
+                className="text-xs px-2 py-1 rounded-lg transition"
+                style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)' }}
+              >
+                {isRtl ? 'تجاهل' : 'Discard'}
+              </button>
+            </div>
+          )}
 
           {/* Compose: avatar + textarea */}
           <div className="flex gap-3 px-4 pt-4 pb-3">

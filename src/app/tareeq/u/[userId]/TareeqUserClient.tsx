@@ -7,6 +7,7 @@ import TareeqCard, { TareeqPostSummary } from '@/components/tareeq/TareeqCard';
 import TareeqCreateModal from '@/components/tareeq/TareeqCreateModal';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
 import TareeqHeader from '@/components/tareeq/TareeqHeader';
+import TareeqQRModal from '@/components/tareeq/TareeqQRModal';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -146,6 +147,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [reactedPosts, setReactedPosts] = useState<Record<string, string>>({});
   const [showCreate, setShowCreate] = useState(false);
   const [showGate, setShowGate] = useState(false);
+  const [showQR, setShowQR] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Bookmarks state
@@ -715,6 +717,19 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
 
                 {/* Action buttons beside identity */}
                 <div className="flex items-center gap-2 shrink-0">
+                  {/* QR code button — always visible */}
+                  <button
+                    onClick={() => setShowQR(true)}
+                    className="w-9 h-9 flex items-center justify-center rounded-full transition active:scale-95"
+                    style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-muted)', border: '1px solid var(--tr-border-soft)' }}
+                    title={isRtl ? 'رمز QR' : 'QR Code'}
+                  >
+                    <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                      <rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/>
+                      <rect x="3" y="14" width="7" height="7" rx="1.2"/>
+                      <path strokeLinecap="round" d="M14 14h2M14 17h2M17 14v3M20 14v2M20 17v3M17 20h3"/>
+                    </svg>
+                  </button>
                   {isOwnProfile ? (
                     <SettingsBtn />
                   ) : (
@@ -873,10 +888,25 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
             <div className="flex items-start justify-between" style={{ marginTop: -44 }}>
               <AvatarEl size={96} />
 
-              {/* Settings button — own profile only */}
-              {isOwnProfile && <SettingsBtn className="mt-14" />}
+              {/* Settings + QR (own profile) */}
+              {isOwnProfile && (
+                <div className="flex items-center gap-2 mt-14">
+                  <button
+                    onClick={() => setShowQR(true)}
+                    className="w-9 h-9 flex items-center justify-center rounded-full transition active:scale-95"
+                    style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-muted)', border: '1px solid var(--tr-border-soft)' }}
+                  >
+                    <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                      <rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/>
+                      <rect x="3" y="14" width="7" height="7" rx="1.2"/>
+                      <path strokeLinecap="round" d="M14 14h2M14 17h2M17 14v3M20 14v2M20 17v3M17 20h3"/>
+                    </svg>
+                  </button>
+                  <SettingsBtn />
+                </div>
+              )}
 
-              {/* Follow/Message buttons */}
+              {/* Follow/Message/QR buttons */}
               {!isOwnProfile && (
                 <div className="flex gap-2 mt-14">
                   <button
@@ -909,6 +939,17 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                     style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}
                   >
                     {isRtl ? 'رسالة' : 'Message'}
+                  </button>
+                  <button
+                    onClick={() => setShowQR(true)}
+                    className="w-9 h-9 flex items-center justify-center rounded-full transition active:scale-95"
+                    style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-muted)', border: '1px solid var(--tr-border-soft)' }}
+                  >
+                    <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                      <rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/>
+                      <rect x="3" y="14" width="7" height="7" rx="1.2"/>
+                      <path strokeLinecap="round" d="M14 14h2M14 17h2M17 14v3M20 14v2M20 17v3M17 20h3"/>
+                    </svg>
                   </button>
                 </div>
               )}
@@ -1027,6 +1068,17 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
             </div>
           </div>
         </div>
+      )}
+
+      {/* QR Profile Modal */}
+      {showQR && (
+        <TareeqQRModal
+          userId={profileUser.id}
+          name={profileUser.name}
+          avatarUrl={avatarPreview ?? profileUser.avatarUrl ?? null}
+          isRtl={isRtl}
+          onClose={() => setShowQR(false)}
+        />
       )}
     </div>
   );

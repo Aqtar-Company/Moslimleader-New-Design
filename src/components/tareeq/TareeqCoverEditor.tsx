@@ -4,27 +4,34 @@ import { createPortal } from 'react-dom';
 
 interface Props {
   isRtl: boolean;
+  currentCoverUrl?: string | null;
   onFile: (blob: Blob) => void;
   onCancel: () => void;
 }
 
-// Output dimensions for the cropped cover
 const CROP_W = 1200;
 const CROP_H = 400;
 
-export default function TareeqCoverEditor({ isRtl, onFile, onCancel }: Props) {
+export default function TareeqCoverEditor({ isRtl, currentCoverUrl, onFile, onCancel }: Props) {
   const [phase, setPhase] = useState<'picker' | 'crop'>('picker');
   const [imgSrc, setImgSrc] = useState<string | null>(null);
+  const [isObjectUrl, setIsObjectUrl] = useState(false);
   const [posX, setPosX] = useState(50);
   const [posY, setPosY] = useState(50);
   const [mounted, setMounted] = useState(false);
+  const [isTouch, setIsTouch] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const prevClient = useRef({ x: 0, y: 0 });
   const dragging = useRef(false);
 
-  useEffect(() => { setMounted(true); }, []);
-  useEffect(() => () => { if (imgSrc) URL.revokeObjectURL(imgSrc); }, [imgSrc]);
+  useEffect(() => {
+    setMounted(true);
+    setIsTouch(window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+  }, []);
+
+  // Only revoke object URLs we created
+  useEffect(() => () => { if (imgSrc && isObjectUrl) URL.revokeObjectURL(imgSrc); }, [imgSrc, isObjectUrl]);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel(); };
@@ -33,7 +40,19 @@ export default function TareeqCoverEditor({ isRtl, onFile, onCancel }: Props) {
   }, [onCancel]);
 
   function handleFile(file: File) {
-    setImgSrc(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file); });
+    if (imgSrc && isObjectUrl) URL.revokeObjectURL(imgSrc);
+    setImgSrc(URL.createObjectURL(file));
+    setIsObjectUrl(true);
+    setPosX(50);
+    setPosY(50);
+    setPhase('crop');
+  }
+
+  function handleEditCurrent() {
+    if (!currentCoverUrl) return;
+    if (imgSrc && isObjectUrl) URL.revokeObjectURL(imgSrc);
+    setImgSrc(currentCoverUrl);
+    setIsObjectUrl(false);
     setPosX(50);
     setPosY(50);
     setPhase('crop');
@@ -61,15 +80,12 @@ export default function TareeqCoverEditor({ isRtl, onFile, onCancel }: Props) {
     const wrapRatio = ww / wh;
 
     if (srcRatio > wrapRatio) {
-      // Image wider — horizontal excess
-      const displayedW = nh * srcRatio * (ww / ww); // = ww * (nw/nh) / (ww/wh)
       const excessX = (nw / nh) * wh - ww;
       if (excessX > 1) {
         const delta = ((-dx) / excessX) * 100;
         setPosX(p => Math.min(100, Math.max(0, p + delta)));
       }
     } else {
-      // Image taller — vertical excess
       const excessY = (nh / nw) * ww - wh;
       if (excessY > 1) {
         const delta = ((-dy) / excessY) * 100;
@@ -95,29 +111,32 @@ export default function TareeqCoverEditor({ isRtl, onFile, onCancel }: Props) {
     let sx = 0, sy = 0, sw = nw, sh = nh;
 
     if (srcRatio > targetRatio) {
-      // Wider — crop sides horizontally
       sh = nh;
       sw = nh * targetRatio;
       sx = (nw - sw) * (posX / 100);
     } else {
-      // Taller — crop top/bottom vertically
       sw = nw;
       sh = nw / targetRatio;
       sy = (nh - sh) * (posY / 100);
     }
 
-    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, CROP_W, CROP_H);
-    canvas.toBlob(b => { if (b) onFile(b); }, 'image/jpeg', 0.88);
+    try {
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, CROP_W, CROP_H);
+      canvas.toBlob(b => { if (b) onFile(b); }, 'image/jpeg', 0.88);
+    } catch {
+      // Cross-origin canvas tainted — fall back to re-uploading the existing URL
+      onCancel();
+    }
   }
 
   if (!mounted) return null;
 
-  // ── Phase 1: Camera / Gallery picker ──────────────────────────────────
+  // ── Phase 1: Picker ───────────────────────────────────────────────────
   if (phase === 'picker') {
     return createPortal(
       <div
         onClick={onCancel}
-        style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+        style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
       >
         <div
           onClick={e => e.stopPropagation()}
@@ -129,21 +148,23 @@ export default function TareeqCoverEditor({ isRtl, onFile, onCancel }: Props) {
           </p>
 
           <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-            {/* Camera */}
-            <label style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '18px 0', borderRadius: 14, background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', cursor: 'pointer' }}>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="sr-only"
-                onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }}
-              />
-              <svg width={26} height={26} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
-              </svg>
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--tr-text-secondary)' }}>{isRtl ? 'الكاميرا' : 'Camera'}</span>
-            </label>
+            {/* Camera — only shown on touch devices */}
+            {isTouch && (
+              <label style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '18px 0', borderRadius: 14, background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', cursor: 'pointer' }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="sr-only"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }}
+                />
+                <svg width={26} height={26} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                </svg>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--tr-text-secondary)' }}>{isRtl ? 'الكاميرا' : 'Camera'}</span>
+              </label>
+            )}
 
             {/* Gallery */}
             <label style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '18px 0', borderRadius: 14, background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', cursor: 'pointer' }}>
@@ -158,6 +179,19 @@ export default function TareeqCoverEditor({ isRtl, onFile, onCancel }: Props) {
               </svg>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--tr-text-secondary)' }}>{isRtl ? 'معرض الصور' : 'Gallery'}</span>
             </label>
+
+            {/* Edit current position */}
+            {currentCoverUrl && (
+              <button
+                onClick={handleEditCurrent}
+                style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '18px 0', borderRadius: 14, background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', cursor: 'pointer' }}
+              >
+                <svg width={26} height={26} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                </svg>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--tr-text-secondary)' }}>{isRtl ? 'تعديل الموضع' : 'Reposition'}</span>
+              </button>
+            )}
           </div>
 
           <button
@@ -175,11 +209,11 @@ export default function TareeqCoverEditor({ isRtl, onFile, onCancel }: Props) {
   // ── Phase 2: Drag-to-reposition crop ──────────────────────────────────
   return createPortal(
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+      style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
     >
       <div
         dir={isRtl ? 'rtl' : 'ltr'}
-        style={{ background: 'var(--tr-surface)', borderRadius: 20, overflow: 'hidden', maxWidth: 560, width: '100%' }}
+        style={{ background: 'var(--tr-surface)', borderRadius: 20, overflow: 'hidden', maxWidth: 600, width: '100%' }}
       >
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--tr-border-subtle)' }}>
@@ -200,10 +234,10 @@ export default function TareeqCoverEditor({ isRtl, onFile, onCancel }: Props) {
           </button>
         </div>
 
-        {/* Crop preview — 3:1 ratio */}
+        {/* Crop preview — 3:1 ratio, responsive height */}
         <div
           ref={wrapRef}
-          style={{ position: 'relative', height: 187, overflow: 'hidden', cursor: 'grab', userSelect: 'none', background: '#000', touchAction: 'none' }}
+          style={{ position: 'relative', paddingBottom: '33.33%', overflow: 'hidden', cursor: 'grab', userSelect: 'none', background: '#000', touchAction: 'none' }}
           onPointerDown={onPD}
           onPointerMove={onPM}
           onPointerUp={onPU}
@@ -213,12 +247,12 @@ export default function TareeqCoverEditor({ isRtl, onFile, onCancel }: Props) {
             <img
               ref={imgRef}
               src={imgSrc}
+              crossOrigin="anonymous"
               alt=""
               draggable={false}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: `${posX}% ${posY}%`, pointerEvents: 'none', display: 'block' }}
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: `${posX}% ${posY}%`, pointerEvents: 'none', display: 'block' }}
             />
           )}
-          {/* Hint overlay */}
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 12, pointerEvents: 'none' }}>
             <span style={{ background: 'rgba(0,0,0,0.52)', color: '#fff', fontSize: 11, fontWeight: 600, padding: '4px 14px', borderRadius: 20, backdropFilter: 'blur(6px)', letterSpacing: '0.02em' }}>
               {isRtl ? '✦ اسحب لضبط الموضع' : '✦ Drag to reposition'}

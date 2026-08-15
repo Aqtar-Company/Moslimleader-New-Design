@@ -236,7 +236,7 @@ export default function TareeqQRModal({ userId, name, avatarUrl, isRtl, onClose 
       if (brandedBlob) {
         const file = new File([brandedBlob], `tareeq-${name}.png`, { type: 'image/png' });
         if (navigator.canShare?.({ files: [file] })) {
-          await navigator.share({ files: [file], title: name });
+          await navigator.share({ files: [file], title: name, url: profileUrl });
           return;
         }
       }

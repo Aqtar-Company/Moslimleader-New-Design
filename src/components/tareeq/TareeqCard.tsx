@@ -367,26 +367,19 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
         {/* Report — only for other users' posts */}
         {user && user.id !== post.userId && (
-          <div className="relative group/report">
-            <button
-              onClick={e => { e.preventDefault(); e.stopPropagation(); setShowReport(true); }}
-              aria-label={isRtl ? 'بلاغ' : 'Report'}
-              style={{ ...btnBase, color: 'var(--tr-text-muted)', padding: '8px 10px' }}
-              onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, { ...hover, color: '#f43f5e' })}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--tr-text-muted)'; }}
-            >
-              <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="9" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 9l6 6M15 9l-6 6" />
-              </svg>
-            </button>
-            <span
-              className="pointer-events-none absolute bottom-full mb-1.5 start-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-semibold opacity-0 group-hover/report:opacity-100 transition-opacity duration-150 z-30"
-              style={{ background: 'rgba(244,63,94,0.92)', color: '#fff', backdropFilter: 'blur(6px)', boxShadow: '0 2px 8px rgba(244,63,94,0.3)' }}
-            >
-              {isRtl ? 'إبلاغ عن المحتوى' : 'Report content'}
-            </span>
-          </div>
+          <button
+            onClick={e => { e.preventDefault(); e.stopPropagation(); setShowReport(true); }}
+            aria-label={isRtl ? 'بلاغ' : 'Report'}
+            style={{ ...btnBase, color: 'var(--tr-text-muted)', padding: '8px 10px', gap: 5 }}
+            onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, { ...hover, color: '#f43f5e' })}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--tr-text-muted)'; }}
+          >
+            <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 9l6 6M15 9l-6 6" />
+            </svg>
+            <span className="hidden sm:inline">{isRtl ? 'إبلاغ' : 'Report'}</span>
+          </button>
         )}
 
         {/* Bookmark */}
@@ -685,26 +678,28 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             <IconBookmark filled={isBookmarked} size={16} />
           </button>
 
-          <div ref={shareMenuRef} className="relative ms-auto">
-            <button onClick={handleShare} className="flex items-center gap-1 text-xs font-semibold transition" style={{ color: copied ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
-              <IconShare size={16} check={copied} />
-            </button>
-            {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} isRtl={isRtl} />}
-          </div>
+          <div className="ms-auto flex items-center gap-2">
+            <div ref={shareMenuRef} className="relative">
+              <button onClick={handleShare} className="flex items-center gap-1 text-xs font-semibold transition" style={{ color: copied ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
+                <IconShare size={16} check={copied} />
+              </button>
+              {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} isRtl={isRtl} />}
+            </div>
 
-          {user && user.id !== post.userId && (
-            <button
-              onClick={e => { e.preventDefault(); e.stopPropagation(); setShowReport(true); }}
-              aria-label={isRtl ? 'بلاغ' : 'Report'}
-              className="flex items-center gap-1 text-xs font-semibold transition active:scale-90"
-              style={{ color: 'var(--tr-text-muted)' }}
-            >
-              <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="9" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 9l6 6M15 9l-6 6" />
-              </svg>
-            </button>
-          )}
+            {user && user.id !== post.userId && (
+              <button
+                onClick={e => { e.preventDefault(); e.stopPropagation(); setShowReport(true); }}
+                aria-label={isRtl ? 'بلاغ' : 'Report'}
+                className="flex items-center gap-1 text-xs font-semibold transition active:scale-90"
+                style={{ color: 'var(--tr-text-muted)' }}
+              >
+                <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="9" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 9l6 6M15 9l-6 6" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
 
         {commentForm}

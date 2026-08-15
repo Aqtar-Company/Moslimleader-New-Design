@@ -18,6 +18,12 @@ interface Post {
   likeCount: number; commentCount: number; viewCount: number; createdAt: string;
   userId: string | null; user: { id: string; name: string; avatarUrl?: string | null } | null;
   comments: Comment[];
+  pinnedCommentId?: string | null;
+  postUpdate?: string | null;
+  postUpdateAt?: string | null;
+  seriesId?: string | null;
+  seriesTitle?: string | null;
+  seriesOrder?: number | null;
 }
 
 // ── Reaction config ───────────────────────────────────────────────────
@@ -30,17 +36,18 @@ const REACTIONS = [
 
 type ReactionType = typeof REACTIONS[number]['type'];
 
-export default function TareeqPostClient({ post, userLiked = false, userBookmarked = false, userReaction = null }: { post: Post; userLiked?: boolean; userBookmarked?: boolean; userReaction?: string | null }) {
+export default function TareeqPostClient({ post, userLiked = false, userBookmarked = false, userReaction = null, userSubscribed = false }: { post: Post; userLiked?: boolean; userBookmarked?: boolean; userReaction?: string | null; userSubscribed?: boolean }) {
   const { isRtl } = useLang();
   const { user } = useAuth();
   const router = useRouter();
-  useWakeLock(); // Keep screen on while reading
+  useWakeLock();
 
   const startReaction: string | null = userReaction ?? (userLiked ? 'inspired' : null);
   const [currentReaction, setCurrentReaction] = useState<string | null>(startReaction);
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [reactionCounts, setReactionCounts] = useState<Record<string, number>>({});
   const [bookmarked, setBookmarked] = useState(userBookmarked);
+  const [subscribed, setSubscribed] = useState(userSubscribed);
   const [comments, setComments] = useState<Comment[]>(post.comments);
   const [commentCount, setCommentCount] = useState(post.commentCount);
   const [commentText, setCommentText] = useState('');
@@ -50,6 +57,11 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   const [commentSort, setCommentSort] = useState<'asc' | 'desc'>('asc');
   const [deleting, setDeleting] = useState(false);
   const [reportTarget, setReportTarget] = useState<{ type: 'post' | 'comment'; id: string } | null>(null);
+  const [pinnedCommentId, setPinnedCommentId] = useState<string | null>(post.pinnedCommentId ?? null);
+  const [showUpdateInput, setShowUpdateInput] = useState(false);
+  const [updateText, setUpdateText] = useState('');
+  const [updateSaving, setUpdateSaving] = useState(false);
+  const [postUpdate, setPostUpdate] = useState<string | null>(post.postUpdate ?? null);
 
   // Edit state
   const [editing, setEditing] = useState(false);
@@ -150,6 +162,45 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
     setDeleting(true);
     const res = await fetch(`/api/tareeq/${post.id}`, { method: 'DELETE', credentials: 'include' });
     if (res.ok) { router.push('/tareeq'); } else { setDeleting(false); }
+  }
+
+  async function toggleSubscribe() {
+    if (!user) { setShowGate(true); return; }
+    const prev = subscribed;
+    setSubscribed(!prev);
+    const res = await fetch(`/api/tareeq/${post.id}/subscribe`, { method: 'POST', credentials: 'include' });
+    if (res.ok) { const d = await res.json(); setSubscribed(d.subscribed); }
+    else setSubscribed(prev);
+  }
+
+  async function pinComment(commentId: string) {
+    if (!isOwner) return;
+    const isPinned = pinnedCommentId === commentId;
+    const method = isPinned ? 'DELETE' : 'POST';
+    const body = isPinned ? undefined : JSON.stringify({ commentId });
+    const res = await fetch(`/api/tareeq/${post.id}/pin-comment`, {
+      method, credentials: 'include',
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body,
+    });
+    if (res.ok) setPinnedCommentId(isPinned ? null : commentId);
+  }
+
+  async function saveUpdate() {
+    if (updateText.trim().length < 5) return;
+    setUpdateSaving(true);
+    const res = await fetch(`/api/tareeq/${post.id}/update`, {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ update: updateText.trim() }),
+    });
+    setUpdateSaving(false);
+    if (res.ok) { setPostUpdate(updateText.trim()); setShowUpdateInput(false); setUpdateText(''); }
+  }
+
+  async function removeUpdate() {
+    const res = await fetch(`/api/tareeq/${post.id}/update`, { method: 'DELETE', credentials: 'include' });
+    if (res.ok) setPostUpdate(null);
   }
 
   async function submitComment() {
@@ -289,6 +340,19 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
               </div>
             )}
 
+            {/* Series badge */}
+            {!editing && post.seriesId && post.seriesTitle && (
+              <div className="flex items-center gap-2 mt-5 px-3 py-2 rounded-xl" style={{ background: 'rgba(212,168,83,0.08)', border: '1px solid rgba(212,168,83,0.22)' }}>
+                <svg width={14} height={14} fill="none" stroke="var(--tr-gold)" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+                </svg>
+                <span className="text-xs font-semibold" style={{ color: 'var(--tr-gold)' }}>
+                  {post.seriesTitle}
+                  {post.seriesOrder != null && ` — جزء ${post.seriesOrder}`}
+                </span>
+              </div>
+            )}
+
             {/* Tags */}
             {!editing && Array.isArray(post.tags) && post.tags.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-6 pt-6" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
@@ -298,6 +362,57 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                   </span>
                 ))}
               </div>
+            )}
+
+            {/* ماذا حدث — post update */}
+            {!editing && postUpdate && (
+              <div className="mt-5 p-4 rounded-2xl" style={{ background: 'rgba(212,168,83,0.08)', border: '1px solid rgba(212,168,83,0.25)' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-black px-2 py-0.5 rounded-full" style={{ background: 'var(--tr-gold)', color: '#0a0d06' }}>تحديث</span>
+                  {isOwner && (
+                    <button onClick={removeUpdate} className="text-[11px] ms-auto" style={{ color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                      {isRtl ? 'حذف' : 'Remove'}
+                    </button>
+                  )}
+                </div>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--tr-text-primary)' }}>{postUpdate}</p>
+              </div>
+            )}
+
+            {/* Add update input — owner only, when no update yet */}
+            {!editing && isOwner && !postUpdate && (
+              showUpdateInput ? (
+                <div className="mt-5 p-4 rounded-2xl" style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)' }}>
+                  <textarea
+                    value={updateText}
+                    onChange={e => setUpdateText(e.target.value)}
+                    rows={3}
+                    maxLength={1000}
+                    placeholder={isRtl ? 'ماذا حدث؟ أضف تحديثاً للقراء...' : 'What happened? Add an update...'}
+                    className="w-full text-sm resize-none focus:outline-none rounded-xl px-3 py-2.5"
+                    style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
+                  />
+                  <div className="flex gap-2 mt-2">
+                    <button onClick={saveUpdate} disabled={updateSaving || updateText.trim().length < 5} className="px-4 py-1.5 rounded-xl text-sm font-bold disabled:opacity-40" style={{ background: 'var(--tr-gold)', color: '#0a0d06', border: 'none', cursor: 'pointer' }}>
+                      {updateSaving ? '...' : (isRtl ? 'نشر' : 'Publish')}
+                    </button>
+                    <button onClick={() => setShowUpdateInput(false)} className="px-4 py-1.5 rounded-xl text-sm" style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-muted)', border: 'none', cursor: 'pointer' }}>
+                      {isRtl ? 'إلغاء' : 'Cancel'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowUpdateInput(true)}
+                  className="mt-4 flex items-center gap-2 text-xs transition"
+                  style={{ color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                  <svg width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {isRtl ? 'ماذا حدث؟ أضف تحديثاً' : 'What happened? Add an update'}
+                </button>
+              )
             )}
 
             {/* Actions */}
@@ -371,6 +486,21 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                   {copied ? (isRtl ? 'تم النسخ!' : 'Copied!') : (isRtl ? 'مشاركة' : 'Share')}
                 </button>
 
+                {/* Subscribe to post */}
+                {user && (
+                  <button
+                    onClick={toggleSubscribe}
+                    className="flex items-center gap-2 text-sm font-semibold transition"
+                    style={{ color: subscribed ? 'var(--tr-gold-bright)' : 'var(--tr-text-muted)' }}
+                    title={isRtl ? (subscribed ? 'إلغاء متابعة الموضوع' : 'متابعة الموضوع') : (subscribed ? 'Unsubscribe' : 'Follow topic')}
+                  >
+                    <svg width={18} height={18} fill={subscribed ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                    </svg>
+                    {isRtl ? (subscribed ? 'متابَع' : 'تابع') : (subscribed ? 'Following' : 'Follow')}
+                  </button>
+                )}
+
                 <span className="ms-auto text-xs" style={{ color: 'var(--tr-text-muted)' }}>
                   {post.viewCount} {isRtl ? 'مشاهدة' : 'views'}
                 </span>
@@ -404,32 +534,56 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
             <p className="text-sm mb-6" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'لا توجد تعليقات بعد' : 'No comments yet'}</p>
           ) : (
             <div className="space-y-4 mb-6">
-              {sortedComments.map((c) => (
-                <div key={c.id} className="flex gap-3 group">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
-                    {c.user?.name.charAt(0) ?? '?'}
-                  </div>
-                  <div className="flex-1 rounded-xl px-4 py-3" style={{ background: 'var(--tr-raised)' }}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-semibold" style={{ color: 'var(--tr-text-primary)' }}>{c.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}</span>
-                      <span className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(c.createdAt, isRtl)}</span>
-                      {user && user.id !== c.userId && (
-                        <button
-                          onClick={() => setReportTarget({ type: 'comment', id: c.id })}
-                          title={isRtl ? 'بلاغ' : 'Report'}
-                          className="ms-auto transition opacity-0 group-hover:opacity-100"
-                          style={{ color: 'var(--tr-text-muted)' }}
-                        >
-                          <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18M3 7l9-4 9 4v8l-9 4-9-4V7z" />
-                          </svg>
-                        </button>
-                      )}
+              {sortedComments.map((c) => {
+                const isPinned = c.id === pinnedCommentId;
+                return (
+                  <div key={c.id} className="flex gap-3 group" style={isPinned ? { order: -1 } : {}}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                      style={{ background: isPinned ? 'rgba(212,168,83,0.18)' : 'var(--tr-overlay)', color: isPinned ? 'var(--tr-gold)' : 'var(--tr-text-secondary)', border: isPinned ? '1.5px solid rgba(212,168,83,0.4)' : 'none' }}>
+                      {c.user?.name.charAt(0) ?? '?'}
                     </div>
-                    <p className="text-sm leading-relaxed" style={{ color: 'var(--tr-text-secondary)' }}>{c.content}</p>
+                    <div className="flex-1 rounded-xl px-4 py-3"
+                      style={{ background: isPinned ? 'rgba(212,168,83,0.06)' : 'var(--tr-raised)', border: isPinned ? '1px solid rgba(212,168,83,0.22)' : 'none' }}>
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="text-xs font-semibold" style={{ color: 'var(--tr-text-primary)' }}>{c.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}</span>
+                        {isPinned && (
+                          <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full" style={{ background: 'var(--tr-gold)', color: '#0a0d06' }}>
+                            ⭐ {isRtl ? 'أفضل رد' : 'Best Reply'}
+                          </span>
+                        )}
+                        <span className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(c.createdAt, isRtl)}</span>
+                        <div className="ms-auto flex items-center gap-2">
+                          {isOwner && (
+                            <button
+                              onClick={() => pinComment(c.id)}
+                              title={isPinned ? (isRtl ? 'إلغاء التثبيت' : 'Unpin') : (isRtl ? 'تثبيت كأفضل رد' : 'Pin as best reply')}
+                              className="transition opacity-0 group-hover:opacity-100"
+                              style={{ color: isPinned ? 'var(--tr-gold)' : 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
+                            >
+                              <svg width={13} height={13} fill={isPinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.562.562 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+                              </svg>
+                            </button>
+                          )}
+                          {user && user.id !== c.userId && (
+                            <button
+                              onClick={() => setReportTarget({ type: 'comment', id: c.id })}
+                              title={isRtl ? 'بلاغ' : 'Report'}
+                              className="transition opacity-0 group-hover:opacity-100"
+                              style={{ color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
+                            >
+                              <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18M3 7l9-4 9 4v8l-9 4-9-4V7z" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-sm leading-relaxed" style={{ color: 'var(--tr-text-secondary)' }}>{c.content}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

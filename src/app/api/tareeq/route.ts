@@ -59,6 +59,8 @@ export async function GET(req: NextRequest) {
         id: true, title: true, summary: true, content: true,
         category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true, authorName: true,
         likeCount: true, commentCount: true, createdAt: true, userId: true,
+        pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
+        seriesId: true, seriesTitle: true, seriesOrder: true,
         user: { select: { id: true, name: true, avatarUrl: true } },
       },
     });
@@ -85,6 +87,8 @@ export async function GET(req: NextRequest) {
             id: true, title: true, summary: true, content: true,
             category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true, authorName: true,
             likeCount: true, commentCount: true, createdAt: true, userId: true,
+            pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
+            seriesId: true, seriesTitle: true, seriesOrder: true,
             user: { select: { id: true, name: true, avatarUrl: true } },
           },
         },
@@ -118,6 +122,8 @@ export async function GET(req: NextRequest) {
       id: true, title: true, summary: true, content: true,
       category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true, authorName: true,
       likeCount: true, commentCount: true, createdAt: true, userId: true,
+      pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
+      seriesId: true, seriesTitle: true, seriesOrder: true,
       user: { select: { id: true, name: true, avatarUrl: true } },
     },
   });
@@ -175,6 +181,25 @@ export async function POST(req: NextRequest) {
 
   const dbUser = await prisma.user.findUnique({ where: { id: user.userId }, select: { name: true, avatarUrl: true } });
 
+  // Series: resolve or create seriesId from seriesTitle
+  const rawSeriesTitle = String(body.seriesTitle ?? '').trim().slice(0, 80) || null;
+  let seriesId: string | null = null;
+  let seriesOrder: number | null = null;
+  if (rawSeriesTitle) {
+    const existing = await prisma.tareeqPost.findFirst({
+      where: { userId: user.userId, seriesTitle: rawSeriesTitle },
+      orderBy: { seriesOrder: 'desc' },
+      select: { seriesId: true, seriesOrder: true },
+    });
+    if (existing?.seriesId) {
+      seriesId = existing.seriesId;
+      seriesOrder = (existing.seriesOrder ?? 1) + 1;
+    } else {
+      seriesId = crypto.randomUUID();
+      seriesOrder = 1;
+    }
+  }
+
   const post = await prisma.tareeqPost.create({
     data: {
       content,
@@ -187,6 +212,7 @@ export async function POST(req: NextRequest) {
       videoUrl,
       userId: user.userId,
       authorName: dbUser?.name ?? 'مجهول',
+      ...(seriesId ? { seriesId, seriesTitle: rawSeriesTitle, seriesOrder } : {}),
     },
   });
 

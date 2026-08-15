@@ -81,8 +81,9 @@ model User {
   tareeqCallsIn           TareeqCall[]             @relation("TareeqCallCallee")
   tareeqReports           TareeqReport[]           @relation("TareeqUserReports")
   tareeqReportsFiled      TareeqReport[]           @relation("TareeqReporter")
-  tareeqBans              TareeqBan[]              @relation("TareeqBans")
-  tareeqTickets           TareeqSupportTicket[]    @relation("TareeqTickets")
+  tareeqBans                  TareeqBan[]              @relation("TareeqBans")
+  tareeqTickets               TareeqSupportTicket[]    @relation("TareeqTickets")
+  tareeqPostSubscriptions     TareeqPostSubscription[]
   tareeqNotes             TareeqNote[]             @relation("TareeqNotes")
 
   @@index([role])
@@ -963,18 +964,26 @@ model TareeqPost {
   isHidden     Boolean          @default(false)
   hiddenBy     String?
   hiddenReason String?
-  likes        TareeqLike[]
-  comments     TareeqComment[]
-  bookmarks    TareeqBookmark[]
-  reactions    TareeqReaction[]
-  reports      TareeqReport[]   @relation("TareeqPostReports")
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  pinnedCommentId String?
+  postUpdate      String?                  @db.Text
+  postUpdateAt    DateTime?
+  seriesId        String?
+  seriesTitle     String?
+  seriesOrder     Int?
+  likes           TareeqLike[]
+  comments        TareeqComment[]
+  bookmarks       TareeqBookmark[]
+  reactions       TareeqReaction[]
+  reports         TareeqReport[]           @relation("TareeqPostReports")
+  subscriptions   TareeqPostSubscription[]
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
 
   @@index([userId])
   @@index([createdAt])
   @@index([category])
   @@index([isHidden])
+  @@index([seriesId])
 }
 
 model TareeqLike {
@@ -1048,6 +1057,19 @@ model TareeqNotification {
   @@index([userId])
   @@index([userId, read])
   @@index([createdAt])
+}
+
+model TareeqPostSubscription {
+  id        String     @id @default(cuid())
+  postId    String
+  post      TareeqPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
 }
 
 model TareeqConversation {

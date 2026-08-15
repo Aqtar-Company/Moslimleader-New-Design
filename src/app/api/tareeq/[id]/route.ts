@@ -26,21 +26,24 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   // Increment view count (non-blocking)
   prisma.tareeqPost.update({ where: { id: params.id }, data: { viewCount: { increment: 1 } } }).catch(() => {});
 
-  // Check if current user already liked/bookmarked
+  // Check if current user already liked/bookmarked/subscribed
   let userLiked = false;
   let userBookmarked = false;
+  let userSubscribed = false;
   try {
     const currentUser = await getAuthUser();
     if (!currentUser) throw new Error('not logged in');
-    const [like, bookmark] = await Promise.all([
+    const [like, bookmark, subscription] = await Promise.all([
       prisma.tareeqLike.findUnique({ where: { postId_userId: { postId: params.id, userId: currentUser.userId } } }),
       prisma.tareeqBookmark.findUnique({ where: { postId_userId: { postId: params.id, userId: currentUser.userId } } }),
+      prisma.tareeqPostSubscription.findUnique({ where: { postId_userId: { postId: params.id, userId: currentUser.userId } } }),
     ]);
     userLiked = !!like;
     userBookmarked = !!bookmark;
+    userSubscribed = !!subscription;
   } catch { /* not logged in — defaults stay false */ }
 
-  return NextResponse.json({ post, userLiked, userBookmarked });
+  return NextResponse.json({ post, userLiked, userBookmarked, userSubscribed });
 }
 
 // PUT /api/tareeq/[id] — edit (owner only)

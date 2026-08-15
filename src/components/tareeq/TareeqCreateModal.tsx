@@ -46,6 +46,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   const localPreviewRef = useRef<string | null>(null);
   const extraPreviewUrlsRef = useRef<string[]>([]);
   const [showCatPicker, setShowCatPicker] = useState(false);
+  const [seriesTitle, setSeriesTitle] = useState('');
+  const [showSeriesInput, setShowSeriesInput] = useState(false);
   const [draftBanner, setDraftBanner] = useState<Draft | null>(null);
   const [draftSaved, setDraftSaved] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -305,6 +307,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           imageUrl: mediaType === 'image' ? mediaUrl : null,
           videoUrl: mediaType === 'video' ? mediaUrl : null,
           imageUrls: allImageUrls,
+          seriesTitle: seriesTitle.trim() || null,
         }),
       });
       const data = await res.json();
@@ -746,6 +749,38 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
               />
             </label>
           )}
+
+          {/* ── Series row ── */}
+          <div className="px-4 pb-3">
+            {showSeriesInput ? (
+              <div className="flex items-center gap-2 p-2.5 rounded-2xl" style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)' }}>
+                <svg width={14} height={14} fill="none" stroke="var(--tr-gold)" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+                </svg>
+                <input
+                  value={seriesTitle}
+                  onChange={e => setSeriesTitle(e.target.value)}
+                  placeholder={isRtl ? 'اسم السلسلة...' : 'Series name...'}
+                  maxLength={80}
+                  className="flex-1 text-xs bg-transparent outline-none"
+                  style={{ color: 'var(--tr-text-primary)' }}
+                />
+                <button onClick={() => { setShowSeriesInput(false); setSeriesTitle(''); }} style={{ color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowSeriesInput(true)}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-full transition"
+                style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)' }}
+              >
+                <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+                </svg>
+                {isRtl ? 'إضافة لسلسلة' : 'Add to series'}
+              </button>
+            )}
+          </div>
 
           {/* ── Category row ── */}
           <div className="px-4 pb-5" ref={catPickerRef}>

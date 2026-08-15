@@ -63,21 +63,24 @@ export default async function TareeqPostPage({ params }: { params: { id: string 
   // Increment view (non-blocking)
   prisma.tareeqPost.update({ where: { id: params.id }, data: { viewCount: { increment: 1 } } }).catch(() => {});
 
-  // Check current user's reactions
+  // Check current user's reactions + subscription
   let userLiked = false;
   let userBookmarked = false;
   let userReaction: string | null = null;
+  let userSubscribed = false;
   try {
     const currentUser = await getAuthUser();
     if (!currentUser) throw new Error('');
-    const [like, bookmark, reaction] = await Promise.all([
+    const [like, bookmark, reaction, subscription] = await Promise.all([
       prisma.tareeqLike.findUnique({ where: { postId_userId: { postId: params.id, userId: currentUser.userId } } }),
       prisma.tareeqBookmark.findUnique({ where: { postId_userId: { postId: params.id, userId: currentUser.userId } } }),
       (prisma as any).tareeqReaction?.findUnique({ where: { postId_userId: { postId: params.id, userId: currentUser.userId } } }).catch(() => null) ?? null,
+      prisma.tareeqPostSubscription.findUnique({ where: { postId_userId: { postId: params.id, userId: currentUser.userId } } }),
     ]);
     userLiked = !!like;
     userBookmarked = !!bookmark;
     userReaction = (reaction as any)?.type ?? null;
+    userSubscribed = !!subscription;
   } catch { /* not logged in */ }
 
   return (
@@ -87,10 +90,17 @@ export default async function TareeqPostPage({ params }: { params: { id: string 
         tags: post.tags as string[] | null,
         createdAt: post.createdAt.toISOString(),
         comments: post.comments.map(c => ({ ...c, createdAt: c.createdAt.toISOString() })),
+        postUpdate: post.postUpdate ?? null,
+        postUpdateAt: post.postUpdateAt?.toISOString() ?? null,
+        seriesId: post.seriesId ?? null,
+        seriesTitle: post.seriesTitle ?? null,
+        seriesOrder: post.seriesOrder ?? null,
+        pinnedCommentId: post.pinnedCommentId ?? null,
       }}
       userLiked={userLiked}
       userBookmarked={userBookmarked}
       userReaction={userReaction}
+      userSubscribed={userSubscribed}
     />
   );
 }

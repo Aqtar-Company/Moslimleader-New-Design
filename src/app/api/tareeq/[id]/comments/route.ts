@@ -110,5 +110,28 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }).catch(() => {});
   }
 
+  // Notify post subscribers (non-blocking)
+  prisma.tareeqPostSubscription.findMany({
+    where: { postId: params.id },
+    select: { userId: true },
+  }).then(async (subs) => {
+    const commenterName = comment.user?.name ?? 'شخص ما';
+    for (const sub of subs) {
+      if (sub.userId === user.userId) continue;  // don't notify the commenter
+      if (sub.userId === post.userId) continue;  // post author already notified above
+      await prisma.tareeqNotification.create({
+        data: {
+          userId: sub.userId,
+          type: 'subscribed_comment',
+          actorId: user.userId,
+          actorName: commenterName,
+          postId: post.id,
+          postTitle: post.title ?? null,
+          body: content.slice(0, 120),
+        },
+      }).catch(() => {});
+    }
+  }).catch(() => {});
+
   return NextResponse.json({ ok: true, comment });
 }

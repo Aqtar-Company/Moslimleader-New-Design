@@ -25,6 +25,12 @@ export interface TareeqPostSummary {
   createdAt: string;
   userId?: string | null;
   user?: { id: string; name: string; avatarUrl?: string | null } | null;
+  postUpdate?: string | null;
+  postUpdateAt?: string | null;
+  seriesId?: string | null;
+  seriesTitle?: string | null;
+  seriesOrder?: number | null;
+  pinnedCommentId?: string | null;
 }
 
 interface Props {
@@ -859,6 +865,23 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                 <svg className="w-3 h-3 ms-0.5" fill="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}><path d="M8 5v14l11-7z" /></svg>
               </div>
               <span className="text-xs" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'يحتوي على فيديو' : 'Contains a video'}</span>
+            </div>
+          )}
+
+          {/* Series + postUpdate badges */}
+          {(post.seriesTitle || post.postUpdate) && (
+            <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+              {post.seriesTitle && (
+                <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(212,168,83,0.10)', color: 'var(--tr-gold)', border: '1px solid rgba(212,168,83,0.22)' }}>
+                  <svg width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" /></svg>
+                  {post.seriesTitle}{post.seriesOrder != null && ` (${post.seriesOrder})`}
+                </span>
+              )}
+              {post.postUpdate && (
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: 'var(--tr-gold)', color: '#0a0d06' }}>
+                  تحديث ★
+                </span>
+              )}
             </div>
           )}
         </Link>

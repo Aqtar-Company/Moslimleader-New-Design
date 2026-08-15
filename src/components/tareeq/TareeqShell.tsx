@@ -9,6 +9,7 @@ import TareeqOfflineBanner from './TareeqOfflineBanner';
 import TareeqQueueBanner from './TareeqQueueBanner';
 import TareeqSplash from './TareeqSplash';
 import TareeqIncomingCall from './TareeqIncomingCall';
+import { TareeqSatisfactionGate } from './TareeqSatisfactionMode';
 import { prewireInRingPipeline } from '@/lib/tareeq-ring-pipeline';
 
 /* ── Desktop left nav — shown on all Tareeq pages except the main feed
@@ -196,6 +197,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
       )}
 
       {!hideNav && <div className="lg:hidden"><TareeqBottomNav onCreateClick={handleCreateClick} /></div>}
+      <TareeqSatisfactionGate />
       <TareeqIncomingCall />
     </>
   );

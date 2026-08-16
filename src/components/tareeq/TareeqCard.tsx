@@ -545,7 +545,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     return (
       <>
         <article
-          className="relative overflow-hidden rounded-[24px] lg:rounded-[14px]"
+          className="relative rounded-[24px] lg:rounded-[14px]"
           style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
           aria-label={post.title || post.content.slice(0, 80)}
         >
@@ -658,7 +658,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     return (
       <>
         <article
-          className="relative overflow-hidden rounded-[24px] lg:rounded-[14px]"
+          className="relative rounded-[24px] lg:rounded-[14px]"
           style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
           aria-label={post.title || post.content.slice(0, 80)}
         >

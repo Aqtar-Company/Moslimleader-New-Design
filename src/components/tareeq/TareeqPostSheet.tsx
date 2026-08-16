@@ -84,6 +84,14 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
     return () => document.removeEventListener('keydown', onKey);
   }, [doClose]);
 
+  // Android back button — push a history entry so back closes sheet instead of leaving page
+  useEffect(() => {
+    history.pushState({ tareeqSheet: postId }, '');
+    const handlePop = () => { doClose(); };
+    window.addEventListener('popstate', handlePop, { once: true });
+    return () => window.removeEventListener('popstate', handlePop);
+  }, [postId, doClose]);
+
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };

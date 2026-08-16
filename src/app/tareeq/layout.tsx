@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import TareeqShell from '@/components/tareeq/TareeqShell';
+import TareeqMediaSession from '@/components/tareeq/TareeqMediaSession';
 
 export const metadata: Metadata = {
   icons: {
@@ -24,6 +25,7 @@ export default function TareeqLayout({ children }: { children: React.ReactNode }
           `,
         }}
       />
+      <TareeqMediaSession />
       <TareeqShell>
         {/* pb-[60px] reserves space for the 60px bottom nav on mobile */}
         <div className="relative pb-[60px] sm:pb-0">{children}</div>

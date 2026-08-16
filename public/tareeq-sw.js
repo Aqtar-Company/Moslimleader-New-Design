@@ -1,7 +1,7 @@
-/* tareeq-v6 — Offline, Background Sync, Periodic Sync, Rich Push, Notification Actions */
-const CACHE_STATIC  = 'tareeq-v6-static';
-const CACHE_PAGES   = 'tareeq-v6-pages';
-const CACHE_IMAGES  = 'tareeq-v6-images';
+/* tareeq-v7 — Offline, Background Sync, Periodic Sync, Rich Push, Media-channel audio */
+const CACHE_STATIC  = 'tareeq-v7-static';
+const CACHE_PAGES   = 'tareeq-v7-pages';
+const CACHE_IMAGES  = 'tareeq-v7-images';
 const ALL_CACHES    = [CACHE_STATIC, CACHE_PAGES, CACHE_IMAGES];
 
 const SHELL = [
@@ -239,16 +239,17 @@ self.addEventListener('push', e => {
       }
     })());
   } else {
-    // Non-call notification: single shot
-    const wakePromise = postType === 'message'
-      ? clients.matchAll({ type: 'window' }).then(list => {
-          for (const c of list) c.postMessage({ type: 'TAREEQ_NEW_MESSAGE' });
-        })
-      : Promise.resolve();
-    e.waitUntil(Promise.all([
-      self.registration.showNotification(title, options),
-      wakePromise,
-    ]));
+    // Non-call notification: single shot.
+    // If the app is open → silent OS notification + media-channel audio via postMessage
+    // If the app is closed → OS notification with system sound (fallback)
+    e.waitUntil((async () => {
+      const windowList = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const hasOpenWindow = windowList.length > 0;
+      await self.registration.showNotification(title, { ...options, silent: hasOpenWindow });
+      for (const c of windowList) {
+        c.postMessage({ type: 'TAREEQ_PLAY_SOUND', notifType: postType });
+      }
+    })());
   }
 });
 

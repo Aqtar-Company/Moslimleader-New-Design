@@ -84,6 +84,7 @@ model User {
   tareeqBans                  TareeqBan[]              @relation("TareeqBans")
   tareeqTickets               TareeqSupportTicket[]    @relation("TareeqTickets")
   tareeqPostSubscriptions     TareeqPostSubscription[]
+  tareeqPostViews         TareeqPostView[]
   tareeqNotes             TareeqNote[]             @relation("TareeqNotes")
 
   @@index([role])
@@ -976,6 +977,7 @@ model TareeqPost {
   reactions       TareeqReaction[]
   reports         TareeqReport[]           @relation("TareeqPostReports")
   subscriptions   TareeqPostSubscription[]
+  views           TareeqPostView[]
   createdAt       DateTime                 @default(now())
   updatedAt       DateTime                 @updatedAt
 
@@ -1068,6 +1070,19 @@ model TareeqPostSubscription {
   createdAt DateTime   @default(now())
 
   @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+}
+
+model TareeqPostView {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String?
+  createdAt DateTime @default(now())
+
+  post TareeqPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
   @@index([postId])
   @@index([userId])
 }

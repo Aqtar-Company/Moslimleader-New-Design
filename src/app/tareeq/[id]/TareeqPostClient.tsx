@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
@@ -62,6 +62,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   const [updateText, setUpdateText] = useState('');
   const [updateSaving, setUpdateSaving] = useState(false);
   const [postUpdate, setPostUpdate] = useState<string | null>(post.postUpdate ?? null);
+  const [showViewers, setShowViewers] = useState(false);
 
   // Edit state
   const [editing, setEditing] = useState(false);
@@ -508,9 +509,26 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                   </button>
                 )}
 
-                <span className="ms-auto text-xs" style={{ color: 'var(--tr-text-muted)' }}>
-                  {post.viewCount} {isRtl ? 'مشاهدة' : 'views'}
-                </span>
+                {/* view count — for author, clicking shows viewer names */}
+                <div className="ms-auto flex items-center gap-1 relative">
+                  <button
+                    onClick={() => user?.id === post.userId && setShowViewers(v => !v)}
+                    className="flex items-center gap-1 text-xs"
+                    style={{ color: 'var(--tr-text-muted)', cursor: user?.id === post.userId ? 'pointer' : 'default', background: 'none', border: 'none', padding: 0 }}
+                  >
+                    <svg width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {post.viewCount}
+                    {user?.id === post.userId && (
+                      <span className="text-[10px]">{isRtl ? '▾ من شاهد' : '▾ viewers'}</span>
+                    )}
+                  </button>
+                  {showViewers && user?.id === post.userId && (
+                    <ViewersPopover postId={post.id} isRtl={isRtl} onClose={() => setShowViewers(false)} />
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -639,5 +657,50 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
         />
       )}
     </div>
+  );
+}
+
+function ViewersPopover({ postId, isRtl, onClose }: { postId: string; isRtl: boolean; onClose: () => void }) {
+  const [data, setData] = useState<{ viewCount: number; viewers: { id: string; name: string; avatarUrl?: string | null }[] } | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/tareeq/${postId}/views`, { credentials: 'include' })
+      .then(r => r.json()).then(setData).catch(() => setData({ viewCount: 0, viewers: [] }));
+  }, [postId]);
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div
+        className="absolute bottom-full mb-2 start-0 z-50 rounded-2xl shadow-xl overflow-hidden"
+        style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', width: 240, maxHeight: 320, overflowY: 'auto' }}
+        dir={isRtl ? 'rtl' : 'ltr'}
+      >
+        <div className="px-4 py-3 font-bold text-sm" style={{ borderBottom: '1px solid var(--tr-border-subtle)', color: 'var(--tr-text-primary)' }}>
+          {isRtl ? `من شاهد (${data?.viewCount ?? '...'})` : `Viewers (${data?.viewCount ?? '...'})`}
+        </div>
+        {!data ? (
+          <div className="flex justify-center py-6">
+            <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
+          </div>
+        ) : data.viewers.length === 0 ? (
+          <p className="text-xs text-center py-6" style={{ color: 'var(--tr-text-muted)' }}>
+            {isRtl ? 'لا مشاهدات مسجّلة بعد' : 'No logged-in viewers yet'}
+          </p>
+        ) : (
+          <div className="py-2">
+            {data.viewers.map(v => (
+              <div key={v.id} className="flex items-center gap-2.5 px-4 py-2">
+                {v.avatarUrl
+                  ? <img src={v.avatarUrl} alt={v.name} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                  : <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)' }}>{v.name.charAt(0)}</div>
+                }
+                <span className="text-sm font-semibold truncate" style={{ color: 'var(--tr-text-primary)' }}>{v.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   );
 }

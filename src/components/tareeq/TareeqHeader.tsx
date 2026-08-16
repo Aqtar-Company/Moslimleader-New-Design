@@ -295,7 +295,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
             const newMsgs = fresh.filter(m => !prevIds.has(m.id));
             if (newMsgs.length === 0) return prev; // no change → skip re-render & scroll jump
             if (newMsgs.length > 0) isAtBottomRef.current = true; // incoming msg → scroll to show it
-            return [...newMsgs, ...prev];
+            return [...prev, ...newMsgs];
           });
         }
       } catch { /* offline */ }
@@ -327,7 +327,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
       });
       if (res.ok) {
         const d = await res.json();
-        if (d.message) { isAtBottomRef.current = true; setChatMessages(prev => [d.message, ...prev]); }
+        if (d.message) { isAtBottomRef.current = true; setChatMessages(prev => [...prev, d.message]); }
       }
     } catch { /* offline */ }
     setChatSending(false);
@@ -389,7 +389,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           });
           if (sendRes.ok) {
             const d = await sendRes.json();
-            if (d.message) { isAtBottomRef.current = true; setChatMessages(prev => [d.message, ...prev]); }
+            if (d.message) { isAtBottomRef.current = true; setChatMessages(prev => [...prev, d.message]); }
           } else { setVoiceError(isRtl ? 'فشل الإرسال' : 'Send failed'); setTimeout(() => setVoiceError(''), 3000); }
         } catch { setVoiceError(isRtl ? 'خطأ في الشبكة' : 'Network error'); setTimeout(() => setVoiceError(''), 3000); }
         setVoiceUploading(false);

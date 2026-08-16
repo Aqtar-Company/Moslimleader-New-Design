@@ -566,13 +566,13 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
             ) : notifs.filter(n => n.type !== 'message').length === 0 ? (
               <div className="rounded-2xl px-5 py-6 text-center"
                 style={{
-                  background: 'rgba(255,255,255,0.10)',
+                  background: 'rgba(20,25,50,0.72)',
                   backdropFilter: 'blur(24px) saturate(140%)',
                   WebkitBackdropFilter: 'blur(24px) saturate(140%)',
-                  border: '1px solid rgba(255,255,255,0.16)',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.22)',
+                  border: '1px solid rgba(255,255,255,0.13)',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.28)',
                 }}>
-                <p className="text-sm font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>
+                <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.80)' }}>
                   {isRtl ? 'لا إشعارات جديدة' : 'No new notifications'}
                 </p>
               </div>
@@ -582,11 +582,11 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                   key={n.id}
                   className="w-full flex items-start gap-3 px-4 py-3.5 rounded-2xl text-start transition-all active:scale-[0.98]"
                   style={{
-                    background: n.read ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.13)',
+                    background: n.read ? 'rgba(20,25,50,0.62)' : 'rgba(20,25,50,0.76)',
                     backdropFilter: 'blur(24px) saturate(140%)',
                     WebkitBackdropFilter: 'blur(24px) saturate(140%)',
-                    border: `1px solid ${n.read ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.22)'}`,
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+                    border: `1px solid ${n.read ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.18)'}`,
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.28)',
                   }}
                   onClick={() => {
                     setShowMobileNotifPanel(false);

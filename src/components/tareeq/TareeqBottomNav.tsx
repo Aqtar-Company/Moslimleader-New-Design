@@ -65,7 +65,7 @@ const CIRCLE_BTN_BOTTOM = NAV_H + 6 - CIRCLE_RADIUS; // 36
 const DRAG_TOL = 10;        // px before entering drag mode
 const CAMERA_THRESHOLD = 68; // px upward to trigger camera
 const CAM_HINT_KEY = 'tr_cam_hint_count';
-const CAM_HINT_MAX = 10;
+const CAM_HINT_MAX = 1;
 
 
 /* ─── Contacts / Call Sheet ─────────────────────────────────────────────── */
@@ -849,12 +849,23 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           overflow: 'hidden',
         }}
       >
-        {/* Add-sign star icon */}
+        {/* Add-sign star icon with glass circle behind it */}
         <div
           ref={addIconRef}
-          style={{ transition: 'opacity 0.18s ease', pointerEvents: 'none', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ transition: 'opacity 0.18s ease', pointerEvents: 'none', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
         >
-          <img src="/Add-sign.svg" width={72} height={72} alt="" aria-hidden draggable={false} style={{ display: 'block', userSelect: 'none' }} />
+          {/* Glass circle backdrop */}
+          <div style={{
+            position: 'absolute',
+            width: 80, height: 80,
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.18)',
+            backdropFilter: 'blur(12px) saturate(120%)',
+            WebkitBackdropFilter: 'blur(12px) saturate(120%)',
+            border: '1px solid rgba(255,255,255,0.35)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+          }} />
+          <img src="/Add-sign.svg" width={72} height={72} alt="" aria-hidden draggable={false} style={{ display: 'block', userSelect: 'none', position: 'relative', zIndex: 1 }} />
         </div>
         {/* Camera overlay — glassy blue, revealed on swipe-up */}
         <div

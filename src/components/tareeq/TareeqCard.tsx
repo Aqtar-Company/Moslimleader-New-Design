@@ -725,7 +725,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               )}
 
               {/* ── MOBILE ONLY: bottom author + caption overlay ── */}
-              <div className="absolute bottom-0 inset-x-0 z-10 p-4 pe-16 pointer-events-none lg:hidden">
+              <div className="absolute bottom-0 inset-x-0 z-10 p-4 pr-16 pointer-events-none lg:hidden">
                 <div className="flex items-center gap-2.5 mb-2 pointer-events-auto">
                   <Link href={post.userId ? `/tareeq/u/${post.userId}` : '#'} onClick={e => e.stopPropagation()} className="flex items-center gap-2">
                     {post.user?.avatarUrl

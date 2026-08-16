@@ -584,6 +584,26 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
             </div>
           </div>
 
+          {/* ── YouTube preview — auto-detected while typing ── */}
+          {(() => {
+            if (localPreview || mediaUrl || uploading) return null;
+            const m = content.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+            const ytId = m ? m[1] : null;
+            if (!ytId) return null;
+            return (
+              <div className="mx-4 mb-4 rounded-2xl overflow-hidden" style={{ aspectRatio: '16/9', border: '1px solid var(--tr-border-soft)' }}>
+                <iframe
+                  src={`https://www.youtube-nocookie.com/embed/${ytId}?rel=0&modestbranding=1`}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  loading="lazy"
+                  style={{ border: 'none', display: 'block' }}
+                />
+              </div>
+            );
+          })()}
+
           {/* ── Media zone ── */}
           {(localPreview || mediaUrl || uploading) ? (
             <>

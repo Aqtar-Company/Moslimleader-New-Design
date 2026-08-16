@@ -8,6 +8,11 @@ import { savePostOffline, removePostOffline, isPostSavedOffline } from '@/lib/ta
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import { timeAgo } from '@/lib/tareeq-utils';
 import TareeqLoginGate from './TareeqLoginGate';
+
+function extractYouTubeId(text: string): string | null {
+  const m = text.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
 import { useSatisfactionCounter } from './TareeqSatisfactionMode';
 
 export interface TareeqPostSummary {
@@ -916,6 +921,24 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               {isRtl ? 'اقرأ أكثر' : 'Read more'}
             </button>
           )}
+
+          {/* YouTube embed — auto-detected from content */}
+          {(() => {
+            const ytId = extractYouTubeId(post.content);
+            if (!ytId) return null;
+            return (
+              <div className="mt-3 rounded-2xl overflow-hidden" style={{ aspectRatio: '16/9', border: '1px solid var(--tr-border-soft)' }} onClick={e => e.stopPropagation()}>
+                <iframe
+                  src={`https://www.youtube-nocookie.com/embed/${ytId}?rel=0&modestbranding=1`}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  loading="lazy"
+                  style={{ border: 'none', display: 'block' }}
+                />
+              </div>
+            );
+          })()}
 
           {post.videoUrl && !hasImage && (
             <div className="mt-3 flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: 'var(--tr-raised)' }}>

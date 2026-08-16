@@ -339,12 +339,31 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
               </>
             )}
 
-            {/* Video */}
+            {/* Uploaded video */}
             {!editing && post.videoUrl && (
               <div className="mt-6 rounded-2xl overflow-hidden bg-black">
                 <video src={post.videoUrl} controls playsInline className="w-full max-h-[60vw] sm:max-h-[500px]" />
               </div>
             )}
+
+            {/* YouTube embed — auto-detected from content */}
+            {!editing && (() => {
+              const m = post.content.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+              const ytId = m ? m[1] : null;
+              if (!ytId) return null;
+              return (
+                <div className="mt-6 rounded-2xl overflow-hidden" style={{ aspectRatio: '16/9', border: '1px solid var(--tr-border-soft)' }}>
+                  <iframe
+                    src={`https://www.youtube-nocookie.com/embed/${ytId}?rel=0&modestbranding=1`}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    loading="lazy"
+                    style={{ border: 'none', display: 'block' }}
+                  />
+                </div>
+              );
+            })()}
 
             {/* Series badge */}
             {!editing && post.seriesId && post.seriesTitle && (

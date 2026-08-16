@@ -77,6 +77,9 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   }, [post.id]);
 
   const isOwner = user && post.userId && user.id === post.userId;
+  const msElapsed = Date.now() - new Date(post.createdAt).getTime();
+  const canEdit = !!isOwner && msElapsed < 3_600_000;
+  const minutesLeft = Math.max(0, Math.ceil((3_600_000 - msElapsed) / 60_000));
   const catKey = post.category as TareeqCategoryKey | null;
   const catLabel = catKey && TAREEQ_CATEGORIES[catKey]
     ? (isRtl ? TAREEQ_CATEGORIES[catKey].ar : TAREEQ_CATEGORIES[catKey].en)
@@ -256,18 +259,22 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                 )}
                 {isOwner && !editing && (
                   <div className="flex items-center gap-1">
+                    {canEdit && (
                     <button
                       onClick={() => setEditing(true)}
                       className="flex items-center gap-1.5 text-xs transition px-2 py-1.5 rounded-lg"
                       style={{ color: 'var(--tr-text-muted)', background: 'transparent' }}
                       onMouseEnter={e => { e.currentTarget.style.color = 'var(--tr-text-secondary)'; e.currentTarget.style.background = 'var(--tr-raised)'; }}
                       onMouseLeave={e => { e.currentTarget.style.color = 'var(--tr-text-muted)'; e.currentTarget.style.background = 'transparent'; }}
+                      title={isRtl ? `متبقي ${minutesLeft} دقيقة للتعديل` : `${minutesLeft} min left to edit`}
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                       </svg>
                       {isRtl ? 'تعديل' : 'Edit'}
+                      <span className="text-[10px] opacity-60">({minutesLeft}د)</span>
                     </button>
+                    )}
                     <button
                       onClick={deletePost}
                       disabled={deleting}

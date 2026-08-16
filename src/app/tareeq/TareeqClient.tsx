@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
@@ -57,7 +57,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
   const [category, setCategory] = useState<string>('');
-  const [sort, setSort] = useState<'newest' | 'liked' | 'following'>('newest');
+  const [sort, setSort] = useState<'newest' | 'liked' | 'following' | 'useful'>('newest');
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [showCreate, setShowCreate] = useState(false);
@@ -87,7 +87,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const pullRefreshingRef = useRef(false);
   const categoryRef = useRef(category);
   const searchValRef = useRef(search);
-  const sortRef = useRef(sort);
+  const sortRef = useRef<'newest' | 'liked' | 'following' | 'useful'>(sort);
   const PULL_THRESHOLD = 72;
 
   // Offline detection + reading cache
@@ -137,7 +137,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       .catch(() => {});
   }, [user]);
 
-  const loadPosts = useCallback(async (cat: string, q: string, fromCursor?: string | null, sortBy: 'newest' | 'liked' | 'following' = 'newest') => {
+  const loadPosts = useCallback(async (cat: string, q: string, fromCursor?: string | null, sortBy: 'newest' | 'liked' | 'following' | 'useful' = 'newest') => {
     if (fromCursor) { setLoading(true); } else { setInitialLoading(true); }
     try {
       const params = new URLSearchParams({ limit: '12' });
@@ -200,7 +200,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
     loadPosts(key, search, null, effectiveSort);
   }
 
-  function handleSortChange(newSort: 'newest' | 'liked' | 'following') {
+  function handleSortChange(newSort: 'newest' | 'liked' | 'following' | 'useful') {
     setSort(newSort);
     loadPosts(category, search, null, newSort);
   }
@@ -658,8 +658,15 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
               {isRtl ? 'اكتشف' : 'Discover'}
             </h1>
             <div className="flex items-center gap-1.5 shrink-0">
-              {(['newest', 'liked', ...(user ? ['following'] : [])] as ('newest' | 'liked' | 'following')[]).map(s => {
-                const labels: Record<string, string> = { newest: isRtl ? 'جديد' : 'New', liked: isRtl ? 'الأفضل' : 'Top', following: isRtl ? 'أتابع' : 'Feed' };
+              {(['newest', 'liked', 'useful', ...(user ? ['following'] : [])] as ('newest' | 'liked' | 'useful' | 'following')[]).map(s => {
+                const labels: Record<string, string> = { newest: isRtl ? 'جديد' : 'New', liked: isRtl ? 'الأفضل' : 'Top', useful: isRtl ? 'الأكثر نفعًا' : 'Most Useful', following: isRtl ? 'أتابع' : 'Feed' };
+                const icons: Record<string, React.ReactNode> = {
+                  useful: (
+                    <svg className="w-3 h-3 inline-block me-1 -mt-px" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+                    </svg>
+                  ),
+                };
                 const active = sort === s;
                 return (
                   <button
@@ -671,7 +678,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
                       : { background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }
                     }
                   >
-                    {labels[s]}
+                    {icons[s]}{labels[s]}
                   </button>
                 );
               })}

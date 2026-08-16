@@ -55,9 +55,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
-  const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { userId: true } });
+  const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { userId: true, createdAt: true } });
   if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
   if (post.userId !== user.userId) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+
+  const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  if (post.createdAt < hourAgo) {
+    return NextResponse.json({ error: 'Edit window expired — posts can only be edited within 1 hour of posting' }, { status: 403 });
+  }
 
   const body = await req.json().catch(() => ({}));
   const content = String(body.content ?? '').trim();

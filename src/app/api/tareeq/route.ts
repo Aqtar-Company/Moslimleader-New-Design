@@ -5,7 +5,7 @@ import { getAuthUser } from '@/lib/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { CATEGORY_KEY } from '@/lib/tareeq-constants';
 
-// GET /api/tareeq?cursor=xxx&category=xxx&limit=12&likedBy=userId&sort=newest|liked|following
+// GET /api/tareeq?cursor=xxx&category=xxx&limit=12&likedBy=userId&sort=newest|liked|following|useful
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const cursor = searchParams.get('cursor') || undefined;
@@ -15,8 +15,14 @@ export async function GET(req: NextRequest) {
   const likedBy = searchParams.get('likedBy') || undefined;
   const sort = searchParams.get('sort') ?? 'newest';
   const limit = Math.min(Number(searchParams.get('limit') ?? 12), 30);
-  const orderBy = sort === 'liked'
+  const orderBy: object | object[] = sort === 'liked'
     ? { likeCount: 'desc' as const }
+    : sort === 'useful'
+    ? [
+        { bookmarks: { _count: 'desc' as const } },
+        { likeCount: 'desc' as const },
+        { createdAt: 'desc' as const },
+      ]
     : { createdAt: 'desc' as const };
 
   // sort=following — return posts only from users the current viewer follows
@@ -104,6 +110,7 @@ export async function GET(req: NextRequest) {
     isHidden: false,
     ...(category ? { category } : {}),
     ...(userId ? { userId } : {}),
+    ...(sort === 'useful' ? { createdAt: { gte: new Date(Date.now() - 30 * 24 * 3600 * 1000) } } : {}),
     ...(search ? {
       OR: [
         { title: { contains: search } },

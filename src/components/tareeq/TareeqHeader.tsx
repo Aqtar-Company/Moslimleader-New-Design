@@ -147,8 +147,9 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
         const newW = Math.max(280, Math.min(640, resizeStartRef.current.w + dx));
         setPanelSize({ w: newW, h: newH });
       } else {
-        // Anchored mode: panel anchors insetInlineEnd:0, drag inlineStart = wider
-        const newW = Math.max(280, Math.min(640, resizeStartRef.current.w + (isRtl ? -dx : dx)));
+        // Anchored mode RTL: panel fixed at left edge, handle on right → drag right = wider
+        // Anchored mode LTR: panel fixed at right edge, handle on left → drag left = wider
+        const newW = Math.max(280, Math.min(640, resizeStartRef.current.w + (isRtl ? dx : -dx)));
         setPanelSize({ w: newW, h: newH });
       }
     }
@@ -179,7 +180,9 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   const chatInputRef = useRef<HTMLInputElement>(null);
 
   function scrollChatToBottom() {
-    if (chatMsgsRef.current) chatMsgsRef.current.scrollTop = 0;
+    requestAnimationFrame(() => {
+      if (chatMsgsRef.current) chatMsgsRef.current.scrollTop = 0;
+    });
   }
   useEffect(() => {
     if (isAtBottomRef.current) scrollChatToBottom();
@@ -281,7 +284,20 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
     const fetchMsgs = async () => {
       try {
         const res = await fetch(`/api/tareeq/conversations/${conv.id}`, { credentials: 'include' });
-        if (res.ok) { const d = await res.json(); setChatMessages((d.messages ?? []).slice().reverse()); }
+        if (res.ok) {
+          const d = await res.json();
+          const fresh = ((d.messages ?? []) as ChatMessage[]).slice().reverse();
+          setChatMessages(prev => {
+            if (fresh.length === 0) return prev;
+            if (prev.length === 0) return fresh;
+            // Only prepend genuinely new messages — prevents full re-render on every poll
+            const prevIds = new Set(prev.map(m => m.id));
+            const newMsgs = fresh.filter(m => !prevIds.has(m.id));
+            if (newMsgs.length === 0) return prev; // no change → skip re-render & scroll jump
+            if (newMsgs.length > 0) isAtBottomRef.current = true; // incoming msg → scroll to show it
+            return [...newMsgs, ...prev];
+          });
+        }
       } catch { /* offline */ }
     };
     await fetchMsgs();

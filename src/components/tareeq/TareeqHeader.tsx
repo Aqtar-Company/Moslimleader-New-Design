@@ -240,9 +240,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
       if (showNotifPanel && notifPanelRef.current && !notifPanelRef.current.contains(t) && notifBtnRef.current && !notifBtnRef.current.contains(t)) {
         setShowNotifPanel(false);
       }
-      if (showMsgPanel && msgPanelRef.current && !msgPanelRef.current.contains(t) && msgBtnRef.current && !msgBtnRef.current.contains(t)) {
-        setShowMsgPanel(false);
-      }
+      // msg panel intentionally not closed on outside click — only closes via header icon or back arrow
     }
     document.addEventListener('mousedown', onMouseDown);
     return () => document.removeEventListener('mousedown', onMouseDown);
@@ -932,36 +930,24 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                     <div ref={msgPanelRef} style={msgPanelStyle}>
                       {/* Header */}
                       {msgPanelView === 'list' ? (
-                        <div onMouseDown={startPanelDrag} className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
-                          <span className="font-black text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الرسائل' : 'Messages'}</span>
-                          <Link href="/tareeq/inbox" onClick={() => setShowMsgPanel(false)} className="text-xs font-semibold" style={{ color: 'var(--tr-gold)' }}>
+                        <div onMouseDown={startPanelDrag} dir="ltr" className="flex items-center px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
+                          <button onClick={() => setShowMsgPanel(false)} className="w-8 h-8 rounded-full flex items-center justify-center transition shrink-0 hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-text-secondary)' }}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                          </button>
+                          <span className="font-black text-sm flex-1 text-center" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الرسائل' : 'Messages'}</span>
+                          <Link href="/tareeq/inbox" onClick={() => setShowMsgPanel(false)} className="text-xs font-semibold shrink-0" style={{ color: 'var(--tr-gold)' }}>
                             {isRtl ? 'عرض الكل' : 'See all'}
                           </Link>
                         </div>
                       ) : (
-                        <div onMouseDown={startPanelDrag} className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
-                          {/* عرض الكل — يسار */}
-                          <Link href={`/tareeq/inbox/${activeChatConv?.id}`} onClick={() => setShowMsgPanel(false)} className="flex items-center gap-1 px-2 h-7 rounded-full shrink-0 transition hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-gold)', fontSize: 11, fontWeight: 700 }}>
-                            <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
-                            {isRtl ? 'عرض الكل' : 'See all'}
-                          </Link>
-                          {/* اسم المحادثة — وسط */}
-                          <div className="flex items-center gap-2 flex-1 min-w-0 justify-center">
-                            {activeChatConv?.otherUser.avatarUrl ? (
-                              <img src={activeChatConv.otherUser.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
-                            ) : (
-                              <div className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)' }}>
-                                {activeChatConv?.otherUser.name.charAt(0)}
-                              </div>
-                            )}
-                            <span className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{activeChatConv?.otherUser.name}</span>
-                          </div>
-                          {/* سهم الباك — يمين */}
+                        <div onMouseDown={startPanelDrag} dir="ltr" className="flex items-center px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
                           <button onClick={closeChat} className="w-8 h-8 rounded-full flex items-center justify-center transition shrink-0 hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-text-secondary)' }}>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                            </svg>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
                           </button>
+                          <span className="font-black text-sm flex-1 text-center" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الرسائل' : 'Messages'}</span>
+                          <Link href={`/tareeq/inbox/${activeChatConv?.id}`} onClick={() => setShowMsgPanel(false)} className="w-8 h-8 rounded-full flex items-center justify-center transition shrink-0 hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-text-secondary)' }}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                          </Link>
                         </div>
                       )}
 
@@ -1094,50 +1080,22 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                 {showMsgPanel && (
                   <div ref={msgPanelRef} style={msgPanelStyle} dir={isRtl ? 'rtl' : 'ltr'}>
                     {msgPanelView === 'list' ? (
-                      <div onMouseDown={startPanelDrag} className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
-                        <span className="font-black text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الرسائل' : 'Messages'}</span>
-                        <Link href="/tareeq/inbox" onClick={() => setShowMsgPanel(false)} className="text-xs font-semibold" style={{ color: 'var(--tr-gold)' }}>{isRtl ? 'عرض الكل' : 'See all'}</Link>
+                      <div onMouseDown={startPanelDrag} dir="ltr" className="flex items-center px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
+                        <button onClick={() => setShowMsgPanel(false)} className="w-8 h-8 rounded-full flex items-center justify-center transition shrink-0 hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-text-secondary)' }}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                        </button>
+                        <span className="font-black text-sm flex-1 text-center" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الرسائل' : 'Messages'}</span>
+                        <Link href="/tareeq/inbox" onClick={() => setShowMsgPanel(false)} className="text-xs font-semibold shrink-0" style={{ color: 'var(--tr-gold)' }}>{isRtl ? 'عرض الكل' : 'See all'}</Link>
                       </div>
                     ) : (
-                      <div onMouseDown={startPanelDrag} className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
-                        {/* عرض الكل — يسار */}
-                        <Link href={`/tareeq/inbox/${activeChatConv?.id}`} onClick={() => setShowMsgPanel(false)} className="flex items-center gap-1 px-2 h-7 rounded-full shrink-0 transition hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-gold)', fontSize: 11, fontWeight: 700 }}>
-                          <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
-                          {isRtl ? 'عرض الكل' : 'See all'}
+                      <div onMouseDown={startPanelDrag} dir="ltr" className="flex items-center px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
+                        <button onClick={closeChat} className="w-8 h-8 rounded-full flex items-center justify-center transition shrink-0 hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-text-secondary)' }}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                        </button>
+                        <span className="font-black text-sm flex-1 text-center" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الرسائل' : 'Messages'}</span>
+                        <Link href={`/tareeq/inbox/${activeChatConv?.id}`} onClick={() => setShowMsgPanel(false)} className="w-8 h-8 rounded-full flex items-center justify-center transition shrink-0 hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-text-secondary)' }}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                         </Link>
-                        {/* اسم المحادثة — وسط */}
-                        <div className="flex items-center gap-2 flex-1 min-w-0 justify-center">
-                          {activeChatConv?.otherUser.avatarUrl ? (
-                            <img src={activeChatConv.otherUser.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
-                          ) : (
-                            <div className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)' }}>{activeChatConv?.otherUser.name.charAt(0)}</div>
-                          )}
-                          <span className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{activeChatConv?.otherUser.name}</span>
-                        </div>
-                        {/* أزرار الاتصال + سهم الباك — يمين */}
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          <button onClick={() => startDesktopCall('audio')} disabled={callStarting}
-                            title={isRtl ? 'مكالمة صوتية' : 'Audio call'}
-                            className="w-8 h-8 rounded-full flex items-center justify-center transition hover:bg-[var(--tr-overlay)]"
-                            style={{ color: 'var(--tr-text-secondary)' }}>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-                            </svg>
-                          </button>
-                          <button onClick={() => startDesktopCall('video')} disabled={callStarting}
-                            title={isRtl ? 'مكالمة فيديو' : 'Video call'}
-                            className="w-8 h-8 rounded-full flex items-center justify-center transition hover:bg-[var(--tr-overlay)]"
-                            style={{ color: 'var(--tr-text-secondary)' }}>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
-                            </svg>
-                          </button>
-                          <button onClick={closeChat} className="w-8 h-8 rounded-full flex items-center justify-center transition hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-text-secondary)' }}>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                            </svg>
-                          </button>
-                        </div>
                       </div>
                     )}
                     {msgPanelView === 'list' ? (

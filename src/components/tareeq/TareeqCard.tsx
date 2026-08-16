@@ -658,68 +658,70 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     return (
       <>
         <article
-          className="relative rounded-[24px] lg:rounded-[14px]"
+          className="relative overflow-hidden rounded-[24px] lg:rounded-[14px]"
           style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
           aria-label={post.title || post.content.slice(0, 80)}
         >
           {/* Image container: portrait on mobile, landscape on desktop */}
-          <div className="relative aspect-[3/4] lg:aspect-auto lg:h-[320px] overflow-hidden">
-            <Link href={`/tareeq/${post.id}`} className="block w-full h-full" onClick={handlePostLinkClick}>
-              <img src={post.imageUrl!} alt="" className="w-full h-full object-cover" loading="eager" referrerPolicy="no-referrer" />
-              {/* Mobile gradient — bottom-heavy overlay */}
-              <div className="absolute inset-0 lg:hidden" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.05) 70%, transparent 100%)' }} />
-              {/* Desktop gradient — subtle top-to-bottom */}
-              <div className="absolute inset-0 hidden lg:block" style={{ background: 'linear-gradient(to bottom, transparent 55%, rgba(0,0,0,0.10) 100%)', pointerEvents: 'none' }} />
-            </Link>
+          <div className="relative aspect-[3/4] lg:aspect-auto lg:h-[320px]">
+            {/* Inner clip — keeps image + overlays within bounds without clipping side icons */}
+            <div className="absolute inset-0 overflow-hidden">
+              <Link href={`/tareeq/${post.id}`} className="block w-full h-full" onClick={handlePostLinkClick}>
+                <img src={post.imageUrl!} alt="" className="w-full h-full object-cover" loading="eager" referrerPolicy="no-referrer" />
+                {/* Mobile gradient — bottom-heavy overlay */}
+                <div className="absolute inset-0 lg:hidden" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.05) 70%, transparent 100%)' }} />
+                {/* Desktop gradient — subtle top-to-bottom */}
+                <div className="absolute inset-0 hidden lg:block" style={{ background: 'linear-gradient(to bottom, transparent 55%, rgba(0,0,0,0.10) 100%)', pointerEvents: 'none' }} />
+              </Link>
 
-            {/* Category badge */}
-            {catLabel && (
-              <div className="absolute top-4 start-4 z-10 pointer-events-none">
-                <span className="lg:hidden text-[11px] font-bold px-3 py-1 rounded-full text-white" style={{ background: 'rgba(0,0,0,0.40)', backdropFilter: 'blur(8px)', border: `1px solid ${accentHex}70` }}>
-                  {catIcon} {catLabel}
-                </span>
-                <span className="hidden lg:inline text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ color: accentHex, background: 'rgba(255,255,255,0.95)', border: `1px solid ${accentHex}35` }}>
-                  {catIcon} {catLabel}
-                </span>
-              </div>
-            )}
+              {/* Category badge */}
+              {catLabel && (
+                <div className="absolute top-4 start-4 z-10 pointer-events-none">
+                  <span className="lg:hidden text-[11px] font-bold px-3 py-1 rounded-full text-white" style={{ background: 'rgba(0,0,0,0.40)', backdropFilter: 'blur(8px)', border: `1px solid ${accentHex}70` }}>
+                    {catIcon} {catLabel}
+                  </span>
+                  <span className="hidden lg:inline text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ color: accentHex, background: 'rgba(255,255,255,0.95)', border: `1px solid ${accentHex}35` }}>
+                    {catIcon} {catLabel}
+                  </span>
+                </div>
+              )}
 
-            {/* ── MOBILE ONLY: bottom author + caption overlay ── */}
-            <div className="absolute bottom-0 inset-x-0 z-10 p-4 pe-16 pointer-events-none lg:hidden">
-              <div className="flex items-center gap-2.5 mb-2 pointer-events-auto">
-                <Link href={post.userId ? `/tareeq/u/${post.userId}` : '#'} onClick={e => e.stopPropagation()} className="flex items-center gap-2">
-                  {post.user?.avatarUrl
-                    ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-8 h-8 rounded-full object-cover shrink-0" style={{ border: '2px solid rgba(255,255,255,0.4)' }} />
-                    : <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: '2px solid rgba(255,255,255,0.4)', backdropFilter: 'blur(8px)' }}>{post.authorName.charAt(0)}</div>
-                  }
-                  <div>
-                    <p className="text-white font-bold text-sm leading-none">{post.authorName}</p>
-                    <p className="text-white/60 text-[10px] mt-0.5">{timeAgo(post.createdAt, isRtl)}</p>
-                  </div>
-                </Link>
+              {/* ── MOBILE ONLY: bottom author + caption overlay ── */}
+              <div className="absolute bottom-0 inset-x-0 z-10 p-4 pe-16 pointer-events-none lg:hidden">
+                <div className="flex items-center gap-2.5 mb-2 pointer-events-auto">
+                  <Link href={post.userId ? `/tareeq/u/${post.userId}` : '#'} onClick={e => e.stopPropagation()} className="flex items-center gap-2">
+                    {post.user?.avatarUrl
+                      ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-8 h-8 rounded-full object-cover shrink-0" style={{ border: '2px solid rgba(255,255,255,0.4)' }} />
+                      : <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: '2px solid rgba(255,255,255,0.4)', backdropFilter: 'blur(8px)' }}>{post.authorName.charAt(0)}</div>
+                    }
+                    <div>
+                      <p className="text-white font-bold text-sm leading-none">{post.authorName}</p>
+                      <p className="text-white/60 text-[10px] mt-0.5">{timeAgo(post.createdAt, isRtl)}</p>
+                    </div>
+                  </Link>
+                </div>
+                {(post.title || snippet) && (
+                  <p className="text-white/90 text-xs leading-relaxed line-clamp-2">
+                    {post.title ? <strong>{post.title} — </strong> : null}{snippet}
+                  </p>
+                )}
               </div>
-              {(post.title || snippet) && (
-                <p className="text-white/90 text-xs leading-relaxed line-clamp-2">
-                  {post.title ? <strong>{post.title} — </strong> : null}{snippet}
-                </p>
+
+              {/* ── MOBILE ONLY: comment input overlay ── */}
+              {showCommentInput && (
+                <div className="absolute bottom-0 inset-x-0 z-20 px-4 pb-4 pt-3 lg:hidden" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(12px)' }}>
+                  <form onSubmit={handleComment} onClick={e => e.stopPropagation()} className="flex gap-2 items-center">
+                    <input ref={commentInputRef} value={commentText} onChange={e => setCommentText(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') setShowCommentInput(false); }} placeholder={isRtl ? 'أضف تعليقاً...' : 'Add a comment...'} maxLength={500} className="flex-1 rounded-full px-4 py-2 text-xs text-white outline-none" style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }} />
+                    <button type="submit" disabled={submitting || commentText.trim().length < 2} className="px-4 py-2 rounded-full text-xs font-bold text-white disabled:opacity-40 transition shrink-0" style={{ background: 'var(--tr-gold)' }}>
+                      {submitting ? '...' : (isRtl ? 'إرسال' : 'Send')}
+                    </button>
+                  </form>
+                </div>
               )}
             </div>
 
-            {/* ── MOBILE ONLY: comment input overlay ── */}
-            {showCommentInput && (
-              <div className="absolute bottom-0 inset-x-0 z-20 px-4 pb-4 pt-3 lg:hidden" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(12px)' }}>
-                <form onSubmit={handleComment} onClick={e => e.stopPropagation()} className="flex gap-2 items-center">
-                  <input ref={commentInputRef} value={commentText} onChange={e => setCommentText(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') setShowCommentInput(false); }} placeholder={isRtl ? 'أضف تعليقاً...' : 'Add a comment...'} maxLength={500} className="flex-1 rounded-full px-4 py-2 text-xs text-white outline-none" style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }} />
-                  <button type="submit" disabled={submitting || commentText.trim().length < 2} className="px-4 py-2 rounded-full text-xs font-bold text-white disabled:opacity-40 transition shrink-0" style={{ background: 'var(--tr-gold)' }}>
-                    {submitting ? '...' : (isRtl ? 'إرسال' : 'Send')}
-                  </button>
-                </form>
-              </div>
-            )}
-          </div>
-
-          {/* ── MOBILE ONLY: floating side engagement icons (outside inner overflow-hidden to avoid clipping) ── */}
-          <div className="absolute end-3 z-10 flex flex-col items-center gap-4 lg:hidden" style={{ bottom: 96 }}>
+            {/* ── MOBILE ONLY: floating side engagement icons — inside image container, outside inner clip div ── */}
+            <div className="absolute end-3 bottom-4 z-10 flex flex-col items-center gap-4 lg:hidden">
             <div className="relative flex flex-col items-center gap-1">
               <button onClick={handleReactionAreaClick} aria-label={isRtl ? 'تفاعل' : 'React'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
                 <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: currentReaction ? `${reactionConfig?.color ?? '#f59e0b'}30` : 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)', border: currentReaction ? `1.5px solid ${reactionConfig?.color ?? '#f59e0b'}80` : '1.5px solid rgba(255,255,255,0.25)', fontSize: currentReaction ? 22 : 18 }}>
@@ -767,6 +769,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               </button>
             )}
           </div>
+          </div>{/* close image container */}
 
           {/* ── DESKTOP ONLY: author + text + action bars ── */}
           <div className="hidden lg:block">

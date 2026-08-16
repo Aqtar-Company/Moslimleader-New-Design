@@ -373,7 +373,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           });
           if (sendRes.ok) {
             const d = await sendRes.json();
-            if (d.message) { setChatMessages(prev => [d.message, ...prev]); }
+            if (d.message) { isAtBottomRef.current = true; setChatMessages(prev => [d.message, ...prev]); }
           } else { setVoiceError(isRtl ? 'فشل الإرسال' : 'Send failed'); setTimeout(() => setVoiceError(''), 3000); }
         } catch { setVoiceError(isRtl ? 'خطأ في الشبكة' : 'Network error'); setTimeout(() => setVoiceError(''), 3000); }
         setVoiceUploading(false);
@@ -516,7 +516,6 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
       ? '0 16px 48px rgba(0,0,0,0.32), 0 4px 16px rgba(0,0,0,0.14), 0 0 0 1px rgba(255,255,255,0.04)'
       : '0 8px 32px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.10)',
     overflow: 'hidden',
-    overflowY: 'auto',
     zIndex: panelPos ? 9999 : 200,
     transform: msgPanelVisible ? 'translateY(0)' : 'translateY(10px)',
     opacity: msgPanelVisible ? 1 : 0,
@@ -997,7 +996,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                       ) : (
                         /* Chat view */
                         <>
-                          <div ref={chatMsgsRef} onScroll={e => { isAtBottomRef.current = e.currentTarget.scrollTop <= 5; }} className="overflow-y-auto flex flex-col-reverse gap-1 p-3" style={{ minHeight: 200, maxHeight: Math.max(200, panelSize.h - 130) }}>
+                          <div ref={chatMsgsRef} onScroll={e => { isAtBottomRef.current = e.currentTarget.scrollTop <= 5; }} className="overflow-y-auto flex flex-col-reverse gap-1 p-3" style={{ flex: 1, minHeight: 0 }}>
                             {chatLoading ? (
                               <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} /></div>
                             ) : chatMessages.length === 0 ? (
@@ -1161,7 +1160,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                       </>
                     ) : (
                       <>
-                        <div ref={chatMsgsRef} className="overflow-y-auto flex flex-col-reverse gap-1 p-3" style={{ minHeight: 200, maxHeight: 360 }}>
+                        <div ref={chatMsgsRef} onScroll={e => { isAtBottomRef.current = e.currentTarget.scrollTop <= 5; }} className="overflow-y-auto flex flex-col-reverse gap-1 p-3" style={{ flex: 1, minHeight: 0 }}>
                           {chatLoading ? (
                             <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} /></div>
                           ) : chatMessages.length === 0 ? (

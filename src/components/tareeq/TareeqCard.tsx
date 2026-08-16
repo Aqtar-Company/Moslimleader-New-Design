@@ -974,6 +974,13 @@ function OptionsSheet({ isRtl, postUserId, onReport, onClose }: {
 
   async function handleUnfollow() {
     try {
+      const check = await fetch(`/api/tareeq/follow/${postUserId}`, { credentials: 'include' });
+      const data = await check.json();
+      if (!data.isFollowing) {
+        setDone(isRtl ? 'أنت لا تتابع هذا الشخص' : 'You are not following this person');
+        setTimeout(onClose, 1500);
+        return;
+      }
       await fetch(`/api/tareeq/follow/${postUserId}`, { method: 'POST', credentials: 'include' });
     } catch { /* ignore */ }
     setDone(isRtl ? 'تم إلغاء المتابعة' : 'Unfollowed');
@@ -1030,8 +1037,7 @@ function OptionsSheet({ isRtl, postUserId, onReport, onClose }: {
               style={{ borderBottom: '1px solid var(--tr-border-subtle)', color: 'var(--tr-text-primary)' }}
             >
               <svg width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M22 10H12M6 18a6 6 0 0112 0"/>
-                <circle cx="9" cy="7" r="4"/>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1M3 3l18 18" />
               </svg>
               <span className="text-sm">{isRtl ? 'إلغاء المتابعة' : 'Unfollow'}</span>
             </button>

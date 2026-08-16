@@ -186,6 +186,9 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   const [showReport, setShowReport] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [isSavedOffline, setIsSavedOffline] = useState(false);
+  const [inlineComments, setInlineComments] = useState<Array<{ id: string; content: string; createdAt: string; userId: string | null; user: { id: string; name: string } | null }>>([]);
+  const [inlineCommentsLoading, setInlineCommentsLoading] = useState(false);
+  const [inlineLoaded, setInlineLoaded] = useState(false);
   const shareMenuRef = useRef<HTMLDivElement>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
 
@@ -286,7 +289,20 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   function handleCommentToggle(e: React.MouseEvent) {
     e.preventDefault(); e.stopPropagation();
     if (!user) { setShowGate(true); return; }
-    setShowCommentInput(v => { if (!v) setTimeout(() => commentInputRef.current?.focus(), 30); return !v; });
+    const next = !showCommentInput;
+    setShowCommentInput(next);
+    if (next) {
+      setTimeout(() => commentInputRef.current?.focus(), 30);
+      if (!inlineLoaded) {
+        setInlineLoaded(true);
+        setInlineCommentsLoading(true);
+        fetch(`/api/tareeq/${post.id}/comments`)
+          .then(r => r.json())
+          .then(d => setInlineComments(d.comments ?? []))
+          .catch(() => {})
+          .finally(() => setInlineCommentsLoading(false));
+      }
+    }
   }
 
   async function handleComment(e: React.FormEvent) {
@@ -297,7 +313,12 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
       method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
       body: JSON.stringify({ content: commentText.trim() }),
     });
-    if (res.ok) { setCommentCount(c => c + 1); setCommentText(''); setShowCommentInput(false); }
+    if (res.ok) {
+      const data = await res.json();
+      setCommentCount(c => c + 1);
+      setCommentText('');
+      if (data.comment) setInlineComments(prev => [...prev, data.comment]);
+    }
     setSubmitting(false);
   }
 
@@ -339,28 +360,49 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     setCreatingFolder(false);
   }
 
-  /* ── Shared comment form ─────────────────────────────────────────── */
+  /* ── Shared inline comments + form ──────────────────────────────── */
   const commentForm = showCommentInput ? (
-    <form onSubmit={handleComment} onClick={e => e.stopPropagation()} className="px-4 pb-3 pt-2 flex gap-2 items-center" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
-      <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold)' }}>
-        {user?.name?.charAt(0) ?? '?'}
-      </div>
-      <input
-        ref={commentInputRef}
-        value={commentText}
-        onChange={e => setCommentText(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Escape') setShowCommentInput(false); }}
-        placeholder={isRtl ? 'أضف تعليقاً...' : 'Add a comment...'}
-        maxLength={500}
-        className="flex-1 min-w-0 rounded-full px-3 py-1.5 text-sm outline-none transition"
-        style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
-        onFocus={e => (e.currentTarget.style.borderColor = 'var(--tr-gold)')}
-        onBlur={e => (e.currentTarget.style.borderColor = 'var(--tr-border-soft)')}
-      />
-      <button type="submit" disabled={submitting || commentText.trim().length < 2} className="px-4 py-1.5 rounded-full text-sm font-bold disabled:opacity-40 transition shrink-0 text-white" style={{ background: 'var(--tr-gold)' }}>
-        {submitting ? '...' : (isRtl ? 'إرسال' : 'Send')}
-      </button>
-    </form>
+    <div onClick={e => e.stopPropagation()}>
+      {/* Inline comments list */}
+      {inlineCommentsLoading ? (
+        <div className="px-4 pt-3 pb-1 text-center text-xs" style={{ color: 'var(--tr-text-muted)' }}>...</div>
+      ) : inlineComments.length > 0 ? (
+        <div className="px-4 pt-2 pb-0 flex flex-col gap-0" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
+          {inlineComments.map(c => (
+            <div key={c.id} className="flex gap-2.5 py-2" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)' }}>
+                {(c.user?.name ?? '?').charAt(0)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold mb-0.5" style={{ color: 'var(--tr-text-primary)' }}>{c.user?.name ?? '—'}</p>
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--tr-text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{c.content}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {/* Comment input */}
+      <form onSubmit={handleComment} className="px-4 pb-3 pt-2.5 flex gap-2 items-center" style={{ borderTop: inlineComments.length === 0 ? '1px solid var(--tr-border-subtle)' : 'none' }}>
+        <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold)' }}>
+          {user?.name?.charAt(0) ?? '?'}
+        </div>
+        <input
+          ref={commentInputRef}
+          value={commentText}
+          onChange={e => setCommentText(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Escape') setShowCommentInput(false); }}
+          placeholder={isRtl ? 'أضف تعليقاً...' : 'Add a comment...'}
+          maxLength={500}
+          className="flex-1 min-w-0 rounded-full px-3 py-1.5 text-sm outline-none transition"
+          style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
+          onFocus={e => (e.currentTarget.style.borderColor = 'var(--tr-gold)')}
+          onBlur={e => (e.currentTarget.style.borderColor = 'var(--tr-border-soft)')}
+        />
+        <button type="submit" disabled={submitting || commentText.trim().length < 2} className="px-4 py-1.5 rounded-full text-sm font-bold disabled:opacity-40 transition shrink-0 text-white" style={{ background: 'var(--tr-gold)' }}>
+          {submitting ? '...' : (isRtl ? 'إرسال' : 'Send')}
+        </button>
+      </form>
+    </div>
   ) : null;
 
   /* ── Desktop action bar (labeled buttons) ───────────────────────── */
@@ -614,7 +656,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               )}
             </div>
 
-            <button onClick={(e) => { if (onMobileOpen && window.innerWidth < 1024) { onMobileOpen(post.id, true); return; } handleCommentToggle(e); }} className="flex items-center gap-1.5 text-xs font-semibold transition" style={{ color: showCommentInput ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
+            <button onClick={handleCommentToggle} className="flex items-center gap-1.5 text-xs font-semibold transition" style={{ color: showCommentInput ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
               <IconComment size={16} />
               {fmt(commentCount)}
             </button>

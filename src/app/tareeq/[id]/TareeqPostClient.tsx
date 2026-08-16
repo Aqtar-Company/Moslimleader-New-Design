@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
-import { ReportModal } from '@/components/tareeq/TareeqCard';
 import { TAREEQ_CATEGORIES, CATEGORY_COLORS, CATEGORY_ICONS } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import { timeAgo } from '@/lib/tareeq-utils';
@@ -56,7 +55,6 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   const [copied, setCopied] = useState(false);
   const [commentSort, setCommentSort] = useState<'asc' | 'desc'>('asc');
   const [deleting, setDeleting] = useState(false);
-  const [reportTarget, setReportTarget] = useState<{ type: 'post' | 'comment'; id: string } | null>(null);
   const [pinnedCommentId, setPinnedCommentId] = useState<string | null>(post.pinnedCommentId ?? null);
   const [showUpdateInput, setShowUpdateInput] = useState(false);
   const [updateText, setUpdateText] = useState('');
@@ -594,18 +592,6 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                               </svg>
                             </button>
                           )}
-                          {user && user.id !== c.userId && (
-                            <button
-                              onClick={() => setReportTarget({ type: 'comment', id: c.id })}
-                              title={isRtl ? 'بلاغ' : 'Report'}
-                              className="transition opacity-0 group-hover:opacity-100"
-                              style={{ color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
-                            >
-                              <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18M3 7l9-4 9 4v8l-9 4-9-4V7z" />
-                              </svg>
-                            </button>
-                          )}
                         </div>
                       </div>
                       <p className="text-sm leading-relaxed" style={{ color: 'var(--tr-text-secondary)' }}>{c.content}</p>
@@ -648,14 +634,6 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
       </div>
 
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
-      {reportTarget && (
-        <ReportModal
-          targetType={reportTarget.type}
-          targetId={reportTarget.id}
-          isRtl={isRtl}
-          onClose={() => setReportTarget(null)}
-        />
-      )}
     </div>
   );
 }

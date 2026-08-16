@@ -240,13 +240,17 @@ self.addEventListener('push', e => {
     })());
   } else {
     // Non-call notification: single shot.
-    // If the app is open → silent OS notification + media-channel audio via postMessage
-    // If the app is closed → OS notification with system sound (fallback)
+    // Only suppress the OS sound when a *visible* controlled window is open
+    // (visibilityState === 'visible' means the tab is foregrounded/unlocked).
+    // Backgrounded, minimized, or uncontrolled tabs can't reliably resume AudioContext
+    // from a SW postMessage, so we fall back to the OS sound for those.
     e.waitUntil((async () => {
-      const windowList = await clients.matchAll({ type: 'window', includeUncontrolled: true });
-      const hasOpenWindow = windowList.length > 0;
-      await self.registration.showNotification(title, { ...options, silent: hasOpenWindow });
-      for (const c of windowList) {
+      // Only controlled clients run the new TareeqMediaSession handler
+      const windowList = await clients.matchAll({ type: 'window' });
+      const visibleWindows = windowList.filter(c => c.visibilityState === 'visible');
+      const hasVisibleWindow = visibleWindows.length > 0;
+      await self.registration.showNotification(title, { ...options, silent: hasVisibleWindow });
+      for (const c of visibleWindows) {
         c.postMessage({ type: 'TAREEQ_PLAY_SOUND', notifType: postType });
       }
     })());

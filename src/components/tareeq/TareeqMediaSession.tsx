@@ -2,18 +2,28 @@
 import { useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 
-// Singleton — survives soft navigations within /tareeq
+// Module-level singletons — survive soft navigations within /tareeq
 let _ctx: AudioContext | null = null;
 let _sessionStarted = false;
 
-function getOrCreateCtx(): AudioContext | null {
+function ensureCtxWithLoop(): AudioContext | null {
+  // If we have a live, running context → reuse it
   if (_ctx && _ctx.state !== 'closed') return _ctx;
-  try { _ctx = new AudioContext(); return _ctx; } catch { return null; }
+
+  // Previous context closed (iOS power-save, browser enforcement) → rebuild
+  try {
+    _ctx = new AudioContext();
+    // Restart the silence loop on the new context so the OS still treats
+    // Tareeq as a media player (not just a one-shot notification source)
+    startSilenceLoop(_ctx);
+    registerMediaSession();
+    return _ctx;
+  } catch { return null; }
 }
 
 function startSilenceLoop(ctx: AudioContext) {
-  // Near-silent noise loop keeps the AudioContext "playing" so the OS treats
-  // subsequent sounds as media audio (not notification audio).
+  // Near-silent noise loop keeps the AudioContext "playing" so the OS routes
+  // subsequent audio through the media channel (speaker, headphones).
   const sr = ctx.sampleRate;
   const buf = ctx.createBuffer(1, sr * 4, sr);
   const data = buf.getChannelData(0);
@@ -44,16 +54,15 @@ function registerMediaSession() {
   navigator.mediaSession.playbackState = 'playing';
 }
 
-// Plays a soft bell chime through the shared AudioContext (= media channel)
+// Soft bell chime played through the shared AudioContext (= media channel)
 function playChime(ctx: AudioContext) {
   ctx.resume().then(() => {
     const now = ctx.currentTime;
 
-    // Primary bell (880 Hz A5)
+    // Primary bell (A5 — 880 Hz)
     const osc1 = ctx.createOscillator();
     const g1   = ctx.createGain();
-    osc1.type = 'sine';
-    osc1.frequency.value = 880;
+    osc1.type = 'sine'; osc1.frequency.value = 880;
     osc1.connect(g1); g1.connect(ctx.destination);
     g1.gain.setValueAtTime(0, now);
     g1.gain.linearRampToValueAtTime(0.28, now + 0.015);
@@ -63,45 +72,45 @@ function playChime(ctx: AudioContext) {
     // Overtone (1760 Hz)
     const osc2 = ctx.createOscillator();
     const g2   = ctx.createGain();
-    osc2.type = 'sine';
-    osc2.frequency.value = 1760;
+    osc2.type = 'sine'; osc2.frequency.value = 1760;
     osc2.connect(g2); g2.connect(ctx.destination);
     g2.gain.setValueAtTime(0, now);
     g2.gain.linearRampToValueAtTime(0.09, now + 0.015);
     g2.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
     osc2.start(now); osc2.stop(now + 0.9);
 
-    // Soft descending follow note (660 Hz E5)
+    // Descending follow note (E5 — 660 Hz)
     const osc3 = ctx.createOscillator();
     const g3   = ctx.createGain();
-    osc3.type = 'sine';
-    osc3.frequency.value = 660;
+    osc3.type = 'sine'; osc3.frequency.value = 660;
     osc3.connect(g3); g3.connect(ctx.destination);
     g3.gain.setValueAtTime(0, now + 0.32);
     g3.gain.linearRampToValueAtTime(0.16, now + 0.37);
     g3.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
     osc3.start(now + 0.32); osc3.stop(now + 1.1);
-  }).catch(() => {});
+  }).catch(() => {
+    // resume() rejected → AudioContext was never unblocked by a user gesture.
+    // Nothing to do; the OS notification sound already fired for this case.
+  });
 }
 
 export default function TareeqMediaSession() {
   const { user } = useAuth();
-  // Track whether *this instance* registered the listener
   const listenerRef = useRef(false);
 
   useEffect(() => {
     if (!user) return;
 
-    // ── Step 1: register media session on first user gesture ──────────
+    // ── Start media session on first user gesture ─────────────────────
     function onFirstGesture() {
       if (_sessionStarted) return;
       _sessionStarted = true;
 
-      const ctx = getOrCreateCtx();
-      if (!ctx) return;
-
-      startSilenceLoop(ctx);
-      registerMediaSession();
+      try {
+        _ctx = new AudioContext();
+        startSilenceLoop(_ctx);
+        registerMediaSession();
+      } catch { /* browser blocked AudioContext */ }
 
       document.removeEventListener('click',      onFirstGesture);
       document.removeEventListener('touchstart', onFirstGesture);
@@ -112,16 +121,22 @@ export default function TareeqMediaSession() {
       document.addEventListener('touchstart', onFirstGesture, { passive: true });
     }
 
-    // ── Step 2: listen for SW messages → play through media channel ───
+    // ── Listen for SW → play chime through media channel ─────────────
     if (!listenerRef.current && navigator.serviceWorker) {
       listenerRef.current = true;
 
       const handler = (ev: MessageEvent) => {
         const t = ev.data?.type;
-        if (t === 'TAREEQ_PLAY_SOUND' || t === 'TAREEQ_NEW_MESSAGE') {
-          const ctx = getOrCreateCtx();
-          if (ctx) playChime(ctx);
-        }
+        if (t !== 'TAREEQ_PLAY_SOUND' && t !== 'TAREEQ_NEW_MESSAGE') return;
+
+        // Only play if a user gesture has already unlocked audio.
+        // If not, the OS notification already played its sound.
+        if (!_sessionStarted) return;
+
+        // ensureCtxWithLoop() rebuilds a closed ctx and restarts the loop,
+        // so _sessionStarted stays true and media-channel routing is restored.
+        const ctx = ensureCtxWithLoop();
+        if (ctx) playChime(ctx);
       };
 
       navigator.serviceWorker.addEventListener('message', handler);

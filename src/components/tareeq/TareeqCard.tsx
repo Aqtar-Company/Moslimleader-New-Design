@@ -724,26 +724,14 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                 </div>
               )}
 
-              {/* ── MOBILE ONLY: bottom author + caption overlay ── */}
-              <div className="absolute bottom-0 inset-x-0 z-10 p-4 pr-16 pointer-events-none lg:hidden">
-                <div className="flex items-center gap-2.5 mb-2 pointer-events-auto">
-                  <Link href={post.userId ? `/tareeq/u/${post.userId}` : '#'} onClick={e => e.stopPropagation()} className="flex items-center gap-2">
-                    {post.user?.avatarUrl
-                      ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-8 h-8 rounded-full object-cover shrink-0" style={{ border: '2px solid rgba(255,255,255,0.4)' }} />
-                      : <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: '2px solid rgba(255,255,255,0.4)', backdropFilter: 'blur(8px)' }}>{post.authorName.charAt(0)}</div>
-                    }
-                    <div>
-                      <p className="text-white font-bold text-sm leading-none">{post.authorName}</p>
-                      <p className="text-white/60 text-[10px] mt-0.5">{timeAgo(post.createdAt, isRtl)}</p>
-                    </div>
-                  </Link>
-                </div>
-                {(post.title || snippet) && (
-                  <p className="text-white/90 text-xs leading-relaxed line-clamp-2">
+              {/* ── MOBILE ONLY: bottom text overlay (no author — moved to right column) ── */}
+              {(post.title || snippet) && (
+                <div className="absolute bottom-0 inset-x-0 z-10 px-4 pb-4 pt-2 pointer-events-none lg:hidden">
+                  <p className="text-white/90 text-xs leading-relaxed line-clamp-2" style={{ paddingRight: 72 }}>
                     {post.title ? <strong>{post.title} — </strong> : null}{snippet}
                   </p>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* ── MOBILE ONLY: comment input overlay ── */}
               {showCommentInput && (
@@ -758,55 +746,71 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               )}
             </div>
 
-            {/* ── MOBILE ONLY: floating side engagement icons — inside image container, outside inner clip div ── */}
-            <div className="absolute right-3 bottom-4 z-10 flex flex-col items-center gap-4 lg:hidden">
-            <div className="relative flex flex-col items-center gap-1">
-              <button onClick={handleReactionAreaClick} aria-label={isRtl ? 'تفاعل' : 'React'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-                <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: currentReaction ? `${reactionConfig?.color ?? '#f59e0b'}30` : 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)', border: currentReaction ? `1.5px solid ${reactionConfig?.color ?? '#f59e0b'}80` : '1.5px solid rgba(255,255,255,0.25)', fontSize: currentReaction ? 22 : 18 }}>
-                  {currentReaction ? reactionEmoji(currentReaction) : <svg width={20} height={20} viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)"><path d="M12 3l1.2 4.8L18 6.8l-3.6 3.6 1.2 5.4-3.6-2.4-3.6 2.4 1.2-5.4L6 6.8l4.8 1.2z" /></svg>}
+            {/* ── MOBILE ONLY: right column — author at top, then action buttons ── */}
+            <div className="absolute right-3 top-3 z-10 flex flex-col items-center gap-3 lg:hidden">
+
+              {/* Author */}
+              <Link href={post.userId ? `/tareeq/u/${post.userId}` : '#'} onClick={e => e.stopPropagation()} className="flex flex-col items-center gap-0.5">
+                {post.user?.avatarUrl
+                  ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-10 h-10 rounded-full object-cover shrink-0" style={{ border: '2px solid rgba(255,255,255,0.5)' }} />
+                  : <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black shrink-0" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: '2px solid rgba(255,255,255,0.4)', backdropFilter: 'blur(8px)' }}>{post.authorName.charAt(0)}</div>
+                }
+                <p className="text-white text-[9px] font-bold text-center leading-tight mt-0.5" style={{ maxWidth: 52, textShadow: '0 1px 3px rgba(0,0,0,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.authorName}</p>
+                <p className="text-white/60 text-[8px] text-center" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>{timeAgo(post.createdAt, isRtl)}</p>
+              </Link>
+
+              {/* Reaction */}
+              <div className="relative flex flex-col items-center gap-1">
+                <button onClick={handleReactionAreaClick} aria-label={isRtl ? 'تفاعل' : 'React'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+                  <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: currentReaction ? `${reactionConfig?.color ?? '#f59e0b'}30` : 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)', border: currentReaction ? `1.5px solid ${reactionConfig?.color ?? '#f59e0b'}80` : '1.5px solid rgba(255,255,255,0.25)', fontSize: currentReaction ? 22 : 18 }}>
+                    {currentReaction ? reactionEmoji(currentReaction) : <svg width={20} height={20} viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)"><path d="M12 3l1.2 4.8L18 6.8l-3.6 3.6 1.2 5.4-3.6-2.4-3.6 2.4 1.2-5.4L6 6.8l4.8 1.2z" /></svg>}
+                  </div>
+                  <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{fmt(likeCount)}</span>
+                </button>
+                {showPicker && (
+                  <div style={{ position: 'absolute', right: 'calc(100% + 10px)', top: 0, zIndex: 20 }} onClick={e => e.stopPropagation()}>
+                    <ReactionPicker currentReaction={currentReaction} onReact={(t) => handleReact(t)} onClose={() => setShowPicker(false)} isRtl={isRtl} dark />
+                  </div>
+                )}
+              </div>
+
+              {/* Share */}
+              <div ref={shareMenuRef} className="relative flex flex-col items-center gap-1">
+                <button onClick={handleShare} aria-label={isRtl ? 'مشاركة' : 'Share'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+                  <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)' }}>
+                    <IconShare size={20} check={copied} />
+                  </div>
+                  <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{copied ? '✓' : (isRtl ? 'شارك' : 'Share')}</span>
+                </button>
+                {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} isRtl={isRtl} />}
+              </div>
+
+              {/* Comment */}
+              <button onClick={handleCommentToggle} aria-label={isRtl ? 'تعليق' : 'Comment'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+                <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: showCommentInput ? 'rgba(255,92,56,0.7)' : 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)' }}>
+                  <IconComment size={20} />
                 </div>
-                <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{fmt(likeCount)}</span>
+                <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{fmt(commentCount)}</span>
               </button>
-              {showPicker && (
-                <div style={{ position: 'absolute', right: 'calc(100% + 10px)', bottom: 0, zIndex: 20 }} onClick={e => e.stopPropagation()}>
-                  <ReactionPicker currentReaction={currentReaction} onReact={(t) => handleReact(t)} onClose={() => setShowPicker(false)} isRtl={isRtl} dark />
+
+              {/* Bookmark */}
+              <button onClick={handleBookmarkClick} aria-label={isRtl ? 'حفظ' : 'Save'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+                <div className="w-11 h-11 rounded-full flex items-center justify-center transition" style={{ background: isBookmarked ? 'rgba(212,168,83,0.35)' : 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)', border: isBookmarked ? '1.5px solid rgba(212,168,83,0.6)' : 'none', color: isBookmarked ? '#d4a853' : '#fff' }}>
+                  <IconBookmark filled={isBookmarked} size={20} />
                 </div>
+                <span className="text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)', color: isBookmarked ? '#d4a853' : '#fff' }}>{isRtl ? 'حفظ' : 'Save'}</span>
+              </button>
+
+              {/* Options */}
+              {user && user.id !== post.userId && (
+                <button onClick={e => { e.preventDefault(); e.stopPropagation(); setShowOptions(true); }} aria-label={isRtl ? 'خيارات' : 'Options'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+                  <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(10px)', color: 'rgba(255,255,255,0.85)' }}>
+                    <svg width={20} height={20} fill="currentColor" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                  </div>
+                  <span className="text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)', color: 'rgba(255,255,255,0.80)' }}>{isRtl ? 'خيارات' : 'More'}</span>
+                </button>
               )}
             </div>
-
-            <div ref={shareMenuRef} className="relative flex flex-col items-center gap-1">
-              <button onClick={handleShare} aria-label={isRtl ? 'مشاركة' : 'Share'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-                <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)' }}>
-                  <IconShare size={20} check={copied} />
-                </div>
-                <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{copied ? '✓' : (isRtl ? 'شارك' : 'Share')}</span>
-              </button>
-              {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} isRtl={isRtl} />}
-            </div>
-
-            <button onClick={handleCommentToggle} aria-label={isRtl ? 'تعليق' : 'Comment'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-              <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: showCommentInput ? 'rgba(255,92,56,0.7)' : 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)' }}>
-                <IconComment size={20} />
-              </div>
-              <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{fmt(commentCount)}</span>
-            </button>
-
-            <button onClick={handleBookmarkClick} aria-label={isRtl ? 'حفظ' : 'Save'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-              <div className="w-11 h-11 rounded-full flex items-center justify-center transition" style={{ background: isBookmarked ? 'rgba(212,168,83,0.35)' : 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)', border: isBookmarked ? '1.5px solid rgba(212,168,83,0.6)' : 'none', color: isBookmarked ? '#d4a853' : '#fff' }}>
-                <IconBookmark filled={isBookmarked} size={20} />
-              </div>
-              <span className="text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)', color: isBookmarked ? '#d4a853' : '#fff' }}>{isRtl ? 'حفظ' : 'Save'}</span>
-            </button>
-
-            {user && user.id !== post.userId && (
-              <button onClick={e => { e.preventDefault(); e.stopPropagation(); setShowOptions(true); }} aria-label={isRtl ? 'خيارات' : 'Options'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-                <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(10px)', color: 'rgba(255,255,255,0.85)' }}>
-                  <svg width={20} height={20} fill="currentColor" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-                </div>
-                <span className="text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)', color: 'rgba(255,255,255,0.80)' }}>{isRtl ? 'خيارات' : 'More'}</span>
-              </button>
-            )}
-          </div>
           </div>{/* close image container */}
 
           {/* ── DESKTOP ONLY: author + text + action bars ── */}

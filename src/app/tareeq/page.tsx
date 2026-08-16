@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import TareeqClient from './TareeqClient';
 
 export const metadata: Metadata = {
-  title: 'طريق — مسلم ليدر',
+  title: 'طريق',
   description: 'وَبِالنَّجْمِ هُمْ يَهْتَدُونَ — شارك تجربتك واترك علامة يهتدي بها غيرك',
 };
 

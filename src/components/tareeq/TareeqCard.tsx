@@ -712,9 +712,9 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                 <div className="absolute inset-0 hidden lg:block" style={{ background: 'linear-gradient(to bottom, transparent 55%, rgba(0,0,0,0.10) 100%)', pointerEvents: 'none' }} />
               </Link>
 
-              {/* Category badge */}
+              {/* Category badge — mobile: left side (end-4), desktop: left side (start-4) */}
               {catLabel && (
-                <div className="absolute top-4 start-4 z-10 pointer-events-none">
+                <div className="absolute top-4 end-4 lg:start-4 lg:end-auto z-10 pointer-events-none">
                   <span className="lg:hidden text-[11px] font-bold px-3 py-1 rounded-full text-white" style={{ background: 'rgba(0,0,0,0.40)', backdropFilter: 'blur(8px)', border: `1px solid ${accentHex}70` }}>
                     {catIcon} {catLabel}
                   </span>

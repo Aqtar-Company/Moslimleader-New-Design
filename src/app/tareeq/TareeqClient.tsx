@@ -793,17 +793,17 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
                 { label: isRtl ? 'شارك فكرة' : 'Share an Idea', cat: 'idea', accent: CATEGORY_ACCENT_HEX.idea },
                 { label: isRtl ? 'تصفح الأسئلة' : 'Browse Questions', cat: 'question', accent: CATEGORY_ACCENT_HEX.question },
               ] as { label: string; cat: string; accent: string }[]).map(({ label, cat, accent }) => (
-                <button
+                <Link
                   key={cat}
-                  onClick={() => handleCategoryChange(cat)}
+                  href={`/tareeq/category/${cat}`}
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-start transition-colors"
-                  style={{ background: 'var(--tr-overlay)', border: `1px solid ${accent}22` }}
+                  style={{ background: 'var(--tr-overlay)', border: `1px solid ${accent}22`, textDecoration: 'none', display: 'flex' }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = `${accent}14`; (e.currentTarget as HTMLElement).style.borderColor = `${accent}44`; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--tr-overlay)'; (e.currentTarget as HTMLElement).style.borderColor = `${accent}22`; }}
                 >
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ background: accent }} />
                   <span className="text-xs font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>{label}</span>
-                </button>
+                </Link>
               ))}
             </div>
           </div>

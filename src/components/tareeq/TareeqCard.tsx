@@ -184,6 +184,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   const [newFolderName, setNewFolderName] = useState('');
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [showOptions, setShowOptions] = useState(false);
   const [isSavedOffline, setIsSavedOffline] = useState(false);
   const shareMenuRef = useRef<HTMLDivElement>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
@@ -421,20 +422,16 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} isRtl={isRtl} />}
         </div>
 
-        {/* Report — only for other users' posts */}
+        {/* Options — only for other users' posts */}
         {user && user.id !== post.userId && (
           <button
-            onClick={e => { e.preventDefault(); e.stopPropagation(); setShowReport(true); }}
-            aria-label={isRtl ? 'بلاغ' : 'Report'}
+            onClick={e => { e.preventDefault(); e.stopPropagation(); setShowOptions(true); }}
+            aria-label={isRtl ? 'خيارات' : 'Options'}
             style={{ ...btnBase, color: 'var(--tr-text-muted)', padding: '8px 10px', gap: 5 }}
-            onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, { ...hover, color: '#f43f5e' })}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--tr-text-muted)'; }}
+            onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, hover)}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
           >
-            <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="9" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 9l6 6M15 9l-6 6" />
-            </svg>
-            <span className="hidden sm:inline">{isRtl ? 'إبلاغ' : 'Report'}</span>
+            <svg width={15} height={15} fill="currentColor" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
           </button>
         )}
 
@@ -634,10 +631,8 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                 {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} isRtl={isRtl} />}
               </div>
               {user && user.id !== post.userId && (
-                <button onClick={e => { e.preventDefault(); e.stopPropagation(); setShowReport(true); }} aria-label={isRtl ? 'بلاغ' : 'Report'} className="flex items-center gap-1 text-xs font-semibold transition active:scale-90" style={{ color: 'var(--tr-text-muted)' }}>
-                  <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="9" /><path strokeLinecap="round" strokeLinejoin="round" d="M9 9l6 6M15 9l-6 6" />
-                  </svg>
+                <button onClick={e => { e.preventDefault(); e.stopPropagation(); setShowOptions(true); }} aria-label={isRtl ? 'خيارات' : 'Options'} className="flex items-center gap-1 text-xs font-semibold transition active:scale-90" style={{ color: 'var(--tr-text-muted)' }}>
+                  <svg width={16} height={16} fill="currentColor" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                 </button>
               )}
             </div>
@@ -648,6 +643,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
+        {showOptions && post.userId && <OptionsSheet isRtl={isRtl} postUserId={post.userId} onReport={() => setShowReport(true)} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
       </>
     );
@@ -730,7 +726,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                 <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{fmt(likeCount)}</span>
               </button>
               {showPicker && (
-                <div className="absolute end-full me-2 bottom-0 z-20" onClick={e => e.stopPropagation()}>
+                <div style={{ position: 'absolute', left: 'calc(100% + 10px)', bottom: 0, zIndex: 20 }} onClick={e => e.stopPropagation()}>
                   <ReactionPicker currentReaction={currentReaction} onReact={(t) => handleReact(t)} onClose={() => setShowPicker(false)} isRtl={isRtl} dark />
                 </div>
               )}
@@ -761,11 +757,11 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             </button>
 
             {user && user.id !== post.userId && (
-              <button onClick={e => { e.preventDefault(); e.stopPropagation(); setShowReport(true); }} aria-label={isRtl ? 'بلاغ' : 'Report'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-                <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: 'rgba(244,63,94,0.18)', backdropFilter: 'blur(10px)', color: '#f9a8b4' }}>
-                  <svg width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path strokeLinecap="round" strokeLinejoin="round" d="M9 9l6 6M15 9l-6 6" /></svg>
+              <button onClick={e => { e.preventDefault(); e.stopPropagation(); setShowOptions(true); }} aria-label={isRtl ? 'خيارات' : 'Options'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+                <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(10px)', color: 'rgba(255,255,255,0.85)' }}>
+                  <svg width={20} height={20} fill="currentColor" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                 </div>
-                <span className="text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)', color: '#f9a8b4' }}>{isRtl ? 'بلاغ' : 'Report'}</span>
+                <span className="text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)', color: 'rgba(255,255,255,0.80)' }}>{isRtl ? 'خيارات' : 'More'}</span>
               </button>
             )}
           </div>
@@ -800,6 +796,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
+        {showOptions && post.userId && <OptionsSheet isRtl={isRtl} postUserId={post.userId} onReport={() => setShowReport(true)} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
       </>
     );
@@ -944,15 +941,12 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
             {user && user.id !== post.userId && (
               <button
-                onClick={e => { e.preventDefault(); e.stopPropagation(); setShowReport(true); }}
-                aria-label={isRtl ? 'بلاغ' : 'Report'}
+                onClick={e => { e.preventDefault(); e.stopPropagation(); setShowOptions(true); }}
+                aria-label={isRtl ? 'خيارات' : 'Options'}
                 className="flex items-center gap-1 text-xs font-semibold transition active:scale-90"
                 style={{ color: 'var(--tr-text-muted)' }}
               >
-                <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="9" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 9l6 6M15 9l-6 6" />
-                </svg>
+                <svg width={16} height={16} fill="currentColor" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
               </button>
             )}
           </div>
@@ -963,8 +957,95 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
       {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
+      {showOptions && post.userId && <OptionsSheet isRtl={isRtl} postUserId={post.userId} onReport={() => setShowReport(true)} onClose={() => setShowOptions(false)} />}
       {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
     </>
+  );
+}
+
+/* ── Options sheet ────────────────────────────────────────────────── */
+function OptionsSheet({ isRtl, postUserId, onReport, onClose }: {
+  isRtl: boolean;
+  postUserId: string;
+  onReport: () => void;
+  onClose: () => void;
+}) {
+  const [done, setDone] = useState<string | null>(null);
+
+  async function handleUnfollow() {
+    try {
+      await fetch(`/api/tareeq/follow/${postUserId}`, { method: 'POST', credentials: 'include' });
+    } catch { /* ignore */ }
+    setDone(isRtl ? 'تم إلغاء المتابعة' : 'Unfollowed');
+    setTimeout(onClose, 1300);
+  }
+
+  function handleNotInterested() {
+    setDone(isRtl ? 'تم. لن يظهر لك هذا الشخص كثيرًا' : "Done. You'll see less from this person");
+    setTimeout(onClose, 1500);
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-end justify-center"
+      style={{ background: 'rgba(0,0,0,0.52)', backdropFilter: 'blur(3px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm"
+        style={{ background: 'var(--tr-surface)', borderRadius: '20px 20px 0 0', borderTop: '1px solid var(--tr-border-subtle)', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
+        dir={isRtl ? 'rtl' : 'ltr'}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--tr-border-soft)', margin: '12px auto 16px' }} />
+        {done ? (
+          <div className="flex items-center justify-center py-6 px-4">
+            <p className="text-sm font-semibold" style={{ color: 'var(--tr-text-primary)' }}>{done}</p>
+          </div>
+        ) : (
+          <>
+            <button
+              onClick={() => { onClose(); onReport(); }}
+              className="w-full flex items-center gap-3 px-5 py-3.5 transition-colors"
+              style={{ borderBottom: '1px solid var(--tr-border-subtle)', color: '#f43f5e' }}
+            >
+              <svg width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l1.664 1.664M21 21l-1.5-1.5m-5.485-1.242L12 17.25 4.5 21V8.742m.164-4.078a2.15 2.15 0 011.743-1.342 48.507 48.507 0 0111.186 0c1.1.128 1.907 1.077 1.907 2.185V19.5M4.664 4.664L19.5 19.5" />
+              </svg>
+              <span className="font-semibold text-sm">{isRtl ? 'تبليغ عن المحتوى' : 'Report Content'}</span>
+            </button>
+            <button
+              onClick={handleNotInterested}
+              className="w-full flex items-center gap-3 px-5 py-3.5 transition-colors"
+              style={{ borderBottom: '1px solid var(--tr-border-subtle)', color: 'var(--tr-text-primary)' }}
+            >
+              <svg width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"/><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6"/>
+              </svg>
+              <span className="text-sm">{isRtl ? 'لا أريد رؤية منشورات هذا الشخص' : "Don't show posts from this person"}</span>
+            </button>
+            <button
+              onClick={handleUnfollow}
+              className="w-full flex items-center gap-3 px-5 py-3.5 transition-colors"
+              style={{ borderBottom: '1px solid var(--tr-border-subtle)', color: 'var(--tr-text-primary)' }}
+            >
+              <svg width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M22 10H12M6 18a6 6 0 0112 0"/>
+                <circle cx="9" cy="7" r="4"/>
+              </svg>
+              <span className="text-sm">{isRtl ? 'إلغاء المتابعة' : 'Unfollow'}</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="w-full py-4 text-center text-sm font-semibold"
+              style={{ color: 'var(--tr-text-muted)' }}
+            >
+              {isRtl ? 'إلغاء' : 'Cancel'}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -1036,20 +1117,18 @@ export function ReportModal({ targetType, targetId, isRtl, onClose }: {
               {isRtl ? 'اختر سبب البلاغ وسيراجعه فريق الإشراف' : 'Choose a reason and our moderation team will review it'}
             </p>
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col">
               {reasons.map((r, i) => (
                 <button
                   key={i}
                   onClick={() => setReason(reasons[i])}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-start transition"
+                  className="flex items-center gap-3 px-1 py-2 rounded-lg text-sm text-start transition"
                   style={{
-                    background: reason === reasons[i] ? 'rgba(244,63,94,0.10)' : 'var(--tr-raised)',
-                    border: `1px solid ${reason === reasons[i] ? 'rgba(244,63,94,0.35)' : 'var(--tr-border-subtle)'}`,
                     color: reason === reasons[i] ? '#f43f5e' : 'var(--tr-text-secondary)',
                     fontWeight: reason === reasons[i] ? 600 : 400,
                   }}
                 >
-                  <span className="w-4 h-4 rounded-full shrink-0 flex items-center justify-center" style={{ border: `2px solid ${reason === reasons[i] ? '#f43f5e' : 'var(--tr-border-soft)'}` }}>
+                  <span className="w-4 h-4 rounded-full shrink-0 flex items-center justify-center border-2" style={{ borderColor: reason === reasons[i] ? '#f43f5e' : 'var(--tr-border-soft)' }}>
                     {reason === reasons[i] && <span className="w-2 h-2 rounded-full" style={{ background: '#f43f5e' }} />}
                   </span>
                   {r}

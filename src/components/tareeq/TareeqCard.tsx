@@ -759,7 +759,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             </div>
 
             {/* ── MOBILE ONLY: floating side engagement icons — inside image container, outside inner clip div ── */}
-            <div className="absolute end-3 bottom-4 z-10 flex flex-col items-center gap-4 lg:hidden">
+            <div className="absolute right-3 bottom-4 z-10 flex flex-col items-center gap-4 lg:hidden">
             <div className="relative flex flex-col items-center gap-1">
               <button onClick={handleReactionAreaClick} aria-label={isRtl ? 'تفاعل' : 'React'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
                 <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: currentReaction ? `${reactionConfig?.color ?? '#f59e0b'}30` : 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)', border: currentReaction ? `1.5px solid ${reactionConfig?.color ?? '#f59e0b'}80` : '1.5px solid rgba(255,255,255,0.25)', fontSize: currentReaction ? 22 : 18 }}>
@@ -768,7 +768,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                 <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{fmt(likeCount)}</span>
               </button>
               {showPicker && (
-                <div style={{ position: 'absolute', left: 'calc(100% + 10px)', bottom: 0, zIndex: 20 }} onClick={e => e.stopPropagation()}>
+                <div style={{ position: 'absolute', right: 'calc(100% + 10px)', bottom: 0, zIndex: 20 }} onClick={e => e.stopPropagation()}>
                   <ReactionPicker currentReaction={currentReaction} onReact={(t) => handleReact(t)} onClose={() => setShowPicker(false)} isRtl={isRtl} dark />
                 </div>
               )}

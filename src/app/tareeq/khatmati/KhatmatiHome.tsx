@@ -17,42 +17,38 @@ const BG_CARD_BD      = 'rgba(255,255,255,0.09)';
 const TEXT_PRI        = '#F0EDE4';
 const TEXT_MUT        = 'rgba(240,237,228,0.45)';
 
-// Circular SVG arc progress component
+// Circular SVG arc progress component — compact size to fit no-scroll layout
 function LampProgress({ pct, lanternLevel, wardDone, children }: {
   pct: number; lanternLevel: number; wardDone: boolean; children: React.ReactNode;
 }) {
-  const R = 96;
+  const R = 74;
+  const S = 170; // container size
+  const C = S / 2;
   const circ = 2 * Math.PI * R;
   const offset = circ * (1 - pct / 100);
-  // Stage milestones at 20%, 40%, 60%, 80%, 100% → 5 stages matching lanternLevel (0-4)
-  const stageAngles = [72, 144, 216, 288, 360]; // degrees from top
+  const stageAngles = [72, 144, 216, 288, 360];
   return (
-    <div style={{ position: 'relative', width: 210, height: 210, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-      {/* SVG ring */}
-      <svg width={210} height={210} viewBox="0 0 210 210" style={{ position: 'absolute', inset: 0 }} >
-        {/* Track */}
-        <circle cx={105} cy={105} r={R} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={5} />
-        {/* Progress arc — CCW from top */}
+    <div style={{ position: 'relative', width: S, height: S, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{ position: 'absolute', inset: 0 }}>
+        <circle cx={C} cy={C} r={R} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={4.5} />
         <circle
-          cx={105} cy={105} r={R}
+          cx={C} cy={C} r={R}
           fill="none"
           stroke={wardDone ? NURI_YELLOW : 'rgba(255,204,0,0.45)'}
-          strokeWidth={5}
+          strokeWidth={4.5}
           strokeLinecap="round"
           strokeDasharray={circ}
           strokeDashoffset={offset}
-          transform="rotate(-90 105 105)"
+          transform={`rotate(-90 ${C} ${C})`}
           style={{ transition: 'stroke-dashoffset 1.2s ease, stroke 0.6s ease' }}
         />
-        {/* Stage milestone dots */}
         {stageAngles.map((deg, i) => {
           const rad = (deg - 90) * (Math.PI / 180);
-          const x = 105 + R * Math.cos(rad);
-          const y = 105 + R * Math.sin(rad);
+          const x = C + R * Math.cos(rad);
+          const y = C + R * Math.sin(rad);
           const filled = i <= lanternLevel - 1 || pct >= (i + 1) * 20;
           return (
-            <circle key={i}
-              cx={x} cy={y} r={4.5}
+            <circle key={i} cx={x} cy={y} r={4}
               fill={filled ? NURI_YELLOW : 'rgba(255,255,255,0.15)'}
               stroke={filled ? 'rgba(255,204,0,0.4)' : 'none'}
               strokeWidth={2}
@@ -61,7 +57,6 @@ function LampProgress({ pct, lanternLevel, wardDone, children }: {
           );
         })}
       </svg>
-      {/* Lamp in centre */}
       {children}
     </div>
   );
@@ -237,20 +232,19 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
         html,body { background: #05101f !important; }
       `}</style>
 
-      {/* ── Main page ── */}
+      {/* ── Main page — fixed viewport, no scroll ── */}
       <div
         dir={isRtl ? 'rtl' : 'ltr'}
         style={{
-          minHeight: '100dvh',
+          height: '100dvh',
           display: 'flex', flexDirection: 'column',
-          background: `linear-gradient(160deg, #0a1e3d 0%, ${BG_DEEP} 50%, #071422 100%)`,
+          background: `linear-gradient(170deg, #0d2145 0%, #071830 35%, ${BG_DEEP} 65%, #060f1c 100%)`,
           backgroundColor: BG_DEEP,
-          paddingBottom: 100,
-          overscrollBehavior: 'none',
+          overflow: 'hidden',
         }}
       >
         {/* ── Header ── */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '28px 20px 0', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px 0', flexShrink: 0 }}>
           <h1 style={{ fontFamily: "'Cairo',sans-serif", fontWeight: 900, fontSize: 30, color: NURI_YELLOW, letterSpacing: '-0.01em', lineHeight: 1 }}>
             نُوري
           </h1>
@@ -295,7 +289,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
         </div>
 
         {/* ── Lantern + progress ring — fills available space ── */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, paddingBlock: 4, minHeight: 0 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, paddingBlock: 2, minHeight: 0, overflow: 'hidden' }}>
 
           <LampProgress pct={pct} lanternLevel={lanternLevel} wardDone={wardDone}>
             {/* Glow effects when bright or manually lit */}
@@ -312,7 +306,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
               draggable={false}
               onClick={() => { setLanternLit(true); setTimeout(() => setLanternLit(false), 2000); }}
               style={{
-                width: 148, height: 148, objectFit: 'contain', position: 'relative', zIndex: 1,
+                width: 108, height: 108, objectFit: 'contain', position: 'relative', zIndex: 1,
                 animation: (wardDone || lanternLit) ? 'nuri-float 4s ease-in-out infinite' : 'none',
                 filter: (wardDone || lanternLit) ? 'drop-shadow(0 0 18px rgba(255,204,0,0.5))' : 'none',
                 cursor: 'pointer', transition: 'filter 0.4s',
@@ -333,8 +327,8 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
           </div>
 
           {/* Tagline */}
-          <div style={{ textAlign: 'center', paddingInline: 28, marginTop: 2 }}>
-            <p style={{ fontWeight: 900, fontSize: 20, color: wardMissed ? 'rgba(255,204,0,0.5)' : NURI_YELLOW, marginBottom: 0, lineHeight: 1.2 }}>
+          <div style={{ textAlign: 'center', paddingInline: 28, marginTop: 1 }}>
+            <p style={{ fontWeight: 900, fontSize: 17, color: wardMissed ? 'rgba(255,204,0,0.5)' : NURI_YELLOW, marginBottom: 0, lineHeight: 1.2 }}>
               {isRtl
                 ? (wardDone ? 'نورك مكتمل اليوم' : 'استمر في القراءة ليكتمل نورك')
                 : (wardDone ? 'Light shining today!' : 'Keep reading to complete your light')}
@@ -344,9 +338,9 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
 
         {/* ── Progress card ── */}
         {p && (
-          <div style={{ paddingInline: 20, marginBottom: 16 }}>
-            <div style={{ background: BG_CARD, border: `1px solid ${BG_CARD_BD}`, borderRadius: 18, padding: '14px 16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div style={{ paddingInline: 20, marginBottom: 10, flexShrink: 0 }}>
+            <div style={{ background: BG_CARD, border: `1px solid ${BG_CARD_BD}`, borderRadius: 16, padding: '10px 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: TEXT_MUT }}>
                   {isRtl ? `صفحة ${page} من ${TOTAL_QURAN_PAGES}` : `Page ${page} of ${TOTAL_QURAN_PAGES}`}
                 </span>
@@ -356,7 +350,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
                   </span>
                 )}
               </div>
-              <div dir="ltr" style={{ height: 4, borderRadius: 999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden', marginBottom: 10 }}>
+              <div dir="ltr" style={{ height: 3, borderRadius: 999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden', marginBottom: 7 }}>
                 <div style={{ height: '100%', borderRadius: 999, width: `${pct}%`, background: `linear-gradient(90deg, ${NURI_YELLOW} 0%, #FFD740 100%)`, transition: 'width 0.6s ease' }} />
               </div>
               {/* Clickable surah name → surah picker */}
@@ -373,14 +367,14 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
         )}
 
         {/* ── CTA ── */}
-        <div style={{ paddingInline: 20 }}>
+        <div style={{ paddingInline: 20, flexShrink: 0 }}>
           {user ? (
             <Link
               href={`/tareeq/khatmati/read?page=${page}&surah=${p?.currentSurah ?? 1}&ayah=${p?.currentAyah ?? 1}`}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                width: '100%', fontWeight: 900, padding: '16px 0',
-                borderRadius: 18, fontSize: 15, letterSpacing: '0.02em',
+                width: '100%', fontWeight: 900, padding: '13px 0',
+                borderRadius: 16, fontSize: 15, letterSpacing: '0.02em',
                 background: NURI_YELLOW, color: '#080E1C',
                 textDecoration: 'none',
                 boxShadow: '0 4px 28px rgba(255,204,0,0.32)',
@@ -411,13 +405,13 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
 
         {/* Share progress — only when progress exists */}
         {p && user && (
-          <div style={{ paddingInline: 20, marginTop: 10 }}>
+          <div style={{ paddingInline: 20, marginTop: 8, flexShrink: 0 }}>
             <button
               onClick={handleShare}
               disabled={sharing}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                width: '100%', padding: '11px 0', borderRadius: 14,
+                width: '100%', padding: '9px 0', borderRadius: 12,
                 background: 'rgba(255,204,0,0.08)', border: '1px solid rgba(255,204,0,0.2)',
                 color: NURI_YELLOW, fontSize: 13, fontWeight: 700, cursor: 'pointer',
                 opacity: sharing ? 0.6 : 1,
@@ -432,57 +426,48 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
           </div>
         )}
 
-        {/* ── Group Khatmas ── */}
+        {/* ── Group Khatmas — horizontal scrollable strip ── */}
         {initialGroups.length > 0 && (
-          <div style={{ paddingInline: 20, marginTop: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <p style={{ fontSize: 14, fontWeight: 700, color: NURI_YELLOW }}>
+          <div style={{ flexShrink: 0, marginTop: 10, paddingBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingInline: 20, marginBottom: 8 }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: NURI_YELLOW }}>
                 {isRtl ? 'ختماتي الجماعية' : 'My Group Khatmas'}
               </p>
               <button onClick={() => router.push('/tareeq/khatmati/groups')}
-                style={{ fontSize: 12, color: TEXT_MUT, background: 'none', border: 'none', cursor: 'pointer' }}>
+                style={{ fontSize: 11, color: TEXT_MUT, background: 'none', border: 'none', cursor: 'pointer' }}>
                 {isRtl ? 'عرض الكل' : 'See all'}
               </button>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Horizontal scroll row */}
+            <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingInline: 20, paddingBottom: 4, scrollbarWidth: 'none' }}>
               {initialGroups.map(g => (
-                <button key={g.id} onClick={() => router.push(`/tareeq/khatmati/read?page=${g.myCurrentPage}&surah=${g.myCurrentSurah}&ayah=${g.myCurrentAyah}&groupId=${g.id}`)}
+                <button key={g.id}
+                  onClick={() => router.push(`/tareeq/khatmati/read?page=${g.myCurrentPage}&surah=${g.myCurrentSurah}&ayah=${g.myCurrentAyah}&groupId=${g.id}`)}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    background: BG_CARD, border: `1px solid ${BG_CARD_BD}`,
-                    borderRadius: 16, padding: '12px 14px', width: '100%', textAlign: 'start', cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6,
+                    background: BG_CARD, border: `1px solid ${g.readToday ? 'rgba(74,222,128,0.25)' : BG_CARD_BD}`,
+                    borderRadius: 14, padding: '10px 12px',
+                    minWidth: 148, maxWidth: 148, flexShrink: 0, cursor: 'pointer', textAlign: 'start',
                   }}>
-                  {/* Book icon — green glow if read today, yellow pulse if not */}
-                  <div style={{
-                    width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
-                    background: g.readToday ? 'rgba(74,222,128,0.12)' : 'rgba(255,204,0,0.08)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <svg width={22} height={22} viewBox="0 0 24 24" fill="none"
+                  {/* Book icon + streak on same row */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                    <svg width={20} height={20} viewBox="0 0 24 24" fill="none"
                       stroke={g.readToday ? '#4ade80' : '#FFCC00'} strokeWidth={1.8}
                       style={{
-                        filter: g.readToday ? 'drop-shadow(0 0 6px rgba(74,222,128,0.8))' : undefined,
+                        filter: g.readToday ? 'drop-shadow(0 0 5px rgba(74,222,128,0.7))' : undefined,
                         animation: g.readToday ? 'none' : 'nuri-pulse 2s ease-in-out infinite',
                       }}>
                       <path strokeLinecap="round" strokeLinejoin="round"
                         d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
                     </svg>
+                    <span style={{ fontSize: 12, fontWeight: 900, color: NURI_YELLOW }}>{g.myStreak} {isRtl ? 'يوم' : 'd'}</span>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 14, fontWeight: 700, color: TEXT_PRI, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</p>
-                    <p style={{ fontSize: 11, color: TEXT_MUT }}>
-                      {isRtl
-                        ? `${g.memberCount} عضو · هدف ${g.dailyGoal} ص/يوم`
-                        : `${g.memberCount} members · ${g.dailyGoal}p/day`}
-                    </p>
-                  </div>
-                  <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                    <p style={{ fontSize: 15, fontWeight: 900, color: NURI_YELLOW, lineHeight: 1 }}>{g.myStreak}</p>
-                    <p style={{ fontSize: 10, color: TEXT_MUT }}>{isRtl ? 'يوم' : 'days'}</p>
-                  </div>
-                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={TEXT_MUT} strokeWidth={2} style={{ flexShrink: 0 }}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M15.75 19.5L8.25 12l7.5-7.5' : 'M8.25 4.5l7.5 7.5-7.5 7.5'} />
-                  </svg>
+                  {/* Group name */}
+                  <p style={{ fontSize: 13, fontWeight: 700, color: TEXT_PRI, width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</p>
+                  {/* Meta */}
+                  <p style={{ fontSize: 10, color: TEXT_MUT }}>
+                    {isRtl ? `ص${g.myCurrentPage} · ${g.memberCount} عضو` : `p${g.myCurrentPage} · ${g.memberCount}m`}
+                  </p>
                 </button>
               ))}
             </div>

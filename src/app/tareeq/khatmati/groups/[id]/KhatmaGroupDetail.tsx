@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 
@@ -26,6 +26,18 @@ export default function KhatmaGroupDetail({ group, members, userId, myCurrentPag
   const router = useRouter();
   const { isRtl } = useLang();
   const [copied, setCopied] = useState(false);
+
+  // Pin dark navy background to body so overscroll stays themed
+  React.useEffect(() => {
+    const prev = document.body.style.background;
+    const prevHtml = document.documentElement.style.background;
+    document.body.style.background = BG_DEEP;
+    document.documentElement.style.background = BG_DEEP;
+    return () => {
+      document.body.style.background = prev;
+      document.documentElement.style.background = prevHtml;
+    };
+  }, []);
 
   const me = members.find(m => m.userId === userId);
   const readTodayCount = members.filter(m => m.readToday).length;

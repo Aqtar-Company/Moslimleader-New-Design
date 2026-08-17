@@ -249,14 +249,15 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
 
       {/* ── Top bar ── */}
       <div className="fixed top-0 left-0 right-0 z-40 flex flex-col gap-0">
-        {/* Page info + nav */}
-        <div className="flex items-center justify-between px-4 py-2"
+        {/* Page info + nav — RTL: right=prev, left=next (Arabic book order) */}
+        <div className="flex items-center justify-between px-4 py-2" dir="rtl"
           style={{ background: 'var(--tr-header-bg)', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
+          {/* Right side = previous page (going backward = toward start of mushaf) */}
           <button onClick={() => goPage(-1)} disabled={page <= 1}
             className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30"
             style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
           </button>
 
@@ -271,11 +272,12 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
             )}
           </div>
 
+          {/* Left side = next page (going forward = toward end of mushaf) */}
           <button onClick={() => goPage(1)} disabled={page >= TOTAL_QURAN_PAGES}
             className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30"
             style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
           </button>
         </div>
@@ -334,16 +336,27 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
                     {surahNameAr} ﴿{toArabicNum(cv.verse_number)}﴾
                   </p>
                 </div>
-                {/* Verse nav dots */}
-                <div className="flex gap-1.5 flex-wrap justify-center max-w-xs">
-                  {verses.map((_, i) => (
-                    <button key={i} onClick={() => goVerse(i)}
-                      style={{
-                        width: 7, height: 7, borderRadius: '50%',
-                        background: i === currentIdx ? 'var(--tr-gold)' : 'var(--tr-border-soft)',
-                        transition: 'background 0.2s',
-                      }} />
-                  ))}
+                {/* Verse counter */}
+                <div className="flex items-center gap-4">
+                  <button onClick={() => goVerse(currentIdx + 1)} disabled={currentIdx >= verses.length - 1}
+                    className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30"
+                    style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                    </svg>
+                  </button>
+                  <p className="text-sm font-bold" style={{ color: 'var(--tr-text-muted)', minWidth: 64, textAlign: 'center' }}>
+                    {isRtl
+                      ? `${toArabicNum(currentIdx + 1)} / ${toArabicNum(verses.length)}`
+                      : `${currentIdx + 1} / ${verses.length}`}
+                  </p>
+                  <button onClick={() => goVerse(currentIdx - 1)} disabled={currentIdx === 0}
+                    className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30"
+                    style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </button>
                 </div>
               </div>
             )}
@@ -404,13 +417,14 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
             }} />
           </div>
 
-          <div className="flex items-center gap-3 px-4 py-3">
-            {/* Prev verse */}
+          {/* RTL: right=prev ayah, left=next ayah (Arabic reading order) */}
+          <div className="flex items-center gap-3 px-4 py-3" dir="rtl">
+            {/* Right side = prev verse (going back = toward start) */}
             <button onClick={() => goVerse(currentIdx - 1)} disabled={currentIdx === 0}
               className="w-10 h-10 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30"
               style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
               </svg>
             </button>
 
@@ -430,17 +444,17 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
               )}
             </button>
 
-            {/* Next verse */}
+            {/* Left side = next verse (going forward = toward end) */}
             <button onClick={() => goVerse(currentIdx + 1)} disabled={currentIdx >= verses.length - 1}
               className="w-10 h-10 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30"
               style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
               </svg>
             </button>
 
             {/* Verse info */}
-            <div className="flex-1 min-w-0" dir={isRtl ? 'rtl' : 'ltr'}>
+            <div className="flex-1 min-w-0">
               {cv && (
                 <>
                   <p className="text-sm font-black truncate" style={{ color: 'var(--tr-text-primary)' }}>
@@ -455,7 +469,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
               )}
             </div>
 
-            {/* Back to home */}
+            {/* Back to home (leftmost in RTL) */}
             <button
               onClick={() => router.push('/tareeq/khatmati')}
               className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90"

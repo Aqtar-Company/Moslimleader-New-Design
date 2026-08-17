@@ -39,6 +39,12 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadFileName, setUploadFileName] = useState('');
+  const [uploadFileSize, setUploadFileSize] = useState(0);
+  const [videoThumb, setVideoThumb] = useState<string | null>(null);
+  const [customThumbUrl, setCustomThumbUrl] = useState<string | null>(null);
+  const [thumbUploading, setThumbUploading] = useState(false);
+  const thumbInputRef = useRef<HTMLInputElement>(null);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [extraImages, setExtraImages] = useState<{ id: string; previewUrl: string; url: string | null; progress: number; failed?: boolean }[]>([]);
   const extraFileInputRef = useRef<HTMLInputElement>(null);
@@ -82,8 +88,12 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     setMediaUrl(null);
     setMediaType(null);
     setUploadProgress(0);
+    setVideoThumb(null);
+    setCustomThumbUrl(null);
     if (initialFile.type.startsWith('image/')) {
       setLocalPreview(URL.createObjectURL(initialFile));
+    } else if (initialFile.type.startsWith('video/')) {
+      generateVideoThumb(initialFile).then(t => { if (t) setVideoThumb(t); });
     }
     doUpload(initialFile);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -140,9 +150,34 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     };
   }, []);
 
+  function generateVideoThumb(file: File): Promise<string | null> {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = 'metadata';
+      const url = URL.createObjectURL(file);
+      video.src = url;
+      video.onloadeddata = () => { video.currentTime = Math.min(0.5, video.duration * 0.1 || 0.5); };
+      video.onseeked = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth || 640;
+          canvas.height = video.videoHeight || 360;
+          canvas.getContext('2d')?.drawImage(video, 0, 0);
+          URL.revokeObjectURL(url);
+          resolve(canvas.toDataURL('image/jpeg', 0.8));
+        } catch { URL.revokeObjectURL(url); resolve(null); }
+      };
+      video.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    });
+  }
+
   async function doUpload(file: File) {
     setUploading(true);
     setError('');
+    setUploadFileName(file.name);
+    setUploadFileSize(file.size);
     try {
       const isImage = file.type.startsWith('image/');
       const uploadFile = isImage
@@ -189,8 +224,12 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     setMediaType(null);
     setUploadProgress(0);
     setExtraImages([]);
+    setVideoThumb(null);
+    setCustomThumbUrl(null);
     if (file.type.startsWith('image/')) {
       setLocalPreview(URL.createObjectURL(file));
+    } else if (file.type.startsWith('video/')) {
+      generateVideoThumb(file).then(t => { if (t) setVideoThumb(t); });
     }
     await doUpload(file);
     e.target.value = '';
@@ -306,6 +345,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           category: category || null,
           imageUrl: mediaType === 'image' ? mediaUrl : null,
           videoUrl: mediaType === 'video' ? mediaUrl : null,
+          thumbnailUrl: mediaType === 'video' ? (customThumbUrl ?? videoThumb) : null,
           imageUrls: allImageUrls,
           seriesTitle: seriesTitle.trim() || null,
         }),
@@ -544,6 +584,26 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
             </div>
           </div>
 
+          {/* ── YouTube preview — auto-detected while typing ── */}
+          {(() => {
+            if (localPreview || mediaUrl || uploading) return null;
+            const m = content.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+            const ytId = m ? m[1] : null;
+            if (!ytId) return null;
+            return (
+              <div className="mx-4 mb-4 rounded-2xl overflow-hidden" style={{ aspectRatio: '16/9', border: '1px solid var(--tr-border-soft)' }}>
+                <iframe
+                  src={`https://www.youtube-nocookie.com/embed/${ytId}?rel=0&modestbranding=1`}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  loading="lazy"
+                  style={{ border: 'none', display: 'block' }}
+                />
+              </div>
+            );
+          })()}
+
           {/* ── Media zone ── */}
           {(localPreview || mediaUrl || uploading) ? (
             <>
@@ -555,13 +615,21 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                 : mediaUrl
                   ? mediaType === 'image'
                     ? <img src={mediaUrl} alt="" className="w-full max-h-72 object-cover" />
-                    : <video src={mediaUrl} className="w-full max-h-72" controls playsInline />
-                  : <div style={{ height: 180, background: 'var(--tr-overlay)' }} />
+                    : <video
+                        src={mediaUrl}
+                        poster={customThumbUrl ?? videoThumb ?? undefined}
+                        className="w-full max-h-72"
+                        controls playsInline
+                      />
+                  : videoThumb
+                    ? <img src={videoThumb} alt="" className="w-full max-h-72 object-cover" style={{ filter: 'brightness(0.55)' }} />
+                    : <div style={{ height: 180, background: 'var(--tr-overlay)' }} />
               }
 
               {/* Upload progress overlay */}
               {uploading && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3" style={{ background: 'rgba(0,0,0,0.60)' }}>
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3" style={{ background: videoThumb ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.60)' }}>
+                  {/* Circular progress */}
                   <div className="relative w-16 h-16">
                     <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
                       <circle cx="32" cy="32" r="27" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="5" />
@@ -578,9 +646,24 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                       {uploadProgress}%
                     </span>
                   </div>
-                  <span className="text-xs font-semibold text-white/80">
-                    {isRtl ? 'جاري الرفع...' : 'Uploading...'}
-                  </span>
+                  {/* File info */}
+                  <div className="flex flex-col items-center gap-1 px-4 w-full max-w-xs">
+                    <span className="text-xs font-semibold text-white/90 truncate max-w-full">
+                      {uploadFileName}
+                    </span>
+                    <span className="text-[11px] text-white/55">
+                      {uploadFileSize > 1024 * 1024
+                        ? `${(uploadFileSize / (1024 * 1024)).toFixed(1)} MB`
+                        : `${(uploadFileSize / 1024).toFixed(0)} KB`}
+                    </span>
+                    {/* Linear progress bar */}
+                    <div className="w-full h-1 rounded-full mt-1" style={{ background: 'rgba(255,255,255,0.15)' }}>
+                      <div
+                        className="h-1 rounded-full transition-all duration-200"
+                        style={{ width: `${uploadProgress}%`, background: 'var(--tr-gold-bright)' }}
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -594,6 +677,47 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                       </svg>
                       {isRtl ? 'تم الرفع' : 'Uploaded'}
                     </div>
+                  )}
+                  {/* Custom thumbnail button — only for videos */}
+                  {mediaType === 'video' && mediaUrl && (
+                    <>
+                      <input
+                        ref={thumbInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const f = e.target.files?.[0];
+                          if (!f) return;
+                          setThumbUploading(true);
+                          try {
+                            const compressed = await compressImage(f, { maxWidth: 1280, maxHeight: 720, quality: 0.82 });
+                            const form = new FormData();
+                            form.append('file', compressed);
+                            const res = await fetch('/api/tareeq/upload', { method: 'POST', credentials: 'include', body: form });
+                            const data = await res.json();
+                            if (data.url) setCustomThumbUrl(data.url);
+                          } catch { /* ignore */ }
+                          finally { setThumbUploading(false); e.target.value = ''; }
+                        }}
+                      />
+                      <button
+                        onClick={() => thumbInputRef.current?.click()}
+                        disabled={thumbUploading}
+                        className="absolute bottom-2 start-2 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-bold transition active:scale-95 disabled:opacity-60"
+                        style={{ background: 'rgba(0,0,0,0.65)', color: '#fff', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.2)' }}
+                      >
+                        {thumbUploading
+                          ? <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          : <svg width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                        }
+                        {thumbUploading
+                          ? (isRtl ? 'جاري...' : 'Uploading...')
+                          : customThumbUrl
+                            ? (isRtl ? 'تغيير الغلاف' : 'Change cover')
+                            : (isRtl ? 'إضافة غلاف' : 'Add cover')}
+                      </button>
+                    </>
                   )}
                   <button
                     onClick={removeMedia}

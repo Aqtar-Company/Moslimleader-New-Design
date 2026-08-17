@@ -1,10 +1,9 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
-import { ReportModal } from '@/components/tareeq/TareeqCard';
 import { TAREEQ_CATEGORIES, CATEGORY_COLORS, CATEGORY_ICONS } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import { timeAgo } from '@/lib/tareeq-utils';
@@ -56,12 +55,12 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   const [copied, setCopied] = useState(false);
   const [commentSort, setCommentSort] = useState<'asc' | 'desc'>('asc');
   const [deleting, setDeleting] = useState(false);
-  const [reportTarget, setReportTarget] = useState<{ type: 'post' | 'comment'; id: string } | null>(null);
   const [pinnedCommentId, setPinnedCommentId] = useState<string | null>(post.pinnedCommentId ?? null);
   const [showUpdateInput, setShowUpdateInput] = useState(false);
   const [updateText, setUpdateText] = useState('');
   const [updateSaving, setUpdateSaving] = useState(false);
   const [postUpdate, setPostUpdate] = useState<string | null>(post.postUpdate ?? null);
+  const [showViewers, setShowViewers] = useState(false);
 
   // Edit state
   const [editing, setEditing] = useState(false);
@@ -77,6 +76,9 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   }, [post.id]);
 
   const isOwner = user && post.userId && user.id === post.userId;
+  const msElapsed = Date.now() - new Date(post.createdAt).getTime();
+  const canEdit = !!isOwner && msElapsed < 3_600_000;
+  const minutesLeft = Math.max(0, Math.ceil((3_600_000 - msElapsed) / 60_000));
   const catKey = post.category as TareeqCategoryKey | null;
   const catLabel = catKey && TAREEQ_CATEGORIES[catKey]
     ? (isRtl ? TAREEQ_CATEGORIES[catKey].ar : TAREEQ_CATEGORIES[catKey].en)
@@ -256,18 +258,22 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                 )}
                 {isOwner && !editing && (
                   <div className="flex items-center gap-1">
+                    {canEdit && (
                     <button
                       onClick={() => setEditing(true)}
                       className="flex items-center gap-1.5 text-xs transition px-2 py-1.5 rounded-lg"
                       style={{ color: 'var(--tr-text-muted)', background: 'transparent' }}
                       onMouseEnter={e => { e.currentTarget.style.color = 'var(--tr-text-secondary)'; e.currentTarget.style.background = 'var(--tr-raised)'; }}
                       onMouseLeave={e => { e.currentTarget.style.color = 'var(--tr-text-muted)'; e.currentTarget.style.background = 'transparent'; }}
+                      title={isRtl ? `متبقي ${minutesLeft} دقيقة للتعديل` : `${minutesLeft} min left to edit`}
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                       </svg>
                       {isRtl ? 'تعديل' : 'Edit'}
+                      <span className="text-[10px] opacity-60">({minutesLeft}د)</span>
                     </button>
+                    )}
                     <button
                       onClick={deletePost}
                       disabled={deleting}
@@ -333,12 +339,31 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
               </>
             )}
 
-            {/* Video */}
+            {/* Uploaded video */}
             {!editing && post.videoUrl && (
               <div className="mt-6 rounded-2xl overflow-hidden bg-black">
                 <video src={post.videoUrl} controls playsInline className="w-full max-h-[60vw] sm:max-h-[500px]" />
               </div>
             )}
+
+            {/* YouTube embed — auto-detected from content */}
+            {!editing && (() => {
+              const m = post.content.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+              const ytId = m ? m[1] : null;
+              if (!ytId) return null;
+              return (
+                <div className="mt-6 rounded-2xl overflow-hidden" style={{ aspectRatio: '16/9', border: '1px solid var(--tr-border-soft)' }}>
+                  <iframe
+                    src={`https://www.youtube-nocookie.com/embed/${ytId}?rel=0&modestbranding=1`}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    loading="lazy"
+                    style={{ border: 'none', display: 'block' }}
+                  />
+                </div>
+              );
+            })()}
 
             {/* Series badge */}
             {!editing && post.seriesId && post.seriesTitle && (
@@ -501,9 +526,26 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                   </button>
                 )}
 
-                <span className="ms-auto text-xs" style={{ color: 'var(--tr-text-muted)' }}>
-                  {post.viewCount} {isRtl ? 'مشاهدة' : 'views'}
-                </span>
+                {/* view count — for author, clicking shows viewer names */}
+                <div className="ms-auto flex items-center gap-1 relative">
+                  <button
+                    onClick={() => user?.id === post.userId && setShowViewers(v => !v)}
+                    className="flex items-center gap-1 text-xs"
+                    style={{ color: 'var(--tr-text-muted)', cursor: user?.id === post.userId ? 'pointer' : 'default', background: 'none', border: 'none', padding: 0 }}
+                  >
+                    <svg width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {post.viewCount}
+                    {user?.id === post.userId && (
+                      <span className="text-[10px]">{isRtl ? '▾ من شاهد' : '▾ viewers'}</span>
+                    )}
+                  </button>
+                  {showViewers && user?.id === post.userId && (
+                    <ViewersPopover postId={post.id} isRtl={isRtl} onClose={() => setShowViewers(false)} />
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -569,18 +611,6 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                               </svg>
                             </button>
                           )}
-                          {user && user.id !== c.userId && (
-                            <button
-                              onClick={() => setReportTarget({ type: 'comment', id: c.id })}
-                              title={isRtl ? 'بلاغ' : 'Report'}
-                              className="transition opacity-0 group-hover:opacity-100"
-                              style={{ color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
-                            >
-                              <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18M3 7l9-4 9 4v8l-9 4-9-4V7z" />
-                              </svg>
-                            </button>
-                          )}
                         </div>
                       </div>
                       <p className="text-sm leading-relaxed" style={{ color: 'var(--tr-text-secondary)' }}>{c.content}</p>
@@ -623,14 +653,51 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
       </div>
 
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
-      {reportTarget && (
-        <ReportModal
-          targetType={reportTarget.type}
-          targetId={reportTarget.id}
-          isRtl={isRtl}
-          onClose={() => setReportTarget(null)}
-        />
-      )}
     </div>
+  );
+}
+
+function ViewersPopover({ postId, isRtl, onClose }: { postId: string; isRtl: boolean; onClose: () => void }) {
+  const [data, setData] = useState<{ viewCount: number; viewers: { id: string; name: string; avatarUrl?: string | null }[] } | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/tareeq/${postId}/views`, { credentials: 'include' })
+      .then(r => r.json()).then(setData).catch(() => setData({ viewCount: 0, viewers: [] }));
+  }, [postId]);
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div
+        className="absolute bottom-full mb-2 end-0 z-50 rounded-2xl shadow-xl overflow-hidden"
+        style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', width: 240, maxHeight: 320, overflowY: 'auto' }}
+        dir={isRtl ? 'rtl' : 'ltr'}
+      >
+        <div className="px-4 py-3 font-bold text-sm" style={{ borderBottom: '1px solid var(--tr-border-subtle)', color: 'var(--tr-text-primary)' }}>
+          {isRtl ? `من شاهد (${data?.viewCount ?? '...'})` : `Viewers (${data?.viewCount ?? '...'})`}
+        </div>
+        {!data ? (
+          <div className="flex justify-center py-6">
+            <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
+          </div>
+        ) : data.viewers.length === 0 ? (
+          <p className="text-xs text-center py-6" style={{ color: 'var(--tr-text-muted)' }}>
+            {isRtl ? 'لا مشاهدات مسجّلة بعد' : 'No logged-in viewers yet'}
+          </p>
+        ) : (
+          <div className="py-2">
+            {data.viewers.map(v => (
+              <div key={v.id} className="flex items-center gap-2.5 px-4 py-2">
+                {v.avatarUrl
+                  ? <img src={v.avatarUrl} alt={v.name} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                  : <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)' }}>{v.name.charAt(0)}</div>
+                }
+                <span className="text-sm font-semibold truncate" style={{ color: 'var(--tr-text-primary)' }}>{v.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   );
 }

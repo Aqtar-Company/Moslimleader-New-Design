@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
@@ -57,7 +57,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
   const [category, setCategory] = useState<string>('');
-  const [sort, setSort] = useState<'newest' | 'liked' | 'following'>('newest');
+  const [sort, setSort] = useState<'newest' | 'following' | 'useful'>('newest');
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [showCreate, setShowCreate] = useState(false);
@@ -87,7 +87,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const pullRefreshingRef = useRef(false);
   const categoryRef = useRef(category);
   const searchValRef = useRef(search);
-  const sortRef = useRef(sort);
+  const sortRef = useRef<'newest' | 'following' | 'useful'>(sort);
   const PULL_THRESHOLD = 72;
 
   // Offline detection + reading cache
@@ -137,7 +137,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       .catch(() => {});
   }, [user]);
 
-  const loadPosts = useCallback(async (cat: string, q: string, fromCursor?: string | null, sortBy: 'newest' | 'liked' | 'following' = 'newest') => {
+  const loadPosts = useCallback(async (cat: string, q: string, fromCursor?: string | null, sortBy: 'newest' | 'following' | 'useful' = 'newest') => {
     if (fromCursor) { setLoading(true); } else { setInitialLoading(true); }
     try {
       const params = new URLSearchParams({ limit: '12' });
@@ -200,7 +200,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
     loadPosts(key, search, null, effectiveSort);
   }
 
-  function handleSortChange(newSort: 'newest' | 'liked' | 'following') {
+  function handleSortChange(newSort: 'newest' | 'following' | 'useful') {
     setSort(newSort);
     loadPosts(category, search, null, newSort);
   }
@@ -649,33 +649,34 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
 
           {/* Sort tabs row — scrolls with content */}
           <div
-            className="max-w-2xl lg:max-w-none mx-auto ps-4 pe-4 lg:pe-0 py-2 flex items-center justify-between gap-3"
-            style={{
-              borderBottom: '1px solid var(--tr-border-subtle)',
-            }}
+            className="max-w-2xl lg:max-w-none mx-auto px-4 lg:pe-0 py-2 flex items-center gap-2"
+            style={{ borderBottom: '1px solid var(--tr-border-subtle)', overflowX: 'auto', scrollbarWidth: 'none' }}
           >
-            <h1 className="font-black text-xl" style={{ color: 'var(--tr-text-primary)' }}>
+            <h1 className="font-black text-xl shrink-0 me-1" style={{ color: 'var(--tr-text-primary)' }}>
               {isRtl ? 'اكتشف' : 'Discover'}
             </h1>
-            <div className="flex items-center gap-1.5 shrink-0">
-              {(['newest', 'liked', ...(user ? ['following'] : [])] as ('newest' | 'liked' | 'following')[]).map(s => {
-                const labels: Record<string, string> = { newest: isRtl ? 'جديد' : 'New', liked: isRtl ? 'الأفضل' : 'Top', following: isRtl ? 'أتابع' : 'Feed' };
-                const active = sort === s;
-                return (
-                  <button
-                    key={s}
-                    onClick={() => handleSortChange(s)}
-                    className="text-xs font-bold px-3 py-1.5 rounded-full transition-all"
-                    style={active
-                      ? { background: 'var(--tr-gold)', color: '#fff', boxShadow: '0 2px 8px var(--tr-gold-glow)' }
-                      : { background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }
-                    }
-                  >
-                    {labels[s]}
-                  </button>
-                );
-              })}
-            </div>
+            {(['newest', 'useful', ...(user ? ['following'] : [])] as ('newest' | 'useful' | 'following')[]).map(s => {
+              const labels: Record<string, { full: string; short: string }> = {
+                newest:    { full: isRtl ? 'جديد' : 'New',        short: isRtl ? 'جديد' : 'New' },
+                useful:    { full: isRtl ? 'الأكثر نفعًا' : 'Most Useful', short: isRtl ? 'الأنفع ✦' : 'Top ✦' },
+                following: { full: isRtl ? 'أتابع' : 'Feed',      short: isRtl ? 'أتابع' : 'Feed' },
+              };
+              const active = sort === s;
+              return (
+                <button
+                  key={s}
+                  onClick={() => handleSortChange(s)}
+                  className="text-xs font-bold px-3 py-1.5 rounded-full transition-all shrink-0"
+                  style={active
+                    ? { background: 'var(--tr-gold)', color: '#fff', boxShadow: '0 2px 8px var(--tr-gold-glow)' }
+                    : { background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }
+                  }
+                >
+                  <span className="hidden sm:inline">{labels[s].full}</span>
+                  <span className="sm:hidden">{labels[s].short}</span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Category story circles — mobile only (desktop uses left nav) */}
@@ -786,17 +787,17 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
                 { label: isRtl ? 'شارك فكرة' : 'Share an Idea', cat: 'idea', accent: CATEGORY_ACCENT_HEX.idea },
                 { label: isRtl ? 'تصفح الأسئلة' : 'Browse Questions', cat: 'question', accent: CATEGORY_ACCENT_HEX.question },
               ] as { label: string; cat: string; accent: string }[]).map(({ label, cat, accent }) => (
-                <button
+                <Link
                   key={cat}
-                  onClick={() => handleCategoryChange(cat)}
+                  href={`/tareeq/category/${cat}`}
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-start transition-colors"
-                  style={{ background: 'var(--tr-overlay)', border: `1px solid ${accent}22` }}
+                  style={{ background: 'var(--tr-overlay)', border: `1px solid ${accent}22`, textDecoration: 'none', display: 'flex' }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = `${accent}14`; (e.currentTarget as HTMLElement).style.borderColor = `${accent}44`; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--tr-overlay)'; (e.currentTarget as HTMLElement).style.borderColor = `${accent}22`; }}
                 >
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ background: accent }} />
                   <span className="text-xs font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>{label}</span>
-                </button>
+                </Link>
               ))}
             </div>
           </div>

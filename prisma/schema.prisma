@@ -84,7 +84,11 @@ model User {
   tareeqBans                  TareeqBan[]              @relation("TareeqBans")
   tareeqTickets               TareeqSupportTicket[]    @relation("TareeqTickets")
   tareeqPostSubscriptions     TareeqPostSubscription[]
+  tareeqPostViews         TareeqPostView[]
   tareeqNotes             TareeqNote[]             @relation("TareeqNotes")
+  khatmatiProgress        KhatmatiProgress?
+  khatmaGroupsAdmin       KhatmaGroup[]            @relation("KhatmaGroupAdmin")
+  khatmaGroupMemberships  KhatmaGroupMember[]      @relation("KhatmaGroupMemberships")
 
   @@index([role])
   @@index([isWholesale])
@@ -960,6 +964,7 @@ model TareeqPost {
   authorName   String           @default("مجهول")
   likeCount    Int              @default(0)
   commentCount Int              @default(0)
+  savedCount   Int              @default(0)
   viewCount    Int              @default(0)
   isHidden     Boolean          @default(false)
   hiddenBy     String?
@@ -976,6 +981,7 @@ model TareeqPost {
   reactions       TareeqReaction[]
   reports         TareeqReport[]           @relation("TareeqPostReports")
   subscriptions   TareeqPostSubscription[]
+  views           TareeqPostView[]
   createdAt       DateTime                 @default(now())
   updatedAt       DateTime                 @updatedAt
 
@@ -1068,6 +1074,34 @@ model TareeqPostSubscription {
   createdAt DateTime   @default(now())
 
   @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+}
+
+model KhatmatiProgress {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentPage    Int       @default(1)
+  currentSurah   Int       @default(1)
+  currentAyah    Int       @default(1)
+  dailyGoalPages Int       @default(4)
+  lastReadDate   String?
+  sirajStreak    Int       @default(0)
+  totalPagesRead Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model TareeqPostView {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String?
+  createdAt DateTime @default(now())
+
+  post TareeqPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
   @@index([postId])
   @@index([userId])
 }
@@ -1684,4 +1718,42 @@ model TareeqNote {
 
   @@index([userId, updatedAt(sort: Desc)])
   @@fulltext([title, content])
+}
+
+// ── Group Khatma ───────────────────────────────────────────────────────────
+
+model KhatmaGroup {
+  id          String              @id @default(cuid())
+  name        String              @db.VarChar(100)
+  description String?             @db.Text
+  adminId     String
+  admin       User                @relation("KhatmaGroupAdmin", fields: [adminId], references: [id])
+  dailyGoal   Int                 @default(4)
+  inviteCode  String              @unique @default(cuid())
+  isActive    Boolean             @default(true)
+  members     KhatmaGroupMember[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([adminId])
+}
+
+model KhatmaGroupMember {
+  id           String      @id @default(cuid())
+  groupId      String
+  group        KhatmaGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User        @relation("KhatmaGroupMemberships", fields: [userId], references: [id])
+  streak       Int         @default(0)
+  lastReadDate String?
+  totalPages   Int         @default(0)
+  points       Int         @default(0)
+  currentPage  Int         @default(1)
+  currentSurah Int         @default(1)
+  currentAyah  Int         @default(1)
+  joinedAt     DateTime    @default(now())
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
 }

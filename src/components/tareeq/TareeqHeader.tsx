@@ -78,7 +78,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   const { isRtl } = useLang();
   const { user } = useAuth();
   const router = useRouter();
-  const pathname = usePathname ? usePathname() : '';
+  const pathname = usePathname() ?? '';
   const { notifCount, messageCount } = useTareeqNotifications();
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const mobileSearchRef = useRef<HTMLInputElement>(null);
@@ -240,9 +240,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
       if (showNotifPanel && notifPanelRef.current && !notifPanelRef.current.contains(t) && notifBtnRef.current && !notifBtnRef.current.contains(t)) {
         setShowNotifPanel(false);
       }
-      if (showMsgPanel && msgPanelRef.current && !msgPanelRef.current.contains(t) && msgBtnRef.current && !msgBtnRef.current.contains(t)) {
-        setShowMsgPanel(false);
-      }
+      // msg panel intentionally not closed on outside click — only closes via header icon or back arrow
     }
     document.addEventListener('mousedown', onMouseDown);
     return () => document.removeEventListener('mousedown', onMouseDown);
@@ -295,7 +293,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
             const newMsgs = fresh.filter(m => !prevIds.has(m.id));
             if (newMsgs.length === 0) return prev; // no change → skip re-render & scroll jump
             if (newMsgs.length > 0) isAtBottomRef.current = true; // incoming msg → scroll to show it
-            return [...newMsgs, ...prev];
+            return [...prev, ...newMsgs];
           });
         }
       } catch { /* offline */ }
@@ -327,7 +325,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
       });
       if (res.ok) {
         const d = await res.json();
-        if (d.message) { isAtBottomRef.current = true; setChatMessages(prev => [d.message, ...prev]); }
+        if (d.message) { isAtBottomRef.current = true; setChatMessages(prev => [...prev, d.message]); }
       }
     } catch { /* offline */ }
     setChatSending(false);
@@ -389,7 +387,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           });
           if (sendRes.ok) {
             const d = await sendRes.json();
-            if (d.message) { isAtBottomRef.current = true; setChatMessages(prev => [d.message, ...prev]); }
+            if (d.message) { isAtBottomRef.current = true; setChatMessages(prev => [...prev, d.message]); }
           } else { setVoiceError(isRtl ? 'فشل الإرسال' : 'Send failed'); setTimeout(() => setVoiceError(''), 3000); }
         } catch { setVoiceError(isRtl ? 'خطأ في الشبكة' : 'Network error'); setTimeout(() => setVoiceError(''), 3000); }
         setVoiceUploading(false);
@@ -568,13 +566,13 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
             ) : notifs.filter(n => n.type !== 'message').length === 0 ? (
               <div className="rounded-2xl px-5 py-6 text-center"
                 style={{
-                  background: 'rgba(255,255,255,0.10)',
+                  background: 'rgba(20,25,50,0.72)',
                   backdropFilter: 'blur(24px) saturate(140%)',
                   WebkitBackdropFilter: 'blur(24px) saturate(140%)',
-                  border: '1px solid rgba(255,255,255,0.16)',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.22)',
+                  border: '1px solid rgba(255,255,255,0.13)',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.28)',
                 }}>
-                <p className="text-sm font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>
+                <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.80)' }}>
                   {isRtl ? 'لا إشعارات جديدة' : 'No new notifications'}
                 </p>
               </div>
@@ -584,11 +582,11 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                   key={n.id}
                   className="w-full flex items-start gap-3 px-4 py-3.5 rounded-2xl text-start transition-all active:scale-[0.98]"
                   style={{
-                    background: n.read ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.13)',
+                    background: n.read ? 'rgba(20,25,50,0.62)' : 'rgba(20,25,50,0.76)',
                     backdropFilter: 'blur(24px) saturate(140%)',
                     WebkitBackdropFilter: 'blur(24px) saturate(140%)',
-                    border: `1px solid ${n.read ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.22)'}`,
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+                    border: `1px solid ${n.read ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.18)'}`,
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.28)',
                   }}
                   onClick={() => {
                     setShowMobileNotifPanel(false);
@@ -646,129 +644,166 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
         }} />
         <div className="relative max-w-2xl mx-auto lg:max-w-[1180px] flex items-center px-4 h-14 lg:h-16 gap-2 lg:gap-3">
 
-          {/* ── MOBILE ONLY: glass search pill + glass bell button ── */}
-          <div className="lg:hidden flex items-center w-full gap-2.5">
+          {/* ── MOBILE ONLY: bell (left) + search square + profile avatar (right) ── */}
+          <div className="lg:hidden flex items-center w-full gap-2">
 
-            {/* Glass search pill — flex-1 */}
-            <div
-              ref={searchContainerRef}
-              className="flex-1 relative"
-              style={{ height: 44 }}
-            >
-              {/* Glass background */}
-              <div style={{
-                position: 'absolute', inset: 0, borderRadius: 22,
-                background: mobileSearchOpen ? 'rgba(255,255,255,0.60)' : 'rgba(255,255,255,0.28)',
-                backdropFilter: 'blur(14px) saturate(130%)',
-                WebkitBackdropFilter: 'blur(14px) saturate(130%)',
-                border: `1px solid ${mobileSearchOpen ? 'rgba(100,140,210,0.28)' : 'rgba(255,255,255,0.28)'}`,
-                boxShadow: mobileSearchOpen ? '0 4px 20px rgba(30,70,120,0.12)' : '0 2px 10px rgba(0,0,0,0.07)',
-                transition: 'background 200ms ease, border-color 200ms ease, box-shadow 200ms ease',
-                pointerEvents: 'none',
-              }} />
-
-              {/* Search icon — anchored to visual right (right in LTR, left in RTL) */}
-              <button
-                onClick={() => { if (!mobileSearchOpen) { setMobileSearchOpen(true); setTimeout(() => mobileSearchRef.current?.focus(), 50); } }}
-                aria-label={isRtl ? 'بحث' : 'Search'}
-                style={{
-                  position: 'absolute',
-                  [isRtl ? 'left' : 'right']: 0, top: 0,
-                  width: 44, height: 44,
-                  background: 'none', border: 'none',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', zIndex: 2,
-                  color: mobileSearchOpen ? 'rgba(30,80,180,0.85)' : 'rgba(20,30,60,0.62)',
-                  transition: 'color 200ms',
-                }}
+            {mobileSearchOpen ? (
+              /* ── Search open: full-width input takeover ── */
+              <div
+                ref={searchContainerRef}
+                className="flex-1 relative"
+                style={{ height: 44 }}
               >
-                <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                </svg>
-              </button>
+                {/* Glass background */}
+                <div style={{
+                  position: 'absolute', inset: 0, borderRadius: 16,
+                  background: 'rgba(255,255,255,0.60)',
+                  backdropFilter: 'blur(14px) saturate(130%)',
+                  WebkitBackdropFilter: 'blur(14px) saturate(130%)',
+                  border: '1px solid rgba(100,140,210,0.28)',
+                  boxShadow: '0 4px 20px rgba(30,70,120,0.12)',
+                  pointerEvents: 'none',
+                }} />
 
-              {/* Placeholder label when closed */}
-              {!mobileSearchOpen && (
-                <span style={{
-                  position: 'absolute', top: '50%', transform: 'translateY(-50%)',
-                  [isRtl ? 'right' : 'left']: 48,
-                  fontSize: 13, color: 'rgba(20,30,60,0.40)',
-                  pointerEvents: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  maxWidth: 'calc(100% - 60px)',
-                }}>
-                  {isRtl ? 'ابحث في طريق...' : 'Search Tareeq...'}
-                </span>
-              )}
-
-              {/* Input */}
-              <input
-                ref={mobileSearchRef}
-                value={searchInput ?? ''}
-                onChange={e => onSearch?.(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Escape') { setMobileSearchOpen(false); onSearch?.(''); } }}
-                onBlur={() => { if (!(searchInput ?? '').trim()) setTimeout(() => setMobileSearchOpen(false), 120); }}
-                placeholder={isRtl ? 'ابحث في طريق...' : 'Search Tareeq...'}
-                dir={isRtl ? 'rtl' : 'ltr'}
-                style={{
-                  position: 'absolute', inset: 0,
-                  borderRadius: 22, background: 'transparent', border: 'none', outline: 'none',
-                  fontSize: 13, color: 'rgba(10,15,30,0.90)',
-                  paddingRight: isRtl ? 48 : ((searchInput ?? '').length > 0 && mobileSearchOpen ? 34 : 14),
-                  paddingLeft: isRtl ? ((searchInput ?? '').length > 0 && mobileSearchOpen ? 34 : 14) : 48,
-                  opacity: mobileSearchOpen ? 1 : 0,
-                  transition: 'opacity 180ms ease',
-                  pointerEvents: mobileSearchOpen ? 'auto' : 'none',
-                }}
-              />
-
-              {/* Clear × */}
-              {mobileSearchOpen && (searchInput ?? '').length > 0 && (
+                {/* Close/back arrow — anchored to start (right in RTL) */}
                 <button
-                  onMouseDown={e => e.preventDefault()}
-                  onClick={() => { onSearch?.(''); mobileSearchRef.current?.focus(); }}
+                  onClick={() => { setMobileSearchOpen(false); onSearch?.(''); }}
+                  aria-label={isRtl ? 'إغلاق' : 'Close'}
                   style={{
                     position: 'absolute',
-                    [isRtl ? 'right' : 'left']: 8, top: '50%', transform: 'translateY(-50%)',
-                    width: 22, height: 22, borderRadius: '50%',
-                    background: 'rgba(0,0,0,0.10)', border: 'none',
+                    [isRtl ? 'right' : 'left']: 0, top: 0,
+                    width: 44, height: 44,
+                    background: 'none', border: 'none',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', zIndex: 2, color: 'rgba(10,15,30,0.55)',
-                    fontSize: 11, fontWeight: 700,
+                    cursor: 'pointer', zIndex: 2,
+                    color: 'rgba(30,80,180,0.85)',
                   }}
-                >✕</button>
-              )}
-            </div>
+                >
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M8.25 4.5l7.5 7.5-7.5 7.5' : 'M15.75 19.5L8.25 12l7.5-7.5'} />
+                  </svg>
+                </button>
 
-            {/* Glass notification bell button — opens inline panel */}
-            <button
-              onClick={toggleMobileNotifPanel}
-              className="relative shrink-0 flex items-center justify-center rounded-2xl transition-all active:scale-[0.93]"
-              style={{
-                width: 44, height: 44,
-                background: showMobileNotifPanel ? 'rgba(255,255,255,0.32)' : 'rgba(255,255,255,0.22)',
-                backdropFilter: 'blur(14px) saturate(130%)',
-                WebkitBackdropFilter: 'blur(14px) saturate(130%)',
-                border: `1px solid ${showMobileNotifPanel ? 'rgba(212,168,83,0.45)' : 'rgba(255,255,255,0.28)'}`,
-                boxShadow: showMobileNotifPanel ? '0 2px 12px rgba(212,168,83,0.22)' : '0 2px 10px rgba(0,0,0,0.07)',
-              }}
-              aria-label={isRtl ? 'الإشعارات' : 'Notifications'}
-            >
-              <svg width="19" height="19" fill="none" stroke="currentColor" strokeWidth={1.9} viewBox="0 0 24 24"
-                style={{ color: (notifCount > 0 || showMobileNotifPanel) ? 'var(--tr-gold)' : 'rgba(20,30,60,0.70)' }}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-              {notifCount > 0 && (
-                <span style={{
-                  position: 'absolute', top: -3, right: -3,
-                  width: 16, height: 16, borderRadius: '50%',
-                  background: '#f43f5e', color: '#fff', fontSize: 9, fontWeight: 800,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  {notifCount > 9 ? '9+' : notifCount}
-                </span>
-              )}
-            </button>
+                {/* Input */}
+                <input
+                  ref={mobileSearchRef}
+                  value={searchInput ?? ''}
+                  onChange={e => onSearch?.(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Escape') { setMobileSearchOpen(false); onSearch?.(''); } }}
+                  placeholder={isRtl ? 'ابحث في طريق...' : 'Search Tareeq...'}
+                  dir={isRtl ? 'rtl' : 'ltr'}
+                  style={{
+                    position: 'absolute', inset: 0,
+                    borderRadius: 16, background: 'transparent', border: 'none', outline: 'none',
+                    fontSize: 13, color: 'rgba(10,15,30,0.90)',
+                    paddingRight: isRtl ? 48 : ((searchInput ?? '').length > 0 ? 34 : 14),
+                    paddingLeft: isRtl ? ((searchInput ?? '').length > 0 ? 34 : 14) : 48,
+                  }}
+                />
+
+                {/* Clear × */}
+                {(searchInput ?? '').length > 0 && (
+                  <button
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={() => { onSearch?.(''); mobileSearchRef.current?.focus(); }}
+                    style={{
+                      position: 'absolute',
+                      [isRtl ? 'left' : 'right']: 8, top: '50%', transform: 'translateY(-50%)',
+                      width: 22, height: 22, borderRadius: '50%',
+                      background: 'rgba(0,0,0,0.10)', border: 'none',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', zIndex: 2, color: 'rgba(10,15,30,0.55)',
+                      fontSize: 11, fontWeight: 700,
+                    }}
+                  >✕</button>
+                )}
+              </div>
+            ) : (
+              /* ── Normal: bell | flex-1 | search square | profile avatar ── */
+              <>
+                {/* Bell — visual left */}
+                <button
+                  onClick={toggleMobileNotifPanel}
+                  className="relative shrink-0 flex items-center justify-center rounded-2xl transition-all active:scale-[0.93]"
+                  style={{
+                    width: 44, height: 44,
+                    background: showMobileNotifPanel ? 'rgba(255,255,255,0.32)' : 'rgba(255,255,255,0.22)',
+                    backdropFilter: 'blur(14px) saturate(130%)',
+                    WebkitBackdropFilter: 'blur(14px) saturate(130%)',
+                    border: `1px solid ${showMobileNotifPanel ? 'rgba(212,168,83,0.45)' : 'rgba(255,255,255,0.28)'}`,
+                    boxShadow: showMobileNotifPanel ? '0 2px 12px rgba(212,168,83,0.22)' : '0 2px 10px rgba(0,0,0,0.07)',
+                  }}
+                  aria-label={isRtl ? 'الإشعارات' : 'Notifications'}
+                >
+                  <svg width="19" height="19" fill="none" stroke="currentColor" strokeWidth={1.9} viewBox="0 0 24 24"
+                    style={{ color: (notifCount > 0 || showMobileNotifPanel) ? 'var(--tr-gold)' : 'rgba(20,30,60,0.70)' }}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {notifCount > 0 && (
+                    <span style={{
+                      position: 'absolute', top: -3, right: -3,
+                      width: 16, height: 16, borderRadius: '50%',
+                      background: '#f43f5e', color: '#fff', fontSize: 9, fontWeight: 800,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {notifCount > 9 ? '9+' : notifCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Flex spacer */}
+                <div className="flex-1" />
+
+                {/* Square glass search button */}
+                <button
+                  onClick={() => { setMobileSearchOpen(true); setTimeout(() => mobileSearchRef.current?.focus(), 50); }}
+                  aria-label={isRtl ? 'بحث' : 'Search'}
+                  className="shrink-0 flex items-center justify-center rounded-2xl transition-all active:scale-[0.93]"
+                  style={{
+                    width: 44, height: 44,
+                    background: 'rgba(255,255,255,0.22)',
+                    backdropFilter: 'blur(14px) saturate(130%)',
+                    WebkitBackdropFilter: 'blur(14px) saturate(130%)',
+                    border: '1px solid rgba(255,255,255,0.28)',
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
+                    color: 'rgba(20,30,60,0.62)',
+                  }}
+                >
+                  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                  </svg>
+                </button>
+
+                {/* Profile avatar — visual far right, opens settings sheet */}
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('tareeq:open-settings'))}
+                  aria-label={isRtl ? 'الإعدادات' : 'Settings'}
+                  className="shrink-0 flex items-center justify-center rounded-2xl transition-all active:scale-[0.93]"
+                  style={{
+                    width: 44, height: 44,
+                    background: 'rgba(255,255,255,0.22)',
+                    backdropFilter: 'blur(14px) saturate(130%)',
+                    WebkitBackdropFilter: 'blur(14px) saturate(130%)',
+                    border: '1px solid rgba(255,255,255,0.28)',
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
+                    overflow: 'hidden',
+                    padding: 0,
+                  }}
+                >
+                  {user?.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user?.name ?? ''}
+                      className="w-full h-full object-cover"
+                      style={{ borderRadius: 14 }} />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center font-black text-sm"
+                      style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)' }}>
+                      {user?.name?.charAt(0) ?? '?'}
+                    </div>
+                  )}
+                </button>
+              </>
+            )}
           </div>
 
           {/* ── DESKTOP ONLY ── */}
@@ -932,36 +967,24 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                     <div ref={msgPanelRef} style={msgPanelStyle}>
                       {/* Header */}
                       {msgPanelView === 'list' ? (
-                        <div onMouseDown={startPanelDrag} className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
-                          <span className="font-black text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الرسائل' : 'Messages'}</span>
-                          <Link href="/tareeq/inbox" onClick={() => setShowMsgPanel(false)} className="text-xs font-semibold" style={{ color: 'var(--tr-gold)' }}>
+                        <div onMouseDown={startPanelDrag} dir="ltr" className="flex items-center px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
+                          <button onClick={() => setShowMsgPanel(false)} className="w-8 h-8 rounded-full flex items-center justify-center transition shrink-0 hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-text-secondary)' }}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                          </button>
+                          <span className="font-black text-sm flex-1 text-center" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الرسائل' : 'Messages'}</span>
+                          <Link href="/tareeq/inbox" onClick={() => setShowMsgPanel(false)} className="text-xs font-semibold shrink-0" style={{ color: 'var(--tr-gold)' }}>
                             {isRtl ? 'عرض الكل' : 'See all'}
                           </Link>
                         </div>
                       ) : (
-                        <div onMouseDown={startPanelDrag} className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
-                          {/* عرض الكل — يسار */}
-                          <Link href={`/tareeq/inbox/${activeChatConv?.id}`} onClick={() => setShowMsgPanel(false)} className="flex items-center gap-1 px-2 h-7 rounded-full shrink-0 transition hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-gold)', fontSize: 11, fontWeight: 700 }}>
-                            <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
+                        <div onMouseDown={startPanelDrag} dir="ltr" className="flex items-center px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
+                          <button onClick={closeChat} className="w-8 h-8 rounded-full flex items-center justify-center transition shrink-0 hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-text-secondary)' }}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                          </button>
+                          <span className="font-black text-sm flex-1 text-center" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الرسائل' : 'Messages'}</span>
+                          <Link href={`/tareeq/inbox/${activeChatConv?.id}`} onClick={() => setShowMsgPanel(false)} className="text-xs font-semibold shrink-0" style={{ color: 'var(--tr-gold)' }}>
                             {isRtl ? 'عرض الكل' : 'See all'}
                           </Link>
-                          {/* اسم المحادثة — وسط */}
-                          <div className="flex items-center gap-2 flex-1 min-w-0 justify-center">
-                            {activeChatConv?.otherUser.avatarUrl ? (
-                              <img src={activeChatConv.otherUser.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
-                            ) : (
-                              <div className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)' }}>
-                                {activeChatConv?.otherUser.name.charAt(0)}
-                              </div>
-                            )}
-                            <span className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{activeChatConv?.otherUser.name}</span>
-                          </div>
-                          {/* سهم الباك — يمين */}
-                          <button onClick={closeChat} className="w-8 h-8 rounded-full flex items-center justify-center transition shrink-0 hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-text-secondary)' }}>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                            </svg>
-                          </button>
                         </div>
                       )}
 
@@ -1094,50 +1117,22 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                 {showMsgPanel && (
                   <div ref={msgPanelRef} style={msgPanelStyle} dir={isRtl ? 'rtl' : 'ltr'}>
                     {msgPanelView === 'list' ? (
-                      <div onMouseDown={startPanelDrag} className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
-                        <span className="font-black text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الرسائل' : 'Messages'}</span>
-                        <Link href="/tareeq/inbox" onClick={() => setShowMsgPanel(false)} className="text-xs font-semibold" style={{ color: 'var(--tr-gold)' }}>{isRtl ? 'عرض الكل' : 'See all'}</Link>
+                      <div onMouseDown={startPanelDrag} dir="ltr" className="flex items-center px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
+                        <button onClick={() => setShowMsgPanel(false)} className="w-8 h-8 rounded-full flex items-center justify-center transition shrink-0 hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-text-secondary)' }}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                        </button>
+                        <span className="font-black text-sm flex-1 text-center" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الرسائل' : 'Messages'}</span>
+                        <Link href="/tareeq/inbox" onClick={() => setShowMsgPanel(false)} className="text-xs font-semibold shrink-0" style={{ color: 'var(--tr-gold)' }}>{isRtl ? 'عرض الكل' : 'See all'}</Link>
                       </div>
                     ) : (
-                      <div onMouseDown={startPanelDrag} className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
-                        {/* عرض الكل — يسار */}
-                        <Link href={`/tareeq/inbox/${activeChatConv?.id}`} onClick={() => setShowMsgPanel(false)} className="flex items-center gap-1 px-2 h-7 rounded-full shrink-0 transition hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-gold)', fontSize: 11, fontWeight: 700 }}>
-                          <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
+                      <div onMouseDown={startPanelDrag} dir="ltr" className="flex items-center px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
+                        <button onClick={closeChat} className="w-8 h-8 rounded-full flex items-center justify-center transition shrink-0 hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-text-secondary)' }}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                        </button>
+                        <span className="font-black text-sm flex-1 text-center" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الرسائل' : 'Messages'}</span>
+                        <Link href={`/tareeq/inbox/${activeChatConv?.id}`} onClick={() => setShowMsgPanel(false)} className="text-xs font-semibold shrink-0" style={{ color: 'var(--tr-gold)' }}>
                           {isRtl ? 'عرض الكل' : 'See all'}
                         </Link>
-                        {/* اسم المحادثة — وسط */}
-                        <div className="flex items-center gap-2 flex-1 min-w-0 justify-center">
-                          {activeChatConv?.otherUser.avatarUrl ? (
-                            <img src={activeChatConv.otherUser.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
-                          ) : (
-                            <div className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)' }}>{activeChatConv?.otherUser.name.charAt(0)}</div>
-                          )}
-                          <span className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{activeChatConv?.otherUser.name}</span>
-                        </div>
-                        {/* أزرار الاتصال + سهم الباك — يمين */}
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          <button onClick={() => startDesktopCall('audio')} disabled={callStarting}
-                            title={isRtl ? 'مكالمة صوتية' : 'Audio call'}
-                            className="w-8 h-8 rounded-full flex items-center justify-center transition hover:bg-[var(--tr-overlay)]"
-                            style={{ color: 'var(--tr-text-secondary)' }}>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-                            </svg>
-                          </button>
-                          <button onClick={() => startDesktopCall('video')} disabled={callStarting}
-                            title={isRtl ? 'مكالمة فيديو' : 'Video call'}
-                            className="w-8 h-8 rounded-full flex items-center justify-center transition hover:bg-[var(--tr-overlay)]"
-                            style={{ color: 'var(--tr-text-secondary)' }}>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
-                            </svg>
-                          </button>
-                          <button onClick={closeChat} className="w-8 h-8 rounded-full flex items-center justify-center transition hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-text-secondary)' }}>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                            </svg>
-                          </button>
-                        </div>
                       </div>
                     )}
                     {msgPanelView === 'list' ? (

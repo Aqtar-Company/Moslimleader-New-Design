@@ -1,7 +1,7 @@
-/* tareeq-v6 — Offline, Background Sync, Periodic Sync, Rich Push, Notification Actions */
-const CACHE_STATIC  = 'tareeq-v6-static';
-const CACHE_PAGES   = 'tareeq-v6-pages';
-const CACHE_IMAGES  = 'tareeq-v6-images';
+/* tareeq-v7 — Offline, Background Sync, Periodic Sync, Rich Push, Media-channel audio */
+const CACHE_STATIC  = 'tareeq-v7-static';
+const CACHE_PAGES   = 'tareeq-v7-pages';
+const CACHE_IMAGES  = 'tareeq-v7-images';
 const ALL_CACHES    = [CACHE_STATIC, CACHE_PAGES, CACHE_IMAGES];
 
 const SHELL = [
@@ -239,16 +239,21 @@ self.addEventListener('push', e => {
       }
     })());
   } else {
-    // Non-call notification: single shot
-    const wakePromise = postType === 'message'
-      ? clients.matchAll({ type: 'window' }).then(list => {
-          for (const c of list) c.postMessage({ type: 'TAREEQ_NEW_MESSAGE' });
-        })
-      : Promise.resolve();
-    e.waitUntil(Promise.all([
-      self.registration.showNotification(title, options),
-      wakePromise,
-    ]));
+    // Non-call notification: single shot.
+    // Only suppress the OS sound when a *visible* controlled window is open
+    // (visibilityState === 'visible' means the tab is foregrounded/unlocked).
+    // Backgrounded, minimized, or uncontrolled tabs can't reliably resume AudioContext
+    // from a SW postMessage, so we fall back to the OS sound for those.
+    e.waitUntil((async () => {
+      // Only controlled clients run the new TareeqMediaSession handler
+      const windowList = await clients.matchAll({ type: 'window' });
+      const visibleWindows = windowList.filter(c => c.visibilityState === 'visible');
+      const hasVisibleWindow = visibleWindows.length > 0;
+      await self.registration.showNotification(title, { ...options, silent: hasVisibleWindow });
+      for (const c of visibleWindows) {
+        c.postMessage({ type: 'TAREEQ_PLAY_SOUND', notifType: postType });
+      }
+    })());
   }
 });
 

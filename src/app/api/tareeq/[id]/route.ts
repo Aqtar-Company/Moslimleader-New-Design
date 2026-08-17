@@ -23,20 +23,25 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
 
-  // Increment view count (non-blocking)
-  prisma.tareeqPost.update({ where: { id: params.id }, data: { viewCount: { increment: 1 } } }).catch(() => {});
+  // Resolve current user once for both view recording and like/bookmark checks
+  const authUser = await getAuthUser().catch(() => null);
+
+  // Increment view count and record viewer (non-blocking)
+  prisma.$transaction([
+    prisma.tareeqPostView.create({ data: { postId: params.id, userId: authUser?.userId ?? null } }),
+    prisma.tareeqPost.update({ where: { id: params.id }, data: { viewCount: { increment: 1 } } }),
+  ]).catch(() => {});
 
   // Check if current user already liked/bookmarked/subscribed
   let userLiked = false;
   let userBookmarked = false;
   let userSubscribed = false;
   try {
-    const currentUser = await getAuthUser();
-    if (!currentUser) throw new Error('not logged in');
+    if (!authUser) throw new Error('not logged in');
     const [like, bookmark, subscription] = await Promise.all([
-      prisma.tareeqLike.findUnique({ where: { postId_userId: { postId: params.id, userId: currentUser.userId } } }),
-      prisma.tareeqBookmark.findUnique({ where: { postId_userId: { postId: params.id, userId: currentUser.userId } } }),
-      prisma.tareeqPostSubscription.findUnique({ where: { postId_userId: { postId: params.id, userId: currentUser.userId } } }),
+      prisma.tareeqLike.findUnique({ where: { postId_userId: { postId: params.id, userId: authUser.userId } } }),
+      prisma.tareeqBookmark.findUnique({ where: { postId_userId: { postId: params.id, userId: authUser.userId } } }),
+      prisma.tareeqPostSubscription.findUnique({ where: { postId_userId: { postId: params.id, userId: authUser.userId } } }),
     ]);
     userLiked = !!like;
     userBookmarked = !!bookmark;
@@ -55,9 +60,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
-  const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { userId: true } });
+  const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { userId: true, createdAt: true } });
   if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
   if (post.userId !== user.userId) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+
+  const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  if (post.createdAt < hourAgo) {
+    return NextResponse.json({ error: 'Edit window expired — posts can only be edited within 1 hour of posting' }, { status: 403 });
+  }
 
   const body = await req.json().catch(() => ({}));
   const content = String(body.content ?? '').trim();

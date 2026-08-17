@@ -140,14 +140,23 @@ export function TareeqInstallButton({ variant = 'full' }: { variant?: 'full' | '
   );
 }
 
-// Mobile install banner — appears at bottom above the FAB
+// ── Accent: yellow 80% + magenta 20% ──────────────────────────────────────
+// rgb(255, 179, 89) → warm amber-rose
+const ACCENT        = '#FFB359';
+const ACCENT_LIGHT  = '#FFCB8A';
+const ACCENT_GLOW   = 'rgba(255,100,200,0.18)';
+
 export function TareeqInstallBanner() {
   const { isRtl } = useLang();
   const { canInstall, installed, install } = useTareeqInstall();
   const [dismissed, setDismissed] = useState(false);
+  const [visible, setVisible]     = useState(false);
 
   useEffect(() => {
-    if (sessionStorage.getItem('tareeq-install-dismissed')) setDismissed(true);
+    if (sessionStorage.getItem('tareeq-install-dismissed')) { setDismissed(true); return; }
+    // Small delay so it doesn't flash on first paint
+    const t = setTimeout(() => setVisible(true), 1200);
+    return () => clearTimeout(t);
   }, []);
 
   if (!canInstall || installed || dismissed) return null;
@@ -157,46 +166,110 @@ export function TareeqInstallBanner() {
     setDismissed(true);
   }
 
+  const features = isRtl
+    ? [{ i: '⚡', t: 'يعمل بدون إنترنت' }, { i: '🔔', t: 'إشعارات فورية' }, { i: '✦', t: 'تجربة تطبيق أصلي' }]
+    : [{ i: '⚡', t: 'Works offline' },    { i: '🔔', t: 'Instant notifications' }, { i: '✦', t: 'Native app feel' }];
+
   return (
     <div
-      className="fixed bottom-20 sm:bottom-6 left-3 right-3 sm:hidden z-30 rounded-2xl"
+      className="fixed inset-0 z-[200] flex items-center justify-center p-5"
       style={{
-        background: 'linear-gradient(135deg, #0d1a35 0%, #0a1228 100%)',
-        border: '1.5px solid rgba(212,168,83,0.55)',
-        boxShadow: '0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(212,168,83,0.12), 0 0 24px rgba(212,168,83,0.10)',
-        padding: '14px 14px 14px 14px',
+        background: 'rgba(0,0,0,0.70)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+        opacity: visible ? 1 : 0,
+        transition: 'opacity 0.35s ease',
+        pointerEvents: visible ? 'auto' : 'none',
       }}
+      onClick={dismiss}
     >
-      <div className="flex items-center gap-3">
-        <span className="w-12 h-12 rounded-xl overflow-hidden shrink-0" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.4)' }}>
-          <img src="/Tareeq-big.png" alt="" className="w-full h-full object-cover" />
-        </span>
-        <div className="flex-1 min-w-0">
-          <p className="font-black text-base" style={{ color: '#ffffff' }}>
-            {isRtl ? 'حمّل تطبيق طريق' : 'Install Tareeq'}
-          </p>
-          <p className="text-xs mt-0.5" style={{ color: 'rgba(212,168,83,0.80)' }}>
-            {isRtl ? 'أضفه للشاشة الرئيسية — يعمل بدون إنترنت' : 'Add to home screen · Works offline'}
-          </p>
-        </div>
-        <button onClick={dismiss} className="shrink-0 p-1.5 rounded-full transition" style={{ color: 'rgba(255,255,255,0.35)' }}>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      <button
-        onClick={install}
-        className="mt-3 w-full font-bold text-sm py-2.5 rounded-xl transition active:scale-95"
+      <div
+        onClick={e => e.stopPropagation()}
         style={{
-          background: 'linear-gradient(90deg, #c49a3a 0%, #e0bc5a 50%, #c49a3a 100%)',
-          color: '#0a0e1a',
-          letterSpacing: '0.02em',
-          boxShadow: '0 4px 16px rgba(196,154,58,0.35)',
+          background: 'linear-gradient(160deg, #111827 0%, #0c1221 60%, #0e1528 100%)',
+          border: `1.5px solid rgba(255,179,89,0.22)`,
+          borderRadius: 28,
+          padding: '32px 28px 26px',
+          maxWidth: 340,
+          width: '100%',
+          boxShadow: `0 32px 80px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,100,200,0.08), 0 0 60px ${ACCENT_GLOW}`,
+          position: 'relative',
+          transform: visible ? 'translateY(0) scale(1)' : 'translateY(16px) scale(0.97)',
+          transition: 'transform 0.35s cubic-bezier(.22,1,.36,1)',
         }}
       >
-        {isRtl ? '✦ تثبيت التطبيق' : '✦ Install App'}
-      </button>
+        {/* Close */}
+        <button
+          onClick={dismiss}
+          style={{
+            position: 'absolute', top: 14, insetInlineEnd: 14,
+            width: 30, height: 30, borderRadius: '50%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.4)',
+            border: 'none', cursor: 'pointer', fontSize: 16, lineHeight: 1,
+            transition: 'background 0.15s',
+          }}
+        >×</button>
+
+        {/* Logo + title */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, marginBottom: 24 }}>
+          <div style={{
+            width: 80, height: 80, borderRadius: 22, overflow: 'hidden',
+            boxShadow: `0 0 0 2px rgba(255,179,89,0.30), 0 8px 28px rgba(0,0,0,0.5), 0 0 30px ${ACCENT_GLOW}`,
+          }}>
+            <img src="/Tareeq-big.png" alt="طريق" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontWeight: 900, fontSize: 22, color: '#fff', margin: '0 0 6px', letterSpacing: '-0.01em' }}>
+              {isRtl ? 'طريق' : 'Tareeq'}
+            </p>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.42)', lineHeight: 1.5, margin: 0 }}>
+              {isRtl ? 'أضفه لشاشتك الرئيسية' : 'Add to your home screen'}
+            </p>
+          </div>
+        </div>
+
+        {/* Feature list */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 26, padding: '0 4px' }}>
+          {features.map(({ i, t }) => (
+            <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'rgba(255,255,255,0.52)', fontSize: 13 }}>
+              <span style={{ fontSize: 14, width: 20, textAlign: 'center', flexShrink: 0, color: ACCENT_LIGHT }}>{i}</span>
+              <span>{t}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Install CTA */}
+        <button
+          onClick={install}
+          style={{
+            width: '100%', fontWeight: 800, fontSize: 15,
+            padding: '13px 0', borderRadius: 16,
+            background: `linear-gradient(90deg, ${ACCENT} 0%, ${ACCENT_LIGHT} 50%, ${ACCENT} 100%)`,
+            color: '#0a0c14',
+            letterSpacing: '0.03em',
+            boxShadow: `0 6px 28px rgba(255,140,60,0.40), 0 0 16px ${ACCENT_GLOW}`,
+            border: 'none', cursor: 'pointer',
+            transition: 'transform 0.15s, box-shadow 0.15s',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.02)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)'; }}
+        >
+          {isRtl ? '✦ تثبيت التطبيق' : '✦ Install App'}
+        </button>
+
+        {/* Later */}
+        <button
+          onClick={dismiss}
+          style={{
+            display: 'block', width: '100%', textAlign: 'center',
+            marginTop: 12, fontSize: 12, color: 'rgba(255,255,255,0.25)',
+            background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0',
+          }}
+        >
+          {isRtl ? 'لاحقاً' : 'Maybe later'}
+        </button>
+      </div>
     </div>
   );
 }

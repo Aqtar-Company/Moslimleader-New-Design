@@ -8,9 +8,25 @@ import TareeqUserClient from './TareeqUserClient';
 interface Props { params: { userId: string } }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const user = await prisma.user.findUnique({ where: { id: params.userId }, select: { name: true } });
+  const user = await prisma.user.findUnique({
+    where: { id: params.userId },
+    select: { name: true, avatarUrl: true },
+  });
   if (!user) return { title: 'طريق' };
-  return { title: `${user.name} — طريق` };
+  const ogImage = user.avatarUrl ?? '/Tareeq-big.png';
+  return {
+    title: `${user.name} — طريق`,
+    openGraph: {
+      title: `${user.name} — طريق`,
+      description: `تابع مسيرة ${user.name} على منصة طريق`,
+      images: [{ url: ogImage, width: 512, height: 512, alt: user.name }],
+    },
+    twitter: {
+      card: 'summary',
+      title: `${user.name} — طريق`,
+      images: [ogImage],
+    },
+  };
 }
 
 export default async function TareeqUserPage({ params }: Props) {

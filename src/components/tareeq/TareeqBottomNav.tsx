@@ -65,7 +65,7 @@ const CIRCLE_BTN_BOTTOM = NAV_H + 6 - CIRCLE_RADIUS; // 36
 const DRAG_TOL = 10;        // px before entering drag mode
 const CAMERA_THRESHOLD = 68; // px upward to trigger camera
 const CAM_HINT_KEY = 'tr_cam_hint_count';
-const CAM_HINT_MAX = 10;
+const CAM_HINT_MAX = 1;
 
 
 /* ─── Contacts / Call Sheet ─────────────────────────────────────────────── */
@@ -566,6 +566,20 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
     setShowHint(count < CAM_HINT_MAX);
   }, []);
 
+  // Nuri lantern level for footer icon brightness (0-4)
+  const [nuriLevel, setNuriLevel] = useState(0);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('nuri-last-read');
+      if (!raw) return;
+      const { date, streak } = JSON.parse(raw);
+      const today = new Date().toLocaleDateString('en-CA');
+      const yesterday = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toLocaleDateString('en-CA'); })();
+      if (date === today) setNuriLevel(Math.min(streak ?? 0, 4));
+      else if (date === yesterday) setNuriLevel(Math.max(0, Math.min((streak ?? 1) - 1, 4)));
+    } catch { /* ignore */ }
+  }, []);
+
   /* ── Open settings via custom event (e.g. from profile page) ── */
   useEffect(() => {
     const h = () => setShowProfile(true);
@@ -774,7 +788,29 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
 
   const isHome = pathname === '/tareeq' || pathname === '/tareeq/';
   const isInbox = pathname.startsWith('/tareeq/inbox');
-  const isOnProfile = pathname.startsWith('/tareeq/u/') || pathname === '/tareeq/profile';
+  const isKhatmati = pathname.startsWith('/tareeq/khatmati');
+  const isKhatmatiRead = pathname.startsWith('/tareeq/khatmati/read');
+
+  // On the immersive read page only: hide the nav — the reader has its own controls
+  if (isKhatmatiRead) {
+    return (
+      <>
+        {activeCall && (
+          <TareeqCallScreen
+            callId={activeCall.callId}
+            role="caller"
+            callType={activeCall.callType}
+            remoteUser={activeCall.remoteUser}
+            onEnd={() => setActiveCall(null)}
+          />
+        )}
+      </>
+    );
+  }
+
+  function goToNuri() {
+    router.push('/tareeq/khatmati');
+  }
 
   return (
     <>
@@ -849,12 +885,23 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           overflow: 'hidden',
         }}
       >
-        {/* Add-sign star icon */}
+        {/* Add-sign star icon with glass circle behind it */}
         <div
           ref={addIconRef}
-          style={{ transition: 'opacity 0.18s ease', pointerEvents: 'none', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ transition: 'opacity 0.18s ease', pointerEvents: 'none', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
         >
-          <img src="/Add-sign.svg" width={72} height={72} alt="" aria-hidden draggable={false} style={{ display: 'block', userSelect: 'none' }} />
+          {/* Glass circle backdrop */}
+          <div style={{
+            position: 'absolute',
+            width: 80, height: 80,
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.18)',
+            backdropFilter: 'blur(12px) saturate(120%)',
+            WebkitBackdropFilter: 'blur(12px) saturate(120%)',
+            border: '1px solid rgba(255,255,255,0.35)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+          }} />
+          <img src="/Add-sign.svg" width={72} height={72} alt="" aria-hidden draggable={false} style={{ display: 'block', userSelect: 'none', position: 'relative', zIndex: 1 }} />
         </div>
         {/* Camera overlay — glassy blue, revealed on swipe-up */}
         <div
@@ -944,42 +991,73 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           className="relative flex items-end justify-around px-3"
           style={{ height: NAV_H, paddingBottom: 'env(safe-area-inset-bottom, 0px)', zIndex: 1 }}
         >
-            {/* 1 (far RIGHT in RTL) — Profile avatar */}
+            {/* 1 (far RIGHT in RTL) — نُوري */}
           <button
-            onClick={() => user ? router.push(`/tareeq/u/${user.id}`) : router.push('/login?next=/tareeq')}
+            onClick={goToNuri}
             className="flex flex-col items-center justify-end gap-1 pb-2 transition-all active:scale-90"
             style={{ minWidth: 44, background: 'none', border: 'none', cursor: 'pointer' }}
           >
-            {user?.avatarUrl ? (
-              <img src={user.avatarUrl} alt={user.name ?? ''}
-                className="w-7 h-7 rounded-full object-cover"
-                style={{ border: '2px solid var(--tr-gold-dim)', opacity: isOnProfile ? 1 : 0.75 }} />
-            ) : (
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black"
-                style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: `2px solid ${isOnProfile ? 'var(--tr-gold)' : 'var(--tr-gold-dim)'}`, opacity: isOnProfile ? 1 : 0.75 }}>
-                {user?.name?.charAt(0) ?? '?'}
-              </div>
-            )}
+            {/* Lamp icon — brightness matches nuriLevel (0-4) */}
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" strokeWidth={1.6}
+              style={{
+                color: isKhatmati ? NAV_ACCENT : nuriLevel >= 2 ? 'rgba(255,204,0,0.6)' : 'var(--tr-text-secondary)',
+                filter: isKhatmati
+                  ? `drop-shadow(0 0 ${4 + nuriLevel * 3}px ${NAV_ACCENT}bb)`
+                  : nuriLevel >= 1
+                  ? `drop-shadow(0 0 ${nuriLevel * 2}px rgba(255,204,0,0.5))`
+                  : 'none',
+                transition: 'all 0.3s',
+              }}>
+              {/* Lamp body */}
+              <path strokeLinecap="round" strokeLinejoin="round" stroke="currentColor"
+                d="M9 2h6M10 2v1.5M14 2v1.5M8 5.5C8 4.12 9.12 3 10.5 3h3C14.88 3 16 4.12 16 5.5L14.5 13h-5L8 5.5z"/>
+              {/* Base */}
+              <path strokeLinecap="round" stroke="currentColor" d="M9.5 13h5l-.5 2.5a2 2 0 01-4 0L9.5 13z"/>
+              {/* Flame — filled when level > 0 */}
+              <ellipse cx="12" cy="8.5" rx="1.5" ry="2"
+                fill={nuriLevel > 0 || isKhatmati ? 'currentColor' : 'none'}
+                stroke="currentColor" strokeWidth={nuriLevel > 0 ? 0 : 1}
+                opacity={nuriLevel > 0 || isKhatmati ? 0.85 : 0.3}
+                style={{ transition: 'opacity 0.4s, fill 0.4s' }}
+              />
+              {/* Glow rays when bright (level ≥ 3) */}
+              {(nuriLevel >= 3 || isKhatmati) && (
+                <>
+                  <line x1="12" y1="1" x2="12" y2="1.8" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" opacity={0.6}/>
+                  <line x1="6.5" y1="3" x2="7.1" y2="3.5" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" opacity={0.6}/>
+                  <line x1="17.5" y1="3" x2="16.9" y2="3.5" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" opacity={0.6}/>
+                </>
+              )}
+            </svg>
+            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isKhatmati ? NAV_ACCENT : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
+              {isRtl ? 'نُوري' : 'Nuri'}
+            </span>
           </button>
 
-          {/* 2 — Contacts / Quick Call */}
-          <button
-            onClick={() => { if (user) setShowContacts(true); else router.push('/login?next=/tareeq'); }}
-            className="flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
-            style={{ minWidth: 44, background: 'none', border: 'none', cursor: 'pointer' }}
+          {/* 2 — Chat / Messages */}
+          <Link
+            href="/tareeq/inbox"
+            className="relative flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
+            style={{ minWidth: 44 }}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"
               style={{
-                color: showContacts ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
-                filter: showContacts ? 'drop-shadow(0 0 5px rgba(212,168,83,0.45))' : 'none',
+                color: isInbox ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
+                filter: isInbox ? 'drop-shadow(0 0 5px rgba(212,168,83,0.45))' : 'none',
                 transition: 'all 0.2s',
               }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
             </svg>
-            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: showContacts ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
-              {isRtl ? 'اتصال' : 'Call'}
+            {messageCount > 0 && (
+              <span className="absolute top-0 end-0 min-w-[17px] h-[17px] rounded-full flex items-center justify-center text-[9px] font-black px-0.5"
+                style={{ background: '#f43f5e', color: '#fff' }}>
+                {messageCount > 9 ? '9+' : messageCount}
+              </span>
+            )}
+            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isInbox ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
+              {isRtl ? 'الشات' : 'Chat'}
             </span>
-          </button>
+          </Link>
 
           {/* 3 — Center spacer + label */}
           <div className="flex flex-col items-center justify-end pb-2" style={{ width: CIRCLE_SIZE, minWidth: CIRCLE_SIZE }}>
@@ -1008,30 +1086,24 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             </span>
           </Link>
 
-          {/* 5 (far LEFT in RTL) — Chat / Messages */}
-          <Link
-            href="/tareeq/inbox"
-            className="relative flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
-            style={{ minWidth: 44 }}
+          {/* 5 (far LEFT in RTL) — Contacts / Quick Call */}
+          <button
+            onClick={() => { if (user) setShowContacts(true); else router.push('/login?next=/tareeq'); }}
+            className="flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
+            style={{ minWidth: 44, background: 'none', border: 'none', cursor: 'pointer' }}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"
               style={{
-                color: isInbox ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
-                filter: isInbox ? 'drop-shadow(0 0 5px rgba(212,168,83,0.45))' : 'none',
+                color: showContacts ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
+                filter: showContacts ? 'drop-shadow(0 0 5px rgba(212,168,83,0.45))' : 'none',
                 transition: 'all 0.2s',
               }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
             </svg>
-            {messageCount > 0 && (
-              <span className="absolute top-0 end-0 min-w-[17px] h-[17px] rounded-full flex items-center justify-center text-[9px] font-black px-0.5"
-                style={{ background: '#f43f5e', color: '#fff' }}>
-                {messageCount > 9 ? '9+' : messageCount}
-              </span>
-            )}
-            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isInbox ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
-              {isRtl ? 'الشات' : 'Chat'}
+            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: showContacts ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
+              {isRtl ? 'اتصال' : 'Call'}
             </span>
-          </Link>
+          </button>
         </div>
       </nav>
 

@@ -28,6 +28,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
   const [audioProgress, setAudioProgress] = useState(0);
   const [fontLoaded, setFontLoaded] = useState(false);
   const [mushafImgError, setMushafImgError] = useState(false);
+  const [mushafImgLoaded, setMushafImgLoaded] = useState(false);
 
   // Refs for closure-safe access in audio callbacks
   const versesRef   = useRef<QuranVerse[]>([]);
@@ -81,6 +82,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
     setLoading(true);
     setError(false);
     setMushafImgError(false);
+    setMushafImgLoaded(false);
     fetchPageVerses(page)
       .then(v => {
         if (cancelled) return;
@@ -381,18 +383,31 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
             {mode === 'read' && (
               <div className="flex flex-col items-center pb-4 pt-2">
                 {!mushafImgError ? (
-                  <img
-                    key={`${page}`}
-                    src={getMushafPageUrl(page)}
-                    alt={`صفحة ${page}`}
-                    draggable={false}
-                    onError={onMushafImgError}
-                    style={{
-                      width: '100%', maxWidth: 520,
-                      display: 'block',
-                      WebkitUserSelect: 'none', userSelect: 'none',
-                    }}
-                  />
+                  <>
+                    {/* Spinner while image loads from proxy */}
+                    {!mushafImgLoaded && (
+                      <div style={{ height: 460, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, width: '100%' }}>
+                        <div className="w-8 h-8 border-2 rounded-full animate-spin"
+                          style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--nuri-gold)' }} />
+                        <span style={{ fontSize: 13, color: 'var(--tr-text-muted)' }}>
+                          {isRtl ? 'جاري تحميل الصفحة...' : 'Loading page...'}
+                        </span>
+                      </div>
+                    )}
+                    <img
+                      key={`${page}`}
+                      src={getMushafPageUrl(page)}
+                      alt={`صفحة ${page}`}
+                      draggable={false}
+                      onLoad={() => setMushafImgLoaded(true)}
+                      onError={onMushafImgError}
+                      style={{
+                        width: '100%', maxWidth: 520,
+                        display: mushafImgLoaded ? 'block' : 'none',
+                        WebkitUserSelect: 'none', userSelect: 'none',
+                      }}
+                    />
+                  </>
                 ) : (
                   /* Fallback: text rendering when image CDN fails */
                   <div className="px-4 pt-4 pb-4 max-w-lg mx-auto w-full">

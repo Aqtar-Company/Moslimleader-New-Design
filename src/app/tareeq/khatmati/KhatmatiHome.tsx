@@ -115,6 +115,7 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
           background: `radial-gradient(ellipse at 50% -10%, rgba(255,204,0,0.09) 0%, ${BG_DEEP} 55%)`,
           backgroundColor: BG_DEEP,
           paddingBottom: 100,
+          overscrollBehavior: 'none',
         }}
       >
         {/* ── Header ── */}

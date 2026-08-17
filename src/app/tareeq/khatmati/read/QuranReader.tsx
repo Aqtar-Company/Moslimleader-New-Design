@@ -27,6 +27,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
   const [fontLoaded, setFontLoaded] = useState(false);
+  const [mushafImgError, setMushafImgError] = useState(false);
 
   // Refs for closure-safe access in audio callbacks
   const versesRef   = useRef<QuranVerse[]>([]);
@@ -79,6 +80,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
     let cancelled = false;
     setLoading(true);
     setError(false);
+    setMushafImgError(false);
     fetchPageVerses(page)
       .then(v => {
         if (cancelled) return;
@@ -235,6 +237,11 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
     localStorage.setItem('khatmati-mode', m);
   }
 
+  function getMushafPageUrl(p: number): string {
+    const n = String(p).padStart(3, '0');
+    return `https://static.qurancdn.com/images/v2/pages/page-${n}.png`;
+  }
+
   // ── Current verse info ────────────────────────────────────────────────────
 
   const cv = verses[currentIdx];
@@ -339,20 +346,9 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
                     {surahNameAr} ﴿{toArabicNum(cv.verse_number)}﴾
                   </p>
                 </div>
-                {/* Verse counter */}
-                <div className="flex items-center gap-4">
-                  <button onClick={() => goVerse(currentIdx + 1)} disabled={currentIdx >= verses.length - 1}
-                    className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30"
-                    style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                    </svg>
-                  </button>
-                  <p className="text-sm font-bold" style={{ color: 'var(--tr-text-muted)', minWidth: 64, textAlign: 'center' }}>
-                    {isRtl
-                      ? `${toArabicNum(currentIdx + 1)} / ${toArabicNum(verses.length)}`
-                      : `${currentIdx + 1} / ${verses.length}`}
-                  </p>
+                {/* Verse counter — RTL: right=prev, left=next */}
+                <div className="flex items-center gap-4" dir="rtl">
+                  {/* Right in RTL = prev verse */}
                   <button onClick={() => goVerse(currentIdx - 1)} disabled={currentIdx === 0}
                     className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30"
                     style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}>
@@ -360,14 +356,79 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                     </svg>
                   </button>
+                  <p className="text-sm font-bold" style={{ color: 'var(--tr-text-muted)', minWidth: 64, textAlign: 'center' }}>
+                    {isRtl
+                      ? `${toArabicNum(currentIdx + 1)} / ${toArabicNum(verses.length)}`
+                      : `${currentIdx + 1} / ${verses.length}`}
+                  </p>
+                  {/* Left in RTL = next verse */}
+                  <button onClick={() => goVerse(currentIdx + 1)} disabled={currentIdx >= verses.length - 1}
+                    className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30"
+                    style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                    </svg>
+                  </button>
                 </div>
               </div>
             )}
 
-            {/* Read / Both mode — full page */}
-            {(mode === 'read' || mode === 'both') && (
+            {/* Read mode — classical mushaf page image */}
+            {mode === 'read' && (
+              <div className="flex flex-col items-center pb-4 pt-2">
+                {!mushafImgError ? (
+                  <img
+                    key={page}
+                    src={getMushafPageUrl(page)}
+                    alt={`صفحة ${page}`}
+                    draggable={false}
+                    onError={() => setMushafImgError(true)}
+                    style={{
+                      width: '100%', maxWidth: 500,
+                      borderRadius: 4,
+                      display: 'block',
+                    }}
+                  />
+                ) : (
+                  /* Fallback: text rendering when image CDN fails */
+                  <div className="px-4 pt-4 pb-4 max-w-lg mx-auto w-full">
+                    {verses[0]?.verse_number === 1
+                      && verses[0]?.chapter_id !== 9
+                      && verses[0]?.chapter_id !== 1 && (
+                      <p dir="rtl" style={{
+                        fontFamily: qFont, fontSize: 22, textAlign: 'center',
+                        color: 'var(--tr-text-muted)', marginBottom: 16, lineHeight: 2,
+                      }}>
+                        بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ
+                      </p>
+                    )}
+                    <div dir="rtl" style={{ fontFamily: qFont, fontSize: 22, lineHeight: 2.4, textAlign: 'justify', color: 'var(--tr-text-primary)' }}>
+                      {verses.map((v, i) => (
+                        <span
+                          key={v.id}
+                          ref={el => { verseRefs.current[i] = el; }}
+                          onClick={() => { goVerse(i); }}
+                          style={{
+                            display: 'inline',
+                            background: i === currentIdx ? 'rgba(255,204,0,0.20)' : 'transparent',
+                            borderRadius: 4, padding: '0 3px',
+                            cursor: 'pointer', transition: 'background 0.3s',
+                          }}>
+                          {v.text_uthmani}
+                          <span style={{ fontFamily: 'serif', fontSize: 14, color: 'var(--tr-text-muted)', margin: '0 3px', verticalAlign: 'middle' }}>
+                            ﴿{toArabicNum(v.verse_number)}﴾
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Both mode — full text page */}
+            {mode === 'both' && (
               <div className="px-4 pt-4 pb-4 max-w-lg mx-auto">
-                {/* Bismillah — only when page starts with verse 1, excluding At-Tawbah (9) and Al-Fatiha (1) since it's part of the text */}
                 {verses[0]?.verse_number === 1
                   && verses[0]?.chapter_id !== 9
                   && verses[0]?.chapter_id !== 1 && (
@@ -386,10 +447,9 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
                       onClick={() => { goVerse(i); }}
                       style={{
                         display: 'inline',
-                        background: i === currentIdx ? 'rgba(212,168,83,0.22)' : 'transparent',
+                        background: i === currentIdx ? 'rgba(255,204,0,0.20)' : 'transparent',
                         borderRadius: 4, padding: '0 3px',
                         cursor: 'pointer', transition: 'background 0.3s',
-                        boxDecoration: 'clone',
                       }}>
                       {v.text_uthmani}
                       <span style={{ fontFamily: 'serif', fontSize: 14, color: 'var(--tr-text-muted)', margin: '0 3px', verticalAlign: 'middle' }}>

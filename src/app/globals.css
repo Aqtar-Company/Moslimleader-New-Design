@@ -16,11 +16,11 @@
   --tr-gold-bright: #3b82f6;
   --tr-gold-dim:    #1d4ed8;
   --tr-gold-glow:   rgba(37,99,235,0.18);
-  /* نُوري (Khatmati) — warm amber gold, independent of Tareeq blue */
-  --nuri-gold:        #d4a853;
-  --nuri-gold-bright: #f4c55a;
-  --nuri-gold-dim:    #a07830;
-  --nuri-gold-glow:   rgba(212,168,83,0.18);
+  /* نُوري (Khatmati) — Y100+M20 CMYK yellow (#FFCC00), independent of Tareeq blue */
+  --nuri-gold:        #FFCC00;
+  --nuri-gold-bright: #FFD740;
+  --nuri-gold-dim:    #c9a000;
+  --nuri-gold-glow:   rgba(255,204,0,0.22);
   /* Secondary — Celestial Teal */
   --tr-teal:        #0ea5e9;
   --tr-teal-dim:    rgba(14,165,233,0.15);
@@ -63,11 +63,11 @@
   --tr-gold-bright: #60a5fa;
   --tr-gold-dim:    #2563eb;
   --tr-gold-glow:   rgba(59,130,246,0.22);
-  /* نُوري (Khatmati) — warm amber gold */
-  --nuri-gold:        #f4c55a;
-  --nuri-gold-bright: #ffd97a;
-  --nuri-gold-dim:    #d4a853;
-  --nuri-gold-glow:   rgba(244,197,90,0.22);
+  /* نُوري (Khatmati) — Y100+M20 CMYK yellow */
+  --nuri-gold:        #FFCC00;
+  --nuri-gold-bright: #FFD740;
+  --nuri-gold-dim:    #c9a000;
+  --nuri-gold-glow:   rgba(255,204,0,0.28);
   --tr-teal:        #38bdf8;
   --tr-teal-dim:    rgba(56,189,248,0.15);
   --tr-text-primary:   #f1f5f9;

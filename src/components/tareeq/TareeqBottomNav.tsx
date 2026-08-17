@@ -809,14 +809,6 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
   }
 
   function goToNuri() {
-    try {
-      const raw = localStorage.getItem('nuri-progress');
-      if (raw) {
-        const { page, surah, ayah } = JSON.parse(raw);
-        router.push(`/tareeq/khatmati/read?page=${page}&surah=${surah}&ayah=${ayah}`);
-        return;
-      }
-    } catch { /* ignore */ }
     router.push('/tareeq/khatmati');
   }
 

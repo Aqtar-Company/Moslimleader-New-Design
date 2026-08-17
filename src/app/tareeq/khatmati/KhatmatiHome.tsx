@@ -83,7 +83,9 @@ function sirajState(lastReadDate: string | null): 'bright' | 'dim' | 'dark' {
   return 'dark';
 }
 
-export default function KhatmatiHome({ initialProgress }: { initialProgress: Progress | null }) {
+interface GroupCard { id: string; name: string; dailyGoal: number; memberCount: number; myStreak: number; myPoints: number; myTotalPages: number; readToday: boolean; }
+
+export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { initialProgress: Progress | null; initialGroups?: GroupCard[] }) {
   const { isRtl } = useLang();
   const { user } = useAuth();
   const router = useRouter();
@@ -95,7 +97,7 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
   const [surahSearch, setSurahSearch]         = useState('');
   const [reminderOn, setReminderOn]           = useState(false);
   const [sharing, setSharing]                 = useState(false);
-  const shareCanvasRef                        = useRef<HTMLCanvasElement>(null);
+  const [lanternLit, setLanternLit]           = useState(false);
 
   // Load settings from localStorage + pin dark background to body
   useEffect(() => {
@@ -191,14 +193,15 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
       ctx.font = '24px sans-serif'; ctx.fillStyle = 'rgba(255,204,0,0.4)';
       ctx.fillText('moslimleader.com', 450, 860);
 
-      const dataUrl = canvas.toDataURL('image/png');
-      const blob = await (await fetch(dataUrl)).blob();
+      const blob = await new Promise<Blob>((res, rej) => canvas.toBlob(b => b ? res(b) : rej(), 'image/png'));
       const file = new File([blob], 'nuri-progress.png', { type: 'image/png' });
       if (typeof navigator.share === 'function' && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: 'ختمتي على نُوري' });
       } else {
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = dataUrl; a.download = 'nuri-progress.png'; a.click();
+        a.href = url; a.download = 'nuri-progress.png'; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
     } catch { /* user cancelled or share failed */ }
     setSharing(false);
@@ -232,30 +235,23 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
         @keyframes nuri-sheet { from{transform:translateY(100%)} to{transform:translateY(0)} }
       `}</style>
 
-      {/* ── Main page — fixed to viewport height, no scroll ── */}
+      {/* ── Main page ── */}
       <div
         dir={isRtl ? 'rtl' : 'ltr'}
         style={{
-          height: '100dvh',
+          minHeight: '100dvh',
           display: 'flex', flexDirection: 'column',
           background: `linear-gradient(160deg, #0a1e3d 0%, ${BG_DEEP} 50%, #071422 100%)`,
           backgroundColor: BG_DEEP,
-          paddingBottom: 84,
+          paddingBottom: 100,
           overscrollBehavior: 'none',
-          overflow: 'hidden',
-          touchAction: 'manipulation',
         }}
       >
         {/* ── Header ── */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '28px 20px 0', flexShrink: 0 }}>
-          <div>
-            <h1 style={{ fontFamily: "'Cairo',sans-serif", fontWeight: 900, fontSize: 28, color: NURI_YELLOW, letterSpacing: '-0.01em', lineHeight: 1.1 }}>
-              نُوري
-            </h1>
-            <p style={{ fontSize: 11, marginTop: 2, color: TEXT_MUT }}>
-              {isRtl ? 'رحلتك مع القرآن الكريم' : 'Your Quran journey'}
-            </p>
-          </div>
+          <h1 style={{ fontFamily: "'Cairo',sans-serif", fontWeight: 900, fontSize: 30, color: NURI_YELLOW, letterSpacing: '-0.01em', lineHeight: 1 }}>
+            نُوري
+          </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {/* Groups button */}
             <button
@@ -300,8 +296,8 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, paddingBlock: 4, minHeight: 0 }}>
 
           <LampProgress pct={pct} lanternLevel={lanternLevel} wardDone={wardDone}>
-            {/* Glow effects when bright */}
-            {wardDone && (
+            {/* Glow effects when bright or manually lit */}
+            {(wardDone || lanternLit) && (
               <>
                 <div style={{ position: 'absolute', inset: 18, borderRadius: '50%', border: '1.5px solid rgba(255,204,0,0.3)', animation: 'nuri-ring 2.4s ease-out infinite' }} />
                 <div style={{ position: 'absolute', inset: 18, borderRadius: '50%', border: '1.5px solid rgba(255,204,0,0.3)', animation: 'nuri-ring 2.4s ease-out 1.2s infinite' }} />
@@ -309,13 +305,15 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
               </>
             )}
             <img
-              src={`/${lanternLevel}-light.png`}
+              src={`/${lanternLit ? 4 : lanternLevel}-light.png`}
               alt=""
               draggable={false}
+              onClick={() => setLanternLit(v => !v)}
               style={{
                 width: 148, height: 148, objectFit: 'contain', position: 'relative', zIndex: 1,
-                animation: wardDone ? 'nuri-float 4s ease-in-out infinite' : 'none',
-                filter: wardDone ? 'drop-shadow(0 0 18px rgba(255,204,0,0.5))' : 'none',
+                animation: (wardDone || lanternLit) ? 'nuri-float 4s ease-in-out infinite' : 'none',
+                filter: (wardDone || lanternLit) ? 'drop-shadow(0 0 18px rgba(255,204,0,0.5))' : 'none',
+                cursor: 'pointer', transition: 'filter 0.4s',
               }}
             />
           </LampProgress>
@@ -334,50 +332,13 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
 
           {/* Tagline */}
           <div style={{ textAlign: 'center', paddingInline: 28, marginTop: 2 }}>
-            <p style={{ fontWeight: 900, fontSize: 20, color: wardMissed ? 'rgba(255,204,0,0.5)' : NURI_YELLOW, marginBottom: 2, lineHeight: 1.2 }}>
+            <p style={{ fontWeight: 900, fontSize: 20, color: wardMissed ? 'rgba(255,204,0,0.5)' : NURI_YELLOW, marginBottom: 0, lineHeight: 1.2 }}>
               {isRtl
-                ? (wardDone ? 'نورك مكتمل اليوم' : wardPending ? 'أعِد إليه النور' : wardMissed ? 'أتمم نورك' : 'ابدأ رحلتك')
-                : (wardDone ? 'Light shining!' : wardPending ? 'Rekindle today' : 'Begin your journey')}
-            </p>
-            <p style={{ fontSize: 12, color: TEXT_MUT, lineHeight: 1.5 }}>
-              {wardDone
-                ? (isRtl ? (streak > 1 ? `${streak} أيام متواصلة من النور 🔥` : 'أتممت وردك اليوم بحمد الله') : `${streak} day${streak !== 1 ? 's' : ''} streak 🔥`)
-                : wardPending
-                ? (isRtl ? 'خَفَتَ السراج بالأمس — واصل اليوم' : 'Dimmed — keep it going')
-                : wardMissed
-                ? (isRtl ? 'انطفأ السراج — ابدأ سلسلة جديدة' : 'Out — start fresh today')
-                : (isRtl ? 'ابدأ رحلتك مع القرآن الكريم' : 'Begin your Quran journey')}
+                ? (wardDone ? 'نورك مكتمل اليوم' : 'استمر في القراءة ليكتمل نورك')
+                : (wardDone ? 'Light shining today!' : 'Keep reading to complete your light')}
             </p>
           </div>
         </div>
-
-        {/* ── Ward status badge ── */}
-        {p && (
-          <div style={{ paddingInline: 20, marginBottom: 10 }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              background: wardDone ? 'rgba(34,197,94,0.08)' : wardPending ? 'rgba(255,204,0,0.07)' : 'rgba(244,63,94,0.07)',
-              border: wardDone ? '1px solid rgba(34,197,94,0.20)' : wardPending ? '1px solid rgba(255,204,0,0.16)' : '1px solid rgba(244,63,94,0.16)',
-              borderRadius: 14, padding: '12px 14px',
-            }}>
-              <span style={{ fontSize: 20, lineHeight: 1 }}>{wardDone ? '✅' : wardPending ? '⚡' : '🔴'}</span>
-              <div style={{ flex: 1 }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: wardDone ? '#4ade80' : wardPending ? NURI_YELLOW : '#f87171', marginBottom: 2 }}>
-                  {isRtl
-                    ? (wardDone ? 'الورد مكتمل اليوم' : wardPending ? 'الورد معلّق — اقرأ الآن' : 'الورد منقطع')
-                    : (wardDone ? 'Daily wird complete' : wardPending ? 'Wird pending — read now' : 'Wird interrupted')}
-                </p>
-                <p style={{ fontSize: 11, color: TEXT_MUT }}>
-                  {wardDone
-                    ? (isRtl ? `سلسلة ${streak} ${streak === 1 ? 'يوم' : 'أيام'}` : `${streak}-day streak`)
-                    : wardPending
-                    ? (isRtl ? 'قرأت أمس — واصل اليوم للحفاظ على سلسلتك' : 'Read yesterday — continue today')
-                    : (isRtl ? 'انتهت السلسلة — ابدأ سلسلة جديدة' : 'Streak ended — start fresh')}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* ── Progress card ── */}
         {p && (
@@ -469,9 +430,54 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
           </div>
         )}
 
-        <p style={{ textAlign: 'center', fontSize: 11, marginTop: 12, color: TEXT_MUT }}>
-          {isRtl ? 'استماع · قراءة واستماع' : 'Listen · Listen + Read'}
-        </p>
+        {/* ── Group Khatmas ── */}
+        {initialGroups.length > 0 && (
+          <div style={{ paddingInline: 20, marginTop: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: NURI_YELLOW }}>
+                {isRtl ? 'ختماتي الجماعية' : 'My Group Khatmas'}
+              </p>
+              <button onClick={() => router.push('/tareeq/khatmati/groups')}
+                style={{ fontSize: 12, color: TEXT_MUT, background: 'none', border: 'none', cursor: 'pointer' }}>
+                {isRtl ? 'عرض الكل' : 'See all'}
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {initialGroups.map(g => (
+                <button key={g.id} onClick={() => router.push(`/tareeq/khatmati/groups/${g.id}`)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    background: BG_CARD, border: `1px solid ${BG_CARD_BD}`,
+                    borderRadius: 16, padding: '12px 14px', width: '100%', textAlign: 'start', cursor: 'pointer',
+                  }}>
+                  {/* Lantern dot */}
+                  <div style={{
+                    width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+                    background: g.readToday ? 'rgba(74,222,128,0.15)' : 'rgba(255,204,0,0.1)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
+                  }}>
+                    {g.readToday ? '✅' : '🕯️'}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 14, fontWeight: 700, color: TEXT_PRI, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</p>
+                    <p style={{ fontSize: 11, color: TEXT_MUT }}>
+                      {isRtl
+                        ? `${g.memberCount} عضو · هدف ${g.dailyGoal} ص/يوم`
+                        : `${g.memberCount} members · ${g.dailyGoal}p/day`}
+                    </p>
+                  </div>
+                  <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                    <p style={{ fontSize: 15, fontWeight: 900, color: NURI_YELLOW, lineHeight: 1 }}>{g.myStreak}</p>
+                    <p style={{ fontSize: 10, color: TEXT_MUT }}>{isRtl ? 'يوم' : 'days'}</p>
+                  </div>
+                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={TEXT_MUT} strokeWidth={2} style={{ flexShrink: 0 }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M15.75 19.5L8.25 12l7.5-7.5' : 'M8.25 4.5l7.5 7.5-7.5 7.5'} />
+                  </svg>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Surah picker bottom sheet ── */}

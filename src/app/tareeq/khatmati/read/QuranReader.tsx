@@ -273,22 +273,21 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
 
       {/* ── Top bar ── */}
       <div className="fixed top-0 left-0 right-0 z-40 flex flex-col gap-0">
-        {/* Row 1: reciter (right) | page nav | search | back arrow (left) */}
+        {/* Row 1: surah list (right) | page nav | search | back arrow (left) */}
         <div className="flex items-center gap-2 px-3 py-2" dir="rtl"
           style={{ background: 'var(--tr-header-bg)', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
 
-          {/* Reciter avatar — rightmost in RTL */}
-          {(() => {
-            const r = RECITERS.find(x => x.id === reciterId) ?? RECITERS[0];
-            return (
-              <button onClick={() => setShowReciterPicker(true)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black transition active:scale-90 shrink-0"
-                style={{ background: r.color, color: '#fff', border: '2px solid rgba(255,255,255,0.3)' }}
-                title={r.nameAr}>
-                {r.nameAr[0]}
-              </button>
-            );
-          })()}
+          {/* Surah list button — rightmost in RTL */}
+          <button onClick={() => setShowSearch(true)}
+            className="flex items-center gap-1 h-8 px-2 rounded-full shrink-0 transition active:scale-90"
+            style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)', maxWidth: 120 }}>
+            <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" d="M4 6h16M4 12h10M4 18h7"/>
+            </svg>
+            <span className="text-[11px] font-bold truncate" style={{ color: 'var(--tr-text-secondary)' }}>
+              {cv ? (isRtl ? surahNameAr : surahNameEn) : (isRtl ? 'السور' : 'Surahs')}
+            </span>
+          </button>
 
           {/* Prev page */}
           <button onClick={() => goPage(-1)} disabled={page <= 1}
@@ -325,11 +324,11 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
             </svg>
           </button>
 
-          {/* Back → Nuri home — leftmost in RTL, arrow points left */}
+          {/* Back → Nuri home — leftmost in RTL, blue bg, white arrow */}
           <button onClick={() => router.push('/tareeq/khatmati')}
             className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 shrink-0"
-            style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+            style={{ background: '#2563eb', color: '#fff' }}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
             </svg>
           </button>
@@ -523,6 +522,18 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
                           : `Ayah ${cv.verse_number} • Page ${page}`}
                       </p>
                     </div>
+
+                    {/* Reciter button */}
+                    {(() => {
+                      const r = RECITERS.find(x => x.id === reciterId) ?? RECITERS[0];
+                      return (
+                        <button onClick={() => setShowReciterPicker(true)}
+                          className="w-11 h-11 rounded-full flex items-center justify-center text-[12px] font-black transition active:scale-90 shrink-0"
+                          style={{ background: r.color, color: '#fff', border: '2px solid rgba(255,255,255,0.25)' }}>
+                          {r.nameAr[0]}
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -620,6 +631,17 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
                 </p>
               </div>
             )}
+            {/* Reciter button */}
+            {(() => {
+              const r = RECITERS.find(x => x.id === reciterId) ?? RECITERS[0];
+              return (
+                <button onClick={() => setShowReciterPicker(true)}
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-[11px] font-black transition active:scale-90 shrink-0"
+                  style={{ background: r.color, color: '#fff', border: '2px solid rgba(255,255,255,0.2)' }}>
+                  {r.nameAr[0]}
+                </button>
+              );
+            })()}
           </div>
         </div>
       )}

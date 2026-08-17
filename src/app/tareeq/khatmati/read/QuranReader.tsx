@@ -238,8 +238,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
   }
 
   function getMushafPageUrl(p: number): string {
-    const n = String(p).padStart(3, '0');
-    return `https://static.qurancdn.com/images/v2/pages/page-${n}.png`;
+    return `https://cdn.islamic.network/quran/images/high-resolution/${p}.png`;
   }
 
   // ── Current verse info ────────────────────────────────────────────────────

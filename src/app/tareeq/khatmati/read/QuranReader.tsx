@@ -29,7 +29,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
   const { isRtl } = useLang();
   const router = useRouter();
 
-  const [mode, setMode] = useState<Mode>('both');
+  const [mode, setMode] = useState<Mode>('listen');
   const [page, setPage] = useState(initialPage);
   const [retryKey, setRetryKey] = useState(0);
   const [verses, setVerses] = useState<QuranVerse[]>([]);
@@ -64,7 +64,8 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
   // Read mode from localStorage after mount (avoids SSR hydration mismatch)
   useEffect(() => {
     const stored = localStorage.getItem('khatmati-mode') as Mode;
-    if (stored === 'listen' || stored === 'read' || stored === 'both') setMode(stored);
+    // 'read' tab removed — fall back to listen
+    if (stored === 'listen' || stored === 'both') setMode(stored);
   }, []);
 
   // Fetch mushaf line data + load per-page QCF4 font when in read mode
@@ -377,19 +378,17 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
           })()}
         </div>
 
-        {/* Row 2: Mode tabs — right→left: مصحف | استماع | قراءة واستماع */}
+        {/* Row 2: Mode tabs — right→left: استماع | قراءة واستماع */}
         <div className="flex" style={{ background: 'var(--tr-surface)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
-          {(['read', 'listen', 'both'] as Mode[]).map(m => (
+          {(['listen', 'both'] as Mode[]).map(m => (
             <button key={m} onClick={() => changeMode(m)}
-              className="flex-1 py-2 text-xs font-bold transition"
+              className="flex-1 py-2.5 text-xs font-bold transition"
               style={{
                 color: mode === m ? 'var(--nuri-gold)' : 'var(--tr-text-muted)',
                 borderBottom: mode === m ? '2px solid var(--nuri-gold)' : '2px solid transparent',
                 background: 'none',
               }}>
-              {m === 'read' ? (isRtl ? 'مصحف' : 'Mushaf')
-                : m === 'listen' ? (isRtl ? 'استماع' : 'Listen')
-                : (isRtl ? 'قراءة واستماع' : 'Both')}
+              {m === 'listen' ? (isRtl ? 'استماع' : 'Listen') : (isRtl ? 'قراءة واستماع' : 'Listen + Read')}
             </button>
           ))}
         </div>
@@ -731,25 +730,45 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
       {/* ── Audio player (fixed bottom) ── */}
       {(mode === 'listen' || mode === 'both') && (
         <div className="fixed bottom-0 left-0 right-0 z-40"
-          style={{
+          style={mode === 'listen' ? {
+            // Listen mode: blends into the dark blue page — no border, no card feel
+            background: 'linear-gradient(to top, #05101f 0%, rgba(5,16,31,0.97) 70%, transparent 100%)',
+            boxShadow: 'none',
+            paddingTop: 20,
+          } : {
+            // Both mode: standard card
             background: 'var(--tr-surface)',
             borderTop: '1px solid var(--tr-border-soft)',
             boxShadow: '0 -4px 24px rgba(0,0,0,0.14)',
           }}>
-          {/* Progress bar */}
-          <div style={{ height: 3, background: 'var(--tr-overlay)' }} dir="ltr">
-            <div style={{
-              height: '100%', background: 'var(--nuri-gold)',
-              width: `${audioProgress * 100}%`, transition: 'width 0.3s linear',
-            }} />
-          </div>
 
-          {/* RTL: right=prev ayah, left=next ayah (Arabic reading order) */}
+          {/* Progress bar — thin glowing line for listen, standard for both */}
+          {mode === 'listen' ? (
+            <div dir="ltr" style={{ height: 2, background: 'rgba(255,255,255,0.08)', marginBottom: 4, marginInline: 20, borderRadius: 999 }}>
+              <div style={{
+                height: '100%', borderRadius: 999,
+                background: 'linear-gradient(90deg, #3b82f6, #60a5fa)',
+                boxShadow: '0 0 8px rgba(96,165,250,0.6)',
+                width: `${audioProgress * 100}%`, transition: 'width 0.3s linear',
+              }} />
+            </div>
+          ) : (
+            <div style={{ height: 3, background: 'var(--tr-overlay)' }} dir="ltr">
+              <div style={{
+                height: '100%', background: 'var(--nuri-gold)',
+                width: `${audioProgress * 100}%`, transition: 'width 0.3s linear',
+              }} />
+            </div>
+          )}
+
+          {/* Controls row */}
           <div className="flex items-center gap-3 px-4 py-3" dir="rtl">
-            {/* Right side = prev verse (going back = toward start) */}
+            {/* Prev verse */}
             <button onClick={() => goVerse(currentIdx - 1)} disabled={currentIdx === 0}
               className="w-10 h-10 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30"
-              style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
+              style={mode === 'listen'
+                ? { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }
+                : { background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
               </svg>
@@ -758,7 +777,9 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
             {/* Play / Pause */}
             <button onClick={togglePlay} disabled={loading}
               className="w-14 h-14 rounded-full flex items-center justify-center transition active:scale-95 disabled:opacity-40 shadow-lg"
-              style={{ background: 'var(--nuri-gold)', color: '#0a0c14', flexShrink: 0 }}>
+              style={mode === 'listen'
+                ? { background: 'linear-gradient(135deg,#1e3a6e,#2563eb)', color: '#fff', flexShrink: 0, boxShadow: '0 4px 20px rgba(37,99,235,0.5)' }
+                : { background: 'var(--nuri-gold)', color: '#0a0c14', flexShrink: 0 }}>
               {isPlaying ? (
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                   <rect x="6" y="4" width="4" height="16" rx="1"/>
@@ -771,10 +792,12 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
               )}
             </button>
 
-            {/* Left side = next verse (going forward = toward end) */}
+            {/* Next verse */}
             <button onClick={() => goVerse(currentIdx + 1)} disabled={currentIdx >= verses.length - 1}
               className="w-10 h-10 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30"
-              style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
+              style={mode === 'listen'
+                ? { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }
+                : { background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
               </svg>
@@ -784,10 +807,12 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
             <div className="flex-1 min-w-0">
               {cv && (
                 <>
-                  <p className="text-sm font-black truncate" style={{ color: 'var(--tr-text-primary)' }}>
+                  <p className="text-sm font-black truncate"
+                    style={{ color: mode === 'listen' ? 'rgba(255,255,255,0.9)' : 'var(--tr-text-primary)' }}>
                     {isRtl ? surahNameAr : surahNameEn}
                   </p>
-                  <p className="text-xs" style={{ color: 'var(--tr-text-muted)' }}>
+                  <p className="text-xs"
+                    style={{ color: mode === 'listen' ? 'rgba(148,163,184,0.8)' : 'var(--tr-text-muted)' }}>
                     {isRtl
                       ? `الآية ${toArabicNum(cv.verse_number)} • صفحة ${toArabicNum(page)}`
                       : `Ayah ${cv.verse_number} • Page ${page}`}
@@ -796,11 +821,12 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
               )}
             </div>
 
-            {/* Back to home (leftmost in RTL) */}
-            <button
-              onClick={() => setShowBackMenu(true)}
+            {/* Back to home */}
+            <button onClick={() => setShowBackMenu(true)}
               className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90"
-              style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}>
+              style={mode === 'listen'
+                ? { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }
+                : { background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
               </svg>

@@ -10,28 +10,25 @@ import {
 
 type Mode = 'listen' | 'read' | 'both';
 
-function loadMode(): Mode {
-  if (typeof window === 'undefined') return 'both';
-  return (localStorage.getItem('khatmati-mode') as Mode) || 'both';
-}
-
 interface Props { initialPage: number; initialSurah: number; initialAyah: number; }
 
 export default function QuranReader({ initialPage, initialSurah, initialAyah }: Props) {
   const { isRtl } = useLang();
   const router = useRouter();
 
-  const [mode, setMode] = useState<Mode>(loadMode);
+  // Initialize to 'both' to avoid SSR/hydration mismatch; real value loaded in useEffect
+  const [mode, setMode] = useState<Mode>('both');
   const [page, setPage] = useState(initialPage);
+  const [retryKey, setRetryKey] = useState(0);
   const [verses, setVerses] = useState<QuranVerse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [audioProgress, setAudioProgress] = useState(0); // 0–1
+  const [audioProgress, setAudioProgress] = useState(0);
   const [fontLoaded, setFontLoaded] = useState(false);
 
-  // Refs for closure-safe access
+  // Refs for closure-safe access in audio callbacks
   const versesRef   = useRef<QuranVerse[]>([]);
   const currentRef  = useRef(0);
   const playingRef  = useRef(false);
@@ -39,24 +36,45 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
   const audioRef    = useRef<HTMLAudioElement | null>(null);
   const saveTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const verseRefs   = useRef<(HTMLSpanElement | null)[]>([]);
+  const isMountedRef = useRef(true);
 
-  // Sync refs
+  // Read mode from localStorage after mount (avoids SSR hydration mismatch)
+  useEffect(() => {
+    const stored = localStorage.getItem('khatmati-mode') as Mode;
+    if (stored === 'listen' || stored === 'read' || stored === 'both') setMode(stored);
+  }, []);
+
+  // Sync state → refs so audio callbacks always read current values
   useEffect(() => { versesRef.current = verses; }, [verses]);
   useEffect(() => { currentRef.current = currentIdx; }, [currentIdx]);
   useEffect(() => { playingRef.current = isPlaying; }, [isPlaying]);
   useEffect(() => { pageRef.current = page; }, [page]);
 
-  // Load Amiri Quran font
+  // Load Amiri Quran font once as a page-level resource (never removed on unmount)
   useEffect(() => {
+    if (document.querySelector('link[data-amiri-quran]')) {
+      setFontLoaded(true);
+      return;
+    }
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = 'https://fonts.googleapis.com/css2?family=Amiri+Quran&display=swap';
+    (link as HTMLLinkElement & { dataset: DOMStringMap }).dataset.amiriQuran = '1';
     link.onload = () => setFontLoaded(true);
     document.head.appendChild(link);
-    return () => { document.head.removeChild(link); };
   }, []);
 
-  // Fetch verses when page changes
+  // Cleanup on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      audioRef.current?.pause();
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, []);
+
+  // Fetch verses when page or retryKey changes
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -64,10 +82,11 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
     fetchPageVerses(page)
       .then(v => {
         if (cancelled) return;
+        // Reset refs array before assigning new verse elements
+        verseRefs.current = new Array(v.length).fill(null);
         versesRef.current = v;
         setVerses(v);
         setLoading(false);
-        // Restore position on initial load
         if (page === initialPage) {
           const idx = v.findIndex(x => x.chapter_id === initialSurah && x.verse_number === initialAyah);
           const start = idx >= 0 ? idx : 0;
@@ -82,40 +101,38 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
       .catch(() => { if (!cancelled) { setError(true); setLoading(false); } });
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  }, [page, retryKey]);
 
-  // Update URL and save progress when verse changes
+  // URL sync + progress save when verse or page changes
   useEffect(() => {
+    // Always clear debounce timer first, even if we return early
+    if (saveTimer.current) clearTimeout(saveTimer.current);
     if (!verses.length) return;
     const v = verses[currentIdx];
     if (!v) return;
 
-    // URL update (replace so back button goes to home, not every ayah)
-    router.replace(`/tareeq/khatmati/read?page=${page}&surah=${v.chapter_id}&ayah=${v.verse_number}`, { scroll: false });
+    router.replace(
+      `/tareeq/khatmati/read?page=${page}&surah=${v.chapter_id}&ayah=${v.verse_number}`,
+      { scroll: false },
+    );
 
-    // Scroll into view in mushaf mode
     verseRefs.current[currentIdx]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-    // Debounced progress save
-    if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       fetch('/api/tareeq/khatmati/progress', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ currentPage: page, currentSurah: v.chapter_id, currentAyah: v.verse_number }),
+        body: JSON.stringify({
+          currentPage: page,
+          currentSurah: v.chapter_id,
+          currentAyah: v.verse_number,
+          localDate: new Date().toLocaleDateString('en-CA'), // YYYY-MM-DD in user's timezone
+        }),
       }).catch(() => {});
     }, 3000);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIdx, page, verses]);
-
-  // Cleanup audio on unmount
-  useEffect(() => {
-    return () => {
-      audioRef.current?.pause();
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-    };
-  }, []);
 
   // ── Audio engine ──────────────────────────────────────────────────────────
 
@@ -128,10 +145,12 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
     audioRef.current = audio;
 
     audio.ontimeupdate = () => {
+      if (!isMountedRef.current) return;
       if (audio.duration) setAudioProgress(audio.currentTime / audio.duration);
     };
 
     audio.onended = () => {
+      if (!isMountedRef.current) return;
       setAudioProgress(0);
       if (!playingRef.current) return;
       const next = currentRef.current + 1;
@@ -144,7 +163,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
         if (nextPage <= TOTAL_QURAN_PAGES) {
           pageRef.current = nextPage;
           setPage(nextPage);
-          // playFromRef() called again after verses load (see fetch effect)
+          // playFromRef() called again after new verses load (see fetch effect)
         } else {
           playingRef.current = false;
           setIsPlaying(false);
@@ -153,19 +172,28 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
     };
 
     audio.onerror = () => {
-      // Skip to next on error
+      if (!isMountedRef.current) return;
       const next = currentRef.current + 1;
       if (next < versesRef.current.length && playingRef.current) {
+        // Skip to next verse on this page
         currentRef.current = next;
         setCurrentIdx(next);
         playFromRef();
-      } else {
-        playingRef.current = false;
-        setIsPlaying(false);
+      } else if (playingRef.current) {
+        // Last verse errored — advance to next page instead of stopping
+        const nextPage = pageRef.current + 1;
+        if (nextPage <= TOTAL_QURAN_PAGES) {
+          pageRef.current = nextPage;
+          setPage(nextPage);
+        } else {
+          playingRef.current = false;
+          setIsPlaying(false);
+        }
       }
     };
 
     audio.play().catch(() => {
+      if (!isMountedRef.current) return;
       playingRef.current = false;
       setIsPlaying(false);
     });
@@ -210,7 +238,6 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
   const surahNameAr = SURAH_NAMES_AR[(cv?.chapter_id ?? 1) - 1] ?? '';
   const surahNameEn = SURAH_NAMES_EN[(cv?.chapter_id ?? 1) - 1] ?? '';
 
-  // Font family
   const qFont = fontLoaded
     ? "'Amiri Quran', 'Scheherazade New', 'Traditional Arabic', serif"
     : "'Scheherazade New', 'Traditional Arabic', 'Arabic Typesetting', serif";
@@ -287,7 +314,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
             <p className="text-sm font-semibold mb-3" style={{ color: 'var(--tr-text-secondary)' }}>
               {isRtl ? 'تعذّر تحميل الصفحة' : 'Failed to load page'}
             </p>
-            <button onClick={() => setPage(p => p)} className="text-sm font-bold"
+            <button onClick={() => setRetryKey(k => k + 1)} className="text-sm font-bold"
               style={{ color: 'var(--tr-gold)' }}>
               {isRtl ? 'إعادة المحاولة' : 'Retry'}
             </button>
@@ -320,11 +347,13 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
               </div>
             )}
 
-            {/* Read mode — full page */}
+            {/* Read / Both mode — full page */}
             {(mode === 'read' || mode === 'both') && (
               <div className="px-4 pt-4 pb-4 max-w-lg mx-auto">
-                {/* Bismillah if first verse is start of surah */}
-                {verses[0]?.verse_number === 1 && verses[0]?.chapter_id !== 9 && (
+                {/* Bismillah — only when page starts with verse 1, excluding At-Tawbah (9) and Al-Fatiha (1) since it's part of the text */}
+                {verses[0]?.verse_number === 1
+                  && verses[0]?.chapter_id !== 9
+                  && verses[0]?.chapter_id !== 1 && (
                   <p dir="rtl" style={{
                     fontFamily: qFont, fontSize: 22, textAlign: 'center',
                     color: 'var(--tr-text-muted)', marginBottom: 16, lineHeight: 2,

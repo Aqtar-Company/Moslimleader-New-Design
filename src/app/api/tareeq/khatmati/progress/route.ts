@@ -4,6 +4,13 @@ import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
+function parseIntField(v: unknown, min: number, max: number): number | null | undefined {
+  if (v == null) return undefined;
+  const n = parseInt(String(v), 10);
+  if (!Number.isFinite(n)) return null; // invalid value → caller returns 400
+  return Math.max(min, Math.min(max, n));
+}
+
 export async function GET() {
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -16,9 +23,31 @@ export async function PUT(req: NextRequest) {
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { currentPage, currentSurah, currentAyah } = await req.json();
-  const today = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+  }
+
+  const currentPage   = parseIntField(body.currentPage,   1, 604);
+  const currentSurah  = parseIntField(body.currentSurah,  1, 114);
+  const currentAyah   = parseIntField(body.currentAyah,   1, 286);
+
+  if (currentPage === null || currentSurah === null || currentAyah === null) {
+    return NextResponse.json({ error: 'Invalid field value' }, { status: 400 });
+  }
+
+  // Use client-supplied local date (YYYY-MM-DD) so streak tracks user's timezone midnight
+  const rawLocalDate = body.localDate;
+  const today = typeof rawLocalDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawLocalDate)
+    ? rawLocalDate
+    : new Date().toISOString().slice(0, 10);
+
+  // Derive yesterday from the validated today string to stay consistent
+  const d = new Date(today + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() - 1);
+  const yesterday = d.toISOString().slice(0, 10);
 
   const existing = await prisma.khatmatiProgress.findUnique({
     where: { userId: user.userId },
@@ -29,31 +58,32 @@ export async function PUT(req: NextRequest) {
   if (!existing) {
     sirajStreak = 1;
   } else if (existing.lastReadDate === today) {
-    // already counted today
+    // already counted today — leave streak unchanged
   } else if (existing.lastReadDate === yesterday) {
     sirajStreak += 1;
   } else {
     sirajStreak = 1;
   }
 
-  const pagesAdvanced = (existing?.currentPage && currentPage)
+  // High-water mark: only count forward page advances, not jumps back
+  const pagesAdvanced = (existing?.currentPage != null && currentPage != null)
     ? Math.max(0, currentPage - existing.currentPage) : 0;
 
   const progress = await prisma.khatmatiProgress.upsert({
     where: { userId: user.userId },
     update: {
-      ...(currentPage != null && { currentPage }),
+      ...(currentPage  != null && { currentPage }),
       ...(currentSurah != null && { currentSurah }),
-      ...(currentAyah != null && { currentAyah }),
+      ...(currentAyah  != null && { currentAyah }),
       lastReadDate: today,
       sirajStreak,
       totalPagesRead: { increment: pagesAdvanced },
     },
     create: {
       userId: user.userId,
-      currentPage: currentPage ?? 1,
+      currentPage:  currentPage  ?? 1,
       currentSurah: currentSurah ?? 1,
-      currentAyah: currentAyah ?? 1,
+      currentAyah:  currentAyah  ?? 1,
       lastReadDate: today,
       sirajStreak: 1,
       totalPagesRead: 0,

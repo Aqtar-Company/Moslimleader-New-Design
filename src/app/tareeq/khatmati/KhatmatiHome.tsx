@@ -11,9 +11,12 @@ interface Progress {
 
 function sirajState(lastReadDate: string | null): 'bright' | 'dim' | 'dark' {
   if (!lastReadDate) return 'dark';
-  const today = new Date().toISOString().slice(0, 10);
+  // Use local date so midnight comparison matches the user's timezone, not UTC
+  const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
   if (lastReadDate === today) return 'bright';
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const yesterday = d.toLocaleDateString('en-CA');
   if (lastReadDate === yesterday) return 'dim';
   return 'dark';
 }
@@ -129,7 +132,7 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
             style={{ background: 'var(--tr-gold)', color: '#0a0c14', letterSpacing: '0.02em' }}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M5 12h14M12 5l7 7-7 7' : 'M19 12H5M12 19l-7-7 7-7'} />
+              <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M19 12H5M12 19l-7-7 7-7' : 'M5 12h14M12 5l7 7-7 7'} />
             </svg>
             {p
               ? (isRtl ? `أكمل ختمتك — صفحة ${page}` : `Continue — Page ${page}`)

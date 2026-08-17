@@ -78,7 +78,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   const { isRtl } = useLang();
   const { user } = useAuth();
   const router = useRouter();
-  const pathname = usePathname ? usePathname() : '';
+  const pathname = usePathname() ?? '';
   const { notifCount, messageCount } = useTareeqNotifications();
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const mobileSearchRef = useRef<HTMLInputElement>(null);

@@ -166,8 +166,9 @@ export default function AdminMembershipPage() {
       postToTareeq: perkPostToTareeq,
     };
 
-    const url = editingPerk ? `/api/admin/membership/perks?id=${editingPerk.id}` : '/api/admin/membership/perks';
-    const method = editingPerk ? 'PATCH' : 'POST';
+    const url = '/api/admin/membership/perks';
+    const method = editingPerk ? 'PUT' : 'POST';
+    if (editingPerk) body.id = editingPerk.id;
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     setPerkSaving(false);
     if (!res.ok) { setPerkError('حدث خطأ'); return; }
@@ -177,10 +178,10 @@ export default function AdminMembershipPage() {
   }
 
   async function togglePerkActive(p: Perk) {
-    const res = await fetch(`/api/admin/membership/perks?id=${p.id}`, {
-      method: 'PATCH',
+    const res = await fetch('/api/admin/membership/perks', {
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isActive: !p.isActive }),
+      body: JSON.stringify({ id: p.id, isActive: !p.isActive }),
     });
     if (res.ok) {
       setPerks(prev => prev.map(x => x.id === p.id ? { ...x, isActive: !x.isActive } : x));
@@ -189,7 +190,11 @@ export default function AdminMembershipPage() {
 
   async function deletePerk(id: string) {
     if (!confirm('حذف هذه الميزة؟')) return;
-    const res = await fetch(`/api/admin/membership/perks?id=${id}`, { method: 'DELETE' });
+    const res = await fetch('/api/admin/membership/perks', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
     if (res.ok) setPerks(prev => prev.filter(p => p.id !== id));
   }
 

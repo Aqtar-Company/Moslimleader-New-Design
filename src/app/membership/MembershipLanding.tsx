@@ -36,16 +36,9 @@ export default function MembershipLanding({ isLoggedIn }: Props) {
     { icon: '♻️', text: 'Annual renewal — same number, extended validity' },
   ];
 
-  async function handleProceed() {
+  function handleProceed() {
     if (!familyName.trim()) { setError(isRtl ? 'أدخل اسم الأسرة' : 'Enter family name'); return; }
-    setLoading(true); setError('');
-    const res = await fetch('/api/membership/create', {
-      method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ familyName: familyName.trim() }),
-    });
-    setLoading(false);
-    if (!res.ok) { const d = await res.json(); setError(d.error || 'حدث خطأ'); return; }
+    setError('');
     setStep('pay');
   }
 
@@ -122,13 +115,13 @@ export default function MembershipLanding({ isLoggedIn }: Props) {
               }}
             />
             {error && <p style={{ color: '#f87171', fontSize: 13, marginBottom: 10 }}>{error}</p>}
-            <button onClick={handleProceed} disabled={loading}
+            <button onClick={handleProceed}
               style={{
                 width: '100%', padding: '15px 0', borderRadius: 16,
                 background: GOLD, color: '#1a0f00', fontWeight: 900, fontSize: 16,
-                border: 'none', cursor: 'pointer', opacity: loading ? 0.7 : 1,
+                border: 'none', cursor: 'pointer',
               }}>
-              {loading ? '...' : (isRtl ? 'متابعة للدفع' : 'Continue to payment')}
+              {isRtl ? 'متابعة للدفع' : 'Continue to payment'}
             </button>
           </div>
         ) : step === 'pay' ? (
@@ -142,6 +135,7 @@ export default function MembershipLanding({ isLoggedIn }: Props) {
               captureEndpoint="/api/membership/activate"
               amountUsd={PRICE_USD}
               isRtl={isRtl}
+              createBody={{ familyName: familyName.trim() }}
               onSuccess={() => { setStep('done'); router.refresh(); }}
               onError={msg => setError(msg)}
             />

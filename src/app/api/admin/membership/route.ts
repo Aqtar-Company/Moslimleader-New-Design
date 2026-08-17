@@ -12,25 +12,38 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
   const limit = 20;
 
-  const [total, memberships] = await Promise.all([
+  const [total, memberships, rawStats] = await Promise.all([
     prisma.familyMembership.count({ where: status ? { status: status as 'ACTIVE' | 'PENDING' | 'EXPIRED' | 'CANCELLED' } : {} }),
     prisma.familyMembership.findMany({
       where: status ? { status: status as 'ACTIVE' | 'PENDING' | 'EXPIRED' | 'CANCELLED' } : {},
       include: {
-        owner: { select: { name: true, email: true, phone: true } },
-        _count: { select: { familyMembers: true } },
+        owner: { select: { name: true, email: true } },
+        _count: { select: { familyMembers: true, renewals: true } },
       },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
       take: limit,
     }),
+    prisma.familyMembership.groupBy({
+      by: ['status'],
+      _count: { id: true },
+    }),
   ]);
 
-  // Stats
-  const stats = await prisma.familyMembership.groupBy({
-    by: ['status'],
-    _count: { id: true },
-  });
+  // Transform groupBy array → flat object the client expects
+  const statsMap: Record<string, number> = {};
+  let allTotal = 0;
+  for (const row of rawStats) {
+    statsMap[row.status.toLowerCase()] = row._count.id;
+    allTotal += row._count.id;
+  }
+  const stats = {
+    total: allTotal,
+    active:    statsMap['active']    ?? 0,
+    pending:   statsMap['pending']   ?? 0,
+    expired:   statsMap['expired']   ?? 0,
+    cancelled: statsMap['cancelled'] ?? 0,
+  };
 
   return NextResponse.json({ memberships, total, page, limit, stats });
 }
@@ -42,9 +55,25 @@ export async function PATCH(req: NextRequest) {
   const { id, status } = await req.json().catch(() => ({}));
   if (!id || !status) return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
 
+  // When admin manually activates, set sensible dates if not already set
+  const updateData: Record<string, unknown> = { status };
+  if (status === 'ACTIVE') {
+    const existing = await prisma.familyMembership.findUnique({
+      where: { id },
+      select: { startsAt: true, expiresAt: true },
+    });
+    if (!existing?.expiresAt) {
+      const now = new Date();
+      const expires = new Date(now);
+      expires.setFullYear(expires.getFullYear() + 1);
+      updateData.startsAt = existing?.startsAt ?? now;
+      updateData.expiresAt = expires;
+    }
+  }
+
   const membership = await prisma.familyMembership.update({
     where: { id },
-    data: { status },
+    data: updateData,
   });
 
   return NextResponse.json({ membership });

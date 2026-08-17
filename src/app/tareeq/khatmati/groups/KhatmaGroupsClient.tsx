@@ -233,8 +233,9 @@ export default function KhatmaGroupsClient({ initialGroups, userId }: { initialG
 
       {/* Khatma type preference sheet — after join / create */}
       {prefGroupId && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 10000, display: 'flex', alignItems: 'flex-end' }}>
-          <div dir={isRtl ? 'rtl' : 'ltr'}
+        <div onClick={() => { setPrefGroupId(null); router.push(`/tareeq/khatmati/groups/${prefGroupId}`); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 10000, display: 'flex', alignItems: 'flex-end' }}>
+          <div onClick={e => e.stopPropagation()} dir={isRtl ? 'rtl' : 'ltr'}
             style={{ width: '100%', background: '#111827', borderRadius: '20px 20px 0 0', padding: '24px 20px 44px', animation: 'nuri-sheet 0.28s cubic-bezier(0.32,0.72,0,1)' }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: CARD_BD, margin: '0 auto 22px' }} />
             <p style={{ fontWeight: 900, fontSize: 18, color: GOLD, marginBottom: 6, textAlign: 'center' }}>

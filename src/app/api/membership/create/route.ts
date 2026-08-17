@@ -12,10 +12,19 @@ function generateQRToken(): string {
 }
 
 async function generateMembershipNumber(): Promise<string> {
-  const count = await prisma.familyMembership.count();
+  // Use highest existing number to avoid TOCTOU collisions under concurrent signups
   const year = String(new Date().getFullYear()).slice(1); // "026" for 2026
-  const seq = String(count + 1).padStart(5, '0');
-  return `ML-${year}-${seq}`;
+  const latest = await prisma.familyMembership.findFirst({
+    where: { membershipNumber: { startsWith: `ML-${year}-` } },
+    orderBy: { membershipNumber: 'desc' },
+    select: { membershipNumber: true },
+  });
+  let seq = 1;
+  if (latest?.membershipNumber) {
+    const parts = latest.membershipNumber.split('-');
+    seq = (parseInt(parts[parts.length - 1], 10) || 0) + 1;
+  }
+  return `ML-${year}-${String(seq).padStart(5, '0')}`;
 }
 
 export async function POST(req: NextRequest) {

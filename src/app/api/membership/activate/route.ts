@@ -27,5 +27,15 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Record first-activation payment in renewal history
+  await prisma.membershipRenewal.create({
+    data: {
+      membershipId: membership.id,
+      paypalOrderId,
+      amountEgp: 100,
+      expiresAt: expires,
+    },
+  });
+
   return NextResponse.json({ ok: true, membership });
 }

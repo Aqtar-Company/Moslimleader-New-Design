@@ -60,3 +60,44 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   return NextResponse.json({ ok: true, member: updated });
 }
+
+/** PATCH — toggle linkedToSolo preference for this member */
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const user = await getAuthUser().catch(() => null);
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = await req.json();
+  if (typeof body.linkedToSolo !== 'boolean') {
+    return NextResponse.json({ error: 'linkedToSolo (boolean) required' }, { status: 400 });
+  }
+
+  const existing = await prisma.khatmaGroupMember.findUnique({
+    where: { groupId_userId: { groupId: params.id, userId: user.userId } },
+    select: { id: true },
+  });
+  if (!existing) return NextResponse.json({ error: 'Not a member' }, { status: 403 });
+
+  // When linking to solo, immediately sync current solo position
+  let positionSync = {};
+  if (body.linkedToSolo) {
+    const solo = await prisma.khatmatiProgress.findUnique({
+      where: { userId: user.userId },
+      select: { currentPage: true, currentSurah: true, currentAyah: true },
+    });
+    if (solo) {
+      positionSync = {
+        currentPage: solo.currentPage,
+        currentSurah: solo.currentSurah,
+        currentAyah: solo.currentAyah,
+      };
+    }
+  }
+
+  const updated = await prisma.khatmaGroupMember.update({
+    where: { groupId_userId: { groupId: params.id, userId: user.userId } },
+    data: { linkedToSolo: body.linkedToSolo, ...positionSync },
+    select: { linkedToSolo: true, currentPage: true, currentSurah: true, currentAyah: true },
+  });
+
+  return NextResponse.json({ ok: true, member: updated });
+}

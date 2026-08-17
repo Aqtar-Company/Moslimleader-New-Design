@@ -22,12 +22,20 @@ interface Group {
 
 const RANK_COLORS: Record<number, string> = { 1: '#FFCC00', 2: '#94a3b8', 3: '#cd7f32' };
 
-export default function KhatmaGroupDetail({ group, members, userId, myCurrentPage = 1, myCurrentSurah = 1, myCurrentAyah = 1 }: { group: Group; members: Member[]; userId: string; myCurrentPage?: number; myCurrentSurah?: number; myCurrentAyah?: number; }) {
+export default function KhatmaGroupDetail({
+  group, members, userId, myCurrentPage = 1, myCurrentSurah = 1, myCurrentAyah = 1, linkedToSolo: initialLinked = false,
+}: {
+  group: Group; members: Member[]; userId: string;
+  myCurrentPage?: number; myCurrentSurah?: number; myCurrentAyah?: number;
+  linkedToSolo?: boolean;
+}) {
   const router = useRouter();
   const { isRtl } = useLang();
   const [copied, setCopied] = useState(false);
+  const [linkedToSolo, setLinkedToSolo] = useState(initialLinked);
+  const [linkSaving, setLinkSaving] = useState(false);
+  const [showLinkSheet, setShowLinkSheet] = useState(false);
 
-  // Pin dark navy background to body so overscroll stays themed
   React.useEffect(() => {
     const prev = document.body.style.background;
     const prevHtml = document.documentElement.style.background;
@@ -38,6 +46,22 @@ export default function KhatmaGroupDetail({ group, members, userId, myCurrentPag
       document.documentElement.style.background = prevHtml;
     };
   }, []);
+
+  async function toggleLinked(newVal: boolean) {
+    setLinkSaving(true);
+    const res = await fetch(`/api/tareeq/khatmati/groups/${group.id}/progress`, {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ linkedToSolo: newVal }),
+    });
+    setLinkSaving(false);
+    if (res.ok) {
+      setLinkedToSolo(newVal);
+      setShowLinkSheet(false);
+      // Refresh to get updated positions from server
+      router.refresh();
+    }
+  }
 
   const me = members.find(m => m.userId === userId);
   const readTodayCount = members.filter(m => m.readToday).length;
@@ -51,7 +75,10 @@ export default function KhatmaGroupDetail({ group, members, userId, myCurrentPag
 
   return (
     <>
-      <style>{`@keyframes nuri-glow{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.08)}}`}</style>
+      <style>{`
+        @keyframes nuri-glow{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.08)}}
+        @keyframes nuri-sheet{from{transform:translateY(100%)}to{transform:translateY(0)}}
+      `}</style>
       <div dir={isRtl ? 'rtl' : 'ltr'} style={{
         minHeight: '100dvh',
         background: `linear-gradient(160deg, #0a1e3d 0%, ${BG_DEEP} 55%, #071422 100%)`,
@@ -85,32 +112,51 @@ export default function KhatmaGroupDetail({ group, members, userId, myCurrentPag
           </div>
         </div>
 
-        {/* My lantern */}
+        {/* My lantern + link type badge */}
         {me && (
-          <div style={{ margin: '12px 20px 0', background: CARD, border: `1px solid ${CARD_BD}`, borderRadius: 16, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,204,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              {me.avatarUrl ? <img src={me.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 20 }}>🕯️</span>}
-            </div>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: TEXT_PRI, marginBottom: 4 }}>{isRtl ? 'سراجك' : 'Your Lantern'}</p>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <span style={{ fontSize: 12, color: GOLD }}>{me.streak} {isRtl ? 'يوم' : 'd'}</span>
-                <span style={{ fontSize: 12, color: '#60a5fa' }}>⭐ {me.points} {isRtl ? 'نقطة' : 'pts'}</span>
-                <span style={{ fontSize: 12, color: '#4ade80' }}>📖 {me.totalPages} {isRtl ? 'صفحة' : 'pages'}</span>
+          <div style={{ margin: '12px 20px 0', background: CARD, border: `1px solid ${CARD_BD}`, borderRadius: 16, padding: '14px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,204,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {me.avatarUrl ? <img src={me.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 20 }}>🕯️</span>}
               </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: TEXT_PRI, marginBottom: 4 }}>{isRtl ? 'سراجك' : 'Your Lantern'}</p>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <span style={{ fontSize: 12, color: GOLD }}>{me.streak} {isRtl ? 'يوم' : 'd'}</span>
+                  <span style={{ fontSize: 12, color: '#60a5fa' }}>⭐ {me.points} {isRtl ? 'نقطة' : 'pts'}</span>
+                  <span style={{ fontSize: 12, color: '#4ade80' }}>📖 {me.totalPages} {isRtl ? 'صفحة' : 'pages'}</span>
+                </div>
+              </div>
+              {me.readToday && (
+                <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 8, background: 'rgba(74,222,128,0.15)', color: '#4ade80', fontWeight: 700, flexShrink: 0 }}>
+                  {isRtl ? 'قرأت اليوم ✓' : 'Read today ✓'}
+                </span>
+              )}
             </div>
-            {me.readToday && (
-              <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 8, background: 'rgba(74,222,128,0.15)', color: '#4ade80', fontWeight: 700, flexShrink: 0 }}>
-                {isRtl ? 'قرأت اليوم ✓' : 'Read today ✓'}
+            {/* Link type indicator + toggle */}
+            <button onClick={() => setShowLinkSheet(true)} disabled={linkSaving}
+              style={{ marginTop: 12, width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderRadius: 10, background: linkedToSolo ? 'rgba(255,204,0,0.07)' : 'rgba(255,255,255,0.03)', border: `1px solid ${linkedToSolo ? 'rgba(255,204,0,0.2)' : CARD_BD}`, cursor: 'pointer' }}>
+              <span style={{ fontSize: 16 }}>{linkedToSolo ? '🔗' : '🕯️'}</span>
+              <span style={{ flex: 1, fontSize: 12, color: linkedToSolo ? GOLD : TEXT_MUT, fontWeight: linkedToSolo ? 700 : 400, textAlign: isRtl ? 'right' : 'left' }}>
+                {linkedToSolo
+                  ? (isRtl ? 'مرتبطة بختمتي الفردية' : 'Linked to my solo khatma')
+                  : (isRtl ? 'ختمة مستقلة' : 'Independent khatma')}
               </span>
-            )}
+              <span style={{ fontSize: 11, color: TEXT_MUT, flexShrink: 0 }}>{isRtl ? 'تغيير ←' : '→ Change'}</span>
+            </button>
           </div>
         )}
 
         {/* Read CTA */}
         <div style={{ margin: '14px 20px 0' }}>
           <button
-            onClick={() => router.push(`/tareeq/khatmati/read?page=${myCurrentPage}&surah=${myCurrentSurah}&ayah=${myCurrentAyah}&groupId=${group.id}`)}
+            onClick={() => router.push(
+              linkedToSolo
+                // Linked: open solo reader (no groupId — progress saves to solo which syncs group)
+                ? `/tareeq/khatmati/read?page=${myCurrentPage}&surah=${myCurrentSurah}&ayah=${myCurrentAyah}`
+                // Independent: open reader with groupId
+                : `/tareeq/khatmati/read?page=${myCurrentPage}&surah=${myCurrentSurah}&ayah=${myCurrentAyah}&groupId=${group.id}`
+            )}
             style={{
               width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
               padding: '15px 0', borderRadius: 18, fontWeight: 900, fontSize: 15,
@@ -139,15 +185,12 @@ export default function KhatmaGroupDetail({ group, members, userId, myCurrentPag
                 border: `1px solid ${m.userId === userId ? 'rgba(255,204,0,0.2)' : CARD_BD}`,
                 borderRadius: 14, padding: '12px 14px',
               }}>
-                {/* Rank */}
                 <span style={{ width: 28, fontWeight: 900, fontSize: 14, color: RANK_COLORS[m.rank] ?? TEXT_MUT, textAlign: 'center', flexShrink: 0 }}>
                   {m.rank === 1 ? '🥇' : m.rank === 2 ? '🥈' : m.rank === 3 ? '🥉' : `#${m.rank}`}
                 </span>
-                {/* Avatar */}
                 <div style={{ width: 38, height: 38, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,204,0,0.1)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {m.avatarUrl ? <img src={m.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 16 }}>👤</span>}
                 </div>
-                {/* Name + stats */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 13, fontWeight: 700, color: TEXT_PRI, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</p>
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -155,7 +198,6 @@ export default function KhatmaGroupDetail({ group, members, userId, myCurrentPag
                     <span style={{ fontSize: 11, color: TEXT_MUT }}>📖 {m.totalPages}</span>
                   </div>
                 </div>
-                {/* Points + today badge */}
                 <div style={{ textAlign: 'center', flexShrink: 0 }}>
                   <p style={{ fontSize: 16, fontWeight: 900, color: GOLD, lineHeight: 1 }}>{m.points}</p>
                   <p style={{ fontSize: 10, color: TEXT_MUT }}>{isRtl ? 'نقطة' : 'pts'}</p>
@@ -181,6 +223,62 @@ export default function KhatmaGroupDetail({ group, members, userId, myCurrentPag
           </div>
         )}
       </div>
+
+      {/* Link type change sheet */}
+      {showLinkSheet && (
+        <div onClick={() => setShowLinkSheet(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 9999, display: 'flex', alignItems: 'flex-end' }}>
+          <div onClick={e => e.stopPropagation()} dir={isRtl ? 'rtl' : 'ltr'}
+            style={{ width: '100%', background: '#111827', borderRadius: '20px 20px 0 0', padding: '24px 20px 44px', animation: 'nuri-sheet 0.28s cubic-bezier(0.32,0.72,0,1)' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: CARD_BD, margin: '0 auto 22px' }} />
+            <p style={{ fontWeight: 900, fontSize: 18, color: GOLD, marginBottom: 6, textAlign: 'center' }}>
+              {isRtl ? 'نوع الختمة' : 'Khatma type'}
+            </p>
+            <p style={{ fontSize: 13, color: TEXT_MUT, marginBottom: 22, textAlign: 'center' }}>
+              {isRtl ? 'اختر كيف تحتسب قراءتك في هذه المجموعة' : 'Choose how your reading counts in this group'}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <button onClick={() => toggleLinked(true)} disabled={linkSaving}
+                style={{ width: '100%', padding: '18px 20px', borderRadius: 16, background: linkedToSolo ? 'rgba(255,204,0,0.12)' : 'rgba(255,204,0,0.06)', border: `1.5px solid ${linkedToSolo ? 'rgba(255,204,0,0.45)' : 'rgba(255,204,0,0.2)'}`, cursor: 'pointer', textAlign: isRtl ? 'right' : 'left', opacity: linkSaving ? 0.6 : 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <span style={{ fontSize: 26, flexShrink: 0 }}>🔗</span>
+                  <div>
+                    <p style={{ fontWeight: 800, fontSize: 15, color: GOLD, marginBottom: 3 }}>
+                      {isRtl ? 'من ختمتي الفردية' : 'Linked to my solo khatma'}
+                      {linkedToSolo && <span style={{ fontSize: 11, marginRight: 8, marginLeft: 8, color: '#4ade80' }}>✓ {isRtl ? 'الحالي' : 'current'}</span>}
+                    </p>
+                    <p style={{ fontSize: 12, color: TEXT_MUT, lineHeight: 1.5 }}>
+                      {isRtl
+                        ? 'قراءتك الفردية تحتسب في المجموعة تلقائياً — موقع واحد للقراءتين'
+                        : 'Your solo reading counts for the group automatically — one position for both'}
+                    </p>
+                  </div>
+                </div>
+              </button>
+              <button onClick={() => toggleLinked(false)} disabled={linkSaving}
+                style={{ width: '100%', padding: '18px 20px', borderRadius: 16, background: !linkedToSolo ? 'rgba(255,255,255,0.07)' : CARD, border: `1.5px solid ${!linkedToSolo ? 'rgba(255,255,255,0.18)' : CARD_BD}`, cursor: 'pointer', textAlign: isRtl ? 'right' : 'left', opacity: linkSaving ? 0.6 : 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <span style={{ fontSize: 26, flexShrink: 0 }}>🕯️</span>
+                  <div>
+                    <p style={{ fontWeight: 800, fontSize: 15, color: TEXT_PRI, marginBottom: 3 }}>
+                      {isRtl ? 'ختمة مستقلة' : 'Independent khatma'}
+                      {!linkedToSolo && <span style={{ fontSize: 11, marginRight: 8, marginLeft: 8, color: '#4ade80' }}>✓ {isRtl ? 'الحالي' : 'current'}</span>}
+                    </p>
+                    <p style={{ fontSize: 12, color: TEXT_MUT, lineHeight: 1.5 }}>
+                      {isRtl
+                        ? 'موقع وعداد منفصل — القراءة الجماعية مستقلة عن ختمتك الفردية'
+                        : 'Separate position and counter — group reading is independent from your solo khatma'}
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </div>
+            <button onClick={() => setShowLinkSheet(false)}
+              style={{ width: '100%', marginTop: 14, padding: '12px 0', background: 'none', border: 'none', color: TEXT_MUT, fontSize: 13, cursor: 'pointer' }}>
+              {isRtl ? 'إلغاء' : 'Cancel'}
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

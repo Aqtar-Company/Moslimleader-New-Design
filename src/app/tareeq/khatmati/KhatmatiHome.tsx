@@ -83,7 +83,7 @@ function sirajState(lastReadDate: string | null): 'bright' | 'dim' | 'dark' {
   return 'dark';
 }
 
-interface GroupCard { id: string; name: string; dailyGoal: number; memberCount: number; myStreak: number; myPoints: number; myTotalPages: number; readToday: boolean; }
+interface GroupCard { id: string; name: string; dailyGoal: number; memberCount: number; myStreak: number; myPoints: number; myTotalPages: number; readToday: boolean; myCurrentPage: number; myCurrentSurah: number; myCurrentAyah: number; }
 
 export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { initialProgress: Progress | null; initialGroups?: GroupCard[] }) {
   const { isRtl } = useLang();
@@ -446,7 +446,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {initialGroups.map(g => (
-                <button key={g.id} onClick={() => router.push(`/tareeq/khatmati/groups/${g.id}`)}
+                <button key={g.id} onClick={() => router.push(`/tareeq/khatmati/read?page=${g.myCurrentPage}&surah=${g.myCurrentSurah}&ayah=${g.myCurrentAyah}&groupId=${g.id}`)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 12,
                     background: BG_CARD, border: `1px solid ${BG_CARD_BD}`,

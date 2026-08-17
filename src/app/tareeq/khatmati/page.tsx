@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export default async function KhatmatiPage() {
   const user = await getAuthUser().catch(() => null);
   let progress = null;
-  let groups: { id: string; name: string; dailyGoal: number; memberCount: number; myStreak: number; myPoints: number; myTotalPages: number; readToday: boolean }[] = [];
+  let groups: { id: string; name: string; dailyGoal: number; memberCount: number; myStreak: number; myPoints: number; myTotalPages: number; readToday: boolean; myCurrentPage: number; myCurrentSurah: number; myCurrentAyah: number; }[] = [];
 
   if (user) {
     const today = new Date().toLocaleDateString('en-CA');
@@ -32,6 +32,9 @@ export default async function KhatmatiPage() {
       myPoints: m.points,
       myTotalPages: m.totalPages,
       readToday: m.lastReadDate === today,
+      myCurrentPage: m.currentPage,
+      myCurrentSurah: m.currentSurah,
+      myCurrentAyah: m.currentAyah,
     }));
   }
 

@@ -13,6 +13,7 @@ const CARD_BD  = 'rgba(255,255,255,0.09)';
 interface Member {
   id: string; userId: string; name: string; avatarUrl: string | null;
   streak: number; totalPages: number; points: number; readToday: boolean; rank: number;
+  currentPage?: number; currentSurah?: number; currentAyah?: number;
 }
 interface Group {
   id: string; name: string; description: string | null;
@@ -21,7 +22,7 @@ interface Group {
 
 const RANK_COLORS: Record<number, string> = { 1: '#FFCC00', 2: '#94a3b8', 3: '#cd7f32' };
 
-export default function KhatmaGroupDetail({ group, members, userId }: { group: Group; members: Member[]; userId: string }) {
+export default function KhatmaGroupDetail({ group, members, userId, myCurrentPage = 1, myCurrentSurah = 1, myCurrentAyah = 1 }: { group: Group; members: Member[]; userId: string; myCurrentPage?: number; myCurrentSurah?: number; myCurrentAyah?: number; }) {
   const router = useRouter();
   const { isRtl } = useLang();
   const [copied, setCopied] = useState(false);
@@ -93,6 +94,25 @@ export default function KhatmaGroupDetail({ group, members, userId }: { group: G
             )}
           </div>
         )}
+
+        {/* Read CTA */}
+        <div style={{ margin: '14px 20px 0' }}>
+          <button
+            onClick={() => router.push(`/tareeq/khatmati/read?page=${myCurrentPage}&surah=${myCurrentSurah}&ayah=${myCurrentAyah}&groupId=${group.id}`)}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              padding: '15px 0', borderRadius: 18, fontWeight: 900, fontSize: 15,
+              background: GOLD, color: '#080E1C', border: 'none', cursor: 'pointer',
+              boxShadow: '0 4px 24px rgba(255,204,0,0.28)',
+            }}>
+            <svg width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+            {isRtl
+              ? (me?.readToday ? `استمر في القراءة — صفحة ${myCurrentPage}` : `أكمل ورد الختمة — صفحة ${myCurrentPage}`)
+              : (me?.readToday ? `Continue reading — Page ${myCurrentPage}` : `Complete today's ward — Page ${myCurrentPage}`)}
+          </button>
+        </div>
 
         {/* Leaderboard */}
         <div style={{ margin: '16px 20px 0' }}>

@@ -1748,6 +1748,9 @@ model KhatmaGroupMember {
   lastReadDate String?
   totalPages   Int         @default(0)
   points       Int         @default(0)
+  currentPage  Int         @default(1)
+  currentSurah Int         @default(1)
+  currentAyah  Int         @default(1)
   joinedAt     DateTime    @default(now())
 
   @@unique([groupId, userId])

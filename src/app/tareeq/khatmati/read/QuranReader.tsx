@@ -6,6 +6,7 @@ import {
   QuranVerse, fetchPageVerses,
   toArabicNum,
   SURAH_NAMES_AR, SURAH_NAMES_EN, TOTAL_QURAN_PAGES, SURAH_FIRST_PAGES,
+  SURAH_VERSE_COUNTS, SURAH_REVELATION_TYPES,
 } from '@/lib/quran-data';
 
 type Mode = 'listen' | 'both';
@@ -23,9 +24,9 @@ function getAudioUrlForReciter(globalAyahId: number, reciterId: string): string 
   return `https://cdn.islamic.network/quran/audio/128/${reciterId}/${globalAyahId}.mp3`;
 }
 
-interface Props { initialPage: number; initialSurah: number; initialAyah: number; }
+interface Props { initialPage: number; initialSurah: number; initialAyah: number; groupId?: string | null; }
 
-export default function QuranReader({ initialPage, initialSurah, initialAyah }: Props) {
+export default function QuranReader({ initialPage, initialSurah, initialAyah, groupId }: Props) {
   const { isRtl } = useLang();
   const router = useRouter();
 
@@ -44,6 +45,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
   const [reciterId, setReciterId] = useState('ar.alafasy');
   const [showReciterPicker, setShowReciterPicker] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [surahFilter, setSurahFilter] = useState('');
   const [searchSurah, setSearchSurah] = useState(initialSurah);
   const [searchAyah, setSearchAyah] = useState(1);
 
@@ -132,7 +134,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
     if (!v) return;
 
     router.replace(
-      `/tareeq/khatmati/read?page=${page}&surah=${v.chapter_id}&ayah=${v.verse_number}`,
+      `/tareeq/khatmati/read?page=${page}&surah=${v.chapter_id}&ayah=${v.verse_number}${groupId ? `&groupId=${groupId}` : ''}`,
       { scroll: false },
     );
 
@@ -142,7 +144,10 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
     localStorage.setItem('nuri-progress', JSON.stringify({ page, surah: v.chapter_id, ayah: v.verse_number }));
 
     saveTimer.current = setTimeout(() => {
-      fetch('/api/tareeq/khatmati/progress', {
+      const endpoint = groupId
+        ? `/api/tareeq/khatmati/groups/${groupId}/progress`
+        : '/api/tareeq/khatmati/progress';
+      fetch(endpoint, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -150,7 +155,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
           currentPage: page,
           currentSurah: v.chapter_id,
           currentAyah: v.verse_number,
-          localDate: new Date().toLocaleDateString('en-CA'), // YYYY-MM-DD in user's timezone
+          localDate: new Date().toLocaleDateString('en-CA'),
         }),
       }).catch(() => {});
     }, 3000);
@@ -324,8 +329,8 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
             </svg>
           </button>
 
-          {/* Back → Nuri home — leftmost in RTL, blue bg, white arrow */}
-          <button onClick={() => router.push('/tareeq/khatmati')}
+          {/* Back button — goes to group page or nuri home */}
+          <button onClick={() => router.push(groupId ? `/tareeq/khatmati/groups/${groupId}` : '/tareeq/khatmati')}
             className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 shrink-0"
             style={{ background: '#2563eb', color: '#fff' }}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
@@ -682,54 +687,119 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
         </div>
       )}
 
-      {/* ── Search modal (surah + ayah jump) ── */}
+      {/* ── Surah picker modal — full scrollable list ── */}
       {showSearch && (
-        <div onClick={() => setShowSearch(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <div onClick={e => e.stopPropagation()} dir="rtl" style={{ background: 'var(--tr-surface)', borderRadius: '20px 20px 0 0', padding: '20px 16px 36px', width: '100%', maxWidth: 480 }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--tr-border-soft)', margin: '0 auto 18px' }} />
-            <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 15, color: 'var(--tr-text-primary)', marginBottom: 16 }}>الانتقال إلى سورة / آية</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {/* Surah select */}
-              <div>
-                <label style={{ fontSize: 12, color: 'var(--tr-text-muted)', marginBottom: 6, display: 'block' }}>السورة</label>
-                <select
-                  value={searchSurah}
-                  onChange={e => setSearchSurah(Number(e.target.value))}
-                  style={{
-                    width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14,
-                    background: 'var(--tr-raised)', color: 'var(--tr-text-primary)',
-                    border: '1px solid var(--tr-border-soft)', outline: 'none',
-                    fontFamily: qFont, direction: 'rtl',
-                  }}>
-                  {SURAH_NAMES_AR.map((name, i) => (
-                    <option key={i + 1} value={i + 1}>{i + 1}. {name}</option>
-                  ))}
-                </select>
-              </div>
-              {/* Ayah number */}
-              <div>
-                <label style={{ fontSize: 12, color: 'var(--tr-text-muted)', marginBottom: 6, display: 'block' }}>رقم الآية</label>
-                <input
-                  type="number" min={1} value={searchAyah}
-                  onChange={e => setSearchAyah(Math.max(1, Number(e.target.value)))}
-                  style={{
-                    width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14,
-                    background: 'var(--tr-raised)', color: 'var(--tr-text-primary)',
-                    border: '1px solid var(--tr-border-soft)', outline: 'none', textAlign: 'right',
-                  }} />
-              </div>
-              <button
-                onClick={() => {
-                  const targetPage = SURAH_FIRST_PAGES[searchSurah - 1];
-                  if (targetPage) { setPage(targetPage); }
-                  setShowSearch(false);
-                }}
-                style={{
-                  width: '100%', padding: '13px', borderRadius: 12, fontWeight: 700, fontSize: 14,
-                  background: 'var(--nuri-gold)', color: '#0a0c14', border: 'none', cursor: 'pointer',
-                }}>
-                انتقال
+        <div onClick={() => { setShowSearch(false); setSurahFilter(''); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+          <div onClick={e => e.stopPropagation()} dir="rtl"
+            style={{ background: 'var(--tr-surface)', borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column', maxHeight: '88dvh' }}>
+            {/* Handle */}
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--tr-border-soft)', margin: '14px auto 0', flexShrink: 0 }} />
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px 0', flexShrink: 0 }}>
+              <p style={{ fontWeight: 800, fontSize: 16, color: 'var(--tr-text-primary)' }}>
+                {isRtl ? 'قائمة السور' : 'Surah List'}
+              </p>
+              <button onClick={() => { setShowSearch(false); setSurahFilter(''); }}
+                style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--tr-overlay)', border: 'none', cursor: 'pointer', color: 'var(--tr-text-muted)', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                ✕
               </button>
+            </div>
+            {/* Search bar */}
+            <div style={{ padding: '10px 16px 8px', flexShrink: 0 }}>
+              <div style={{ position: 'relative' }}>
+                <svg style={{ position: 'absolute', top: '50%', right: 12, transform: 'translateY(-50%)', pointerEvents: 'none' }}
+                  width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--tr-text-muted)" strokeWidth={2.2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                </svg>
+                <input
+                  autoFocus
+                  value={surahFilter}
+                  onChange={e => setSurahFilter(e.target.value)}
+                  placeholder={isRtl ? 'ابحث باسم السورة أو رقمها...' : 'Search by name or number...'}
+                  style={{
+                    width: '100%', padding: '10px 38px 10px 14px', borderRadius: 12,
+                    background: 'var(--tr-raised)', color: 'var(--tr-text-primary)',
+                    border: '1px solid var(--tr-border-soft)', outline: 'none', fontSize: 14,
+                    boxSizing: 'border-box', textAlign: 'right',
+                  }}
+                />
+              </div>
+            </div>
+            {/* Surah list */}
+            <div style={{ overflowY: 'auto', flex: 1, paddingBottom: 24 }}>
+              {SURAH_NAMES_AR
+                .map((ar, i) => ({ ar, en: SURAH_NAMES_EN[i], i, num: i + 1 }))
+                .filter(s =>
+                  surahFilter === '' ||
+                  s.ar.includes(surahFilter) ||
+                  s.en.toLowerCase().includes(surahFilter.toLowerCase()) ||
+                  String(s.num).includes(surahFilter)
+                )
+                .map(({ ar, en, i, num }) => {
+                  const isCurrent = cv ? cv.chapter_id === num : false;
+                  const revType = SURAH_REVELATION_TYPES[i];
+                  const verseCount = SURAH_VERSE_COUNTS[i];
+                  return (
+                    <button key={i}
+                      onClick={() => {
+                        const targetPage = SURAH_FIRST_PAGES[i];
+                        if (targetPage) {
+                          audioRef.current?.pause();
+                          setIsPlaying(false);
+                          playingRef.current = false;
+                          setPage(targetPage);
+                        }
+                        setShowSearch(false);
+                        setSurahFilter('');
+                      }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 14,
+                        width: '100%', padding: '11px 20px', border: 'none',
+                        cursor: 'pointer', textAlign: 'right',
+                        borderBottom: '1px solid var(--tr-border-subtle)',
+                        background: isCurrent ? 'rgba(212,168,83,0.07)' : 'transparent',
+                      }}>
+                      {/* Surah number badge */}
+                      <span style={{
+                        width: 38, height: 38, borderRadius: 8, flexShrink: 0,
+                        background: isCurrent ? 'rgba(212,168,83,0.18)' : 'var(--tr-overlay)',
+                        border: isCurrent ? '1.5px solid rgba(212,168,83,0.55)' : '1px solid var(--tr-border-soft)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 12, fontWeight: 700,
+                        color: isCurrent ? 'var(--nuri-gold)' : 'var(--tr-text-muted)',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}>
+                        {num}
+                      </span>
+                      {/* Names */}
+                      <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
+                        <p style={{ fontSize: 15, fontWeight: 700, color: isCurrent ? 'var(--nuri-gold)' : 'var(--tr-text-primary)', marginBottom: 2, fontFamily: qFont }}>
+                          {ar}
+                        </p>
+                        <p style={{ fontSize: 11, color: 'var(--tr-text-muted)' }}>{en}</p>
+                      </div>
+                      {/* Meta: type + verse count */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, flexShrink: 0 }}>
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6,
+                          background: revType === 'م' ? 'rgba(37,99,235,0.12)' : 'rgba(16,185,129,0.12)',
+                          color: revType === 'م' ? '#60a5fa' : '#34d399',
+                        }}>
+                          {revType === 'م' ? 'مكية' : 'مدنية'}
+                        </span>
+                        <span style={{ fontSize: 10, color: 'var(--tr-text-muted)', paddingInlineStart: 2 }}>
+                          {verseCount} آية
+                        </span>
+                      </div>
+                      {/* Current indicator */}
+                      {isCurrent && (
+                        <svg width={14} height={14} viewBox="0 0 24 24" fill="var(--nuri-gold)" style={{ flexShrink: 0 }}>
+                          <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })}
             </div>
           </div>
         </div>

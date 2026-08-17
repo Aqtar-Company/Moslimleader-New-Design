@@ -89,6 +89,7 @@ model User {
   khatmatiProgress        KhatmatiProgress?
   khatmaGroupsAdmin       KhatmaGroup[]            @relation("KhatmaGroupAdmin")
   khatmaGroupMemberships  KhatmaGroupMember[]      @relation("KhatmaGroupMemberships")
+  familyMembership        FamilyMembership?        @relation("MembershipOwner")
 
   @@index([role])
   @@index([isWholesale])
@@ -1756,4 +1757,76 @@ model KhatmaGroupMember {
   @@unique([groupId, userId])
   @@index([groupId])
   @@index([userId])
+}
+
+// ── Family Membership ───────────────────────────────────────────────────────
+
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+model FamilyMembership {
+  id               String           @id @default(cuid())
+  membershipNumber String           @unique  // ML-026-00184
+  qrToken          String           @unique  // ML-XXXXXXXX (random, used in QR URL)
+  ownerUserId      String           @unique
+  owner            User             @relation("MembershipOwner", fields: [ownerUserId], references: [id])
+  status           MembershipStatus @default(PENDING)
+  familyName       String?          // e.g. "أسرة إبراهيم حسن"
+  memberSince      Int              // Year of first activation — never changes on renewal
+  startsAt         DateTime?
+  expiresAt        DateTime?
+  paypalOrderId    String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  familyMembers    FamilyMember[]
+  renewals         MembershipRenewal[]
+
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model FamilyMember {
+  id           String           @id @default(cuid())
+  membershipId String
+  membership   FamilyMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  name         String
+  relation     String?          // spouse | child | other
+  birthdate    String?
+  createdAt    DateTime         @default(now())
+
+  @@index([membershipId])
+}
+
+model MembershipRenewal {
+  id            String           @id @default(cuid())
+  membershipId  String
+  membership    FamilyMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  paypalOrderId String?
+  amountEgp     Float            @default(100)
+  expiresAt     DateTime
+  createdAt     DateTime         @default(now())
+
+  @@index([membershipId])
+}
+
+model MembershipPerk {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?   @db.Text
+  imageUrl      String?
+  linkUrl       String?
+  validUntil    DateTime?
+  isActive      Boolean   @default(true)
+  tareeqPostId  String?   // TareeqPost created when perk was published
+  sortOrder     Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([isActive])
+  @@index([validUntil])
 }

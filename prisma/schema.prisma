@@ -86,6 +86,7 @@ model User {
   tareeqPostSubscriptions     TareeqPostSubscription[]
   tareeqPostViews         TareeqPostView[]
   tareeqNotes             TareeqNote[]             @relation("TareeqNotes")
+  khatmatiProgress        KhatmatiProgress?
 
   @@index([role])
   @@index([isWholesale])
@@ -1073,6 +1074,21 @@ model TareeqPostSubscription {
   @@unique([postId, userId])
   @@index([postId])
   @@index([userId])
+}
+
+model KhatmatiProgress {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentPage    Int       @default(1)
+  currentSurah   Int       @default(1)
+  currentAyah    Int       @default(1)
+  dailyGoalPages Int       @default(4)
+  lastReadDate   String?
+  sirajStreak    Int       @default(0)
+  totalPagesRead Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model TareeqPostView {

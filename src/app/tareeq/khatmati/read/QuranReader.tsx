@@ -365,55 +365,59 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
               </div>
             )}
 
-            {/* Read mode — mushaf-style page (typeset CSS, no CDN needed) */}
+            {/* Read mode — mushaf page layout (CSS typeset, visually familiar) */}
             {mode === 'read' && (
               <div className="px-3 py-4 flex justify-center">
                 <div style={{
-                  maxWidth: 480, width: '100%',
+                  maxWidth: 500, width: '100%',
                   background: '#fdf8f2',
-                  border: '2px solid #b8943c',
-                  borderRadius: 6,
-                  boxShadow: '0 6px 32px rgba(0,0,0,0.18), inset 0 0 60px rgba(184,148,60,0.05)',
-                  padding: 3,
+                  border: '2.5px solid #b8943c',
+                  boxShadow: '0 6px 32px rgba(0,0,0,0.18)',
+                  padding: 4,
                 }}>
                   <div style={{
-                    border: '1px solid rgba(184,148,60,0.5)',
-                    borderRadius: 4,
-                    padding: '22px 18px 20px',
-                    minHeight: 560,
+                    border: '1px solid rgba(184,148,60,0.45)',
+                    padding: '24px 20px 18px',
+                    minHeight: 600,
                     display: 'flex',
                     flexDirection: 'column',
                   }}>
+                    {/* Surah name banner */}
                     {verses[0]?.verse_number === 1 && (
-                      <div style={{ textAlign: 'center', marginBottom: 14 }}>
+                      <div style={{ textAlign: 'center', marginBottom: 16 }}>
                         <div style={{
                           display: 'inline-block',
                           border: '1px solid #c8a44a',
-                          borderRadius: 4,
-                          padding: '5px 28px',
-                          background: 'linear-gradient(90deg, transparent, rgba(184,148,60,0.12), transparent)',
-                          color: '#5a3500',
-                          fontFamily: "'Amiri', 'Traditional Arabic', serif",
-                          fontSize: 17, fontWeight: 700, letterSpacing: 1,
+                          padding: '5px 32px',
+                          background: 'rgba(184,148,60,0.08)',
+                          color: '#4a2e00',
+                          fontFamily: qFont,
+                          fontSize: 18, fontWeight: 700,
                         }}>
                           سورة {surahNameAr}
                         </div>
                       </div>
                     )}
+                    {/* Bismillah */}
                     {verses[0]?.verse_number === 1
                       && verses[0]?.chapter_id !== 9
                       && verses[0]?.chapter_id !== 1 && (
                       <p dir="rtl" style={{
-                        fontFamily: qFont, fontSize: 21, textAlign: 'center',
-                        color: '#2a1200', marginBottom: 14, lineHeight: 2.2,
+                        fontFamily: qFont, fontSize: 22, textAlign: 'center',
+                        color: '#1a0800', marginBottom: 14, lineHeight: 2.2,
                         WebkitUserSelect: 'none', userSelect: 'none',
                       }}>
                         بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ
                       </p>
                     )}
+                    {/* Verse text — flowing inline like real mushaf */}
                     <div dir="rtl" style={{
-                      fontFamily: qFont, fontSize: 22, lineHeight: 2.9,
-                      textAlign: 'center', color: '#150800', flex: 1,
+                      fontFamily: qFont,
+                      fontSize: 26,
+                      lineHeight: 3.0,
+                      textAlign: 'center',
+                      color: '#0d0500',
+                      flex: 1,
                       WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
                     }}>
                       {verses.map((v, i) => (
@@ -423,23 +427,26 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
                           onClick={() => goVerse(i)}
                           style={{
                             display: 'inline',
-                            background: i === currentIdx ? 'rgba(184,148,60,0.22)' : 'transparent',
-                            borderRadius: 3, cursor: 'pointer', transition: 'background 0.25s',
+                            background: i === currentIdx ? 'rgba(184,148,60,0.25)' : 'transparent',
+                            borderRadius: 3,
+                            cursor: 'pointer',
+                            transition: 'background 0.25s',
                           }}>
                           {v.text_uthmani}
                           <span style={{
                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                            width: 24, height: 24, borderRadius: '50%',
-                            border: '1px solid #b8943c', color: '#7a5010',
-                            fontSize: 10, fontFamily: 'serif',
-                            margin: '0 4px', verticalAlign: 'middle', flexShrink: 0, lineHeight: 1,
+                            width: 26, height: 26, borderRadius: '50%',
+                            border: '1.5px solid #b8943c', color: '#7a5010',
+                            fontSize: 11, fontFamily: 'serif',
+                            margin: '0 4px', verticalAlign: 'middle', flexShrink: 0,
                           }}>
                             {toArabicNum(v.verse_number)}
                           </span>
                         </span>
                       ))}
                     </div>
-                    <p style={{ textAlign: 'center', marginTop: 14, color: '#8a6020', fontSize: 14, fontFamily: "'Amiri', serif" }}>
+                    {/* Page number */}
+                    <p style={{ textAlign: 'center', marginTop: 14, color: '#8a6020', fontSize: 15, fontFamily: qFont }}>
                       ﴿ {toArabicNum(page)} ﴾
                     </p>
                   </div>

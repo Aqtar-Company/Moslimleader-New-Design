@@ -27,6 +27,9 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
   const [fontLoaded, setFontLoaded] = useState(false);
+  const [mushafLines, setMushafLines] = useState<{ lineNum: number; words: { text: string; charType: string; verseNumber: number; chapterId: number }[] }[]>([]);
+  const [mushafLinesLoading, setMushafLinesLoading] = useState(false);
+
   // Refs for closure-safe access in audio callbacks
   const versesRef   = useRef<QuranVerse[]>([]);
   const currentRef  = useRef(0);
@@ -42,6 +45,19 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
     const stored = localStorage.getItem('khatmati-mode') as Mode;
     if (stored === 'listen' || stored === 'read' || stored === 'both') setMode(stored);
   }, []);
+
+  // Fetch mushaf line data when in read mode
+  useEffect(() => {
+    if (mode !== 'read') return;
+    let cancelled = false;
+    setMushafLines([]);
+    setMushafLinesLoading(true);
+    fetch(`/api/tareeq/quran/mushaf-lines?page=${page}`)
+      .then(r => r.json())
+      .then(d => { if (!cancelled) { setMushafLines(d.lines ?? []); setMushafLinesLoading(false); } })
+      .catch(() => { if (!cancelled) setMushafLinesLoading(false); });
+    return () => { cancelled = true; };
+  }, [page, mode]);
 
   // Sync state → refs so audio callbacks always read current values
   useEffect(() => { versesRef.current = verses; }, [verses]);
@@ -365,89 +381,143 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
               </div>
             )}
 
-            {/* Read mode — mushaf page layout (CSS typeset, visually familiar) */}
+            {/* Read mode — line-by-line mushaf layout (Madinah style) */}
             {mode === 'read' && (
-              <div className="px-3 py-4 flex justify-center">
+              <div className="px-2 py-4 flex justify-center">
+                {/* Outer frame */}
                 <div style={{
                   maxWidth: 500, width: '100%',
-                  background: '#fdf8f2',
-                  border: '2.5px solid #b8943c',
-                  boxShadow: '0 6px 32px rgba(0,0,0,0.18)',
-                  padding: 4,
+                  background: '#fff',
+                  border: '2px solid #222',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
                 }}>
-                  <div style={{
-                    border: '1px solid rgba(184,148,60,0.45)',
-                    padding: '24px 20px 18px',
-                    minHeight: 600,
-                    display: 'flex',
-                    flexDirection: 'column',
-                  }}>
-                    {/* Surah name banner */}
+                  {/* Inner thin border */}
+                  <div style={{ border: '1px solid #888', margin: 5, padding: '14px 10px 12px' }}>
+
+                    {/* Surah name header — ornate banner */}
                     {verses[0]?.verse_number === 1 && (
-                      <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                      <div style={{ textAlign: 'center', marginBottom: 12 }}>
                         <div style={{
                           display: 'inline-block',
-                          border: '1px solid #c8a44a',
-                          padding: '5px 32px',
-                          background: 'rgba(184,148,60,0.08)',
-                          color: '#4a2e00',
-                          fontFamily: qFont,
-                          fontSize: 18, fontWeight: 700,
+                          border: '2px solid #222',
+                          borderRadius: 2,
+                          padding: '4px 0',
+                          width: '90%',
+                          background: '#fff',
+                          position: 'relative',
                         }}>
-                          سورة {surahNameAr}
+                          {/* Decorative side ornaments */}
+                          <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 18, color: '#333' }}>❧</span>
+                          <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 18, color: '#333' }}>❦</span>
+                          <span style={{
+                            fontFamily: qFont, fontSize: 20, fontWeight: 700, color: '#111',
+                            display: 'block', lineHeight: 1.8,
+                          }}>
+                            سورة {surahNameAr}
+                          </span>
                         </div>
                       </div>
                     )}
-                    {/* Bismillah */}
-                    {verses[0]?.verse_number === 1
-                      && verses[0]?.chapter_id !== 9
-                      && verses[0]?.chapter_id !== 1 && (
-                      <p dir="rtl" style={{
-                        fontFamily: qFont, fontSize: 22, textAlign: 'center',
-                        color: '#1a0800', marginBottom: 14, lineHeight: 2.2,
+
+                    {/* Spinner while loading line data */}
+                    {mushafLinesLoading && (
+                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400, gap: 12 }}>
+                        <div className="w-6 h-6 border-2 rounded-full animate-spin"
+                          style={{ borderColor: '#ddd', borderTopColor: '#333' }} />
+                      </div>
+                    )}
+
+                    {/* Lines — one per row, centered, Madinah mushaf style */}
+                    {!mushafLinesLoading && mushafLines.length > 0 && (
+                      <div dir="rtl" style={{
+                        fontFamily: qFont,
+                        fontSize: 22,
+                        color: '#0a0a0a',
+                        WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
+                      }}>
+                        {mushafLines.map(line => (
+                          <div key={line.lineNum} style={{
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            flexWrap: 'nowrap',
+                            marginBottom: 6,
+                            lineHeight: 2.2,
+                            gap: 2,
+                          }}>
+                            {line.words.map((w, wi) => {
+                              if (w.charType === 'end') {
+                                // Verse end marker — ornate circle like Madinah mushaf
+                                return (
+                                  <span key={wi} style={{
+                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                    width: 28, height: 28, borderRadius: '50%',
+                                    border: '1.5px solid #1a4a8a',
+                                    color: '#1a4a8a', fontSize: 10,
+                                    fontFamily: 'serif', flexShrink: 0,
+                                    verticalAlign: 'middle', margin: '0 2px',
+                                    cursor: 'pointer',
+                                  }}
+                                    onClick={() => {
+                                      const idx = verses.findIndex(v => v.verse_number === w.verseNumber && v.chapter_id === w.chapterId);
+                                      if (idx >= 0) goVerse(idx);
+                                    }}>
+                                    {toArabicNum(w.verseNumber)}
+                                  </span>
+                                );
+                              }
+                              const vIdx = verses.findIndex(v => v.verse_number === w.verseNumber && v.chapter_id === w.chapterId);
+                              const isActive = vIdx === currentIdx;
+                              return (
+                                <span key={wi}
+                                  style={{
+                                    background: isActive ? 'rgba(26,74,138,0.12)' : 'transparent',
+                                    borderRadius: 2, cursor: 'pointer',
+                                    transition: 'background 0.2s', padding: '0 1px',
+                                  }}
+                                  onClick={() => { if (vIdx >= 0) goVerse(vIdx); }}>
+                                  {w.text}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Fallback if API fails — flowing text */}
+                    {!mushafLinesLoading && mushafLines.length === 0 && verses.length > 0 && (
+                      <div dir="rtl" style={{
+                        fontFamily: qFont, fontSize: 22, lineHeight: 2.8,
+                        textAlign: 'center', color: '#0a0a0a',
                         WebkitUserSelect: 'none', userSelect: 'none',
                       }}>
-                        بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ
-                      </p>
-                    )}
-                    {/* Verse text — flowing inline like real mushaf */}
-                    <div dir="rtl" style={{
-                      fontFamily: qFont,
-                      fontSize: 26,
-                      lineHeight: 3.0,
-                      textAlign: 'center',
-                      color: '#0d0500',
-                      flex: 1,
-                      WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
-                    }}>
-                      {verses.map((v, i) => (
-                        <span
-                          key={v.id}
-                          ref={el => { verseRefs.current[i] = el; }}
-                          onClick={() => goVerse(i)}
-                          style={{
-                            display: 'inline',
-                            background: i === currentIdx ? 'rgba(184,148,60,0.25)' : 'transparent',
-                            borderRadius: 3,
-                            cursor: 'pointer',
-                            transition: 'background 0.25s',
-                          }}>
-                          {v.text_uthmani}
-                          <span style={{
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                            width: 26, height: 26, borderRadius: '50%',
-                            border: '1.5px solid #b8943c', color: '#7a5010',
-                            fontSize: 11, fontFamily: 'serif',
-                            margin: '0 4px', verticalAlign: 'middle', flexShrink: 0,
-                          }}>
-                            {toArabicNum(v.verse_number)}
+                        {verses.map((v, i) => (
+                          <span key={v.id}
+                            ref={el => { verseRefs.current[i] = el; }}
+                            onClick={() => goVerse(i)}
+                            style={{
+                              display: 'inline',
+                              background: i === currentIdx ? 'rgba(26,74,138,0.12)' : 'transparent',
+                              borderRadius: 2, cursor: 'pointer', transition: 'background 0.2s',
+                            }}>
+                            {v.text_uthmani}
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              width: 26, height: 26, borderRadius: '50%',
+                              border: '1.5px solid #1a4a8a', color: '#1a4a8a',
+                              fontSize: 10, margin: '0 3px', verticalAlign: 'middle',
+                            }}>
+                              {toArabicNum(v.verse_number)}
+                            </span>
                           </span>
-                        </span>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Page number */}
-                    <p style={{ textAlign: 'center', marginTop: 14, color: '#8a6020', fontSize: 15, fontFamily: qFont }}>
-                      ﴿ {toArabicNum(page)} ﴾
+                    <p style={{ textAlign: 'center', marginTop: 10, color: '#444', fontSize: 14, fontFamily: qFont }}>
+                      {toArabicNum(page)}
                     </p>
                   </div>
                 </div>

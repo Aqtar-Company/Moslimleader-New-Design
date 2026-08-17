@@ -321,9 +321,10 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
           </div>
         ) : (
           <>
-            {/* Listen mode — large single ayah */}
+            {/* Listen mode — large single ayah, centered vertically */}
             {mode === 'listen' && cv && (
-              <div className="flex flex-col items-center px-6 pt-10 pb-6 gap-6">
+              <div className="flex flex-col items-center justify-center px-6 gap-6"
+                style={{ minHeight: 'calc(100vh - 168px)' }}>
                 <div dir="rtl" className="rounded-3xl p-6 w-full"
                   style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', textAlign: 'center' }}>
                   <p style={{ fontFamily: qFont, fontSize: 28, lineHeight: 2.2, color: 'var(--tr-text-primary)' }}>

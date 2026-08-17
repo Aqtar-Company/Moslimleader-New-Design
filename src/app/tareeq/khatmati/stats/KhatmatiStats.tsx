@@ -100,7 +100,7 @@ export default function KhatmatiStats({ stats }: { stats: Stats }) {
           <StatCard
             label={isRtl ? 'أيام المواظبة' : 'Day Streak'}
             value={stats.sirajStreak}
-            sub={stats.sirajStreak > 0 ? '🔥' : undefined}
+            sub={stats.sirajStreak > 0 ? (isRtl ? 'يوم' : 'days') : undefined}
           />
           <StatCard
             label={isRtl ? 'عدد الختمات' : 'Full Khatmas'}

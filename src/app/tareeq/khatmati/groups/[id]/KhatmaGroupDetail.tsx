@@ -94,7 +94,7 @@ export default function KhatmaGroupDetail({ group, members, userId, myCurrentPag
             <div style={{ flex: 1 }}>
               <p style={{ fontSize: 13, fontWeight: 700, color: TEXT_PRI, marginBottom: 4 }}>{isRtl ? 'سراجك' : 'Your Lantern'}</p>
               <div style={{ display: 'flex', gap: 10 }}>
-                <span style={{ fontSize: 12, color: GOLD }}>🔥 {me.streak}</span>
+                <span style={{ fontSize: 12, color: GOLD }}>{me.streak} {isRtl ? 'يوم' : 'd'}</span>
                 <span style={{ fontSize: 12, color: '#60a5fa' }}>⭐ {me.points} {isRtl ? 'نقطة' : 'pts'}</span>
                 <span style={{ fontSize: 12, color: '#4ade80' }}>📖 {me.totalPages} {isRtl ? 'صفحة' : 'pages'}</span>
               </div>
@@ -151,7 +151,7 @@ export default function KhatmaGroupDetail({ group, members, userId, myCurrentPag
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 13, fontWeight: 700, color: TEXT_PRI, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</p>
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 11, color: TEXT_MUT }}>🔥 {m.streak}</span>
+                    <span style={{ fontSize: 11, color: TEXT_MUT }}>{m.streak} {isRtl ? 'يوم' : 'd'}</span>
                     <span style={{ fontSize: 11, color: TEXT_MUT }}>📖 {m.totalPages}</span>
                   </div>
                 </div>

@@ -158,6 +158,19 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
       const canvas = document.createElement('canvas');
       canvas.width = 900; canvas.height = 900;
       const ctx = canvas.getContext('2d')!;
+
+      // Load lantern + logo images in parallel
+      const loadImg = (src: string) => new Promise<HTMLImageElement>((res, rej) => {
+        const img = new window.Image();
+        img.onload = () => res(img);
+        img.onerror = rej;
+        img.src = src;
+      });
+      const [lanternImg, logoImg] = await Promise.all([
+        loadImg(`/${lanternLevel}-light.png`),
+        loadImg('/Tareeq-small.png').catch(() => null),
+      ]);
+
       // Background gradient
       const grad = ctx.createLinearGradient(0, 0, 0, 900);
       grad.addColorStop(0, '#0a1e3d');
@@ -172,21 +185,26 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
       ctx.beginPath();
       ctx.arc(450, 360, 220, -Math.PI / 2, -Math.PI / 2 + (pctNum / 100) * Math.PI * 2);
       ctx.strokeStyle = '#FFCC00'; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.stroke();
-      // Lantern emoji centre
-      ctx.font = '110px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('🕯️', 450, 345);
+      // Lantern image centre
+      ctx.drawImage(lanternImg, 450 - 95, 360 - 95, 190, 190);
       // Percentage
       ctx.font = 'bold 72px sans-serif'; ctx.fillStyle = '#FFCC00';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(`${pctNum}%`, 450, 470);
       // Title
       ctx.font = 'bold 40px Cairo,sans-serif'; ctx.fillStyle = '#F0EDE4';
       ctx.fillText('نُوري · ختمتك', 450, 540);
-      // Sub stats
+      // Sub stats (no fire emoji)
       ctx.font = '32px sans-serif'; ctx.fillStyle = 'rgba(240,237,228,0.5)';
-      ctx.fillText(`صفحة ${p.currentPage} / ${TOTAL_QURAN_PAGES}   🔥 ${p.sirajStreak} يوم`, 450, 600);
-      // Watermark
-      ctx.font = '24px sans-serif'; ctx.fillStyle = 'rgba(255,204,0,0.4)';
-      ctx.fillText('moslimleader.com', 450, 860);
+      ctx.fillText(`صفحة ${p.currentPage} / ${TOTAL_QURAN_PAGES}   ·   ${p.sirajStreak} يوم`, 450, 600);
+      // Tareeq logo (small, bottom-center)
+      if (logoImg) {
+        const lw = 140; const lh = Math.round(lw * logoImg.height / Math.max(logoImg.width, 1));
+        ctx.drawImage(logoImg, 450 - lw / 2, 830 - lh / 2, lw, lh);
+      } else {
+        ctx.font = '24px sans-serif'; ctx.fillStyle = 'rgba(255,204,0,0.4)';
+        ctx.fillText('moslimleader.com', 450, 860);
+      }
 
       const blob = await new Promise<Blob>((res, rej) => canvas.toBlob(b => b ? res(b) : rej(), 'image/png'));
       const file = new File([blob], 'nuri-progress.png', { type: 'image/png' });

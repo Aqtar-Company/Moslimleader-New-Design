@@ -30,6 +30,10 @@ function NotifIcon({ type }: { type: string }) {
       <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
     </svg>
   );
+  if (type === 'inspired') return <span className="text-base leading-none">⭐</span>;
+  if (type === 'thanks')   return <span className="text-base leading-none">🙏</span>;
+  if (type === 'agree')    return <span className="text-base leading-none">✊</span>;
+  if (type === 'yarabb')   return <span className="text-base leading-none">🤲</span>;
   if (type === 'comment') return (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-teal)' }}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
@@ -47,6 +51,18 @@ function NotifText({ n, isRtl }: { n: Notification; isRtl: boolean }) {
   const title = n.postTitle ? `«${n.postTitle}»` : '';
   if (n.type === 'like') {
     return <span>{isRtl ? `${actor} أعجب بعلامتك ${title}` : `${actor} liked your mark ${title}`}</span>;
+  }
+  if (n.type === 'inspired') {
+    return <span>{isRtl ? `${actor} ألهمه علامتك ${title} ⭐` : `${actor} was inspired by your mark ${title} ⭐`}</span>;
+  }
+  if (n.type === 'thanks') {
+    return <span>{isRtl ? `${actor} شكرك على علامتك ${title} 🙏` : `${actor} thanked you for ${title} 🙏`}</span>;
+  }
+  if (n.type === 'agree') {
+    return <span>{isRtl ? `${actor} اتفق معك في علامتك ${title} ✊` : `${actor} agreed with your mark ${title} ✊`}</span>;
+  }
+  if (n.type === 'yarabb') {
+    return <span>{isRtl ? `${actor} قال يارب على علامتك ${title} 🤲` : `${actor} said Yarabb on your mark ${title} 🤲`}</span>;
   }
   if (n.type === 'comment') {
     return (

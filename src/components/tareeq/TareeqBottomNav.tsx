@@ -997,32 +997,43 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
                 filter: isKhatmati ? `drop-shadow(0 0 8px ${NAV_ACCENT}88)` : 'none',
                 transition: 'all 0.2s',
               }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z"/>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z"/>
+              {/* oil lamp / مصباح زيت */}
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 4c0 1.5-1 2.5-1 4"/>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10 8h4"/>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7 14c0-3.5 2-6 5-6s5 2.5 5 6c0 2-2 3.5-5 3.5S7 16 7 14z"/>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 12c2-.5 4-2 4-4"/>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7 13c-1.5-.5-3 .5-3 2s1.5 2 2.5 1.5"/>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10 20h4M9.5 20.5c0-1 .5-2 .5-3M14.5 20.5c0-1-.5-2-.5-3"/>
             </svg>
             <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isKhatmati ? NAV_ACCENT : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
               {isRtl ? 'نُوري' : 'Nuri'}
             </span>
           </button>
 
-          {/* 2 — Contacts / Quick Call */}
-          <button
-            onClick={() => { if (user) setShowContacts(true); else router.push('/login?next=/tareeq'); }}
-            className="flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
-            style={{ minWidth: 44, background: 'none', border: 'none', cursor: 'pointer' }}
+          {/* 2 — Chat / Messages */}
+          <Link
+            href="/tareeq/inbox"
+            className="relative flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
+            style={{ minWidth: 44 }}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"
               style={{
-                color: showContacts ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
-                filter: showContacts ? 'drop-shadow(0 0 5px rgba(212,168,83,0.45))' : 'none',
+                color: isInbox ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
+                filter: isInbox ? 'drop-shadow(0 0 5px rgba(212,168,83,0.45))' : 'none',
                 transition: 'all 0.2s',
               }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
             </svg>
-            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: showContacts ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
-              {isRtl ? 'اتصال' : 'Call'}
+            {messageCount > 0 && (
+              <span className="absolute top-0 end-0 min-w-[17px] h-[17px] rounded-full flex items-center justify-center text-[9px] font-black px-0.5"
+                style={{ background: '#f43f5e', color: '#fff' }}>
+                {messageCount > 9 ? '9+' : messageCount}
+              </span>
+            )}
+            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isInbox ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
+              {isRtl ? 'الشات' : 'Chat'}
             </span>
-          </button>
+          </Link>
 
           {/* 3 — Center spacer + label */}
           <div className="flex flex-col items-center justify-end pb-2" style={{ width: CIRCLE_SIZE, minWidth: CIRCLE_SIZE }}>
@@ -1051,30 +1062,24 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             </span>
           </Link>
 
-          {/* 5 (far LEFT in RTL) — Chat / Messages */}
-          <Link
-            href="/tareeq/inbox"
-            className="relative flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
-            style={{ minWidth: 44 }}
+          {/* 5 (far LEFT in RTL) — Contacts / Quick Call */}
+          <button
+            onClick={() => { if (user) setShowContacts(true); else router.push('/login?next=/tareeq'); }}
+            className="flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
+            style={{ minWidth: 44, background: 'none', border: 'none', cursor: 'pointer' }}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"
               style={{
-                color: isInbox ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
-                filter: isInbox ? 'drop-shadow(0 0 5px rgba(212,168,83,0.45))' : 'none',
+                color: showContacts ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
+                filter: showContacts ? 'drop-shadow(0 0 5px rgba(212,168,83,0.45))' : 'none',
                 transition: 'all 0.2s',
               }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
             </svg>
-            {messageCount > 0 && (
-              <span className="absolute top-0 end-0 min-w-[17px] h-[17px] rounded-full flex items-center justify-center text-[9px] font-black px-0.5"
-                style={{ background: '#f43f5e', color: '#fff' }}>
-                {messageCount > 9 ? '9+' : messageCount}
-              </span>
-            )}
-            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isInbox ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
-              {isRtl ? 'الشات' : 'Chat'}
+            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: showContacts ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
+              {isRtl ? 'اتصال' : 'Call'}
             </span>
-          </Link>
+          </button>
         </div>
       </nav>
 

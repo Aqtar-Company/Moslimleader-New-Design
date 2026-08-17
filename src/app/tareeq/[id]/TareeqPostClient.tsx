@@ -669,7 +669,7 @@ function ViewersPopover({ postId, isRtl, onClose }: { postId: string; isRtl: boo
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div
-        className="absolute bottom-full mb-2 start-0 z-50 rounded-2xl shadow-xl overflow-hidden"
+        className="absolute bottom-full mb-2 end-0 z-50 rounded-2xl shadow-xl overflow-hidden"
         style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)', width: 240, maxHeight: 320, overflowY: 'auto' }}
         dir={isRtl ? 'rtl' : 'ltr'}
       >

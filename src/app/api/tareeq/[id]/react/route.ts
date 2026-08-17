@@ -53,7 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       prisma.tareeqNotification.create({
         data: {
           userId: post.userId,
-          type: 'like',
+          type: type,
           actorId: me.userId,
           actorName,
           actorAvatarUrl: actor?.avatarUrl ?? null,

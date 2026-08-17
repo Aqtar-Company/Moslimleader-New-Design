@@ -69,8 +69,8 @@ export interface QuranVerse {
 }
 
 export async function fetchPageVerses(page: number): Promise<QuranVerse[]> {
-  const url = `https://api.quran.com/api/v4/quran/verses/by_page/${page}?per_page=50&fields=text_uthmani,verse_number,chapter_id,page_number`;
-  const res = await fetch(url);
+  // Proxied through our server to avoid CORS / external-fetch blocking
+  const res = await fetch(`/api/tareeq/quran/verses?page=${page}`);
   if (!res.ok) throw new Error('API error');
   const data = await res.json();
   return data.verses ?? [];

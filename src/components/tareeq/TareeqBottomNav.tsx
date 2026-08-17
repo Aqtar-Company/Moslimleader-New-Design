@@ -776,6 +776,23 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
   const isInbox = pathname.startsWith('/tareeq/inbox');
   const isKhatmati = pathname.startsWith('/tareeq/khatmati');
 
+  // On نُوري pages: hide the nav entirely — the reader has its own home button
+  if (isKhatmati) {
+    return (
+      <>
+        {activeCall && (
+          <TareeqCallScreen
+            callId={activeCall.callId}
+            role="caller"
+            callType={activeCall.callType}
+            remoteUser={activeCall.remoteUser}
+            onEnd={() => setActiveCall(null)}
+          />
+        )}
+      </>
+    );
+  }
+
   return (
     <>
       {/* Hidden camera input */}
@@ -971,7 +988,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z"/>
             </svg>
             <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isKhatmati ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
-              {isRtl ? 'ختمتي' : 'Khatmati'}
+              {isRtl ? 'نُوري' : 'Nuri'}
             </span>
           </Link>
 

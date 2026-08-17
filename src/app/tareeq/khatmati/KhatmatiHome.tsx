@@ -11,8 +11,7 @@ interface Progress {
 
 function sirajState(lastReadDate: string | null): 'bright' | 'dim' | 'dark' {
   if (!lastReadDate) return 'dark';
-  // Use local date so midnight comparison matches the user's timezone, not UTC
-  const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+  const today = new Date().toLocaleDateString('en-CA');
   if (lastReadDate === today) return 'bright';
   const d = new Date();
   d.setDate(d.getDate() - 1);
@@ -49,11 +48,29 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
         }
       `}</style>
 
-      <div className="max-w-md mx-auto px-4 pt-8 pb-28" dir={isRtl ? 'rtl' : 'ltr'}>
+      <div className="max-w-md mx-auto px-4 pt-8 pb-10" dir={isRtl ? 'rtl' : 'ltr'}>
+
+        {/* ── Page title ── */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="font-black text-2xl" style={{ color: 'var(--tr-gold)', letterSpacing: '-0.01em' }}>
+              نُوري
+            </h1>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--tr-text-muted)' }}>
+              {isRtl ? 'ختمتك القرآنية' : 'Your Quran journey'}
+            </p>
+          </div>
+          {p && (
+            <span className="text-xs font-black px-2.5 py-1 rounded-full"
+              style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1px solid rgba(212,168,83,0.3)' }}>
+              {pct}%
+            </span>
+          )}
+        </div>
 
         {/* ── Siraj ── */}
-        <div className="flex flex-col items-center gap-5 mb-10">
-          <div style={{ position: 'relative', width: 130, height: 130, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="flex flex-col items-center gap-4 mb-8">
+          <div style={{ position: 'relative', width: 120, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {state === 'bright' && (
               <div style={{
                 position: 'absolute', inset: -20, borderRadius: '50%',
@@ -63,7 +80,7 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
             )}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.3}
               style={{
-                width: 110, height: 110, color: flameColor,
+                width: 100, height: 100, color: flameColor,
                 filter: glowFilter, transition: 'all 0.6s ease',
                 animation: state === 'bright' ? 'kh-flicker 3.2s ease-in-out infinite' : 'none',
               }}>
@@ -81,7 +98,7 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
               </p>
             ) : state === 'bright' ? (
               <p className="font-bold text-base" style={{ color: 'var(--tr-gold)' }}>
-                {isRtl ? 'أتممت وردك اليوم بحمد الله 🌿' : 'Today\'s wird completed 🌿'}
+                {isRtl ? 'أتممت وردك اليوم بحمد الله 🌿' : "Today's wird completed 🌿"}
               </p>
             ) : state === 'dim' ? (
               <p className="text-sm leading-relaxed" style={{ color: 'var(--tr-text-muted)', maxWidth: 240 }}>
@@ -89,7 +106,7 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
               </p>
             ) : (
               <p className="text-sm" style={{ color: 'var(--tr-text-muted)' }}>
-                {isRtl ? 'أضئ سراجك — ابدأ ختمتك' : 'Light your siraj — begin your khatma'}
+                {isRtl ? 'أضئ سراجك — ابدأ رحلتك' : 'Light your siraj — begin your journey'}
               </p>
             )}
           </div>
@@ -97,12 +114,16 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
 
         {/* ── Progress card ── */}
         {p && (
-          <div className="rounded-3xl p-5 mb-5" style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)' }}>
+          <div className="rounded-3xl p-5 mb-4" style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)' }}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold" style={{ color: 'var(--tr-text-muted)' }}>
                 {isRtl ? `صفحة ${page} من ${TOTAL_QURAN_PAGES}` : `Page ${page} of ${TOTAL_QURAN_PAGES}`}
               </span>
-              <span className="text-xs font-black" style={{ color: 'var(--tr-gold)' }}>{pct}%</span>
+              {p.totalPagesRead > 0 && (
+                <span className="text-[11px]" style={{ color: 'var(--tr-text-muted)', opacity: 0.6 }}>
+                  {isRtl ? `${p.totalPagesRead} صفحة مقروءة` : `${p.totalPagesRead} pages read`}
+                </span>
+              )}
             </div>
             <div className="rounded-full overflow-hidden mb-3" style={{ height: 5, background: 'var(--tr-overlay)' }} dir="ltr">
               <div style={{
@@ -116,11 +137,6 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
                 ? `${surahNameAr} — الآية ${p.currentAyah}`
                 : `${surahNameEn} — Ayah ${p.currentAyah}`}
             </p>
-            {p.totalPagesRead > 0 && (
-              <p className="text-[11px] text-center mt-1" style={{ color: 'var(--tr-text-muted)', opacity: 0.6 }}>
-                {isRtl ? `${p.totalPagesRead} صفحة مقروءة` : `${p.totalPagesRead} pages read`}
-              </p>
-            )}
           </div>
         )}
 
@@ -136,7 +152,7 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
             </svg>
             {p
               ? (isRtl ? `أكمل ختمتك — صفحة ${page}` : `Continue — Page ${page}`)
-              : (isRtl ? 'ابدأ ختمتك الآن' : 'Start Your Khatma')}
+              : (isRtl ? 'ابدأ رحلتك الآن' : 'Start Your Journey')}
           </Link>
         ) : (
           <Link
@@ -149,7 +165,7 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
         )}
 
         {/* ── Mode hint ── */}
-        <p className="text-center text-xs mt-5" style={{ color: 'var(--tr-text-muted)', opacity: 0.5 }}>
+        <p className="text-center text-xs mt-4" style={{ color: 'var(--tr-text-muted)', opacity: 0.45 }}>
           {isRtl ? 'استماع · مصحف · استماع + مصحف' : 'Listen · Read · Listen + Read'}
         </p>
       </div>

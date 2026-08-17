@@ -365,10 +365,9 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
               </div>
             )}
 
-            {/* Read mode — mushaf-style page (typeset, no CDN needed) */}
+            {/* Read mode — mushaf-style page (typeset CSS, no CDN needed) */}
             {mode === 'read' && (
               <div className="px-3 py-4 flex justify-center">
-                {/* Outer gold frame */}
                 <div style={{
                   maxWidth: 480, width: '100%',
                   background: '#fdf8f2',
@@ -377,7 +376,6 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
                   boxShadow: '0 6px 32px rgba(0,0,0,0.18), inset 0 0 60px rgba(184,148,60,0.05)',
                   padding: 3,
                 }}>
-                  {/* Inner border */}
                   <div style={{
                     border: '1px solid rgba(184,148,60,0.5)',
                     borderRadius: 4,
@@ -386,7 +384,6 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
                     display: 'flex',
                     flexDirection: 'column',
                   }}>
-                    {/* Surah name banner — shown when page opens a new surah */}
                     {verses[0]?.verse_number === 1 && (
                       <div style={{ textAlign: 'center', marginBottom: 14 }}>
                         <div style={{
@@ -397,16 +394,12 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
                           background: 'linear-gradient(90deg, transparent, rgba(184,148,60,0.12), transparent)',
                           color: '#5a3500',
                           fontFamily: "'Amiri', 'Traditional Arabic', serif",
-                          fontSize: 17,
-                          fontWeight: 700,
-                          letterSpacing: 1,
+                          fontSize: 17, fontWeight: 700, letterSpacing: 1,
                         }}>
                           سورة {surahNameAr}
                         </div>
                       </div>
                     )}
-
-                    {/* Bismillah */}
                     {verses[0]?.verse_number === 1
                       && verses[0]?.chapter_id !== 9
                       && verses[0]?.chapter_id !== 1 && (
@@ -418,15 +411,9 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
                         بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ
                       </p>
                     )}
-
-                    {/* Flowing verse text — all verses on one continuous page */}
                     <div dir="rtl" style={{
-                      fontFamily: qFont,
-                      fontSize: 22,
-                      lineHeight: 2.9,
-                      textAlign: 'center',
-                      color: '#150800',
-                      flex: 1,
+                      fontFamily: qFont, fontSize: 22, lineHeight: 2.9,
+                      textAlign: 'center', color: '#150800', flex: 1,
                       WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
                     }}>
                       {verses.map((v, i) => (
@@ -437,39 +424,22 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
                           style={{
                             display: 'inline',
                             background: i === currentIdx ? 'rgba(184,148,60,0.22)' : 'transparent',
-                            borderRadius: 3,
-                            cursor: 'pointer',
-                            transition: 'background 0.25s',
+                            borderRadius: 3, cursor: 'pointer', transition: 'background 0.25s',
                           }}>
                           {v.text_uthmani}
-                          {/* Circular verse-end marker like real mushaf */}
                           <span style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: 24, height: 24,
-                            borderRadius: '50%',
-                            border: '1px solid #b8943c',
-                            color: '#7a5010',
-                            fontSize: 10,
-                            fontFamily: 'serif',
-                            margin: '0 4px',
-                            verticalAlign: 'middle',
-                            flexShrink: 0,
-                            lineHeight: 1,
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            width: 24, height: 24, borderRadius: '50%',
+                            border: '1px solid #b8943c', color: '#7a5010',
+                            fontSize: 10, fontFamily: 'serif',
+                            margin: '0 4px', verticalAlign: 'middle', flexShrink: 0, lineHeight: 1,
                           }}>
                             {toArabicNum(v.verse_number)}
                           </span>
                         </span>
                       ))}
                     </div>
-
-                    {/* Page number at bottom */}
-                    <p style={{
-                      textAlign: 'center', marginTop: 14,
-                      color: '#8a6020', fontSize: 14,
-                      fontFamily: "'Amiri', serif",
-                    }}>
+                    <p style={{ textAlign: 'center', marginTop: 14, color: '#8a6020', fontSize: 14, fontFamily: "'Amiri', serif" }}>
                       ﴿ {toArabicNum(page)} ﴾
                     </p>
                   </div>

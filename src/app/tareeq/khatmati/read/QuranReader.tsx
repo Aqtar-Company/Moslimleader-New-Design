@@ -28,6 +28,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
   const [audioProgress, setAudioProgress] = useState(0);
   const [fontLoaded, setFontLoaded] = useState(false);
   const [mushafImgError, setMushafImgError] = useState(false);
+  const [mushafCdnIdx, setMushafCdnIdx] = useState(0);
 
   // Refs for closure-safe access in audio callbacks
   const versesRef   = useRef<QuranVerse[]>([]);
@@ -81,6 +82,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
     setLoading(true);
     setError(false);
     setMushafImgError(false);
+    setMushafCdnIdx(0);
     fetchPageVerses(page)
       .then(v => {
         if (cancelled) return;
@@ -237,8 +239,29 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
     localStorage.setItem('khatmati-mode', m);
   }
 
+  // Multiple CDN fallbacks — browser tries them in order via onError
+  const MUSHAF_CDNS = (p: number): string[] => {
+    const n = String(p).padStart(3, '0');
+    return [
+      `https://static.qurancdn.com/images/v2/pages/page-${n}.jpg`,
+      `https://everyayah.com/quran_img/page${n}.gif`,
+      `https://www.islamicfinder.org/quran/images/${p}.gif`,
+      `/api/tareeq/quran/mushaf-page?page=${p}`,
+    ];
+  };
+
   function getMushafPageUrl(p: number): string {
-    return `/api/tareeq/quran/mushaf-page?page=${p}`;
+    const urls = MUSHAF_CDNS(p);
+    return urls[mushafCdnIdx] ?? urls[urls.length - 1];
+  }
+
+  function onMushafImgError() {
+    const urls = MUSHAF_CDNS(page);
+    if (mushafCdnIdx + 1 < urls.length) {
+      setMushafCdnIdx(i => i + 1);
+    } else {
+      setMushafImgError(true);
+    }
   }
 
   // ── Current verse info ────────────────────────────────────────────────────
@@ -377,15 +400,15 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
               <div className="flex flex-col items-center pb-4 pt-2">
                 {!mushafImgError ? (
                   <img
-                    key={page}
+                    key={`${page}-${mushafCdnIdx}`}
                     src={getMushafPageUrl(page)}
                     alt={`صفحة ${page}`}
                     draggable={false}
-                    onError={() => setMushafImgError(true)}
+                    onError={onMushafImgError}
                     style={{
-                      width: '100%', maxWidth: 500,
-                      borderRadius: 4,
+                      width: '100%', maxWidth: 520,
                       display: 'block',
+                      WebkitUserSelect: 'none', userSelect: 'none',
                     }}
                   />
                 ) : (

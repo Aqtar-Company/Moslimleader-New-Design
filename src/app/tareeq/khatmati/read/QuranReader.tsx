@@ -4,11 +4,24 @@ import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import {
   QuranVerse, fetchPageVerses,
-  getAudioUrl, toArabicNum,
-  SURAH_NAMES_AR, SURAH_NAMES_EN, TOTAL_QURAN_PAGES,
+  toArabicNum,
+  SURAH_NAMES_AR, SURAH_NAMES_EN, TOTAL_QURAN_PAGES, SURAH_FIRST_PAGES,
 } from '@/lib/quran-data';
 
 type Mode = 'listen' | 'read' | 'both';
+
+const RECITERS = [
+  { id: 'ar.alafasy',           nameAr: 'مشاري العفاسي',        color: '#1a6b3a' },
+  { id: 'ar.husary',            nameAr: 'محمود خليل الحصري',    color: '#1a4a8a' },
+  { id: 'ar.abdulbasitmurattal',nameAr: 'عبدالباسط عبدالصمد',   color: '#6b1a1a' },
+  { id: 'ar.minshawi',          nameAr: 'محمد صديق المنشاوي',   color: '#5a3a00' },
+  { id: 'ar.abdurrahmansudais', nameAr: 'عبدالرحمن السديس',     color: '#2a1a6b' },
+  { id: 'ar.saoodshuraym',      nameAr: 'سعود الشريم',          color: '#004a4a' },
+];
+
+function getAudioUrlForReciter(globalAyahId: number, reciterId: string): string {
+  return `https://cdn.islamic.network/quran/audio/128/${reciterId}/${globalAyahId}.mp3`;
+}
 
 interface Props { initialPage: number; initialSurah: number; initialAyah: number; }
 
@@ -16,7 +29,6 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
   const { isRtl } = useLang();
   const router = useRouter();
 
-  // Initialize to 'both' to avoid SSR/hydration mismatch; real value loaded in useEffect
   const [mode, setMode] = useState<Mode>('both');
   const [page, setPage] = useState(initialPage);
   const [retryKey, setRetryKey] = useState(0);
@@ -30,6 +42,14 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
   const [mushafLines, setMushafLines] = useState<{ lineNum: number; words: { text: string; codeV1: string; charType: string; verseNumber: number; chapterId: number }[] }[]>([]);
   const [mushafLinesLoading, setMushafLinesLoading] = useState(false);
   const [qcfFontName, setQcfFontName] = useState<string | null>(null);
+
+  // New UI state
+  const [reciterId, setReciterId] = useState('ar.alafasy');
+  const [showReciterPicker, setShowReciterPicker] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showBackMenu, setShowBackMenu] = useState(false);
+  const [searchSurah, setSearchSurah] = useState(initialSurah);
+  const [searchAyah, setSearchAyah] = useState(1);
 
   // Refs for closure-safe access in audio callbacks
   const versesRef   = useRef<QuranVerse[]>([]);
@@ -182,7 +202,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
     const verse = versesRef.current[currentRef.current];
     if (!verse) return;
 
-    const audio = new Audio(getAudioUrl(verse.id));
+    const audio = new Audio(getAudioUrlForReciter(verse.id, reciterId));
     audioRef.current = audio;
 
     audio.ontimeupdate = () => {
@@ -238,7 +258,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
       playingRef.current = false;
       setIsPlaying(false);
     });
-  }, []);
+  }, [reciterId]);
 
   function togglePlay() {
     if (isPlaying) {
@@ -295,56 +315,81 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
 
       {/* ── Top bar ── */}
       <div className="fixed top-0 left-0 right-0 z-40 flex flex-col gap-0">
-        {/* Page info + nav — RTL: right=prev, left=next (Arabic book order) */}
-        <div className="flex items-center justify-between px-4 py-2" dir="rtl"
+        {/* Row 1: back | page nav | search + reciter */}
+        <div className="flex items-center gap-2 px-3 py-2" dir="rtl"
           style={{ background: 'var(--tr-header-bg)', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
-          {/* Right side = previous page (going backward = toward start of mushaf) */}
-          <button onClick={() => goPage(-1)} disabled={page <= 1}
-            className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30"
+
+          {/* Back button (rightmost in RTL) */}
+          <button onClick={() => setShowBackMenu(true)}
+            className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 shrink-0"
             style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+            </svg>
+          </button>
+
+          {/* Prev page */}
+          <button onClick={() => goPage(-1)} disabled={page <= 1}
+            className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30 shrink-0"
+            style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
           </button>
 
-          <div style={{ textAlign: 'center' }}>
-            <p className="text-xs font-black" style={{ color: 'var(--tr-text-primary)' }}>
+          {/* Page + surah info (center) */}
+          <div className="flex-1 text-center">
+            <p className="text-xs font-black leading-none" style={{ color: 'var(--tr-text-primary)' }}>
               {isRtl ? `صفحة ${toArabicNum(page)}` : `Page ${page}`}
             </p>
-            {cv && (
-              <p className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>
-                {isRtl ? surahNameAr : surahNameEn}
-              </p>
-            )}
+            {cv && <p className="text-[10px] mt-0.5 leading-none" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? surahNameAr : surahNameEn}</p>}
           </div>
 
-          {/* Left side = next page (going forward = toward end of mushaf) */}
+          {/* Next page */}
           <button onClick={() => goPage(1)} disabled={page >= TOTAL_QURAN_PAGES}
-            className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30"
+            className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30 shrink-0"
             style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
           </button>
+
+          {/* Search */}
+          <button onClick={() => setShowSearch(true)}
+            className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 shrink-0"
+            style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+          </button>
+
+          {/* Reciter avatar (leftmost in RTL) */}
+          {(() => {
+            const r = RECITERS.find(x => x.id === reciterId) ?? RECITERS[0];
+            return (
+              <button onClick={() => setShowReciterPicker(true)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black transition active:scale-90 shrink-0"
+                style={{ background: r.color, color: '#fff', border: '2px solid rgba(255,255,255,0.3)' }}
+                title={r.nameAr}>
+                {r.nameAr[0]}
+              </button>
+            );
+          })()}
         </div>
 
-        {/* Mode tabs */}
+        {/* Row 2: Mode tabs — right→left: مصحف | استماع | قراءة واستماع */}
         <div className="flex" style={{ background: 'var(--tr-surface)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
-          {(['listen', 'read', 'both'] as Mode[]).map(m => (
-            <button
-              key={m}
-              onClick={() => changeMode(m)}
+          {(['read', 'listen', 'both'] as Mode[]).map(m => (
+            <button key={m} onClick={() => changeMode(m)}
               className="flex-1 py-2 text-xs font-bold transition"
               style={{
                 color: mode === m ? 'var(--nuri-gold)' : 'var(--tr-text-muted)',
                 borderBottom: mode === m ? '2px solid var(--nuri-gold)' : '2px solid transparent',
                 background: 'none',
               }}>
-              {m === 'listen'
-                ? (isRtl ? 'استماع' : 'Listen')
-                : m === 'read'
-                ? (isRtl ? 'مصحف' : 'Mushaf')
-                : (isRtl ? 'استماع + مصحف' : 'Listen + Read')}
+              {m === 'read' ? (isRtl ? 'مصحف' : 'Mushaf')
+                : m === 'listen' ? (isRtl ? 'استماع' : 'Listen')
+                : (isRtl ? 'قراءة واستماع' : 'Both')}
             </button>
           ))}
         </div>
@@ -369,42 +414,123 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
           </div>
         ) : (
           <>
-            {/* Listen mode — large single ayah, centered vertically */}
+            {/* Listen mode — dark blue immersive screen */}
             {mode === 'listen' && cv && (
-              <div className="flex flex-col items-center justify-center px-6 gap-6"
-                style={{ minHeight: 'calc(100vh - 168px)' }}>
-                <div dir="rtl" className="rounded-3xl p-6 w-full"
-                  style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', textAlign: 'center', WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }}>
-                  <p style={{ fontFamily: qFont, fontSize: 28, lineHeight: 2.2, color: 'var(--tr-text-primary)' }}>
-                    {cv.text_uthmani}
-                  </p>
-                  <p className="mt-3 text-xs" style={{ color: 'var(--tr-text-muted)' }}>
-                    {surahNameAr} ﴿{toArabicNum(cv.verse_number)}﴾
-                  </p>
-                </div>
-                {/* Verse counter — RTL: right=prev, left=next */}
-                <div className="flex items-center gap-4" dir="rtl">
-                  {/* Right in RTL = prev verse */}
-                  <button onClick={() => goVerse(currentIdx - 1)} disabled={currentIdx === 0}
-                    className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30"
-                    style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              <div className="flex flex-col items-center justify-between px-4"
+                style={{
+                  minHeight: 'calc(100vh - 178px)',
+                  background: 'linear-gradient(160deg, #05101f 0%, #0a1e3d 45%, #071628 100%)',
+                }}>
+                <style>{`
+                  @keyframes nuri-wave {
+                    0%,100%{height:6px;opacity:.5}
+                    50%{height:var(--wh);opacity:1}
+                  }
+                `}</style>
+
+                {/* Headphone + waves zone */}
+                <div className="flex flex-col items-center justify-center flex-1 gap-8 w-full">
+
+                  {/* Headphone icon */}
+                  <div style={{ position: 'relative', width: 100, height: 100 }}>
+                    {/* Pulsing ring when playing */}
+                    {isPlaying && (
+                      <div className="animate-ping" style={{
+                        position: 'absolute', inset: -8, borderRadius: '50%',
+                        background: 'rgba(59,130,246,0.15)', animationDuration: '1.8s',
+                      }} />
+                    )}
+                    <div style={{
+                      width: 100, height: 100, borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #1e3a6e 0%, #2563eb 100%)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: '0 8px 32px rgba(37,99,235,0.45)',
+                    }}>
+                      {/* Headphone SVG */}
+                      <svg width={52} height={52} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.92)" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 14h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2z"/>
+                        <path d="M19 14h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2z"/>
+                        <path d="M1 16v-4a11 11 0 0 1 22 0v4"/>
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* Sound wave bars */}
+                  <div dir="ltr" style={{ display: 'flex', alignItems: 'center', gap: 5, height: 48 }}>
+                    {[32,18,44,14,36,24,48,16,40,20,28,10,38].map((h, i) => (
+                      <div key={i} style={{
+                        width: 4, borderRadius: 4,
+                        background: `linear-gradient(180deg, #60a5fa, #2563eb)`,
+                        ['--wh' as string]: `${h}px`,
+                        animation: isPlaying
+                          ? `nuri-wave ${0.7 + (i % 5) * 0.18}s ease-in-out infinite`
+                          : 'none',
+                        height: isPlaying ? 6 : h * 0.35,
+                        opacity: isPlaying ? 1 : 0.35,
+                        transition: 'height 0.4s, opacity 0.4s',
+                      }} />
+                    ))}
+                  </div>
+
+                  {/* Reciter name */}
+                  <button onClick={() => setShowReciterPicker(true)} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
+                    borderRadius: 20, padding: '6px 14px', cursor: 'pointer',
+                  }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: '50%',
+                      background: RECITERS.find(x => x.id === reciterId)?.color ?? '#1a4a8a',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 10, color: '#fff', fontWeight: 700,
+                    }}>
+                      {(RECITERS.find(x => x.id === reciterId)?.nameAr ?? 'م')[0]}
+                    </div>
+                    <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontFamily: qFont }}>
+                      {RECITERS.find(x => x.id === reciterId)?.nameAr ?? ''}
+                    </span>
+                    <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                     </svg>
                   </button>
-                  <p className="text-sm font-bold" style={{ color: 'var(--tr-text-muted)', minWidth: 64, textAlign: 'center' }}>
-                    {isRtl
-                      ? `${toArabicNum(currentIdx + 1)} / ${toArabicNum(verses.length)}`
-                      : `${currentIdx + 1} / ${verses.length}`}
-                  </p>
-                  {/* Left in RTL = next verse */}
-                  <button onClick={() => goVerse(currentIdx + 1)} disabled={currentIdx >= verses.length - 1}
-                    className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30"
-                    style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                    </svg>
-                  </button>
+
+                  {/* Verse text card */}
+                  <div dir="rtl" style={{
+                    background: 'rgba(255,255,255,0.06)', borderRadius: 20,
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    padding: '20px 18px', width: '100%', maxWidth: 420,
+                    textAlign: 'center', WebkitUserSelect: 'none', userSelect: 'none',
+                  }}>
+                    <p style={{ fontFamily: qFont, fontSize: 24, lineHeight: 2.2, color: '#e8effe' }}>
+                      {cv.text_uthmani}
+                    </p>
+                    <p style={{ marginTop: 10, fontSize: 12, color: 'rgba(148,163,184,0.9)' }}>
+                      {surahNameAr} ﴿{toArabicNum(cv.verse_number)}﴾
+                    </p>
+                  </div>
+
+                  {/* Verse counter */}
+                  <div className="flex items-center gap-4" dir="rtl">
+                    <button onClick={() => goVerse(currentIdx - 1)} disabled={currentIdx === 0}
+                      className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30"
+                      style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)' }}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                      </svg>
+                    </button>
+                    <p style={{ fontSize: 13, color: 'rgba(148,163,184,0.9)', minWidth: 64, textAlign: 'center' }}>
+                      {isRtl
+                        ? `${toArabicNum(currentIdx + 1)} / ${toArabicNum(verses.length)}`
+                        : `${currentIdx + 1} / ${verses.length}`}
+                    </p>
+                    <button onClick={() => goVerse(currentIdx + 1)} disabled={currentIdx >= verses.length - 1}
+                      className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30"
+                      style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)' }}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -672,13 +798,144 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
 
             {/* Back to home (leftmost in RTL) */}
             <button
-              onClick={() => router.push('/tareeq/khatmati')}
+              onClick={() => setShowBackMenu(true)}
               className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90"
               style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
               </svg>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Back menu modal ── */}
+      {showBackMenu && (
+        <div onClick={() => setShowBackMenu(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} dir="rtl" style={{ background: 'var(--tr-surface)', borderRadius: '20px 20px 0 0', padding: '20px 16px 36px', width: '100%', maxWidth: 480 }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--tr-border-soft)', margin: '0 auto 18px' }} />
+            <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 15, color: 'var(--tr-text-primary)', marginBottom: 16 }}>العودة إلى</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button onClick={() => router.push('/tareeq/khatmati')} style={{
+                display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px',
+                borderRadius: 14, background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)',
+                cursor: 'pointer', width: '100%',
+              }}>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--nuri-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                  </svg>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--tr-text-primary)' }}>نوري</p>
+                  <p style={{ fontSize: 11, color: 'var(--tr-text-muted)' }}>صفحة ختماتي</p>
+                </div>
+              </button>
+              <button onClick={() => router.push('/tareeq')} style={{
+                display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px',
+                borderRadius: 14, background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)',
+                cursor: 'pointer', width: '100%',
+              }}>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#1a4a8a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                  </svg>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--tr-text-primary)' }}>طريق</p>
+                  <p style={{ fontSize: 11, color: 'var(--tr-text-muted)' }}>الصفحة الرئيسية</p>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Reciter picker modal ── */}
+      {showReciterPicker && (
+        <div onClick={() => setShowReciterPicker(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} dir="rtl" style={{ background: 'var(--tr-surface)', borderRadius: '20px 20px 0 0', padding: '20px 16px 36px', width: '100%', maxWidth: 480 }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--tr-border-soft)', margin: '0 auto 18px' }} />
+            <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 15, color: 'var(--tr-text-primary)', marginBottom: 16 }}>اختيار القارئ</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {RECITERS.map(r => (
+                <button key={r.id} onClick={() => { setReciterId(r.id); setShowReciterPicker(false); audioRef.current?.pause(); setIsPlaying(false); }} style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+                  borderRadius: 14, cursor: 'pointer', width: '100%', textAlign: 'right',
+                  background: reciterId === r.id ? 'rgba(37,99,235,0.12)' : 'var(--tr-raised)',
+                  border: reciterId === r.id ? '1.5px solid #2563eb' : '1px solid var(--tr-border-soft)',
+                }}>
+                  <div style={{
+                    width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+                    background: r.color, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 18, color: '#fff', fontWeight: 700,
+                  }}>
+                    {r.nameAr[0]}
+                  </div>
+                  <span style={{ fontSize: 14, fontWeight: reciterId === r.id ? 700 : 500, color: reciterId === r.id ? '#2563eb' : 'var(--tr-text-primary)', fontFamily: qFont }}>
+                    {r.nameAr}
+                  </span>
+                  {reciterId === r.id && (
+                    <svg style={{ marginRight: 'auto' }} width={18} height={18} viewBox="0 0 24 24" fill="#2563eb">
+                      <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Search modal (surah + ayah jump) ── */}
+      {showSearch && (
+        <div onClick={() => setShowSearch(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} dir="rtl" style={{ background: 'var(--tr-surface)', borderRadius: '20px 20px 0 0', padding: '20px 16px 36px', width: '100%', maxWidth: 480 }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--tr-border-soft)', margin: '0 auto 18px' }} />
+            <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 15, color: 'var(--tr-text-primary)', marginBottom: 16 }}>الانتقال إلى سورة / آية</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* Surah select */}
+              <div>
+                <label style={{ fontSize: 12, color: 'var(--tr-text-muted)', marginBottom: 6, display: 'block' }}>السورة</label>
+                <select
+                  value={searchSurah}
+                  onChange={e => setSearchSurah(Number(e.target.value))}
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14,
+                    background: 'var(--tr-raised)', color: 'var(--tr-text-primary)',
+                    border: '1px solid var(--tr-border-soft)', outline: 'none',
+                    fontFamily: qFont, direction: 'rtl',
+                  }}>
+                  {SURAH_NAMES_AR.map((name, i) => (
+                    <option key={i + 1} value={i + 1}>{i + 1}. {name}</option>
+                  ))}
+                </select>
+              </div>
+              {/* Ayah number */}
+              <div>
+                <label style={{ fontSize: 12, color: 'var(--tr-text-muted)', marginBottom: 6, display: 'block' }}>رقم الآية</label>
+                <input
+                  type="number" min={1} value={searchAyah}
+                  onChange={e => setSearchAyah(Math.max(1, Number(e.target.value)))}
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14,
+                    background: 'var(--tr-raised)', color: 'var(--tr-text-primary)',
+                    border: '1px solid var(--tr-border-soft)', outline: 'none', textAlign: 'right',
+                  }} />
+              </div>
+              <button
+                onClick={() => {
+                  const targetPage = SURAH_FIRST_PAGES[searchSurah - 1];
+                  if (targetPage) { setPage(targetPage); }
+                  setShowSearch(false);
+                }}
+                style={{
+                  width: '100%', padding: '13px', borderRadius: 12, fontWeight: 700, fontSize: 14,
+                  background: 'var(--nuri-gold)', color: '#0a0c14', border: 'none', cursor: 'pointer',
+                }}>
+                انتقال
+              </button>
+            </div>
           </div>
         </div>
       )}

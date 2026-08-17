@@ -91,10 +91,11 @@ export async function PUT(req: NextRequest) {
   });
 
   // Update all group memberships with today's read date + streak + page advance
+  // For linkedToSolo groups: also sync the reading position (currentPage/Surah/Ayah)
   if (pagesAdvanced > 0) {
     const memberships = await prisma.khatmaGroupMember.findMany({
       where: { userId: user.userId },
-      select: { id: true, lastReadDate: true, streak: true },
+      select: { id: true, lastReadDate: true, streak: true, linkedToSolo: true },
     });
     for (const m of memberships) {
       let mStreak = m.streak;
@@ -112,6 +113,12 @@ export async function PUT(req: NextRequest) {
           lastReadDate: today,
           streak: mStreak,
           points: { increment: pagesAdvanced + (mStreak > 1 ? 2 : 0) },
+          // Mirror reading position for linked groups
+          ...(m.linkedToSolo && currentPage != null && {
+            currentPage,
+            ...(currentSurah != null && { currentSurah }),
+            ...(currentAyah  != null && { currentAyah }),
+          }),
         },
       });
     }

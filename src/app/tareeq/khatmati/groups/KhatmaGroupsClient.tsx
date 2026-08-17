@@ -31,6 +31,10 @@ export default function KhatmaGroupsClient({ initialGroups, userId }: { initialG
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Preference sheet — shown after joining or creating
+  const [prefGroupId, setPrefGroupId] = useState<string | null>(null);
+  const [prefSaving, setPrefSaving] = useState(false);
+
   async function handleCreate() {
     if (!createName.trim()) return;
     setLoading(true); setError('');
@@ -49,21 +53,35 @@ export default function KhatmaGroupsClient({ initialGroups, userId }: { initialG
       myStreak: 0, myPoints: 0, myTotalPages: 0,
     }, ...prev]);
     setShowCreate(false); setCreateName(''); setCreateDesc('');
+    setPrefGroupId(group.id);
   }
 
   async function handleJoin() {
     if (!joinCode.trim()) return;
     setLoading(true); setError('');
-    // The invite code IS the group's unique invite code — we need to find by code
-    const res = await fetch(`/api/tareeq/khatmati/groups/join`, {
+    const res = await fetch('/api/tareeq/khatmati/groups/join', {
       method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ inviteCode: joinCode.trim() }),
     });
     setLoading(false);
     if (!res.ok) { setError(isRtl ? 'الكود غير صحيح' : 'Invalid code'); return; }
-    router.refresh();
+    const { groupId } = await res.json();
     setShowJoin(false); setJoinCode('');
+    setPrefGroupId(groupId);
+  }
+
+  async function chooseLinked(linkedToSolo: boolean) {
+    if (!prefGroupId) return;
+    setPrefSaving(true);
+    await fetch(`/api/tareeq/khatmati/groups/${prefGroupId}/progress`, {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ linkedToSolo }),
+    });
+    setPrefSaving(false);
+    setPrefGroupId(null);
+    router.push(`/tareeq/khatmati/groups/${prefGroupId}`);
   }
 
   function copyInvite(code: string, id: string) {
@@ -117,7 +135,7 @@ export default function KhatmaGroupsClient({ initialGroups, userId }: { initialG
             </div>
           ) : groups.map(g => (
             <div key={g.id} onClick={() => router.push(`/tareeq/khatmati/groups/${g.id}`)}
-              style={{ background: CARD, border: `1px solid ${CARD_BD}`, borderRadius: 18, padding: '16px 18px', cursor: 'pointer', active: { opacity: 0.8 } as React.CSSProperties }}>
+              style={{ background: CARD, border: `1px solid ${CARD_BD}`, borderRadius: 18, padding: '16px 18px', cursor: 'pointer' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
                 <div>
                   <p style={{ fontWeight: 800, fontSize: 16, color: TEXT_PRI, marginBottom: 2 }}>{g.name}</p>
@@ -130,14 +148,9 @@ export default function KhatmaGroupsClient({ initialGroups, userId }: { initialG
                 )}
               </div>
               <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
-                <span style={{ fontSize: 12, color: TEXT_MUT }}>
-                  👥 {g.memberCount} {isRtl ? 'عضو' : 'members'}
-                </span>
-                <span style={{ fontSize: 12, color: TEXT_MUT }}>
-                  🎯 {g.dailyGoal} {isRtl ? 'صفحات/يوم' : 'pages/day'}
-                </span>
+                <span style={{ fontSize: 12, color: TEXT_MUT }}>👥 {g.memberCount} {isRtl ? 'عضو' : 'members'}</span>
+                <span style={{ fontSize: 12, color: TEXT_MUT }}>🎯 {g.dailyGoal} {isRtl ? 'صفحات/يوم' : 'pages/day'}</span>
               </div>
-              {/* My stats in this group */}
               <div style={{ display: 'flex', gap: 12 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '8px 12px', minWidth: 60 }}>
                   <span style={{ fontSize: 18, fontWeight: 900, color: GOLD }}>{g.myStreak}</span>
@@ -152,7 +165,6 @@ export default function KhatmaGroupsClient({ initialGroups, userId }: { initialG
                   <span style={{ fontSize: 10, color: TEXT_MUT }}>{isRtl ? 'صفحة' : 'pages'}</span>
                 </div>
               </div>
-              {/* Invite code copy (admin only) */}
               {g.isAdmin && g.inviteCode && (
                 <div onClick={e => { e.stopPropagation(); copyInvite(g.inviteCode!, g.id); }}
                   style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: 'rgba(255,204,0,0.07)', border: '1px solid rgba(255,204,0,0.15)', cursor: 'pointer' }}>
@@ -214,6 +226,62 @@ export default function KhatmaGroupsClient({ initialGroups, userId }: { initialG
             <button onClick={handleJoin} disabled={loading || !joinCode.trim()}
               style={{ width: '100%', padding: '14px 0', borderRadius: 14, background: GOLD, color: '#080E1C', fontWeight: 800, fontSize: 15, border: 'none', cursor: 'pointer', opacity: loading || !joinCode.trim() ? 0.6 : 1 }}>
               {loading ? '...' : (isRtl ? 'انضم للمجموعة' : 'Join Group')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Khatma type preference sheet — after join / create */}
+      {prefGroupId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 10000, display: 'flex', alignItems: 'flex-end' }}>
+          <div dir={isRtl ? 'rtl' : 'ltr'}
+            style={{ width: '100%', background: '#111827', borderRadius: '20px 20px 0 0', padding: '24px 20px 44px', animation: 'nuri-sheet 0.28s cubic-bezier(0.32,0.72,0,1)' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: CARD_BD, margin: '0 auto 22px' }} />
+            <p style={{ fontWeight: 900, fontSize: 18, color: GOLD, marginBottom: 6, textAlign: 'center' }}>
+              {isRtl ? 'نوع ختمتك في هذه المجموعة' : 'Your khatma type in this group'}
+            </p>
+            <p style={{ fontSize: 13, color: TEXT_MUT, marginBottom: 22, textAlign: 'center' }}>
+              {isRtl ? 'يمكنك تغيير هذا لاحقاً من داخل المجموعة' : 'You can change this later from the group page'}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* Option: linked to solo */}
+              <button onClick={() => chooseLinked(true)} disabled={prefSaving}
+                style={{ width: '100%', padding: '18px 20px', borderRadius: 16, background: 'rgba(255,204,0,0.08)', border: '1.5px solid rgba(255,204,0,0.3)', cursor: 'pointer', textAlign: isRtl ? 'right' : 'left', opacity: prefSaving ? 0.6 : 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <span style={{ fontSize: 28, flexShrink: 0 }}>🔗</span>
+                  <div>
+                    <p style={{ fontWeight: 800, fontSize: 15, color: GOLD, marginBottom: 3 }}>
+                      {isRtl ? 'من ختمتي الفردية' : 'Linked to my solo khatma'}
+                    </p>
+                    <p style={{ fontSize: 12, color: TEXT_MUT, lineHeight: 1.5 }}>
+                      {isRtl
+                        ? 'قراءتك الفردية تحتسب في المجموعة — موقع واحد للقراءتين'
+                        : 'Your solo reading counts for the group — one position for both'}
+                    </p>
+                  </div>
+                </div>
+              </button>
+              {/* Option: independent */}
+              <button onClick={() => chooseLinked(false)} disabled={prefSaving}
+                style={{ width: '100%', padding: '18px 20px', borderRadius: 16, background: CARD, border: `1px solid ${CARD_BD}`, cursor: 'pointer', textAlign: isRtl ? 'right' : 'left', opacity: prefSaving ? 0.6 : 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <span style={{ fontSize: 28, flexShrink: 0 }}>🕯️</span>
+                  <div>
+                    <p style={{ fontWeight: 800, fontSize: 15, color: TEXT_PRI, marginBottom: 3 }}>
+                      {isRtl ? 'ختمة مستقلة' : 'Independent khatma'}
+                    </p>
+                    <p style={{ fontSize: 12, color: TEXT_MUT, lineHeight: 1.5 }}>
+                      {isRtl
+                        ? 'الختمة الجماعية لها موقع وعداد منفصل عن ختمتك الفردية'
+                        : 'The group khatma has its own separate position and counter'}
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </div>
+            <button onClick={() => { setPrefGroupId(null); router.push(`/tareeq/khatmati/groups/${prefGroupId}`); }}
+              style={{ width: '100%', marginTop: 14, padding: '12px 0', background: 'none', border: 'none', color: TEXT_MUT, fontSize: 13, cursor: 'pointer' }}>
+              {isRtl ? 'لاحقاً' : 'Later'}
             </button>
           </div>
         </div>

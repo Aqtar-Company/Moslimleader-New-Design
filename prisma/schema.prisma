@@ -1752,6 +1752,7 @@ model KhatmaGroupMember {
   currentPage  Int         @default(1)
   currentSurah Int         @default(1)
   currentAyah  Int         @default(1)
+  linkedToSolo Boolean     @default(false)
   joinedAt     DateTime    @default(now())
 
   @@unique([groupId, userId])

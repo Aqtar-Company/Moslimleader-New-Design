@@ -25,6 +25,13 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
   const { user } = useAuth();
 
   const p = initialProgress;
+
+  // Seed localStorage so bottom nav can quick-resume without API call
+  if (typeof window !== 'undefined' && p) {
+    localStorage.setItem('nuri-progress', JSON.stringify({
+      page: p.currentPage, surah: p.currentSurah, ayah: p.currentAyah,
+    }));
+  }
   const state = sirajState(p?.lastReadDate ?? null);
   const page = p?.currentPage ?? 1;
   const pct = Math.round((page / TOTAL_QURAN_PAGES) * 100);
@@ -53,7 +60,7 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
         {/* ── Page title ── */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="font-black text-2xl" style={{ color: 'var(--tr-gold)', letterSpacing: '-0.01em' }}>
+            <h1 className="font-black text-2xl" style={{ color: 'var(--nuri-gold)', letterSpacing: '-0.01em' }}>
               نُوري
             </h1>
             <p className="text-xs mt-0.5" style={{ color: 'var(--tr-text-muted)' }}>
@@ -62,7 +69,7 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
           </div>
           {p && (
             <span className="text-xs font-black px-2.5 py-1 rounded-full"
-              style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1px solid rgba(212,168,83,0.3)' }}>
+              style={{ background: 'var(--nuri-gold-glow)', color: 'var(--nuri-gold)', border: '1px solid rgba(212,168,83,0.3)' }}>
               {pct}%
             </span>
           )}
@@ -93,11 +100,11 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
 
           <div style={{ textAlign: 'center' }}>
             {state === 'bright' && (p?.sirajStreak ?? 0) > 1 ? (
-              <p className="font-black text-lg" style={{ color: 'var(--tr-gold)' }}>
+              <p className="font-black text-lg" style={{ color: 'var(--nuri-gold)' }}>
                 {isRtl ? `نورك مستمر منذ ${p!.sirajStreak} أيام` : `${p!.sirajStreak} days of light`}
               </p>
             ) : state === 'bright' ? (
-              <p className="font-bold text-base" style={{ color: 'var(--tr-gold)' }}>
+              <p className="font-bold text-base" style={{ color: 'var(--nuri-gold)' }}>
                 {isRtl ? 'أتممت وردك اليوم بحمد الله 🌿' : "Today's wird completed 🌿"}
               </p>
             ) : state === 'dim' ? (
@@ -145,7 +152,7 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
           <Link
             href={`/tareeq/khatmati/read?page=${page}&surah=${p?.currentSurah ?? 1}&ayah=${p?.currentAyah ?? 1}`}
             className="flex items-center justify-center gap-2 w-full font-black py-4 rounded-2xl transition active:scale-[0.98] text-[15px]"
-            style={{ background: 'var(--tr-gold)', color: '#0a0c14', letterSpacing: '0.02em' }}
+            style={{ background: 'var(--nuri-gold)', color: '#0a0c14', letterSpacing: '0.02em' }}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M19 12H5M12 19l-7-7 7-7' : 'M5 12h14M12 5l7 7-7 7'} />

@@ -118,6 +118,9 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
 
     verseRefs.current[currentIdx]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
+    // Save position to localStorage for bottom nav quick-resume
+    localStorage.setItem('nuri-progress', JSON.stringify({ page, surah: v.chapter_id, ayah: v.verse_number }));
+
     saveTimer.current = setTimeout(() => {
       fetch('/api/tareeq/khatmati/progress', {
         method: 'PUT',
@@ -290,8 +293,8 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
               onClick={() => changeMode(m)}
               className="flex-1 py-2 text-xs font-bold transition"
               style={{
-                color: mode === m ? 'var(--tr-gold)' : 'var(--tr-text-muted)',
-                borderBottom: mode === m ? '2px solid var(--tr-gold)' : '2px solid transparent',
+                color: mode === m ? 'var(--nuri-gold)' : 'var(--tr-text-muted)',
+                borderBottom: mode === m ? '2px solid var(--nuri-gold)' : '2px solid transparent',
                 background: 'none',
               }}>
               {m === 'listen'
@@ -309,7 +312,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
         {loading ? (
           <div className="flex items-center justify-center py-24">
             <div className="w-8 h-8 border-2 rounded-full animate-spin"
-              style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
+              style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--nuri-gold)' }} />
           </div>
         ) : error ? (
           <div className="text-center py-20 px-6">
@@ -317,7 +320,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
               {isRtl ? 'تعذّر تحميل الصفحة' : 'Failed to load page'}
             </p>
             <button onClick={() => setRetryKey(k => k + 1)} className="text-sm font-bold"
-              style={{ color: 'var(--tr-gold)' }}>
+              style={{ color: 'var(--nuri-gold)' }}>
               {isRtl ? 'إعادة المحاولة' : 'Retry'}
             </button>
           </div>
@@ -412,7 +415,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
           {/* Progress bar */}
           <div style={{ height: 3, background: 'var(--tr-overlay)' }} dir="ltr">
             <div style={{
-              height: '100%', background: 'var(--tr-gold)',
+              height: '100%', background: 'var(--nuri-gold)',
               width: `${audioProgress * 100}%`, transition: 'width 0.3s linear',
             }} />
           </div>
@@ -431,7 +434,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
             {/* Play / Pause */}
             <button onClick={togglePlay} disabled={loading}
               className="w-14 h-14 rounded-full flex items-center justify-center transition active:scale-95 disabled:opacity-40 shadow-lg"
-              style={{ background: 'var(--tr-gold)', color: '#0a0c14', flexShrink: 0 }}>
+              style={{ background: 'var(--nuri-gold)', color: '#0a0c14', flexShrink: 0 }}>
               {isPlaying ? (
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                   <rect x="6" y="4" width="4" height="16" rx="1"/>

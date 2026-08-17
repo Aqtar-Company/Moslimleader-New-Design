@@ -775,9 +775,10 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
   const isHome = pathname === '/tareeq' || pathname === '/tareeq/';
   const isInbox = pathname.startsWith('/tareeq/inbox');
   const isKhatmati = pathname.startsWith('/tareeq/khatmati');
+  const isKhatmatiRead = pathname.startsWith('/tareeq/khatmati/read');
 
-  // On نُوري pages: hide the nav entirely — the reader has its own home button
-  if (isKhatmati) {
+  // On the immersive read page only: hide the nav — the reader has its own controls
+  if (isKhatmatiRead) {
     return (
       <>
         {activeCall && (
@@ -791,6 +792,18 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
         )}
       </>
     );
+  }
+
+  function goToNuri() {
+    try {
+      const raw = localStorage.getItem('nuri-progress');
+      if (raw) {
+        const { page, surah, ayah } = JSON.parse(raw);
+        router.push(`/tareeq/khatmati/read?page=${page}&surah=${surah}&ayah=${ayah}`);
+        return;
+      }
+    } catch { /* ignore */ }
+    router.push('/tareeq/khatmati');
   }
 
   return (
@@ -972,25 +985,25 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           className="relative flex items-end justify-around px-3"
           style={{ height: NAV_H, paddingBottom: 'env(safe-area-inset-bottom, 0px)', zIndex: 1 }}
         >
-            {/* 1 (far RIGHT in RTL) — ختمتي */}
-          <Link
-            href="/tareeq/khatmati"
+            {/* 1 (far RIGHT in RTL) — نُوري */}
+          <button
+            onClick={goToNuri}
             className="flex flex-col items-center justify-end gap-1 pb-2 transition-all active:scale-90"
-            style={{ minWidth: 44 }}
+            style={{ minWidth: 44, background: 'none', border: 'none', cursor: 'pointer' }}
           >
             <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}
               style={{
-                color: isKhatmati ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
-                filter: isKhatmati ? 'drop-shadow(0 0 6px var(--tr-gold-glow))' : 'none',
+                color: isKhatmati ? NAV_ACCENT : 'var(--tr-text-secondary)',
+                filter: isKhatmati ? `drop-shadow(0 0 8px ${NAV_ACCENT}88)` : 'none',
                 transition: 'all 0.2s',
               }}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z"/>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z"/>
             </svg>
-            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isKhatmati ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
+            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isKhatmati ? NAV_ACCENT : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
               {isRtl ? 'نُوري' : 'Nuri'}
             </span>
-          </Link>
+          </button>
 
           {/* 2 — Contacts / Quick Call */}
           <button

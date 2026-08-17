@@ -38,21 +38,17 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
   const surahNameAr = SURAH_NAMES_AR[(p?.currentSurah ?? 1) - 1];
   const surahNameEn = SURAH_NAMES_EN[(p?.currentSurah ?? 1) - 1];
 
-  const flameColor = state === 'bright' ? '#f4c55a' : state === 'dim' ? '#a07830' : '#555';
-  const glowFilter = state === 'bright'
-    ? 'drop-shadow(0 0 14px rgba(244,197,90,0.85)) drop-shadow(0 0 36px rgba(244,130,30,0.4))'
-    : 'none';
+  // Lantern level: 0–4 based on streak + whether today was read
+  // dim state = missed today → show one level below current streak
+  const streak = p?.sirajStreak ?? 0;
+  const lanternLevel = state === 'dark' ? 0
+    : state === 'dim' ? Math.max(0, Math.min(streak - 1, 4))
+    : Math.min(streak, 4);
 
   return (
     <>
       <style>{`
-        @keyframes kh-pulse { 0%,100%{opacity:.85;transform:scale(1)} 50%{opacity:1;transform:scale(1.07)} }
-        @keyframes kh-flicker {
-          0%,100%{transform:scaleX(1) scaleY(1)}
-          20%{transform:scaleX(.96) scaleY(1.04)}
-          50%{transform:scaleX(1.04) scaleY(.97)}
-          80%{transform:scaleX(.98) scaleY(1.03)}
-        }
+        @keyframes kh-pulse { 0%,100%{opacity:.9;transform:scale(1)} 50%{opacity:1;transform:scale(1.04)} }
       `}</style>
 
       <div className="max-w-md mx-auto px-4 pt-8 pb-10" dir={isRtl ? 'rtl' : 'ltr'}>
@@ -75,27 +71,22 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
           )}
         </div>
 
-        {/* ── Siraj ── */}
+        {/* ── Siraj lantern image ── */}
         <div className="flex flex-col items-center gap-4 mb-8">
-          <div style={{ position: 'relative', width: 120, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ position: 'relative', width: 180, height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {state === 'bright' && (
               <div style={{
-                position: 'absolute', inset: -20, borderRadius: '50%',
-                background: 'radial-gradient(circle, rgba(244,197,90,0.28) 0%, transparent 70%)',
-                animation: 'kh-pulse 2.8s ease-in-out infinite',
+                position: 'absolute', inset: -24, borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(244,197,90,0.22) 0%, transparent 70%)',
+                animation: 'kh-pulse 3s ease-in-out infinite',
               }} />
             )}
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.3}
-              style={{
-                width: 100, height: 100, color: flameColor,
-                filter: glowFilter, transition: 'all 0.6s ease',
-                animation: state === 'bright' ? 'kh-flicker 3.2s ease-in-out infinite' : 'none',
-              }}>
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z"/>
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z"/>
-            </svg>
+            <img
+              src={`/${lanternLevel}-light.png`}
+              alt=""
+              draggable={false}
+              style={{ width: 180, height: 180, objectFit: 'contain', transition: 'opacity 0.6s ease', position: 'relative', zIndex: 1 }}
+            />
           </div>
 
           <div style={{ textAlign: 'center' }}>

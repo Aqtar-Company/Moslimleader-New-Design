@@ -997,13 +997,8 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
                 filter: isKhatmati ? `drop-shadow(0 0 8px ${NAV_ACCENT}88)` : 'none',
                 transition: 'all 0.2s',
               }}>
-              {/* oil lamp / مصباح زيت */}
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 4c0 1.5-1 2.5-1 4"/>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10 8h4"/>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M7 14c0-3.5 2-6 5-6s5 2.5 5 6c0 2-2 3.5-5 3.5S7 16 7 14z"/>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 12c2-.5 4-2 4-4"/>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M7 13c-1.5-.5-3 .5-3 2s1.5 2 2.5 1.5"/>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10 20h4M9.5 20.5c0-1 .5-2 .5-3M14.5 20.5c0-1-.5-2-.5-3"/>
+              {/* crescent moon — نُوري */}
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"/>
             </svg>
             <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isKhatmati ? NAV_ACCENT : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
               {isRtl ? 'نُوري' : 'Nuri'}

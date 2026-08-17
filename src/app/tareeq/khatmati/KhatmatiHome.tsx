@@ -55,10 +55,15 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
         page: p.currentPage, surah: p.currentSurah, ayah: p.currentAyah,
       }));
     }
-    // Force dark bg on body so scrolling past content edge stays dark
-    const prev = document.body.style.background;
+    // Force dark bg on both <html> and <body> so overscroll edge stays dark on iOS/Android
+    const prevBody = document.body.style.background;
+    const prevHtml = document.documentElement.style.background;
     document.body.style.background = BG_DEEP;
-    return () => { document.body.style.background = prev; };
+    document.documentElement.style.background = BG_DEEP;
+    return () => {
+      document.body.style.background = prevBody;
+      document.documentElement.style.background = prevHtml;
+    };
   }, [p]);
 
   function saveDailyPages(n: number) {

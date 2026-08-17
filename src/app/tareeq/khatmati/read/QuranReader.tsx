@@ -383,36 +383,32 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
 
             {/* Read mode — line-by-line mushaf layout (Madinah style) */}
             {mode === 'read' && (
-              <div className="px-2 py-4 flex justify-center">
+              <div style={{ padding: '12px 4px', display: 'flex', justifyContent: 'center' }}>
                 {/* Outer frame */}
                 <div style={{
-                  maxWidth: 500, width: '100%',
-                  background: '#fff',
-                  border: '2px solid #222',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                  width: '100%', maxWidth: 520,
+                  background: '#faf9f4',
+                  border: '2.5px solid #1a1a1a',
+                  boxShadow: '0 2px 16px rgba(0,0,0,0.18)',
                 }}>
-                  {/* Inner thin border */}
-                  <div style={{ border: '1px solid #888', margin: 5, padding: '14px 10px 12px' }}>
+                  {/* Inner gold line */}
+                  <div style={{ border: '1px solid #b8973a', margin: 4, padding: '12px 8px 10px' }}>
 
-                    {/* Surah name header — ornate banner */}
+                    {/* Surah name header */}
                     {verses[0]?.verse_number === 1 && (
-                      <div style={{ textAlign: 'center', marginBottom: 12 }}>
+                      <div style={{ textAlign: 'center', marginBottom: 10 }}>
                         <div style={{
                           display: 'inline-block',
-                          border: '2px solid #222',
-                          borderRadius: 2,
-                          padding: '4px 0',
-                          width: '90%',
-                          background: '#fff',
+                          border: '1.5px solid #1a1a1a',
+                          borderRadius: 1,
+                          padding: '3px 0',
+                          width: '88%',
+                          background: '#faf9f4',
                           position: 'relative',
                         }}>
-                          {/* Decorative side ornaments */}
-                          <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 18, color: '#333' }}>❧</span>
-                          <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 18, color: '#333' }}>❦</span>
-                          <span style={{
-                            fontFamily: qFont, fontSize: 20, fontWeight: 700, color: '#111',
-                            display: 'block', lineHeight: 1.8,
-                          }}>
+                          <span style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', fontSize: 16, color: '#444' }}>❧</span>
+                          <span style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', fontSize: 16, color: '#444' }}>❦</span>
+                          <span style={{ fontFamily: qFont, fontSize: 17, fontWeight: 700, color: '#111', display: 'block', lineHeight: 1.9 }}>
                             سورة {surahNameAr}
                           </span>
                         </div>
@@ -421,74 +417,77 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
 
                     {/* Spinner while loading line data */}
                     {mushafLinesLoading && (
-                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400, gap: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 380 }}>
                         <div className="w-6 h-6 border-2 rounded-full animate-spin"
-                          style={{ borderColor: '#ddd', borderTopColor: '#333' }} />
+                          style={{ borderColor: '#ccc', borderTopColor: '#555' }} />
                       </div>
                     )}
 
-                    {/* Lines — one per row, centered, Madinah mushaf style */}
+                    {/* Lines — space-between like real mushaf typography */}
                     {!mushafLinesLoading && mushafLines.length > 0 && (
                       <div dir="rtl" style={{
                         fontFamily: qFont,
-                        fontSize: 22,
+                        fontSize: 17,
                         color: '#0a0a0a',
                         WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
                       }}>
-                        {mushafLines.map(line => (
-                          <div key={line.lineNum} style={{
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            flexWrap: 'nowrap',
-                            marginBottom: 6,
-                            lineHeight: 2.2,
-                            gap: 2,
-                          }}>
-                            {line.words.map((w, wi) => {
-                              if (w.charType === 'end') {
-                                // Verse end marker — ornate circle like Madinah mushaf
+                        {mushafLines.map(line => {
+                          // lines with few words (≤3) centre; full lines space-between
+                          const wordCount = line.words.filter(w => w.charType !== 'end').length;
+                          const justify = wordCount <= 2 ? 'center' : 'space-between';
+                          return (
+                            <div key={line.lineNum} style={{
+                              display: 'flex',
+                              justifyContent: justify,
+                              alignItems: 'center',
+                              flexWrap: 'nowrap',
+                              lineHeight: 2.4,
+                              overflow: 'hidden',
+                            }}>
+                              {line.words.map((w, wi) => {
+                                if (w.charType === 'end') {
+                                  return (
+                                    <span key={wi} style={{
+                                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                      width: 24, height: 24, borderRadius: '50%',
+                                      border: '1.5px solid #1a4a8a',
+                                      color: '#1a4a8a', fontSize: 9,
+                                      fontFamily: 'serif', flexShrink: 0,
+                                      margin: '0 2px',
+                                      cursor: 'pointer',
+                                    }}
+                                      onClick={() => {
+                                        const idx = verses.findIndex(v => v.verse_number === w.verseNumber && v.chapter_id === w.chapterId);
+                                        if (idx >= 0) goVerse(idx);
+                                      }}>
+                                      {toArabicNum(w.verseNumber)}
+                                    </span>
+                                  );
+                                }
+                                const vIdx = verses.findIndex(v => v.verse_number === w.verseNumber && v.chapter_id === w.chapterId);
+                                const isActive = vIdx === currentIdx;
                                 return (
-                                  <span key={wi} style={{
-                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                    width: 28, height: 28, borderRadius: '50%',
-                                    border: '1.5px solid #1a4a8a',
-                                    color: '#1a4a8a', fontSize: 10,
-                                    fontFamily: 'serif', flexShrink: 0,
-                                    verticalAlign: 'middle', margin: '0 2px',
-                                    cursor: 'pointer',
-                                  }}
-                                    onClick={() => {
-                                      const idx = verses.findIndex(v => v.verse_number === w.verseNumber && v.chapter_id === w.chapterId);
-                                      if (idx >= 0) goVerse(idx);
-                                    }}>
-                                    {toArabicNum(w.verseNumber)}
+                                  <span key={wi}
+                                    style={{
+                                      background: isActive ? 'rgba(26,74,138,0.13)' : 'transparent',
+                                      borderRadius: 2, cursor: 'pointer',
+                                      transition: 'background 0.2s', flexShrink: 0,
+                                    }}
+                                    onClick={() => { if (vIdx >= 0) goVerse(vIdx); }}>
+                                    {w.text}
                                   </span>
                                 );
-                              }
-                              const vIdx = verses.findIndex(v => v.verse_number === w.verseNumber && v.chapter_id === w.chapterId);
-                              const isActive = vIdx === currentIdx;
-                              return (
-                                <span key={wi}
-                                  style={{
-                                    background: isActive ? 'rgba(26,74,138,0.12)' : 'transparent',
-                                    borderRadius: 2, cursor: 'pointer',
-                                    transition: 'background 0.2s', padding: '0 1px',
-                                  }}
-                                  onClick={() => { if (vIdx >= 0) goVerse(vIdx); }}>
-                                  {w.text}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        ))}
+                              })}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
 
-                    {/* Fallback if API fails — flowing text */}
+                    {/* Fallback if API fails */}
                     {!mushafLinesLoading && mushafLines.length === 0 && verses.length > 0 && (
                       <div dir="rtl" style={{
-                        fontFamily: qFont, fontSize: 22, lineHeight: 2.8,
+                        fontFamily: qFont, fontSize: 17, lineHeight: 2.8,
                         textAlign: 'center', color: '#0a0a0a',
                         WebkitUserSelect: 'none', userSelect: 'none',
                       }}>
@@ -504,9 +503,9 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
                             {v.text_uthmani}
                             <span style={{
                               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                              width: 26, height: 26, borderRadius: '50%',
+                              width: 22, height: 22, borderRadius: '50%',
                               border: '1.5px solid #1a4a8a', color: '#1a4a8a',
-                              fontSize: 10, margin: '0 3px', verticalAlign: 'middle',
+                              fontSize: 9, margin: '0 3px', verticalAlign: 'middle',
                             }}>
                               {toArabicNum(v.verse_number)}
                             </span>
@@ -516,7 +515,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
                     )}
 
                     {/* Page number */}
-                    <p style={{ textAlign: 'center', marginTop: 10, color: '#444', fontSize: 14, fontFamily: qFont }}>
+                    <p style={{ textAlign: 'center', marginTop: 8, color: '#666', fontSize: 13, fontFamily: qFont }}>
                       {toArabicNum(page)}
                     </p>
                   </div>

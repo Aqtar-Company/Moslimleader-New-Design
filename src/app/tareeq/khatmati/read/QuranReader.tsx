@@ -376,15 +376,21 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
           <>
             {/* Listen mode — fixed immersive fullscreen, no scroll, embedded controls */}
             {mode === 'listen' && cv && (
-              <div style={{
+              <div className="nuri-listen-mode" style={{
                 position: 'fixed', top: 88, left: 0, right: 0, bottom: 0,
                 background: 'linear-gradient(160deg, #05101f 0%, #0a1e3d 45%, #071628 100%)',
                 display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                zIndex: 50,
               }}>
                 <style>{`
                   @keyframes nuri-wave {
                     0%,100%{height:6px;opacity:.6}
                     50%{height:var(--wh);opacity:1}
+                  }
+                  .nuri-listen-mode * {
+                    -webkit-user-select: none !important;
+                    user-select: none !important;
+                    -webkit-touch-callout: none !important;
                   }
                 `}</style>
 
@@ -451,25 +457,30 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                     </svg>
                   </button>
 
-                  {/* Verse text card */}
-                  <div dir="rtl" style={{
-                    background: 'rgba(255,255,255,0.06)', borderRadius: 20,
-                    border: '1px solid rgba(255,255,255,0.10)',
-                    padding: '18px 16px', width: '100%', maxWidth: 420,
-                    textAlign: 'center', WebkitUserSelect: 'none', userSelect: 'none',
-                    flexShrink: 0,
-                  }}>
-                    <p style={{ fontFamily: qFont, fontSize: 22, lineHeight: 2.1, color: '#e8effe' }}>
+                  {/* Verse text card — all touch events intercepted to block Android Google Search */}
+                  <div dir="rtl"
+                    onContextMenu={e => e.preventDefault()}
+                    onMouseDown={e => e.preventDefault()}
+                    style={{
+                      background: 'rgba(255,255,255,0.06)', borderRadius: 20,
+                      border: '1px solid rgba(255,255,255,0.10)',
+                      padding: '18px 16px', width: '100%', maxWidth: 420,
+                      textAlign: 'center',
+                      WebkitUserSelect: 'none', userSelect: 'none',
+                      WebkitTouchCallout: 'none',
+                      flexShrink: 0, cursor: 'default',
+                    }}>
+                    <p style={{ fontFamily: qFont, fontSize: 22, lineHeight: 2.1, color: '#e8effe', pointerEvents: 'none' }}>
                       {cv.text_uthmani}
                     </p>
-                    <p style={{ marginTop: 8, fontSize: 12, color: 'rgba(148,163,184,0.85)' }}>
+                    <p style={{ marginTop: 8, fontSize: 12, color: 'rgba(148,163,184,0.85)', pointerEvents: 'none' }}>
                       {surahNameAr} ﴿{toArabicNum(cv.verse_number)}﴾
                     </p>
                   </div>
                 </div>
 
                 {/* ── Controls zone — embedded on dark bg ── */}
-                <div style={{ flexShrink: 0, paddingBottom: 28 }}>
+                <div style={{ flexShrink: 0, paddingBottom: 'max(84px, calc(70px + env(safe-area-inset-bottom, 0px)))' }}>
                   {/* Progress bar */}
                   <div dir="ltr" style={{ height: 2, background: 'rgba(255,255,255,0.08)', marginBottom: 16, marginInline: 20, borderRadius: 999 }}>
                     <div style={{

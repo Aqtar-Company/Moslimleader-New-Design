@@ -229,10 +229,12 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
   return (
     <>
       <style>{`
-        @keyframes nuri-glow  { 0%,100%{opacity:.6;transform:scale(1)} 50%{opacity:1;transform:scale(1.1)} }
-        @keyframes nuri-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
-        @keyframes nuri-ring  { 0%{transform:scale(.85);opacity:.55} 100%{transform:scale(1.45);opacity:0} }
-        @keyframes nuri-sheet { from{transform:translateY(100%)} to{transform:translateY(0)} }
+        @keyframes nuri-glow   { 0%,100%{opacity:.6;transform:scale(1)} 50%{opacity:1;transform:scale(1.1)} }
+        @keyframes nuri-float  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
+        @keyframes nuri-ring   { 0%{transform:scale(.85);opacity:.55} 100%{transform:scale(1.45);opacity:0} }
+        @keyframes nuri-sheet  { from{transform:translateY(100%)} to{transform:translateY(0)} }
+        @keyframes nuri-pulse  { 0%,100%{opacity:.5;filter:drop-shadow(0 0 3px #FFCC00)} 50%{opacity:1;filter:drop-shadow(0 0 10px #FFCC00)} }
+        html,body { background: #05101f !important; }
       `}</style>
 
       {/* ── Main page ── */}
@@ -308,7 +310,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
               src={`/${lanternLit ? 4 : lanternLevel}-light.png`}
               alt=""
               draggable={false}
-              onClick={() => setLanternLit(v => !v)}
+              onClick={() => { setLanternLit(true); setTimeout(() => setLanternLit(false), 2000); }}
               style={{
                 width: 148, height: 148, objectFit: 'contain', position: 'relative', zIndex: 1,
                 animation: (wardDone || lanternLit) ? 'nuri-float 4s ease-in-out infinite' : 'none',
@@ -384,13 +386,13 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
                 boxShadow: '0 4px 28px rgba(255,204,0,0.32)',
               }}
             >
-              {p
-                ? (isRtl ? `أكمل ختمتك — صفحة ${page}` : `Continue — Page ${page}`)
-                : (isRtl ? 'ابدأ رحلتك الآن' : 'Start Your Journey')}
-              {/* Arrow points RIGHT always */}
+              {/* Arrow first in JSX → appears on RIGHT in RTL flex row */}
               <svg width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
               </svg>
+              {p
+                ? (isRtl ? `أكمل ختمتك — صفحة ${page}` : `Continue — Page ${page}`)
+                : (isRtl ? 'ابدأ رحلتك الآن' : 'Start Your Journey')}
             </Link>
           ) : (
             <Link
@@ -450,13 +452,21 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
                     background: BG_CARD, border: `1px solid ${BG_CARD_BD}`,
                     borderRadius: 16, padding: '12px 14px', width: '100%', textAlign: 'start', cursor: 'pointer',
                   }}>
-                  {/* Lantern dot */}
+                  {/* Book icon — green glow if read today, yellow pulse if not */}
                   <div style={{
                     width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
-                    background: g.readToday ? 'rgba(74,222,128,0.15)' : 'rgba(255,204,0,0.1)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
+                    background: g.readToday ? 'rgba(74,222,128,0.12)' : 'rgba(255,204,0,0.08)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
-                    {g.readToday ? '✅' : '🕯️'}
+                    <svg width={22} height={22} viewBox="0 0 24 24" fill="none"
+                      stroke={g.readToday ? '#4ade80' : '#FFCC00'} strokeWidth={1.8}
+                      style={{
+                        filter: g.readToday ? 'drop-shadow(0 0 6px rgba(74,222,128,0.8))' : undefined,
+                        animation: g.readToday ? 'none' : 'nuri-pulse 2s ease-in-out infinite',
+                      }}>
+                      <path strokeLinecap="round" strokeLinejoin="round"
+                        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    </svg>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 14, fontWeight: 700, color: TEXT_PRI, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</p>

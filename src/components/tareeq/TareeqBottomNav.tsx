@@ -774,7 +774,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
 
   const isHome = pathname === '/tareeq' || pathname === '/tareeq/';
   const isInbox = pathname.startsWith('/tareeq/inbox');
-  const isOnProfile = pathname.startsWith('/tareeq/u/') || pathname === '/tareeq/profile';
+  const isKhatmati = pathname.startsWith('/tareeq/khatmati');
 
   return (
     <>
@@ -955,23 +955,25 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           className="relative flex items-end justify-around px-3"
           style={{ height: NAV_H, paddingBottom: 'env(safe-area-inset-bottom, 0px)', zIndex: 1 }}
         >
-            {/* 1 (far RIGHT in RTL) — Profile avatar */}
-          <button
-            onClick={() => user ? router.push(`/tareeq/u/${user.id}`) : router.push('/login?next=/tareeq')}
+            {/* 1 (far RIGHT in RTL) — ختمتي */}
+          <Link
+            href="/tareeq/khatmati"
             className="flex flex-col items-center justify-end gap-1 pb-2 transition-all active:scale-90"
-            style={{ minWidth: 44, background: 'none', border: 'none', cursor: 'pointer' }}
+            style={{ minWidth: 44 }}
           >
-            {user?.avatarUrl ? (
-              <img src={user.avatarUrl} alt={user.name ?? ''}
-                className="w-7 h-7 rounded-full object-cover"
-                style={{ border: '2px solid var(--tr-gold-dim)', opacity: isOnProfile ? 1 : 0.75 }} />
-            ) : (
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black"
-                style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: `2px solid ${isOnProfile ? 'var(--tr-gold)' : 'var(--tr-gold-dim)'}`, opacity: isOnProfile ? 1 : 0.75 }}>
-                {user?.name?.charAt(0) ?? '?'}
-              </div>
-            )}
-          </button>
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}
+              style={{
+                color: isKhatmati ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
+                filter: isKhatmati ? 'drop-shadow(0 0 6px var(--tr-gold-glow))' : 'none',
+                transition: 'all 0.2s',
+              }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z"/>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z"/>
+            </svg>
+            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isKhatmati ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
+              {isRtl ? 'ختمتي' : 'Khatmati'}
+            </span>
+          </Link>
 
           {/* 2 — Contacts / Quick Call */}
           <button

@@ -644,129 +644,166 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
         }} />
         <div className="relative max-w-2xl mx-auto lg:max-w-[1180px] flex items-center px-4 h-14 lg:h-16 gap-2 lg:gap-3">
 
-          {/* ── MOBILE ONLY: glass search pill + glass bell button ── */}
-          <div className="lg:hidden flex items-center w-full gap-2.5">
+          {/* ── MOBILE ONLY: bell (left) + search square + profile avatar (right) ── */}
+          <div className="lg:hidden flex items-center w-full gap-2">
 
-            {/* Glass search pill — flex-1 */}
-            <div
-              ref={searchContainerRef}
-              className="flex-1 relative"
-              style={{ height: 44 }}
-            >
-              {/* Glass background */}
-              <div style={{
-                position: 'absolute', inset: 0, borderRadius: 22,
-                background: mobileSearchOpen ? 'rgba(255,255,255,0.60)' : 'rgba(255,255,255,0.28)',
-                backdropFilter: 'blur(14px) saturate(130%)',
-                WebkitBackdropFilter: 'blur(14px) saturate(130%)',
-                border: `1px solid ${mobileSearchOpen ? 'rgba(100,140,210,0.28)' : 'rgba(255,255,255,0.28)'}`,
-                boxShadow: mobileSearchOpen ? '0 4px 20px rgba(30,70,120,0.12)' : '0 2px 10px rgba(0,0,0,0.07)',
-                transition: 'background 200ms ease, border-color 200ms ease, box-shadow 200ms ease',
-                pointerEvents: 'none',
-              }} />
-
-              {/* Search icon — anchored to visual right (right in LTR, left in RTL) */}
-              <button
-                onClick={() => { if (!mobileSearchOpen) { setMobileSearchOpen(true); setTimeout(() => mobileSearchRef.current?.focus(), 50); } }}
-                aria-label={isRtl ? 'بحث' : 'Search'}
-                style={{
-                  position: 'absolute',
-                  [isRtl ? 'left' : 'right']: 0, top: 0,
-                  width: 44, height: 44,
-                  background: 'none', border: 'none',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', zIndex: 2,
-                  color: mobileSearchOpen ? 'rgba(30,80,180,0.85)' : 'rgba(20,30,60,0.62)',
-                  transition: 'color 200ms',
-                }}
+            {mobileSearchOpen ? (
+              /* ── Search open: full-width input takeover ── */
+              <div
+                ref={searchContainerRef}
+                className="flex-1 relative"
+                style={{ height: 44 }}
               >
-                <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                </svg>
-              </button>
+                {/* Glass background */}
+                <div style={{
+                  position: 'absolute', inset: 0, borderRadius: 16,
+                  background: 'rgba(255,255,255,0.60)',
+                  backdropFilter: 'blur(14px) saturate(130%)',
+                  WebkitBackdropFilter: 'blur(14px) saturate(130%)',
+                  border: '1px solid rgba(100,140,210,0.28)',
+                  boxShadow: '0 4px 20px rgba(30,70,120,0.12)',
+                  pointerEvents: 'none',
+                }} />
 
-              {/* Placeholder label when closed */}
-              {!mobileSearchOpen && (
-                <span style={{
-                  position: 'absolute', top: '50%', transform: 'translateY(-50%)',
-                  [isRtl ? 'right' : 'left']: 48,
-                  fontSize: 13, color: 'rgba(20,30,60,0.40)',
-                  pointerEvents: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  maxWidth: 'calc(100% - 60px)',
-                }}>
-                  {isRtl ? 'ابحث في طريق...' : 'Search Tareeq...'}
-                </span>
-              )}
-
-              {/* Input */}
-              <input
-                ref={mobileSearchRef}
-                value={searchInput ?? ''}
-                onChange={e => onSearch?.(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Escape') { setMobileSearchOpen(false); onSearch?.(''); } }}
-                onBlur={() => { if (!(searchInput ?? '').trim()) setTimeout(() => setMobileSearchOpen(false), 120); }}
-                placeholder={isRtl ? 'ابحث في طريق...' : 'Search Tareeq...'}
-                dir={isRtl ? 'rtl' : 'ltr'}
-                style={{
-                  position: 'absolute', inset: 0,
-                  borderRadius: 22, background: 'transparent', border: 'none', outline: 'none',
-                  fontSize: 13, color: 'rgba(10,15,30,0.90)',
-                  paddingRight: isRtl ? 48 : ((searchInput ?? '').length > 0 && mobileSearchOpen ? 34 : 14),
-                  paddingLeft: isRtl ? ((searchInput ?? '').length > 0 && mobileSearchOpen ? 34 : 14) : 48,
-                  opacity: mobileSearchOpen ? 1 : 0,
-                  transition: 'opacity 180ms ease',
-                  pointerEvents: mobileSearchOpen ? 'auto' : 'none',
-                }}
-              />
-
-              {/* Clear × */}
-              {mobileSearchOpen && (searchInput ?? '').length > 0 && (
+                {/* Close/back arrow — anchored to start (right in RTL) */}
                 <button
-                  onMouseDown={e => e.preventDefault()}
-                  onClick={() => { onSearch?.(''); mobileSearchRef.current?.focus(); }}
+                  onClick={() => { setMobileSearchOpen(false); onSearch?.(''); }}
+                  aria-label={isRtl ? 'إغلاق' : 'Close'}
                   style={{
                     position: 'absolute',
-                    [isRtl ? 'right' : 'left']: 8, top: '50%', transform: 'translateY(-50%)',
-                    width: 22, height: 22, borderRadius: '50%',
-                    background: 'rgba(0,0,0,0.10)', border: 'none',
+                    [isRtl ? 'right' : 'left']: 0, top: 0,
+                    width: 44, height: 44,
+                    background: 'none', border: 'none',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', zIndex: 2, color: 'rgba(10,15,30,0.55)',
-                    fontSize: 11, fontWeight: 700,
+                    cursor: 'pointer', zIndex: 2,
+                    color: 'rgba(30,80,180,0.85)',
                   }}
-                >✕</button>
-              )}
-            </div>
+                >
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M8.25 4.5l7.5 7.5-7.5 7.5' : 'M15.75 19.5L8.25 12l7.5-7.5'} />
+                  </svg>
+                </button>
 
-            {/* Glass notification bell button — opens inline panel */}
-            <button
-              onClick={toggleMobileNotifPanel}
-              className="relative shrink-0 flex items-center justify-center rounded-2xl transition-all active:scale-[0.93]"
-              style={{
-                width: 44, height: 44,
-                background: showMobileNotifPanel ? 'rgba(255,255,255,0.32)' : 'rgba(255,255,255,0.22)',
-                backdropFilter: 'blur(14px) saturate(130%)',
-                WebkitBackdropFilter: 'blur(14px) saturate(130%)',
-                border: `1px solid ${showMobileNotifPanel ? 'rgba(212,168,83,0.45)' : 'rgba(255,255,255,0.28)'}`,
-                boxShadow: showMobileNotifPanel ? '0 2px 12px rgba(212,168,83,0.22)' : '0 2px 10px rgba(0,0,0,0.07)',
-              }}
-              aria-label={isRtl ? 'الإشعارات' : 'Notifications'}
-            >
-              <svg width="19" height="19" fill="none" stroke="currentColor" strokeWidth={1.9} viewBox="0 0 24 24"
-                style={{ color: (notifCount > 0 || showMobileNotifPanel) ? 'var(--tr-gold)' : 'rgba(20,30,60,0.70)' }}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-              {notifCount > 0 && (
-                <span style={{
-                  position: 'absolute', top: -3, right: -3,
-                  width: 16, height: 16, borderRadius: '50%',
-                  background: '#f43f5e', color: '#fff', fontSize: 9, fontWeight: 800,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  {notifCount > 9 ? '9+' : notifCount}
-                </span>
-              )}
-            </button>
+                {/* Input */}
+                <input
+                  ref={mobileSearchRef}
+                  value={searchInput ?? ''}
+                  onChange={e => onSearch?.(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Escape') { setMobileSearchOpen(false); onSearch?.(''); } }}
+                  placeholder={isRtl ? 'ابحث في طريق...' : 'Search Tareeq...'}
+                  dir={isRtl ? 'rtl' : 'ltr'}
+                  style={{
+                    position: 'absolute', inset: 0,
+                    borderRadius: 16, background: 'transparent', border: 'none', outline: 'none',
+                    fontSize: 13, color: 'rgba(10,15,30,0.90)',
+                    paddingRight: isRtl ? 48 : ((searchInput ?? '').length > 0 ? 34 : 14),
+                    paddingLeft: isRtl ? ((searchInput ?? '').length > 0 ? 34 : 14) : 48,
+                  }}
+                />
+
+                {/* Clear × */}
+                {(searchInput ?? '').length > 0 && (
+                  <button
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={() => { onSearch?.(''); mobileSearchRef.current?.focus(); }}
+                    style={{
+                      position: 'absolute',
+                      [isRtl ? 'left' : 'right']: 8, top: '50%', transform: 'translateY(-50%)',
+                      width: 22, height: 22, borderRadius: '50%',
+                      background: 'rgba(0,0,0,0.10)', border: 'none',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', zIndex: 2, color: 'rgba(10,15,30,0.55)',
+                      fontSize: 11, fontWeight: 700,
+                    }}
+                  >✕</button>
+                )}
+              </div>
+            ) : (
+              /* ── Normal: bell | flex-1 | search square | profile avatar ── */
+              <>
+                {/* Bell — visual left */}
+                <button
+                  onClick={toggleMobileNotifPanel}
+                  className="relative shrink-0 flex items-center justify-center rounded-2xl transition-all active:scale-[0.93]"
+                  style={{
+                    width: 44, height: 44,
+                    background: showMobileNotifPanel ? 'rgba(255,255,255,0.32)' : 'rgba(255,255,255,0.22)',
+                    backdropFilter: 'blur(14px) saturate(130%)',
+                    WebkitBackdropFilter: 'blur(14px) saturate(130%)',
+                    border: `1px solid ${showMobileNotifPanel ? 'rgba(212,168,83,0.45)' : 'rgba(255,255,255,0.28)'}`,
+                    boxShadow: showMobileNotifPanel ? '0 2px 12px rgba(212,168,83,0.22)' : '0 2px 10px rgba(0,0,0,0.07)',
+                  }}
+                  aria-label={isRtl ? 'الإشعارات' : 'Notifications'}
+                >
+                  <svg width="19" height="19" fill="none" stroke="currentColor" strokeWidth={1.9} viewBox="0 0 24 24"
+                    style={{ color: (notifCount > 0 || showMobileNotifPanel) ? 'var(--tr-gold)' : 'rgba(20,30,60,0.70)' }}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {notifCount > 0 && (
+                    <span style={{
+                      position: 'absolute', top: -3, right: -3,
+                      width: 16, height: 16, borderRadius: '50%',
+                      background: '#f43f5e', color: '#fff', fontSize: 9, fontWeight: 800,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {notifCount > 9 ? '9+' : notifCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Flex spacer */}
+                <div className="flex-1" />
+
+                {/* Square glass search button */}
+                <button
+                  onClick={() => { setMobileSearchOpen(true); setTimeout(() => mobileSearchRef.current?.focus(), 50); }}
+                  aria-label={isRtl ? 'بحث' : 'Search'}
+                  className="shrink-0 flex items-center justify-center rounded-2xl transition-all active:scale-[0.93]"
+                  style={{
+                    width: 44, height: 44,
+                    background: 'rgba(255,255,255,0.22)',
+                    backdropFilter: 'blur(14px) saturate(130%)',
+                    WebkitBackdropFilter: 'blur(14px) saturate(130%)',
+                    border: '1px solid rgba(255,255,255,0.28)',
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
+                    color: 'rgba(20,30,60,0.62)',
+                  }}
+                >
+                  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                  </svg>
+                </button>
+
+                {/* Profile avatar — visual far right, opens settings sheet */}
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('tareeq:open-settings'))}
+                  aria-label={isRtl ? 'الإعدادات' : 'Settings'}
+                  className="shrink-0 flex items-center justify-center rounded-2xl transition-all active:scale-[0.93]"
+                  style={{
+                    width: 44, height: 44,
+                    background: 'rgba(255,255,255,0.22)',
+                    backdropFilter: 'blur(14px) saturate(130%)',
+                    WebkitBackdropFilter: 'blur(14px) saturate(130%)',
+                    border: '1px solid rgba(255,255,255,0.28)',
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
+                    overflow: 'hidden',
+                    padding: 0,
+                  }}
+                >
+                  {user?.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user?.name ?? ''}
+                      className="w-full h-full object-cover"
+                      style={{ borderRadius: 14 }} />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center font-black text-sm"
+                      style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)' }}>
+                      {user?.name?.charAt(0) ?? '?'}
+                    </div>
+                  )}
+                </button>
+              </>
+            )}
           </div>
 
           {/* ── DESKTOP ONLY ── */}

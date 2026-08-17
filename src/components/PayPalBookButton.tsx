@@ -11,6 +11,7 @@ interface PayPalBookButtonProps {
   onError: (message: string) => void;
   isRtl?: boolean;
   extraBody?: Record<string, unknown>;
+  createBody?: Record<string, unknown>;
 }
 
 export default function PayPalBookButton({
@@ -21,6 +22,7 @@ export default function PayPalBookButton({
   onError,
   isRtl = true,
   extraBody,
+  createBody,
 }: PayPalBookButtonProps) {
   const [processing, setProcessing] = useState(false);
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
@@ -35,6 +37,7 @@ export default function PayPalBookButton({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        ...(createBody ? { body: JSON.stringify(createBody) } : {}),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create PayPal order');

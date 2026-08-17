@@ -118,11 +118,22 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
     document.documentElement.style.background = BG_DEEP;
     document.body.style.overscrollBehavior = 'none';
     document.documentElement.style.overscrollBehavior = 'none';
+    // iOS Safari: position:fixed on body is the only reliable way to prevent
+    // elastic bounce revealing a white gap behind the page
+    const prevPos = document.body.style.position;
+    const prevTop = document.body.style.top;
+    const prevW   = document.body.style.width;
+    document.body.style.position = 'fixed';
+    document.body.style.top = '0';
+    document.body.style.width = '100%';
     return () => {
       document.body.style.background = prevBody;
       document.documentElement.style.background = prevHtml;
       document.body.style.overscrollBehavior = '';
       document.documentElement.style.overscrollBehavior = '';
+      document.body.style.position = prevPos;
+      document.body.style.top = prevTop;
+      document.body.style.width = prevW;
     };
   }, [p]);
 
@@ -247,7 +258,8 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
         @keyframes nuri-ring   { 0%{transform:scale(.85);opacity:.55} 100%{transform:scale(1.45);opacity:0} }
         @keyframes nuri-sheet  { from{transform:translateY(100%)} to{transform:translateY(0)} }
         @keyframes nuri-pulse  { 0%,100%{opacity:.5;filter:drop-shadow(0 0 3px #FFCC00)} 50%{opacity:1;filter:drop-shadow(0 0 10px #FFCC00)} }
-        html,body { background: #05101f !important; }
+        html, body { background: #05101f !important; overscroll-behavior: none; }
+        html > body > * { background: #05101f !important; }
       `}</style>
 
       {/* ── Main page — fixed viewport, no scroll ── */}
@@ -259,6 +271,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
           background: `linear-gradient(170deg, #0d2145 0%, #071830 35%, ${BG_DEEP} 65%, #060f1c 100%)`,
           backgroundColor: BG_DEEP,
           overflow: 'hidden',
+          overscrollBehavior: 'none',
         }}
       >
         {/* ── Header ── */}

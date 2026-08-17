@@ -38,14 +38,22 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   });
   if (!existing) return NextResponse.json({ error: 'Not a member' }, { status: 403 });
 
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toLocaleDateString('en-CA');
+  // Compute yesterday from the client's localDate (not server clock) to handle timezone differences
+  const d = new Date(localDate + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() - 1);
+  const yesterdayStr = d.toISOString().slice(0, 10);
 
   const isNewDay = existing.lastReadDate !== localDate;
   const wasYesterday = existing.lastReadDate === yesterdayStr;
 
+  let newStreak = existing.streak;
+  if (isNewDay) {
+    newStreak = (wasYesterday || existing.lastReadDate === null) ? existing.streak + 1 : 1;
+  }
+
   const pagesAdvanced = Math.max(0, currentPage - (existing.currentPage ?? 1));
+  // Match the streak bonus that solo readers receive (+2 per session when streak > 1)
+  const pointsBonus = pagesAdvanced + (newStreak > 1 && isNewDay ? 2 : 0);
 
   const updated = await prisma.khatmaGroupMember.update({
     where: { groupId_userId: { groupId: params.id, userId: user.userId } },
@@ -53,8 +61,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       currentPage, currentSurah, currentAyah,
       lastReadDate: localDate,
       totalPages: { increment: pagesAdvanced },
-      points: { increment: pagesAdvanced },
-      streak: isNewDay ? (wasYesterday || existing.lastReadDate === null ? { increment: 1 } : 1) : existing.streak,
+      points: { increment: pointsBonus },
+      streak: newStreak,
     },
   });
 

@@ -358,7 +358,7 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
         </div>
 
         <p style={{ textAlign: 'center', fontSize: 11, marginTop: 12, color: TEXT_MUT }}>
-          {isRtl ? 'استماع · مصحف · استماع + مصحف' : 'Listen · Mushaf · Listen + Mushaf'}
+          {isRtl ? 'استماع · قراءة واستماع' : 'Listen · Listen + Read'}
         </p>
       </div>
 

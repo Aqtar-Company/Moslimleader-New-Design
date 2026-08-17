@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export interface MushafWord {
   text: string;
-  charType: string;  // 'word' | 'end' | 'pause' | 'sajdah' | 'rubhizb'
+  codeV1: string;       // encoded text for QCF4 per-page font
+  charType: string;
   verseNumber: number;
   chapterId: number;
   lineNumber: number;
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const res = await fetch(
-      `https://api.quran.com/api/v4/verses/by_page/${page}?words=true&word_fields=text_uthmani,line_number,char_type_name&fields=verse_number,chapter_id&per_page=50`,
+      `https://api.quran.com/api/v4/verses/by_page/${page}?words=true&word_fields=text_uthmani,code_v1,line_number,char_type_name&fields=verse_number,chapter_id&per_page=50`,
       { signal: AbortSignal.timeout(8000) },
     );
     if (!res.ok) throw new Error(`upstream ${res.status}`);
@@ -29,15 +30,15 @@ export async function GET(req: NextRequest) {
     const verses: Array<{
       verse_number: number;
       chapter_id: number;
-      words: Array<{ text_uthmani: string; line_number: number; char_type_name: string }>;
+      words: Array<{ text_uthmani: string; code_v1: string; line_number: number; char_type_name: string }>;
     }> = data.verses ?? [];
 
-    // Flatten all words across all verses, keeping verse context
     const allWords: MushafWord[] = [];
     for (const verse of verses) {
       for (const w of verse.words ?? []) {
         allWords.push({
           text: w.text_uthmani ?? '',
+          codeV1: w.code_v1 ?? '',
           charType: w.char_type_name ?? 'word',
           verseNumber: verse.verse_number,
           chapterId: verse.chapter_id,
@@ -46,7 +47,6 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Group by line number (preserve insertion order = reading order)
     const lineMap = new Map<number, MushafWord[]>();
     for (const w of allWords) {
       if (!lineMap.has(w.lineNumber)) lineMap.set(w.lineNumber, []);

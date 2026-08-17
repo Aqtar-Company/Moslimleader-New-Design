@@ -27,8 +27,9 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
   const [fontLoaded, setFontLoaded] = useState(false);
-  const [mushafLines, setMushafLines] = useState<{ lineNum: number; words: { text: string; charType: string; verseNumber: number; chapterId: number }[] }[]>([]);
+  const [mushafLines, setMushafLines] = useState<{ lineNum: number; words: { text: string; codeV1: string; charType: string; verseNumber: number; chapterId: number }[] }[]>([]);
   const [mushafLinesLoading, setMushafLinesLoading] = useState(false);
+  const [qcfFontName, setQcfFontName] = useState<string | null>(null);
 
   // Refs for closure-safe access in audio callbacks
   const versesRef   = useRef<QuranVerse[]>([]);
@@ -46,16 +47,38 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
     if (stored === 'listen' || stored === 'read' || stored === 'both') setMode(stored);
   }, []);
 
-  // Fetch mushaf line data when in read mode
+  // Fetch mushaf line data + load per-page QCF4 font when in read mode
   useEffect(() => {
     if (mode !== 'read') return;
     let cancelled = false;
     setMushafLines([]);
     setMushafLinesLoading(true);
-    fetch(`/api/tareeq/quran/mushaf-lines?page=${page}`)
-      .then(r => r.json())
-      .then(d => { if (!cancelled) { setMushafLines(d.lines ?? []); setMushafLinesLoading(false); } })
-      .catch(() => { if (!cancelled) setMushafLinesLoading(false); });
+    setQcfFontName(null);
+
+    const fontName = `QCF4_P${String(page).padStart(3, '0')}`;
+
+    // Load QCF4 per-page Madinah Mushaf font (proxied through our server)
+    const loadFont = async () => {
+      if (document.fonts && !document.fonts.check(`1em ${fontName}`)) {
+        try {
+          const face = new FontFace(fontName, `url(/api/tareeq/quran/qcf-font?page=${page})`);
+          await face.load();
+          document.fonts.add(face);
+        } catch {
+          // Font failed — fall back to Amiri Quran
+        }
+      }
+      if (!cancelled) setQcfFontName(fontName);
+    };
+
+    Promise.all([
+      fetch(`/api/tareeq/quran/mushaf-lines?page=${page}`)
+        .then(r => r.json())
+        .then(d => { if (!cancelled) { setMushafLines(d.lines ?? []); setMushafLinesLoading(false); } })
+        .catch(() => { if (!cancelled) setMushafLinesLoading(false); }),
+      loadFont(),
+    ]);
+
     return () => { cancelled = true; };
   }, [page, mode]);
 
@@ -260,6 +283,11 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
     ? "'Amiri Quran', 'Scheherazade New', 'Traditional Arabic', serif"
     : "'Scheherazade New', 'Traditional Arabic', 'Arabic Typesetting', serif";
 
+  // QCF4 font is page-specific — use it for mushaf mode when loaded, else fall back to Amiri
+  const mushafFont = qcfFontName
+    ? `'${qcfFontName}', 'Amiri Quran', 'Scheherazade New', serif`
+    : qFont;
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -423,29 +451,41 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
                       </div>
                     )}
 
-                    {/* Lines — space-between like real mushaf typography */}
+                    {/* Lines — QCF4 per-page font (pixel-perfect Madinah Mushaf) */}
                     {!mushafLinesLoading && mushafLines.length > 0 && (
                       <div dir="rtl" style={{
-                        fontFamily: qFont,
+                        fontFamily: mushafFont,
                         fontSize: 17,
                         color: '#0a0a0a',
                         WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
                       }}>
                         {mushafLines.map(line => {
-                          // lines with few words (≤3) centre; full lines space-between
                           const wordCount = line.words.filter(w => w.charType !== 'end').length;
                           const justify = wordCount <= 2 ? 'center' : 'space-between';
+                          // Use codeV1 when QCF4 font loaded, else text_uthmani
+                          const useQcf = !!qcfFontName;
                           return (
                             <div key={line.lineNum} style={{
                               display: 'flex',
                               justifyContent: justify,
                               alignItems: 'center',
                               flexWrap: 'nowrap',
-                              lineHeight: 2.4,
+                              lineHeight: 2.6,
                               overflow: 'hidden',
                             }}>
                               {line.words.map((w, wi) => {
                                 if (w.charType === 'end') {
+                                  // In QCF4 font the end marker is part of the word glyph;
+                                  // render with the font as a glyph if codeV1 available
+                                  if (useQcf && w.codeV1) {
+                                    const vIdx2 = verses.findIndex(v => v.verse_number === w.verseNumber && v.chapter_id === w.chapterId);
+                                    return (
+                                      <span key={wi} style={{ flexShrink: 0, cursor: 'pointer' }}
+                                        onClick={() => { if (vIdx2 >= 0) goVerse(vIdx2); }}>
+                                        {w.codeV1}
+                                      </span>
+                                    );
+                                  }
                                   return (
                                     <span key={wi} style={{
                                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -474,7 +514,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
                                       transition: 'background 0.2s', flexShrink: 0,
                                     }}
                                     onClick={() => { if (vIdx >= 0) goVerse(vIdx); }}>
-                                    {w.text}
+                                    {useQcf && w.codeV1 ? w.codeV1 : w.text}
                                   </span>
                                 );
                               })}

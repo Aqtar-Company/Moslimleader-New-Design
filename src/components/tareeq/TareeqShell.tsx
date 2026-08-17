@@ -176,7 +176,8 @@ function ShellInner({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('tareeq-camera-ready', h);
   }, [pathname, router]);
 
-  const hideNav = /^\/tareeq\/inbox\/.+/.test(pathname) || /^\/tareeq\/groups\/.+/.test(pathname);
+  const isKhatmati = pathname.startsWith('/tareeq/khatmati');
+  const hideNav = /^\/tareeq\/inbox\/.+/.test(pathname) || /^\/tareeq\/groups\/.+/.test(pathname) || isKhatmati;
   // Main feed already has its own 3-column grid with embedded left nav — skip the shared sidebar there
   const isMainFeed = pathname === '/tareeq' || pathname === '/tareeq/';
 
@@ -191,8 +192,8 @@ function ShellInner({ children }: { children: React.ReactNode }) {
         <div className="relative pb-[60px] sm:pb-0">{children}</div>
       ) : (
         <div className="flex min-h-screen" dir="rtl">
-          <DesktopNav onCreateClick={handleCreateClick} />
-          <div className="flex-1 min-w-0 pb-[60px] sm:pb-0" dir="rtl">{children}</div>
+          {!isKhatmati && <DesktopNav onCreateClick={handleCreateClick} />}
+          <div className={`flex-1 min-w-0 ${isKhatmati ? '' : 'pb-[60px] sm:pb-0'}`} dir="rtl">{children}</div>
         </div>
       )}
 

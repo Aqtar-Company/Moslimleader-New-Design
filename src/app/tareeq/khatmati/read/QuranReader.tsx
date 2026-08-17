@@ -245,10 +245,10 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col min-h-screen pb-[140px]" style={{ background: 'var(--tr-base)' }}>
+    <div className="flex flex-col min-h-screen pb-[80px]" style={{ background: 'var(--tr-base)' }}>
 
       {/* ── Top bar ── */}
-      <div className="fixed top-14 left-0 right-0 z-40 flex flex-col gap-0">
+      <div className="fixed top-0 left-0 right-0 z-40 flex flex-col gap-0">
         {/* Page info + nav */}
         <div className="flex items-center justify-between px-4 py-2"
           style={{ background: 'var(--tr-header-bg)', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
@@ -303,7 +303,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
       </div>
 
       {/* ── Content area ── */}
-      <div className="flex-1 pt-[104px]">
+      <div className="flex-1 pt-[88px]">
         {loading ? (
           <div className="flex items-center justify-center py-24">
             <div className="w-8 h-8 border-2 rounded-full animate-spin"
@@ -389,7 +389,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
 
       {/* ── Audio player (fixed bottom) ── */}
       {(mode === 'listen' || mode === 'both') && (
-        <div className="fixed bottom-[60px] left-0 right-0 z-40"
+        <div className="fixed bottom-0 left-0 right-0 z-40"
           style={{
             background: 'var(--tr-surface)',
             borderTop: '1px solid var(--tr-border-soft)',

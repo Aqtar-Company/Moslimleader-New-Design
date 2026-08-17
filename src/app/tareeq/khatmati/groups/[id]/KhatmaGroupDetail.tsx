@@ -60,7 +60,7 @@ export default function KhatmaGroupDetail({ group, members, userId, myCurrentPag
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '20px 20px 0' }}>
-          <button onClick={() => router.back()}
+          <button onClick={() => router.push('/tareeq/khatmati/groups')}
             style={{ width: 36, height: 36, borderRadius: '50%', background: CARD, border: `1px solid ${CARD_BD}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
             <svg width={16} height={16} fill="none" stroke={TEXT_MUT} strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3' : 'M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18'} />
@@ -121,8 +121,8 @@ export default function KhatmaGroupDetail({ group, members, userId, myCurrentPag
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
             </svg>
             {isRtl
-              ? (me?.readToday ? `استمر في القراءة — صفحة ${myCurrentPage}` : `أكمل ورد الختمة — صفحة ${myCurrentPage}`)
-              : (me?.readToday ? `Continue reading — Page ${myCurrentPage}` : `Complete today's ward — Page ${myCurrentPage}`)}
+              ? (me?.readToday ? `استمر في التلاوة — صفحة ${myCurrentPage}` : `أكمل ورد الختمة — صفحة ${myCurrentPage}`)
+              : (me?.readToday ? `Continue recitation — Page ${myCurrentPage}` : `Complete today's ward — Page ${myCurrentPage}`)}
           </button>
         </div>
 

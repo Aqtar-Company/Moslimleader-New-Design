@@ -82,7 +82,7 @@ export default function KhatmaGroupsClient({ initialGroups, userId }: { initialG
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 20px 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button onClick={() => router.back()}
+            <button onClick={() => router.push('/tareeq/khatmati')}
               style={{ width: 36, height: 36, borderRadius: '50%', background: CARD, border: `1px solid ${CARD_BD}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
               <svg width={16} height={16} fill="none" stroke={TEXT_MUT} strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3' : 'M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18'} />

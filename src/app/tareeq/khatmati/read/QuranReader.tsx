@@ -320,15 +320,6 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
             </svg>
           </button>
 
-          {/* Search */}
-          <button onClick={() => setShowSearch(true)}
-            className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 shrink-0"
-            style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-            </svg>
-          </button>
-
           {/* Back button — goes to group page or nuri home */}
           <button onClick={() => router.push(groupId ? `/tareeq/khatmati/groups/${groupId}` : '/tareeq/khatmati')}
             className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 shrink-0"

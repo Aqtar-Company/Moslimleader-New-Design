@@ -348,8 +348,8 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
           <div style={{ textAlign: 'center', paddingInline: 28, marginTop: 1 }}>
             <p style={{ fontWeight: 900, fontSize: 17, color: wardMissed ? 'rgba(255,204,0,0.5)' : NURI_YELLOW, marginBottom: 0, lineHeight: 1.2 }}>
               {isRtl
-                ? (wardDone ? 'نورك مكتمل اليوم' : 'استمر في القراءة ليكتمل نورك')
-                : (wardDone ? 'Light shining today!' : 'Keep reading to complete your light')}
+                ? (wardDone ? 'استمر في التلاوة ليكتمل نورك' : 'استمر في التلاوة ليكتمل نورك')
+                : (wardDone ? 'Continue your recitation' : 'Continue your recitation')}
             </p>
           </div>
         </div>
@@ -403,7 +403,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
               </svg>
               {p
-                ? (isRtl ? `أكمل ختمتك — صفحة ${page}` : `Continue — Page ${page}`)
+                ? (isRtl ? `ختمة فردية — صفحة ${page}` : `Solo Khatma — Page ${page}`)
                 : (isRtl ? 'ابدأ رحلتك الآن' : 'Start Your Journey')}
             </Link>
           ) : (
@@ -522,7 +522,6 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
             {/* Search */}
             <div style={{ paddingInline: 16, paddingBottom: 8 }}>
               <input
-                autoFocus
                 value={surahSearch}
                 onChange={e => setSurahSearch(e.target.value)}
                 placeholder={isRtl ? 'ابحث عن سورة...' : 'Search surah...'}

@@ -44,18 +44,21 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
   const [dailyPages, setDailyPages]           = useState(1);
   const [surahSearch, setSurahSearch]         = useState('');
 
-  // Load settings from localStorage
+  // Load settings from localStorage + pin dark background to body
   useEffect(() => {
     try {
       const stored = localStorage.getItem(DRAFT_PAGES_KEY);
       if (stored) setDailyPages(parseInt(stored, 10) || 1);
     } catch { /* ignore */ }
-    // Seed quick-resume
     if (p) {
       localStorage.setItem('nuri-progress', JSON.stringify({
         page: p.currentPage, surah: p.currentSurah, ayah: p.currentAyah,
       }));
     }
+    // Force dark bg on body so scrolling past content edge stays dark
+    const prev = document.body.style.background;
+    document.body.style.background = BG_DEEP;
+    return () => { document.body.style.background = prev; };
   }, [p]);
 
   function saveDailyPages(n: number) {
@@ -106,7 +109,7 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
           display: 'flex', flexDirection: 'column',
           background: `radial-gradient(ellipse at 50% -10%, rgba(255,204,0,0.09) 0%, ${BG_DEEP} 55%)`,
           backgroundColor: BG_DEEP,
-          paddingBottom: 80,
+          paddingBottom: 100,
         }}
       >
         {/* ── Header ── */}
@@ -139,8 +142,8 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
         </div>
 
         {/* ── Lantern — grows to fill available space ── */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingBlock: 20 }}>
-          <div style={{ position: 'relative', width: 200, height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingBlock: 12 }}>
+          <div style={{ position: 'relative', width: 180, height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {wardDone && (
               <>
                 <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid rgba(255,204,0,0.28)', animation: 'nuri-ring 2.4s ease-out infinite' }} />
@@ -153,7 +156,7 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
               alt=""
               draggable={false}
               style={{
-                width: 180, height: 180, objectFit: 'contain', position: 'relative', zIndex: 1,
+                width: 160, height: 160, objectFit: 'contain', position: 'relative', zIndex: 1,
                 animation: wardDone ? 'nuri-float 4s ease-in-out infinite' : 'none',
                 filter: wardDone ? 'drop-shadow(0 0 20px rgba(255,204,0,0.5))' : 'none',
               }}

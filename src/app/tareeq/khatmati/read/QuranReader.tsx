@@ -238,7 +238,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
   }
 
   function getMushafPageUrl(p: number): string {
-    return `https://cdn.islamic.network/quran/images/high-resolution/${p}.png`;
+    return `/api/tareeq/quran/mushaf-page?page=${p}`;
   }
 
   // ── Current verse info ────────────────────────────────────────────────────
@@ -337,7 +337,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
               <div className="flex flex-col items-center justify-center px-6 gap-6"
                 style={{ minHeight: 'calc(100vh - 168px)' }}>
                 <div dir="rtl" className="rounded-3xl p-6 w-full"
-                  style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', textAlign: 'center' }}>
+                  style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', textAlign: 'center', WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }}>
                   <p style={{ fontFamily: qFont, fontSize: 28, lineHeight: 2.2, color: 'var(--tr-text-primary)' }}>
                     {cv.text_uthmani}
                   </p>
@@ -401,7 +401,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
                         بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ
                       </p>
                     )}
-                    <div dir="rtl" style={{ fontFamily: qFont, fontSize: 22, lineHeight: 2.4, textAlign: 'justify', color: 'var(--tr-text-primary)' }}>
+                    <div dir="rtl" style={{ fontFamily: qFont, fontSize: 22, lineHeight: 2.4, textAlign: 'justify', color: 'var(--tr-text-primary)', WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }}>
                       {verses.map((v, i) => (
                         <span
                           key={v.id}
@@ -434,11 +434,12 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
                   <p dir="rtl" style={{
                     fontFamily: qFont, fontSize: 22, textAlign: 'center',
                     color: 'var(--tr-text-muted)', marginBottom: 16, lineHeight: 2,
+                    WebkitUserSelect: 'none', userSelect: 'none',
                   }}>
                     بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ
                   </p>
                 )}
-                <div dir="rtl" style={{ fontFamily: qFont, fontSize: 22, lineHeight: 2.4, textAlign: 'justify', color: 'var(--tr-text-primary)' }}>
+                <div dir="rtl" style={{ fontFamily: qFont, fontSize: 22, lineHeight: 2.4, textAlign: 'justify', color: 'var(--tr-text-primary)', WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }}>
                   {verses.map((v, i) => (
                     <span
                       key={v.id}

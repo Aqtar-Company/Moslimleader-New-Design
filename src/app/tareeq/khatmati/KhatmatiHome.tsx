@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
@@ -93,12 +93,17 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
   const [showSettings, setShowSettings]       = useState(false);
   const [dailyPages, setDailyPages]           = useState(1);
   const [surahSearch, setSurahSearch]         = useState('');
+  const [reminderOn, setReminderOn]           = useState(false);
+  const [sharing, setSharing]                 = useState(false);
+  const shareCanvasRef                        = useRef<HTMLCanvasElement>(null);
 
   // Load settings from localStorage + pin dark background to body
   useEffect(() => {
     try {
       const stored = localStorage.getItem(DRAFT_PAGES_KEY);
       if (stored) setDailyPages(parseInt(stored, 10) || 1);
+      const rem = localStorage.getItem('nuri-reminder');
+      if (rem === '1') setReminderOn(true);
     } catch { /* ignore */ }
     if (p) {
       localStorage.setItem('nuri-progress', JSON.stringify({
@@ -134,6 +139,69 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
     setShowSurahPicker(false);
     setSurahSearch('');
     router.push(`/tareeq/khatmati/read?page=${page}&surah=${surahIdx + 1}&ayah=1`);
+  }
+
+  async function toggleReminder() {
+    const next = !reminderOn;
+    setReminderOn(next);
+    try { localStorage.setItem('nuri-reminder', next ? '1' : '0'); } catch { /* ignore */ }
+    try {
+      await fetch('/api/tareeq/khatmati/remind', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enable: next }),
+      });
+    } catch { /* ignore */ }
+  }
+
+  async function handleShare() {
+    if (!p || sharing) return;
+    setSharing(true);
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 900; canvas.height = 900;
+      const ctx = canvas.getContext('2d')!;
+      // Background gradient
+      const grad = ctx.createLinearGradient(0, 0, 0, 900);
+      grad.addColorStop(0, '#0a1e3d');
+      grad.addColorStop(0.55, '#05101f');
+      grad.addColorStop(1, '#071422');
+      ctx.fillStyle = grad; ctx.fillRect(0, 0, 900, 900);
+      // Gold ring
+      ctx.beginPath(); ctx.arc(450, 360, 220, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,204,0,0.18)'; ctx.lineWidth = 3; ctx.stroke();
+      // Progress arc
+      const pctNum = Math.round((p.currentPage / TOTAL_QURAN_PAGES) * 100);
+      ctx.beginPath();
+      ctx.arc(450, 360, 220, -Math.PI / 2, -Math.PI / 2 + (pctNum / 100) * Math.PI * 2);
+      ctx.strokeStyle = '#FFCC00'; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.stroke();
+      // Lantern emoji centre
+      ctx.font = '110px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('🕯️', 450, 345);
+      // Percentage
+      ctx.font = 'bold 72px sans-serif'; ctx.fillStyle = '#FFCC00';
+      ctx.fillText(`${pctNum}%`, 450, 470);
+      // Title
+      ctx.font = 'bold 40px Cairo,sans-serif'; ctx.fillStyle = '#F0EDE4';
+      ctx.fillText('نُوري · ختمتك', 450, 540);
+      // Sub stats
+      ctx.font = '32px sans-serif'; ctx.fillStyle = 'rgba(240,237,228,0.5)';
+      ctx.fillText(`صفحة ${p.currentPage} / ${TOTAL_QURAN_PAGES}   🔥 ${p.sirajStreak} يوم`, 450, 600);
+      // Watermark
+      ctx.font = '24px sans-serif'; ctx.fillStyle = 'rgba(255,204,0,0.4)';
+      ctx.fillText('moslimleader.com', 450, 860);
+
+      const dataUrl = canvas.toDataURL('image/png');
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], 'nuri-progress.png', { type: 'image/png' });
+      if (typeof navigator.share === 'function' && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'ختمتي على نُوري' });
+      } else {
+        const a = document.createElement('a');
+        a.href = dataUrl; a.download = 'nuri-progress.png'; a.click();
+      }
+    } catch { /* user cancelled or share failed */ }
+    setSharing(false);
   }
 
   const state      = sirajState(p?.lastReadDate ?? null);
@@ -188,7 +256,28 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
               {isRtl ? 'رحلتك مع القرآن الكريم' : 'Your Quran journey'}
             </p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Groups button */}
+            <button
+              onClick={() => router.push('/tareeq/khatmati/groups')}
+              style={{ width: 34, height: 34, borderRadius: '50%', background: BG_CARD, border: `1px solid ${BG_CARD_BD}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              title={isRtl ? 'ختمات جماعية' : 'Group Khatmas'}>
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={TEXT_MUT} strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+              </svg>
+            </button>
+            {/* Stats button */}
+            <button
+              onClick={() => router.push('/tareeq/khatmati/stats')}
+              style={{ width: 34, height: 34, borderRadius: '50%', background: BG_CARD, border: `1px solid ${BG_CARD_BD}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              title={isRtl ? 'إحصائياتي' : 'My Stats'}>
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={TEXT_MUT} strokeWidth={1.8}>
+                <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+                <line x1="6" y1="20" x2="6" y2="14"/>
+              </svg>
+            </button>
             {/* Settings gear */}
             <button
               onClick={() => setShowSettings(true)}
@@ -357,6 +446,29 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
           )}
         </div>
 
+        {/* Share progress — only when progress exists */}
+        {p && user && (
+          <div style={{ paddingInline: 20, marginTop: 10 }}>
+            <button
+              onClick={handleShare}
+              disabled={sharing}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                width: '100%', padding: '11px 0', borderRadius: 14,
+                background: 'rgba(255,204,0,0.08)', border: '1px solid rgba(255,204,0,0.2)',
+                color: NURI_YELLOW, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                opacity: sharing ? 0.6 : 1,
+              }}
+            >
+              <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+              </svg>
+              {isRtl ? 'مشاركة تقدمي' : 'Share Progress'}
+            </button>
+          </div>
+        )}
+
         <p style={{ textAlign: 'center', fontSize: 11, marginTop: 12, color: TEXT_MUT }}>
           {isRtl ? 'استماع · قراءة واستماع' : 'Listen · Listen + Read'}
         </p>
@@ -505,6 +617,35 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
               <span style={{ fontSize: 13, fontWeight: 600, color: TEXT_PRI }}>
                 {isRtl ? 'انتقل إلى سورة' : 'Jump to Surah'}
               </span>
+            </button>
+
+            {/* Daily reminder toggle */}
+            <button
+              onClick={toggleReminder}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                width: '100%', padding: '13px 16px', borderRadius: 12, cursor: 'pointer',
+                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={TEXT_MUT} strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/>
+              </svg>
+              <span style={{ fontSize: 13, fontWeight: 600, color: TEXT_PRI, flex: 1 }}>
+                {isRtl ? 'تذكير يومي' : 'Daily Reminder'}
+              </span>
+              {/* Toggle pill */}
+              <div style={{
+                width: 44, height: 24, borderRadius: 12, position: 'relative', flexShrink: 0,
+                background: reminderOn ? NURI_YELLOW : 'rgba(255,255,255,0.12)',
+                transition: 'background 0.25s',
+              }}>
+                <div style={{
+                  position: 'absolute', top: 2, left: reminderOn ? 22 : 2, width: 20, height: 20,
+                  borderRadius: '50%', background: reminderOn ? '#080E1C' : 'rgba(255,255,255,0.5)',
+                  transition: 'left 0.25s',
+                }} />
+              </div>
             </button>
           </div>
         </div>

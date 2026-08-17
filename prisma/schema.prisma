@@ -87,6 +87,8 @@ model User {
   tareeqPostViews         TareeqPostView[]
   tareeqNotes             TareeqNote[]             @relation("TareeqNotes")
   khatmatiProgress        KhatmatiProgress?
+  khatmaGroupsAdmin       KhatmaGroup[]            @relation("KhatmaGroupAdmin")
+  khatmaGroupMemberships  KhatmaGroupMember[]      @relation("KhatmaGroupMemberships")
 
   @@index([role])
   @@index([isWholesale])
@@ -1716,4 +1718,39 @@ model TareeqNote {
 
   @@index([userId, updatedAt(sort: Desc)])
   @@fulltext([title, content])
+}
+
+// ── Group Khatma ───────────────────────────────────────────────────────────
+
+model KhatmaGroup {
+  id          String              @id @default(cuid())
+  name        String              @db.VarChar(100)
+  description String?             @db.Text
+  adminId     String
+  admin       User                @relation("KhatmaGroupAdmin", fields: [adminId], references: [id])
+  dailyGoal   Int                 @default(4)
+  inviteCode  String              @unique @default(cuid())
+  isActive    Boolean             @default(true)
+  members     KhatmaGroupMember[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([adminId])
+}
+
+model KhatmaGroupMember {
+  id           String      @id @default(cuid())
+  groupId      String
+  group        KhatmaGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User        @relation("KhatmaGroupMemberships", fields: [userId], references: [id])
+  streak       Int         @default(0)
+  lastReadDate String?
+  totalPages   Int         @default(0)
+  points       Int         @default(0)
+  joinedAt     DateTime    @default(now())
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
 }

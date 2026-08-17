@@ -27,18 +27,6 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
   const [fontLoaded, setFontLoaded] = useState(false);
-  const [, setVerseImgErrorCount] = useState(0);
-  const verseImgErrors = useRef<Set<number>>(new Set());
-
-  function getVerseImgUrl(chapterId: number, verseNum: number): string {
-    return `https://c22506.r6.cf1.rackcdn.com/${chapterId}_${verseNum}.png`;
-  }
-
-  function onVerseImgError(verseId: number) {
-    verseImgErrors.current.add(verseId);
-    setVerseImgErrorCount(c => c + 1);
-  }
-
   // Refs for closure-safe access in audio callbacks
   const versesRef   = useRef<QuranVerse[]>([]);
   const currentRef  = useRef(0);
@@ -90,8 +78,6 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
     let cancelled = false;
     setLoading(true);
     setError(false);
-    verseImgErrors.current = new Set();
-    setVerseImgErrorCount(0);
     fetchPageVerses(page)
       .then(v => {
         if (cancelled) return;
@@ -379,82 +365,114 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
               </div>
             )}
 
-            {/* Read mode — per-verse images stacked on a paper background */}
+            {/* Read mode — mushaf-style page (typeset, no CDN needed) */}
             {mode === 'read' && (
-              <div className="flex flex-col items-center pb-6 pt-2 px-3">
+              <div className="px-3 py-4 flex justify-center">
+                {/* Outer gold frame */}
                 <div style={{
-                  background: '#fdf8f0',
-                  borderRadius: 16,
-                  padding: '20px 10px',
-                  maxWidth: 520,
-                  width: '100%',
-                  boxShadow: '0 2px 24px rgba(0,0,0,0.10)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 2,
+                  maxWidth: 480, width: '100%',
+                  background: '#fdf8f2',
+                  border: '2px solid #b8943c',
+                  borderRadius: 6,
+                  boxShadow: '0 6px 32px rgba(0,0,0,0.18), inset 0 0 60px rgba(184,148,60,0.05)',
+                  padding: 3,
                 }}>
-                  {verses.length === 0 && (
-                    <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <div className="w-7 h-7 border-2 rounded-full animate-spin"
-                        style={{ borderColor: '#e8d8b8', borderTopColor: '#c8a050' }} />
-                    </div>
-                  )}
-                  {verses.map((v, i) => {
-                    const hasError = verseImgErrors.current.has(v.id);
-                    const isActive = i === currentIdx;
-                    return (
-                      <button
-                        key={v.id}
-                        ref={el => { verseRefs.current[i] = el as unknown as HTMLSpanElement; }}
-                        onClick={() => goVerse(i)}
-                        style={{
-                          display: 'block',
-                          width: '100%',
-                          background: isActive ? 'rgba(212,168,60,0.13)' : 'transparent',
-                          border: isActive ? '1.5px solid rgba(212,168,60,0.4)' : '1.5px solid transparent',
-                          borderRadius: 10,
-                          padding: '4px 2px',
-                          cursor: 'pointer',
-                          transition: 'background 0.2s, border-color 0.2s',
-                          textAlign: 'center',
+                  {/* Inner border */}
+                  <div style={{
+                    border: '1px solid rgba(184,148,60,0.5)',
+                    borderRadius: 4,
+                    padding: '22px 18px 20px',
+                    minHeight: 560,
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}>
+                    {/* Surah name banner — shown when page opens a new surah */}
+                    {verses[0]?.verse_number === 1 && (
+                      <div style={{ textAlign: 'center', marginBottom: 14 }}>
+                        <div style={{
+                          display: 'inline-block',
+                          border: '1px solid #c8a44a',
+                          borderRadius: 4,
+                          padding: '5px 28px',
+                          background: 'linear-gradient(90deg, transparent, rgba(184,148,60,0.12), transparent)',
+                          color: '#5a3500',
+                          fontFamily: "'Amiri', 'Traditional Arabic', serif",
+                          fontSize: 17,
+                          fontWeight: 700,
+                          letterSpacing: 1,
                         }}>
-                        {!hasError ? (
-                          <img
-                            src={getVerseImgUrl(v.chapter_id, v.verse_number)}
-                            alt={`${v.chapter_id}:${v.verse_number}`}
-                            draggable={false}
-                            onError={() => onVerseImgError(v.id)}
-                            style={{
-                              width: '100%',
-                              height: 'auto',
-                              display: 'block',
-                              WebkitUserSelect: 'none',
-                              userSelect: 'none',
-                            }}
-                          />
-                        ) : (
-                          /* Text fallback for this verse if image fails */
-                          <span dir="rtl" style={{
-                            display: 'block',
-                            fontFamily: qFont,
-                            fontSize: 20,
-                            lineHeight: 2.2,
-                            color: '#2a1a0a',
-                            padding: '4px 8px',
-                            textAlign: 'justify',
-                            WebkitUserSelect: 'none',
-                            userSelect: 'none',
+                          سورة {surahNameAr}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Bismillah */}
+                    {verses[0]?.verse_number === 1
+                      && verses[0]?.chapter_id !== 9
+                      && verses[0]?.chapter_id !== 1 && (
+                      <p dir="rtl" style={{
+                        fontFamily: qFont, fontSize: 21, textAlign: 'center',
+                        color: '#2a1200', marginBottom: 14, lineHeight: 2.2,
+                        WebkitUserSelect: 'none', userSelect: 'none',
+                      }}>
+                        بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ
+                      </p>
+                    )}
+
+                    {/* Flowing verse text — all verses on one continuous page */}
+                    <div dir="rtl" style={{
+                      fontFamily: qFont,
+                      fontSize: 22,
+                      lineHeight: 2.9,
+                      textAlign: 'center',
+                      color: '#150800',
+                      flex: 1,
+                      WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
+                    }}>
+                      {verses.map((v, i) => (
+                        <span
+                          key={v.id}
+                          ref={el => { verseRefs.current[i] = el; }}
+                          onClick={() => goVerse(i)}
+                          style={{
+                            display: 'inline',
+                            background: i === currentIdx ? 'rgba(184,148,60,0.22)' : 'transparent',
+                            borderRadius: 3,
+                            cursor: 'pointer',
+                            transition: 'background 0.25s',
                           }}>
-                            {v.text_uthmani}
-                            <span style={{ fontFamily: 'serif', fontSize: 13, color: '#8a6a30', margin: '0 4px' }}>
-                              ﴿{toArabicNum(v.verse_number)}﴾
-                            </span>
+                          {v.text_uthmani}
+                          {/* Circular verse-end marker like real mushaf */}
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 24, height: 24,
+                            borderRadius: '50%',
+                            border: '1px solid #b8943c',
+                            color: '#7a5010',
+                            fontSize: 10,
+                            fontFamily: 'serif',
+                            margin: '0 4px',
+                            verticalAlign: 'middle',
+                            flexShrink: 0,
+                            lineHeight: 1,
+                          }}>
+                            {toArabicNum(v.verse_number)}
                           </span>
-                        )}
-                      </button>
-                    );
-                  })}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Page number at bottom */}
+                    <p style={{
+                      textAlign: 'center', marginTop: 14,
+                      color: '#8a6020', fontSize: 14,
+                      fontFamily: "'Amiri', serif",
+                    }}>
+                      ﴿ {toArabicNum(page)} ﴾
+                    </p>
+                  </div>
                 </div>
               </div>
             )}

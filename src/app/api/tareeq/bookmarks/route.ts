@@ -58,11 +58,20 @@ export async function POST(req: NextRequest) {
     if (!folder) return NextResponse.json({ error: 'التصنيف غير موجود' }, { status: 404 });
   }
 
+  const existing = await prisma.tareeqBookmark.findUnique({
+    where: { postId_userId: { postId, userId: user.userId } },
+    select: { id: true },
+  });
+
   const bookmark = await prisma.tareeqBookmark.upsert({
     where: { postId_userId: { postId, userId: user.userId } },
     update: { folderId: folderId ?? null },
     create: { postId, userId: user.userId, folderId: folderId ?? null },
   });
+
+  if (!existing) {
+    await prisma.tareeqPost.update({ where: { id: postId }, data: { savedCount: { increment: 1 } } }).catch(() => {});
+  }
 
   return NextResponse.json({ bookmark });
 }
@@ -76,7 +85,11 @@ export async function DELETE(req: NextRequest) {
   const postId = searchParams.get('postId');
   if (!postId) return NextResponse.json({ error: 'postId مطلوب' }, { status: 400 });
 
-  await prisma.tareeqBookmark.deleteMany({ where: { postId, userId: user.userId } });
+  const deleted = await prisma.tareeqBookmark.deleteMany({ where: { postId, userId: user.userId } });
+
+  if (deleted.count > 0) {
+    await prisma.tareeqPost.updateMany({ where: { id: postId, savedCount: { gt: 0 } }, data: { savedCount: { decrement: 1 } } }).catch(() => {});
+  }
 
   return NextResponse.json({ ok: true });
 }

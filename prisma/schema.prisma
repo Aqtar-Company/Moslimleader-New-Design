@@ -961,6 +961,7 @@ model TareeqPost {
   authorName   String           @default("مجهول")
   likeCount    Int              @default(0)
   commentCount Int              @default(0)
+  savedCount   Int              @default(0)
   viewCount    Int              @default(0)
   isHidden     Boolean          @default(false)
   hiddenBy     String?

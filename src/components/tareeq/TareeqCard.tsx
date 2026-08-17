@@ -28,6 +28,7 @@ export interface TareeqPostSummary {
   authorName: string;
   likeCount: number;
   commentCount: number;
+  savedCount?: number;
   createdAt: string;
   userId?: string | null;
   user?: { id: string; name: string; avatarUrl?: string | null } | null;
@@ -174,6 +175,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   const [currentReaction, setCurrentReaction] = useState<string | null>(startReaction);
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [commentCount, setCommentCount] = useState(post.commentCount);
+  const [savedCount, setSavedCount] = useState(post.savedCount ?? 0);
   const [showGate, setShowGate] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
@@ -332,7 +334,9 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     if (!user) { setShowGate(true); return; }
     if (isBookmarked) {
       setIsBookmarked(false);
-      await fetch(`/api/tareeq/bookmarks?postId=${post.id}`, { method: 'DELETE', credentials: 'include' }).catch(() => setIsBookmarked(true));
+      setSavedCount(c => Math.max(0, c - 1));
+      const res = await fetch(`/api/tareeq/bookmarks?postId=${post.id}`, { method: 'DELETE', credentials: 'include' }).catch(() => null);
+      if (!res?.ok) { setIsBookmarked(true); setSavedCount(c => c + 1); }
       return;
     }
     if (!bmFoldersLoaded) {
@@ -346,11 +350,12 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   async function handleBookmarkSave(folderId: string | null) {
     setShowBookmarkPicker(false);
     setIsBookmarked(true);
+    setSavedCount(c => c + 1);
     const res = await fetch('/api/tareeq/bookmarks', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
       body: JSON.stringify({ postId: post.id, folderId }),
     });
-    if (!res.ok) setIsBookmarked(false);
+    if (!res.ok) { setIsBookmarked(false); setSavedCount(c => Math.max(0, c - 1)); }
   }
 
   async function handleCreateFolder(e: React.FormEvent) {
@@ -361,7 +366,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
       method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
       body: JSON.stringify({ name: newFolderName.trim() }),
     });
-    if (res.ok) { const d = await res.json(); setBmFolders(prev => [...prev, d.folder]); setNewFolderName(''); }
+    if (res.ok) { const d = await res.json(); setBmFolders(prev => [...prev, { ...d.folder, _count: { bookmarks: 0 } }]); setNewFolderName(''); }
     setCreatingFolder(false);
   }
 
@@ -668,6 +673,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
             <button onClick={handleBookmarkClick} aria-label={isRtl ? 'حفظ' : 'Save'} className="flex items-center gap-1 text-xs font-semibold transition active:scale-90" style={{ color: isBookmarked ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
               <IconBookmark filled={isBookmarked} size={16} />
+              {savedCount > 0 && <span>{fmt(savedCount)}</span>}
             </button>
 
             <div className="ms-auto flex items-center gap-2">
@@ -803,7 +809,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                 <div className="w-11 h-11 rounded-full flex items-center justify-center transition" style={{ background: isBookmarked ? 'rgba(212,168,83,0.35)' : 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)', border: isBookmarked ? '1.5px solid rgba(212,168,83,0.6)' : 'none', color: isBookmarked ? '#d4a853' : '#fff' }}>
                   <IconBookmark filled={isBookmarked} size={20} />
                 </div>
-                <span className="text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)', color: isBookmarked ? '#d4a853' : '#fff' }}>{isRtl ? 'حفظ' : 'Save'}</span>
+                <span className="text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)', color: isBookmarked ? '#d4a853' : '#fff' }}>{savedCount > 0 ? fmt(savedCount) : (isRtl ? 'حفظ' : 'Save')}</span>
               </button>
 
               {/* Options */}
@@ -998,6 +1004,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
           <button onClick={handleBookmarkClick} aria-label={isRtl ? 'حفظ' : 'Save'} className="flex items-center gap-1 text-xs font-semibold transition active:scale-90" style={{ color: isBookmarked ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
             <IconBookmark filled={isBookmarked} size={16} />
+            {savedCount > 0 && <span>{fmt(savedCount)}</span>}
           </button>
 
           <div className="ms-auto flex items-center gap-2">

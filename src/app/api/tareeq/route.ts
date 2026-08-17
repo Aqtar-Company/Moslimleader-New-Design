@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
       select: {
         id: true, title: true, summary: true, content: true,
         category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true, authorName: true,
-        likeCount: true, commentCount: true, createdAt: true, userId: true,
+        likeCount: true, commentCount: true, savedCount: true, createdAt: true, userId: true,
         pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
         seriesId: true, seriesTitle: true, seriesOrder: true,
         user: { select: { id: true, name: true, avatarUrl: true } },
@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
           select: {
             id: true, title: true, summary: true, content: true,
             category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true, authorName: true,
-            likeCount: true, commentCount: true, createdAt: true, userId: true,
+            likeCount: true, commentCount: true, savedCount: true, createdAt: true, userId: true,
             pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
             seriesId: true, seriesTitle: true, seriesOrder: true,
             user: { select: { id: true, name: true, avatarUrl: true } },
@@ -128,7 +128,7 @@ export async function GET(req: NextRequest) {
     select: {
       id: true, title: true, summary: true, content: true,
       category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true, authorName: true,
-      likeCount: true, commentCount: true, createdAt: true, userId: true,
+      likeCount: true, commentCount: true, savedCount: true, createdAt: true, userId: true,
       pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
       seriesId: true, seriesTitle: true, seriesOrder: true,
       user: { select: { id: true, name: true, avatarUrl: true } },

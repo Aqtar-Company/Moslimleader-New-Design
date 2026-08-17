@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
@@ -11,11 +11,61 @@ import {
 
 const NURI_YELLOW     = '#FFCC00';
 const NURI_YELLOW_DIM = 'rgba(255,204,0,0.14)';
-const BG_DEEP         = '#080E1C';
+const BG_DEEP         = '#05101f';   // dark navy blue
 const BG_CARD         = 'rgba(255,255,255,0.05)';
 const BG_CARD_BD      = 'rgba(255,255,255,0.09)';
 const TEXT_PRI        = '#F0EDE4';
 const TEXT_MUT        = 'rgba(240,237,228,0.45)';
+
+// Circular SVG arc progress component
+function LampProgress({ pct, lanternLevel, wardDone, children }: {
+  pct: number; lanternLevel: number; wardDone: boolean; children: React.ReactNode;
+}) {
+  const R = 96;
+  const circ = 2 * Math.PI * R;
+  const offset = circ * (1 - pct / 100);
+  // Stage milestones at 20%, 40%, 60%, 80%, 100% → 5 stages matching lanternLevel (0-4)
+  const stageAngles = [72, 144, 216, 288, 360]; // degrees from top
+  return (
+    <div style={{ position: 'relative', width: 210, height: 210, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      {/* SVG ring */}
+      <svg width={210} height={210} viewBox="0 0 210 210" style={{ position: 'absolute', inset: 0 }} >
+        {/* Track */}
+        <circle cx={105} cy={105} r={R} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={5} />
+        {/* Progress arc — CCW from top */}
+        <circle
+          cx={105} cy={105} r={R}
+          fill="none"
+          stroke={wardDone ? NURI_YELLOW : 'rgba(255,204,0,0.45)'}
+          strokeWidth={5}
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          strokeDashoffset={offset}
+          transform="rotate(-90 105 105)"
+          style={{ transition: 'stroke-dashoffset 1.2s ease, stroke 0.6s ease' }}
+        />
+        {/* Stage milestone dots */}
+        {stageAngles.map((deg, i) => {
+          const rad = (deg - 90) * (Math.PI / 180);
+          const x = 105 + R * Math.cos(rad);
+          const y = 105 + R * Math.sin(rad);
+          const filled = i <= lanternLevel - 1 || pct >= (i + 1) * 20;
+          return (
+            <circle key={i}
+              cx={x} cy={y} r={4.5}
+              fill={filled ? NURI_YELLOW : 'rgba(255,255,255,0.15)'}
+              stroke={filled ? 'rgba(255,204,0,0.4)' : 'none'}
+              strokeWidth={2}
+              style={{ transition: 'fill 0.5s ease' }}
+            />
+          );
+        })}
+      </svg>
+      {/* Lamp in centre */}
+      {children}
+    </div>
+  );
+}
 
 const DRAFT_PAGES_KEY = 'nuri-daily-pages';
 
@@ -54,15 +104,23 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
       localStorage.setItem('nuri-progress', JSON.stringify({
         page: p.currentPage, surah: p.currentSurah, ayah: p.currentAyah,
       }));
+      // Store last-read info so the footer icon knows the lantern level
+      localStorage.setItem('nuri-last-read', JSON.stringify({
+        date: p.lastReadDate, streak: p.sirajStreak,
+      }));
     }
-    // Force dark bg on both <html> and <body> so overscroll edge stays dark on iOS/Android
+    // Force dark blue bg on both <html> and <body> so overscroll stays themed on iOS/Android
     const prevBody = document.body.style.background;
     const prevHtml = document.documentElement.style.background;
     document.body.style.background = BG_DEEP;
     document.documentElement.style.background = BG_DEEP;
+    document.body.style.overscrollBehavior = 'none';
+    document.documentElement.style.overscrollBehavior = 'none';
     return () => {
       document.body.style.background = prevBody;
       document.documentElement.style.background = prevHtml;
+      document.body.style.overscrollBehavior = '';
+      document.documentElement.style.overscrollBehavior = '';
     };
   }, [p]);
 
@@ -106,16 +164,18 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
         @keyframes nuri-sheet { from{transform:translateY(100%)} to{transform:translateY(0)} }
       `}</style>
 
-      {/* ── Main page ── */}
+      {/* ── Main page — fixed to viewport height, no scroll ── */}
       <div
         dir={isRtl ? 'rtl' : 'ltr'}
         style={{
-          minHeight: '100dvh',
+          height: '100dvh',
           display: 'flex', flexDirection: 'column',
-          background: `radial-gradient(ellipse at 50% -10%, rgba(255,204,0,0.09) 0%, ${BG_DEEP} 55%)`,
+          background: `linear-gradient(160deg, #0a1e3d 0%, ${BG_DEEP} 50%, #071422 100%)`,
           backgroundColor: BG_DEEP,
-          paddingBottom: 100,
+          paddingBottom: 84,
           overscrollBehavior: 'none',
+          overflow: 'hidden',
+          touchAction: 'manipulation',
         }}
       >
         {/* ── Header ── */}
@@ -147,14 +207,16 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
           </div>
         </div>
 
-        {/* ── Lantern — grows to fill available space ── */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingBlock: 12 }}>
-          <div style={{ position: 'relative', width: 180, height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {/* ── Lantern + progress ring — fills available space ── */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, paddingBlock: 4, minHeight: 0 }}>
+
+          <LampProgress pct={pct} lanternLevel={lanternLevel} wardDone={wardDone}>
+            {/* Glow effects when bright */}
             {wardDone && (
               <>
-                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid rgba(255,204,0,0.28)', animation: 'nuri-ring 2.4s ease-out infinite' }} />
-                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid rgba(255,204,0,0.28)', animation: 'nuri-ring 2.4s ease-out 1.2s infinite' }} />
-                <div style={{ position: 'absolute', inset: -32, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,204,0,0.22) 0%, transparent 70%)', animation: 'nuri-glow 3s ease-in-out infinite' }} />
+                <div style={{ position: 'absolute', inset: 18, borderRadius: '50%', border: '1.5px solid rgba(255,204,0,0.3)', animation: 'nuri-ring 2.4s ease-out infinite' }} />
+                <div style={{ position: 'absolute', inset: 18, borderRadius: '50%', border: '1.5px solid rgba(255,204,0,0.3)', animation: 'nuri-ring 2.4s ease-out 1.2s infinite' }} />
+                <div style={{ position: 'absolute', inset: -20, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,204,0,0.18) 0%, transparent 70%)', animation: 'nuri-glow 3s ease-in-out infinite', pointerEvents: 'none' }} />
               </>
             )}
             <img
@@ -162,25 +224,39 @@ export default function KhatmatiHome({ initialProgress }: { initialProgress: Pro
               alt=""
               draggable={false}
               style={{
-                width: 160, height: 160, objectFit: 'contain', position: 'relative', zIndex: 1,
+                width: 148, height: 148, objectFit: 'contain', position: 'relative', zIndex: 1,
                 animation: wardDone ? 'nuri-float 4s ease-in-out infinite' : 'none',
-                filter: wardDone ? 'drop-shadow(0 0 20px rgba(255,204,0,0.5))' : 'none',
+                filter: wardDone ? 'drop-shadow(0 0 18px rgba(255,204,0,0.5))' : 'none',
               }}
             />
+          </LampProgress>
+
+          {/* Stage label under ring */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {[0,1,2,3,4].map(i => (
+              <div key={i} style={{
+                width: i === lanternLevel ? 22 : 7, height: 7,
+                borderRadius: 4,
+                background: i < lanternLevel ? NURI_YELLOW : i === lanternLevel ? 'rgba(255,204,0,0.7)' : 'rgba(255,255,255,0.12)',
+                transition: 'all 0.5s ease',
+              }} />
+            ))}
           </div>
 
           {/* Tagline */}
-          <div style={{ textAlign: 'center', marginTop: 16, paddingInline: 28 }}>
-            <p style={{ fontWeight: 900, fontSize: 22, color: wardMissed ? 'rgba(255,204,0,0.5)' : NURI_YELLOW, marginBottom: 4 }}>
-              {isRtl ? 'أتمم نورك' : wardDone ? 'Keep your light' : 'Light your lantern'}
+          <div style={{ textAlign: 'center', paddingInline: 28, marginTop: 2 }}>
+            <p style={{ fontWeight: 900, fontSize: 20, color: wardMissed ? 'rgba(255,204,0,0.5)' : NURI_YELLOW, marginBottom: 2, lineHeight: 1.2 }}>
+              {isRtl
+                ? (wardDone ? 'نورك مكتمل اليوم' : wardPending ? 'أعِد إليه النور' : wardMissed ? 'أتمم نورك' : 'ابدأ رحلتك')
+                : (wardDone ? 'Light shining!' : wardPending ? 'Rekindle today' : 'Begin your journey')}
             </p>
-            <p style={{ fontSize: 13, color: TEXT_MUT, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 12, color: TEXT_MUT, lineHeight: 1.5 }}>
               {wardDone
-                ? (isRtl ? (streak > 1 ? `${streak} أيام متواصلة من النور` : 'أتممت وردك اليوم بحمد الله') : `${streak} day${streak !== 1 ? 's' : ''} streak`)
+                ? (isRtl ? (streak > 1 ? `${streak} أيام متواصلة من النور 🔥` : 'أتممت وردك اليوم بحمد الله') : `${streak} day${streak !== 1 ? 's' : ''} streak 🔥`)
                 : wardPending
-                ? (isRtl ? 'خَفَتَ السراج بالأمس — أعِد إليه النور اليوم' : 'Lantern dimmed — rekindle it today')
+                ? (isRtl ? 'خَفَتَ السراج بالأمس — واصل اليوم' : 'Dimmed — keep it going')
                 : wardMissed
-                ? (isRtl ? 'انطفأ السراج — ابدأ من جديد اليوم' : 'Lantern out — begin again today')
+                ? (isRtl ? 'انطفأ السراج — ابدأ سلسلة جديدة' : 'Out — start fresh today')
                 : (isRtl ? 'ابدأ رحلتك مع القرآن الكريم' : 'Begin your Quran journey')}
             </p>
           </div>

@@ -39,9 +39,6 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
   const [fontLoaded, setFontLoaded] = useState(false);
-  const [mushafLines, setMushafLines] = useState<{ lineNum: number; words: { text: string; codeV1: string; charType: string; verseNumber: number; chapterId: number }[] }[]>([]);
-  const [mushafLinesLoading, setMushafLinesLoading] = useState(false);
-  const [qcfFontName, setQcfFontName] = useState<string | null>(null);
 
   // New UI state
   const [reciterId, setReciterId] = useState('ar.alafasy');
@@ -59,7 +56,6 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
   const saveTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const verseRefs   = useRef<(HTMLSpanElement | null)[]>([]);
   const isMountedRef = useRef(true);
-  const activeLineRef = useRef<HTMLDivElement | null>(null);
 
   // Read mode from localStorage after mount (avoids SSR hydration mismatch)
   useEffect(() => {
@@ -68,53 +64,11 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
     if (stored === 'listen' || stored === 'both') setMode(stored);
   }, []);
 
-  // Fetch mushaf line data + load per-page QCF4 font when in both mode
-  useEffect(() => {
-    if (mode !== 'both') return;
-    let cancelled = false;
-    setMushafLines([]);
-    setMushafLinesLoading(true);
-    setQcfFontName(null);
-
-    const fontName = `QCF4_P${String(page).padStart(3, '0')}`;
-
-    // Load QCF4 per-page Madinah Mushaf font (proxied through our server)
-    const loadFont = async () => {
-      if (document.fonts && !document.fonts.check(`1em ${fontName}`)) {
-        try {
-          const face = new FontFace(fontName, `url(/api/tareeq/quran/qcf-font?page=${page})`);
-          await face.load();
-          document.fonts.add(face);
-        } catch {
-          // Font failed — fall back to Amiri Quran
-        }
-      }
-      if (!cancelled) setQcfFontName(fontName);
-    };
-
-    Promise.all([
-      fetch(`/api/tareeq/quran/mushaf-lines?page=${page}`)
-        .then(r => r.json())
-        .then(d => { if (!cancelled) { setMushafLines(d.lines ?? []); setMushafLinesLoading(false); } })
-        .catch(() => { if (!cancelled) setMushafLinesLoading(false); }),
-      loadFont(),
-    ]);
-
-    return () => { cancelled = true; };
-  }, [page, mode]);
-
   // Sync state → refs so audio callbacks always read current values
   useEffect(() => { versesRef.current = verses; }, [verses]);
   useEffect(() => { currentRef.current = currentIdx; }, [currentIdx]);
   useEffect(() => { playingRef.current = isPlaying; }, [isPlaying]);
   useEffect(() => { pageRef.current = page; }, [page]);
-
-  // Auto-scroll to active line in both mode when verse changes
-  useEffect(() => {
-    if (mode === 'both' && activeLineRef.current) {
-      activeLineRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [currentIdx, mode]);
 
   // Load Amiri Quran font once as a page-level resource (never removed on unmount)
   useEffect(() => {
@@ -311,10 +265,6 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
     ? "'Amiri Quran', 'Scheherazade New', 'Traditional Arabic', serif"
     : "'Scheherazade New', 'Traditional Arabic', 'Arabic Typesetting', serif";
 
-  // QCF4 font is page-specific — use it for mushaf mode when loaded, else fall back to Amiri
-  const mushafFont = qcfFontName
-    ? `'${qcfFontName}', 'Amiri Quran', 'Scheherazade New', serif`
-    : qFont;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -375,12 +325,12 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
             </svg>
           </button>
 
-          {/* Back → Nuri home — leftmost in RTL, arrow points right */}
+          {/* Back → Nuri home — leftmost in RTL, arrow points left */}
           <button onClick={() => router.push('/tareeq/khatmati')}
             className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 shrink-0"
             style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
             </svg>
           </button>
         </div>
@@ -578,161 +528,39 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah }: 
               </div>
             )}
 
-            {/* Both mode — line-by-line mushaf layout with audio player overlay */}
-            {mode === 'both' && (
-              <div style={{ padding: '12px 4px 100px', display: 'flex', justifyContent: 'center' }}>
-                {/* Outer frame — Madinah Mushaf paper */}
-                <div style={{
-                  width: '100%', maxWidth: 520,
-                  background: '#faf9f4',
-                  border: '2.5px solid #1a1a1a',
-                  boxShadow: '0 2px 16px rgba(0,0,0,0.18)',
-                }}>
-                  {/* Inner gold line */}
-                  <div style={{ border: '1px solid #b8973a', margin: 4, padding: '12px 8px 10px' }}>
-
-                    {/* Surah name header */}
-                    {verses[0]?.verse_number === 1 && (
-                      <div style={{ textAlign: 'center', marginBottom: 10 }}>
-                        <div style={{
-                          display: 'inline-block',
-                          border: '1.5px solid #1a1a1a', borderRadius: 1,
-                          padding: '3px 0', width: '88%', background: '#faf9f4', position: 'relative',
-                        }}>
-                          <span style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', fontSize: 16, color: '#444' }}>❧</span>
-                          <span style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', fontSize: 16, color: '#444' }}>❦</span>
-                          <span style={{ fontFamily: qFont, fontSize: 17, fontWeight: 700, color: '#111', display: 'block', lineHeight: 1.9 }}>
-                            سورة {surahNameAr}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Spinner while loading mushaf lines */}
-                    {mushafLinesLoading && (
-                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 380 }}>
-                        <div className="w-6 h-6 border-2 rounded-full animate-spin"
-                          style={{ borderColor: '#ccc', borderTopColor: '#555' }} />
-                      </div>
-                    )}
-
-                    {/* Lines — QCF4 per-page font (pixel-perfect Madinah Mushaf) */}
-                    {!mushafLinesLoading && mushafLines.length > 0 && (
-                      <div dir="rtl" style={{
-                        fontFamily: mushafFont,
-                        fontSize: 17,
-                        color: '#0a0a0a',
-                        WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
+            {/* Both mode — flowing text with verse highlighting */}
+            {mode === 'both' && verses.length > 0 && (
+              <div dir="rtl" style={{ padding: '16px 16px 100px', fontFamily: qFont, fontSize: 20, lineHeight: 2.8, color: 'var(--tr-text-primary)', textAlign: 'justify' }}>
+                {verses[0]?.verse_number === 1 && (
+                  <p style={{ textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--nuri-gold)', marginBottom: 12 }}>
+                    سورة {surahNameAr}
+                  </p>
+                )}
+                <p style={{ margin: 0 }}>
+                  {verses.map((v, i) => (
+                    <span key={v.id}
+                      ref={el => { verseRefs.current[i] = el; }}
+                      onClick={() => goVerse(i)}
+                      style={{
+                        display: 'inline',
+                        background: i === currentIdx ? 'rgba(212,168,83,0.22)' : 'transparent',
+                        borderRadius: 3, cursor: 'pointer', transition: 'background 0.25s',
+                        padding: i === currentIdx ? '1px 3px' : '0',
                       }}>
-                        {mushafLines.map(line => {
-                          const wordCount = line.words.filter(w => w.charType !== 'end').length;
-                          const justify = wordCount <= 2 ? 'center' : 'space-between';
-                          const useQcf = !!qcfFontName;
-                          // Check if this line contains the currently playing verse
-                          const lineHasActive = line.words.some(w => {
-                            const vIdx = verses.findIndex(v => v.verse_number === w.verseNumber && v.chapter_id === w.chapterId);
-                            return vIdx === currentIdx;
-                          });
-                          return (
-                            <div key={line.lineNum}
-                              ref={lineHasActive ? activeLineRef : null}
-                              style={{
-                                display: 'flex',
-                                justifyContent: justify,
-                                alignItems: 'center',
-                                flexWrap: 'nowrap',
-                                lineHeight: 2.6,
-                                overflow: 'hidden',
-                                borderRadius: lineHasActive ? 4 : 0,
-                                background: lineHasActive ? 'rgba(212,168,83,0.10)' : 'transparent',
-                                transition: 'background 0.3s',
-                              }}>
-                              {line.words.map((w, wi) => {
-                                if (w.charType === 'end') {
-                                  if (useQcf && w.codeV1) {
-                                    const vIdx2 = verses.findIndex(v => v.verse_number === w.verseNumber && v.chapter_id === w.chapterId);
-                                    const isActive = vIdx2 === currentIdx;
-                                    return (
-                                      <span key={wi} style={{ flexShrink: 0, cursor: 'pointer', color: isActive ? '#b8860b' : undefined }}
-                                        onClick={() => { if (vIdx2 >= 0) goVerse(vIdx2); }}>
-                                        {w.codeV1}
-                                      </span>
-                                    );
-                                  }
-                                  return (
-                                    <span key={wi} style={{
-                                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                      width: 24, height: 24, borderRadius: '50%',
-                                      border: '1.5px solid #b8860b',
-                                      color: '#b8860b', fontSize: 9,
-                                      fontFamily: 'serif', flexShrink: 0,
-                                      margin: '0 2px', cursor: 'pointer',
-                                    }}
-                                      onClick={() => {
-                                        const idx = verses.findIndex(v => v.verse_number === w.verseNumber && v.chapter_id === w.chapterId);
-                                        if (idx >= 0) goVerse(idx);
-                                      }}>
-                                      {toArabicNum(w.verseNumber)}
-                                    </span>
-                                  );
-                                }
-                                const vIdx = verses.findIndex(v => v.verse_number === w.verseNumber && v.chapter_id === w.chapterId);
-                                const isActive = vIdx === currentIdx;
-                                return (
-                                  <span key={wi}
-                                    style={{
-                                      background: isActive ? 'rgba(212,168,83,0.25)' : 'transparent',
-                                      borderRadius: 2, cursor: 'pointer',
-                                      transition: 'background 0.2s', flexShrink: 0,
-                                      color: isActive ? '#7a5800' : undefined,
-                                    }}
-                                    onClick={() => { if (vIdx >= 0) goVerse(vIdx); }}>
-                                    {useQcf && w.codeV1 ? w.codeV1 : w.text}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* Fallback if mushaf lines API fails */}
-                    {!mushafLinesLoading && mushafLines.length === 0 && verses.length > 0 && (
-                      <div dir="rtl" style={{
-                        fontFamily: qFont, fontSize: 17, lineHeight: 2.8,
-                        textAlign: 'center', color: '#0a0a0a',
-                        WebkitUserSelect: 'none', userSelect: 'none',
+                      {v.text_uthmani}
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        width: 22, height: 22, borderRadius: '50%',
+                        border: `1.5px solid ${i === currentIdx ? 'var(--nuri-gold)' : 'rgba(212,168,83,0.5)'}`,
+                        color: i === currentIdx ? 'var(--nuri-gold)' : 'rgba(212,168,83,0.7)',
+                        fontSize: 9, margin: '0 4px', verticalAlign: 'middle',
+                        flexShrink: 0,
                       }}>
-                        {verses.map((v, i) => (
-                          <span key={v.id}
-                            ref={el => { verseRefs.current[i] = el; }}
-                            onClick={() => goVerse(i)}
-                            style={{
-                              display: 'inline',
-                              background: i === currentIdx ? 'rgba(212,168,83,0.20)' : 'transparent',
-                              borderRadius: 2, cursor: 'pointer', transition: 'background 0.2s',
-                            }}>
-                            {v.text_uthmani}
-                            <span style={{
-                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                              width: 22, height: 22, borderRadius: '50%',
-                              border: '1.5px solid #b8860b', color: '#b8860b',
-                              fontSize: 9, margin: '0 3px', verticalAlign: 'middle',
-                            }}>
-                              {toArabicNum(v.verse_number)}
-                            </span>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Page number */}
-                    <p style={{ textAlign: 'center', marginTop: 8, color: '#666', fontSize: 13, fontFamily: qFont }}>
-                      {toArabicNum(page)}
-                    </p>
-                  </div>
-                </div>
+                        {toArabicNum(v.verse_number)}
+                      </span>
+                    </span>
+                  ))}
+                </p>
               </div>
             )}
           </>

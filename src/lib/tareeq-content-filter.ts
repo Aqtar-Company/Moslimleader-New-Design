@@ -97,6 +97,14 @@ export function validateMediaUrl(url: string | null, type: 'image' | 'video'): b
   if (!url) return true;
   try {
     const host = new URL(url).hostname.replace(/^www\./, '');
+    // Allow own R2 storage bucket domain
+    const r2Url = process.env.R2_PUBLIC_URL;
+    if (r2Url) {
+      try {
+        const r2Host = new URL(r2Url).hostname.replace(/^www\./, '');
+        if (host === r2Host || host.endsWith('.' + r2Host)) return true;
+      } catch { /* invalid R2_PUBLIC_URL, ignore */ }
+    }
     const allowed = type === 'image' ? ALLOWED_IMAGE_HOSTS : ALLOWED_VIDEO_HOSTS;
     return allowed.some(h => host === h || host.endsWith('.' + h));
   } catch {

@@ -10,11 +10,14 @@ import {
 
 const NURI_YELLOW     = '#FFCC00';
 const NURI_YELLOW_DIM = 'rgba(255,204,0,0.14)';
-const BG_DEEP         = '#05101f';
-const BG_CARD         = 'rgba(255,255,255,0.05)';
-const BG_CARD_BD      = 'rgba(255,255,255,0.09)';
+const BG_DEEP         = '#020C1B';
+const BG_MID          = '#061428';
+const BG_TOP          = '#0D2244';
+const BG_CARD         = 'rgba(255,255,255,0.06)';
+const BG_CARD_BD      = 'rgba(255,255,255,0.10)';
 const TEXT_PRI        = '#F0EDE4';
 const TEXT_MUT        = 'rgba(240,237,228,0.45)';
+const BG_GRADIENT     = `linear-gradient(170deg, ${BG_TOP} 0%, ${BG_MID} 38%, ${BG_DEEP} 68%, #030E1E 100%)`;
 
 const DRAFT_PAGES_KEY = 'nuri-daily-pages';
 
@@ -106,9 +109,13 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
     const prevHtmlBg = document.documentElement.style.background;
     document.body.style.background = BG_DEEP;
     document.documentElement.style.background = BG_DEEP;
+    document.body.style.backgroundImage = BG_GRADIENT;
+    document.documentElement.style.backgroundImage = BG_GRADIENT;
     return () => {
       document.body.style.background = prevBodyBg;
       document.documentElement.style.background = prevHtmlBg;
+      document.body.style.backgroundImage = '';
+      document.documentElement.style.backgroundImage = '';
     };
   }, [p]);
 
@@ -225,19 +232,17 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
         @keyframes nuri-ring  { 0%{transform:scale(.85);opacity:.5} 100%{transform:scale(1.5);opacity:0} }
         @keyframes nuri-sheet { from{transform:translateY(100%)} to{transform:translateY(0)} }
         @keyframes nuri-pulse { 0%,100%{opacity:.5;filter:drop-shadow(0 0 3px #FFCC00)} 50%{opacity:1;filter:drop-shadow(0 0 10px #FFCC00)} }
-        html, body { background: #05101f !important; }
+        html, body { background: #020C1B !important; background-image: linear-gradient(170deg, #0D2244 0%, #061428 38%, #020C1B 68%, #030E1E 100%) !important; background-attachment: fixed !important; }
         .nuri-scroll::-webkit-scrollbar { display: none; }
       `}</style>
-
-      {/* Fixed dark background — always covers the full viewport regardless of scroll */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: -1, background: `linear-gradient(170deg, #0d2145 0%, #071830 35%, ${BG_DEEP} 65%, #060f1c 100%)`, backgroundColor: BG_DEEP, pointerEvents: 'none' }} />
 
       <div
         dir={isRtl ? 'rtl' : 'ltr'}
         style={{
           minHeight: '100dvh',
           display: 'flex', flexDirection: 'column',
-          backgroundColor: 'transparent',
+          background: BG_GRADIENT,
+          backgroundColor: BG_DEEP,
           paddingBottom: 90,
         }}
       >
@@ -275,8 +280,10 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
           </div>
         </div>
 
-        {/* ── Lantern + ring (fixed height, not flex-grow) ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, paddingBlock: 18, flexShrink: 0 }}>
+        {/* ── Lantern + ring ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, paddingBlock: 18, flexShrink: 0, position: 'relative' }}>
+          {/* Radial luxury glow behind the ring */}
+          <div style={{ position: 'absolute', width: 340, height: 200, borderRadius: '50%', background: 'radial-gradient(ellipse at center, rgba(15,50,120,0.55) 0%, rgba(5,20,60,0.25) 55%, transparent 75%)', top: '50%', left: '50%', transform: 'translate(-50%,-52%)', pointerEvents: 'none' }} />
           <LampRing pct={pct} wardDone={wardDone} lanternLit={lanternLit} lanternLevel={lanternLevel}>
             <img
               src={`/${lanternLit ? 4 : pctLevel}-light.png`}
@@ -286,18 +293,10 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
               style={{
                 width: 150, height: 150, objectFit: 'contain', position: 'relative', zIndex: 1,
                 animation: (wardDone || lanternLit) ? 'nuri-float 4s ease-in-out infinite' : 'none',
-                filter: (wardDone || lanternLit) ? 'drop-shadow(0 0 24px rgba(255,204,0,0.6))' : 'none',
-                cursor: 'pointer', transition: 'filter 0.4s',
+                filter: `brightness(${(lanternLit ? 1 : 0.35 + pctLevel * 0.165).toFixed(2)})${(wardDone || lanternLit) ? ' drop-shadow(0 0 28px rgba(255,204,0,0.65))' : ''}`,
+                cursor: 'pointer', transition: 'filter 0.8s ease',
               }}
             />
-            {/* Pct-based dim overlay — 50% at 0%, fades to 0 at 100% */}
-            {overlayOpacity > 0.02 && (
-              <div style={{
-                position: 'absolute', inset: 20, borderRadius: '50%',
-                background: `rgba(5,16,31,${overlayOpacity.toFixed(2)})`,
-                zIndex: 2, transition: 'opacity 1s ease', pointerEvents: 'none',
-              }} />
-            )}
           </LampRing>
 
           {/* Tagline */}

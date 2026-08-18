@@ -111,29 +111,14 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
         date: p.lastReadDate, streak: p.sirajStreak,
       }));
     }
-    // Force dark blue bg on both <html> and <body> so overscroll stays themed on iOS/Android
-    const prevBody = document.body.style.background;
-    const prevHtml = document.documentElement.style.background;
+    // Paint html+body dark so the iOS/Android overscroll area stays themed
+    const prevBodyBg = document.body.style.background;
+    const prevHtmlBg = document.documentElement.style.background;
     document.body.style.background = BG_DEEP;
     document.documentElement.style.background = BG_DEEP;
-    document.body.style.overscrollBehavior = 'none';
-    document.documentElement.style.overscrollBehavior = 'none';
-    // iOS Safari: position:fixed on body is the only reliable way to prevent
-    // elastic bounce revealing a white gap behind the page
-    const prevPos = document.body.style.position;
-    const prevTop = document.body.style.top;
-    const prevW   = document.body.style.width;
-    document.body.style.position = 'fixed';
-    document.body.style.top = '0';
-    document.body.style.width = '100%';
     return () => {
-      document.body.style.background = prevBody;
-      document.documentElement.style.background = prevHtml;
-      document.body.style.overscrollBehavior = '';
-      document.documentElement.style.overscrollBehavior = '';
-      document.body.style.position = prevPos;
-      document.body.style.top = prevTop;
-      document.body.style.width = prevW;
+      document.body.style.background = prevBodyBg;
+      document.documentElement.style.background = prevHtmlBg;
     };
   }, [p]);
 
@@ -258,20 +243,17 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
         @keyframes nuri-ring   { 0%{transform:scale(.85);opacity:.55} 100%{transform:scale(1.45);opacity:0} }
         @keyframes nuri-sheet  { from{transform:translateY(100%)} to{transform:translateY(0)} }
         @keyframes nuri-pulse  { 0%,100%{opacity:.5;filter:drop-shadow(0 0 3px #FFCC00)} 50%{opacity:1;filter:drop-shadow(0 0 10px #FFCC00)} }
-        html, body { background: #05101f !important; overscroll-behavior: none; }
-        html > body > * { background: #05101f !important; }
+        html, body { background: #05101f !important; }
       `}</style>
 
-      {/* ── Main page — fixed viewport, no scroll ── */}
+      {/* ── Main page — scrollable when content overflows ── */}
       <div
         dir={isRtl ? 'rtl' : 'ltr'}
         style={{
-          height: '100dvh',
+          minHeight: '100dvh',
           display: 'flex', flexDirection: 'column',
           background: `linear-gradient(170deg, #0d2145 0%, #071830 35%, ${BG_DEEP} 65%, #060f1c 100%)`,
           backgroundColor: BG_DEEP,
-          overflow: 'hidden',
-          overscrollBehavior: 'none',
         }}
       >
         {/* ── Header ── */}
@@ -319,8 +301,8 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
           </div>
         </div>
 
-        {/* ── Lantern + progress ring — fills available space ── */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, paddingBlock: 2, minHeight: 0, overflow: 'hidden' }}>
+        {/* ── Lantern + progress ring ── */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, paddingBlock: 12, minHeight: 240 }}>
 
           <LampProgress pct={pct} lanternLevel={lanternLevel} wardDone={wardDone}>
             {/* Glow effects when bright or manually lit */}
@@ -436,7 +418,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
 
         {/* Share progress — only when progress exists */}
         {p && user && (
-          <div style={{ paddingInline: 20, marginTop: 8, flexShrink: 0 }}>
+          <div style={{ paddingInline: 20, marginTop: 8, flexShrink: 0, paddingBottom: initialGroups.length === 0 ? 88 : 0 }}>
             <button
               onClick={handleShare}
               disabled={sharing}
@@ -459,7 +441,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
 
         {/* ── Group Khatmas — horizontal scrollable strip ── */}
         {initialGroups.length > 0 && (
-          <div style={{ flexShrink: 0, marginTop: 10, paddingBottom: 14 }}>
+          <div style={{ flexShrink: 0, marginTop: 10, paddingBottom: 88 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingInline: 20, marginBottom: 8 }}>
               <p style={{ fontSize: 13, fontWeight: 700, color: NURI_YELLOW }}>
                 {isRtl ? 'ختماتي الجماعية' : 'My Group Khatmas'}

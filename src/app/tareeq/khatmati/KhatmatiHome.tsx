@@ -22,19 +22,22 @@ const BG_GRADIENT     = `linear-gradient(170deg, ${BG_TOP} 0%, ${BG_MID} 38%, ${
 const DRAFT_PAGES_KEY = 'nuri-daily-pages';
 
 // ── Thin circular progress ring — no stage dots ──────────────────────────────
-function LampRing({ pct, wardDone, lanternLit, lanternLevel, children }: {
-  pct: number; wardDone: boolean; lanternLit: boolean; lanternLevel: number; children: React.ReactNode;
+function LampRing({ pct, wardDone, lanternLit, lanternLevel, wardProgress, children }: {
+  pct: number; wardDone: boolean; lanternLit: boolean; lanternLevel: number; wardProgress: number; children: React.ReactNode;
 }) {
   const R = 100; const S = 220; const C = S / 2;
+  const RW = 88; // inner ring radius for wird progress
   const circ = 2 * Math.PI * R;
+  const circW = 2 * Math.PI * RW;
   const offset = circ * (1 - pct / 100);
+  const offsetW = circW * (1 - wardProgress);
   const glowing = wardDone || lanternLit;
   return (
     <div style={{ position: 'relative', width: S, height: S, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
       <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{ position: 'absolute', inset: 0 }}>
-        {/* track */}
+        {/* outer track (overall Quran progress) */}
         <circle cx={C} cy={C} r={R} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={2} />
-        {/* progress arc */}
+        {/* outer progress arc — overall Quran % */}
         <circle
           cx={C} cy={C} r={R} fill="none"
           stroke={glowing ? NURI_YELLOW : 'rgba(255,204,51,0.38)'}
@@ -45,6 +48,22 @@ function LampRing({ pct, wardDone, lanternLit, lanternLevel, children }: {
           transform={`rotate(-90 ${C} ${C})`}
           style={{ transition: 'stroke-dashoffset 1.2s ease, stroke 0.6s ease' }}
         />
+        {/* inner wird ring — daily progress */}
+        {wardProgress > 0 && (
+          <>
+            <circle cx={C} cy={C} r={RW} fill="none" stroke="rgba(255,204,51,0.08)" strokeWidth={1.5} />
+            <circle
+              cx={C} cy={C} r={RW} fill="none"
+              stroke={wardDone ? NURI_YELLOW : 'rgba(255,204,51,0.65)'}
+              strokeWidth={wardDone ? 2.5 : 2}
+              strokeLinecap="round"
+              strokeDasharray={circW}
+              strokeDashoffset={offsetW}
+              transform={`rotate(-90 ${C} ${C})`}
+              style={{ transition: 'stroke-dashoffset 0.8s ease, stroke 0.4s ease' }}
+            />
+          </>
+        )}
       </svg>
       {/* glow pulses */}
       {glowing && (
@@ -89,6 +108,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
   const [reminderOn, setReminderOn]           = useState(false);
   const [sharing, setSharing]                 = useState(false);
   const [lanternLit, setLanternLit]           = useState(false);
+  const [dailyProgress, setDailyProgress]     = useState(0); // pages read today
 
   useEffect(() => {
     try {
@@ -96,6 +116,13 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
       if (stored) setDailyPages(parseInt(stored, 10) || 1);
       const rem = localStorage.getItem('nuri-reminder');
       if (rem === '1') setReminderOn(true);
+      // Load today's ward (wird) progress
+      const prog = localStorage.getItem('nuri-daily-progress');
+      if (prog) {
+        const data = JSON.parse(prog);
+        const today = new Date().toLocaleDateString('en-CA');
+        if (data?.date === today) setDailyProgress(data.pagesRead || 0);
+      }
     } catch { /* ignore */ }
     if (p) {
       localStorage.setItem('nuri-progress', JSON.stringify({
@@ -131,7 +158,16 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
   function saveDailyPages(n: number) {
     setDailyPages(n);
     setCustomPages('');
-    try { localStorage.setItem(DRAFT_PAGES_KEY, String(n)); } catch { /* ignore */ }
+    try {
+      localStorage.setItem(DRAFT_PAGES_KEY, String(n));
+      // Re-read daily progress so lamp updates immediately on goal change
+      const prog = localStorage.getItem('nuri-daily-progress');
+      if (prog) {
+        const data = JSON.parse(prog);
+        const today = new Date().toLocaleDateString('en-CA');
+        if (data?.date === today) setDailyProgress(data.pagesRead || 0);
+      }
+    } catch { /* ignore */ }
   }
 
   function applyCustomPages() {
@@ -224,8 +260,11 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
   const pctLevel = pct === 0 ? 0 : Math.min(4, Math.ceil(pct * 4 / 100));
   const overlayOpacity = Math.max(0, 0.5 * (1 - pct / 100));
 
-  const wardDone   = state === 'bright';
-  const wardMissed = state === 'dark' && p !== null;
+  // Daily wird progress (0.0 → 1.0): pages read today / daily goal
+  const wardProgress = dailyPages > 0 ? Math.min(dailyProgress / dailyPages, 1.0) : 0;
+  // Ward is done when daily goal reached OR server confirms they read today (for goal=1 compat)
+  const wardDone   = wardProgress >= 1.0 || state === 'bright';
+  const wardMissed = state === 'dark' && p !== null && wardProgress === 0;
 
   const filteredSurahs = SURAH_NAMES_AR.map((ar, i) => ({ ar, en: SURAH_NAMES_EN[i], i }))
     .filter(s => surahSearch === '' || s.ar.includes(surahSearch) || s.en.toLowerCase().includes(surahSearch.toLowerCase()) || String(s.i + 1).includes(surahSearch));
@@ -292,7 +331,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, paddingBlock: 18, flexShrink: 0, position: 'relative' }}>
           {/* Radial luxury glow behind the ring */}
           <div style={{ position: 'absolute', width: 340, height: 200, borderRadius: '50%', background: 'radial-gradient(ellipse at center, rgba(15,50,120,0.55) 0%, rgba(5,20,60,0.25) 55%, transparent 75%)', top: '50%', left: '50%', transform: 'translate(-50%,-52%)', pointerEvents: 'none' }} />
-          <LampRing pct={pct} wardDone={wardDone} lanternLit={lanternLit} lanternLevel={lanternLevel}>
+          <LampRing pct={pct} wardDone={wardDone} lanternLit={lanternLit} lanternLevel={lanternLevel} wardProgress={wardProgress}>
             <img
               src={`/${lanternLit ? 4 : pctLevel}-light.png`}
               alt=""
@@ -300,8 +339,8 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
               onClick={() => { setLanternLit(true); setTimeout(() => setLanternLit(false), 2000); }}
               style={{
                 width: 150, height: 150, objectFit: 'contain', position: 'relative', zIndex: 1,
-                animation: (wardDone || lanternLit) ? 'nuri-float 4s ease-in-out infinite' : 'none',
-                filter: `brightness(${(lanternLit ? 1 : 0.35 + pctLevel * 0.165).toFixed(2)})${(wardDone || lanternLit) ? ' drop-shadow(0 0 28px rgba(255,204,51,0.65))' : ''}`,
+                animation: (wardDone || lanternLit) ? 'nuri-float 4s ease-in-out infinite' : (wardProgress > 0 ? 'nuri-float 6s ease-in-out infinite' : 'none'),
+                filter: `brightness(${(lanternLit ? 1 : Math.min(1, 0.30 + pctLevel * 0.14 + wardProgress * 0.45)).toFixed(2)})${(wardDone || lanternLit) ? ' drop-shadow(0 0 28px rgba(255,204,51,0.65))' : wardProgress > 0.3 ? ` drop-shadow(0 0 ${Math.round(wardProgress * 16)}px rgba(255,204,51,${(wardProgress * 0.5).toFixed(2)}))` : ''}`,
                 cursor: 'pointer', transition: 'filter 0.8s ease',
               }}
             />

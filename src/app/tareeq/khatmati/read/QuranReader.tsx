@@ -56,6 +56,10 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   const lastScrollYRef = useRef(0);
   const scrollPauseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Swipe-to-turn-page refs (Arabic RTL: swipe left = next, swipe right = prev)
+  const swipeStartXRef = useRef<number | null>(null);
+  const swipeStartYRef = useRef<number | null>(null);
+
   // Refs for closure-safe access in audio callbacks
   const versesRef   = useRef<QuranVerse[]>([]);
   const currentRef  = useRef(0);
@@ -284,6 +288,19 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
     setIsPlaying(false);
     playingRef.current = false;
     setPage(next);
+    // Track daily wird — each page navigation counts as one page read
+    if (mode === 'both') {
+      try {
+        const today = new Date().toLocaleDateString('en-CA');
+        const raw = localStorage.getItem('nuri-daily-progress');
+        const data = raw ? JSON.parse(raw) : null;
+        if (data?.date === today) {
+          localStorage.setItem('nuri-daily-progress', JSON.stringify({ date: today, pagesRead: (data.pagesRead || 0) + 1 }));
+        } else {
+          localStorage.setItem('nuri-daily-progress', JSON.stringify({ date: today, pagesRead: 1 }));
+        }
+      } catch { /* ignore */ }
+    }
   }
 
   function changeMode(m: Mode) {
@@ -378,9 +395,19 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
         </div>
       </div>
 
-      {/* ── Content area ── */}
+      {/* ── Content area ── swipe left/right to turn pages (both mode) */}
       <div className={`flex-1 ${mode === 'both' ? 'pb-[80px]' : ''}`}
-        style={{ paddingTop: (mode === 'both' && headerHidden) ? 0 : 88, transition: 'padding-top 0.25s ease' }}>
+        style={{ paddingTop: (mode === 'both' && headerHidden) ? 0 : 88, transition: 'padding-top 0.25s ease' }}
+        onTouchStart={mode === 'both' ? (e) => { swipeStartXRef.current = e.touches[0].clientX; swipeStartYRef.current = e.touches[0].clientY; } : undefined}
+        onTouchEnd={mode === 'both' ? (e) => {
+          if (swipeStartXRef.current === null || swipeStartYRef.current === null) return;
+          const dx = e.changedTouches[0].clientX - swipeStartXRef.current;
+          const dy = e.changedTouches[0].clientY - swipeStartYRef.current;
+          swipeStartXRef.current = null; swipeStartYRef.current = null;
+          if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+          // RTL Arabic: swipe left (dx<0) = go to next page, swipe right (dx>0) = previous
+          goPage(dx < 0 ? 1 : -1);
+        } : undefined}>
         {loading ? (
           <div className="flex items-center justify-center py-24">
             <div className="w-8 h-8 border-2 rounded-full animate-spin"
@@ -551,12 +578,15 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                       </svg>
                     </button>
 
-                    {/* Verse info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontWeight: 700, fontSize: 14, color: 'rgba(255,255,255,0.9)', marginBottom: 2 }} className="truncate">
+                    {/* Verse info — non-selectable to prevent Android Google search panel */}
+                    <div style={{ flex: 1, minWidth: 0, WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
+                      onContextMenu={e => e.preventDefault()}
+                      onMouseDown={e => e.preventDefault()}
+                    >
+                      <p style={{ fontWeight: 700, fontSize: 14, color: 'rgba(255,255,255,0.9)', marginBottom: 2, pointerEvents: 'none' }} className="truncate">
                         {isRtl ? surahNameAr : surahNameEn}
                       </p>
-                      <p style={{ fontSize: 12, color: 'rgba(148,163,184,0.8)' }}>
+                      <p style={{ fontSize: 12, color: 'rgba(148,163,184,0.8)', pointerEvents: 'none' }}>
                         {isRtl
                           ? `الآية ${toArabicNum(cv.verse_number)} • صفحة ${toArabicNum(page)}`
                           : `Ayah ${cv.verse_number} • Page ${page}`}
@@ -638,11 +668,15 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
             </button>
 
             {cv && (
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-black truncate" style={{ color: '#2e1a00' }}>
+              <div className="flex-1 min-w-0"
+                style={{ WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
+                onContextMenu={e => e.preventDefault()}
+                onMouseDown={e => e.preventDefault()}
+              >
+                <p className="text-sm font-black truncate" style={{ color: '#2e1a00', pointerEvents: 'none' }}>
                   {isRtl ? surahNameAr : surahNameEn}
                 </p>
-                <p className="text-xs" style={{ color: '#9b7a40' }}>
+                <p className="text-xs" style={{ color: '#9b7a40', pointerEvents: 'none' }}>
                   {isRtl
                     ? `الآية ${toArabicNum(cv.verse_number)} • صفحة ${toArabicNum(page)}`
                     : `Ayah ${cv.verse_number} • Page ${page}`}

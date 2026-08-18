@@ -24,6 +24,7 @@ interface Props {
   currentChapter: number;
   currentVerse: number;
   onVerseClick?: (chapter: number, verse: number) => void;
+  onAyahTap?: (info: { chapterId: number; verseNumber: number; text: string }) => void;
   autoFollow?: boolean;
 }
 
@@ -190,10 +191,11 @@ interface TextBlockProps {
   currentChapter: number;
   currentVerse: number;
   onVerseClick?: (ch: number, v: number) => void;
+  onAyahTap?: (info: { chapterId: number; verseNumber: number; text: string }) => void;
   activeRef: React.MutableRefObject<HTMLSpanElement | null>;
 }
 
-function QuranTextBlock({ verses, currentChapter, currentVerse, onVerseClick, activeRef }: TextBlockProps) {
+function QuranTextBlock({ verses, currentChapter, currentVerse, onVerseClick, onAyahTap, activeRef }: TextBlockProps) {
   return (
     <div dir="rtl" style={{
       padding: '2px 16px 4px',
@@ -223,13 +225,18 @@ function QuranTextBlock({ verses, currentChapter, currentVerse, onVerseClick, ac
             {vi > 0 ? ' ' : ''}
             {v.text}
             {' '}
-            <span style={{
-              fontFamily: QURAN_FONT,
-              fontSize: '0.72em',
-              verticalAlign: 'middle',
-              color: active ? '#6b3e00' : '#9b7830',
-              display: 'inline',
-            }}>
+            <span
+              onClick={(e) => { e.stopPropagation(); onAyahTap?.({ chapterId: v.chapterId, verseNumber: v.verseNumber, text: v.text }); }}
+              style={{
+                fontFamily: QURAN_FONT,
+                fontSize: '0.72em',
+                verticalAlign: 'middle',
+                color: active ? '#6b3e00' : '#9b7830',
+                display: 'inline',
+                cursor: onAyahTap ? 'pointer' : 'default',
+                padding: '1px 2px',
+                borderRadius: 3,
+              }}>
               {'۝'}{toEastern(v.verseNumber)}
             </span>
           </span>
@@ -240,7 +247,7 @@ function QuranTextBlock({ verses, currentChapter, currentVerse, onVerseClick, ac
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
-export default function MushafQCFPage({ page, currentChapter, currentVerse, onVerseClick, autoFollow = true }: Props) {
+export default function MushafQCFPage({ page, currentChapter, currentVerse, onVerseClick, onAyahTap, autoFollow = true }: Props) {
   const [lines, setLines] = useState<MushafLineData[]>([]);
   const [meta, setMeta] = useState<PageMeta>({ juz: null, hizb: null, surahs: [] });
   const [loading, setLoading] = useState(true);
@@ -310,6 +317,7 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
               currentChapter={currentChapter}
               currentVerse={currentVerse}
               onVerseClick={onVerseClick}
+              onAyahTap={onAyahTap}
               activeRef={activeRef}
             />
           );

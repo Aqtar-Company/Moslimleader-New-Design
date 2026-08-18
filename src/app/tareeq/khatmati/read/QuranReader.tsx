@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import MushafQCFPage from './MushafQCFPage';
+import VerseActionSheet, { type TappedVerse } from './VerseActionSheet';
 import {
   QuranVerse, fetchPageVerses,
   toArabicNum,
@@ -49,6 +50,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   const [surahFilter, setSurahFilter] = useState('');
   const [searchSurah, setSearchSurah] = useState(initialSurah);
   const [searchAyah, setSearchAyah] = useState(1);
+  const [tappedVerse, setTappedVerse] = useState<TappedVerse | null>(null);
 
   // Reading mode — collapse header on scroll down in 'both' mode
   const [headerHidden, setHeaderHidden] = useState(false);
@@ -405,8 +407,8 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
           const dy = e.changedTouches[0].clientY - swipeStartYRef.current;
           swipeStartXRef.current = null; swipeStartYRef.current = null;
           if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-          // RTL Arabic: swipe left (dx<0) = go to next page, swipe right (dx>0) = previous
-          goPage(dx < 0 ? 1 : -1);
+          // RTL Arabic: swipe right (dx>0) = next page, swipe left = previous
+          goPage(dx > 0 ? 1 : -1);
         } : undefined}>
         {loading ? (
           <div className="flex items-center justify-center py-24">
@@ -620,6 +622,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                   const idx = versesRef.current.findIndex(x => x.chapter_id === ch && x.verse_number === v);
                   if (idx >= 0) goVerse(idx);
                 }}
+                onAyahTap={setTappedVerse}
               />
             )}
           </>
@@ -849,6 +852,10 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
             </div>
           </div>
         </div>
+      )}
+      {/* Verse action sheet — tafsir + card */}
+      {tappedVerse && (
+        <VerseActionSheet verse={tappedVerse} onClose={() => setTappedVerse(null)} />
       )}
     </div>
   );

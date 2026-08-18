@@ -132,33 +132,32 @@ function buildSegments(lines: MushafLineData[]): PageSegment[] {
   return segments;
 }
 
-// ── Surah banner (uses uploaded SVG) ────────────────────────────────────────
+// ── Surah banner ─────────────────────────────────────────────────────────────
 function SurahBanner({ surahId }: { surahId: number }) {
   const name = SURAH_AR[surahId] ?? '';
   return (
-    <div style={{ position: 'relative', margin: '14px 0 6px', userSelect: 'none' }}>
-      <img
-        src="/surah_header_mushaf.svg"
-        alt=""
-        aria-hidden
-        style={{ display: 'block', width: '100%', height: 'auto' }}
-      />
-      <div style={{
-        position: 'absolute',
-        inset: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-        <span style={{
-          fontFamily: QURAN_FONT,
-          fontSize: 'clamp(16px, 4vw, 22px)',
-          fontWeight: 700,
-          color: '#fff',
-          letterSpacing: 1,
-          textShadow: '0 1px 4px rgba(0,0,0,0.5)',
-          direction: 'rtl',
-        }}>
+    <div style={{ margin: '12px 0 6px', position: 'relative' }}>
+      <svg viewBox="0 0 320 64" width="100%" height="64" xmlns="http://www.w3.org/2000/svg"
+        style={{ display: 'block', position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+        preserveAspectRatio="none">
+        <rect x="0" y="0" width="320" height="64" fill="#2e1e0b" rx="2"/>
+        <rect x="2" y="2" width="316" height="60" fill="none" stroke="#c8a84b" strokeWidth="1.5" rx="1.5"/>
+        <rect x="7" y="7" width="306" height="50" fill="none" stroke="#c8a84b" strokeWidth="0.5" rx="1"/>
+        <polygon points="160,2 165,8 160,14 155,8" fill="#c8a84b"/>
+        <polygon points="160,50 165,56 160,62 155,56" fill="#c8a84b"/>
+        <polygon points="2,32 8,26 14,32 8,38" fill="#c8a84b"/>
+        <polygon points="318,32 312,26 306,32 312,38" fill="#c8a84b"/>
+        <polygon points="2,2 16,2 2,16" fill="#c8a84b" opacity="0.6"/>
+        <polygon points="318,2 304,2 318,16" fill="#c8a84b" opacity="0.6"/>
+        <polygon points="2,62 16,62 2,48" fill="#c8a84b" opacity="0.6"/>
+        <polygon points="318,62 304,62 318,48" fill="#c8a84b" opacity="0.6"/>
+        <line x1="20" y1="5" x2="62" y2="5" stroke="#c8a84b" strokeWidth="0.5" opacity="0.5"/>
+        <line x1="258" y1="5" x2="300" y2="5" stroke="#c8a84b" strokeWidth="0.5" opacity="0.5"/>
+        <line x1="20" y1="59" x2="62" y2="59" stroke="#c8a84b" strokeWidth="0.5" opacity="0.5"/>
+        <line x1="258" y1="59" x2="300" y2="59" stroke="#c8a84b" strokeWidth="0.5" opacity="0.5"/>
+      </svg>
+      <div style={{ position: 'relative', zIndex: 1, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ fontFamily: QURAN_FONT, fontSize: 20, fontWeight: 700, color: '#fff', letterSpacing: 1 }}>
           سورة {name}
         </span>
       </div>

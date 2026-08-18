@@ -101,15 +101,6 @@ function DesktopNav({ onCreateClick }: { onCreateClick: () => void }) {
         <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>,
         'بدون إنترنت',
       )}
-      {user && item('/tareeq/export', pathname.startsWith('/tareeq/export'),
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>,
-        'تصدير البيانات',
-      )}
-
-      {item('/tareeq/khatmati', pathname.startsWith('/tareeq/khatmati'),
-        <img src="/nori lamp icon.svg" width={20} height={20} alt="" style={{ opacity: pathname.startsWith('/tareeq/khatmati') ? 1 : 0.6 }} />,
-        'نوري',
-      )}
 
       {/* Divider */}
       <div className="mx-4 my-2" style={{ height: 1, background: 'var(--tr-border-subtle)' }} />

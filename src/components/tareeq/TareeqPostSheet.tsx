@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
@@ -180,10 +180,171 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
   const catIcon = catKey ? (CATEGORY_ICONS[catKey] ?? '') : '';
   const accentHex = catKey ? (CATEGORY_ACCENT_HEX[catKey] ?? '#ff5c38') : '#ff5c38';
 
+  // Detect desktop (≥1024px) — checked once after mount to avoid SSR mismatch
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => { setIsDesktop(window.innerWidth >= 1024); }, []);
+
   const translateY = closing ? '100%' : visible ? `${dragOffset}px` : '100%';
   const transition = (closing || !visible || dragOffset > 0)
     ? (dragOffset > 0 ? 'none' : 'transform 280ms cubic-bezier(0.32, 0.72, 0, 1)')
     : 'transform 280ms cubic-bezier(0.32, 0.72, 0, 1)';
+
+  // ── Desktop: Facebook-style centered modal ───────────────────────────────
+  if (isDesktop) {
+    const desktopContent = (
+      <>
+        <style>{`@keyframes sheet-spin { to { transform: rotate(360deg); } } @keyframes fb-fade-in { from { opacity:0; transform:scale(0.97) } to { opacity:1; transform:scale(1) } }`}</style>
+        {/* Backdrop */}
+        <div onClick={doClose} style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }} />
+        {/* Dialog */}
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20, pointerEvents: 'none',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            dir={isRtl ? 'rtl' : 'ltr'}
+            style={{
+              pointerEvents: 'auto',
+              background: 'var(--tr-surface)',
+              border: '1px solid var(--tr-border-soft)',
+              borderRadius: 16,
+              boxShadow: '0 24px 80px rgba(0,0,0,0.4)',
+              width: '100%',
+              maxWidth: post?.imageUrl ? 900 : 620,
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: post?.imageUrl ? 'row' : 'column',
+              overflow: 'hidden',
+              animation: 'fb-fade-in 180ms ease',
+            }}
+          >
+            {/* Left: image pane (only if post has image) */}
+            {post?.imageUrl && (
+              <div style={{
+                flex: '0 0 55%',
+                background: '#0a0d06',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+                overflow: 'hidden',
+                minHeight: 400,
+              }}>
+                <img src={post.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', maxHeight: '90vh' }} />
+              </div>
+            )}
+
+            {/* Right: content + comments */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, maxHeight: '90vh' }}>
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--tr-border-subtle)', flexShrink: 0 }}>
+                <button onClick={doClose} style={{ width: 32, height: 32, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', border: 'none', cursor: 'pointer', fontSize: 18, fontWeight: 700, flexShrink: 0 }}>×</button>
+                {catLabel && (
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, color: accentHex, background: `${accentHex}18`, border: `1px solid ${accentHex}30`, flexShrink: 0 }}>
+                    {catIcon} {catLabel}
+                  </span>
+                )}
+                <div style={{ flex: 1 }} />
+                <Link href={`/tareeq/${postId}`} onClick={doClose} style={{ width: 32, height: 32, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', textDecoration: 'none', flexShrink: 0 }} title={isRtl ? 'فتح المنشور كاملاً' : 'Open full post'}>
+                  <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+                </Link>
+              </div>
+
+              {/* Scrollable body */}
+              <div style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain' }}>
+                {loading ? (
+                  <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 60 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)', animation: 'sheet-spin 0.8s linear infinite' }} />
+                  </div>
+                ) : post ? (
+                  <>
+                    {/* Author */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 10px' }}>
+                      {post.user?.avatarUrl
+                        ? <img src={post.user.avatarUrl} alt={post.authorName} style={{ width: 38, height: 38, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--tr-gold)', flexShrink: 0 }} />
+                        : <div style={{ width: 38, height: 38, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 900, background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)', flexShrink: 0 }}>{post.authorName.charAt(0)}</div>
+                      }
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--tr-text-primary)', margin: 0 }}>{post.authorName}</p>
+                        <p style={{ fontSize: 11, color: 'var(--tr-text-muted)', margin: '2px 0 0' }}>{timeAgo(post.createdAt, isRtl)}</p>
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div style={{ padding: '0 16px 14px' }}>
+                      {post.title && <h2 style={{ fontSize: 17, fontWeight: 800, color: 'var(--tr-text-primary)', margin: '0 0 8px', lineHeight: 1.4 }}>{post.title}</h2>}
+                      <p style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--tr-text-secondary)', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{post.content}</p>
+                      {post.postUpdate && (
+                        <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 12, background: 'var(--tr-gold-glow)', border: '1px solid rgba(212,168,83,0.3)' }}>
+                          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--tr-gold)', margin: '0 0 4px' }}>{isRtl ? 'تحديث ★' : 'Update ★'}</p>
+                          <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0 }}>{post.postUpdate}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Reactions */}
+                    <div style={{ display: 'flex', gap: 6, padding: '10px 16px', borderTop: '1px solid var(--tr-border-subtle)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                      {REACTIONS.map(r => {
+                        const active = currentReaction === r.type;
+                        return (
+                          <button key={r.type} onClick={() => handleReact(r.type)} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '7px 4px', borderRadius: 10, border: 'none', cursor: 'pointer', background: active ? `${r.color}18` : 'var(--tr-overlay)', outline: active ? `1.5px solid ${r.color}50` : 'none', transition: 'all 150ms' }}>
+                            <span style={{ fontSize: 20 }}>{r.emoji}</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: active ? r.color : 'var(--tr-text-muted)' }}>{isRtl ? r.labelAr : r.labelEn}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Comments heading */}
+                    <div style={{ padding: '12px 16px 6px' }}>
+                      <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--tr-text-primary)', margin: 0 }}>{isRtl ? `التعليقات (${comments.length})` : `Comments (${comments.length})`}</p>
+                    </div>
+
+                    {/* Comments */}
+                    {comments.length === 0 ? (
+                      <p style={{ fontSize: 13, color: 'var(--tr-text-muted)', padding: '6px 16px 16px', margin: 0 }}>{isRtl ? 'لا تعليقات بعد' : 'No comments yet'}</p>
+                    ) : (
+                      <div style={{ paddingBottom: 12 }}>
+                        {comments.map(c => (
+                          <div key={c.id} style={{ display: 'flex', gap: 10, padding: '9px 16px', borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                            <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold)' }}>{(c.user?.name ?? '?').charAt(0)}</div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tr-text-primary)' }}>{c.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}</span>
+                                <span style={{ fontSize: 10, color: 'var(--tr-text-muted)' }}>{timeAgo(c.createdAt, isRtl)}</span>
+                              </div>
+                              <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{c.content}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ height: 16 }} />
+                  </>
+                ) : (
+                  <p style={{ textAlign: 'center', padding: 32, color: 'var(--tr-text-muted)', fontSize: 14 }}>{isRtl ? 'تعذّر تحميل المنشور' : 'Could not load post'}</p>
+                )}
+              </div>
+
+              {/* Comment input */}
+              <form onSubmit={handleComment} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderTop: '1px solid var(--tr-border-subtle)', background: 'var(--tr-surface)', flexShrink: 0 }}>
+                <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold)' }}>{user?.name?.charAt(0) ?? '?'}</div>
+                <input ref={commentInputRef} value={commentText} onChange={e => setCommentText(e.target.value)} placeholder={isRtl ? 'أضف تعليقاً...' : 'Add a comment...'} maxLength={500} style={{ flex: 1, minWidth: 0, borderRadius: 20, padding: '8px 14px', fontSize: 14, background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)', outline: 'none' }} onFocus={e => { if (!user) { setShowGate(true); e.currentTarget.blur(); } }} />
+                <button type="submit" disabled={submitting || commentText.trim().length < 2} style={{ padding: '8px 16px', borderRadius: 20, fontSize: 13, fontWeight: 700, background: 'var(--tr-gold)', color: '#fff', border: 'none', cursor: 'pointer', opacity: submitting || commentText.trim().length < 2 ? 0.4 : 1, transition: 'opacity 150ms', flexShrink: 0 }}>{submitting ? '...' : (isRtl ? 'إرسال' : 'Send')}</button>
+              </form>
+            </div>
+          </div>
+        </div>
+        {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
+      </>
+    );
+    if (typeof document === 'undefined') return null;
+    return createPortal(desktopContent, document.body);
+  }
 
   const content = (
     <>

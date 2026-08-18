@@ -364,7 +364,7 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
         <div style={{ height: 0.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)' }} />
         <div style={{ height: 1.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)', marginTop: 2 }} />
       </div>
-    </div>  {/* inner scale div */}
-    </div>  {/* outer measure div */}
+    </div>
+    </div>
   );
 }

@@ -997,38 +997,21 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             className="flex flex-col items-center justify-end gap-1 pb-2 transition-all active:scale-90"
             style={{ minWidth: 44, background: 'none', border: 'none', cursor: 'pointer' }}
           >
-            {/* Lamp icon — brightness matches nuriLevel (0-4) */}
-            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" strokeWidth={1.6}
+            {/* Nuri lamp icon */}
+            <img
+              src="/nori lamp icon.svg"
+              width={26} height={26}
+              alt=""
               style={{
-                color: isKhatmati ? NAV_ACCENT : nuriLevel >= 2 ? 'rgba(255,204,0,0.6)' : 'var(--tr-text-secondary)',
+                opacity: isKhatmati ? 1 : nuriLevel >= 2 ? 0.75 : 0.45,
                 filter: isKhatmati
-                  ? `drop-shadow(0 0 ${4 + nuriLevel * 3}px ${NAV_ACCENT}bb)`
+                  ? `drop-shadow(0 0 ${4 + nuriLevel * 3}px ${NAV_ACCENT}cc) brightness(1.15)`
                   : nuriLevel >= 1
-                  ? `drop-shadow(0 0 ${nuriLevel * 2}px rgba(255,204,0,0.5))`
-                  : 'none',
+                  ? `drop-shadow(0 0 ${nuriLevel * 2}px rgba(255,163,51,0.55)) brightness(0.9)`
+                  : 'brightness(0.65) grayscale(0.4)',
                 transition: 'all 0.3s',
-              }}>
-              {/* Lamp body */}
-              <path strokeLinecap="round" strokeLinejoin="round" stroke="currentColor"
-                d="M9 2h6M10 2v1.5M14 2v1.5M8 5.5C8 4.12 9.12 3 10.5 3h3C14.88 3 16 4.12 16 5.5L14.5 13h-5L8 5.5z"/>
-              {/* Base */}
-              <path strokeLinecap="round" stroke="currentColor" d="M9.5 13h5l-.5 2.5a2 2 0 01-4 0L9.5 13z"/>
-              {/* Flame — filled when level > 0 */}
-              <ellipse cx="12" cy="8.5" rx="1.5" ry="2"
-                fill={nuriLevel > 0 || isKhatmati ? 'currentColor' : 'none'}
-                stroke="currentColor" strokeWidth={nuriLevel > 0 ? 0 : 1}
-                opacity={nuriLevel > 0 || isKhatmati ? 0.85 : 0.3}
-                style={{ transition: 'opacity 0.4s, fill 0.4s' }}
-              />
-              {/* Glow rays when bright (level ≥ 3) */}
-              {(nuriLevel >= 3 || isKhatmati) && (
-                <>
-                  <line x1="12" y1="1" x2="12" y2="1.8" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" opacity={0.6}/>
-                  <line x1="6.5" y1="3" x2="7.1" y2="3.5" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" opacity={0.6}/>
-                  <line x1="17.5" y1="3" x2="16.9" y2="3.5" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" opacity={0.6}/>
-                </>
-              )}
-            </svg>
+              }}
+            />
             <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isKhatmati ? NAV_ACCENT : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
               {isRtl ? 'نُوري' : 'Nuri'}
             </span>

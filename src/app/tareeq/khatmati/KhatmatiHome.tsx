@@ -8,8 +8,8 @@ import {
   SURAH_FIRST_PAGES, TOTAL_QURAN_PAGES,
 } from '@/lib/quran-data';
 
-const NURI_YELLOW     = '#FFCC00';
-const NURI_YELLOW_DIM = 'rgba(255,204,0,0.14)';
+const NURI_YELLOW     = '#FFA333';
+const NURI_YELLOW_DIM = 'rgba(255,163,51,0.14)';
 const BG_DEEP         = '#020C1B';
 const BG_MID          = '#061428';
 const BG_TOP          = '#0D2244';
@@ -37,7 +37,7 @@ function LampRing({ pct, wardDone, lanternLit, lanternLevel, children }: {
         {/* progress arc */}
         <circle
           cx={C} cy={C} r={R} fill="none"
-          stroke={glowing ? NURI_YELLOW : 'rgba(255,204,0,0.38)'}
+          stroke={glowing ? NURI_YELLOW : 'rgba(255,163,51,0.38)'}
           strokeWidth={2.5}
           strokeLinecap="round"
           strokeDasharray={circ}
@@ -49,9 +49,9 @@ function LampRing({ pct, wardDone, lanternLit, lanternLevel, children }: {
       {/* glow pulses */}
       {glowing && (
         <>
-          <div style={{ position: 'absolute', inset: 16, borderRadius: '50%', border: '1px solid rgba(255,204,0,0.25)', animation: 'nuri-ring 2.6s ease-out infinite' }} />
-          <div style={{ position: 'absolute', inset: 16, borderRadius: '50%', border: '1px solid rgba(255,204,0,0.18)', animation: 'nuri-ring 2.6s ease-out 1.3s infinite' }} />
-          <div style={{ position: 'absolute', inset: -16, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,204,0,0.14) 0%, transparent 70%)', animation: 'nuri-glow 3s ease-in-out infinite', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', inset: 16, borderRadius: '50%', border: '1px solid rgba(255,163,51,0.25)', animation: 'nuri-ring 2.6s ease-out infinite' }} />
+          <div style={{ position: 'absolute', inset: 16, borderRadius: '50%', border: '1px solid rgba(255,163,51,0.18)', animation: 'nuri-ring 2.6s ease-out 1.3s infinite' }} />
+          <div style={{ position: 'absolute', inset: -16, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,163,51,0.14) 0%, transparent 70%)', animation: 'nuri-glow 3s ease-in-out infinite', pointerEvents: 'none' }} />
         </>
       )}
       {children}
@@ -111,11 +111,20 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
     document.documentElement.style.background = BG_DEEP;
     document.body.style.backgroundImage = BG_GRADIENT;
     document.documentElement.style.backgroundImage = BG_GRADIENT;
+    // Override the Tareeq layout root which has var(--tr-base) — without this
+    // its light background shows below the dark content when scrolling on mobile.
+    const tareeqRoot = document.querySelector<HTMLElement>('[data-tareeq-root]');
+    const prevRootBg = tareeqRoot?.style.background ?? '';
+    if (tareeqRoot) tareeqRoot.style.setProperty('background', BG_DEEP, 'important');
     return () => {
       document.body.style.background = prevBodyBg;
       document.documentElement.style.background = prevHtmlBg;
       document.body.style.backgroundImage = '';
       document.documentElement.style.backgroundImage = '';
+      if (tareeqRoot) {
+        tareeqRoot.style.removeProperty('background');
+        if (prevRootBg) tareeqRoot.style.background = prevRootBg;
+      }
     };
   }, [p]);
 
@@ -167,7 +176,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
       grad.addColorStop(0, '#0a1e3d'); grad.addColorStop(0.55, '#05101f'); grad.addColorStop(1, '#071422');
       ctx.fillStyle = grad; ctx.fillRect(0, 0, 900, 900);
       ctx.beginPath(); ctx.arc(450, 360, 220, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(255,204,0,0.18)'; ctx.lineWidth = 3; ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,163,51,0.18)'; ctx.lineWidth = 3; ctx.stroke();
       const pctNum = Math.round((p.currentPage / TOTAL_QURAN_PAGES) * 100);
       ctx.beginPath();
       ctx.arc(450, 360, 220, -Math.PI / 2, -Math.PI / 2 + (pctNum / 100) * Math.PI * 2);
@@ -184,7 +193,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
         const lw = 140; const lh = Math.round(lw * logoImg.height / Math.max(logoImg.width, 1));
         ctx.drawImage(logoImg, 450 - lw / 2, 830 - lh / 2, lw, lh);
       } else {
-        ctx.font = '24px sans-serif'; ctx.fillStyle = 'rgba(255,204,0,0.4)';
+        ctx.font = '24px sans-serif'; ctx.fillStyle = 'rgba(255,163,51,0.4)';
         ctx.fillText('moslimleader.com', 450, 860);
       }
       const blob = await new Promise<Blob>((res, rej) => canvas.toBlob(b => b ? res(b) : rej(), 'image/png'));
@@ -232,7 +241,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
         @keyframes nuri-ring  { 0%{transform:scale(.85);opacity:.5} 100%{transform:scale(1.5);opacity:0} }
         @keyframes nuri-sheet { from{transform:translateY(100%)} to{transform:translateY(0)} }
         @keyframes nuri-pulse { 0%,100%{opacity:.5;filter:drop-shadow(0 0 3px #FFCC00)} 50%{opacity:1;filter:drop-shadow(0 0 10px #FFCC00)} }
-        html, body { background: #020C1B !important; background-image: linear-gradient(170deg, #0D2244 0%, #061428 38%, #020C1B 68%, #030E1E 100%) !important; background-attachment: fixed !important; }
+        html, body, [data-tareeq-root] { background: #020C1B !important; background-image: linear-gradient(170deg, #0D2244 0%, #061428 38%, #020C1B 68%, #030E1E 100%) !important; background-attachment: fixed !important; }
         .nuri-scroll::-webkit-scrollbar { display: none; }
       `}</style>
 
@@ -273,7 +282,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
             </button>
             {/* Percentage pill */}
             {p && (
-              <div style={{ background: NURI_YELLOW_DIM, border: '1px solid rgba(255,204,0,0.22)', borderRadius: 12, padding: '5px 12px' }}>
+              <div style={{ background: NURI_YELLOW_DIM, border: '1px solid rgba(255,163,51,0.22)', borderRadius: 12, padding: '5px 12px' }}>
                 <span style={{ fontSize: 17, fontWeight: 900, color: NURI_YELLOW, lineHeight: 1 }}>{pct}%</span>
               </div>
             )}
@@ -293,14 +302,14 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
               style={{
                 width: 150, height: 150, objectFit: 'contain', position: 'relative', zIndex: 1,
                 animation: (wardDone || lanternLit) ? 'nuri-float 4s ease-in-out infinite' : 'none',
-                filter: `brightness(${(lanternLit ? 1 : 0.35 + pctLevel * 0.165).toFixed(2)})${(wardDone || lanternLit) ? ' drop-shadow(0 0 28px rgba(255,204,0,0.65))' : ''}`,
+                filter: `brightness(${(lanternLit ? 1 : 0.35 + pctLevel * 0.165).toFixed(2)})${(wardDone || lanternLit) ? ' drop-shadow(0 0 28px rgba(255,163,51,0.65))' : ''}`,
                 cursor: 'pointer', transition: 'filter 0.8s ease',
               }}
             />
           </LampRing>
 
           {/* Tagline */}
-          <p style={{ fontWeight: 800, fontSize: 15, color: wardMissed ? 'rgba(255,204,0,0.45)' : NURI_YELLOW, textAlign: 'center', margin: 0, lineHeight: 1.2 }}>
+          <p style={{ fontWeight: 800, fontSize: 15, color: wardMissed ? 'rgba(255,163,51,0.45)' : NURI_YELLOW, textAlign: 'center', margin: 0, lineHeight: 1.2 }}>
             {wardDone
               ? (isRtl ? 'بارك الله في تلاوتك اليوم ✓' : 'May Allah bless your recitation ✓')
               : (isRtl ? 'استمر في التلاوة ليكتمل نورك' : 'Continue your recitation')}
@@ -312,9 +321,9 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
           {user ? (
             <div style={{
               background: wardDone
-                ? 'linear-gradient(135deg, rgba(255,204,0,0.18) 0%, rgba(255,215,0,0.09) 100%)'
-                : 'linear-gradient(135deg, rgba(255,204,0,0.12) 0%, rgba(255,215,0,0.06) 100%)',
-              border: `1px solid ${wardDone ? 'rgba(255,204,0,0.35)' : 'rgba(255,204,0,0.18)'}`,
+                ? 'linear-gradient(135deg, rgba(255,163,51,0.18) 0%, rgba(255,215,0,0.09) 100%)'
+                : 'linear-gradient(135deg, rgba(255,163,51,0.12) 0%, rgba(255,215,0,0.06) 100%)',
+              border: `1px solid ${wardDone ? 'rgba(255,163,51,0.35)' : 'rgba(255,163,51,0.18)'}`,
               borderRadius: 18,
               overflow: 'hidden',
             }}>
@@ -347,7 +356,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
               )}
 
               {/* Action row: CTA + share */}
-              <div style={{ display: 'flex', gap: 0, borderTop: '1px solid rgba(255,204,0,0.12)' }}>
+              <div style={{ display: 'flex', gap: 0, borderTop: '1px solid rgba(255,163,51,0.12)' }}>
                 {/* Main CTA */}
                 <button
                   onClick={() => router.push(`/tareeq/khatmati/read?page=${page}&surah=${p?.currentSurah ?? 1}&ayah=${p?.currentAyah ?? 1}`)}
@@ -373,7 +382,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
                     disabled={sharing}
                     style={{
                       width: 52, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: 'rgba(255,204,0,0.85)', color: '#080E1C',
+                      background: 'rgba(255,163,51,0.85)', color: '#080E1C',
                       borderInlineStart: '1px solid rgba(0,0,0,0.12)',
                       border: 'none', cursor: 'pointer', opacity: sharing ? 0.6 : 1,
                       flexShrink: 0,
@@ -443,8 +452,8 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
                     {/* CTA strip */}
                     <div style={{
                       padding: '8px 12px',
-                      background: g.readToday ? 'rgba(74,222,128,0.12)' : 'rgba(255,204,0,0.1)',
-                      borderTop: `1px solid ${g.readToday ? 'rgba(74,222,128,0.15)' : 'rgba(255,204,0,0.1)'}`,
+                      background: g.readToday ? 'rgba(74,222,128,0.12)' : 'rgba(255,163,51,0.1)',
+                      borderTop: `1px solid ${g.readToday ? 'rgba(74,222,128,0.15)' : 'rgba(255,163,51,0.1)'}`,
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     }}>
                       <span style={{ fontSize: 11, fontWeight: 700, color: g.readToday ? '#4ade80' : NURI_YELLOW }}>
@@ -485,7 +494,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
               {filteredSurahs.map(({ ar, en, i }) => (
                 <button key={i} onClick={() => goToSurah(i)}
                   style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '12px 20px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'start', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <span style={{ width: 34, height: 34, borderRadius: 8, flexShrink: 0, background: i + 1 === (p?.currentSurah ?? 0) ? NURI_YELLOW_DIM : 'rgba(255,255,255,0.05)', border: i + 1 === (p?.currentSurah ?? 0) ? '1px solid rgba(255,204,0,0.3)' : '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: i + 1 === (p?.currentSurah ?? 0) ? NURI_YELLOW : TEXT_MUT }}>
+                  <span style={{ width: 34, height: 34, borderRadius: 8, flexShrink: 0, background: i + 1 === (p?.currentSurah ?? 0) ? NURI_YELLOW_DIM : 'rgba(255,255,255,0.05)', border: i + 1 === (p?.currentSurah ?? 0) ? '1px solid rgba(255,163,51,0.3)' : '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: i + 1 === (p?.currentSurah ?? 0) ? NURI_YELLOW : TEXT_MUT }}>
                     {i + 1}
                   </span>
                   <div>
@@ -535,7 +544,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
                   onKeyDown={e => { if (e.key === 'Enter') applyCustomPages(); }}
                   placeholder={isRtl ? 'عدد مخصص...' : 'Custom number...'}
                   style={{
-                    flex: 1, padding: '9px 14px', borderRadius: 10, border: `1px solid ${isCustom ? 'rgba(255,204,0,0.5)' : 'rgba(255,255,255,0.12)'}`,
+                    flex: 1, padding: '9px 14px', borderRadius: 10, border: `1px solid ${isCustom ? 'rgba(255,163,51,0.5)' : 'rgba(255,255,255,0.12)'}`,
                     background: 'rgba(255,255,255,0.06)', color: TEXT_PRI, fontSize: 14, outline: 'none',
                   }}
                 />

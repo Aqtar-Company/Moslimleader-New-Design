@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function TareeqLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen relative" style={{ background: 'var(--tr-base)' }}>
+    <div className="min-h-screen relative" data-tareeq-root style={{ background: 'var(--tr-base)' }}>
       {/* Runs before paint — applies saved theme to <html> to prevent flash */}
       <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('tareeq-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':'light');})();` }} />
       {/* Ambient celestial glow — non-interactive, purely decorative */}

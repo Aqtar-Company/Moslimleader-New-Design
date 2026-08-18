@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
+import MushafQCFPage from './MushafQCFPage';
 import {
   QuranVerse, fetchPageVerses,
   toArabicNum,
@@ -546,40 +547,17 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
               </div>
             )}
 
-            {/* Both mode — flowing text with verse highlighting */}
-            {mode === 'both' && verses.length > 0 && (
-              <div dir="rtl" style={{ padding: '16px 16px 100px', fontFamily: qFont, fontSize: 20, lineHeight: 2.8, color: 'var(--tr-text-primary)', textAlign: 'justify' }}>
-                {verses[0]?.verse_number === 1 && (
-                  <p style={{ textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--nuri-gold)', marginBottom: 12 }}>
-                    سورة {surahNameAr}
-                  </p>
-                )}
-                <p style={{ margin: 0 }}>
-                  {verses.map((v, i) => (
-                    <span key={v.id}
-                      ref={el => { verseRefs.current[i] = el; }}
-                      onClick={() => goVerse(i)}
-                      style={{
-                        display: 'inline',
-                        background: i === currentIdx ? 'rgba(212,168,83,0.22)' : 'transparent',
-                        borderRadius: 3, cursor: 'pointer', transition: 'background 0.25s',
-                        padding: i === currentIdx ? '1px 3px' : '0',
-                      }}>
-                      {v.text_uthmani}
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        width: 22, height: 22, borderRadius: '50%',
-                        border: `1.5px solid ${i === currentIdx ? 'var(--nuri-gold)' : 'rgba(212,168,83,0.5)'}`,
-                        color: i === currentIdx ? 'var(--nuri-gold)' : 'rgba(212,168,83,0.7)',
-                        fontSize: 9, margin: '0 4px', verticalAlign: 'middle',
-                        flexShrink: 0,
-                      }}>
-                        {toArabicNum(v.verse_number)}
-                      </span>
-                    </span>
-                  ))}
-                </p>
-              </div>
+            {/* Both mode — Mushaf QCF page layout */}
+            {mode === 'both' && (
+              <MushafQCFPage
+                page={page}
+                currentChapter={cv?.chapter_id ?? initialSurah}
+                currentVerse={cv?.verse_number ?? initialAyah}
+                onVerseClick={(ch, v) => {
+                  const idx = versesRef.current.findIndex(x => x.chapter_id === ch && x.verse_number === v);
+                  if (idx >= 0) goVerse(idx);
+                }}
+              />
             )}
           </>
         )}

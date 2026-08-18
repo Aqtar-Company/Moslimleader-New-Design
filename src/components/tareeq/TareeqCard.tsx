@@ -161,7 +161,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   const { trackPost } = useSatisfactionCounter();
 
   function handlePostLinkClick(e: React.MouseEvent, focusComments = false) {
-    if (onMobileOpen && typeof window !== 'undefined' && window.innerWidth < 1024) {
+    if (onMobileOpen) {
       e.preventDefault();
       onMobileOpen(post.id, focusComments);
     }

@@ -107,7 +107,7 @@ function DesktopNav({ onCreateClick }: { onCreateClick: () => void }) {
       )}
 
       {item('/tareeq/khatmati', pathname.startsWith('/tareeq/khatmati'),
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3c-1.5 4-4 6-4 9a4 4 0 008 0c0-3-2.5-5-4-9z"/><path strokeLinecap="round" strokeLinejoin="round" d="M9.5 14.5c.5 1 1.5 1.5 2.5 1.5s2-.5 2.5-1.5"/></svg>,
+        <img src="/nori lamp icon.svg" width={20} height={20} alt="" style={{ opacity: pathname.startsWith('/tareeq/khatmati') ? 1 : 0.6 }} />,
         'نوري',
       )}
 

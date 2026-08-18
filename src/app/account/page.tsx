@@ -18,7 +18,7 @@ const COUNTRIES_LIST = [
     .map(([code, c]) => ({ code, name: c.nameAr, nameEn: c.nameEn }))
 ];
 
-type Tab = 'profile' | 'addresses' | 'orders' | 'books' | 'loyalty' | 'children' | 'downloads';
+type Tab = 'profile' | 'addresses' | 'orders' | 'books' | 'loyalty' | 'children' | 'downloads' | 'membership';
 
 interface FreeMediaItem {
   id: number; title: string; titleEn: string | null; type: string;
@@ -57,6 +57,10 @@ export default function AccountPage() {
   const [booksLoading, setBooksLoading] = useState(false);
   const [loyaltyData, setLoyaltyData] = useState<{ points: number; egpValue: number; transactions: { id: string; points: number; reason: string; createdAt: string }[] } | null>(null);
   const [loyaltyLoading, setLoyaltyLoading] = useState(false);
+
+  // Membership
+  const [membership, setMembership] = useState<{ id: string; membershipNumber: string; status: string; familyName: string | null; memberSince: number; startsAt: string | null; expiresAt: string | null; familyMembers: { id: string; name: string; relation: string | null }[] } | null>(null);
+  const [membershipLoading, setMembershipLoading] = useState(false);
 
   // Free media downloads
   const [freeMedia, setFreeMedia] = useState<FreeMediaItem[]>([]);
@@ -167,6 +171,14 @@ export default function AccountPage() {
         .then(d => setFreeMedia(d.items ?? []))
         .catch(() => {})
         .finally(() => setFreeMediaLoading(false));
+
+      // Load membership
+      setMembershipLoading(true);
+      fetch('/api/membership', { credentials: 'include' })
+        .then(r => r.json())
+        .then(d => setMembership(d.membership ?? null))
+        .catch(() => {})
+        .finally(() => setMembershipLoading(false));
     }
   }, [user, isLoading, router]);
 
@@ -340,6 +352,7 @@ export default function AccountPage() {
           ['loyalty',   isRtl ? 'نقاطي'    : 'Points',   isRtl ? 'نقاطي'      : 'Points',    <svg key="l" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 0 0 .95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 0 0-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 0 0-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 0 0-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 0 0 .951-.69l1.07-3.292z"/></svg>],
           ['children',  isRtl ? 'أطفالي'   : 'Kids',     isRtl ? 'أطفالي'     : 'My Kids',   <svg key="c" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><circle cx="10" cy="6" r="3"/><path d="M10 11c-4 0-6 2-6 3v1h12v-1c0-1-2-3-6-3z"/></svg>],
           ['downloads', isRtl ? 'وسائط'    : 'Media',    isRtl ? 'وسائط مجانية' : 'Free Media', <svg key="d" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M3 17a1 1 0 0 1 1-1h12a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1zm3.293-7.707a1 1 0 0 1 1.414 0L9 10.586V3a1 1 0 1 1 2 0v7.586l1.293-1.293a1 1 0 1 1 1.414 1.414l-3 3a1 1 0 0 1-1.414 0l-3-3a1 1 0 0 1 0-1.414z" clipRule="evenodd"/></svg>],
+          ['membership', isRtl ? 'عضويتي'  : 'Member',   isRtl ? 'عضوية الأسرة' : 'Family Membership', <svg key="m" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>],
         ] as [Tab, string, string, React.ReactNode][]).map(([t, shortLabel, fullLabel, icon]) => (
           <button
             key={t}
@@ -1075,6 +1088,101 @@ export default function AccountPage() {
               </div>
             );
           })()}
+        </div>
+      )}
+
+      {tab === 'membership' && (
+        <div>
+          <div className="mb-5">
+            <h2 className="text-xl font-black text-gray-900">
+              {isRtl ? 'عضوية الأسرة' : 'Family Membership'}
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              {isRtl ? 'بطاقة عضوية مسلم ليدر وامتيازاتها' : 'Your Muslim Leader membership card and benefits'}
+            </p>
+          </div>
+
+          {membershipLoading ? (
+            <div className="flex justify-center py-16">
+              <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : !membership ? (
+            <div className="text-center py-16 bg-gray-50 rounded-2xl border">
+              <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-14 h-14 text-gray-300 mx-auto mb-3">
+                <rect x="4" y="12" width="40" height="26" rx="4"/>
+                <circle cx="14" cy="25" r="4"/>
+                <path d="M20 22h14M20 28h8"/>
+              </svg>
+              <p className="text-gray-700 font-bold mb-2">{isRtl ? 'لا توجد عضوية مرتبطة بهذا الحساب' : 'No membership linked to this account'}</p>
+              <p className="text-gray-500 text-sm">{isRtl ? 'تواصل معنا لإنشاء عضويتك' : 'Contact us to create your membership'}</p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {/* Membership card */}
+              <div className="rounded-2xl p-6 text-white relative overflow-hidden"
+                style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)' }}>
+                {/* Background pattern */}
+                <div className="absolute inset-0 opacity-5"
+                  style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
+                {/* Status badge */}
+                <div className="flex items-center justify-between mb-6">
+                  <span className="text-xs font-bold tracking-wider opacity-60">MUSLIM LEADER</span>
+                  <span className={`text-xs font-black px-3 py-1 rounded-full ${
+                    membership.status === 'ACTIVE' ? 'bg-green-400 text-green-900'
+                    : membership.status === 'PENDING' ? 'bg-yellow-400 text-yellow-900'
+                    : 'bg-red-400 text-white'
+                  }`}>
+                    {membership.status === 'ACTIVE' ? (isRtl ? 'نشطة' : 'Active')
+                    : membership.status === 'PENDING' ? (isRtl ? 'قيد الانتظار' : 'Pending')
+                    : membership.status === 'EXPIRED' ? (isRtl ? 'منتهية' : 'Expired')
+                    : (isRtl ? 'ملغاة' : 'Cancelled')}
+                  </span>
+                </div>
+                {/* Family name */}
+                {membership.familyName && (
+                  <p className="text-lg font-black mb-1">{membership.familyName}</p>
+                )}
+                {/* Membership number */}
+                <p className="text-2xl font-black tracking-widest mb-4 text-yellow-400">{membership.membershipNumber}</p>
+                {/* Dates */}
+                <div className="flex items-center justify-between text-xs opacity-70">
+                  <span>{isRtl ? `عضو منذ ${membership.memberSince}` : `Member since ${membership.memberSince}`}</span>
+                  {membership.expiresAt && (
+                    <span>{isRtl ? `تنتهي: ${new Date(membership.expiresAt).toLocaleDateString('ar-EG')}` : `Expires: ${new Date(membership.expiresAt).toLocaleDateString()}`}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Family members */}
+              {membership.familyMembers.length > 0 && (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                  <h3 className="font-black text-gray-900 mb-4">{isRtl ? 'أفراد الأسرة' : 'Family Members'}</h3>
+                  <div className="space-y-3">
+                    {membership.familyMembers.map(m => (
+                      <div key={m.id} className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center font-black text-sm text-gray-600">
+                          {m.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900 text-sm">{m.name}</p>
+                          {m.relation && <p className="text-xs text-gray-500">{m.relation}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Status message for expired/pending */}
+              {membership.status !== 'ACTIVE' && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-800">
+                  {membership.status === 'EXPIRED'
+                    ? (isRtl ? 'عضويتك منتهية. تواصل معنا لتجديدها والاستمرار في الاستمتاع بالامتيازات.' : 'Your membership has expired. Contact us to renew and continue enjoying benefits.')
+                    : (isRtl ? 'عضويتك قيد المراجعة. سيتم تفعيلها قريباً.' : 'Your membership is under review. It will be activated soon.')}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

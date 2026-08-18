@@ -254,6 +254,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
           display: 'flex', flexDirection: 'column',
           background: `linear-gradient(170deg, #0d2145 0%, #071830 35%, ${BG_DEEP} 65%, #060f1c 100%)`,
           backgroundColor: BG_DEEP,
+          paddingBottom: 88,
         }}
       >
         {/* ── Header ── */}
@@ -418,7 +419,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
 
         {/* Share progress — only when progress exists */}
         {p && user && (
-          <div style={{ paddingInline: 20, marginTop: 8, flexShrink: 0, paddingBottom: initialGroups.length === 0 ? 88 : 0 }}>
+          <div style={{ paddingInline: 20, marginTop: 8, flexShrink: 0 }}>
             <button
               onClick={handleShare}
               disabled={sharing}
@@ -441,7 +442,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
 
         {/* ── Group Khatmas — horizontal scrollable strip ── */}
         {initialGroups.length > 0 && (
-          <div style={{ flexShrink: 0, marginTop: 10, paddingBottom: 88 }}>
+          <div style={{ flexShrink: 0, marginTop: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingInline: 20, marginBottom: 8 }}>
               <p style={{ fontSize: 13, fontWeight: 700, color: NURI_YELLOW }}>
                 {isRtl ? 'ختماتي الجماعية' : 'My Group Khatmas'}

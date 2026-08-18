@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 
 interface MushafWord {
   text: string;
@@ -71,32 +71,94 @@ function toEastern(n: number) {
 const QURAN_FONT = `'Amiri Quran', 'Scheherazade New', 'Traditional Arabic', serif`;
 const LABEL_FONT = `'Amiri', 'Scheherazade New', serif`;
 
-// ── Surah name banner ─────────────────────────────────────────────────────────
+// ── Page segments ────────────────────────────────────────────────────────────
+interface VerseGroup {
+  chapterId: number;
+  verseNumber: number;
+  text: string;
+}
+type PageSegment =
+  | { type: 'surah'; id: number }
+  | { type: 'bismillah' }
+  | { type: 'break' }
+  | { type: 'text'; verses: VerseGroup[] };
+
+function buildSegments(lines: MushafLineData[]): PageSegment[] {
+  const segments: PageSegment[] = [];
+  let currentVerses: VerseGroup[] = [];
+
+  const flush = () => {
+    if (currentVerses.length > 0) {
+      segments.push({ type: 'text', verses: currentVerses });
+      currentVerses = [];
+    }
+  };
+
+  for (const line of lines) {
+    const types = new Set(line.words.map(w => w.charType));
+
+    if (types.has('chapter_name') || types.has('surah_name')) {
+      flush();
+      segments.push({ type: 'surah', id: line.words[0]?.chapterId ?? 0 });
+      continue;
+    }
+
+    if (types.has('bismillah')) {
+      flush();
+      segments.push({ type: 'bismillah' });
+      continue;
+    }
+
+    const hasWords = line.words.some(w => w.charType === 'word' || w.charType === 'end');
+    if (!hasWords) {
+      flush();
+      segments.push({ type: 'break' });
+      continue;
+    }
+
+    for (const w of line.words) {
+      if (w.charType === 'end') continue; // replaced by our own inline ornament
+      if (!w.text?.trim()) continue;
+      const last = currentVerses[currentVerses.length - 1];
+      if (last && last.chapterId === w.chapterId && last.verseNumber === w.verseNumber) {
+        last.text += ' ' + w.text;
+      } else {
+        currentVerses.push({ chapterId: w.chapterId, verseNumber: w.verseNumber, text: w.text });
+      }
+    }
+  }
+
+  flush();
+  return segments;
+}
+
+// ── Surah banner (uses uploaded SVG) ────────────────────────────────────────
 function SurahBanner({ surahId }: { surahId: number }) {
   const name = SURAH_AR[surahId] ?? '';
   return (
-    <div style={{ margin: '10px 0 6px', position: 'relative' }}>
-      <svg viewBox="0 0 320 68" width="100%" height="68" xmlns="http://www.w3.org/2000/svg"
-        style={{ display: 'block', position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-        preserveAspectRatio="none">
-        <rect x="0" y="0" width="320" height="68" fill="#2e1e0b" rx="2"/>
-        <rect x="2" y="2" width="316" height="64" fill="none" stroke="#c8a84b" strokeWidth="1.5" rx="1.5"/>
-        <rect x="7" y="7" width="306" height="54" fill="none" stroke="#c8a84b" strokeWidth="0.5" rx="1"/>
-        <polygon points="160,2 165,9 160,16 155,9" fill="#c8a84b"/>
-        <polygon points="160,52 165,59 160,66 155,59" fill="#c8a84b"/>
-        <polygon points="2,34 9,27 16,34 9,41" fill="#c8a84b"/>
-        <polygon points="318,34 311,27 304,34 311,41" fill="#c8a84b"/>
-        <polygon points="2,2 18,2 2,18" fill="#c8a84b" opacity="0.6"/>
-        <polygon points="318,2 302,2 318,18" fill="#c8a84b" opacity="0.6"/>
-        <polygon points="2,66 18,66 2,50" fill="#c8a84b" opacity="0.6"/>
-        <polygon points="318,66 302,66 318,50" fill="#c8a84b" opacity="0.6"/>
-        <line x1="22" y1="5" x2="65" y2="5" stroke="#c8a84b" strokeWidth="0.5" opacity="0.5"/>
-        <line x1="255" y1="5" x2="298" y2="5" stroke="#c8a84b" strokeWidth="0.5" opacity="0.5"/>
-        <line x1="22" y1="63" x2="65" y2="63" stroke="#c8a84b" strokeWidth="0.5" opacity="0.5"/>
-        <line x1="255" y1="63" x2="298" y2="63" stroke="#c8a84b" strokeWidth="0.5" opacity="0.5"/>
-      </svg>
-      <div style={{ position: 'relative', zIndex: 1, height: 68, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ fontFamily: QURAN_FONT, fontSize: 20, fontWeight: 700, color: '#fff', letterSpacing: 1 }}>
+    <div style={{ position: 'relative', margin: '14px 0 6px', userSelect: 'none' }}>
+      <img
+        src="/surah_header_mushaf.svg"
+        alt=""
+        aria-hidden
+        style={{ display: 'block', width: '100%', height: 'auto' }}
+      />
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <span style={{
+          fontFamily: QURAN_FONT,
+          fontSize: 'clamp(16px, 4vw, 22px)',
+          fontWeight: 700,
+          color: '#fff',
+          letterSpacing: 1,
+          textShadow: '0 1px 4px rgba(0,0,0,0.5)',
+          direction: 'rtl',
+        }}>
           سورة {name}
         </span>
       </div>
@@ -104,78 +166,75 @@ function SurahBanner({ surahId }: { surahId: number }) {
   );
 }
 
-// ── Bismillah line ────────────────────────────────────────────────────────────
+// ── Bismillah ────────────────────────────────────────────────────────────────
 function BismillahLine() {
   return (
-    <div style={{ textAlign: 'center', padding: '6px 0 4px', direction: 'rtl' }}>
-      <span style={{ fontFamily: QURAN_FONT, fontSize: 20, lineHeight: 2.2, color: '#1a0e00' }}>
+    <div style={{ textAlign: 'center', padding: '8px 14px 4px', direction: 'rtl' }}>
+      <span style={{ fontFamily: QURAN_FONT, fontSize: 21, lineHeight: 2.4, color: '#1a0e00' }}>
         بِسۡمِ ٱللَّهِ ٱلرَّحۡمَـٰنِ ٱلرَّحِیمِ
       </span>
     </div>
   );
 }
 
-// ── Regular Mushaf line ───────────────────────────────────────────────────────
-interface LineProps {
-  line: MushafLineData;
+// ── End-of-surah ornament ────────────────────────────────────────────────────
+function EndLine() {
+  return (
+    <div style={{ textAlign: 'center', padding: '6px 0 8px', color: '#c8a84b', fontSize: 15, letterSpacing: 8, fontFamily: QURAN_FONT }}>
+      ❧ ﴾ ❧
+    </div>
+  );
+}
+
+// ── Continuous Quran text block ──────────────────────────────────────────────
+interface TextBlockProps {
+  verses: VerseGroup[];
   currentChapter: number;
   currentVerse: number;
   onVerseClick?: (ch: number, v: number) => void;
   activeRef: React.MutableRefObject<HTMLSpanElement | null>;
 }
 
-function MushafLine({ line, currentChapter, currentVerse, onVerseClick, activeRef }: LineProps) {
-  // Group consecutive words by verse
-  const groups: { chapterId: number; verseNumber: number; text: string }[] = [];
-  for (const w of line.words) {
-    if (!w.text) continue;
-    const last = groups[groups.length - 1];
-    if (last && last.chapterId === w.chapterId && last.verseNumber === w.verseNumber) {
-      last.text += ' ' + w.text;
-    } else {
-      groups.push({ chapterId: w.chapterId, verseNumber: w.verseNumber, text: w.text });
-    }
-  }
-  if (!groups.length) return null;
-
+function QuranTextBlock({ verses, currentChapter, currentVerse, onVerseClick, activeRef }: TextBlockProps) {
   return (
     <div dir="rtl" style={{
+      padding: '0 14px',
+      fontFamily: QURAN_FONT,
+      fontSize: 19,
+      lineHeight: 2.65,
+      color: '#1a0e00',
       textAlign: 'justify',
-      textAlignLast: 'justify',
-      lineHeight: 2.4,
-      padding: '0 12px',
-      wordSpacing: 3,
+      wordSpacing: 4,
     }}>
-      {groups.map((g, i) => {
-        const active = g.chapterId === currentChapter && g.verseNumber === currentVerse;
+      {verses.map((v, vi) => {
+        const active = v.chapterId === currentChapter && v.verseNumber === currentVerse;
         return (
-          <span key={i}
+          <span
+            key={`${v.chapterId}-${v.verseNumber}`}
             ref={active ? activeRef : null}
-            onClick={() => onVerseClick?.(g.chapterId, g.verseNumber)}
+            onClick={() => onVerseClick?.(v.chapterId, v.verseNumber)}
             style={{
-              fontFamily: QURAN_FONT,
-              fontSize: 19,
-              color: active ? '#7a4e00' : '#1a0e00',
               background: active ? 'rgba(180,140,40,0.22)' : 'transparent',
-              borderRadius: 3,
+              borderRadius: active ? 4 : 0,
               cursor: 'pointer',
-              padding: active ? '0 3px' : '0',
-              transition: 'background 0.2s, color 0.2s',
+              display: 'inline',
+              transition: 'background 0.25s',
+            }}
+          >
+            {vi > 0 ? ' ' : ''}
+            {v.text}
+            {' '}
+            <span style={{
+              fontFamily: QURAN_FONT,
+              fontSize: '0.78em',
+              color: active ? '#7a4e00' : '#8B6914',
               display: 'inline',
             }}>
-            {i > 0 ? ' ' : ''}{g.text}
+              {'۝'}{toEastern(v.verseNumber)}
+            </span>
           </span>
         );
       })}
-    </div>
-  );
-}
-
-// ── End-of-surah ornament ─────────────────────────────────────────────────────
-function EndLine() {
-  return (
-    <div style={{ textAlign: 'center', padding: '4px 0', color: '#c8a84b', fontSize: 14, letterSpacing: 6 }}>
-      ❧ ﴾ ❧
     </div>
   );
 }
@@ -198,6 +257,8 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
   useEffect(() => {
     if (activeRef.current) activeRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [currentVerse, currentChapter]);
+
+  const segments = useMemo(() => buildSegments(lines), [lines]);
 
   const surahHeaderLabel = meta.surahs.length > 1
     ? meta.surahs.map(id => SURAH_AR[id] ?? '').filter(Boolean).join(' و')
@@ -236,26 +297,20 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
         <div style={{ height: 1.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)', marginTop: 2 }} />
       </div>
 
-      {/* ── Lines ── */}
-      <div style={{ flex: 1, padding: '2px 0' }}>
-        {lines.map((line, idx) => {
-          const types = new Set(line.words.map(w => w.charType));
-          const surahId = line.words[0]?.chapterId ?? currentChapter;
-
-          if (types.has('chapter_name') || types.has('surah_name')) {
-            return <SurahBanner key={idx} surahId={surahId} />;
-          }
-          if (types.has('bismillah')) {
-            return <BismillahLine key={idx} />;
-          }
-          const hasWords = line.words.some(w => w.charType === 'word' || w.charType === 'end');
-          if (!hasWords) {
-            return <EndLine key={idx} />;
-          }
+      {/* ── Content ── */}
+      <div style={{ flex: 1, padding: '4px 0' }}>
+        {segments.map((seg, idx) => {
+          if (seg.type === 'surah')    return <SurahBanner key={idx} surahId={seg.id} />;
+          if (seg.type === 'bismillah') return <BismillahLine key={idx} />;
+          if (seg.type === 'break')    return <EndLine key={idx} />;
           return (
-            <MushafLine key={idx} line={line}
-              currentChapter={currentChapter} currentVerse={currentVerse}
-              onVerseClick={onVerseClick} activeRef={activeRef}
+            <QuranTextBlock
+              key={idx}
+              verses={seg.verses}
+              currentChapter={currentChapter}
+              currentVerse={currentVerse}
+              onVerseClick={onVerseClick}
+              activeRef={activeRef}
             />
           );
         })}

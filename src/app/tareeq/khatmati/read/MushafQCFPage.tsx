@@ -26,7 +26,6 @@ interface Props {
   onVerseClick?: (chapter: number, verse: number) => void;
 }
 
-// ── Static lookups ───────────────────────────────────────────────────────────
 const SURAH_AR: Record<number, string> = {
   1:'الفاتحة',2:'البقرة',3:'آل عمران',4:'النساء',5:'المائدة',
   6:'الأنعام',7:'الأعراف',8:'الأنفال',9:'التوبة',10:'يونس',
@@ -65,164 +64,149 @@ const JUZ_AR = [
 function juzName(n: number) {
   return JUZ_AR[n] ? `الجزء ${JUZ_AR[n]}` : `الجزء ${n}`;
 }
-
-function toEasternArabic(n: number): string {
+function toEastern(n: number) {
   return String(n).replace(/[0-9]/g, d => '٠١٢٣٤٥٦٧٨٩'[parseInt(d)]);
 }
 
+// Naskh font stack for fallback rendering
+const NASKH = `'Noto Naskh Arabic', 'Arabic Typesetting', 'Scheherazade New', serif`;
+
 // ── Font loader ──────────────────────────────────────────────────────────────
 function useMushafFont(page: number) {
+  const [fontOk, setFontOk] = useState(false);
   const [ready, setReady] = useState(false);
   const family = `QCF4_p${String(page).padStart(3, '0')}`;
 
   useEffect(() => {
     setReady(false);
+    setFontOk(false);
     const styleId = `qcf4-${page}`;
-    if (document.getElementById(styleId)) { setReady(true); return; }
-
-    const face = new FontFace(
-      family,
-      `url('/api/tareeq/quran/qcf-font?page=${page}') format('woff2')`,
-    );
+    if (document.getElementById(styleId)) {
+      setFontOk(true); setReady(true); return;
+    }
+    const face = new FontFace(family, `url('/api/tareeq/quran/qcf-font?page=${page}') format('woff2')`);
     face.load()
-      .then(f => { (document.fonts as FontFaceSet).add(f); })
-      .catch(() => {})
-      .finally(() => {
-        const style = document.createElement('style');
-        style.id = styleId;
-        style.textContent = `@font-face{font-family:'${family}';src:url('/api/tareeq/quran/qcf-font?page=${page}')format('woff2');font-display:block;}`;
-        document.head.appendChild(style);
-        setReady(true);
-      });
+      .then(f => {
+        (document.fonts as FontFaceSet).add(f);
+        const s = document.createElement('style');
+        s.id = styleId;
+        s.textContent = `@font-face{font-family:'${family}';src:url('/api/tareeq/quran/qcf-font?page=${page}')format('woff2');font-display:block;}`;
+        document.head.appendChild(s);
+        setFontOk(true);
+      })
+      .catch(() => setFontOk(false))
+      .finally(() => setReady(true));
   }, [page, family]);
 
-  return { family, ready };
+  return { family, fontOk, ready };
 }
 
-// ── Surah name banner (ornamental Islamic frame) ─────────────────────────────
-function SurahBanner({ words, family }: { words: MushafWord[]; family: string }) {
+// ── Surah name banner ────────────────────────────────────────────────────────
+function SurahBanner({ words, family, fontOk, surahId }: {
+  words: MushafWord[]; family: string; fontOk: boolean; surahId: number;
+}) {
   const glyph = words.map(w => w.codeV1).join('');
+  const name = SURAH_AR[surahId] ?? '';
   return (
-    <div style={{ margin: '10px 4px 6px', position: 'relative' }}>
-      <svg
-        viewBox="0 0 320 72" width="100%" height="72"
-        xmlns="http://www.w3.org/2000/svg"
+    <div style={{ margin: '10px 0 6px', position: 'relative' }}>
+      <svg viewBox="0 0 320 68" width="100%" height="68" xmlns="http://www.w3.org/2000/svg"
         style={{ display: 'block', position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-        preserveAspectRatio="none"
-      >
-        {/* Dark brown background */}
-        <rect x="0" y="0" width="320" height="72" fill="#2d1e0d" rx="3"/>
-        {/* Outer gold border */}
-        <rect x="2" y="2" width="316" height="68" fill="none" stroke="#c8a84b" strokeWidth="1.5" rx="2"/>
-        {/* Inner thin border */}
-        <rect x="7" y="7" width="306" height="58" fill="none" stroke="#c8a84b" strokeWidth="0.6" rx="1"/>
-        {/* Top center ornament */}
-        <polygon points="160,2 164,8 160,14 156,8" fill="#c8a84b"/>
-        {/* Bottom center ornament */}
-        <polygon points="160,58 164,64 160,70 156,64" fill="#c8a84b"/>
-        {/* Left ornaments */}
-        <polygon points="2,36 8,30 14,36 8,42" fill="#c8a84b"/>
-        {/* Right ornaments */}
-        <polygon points="318,36 312,30 306,36 312,42" fill="#c8a84b"/>
-        {/* Top corners */}
-        <polygon points="2,2 16,2 2,16" fill="#c8a84b" opacity="0.7"/>
-        <polygon points="318,2 304,2 318,16" fill="#c8a84b" opacity="0.7"/>
-        {/* Bottom corners */}
-        <polygon points="2,70 16,70 2,56" fill="#c8a84b" opacity="0.7"/>
-        <polygon points="318,70 304,70 318,56" fill="#c8a84b" opacity="0.7"/>
-        {/* Horizontal decorative lines */}
-        <line x1="20" y1="5" x2="70" y2="5" stroke="#c8a84b" strokeWidth="0.5" opacity="0.6"/>
-        <line x1="250" y1="5" x2="300" y2="5" stroke="#c8a84b" strokeWidth="0.5" opacity="0.6"/>
-        <line x1="20" y1="67" x2="70" y2="67" stroke="#c8a84b" strokeWidth="0.5" opacity="0.6"/>
-        <line x1="250" y1="67" x2="300" y2="67" stroke="#c8a84b" strokeWidth="0.5" opacity="0.6"/>
-        {/* Small dots */}
-        <circle cx="75" cy="5" r="1.5" fill="#c8a84b" opacity="0.7"/>
-        <circle cx="245" cy="5" r="1.5" fill="#c8a84b" opacity="0.7"/>
-        <circle cx="75" cy="67" r="1.5" fill="#c8a84b" opacity="0.7"/>
-        <circle cx="245" cy="67" r="1.5" fill="#c8a84b" opacity="0.7"/>
+        preserveAspectRatio="none">
+        <rect x="0" y="0" width="320" height="68" fill="#2e1e0b" rx="2"/>
+        <rect x="2" y="2" width="316" height="64" fill="none" stroke="#c8a84b" strokeWidth="1.5" rx="1.5"/>
+        <rect x="7" y="7" width="306" height="54" fill="none" stroke="#c8a84b" strokeWidth="0.5" rx="1"/>
+        <polygon points="160,2 165,9 160,16 155,9" fill="#c8a84b"/>
+        <polygon points="160,52 165,59 160,66 155,59" fill="#c8a84b"/>
+        <polygon points="2,34 9,27 16,34 9,41" fill="#c8a84b"/>
+        <polygon points="318,34 311,27 304,34 311,41" fill="#c8a84b"/>
+        <polygon points="2,2 18,2 2,18" fill="#c8a84b" opacity="0.6"/>
+        <polygon points="318,2 302,2 318,18" fill="#c8a84b" opacity="0.6"/>
+        <polygon points="2,66 18,66 2,50" fill="#c8a84b" opacity="0.6"/>
+        <polygon points="318,66 302,66 318,50" fill="#c8a84b" opacity="0.6"/>
+        <line x1="22" y1="5" x2="65" y2="5" stroke="#c8a84b" strokeWidth="0.5" opacity="0.5"/>
+        <line x1="255" y1="5" x2="298" y2="5" stroke="#c8a84b" strokeWidth="0.5" opacity="0.5"/>
+        <line x1="22" y1="63" x2="65" y2="63" stroke="#c8a84b" strokeWidth="0.5" opacity="0.5"/>
+        <line x1="255" y1="63" x2="298" y2="63" stroke="#c8a84b" strokeWidth="0.5" opacity="0.5"/>
       </svg>
-      {/* Surah name glyph overlaid */}
-      <div style={{
-        position: 'relative', zIndex: 1,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        height: 72, padding: '0 24px',
-      }}>
-        <span style={{ fontFamily: family, fontSize: 30, color: '#fff', lineHeight: 1, letterSpacing: 0 }}>
-          {glyph}
-        </span>
+      <div style={{ position: 'relative', zIndex: 1, height: 68, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 20px' }}>
+        {fontOk && glyph ? (
+          <span style={{ fontFamily: `'${family}'`, fontSize: 28, color: '#fff', lineHeight: 1 }}>
+            {glyph}
+          </span>
+        ) : (
+          <span style={{ fontFamily: NASKH, fontSize: 19, fontWeight: 700, color: '#fff', letterSpacing: 1 }}>
+            سورة {name}
+          </span>
+        )}
       </div>
     </div>
   );
 }
 
-// ── Bismillah line ───────────────────────────────────────────────────────────
-function BismillahLine({ words, family }: { words: MushafWord[]; family: string }) {
+// ── Bismillah line ────────────────────────────────────────────────────────────
+function BismillahLine({ words, family, fontOk }: { words: MushafWord[]; family: string; fontOk: boolean }) {
   const glyph = words.map(w => w.codeV1).join('');
   return (
-    <div style={{ textAlign: 'center', padding: '4px 8px 2px', direction: 'rtl' }}>
-      <span style={{ fontFamily: family, fontSize: 24, lineHeight: 2, color: '#1a0f00' }}>
-        {glyph}
-      </span>
+    <div style={{ textAlign: 'center', padding: '4px 0 2px', direction: 'rtl' }}>
+      {fontOk && glyph ? (
+        <span style={{ fontFamily: `'${family}'`, fontSize: 24, lineHeight: 2, color: '#1a0e00' }}>{glyph}</span>
+      ) : (
+        <span style={{ fontFamily: NASKH, fontSize: 18, lineHeight: 2.2, color: '#1a0e00' }}>
+          بِسْمِ اللَّهِ الرَّحْمَـٰنِ الرَّحِيمِ
+        </span>
+      )}
     </div>
   );
 }
 
-// ── End-of-surah ─────────────────────────────────────────────────────────────
-function EndOfSurahLine({ words, family }: { words: MushafWord[]; family: string }) {
-  const glyph = words.map(w => w.codeV1).join('');
-  if (!glyph) return null;
-  return (
-    <div style={{ textAlign: 'center', padding: '2px 0', color: '#7a5200' }}>
-      <span style={{ fontFamily: family, fontSize: 20, lineHeight: 2 }}>
-        {glyph}
-      </span>
-    </div>
-  );
-}
-
-// ── Regular Mushaf line ───────────────────────────────────────────────────────
+// ── Regular line ──────────────────────────────────────────────────────────────
 interface LineProps {
   line: MushafLineData;
   family: string;
+  fontOk: boolean;
   currentChapter: number;
   currentVerse: number;
   onVerseClick?: (ch: number, v: number) => void;
   activeRef: React.MutableRefObject<HTMLSpanElement | null>;
 }
 
-function MushafLine({ line, family, currentChapter, currentVerse, onVerseClick, activeRef }: LineProps) {
-  const groups: { chapterId: number; verseNumber: number; code: string }[] = [];
+function MushafLine({ line, family, fontOk, currentChapter, currentVerse, onVerseClick, activeRef }: LineProps) {
+  const groups: { chapterId: number; verseNumber: number; code: string; text: string }[] = [];
   for (const w of line.words) {
     const last = groups[groups.length - 1];
     if (last && last.chapterId === w.chapterId && last.verseNumber === w.verseNumber) {
       last.code += w.codeV1;
+      last.text += w.text;
     } else {
-      groups.push({ chapterId: w.chapterId, verseNumber: w.verseNumber, code: w.codeV1 });
+      groups.push({ chapterId: w.chapterId, verseNumber: w.verseNumber, code: w.codeV1, text: w.text });
     }
   }
 
   return (
-    <div dir="rtl" style={{ textAlign: 'justify', textAlignLast: 'justify', lineHeight: '2.1', padding: '0 6px' }}>
+    <div dir="rtl" style={{
+      textAlign: 'justify', textAlignLast: 'justify',
+      lineHeight: fontOk ? '2.0' : '2.3',
+      padding: '0 10px',
+      minHeight: fontOk ? 38 : 44,
+    }}>
       {groups.map((g, i) => {
         const active = g.chapterId === currentChapter && g.verseNumber === currentVerse;
         return (
-          <span
-            key={i}
+          <span key={i}
             ref={active ? activeRef : null}
             onClick={() => onVerseClick?.(g.chapterId, g.verseNumber)}
             style={{
-              fontFamily: family,
-              fontSize: 23,
-              color: '#1a0f00',
-              background: active ? 'rgba(200,168,75,0.28)' : 'transparent',
+              fontFamily: fontOk ? `'${family}'` : NASKH,
+              fontSize: fontOk ? 22 : 17,
+              color: '#1a0e00',
+              background: active ? 'rgba(180,140,40,0.22)' : 'transparent',
               borderRadius: 2,
               cursor: 'pointer',
               padding: active ? '0 2px' : '0',
               transition: 'background 0.2s',
               display: 'inline',
-            }}
-          >
-            {g.code}
+            }}>
+            {fontOk ? g.code : g.text}
           </span>
         );
       })}
@@ -230,9 +214,20 @@ function MushafLine({ line, family, currentChapter, currentVerse, onVerseClick, 
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// ── End-of-surah ──────────────────────────────────────────────────────────────
+function EndLine({ words, family, fontOk }: { words: MushafWord[]; family: string; fontOk: boolean }) {
+  const glyph = words.map(w => w.codeV1).join('');
+  if (!fontOk || !glyph) return null;
+  return (
+    <div style={{ textAlign: 'center', padding: '2px 0', color: '#7a5200' }}>
+      <span style={{ fontFamily: `'${family}'`, fontSize: 20, lineHeight: 2 }}>{glyph}</span>
+    </div>
+  );
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
 export default function MushafQCFPage({ page, currentChapter, currentVerse, onVerseClick }: Props) {
-  const { family, ready } = useMushafFont(page);
+  const { family, fontOk, ready } = useMushafFont(page);
   const [lines, setLines] = useState<MushafLineData[]>([]);
   const [meta, setMeta] = useState<PageMeta>({ juz: null, hizb: null, surahs: [] });
   const [loading, setLoading] = useState(true);
@@ -242,143 +237,101 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
     setLoading(true);
     fetch(`/api/tareeq/quran/mushaf-lines?page=${page}`)
       .then(r => r.json())
-      .then(d => {
-        setLines(d.lines ?? []);
-        if (d.meta) setMeta(d.meta);
-        setLoading(false);
-      })
+      .then(d => { setLines(d.lines ?? []); if (d.meta) setMeta(d.meta); setLoading(false); })
       .catch(() => setLoading(false));
   }, [page]);
 
   useEffect(() => {
-    if (activeRef.current) {
-      activeRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    }
+    if (activeRef.current) activeRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [currentVerse, currentChapter]);
 
-  if (loading || !ready) {
-    return (
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        minHeight: 300, gap: 12,
-      }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: '50%',
-          border: '2.5px solid rgba(200,168,75,0.2)', borderTopColor: '#c8a84b',
-          animation: 'qcf-spin 0.7s linear infinite',
-        }} />
-        <style>{`@keyframes qcf-spin{to{transform:rotate(360deg)}}`}</style>
-        <span style={{ fontSize: 13, color: 'var(--tr-text-muted)' }}>جاري تحميل الصفحة...</span>
-      </div>
-    );
-  }
-
-  // Surah label for header: all surah names on this page
-  const surahLabel = meta.surahs.length > 0
-    ? meta.surahs.map(id => SURAH_AR[id] ?? '').filter(Boolean).join(' والكهف'.includes(' و') ? ' و' : ' و')
-    : (SURAH_AR[currentChapter] ?? '');
-
-  // When multiple surahs on the page, show "X والY" style
   const surahHeaderLabel = meta.surahs.length > 1
     ? meta.surahs.map(id => SURAH_AR[id] ?? '').filter(Boolean).join(' و')
     : (SURAH_AR[meta.surahs[0] ?? currentChapter] ?? '');
 
+  if (loading || !ready) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: 12 }}>
+        <div style={{ width: 30, height: 30, borderRadius: '50%', border: '2.5px solid rgba(200,168,75,0.2)', borderTopColor: '#c8a84b', animation: 'ms-spin 0.7s linear infinite' }} />
+        <style>{`@keyframes ms-spin{to{transform:rotate(360deg)}}`}</style>
+        <span style={{ fontSize: 13, color: '#8a7050', fontFamily: NASKH }}>جاري تحميل الصفحة…</span>
+      </div>
+    );
+  }
+
   return (
     <div style={{
-      background: '#F9F3E3',
+      background: '#F9F4E8',
       minHeight: '100%',
-      fontFamily: 'serif',
+      display: 'flex',
+      flexDirection: 'column',
+      padding: '0 2px',
     }}>
-      {/* ── Page card ── */}
-      <div style={{
-        background: '#FAF6ED',
-        margin: '6px 8px 10px',
-        borderRadius: 4,
-        boxShadow: '0 3px 20px rgba(0,0,0,0.22)',
-        border: '1px solid rgba(180,140,50,0.3)',
-        overflow: 'hidden',
-      }}>
-        {/* ── Header ── */}
-        <div style={{ padding: '8px 10px 4px' }}>
-          {/* Outer border line */}
-          <div style={{ height: 1.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)', marginBottom: 3 }} />
-          <div style={{ height: 0.6, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)', marginBottom: 5 }} />
+      {/* ── Header ── */}
+      <div style={{ padding: '6px 12px 2px' }}>
+        <div style={{ height: 1.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)' }} />
+        <div style={{ height: 0.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)', marginTop: 2 }} />
+        <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '3px 4px' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#5a3e10', fontFamily: NASKH }}>
+            {meta.juz ? juzName(meta.juz) : ''}
+          </span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M4 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4V4z" fill="#c8a84b" opacity="0.85"/>
+            <path d="M20 4h-6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6V4z" fill="#c8a84b" opacity="0.5"/>
+            <line x1="12" y1="6" x2="12" y2="18" stroke="#fff" strokeWidth="0.8"/>
+          </svg>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#5a3e10', fontFamily: NASKH }}>
+            {surahHeaderLabel}
+          </span>
+        </div>
+        <div style={{ height: 0.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)' }} />
+        <div style={{ height: 1.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)', marginTop: 2 }} />
+      </div>
 
-          {/* Header content: juz | icon | surah */}
-          <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#5a3e10', fontFamily: 'serif', letterSpacing: 0.3 }}>
-              {meta.juz ? juzName(meta.juz) : ''}
+      {/* ── Lines ── */}
+      <div style={{ flex: 1, padding: '2px 0' }}>
+        {lines.map((line, idx) => {
+          const types = new Set(line.words.map(w => w.charType));
+          const surahId = line.words[0]?.chapterId ?? currentChapter;
+
+          if (types.has('chapter_name') || types.has('surah_name')) {
+            return <SurahBanner key={idx} words={line.words} family={family} fontOk={fontOk} surahId={surahId} />;
+          }
+          if (types.has('bismillah')) {
+            return <BismillahLine key={idx} words={line.words} family={family} fontOk={fontOk} />;
+          }
+          const hasWords = line.words.some(w => w.charType === 'word' || w.charType === 'end');
+          if (!hasWords) {
+            return <EndLine key={idx} words={line.words} family={family} fontOk={fontOk} />;
+          }
+          return (
+            <MushafLine key={idx} line={line} family={family} fontOk={fontOk}
+              currentChapter={currentChapter} currentVerse={currentVerse}
+              onVerseClick={onVerseClick} activeRef={activeRef}
+            />
+          );
+        })}
+      </div>
+
+      {/* ── Footer ── */}
+      <div style={{ padding: '2px 12px 8px' }}>
+        <div style={{ height: 1.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)' }} />
+        <div style={{ height: 0.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)', marginTop: 2 }} />
+        <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '3px 4px' }}>
+          <span style={{ fontSize: 11, color: '#5a3e10', fontFamily: NASKH, fontWeight: 600 }}>
+            {meta.hizb ? `الحزب ${toEastern(meta.hizb)}` : ''}
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ fontSize: 9, color: '#c8a84b' }}>◆</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#5a3e10', fontFamily: NASKH }}>
+              {toEastern(page)}
             </span>
-            {/* Quran book icon */}
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="M4 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4V4z" fill="#c8a84b" opacity="0.85"/>
-              <path d="M20 4h-6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6V4z" fill="#c8a84b" opacity="0.55"/>
-              <line x1="12" y1="6" x2="12" y2="18" stroke="#fff" strokeWidth="0.8"/>
-            </svg>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#5a3e10', fontFamily: 'serif', letterSpacing: 0.3 }}>
-              {surahHeaderLabel}
-            </span>
+            <span style={{ fontSize: 9, color: '#c8a84b' }}>◆</span>
           </div>
-
-          <div style={{ height: 0.6, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)', marginTop: 5 }} />
-          <div style={{ height: 1.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)', marginTop: 3 }} />
+          <span style={{ fontSize: 11, color: 'transparent' }}>0</span>
         </div>
-
-        {/* ── Lines ── */}
-        <div style={{ padding: '2px 6px 0' }}>
-          {lines.map((line, idx) => {
-            const types = new Set(line.words.map(w => w.charType));
-            if (types.has('chapter_name') || types.has('surah_name')) {
-              return <SurahBanner key={idx} words={line.words} family={family} />;
-            }
-            if (types.has('bismillah')) {
-              return <BismillahLine key={idx} words={line.words} family={family} />;
-            }
-            const hasWords = line.words.some(w => w.charType === 'word' || w.charType === 'end');
-            if (!hasWords) {
-              return <EndOfSurahLine key={idx} words={line.words} family={family} />;
-            }
-            return (
-              <MushafLine
-                key={idx}
-                line={line}
-                family={family}
-                currentChapter={currentChapter}
-                currentVerse={currentVerse}
-                onVerseClick={onVerseClick}
-                activeRef={activeRef}
-              />
-            );
-          })}
-        </div>
-
-        {/* ── Footer ── */}
-        <div style={{ padding: '4px 10px 8px' }}>
-          <div style={{ height: 1.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)', marginBottom: 3 }} />
-          <div style={{ height: 0.6, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)', marginBottom: 5 }} />
-
-          <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
-            {/* Hizb (right in RTL) */}
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#5a3e10', fontFamily: 'serif' }}>
-              {meta.hizb ? `الحزب ${toEasternArabic(meta.hizb)}` : ''}
-            </span>
-
-            {/* Page number with ornamental diamonds (center) */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ fontSize: 9, color: '#c8a84b' }}>◆</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#5a3e10', fontFamily: 'serif', fontVariantNumeric: 'tabular-nums' }}>
-                {toEasternArabic(page)}
-              </span>
-              <span style={{ fontSize: 9, color: '#c8a84b' }}>◆</span>
-            </div>
-
-            {/* Empty right side (or could show رقم الحزب الفرعي) */}
-            <span style={{ fontSize: 10, color: 'transparent' }}>0</span>
-          </div>
-
-          <div style={{ height: 0.6, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)', marginTop: 5 }} />
-          <div style={{ height: 1.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)', marginTop: 3 }} />
-        </div>
+        <div style={{ height: 0.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)' }} />
+        <div style={{ height: 1.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)', marginTop: 2 }} />
       </div>
     </div>
   );

@@ -715,8 +715,10 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           <div className="relative aspect-[3/4] lg:aspect-auto lg:h-[320px]">
             {/* Inner clip — keeps image + overlays within bounds without clipping side icons */}
             <div className="absolute inset-0 overflow-hidden">
-              <Link href={`/tareeq/${post.id}`} className="block w-full h-full" onClick={handlePostLinkClick}>
-                <img src={post.imageUrl!} alt="" className="w-full h-full object-cover" loading="eager" referrerPolicy="no-referrer" />
+              {/* Blurred letterbox bg — same image blurred + dimmed to fill empty space */}
+              <img src={post.imageUrl!} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover scale-110 pointer-events-none select-none" style={{ filter: 'blur(18px) brightness(0.45)' }} />
+              <Link href={`/tareeq/${post.id}`} className="relative block w-full h-full" onClick={handlePostLinkClick}>
+                <img src={post.imageUrl!} alt="" className="w-full h-full object-contain" loading="eager" referrerPolicy="no-referrer" />
                 {/* Mobile gradient — bottom-heavy overlay */}
                 <div className="absolute inset-0 lg:hidden" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.05) 70%, transparent 100%)' }} />
                 {/* Desktop gradient — subtle top-to-bottom */}

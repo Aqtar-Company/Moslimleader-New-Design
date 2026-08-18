@@ -1,11 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LanguageContext';
+
+const PayPalBookButton = dynamic(() => import('@/components/PayPalBookButton'), { ssr: false });
+
+const SUPPORT_WA = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP || '201000000000';
 import { ageInYears } from '@/lib/child-age';
 import { Address } from '@/context/AuthContext';
 import { governorates } from '@/lib/shipping';
@@ -62,6 +67,10 @@ export default function AccountPage() {
   const [membership, setMembership] = useState<{ id: string; membershipNumber: string; status: string; familyName: string | null; memberSince: number; startsAt: string | null; expiresAt: string | null; familyMembers: { id: string; name: string; relation: string | null }[] } | null>(null);
   const [membershipLoading, setMembershipLoading] = useState(false);
   const [perks, setPerks] = useState<{ id: string; title: string; description: string | null; imageUrl: string | null; linkUrl: string | null; validUntil: string | null; createdAt: string }[]>([]);
+  const [membershipZone, setMembershipZone] = useState<'egypt' | 'international'>('international');
+  const [applyStep, setApplyStep] = useState<'idle' | 'form' | 'paypal' | 'instapay' | 'pending' | 'success'>('idle');
+  const [applyFamilyName, setApplyFamilyName] = useState('');
+  const [applyLoading, setApplyLoading] = useState(false);
 
   // Free media downloads
   const [freeMedia, setFreeMedia] = useState<FreeMediaItem[]>([]);
@@ -172,6 +181,12 @@ export default function AccountPage() {
         .then(d => setFreeMedia(d.items ?? []))
         .catch(() => {})
         .finally(() => setFreeMediaLoading(false));
+
+      // Detect zone for membership pricing
+      try {
+        const cc = localStorage.getItem('originCountryCode');
+        setMembershipZone(cc === 'EG' ? 'egypt' : 'international');
+      } catch { /* ignore */ }
 
       // Load membership + perks
       setMembershipLoading(true);
@@ -1116,14 +1131,162 @@ export default function AccountPage() {
               <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : !membership ? (
-            <div className="text-center py-16 bg-gray-50 rounded-2xl border">
-              <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-14 h-14 text-gray-300 mx-auto mb-3">
-                <rect x="4" y="12" width="40" height="26" rx="4"/>
-                <circle cx="14" cy="25" r="4"/>
-                <path d="M20 22h14M20 28h8"/>
-              </svg>
-              <p className="text-gray-700 font-bold mb-2">{isRtl ? 'لا توجد عضوية مرتبطة بهذا الحساب' : 'No membership linked to this account'}</p>
-              <p className="text-gray-500 text-sm">{isRtl ? 'تواصل معنا لإنشاء عضويتك' : 'Contact us to create your membership'}</p>
+            <div>
+              {applyStep === 'idle' && (
+                /* ── Membership promo card ── */
+                <div className="rounded-2xl overflow-hidden shadow-sm border border-amber-100">
+                  <div className="p-6 text-white relative" style={{ background: 'linear-gradient(135deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%)' }}>
+                    <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%,white 1px,transparent 1px),radial-gradient(circle at 80% 20%,white 1px,transparent 1px)', backgroundSize: '30px 30px' }} />
+                    <p className="font-black text-xl mb-1 relative">{isRtl ? 'عضوية أسرة مسلم ليدر' : 'Muslim Leader Family Membership'}</p>
+                    <p className="text-white/60 text-sm relative">{isRtl ? 'اشترك واستمتع بالمزايا الحصرية لعائلتك' : 'Subscribe and enjoy exclusive benefits for your family'}</p>
+                    <div className="mt-4 flex flex-wrap gap-2 relative">
+                      {[isRtl ? '🎁 مزايا حصرية' : '🎁 Exclusive perks', isRtl ? '👨‍👩‍👧 حسابات الأسرة' : '👨‍👩‍👧 Family accounts', isRtl ? '🔄 تجديد سنوي' : '🔄 Annual renewal'].map(b => (
+                        <span key={b} className="text-xs bg-white/10 text-white/80 px-3 py-1 rounded-full">{b}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="p-5 bg-white">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <p className="text-2xl font-black text-gray-900">
+                          {membershipZone === 'egypt' ? '١٠٠ جنيه' : '$5'}
+                          <span className="text-sm font-normal text-gray-400 mr-1">{isRtl ? '/ سنة' : '/ year'}</span>
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">{membershipZone === 'egypt' ? (isRtl ? 'داخل مصر' : 'Egypt') : (isRtl ? 'خارج مصر' : 'International')}</p>
+                      </div>
+                      <button onClick={() => setApplyStep('form')}
+                        className="px-5 py-2.5 rounded-xl font-black text-sm text-white transition active:scale-95"
+                        style={{ background: 'linear-gradient(135deg,#1a1a2e,#0f3460)' }}>
+                        {isRtl ? 'اشترك الآن' : 'Subscribe Now'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {applyStep === 'form' && (
+                <div className="space-y-4">
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    <h3 className="font-black text-gray-900 mb-4">{isRtl ? 'بيانات الاشتراك' : 'Membership Details'}</h3>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">{isRtl ? 'اسم الأسرة (اختياري)' : 'Family Name (optional)'}</label>
+                    <input value={applyFamilyName} onChange={e => setApplyFamilyName(e.target.value)}
+                      placeholder={isRtl ? 'مثال: أسرة محمد أحمد' : 'e.g. Ahmed Family'}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-right mb-4"
+                      dir="rtl" />
+                    <div className="flex items-center justify-between text-sm text-gray-500 mb-4 py-2 border-t border-gray-100">
+                      <span>{isRtl ? 'المبلغ:' : 'Amount:'}</span>
+                      <span className="font-black text-gray-900">{membershipZone === 'egypt' ? '١٠٠ جنيه مصري' : '$5 USD'}</span>
+                    </div>
+                    {/* Payment options */}
+                    <div className="space-y-2">
+                      <button onClick={() => setApplyStep('paypal')}
+                        className="w-full py-3 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition active:scale-[0.98]"
+                        style={{ background: '#0070ba' }}>
+                        <svg viewBox="0 0 24 24" width="20" fill="white"><path d="M9.5 6.5c0-1.4 1.1-2.5 2.5-2.5h3c2.2 0 4 1.8 4 4 0 1.8-1.2 3.3-2.8 3.8L15 14H9.5V6.5zM9.5 14H15l-.8 4H9.5V14z"/></svg>
+                        {isRtl ? 'الدفع بـ PayPal أو بطاقة' : 'Pay with PayPal or Card'}
+                      </button>
+                      {membershipZone === 'egypt' && (
+                        <>
+                          <button onClick={() => setApplyStep('instapay')}
+                            className="w-full py-3 rounded-xl font-bold text-sm border-2 border-emerald-500 text-emerald-700 transition active:scale-[0.98] bg-emerald-50">
+                            {isRtl ? '📲 إنستاباي / تحويل بنكي' : '📲 InstaPay / Bank Transfer'}
+                          </button>
+                          <a href={`https://wa.me/${SUPPORT_WA}?text=${encodeURIComponent('أريد الاشتراك في عضوية أسرة مسلم ليدر (كاش)')}`}
+                            target="_blank" rel="noopener noreferrer"
+                            className="w-full py-3 rounded-xl font-bold text-sm border border-gray-200 text-gray-600 flex items-center justify-center gap-2 transition active:scale-[0.98] bg-gray-50">
+                            💵 {isRtl ? 'كاش (تواصل معنا)' : 'Cash (Contact us)'}
+                          </a>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <button onClick={() => setApplyStep('idle')} className="text-sm text-gray-400 w-full text-center py-2">
+                    {isRtl ? 'رجوع' : 'Back'}
+                  </button>
+                </div>
+              )}
+
+              {applyStep === 'paypal' && (
+                <div className="space-y-4">
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    <h3 className="font-black text-gray-900 mb-1">{isRtl ? 'الدفع الآمن' : 'Secure Payment'}</h3>
+                    <p className="text-xs text-gray-400 mb-4">{membershipZone === 'egypt' ? (isRtl ? 'سيُخصم ما يعادل ١٠٠ جنيه ($2)' : '~100 EGP ($2)') : '$5 USD'}</p>
+                    <PayPalBookButton
+                      createEndpoint="/api/membership/create"
+                      captureEndpoint="/api/membership/activate"
+                      amountUsd={membershipZone === 'egypt' ? 2.00 : 5.00}
+                      createBody={{ familyName: applyFamilyName.trim() || undefined, zone: membershipZone }}
+                      isRtl={isRtl}
+                      onSuccess={() => {
+                        setApplyStep('success');
+                        setMembership(null); // will re-fetch on next load
+                        fetch('/api/membership', { credentials: 'include' })
+                          .then(r => r.json()).then(d => setMembership(d.membership ?? null)).catch(() => {});
+                      }}
+                      onError={msg => alert(isRtl ? `خطأ في الدفع: ${msg}` : `Payment error: ${msg}`)}
+                    />
+                  </div>
+                  <button onClick={() => setApplyStep('form')} className="text-sm text-gray-400 w-full text-center py-2">
+                    {isRtl ? 'رجوع' : 'Back'}
+                  </button>
+                </div>
+              )}
+
+              {applyStep === 'instapay' && (
+                <div className="space-y-4">
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+                    <h3 className="font-black text-gray-900">{isRtl ? 'التحويل عبر إنستاباي' : 'InstaPay Transfer'}</h3>
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
+                      <p className="text-xs text-emerald-600 mb-1">{isRtl ? 'رقم إنستاباي / ووليت' : 'InstaPay / Wallet number'}</p>
+                      <p className="text-2xl font-black text-emerald-700 tracking-widest" dir="ltr">01000000000</p>
+                      <p className="text-xs text-emerald-600 mt-1">{isRtl ? 'باسم: مسلم ليدر' : 'Name: Moslim Leader'}</p>
+                    </div>
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
+                      {isRtl ? 'بعد التحويل، أرسل صورة الإيصال عبر واتساب. سيتم تفعيل عضويتك خلال ٢٤ ساعة.' : 'After transfer, send the receipt via WhatsApp. Your membership will be activated within 24 hours.'}
+                    </div>
+                    <button disabled={applyLoading}
+                      onClick={async () => {
+                        setApplyLoading(true);
+                        try {
+                          await fetch('/api/membership/request-manual', {
+                            method: 'POST', credentials: 'include',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ familyName: applyFamilyName.trim() || undefined }),
+                          });
+                        } catch { /* non-fatal */ }
+                        const msg = encodeURIComponent(`عضوية أسرة مسلم ليدر\nالاسم: ${applyFamilyName || user?.name || ''}\nالإيميل: ${user?.email || ''}\n(أرسل صورة الإيصال)`);
+                        window.open(`https://wa.me/${SUPPORT_WA}?text=${msg}`, '_blank');
+                        setApplyStep('pending');
+                        setApplyLoading(false);
+                      }}
+                      className="w-full py-3 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 active:scale-[0.98]"
+                      style={{ background: '#25D366' }}>
+                      {applyLoading
+                        ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        : <>{isRtl ? '📤 أرسل صورة الإيصال عبر واتساب' : '📤 Send receipt via WhatsApp'}</>}
+                    </button>
+                  </div>
+                  <button onClick={() => setApplyStep('form')} className="text-sm text-gray-400 w-full text-center py-2">
+                    {isRtl ? 'رجوع' : 'Back'}
+                  </button>
+                </div>
+              )}
+
+              {applyStep === 'pending' && (
+                <div className="text-center py-12 bg-amber-50 rounded-2xl border border-amber-200">
+                  <div className="text-5xl mb-3">⏳</div>
+                  <p className="font-black text-gray-900 text-lg mb-2">{isRtl ? 'جاري مراجعة طلبك' : 'Reviewing your request'}</p>
+                  <p className="text-gray-500 text-sm max-w-xs mx-auto">{isRtl ? 'سيتم تفعيل عضويتك بعد التحقق من الدفع. قد يستغرق ذلك حتى ٢٤ ساعة.' : 'Your membership will be activated after payment verification, within 24 hours.'}</p>
+                </div>
+              )}
+
+              {applyStep === 'success' && (
+                <div className="text-center py-12 bg-green-50 rounded-2xl border border-green-200">
+                  <div className="text-5xl mb-3">🎉</div>
+                  <p className="font-black text-gray-900 text-lg mb-2">{isRtl ? 'مبروك! تمت عضويتك' : 'Congratulations! Membership active'}</p>
+                  <p className="text-gray-500 text-sm">{isRtl ? 'يمكنك الآن إضافة أفراد الأسرة عبر لوحة الادمن' : 'Admin can now add family members to your account'}</p>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-5">

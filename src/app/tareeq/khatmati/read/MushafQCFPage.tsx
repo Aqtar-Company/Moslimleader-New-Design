@@ -184,11 +184,11 @@ function MushafLine({ line, family, fontOk, currentChapter, currentVerse, onVers
 
   return (
     <div dir="rtl" style={{
-      textAlign: fontOk ? 'justify' : 'right',
-      textAlignLast: fontOk ? 'justify' : 'right',
-      lineHeight: fontOk ? '2.0' : '2.4',
+      /* white-space: nowrap prevents browser from word-wrapping — page layout stays fixed */
+      whiteSpace: 'nowrap',
+      overflow: 'visible',
+      lineHeight: fontOk ? '1.95' : '2.3',
       padding: '0 10px',
-      wordSpacing: fontOk ? 0 : 2,
     }}>
       {groups.map((g, i) => {
         const active = g.chapterId === currentChapter && g.verseNumber === currentVerse;
@@ -199,15 +199,14 @@ function MushafLine({ line, family, fontOk, currentChapter, currentVerse, onVers
             style={{
               fontFamily: fontOk ? `'${family}'` : NASKH,
               fontSize: fontOk ? 22 : 17,
-              color: '#1a0e00',
-              background: active ? 'rgba(180,140,40,0.22)' : 'transparent',
+              color: active ? '#7a4e00' : '#1a0e00',
+              background: active ? 'rgba(180,140,40,0.18)' : 'transparent',
               borderRadius: 2,
               cursor: 'pointer',
-              padding: active ? '0 2px' : '0',
-              transition: 'background 0.2s',
+              transition: 'background 0.2s, color 0.15s',
               display: 'inline',
             }}>
-            {fontOk ? g.code : g.words.join(' ')}
+            {fontOk ? g.code : (i > 0 ? ' ' + g.words.join(' ') : g.words.join(' '))}
           </span>
         );
       })}
@@ -226,6 +225,9 @@ function EndLine({ words, family, fontOk }: { words: MushafWord[]; family: strin
   );
 }
 
+// Fixed internal render width — the page scales to fit the viewport, never reflows
+const INTERNAL_W = 380;
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function MushafQCFPage({ page, currentChapter, currentVerse, onVerseClick }: Props) {
   const { family, fontOk, ready } = useMushafFont(page);
@@ -233,6 +235,31 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
   const [meta, setMeta] = useState<PageMeta>({ juz: null, hizb: null, surahs: [] });
   const [loading, setLoading] = useState(true);
   const activeRef = useRef<HTMLSpanElement | null>(null);
+
+  // Scale the whole Mushaf page to fit the container — like a PDF page render
+  const wrapRef  = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [scale,  setScale]  = useState(1);
+  const [innerH, setInnerH] = useState(0);
+
+  useEffect(() => {
+    const outer = wrapRef.current;
+    if (!outer) return;
+    const update = () => {
+      const w = outer.offsetWidth;
+      if (w > 0) setScale(w / INTERNAL_W);
+    };
+    update();
+    const obs = new ResizeObserver(update);
+    obs.observe(outer);
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (innerRef.current && lines.length > 0) {
+      setInnerH(innerRef.current.offsetHeight);
+    }
+  }, [lines, ready]);
 
   useEffect(() => {
     setLoading(true);
@@ -261,12 +288,15 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
   }
 
   return (
-    <div style={{
+    /* Outer ref measures available width; height compensates for the CSS transform gap */
+    <div ref={wrapRef} style={{ width: '100%', height: innerH > 0 ? innerH * scale : 'auto', overflow: 'hidden' }}>
+    <div ref={innerRef} style={{
+      width: INTERNAL_W,
+      transformOrigin: 'top left',
+      transform: `scale(${scale.toFixed(5)})`,
       background: '#F9F4E8',
-      minHeight: '100%',
       display: 'flex',
       flexDirection: 'column',
-      padding: '0 2px',
     }}>
       {/* ── Header ── */}
       <div style={{ padding: '6px 12px 2px' }}>
@@ -334,6 +364,7 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
         <div style={{ height: 0.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)' }} />
         <div style={{ height: 1.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)', marginTop: 2 }} />
       </div>
-    </div>
+    </div>  {/* inner scale div */}
+    </div>  {/* outer measure div */}
   );
 }

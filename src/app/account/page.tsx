@@ -61,6 +61,7 @@ export default function AccountPage() {
   // Membership
   const [membership, setMembership] = useState<{ id: string; membershipNumber: string; status: string; familyName: string | null; memberSince: number; startsAt: string | null; expiresAt: string | null; familyMembers: { id: string; name: string; relation: string | null }[] } | null>(null);
   const [membershipLoading, setMembershipLoading] = useState(false);
+  const [perks, setPerks] = useState<{ id: string; title: string; description: string | null; imageUrl: string | null; linkUrl: string | null; validUntil: string | null; createdAt: string }[]>([]);
 
   // Free media downloads
   const [freeMedia, setFreeMedia] = useState<FreeMediaItem[]>([]);
@@ -172,11 +173,19 @@ export default function AccountPage() {
         .catch(() => {})
         .finally(() => setFreeMediaLoading(false));
 
-      // Load membership
+      // Load membership + perks
       setMembershipLoading(true);
       fetch('/api/membership', { credentials: 'include' })
         .then(r => r.json())
-        .then(d => setMembership(d.membership ?? null))
+        .then(d => {
+          setMembership(d.membership ?? null);
+          if (d.membership?.status === 'ACTIVE') {
+            fetch('/api/membership/perks', { credentials: 'include' })
+              .then(r => r.json())
+              .then(pd => setPerks(pd.perks ?? []))
+              .catch(() => {});
+          }
+        })
         .catch(() => {})
         .finally(() => setMembershipLoading(false));
     }
@@ -1166,6 +1175,37 @@ export default function AccountPage() {
                         <div>
                           <p className="font-bold text-gray-900 text-sm">{m.name}</p>
                           {m.relation && <p className="text-xs text-gray-500">{m.relation}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Membership perks */}
+              {membership.status === 'ACTIVE' && perks.length > 0 && (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                  <h3 className="font-black text-gray-900 mb-4">{isRtl ? 'مزايا العضوية' : 'Membership Perks'}</h3>
+                  <div className="space-y-3">
+                    {perks.map(perk => (
+                      <div key={perk.id} className="flex gap-3 p-3 rounded-xl bg-amber-50 border border-amber-100">
+                        {perk.imageUrl && (
+                          <img src={perk.imageUrl} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-gray-900 text-sm">{perk.title}</p>
+                          {perk.description && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{perk.description}</p>}
+                          {perk.validUntil && (
+                            <p className="text-xs text-amber-600 mt-1">
+                              {isRtl ? `صالح حتى: ${new Date(perk.validUntil).toLocaleDateString('ar-EG')}` : `Valid until: ${new Date(perk.validUntil).toLocaleDateString()}`}
+                            </p>
+                          )}
+                          {perk.linkUrl && (
+                            <a href={perk.linkUrl} target="_blank" rel="noopener noreferrer"
+                              className="inline-block mt-1.5 text-xs font-bold text-amber-700 underline">
+                              {isRtl ? 'تفاصيل ←' : 'Details →'}
+                            </a>
+                          )}
                         </div>
                       </div>
                     ))}

@@ -171,23 +171,24 @@ interface LineProps {
 }
 
 function MushafLine({ line, family, fontOk, currentChapter, currentVerse, onVerseClick, activeRef }: LineProps) {
-  const groups: { chapterId: number; verseNumber: number; code: string; text: string }[] = [];
+  const groups: { chapterId: number; verseNumber: number; code: string; words: string[] }[] = [];
   for (const w of line.words) {
     const last = groups[groups.length - 1];
     if (last && last.chapterId === w.chapterId && last.verseNumber === w.verseNumber) {
       last.code += w.codeV1;
-      last.text += w.text;
+      if (w.text) last.words.push(w.text);
     } else {
-      groups.push({ chapterId: w.chapterId, verseNumber: w.verseNumber, code: w.codeV1, text: w.text });
+      groups.push({ chapterId: w.chapterId, verseNumber: w.verseNumber, code: w.codeV1, words: w.text ? [w.text] : [] });
     }
   }
 
   return (
     <div dir="rtl" style={{
-      textAlign: 'justify', textAlignLast: 'justify',
-      lineHeight: fontOk ? '2.0' : '2.3',
+      textAlign: fontOk ? 'justify' : 'right',
+      textAlignLast: fontOk ? 'justify' : 'right',
+      lineHeight: fontOk ? '2.0' : '2.4',
       padding: '0 10px',
-      minHeight: fontOk ? 38 : 44,
+      wordSpacing: fontOk ? 0 : 2,
     }}>
       {groups.map((g, i) => {
         const active = g.chapterId === currentChapter && g.verseNumber === currentVerse;
@@ -206,7 +207,7 @@ function MushafLine({ line, family, fontOk, currentChapter, currentVerse, onVers
               transition: 'background 0.2s',
               display: 'inline',
             }}>
-            {fontOk ? g.code : g.text}
+            {fontOk ? g.code : g.words.join(' ')}
           </span>
         );
       })}

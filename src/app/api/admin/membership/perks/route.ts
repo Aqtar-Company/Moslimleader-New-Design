@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
+import { getTransporter } from '@/lib/smtp';
 
 export async function GET(req: NextRequest) {
   const user = await getAuthUser().catch(() => null);
@@ -57,7 +58,47 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Notify active members by email (fire-and-forget)
+  if (perk.isActive) {
+    notifyActiveMembers(perk).catch(() => {});
+  }
+
   return NextResponse.json({ perk });
+}
+
+async function notifyActiveMembers(perk: { title: string; description: string | null; imageUrl: string | null; linkUrl: string | null }) {
+  const now = new Date();
+  const activeMemberships = await prisma.familyMembership.findMany({
+    where: { status: 'ACTIVE', expiresAt: { gt: now } },
+    select: { owner: { select: { email: true } } },
+  });
+
+  const fromEmail = process.env.SMTP_USER || 'orders@moslimleader.com';
+  const transporter = getTransporter();
+
+  for (const m of activeMemberships) {
+    const { email } = m.owner;
+    if (!email) continue;
+    const html = `
+      <div dir="rtl" style="font-family:Cairo,Arial,sans-serif;max-width:560px;margin:auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #eee;">
+        <div style="background:linear-gradient(135deg,#1a1a2e,#0f3460);padding:24px 28px;text-align:center;">
+          <p style="color:#FFCC00;font-size:22px;font-weight:900;margin:0;">ميزة جديدة لعضويتك ✨</p>
+        </div>
+        ${perk.imageUrl ? `<img src="${perk.imageUrl}" alt="" style="width:100%;max-height:220px;object-fit:cover;">` : ''}
+        <div style="padding:24px 28px;">
+          <p style="font-size:18px;font-weight:800;color:#1a1a2e;margin:0 0 10px;">${perk.title}</p>
+          ${perk.description ? `<p style="color:#555;font-size:14px;line-height:1.7;margin:0 0 16px;">${perk.description}</p>` : ''}
+          ${perk.linkUrl ? `<a href="${perk.linkUrl}" style="display:inline-block;background:#FFCC00;color:#1a1a2e;font-weight:800;padding:10px 24px;border-radius:8px;text-decoration:none;font-size:14px;">اكتشف التفاصيل</a>` : ''}
+          <p style="color:#888;font-size:12px;margin:20px 0 0;">يمكنك مشاهدة جميع مزايا عضويتك في <a href="https://moslimleader.com/account" style="color:#FFCC00;">حسابك</a></p>
+        </div>
+      </div>`;
+    await transporter.sendMail({
+      from: `"مسلم ليدر" <${fromEmail}>`,
+      to: email,
+      subject: `ميزة جديدة لعضويتك: ${perk.title}`,
+      html,
+    }).catch(() => {});
+  }
 }
 
 export async function PUT(req: NextRequest) {

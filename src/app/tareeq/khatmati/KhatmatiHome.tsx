@@ -22,7 +22,7 @@ const DRAFT_PAGES_KEY = 'nuri-daily-pages';
 function LampRing({ pct, wardDone, lanternLit, lanternLevel, children }: {
   pct: number; wardDone: boolean; lanternLit: boolean; lanternLevel: number; children: React.ReactNode;
 }) {
-  const R = 78; const S = 180; const C = S / 2;
+  const R = 100; const S = 220; const C = S / 2;
   const circ = 2 * Math.PI * R;
   const offset = circ * (1 - pct / 100);
   const glowing = wardDone || lanternLit;
@@ -153,7 +153,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
         const img = new window.Image(); img.onload = () => res(img); img.onerror = rej; img.src = src;
       });
       const [lanternImg, logoImg] = await Promise.all([
-        loadImg(`/${lanternLevel}-light.png`),
+        loadImg(`/${pctLevel}-light.png`),
         loadImg('/Tareeq-small.png').catch(() => null),
       ]);
       const grad = ctx.createLinearGradient(0, 0, 0, 900);
@@ -204,6 +204,10 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
     : state === 'dim' ? Math.max(0, Math.min(streak - 1, 4))
     : Math.min(streak, 4);
 
+  // pct-based illumination: image and overlay
+  const pctLevel = pct === 0 ? 0 : Math.min(4, Math.ceil(pct * 4 / 100));
+  const overlayOpacity = Math.max(0, 0.5 * (1 - pct / 100));
+
   const wardDone   = state === 'bright';
   const wardMissed = state === 'dark' && p !== null;
 
@@ -225,13 +229,15 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
         .nuri-scroll::-webkit-scrollbar { display: none; }
       `}</style>
 
+      {/* Fixed dark background — always covers the full viewport regardless of scroll */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: -1, background: `linear-gradient(170deg, #0d2145 0%, #071830 35%, ${BG_DEEP} 65%, #060f1c 100%)`, backgroundColor: BG_DEEP, pointerEvents: 'none' }} />
+
       <div
         dir={isRtl ? 'rtl' : 'ltr'}
         style={{
           minHeight: '100dvh',
           display: 'flex', flexDirection: 'column',
-          background: `linear-gradient(170deg, #0d2145 0%, #071830 35%, ${BG_DEEP} 65%, #060f1c 100%)`,
-          backgroundColor: BG_DEEP,
+          backgroundColor: 'transparent',
           paddingBottom: 90,
         }}
       >
@@ -273,17 +279,25 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, paddingBlock: 18, flexShrink: 0 }}>
           <LampRing pct={pct} wardDone={wardDone} lanternLit={lanternLit} lanternLevel={lanternLevel}>
             <img
-              src={`/${lanternLit ? 4 : lanternLevel}-light.png`}
+              src={`/${lanternLit ? 4 : pctLevel}-light.png`}
               alt=""
               draggable={false}
               onClick={() => { setLanternLit(true); setTimeout(() => setLanternLit(false), 2000); }}
               style={{
-                width: 106, height: 106, objectFit: 'contain', position: 'relative', zIndex: 1,
+                width: 150, height: 150, objectFit: 'contain', position: 'relative', zIndex: 1,
                 animation: (wardDone || lanternLit) ? 'nuri-float 4s ease-in-out infinite' : 'none',
-                filter: (wardDone || lanternLit) ? 'drop-shadow(0 0 18px rgba(255,204,0,0.5))' : 'none',
+                filter: (wardDone || lanternLit) ? 'drop-shadow(0 0 24px rgba(255,204,0,0.6))' : 'none',
                 cursor: 'pointer', transition: 'filter 0.4s',
               }}
             />
+            {/* Pct-based dim overlay — 50% at 0%, fades to 0 at 100% */}
+            {overlayOpacity > 0.02 && (
+              <div style={{
+                position: 'absolute', inset: 20, borderRadius: '50%',
+                background: `rgba(5,16,31,${overlayOpacity.toFixed(2)})`,
+                zIndex: 2, transition: 'opacity 1s ease', pointerEvents: 'none',
+              }} />
+            )}
           </LampRing>
 
           {/* Tagline */}

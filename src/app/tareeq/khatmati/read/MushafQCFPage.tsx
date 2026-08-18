@@ -24,6 +24,7 @@ interface Props {
   currentChapter: number;
   currentVerse: number;
   onVerseClick?: (chapter: number, verse: number) => void;
+  autoFollow?: boolean;
 }
 
 const SURAH_AR: Record<number, string> = {
@@ -132,32 +133,30 @@ function buildSegments(lines: MushafLineData[]): PageSegment[] {
   return segments;
 }
 
-// ── Surah banner ─────────────────────────────────────────────────────────────
+// ── Surah banner — uses uploaded ornamental SVG frame ────────────────────────
 function SurahBanner({ surahId }: { surahId: number }) {
   const name = SURAH_AR[surahId] ?? '';
   return (
-    <div style={{ margin: '12px 0 6px', position: 'relative' }}>
-      <svg viewBox="0 0 320 64" width="100%" height="64" xmlns="http://www.w3.org/2000/svg"
-        style={{ display: 'block', position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-        preserveAspectRatio="none">
-        <rect x="0" y="0" width="320" height="64" fill="#2e1e0b" rx="2"/>
-        <rect x="2" y="2" width="316" height="60" fill="none" stroke="#c8a84b" strokeWidth="1.5" rx="1.5"/>
-        <rect x="7" y="7" width="306" height="50" fill="none" stroke="#c8a84b" strokeWidth="0.5" rx="1"/>
-        <polygon points="160,2 165,8 160,14 155,8" fill="#c8a84b"/>
-        <polygon points="160,50 165,56 160,62 155,56" fill="#c8a84b"/>
-        <polygon points="2,32 8,26 14,32 8,38" fill="#c8a84b"/>
-        <polygon points="318,32 312,26 306,32 312,38" fill="#c8a84b"/>
-        <polygon points="2,2 16,2 2,16" fill="#c8a84b" opacity="0.6"/>
-        <polygon points="318,2 304,2 318,16" fill="#c8a84b" opacity="0.6"/>
-        <polygon points="2,62 16,62 2,48" fill="#c8a84b" opacity="0.6"/>
-        <polygon points="318,62 304,62 318,48" fill="#c8a84b" opacity="0.6"/>
-        <line x1="20" y1="5" x2="62" y2="5" stroke="#c8a84b" strokeWidth="0.5" opacity="0.5"/>
-        <line x1="258" y1="5" x2="300" y2="5" stroke="#c8a84b" strokeWidth="0.5" opacity="0.5"/>
-        <line x1="20" y1="59" x2="62" y2="59" stroke="#c8a84b" strokeWidth="0.5" opacity="0.5"/>
-        <line x1="258" y1="59" x2="300" y2="59" stroke="#c8a84b" strokeWidth="0.5" opacity="0.5"/>
-      </svg>
-      <div style={{ position: 'relative', zIndex: 1, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ fontFamily: QURAN_FONT, fontSize: 20, fontWeight: 700, color: '#fff', letterSpacing: 1 }}>
+    <div dir="rtl" style={{ margin: '14px 6px 8px', position: 'relative', lineHeight: 0 }}>
+      {/* The uploaded gold frame SVG from public/surah_header_mushaf.svg */}
+      <img
+        src="/surah_header_mushaf.svg"
+        alt=""
+        aria-hidden="true"
+        style={{ display: 'block', width: '100%', height: 'auto' }}
+      />
+      <div style={{
+        position: 'absolute', inset: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <span style={{
+          fontFamily: QURAN_FONT,
+          fontSize: 'clamp(13px, 3.8vw, 20px)',
+          fontWeight: 700,
+          color: '#1a0800',
+          letterSpacing: 2,
+          lineHeight: 1,
+        }}>
           سورة {name}
         </span>
       </div>
@@ -197,13 +196,13 @@ interface TextBlockProps {
 function QuranTextBlock({ verses, currentChapter, currentVerse, onVerseClick, activeRef }: TextBlockProps) {
   return (
     <div dir="rtl" style={{
-      padding: '0 14px',
+      padding: '2px 16px 4px',
       fontFamily: QURAN_FONT,
-      fontSize: 19,
-      lineHeight: 2.65,
-      color: '#1a0e00',
+      fontSize: 20,
+      lineHeight: 2.8,
+      color: '#1a0800',
       textAlign: 'justify',
-      wordSpacing: 4,
+      wordSpacing: 3,
     }}>
       {verses.map((v, vi) => {
         const active = v.chapterId === currentChapter && v.verseNumber === currentVerse;
@@ -213,11 +212,12 @@ function QuranTextBlock({ verses, currentChapter, currentVerse, onVerseClick, ac
             ref={active ? activeRef : null}
             onClick={() => onVerseClick?.(v.chapterId, v.verseNumber)}
             style={{
-              background: active ? 'rgba(180,140,40,0.22)' : 'transparent',
-              borderRadius: active ? 4 : 0,
+              background: active ? 'rgba(171,136,68,0.18)' : 'transparent',
+              borderRadius: 5,
+              padding: active ? '1px 3px' : '0',
               cursor: 'pointer',
               display: 'inline',
-              transition: 'background 0.25s',
+              transition: 'background 0.3s',
             }}
           >
             {vi > 0 ? ' ' : ''}
@@ -225,8 +225,9 @@ function QuranTextBlock({ verses, currentChapter, currentVerse, onVerseClick, ac
             {' '}
             <span style={{
               fontFamily: QURAN_FONT,
-              fontSize: '0.78em',
-              color: active ? '#7a4e00' : '#8B6914',
+              fontSize: '0.72em',
+              verticalAlign: 'middle',
+              color: active ? '#6b3e00' : '#9b7830',
               display: 'inline',
             }}>
               {'۝'}{toEastern(v.verseNumber)}
@@ -239,7 +240,7 @@ function QuranTextBlock({ verses, currentChapter, currentVerse, onVerseClick, ac
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
-export default function MushafQCFPage({ page, currentChapter, currentVerse, onVerseClick }: Props) {
+export default function MushafQCFPage({ page, currentChapter, currentVerse, onVerseClick, autoFollow = true }: Props) {
   const [lines, setLines] = useState<MushafLineData[]>([]);
   const [meta, setMeta] = useState<PageMeta>({ juz: null, hizb: null, surahs: [] });
   const [loading, setLoading] = useState(true);
@@ -254,8 +255,8 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
   }, [page]);
 
   useEffect(() => {
-    if (activeRef.current) activeRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }, [currentVerse, currentChapter]);
+    if (autoFollow && activeRef.current) activeRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [currentVerse, currentChapter, autoFollow]);
 
   const segments = useMemo(() => buildSegments(lines), [lines]);
 

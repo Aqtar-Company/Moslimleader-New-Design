@@ -68,44 +68,11 @@ function toEastern(n: number) {
   return String(n).replace(/[0-9]/g, d => '٠١٢٣٤٥٦٧٨٩'[parseInt(d)]);
 }
 
-// Naskh font stack for fallback rendering
-const NASKH = `'Noto Naskh Arabic', 'Arabic Typesetting', 'Scheherazade New', serif`;
+const QURAN_FONT = `'Amiri Quran', 'Scheherazade New', 'Traditional Arabic', serif`;
+const LABEL_FONT = `'Amiri', 'Scheherazade New', serif`;
 
-// ── Font loader ──────────────────────────────────────────────────────────────
-function useMushafFont(page: number) {
-  const [fontOk, setFontOk] = useState(false);
-  const [ready, setReady] = useState(false);
-  const family = `QCF4_p${String(page).padStart(3, '0')}`;
-
-  useEffect(() => {
-    setReady(false);
-    setFontOk(false);
-    const styleId = `qcf4-${page}`;
-    if (document.getElementById(styleId)) {
-      setFontOk(true); setReady(true); return;
-    }
-    const face = new FontFace(family, `url('/api/tareeq/quran/qcf-font?page=${page}') format('woff2')`);
-    face.load()
-      .then(f => {
-        (document.fonts as FontFaceSet).add(f);
-        const s = document.createElement('style');
-        s.id = styleId;
-        s.textContent = `@font-face{font-family:'${family}';src:url('/api/tareeq/quran/qcf-font?page=${page}')format('woff2');font-display:block;}`;
-        document.head.appendChild(s);
-        setFontOk(true);
-      })
-      .catch(() => setFontOk(false))
-      .finally(() => setReady(true));
-  }, [page, family]);
-
-  return { family, fontOk, ready };
-}
-
-// ── Surah name banner ────────────────────────────────────────────────────────
-function SurahBanner({ words, family, fontOk, surahId }: {
-  words: MushafWord[]; family: string; fontOk: boolean; surahId: number;
-}) {
-  const glyph = words.map(w => w.codeV1).join('');
+// ── Surah name banner ─────────────────────────────────────────────────────────
+function SurahBanner({ surahId }: { surahId: number }) {
   const name = SURAH_AR[surahId] ?? '';
   return (
     <div style={{ margin: '10px 0 6px', position: 'relative' }}>
@@ -128,67 +95,56 @@ function SurahBanner({ words, family, fontOk, surahId }: {
         <line x1="22" y1="63" x2="65" y2="63" stroke="#c8a84b" strokeWidth="0.5" opacity="0.5"/>
         <line x1="255" y1="63" x2="298" y2="63" stroke="#c8a84b" strokeWidth="0.5" opacity="0.5"/>
       </svg>
-      <div style={{ position: 'relative', zIndex: 1, height: 68, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 20px' }}>
-        {fontOk && glyph ? (
-          <span style={{ fontFamily: `'${family}'`, fontSize: 28, color: '#fff', lineHeight: 1 }}>
-            {glyph}
-          </span>
-        ) : (
-          <span style={{ fontFamily: NASKH, fontSize: 19, fontWeight: 700, color: '#fff', letterSpacing: 1 }}>
-            سورة {name}
-          </span>
-        )}
+      <div style={{ position: 'relative', zIndex: 1, height: 68, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ fontFamily: QURAN_FONT, fontSize: 20, fontWeight: 700, color: '#fff', letterSpacing: 1 }}>
+          سورة {name}
+        </span>
       </div>
     </div>
   );
 }
 
 // ── Bismillah line ────────────────────────────────────────────────────────────
-function BismillahLine({ words, family, fontOk }: { words: MushafWord[]; family: string; fontOk: boolean }) {
-  const glyph = words.map(w => w.codeV1).join('');
+function BismillahLine() {
   return (
-    <div style={{ textAlign: 'center', padding: '4px 0 2px', direction: 'rtl' }}>
-      {fontOk && glyph ? (
-        <span style={{ fontFamily: `'${family}'`, fontSize: 24, lineHeight: 2, color: '#1a0e00' }}>{glyph}</span>
-      ) : (
-        <span style={{ fontFamily: NASKH, fontSize: 18, lineHeight: 2.2, color: '#1a0e00' }}>
-          بِسْمِ اللَّهِ الرَّحْمَـٰنِ الرَّحِيمِ
-        </span>
-      )}
+    <div style={{ textAlign: 'center', padding: '6px 0 4px', direction: 'rtl' }}>
+      <span style={{ fontFamily: QURAN_FONT, fontSize: 20, lineHeight: 2.2, color: '#1a0e00' }}>
+        بِسۡمِ ٱللَّهِ ٱلرَّحۡمَـٰنِ ٱلرَّحِیمِ
+      </span>
     </div>
   );
 }
 
-// ── Regular line ──────────────────────────────────────────────────────────────
+// ── Regular Mushaf line ───────────────────────────────────────────────────────
 interface LineProps {
   line: MushafLineData;
-  family: string;
-  fontOk: boolean;
   currentChapter: number;
   currentVerse: number;
   onVerseClick?: (ch: number, v: number) => void;
   activeRef: React.MutableRefObject<HTMLSpanElement | null>;
 }
 
-function MushafLine({ line, family, fontOk, currentChapter, currentVerse, onVerseClick, activeRef }: LineProps) {
-  const groups: { chapterId: number; verseNumber: number; code: string; words: string[] }[] = [];
+function MushafLine({ line, currentChapter, currentVerse, onVerseClick, activeRef }: LineProps) {
+  // Group consecutive words by verse
+  const groups: { chapterId: number; verseNumber: number; text: string }[] = [];
   for (const w of line.words) {
+    if (!w.text) continue;
     const last = groups[groups.length - 1];
     if (last && last.chapterId === w.chapterId && last.verseNumber === w.verseNumber) {
-      last.code += w.codeV1;
-      if (w.text) last.words.push(w.text);
+      last.text += ' ' + w.text;
     } else {
-      groups.push({ chapterId: w.chapterId, verseNumber: w.verseNumber, code: w.codeV1, words: w.text ? [w.text] : [] });
+      groups.push({ chapterId: w.chapterId, verseNumber: w.verseNumber, text: w.text });
     }
   }
+  if (!groups.length) return null;
 
   return (
     <div dir="rtl" style={{
-      textAlign: fontOk ? 'justify' : 'right',
-      textAlignLast: fontOk ? 'justify' : 'right',
-      lineHeight: fontOk ? '2.0' : '2.4',
-      padding: '0 10px',
-      wordSpacing: fontOk ? 0 : 2,
+      textAlign: 'justify',
+      textAlignLast: 'justify',
+      lineHeight: 2.4,
+      padding: '0 12px',
+      wordSpacing: 3,
     }}>
       {groups.map((g, i) => {
         const active = g.chapterId === currentChapter && g.verseNumber === currentVerse;
@@ -197,17 +153,17 @@ function MushafLine({ line, family, fontOk, currentChapter, currentVerse, onVers
             ref={active ? activeRef : null}
             onClick={() => onVerseClick?.(g.chapterId, g.verseNumber)}
             style={{
-              fontFamily: fontOk ? `'${family}'` : NASKH,
-              fontSize: fontOk ? 22 : 17,
-              color: '#1a0e00',
+              fontFamily: QURAN_FONT,
+              fontSize: 19,
+              color: active ? '#7a4e00' : '#1a0e00',
               background: active ? 'rgba(180,140,40,0.22)' : 'transparent',
-              borderRadius: 2,
+              borderRadius: 3,
               cursor: 'pointer',
-              padding: active ? '0 2px' : '0',
-              transition: 'background 0.2s',
+              padding: active ? '0 3px' : '0',
+              transition: 'background 0.2s, color 0.2s',
               display: 'inline',
             }}>
-            {fontOk ? g.code : g.words.join(' ')}
+            {i > 0 ? ' ' : ''}{g.text}
           </span>
         );
       })}
@@ -215,20 +171,17 @@ function MushafLine({ line, family, fontOk, currentChapter, currentVerse, onVers
   );
 }
 
-// ── End-of-surah ──────────────────────────────────────────────────────────────
-function EndLine({ words, family, fontOk }: { words: MushafWord[]; family: string; fontOk: boolean }) {
-  const glyph = words.map(w => w.codeV1).join('');
-  if (!fontOk || !glyph) return null;
+// ── End-of-surah ornament ─────────────────────────────────────────────────────
+function EndLine() {
   return (
-    <div style={{ textAlign: 'center', padding: '2px 0', color: '#7a5200' }}>
-      <span style={{ fontFamily: `'${family}'`, fontSize: 20, lineHeight: 2 }}>{glyph}</span>
+    <div style={{ textAlign: 'center', padding: '4px 0', color: '#c8a84b', fontSize: 14, letterSpacing: 6 }}>
+      ❧ ﴾ ❧
     </div>
   );
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// ── Main ─────────────────────────────────────────────────────────────────────
 export default function MushafQCFPage({ page, currentChapter, currentVerse, onVerseClick }: Props) {
-  const { family, fontOk, ready } = useMushafFont(page);
   const [lines, setLines] = useState<MushafLineData[]>([]);
   const [meta, setMeta] = useState<PageMeta>({ juz: null, hizb: null, surahs: [] });
   const [loading, setLoading] = useState(true);
@@ -250,30 +203,24 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
     ? meta.surahs.map(id => SURAH_AR[id] ?? '').filter(Boolean).join(' و')
     : (SURAH_AR[meta.surahs[0] ?? currentChapter] ?? '');
 
-  if (loading || !ready) {
+  if (loading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: 12 }}>
-        <div style={{ width: 30, height: 30, borderRadius: '50%', border: '2.5px solid rgba(200,168,75,0.2)', borderTopColor: '#c8a84b', animation: 'ms-spin 0.7s linear infinite' }} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
         <style>{`@keyframes ms-spin{to{transform:rotate(360deg)}}`}</style>
-        <span style={{ fontSize: 13, color: '#8a7050', fontFamily: NASKH }}>جاري تحميل الصفحة…</span>
+        <div style={{ width: 30, height: 30, borderRadius: '50%', border: '2.5px solid rgba(200,168,75,0.2)', borderTopColor: '#c8a84b', animation: 'ms-spin 0.7s linear infinite' }} />
       </div>
     );
   }
 
   return (
-    <div style={{
-      background: '#F9F4E8',
-      minHeight: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      padding: '0 2px',
-    }}>
+    <div style={{ background: '#F9F4E8', minHeight: '100%', display: 'flex', flexDirection: 'column', padding: '0 2px' }}>
+
       {/* ── Header ── */}
       <div style={{ padding: '6px 12px 2px' }}>
         <div style={{ height: 1.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)' }} />
         <div style={{ height: 0.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)', marginTop: 2 }} />
         <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '3px 4px' }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#5a3e10', fontFamily: NASKH }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#5a3e10', fontFamily: LABEL_FONT }}>
             {meta.juz ? juzName(meta.juz) : ''}
           </span>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -281,7 +228,7 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
             <path d="M20 4h-6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6V4z" fill="#c8a84b" opacity="0.5"/>
             <line x1="12" y1="6" x2="12" y2="18" stroke="#fff" strokeWidth="0.8"/>
           </svg>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#5a3e10', fontFamily: NASKH }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#5a3e10', fontFamily: LABEL_FONT }}>
             {surahHeaderLabel}
           </span>
         </div>
@@ -296,17 +243,17 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
           const surahId = line.words[0]?.chapterId ?? currentChapter;
 
           if (types.has('chapter_name') || types.has('surah_name')) {
-            return <SurahBanner key={idx} words={line.words} family={family} fontOk={fontOk} surahId={surahId} />;
+            return <SurahBanner key={idx} surahId={surahId} />;
           }
           if (types.has('bismillah')) {
-            return <BismillahLine key={idx} words={line.words} family={family} fontOk={fontOk} />;
+            return <BismillahLine key={idx} />;
           }
           const hasWords = line.words.some(w => w.charType === 'word' || w.charType === 'end');
           if (!hasWords) {
-            return <EndLine key={idx} words={line.words} family={family} fontOk={fontOk} />;
+            return <EndLine key={idx} />;
           }
           return (
-            <MushafLine key={idx} line={line} family={family} fontOk={fontOk}
+            <MushafLine key={idx} line={line}
               currentChapter={currentChapter} currentVerse={currentVerse}
               onVerseClick={onVerseClick} activeRef={activeRef}
             />
@@ -319,12 +266,12 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
         <div style={{ height: 1.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)' }} />
         <div style={{ height: 0.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)', marginTop: 2 }} />
         <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '3px 4px' }}>
-          <span style={{ fontSize: 11, color: '#5a3e10', fontFamily: NASKH, fontWeight: 600 }}>
+          <span style={{ fontSize: 11, color: '#5a3e10', fontFamily: LABEL_FONT, fontWeight: 600 }}>
             {meta.hizb ? `الحزب ${toEastern(meta.hizb)}` : ''}
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <span style={{ fontSize: 9, color: '#c8a84b' }}>◆</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#5a3e10', fontFamily: NASKH }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#5a3e10', fontFamily: LABEL_FONT }}>
               {toEastern(page)}
             </span>
             <span style={{ fontSize: 9, color: '#c8a84b' }}>◆</span>
@@ -334,6 +281,7 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
         <div style={{ height: 0.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)' }} />
         <div style={{ height: 1.5, background: 'linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent)', marginTop: 2 }} />
       </div>
+
     </div>
   );
 }

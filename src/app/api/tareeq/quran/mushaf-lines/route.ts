@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const res = await fetch(
-      `https://api.quran.com/api/v4/verses/by_page/${page}?words=true&word_fields=text_uthmani,code_v1,line_number,char_type_name&fields=verse_number,chapter_id&per_page=50`,
+      `https://api.quran.com/api/v4/verses/by_page/${page}?words=true&word_fields=text_uthmani,code_v1,line_number,char_type_name&fields=verse_number,chapter_id,juz_number,hizb_number&per_page=50`,
       { signal: AbortSignal.timeout(8000) },
     );
     if (!res.ok) throw new Error(`upstream ${res.status}`);
@@ -30,6 +30,8 @@ export async function GET(req: NextRequest) {
     const verses: Array<{
       verse_number: number;
       chapter_id: number;
+      juz_number?: number;
+      hizb_number?: number;
       words: Array<{ text_uthmani: string; code_v1: string; line_number: number; char_type_name: string }>;
     }> = data.verses ?? [];
 
@@ -57,7 +59,12 @@ export async function GET(req: NextRequest) {
       .sort(([a], [b]) => a - b)
       .map(([lineNum, words]) => ({ lineNum, words }));
 
-    return NextResponse.json({ lines }, {
+    // Page-level metadata
+    const juz = verses[0]?.juz_number ?? null;
+    const hizb = verses[0]?.hizb_number ?? null;
+    const surahs = [...new Set(verses.map(v => v.chapter_id))];
+
+    return NextResponse.json({ lines, meta: { juz, hizb, surahs } }, {
       headers: { 'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800' },
     });
   } catch (err) {

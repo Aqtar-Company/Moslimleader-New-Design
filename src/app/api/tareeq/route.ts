@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { CATEGORY_KEY } from '@/lib/tareeq-constants';
+import { filterContent, validateMediaUrl } from '@/lib/tareeq-content-filter';
 
 // GET /api/tareeq?cursor=xxx&category=xxx&limit=12&likedBy=userId&sort=newest|liked|following|useful
 export async function GET(req: NextRequest) {
@@ -186,6 +187,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'النص طويل جداً (5000 حرف كحد أقصى)' }, { status: 400 });
   }
 
+  // Media URL domain validation
+  const allImageUrls = [imageUrl, ...(imageUrls ?? [])].filter(Boolean) as string[];
+  for (const u of allImageUrls) {
+    if (!validateMediaUrl(u, 'image')) {
+      return NextResponse.json({ error: 'رابط الصورة غير مسموح به' }, { status: 400 });
+    }
+  }
+  if (videoUrl && !validateMediaUrl(videoUrl, 'video')) {
+    return NextResponse.json({ error: 'رابط الفيديو غير مسموح به' }, { status: 400 });
+  }
+
+  // Content filter
+  const textToCheck = [content, title, summary].filter(Boolean).join(' ');
+  const filterResult = filterContent(textToCheck);
+  const autoHide = filterResult.flagged;
+
   const dbUser = await prisma.user.findUnique({ where: { id: user.userId }, select: { name: true, avatarUrl: true } });
 
   // Series: resolve or create seriesId from seriesTitle
@@ -220,8 +237,9 @@ export async function POST(req: NextRequest) {
       userId: user.userId,
       authorName: dbUser?.name ?? 'مجهول',
       ...(seriesId ? { seriesId, seriesTitle: rawSeriesTitle, seriesOrder } : {}),
+      ...(autoHide ? { isHidden: true, hiddenReason: filterResult.reason ?? 'auto-filter' } : {}),
     },
   });
 
-  return NextResponse.json({ ok: true, id: post.id });
+  return NextResponse.json({ ok: true, id: post.id, flagged: autoHide });
 }

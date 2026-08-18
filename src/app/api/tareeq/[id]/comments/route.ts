@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { sendPushToUser } from '@/lib/tareeq-push';
+import { filterContent } from '@/lib/tareeq-content-filter';
 
 // GET /api/tareeq/[id]/comments?cursor=xxx
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -14,7 +15,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const limit = 50;
 
   const comments = await prisma.tareeqComment.findMany({
-    where: { postId: params.id },
+    where: { postId: params.id, isHidden: false },
     orderBy: { createdAt: 'asc' },
     take: limit + 1,
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -45,12 +46,18 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (content.length < 2) return NextResponse.json({ error: 'اكتب تعليقك' }, { status: 400 });
   if (content.length > 500) return NextResponse.json({ error: 'التعليق طويل جداً' }, { status: 400 });
 
+  const commentFilter = filterContent(content);
+  const commentAutoHide = commentFilter.flagged;
+
   const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { id: true, userId: true, title: true, imageUrl: true } });
   if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
 
   const [comment] = await prisma.$transaction([
     prisma.tareeqComment.create({
-      data: { postId: params.id, userId: user.userId, content },
+      data: {
+        postId: params.id, userId: user.userId, content,
+        ...(commentAutoHide ? { isHidden: true, hiddenBy: 'auto-filter' } : {}),
+      },
       select: {
         id: true, content: true, createdAt: true, userId: true,
         user: { select: { id: true, name: true } },

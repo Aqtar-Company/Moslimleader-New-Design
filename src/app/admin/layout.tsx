@@ -38,6 +38,7 @@ const NAV: NavItem[] = [
   { href: '/admin/production-files',  label: 'ملفات الإنتاج',     icon: '📁', requireAny: ['production-files.read'] },
   { href: '/admin/suppliers',         label: 'الموردون',          icon: '🤝', requireAny: ['suppliers.read'] },
   // —— Customers & marketing ——
+  { href: '/admin/membership',        label: 'العضويات',           icon: '🏅', requireAny: ['customers.read'] },
   { href: '/admin/customers',         label: 'قاعدة العملاء',     icon: '👥', requireAny: ['customers.read'] },
   { href: '/admin/wholesale',         label: 'تجار الجملة',       icon: '🏪', requireAny: ['wholesale.read'] },
   { href: '/admin/team',              label: 'الفريق والرواتب',   icon: '💼', requireAny: ['team.read'] },

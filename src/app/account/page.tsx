@@ -68,6 +68,7 @@ export default function AccountPage() {
   const [membershipLoading, setMembershipLoading] = useState(false);
   const [perks, setPerks] = useState<{ id: string; title: string; description: string | null; imageUrl: string | null; linkUrl: string | null; validUntil: string | null; createdAt: string }[]>([]);
   const [membershipZone, setMembershipZone] = useState<'egypt' | 'international'>('international');
+  const [membershipPrices, setMembershipPrices] = useState({ egyEgp: 100, egyUsd: 2.00, intlUsd: 5.00 });
   const [applyStep, setApplyStep] = useState<'idle' | 'form' | 'paypal' | 'instapay' | 'pending' | 'success'>('idle');
   const [applyFamilyName, setApplyFamilyName] = useState('');
   const [applyLoading, setApplyLoading] = useState(false);
@@ -182,11 +183,17 @@ export default function AccountPage() {
         .catch(() => {})
         .finally(() => setFreeMediaLoading(false));
 
-      // Detect zone for membership pricing
+      // Detect zone for membership pricing (uses IP-detected country from RegionalPricingContext)
       try {
-        const cc = localStorage.getItem('originCountryCode');
+        const cc = localStorage.getItem('originCountryCode') ?? localStorage.getItem('ml-pricing-origin');
         setMembershipZone(cc === 'EG' ? 'egypt' : 'international');
       } catch { /* ignore */ }
+
+      // Fetch membership prices from admin-controlled settings
+      fetch('/api/membership/price')
+        .then(r => r.json())
+        .then(d => setMembershipPrices({ egyEgp: d.egyEgp ?? 100, egyUsd: d.egyUsd ?? 2, intlUsd: d.intlUsd ?? 5 }))
+        .catch(() => {});
 
       // Load membership + perks
       setMembershipLoading(true);
@@ -1237,18 +1244,17 @@ export default function AccountPage() {
                           <p className="font-black text-gray-900 text-base mt-0.5">{isRtl ? 'اشترك الآن' : 'Subscribe Now'}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-2xl font-black" style={{ color: '#1a3a2e' }}>{membershipZone === 'egypt' ? '١٠٠ جنيه' : '$5'}</p>
+                          <p className="text-2xl font-black" style={{ color: '#1a3a2e' }}>
+                            {membershipZone === 'egypt'
+                              ? (isRtl ? `${membershipPrices.egyEgp} جنيه` : `${membershipPrices.egyEgp} EGP`)
+                              : `$${membershipPrices.intlUsd}`}
+                          </p>
                           <p className="text-xs text-gray-400">{isRtl ? '/ سنة' : '/ year'}</p>
                         </div>
                       </div>
-                      <div className="flex rounded-xl overflow-hidden mb-4" style={{ border: '1px solid #e5e7eb' }}>
-                        {(['egypt', 'international'] as const).map(z => (
-                          <button key={z} onClick={() => setMembershipZone(z)}
-                            className="flex-1 py-2 text-xs font-bold transition"
-                            style={{ background: membershipZone === z ? '#1a3a2e' : 'transparent', color: membershipZone === z ? 'white' : '#6b7280' }}>
-                            {z === 'egypt' ? (isRtl ? '🇪🇬 داخل مصر' : '🇪🇬 Egypt') : (isRtl ? '🌍 خارج مصر' : '🌍 International')}
-                          </button>
-                        ))}
+                      <div className="flex items-center gap-2 mb-4 text-xs text-gray-400 py-2 border-t border-gray-100">
+                        <span>{membershipZone === 'egypt' ? '🇪🇬' : '🌍'}</span>
+                        <span>{membershipZone === 'egypt' ? (isRtl ? 'داخل مصر — تم اكتشاف موقعك تلقائياً' : 'Egypt — location auto-detected') : (isRtl ? 'خارج مصر — تم اكتشاف موقعك تلقائياً' : 'International — location auto-detected')}</span>
                       </div>
                       <button onClick={() => setApplyStep('form')}
                         className="w-full py-3 rounded-xl font-black text-sm text-white transition active:scale-95"
@@ -1271,7 +1277,11 @@ export default function AccountPage() {
                       dir="rtl" />
                     <div className="flex items-center justify-between text-sm text-gray-500 mb-4 py-2 border-t border-gray-100">
                       <span>{isRtl ? 'المبلغ:' : 'Amount:'}</span>
-                      <span className="font-black text-gray-900">{membershipZone === 'egypt' ? '١٠٠ جنيه مصري' : '$5 USD'}</span>
+                      <span className="font-black text-gray-900">
+                        {membershipZone === 'egypt'
+                          ? (isRtl ? `${membershipPrices.egyEgp} جنيه مصري` : `${membershipPrices.egyEgp} EGP`)
+                          : `$${membershipPrices.intlUsd} USD`}
+                      </span>
                     </div>
                     <div className="space-y-2">
                       <button onClick={() => setApplyStep('paypal')}
@@ -1305,11 +1315,15 @@ export default function AccountPage() {
                 <div className="space-y-4">
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                     <h3 className="font-black text-gray-900 mb-1">{isRtl ? 'الدفع الآمن' : 'Secure Payment'}</h3>
-                    <p className="text-xs text-gray-400 mb-4">{membershipZone === 'egypt' ? (isRtl ? 'سيُخصم ما يعادل ١٠٠ جنيه ($2)' : '~100 EGP ($2)') : '$5 USD'}</p>
+                    <p className="text-xs text-gray-400 mb-4">
+                      {membershipZone === 'egypt'
+                        ? (isRtl ? `سيُخصم ما يعادل ${membershipPrices.egyEgp} جنيه ($${membershipPrices.egyUsd})` : `~${membershipPrices.egyEgp} EGP ($${membershipPrices.egyUsd})`)
+                        : `$${membershipPrices.intlUsd} USD`}
+                    </p>
                     <PayPalBookButton
                       createEndpoint="/api/membership/create"
                       captureEndpoint="/api/membership/activate"
-                      amountUsd={membershipZone === 'egypt' ? 2.00 : 5.00}
+                      amountUsd={membershipZone === 'egypt' ? membershipPrices.egyUsd : membershipPrices.intlUsd}
                       createBody={{ familyName: applyFamilyName.trim() || undefined, zone: membershipZone }}
                       isRtl={isRtl}
                       onSuccess={() => {

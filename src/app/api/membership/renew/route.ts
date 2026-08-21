@@ -5,7 +5,19 @@ import { prisma } from '@/lib/prisma';
 import { createPayPalOrder, capturePayPalOrder } from '@/lib/paypal';
 import { checkRateLimit } from '@/lib/rate-limit';
 
-const MEMBERSHIP_PRICE_USD = 2.00;
+const PRICE_EGY_USD_DEFAULT  = 2.00;
+const PRICE_INTL_USD_DEFAULT = 5.00;
+
+async function getMembershipPrices(): Promise<{ egyUsd: number; intlUsd: number }> {
+  const settings = await prisma.setting.findMany({
+    where: { key: { in: ['membership-price-egy-usd', 'membership-price-intl-usd'] } },
+  });
+  const map = Object.fromEntries(settings.map(s => [s.key, s.value]));
+  return {
+    egyUsd:  parseFloat(map['membership-price-egy-usd']  ?? '') || PRICE_EGY_USD_DEFAULT,
+    intlUsd: parseFloat(map['membership-price-intl-usd'] ?? '') || PRICE_INTL_USD_DEFAULT,
+  };
+}
 
 export async function POST(req: NextRequest) {
   const user = await getAuthUser().catch(() => null);
@@ -14,15 +26,16 @@ export async function POST(req: NextRequest) {
   const rl = checkRateLimit(`membership-renew:${user.userId}`, 10, 60 * 60 * 1000);
   if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
 
-  const { action, paypalOrderId } = await req.json().catch(() => ({}));
+  const { action, paypalOrderId, zone } = await req.json().catch(() => ({}));
 
   const membership = await prisma.familyMembership.findUnique({ where: { ownerUserId: user.userId } });
   if (!membership) return NextResponse.json({ error: 'No membership found' }, { status: 404 });
 
   if (action === 'create') {
-    // F-2: correct arg order — (amount, currency, referenceId)
+    const prices = await getMembershipPrices();
+    const amountUsd = zone === 'egypt' ? prices.egyUsd : prices.intlUsd;
     const referenceId = `renew-${user.userId}-${Date.now()}`;
-    const orderId = await createPayPalOrder(MEMBERSHIP_PRICE_USD, 'USD', referenceId);
+    const orderId = await createPayPalOrder(amountUsd, 'USD', referenceId);
     // Store the pending orderId so capture can cross-check it
     await prisma.familyMembership.update({
       where: { id: membership.id },
@@ -45,13 +58,14 @@ export async function POST(req: NextRequest) {
     const newExpiry = new Date(base);
     newExpiry.setFullYear(newExpiry.getFullYear() + 1);
 
+    const prices = await getMembershipPrices();
     await prisma.$transaction([
       prisma.familyMembership.update({
         where: { id: membership.id },
         data: { status: 'ACTIVE', expiresAt: newExpiry, paypalOrderId },
       }),
       prisma.membershipRenewal.create({
-        data: { membershipId: membership.id, paypalOrderId, amountEgp: 100, expiresAt: newExpiry },
+        data: { membershipId: membership.id, paypalOrderId, amountEgp: prices.egyUsd * 50, expiresAt: newExpiry },
       }),
     ]);
 

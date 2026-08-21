@@ -53,7 +53,7 @@ export default function AdminMembershipPage() {
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [perks, setPerks] = useState<Perk[]>([]);
-  const [tab, setTab] = useState<'memberships' | 'perks'>('memberships');
+  const [tab, setTab] = useState<'memberships' | 'perks' | 'pricing'>('memberships');
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
@@ -78,13 +78,50 @@ export default function AdminMembershipPage() {
 
   const [msg, setMsg] = useState('');
 
+  // Pricing settings
+  const [priceEgyEgp,  setPriceEgyEgp]  = useState('100');
+  const [priceEgyUsd,  setPriceEgyUsd]  = useState('2.00');
+  const [priceIntlUsd, setPriceIntlUsd] = useState('5.00');
+  const [priceSaving, setPriceSaving]   = useState(false);
+
   useEffect(() => {
     fetchMemberships();
   }, [statusFilter, page]);
 
   useEffect(() => {
     if (tab === 'perks') fetchPerks();
+    if (tab === 'pricing') fetchPrices();
   }, [tab]);
+
+  async function fetchPrices() {
+    const res = await fetch('/api/membership/price');
+    if (res.ok) {
+      const d = await res.json();
+      setPriceEgyEgp(String(d.egyEgp));
+      setPriceEgyUsd(String(d.egyUsd));
+      setPriceIntlUsd(String(d.intlUsd));
+    }
+  }
+
+  async function savePrices() {
+    setPriceSaving(true);
+    const keys = [
+      { key: 'membership-price-egy-egp',  value: priceEgyEgp.trim() },
+      { key: 'membership-price-egy-usd',  value: priceEgyUsd.trim() },
+      { key: 'membership-price-intl-usd', value: priceIntlUsd.trim() },
+    ];
+    await Promise.allSettled(
+      keys.map(({ key, value }) =>
+        fetch('/api/admin/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key, value }),
+        })
+      )
+    );
+    setPriceSaving(false);
+    flash('تم حفظ الأسعار ✓');
+  }
 
   async function fetchMemberships() {
     setLoading(true);
@@ -279,11 +316,11 @@ export default function AdminMembershipPage() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        {(['memberships', 'perks'] as const).map(t => (
+        {(['memberships', 'perks', 'pricing'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             style={{ padding: '8px 20px', borderRadius: 10, fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer',
               background: tab === t ? '#d4a843' : '#1e293b', color: tab === t ? '#0f172a' : '#94a3b8' }}>
-            {t === 'memberships' ? 'العضويات' : 'المزايا'}
+            {t === 'memberships' ? 'العضويات' : t === 'perks' ? 'المزايا' : 'الأسعار'}
           </button>
         ))}
       </div>
@@ -508,6 +545,53 @@ export default function AdminMembershipPage() {
                 {perkSaving ? '...' : (editingPerk ? 'حفظ التعديلات' : 'إضافة الميزة')}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── PRICING TAB ─── */}
+      {tab === 'pricing' && (
+        <div style={{ maxWidth: 480 }}>
+          <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 16, padding: 24 }}>
+            <h2 style={{ fontSize: 17, fontWeight: 800, color: '#f1f5f9', marginBottom: 4 }}>أسعار الاشتراك السنوي</h2>
+            <p style={{ fontSize: 12, color: '#64748b', marginBottom: 24 }}>سعر مصر وسعر الدول مستقلان — غير مرتبطين بسعر الصرف</p>
+
+            {/* Egypt */}
+            <div style={{ marginBottom: 20 }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#d4a843', marginBottom: 10 }}>🇪🇬 داخل مصر</p>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 4 }}>السعر المعروض (جنيه)</label>
+                  <input type="number" value={priceEgyEgp} onChange={e => setPriceEgyEgp(e.target.value)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#0f172a', border: '1px solid #334155', color: '#f1f5f9', fontSize: 15, fontWeight: 700, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 4 }}>سعر PayPal (دولار USD)</label>
+                  <input type="number" step="0.01" value={priceEgyUsd} onChange={e => setPriceEgyUsd(e.target.value)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#0f172a', border: '1px solid #334155', color: '#f1f5f9', fontSize: 15, fontWeight: 700, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+              <p style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>يظهر للمستخدم السعر بالجنيه — يُسحب من PayPal بالدولار</p>
+            </div>
+
+            {/* Divider */}
+            <div style={{ height: 1, background: '#334155', marginBottom: 20 }} />
+
+            {/* International */}
+            <div style={{ marginBottom: 28 }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#60a5fa', marginBottom: 10 }}>🌍 خارج مصر</p>
+              <div>
+                <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 4 }}>السعر الدولي (دولار USD)</label>
+                <input type="number" step="0.01" value={priceIntlUsd} onChange={e => setPriceIntlUsd(e.target.value)}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#0f172a', border: '1px solid #334155', color: '#f1f5f9', fontSize: 15, fontWeight: 700, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              <p style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>السعر الموحد لجميع الدول خارج مصر — يُعرض ويُسحب بالدولار</p>
+            </div>
+
+            <button onClick={savePrices} disabled={priceSaving}
+              style={{ width: '100%', padding: '13px 0', borderRadius: 12, background: '#d4a843', color: '#0f172a', fontWeight: 800, fontSize: 15, border: 'none', cursor: priceSaving ? 'not-allowed' : 'pointer', opacity: priceSaving ? 0.7 : 1 }}>
+              {priceSaving ? 'جاري الحفظ...' : 'حفظ الأسعار'}
+            </button>
           </div>
         </div>
       )}

@@ -1353,6 +1353,12 @@ export default function AccountPage() {
                     <span>{isRtl ? `تنتهي: ${new Date(membership.expiresAt).toLocaleDateString('ar-EG')}` : `Expires: ${new Date(membership.expiresAt).toLocaleDateString()}`}</span>
                   )}
                 </div>
+                {/* Membership discount badge */}
+                {membership.status === 'ACTIVE' && (
+                  <div className="mt-4 inline-flex items-center gap-1.5 bg-yellow-400/20 border border-yellow-400/40 rounded-full px-3 py-1">
+                    <span className="text-yellow-300 text-xs font-black">🏷️ {isRtl ? 'خصم ١٥٪ تلقائي على كل مشترياتك' : '15% automatic discount on all purchases'}</span>
+                  </div>
+                )}
               </div>
 
               {/* Family members */}

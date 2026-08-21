@@ -115,6 +115,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Membership discount (15%) — server-side only
+    let membershipDiscountUsd = 0;
+    const nowPp = new Date();
+    const membershipPp = await prisma.familyMembership.findUnique({
+      where: { ownerUserId: auth.userId },
+      select: { status: true, expiresAt: true },
+    }).catch(() => null);
+    if (membershipPp?.status === 'ACTIVE' && membershipPp.expiresAt && membershipPp.expiresAt > nowPp) {
+      membershipDiscountUsd = Math.round(totalUsd * 0.15 * 100) / 100;
+      discountUsd += membershipDiscountUsd;
+    }
+
     const finalUsd = Math.max(0.01, Math.round((totalUsd + shippingUsd - discountUsd) * 100) / 100);
     const referenceId = `${auth.userId}-${Date.now()}`;
     const paypalOrder = await createPayPalOrder(finalUsd, 'USD', referenceId);
@@ -123,8 +135,8 @@ export async function POST(req: NextRequest) {
     // without trusting anything from the client body.
     await prisma.setting.upsert({
       where: { key: `pp_pending_${paypalOrder.id}` },
-      create: { key: `pp_pending_${paypalOrder.id}`, value: { expectedUsd: finalUsd, discountUsd, couponCode: couponCode || null, userId: auth.userId, createdAt: Date.now() } },
-      update: { value: { expectedUsd: finalUsd, discountUsd, couponCode: couponCode || null, userId: auth.userId, createdAt: Date.now() } },
+      create: { key: `pp_pending_${paypalOrder.id}`, value: { expectedUsd: finalUsd, discountUsd, couponCode: couponCode || null, userId: auth.userId, membershipDiscountUsd, createdAt: Date.now() } },
+      update: { value: { expectedUsd: finalUsd, discountUsd, couponCode: couponCode || null, userId: auth.userId, membershipDiscountUsd, createdAt: Date.now() } },
     });
 
     return NextResponse.json({

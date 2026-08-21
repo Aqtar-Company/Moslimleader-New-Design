@@ -192,6 +192,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Membership discount (15%) — server-side only, never trust client
+    let membershipDiscount = 0;
+    const now = new Date();
+    const membership = await prisma.familyMembership.findUnique({
+      where: { ownerUserId: auth.userId },
+      select: { status: true, expiresAt: true },
+    }).catch(() => null);
+    if (membership?.status === 'ACTIVE' && membership.expiresAt && membership.expiresAt > now) {
+      membershipDiscount = Math.round(verifiedSubtotal * 0.15);
+    }
+    verifiedDiscount += membershipDiscount;
+
     // Verify shipping cost server-side for COD/local orders — cap at 500 to prevent tampering
     const verifiedShipping = paymentMethod === 'paypal'
       ? (shippingCost ?? 0)   // PayPal orders already verified at capture step

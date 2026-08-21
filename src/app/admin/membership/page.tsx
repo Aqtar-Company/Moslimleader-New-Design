@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface Membership {
   id: string;
@@ -53,7 +53,7 @@ export default function AdminMembershipPage() {
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [perks, setPerks] = useState<Perk[]>([]);
-  const [tab, setTab] = useState<'memberships' | 'perks'>('memberships');
+  const [tab, setTab] = useState<'memberships' | 'perks' | 'pricing' | 'grant'>('memberships');
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
@@ -73,8 +73,23 @@ export default function AdminMembershipPage() {
   const [perkSaving, setPerkSaving] = useState(false);
   const [perkError, setPerkError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const dragIndexRef = useRef<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
 
   const [msg, setMsg] = useState('');
+
+  // Pricing settings
+  const [priceEgyEgp,     setPriceEgyEgp]     = useState('100');
+  const [priceEgyUsd,     setPriceEgyUsd]      = useState('2.00');
+  const [priceIntlUsd,    setPriceIntlUsd]     = useState('5.00');
+  const [instapayNumber,  setInstapayNumber]   = useState('');
+  const [priceSaving,     setPriceSaving]      = useState(false);
+
+  // Grant membership state
+  const [grantEmail,      setGrantEmail]       = useState('');
+  const [grantFamily,     setGrantFamily]      = useState('');
+  const [grantLoading,    setGrantLoading]     = useState(false);
+  const [grantResult,     setGrantResult]      = useState<{ type: 'granted' | 'invited' | 'error'; msg: string } | null>(null);
 
   useEffect(() => {
     fetchMemberships();
@@ -82,7 +97,66 @@ export default function AdminMembershipPage() {
 
   useEffect(() => {
     if (tab === 'perks') fetchPerks();
+    if (tab === 'pricing') fetchPrices();
+    if (tab === 'grant') { setGrantResult(null); setGrantEmail(''); setGrantFamily(''); }
   }, [tab]);
+
+  async function fetchPrices() {
+    const res = await fetch('/api/membership/price');
+    if (res.ok) {
+      const d = await res.json();
+      setPriceEgyEgp(String(d.egyEgp));
+      setPriceEgyUsd(String(d.egyUsd));
+      setPriceIntlUsd(String(d.intlUsd));
+      setInstapayNumber(d.instapayNumber ?? '');
+    }
+  }
+
+  async function savePrices() {
+    setPriceSaving(true);
+    const keys = [
+      { key: 'membership-price-egy-egp',    value: priceEgyEgp.trim() },
+      { key: 'membership-price-egy-usd',    value: priceEgyUsd.trim() },
+      { key: 'membership-price-intl-usd',   value: priceIntlUsd.trim() },
+      { key: 'membership-instapay-number',  value: instapayNumber.trim() },
+    ];
+    await Promise.allSettled(
+      keys.map(({ key, value }) =>
+        fetch('/api/admin/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key, value }),
+        })
+      )
+    );
+    setPriceSaving(false);
+    flash('تم حفظ الإعدادات ✓');
+  }
+
+  async function grantMembership() {
+    if (!grantEmail.trim()) return;
+    setGrantLoading(true);
+    setGrantResult(null);
+    try {
+      const res = await fetch('/api/admin/membership/grant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: grantEmail.trim(), familyName: grantFamily.trim() || undefined }),
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        setGrantResult({ type: 'error', msg: d.error || 'حدث خطأ' });
+      } else if (d.invited) {
+        setGrantResult({ type: 'invited', msg: `تم إرسال دعوة التسجيل إلى ${d.email}` });
+      } else {
+        setGrantResult({ type: 'granted', msg: `تم منح العضوية لـ ${d.user.name} (${d.membershipNumber})` });
+        fetchMemberships();
+      }
+    } catch {
+      setGrantResult({ type: 'error', msg: 'فشل الاتصال' });
+    }
+    setGrantLoading(false);
+  }
 
   async function fetchMemberships() {
     setLoading(true);
@@ -198,6 +272,49 @@ export default function AdminMembershipPage() {
     if (res.ok) setPerks(prev => prev.filter(p => p.id !== id));
   }
 
+  const handleDragStart = useCallback((index: number) => {
+    dragIndexRef.current = index;
+  }, []);
+
+  const handleDrop = useCallback(async (dropIndex: number) => {
+    const fromIndex = dragIndexRef.current;
+    if (fromIndex === null || fromIndex === dropIndex) { setDragOver(null); return; }
+    const reordered = [...perks];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(dropIndex, 0, moved);
+    // Assign sortOrder = position index
+    const updated = reordered.map((p, i) => ({ ...p, sortOrder: i }));
+    setPerks(updated);
+    setDragOver(null);
+    dragIndexRef.current = null;
+    // Persist all sortOrder values (fire-and-forget in parallel)
+    await Promise.allSettled(
+      updated.map(p => fetch('/api/admin/membership/perks', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: p.id, sortOrder: p.sortOrder }),
+      }))
+    );
+    flash('تم حفظ الترتيب');
+  }, [perks]);
+
+  async function perkAction(id: string, action: 'tareeq' | 'notify' | 'both') {
+    const labels: Record<string, string> = { tareeq: 'إعادة نشر على طريق', notify: 'إرسال تذكير', both: 'نشر + تذكير' };
+    if (!confirm(`${labels[action]}؟`)) return;
+    const res = await fetch('/api/admin/membership/perks/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, action }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.tareeqPostId) setPerks(prev => prev.map(p => p.id === id ? { ...p, tareeqPostId: data.tareeqPostId } : p));
+      flash(action === 'tareeq' ? 'تم النشر على طريق ✓' : action === 'notify' ? 'تم إرسال التذكير ✓' : 'تم النشر والتذكير ✓');
+    } else {
+      flash('حدث خطأ');
+    }
+  }
+
   const filtered = memberships.filter(m =>
     !search || m.owner.name.includes(search) || m.owner.email.includes(search) || m.membershipNumber.includes(search)
   );
@@ -233,12 +350,12 @@ export default function AdminMembershipPage() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        {(['memberships', 'perks'] as const).map(t => (
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+        {(['memberships', 'perks', 'pricing', 'grant'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             style={{ padding: '8px 20px', borderRadius: 10, fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer',
               background: tab === t ? '#d4a843' : '#1e293b', color: tab === t ? '#0f172a' : '#94a3b8' }}>
-            {t === 'memberships' ? 'العضويات' : 'المزايا'}
+            {t === 'memberships' ? 'العضويات' : t === 'perks' ? 'المزايا' : t === 'pricing' ? 'الأسعار' : '➕ إضافة يدوية'}
           </button>
         ))}
       </div>
@@ -338,9 +455,34 @@ export default function AdminMembershipPage() {
             <div style={{ textAlign: 'center', color: '#94a3b8', padding: 40 }}>لا توجد مزايا بعد</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {perks.map(p => (
-                <div key={p.id} style={{ background: '#1e293b', border: `1px solid ${p.isActive ? '#334155' : '#1e293b'}`, borderRadius: 14, padding: '14px 16px', opacity: p.isActive ? 1 : 0.55 }}>
+              {perks.map((p, index) => (
+                <div
+                  key={p.id}
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={e => { e.preventDefault(); setDragOver(index); }}
+                  onDragLeave={() => setDragOver(null)}
+                  onDrop={() => handleDrop(index)}
+                  onDragEnd={() => { setDragOver(null); dragIndexRef.current = null; }}
+                  style={{
+                    background: '#1e293b',
+                    border: dragOver === index ? '1px solid #d4a843' : `1px solid ${p.isActive ? '#334155' : '#1e293b'}`,
+                    borderRadius: 14, padding: '14px 16px',
+                    opacity: p.isActive ? 1 : 0.55,
+                    transition: 'border-color 0.15s',
+                    cursor: 'grab',
+                  }}
+                >
                   <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    {/* Drag handle */}
+                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4, flexShrink: 0, paddingTop: 2, cursor: 'grab', opacity: 0.35 }}>
+                      {[0,1,2].map(i => (
+                        <div key={i} style={{ display: 'flex', gap: 3 }}>
+                          <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#94a3b8' }} />
+                          <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#94a3b8' }} />
+                        </div>
+                      ))}
+                    </div>
                     {p.imageUrl && (
                       <img src={p.imageUrl} alt="" style={{ width: 60, height: 60, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
                     )}
@@ -353,7 +495,7 @@ export default function AdminMembershipPage() {
                         {p.tareeqPostId && <span style={{ fontSize: 12, color: '#a78bfa' }}>📢 منشور طريق</span>}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
                       <button onClick={() => openEditPerk(p)}
                         style={{ padding: '6px 14px', borderRadius: 8, background: '#334155', color: '#f1f5f9', fontSize: 12, border: 'none', cursor: 'pointer' }}>
                         تعديل
@@ -361,6 +503,14 @@ export default function AdminMembershipPage() {
                       <button onClick={() => togglePerkActive(p)}
                         style={{ padding: '6px 14px', borderRadius: 8, background: p.isActive ? '#374151' : '#22c55e22', color: p.isActive ? '#94a3b8' : '#22c55e', fontSize: 12, border: 'none', cursor: 'pointer' }}>
                         {p.isActive ? 'إخفاء' : 'إظهار'}
+                      </button>
+                      <button onClick={() => perkAction(p.id, 'tareeq')}
+                        style={{ padding: '6px 14px', borderRadius: 8, background: '#a78bfa22', color: '#a78bfa', fontSize: 12, border: 'none', cursor: 'pointer' }}>
+                        📢 نشر طريق
+                      </button>
+                      <button onClick={() => perkAction(p.id, 'notify')}
+                        style={{ padding: '6px 14px', borderRadius: 8, background: '#38bdf822', color: '#38bdf8', fontSize: 12, border: 'none', cursor: 'pointer' }}>
+                        🔔 تذكير
                       </button>
                       <button onClick={() => deletePerk(p.id)}
                         style={{ padding: '6px 14px', borderRadius: 8, background: '#ef444422', color: '#ef4444', fontSize: 12, border: 'none', cursor: 'pointer' }}>
@@ -430,6 +580,122 @@ export default function AdminMembershipPage() {
                 {perkSaving ? '...' : (editingPerk ? 'حفظ التعديلات' : 'إضافة الميزة')}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── PRICING TAB ─── */}
+      {tab === 'pricing' && (
+        <div style={{ maxWidth: 480 }}>
+          <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 16, padding: 24 }}>
+            <h2 style={{ fontSize: 17, fontWeight: 800, color: '#f1f5f9', marginBottom: 4 }}>أسعار الاشتراك السنوي</h2>
+            <p style={{ fontSize: 12, color: '#64748b', marginBottom: 24 }}>سعر مصر وسعر الدول مستقلان — غير مرتبطين بسعر الصرف</p>
+
+            {/* Egypt */}
+            <div style={{ marginBottom: 20 }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#d4a843', marginBottom: 10 }}>🇪🇬 داخل مصر</p>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 4 }}>السعر المعروض (جنيه)</label>
+                  <input type="number" value={priceEgyEgp} onChange={e => setPriceEgyEgp(e.target.value)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#0f172a', border: '1px solid #334155', color: '#f1f5f9', fontSize: 15, fontWeight: 700, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 4 }}>سعر PayPal (دولار USD)</label>
+                  <input type="number" step="0.01" value={priceEgyUsd} onChange={e => setPriceEgyUsd(e.target.value)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#0f172a', border: '1px solid #334155', color: '#f1f5f9', fontSize: 15, fontWeight: 700, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+              <p style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>يظهر للمستخدم السعر بالجنيه — يُسحب من PayPal بالدولار</p>
+            </div>
+
+            {/* InstaPay number */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 4 }}>📲 رقم إنستاباي / ووليت (للمصريين)</label>
+              <input type="text" value={instapayNumber} onChange={e => setInstapayNumber(e.target.value)}
+                placeholder="مثال: 01012345678"
+                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#0f172a', border: '1px solid #334155', color: '#f1f5f9', fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
+              <p style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>يظهر في صفحة الدفع بإنستاباي — اتركه فارغاً لإخفاء الخيار</p>
+            </div>
+
+            {/* Divider */}
+            <div style={{ height: 1, background: '#334155', marginBottom: 20 }} />
+
+            {/* International */}
+            <div style={{ marginBottom: 28 }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#60a5fa', marginBottom: 10 }}>🌍 خارج مصر</p>
+              <div>
+                <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 4 }}>السعر الدولي (دولار USD)</label>
+                <input type="number" step="0.01" value={priceIntlUsd} onChange={e => setPriceIntlUsd(e.target.value)}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#0f172a', border: '1px solid #334155', color: '#f1f5f9', fontSize: 15, fontWeight: 700, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              <p style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>السعر الموحد لجميع الدول خارج مصر — يُعرض ويُسحب بالدولار</p>
+            </div>
+
+            <button onClick={savePrices} disabled={priceSaving}
+              style={{ width: '100%', padding: '13px 0', borderRadius: 12, background: '#d4a843', color: '#0f172a', fontWeight: 800, fontSize: 15, border: 'none', cursor: priceSaving ? 'not-allowed' : 'pointer', opacity: priceSaving ? 0.7 : 1 }}>
+              {priceSaving ? 'جاري الحفظ...' : 'حفظ الأسعار'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── GRANT TAB ─── */}
+      {tab === 'grant' && (
+        <div style={{ maxWidth: 480 }}>
+          <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 16, padding: 24 }}>
+            <h2 style={{ fontSize: 17, fontWeight: 800, color: '#f1f5f9', marginBottom: 4 }}>إضافة عضو يدوياً</h2>
+            <p style={{ fontSize: 12, color: '#64748b', marginBottom: 24 }}>لو المستخدم مسجل → تُفعّل عضويته مباشرةً. لو مش مسجل → يجيله إيميل دعوة للتسجيل.</p>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 6 }}>البريد الإلكتروني *</label>
+              <input
+                type="email"
+                value={grantEmail}
+                onChange={e => setGrantEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && grantMembership()}
+                placeholder="example@email.com"
+                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#0f172a', border: '1px solid #334155', color: '#f1f5f9', fontSize: 15, outline: 'none', boxSizing: 'border-box', direction: 'ltr', textAlign: 'left' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 6 }}>اسم الأسرة (اختياري)</label>
+              <input
+                type="text"
+                value={grantFamily}
+                onChange={e => setGrantFamily(e.target.value)}
+                placeholder="مثال: أسرة محمد أحمد"
+                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#0f172a', border: '1px solid #334155', color: '#f1f5f9', fontSize: 15, outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <button
+              onClick={grantMembership}
+              disabled={grantLoading || !grantEmail.trim()}
+              style={{ width: '100%', padding: '13px 0', borderRadius: 12, background: '#d4a843', color: '#0f172a', fontWeight: 800, fontSize: 15, border: 'none', cursor: grantLoading || !grantEmail.trim() ? 'not-allowed' : 'pointer', opacity: grantLoading || !grantEmail.trim() ? 0.6 : 1 }}
+            >
+              {grantLoading ? 'جاري المعالجة...' : 'منح العضوية'}
+            </button>
+
+            {grantResult && (
+              <div style={{ marginTop: 20, padding: '14px 16px', borderRadius: 12,
+                background: grantResult.type === 'granted' ? 'rgba(34,197,94,0.12)' : grantResult.type === 'invited' ? 'rgba(96,165,250,0.12)' : 'rgba(239,68,68,0.12)',
+                border: `1px solid ${grantResult.type === 'granted' ? '#22c55e44' : grantResult.type === 'invited' ? '#60a5fa44' : '#ef444444'}`,
+                color: grantResult.type === 'granted' ? '#4ade80' : grantResult.type === 'invited' ? '#93c5fd' : '#f87171',
+                fontSize: 14, fontWeight: 600 }}>
+                {grantResult.type === 'granted' ? '✅ ' : grantResult.type === 'invited' ? '📧 ' : '❌ '}
+                {grantResult.msg}
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginTop: 16, padding: '14px 16px', borderRadius: 12, background: '#1e293b', border: '1px solid #334155', fontSize: 12, color: '#64748b', lineHeight: 1.8 }}>
+            <p style={{ margin: 0, fontWeight: 700, color: '#94a3b8', marginBottom: 6 }}>📌 ملاحظات:</p>
+            <p style={{ margin: 0 }}>• العضوية المُمنوحة تستمر سنة كاملة من يوم المنح</p>
+            <p style={{ margin: 0 }}>• تُسجَّل في سجل التجديدات بمبلغ ٠ جنيه (منحة إدارية)</p>
+            <p style={{ margin: 0 }}>• لو المستخدم مش مسجل، هيجيله إيميل على العنوان ده يدعوه للتسجيل</p>
+            <p style={{ margin: 0 }}>• بعد تسجيله، عضويته مش بتتفعل تلقائي — هتحتاج تمنحها تاني</p>
           </div>
         </div>
       )}

@@ -175,6 +175,20 @@ export default function CheckoutPage() {
   const { total, currency, currencyEn } = getCartRegionalTotal(items);
   const discount = coupon ? Math.round(total * coupon.pct / 100) : 0;
 
+  // Membership discount (15% auto-applied server-side, shown here for UX)
+  const [isMember, setIsMember] = useState(false);
+  const membershipDiscount = isMember ? Math.round(total * 0.15) : 0;
+  useEffect(() => {
+    if (!user) return;
+    fetch('/api/membership', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => {
+        const m = d.membership;
+        setIsMember(m?.status === 'ACTIVE' && m?.expiresAt && new Date(m.expiresAt) > new Date());
+      })
+      .catch(() => {});
+  }, [user]);
+
   // Loyalty points
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
   const [usePoints, setUsePoints] = useState(false);
@@ -186,7 +200,7 @@ export default function CheckoutPage() {
       .catch(() => {});
   }, [user]);
   // كل 10 نقاط = 1 وحدة من عملة المستخدم
-  const pointsDiscount = usePoints ? Math.min(Math.floor(loyaltyPoints / 10), total - discount) : 0;
+  const pointsDiscount = usePoints ? Math.min(Math.floor(loyaltyPoints / 10), total - discount - membershipDiscount) : 0;
   const pointsToRedeem = pointsDiscount * 10;
 
   const [intlConfig, setIntlConfig] = useState<IntlShippingConfig>(DEFAULT_CONFIG);
@@ -447,9 +461,9 @@ export default function CheckoutPage() {
               productName: item.product.name,
               productImage: item.product.images?.[item.selectedModel ?? 0] ?? null,
             })),
-            total: total - discount - pointsDiscount + shippingCost,
+            total: total - membershipDiscount - discount - pointsDiscount + shippingCost,
             shippingCost,
-            discount: discount + pointsDiscount,
+            discount: membershipDiscount + discount + pointsDiscount,
             couponCode: coupon?.code ?? null,
             loyaltyPointsToRedeem: pointsToRedeem,
             paymentMethod: payMethod,
@@ -1397,6 +1411,12 @@ export default function CheckoutPage() {
                 <span>{L.subtotal}</span>
                 <span className="font-semibold text-gray-900">{total} {L.currency}</span>
               </div>
+              {isMember && membershipDiscount > 0 && (
+                <div className="flex justify-between text-amber-600">
+                  <span className="font-bold">🏅 {isRtl ? 'خصم العضوية (١٥٪)' : 'Membership Discount (15%)'}</span>
+                  <span className="font-semibold">−{membershipDiscount} {L.currency}</span>
+                </div>
+              )}
               {coupon && discount > 0 && (
                 <div className="flex justify-between text-green-600">
                   <span>{L.discount} ({coupon.pct}%) — <span className="font-bold">{coupon.code}</span></span>
@@ -1453,7 +1473,7 @@ export default function CheckoutPage() {
               {shippingCost > 0 && shippingCurrency === currency && (
                 <div className="flex justify-between border-t pt-2 text-sm">
                   <span className="font-black text-gray-900">{L.totalLabel}</span>
-                  <span className="font-black text-gray-900 text-base">{total - discount - pointsDiscount + shippingCost} <span className="text-xs text-gray-500">{currency}</span></span>
+                  <span className="font-black text-gray-900 text-base">{total - membershipDiscount - discount - pointsDiscount + shippingCost} <span className="text-xs text-gray-500">{currency}</span></span>
                 </div>
               )}
               {/* When currencies differ — show labeled breakdown as grand total */}

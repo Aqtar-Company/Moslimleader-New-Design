@@ -152,6 +152,10 @@ export async function POST(req: NextRequest) {
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
 
+  // Check if user is suspended from Tareeq (also fetch name/avatar for post creation below)
+  const dbUser = await prisma.user.findUnique({ where: { id: user.userId }, select: { tareeqSuspended: true, name: true, avatarUrl: true } });
+  if (dbUser?.tareeqSuspended) return NextResponse.json({ error: 'تم تعليق حسابك في طريق' }, { status: 403 });
+
   const body = await req.json().catch(() => ({}));
   const content = String(body.content ?? '').trim();
   const title = String(body.title ?? '').trim() || null;
@@ -202,8 +206,6 @@ export async function POST(req: NextRequest) {
   const textToCheck = [content, title, summary].filter(Boolean).join(' ');
   const filterResult = filterContent(textToCheck);
   const autoHide = filterResult.flagged;
-
-  const dbUser = await prisma.user.findUnique({ where: { id: user.userId }, select: { name: true, avatarUrl: true } });
 
   // Series: resolve or create seriesId from seriesTitle
   const rawSeriesTitle = String(body.seriesTitle ?? '').trim().slice(0, 80) || null;

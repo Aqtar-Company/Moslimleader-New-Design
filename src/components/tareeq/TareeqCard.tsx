@@ -13,6 +13,70 @@ function extractYouTubeId(text: string): string | null {
   const m = text.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   return m ? m[1] : null;
 }
+
+function extractFirstNonYouTubeUrl(text: string): string | null {
+  const matches = text.match(/https?:\/\/[^\s<>"'؀-ۿ]{8,}/g);
+  if (!matches) return null;
+  return matches.find(u => !/youtu\.?be/.test(u)) ?? null;
+}
+
+function renderRichText(text: string): React.ReactNode {
+  const regex = /(\*\*([^*\n]+?)\*\*|\*([^*\n]+?)\*|#[\w؀-ۿݐ-ݿ]{2,}|https?:\/\/[^\s<>"']+)/g;
+  const segments: React.ReactNode[] = [];
+  let last = 0; let key = 0; let match: RegExpExecArray | null;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > last) segments.push(text.slice(last, match.index));
+    const m = match[0];
+    if (m.startsWith('**')) {
+      segments.push(<strong key={key++} style={{ fontWeight: 800, color: 'inherit' }}>{match[2]}</strong>);
+    } else if (m.startsWith('*')) {
+      segments.push(<em key={key++}>{match[3]}</em>);
+    } else if (m.startsWith('#')) {
+      segments.push(<span key={key++} style={{ color: 'var(--tr-gold)', fontWeight: 600 }}>{m}</span>);
+    } else {
+      segments.push(<span key={key++} style={{ color: 'var(--tr-teal)', wordBreak: 'break-all' }}>{m}</span>);
+    }
+    last = match.index + m.length;
+  }
+  if (last < text.length) segments.push(text.slice(last));
+  return segments.length ? segments : text;
+}
+
+interface LinkPreviewData { title: string | null; description: string | null; image: string | null; domain: string; url: string }
+
+function LinkPreviewCard({ url, isRtl }: { url: string; isRtl: boolean }) {
+  const [preview, setPreview] = useState<LinkPreviewData | null>(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    fetch(`/api/tareeq/link-preview?url=${encodeURIComponent(url)}`)
+      .then(r => r.json())
+      .then(d => { if (d.domain) setPreview(d); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [url]);
+
+  if (loading) return (
+    <div style={{ height: 60, borderRadius: 10, background: 'var(--tr-raised)', border: '1px solid var(--tr-border-subtle)', marginTop: 8, opacity: 0.5 }} />
+  );
+  if (!preview?.title) return null;
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+      style={{ display: 'flex', gap: 10, padding: '8px 10px', borderRadius: 10, marginTop: 8, border: '1px solid var(--tr-border-soft)', background: 'var(--tr-raised)', textDecoration: 'none' }}>
+      {preview.image && (
+        <img src={preview.image} alt="" style={{ width: 56, height: 56, borderRadius: 7, objectFit: 'cover', flexShrink: 0 }}
+          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+      )}
+      <div style={{ flex: 1, minWidth: 0, textAlign: isRtl ? 'right' : 'left' }}>
+        <p style={{ fontSize: 11, color: 'var(--tr-text-muted)', marginBottom: 2 }}>{preview.domain}</p>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--tr-text-primary)', lineHeight: 1.3, display: '-webkit-box', WebkitBoxOrient: 'vertical' as const, WebkitLineClamp: 2, overflow: 'hidden' }}>{preview.title}</p>
+        {preview.description && (
+          <p style={{ fontSize: 11, color: 'var(--tr-text-secondary)', marginTop: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical' as const, WebkitLineClamp: 1, overflow: 'hidden' }}>{preview.description}</p>
+        )}
+      </div>
+    </a>
+  );
+}
+
 import { useSatisfactionCounter } from './TareeqSatisfactionMode';
 
 export interface TareeqPostSummary {
@@ -922,7 +986,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               ...(isLong && !textExpanded ? { display: '-webkit-box', WebkitBoxOrient: 'vertical' as const, WebkitLineClamp: 4, overflow: 'hidden' } : {}),
             }}
           >
-            {textExpanded ? post.content : snippet}
+            {renderRichText(textExpanded ? post.content : snippet)}
           </p>
           {isLong && !textExpanded && (
             <button onClick={e => { e.preventDefault(); e.stopPropagation(); setTextExpanded(true); }} className="text-xs font-bold mt-1.5 transition" style={{ color: 'var(--tr-gold)' }}>
@@ -946,6 +1010,12 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                 />
               </div>
             );
+          })()}
+
+          {/* Link preview — shown only when no image/video and no YouTube */}
+          {isTextOnly && !extractYouTubeId(post.content) && (() => {
+            const firstUrl = extractFirstNonYouTubeUrl(post.content);
+            return firstUrl ? <LinkPreviewCard url={firstUrl} isRtl={isRtl} /> : null;
           })()}
 
           {post.videoUrl && !hasImage && (

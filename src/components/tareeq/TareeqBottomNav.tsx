@@ -968,7 +968,11 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
       {/* ── Bottom nav bar ────────────────────────────────── */}
       <nav
         className="fixed bottom-0 left-0 right-0 z-40 print:hidden"
-        style={{ height: NAV_H, overflow: 'visible' }}
+        style={{
+          height: NAV_H, overflow: 'visible',
+          backdropFilter: 'blur(20px) saturate(140%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(140%)',
+        }}
       >
         {/* SVG curved background */}
         <svg
@@ -986,11 +990,11 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           preserveAspectRatio="none"
           viewBox="0 0 1000 102"
         >
-          {/* Fill — no stroke (eliminates bottom border) */}
+          {/* Fill — semi-transparent so backdrop-filter shows through */}
           <path
             ref={svgPathRef}
             d={buildNavPath(0)}
-            fill="var(--tr-surface)"
+            fill="color-mix(in srgb, var(--tr-surface) 88%, transparent)"
             stroke="none"
           />
           {/* Top curved line only — stroke, no fill */}
@@ -1013,9 +1017,10 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             {/* 1 (far RIGHT in RTL) — نُوري */}
           <button
             onClick={goToNuri}
-            className="flex flex-col items-center justify-end gap-1 pb-2 transition-all active:scale-90"
+            className="relative flex flex-col items-center justify-end gap-1 pb-2 transition-all active:scale-90"
             style={{ minWidth: 44, background: 'none', border: 'none', cursor: 'pointer' }}
           >
+            {isKhatmati && <div style={{ position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)', width: 20, height: 3, borderRadius: 2, background: NAV_ACCENT, boxShadow: `0 0 8px 1px ${NAV_ACCENT}99`, transition: 'opacity 0.25s' }} />}
             {/* Nuri lamp icon */}
             <img
               src="/nori lamp icon.svg"
@@ -1042,6 +1047,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             className="relative flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
             style={{ minWidth: 44 }}
           >
+            {isInbox && <div style={{ position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)', width: 20, height: 3, borderRadius: 2, background: NAV_ACCENT, boxShadow: `0 0 8px 1px ${NAV_ACCENT}99`, transition: 'opacity 0.25s' }} />}
             <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"
               style={{
                 color: isInbox ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
@@ -1071,9 +1077,10 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           {/* 4 — اكتشف (discover) */}
           <Link
             href="/tareeq"
-            className="flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
+            className="relative flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
             style={{ minWidth: 44 }}
           >
+            {isHome && <div style={{ position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)', width: 20, height: 3, borderRadius: 2, background: NAV_ACCENT, boxShadow: `0 0 8px 1px ${NAV_ACCENT}99`, transition: 'opacity 0.25s' }} />}
             <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.65} viewBox="0 0 24 24"
               style={{
                 color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
@@ -1091,9 +1098,10 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
           {/* 5 (far LEFT in RTL) — Contacts / Quick Call */}
           <button
             onClick={() => { if (user) setShowContacts(true); else router.push('/login?next=/tareeq'); }}
-            className="flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
+            className="relative flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
             style={{ minWidth: 44, background: 'none', border: 'none', cursor: 'pointer' }}
           >
+            {showContacts && <div style={{ position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)', width: 20, height: 3, borderRadius: 2, background: NAV_ACCENT, boxShadow: `0 0 8px 1px ${NAV_ACCENT}99`, transition: 'opacity 0.25s' }} />}
             <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"
               style={{
                 color: showContacts ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',

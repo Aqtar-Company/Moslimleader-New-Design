@@ -775,10 +775,10 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                   </svg>
                 </button>
 
-                {/* Profile avatar — visual far right, opens settings sheet */}
+                {/* Profile avatar — navigates to own profile posts page */}
                 <button
-                  onClick={() => window.dispatchEvent(new CustomEvent('tareeq:open-settings'))}
-                  aria-label={isRtl ? 'الإعدادات' : 'Settings'}
+                  onClick={() => user ? router.push(`/tareeq/u/${user.id}`) : window.dispatchEvent(new CustomEvent('tareeq:open-settings'))}
+                  aria-label={isRtl ? 'منشوراتي' : 'My profile'}
                   className="shrink-0 flex items-center justify-center rounded-2xl transition-all active:scale-[0.93]"
                   style={{
                     width: 44, height: 44,

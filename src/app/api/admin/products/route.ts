@@ -10,6 +10,7 @@ import {
   invalidateAdminProductsCache,
 } from '@/lib/admin-products-cache';
 import { invalidateAssistantContext } from '@/lib/assistant-knowledge';
+import { getTransporter } from '@/lib/smtp';
 
 // Returns only fields needed for the admin list/pricing table views
 function toListItem(p: unknown) {
@@ -123,9 +124,74 @@ export async function POST(req: NextRequest) {
       after: { slug: product.slug, name: product.name, price: product.price, category: product.category },
     });
 
+    // Notify users about new product (fire-and-forget)
+    notifyUsersNewProduct({
+      name: product.name,
+      slug: product.slug,
+      images: product.images,
+    }).catch(() => {});
+
     return NextResponse.json({ product });
   } catch (err) {
     console.error('[admin products POST]', err);
     return NextResponse.json({ error: 'حدث خطأ في الخادم' }, { status: 500 });
+  }
+}
+
+async function notifyUsersNewProduct(product: { name: string; slug: string; images: unknown }) {
+  const users = await prisma.user.findMany({
+    where: { marketingOptIn: true },
+    select: { id: true, email: true },
+  });
+  if (users.length === 0) return;
+
+  // In-app TareeqNotification — postId stores product slug for /shop/{slug} navigation
+  await prisma.tareeqNotification.createMany({
+    data: users.map(u => ({
+      userId: u.id,
+      type: 'product_new',
+      actorName: 'مسلم ليدر',
+      body: product.name,
+      postId: product.slug,
+    })),
+  }).catch(() => {});
+
+  // Marketing email
+  const fromEmail = process.env.SMTP_USER || 'orders@moslimleader.com';
+  const transporter = getTransporter();
+  const imageUrl = Array.isArray(product.images) ? (product.images as string[])[0] ?? null : null;
+  const safeName = product.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const safeSlug = encodeURIComponent(product.slug);
+  const safeImg = imageUrl && /^https?:\/\//.test(imageUrl) ? imageUrl.replace(/"/g,'&quot;') : null;
+
+  const html = `
+    <div dir="rtl" style="font-family:Cairo,Arial,sans-serif;max-width:560px;margin:auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #eee;">
+      <div style="background:linear-gradient(135deg,#1a1a2e,#0f3460);padding:24px 28px;text-align:center;">
+        <p style="color:#FFCC00;font-size:22px;font-weight:900;margin:0;">منتج جديد في المتجر 🛍️</p>
+      </div>
+      ${safeImg ? `<img src="${safeImg}" alt="" style="width:100%;max-height:220px;object-fit:cover;">` : ''}
+      <div style="padding:24px 28px;">
+        <p style="font-size:18px;font-weight:800;color:#1a1a2e;margin:0 0 16px;">${safeName}</p>
+        <a href="https://moslimleader.com/shop/${safeSlug}"
+          style="display:inline-block;background:#FFCC00;color:#1a1a2e;font-weight:800;padding:10px 24px;border-radius:8px;text-decoration:none;font-size:14px;">
+          شاهد المنتج
+        </a>
+        <p style="color:#aaa;font-size:11px;margin:20px 0 0;">
+          يمكنك إلغاء إشعارات المتجر من <a href="https://moslimleader.com/account" style="color:#d4a843;">إعدادات حسابك</a>
+        </p>
+      </div>
+    </div>`;
+
+  const emails = users.map(u => u.email).filter(Boolean) as string[];
+  // Send in batches of 10
+  for (let i = 0; i < emails.length; i += 10) {
+    await Promise.allSettled(
+      emails.slice(i, i + 10).map(email => transporter.sendMail({
+        from: `"مسلم ليدر" <${fromEmail}>`,
+        to: email,
+        subject: `منتج جديد: ${product.name}`,
+        html,
+      }))
+    );
   }
 }

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
 import PayPalBookButton from '@/components/PayPalBookButton';
@@ -10,6 +10,11 @@ const GOLD   = '#d4a843';
 const BEIGE  = '#f5f0e8';
 const PRICE_USD = 2.00;
 
+interface LandingPerk {
+  id: string; title: string; description: string | null;
+  imageUrl: string | null; linkUrl: string | null; createdAt: string;
+}
+
 interface Props { isLoggedIn: boolean; }
 
 export default function MembershipLanding({ isLoggedIn }: Props) {
@@ -19,6 +24,16 @@ export default function MembershipLanding({ isLoggedIn }: Props) {
   const [step, setStep] = useState<'info' | 'pay' | 'done'>('info');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [perks, setPerks] = useState<LandingPerk[]>([]);
+  const [perksLoading, setPerksLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/membership/perks')
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d.perks)) setPerks(d.perks.slice(0, 5)); })
+      .catch(() => {})
+      .finally(() => setPerksLoading(false));
+  }, []);
 
   const BENEFITS = isRtl ? [
     { icon: '🪪', text: 'كارت عضوية رقمي مع QR' },
@@ -80,8 +95,90 @@ export default function MembershipLanding({ isLoggedIn }: Props) {
         </div>
       </div>
 
+      {/* ── أحدث مزايا العضوية ── */}
+      {(perksLoading || perks.length > 0) && (
+        <div style={{ maxWidth: 460, margin: '0 auto 28px', padding: '0 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+            <div style={{ flex: 1, height: 1, background: 'rgba(212,168,67,0.2)' }} />
+            <span style={{ fontSize: 13, fontWeight: 800, color: GOLD, whiteSpace: 'nowrap' }}>
+              {isRtl ? '✦ أحدث مزايا العضوية' : '✦ Latest Member Benefits'}
+            </span>
+            <div style={{ flex: 1, height: 1, background: 'rgba(212,168,67,0.2)' }} />
+          </div>
+
+          {/* Skeleton while loading */}
+          {perksLoading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[1,2,3].map(i => (
+                <div key={i} style={{ height: 72, borderRadius: 14, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+              ))}
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {perks.map(p => {
+                  const isNew = (Date.now() - new Date(p.createdAt).getTime()) < 7 * 86400_000;
+                  const CardWrapper = p.linkUrl
+                    ? ({ children }: { children: React.ReactNode }) => (
+                        <a href={p.linkUrl!} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', display: 'block' }}>{children}</a>
+                      )
+                    : ({ children }: { children: React.ReactNode }) => <div>{children}</div>;
+                  return (
+                    <CardWrapper key={p.id}>
+                      <div style={{
+                        background: isNew ? 'rgba(212,168,67,0.07)' : 'rgba(255,255,255,0.05)',
+                        border: isNew ? `1px solid rgba(212,168,67,0.35)` : '1px solid rgba(255,255,255,0.09)',
+                        borderRadius: 14, padding: '13px 14px',
+                        display: 'flex', alignItems: 'flex-start', gap: 12,
+                        cursor: p.linkUrl ? 'pointer' : 'default',
+                        transition: 'background 0.15s',
+                      }}>
+                        {p.imageUrl
+                          ? <img src={p.imageUrl} alt="" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+                          : <div style={{ width: 42, height: 42, borderRadius: 8, background: 'rgba(212,168,67,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 20 }}>🎁</div>
+                        }
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                            <p style={{ fontSize: 14, fontWeight: 700, color: BEIGE, margin: 0 }}>{p.title}</p>
+                            {isNew && (
+                              <span style={{ fontSize: 10, fontWeight: 800, color: '#1a0f00', background: GOLD, borderRadius: 5, padding: '1px 7px', flexShrink: 0 }}>
+                                {isRtl ? 'جديد' : 'NEW'}
+                              </span>
+                            )}
+                          </div>
+                          {p.description && (
+                            <p style={{ fontSize: 12, color: 'rgba(245,240,232,0.55)', margin: 0, lineHeight: 1.55 }}>
+                              {p.description.slice(0, 100)}{p.description.length > 100 ? '…' : ''}
+                            </p>
+                          )}
+                        </div>
+                        {p.linkUrl && (
+                          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth={2} style={{ flexShrink: 0, opacity: 0.6, marginTop: 4 }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/>
+                          </svg>
+                        )}
+                      </div>
+                    </CardWrapper>
+                  );
+                })}
+              </div>
+              {/* CTA to sign-up form */}
+              <a href="#signup-form" onClick={e => { e.preventDefault(); document.getElementById('signup-form')?.scrollIntoView({ behavior: 'smooth' }); }}
+                style={{
+                  display: 'block', width: '100%', marginTop: 14, padding: '13px 0', borderRadius: 14,
+                  background: 'rgba(212,168,67,0.15)', border: `1px solid rgba(212,168,67,0.4)`,
+                  color: GOLD, fontWeight: 800, fontSize: 14, textAlign: 'center', textDecoration: 'none',
+                  cursor: 'pointer',
+                }}>
+                {isRtl ? '← اشترك الآن للاستفادة من كل هذه المزايا' : 'Join now to unlock all benefits →'}
+              </a>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Sign up form or PayPal */}
-      <div style={{ maxWidth: 420, margin: '0 auto', padding: '0 20px' }}>
+      <div id="signup-form" style={{ maxWidth: 420, margin: '0 auto', padding: '0 20px' }}>
         {!isLoggedIn ? (
           <div style={{ textAlign: 'center' }}>
             <Link href="/login?redirect=/membership"

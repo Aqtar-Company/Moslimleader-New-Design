@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import MushafQCFPage from './MushafQCFPage';
+import VerseActionSheet, { type TappedVerse } from './VerseActionSheet';
 import {
   QuranVerse, fetchPageVerses,
   toArabicNum,
@@ -49,6 +50,17 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   const [surahFilter, setSurahFilter] = useState('');
   const [searchSurah, setSearchSurah] = useState(initialSurah);
   const [searchAyah, setSearchAyah] = useState(1);
+  const [tappedVerse, setTappedVerse] = useState<TappedVerse | null>(null);
+
+  // Reading mode — collapse header on scroll down in 'both' mode
+  const [headerHidden, setHeaderHidden] = useState(false);
+  const [autoFollow, setAutoFollow] = useState(true);
+  const lastScrollYRef = useRef(0);
+  const scrollPauseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Swipe-to-turn-page refs (Arabic RTL: swipe left = next, swipe right = prev)
+  const swipeStartXRef = useRef<number | null>(null);
+  const swipeStartYRef = useRef<number | null>(null);
 
   // Refs for closure-safe access in audio callbacks
   const versesRef   = useRef<QuranVerse[]>([]);
@@ -66,6 +78,28 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
     // 'read' tab removed — fall back to listen
     if (stored === 'listen' || stored === 'both') setMode(stored);
   }, []);
+
+  // Reading mode scroll handler — only active in 'both' tab
+  useEffect(() => {
+    if (mode !== 'both') { setHeaderHidden(false); return; }
+    const onScroll = () => {
+      const y = window.scrollY;
+      const delta = y - lastScrollYRef.current;
+      lastScrollYRef.current = y;
+      if (y < 10) { setHeaderHidden(false); return; }
+      if (delta > 8) setHeaderHidden(true);
+      else if (delta < -8) setHeaderHidden(false);
+      // Pause auto-follow while user scrolls; resume after 4s of stillness
+      setAutoFollow(false);
+      if (scrollPauseRef.current) clearTimeout(scrollPauseRef.current);
+      scrollPauseRef.current = setTimeout(() => setAutoFollow(true), 4000);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (scrollPauseRef.current) clearTimeout(scrollPauseRef.current);
+    };
+  }, [mode]);
 
   // Sync state → refs so audio callbacks always read current values
   useEffect(() => { versesRef.current = verses; }, [verses]);
@@ -244,6 +278,8 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
     if (idx < 0 || idx >= verses.length) return;
     currentRef.current = idx;
     setCurrentIdx(idx);
+    setAutoFollow(true); // resume auto-follow on explicit navigation
+    setHeaderHidden(false);
     if (isPlaying) playFromRef();
   }
 
@@ -254,6 +290,19 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
     setIsPlaying(false);
     playingRef.current = false;
     setPage(next);
+    // Track daily wird — each page navigation counts as one page read
+    if (mode === 'both') {
+      try {
+        const today = new Date().toLocaleDateString('en-CA');
+        const raw = localStorage.getItem('nuri-daily-progress');
+        const data = raw ? JSON.parse(raw) : null;
+        if (data?.date === today) {
+          localStorage.setItem('nuri-daily-progress', JSON.stringify({ date: today, pagesRead: (data.pagesRead || 0) + 1 }));
+        } else {
+          localStorage.setItem('nuri-daily-progress', JSON.stringify({ date: today, pagesRead: 1 }));
+        }
+      } catch { /* ignore */ }
+    }
   }
 
   function changeMode(m: Mode) {
@@ -275,22 +324,23 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col min-h-screen" style={{ background: mode === 'listen' ? '#05101f' : 'var(--tr-base)', overflow: mode === 'listen' ? 'hidden' : undefined }}>
+    <div className="flex flex-col min-h-screen" style={{ background: mode === 'listen' ? '#05101f' : '#F7F2E8', overflow: mode === 'listen' ? 'hidden' : undefined }}>
 
       {/* ── Top bar ── */}
-      <div className="fixed top-0 left-0 right-0 z-40 flex flex-col gap-0">
+      <div className="fixed top-0 left-0 right-0 z-40 flex flex-col gap-0"
+        style={{ transform: (mode === 'both' && headerHidden) ? 'translateY(-100%)' : 'translateY(0)', transition: 'transform 0.25s ease' }}>
         {/* Row 1: surah list (right) | page nav | search | back arrow (left) */}
         <div className="flex items-center gap-2 px-3 py-2" dir="rtl"
-          style={{ background: 'var(--tr-header-bg)', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
+          style={{ background: mode === 'both' ? 'rgba(247,242,232,0.97)' : 'var(--tr-header-bg)', backdropFilter: 'blur(16px)', borderBottom: mode === 'both' ? '1px solid rgba(171,136,68,0.2)' : '1px solid var(--tr-border-subtle)' }}>
 
           {/* Surah list button — rightmost in RTL */}
           <button onClick={() => setShowSearch(true)}
             className="flex items-center gap-1 h-8 px-2 rounded-full shrink-0 transition active:scale-90"
-            style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)', maxWidth: 120 }}>
+            style={{ background: mode === 'both' ? 'rgba(171,136,68,0.1)' : 'var(--tr-overlay)', color: mode === 'both' ? '#5a3e10' : 'var(--tr-text-secondary)', maxWidth: 120 }}>
             <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" d="M4 6h16M4 12h10M4 18h7"/>
             </svg>
-            <span className="text-[11px] font-bold truncate" style={{ color: 'var(--tr-text-secondary)' }}>
+            <span className="text-[11px] font-bold truncate">
               {cv ? (isRtl ? surahNameAr : surahNameEn) : (isRtl ? 'السور' : 'Surahs')}
             </span>
           </button>
@@ -298,7 +348,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
           {/* Prev page */}
           <button onClick={() => goPage(-1)} disabled={page <= 1}
             className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30 shrink-0"
-            style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
+            style={{ background: mode === 'both' ? 'rgba(171,136,68,0.1)' : 'var(--tr-overlay)', color: mode === 'both' ? '#5a3e10' : 'var(--tr-text-secondary)' }}>
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
@@ -306,16 +356,16 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
 
           {/* Page + surah info (center) */}
           <div className="flex-1 text-center">
-            <p className="text-xs font-black leading-none" style={{ color: 'var(--tr-text-primary)' }}>
+            <p className="text-xs font-black leading-none" style={{ color: mode === 'both' ? '#2e1a00' : 'var(--tr-text-primary)' }}>
               {isRtl ? `صفحة ${toArabicNum(page)}` : `Page ${page}`}
             </p>
-            {cv && <p className="text-[10px] mt-0.5 leading-none" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? surahNameAr : surahNameEn}</p>}
+            {cv && <p className="text-[10px] mt-0.5 leading-none" style={{ color: mode === 'both' ? '#7a5a30' : 'var(--tr-text-muted)' }}>{isRtl ? surahNameAr : surahNameEn}</p>}
           </div>
 
           {/* Next page */}
           <button onClick={() => goPage(1)} disabled={page >= TOTAL_QURAN_PAGES}
             className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30 shrink-0"
-            style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
+            style={{ background: mode === 'both' ? 'rgba(171,136,68,0.1)' : 'var(--tr-overlay)', color: mode === 'both' ? '#5a3e10' : 'var(--tr-text-secondary)' }}>
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
@@ -324,7 +374,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
           {/* Back button — goes to group page or nuri home */}
           <button onClick={() => router.push(groupId ? `/tareeq/khatmati/groups/${groupId}` : '/tareeq/khatmati')}
             className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 shrink-0"
-            style={{ background: '#2563eb', color: '#fff' }}>
+            style={{ background: mode === 'both' ? 'rgba(171,136,68,0.15)' : '#2563eb', color: mode === 'both' ? '#5a3e10' : '#fff' }}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
             </svg>
@@ -332,13 +382,13 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
         </div>
 
         {/* Row 2: Mode tabs — right→left: استماع | قراءة واستماع */}
-        <div className="flex" style={{ background: 'var(--tr-surface)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
+        <div className="flex" style={{ background: mode === 'both' ? 'rgba(240,232,210,0.97)' : 'var(--tr-surface)', borderBottom: mode === 'both' ? '1px solid rgba(171,136,68,0.2)' : '1px solid var(--tr-border-subtle)' }}>
           {(['listen', 'both'] as Mode[]).map(m => (
             <button key={m} onClick={() => changeMode(m)}
               className="flex-1 py-2.5 text-xs font-bold transition"
               style={{
-                color: mode === m ? 'var(--nuri-gold)' : 'var(--tr-text-muted)',
-                borderBottom: mode === m ? '2px solid var(--nuri-gold)' : '2px solid transparent',
+                color: mode === m ? (m === 'both' ? '#c8a84b' : 'var(--nuri-gold)') : (mode === 'both' ? '#9b7a40' : 'var(--tr-text-muted)'),
+                borderBottom: mode === m ? `2px solid ${m === 'both' ? '#c8a84b' : 'var(--nuri-gold)'}` : '2px solid transparent',
                 background: 'none',
               }}>
               {m === 'listen' ? (isRtl ? 'استماع' : 'Listen') : (isRtl ? 'قراءة واستماع' : 'Listen + Read')}
@@ -347,8 +397,19 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
         </div>
       </div>
 
-      {/* ── Content area ── */}
-      <div className={`flex-1 pt-[88px] ${mode === 'both' ? 'pb-[80px]' : ''}`}>
+      {/* ── Content area ── swipe left/right to turn pages (both mode) */}
+      <div className={`flex-1 ${mode === 'both' ? 'pb-[80px]' : ''}`}
+        style={{ paddingTop: (mode === 'both' && headerHidden) ? 0 : 88, transition: 'padding-top 0.25s ease' }}
+        onTouchStart={mode === 'both' ? (e) => { swipeStartXRef.current = e.touches[0].clientX; swipeStartYRef.current = e.touches[0].clientY; } : undefined}
+        onTouchEnd={mode === 'both' ? (e) => {
+          if (swipeStartXRef.current === null || swipeStartYRef.current === null) return;
+          const dx = e.changedTouches[0].clientX - swipeStartXRef.current;
+          const dy = e.changedTouches[0].clientY - swipeStartYRef.current;
+          swipeStartXRef.current = null; swipeStartYRef.current = null;
+          if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+          // RTL Arabic: swipe right (dx>0) = next page, swipe left = previous
+          goPage(dx > 0 ? 1 : -1);
+        } : undefined}>
         {loading ? (
           <div className="flex items-center justify-center py-24">
             <div className="w-8 h-8 border-2 rounded-full animate-spin"
@@ -519,12 +580,15 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                       </svg>
                     </button>
 
-                    {/* Verse info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontWeight: 700, fontSize: 14, color: 'rgba(255,255,255,0.9)', marginBottom: 2 }} className="truncate">
+                    {/* Verse info — non-selectable to prevent Android Google search panel */}
+                    <div style={{ flex: 1, minWidth: 0, WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
+                      onContextMenu={e => e.preventDefault()}
+                      onMouseDown={e => e.preventDefault()}
+                    >
+                      <p style={{ fontWeight: 700, fontSize: 14, color: 'rgba(255,255,255,0.9)', marginBottom: 2, pointerEvents: 'none' }} className="truncate">
                         {isRtl ? surahNameAr : surahNameEn}
                       </p>
-                      <p style={{ fontSize: 12, color: 'rgba(148,163,184,0.8)' }}>
+                      <p style={{ fontSize: 12, color: 'rgba(148,163,184,0.8)', pointerEvents: 'none' }}>
                         {isRtl
                           ? `الآية ${toArabicNum(cv.verse_number)} • صفحة ${toArabicNum(page)}`
                           : `Ayah ${cv.verse_number} • Page ${page}`}
@@ -553,10 +617,12 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                 page={page}
                 currentChapter={cv?.chapter_id ?? initialSurah}
                 currentVerse={cv?.verse_number ?? initialAyah}
+                autoFollow={autoFollow}
                 onVerseClick={(ch, v) => {
                   const idx = versesRef.current.findIndex(x => x.chapter_id === ch && x.verse_number === v);
                   if (idx >= 0) goVerse(idx);
                 }}
+                onAyahTap={setTappedVerse}
               />
             )}
           </>
@@ -566,16 +632,16 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
       {/* ── Audio player (fixed bottom — both mode only) ── */}
       {mode === 'both' && (
         <div className="fixed bottom-0 left-0 right-0 z-40"
-          style={{ background: 'var(--tr-surface)', borderTop: '1px solid var(--tr-border-soft)', boxShadow: '0 -4px 24px rgba(0,0,0,0.14)' }}>
+          style={{ background: 'rgba(240,232,210,0.97)', borderTop: '1px solid rgba(171,136,68,0.3)', boxShadow: '0 -4px 24px rgba(90,62,16,0.12)', backdropFilter: 'blur(12px)' }}>
 
-          <div style={{ height: 3, background: 'var(--tr-overlay)' }} dir="ltr">
-            <div style={{ height: '100%', background: 'var(--nuri-gold)', width: `${audioProgress * 100}%`, transition: 'width 0.3s linear' }} />
+          <div style={{ height: 3, background: 'rgba(171,136,68,0.15)' }} dir="ltr">
+            <div style={{ height: '100%', background: 'linear-gradient(90deg, #c8a84b, #e8c870)', width: `${audioProgress * 100}%`, transition: 'width 0.3s linear' }} />
           </div>
 
           <div className="flex items-center gap-3 px-4 py-3" dir="rtl">
             <button onClick={() => goVerse(currentIdx - 1)} disabled={currentIdx === 0}
               className="w-10 h-10 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30"
-              style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
+              style={{ background: 'rgba(171,136,68,0.12)', color: '#5a3e10' }}>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
               </svg>
@@ -583,7 +649,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
 
             <button onClick={togglePlay} disabled={loading}
               className="w-14 h-14 rounded-full flex items-center justify-center transition active:scale-95 disabled:opacity-40 shadow-lg"
-              style={{ background: 'var(--nuri-gold)', color: '#0a0c14', flexShrink: 0 }}>
+              style={{ background: 'linear-gradient(135deg, #c8a84b, #e8c870)', color: '#1a0800', flexShrink: 0, boxShadow: '0 4px 16px rgba(200,168,75,0.4)' }}>
               {isPlaying ? (
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                   <rect x="6" y="4" width="4" height="16" rx="1"/>
@@ -598,18 +664,22 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
 
             <button onClick={() => goVerse(currentIdx + 1)} disabled={currentIdx >= verses.length - 1}
               className="w-10 h-10 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30"
-              style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}>
+              style={{ background: 'rgba(171,136,68,0.12)', color: '#5a3e10' }}>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
               </svg>
             </button>
 
             {cv && (
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-black truncate" style={{ color: 'var(--tr-text-primary)' }}>
+              <div className="flex-1 min-w-0"
+                style={{ WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
+                onContextMenu={e => e.preventDefault()}
+                onMouseDown={e => e.preventDefault()}
+              >
+                <p className="text-sm font-black truncate" style={{ color: '#2e1a00', pointerEvents: 'none' }}>
                   {isRtl ? surahNameAr : surahNameEn}
                 </p>
-                <p className="text-xs" style={{ color: 'var(--tr-text-muted)' }}>
+                <p className="text-xs" style={{ color: '#9b7a40', pointerEvents: 'none' }}>
                   {isRtl
                     ? `الآية ${toArabicNum(cv.verse_number)} • صفحة ${toArabicNum(page)}`
                     : `Ayah ${cv.verse_number} • Page ${page}`}
@@ -782,6 +852,10 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
             </div>
           </div>
         </div>
+      )}
+      {/* Verse action sheet — tafsir + card */}
+      {tappedVerse && (
+        <VerseActionSheet verse={tappedVerse} onClose={() => setTappedVerse(null)} />
       )}
     </div>
   );

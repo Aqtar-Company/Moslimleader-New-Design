@@ -22,19 +22,22 @@ const BG_GRADIENT     = `linear-gradient(170deg, ${BG_TOP} 0%, ${BG_MID} 38%, ${
 const DRAFT_PAGES_KEY = 'nuri-daily-pages';
 
 // ── Thin circular progress ring — no stage dots ──────────────────────────────
-function LampRing({ pct, wardDone, lanternLit, lanternLevel, children }: {
-  pct: number; wardDone: boolean; lanternLit: boolean; lanternLevel: number; children: React.ReactNode;
+function LampRing({ pct, wardDone, lanternLit, lanternLevel, wardProgress, children }: {
+  pct: number; wardDone: boolean; lanternLit: boolean; lanternLevel: number; wardProgress: number; children: React.ReactNode;
 }) {
   const R = 100; const S = 220; const C = S / 2;
+  const RW = 88; // inner ring radius for wird progress
   const circ = 2 * Math.PI * R;
+  const circW = 2 * Math.PI * RW;
   const offset = circ * (1 - pct / 100);
+  const offsetW = circW * (1 - wardProgress);
   const glowing = wardDone || lanternLit;
   return (
     <div style={{ position: 'relative', width: S, height: S, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
       <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{ position: 'absolute', inset: 0 }}>
-        {/* track */}
+        {/* outer track (overall Quran progress) */}
         <circle cx={C} cy={C} r={R} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={2} />
-        {/* progress arc */}
+        {/* outer progress arc — overall Quran % */}
         <circle
           cx={C} cy={C} r={R} fill="none"
           stroke={glowing ? NURI_YELLOW : 'rgba(255,204,51,0.38)'}
@@ -45,6 +48,22 @@ function LampRing({ pct, wardDone, lanternLit, lanternLevel, children }: {
           transform={`rotate(-90 ${C} ${C})`}
           style={{ transition: 'stroke-dashoffset 1.2s ease, stroke 0.6s ease' }}
         />
+        {/* inner wird ring — daily progress */}
+        {wardProgress > 0 && (
+          <>
+            <circle cx={C} cy={C} r={RW} fill="none" stroke="rgba(255,204,51,0.08)" strokeWidth={1.5} />
+            <circle
+              cx={C} cy={C} r={RW} fill="none"
+              stroke={wardDone ? NURI_YELLOW : 'rgba(255,204,51,0.65)'}
+              strokeWidth={wardDone ? 2.5 : 2}
+              strokeLinecap="round"
+              strokeDasharray={circW}
+              strokeDashoffset={offsetW}
+              transform={`rotate(-90 ${C} ${C})`}
+              style={{ transition: 'stroke-dashoffset 0.8s ease, stroke 0.4s ease' }}
+            />
+          </>
+        )}
       </svg>
       {/* glow pulses */}
       {glowing && (
@@ -89,6 +108,9 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
   const [reminderOn, setReminderOn]           = useState(false);
   const [sharing, setSharing]                 = useState(false);
   const [lanternLit, setLanternLit]           = useState(false);
+  const [dailyProgress, setDailyProgress]     = useState(0); // pages read today
+  const [confirmReset, setConfirmReset]       = useState(false);
+  const currentSurahRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     try {
@@ -96,6 +118,13 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
       if (stored) setDailyPages(parseInt(stored, 10) || 1);
       const rem = localStorage.getItem('nuri-reminder');
       if (rem === '1') setReminderOn(true);
+      // Load today's ward (wird) progress
+      const prog = localStorage.getItem('nuri-daily-progress');
+      if (prog) {
+        const data = JSON.parse(prog);
+        const today = new Date().toLocaleDateString('en-CA');
+        if (data?.date === today) setDailyProgress(data.pagesRead || 0);
+      }
     } catch { /* ignore */ }
     if (p) {
       localStorage.setItem('nuri-progress', JSON.stringify({
@@ -128,10 +157,39 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
     };
   }, [p]);
 
+  // Auto-scroll to current surah when picker opens
+  useEffect(() => {
+    if (showSurahPicker) {
+      const t = setTimeout(() => currentSurahRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 120);
+      return () => clearTimeout(t);
+    }
+  }, [showSurahPicker]);
+
+  async function resetKhatma() {
+    try {
+      localStorage.setItem('nuri-progress', JSON.stringify({ page: 1, surah: 1, ayah: 1 }));
+      await fetch('/api/tareeq/khatmati/progress', {
+        method: 'PUT', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ page: 1, surah: 1, ayah: 1, totalPagesRead: 0 }),
+      });
+      window.location.reload();
+    } catch { /* ignore */ }
+  }
+
   function saveDailyPages(n: number) {
     setDailyPages(n);
     setCustomPages('');
-    try { localStorage.setItem(DRAFT_PAGES_KEY, String(n)); } catch { /* ignore */ }
+    try {
+      localStorage.setItem(DRAFT_PAGES_KEY, String(n));
+      // Re-read daily progress so lamp updates immediately on goal change
+      const prog = localStorage.getItem('nuri-daily-progress');
+      if (prog) {
+        const data = JSON.parse(prog);
+        const today = new Date().toLocaleDateString('en-CA');
+        if (data?.date === today) setDailyProgress(data.pagesRead || 0);
+      }
+    } catch { /* ignore */ }
   }
 
   function applyCustomPages() {
@@ -224,8 +282,11 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
   const pctLevel = pct === 0 ? 0 : Math.min(4, Math.ceil(pct * 4 / 100));
   const overlayOpacity = Math.max(0, 0.5 * (1 - pct / 100));
 
-  const wardDone   = state === 'bright';
-  const wardMissed = state === 'dark' && p !== null;
+  // Daily wird progress (0.0 → 1.0): pages read today / daily goal
+  const wardProgress = dailyPages > 0 ? Math.min(dailyProgress / dailyPages, 1.0) : 0;
+  // Ward is done when daily goal reached OR server confirms they read today (for goal=1 compat)
+  const wardDone   = wardProgress >= 1.0 || state === 'bright';
+  const wardMissed = state === 'dark' && p !== null && wardProgress === 0;
 
   const filteredSurahs = SURAH_NAMES_AR.map((ar, i) => ({ ar, en: SURAH_NAMES_EN[i], i }))
     .filter(s => surahSearch === '' || s.ar.includes(surahSearch) || s.en.toLowerCase().includes(surahSearch.toLowerCase()) || String(s.i + 1).includes(surahSearch));
@@ -292,7 +353,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, paddingBlock: 18, flexShrink: 0, position: 'relative' }}>
           {/* Radial luxury glow behind the ring */}
           <div style={{ position: 'absolute', width: 340, height: 200, borderRadius: '50%', background: 'radial-gradient(ellipse at center, rgba(15,50,120,0.55) 0%, rgba(5,20,60,0.25) 55%, transparent 75%)', top: '50%', left: '50%', transform: 'translate(-50%,-52%)', pointerEvents: 'none' }} />
-          <LampRing pct={pct} wardDone={wardDone} lanternLit={lanternLit} lanternLevel={lanternLevel}>
+          <LampRing pct={pct} wardDone={wardDone} lanternLit={lanternLit} lanternLevel={lanternLevel} wardProgress={wardProgress}>
             <img
               src={`/${lanternLit ? 4 : pctLevel}-light.png`}
               alt=""
@@ -300,8 +361,8 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
               onClick={() => { setLanternLit(true); setTimeout(() => setLanternLit(false), 2000); }}
               style={{
                 width: 150, height: 150, objectFit: 'contain', position: 'relative', zIndex: 1,
-                animation: (wardDone || lanternLit) ? 'nuri-float 4s ease-in-out infinite' : 'none',
-                filter: `brightness(${(lanternLit ? 1 : 0.35 + pctLevel * 0.165).toFixed(2)})${(wardDone || lanternLit) ? ' drop-shadow(0 0 28px rgba(255,204,51,0.65))' : ''}`,
+                animation: (wardDone || lanternLit) ? 'nuri-float 4s ease-in-out infinite' : (wardProgress > 0 ? 'nuri-float 6s ease-in-out infinite' : 'none'),
+                filter: `brightness(${(lanternLit ? 1 : Math.min(1, 0.30 + pctLevel * 0.14 + wardProgress * 0.45)).toFixed(2)})${(wardDone || lanternLit) ? ' drop-shadow(0 0 28px rgba(255,204,51,0.65))' : wardProgress > 0.3 ? ` drop-shadow(0 0 ${Math.round(wardProgress * 16)}px rgba(255,204,51,${(wardProgress * 0.5).toFixed(2)}))` : ''}`,
                 cursor: 'pointer', transition: 'filter 0.8s ease',
               }}
             />
@@ -313,7 +374,56 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
               ? (isRtl ? 'بارك الله في تلاوتك اليوم ✓' : 'May Allah bless your recitation ✓')
               : (isRtl ? 'استمر في التلاوة ليكتمل نورك' : 'Continue your recitation')}
           </p>
+
+          {/* Daily wird counter */}
+          {p && dailyPages > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: wardDone ? '#4ade80' : TEXT_MUT }}>
+                {isRtl
+                  ? `${dailyProgress} / ${dailyPages} صفحة اليوم`
+                  : `${dailyProgress} / ${dailyPages} pages today`}
+              </span>
+              {wardDone && <span style={{ fontSize: 13 }}>✓</span>}
+              {!wardDone && dailyProgress > 0 && (
+                <span style={{ fontSize: 11, color: TEXT_MUT }}>
+                  {isRtl ? `· ${dailyPages - dailyProgress} متبقية` : `· ${dailyPages - dailyProgress} left`}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Rings legend */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <svg width={10} height={10} viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="none" stroke={NURI_YELLOW} strokeWidth="1.5"/></svg>
+              <span style={{ fontSize: 10, color: TEXT_MUT }}>{isRtl ? 'الختمة' : 'Khatma'}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <svg width={10} height={10} viewBox="0 0 10 10"><circle cx="5" cy="5" r="3" fill="none" stroke="rgba(255,204,51,0.65)" strokeWidth="1.5"/></svg>
+              <span style={{ fontSize: 10, color: TEXT_MUT }}>{isRtl ? 'الورد اليومي' : 'Daily wird'}</span>
+            </div>
+          </div>
         </div>
+
+        {/* ── Streak danger banner ── */}
+        {state === 'dim' && p && streak > 0 && (
+          <div style={{ marginInline: 20, marginBottom: 12, padding: '10px 14px', borderRadius: 12, background: 'rgba(251,146,60,0.12)', border: '1px solid rgba(251,146,60,0.3)', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            <span style={{ fontSize: 18 }}>⚠️</span>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 12, fontWeight: 800, color: '#fb923c', margin: '0 0 2px' }}>
+                {isRtl ? `سلسلتك ${streak} يوماً في خطر!` : `Your ${streak}-day streak is at risk!`}
+              </p>
+              <p style={{ fontSize: 11, color: 'rgba(251,146,60,0.7)', margin: 0 }}>
+                {isRtl ? 'اقرأ اليوم قبل منتصف الليل للحفاظ عليها' : 'Read before midnight to keep it'}
+              </p>
+            </div>
+            <button
+              onClick={() => router.push(`/tareeq/khatmati/read?page=${page}&surah=${p?.currentSurah ?? 1}&ayah=${p?.currentAyah ?? 1}`)}
+              style={{ padding: '6px 12px', borderRadius: 8, background: '#fb923c', color: '#fff', fontWeight: 800, fontSize: 12, border: 'none', cursor: 'pointer', flexShrink: 0 }}>
+              {isRtl ? 'اقرأ الآن' : 'Read now'}
+            </button>
+          </div>
+        )}
 
         {/* ── Solo khatma unified card ── */}
         <div style={{ paddingInline: 20, flexShrink: 0 }}>
@@ -489,8 +599,8 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
             </div>
             <div style={{ overflowY: 'auto', flex: 1 }}>
               {filteredSurahs.map(({ ar, en, i }) => (
-                <button key={i} onClick={() => goToSurah(i)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '12px 20px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'start', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <button key={i} ref={i + 1 === (p?.currentSurah ?? 0) ? currentSurahRef : null} onClick={() => goToSurah(i)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '12px 20px', background: i + 1 === (p?.currentSurah ?? 0) ? 'rgba(255,204,51,0.06)' : 'none', border: 'none', cursor: 'pointer', textAlign: 'start', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   <span style={{ width: 34, height: 34, borderRadius: 8, flexShrink: 0, background: i + 1 === (p?.currentSurah ?? 0) ? NURI_YELLOW_DIM : 'rgba(255,255,255,0.05)', border: i + 1 === (p?.currentSurah ?? 0) ? '1px solid rgba(255,204,51,0.3)' : '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: i + 1 === (p?.currentSurah ?? 0) ? NURI_YELLOW : TEXT_MUT }}>
                     {i + 1}
                   </span>
@@ -573,7 +683,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
 
             {/* Reminder toggle */}
             <button onClick={toggleReminder}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '13px 16px', borderRadius: 12, cursor: 'pointer', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '13px 16px', borderRadius: 12, cursor: 'pointer', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 10 }}>
               <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={TEXT_MUT} strokeWidth={1.8}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/>
               </svg>
@@ -582,6 +692,39 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
                 <div style={{ position: 'absolute', top: 2, left: reminderOn ? 22 : 2, width: 20, height: 20, borderRadius: '50%', background: reminderOn ? '#080E1C' : 'rgba(255,255,255,0.5)', transition: 'left 0.25s' }} />
               </div>
             </button>
+
+            {/* Reset khatma */}
+            {p && (
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 14 }}>
+                {!confirmReset ? (
+                  <button onClick={() => setConfirmReset(true)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '13px 16px', borderRadius: 12, cursor: 'pointer', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.18)' }}>
+                    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="rgba(239,68,68,0.7)" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(239,68,68,0.8)' }}>
+                      {isRtl ? 'ابدأ ختمة جديدة من الصفحة الأولى' : 'Start a new Khatma from page 1'}
+                    </span>
+                  </button>
+                ) : (
+                  <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: '#ef4444', marginBottom: 10 }}>
+                      {isRtl ? 'هل أنت متأكد؟ سيتم إعادة التقدم للصفحة الأولى.' : 'Are you sure? Progress will reset to page 1.'}
+                    </p>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={resetKhatma}
+                        style={{ flex: 1, padding: '9px 0', borderRadius: 9, background: '#ef4444', color: '#fff', fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer' }}>
+                        {isRtl ? 'نعم، أعد التشغيل' : 'Yes, restart'}
+                      </button>
+                      <button onClick={() => setConfirmReset(false)}
+                        style={{ flex: 1, padding: '9px 0', borderRadius: 9, background: 'rgba(255,255,255,0.07)', color: TEXT_MUT, fontWeight: 700, fontSize: 13, border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>
+                        {isRtl ? 'إلغاء' : 'Cancel'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

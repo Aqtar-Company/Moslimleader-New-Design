@@ -68,6 +68,7 @@ export default function AccountPage() {
   const [membershipLoading, setMembershipLoading] = useState(false);
   const [perks, setPerks] = useState<{ id: string; title: string; description: string | null; imageUrl: string | null; linkUrl: string | null; validUntil: string | null; createdAt: string }[]>([]);
   const [membershipZone, setMembershipZone] = useState<'egypt' | 'international'>('international');
+  const [membershipPrices, setMembershipPrices] = useState({ egyEgp: 100, egyUsd: 2.00, intlUsd: 5.00, instapayNumber: '' });
   const [applyStep, setApplyStep] = useState<'idle' | 'form' | 'paypal' | 'instapay' | 'pending' | 'success'>('idle');
   const [applyFamilyName, setApplyFamilyName] = useState('');
   const [applyLoading, setApplyLoading] = useState(false);
@@ -182,11 +183,17 @@ export default function AccountPage() {
         .catch(() => {})
         .finally(() => setFreeMediaLoading(false));
 
-      // Detect zone for membership pricing
+      // Detect zone for membership pricing (uses IP-detected country from RegionalPricingContext)
       try {
-        const cc = localStorage.getItem('originCountryCode');
+        const cc = localStorage.getItem('originCountryCode') ?? localStorage.getItem('ml-pricing-origin');
         setMembershipZone(cc === 'EG' ? 'egypt' : 'international');
       } catch { /* ignore */ }
+
+      // Fetch membership prices from admin-controlled settings
+      fetch('/api/membership/price')
+        .then(r => r.json())
+        .then(d => setMembershipPrices({ egyEgp: d.egyEgp ?? 100, egyUsd: d.egyUsd ?? 2, intlUsd: d.intlUsd ?? 5, instapayNumber: d.instapayNumber ?? '' }))
+        .catch(() => {});
 
       // Load membership + perks
       setMembershipLoading(true);
@@ -194,12 +201,10 @@ export default function AccountPage() {
         .then(r => r.json())
         .then(d => {
           setMembership(d.membership ?? null);
-          if (d.membership?.status === 'ACTIVE') {
-            fetch('/api/membership/perks', { credentials: 'include' })
-              .then(r => r.json())
-              .then(pd => setPerks(pd.perks ?? []))
-              .catch(() => {});
-          }
+          fetch('/api/membership/perks', { credentials: 'include' })
+            .then(r => r.json())
+            .then(pd => setPerks(pd.perks ?? []))
+            .catch(() => {});
         })
         .catch(() => {})
         .finally(() => setMembershipLoading(false));
@@ -1116,52 +1121,149 @@ export default function AccountPage() {
       )}
 
       {tab === 'membership' && (
-        <div>
-          <div className="mb-5">
-            <h2 className="text-xl font-black text-gray-900">
-              {isRtl ? 'عضوية الأسرة' : 'Family Membership'}
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {isRtl ? 'بطاقة عضوية مسلم ليدر وامتيازاتها' : 'Your Muslim Leader membership card and benefits'}
-            </p>
-          </div>
-
+        <div className="pb-4">
           {membershipLoading ? (
             <div className="flex justify-center py-16">
               <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : !membership ? (
+            /* ── NON-MEMBER VIEW ── */
             <div>
               {applyStep === 'idle' && (
-                /* ── Membership promo card ── */
-                <div className="rounded-2xl overflow-hidden shadow-sm border border-amber-100">
-                  <div className="p-6 text-white relative" style={{ background: 'linear-gradient(135deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%)' }}>
-                    <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%,white 1px,transparent 1px),radial-gradient(circle at 80% 20%,white 1px,transparent 1px)', backgroundSize: '30px 30px' }} />
-                    <p className="font-black text-xl mb-1 relative">{isRtl ? 'عضوية أسرة مسلم ليدر' : 'Muslim Leader Family Membership'}</p>
-                    <p className="text-white/60 text-sm relative">{isRtl ? 'اشترك واستمتع بالمزايا الحصرية لعائلتك' : 'Subscribe and enjoy exclusive benefits for your family'}</p>
-                    <div className="mt-4 flex flex-wrap gap-2 relative">
-                      {[isRtl ? '🎁 مزايا حصرية' : '🎁 Exclusive perks', isRtl ? '👨‍👩‍👧 حسابات الأسرة' : '👨‍👩‍👧 Family accounts', isRtl ? '🔄 تجديد سنوي' : '🔄 Annual renewal'].map(b => (
-                        <span key={b} className="text-xs bg-white/10 text-white/80 px-3 py-1 rounded-full">{b}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="p-5 bg-white">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <p className="text-2xl font-black text-gray-900">
-                          {membershipZone === 'egypt' ? '١٠٠ جنيه' : '$5'}
-                          <span className="text-sm font-normal text-gray-400 mr-1">{isRtl ? '/ سنة' : '/ year'}</span>
-                        </p>
-                        <p className="text-xs text-gray-400 mt-0.5">{membershipZone === 'egypt' ? (isRtl ? 'داخل مصر' : 'Egypt') : (isRtl ? 'خارج مصر' : 'International')}</p>
-                      </div>
+                <>
+                  {/* Hero */}
+                  <div className="relative rounded-2xl overflow-hidden mb-5" style={{ background: 'linear-gradient(135deg,#1a3a2e 0%,#2d5a40 55%,#1e4a35 100%)' }}>
+                    <div className="relative p-6 text-center text-white">
+                      <div className="text-4xl mb-3">🌿</div>
+                      <h2 className="text-xl font-black mb-2">{isRtl ? 'مجتمع مسلم ليدر' : 'Muslim Leader Community'}</h2>
+                      <p className="text-sm leading-relaxed mb-5" style={{ color: 'rgba(255,255,255,0.72)' }}>
+                        {isRtl ? 'لأن تربية أسرة واعية رحلة لا نخوضها وحدنا' : 'Raising a conscious family is a journey we share together'}
+                      </p>
                       <button onClick={() => setApplyStep('form')}
-                        className="px-5 py-2.5 rounded-xl font-black text-sm text-white transition active:scale-95"
-                        style={{ background: 'linear-gradient(135deg,#1a1a2e,#0f3460)' }}>
-                        {isRtl ? 'اشترك الآن' : 'Subscribe Now'}
+                        className="px-7 py-2.5 rounded-xl font-black text-sm transition active:scale-95"
+                        style={{ background: '#D4A853', color: '#1a1a1a' }}>
+                        {isRtl ? 'انضم للمجتمع ←' : 'Join the Community →'}
                       </button>
                     </div>
                   </div>
-                </div>
+
+                  {/* Stats row */}
+                  <div className="grid grid-cols-3 gap-3 mb-5">
+                    {[
+                      { icon: '👨‍👩‍👧', val: isRtl ? '+٥٠٠' : '500+', label: isRtl ? 'أسرة' : 'Families' },
+                      { icon: '🏷️', val: '15%', label: isRtl ? 'خصم' : 'Discount' },
+                      { icon: '📚', val: isRtl ? 'مجاني' : 'Free', label: isRtl ? 'مكتبة' : 'Library' },
+                    ].map(s => (
+                      <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-3 text-center shadow-sm">
+                        <div className="text-xl mb-1">{s.icon}</div>
+                        <p className="font-black text-gray-900 text-base">{s.val}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Benefits */}
+                  <div className="mb-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-black text-gray-900 text-sm">{isRtl ? '✨ مزايا العضوية' : '✨ Member Benefits'}</h3>
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: 'rgba(212,168,83,0.12)', color: '#9a7020' }}>
+                        {isRtl ? 'حصري للأعضاء' : 'Members only'}
+                      </span>
+                    </div>
+                    {perks.length > 0 ? (
+                      <div className="space-y-2">
+                        {perks.slice(0, 4).map(perk => (
+                          <div key={perk.id} className="flex gap-3 p-3 rounded-xl bg-white border border-gray-100 shadow-sm relative overflow-hidden">
+                            <div className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)' }} />
+                            {perk.imageUrl ? (
+                              <img src={perk.imageUrl} alt="" className="w-11 h-11 rounded-lg object-cover shrink-0 relative" style={{ opacity: 0.5 }} />
+                            ) : (
+                              <div className="w-11 h-11 rounded-lg flex items-center justify-center text-xl shrink-0 relative" style={{ background: 'rgba(212,168,83,0.1)' }}>🎁</div>
+                            )}
+                            <div className="min-w-0 flex-1 relative">
+                              <p className="font-bold text-sm" style={{ color: '#6b7280' }}>{perk.title}</p>
+                              {perk.description && <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{perk.description}</p>}
+                            </div>
+                            <div className="relative flex items-center shrink-0">
+                              <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(212,168,83,0.15)', color: '#9a7020' }}>
+                                {isRtl ? 'حصري' : 'Exclusive'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { icon: '🏷️', title: isRtl ? 'خصم ١٥٪' : '15% Discount', desc: isRtl ? 'على جميع المنتجات' : 'On all products' },
+                          { icon: '📚', title: isRtl ? 'مكتبة رقمية' : 'Digital Library', desc: isRtl ? 'وصول لكل الكتب' : 'Full books access' },
+                          { icon: '👨‍👩‍👧', title: isRtl ? 'عضوية عائلية' : 'Family Membership', desc: isRtl ? 'لأفراد الأسرة' : 'For family members' },
+                          { icon: '🤝', title: isRtl ? 'مجتمع خاص' : 'Private Community', desc: isRtl ? 'شبكة أسر واعية' : 'Conscious families' },
+                          { icon: '🎁', title: isRtl ? 'محتوى حصري' : 'Exclusive Content', desc: isRtl ? 'للأعضاء فقط' : 'Members only' },
+                          { icon: '📱', title: isRtl ? 'تطبيق طريق' : 'Tareeq App', desc: isRtl ? 'ميزات متقدمة' : 'Advanced features' },
+                        ].map(b => (
+                          <div key={b.title} className="bg-white rounded-xl border border-gray-100 p-3 shadow-sm">
+                            <div className="text-2xl mb-1.5">{b.icon}</div>
+                            <p className="font-bold text-gray-900 text-xs">{b.title}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{b.desc}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Community feeling */}
+                  <div className="rounded-2xl overflow-hidden mb-5" style={{ background: 'linear-gradient(135deg,#faf8f2 0%,#fef9ec 100%)', border: '1px solid rgba(212,168,83,0.2)' }}>
+                    <div className="p-5">
+                      <h3 className="font-black text-gray-900 text-sm mb-1">{isRtl ? 'أكثر من مجرد خصومات ✨' : 'More than just discounts ✨'}</h3>
+                      <p className="text-xs text-gray-500 mb-4">{isRtl ? 'انضم لمجتمع من الآباء والأمهات الواعيين' : 'Join a community of mindful parents'}</p>
+                      <div className="space-y-3">
+                        {[
+                          { icon: '💬', title: isRtl ? 'تبادل التجارب' : 'Share experiences', desc: isRtl ? 'تواصل مع أسر تشاركك نفس القيم' : 'Connect with families sharing your values' },
+                          { icon: '📖', title: isRtl ? 'محتوى تربوي' : 'Educational content', desc: isRtl ? 'مواد حصرية لبناء الأسرة المسلمة' : 'Exclusive materials for Muslim families' },
+                          { icon: '🌱', title: isRtl ? 'نمو مستمر' : 'Continuous growth', desc: isRtl ? 'مزايا جديدة كل شهر لأعضاء المجتمع' : 'New benefits every month for members' },
+                        ].map(item => (
+                          <div key={item.icon} className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-base shrink-0" style={{ background: 'rgba(212,168,83,0.15)' }}>{item.icon}</div>
+                            <div>
+                              <p className="font-bold text-gray-900 text-xs">{item.title}</p>
+                              <p className="text-xs text-gray-400">{item.desc}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pricing card */}
+                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div className="p-5">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <span className="text-xs font-bold tracking-wider uppercase text-gray-400">{isRtl ? 'عضوية سنوية' : 'Annual Membership'}</span>
+                          <p className="font-black text-gray-900 text-base mt-0.5">{isRtl ? 'اشترك الآن' : 'Subscribe Now'}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-black" style={{ color: '#1a3a2e' }}>
+                            {membershipZone === 'egypt'
+                              ? (isRtl ? `${membershipPrices.egyEgp} جنيه` : `${membershipPrices.egyEgp} EGP`)
+                              : `$${membershipPrices.intlUsd}`}
+                          </p>
+                          <p className="text-xs text-gray-400">{isRtl ? '/ سنة' : '/ year'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 mb-4 text-xs text-gray-400 py-2 border-t border-gray-100">
+                        <span>{membershipZone === 'egypt' ? '🇪🇬' : '🌍'}</span>
+                        <span>{membershipZone === 'egypt' ? (isRtl ? 'داخل مصر — تم اكتشاف موقعك تلقائياً' : 'Egypt — location auto-detected') : (isRtl ? 'خارج مصر — تم اكتشاف موقعك تلقائياً' : 'International — location auto-detected')}</span>
+                      </div>
+                      <button onClick={() => setApplyStep('form')}
+                        className="w-full py-3 rounded-xl font-black text-sm text-white transition active:scale-95"
+                        style={{ background: 'linear-gradient(135deg,#1a3a2e,#2d5a40)' }}>
+                        {isRtl ? 'انضم للمجتمع ←' : 'Join the Community →'}
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
 
               {applyStep === 'form' && (
@@ -1175,9 +1277,12 @@ export default function AccountPage() {
                       dir="rtl" />
                     <div className="flex items-center justify-between text-sm text-gray-500 mb-4 py-2 border-t border-gray-100">
                       <span>{isRtl ? 'المبلغ:' : 'Amount:'}</span>
-                      <span className="font-black text-gray-900">{membershipZone === 'egypt' ? '١٠٠ جنيه مصري' : '$5 USD'}</span>
+                      <span className="font-black text-gray-900">
+                        {membershipZone === 'egypt'
+                          ? (isRtl ? `${membershipPrices.egyEgp} جنيه مصري` : `${membershipPrices.egyEgp} EGP`)
+                          : `$${membershipPrices.intlUsd} USD`}
+                      </span>
                     </div>
-                    {/* Payment options */}
                     <div className="space-y-2">
                       <button onClick={() => setApplyStep('paypal')}
                         className="w-full py-3 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition active:scale-[0.98]"
@@ -1187,10 +1292,12 @@ export default function AccountPage() {
                       </button>
                       {membershipZone === 'egypt' && (
                         <>
-                          <button onClick={() => setApplyStep('instapay')}
-                            className="w-full py-3 rounded-xl font-bold text-sm border-2 border-emerald-500 text-emerald-700 transition active:scale-[0.98] bg-emerald-50">
-                            {isRtl ? '📲 إنستاباي / تحويل بنكي' : '📲 InstaPay / Bank Transfer'}
-                          </button>
+                          {membershipPrices.instapayNumber && (
+                            <button onClick={() => setApplyStep('instapay')}
+                              className="w-full py-3 rounded-xl font-bold text-sm border-2 border-emerald-500 text-emerald-700 transition active:scale-[0.98] bg-emerald-50">
+                              {isRtl ? '📲 إنستاباي / تحويل بنكي' : '📲 InstaPay / Bank Transfer'}
+                            </button>
+                          )}
                           <a href={`https://wa.me/${SUPPORT_WA}?text=${encodeURIComponent('أريد الاشتراك في عضوية أسرة مسلم ليدر (كاش)')}`}
                             target="_blank" rel="noopener noreferrer"
                             className="w-full py-3 rounded-xl font-bold text-sm border border-gray-200 text-gray-600 flex items-center justify-center gap-2 transition active:scale-[0.98] bg-gray-50">
@@ -1210,16 +1317,20 @@ export default function AccountPage() {
                 <div className="space-y-4">
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                     <h3 className="font-black text-gray-900 mb-1">{isRtl ? 'الدفع الآمن' : 'Secure Payment'}</h3>
-                    <p className="text-xs text-gray-400 mb-4">{membershipZone === 'egypt' ? (isRtl ? 'سيُخصم ما يعادل ١٠٠ جنيه ($2)' : '~100 EGP ($2)') : '$5 USD'}</p>
+                    <p className="text-xs text-gray-400 mb-4">
+                      {membershipZone === 'egypt'
+                        ? (isRtl ? `سيُخصم ما يعادل ${membershipPrices.egyEgp} جنيه ($${membershipPrices.egyUsd})` : `~${membershipPrices.egyEgp} EGP ($${membershipPrices.egyUsd})`)
+                        : `$${membershipPrices.intlUsd} USD`}
+                    </p>
                     <PayPalBookButton
                       createEndpoint="/api/membership/create"
                       captureEndpoint="/api/membership/activate"
-                      amountUsd={membershipZone === 'egypt' ? 2.00 : 5.00}
+                      amountUsd={membershipZone === 'egypt' ? membershipPrices.egyUsd : membershipPrices.intlUsd}
                       createBody={{ familyName: applyFamilyName.trim() || undefined, zone: membershipZone }}
                       isRtl={isRtl}
                       onSuccess={() => {
                         setApplyStep('success');
-                        setMembership(null); // will re-fetch on next load
+                        setMembership(null);
                         fetch('/api/membership', { credentials: 'include' })
                           .then(r => r.json()).then(d => setMembership(d.membership ?? null)).catch(() => {});
                       }}
@@ -1238,7 +1349,7 @@ export default function AccountPage() {
                     <h3 className="font-black text-gray-900">{isRtl ? 'التحويل عبر إنستاباي' : 'InstaPay Transfer'}</h3>
                     <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
                       <p className="text-xs text-emerald-600 mb-1">{isRtl ? 'رقم إنستاباي / ووليت' : 'InstaPay / Wallet number'}</p>
-                      <p className="text-2xl font-black text-emerald-700 tracking-widest" dir="ltr">01000000000</p>
+                      <p className="text-2xl font-black text-emerald-700 tracking-widest" dir="ltr">{membershipPrices.instapayNumber}</p>
                       <p className="text-xs text-emerald-600 mt-1">{isRtl ? 'باسم: مسلم ليدر' : 'Name: Moslim Leader'}</p>
                     </div>
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
@@ -1281,46 +1392,49 @@ export default function AccountPage() {
               )}
 
               {applyStep === 'success' && (
-                <div className="text-center py-12 bg-green-50 rounded-2xl border border-green-200">
+                <div className="text-center py-12 rounded-2xl border" style={{ background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', borderColor: '#86efac' }}>
                   <div className="text-5xl mb-3">🎉</div>
-                  <p className="font-black text-gray-900 text-lg mb-2">{isRtl ? 'مبروك! تمت عضويتك' : 'Congratulations! Membership active'}</p>
-                  <p className="text-gray-500 text-sm">{isRtl ? 'يمكنك الآن إضافة أفراد الأسرة عبر لوحة الادمن' : 'Admin can now add family members to your account'}</p>
+                  <p className="font-black text-gray-900 text-lg mb-2">{isRtl ? 'مبروك! أنت الآن عضو في مجتمعنا' : 'Congratulations! You are now a member'}</p>
+                  <p className="text-gray-500 text-sm">{isRtl ? 'مرحباً بك في مجتمع مسلم ليدر' : 'Welcome to the Muslim Leader community'}</p>
                 </div>
               )}
             </div>
           ) : (
+            /* ── MEMBER VIEW ── */
             <div className="space-y-5">
-              {/* Membership card */}
-              <div className="rounded-2xl p-6 text-white relative overflow-hidden"
-                style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)' }}>
-                {/* Background pattern */}
-                <div className="absolute inset-0 opacity-5"
-                  style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
-                {/* Status badge */}
-                <div className="flex items-center justify-between mb-6">
-                  <span className="text-xs font-bold tracking-wider opacity-60">MUSLIM LEADER</span>
-                  <span className={`text-xs font-black px-3 py-1 rounded-full ${
-                    membership.status === 'ACTIVE' ? 'bg-green-400 text-green-900'
-                    : membership.status === 'PENDING' ? 'bg-yellow-400 text-yellow-900'
-                    : 'bg-red-400 text-white'
-                  }`}>
-                    {membership.status === 'ACTIVE' ? (isRtl ? 'نشطة' : 'Active')
-                    : membership.status === 'PENDING' ? (isRtl ? 'قيد الانتظار' : 'Pending')
-                    : membership.status === 'EXPIRED' ? (isRtl ? 'منتهية' : 'Expired')
-                    : (isRtl ? 'ملغاة' : 'Cancelled')}
-                  </span>
-                </div>
-                {/* Family name */}
-                {membership.familyName && (
-                  <p className="text-lg font-black mb-1">{membership.familyName}</p>
-                )}
-                {/* Membership number */}
-                <p className="text-2xl font-black tracking-widest mb-4 text-yellow-400">{membership.membershipNumber}</p>
-                {/* Dates */}
-                <div className="flex items-center justify-between text-xs opacity-70">
-                  <span>{isRtl ? `عضو منذ ${membership.memberSince}` : `Member since ${membership.memberSince}`}</span>
-                  {membership.expiresAt && (
-                    <span>{isRtl ? `تنتهي: ${new Date(membership.expiresAt).toLocaleDateString('ar-EG')}` : `Expires: ${new Date(membership.expiresAt).toLocaleDateString()}`}</span>
+              {/* Digital membership card */}
+              <div className="rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg,#1a3a2e 0%,#2d5a40 55%,#1e4a35 100%)' }}>
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-5">
+                    <div>
+                      <p className="text-xs font-bold tracking-wider" style={{ color: 'rgba(255,255,255,0.5)' }}>MUSLIM LEADER</p>
+                      <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.65)' }}>{isRtl ? 'عضوية الأسرة' : 'Family Membership'}</p>
+                    </div>
+                    <span className={`text-xs font-black px-3 py-1 rounded-full ${
+                      membership.status === 'ACTIVE' ? 'bg-green-400 text-green-900'
+                      : membership.status === 'PENDING' ? 'bg-yellow-400 text-yellow-900'
+                      : 'bg-red-400 text-white'
+                    }`}>
+                      {membership.status === 'ACTIVE' ? (isRtl ? 'نشطة' : 'Active')
+                      : membership.status === 'PENDING' ? (isRtl ? 'قيد الانتظار' : 'Pending')
+                      : membership.status === 'EXPIRED' ? (isRtl ? 'منتهية' : 'Expired')
+                      : (isRtl ? 'ملغاة' : 'Cancelled')}
+                    </span>
+                  </div>
+                  {membership.familyName && (
+                    <p className="text-lg font-black text-white mb-1">{membership.familyName}</p>
+                  )}
+                  <p className="font-black tracking-widest mb-5" style={{ color: '#D4A853', fontSize: 20, letterSpacing: '0.15em' }}>{membership.membershipNumber}</p>
+                  <div className="flex items-center justify-between text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                    <span>{isRtl ? `عضو منذ ${membership.memberSince}` : `Member since ${membership.memberSince}`}</span>
+                    {membership.expiresAt && (
+                      <span>{isRtl ? `تنتهي: ${new Date(membership.expiresAt).toLocaleDateString('ar-EG')}` : `Expires: ${new Date(membership.expiresAt).toLocaleDateString()}`}</span>
+                    )}
+                  </div>
+                  {membership.status === 'ACTIVE' && (
+                    <div className="mt-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5" style={{ background: 'rgba(212,168,83,0.2)', border: '1px solid rgba(212,168,83,0.4)' }}>
+                      <span className="text-xs font-black" style={{ color: '#D4A853' }}>🏷️ {isRtl ? 'خصم ١٥٪ تلقائي على كل مشترياتك' : '15% automatic discount on all purchases'}</span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1328,11 +1442,11 @@ export default function AccountPage() {
               {/* Family members */}
               {membership.familyMembers.length > 0 && (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                  <h3 className="font-black text-gray-900 mb-4">{isRtl ? 'أفراد الأسرة' : 'Family Members'}</h3>
+                  <h3 className="font-black text-gray-900 mb-4 text-sm">{isRtl ? '👨‍👩‍👧 أفراد الأسرة' : '👨‍👩‍👧 Family Members'}</h3>
                   <div className="space-y-3">
                     {membership.familyMembers.map(m => (
                       <div key={m.id} className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center font-black text-sm text-gray-600">
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center font-black text-sm text-white shrink-0" style={{ background: 'linear-gradient(135deg,#1a3a2e,#2d5a40)' }}>
                           {m.name.charAt(0)}
                         </div>
                         <div>
@@ -1346,29 +1460,34 @@ export default function AccountPage() {
               )}
 
               {/* Membership perks */}
-              {membership.status === 'ACTIVE' && perks.length > 0 && (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                  <h3 className="font-black text-gray-900 mb-4">{isRtl ? 'مزايا العضوية' : 'Membership Perks'}</h3>
-                  <div className="space-y-3">
+              {perks.length > 0 && (
+                <div>
+                  <h3 className="font-black text-gray-900 mb-3 text-sm">{isRtl ? '✨ مزاياك الحصرية' : '✨ Your Exclusive Benefits'}</h3>
+                  <div className="space-y-2.5">
                     {perks.map(perk => (
-                      <div key={perk.id} className="flex gap-3 p-3 rounded-xl bg-amber-50 border border-amber-100">
-                        {perk.imageUrl && (
-                          <img src={perk.imageUrl} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="font-bold text-gray-900 text-sm">{perk.title}</p>
-                          {perk.description && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{perk.description}</p>}
-                          {perk.validUntil && (
-                            <p className="text-xs text-amber-600 mt-1">
-                              {isRtl ? `صالح حتى: ${new Date(perk.validUntil).toLocaleDateString('ar-EG')}` : `Valid until: ${new Date(perk.validUntil).toLocaleDateString()}`}
-                            </p>
+                      <div key={perk.id} className="bg-white rounded-xl border border-amber-100 shadow-sm overflow-hidden">
+                        <div className="flex gap-3 p-4">
+                          {perk.imageUrl ? (
+                            <img src={perk.imageUrl} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0" />
+                          ) : (
+                            <div className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl shrink-0" style={{ background: 'rgba(212,168,83,0.1)' }}>🎁</div>
                           )}
-                          {perk.linkUrl && (
-                            <a href={perk.linkUrl} target="_blank" rel="noopener noreferrer"
-                              className="inline-block mt-1.5 text-xs font-bold text-amber-700 underline">
-                              {isRtl ? 'تفاصيل ←' : 'Details →'}
-                            </a>
-                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-gray-900 text-sm">{perk.title}</p>
+                            {perk.description && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{perk.description}</p>}
+                            {perk.validUntil && (
+                              <p className="text-xs text-amber-600 mt-1">
+                                {isRtl ? `صالح حتى: ${new Date(perk.validUntil).toLocaleDateString('ar-EG')}` : `Valid until: ${new Date(perk.validUntil).toLocaleDateString()}`}
+                              </p>
+                            )}
+                            {perk.linkUrl && (
+                              <a href={perk.linkUrl} target="_blank" rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 mt-2 text-xs font-bold px-3 py-1 rounded-full"
+                                style={{ background: 'rgba(212,168,83,0.15)', color: '#9a7020' }}>
+                                {isRtl ? 'استفد الآن ←' : 'Claim now →'}
+                              </a>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}

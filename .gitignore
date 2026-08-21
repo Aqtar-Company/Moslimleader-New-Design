@@ -48,5 +48,8 @@ private/books/
 # Public covers (uploaded files)
 public/covers/
 
+# Membership perk images (uploaded at runtime)
+public/membership-perks/
+
 # Next.js build
 .next/

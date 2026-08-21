@@ -124,6 +124,12 @@ function Inner() {
       router.push(`/tareeq/inbox/${n.postId}`);
     } else if (n.type === 'message') {
       router.push('/tareeq/inbox');
+    } else if (n.type === 'perk_new') {
+      router.push('/membership');
+    } else if (n.type === 'product_new' && n.postId) {
+      router.push(`/shop/${n.postId}`);
+    } else if (n.type === 'product_new') {
+      router.push('/shop');
     } else if (n.postId) {
       router.push(`/tareeq/${n.postId}`);
     }

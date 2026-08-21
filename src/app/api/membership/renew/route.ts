@@ -8,14 +8,17 @@ import { checkRateLimit } from '@/lib/rate-limit';
 const PRICE_EGY_USD_DEFAULT  = 2.00;
 const PRICE_INTL_USD_DEFAULT = 5.00;
 
-async function getMembershipPrices(): Promise<{ egyUsd: number; intlUsd: number }> {
+const PRICE_EGY_EGP_DEFAULT  = 100;
+
+async function getMembershipPrices(): Promise<{ egyUsd: number; intlUsd: number; egyEgp: number }> {
   const settings = await prisma.setting.findMany({
-    where: { key: { in: ['membership-price-egy-usd', 'membership-price-intl-usd'] } },
+    where: { key: { in: ['membership-price-egy-usd', 'membership-price-intl-usd', 'membership-price-egy-egp'] } },
   });
   const map = Object.fromEntries(settings.map(s => [s.key, s.value]));
   return {
     egyUsd:  parseFloat(map['membership-price-egy-usd']  ?? '') || PRICE_EGY_USD_DEFAULT,
     intlUsd: parseFloat(map['membership-price-intl-usd'] ?? '') || PRICE_INTL_USD_DEFAULT,
+    egyEgp:  parseFloat(map['membership-price-egy-egp']  ?? '') || PRICE_EGY_EGP_DEFAULT,
   };
 }
 
@@ -42,7 +45,7 @@ export async function POST(req: NextRequest) {
       where: { id: membership.id },
       data: { paypalOrderId: orderId },
     });
-    return NextResponse.json({ paypalOrderId: orderId });
+    return NextResponse.json({ paypalOrderId: orderId, zone: zone === 'egypt' ? 'egypt' : 'intl' });
   }
 
   if (action === 'capture') {
@@ -60,13 +63,16 @@ export async function POST(req: NextRequest) {
     newExpiry.setFullYear(newExpiry.getFullYear() + 1);
 
     const prices = await getMembershipPrices();
+    // zone passed from client for audit record only; PayPal already validated the actual amount
+    const amountEgp = zone === 'egypt' ? prices.egyEgp : prices.intlUsd * 50;
+
     await prisma.$transaction([
       prisma.familyMembership.update({
         where: { id: membership.id },
         data: { status: 'ACTIVE', expiresAt: newExpiry, paypalOrderId },
       }),
       prisma.membershipRenewal.create({
-        data: { membershipId: membership.id, paypalOrderId, amountEgp: prices.egyUsd * 50, expiresAt: newExpiry },
+        data: { membershipId: membership.id, paypalOrderId, amountEgp, expiresAt: newExpiry },
       }),
     ]);
 

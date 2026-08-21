@@ -154,7 +154,8 @@ export async function POST(req: NextRequest) {
 
   // Check if user is suspended from Tareeq (also fetch name/avatar for post creation below)
   const dbUser = await prisma.user.findUnique({ where: { id: user.userId }, select: { tareeqSuspended: true, name: true, avatarUrl: true } });
-  if (dbUser?.tareeqSuspended) return NextResponse.json({ error: 'تم تعليق حسابك في طريق' }, { status: 403 });
+  if (!dbUser) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
+  if (dbUser.tareeqSuspended) return NextResponse.json({ error: 'تم تعليق حسابك في طريق' }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));
   const content = String(body.content ?? '').trim();

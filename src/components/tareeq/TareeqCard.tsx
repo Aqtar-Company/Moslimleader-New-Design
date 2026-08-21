@@ -1148,10 +1148,14 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, onReport, onDeleted, o
         setTimeout(onClose, 1500);
         return;
       }
-      await fetch(`/api/tareeq/follow/${postUserId}`, { method: 'POST', credentials: 'include' });
-    } catch { /* ignore */ }
-    setDone(isRtl ? 'تم إلغاء المتابعة' : 'Unfollowed');
-    setTimeout(onClose, 1300);
+      const res = await fetch(`/api/tareeq/follow/${postUserId}`, { method: 'POST', credentials: 'include' });
+      if (!res.ok) throw new Error('failed');
+      setDone(isRtl ? 'تم إلغاء المتابعة' : 'Unfollowed');
+      setTimeout(onClose, 1300);
+    } catch {
+      setDone(isRtl ? 'حدث خطأ، حاول مجدداً' : 'Something went wrong');
+      setTimeout(onClose, 1500);
+    }
   }
 
   function handleNotInterested() {

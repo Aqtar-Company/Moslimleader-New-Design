@@ -5,6 +5,13 @@ import { prisma } from '@/lib/prisma';
 import { capturePayPalOrder } from '@/lib/paypal';
 import { checkRateLimit } from '@/lib/rate-limit';
 
+const PRICE_EGY_EGP_DEFAULT = 100;
+
+async function getEgyEgp(): Promise<number> {
+  const s = await prisma.setting.findUnique({ where: { key: 'membership-price-egy-egp' } });
+  return parseFloat(s?.value ?? '') || PRICE_EGY_EGP_DEFAULT;
+}
+
 export async function POST(req: NextRequest) {
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -35,22 +42,23 @@ export async function POST(req: NextRequest) {
   const expires = new Date(now);
   expires.setFullYear(expires.getFullYear() + 1);
 
-  const membership = await prisma.familyMembership.update({
-    where: { ownerUserId: user.userId },
-    data: {
-      status: 'ACTIVE',
-      startsAt: now,
-      expiresAt: expires,
-      paypalOrderId,
-    },
+  const amountEgp = await getEgyEgp();
+
+  // Atomic update: only proceeds if status is still not ACTIVE (prevents double-activation)
+  const updated = await prisma.familyMembership.updateMany({
+    where: { ownerUserId: user.userId, status: { not: 'ACTIVE' } },
+    data: { status: 'ACTIVE', startsAt: now, expiresAt: expires, paypalOrderId },
   });
+  if (updated.count === 0) return NextResponse.json({ error: 'Already active' }, { status: 409 });
+
+  const membership = await prisma.familyMembership.findUnique({ where: { ownerUserId: user.userId } });
 
   // Record first-activation payment in renewal history
   await prisma.membershipRenewal.create({
     data: {
-      membershipId: membership.id,
+      membershipId: membership!.id,
       paypalOrderId,
-      amountEgp: 100,
+      amountEgp,
       expiresAt: expires,
     },
   });

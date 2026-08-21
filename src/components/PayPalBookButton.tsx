@@ -1,7 +1,7 @@
 'use client';
 
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
-import { useState } from 'react';
+import React, { useState } from 'react';
 
 interface PayPalBookButtonProps {
   createEndpoint: string;
@@ -25,6 +25,7 @@ export default function PayPalBookButton({
   createBody,
 }: PayPalBookButtonProps) {
   const [processing, setProcessing] = useState(false);
+  const createErrorFired = React.useRef(false);
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
 
   if (!clientId) {
@@ -32,20 +33,21 @@ export default function PayPalBookButton({
   }
 
   const createOrder = async () => {
-    try {
-      const res = await fetch(createEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        ...(createBody ? { body: JSON.stringify(createBody) } : {}),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to create PayPal order');
-      return data.paypalOrderId;
-    } catch (err) {
-      onError(err instanceof Error ? err.message : 'حدث خطأ');
-      throw err;
+    createErrorFired.current = false;
+    const res = await fetch(createEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      ...(createBody ? { body: JSON.stringify(createBody) } : {}),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      const msg = data.error || 'Failed to create PayPal order';
+      createErrorFired.current = true;
+      onError(msg);
+      throw new Error(msg);
     }
+    return data.paypalOrderId;
   };
 
   const onApprove = async (data: { orderID: string }) => {
@@ -103,7 +105,8 @@ export default function PayPalBookButton({
           onCancel={() => onError(isRtl ? 'تم إلغاء الدفع' : 'Payment cancelled')}
           onError={(err) => {
             console.error('[PayPal Card error]', err);
-            onError(isRtl ? 'حدث خطأ في الدفع بالبطاقة' : 'Card payment error');
+            if (!createErrorFired.current) onError(isRtl ? 'حدث خطأ في الدفع بالبطاقة' : 'Card payment error');
+            createErrorFired.current = false;
           }}
         />
 
@@ -124,7 +127,8 @@ export default function PayPalBookButton({
           onCancel={() => onError(isRtl ? 'تم إلغاء الدفع' : 'Payment cancelled')}
           onError={(err) => {
             console.error('[PayPal error]', err);
-            onError(isRtl ? 'حدث خطأ في PayPal' : 'PayPal error occurred');
+            if (!createErrorFired.current) onError(isRtl ? 'حدث خطأ في PayPal' : 'PayPal error occurred');
+            createErrorFired.current = false;
           }}
         />
       </PayPalScriptProvider>

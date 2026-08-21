@@ -152,6 +152,10 @@ export async function POST(req: NextRequest) {
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
 
+  // Check if user is suspended from Tareeq
+  const dbUser = await prisma.user.findUnique({ where: { id: user.userId }, select: { tareeqSuspended: true } });
+  if (dbUser?.tareeqSuspended) return NextResponse.json({ error: 'تم تعليق حسابك في طريق' }, { status: 403 });
+
   const body = await req.json().catch(() => ({}));
   const content = String(body.content ?? '').trim();
   const title = String(body.title ?? '').trim() || null;

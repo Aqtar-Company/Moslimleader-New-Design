@@ -35,7 +35,8 @@ export async function POST(req: NextRequest) {
     const prices = await getMembershipPrices();
     const amountUsd = zone === 'egypt' ? prices.egyUsd : prices.intlUsd;
     const referenceId = `renew-${user.userId}-${Date.now()}`;
-    const orderId = await createPayPalOrder(amountUsd, 'USD', referenceId);
+    const paypalOrder = await createPayPalOrder(amountUsd, 'USD', referenceId);
+    const orderId = paypalOrder.id as string;
     // Store the pending orderId so capture can cross-check it
     await prisma.familyMembership.update({
       where: { id: membership.id },

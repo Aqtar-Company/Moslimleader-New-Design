@@ -59,7 +59,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Already an active member' }, { status: 409 });
   }
 
-  const paypalOrderId = await createPayPalOrder(amountUsd, 'USD', 'Moslim Leader Family Membership');
+  const paypalOrder = await createPayPalOrder(amountUsd, 'USD', 'Moslim Leader Family Membership');
+  const paypalOrderId = paypalOrder.id as string;
 
   if (!existing) {
     // Create pending membership record

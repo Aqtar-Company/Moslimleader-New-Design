@@ -42,6 +42,9 @@ export async function POST(req: NextRequest) {
   }
 
   const trimmedEmail = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+    return NextResponse.json({ error: 'البريد الإلكتروني غير صحيح' }, { status: 400 });
+  }
 
   // Find user by email
   const targetUser = await prisma.user.findUnique({
@@ -82,7 +85,7 @@ export async function POST(req: NextRequest) {
   <p>تمت دعوتك للانضمام إلى <strong>عضوية مجتمع مسلم ليدر</strong> — مجتمع حصري للأسر المسلمة الواعية.</p>
   <p>لتفعيل عضويتك المجانية، يرجى إنشاء حساب على منصتنا باستخدام هذا البريد الإلكتروني:</p>
   <a href="${registerUrl}" class="btn">إنشاء حساب وتفعيل العضوية</a>
-  <p style="font-size:13px;color:#6b7280">بعد تسجيل الدخول، ستجد عضويتك مفعّلة تلقائياً في صفحة حسابك.</p>
+  <p style="font-size:13px;color:#6b7280">بعد إنشاء حسابك، تواصل معنا لتفعيل عضويتك.</p>
 </div>
 <div class="footer">مسلم ليدر — ${siteUrl}</div>
 </div></body></html>`,
@@ -115,18 +118,27 @@ export async function POST(req: NextRequest) {
     while (await prisma.familyMembership.findUnique({ where: { qrToken } })) {
       qrToken = generateQRToken();
     }
-    membership = await prisma.familyMembership.create({
-      data: {
-        ownerUserId: targetUser.id,
-        membershipNumber,
-        qrToken,
-        familyName: familyName?.trim() || null,
-        memberSince: now.getFullYear(),
-        status: 'ACTIVE',
-        startsAt: now,
-        expiresAt,
-      },
-    });
+    try {
+      membership = await prisma.familyMembership.create({
+        data: {
+          ownerUserId: targetUser.id,
+          membershipNumber,
+          qrToken,
+          familyName: familyName?.trim() || null,
+          memberSince: now.getFullYear(),
+          status: 'ACTIVE',
+          startsAt: now,
+          expiresAt,
+        },
+      });
+    } catch (err: unknown) {
+      // Unique constraint on ownerUserId — concurrent grant race
+      const isUniqueViolation = err instanceof Error && err.message.includes('Unique constraint');
+      if (isUniqueViolation) {
+        return NextResponse.json({ error: 'هذا المستخدم لديه عضوية بالفعل' }, { status: 409 });
+      }
+      throw err;
+    }
   } else {
     membership = await prisma.familyMembership.update({
       where: { id: existing.id },

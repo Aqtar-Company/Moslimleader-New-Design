@@ -1130,6 +1130,38 @@ export default function AccountPage() {
             </div>
           ) : !membership ? (
             <div>
+              {applyStep === 'idle' && perks.length > 0 && (
+                /* ── Perks teaser for non-members ── */
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-black text-gray-900 text-sm">{isRtl ? '✨ مزايا العضوية الحصرية' : '✨ Exclusive Member Benefits'}</h3>
+                    <span className="text-xs bg-amber-100 text-amber-700 font-bold px-2.5 py-1 rounded-full">
+                      {isRtl ? '🔒 للأعضاء فقط' : '🔒 Members only'}
+                    </span>
+                  </div>
+                  <div className="space-y-2.5">
+                    {perks.slice(0, 4).map(perk => (
+                      <div key={perk.id} className="flex gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px]" />
+                        {perk.imageUrl && (
+                          <img src={perk.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0 relative opacity-60" />
+                        )}
+                        <div className="min-w-0 flex-1 relative">
+                          <p className="font-bold text-gray-600 text-sm">{perk.title}</p>
+                          {perk.description && <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{perk.description}</p>}
+                        </div>
+                        <div className="text-gray-300 text-lg relative">🔒</div>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={() => setApplyStep('form')}
+                    className="w-full mt-4 py-2.5 rounded-xl font-black text-sm text-white transition active:scale-95"
+                    style={{ background: 'linear-gradient(135deg,#1a1a2e,#0f3460)' }}>
+                    {isRtl ? 'اشترك الآن للوصول لكل المزايا ←' : 'Subscribe to unlock all benefits →'}
+                  </button>
+                </div>
+              )}
+
               {applyStep === 'idle' && (
                 /* ── Membership promo card ── */
                 <div className="rounded-2xl overflow-hidden shadow-sm border border-amber-100">

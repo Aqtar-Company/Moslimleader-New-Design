@@ -68,7 +68,7 @@ export default function AccountPage() {
   const [membershipLoading, setMembershipLoading] = useState(false);
   const [perks, setPerks] = useState<{ id: string; title: string; description: string | null; imageUrl: string | null; linkUrl: string | null; validUntil: string | null; createdAt: string }[]>([]);
   const [membershipZone, setMembershipZone] = useState<'egypt' | 'international'>('international');
-  const [membershipPrices, setMembershipPrices] = useState({ egyEgp: 100, egyUsd: 2.00, intlUsd: 5.00 });
+  const [membershipPrices, setMembershipPrices] = useState({ egyEgp: 100, egyUsd: 2.00, intlUsd: 5.00, instapayNumber: '' });
   const [applyStep, setApplyStep] = useState<'idle' | 'form' | 'paypal' | 'instapay' | 'pending' | 'success'>('idle');
   const [applyFamilyName, setApplyFamilyName] = useState('');
   const [applyLoading, setApplyLoading] = useState(false);
@@ -192,7 +192,7 @@ export default function AccountPage() {
       // Fetch membership prices from admin-controlled settings
       fetch('/api/membership/price')
         .then(r => r.json())
-        .then(d => setMembershipPrices({ egyEgp: d.egyEgp ?? 100, egyUsd: d.egyUsd ?? 2, intlUsd: d.intlUsd ?? 5 }))
+        .then(d => setMembershipPrices({ egyEgp: d.egyEgp ?? 100, egyUsd: d.egyUsd ?? 2, intlUsd: d.intlUsd ?? 5, instapayNumber: d.instapayNumber ?? '' }))
         .catch(() => {});
 
       // Load membership + perks
@@ -1292,10 +1292,12 @@ export default function AccountPage() {
                       </button>
                       {membershipZone === 'egypt' && (
                         <>
-                          <button onClick={() => setApplyStep('instapay')}
-                            className="w-full py-3 rounded-xl font-bold text-sm border-2 border-emerald-500 text-emerald-700 transition active:scale-[0.98] bg-emerald-50">
-                            {isRtl ? '📲 إنستاباي / تحويل بنكي' : '📲 InstaPay / Bank Transfer'}
-                          </button>
+                          {membershipPrices.instapayNumber && (
+                            <button onClick={() => setApplyStep('instapay')}
+                              className="w-full py-3 rounded-xl font-bold text-sm border-2 border-emerald-500 text-emerald-700 transition active:scale-[0.98] bg-emerald-50">
+                              {isRtl ? '📲 إنستاباي / تحويل بنكي' : '📲 InstaPay / Bank Transfer'}
+                            </button>
+                          )}
                           <a href={`https://wa.me/${SUPPORT_WA}?text=${encodeURIComponent('أريد الاشتراك في عضوية أسرة مسلم ليدر (كاش)')}`}
                             target="_blank" rel="noopener noreferrer"
                             className="w-full py-3 rounded-xl font-bold text-sm border border-gray-200 text-gray-600 flex items-center justify-center gap-2 transition active:scale-[0.98] bg-gray-50">
@@ -1347,7 +1349,7 @@ export default function AccountPage() {
                     <h3 className="font-black text-gray-900">{isRtl ? 'التحويل عبر إنستاباي' : 'InstaPay Transfer'}</h3>
                     <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
                       <p className="text-xs text-emerald-600 mb-1">{isRtl ? 'رقم إنستاباي / ووليت' : 'InstaPay / Wallet number'}</p>
-                      <p className="text-2xl font-black text-emerald-700 tracking-widest" dir="ltr">01000000000</p>
+                      <p className="text-2xl font-black text-emerald-700 tracking-widest" dir="ltr">{membershipPrices.instapayNumber}</p>
                       <p className="text-xs text-emerald-600 mt-1">{isRtl ? 'باسم: مسلم ليدر' : 'Name: Moslim Leader'}</p>
                     </div>
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">

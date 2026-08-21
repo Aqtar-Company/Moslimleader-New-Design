@@ -53,7 +53,7 @@ export default function AdminMembershipPage() {
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [perks, setPerks] = useState<Perk[]>([]);
-  const [tab, setTab] = useState<'memberships' | 'perks' | 'pricing'>('memberships');
+  const [tab, setTab] = useState<'memberships' | 'perks' | 'pricing' | 'grant'>('memberships');
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
@@ -79,10 +79,17 @@ export default function AdminMembershipPage() {
   const [msg, setMsg] = useState('');
 
   // Pricing settings
-  const [priceEgyEgp,  setPriceEgyEgp]  = useState('100');
-  const [priceEgyUsd,  setPriceEgyUsd]  = useState('2.00');
-  const [priceIntlUsd, setPriceIntlUsd] = useState('5.00');
-  const [priceSaving, setPriceSaving]   = useState(false);
+  const [priceEgyEgp,     setPriceEgyEgp]     = useState('100');
+  const [priceEgyUsd,     setPriceEgyUsd]      = useState('2.00');
+  const [priceIntlUsd,    setPriceIntlUsd]     = useState('5.00');
+  const [instapayNumber,  setInstapayNumber]   = useState('');
+  const [priceSaving,     setPriceSaving]      = useState(false);
+
+  // Grant membership state
+  const [grantEmail,      setGrantEmail]       = useState('');
+  const [grantFamily,     setGrantFamily]      = useState('');
+  const [grantLoading,    setGrantLoading]     = useState(false);
+  const [grantResult,     setGrantResult]      = useState<{ type: 'granted' | 'invited' | 'error'; msg: string } | null>(null);
 
   useEffect(() => {
     fetchMemberships();
@@ -91,6 +98,7 @@ export default function AdminMembershipPage() {
   useEffect(() => {
     if (tab === 'perks') fetchPerks();
     if (tab === 'pricing') fetchPrices();
+    if (tab === 'grant') { setGrantResult(null); setGrantEmail(''); setGrantFamily(''); }
   }, [tab]);
 
   async function fetchPrices() {
@@ -100,15 +108,17 @@ export default function AdminMembershipPage() {
       setPriceEgyEgp(String(d.egyEgp));
       setPriceEgyUsd(String(d.egyUsd));
       setPriceIntlUsd(String(d.intlUsd));
+      setInstapayNumber(d.instapayNumber ?? '');
     }
   }
 
   async function savePrices() {
     setPriceSaving(true);
     const keys = [
-      { key: 'membership-price-egy-egp',  value: priceEgyEgp.trim() },
-      { key: 'membership-price-egy-usd',  value: priceEgyUsd.trim() },
-      { key: 'membership-price-intl-usd', value: priceIntlUsd.trim() },
+      { key: 'membership-price-egy-egp',    value: priceEgyEgp.trim() },
+      { key: 'membership-price-egy-usd',    value: priceEgyUsd.trim() },
+      { key: 'membership-price-intl-usd',   value: priceIntlUsd.trim() },
+      { key: 'membership-instapay-number',  value: instapayNumber.trim() },
     ];
     await Promise.allSettled(
       keys.map(({ key, value }) =>
@@ -120,7 +130,32 @@ export default function AdminMembershipPage() {
       )
     );
     setPriceSaving(false);
-    flash('تم حفظ الأسعار ✓');
+    flash('تم حفظ الإعدادات ✓');
+  }
+
+  async function grantMembership() {
+    if (!grantEmail.trim()) return;
+    setGrantLoading(true);
+    setGrantResult(null);
+    try {
+      const res = await fetch('/api/admin/membership/grant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: grantEmail.trim(), familyName: grantFamily.trim() || undefined }),
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        setGrantResult({ type: 'error', msg: d.error || 'حدث خطأ' });
+      } else if (d.invited) {
+        setGrantResult({ type: 'invited', msg: `تم إرسال دعوة التسجيل إلى ${d.email}` });
+      } else {
+        setGrantResult({ type: 'granted', msg: `تم منح العضوية لـ ${d.user.name} (${d.membershipNumber})` });
+        fetchMemberships();
+      }
+    } catch {
+      setGrantResult({ type: 'error', msg: 'فشل الاتصال' });
+    }
+    setGrantLoading(false);
   }
 
   async function fetchMemberships() {
@@ -315,12 +350,12 @@ export default function AdminMembershipPage() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        {(['memberships', 'perks', 'pricing'] as const).map(t => (
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+        {(['memberships', 'perks', 'pricing', 'grant'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             style={{ padding: '8px 20px', borderRadius: 10, fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer',
               background: tab === t ? '#d4a843' : '#1e293b', color: tab === t ? '#0f172a' : '#94a3b8' }}>
-            {t === 'memberships' ? 'العضويات' : t === 'perks' ? 'المزايا' : 'الأسعار'}
+            {t === 'memberships' ? 'العضويات' : t === 'perks' ? 'المزايا' : t === 'pricing' ? 'الأسعار' : '➕ إضافة يدوية'}
           </button>
         ))}
       </div>
@@ -574,6 +609,15 @@ export default function AdminMembershipPage() {
               <p style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>يظهر للمستخدم السعر بالجنيه — يُسحب من PayPal بالدولار</p>
             </div>
 
+            {/* InstaPay number */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 4 }}>📲 رقم إنستاباي / ووليت (للمصريين)</label>
+              <input type="text" value={instapayNumber} onChange={e => setInstapayNumber(e.target.value)}
+                placeholder="مثال: 01012345678"
+                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#0f172a', border: '1px solid #334155', color: '#f1f5f9', fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
+              <p style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>يظهر في صفحة الدفع بإنستاباي — اتركه فارغاً لإخفاء الخيار</p>
+            </div>
+
             {/* Divider */}
             <div style={{ height: 1, background: '#334155', marginBottom: 20 }} />
 
@@ -592,6 +636,66 @@ export default function AdminMembershipPage() {
               style={{ width: '100%', padding: '13px 0', borderRadius: 12, background: '#d4a843', color: '#0f172a', fontWeight: 800, fontSize: 15, border: 'none', cursor: priceSaving ? 'not-allowed' : 'pointer', opacity: priceSaving ? 0.7 : 1 }}>
               {priceSaving ? 'جاري الحفظ...' : 'حفظ الأسعار'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── GRANT TAB ─── */}
+      {tab === 'grant' && (
+        <div style={{ maxWidth: 480 }}>
+          <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 16, padding: 24 }}>
+            <h2 style={{ fontSize: 17, fontWeight: 800, color: '#f1f5f9', marginBottom: 4 }}>إضافة عضو يدوياً</h2>
+            <p style={{ fontSize: 12, color: '#64748b', marginBottom: 24 }}>لو المستخدم مسجل → تُفعّل عضويته مباشرةً. لو مش مسجل → يجيله إيميل دعوة للتسجيل.</p>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 6 }}>البريد الإلكتروني *</label>
+              <input
+                type="email"
+                value={grantEmail}
+                onChange={e => setGrantEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && grantMembership()}
+                placeholder="example@email.com"
+                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#0f172a', border: '1px solid #334155', color: '#f1f5f9', fontSize: 15, outline: 'none', boxSizing: 'border-box', direction: 'ltr', textAlign: 'left' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 6 }}>اسم الأسرة (اختياري)</label>
+              <input
+                type="text"
+                value={grantFamily}
+                onChange={e => setGrantFamily(e.target.value)}
+                placeholder="مثال: أسرة محمد أحمد"
+                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#0f172a', border: '1px solid #334155', color: '#f1f5f9', fontSize: 15, outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <button
+              onClick={grantMembership}
+              disabled={grantLoading || !grantEmail.trim()}
+              style={{ width: '100%', padding: '13px 0', borderRadius: 12, background: '#d4a843', color: '#0f172a', fontWeight: 800, fontSize: 15, border: 'none', cursor: grantLoading || !grantEmail.trim() ? 'not-allowed' : 'pointer', opacity: grantLoading || !grantEmail.trim() ? 0.6 : 1 }}
+            >
+              {grantLoading ? 'جاري المعالجة...' : 'منح العضوية'}
+            </button>
+
+            {grantResult && (
+              <div style={{ marginTop: 20, padding: '14px 16px', borderRadius: 12,
+                background: grantResult.type === 'granted' ? 'rgba(34,197,94,0.12)' : grantResult.type === 'invited' ? 'rgba(96,165,250,0.12)' : 'rgba(239,68,68,0.12)',
+                border: `1px solid ${grantResult.type === 'granted' ? '#22c55e44' : grantResult.type === 'invited' ? '#60a5fa44' : '#ef444444'}`,
+                color: grantResult.type === 'granted' ? '#4ade80' : grantResult.type === 'invited' ? '#93c5fd' : '#f87171',
+                fontSize: 14, fontWeight: 600 }}>
+                {grantResult.type === 'granted' ? '✅ ' : grantResult.type === 'invited' ? '📧 ' : '❌ '}
+                {grantResult.msg}
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginTop: 16, padding: '14px 16px', borderRadius: 12, background: '#1e293b', border: '1px solid #334155', fontSize: 12, color: '#64748b', lineHeight: 1.8 }}>
+            <p style={{ margin: 0, fontWeight: 700, color: '#94a3b8', marginBottom: 6 }}>📌 ملاحظات:</p>
+            <p style={{ margin: 0 }}>• العضوية المُمنوحة تستمر سنة كاملة من يوم المنح</p>
+            <p style={{ margin: 0 }}>• تُسجَّل في سجل التجديدات بمبلغ ٠ جنيه (منحة إدارية)</p>
+            <p style={{ margin: 0 }}>• لو المستخدم مش مسجل، هيجيله إيميل على العنوان ده يدعوه للتسجيل</p>
+            <p style={{ margin: 0 }}>• بعد تسجيله، عضويته مش بتتفعل تلقائي — هتحتاج تمنحها تاني</p>
           </div>
         </div>
       )}

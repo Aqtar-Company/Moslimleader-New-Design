@@ -319,7 +319,7 @@ function PostsTab({ flash }: { flash: (t: string) => void }) {
                   {post.user?.name ?? post.authorName} • {new Date(post.createdAt).toLocaleDateString('ar-EG')} • 👁 {post.viewCount} ❤️ {post.likeCount} 💬 {post.commentCount}
                 </p>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, shrinkWrap: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
                 <button onClick={() => toggleHide(post)} disabled={actioning === post.id}
                   style={S.btn(post.isHidden ? '#22c55e' : '#f59e0b')}>
                   {post.isHidden ? 'إظهار' : 'إخفاء'}

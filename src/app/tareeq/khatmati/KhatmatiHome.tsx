@@ -109,6 +109,8 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
   const [sharing, setSharing]                 = useState(false);
   const [lanternLit, setLanternLit]           = useState(false);
   const [dailyProgress, setDailyProgress]     = useState(0); // pages read today
+  const [confirmReset, setConfirmReset]       = useState(false);
+  const currentSurahRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     try {
@@ -154,6 +156,26 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
       }
     };
   }, [p]);
+
+  // Auto-scroll to current surah when picker opens
+  useEffect(() => {
+    if (showSurahPicker) {
+      const t = setTimeout(() => currentSurahRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 120);
+      return () => clearTimeout(t);
+    }
+  }, [showSurahPicker]);
+
+  async function resetKhatma() {
+    try {
+      localStorage.setItem('nuri-progress', JSON.stringify({ page: 1, surah: 1, ayah: 1 }));
+      await fetch('/api/tareeq/khatmati/progress', {
+        method: 'PUT', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ page: 1, surah: 1, ayah: 1, totalPagesRead: 0 }),
+      });
+      window.location.reload();
+    } catch { /* ignore */ }
+  }
 
   function saveDailyPages(n: number) {
     setDailyPages(n);
@@ -352,7 +374,56 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
               ? (isRtl ? 'بارك الله في تلاوتك اليوم ✓' : 'May Allah bless your recitation ✓')
               : (isRtl ? 'استمر في التلاوة ليكتمل نورك' : 'Continue your recitation')}
           </p>
+
+          {/* Daily wird counter */}
+          {p && dailyPages > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: wardDone ? '#4ade80' : TEXT_MUT }}>
+                {isRtl
+                  ? `${dailyProgress} / ${dailyPages} صفحة اليوم`
+                  : `${dailyProgress} / ${dailyPages} pages today`}
+              </span>
+              {wardDone && <span style={{ fontSize: 13 }}>✓</span>}
+              {!wardDone && dailyProgress > 0 && (
+                <span style={{ fontSize: 11, color: TEXT_MUT }}>
+                  {isRtl ? `· ${dailyPages - dailyProgress} متبقية` : `· ${dailyPages - dailyProgress} left`}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Rings legend */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <svg width={10} height={10} viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="none" stroke={NURI_YELLOW} strokeWidth="1.5"/></svg>
+              <span style={{ fontSize: 10, color: TEXT_MUT }}>{isRtl ? 'الختمة' : 'Khatma'}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <svg width={10} height={10} viewBox="0 0 10 10"><circle cx="5" cy="5" r="3" fill="none" stroke="rgba(255,204,51,0.65)" strokeWidth="1.5"/></svg>
+              <span style={{ fontSize: 10, color: TEXT_MUT }}>{isRtl ? 'الورد اليومي' : 'Daily wird'}</span>
+            </div>
+          </div>
         </div>
+
+        {/* ── Streak danger banner ── */}
+        {state === 'dim' && p && streak > 0 && (
+          <div style={{ marginInline: 20, marginBottom: 12, padding: '10px 14px', borderRadius: 12, background: 'rgba(251,146,60,0.12)', border: '1px solid rgba(251,146,60,0.3)', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            <span style={{ fontSize: 18 }}>⚠️</span>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 12, fontWeight: 800, color: '#fb923c', margin: '0 0 2px' }}>
+                {isRtl ? `سلسلتك ${streak} يوماً في خطر!` : `Your ${streak}-day streak is at risk!`}
+              </p>
+              <p style={{ fontSize: 11, color: 'rgba(251,146,60,0.7)', margin: 0 }}>
+                {isRtl ? 'اقرأ اليوم قبل منتصف الليل للحفاظ عليها' : 'Read before midnight to keep it'}
+              </p>
+            </div>
+            <button
+              onClick={() => router.push(`/tareeq/khatmati/read?page=${page}&surah=${p?.currentSurah ?? 1}&ayah=${p?.currentAyah ?? 1}`)}
+              style={{ padding: '6px 12px', borderRadius: 8, background: '#fb923c', color: '#fff', fontWeight: 800, fontSize: 12, border: 'none', cursor: 'pointer', flexShrink: 0 }}>
+              {isRtl ? 'اقرأ الآن' : 'Read now'}
+            </button>
+          </div>
+        )}
 
         {/* ── Solo khatma unified card ── */}
         <div style={{ paddingInline: 20, flexShrink: 0 }}>
@@ -528,8 +599,8 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
             </div>
             <div style={{ overflowY: 'auto', flex: 1 }}>
               {filteredSurahs.map(({ ar, en, i }) => (
-                <button key={i} onClick={() => goToSurah(i)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '12px 20px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'start', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <button key={i} ref={i + 1 === (p?.currentSurah ?? 0) ? currentSurahRef : null} onClick={() => goToSurah(i)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '12px 20px', background: i + 1 === (p?.currentSurah ?? 0) ? 'rgba(255,204,51,0.06)' : 'none', border: 'none', cursor: 'pointer', textAlign: 'start', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   <span style={{ width: 34, height: 34, borderRadius: 8, flexShrink: 0, background: i + 1 === (p?.currentSurah ?? 0) ? NURI_YELLOW_DIM : 'rgba(255,255,255,0.05)', border: i + 1 === (p?.currentSurah ?? 0) ? '1px solid rgba(255,204,51,0.3)' : '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: i + 1 === (p?.currentSurah ?? 0) ? NURI_YELLOW : TEXT_MUT }}>
                     {i + 1}
                   </span>
@@ -612,7 +683,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
 
             {/* Reminder toggle */}
             <button onClick={toggleReminder}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '13px 16px', borderRadius: 12, cursor: 'pointer', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '13px 16px', borderRadius: 12, cursor: 'pointer', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 10 }}>
               <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={TEXT_MUT} strokeWidth={1.8}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/>
               </svg>
@@ -621,6 +692,39 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
                 <div style={{ position: 'absolute', top: 2, left: reminderOn ? 22 : 2, width: 20, height: 20, borderRadius: '50%', background: reminderOn ? '#080E1C' : 'rgba(255,255,255,0.5)', transition: 'left 0.25s' }} />
               </div>
             </button>
+
+            {/* Reset khatma */}
+            {p && (
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 14 }}>
+                {!confirmReset ? (
+                  <button onClick={() => setConfirmReset(true)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '13px 16px', borderRadius: 12, cursor: 'pointer', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.18)' }}>
+                    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="rgba(239,68,68,0.7)" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(239,68,68,0.8)' }}>
+                      {isRtl ? 'ابدأ ختمة جديدة من الصفحة الأولى' : 'Start a new Khatma from page 1'}
+                    </span>
+                  </button>
+                ) : (
+                  <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: '#ef4444', marginBottom: 10 }}>
+                      {isRtl ? 'هل أنت متأكد؟ سيتم إعادة التقدم للصفحة الأولى.' : 'Are you sure? Progress will reset to page 1.'}
+                    </p>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={resetKhatma}
+                        style={{ flex: 1, padding: '9px 0', borderRadius: 9, background: '#ef4444', color: '#fff', fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer' }}>
+                        {isRtl ? 'نعم، أعد التشغيل' : 'Yes, restart'}
+                      </button>
+                      <button onClick={() => setConfirmReset(false)}
+                        style={{ flex: 1, padding: '9px 0', borderRadius: 9, background: 'rgba(255,255,255,0.07)', color: TEXT_MUT, fontWeight: 700, fontSize: 13, border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>
+                        {isRtl ? 'إلغاء' : 'Cancel'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

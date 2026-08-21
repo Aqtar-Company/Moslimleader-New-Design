@@ -70,8 +70,22 @@ async function notifyActiveMembers(perk: { title: string; description: string | 
   const now = new Date();
   const activeMemberships = await prisma.familyMembership.findMany({
     where: { status: 'ACTIVE', expiresAt: { gt: now } },
-    select: { owner: { select: { email: true } } },
+    select: { ownerUserId: true, owner: { select: { email: true } } },
   });
+
+  // In-app TareeqNotification for each member
+  const userIds = activeMemberships.map(m => m.ownerUserId).filter(Boolean) as string[];
+  if (userIds.length > 0) {
+    await prisma.tareeqNotification.createMany({
+      data: userIds.map(userId => ({
+        userId,
+        type: 'perk_new',
+        actorName: 'مسلم ليدر',
+        body: perk.title,
+      })),
+      skipDuplicates: true,
+    }).catch(() => {});
+  }
 
   const fromEmail = process.env.SMTP_USER || 'orders@moslimleader.com';
   const transporter = getTransporter();

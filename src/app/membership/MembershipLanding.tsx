@@ -10,6 +10,11 @@ const GOLD   = '#d4a843';
 const BEIGE  = '#f5f0e8';
 const PRICE_USD = 2.00;
 
+interface LandingPerk {
+  id: string; title: string; description: string | null;
+  imageUrl: string | null; linkUrl: string | null; createdAt: string;
+}
+
 interface Props { isLoggedIn: boolean; }
 
 export default function MembershipLanding({ isLoggedIn }: Props) {
@@ -19,6 +24,14 @@ export default function MembershipLanding({ isLoggedIn }: Props) {
   const [step, setStep] = useState<'info' | 'pay' | 'done'>('info');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [perks, setPerks] = useState<LandingPerk[]>([]);
+
+  useEffect(() => {
+    fetch('/api/membership/perks')
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d.perks)) setPerks(d.perks.slice(0, 5)); })
+      .catch(() => {});
+  }, []);
 
   const BENEFITS = isRtl ? [
     { icon: '🪪', text: 'كارت عضوية رقمي مع QR' },
@@ -79,6 +92,55 @@ export default function MembershipLanding({ isLoggedIn }: Props) {
           ))}
         </div>
       </div>
+
+      {/* ── أحدث مزايا العضوية ── */}
+      {perks.length > 0 && (
+        <div style={{ maxWidth: 460, margin: '0 auto 28px', padding: '0 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+            <div style={{ flex: 1, height: 1, background: 'rgba(212,168,67,0.2)' }} />
+            <span style={{ fontSize: 13, fontWeight: 800, color: GOLD, whiteSpace: 'nowrap' }}>
+              {isRtl ? '✦ أحدث مزايا العضوية' : '✦ Latest Member Benefits'}
+            </span>
+            <div style={{ flex: 1, height: 1, background: 'rgba(212,168,67,0.2)' }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {perks.map((p, i) => {
+              const isNew = i === 0 && (Date.now() - new Date(p.createdAt).getTime()) < 7 * 86400_000;
+              return (
+                <div key={p.id} style={{
+                  background: isNew ? 'rgba(212,168,67,0.07)' : 'rgba(255,255,255,0.05)',
+                  border: isNew ? `1px solid rgba(212,168,67,0.35)` : '1px solid rgba(255,255,255,0.09)',
+                  borderRadius: 14, padding: '13px 14px',
+                  display: 'flex', alignItems: 'flex-start', gap: 12,
+                }}>
+                  {p.imageUrl
+                    ? <img src={p.imageUrl} alt="" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+                    : <div style={{ width: 42, height: 42, borderRadius: 8, background: 'rgba(212,168,67,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 20 }}>🎁</div>
+                  }
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                      <p style={{ fontSize: 14, fontWeight: 700, color: BEIGE, margin: 0 }}>{p.title}</p>
+                      {isNew && (
+                        <span style={{ fontSize: 10, fontWeight: 800, color: '#1a0f00', background: GOLD, borderRadius: 5, padding: '1px 7px', flexShrink: 0 }}>
+                          {isRtl ? 'جديد' : 'NEW'}
+                        </span>
+                      )}
+                    </div>
+                    {p.description && (
+                      <p style={{ fontSize: 12, color: 'rgba(245,240,232,0.55)', margin: 0, lineHeight: 1.55 }}>
+                        {p.description.slice(0, 100)}{p.description.length > 100 ? '…' : ''}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.3)', textAlign: 'center', marginTop: 10 }}>
+            {isRtl ? 'انضم للعضوية للوصول الكامل لجميع المزايا' : 'Join to unlock all member benefits'}
+          </p>
+        </div>
+      )}
 
       {/* Sign up form or PayPal */}
       <div style={{ maxWidth: 420, margin: '0 auto', padding: '0 20px' }}>

@@ -32,11 +32,12 @@ export async function POST(req: NextRequest) {
 
   if (postToTareeq) {
     try {
+      const postContent = buildPerkTareeqContent(title.trim(), description?.trim() || null, linkUrl?.trim() || null);
       const post = await prisma.tareeqPost.create({
         data: {
           userId: user.userId,
           authorName: 'مسلم ليدر',
-          content: description?.trim() || title.trim(),
+          content: postContent,
           title: title.trim(),
           category: 'عروض',
           imageUrl: imageUrl || null,
@@ -163,4 +164,26 @@ export async function DELETE(req: NextRequest) {
 
   await prisma.membershipPerk.delete({ where: { id } });
   return NextResponse.json({ ok: true });
+}
+
+// ── helper: build a rich Tareeq post body for a perk ──────────────────────────
+function buildPerkTareeqContent(title: string, description: string | null, linkUrl: string | null): string {
+  const lines: string[] = [];
+  lines.push(`🎁 ميزة حصرية لأعضاء مجتمع مسلم ليدر`);
+  lines.push('');
+  lines.push(`✨ ${title}`);
+  if (description) {
+    lines.push('');
+    lines.push(description);
+  }
+  lines.push('');
+  lines.push('━━━━━━━━━━━━━━━━━━━━━━━');
+  lines.push('هذه الميزة متاحة حصراً لأعضاء مجتمع مسلم ليدر.');
+  lines.push('لم تنضم بعد؟ انضم الآن وابدأ الاستمتاع بعشرات المزايا 👇');
+  lines.push('moslimleader.com/membership');
+  if (linkUrl) {
+    lines.push('');
+    lines.push(`🔗 تفاصيل الميزة: ${linkUrl}`);
+  }
+  return lines.join('\n');
 }

@@ -198,6 +198,23 @@ export default function AdminMembershipPage() {
     if (res.ok) setPerks(prev => prev.filter(p => p.id !== id));
   }
 
+  async function perkAction(id: string, action: 'tareeq' | 'notify' | 'both') {
+    const labels: Record<string, string> = { tareeq: 'إعادة نشر على طريق', notify: 'إرسال تذكير', both: 'نشر + تذكير' };
+    if (!confirm(`${labels[action]}؟`)) return;
+    const res = await fetch('/api/admin/membership/perks/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, action }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.tareeqPostId) setPerks(prev => prev.map(p => p.id === id ? { ...p, tareeqPostId: data.tareeqPostId } : p));
+      flash(action === 'tareeq' ? 'تم النشر على طريق ✓' : action === 'notify' ? 'تم إرسال التذكير ✓' : 'تم النشر والتذكير ✓');
+    } else {
+      flash('حدث خطأ');
+    }
+  }
+
   const filtered = memberships.filter(m =>
     !search || m.owner.name.includes(search) || m.owner.email.includes(search) || m.membershipNumber.includes(search)
   );
@@ -353,7 +370,7 @@ export default function AdminMembershipPage() {
                         {p.tareeqPostId && <span style={{ fontSize: 12, color: '#a78bfa' }}>📢 منشور طريق</span>}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
                       <button onClick={() => openEditPerk(p)}
                         style={{ padding: '6px 14px', borderRadius: 8, background: '#334155', color: '#f1f5f9', fontSize: 12, border: 'none', cursor: 'pointer' }}>
                         تعديل
@@ -361,6 +378,14 @@ export default function AdminMembershipPage() {
                       <button onClick={() => togglePerkActive(p)}
                         style={{ padding: '6px 14px', borderRadius: 8, background: p.isActive ? '#374151' : '#22c55e22', color: p.isActive ? '#94a3b8' : '#22c55e', fontSize: 12, border: 'none', cursor: 'pointer' }}>
                         {p.isActive ? 'إخفاء' : 'إظهار'}
+                      </button>
+                      <button onClick={() => perkAction(p.id, 'tareeq')}
+                        style={{ padding: '6px 14px', borderRadius: 8, background: '#a78bfa22', color: '#a78bfa', fontSize: 12, border: 'none', cursor: 'pointer' }}>
+                        📢 نشر طريق
+                      </button>
+                      <button onClick={() => perkAction(p.id, 'notify')}
+                        style={{ padding: '6px 14px', borderRadius: 8, background: '#38bdf822', color: '#38bdf8', fontSize: 12, border: 'none', cursor: 'pointer' }}>
+                        🔔 تذكير
                       </button>
                       <button onClick={() => deletePerk(p.id)}
                         style={{ padding: '6px 14px', borderRadius: 8, background: '#ef444422', color: '#ef4444', fontSize: 12, border: 'none', cursor: 'pointer' }}>

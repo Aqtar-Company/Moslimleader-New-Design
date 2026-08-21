@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface Membership {
   id: string;
@@ -73,6 +73,8 @@ export default function AdminMembershipPage() {
   const [perkSaving, setPerkSaving] = useState(false);
   const [perkError, setPerkError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const dragIndexRef = useRef<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
 
   const [msg, setMsg] = useState('');
 
@@ -197,6 +199,32 @@ export default function AdminMembershipPage() {
     });
     if (res.ok) setPerks(prev => prev.filter(p => p.id !== id));
   }
+
+  const handleDragStart = useCallback((index: number) => {
+    dragIndexRef.current = index;
+  }, []);
+
+  const handleDrop = useCallback(async (dropIndex: number) => {
+    const fromIndex = dragIndexRef.current;
+    if (fromIndex === null || fromIndex === dropIndex) { setDragOver(null); return; }
+    const reordered = [...perks];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(dropIndex, 0, moved);
+    // Assign sortOrder = position index
+    const updated = reordered.map((p, i) => ({ ...p, sortOrder: i }));
+    setPerks(updated);
+    setDragOver(null);
+    dragIndexRef.current = null;
+    // Persist all sortOrder values (fire-and-forget in parallel)
+    await Promise.allSettled(
+      updated.map(p => fetch('/api/admin/membership/perks', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: p.id, sortOrder: p.sortOrder }),
+      }))
+    );
+    flash('تم حفظ الترتيب');
+  }, [perks]);
 
   async function perkAction(id: string, action: 'tareeq' | 'notify' | 'both') {
     const labels: Record<string, string> = { tareeq: 'إعادة نشر على طريق', notify: 'إرسال تذكير', both: 'نشر + تذكير' };
@@ -355,9 +383,34 @@ export default function AdminMembershipPage() {
             <div style={{ textAlign: 'center', color: '#94a3b8', padding: 40 }}>لا توجد مزايا بعد</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {perks.map(p => (
-                <div key={p.id} style={{ background: '#1e293b', border: `1px solid ${p.isActive ? '#334155' : '#1e293b'}`, borderRadius: 14, padding: '14px 16px', opacity: p.isActive ? 1 : 0.55 }}>
+              {perks.map((p, index) => (
+                <div
+                  key={p.id}
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={e => { e.preventDefault(); setDragOver(index); }}
+                  onDragLeave={() => setDragOver(null)}
+                  onDrop={() => handleDrop(index)}
+                  onDragEnd={() => { setDragOver(null); dragIndexRef.current = null; }}
+                  style={{
+                    background: '#1e293b',
+                    border: dragOver === index ? '1px solid #d4a843' : `1px solid ${p.isActive ? '#334155' : '#1e293b'}`,
+                    borderRadius: 14, padding: '14px 16px',
+                    opacity: p.isActive ? 1 : 0.55,
+                    transition: 'border-color 0.15s',
+                    cursor: 'grab',
+                  }}
+                >
                   <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    {/* Drag handle */}
+                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4, flexShrink: 0, paddingTop: 2, cursor: 'grab', opacity: 0.35 }}>
+                      {[0,1,2].map(i => (
+                        <div key={i} style={{ display: 'flex', gap: 3 }}>
+                          <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#94a3b8' }} />
+                          <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#94a3b8' }} />
+                        </div>
+                      ))}
+                    </div>
                     {p.imageUrl && (
                       <img src={p.imageUrl} alt="" style={{ width: 60, height: 60, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
                     )}

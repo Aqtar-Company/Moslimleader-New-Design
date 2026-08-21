@@ -194,12 +194,10 @@ export default function AccountPage() {
         .then(r => r.json())
         .then(d => {
           setMembership(d.membership ?? null);
-          if (d.membership?.status === 'ACTIVE') {
-            fetch('/api/membership/perks', { credentials: 'include' })
-              .then(r => r.json())
-              .then(pd => setPerks(pd.perks ?? []))
-              .catch(() => {});
-          }
+          fetch('/api/membership/perks', { credentials: 'include' })
+            .then(r => r.json())
+            .then(pd => setPerks(pd.perks ?? []))
+            .catch(() => {});
         })
         .catch(() => {})
         .finally(() => setMembershipLoading(false));
@@ -1346,7 +1344,7 @@ export default function AccountPage() {
               )}
 
               {/* Membership perks */}
-              {membership.status === 'ACTIVE' && perks.length > 0 && (
+              {perks.length > 0 && (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                   <h3 className="font-black text-gray-900 mb-4">{isRtl ? 'مزايا العضوية' : 'Membership Perks'}</h3>
                   <div className="space-y-3">

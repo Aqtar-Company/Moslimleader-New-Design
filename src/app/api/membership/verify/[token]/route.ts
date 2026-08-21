@@ -1,8 +1,13 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { checkRateLimit } from '@/lib/rate-limit';
 
-export async function GET(_req: NextRequest, { params }: { params: { token: string } }) {
+export async function GET(req: NextRequest, { params }: { params: { token: string } }) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  const rl = checkRateLimit(`membership-verify:${ip}`, 30, 60 * 60 * 1000);
+  if (!rl.allowed) return NextResponse.json({ valid: false, error: 'حاول لاحقاً' }, { status: 429 });
+
   const membership = await prisma.familyMembership.findUnique({
     where: { qrToken: params.token },
     select: {

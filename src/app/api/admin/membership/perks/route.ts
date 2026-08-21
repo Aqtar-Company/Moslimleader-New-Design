@@ -124,7 +124,7 @@ async function notifyActiveMembers(perk: { title: string; description: string | 
       emails.slice(i, i + 10).map(email => transporter.sendMail({
         from: `"مسلم ليدر" <${fromEmail}>`,
         to: email,
-        subject: `ميزة جديدة لعضويتك: ${perk.title}`,
+        subject: `ميزة جديدة لعضويتك: ${perk.title.replace(/[\r\n]/g, ' ')}`,
         html,
       }))
     );

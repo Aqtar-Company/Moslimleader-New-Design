@@ -55,6 +55,11 @@ export async function PATCH(req: NextRequest) {
   const { id, status } = await req.json().catch(() => ({}));
   if (!id || !status) return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
 
+  const ALLOWED_STATUSES = ['ACTIVE', 'PENDING', 'EXPIRED', 'CANCELLED'] as const;
+  if (!ALLOWED_STATUSES.includes(status)) {
+    return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+  }
+
   // When admin manually activates, set sensible dates if not already set
   const updateData: Record<string, unknown> = { status };
   if (status === 'ACTIVE') {

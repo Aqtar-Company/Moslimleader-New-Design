@@ -1,15 +1,18 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
+import { randomBytes } from 'crypto';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { createPayPalOrder } from '@/lib/paypal';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 const PRICE_EGY_USD = 2.00;  // 100 EGP ÷ 50
 const PRICE_INTL_USD = 5.00; // outside Egypt
 
 function generateQRToken(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  return 'ML-' + Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  const bytes = randomBytes(8);
+  return 'ML-' + Array.from(bytes, b => chars[b % chars.length]).join('');
 }
 
 async function generateMembershipNumber(): Promise<string> {
@@ -31,6 +34,9 @@ async function generateMembershipNumber(): Promise<string> {
 export async function POST(req: NextRequest) {
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const rl = checkRateLimit(`membership-create:${user.userId}`, 5, 60 * 60 * 1000);
+  if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
 
   const { familyName, zone } = await req.json().catch(() => ({}));
   const amountUsd = zone === 'egypt' ? PRICE_EGY_USD : PRICE_INTL_USD;

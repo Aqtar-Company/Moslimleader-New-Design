@@ -48,9 +48,11 @@ export default function MembershipDashboard({
       .catch(() => {});
   }, []);
 
-  const isActive    = membership.status === 'ACTIVE';
-  const isExpired   = membership.status === 'EXPIRED';
-  const isPending   = membership.status === 'PENDING';
+  const isActive      = membership.status === 'ACTIVE';
+  const isExpired     = membership.status === 'EXPIRED';
+  const isCancelled   = membership.status === 'CANCELLED';
+  const isPending     = membership.status === 'PENDING';
+  const isInactive    = isExpired || isCancelled;
   const expiresAt   = membership.expiresAt ? new Date(membership.expiresAt) : null;
   const daysLeft    = expiresAt ? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 86400000)) : 0;
   const nearExpiry  = isActive && daysLeft <= 30;
@@ -110,10 +112,10 @@ export default function MembershipDashboard({
           {isRtl ? 'عضوية الأسرة' : 'Family Membership'}
         </h1>
         {/* Status pill */}
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8, padding: '4px 14px', borderRadius: 20, background: isActive ? 'rgba(74,222,128,0.12)' : isExpired ? 'rgba(248,113,113,0.12)' : 'rgba(251,191,36,0.12)', border: `1px solid ${isActive ? 'rgba(74,222,128,0.3)' : isExpired ? 'rgba(248,113,113,0.3)' : 'rgba(251,191,36,0.3)'}` }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: isActive ? '#4ade80' : isExpired ? '#f87171' : '#fbbf24', flexShrink: 0, boxShadow: isActive ? '0 0 8px rgba(74,222,128,0.7)' : 'none' }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: isActive ? '#4ade80' : isExpired ? '#f87171' : '#fbbf24' }}>
-            {isActive ? (isRtl ? 'عضوية فعّالة' : 'Active') : isExpired ? (isRtl ? 'منتهية الصلاحية' : 'Expired') : (isRtl ? 'قيد المعالجة' : 'Pending')}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8, padding: '4px 14px', borderRadius: 20, background: isActive ? 'rgba(74,222,128,0.12)' : isInactive ? 'rgba(248,113,113,0.12)' : 'rgba(251,191,36,0.12)', border: `1px solid ${isActive ? 'rgba(74,222,128,0.3)' : isInactive ? 'rgba(248,113,113,0.3)' : 'rgba(251,191,36,0.3)'}` }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: isActive ? '#4ade80' : isInactive ? '#f87171' : '#fbbf24', flexShrink: 0, boxShadow: isActive ? '0 0 8px rgba(74,222,128,0.7)' : 'none' }} />
+          <span style={{ fontSize: 12, fontWeight: 700, color: isActive ? '#4ade80' : isInactive ? '#f87171' : '#fbbf24' }}>
+            {isActive ? (isRtl ? 'عضوية فعّالة' : 'Active') : isExpired ? (isRtl ? 'منتهية الصلاحية' : 'Expired') : isCancelled ? (isRtl ? 'ملغاة' : 'Cancelled') : (isRtl ? 'قيد المعالجة' : 'Pending')}
           </span>
         </div>
       </div>
@@ -152,10 +154,10 @@ export default function MembershipDashboard({
                   <p style={{ fontSize: 9, letterSpacing: '0.15em', color: 'rgba(245,240,232,0.5)', marginTop: 3 }}>FAMILY MEMBER</p>
                 </div>
                 {/* Status dot */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 12, background: isActive ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)', border: `1px solid ${isActive ? 'rgba(74,222,128,0.3)' : 'rgba(248,113,113,0.3)'}` }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: isActive ? '#4ade80' : '#f87171' }} />
-                  <span style={{ fontSize: 9, fontWeight: 700, color: isActive ? '#4ade80' : '#f87171', letterSpacing: '0.1em' }}>
-                    {isActive ? 'ACTIVE' : isExpired ? 'EXPIRED' : 'PENDING'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 12, background: isActive ? 'rgba(74,222,128,0.15)' : isInactive ? 'rgba(248,113,113,0.15)' : 'rgba(251,191,36,0.15)', border: `1px solid ${isActive ? 'rgba(74,222,128,0.3)' : isInactive ? 'rgba(248,113,113,0.3)' : 'rgba(251,191,36,0.3)'}` }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: isActive ? '#4ade80' : isInactive ? '#f87171' : '#fbbf24' }} />
+                  <span style={{ fontSize: 9, fontWeight: 700, color: isActive ? '#4ade80' : isInactive ? '#f87171' : '#fbbf24', letterSpacing: '0.1em' }}>
+                    {isActive ? 'ACTIVE' : isExpired ? 'EXPIRED' : isCancelled ? 'CANCELLED' : 'PENDING'}
                   </span>
                 </div>
               </div>
@@ -188,7 +190,7 @@ export default function MembershipDashboard({
                   {expiryText && (
                     <div style={{ textAlign: isRtl ? 'left' : 'right' }}>
                       <p style={{ fontSize: 9, color: 'rgba(245,240,232,0.4)', letterSpacing: '0.08em' }}>Valid until</p>
-                      <p style={{ fontSize: 10, fontWeight: 700, color: isExpired ? '#f87171' : GOLD, marginTop: 2 }}>{expiryText}</p>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: isInactive ? '#f87171' : GOLD, marginTop: 2 }}>{expiryText}</p>
                     </div>
                   )}
                 </div>
@@ -202,19 +204,21 @@ export default function MembershipDashboard({
               </div>
             )}
 
-            {/* ── EXPIRED: prominent CTA ── */}
-            {isExpired && (
+            {/* ── EXPIRED / CANCELLED: prominent CTA ── */}
+            {isInactive && (
               <div style={{ marginTop: 16, borderRadius: 20, overflow: 'hidden', border: '1px solid rgba(212,168,67,0.22)' }}>
                 {/* Header strip */}
                 <div style={{ background: 'linear-gradient(135deg, #1a0c00 0%, #2a1800 100%)', padding: '18px 20px 14px', textAlign: 'center', borderBottom: '1px solid rgba(212,168,67,0.15)' }}>
                   <p style={{ fontSize: 22, marginBottom: 6 }}>🔔</p>
                   <p style={{ fontSize: 16, fontWeight: 900, color: GOLD, marginBottom: 4 }}>
-                    {isRtl ? 'عضويتك الرائدة انتهت' : 'Your Leader membership expired'}
+                    {isCancelled
+                      ? (isRtl ? 'عضويتك الرائدة ملغاة' : 'Your Leader membership was cancelled')
+                      : (isRtl ? 'عضويتك الرائدة انتهت' : 'Your Leader membership expired')}
                   </p>
                   <p style={{ fontSize: 12, color: 'rgba(245,240,232,0.55)', lineHeight: 1.6 }}>
                     {isRtl
-                      ? 'أنت حالياً عضو مجتمع — جدّد للاستمرار في الحصول على مزايا العضو الرائد'
-                      : 'You are now a Community member — renew to restore Leader benefits'}
+                      ? 'جدّد للاستمرار في الحصول على مزايا العضو الرائد'
+                      : 'Renew to restore your Leader benefits'}
                   </p>
                 </div>
                 {/* Benefits reminder */}
@@ -267,7 +271,7 @@ export default function MembershipDashboard({
               {expiryText && (
                 <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '12px 14px' }}>
                   <p style={{ fontSize: 10, color: 'rgba(245,240,232,0.4)', marginBottom: 4 }}>{isRtl ? 'تنتهي في' : 'Valid until'}</p>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: isExpired ? '#f87171' : GOLD }}>{expiryText}</p>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: isInactive ? '#f87171' : GOLD }}>{expiryText}</p>
                 </div>
               )}
             </div>

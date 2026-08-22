@@ -39,12 +39,25 @@ export async function POST(req: NextRequest) {
       await capturePayPalOrder(paypalOrderId);
     } catch (err) {
       console.error('[activate] PayPal capture failed', err);
-      const detail = err instanceof PayPalCaptureError && err.issue === 'COMPLIANCE_VIOLATION'
-        ? 'هذه المعاملة غير متاحة في منطقتك حسب سياسة PayPal. يرجى التواصل مع الدعم أو الدفع عبر إنستاباي.'
-        : err instanceof PayPalCaptureError && err.description
-          ? err.description
-          : 'فشل تأكيد الدفع مع PayPal';
-      return NextResponse.json({ error: detail }, { status: 422 });
+      if (err instanceof PayPalCaptureError) {
+        const friendlyByIssue: Record<string, string> = {
+          COMPLIANCE_VIOLATION: 'فشلت المعاملة لدى PayPal بسبب قيد على حساب التاجر. لم يتم خصم أي مبلغ. برجاء المحاولة بطريقة دفع أخرى أو التواصل مع الدعم.',
+          INSTRUMENT_DECLINED: 'البطاقة مرفوضة من البنك أو PayPal. جرّب بطاقة أخرى أو تواصل مع البنك.',
+          PAYER_ACCOUNT_RESTRICTED: 'حساب المشتري على PayPal مقيَّد. حاول طريقة دفع أخرى.',
+          PAYEE_ACCOUNT_RESTRICTED: 'حساب التاجر مقيَّد حالياً — تواصل مع الدعم.',
+          TRANSACTION_REFUSED: 'تم رفض المعاملة من PayPal. جرّب بطاقة أخرى أو طريقة دفع بديلة.',
+        };
+        const friendly = err.issue && friendlyByIssue[err.issue]
+          ? friendlyByIssue[err.issue]
+          : 'تعذّر إتمام الدفع لدى PayPal. لم يتم خصم أي مبلغ. حاول طريقة دفع أخرى.';
+        return NextResponse.json({
+          error: friendly,
+          detail: err.description ?? err.issue ?? 'PayPal rejected',
+          paypalIssue: err.issue,
+          paypalDebugId: err.debugId,
+        }, { status: 400 });
+      }
+      return NextResponse.json({ error: 'فشل تأكيد الدفع مع PayPal' }, { status: 400 });
     }
 
     const now = new Date();

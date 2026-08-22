@@ -1479,18 +1479,6 @@ export default function AccountPage() {
           ) : (
             /* ── MEMBER VIEW ── */
             <div className="space-y-5">
-              {/* Community card — every registered user */}
-              {communityMemberNumber && (
-                <MembershipCard
-                  variant="community"
-                  memberNumber={communityMemberNumber}
-                  name={user.name}
-                  joinedYear={membership.memberSince}
-                  qrDataUrl={communityQr}
-                  isRtl={isRtl}
-                />
-              )}
-
               {/* Leader card */}
               {(() => {
                 const isInactive = membership.status === 'EXPIRED' || membership.status === 'CANCELLED';

@@ -366,7 +366,7 @@ export default function AdminMembershipPage() {
           <button key={t} onClick={() => setTab(t)}
             style={{ padding: '8px 20px', borderRadius: 10, fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer',
               background: tab === t ? '#d4a843' : '#1e293b', color: tab === t ? '#0f172a' : '#94a3b8' }}>
-            {t === 'memberships' ? 'العضويات' : t === 'perks' ? 'المزايا' : t === 'pricing' ? 'الأسعار' : '➕ إضافة يدوية'}
+            {t === 'memberships' ? 'العضويات' : t === 'perks' ? 'المزايا' : t === 'pricing' ? 'الأسعار والخصومات' : '➕ إضافة يدوية'}
           </button>
         ))}
       </div>

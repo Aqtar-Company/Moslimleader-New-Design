@@ -195,15 +195,64 @@ export default function MembershipDashboard({
               </div>
             </div>
 
-            {/* Alerts */}
-            {nearExpiry && (
+            {/* Near-expiry warning */}
+            {nearExpiry && !isExpired && (
               <div style={{ marginTop: 14, background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: 14, padding: '12px 16px', fontSize: 13, color: '#fbbf24', textAlign: 'center' }}>
                 {isRtl ? `ينتهي خلال ${daysLeft} يوم — جدّد الآن للحفاظ على رقمك` : `Expires in ${daysLeft} days — renew now to keep your number`}
               </div>
             )}
+
+            {/* ── EXPIRED: prominent CTA ── */}
             {isExpired && (
-              <div style={{ marginTop: 14, background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 14, padding: '12px 16px', fontSize: 13, color: '#f87171', textAlign: 'center' }}>
-                {isRtl ? 'العضوية منتهية — جدّد للحفاظ على نفس الرقم' : 'Membership expired — renew to keep your number'}
+              <div style={{ marginTop: 16, borderRadius: 20, overflow: 'hidden', border: '1px solid rgba(212,168,67,0.22)' }}>
+                {/* Header strip */}
+                <div style={{ background: 'linear-gradient(135deg, #1a0c00 0%, #2a1800 100%)', padding: '18px 20px 14px', textAlign: 'center', borderBottom: '1px solid rgba(212,168,67,0.15)' }}>
+                  <p style={{ fontSize: 22, marginBottom: 6 }}>🔔</p>
+                  <p style={{ fontSize: 16, fontWeight: 900, color: GOLD, marginBottom: 4 }}>
+                    {isRtl ? 'عضويتك الرائدة انتهت' : 'Your Leader membership expired'}
+                  </p>
+                  <p style={{ fontSize: 12, color: 'rgba(245,240,232,0.55)', lineHeight: 1.6 }}>
+                    {isRtl
+                      ? 'أنت حالياً عضو مجتمع — جدّد للاستمرار في الحصول على مزايا العضو الرائد'
+                      : 'You are now a Community member — renew to restore Leader benefits'}
+                  </p>
+                </div>
+                {/* Benefits reminder */}
+                <div style={{ background: 'rgba(212,168,67,0.04)', padding: '14px 20px' }}>
+                  <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.4)', marginBottom: 10, letterSpacing: '0.05em' }}>
+                    {isRtl ? 'ما ستستعيده بالتجديد' : 'What you get back by renewing'}
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                    {[
+                      isRtl ? '✦ خصم على كل منتجات المتجر' : '✦ Discount on all store products',
+                      isRtl ? '✦ الوصول لمزايا العضوية الحصرية' : '✦ Access to exclusive member perks',
+                      isRtl ? '✦ نفس رقم عضويتك المحفوظ' : '✦ Same membership number preserved',
+                    ].map((line, i) => (
+                      <p key={i} style={{ fontSize: 12, color: 'rgba(245,240,232,0.65)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+                {/* CTA button */}
+                <div style={{ background: 'rgba(212,168,67,0.06)', padding: '14px 20px 18px', textAlign: 'center' }}>
+                  <button
+                    onClick={() => setShowRenew(true)}
+                    style={{
+                      width: '100%', padding: '15px 0', borderRadius: 14,
+                      background: `linear-gradient(135deg, ${GOLD} 0%, #c49530 100%)`,
+                      color: '#1a0800', fontWeight: 900, fontSize: 15,
+                      border: 'none', cursor: 'pointer',
+                      boxShadow: '0 4px 20px rgba(212,168,67,0.35)',
+                      letterSpacing: '0.02em',
+                    }}
+                  >
+                    {isRtl ? '🔄 جدّد عضويتي الرائدة الآن' : '🔄 Renew Leader Membership Now'}
+                  </button>
+                  <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.3)', marginTop: 8 }}>
+                    {isRtl ? `رقم عضويتك: ${membership.membershipNumber}` : `Your number: ${membership.membershipNumber}`}
+                  </p>
+                </div>
               </div>
             )}
 
@@ -223,8 +272,8 @@ export default function MembershipDashboard({
               )}
             </div>
 
-            {/* Renew button */}
-            {(isActive && nearExpiry) || isExpired ? (
+            {/* Renew button — only for near-expiry (expired has its own CTA above) */}
+            {isActive && nearExpiry ? (
               <button onClick={() => setShowRenew(true)}
                 style={{ marginTop: 14, width: '100%', padding: '14px 0', borderRadius: 16, background: GOLD, color: '#1a0f00', fontWeight: 900, fontSize: 15, border: 'none', cursor: 'pointer' }}>
                 {isRtl ? 'تجديد العضوية' : 'Renew Membership'}

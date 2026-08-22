@@ -68,6 +68,7 @@ export default function AccountPage() {
   const [membership, setMembership] = useState<{ id: string; membershipNumber: string; status: string; familyName: string | null; memberSince: number; startsAt: string | null; expiresAt: string | null; familyMembers: { id: string; name: string; relation: string | null }[] } | null>(null);
   const [communityMemberNumber, setCommunityMemberNumber] = useState<string | null>(null);
   const [communityQr, setCommunityQr] = useState<string | null>(null);
+  const [communityFallbackQr, setCommunityFallbackQr] = useState<string | null>(null);
   const [leaderQr, setLeaderQr] = useState<string | null>(null);
   const [membershipLoading, setMembershipLoading] = useState(false);
   const [perks, setPerks] = useState<{ id: string; title: string; description: string | null; imageUrl: string | null; linkUrl: string | null; validUntil: string | null; createdAt: string }[]>([]);
@@ -98,6 +99,17 @@ export default function AccountPage() {
       }).then(url => setLeaderQr(url)).catch(() => {});
     }).catch(() => {});
   }, [membership?.membershipNumber]);
+
+  // QR for community fallback (expired leader choosing to stay as community)
+  useEffect(() => {
+    if (!showCommunityFallback || !membership?.membershipNumber) return;
+    const fallbackNum = communityMemberNumber ?? membership.membershipNumber.replace('ML-', 'CM-');
+    import('qrcode').then(QRCode => {
+      QRCode.toDataURL(`https://moslimleader.com/verify/${fallbackNum}`, {
+        width: 120, margin: 1, color: { dark: '#1b3a2a', light: '#d4f5e2' },
+      }).then(url => setCommunityFallbackQr(url)).catch(() => {});
+    }).catch(() => {});
+  }, [showCommunityFallback, membership?.membershipNumber, communityMemberNumber]);
 
   // Free media downloads
   const [freeMedia, setFreeMedia] = useState<FreeMediaItem[]>([]);
@@ -1158,25 +1170,29 @@ export default function AccountPage() {
             <div>
               {applyStep === 'idle' && (
                 <>
-                  {/* Community welcome — user is already a member */}
+                  {/* Header — only shown if user is a community member */}
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2d5a40" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                        </svg>
-                        <span className="text-xs font-black tracking-wider" style={{ color: '#2d5a40' }}>
-                          {isRtl ? 'عضو مجتمع مسلم ليدر' : 'Moslim Leader Community Member'}
-                        </span>
-                      </div>
+                      {communityMemberNumber && (
+                        <div className="flex items-center gap-2 mb-1">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2d5a40" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                          </svg>
+                          <span className="text-xs font-black tracking-wider" style={{ color: '#2d5a40' }}>
+                            {isRtl ? 'عضو مجتمع مسلم ليدر' : 'Moslim Leader Community Member'}
+                          </span>
+                        </div>
+                      )}
                       <h2 className="font-black text-gray-900 text-base">{isRtl ? `مرحباً، ${user.name}` : `Welcome, ${user.name}`}</h2>
                     </div>
-                    <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: 'rgba(45,90,64,0.1)', color: '#2d5a40', border: '1px solid rgba(45,90,64,0.2)' }}>
-                      {isRtl ? 'مجتمعي' : 'Community'}
-                    </span>
+                    {communityMemberNumber && (
+                      <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: 'rgba(45,90,64,0.1)', color: '#2d5a40', border: '1px solid rgba(45,90,64,0.2)' }}>
+                        {isRtl ? 'مجتمعي' : 'Community'}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Community card — hero position */}
+                  {/* Community card — only if user has a real community membership number */}
                   {communityMemberNumber && (
                     <div className="mb-5">
                       <MembershipCard
@@ -1479,18 +1495,32 @@ export default function AccountPage() {
               {(() => {
                 const isInactive = membership.status === 'EXPIRED' || membership.status === 'CANCELLED';
                 const isCancelled = membership.status === 'CANCELLED';
+                // Stable community number for expired leaders: use their communityMemberNumber or derive from leader number
+                const fallbackCommunityNum = communityMemberNumber ?? membership.membershipNumber.replace(/^ML-/, 'CM-');
                 return (
                   <div>
-                    <MembershipCard
-                      variant="leader"
-                      memberNumber={membership.membershipNumber}
-                      familyName={membership.familyName}
-                      memberSince={membership.memberSince}
-                      expiresAt={membership.expiresAt}
-                      status={membership.status as 'ACTIVE' | 'PENDING' | 'EXPIRED' | 'CANCELLED'}
-                      qrDataUrl={leaderQr}
-                      isRtl={isRtl}
-                    />
+                    {/* SWITCH: show leader card OR community card, never both */}
+                    {!showCommunityFallback ? (
+                      <MembershipCard
+                        variant="leader"
+                        memberNumber={membership.membershipNumber}
+                        familyName={membership.familyName}
+                        memberSince={membership.memberSince}
+                        expiresAt={membership.expiresAt}
+                        status={membership.status as 'ACTIVE' | 'PENDING' | 'EXPIRED' | 'CANCELLED'}
+                        qrDataUrl={leaderQr}
+                        isRtl={isRtl}
+                      />
+                    ) : (
+                      <MembershipCard
+                        variant="community"
+                        memberNumber={fallbackCommunityNum}
+                        name={user.name}
+                        joinedYear={new Date().getFullYear()}
+                        qrDataUrl={communityFallbackQr ?? communityQr}
+                        isRtl={isRtl}
+                      />
+                    )}
                     {isInactive && renewStep === 'idle' && !showCommunityFallback && (
                       <div style={{ marginTop: 14, padding: '18px 16px', borderRadius: 18, background: 'linear-gradient(135deg,#1a0c00,#2a1800)', border: '1px solid rgba(212,168,67,0.2)', textAlign: 'center' }}>
                         <p style={{ fontSize: 14, fontWeight: 900, color: '#FFCC33', marginBottom: 16 }}>
@@ -1535,32 +1565,20 @@ export default function AccountPage() {
                       </div>
                     )}
 
-                    {/* Community fallback — shown when user chooses to stay as community member */}
+                    {/* Community fallback info — card already shown above via switch */}
                     {isInactive && showCommunityFallback && (
-                      <div style={{ marginTop: 14 }}>
-                        <div className="mb-4">
-                          <MembershipCard
-                            variant="community"
-                            memberNumber={communityMemberNumber ?? `CM-${user.id?.slice(0,6).toUpperCase()}`}
-                            name={user.name}
-                            joinedYear={new Date().getFullYear()}
-                            qrDataUrl={communityQr}
-                            isRtl={isRtl}
-                          />
-                        </div>
-                        <div style={{ borderRadius: 14, background: 'linear-gradient(135deg,#1a3a2e,#2d5a40)', padding: '14px 16px', textAlign: 'center' }}>
-                          <p style={{ fontSize: 13, fontWeight: 900, color: '#fff', marginBottom: 4 }}>
-                            {isRtl ? 'أنت عضو في مجتمع مسلم ليدر' : 'You are a Moslim Leader Community Member'}
-                          </p>
-                          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, marginBottom: 12 }}>
-                            {isRtl ? 'يمكنك الترقي لعضو رائد في أي وقت' : 'You can upgrade to Leader anytime'}
-                          </p>
-                          <button
-                            onClick={() => setShowCommunityFallback(false)}
-                            style={{ fontSize: 12, color: 'rgba(255,204,51,0.85)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}>
-                            {isRtl ? 'عرض خيار التجديد الرائد' : 'Show Leader renewal option'}
-                          </button>
-                        </div>
+                      <div style={{ marginTop: 14, borderRadius: 14, background: 'linear-gradient(135deg,#1a3a2e,#2d5a40)', padding: '14px 16px', textAlign: 'center' }}>
+                        <p style={{ fontSize: 13, fontWeight: 900, color: '#fff', marginBottom: 4 }}>
+                          {isRtl ? 'أنت عضو في مجتمع مسلم ليدر' : 'You are a Moslim Leader Community Member'}
+                        </p>
+                        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, marginBottom: 12 }}>
+                          {isRtl ? 'يمكنك الترقي لعضو رائد في أي وقت' : 'You can upgrade to Leader anytime'}
+                        </p>
+                        <button
+                          onClick={() => setShowCommunityFallback(false)}
+                          style={{ fontSize: 12, color: 'rgba(255,204,51,0.85)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+                          {isRtl ? 'عرض خيار التجديد الرائد' : 'Show Leader renewal option'}
+                        </button>
                       </div>
                     )}
                   </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -73,6 +73,7 @@ export default function AccountPage() {
   const [applyFamilyName, setApplyFamilyName] = useState('');
   const [applyLoading, setApplyLoading] = useState(false);
   const [renewStep, setRenewStep] = useState<'idle' | 'paypal' | 'instapay' | 'success'>('idle');
+  const renewSectionRef = useRef<HTMLDivElement>(null);
 
   // Free media downloads
   const [freeMedia, setFreeMedia] = useState<FreeMediaItem[]>([]);
@@ -1579,7 +1580,10 @@ export default function AccountPage() {
                         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
                       }}>
                         <button
-                          onClick={() => setRenewStep('paypal')}
+                          onClick={() => {
+                            setRenewStep('paypal');
+                            setTimeout(() => renewSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+                          }}
                           style={{
                             display: 'flex', alignItems: 'center', gap: 8,
                             padding: '11px 24px', borderRadius: 14, border: 'none', cursor: 'pointer',
@@ -1692,7 +1696,7 @@ export default function AccountPage() {
 
               {/* Status actions for expired/cancelled/pending */}
               {membership.status !== 'ACTIVE' && (
-                <div className="space-y-3 mt-2">
+                <div ref={renewSectionRef} className="space-y-3 mt-2">
                   {(membership.status === 'EXPIRED' || membership.status === 'CANCELLED') && renewStep === 'paypal' && (
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
                       <h3 className="font-black text-gray-900">{isRtl ? 'تجديد العضوية' : 'Renew Membership'}</h3>

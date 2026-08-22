@@ -498,7 +498,18 @@ export default function AdminMembershipPage() {
                       <img src={p.imageUrl} alt="" style={{ width: 60, height: 60, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
                     )}
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 800, fontSize: 15, color: '#f1f5f9', marginBottom: 4 }}>{p.title}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                        <div style={{ fontWeight: 800, fontSize: 15, color: '#f1f5f9' }}>{p.title}</div>
+                        <span style={{
+                          fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 20,
+                          background: p.forTier === 'leader' ? 'rgba(212,168,67,0.15)' : 'rgba(34,197,94,0.12)',
+                          color: p.forTier === 'leader' ? '#d4a843' : '#22c55e',
+                          border: `1px solid ${p.forTier === 'leader' ? 'rgba(212,168,67,0.3)' : 'rgba(34,197,94,0.25)'}`,
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {p.forTier === 'leader' ? '✦ عضو رائد فقط' : '🌿 كل الأعضاء'}
+                        </span>
+                      </div>
                       {p.description && <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 4, lineHeight: 1.5 }}>{p.description}</div>}
                       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                         {p.linkUrl && <a href={p.linkUrl} target="_blank" rel="noopener" style={{ fontSize: 12, color: '#60a5fa' }}>رابط ←</a>}
@@ -536,13 +547,15 @@ export default function AdminMembershipPage() {
         </>
       )}
 
-      {/* ─── PERK FORM SHEET ─── */}
+      {/* ─── PERK FORM MODAL ─── */}
       {showPerkForm && (
-        <div onClick={() => setShowPerkForm(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'flex-end' }}>
+        <div onClick={() => setShowPerkForm(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div onClick={e => e.stopPropagation()} dir="rtl"
-            style={{ width: '100%', maxHeight: '90dvh', overflowY: 'auto', background: '#1e293b', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px' }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: '#334155', margin: '0 auto 20px' }} />
-            <p style={{ fontWeight: 800, fontSize: 18, color: '#d4a843', marginBottom: 18 }}>
+            style={{ width: '100%', maxWidth: 520, maxHeight: '90dvh', overflowY: 'auto', background: '#1e293b', borderRadius: 20, padding: '28px 24px 32px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <button onClick={() => setShowPerkForm(false)} style={{ width: 32, height: 32, borderRadius: '50%', background: '#334155', border: 'none', color: '#94a3b8', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
+            </div>
+            <p style={{ fontWeight: 800, fontSize: 18, color: '#d4a843', marginBottom: 18, marginTop: 0 }}>
               {editingPerk ? 'تعديل الميزة' : 'إضافة ميزة جديدة'}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

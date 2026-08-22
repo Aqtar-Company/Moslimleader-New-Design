@@ -1,19 +1,6 @@
 'use client';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 
-interface MushafWord {
-  text: string;
-  codeV1: string;
-  codeV2: string;
-  charType: string;
-  verseNumber: number;
-  chapterId: number;
-  lineNumber: number;
-}
-interface MushafLineData {
-  lineNum: number;
-  words: MushafWord[];
-}
 interface PageMeta {
   juz: number | null;
   hizb: number | null;
@@ -60,30 +47,6 @@ const JUZ_AR = ['','الأول','الثاني','الثالث','الرابع','ا
 function juzName(n: number) { return JUZ_AR[n] ? `الجزء ${JUZ_AR[n]}` : `الجزء ${n}`; }
 function toEastern(n: number) { return String(n).replace(/[0-9]/g, d => '٠١٢٣٤٥٦٧٨٩'[parseInt(d)]); }
 
-// Determine line content type
-function lineType(words: MushafWord[]): 'surah_name' | 'bismillah' | 'end' | 'verse' {
-  const types = words.map(w => w.charType);
-  if (types.some(t => t === 'chapter_name' || t === 'surah_name')) return 'surah_name';
-  if (types.some(t => t === 'bismillah')) return 'bismillah';
-  if (types.length === 1 && types[0] === 'end') return 'end';
-  return 'verse';
-}
-
-// Surah header banner
-function SurahBanner({ surahId }: { surahId: number }) {
-  return (
-    <div dir="rtl" style={{ margin: '10px 6px 6px', position: 'relative', lineHeight: 0 }}>
-      <img src="/surah_header_mushaf.svg" alt="" aria-hidden="true" style={{ display: 'block', width: '100%', height: 'auto' }} />
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ fontFamily: "'Amiri Quran','Scheherazade New',serif", fontSize: 'clamp(13px,3.8vw,20px)', fontWeight: 700, color: '#1a0800', letterSpacing: 2 }}>
-          سورة {SURAH_AR[surahId] ?? ''}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// Gold double-line divider
 function GoldLine() {
   return (
     <div style={{ padding: '0 12px' }}>
@@ -93,57 +56,26 @@ function GoldLine() {
   );
 }
 
-export default function MushafQCFPage({ page, currentChapter, currentVerse, onVerseClick, onAyahTap, autoFollow = true }: Props) {
-  const [lines, setLines] = useState<MushafLineData[]>([]);
+export default function MushafQCFPage({ page, currentChapter, onVerseClick, onAyahTap, autoFollow }: Props) {
   const [meta, setMeta] = useState<PageMeta>({ juz: null, hizb: null, surahs: [] });
-  const [loading, setLoading] = useState(true);
-  const [fontReady, setFontReady] = useState(false);
-  const activeRef = useRef<HTMLDivElement | null>(null);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
-  const padded = String(page).padStart(3, '0');
-  const fontFamily = `QCF_P${padded}`;
-  const fontUrl = `/api/tareeq/quran/qcf-font?page=${page}`;
+  const imgSrc = `/api/tareeq/quran/mushaf-page?page=${page}`;
 
-  // Load per-page QCF4 font
+  // Fetch metadata (juz/hizb/surah names) from mushaf-lines API
   useEffect(() => {
-    setFontReady(false);
-    const styleId = `qcf-style-${page}`;
-    let el = document.getElementById(styleId) as HTMLStyleElement | null;
-    if (!el) {
-      el = document.createElement('style');
-      el.id = styleId;
-      el.textContent = `@font-face{font-family:'${fontFamily}';src:url('${fontUrl}') format('woff2');font-display:swap;}`;
-      document.head.appendChild(el);
-    }
-    document.fonts.load(`16px '${fontFamily}'`).then(() => setFontReady(true)).catch(() => setFontReady(true));
-  }, [page, fontFamily, fontUrl]);
-
-  // Fetch line data
-  useEffect(() => {
-    setLoading(true);
+    setImgLoaded(false);
+    setImgError(false);
     fetch(`/api/tareeq/quran/mushaf-lines?page=${page}`)
       .then(r => r.json())
-      .then(d => { setLines(d.lines ?? []); if (d.meta) setMeta(d.meta); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then(d => { if (d.meta) setMeta(d.meta); })
+      .catch(() => {});
   }, [page]);
-
-  // Scroll active verse into view
-  useEffect(() => {
-    if (autoFollow && activeRef.current) activeRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }, [currentVerse, currentChapter, autoFollow]);
 
   const surahHeaderLabel = meta.surahs.length > 1
     ? meta.surahs.map(id => SURAH_AR[id] ?? '').filter(Boolean).join(' و')
     : (SURAH_AR[meta.surahs[0] ?? currentChapter] ?? '');
-
-  if (loading || !fontReady) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300, background: '#F9F4E8' }}>
-        <style>{`@keyframes ms-spin{to{transform:rotate(360deg)}}`}</style>
-        <div style={{ width: 30, height: 30, borderRadius: '50%', border: '2.5px solid rgba(200,168,75,0.2)', borderTopColor: '#c8a84b', animation: 'ms-spin 0.7s linear infinite' }} />
-      </div>
-    );
-  }
 
   return (
     <div style={{ background: '#F9F4E8', minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -167,102 +99,36 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
         <GoldLine />
       </div>
 
-      {/* ── Quran Lines ── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-around', padding: '4px 0' }}>
-        {lines.map(line => {
-          const ltype = lineType(line.words);
-
-          // Surah name line → ornamental banner
-          if (ltype === 'surah_name') {
-            return <SurahBanner key={line.lineNum} surahId={line.words[0]?.chapterId ?? 0} />;
-          }
-
-          // Bismillah line → centered with QCF4 font
-          if (ltype === 'bismillah') {
-            const bsmWords = line.words.filter(w => w.charType === 'bismillah');
-            return (
-              <div key={line.lineNum} style={{ textAlign: 'center', padding: '0 16px', direction: 'rtl' }}>
-                {bsmWords.map((w, wi) => (
-                  <span key={wi} style={{ fontFamily: `'${fontFamily}'`, fontSize: 'clamp(18px,5vw,26px)', color: '#1a0800', letterSpacing: 1 }}>
-                    {w.codeV2 || w.text}
-                  </span>
-                ))}
-              </div>
-            );
-          }
-
-          // End ornament (surah end) — centered
-          if (ltype === 'end') {
-            return (
-              <div key={line.lineNum} style={{ textAlign: 'center', padding: '0 16px', color: '#c8a84b', fontSize: 14, letterSpacing: 8, fontFamily: "'Amiri Quran',serif" }}>
-                ❧ ﴾ ❧
-              </div>
-            );
-          }
-
-          // Verse line — flex RTL, words spread across full width
-          const activeVerseWords = line.words.filter(w =>
-            w.chapterId === currentChapter && w.verseNumber === currentVerse && w.charType === 'word'
-          );
-          const isActiveLine = activeVerseWords.length > 0;
-
-          // Collect verse text for onAyahTap
-          const verseTextMap: Record<string, string> = {};
-          line.words.filter(w => w.charType === 'word').forEach(w => {
-            const key = `${w.chapterId}-${w.verseNumber}`;
-            verseTextMap[key] = (verseTextMap[key] ?? '') + (verseTextMap[key] ? ' ' : '') + w.text;
-          });
-
-          return (
-            <div
-              key={line.lineNum}
-              ref={isActiveLine ? activeRef : null}
-              dir="rtl"
-              style={{
-                display: 'flex',
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '0 14px',
-                minHeight: 'clamp(32px, 6vw, 44px)',
-              }}
-            >
-              {line.words.map((word, wi) => {
-                const isEnd = word.charType === 'end';
-                const isActiveWord = word.chapterId === currentChapter && word.verseNumber === currentVerse && word.charType === 'word';
-                const verseKey = `${word.chapterId}-${word.verseNumber}`;
-
-                return (
-                  <span
-                    key={wi}
-                    onClick={() => {
-                      if (word.charType === 'word') {
-                        onVerseClick?.(word.chapterId, word.verseNumber);
-                        if (onAyahTap && !isEnd) {
-                          onAyahTap({ chapterId: word.chapterId, verseNumber: word.verseNumber, text: verseTextMap[verseKey] ?? word.text });
-                        }
-                      }
-                    }}
-                    style={{
-                      fontFamily: `'${fontFamily}'`,
-                      fontSize: isEnd ? 'clamp(12px,3.2vw,18px)' : 'clamp(18px,5vw,26px)',
-                      color: isEnd ? '#8b6914' : (isActiveWord ? '#4a2800' : '#1a0800'),
-                      background: isActiveWord ? 'rgba(171,136,68,0.22)' : 'transparent',
-                      borderRadius: isActiveWord ? 4 : 0,
-                      padding: isActiveWord ? '1px 2px' : '0',
-                      cursor: word.charType === 'word' ? 'pointer' : 'default',
-                      transition: 'background 0.25s',
-                      userSelect: 'none',
-                      display: 'inline-block',
-                    }}
-                  >
-                    {word.codeV2 || word.codeV1 || word.text}
-                  </span>
-                );
-              })}
-            </div>
-          );
-        })}
+      {/* ── Mushaf Image ── */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', padding: '4px 6px' }}>
+        {!imgLoaded && !imgError && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <style>{`@keyframes ms-spin{to{transform:rotate(360deg)}}`}</style>
+            <div style={{ width: 30, height: 30, borderRadius: '50%', border: '2.5px solid rgba(200,168,75,0.2)', borderTopColor: '#c8a84b', animation: 'ms-spin 0.7s linear infinite' }} />
+          </div>
+        )}
+        {imgError ? (
+          <div style={{ textAlign: 'center', color: '#9a7a40', fontFamily: "'Amiri',serif", fontSize: 14, padding: 24 }}>
+            تعذّر تحميل الصفحة
+          </div>
+        ) : (
+          <img
+            key={page}
+            src={imgSrc}
+            alt={`صفحة ${page}`}
+            onLoad={() => setImgLoaded(true)}
+            onError={() => { setImgError(true); setImgLoaded(true); }}
+            draggable={false}
+            style={{
+              width: '100%',
+              height: 'auto',
+              display: imgLoaded ? 'block' : 'none',
+              borderRadius: 4,
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+            }}
+          />
+        )}
       </div>
 
       {/* ── Footer ── */}

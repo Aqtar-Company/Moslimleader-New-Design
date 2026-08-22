@@ -1439,11 +1439,14 @@ export default function AccountPage() {
                   {/* Top row */}
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                     {/* Logo + brand */}
-                    <div>
-                      <p style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.2em', color: '#D4A853', marginBottom: 2 }}>MUSLIM LEADER</p>
-                      <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.05em' }}>
-                        {isRtl ? 'عضوية الأسرة المسلمة' : 'Family Membership'}
-                      </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <img src="/ml-logo-new.png" alt="Muslim Leader" style={{ width: 36, height: 36, objectFit: 'contain', filter: 'brightness(0) saturate(100%) invert(75%) sepia(50%) saturate(600%) hue-rotate(5deg) brightness(105%)' }} />
+                      <div>
+                        <p style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.2em', color: '#D4A853', marginBottom: 2 }}>MUSLIM LEADER</p>
+                        <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.05em' }}>
+                          {isRtl ? 'عضوية الأسرة المسلمة' : 'Family Membership'}
+                        </p>
+                      </div>
                     </div>
                     {/* Status badge */}
                     <span style={{

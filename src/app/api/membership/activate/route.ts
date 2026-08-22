@@ -36,7 +36,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Order ID mismatch' }, { status: 403 });
   }
 
-  await capturePayPalOrder(paypalOrderId);
+  try {
+    await capturePayPalOrder(paypalOrderId);
+  } catch (err) {
+    console.error('[activate] PayPal capture failed', err);
+    return NextResponse.json({ error: 'فشل تأكيد الدفع مع PayPal' }, { status: 502 });
+  }
 
   const now = new Date();
   const expires = new Date(now);

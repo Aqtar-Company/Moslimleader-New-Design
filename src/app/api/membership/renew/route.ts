@@ -56,7 +56,12 @@ export async function POST(req: NextRequest) {
     if (membership.paypalOrderId !== paypalOrderId) {
       return NextResponse.json({ error: 'Order ID mismatch' }, { status: 403 });
     }
-    await capturePayPalOrder(paypalOrderId);
+    try {
+      await capturePayPalOrder(paypalOrderId);
+    } catch (err) {
+      console.error('[renew] PayPal capture failed', err);
+      return NextResponse.json({ error: 'فشل تأكيد الدفع مع PayPal' }, { status: 502 });
+    }
 
     const base = membership.expiresAt && membership.expiresAt > new Date() ? membership.expiresAt : new Date();
     const newExpiry = new Date(base);

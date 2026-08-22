@@ -179,6 +179,8 @@ export default function AdminBooksPage() {
     setUploadedCoverUrl(b.cover || '');
     setPdfFile(null);
     setCoverFile(null);
+    setAudioFile(null);
+    if (audioRef.current) audioRef.current.value = '';
     setSaveError('');
     setShowForm(true);
   };

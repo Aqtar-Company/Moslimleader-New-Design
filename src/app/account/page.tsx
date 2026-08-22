@@ -1148,6 +1148,54 @@ export default function AccountPage() {
                     </div>
                   </div>
 
+                  {/* Blurred card preview — encourages activation */}
+                  <div className="relative mb-5" style={{ borderRadius: 20, overflow: 'hidden' }}>
+                    {/* Actual card (blurred) */}
+                    <div style={{
+                      filter: 'blur(3px)', opacity: 0.55, pointerEvents: 'none',
+                      borderRadius: 20, overflow: 'hidden',
+                      background: 'linear-gradient(135deg,#0d2318 0%,#1a3a2e 40%,#163325 100%)',
+                      padding: '6% 8%', display: 'flex', flexDirection: 'column', gap: 16,
+                      minHeight: 160,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <img src="/logo-mobile.png" alt="" style={{ width: 32, height: 32, objectFit: 'contain' }} />
+                          <div>
+                            <p style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.2em', color: '#D4A853' }}>MUSLIM LEADER</p>
+                            <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)' }}>{isRtl ? 'عضوية الأسرة المسلمة' : 'Family Membership'}</p>
+                          </div>
+                        </div>
+                        <span style={{ fontSize: 9, fontWeight: 900, padding: '4px 10px', borderRadius: 20, background: 'rgba(52,211,153,0.25)', color: '#6ee7b7', border: '1px solid rgba(52,211,153,0.4)' }}>
+                          {isRtl ? 'نشطة' : 'Active'}
+                        </span>
+                      </div>
+                      <p dir="ltr" style={{ fontFamily: 'monospace', fontSize: 16, fontWeight: 900, letterSpacing: '0.22em', color: '#F5E6BE' }}>ML-026-00001</p>
+                      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+                        <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>{isRtl ? 'عضو منذ ٢٠٢٦' : 'MEMBER SINCE 2026'}</p>
+                        <div>
+                          <p style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 2 }}>{isRtl ? 'تنتهي' : 'VALID THRU'}</p>
+                          <p dir="ltr" style={{ fontSize: 12, fontWeight: 900, color: '#D4A853' }}>12/27</p>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Overlay */}
+                    <div style={{
+                      position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', justifyContent: 'center', gap: 10,
+                      background: 'rgba(13,35,24,0.55)', backdropFilter: 'blur(1px)',
+                    }}>
+                      <div style={{ fontSize: 28 }}>🔒</div>
+                      <p style={{ fontSize: 13, fontWeight: 900, color: '#fff', textAlign: 'center' }}>
+                        {isRtl ? 'فعّل عضويتك للحصول على البطاقة' : 'Activate membership to get your card'}
+                      </p>
+                      <button onClick={() => setApplyStep('form')}
+                        style={{ background: '#D4A853', color: '#1a1a1a', fontWeight: 900, fontSize: 12, padding: '8px 20px', borderRadius: 20, border: 'none', cursor: 'pointer' }}>
+                        {isRtl ? 'اشترك الآن ←' : 'Subscribe Now →'}
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Stats row */}
                   <div className="grid grid-cols-3 gap-3 mb-5">
                     {[
@@ -1440,7 +1488,7 @@ export default function AccountPage() {
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                     {/* Logo + brand */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <img src="/ml-logo-new.png" alt="Muslim Leader" style={{ width: 36, height: 36, objectFit: 'contain', filter: 'brightness(0) saturate(100%) invert(75%) sepia(50%) saturate(600%) hue-rotate(5deg) brightness(105%)' }} />
+                      <img src="/logo-mobile.png" alt="Muslim Leader" style={{ width: 36, height: 36, objectFit: 'contain' }} />
                       <div>
                         <p style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.2em', color: '#D4A853', marginBottom: 2 }}>MUSLIM LEADER</p>
                         <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.05em' }}>
@@ -1448,20 +1496,34 @@ export default function AccountPage() {
                         </p>
                       </div>
                     </div>
-                    {/* Status badge */}
-                    <span style={{
-                      fontSize: 9, fontWeight: 900, letterSpacing: '0.1em',
-                      padding: '4px 10px', borderRadius: 20,
-                      background: membership.status === 'ACTIVE' ? 'rgba(52,211,153,0.25)' : membership.status === 'PENDING' ? 'rgba(251,191,36,0.25)' : 'rgba(248,113,113,0.25)',
-                      color: membership.status === 'ACTIVE' ? '#6ee7b7' : membership.status === 'PENDING' ? '#fcd34d' : '#fca5a5',
-                      border: `1px solid ${membership.status === 'ACTIVE' ? 'rgba(52,211,153,0.4)' : membership.status === 'PENDING' ? 'rgba(251,191,36,0.4)' : 'rgba(248,113,113,0.4)'}`,
-                      textTransform: 'uppercase',
-                    }}>
-                      {membership.status === 'ACTIVE' ? (isRtl ? 'نشطة' : 'Active')
-                      : membership.status === 'PENDING' ? (isRtl ? 'معلقة' : 'Pending')
-                      : membership.status === 'EXPIRED' ? (isRtl ? 'منتهية' : 'Expired')
-                      : (isRtl ? 'ملغاة' : 'Cancelled')}
-                    </span>
+                    {/* Status badge + inline renew button */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
+                      <span style={{
+                        fontSize: 9, fontWeight: 900, letterSpacing: '0.1em',
+                        padding: '4px 10px', borderRadius: 20,
+                        background: membership.status === 'ACTIVE' ? 'rgba(52,211,153,0.25)' : membership.status === 'PENDING' ? 'rgba(251,191,36,0.25)' : 'rgba(248,113,113,0.25)',
+                        color: membership.status === 'ACTIVE' ? '#6ee7b7' : membership.status === 'PENDING' ? '#fcd34d' : '#fca5a5',
+                        border: `1px solid ${membership.status === 'ACTIVE' ? 'rgba(52,211,153,0.4)' : membership.status === 'PENDING' ? 'rgba(251,191,36,0.4)' : 'rgba(248,113,113,0.4)'}`,
+                        textTransform: 'uppercase',
+                      }}>
+                        {membership.status === 'ACTIVE' ? (isRtl ? 'نشطة' : 'Active')
+                        : membership.status === 'PENDING' ? (isRtl ? 'معلقة' : 'Pending')
+                        : membership.status === 'EXPIRED' ? (isRtl ? 'منتهية' : 'Expired')
+                        : (isRtl ? 'ملغاة' : 'Cancelled')}
+                      </span>
+                      {(membership.status === 'EXPIRED' || membership.status === 'CANCELLED') && renewStep === 'idle' && (
+                        <button
+                          onClick={() => setRenewStep('paypal')}
+                          style={{
+                            fontSize: 9, fontWeight: 900, letterSpacing: '0.05em',
+                            padding: '4px 10px', borderRadius: 20, cursor: 'pointer',
+                            background: '#D4A853', color: '#1a1a1a', border: 'none',
+                          }}
+                        >
+                          🔄 {isRtl ? 'تجديد' : 'Renew'}
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Chip + membership number */}

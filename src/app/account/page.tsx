@@ -1484,8 +1484,9 @@ export default function AccountPage() {
               {/* Leader card */}
               {(() => {
                 const isInactive = membership.status === 'EXPIRED' || membership.status === 'CANCELLED';
+                const isCancelled = membership.status === 'CANCELLED';
                 return (
-                  <div style={{ position: 'relative' }}>
+                  <div>
                     <MembershipCard
                       variant="leader"
                       memberNumber={membership.membershipNumber}
@@ -1497,35 +1498,53 @@ export default function AccountPage() {
                       isRtl={isRtl}
                     />
                     {isInactive && renewStep === 'idle' && (
-                      <div style={{
-                        position: 'absolute', inset: 0,
-                        background: 'rgba(0,0,0,0.52)',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
-                        borderRadius: 20,
-                      }}>
-                        <button
-                          onClick={() => {
-                            setRenewStep('paypal');
-                            setTimeout(() => renewSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
-                          }}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 8,
-                            padding: '11px 24px', borderRadius: 14, border: 'none', cursor: 'pointer',
-                            background: '#D4A853', color: '#1a1a1a', fontWeight: 900, fontSize: 14,
-                            boxShadow: '0 4px 20px rgba(212,168,83,0.5)',
-                          }}
-                        >
-                          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                            <path d="M3 3v5h5"/>
-                          </svg>
-                          {isRtl
-                            ? (membership.status === 'EXPIRED' ? 'تجديد العضوية' : 'إعادة تفعيل العضوية')
-                            : (membership.status === 'EXPIRED' ? 'Renew Membership' : 'Reactivate')}
-                        </button>
-                        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', textAlign: 'center' }}>
-                          {isRtl ? `${membershipZone === 'egypt' ? `${membershipPrices.egyEgp} ج.م` : `$${membershipPrices.intlUsd}`} / سنة` : `${membershipZone === 'egypt' ? `${membershipPrices.egyEgp} EGP` : `$${membershipPrices.intlUsd}`} / year`}
-                        </p>
+                      <div style={{ marginTop: 14, borderRadius: 18, overflow: 'hidden', border: '1px solid rgba(212,168,67,0.22)' }}>
+                        {/* Header */}
+                        <div style={{ background: 'linear-gradient(135deg, #1a0c00 0%, #2a1800 100%)', padding: '16px 18px 12px', textAlign: 'center', borderBottom: '1px solid rgba(212,168,67,0.15)' }}>
+                          <p style={{ fontSize: 20, marginBottom: 4 }}>🔔</p>
+                          <p style={{ fontSize: 15, fontWeight: 900, color: '#D4A853', marginBottom: 4 }}>
+                            {isCancelled
+                              ? (isRtl ? 'عضويتك الرائدة ملغاة' : 'Your Leader membership was cancelled')
+                              : (isRtl ? 'عضويتك الرائدة انتهت' : 'Your Leader membership expired')}
+                          </p>
+                          <p style={{ fontSize: 12, color: 'rgba(245,240,232,0.55)', lineHeight: 1.6 }}>
+                            {isRtl ? 'جدّد للاستمرار في الحصول على مزايا العضو الرائد' : 'Renew to restore your Leader benefits'}
+                          </p>
+                        </div>
+                        {/* Benefits */}
+                        <div style={{ background: 'rgba(212,168,67,0.04)', padding: '12px 18px' }}>
+                          {[
+                            isRtl ? '✦ خصم على كل منتجات المتجر' : '✦ Discount on all store products',
+                            isRtl ? '✦ الوصول لمزايا العضوية الحصرية' : '✦ Access to exclusive member perks',
+                            isRtl ? '✦ نفس رقم عضويتك المحفوظ' : '✦ Same membership number preserved',
+                          ].map((line, i) => (
+                            <p key={i} style={{ fontSize: 12, color: 'rgba(245,240,232,0.65)', marginBottom: 5 }}>{line}</p>
+                          ))}
+                        </div>
+                        {/* CTA */}
+                        <div style={{ background: 'rgba(212,168,67,0.06)', padding: '12px 18px 16px', textAlign: 'center' }}>
+                          <button
+                            onClick={() => {
+                              setRenewStep('paypal');
+                              setTimeout(() => renewSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+                            }}
+                            style={{
+                              width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', cursor: 'pointer',
+                              background: 'linear-gradient(135deg, #D4A853 0%, #c49530 100%)',
+                              color: '#1a0800', fontWeight: 900, fontSize: 15,
+                              boxShadow: '0 4px 20px rgba(212,168,83,0.35)',
+                            }}
+                          >
+                            {isRtl
+                              ? (isCancelled ? '🔄 إعادة تفعيل عضويتي الرائدة' : '🔄 جدّد عضويتي الرائدة الآن')
+                              : (isCancelled ? '🔄 Reactivate Leader Membership' : '🔄 Renew Leader Membership Now')}
+                          </button>
+                          <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.3)', marginTop: 8 }}>
+                            {isRtl
+                              ? `${membershipZone === 'egypt' ? `${membershipPrices.egyEgp} ج.م` : `$${membershipPrices.intlUsd}`} / سنة · رقمك: ${membership.membershipNumber}`
+                              : `${membershipZone === 'egypt' ? `${membershipPrices.egyEgp} EGP` : `$${membershipPrices.intlUsd}`} / year · #${membership.membershipNumber}`}
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>

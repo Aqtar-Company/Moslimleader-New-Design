@@ -168,7 +168,7 @@ function LeaderCard({ memberNumber, memberSince, expiresAt, status, qrDataUrl, i
     : 'linear-gradient(135deg, #09152e 0%, #112040 45%, #1a2e5c 70%, #0d1a3a 100%)';
 
   const gold = isInactive ? 'rgba(180,150,80,0.45)' : '#D4A853';
-  const numColor = isInactive ? 'rgba(200,200,200,0.55)' : '#D4A853';
+  const numColor = isInactive ? 'rgba(200,200,200,0.45)' : '#ffffff';
   const brandColor = isInactive ? 'rgba(200,200,200,0.5)' : '#D4A853';
   const qrBg = isInactive ? 'rgba(200,200,200,0.75)' : 'rgba(245,230,190,0.92)';
 
@@ -251,7 +251,7 @@ function LeaderCard({ memberNumber, memberSince, expiresAt, status, qrDataUrl, i
           lineHeight: 1,
           textShadow: isInactive
             ? 'none'
-            : '0 2px 6px rgba(0,0,0,0.9), 0 1px 0 rgba(255,215,100,0.55), 1px 1px 0 rgba(0,0,0,0.7), -0.5px -0.5px 0 rgba(255,235,150,0.35)',
+            : '0 2px 6px rgba(0,0,0,0.9), 0 1px 0 rgba(255,255,255,0.5), 1px 1px 0 rgba(0,0,0,0.7), -0.5px -0.5px 0 rgba(255,255,255,0.3)',
         }}>
           {memberNumber}
         </p>
@@ -266,11 +266,11 @@ function LeaderCard({ memberNumber, memberSince, expiresAt, status, qrDataUrl, i
         {/* Text column */}
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', textAlign: 'right', direction: 'rtl' }}>
           {/* Top text */}
-          <div>
+          <div style={{ paddingTop: 10 }}>
             <p style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '0.15em', color: brandColor, lineHeight: 1.45 }}>
               Leader Membership
             </p>
-            <p style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.04em', lineHeight: 1.45, marginTop: 5 }}>
+            <p style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.04em', lineHeight: 1.45, marginTop: 3 }}>
               {isRtl ? 'عضوية رائدة' : 'Leader Member'}
             </p>
           </div>

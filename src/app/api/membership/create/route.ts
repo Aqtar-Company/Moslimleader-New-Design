@@ -59,8 +59,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Already an active member' }, { status: 409 });
   }
 
-  const paypalOrder = await createPayPalOrder(amountUsd, 'USD', 'Moslim Leader Family Membership');
-  const paypalOrderId = paypalOrder.id as string;
+  let paypalOrderId: string;
+  try {
+    const paypalOrder = await createPayPalOrder(amountUsd, 'USD', 'Moslim Leader Family Membership');
+    paypalOrderId = paypalOrder.id as string;
+  } catch (err) {
+    console.error('[membership-create] PayPal create order failed', err);
+    return NextResponse.json({ error: 'فشل إنشاء طلب الدفع مع PayPal' }, { status: 502 });
+  }
 
   if (!existing) {
     // Create pending membership record

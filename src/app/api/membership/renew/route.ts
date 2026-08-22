@@ -38,8 +38,14 @@ export async function POST(req: NextRequest) {
     const prices = await getMembershipPrices();
     const amountUsd = zone === 'egypt' ? prices.egyUsd : prices.intlUsd;
     const referenceId = `renew-${user.userId}-${Date.now()}`;
-    const paypalOrder = await createPayPalOrder(amountUsd, 'USD', referenceId);
-    const orderId = paypalOrder.id as string;
+    let orderId: string;
+    try {
+      const paypalOrder = await createPayPalOrder(amountUsd, 'USD', referenceId);
+      orderId = paypalOrder.id as string;
+    } catch (err) {
+      console.error('[renew] PayPal create order failed', err);
+      return NextResponse.json({ error: 'فشل إنشاء طلب الدفع مع PayPal' }, { status: 502 });
+    }
     // Store the pending orderId so capture can cross-check it
     await prisma.familyMembership.update({
       where: { id: membership.id },

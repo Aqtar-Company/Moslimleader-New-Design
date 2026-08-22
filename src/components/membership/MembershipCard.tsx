@@ -87,16 +87,16 @@ function CommunityCard({ memberNumber, joinedYear, qrDataUrl, isRtl }: Community
       {/* TOP-LEFT: badge */}
       <div style={{ position: 'absolute', top: 20, left: 18 }}>
         <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.06em', padding: '4px 11px', borderRadius: 20, background: 'rgba(125,217,160,0.18)', color: green, border: '1px solid rgba(125,217,160,0.3)' }}>
-          🌿 {isRtl ? 'عضو المجتمع' : 'COMMUNITY'}
+          {isRtl ? 'عضو المجتمع' : 'COMMUNITY'}
         </span>
       </div>
 
       {/* TOP-RIGHT GROUP: logo + separator + type text */}
       <div style={{ position: 'absolute', top: 14, right: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ textAlign: 'right' }}>
-          <p style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '0.15em', color: green, lineHeight: 1.45 }}>MUSLIM LEADER</p>
+          <p style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '0.15em', color: green, lineHeight: 1.45 }}>MOSLIM LEADER</p>
           <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.04em', lineHeight: 1.45 }}>
-            {isRtl ? 'عضوية مجتمعية 🌿' : 'Community Member 🌿'}
+            {isRtl ? 'عضوية مجتمعية' : 'Community Member'}
           </p>
         </div>
         <div style={{ width: 1, height: 36, background: 'rgba(255,255,255,0.1)', flexShrink: 0 }}/>
@@ -114,7 +114,13 @@ function CommunityCard({ memberNumber, joinedYear, qrDataUrl, isRtl }: Community
         <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 5 }}>
           {isRtl ? 'رقم العضوية' : 'MEMBER ID'}
         </p>
-        <p style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 900, letterSpacing: '0.2em', color: '#d4f5e2', lineHeight: 1 }}>
+        <p style={{
+          fontFamily: "'Courier New', 'OCR-B', monospace",
+          fontSize: 18, fontWeight: 900, letterSpacing: '0.22em',
+          color: '#a8f0c0',
+          lineHeight: 1,
+          textShadow: '0 2px 4px rgba(0,0,0,0.7), 0 1px 0 rgba(180,255,200,0.35), 1px 1px 0 rgba(0,0,0,0.5)',
+        }}>
           {memberNumber}
         </p>
       </div>
@@ -123,10 +129,10 @@ function CommunityCard({ memberNumber, joinedYear, qrDataUrl, isRtl }: Community
       <div style={{ position: 'absolute', bottom: 14, right: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ textAlign: 'right' }}>
           <p style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.18)', letterSpacing: '0.05em', lineHeight: 1.6 }}>
-            {isRtl ? 'مجتمع مسلم ليدر' : 'Muslim Leader'}
+            {isRtl ? 'مجتمع مسلم ليدر' : 'Moslim Leader'}
           </p>
           <p style={{ fontSize: 7.5, color: 'rgba(255,255,255,0.1)', letterSpacing: '0.06em', lineHeight: 1.6 }}>
-            Muslim Leader Community
+            Moslim Leader Community
           </p>
           <p style={{ fontSize: 8, color: 'rgba(125,217,160,0.32)', letterSpacing: '0.05em', marginTop: 4 }}>
             {isRtl ? `عضو منذ ${joinedYear}` : `Since ${joinedYear}`}
@@ -162,7 +168,7 @@ function LeaderCard({ memberNumber, memberSince, expiresAt, status, qrDataUrl, i
     : 'linear-gradient(135deg, #09152e 0%, #112040 45%, #1a2e5c 70%, #0d1a3a 100%)';
 
   const gold = isInactive ? 'rgba(180,150,80,0.45)' : '#D4A853';
-  const numColor = isInactive ? 'rgba(200,200,200,0.55)' : '#d8e8ff';
+  const numColor = isInactive ? 'rgba(200,200,200,0.55)' : '#D4A853';
   const brandColor = isInactive ? 'rgba(200,200,200,0.5)' : '#D4A853';
   const logoStroke = isInactive ? 'rgba(180,150,80,0.5)' : '#D4A853';
   const logoFill = isInactive ? '#1e1e22' : '#0e1e3e';
@@ -185,6 +191,7 @@ function LeaderCard({ memberNumber, memberSince, expiresAt, status, qrDataUrl, i
         ? '0 12px 40px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)'
         : '0 20px 60px rgba(0,10,40,0.65), 0 4px 16px rgba(0,0,0,0.4)',
     }}>
+      {/* Hex pattern background */}
       <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: isInactive ? 0.04 : 0.07 }} viewBox="0 0 400 252" preserveAspectRatio="xMidYMid slice">
         <defs>
           <pattern id={`hx-${uid}`} x="0" y="0" width="60" height="52" patternUnits="userSpaceOnUse">
@@ -193,9 +200,34 @@ function LeaderCard({ memberNumber, memberSince, expiresAt, status, qrDataUrl, i
         </defs>
         <rect width="400" height="252" fill={`url(#hx-${uid})`}/>
       </svg>
+
+      {/* Diagonal shimmer */}
       {!isInactive && (
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(115deg, transparent 25%, rgba(80,130,255,0.07) 50%, transparent 72%)', pointerEvents: 'none' }}/>
       )}
+
+      {/* ── SPOT UV: large ghost logo, left half, 2/3 visible ── */}
+      {!isInactive && (
+        <div style={{
+          position: 'absolute',
+          left: -82,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: 246,
+          height: 323,
+          opacity: 0.22,
+          mixBlendMode: 'screen',
+          pointerEvents: 'none',
+          flexShrink: 0,
+        }}>
+          <img
+            src="/Moslimleader-logo.svg"
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'fill' }}
+          />
+        </div>
+      )}
+
       {/* Deco ring */}
       <svg style={{ position: 'absolute', left: -28, top: -28, opacity: isInactive ? 0.03 : 0.07 }} width={190} height={190} viewBox="0 0 190 190">
         <circle cx="95" cy="95" r="85" fill="none" stroke={gold} strokeWidth="34"/>
@@ -215,7 +247,7 @@ function LeaderCard({ memberNumber, memberSince, expiresAt, status, qrDataUrl, i
             Leader Membership
           </p>
           <p style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.04em', lineHeight: 1.45 }}>
-            {isRtl ? 'عضوية رائدة ✦' : 'Leader Member ✦'}
+            {isRtl ? 'عضوية رائدة' : 'Leader Member'}
           </p>
         </div>
         <div style={{ width: 1, height: 36, background: 'rgba(255,255,255,0.08)', flexShrink: 0 }}/>
@@ -241,9 +273,17 @@ function LeaderCard({ memberNumber, memberSince, expiresAt, status, qrDataUrl, i
         </svg>
       </div>
 
-      {/* MEMBER NUMBER (below chip, left) */}
+      {/* MEMBER NUMBER — embossed golden bank-card style */}
       <div style={{ position: 'absolute', left: 18, top: 130 }}>
-        <p style={{ fontFamily: 'monospace', fontSize: 16, fontWeight: 900, letterSpacing: '0.22em', color: numColor, lineHeight: 1 }}>
+        <p style={{
+          fontFamily: "'Courier New', 'OCR-B', monospace",
+          fontSize: 17, fontWeight: 900, letterSpacing: '0.24em',
+          color: numColor,
+          lineHeight: 1,
+          textShadow: isInactive
+            ? 'none'
+            : '0 2px 6px rgba(0,0,0,0.9), 0 1px 0 rgba(255,215,100,0.55), 1px 1px 0 rgba(0,0,0,0.7), -0.5px -0.5px 0 rgba(255,235,150,0.35)',
+        }}>
           {memberNumber}
         </p>
       </div>
@@ -252,15 +292,15 @@ function LeaderCard({ memberNumber, memberSince, expiresAt, status, qrDataUrl, i
       <div style={{ position: 'absolute', bottom: 14, right: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ textAlign: 'right' }}>
           {expiresAt && (
-            <p style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: isInactive ? 'rgba(180,150,80,0.3)' : gold, letterSpacing: '0.08em', marginBottom: 5 }}>
+            <p style={{ fontFamily: "'Courier New', monospace", fontSize: 11, fontWeight: 700, color: isInactive ? 'rgba(180,150,80,0.3)' : gold, letterSpacing: '0.08em', marginBottom: 5 }}>
               {new Date(expiresAt).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' })}
             </p>
           )}
           <p style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.17)', letterSpacing: '0.05em', lineHeight: 1.6 }}>
-            {isRtl ? 'مجتمع مسلم ليدر' : 'Muslim Leader'}
+            {isRtl ? 'مجتمع مسلم ليدر' : 'Moslim Leader'}
           </p>
           <p style={{ fontSize: 7.5, color: 'rgba(255,255,255,0.1)', letterSpacing: '0.06em', lineHeight: 1.6 }}>
-            Muslim Leader Community
+            Moslim Leader Community
           </p>
           {!expiresAt && (
             <p style={{ fontSize: 8, color: isInactive ? 'rgba(180,150,80,0.22)' : 'rgba(212,168,83,0.35)', letterSpacing: '0.05em', marginTop: 3 }}>

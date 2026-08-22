@@ -108,21 +108,20 @@ function CommunityCard({ memberNumber, joinedYear, qrDataUrl, isRtl }: Community
         </p>
       </div>
 
-      {/* RIGHT PANEL: logo (top) + QR (bottom) | vertical sep | text column */}
+      {/* RIGHT PANEL — direction:ltr forces logo+QR to far right regardless of page RTL */}
       <div style={{
         position: 'absolute', right: 18, top: 14, bottom: 14,
         display: 'flex', alignItems: 'stretch', gap: 10,
+        direction: 'ltr',
       }}>
-        {/* Text column */}
-        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', textAlign: 'right' }}>
-          {/* Top text */}
+        {/* Text column (left of separator) */}
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', textAlign: 'right', direction: 'rtl' }}>
           <div>
             <p style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '0.15em', color: green, lineHeight: 1.45 }}>MOSLIM LEADER</p>
             <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.04em', lineHeight: 1.45 }}>
               {isRtl ? 'عضوية مجتمعية' : 'Community Member'}
             </p>
           </div>
-          {/* Bottom text */}
           <div>
             <p style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.18)', letterSpacing: '0.05em', lineHeight: 1.6 }}>
               {isRtl ? 'مجتمع مسلم ليدر' : 'Moslim Leader'}
@@ -136,10 +135,7 @@ function CommunityCard({ memberNumber, joinedYear, qrDataUrl, isRtl }: Community
           </div>
         </div>
 
-        {/* Vertical separator */}
-        <div style={{ width: 1, background: 'rgba(255,255,255,0.08)', flexShrink: 0 }}/>
-
-        {/* Logo + QR column */}
+        {/* Logo + QR column — rightmost */}
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <img src="/logo-mobile.png" alt="Moslim Leader" style={{ height: 38, width: 'auto' }} />
           {qrDataUrl ? (
@@ -261,13 +257,14 @@ function LeaderCard({ memberNumber, memberSince, expiresAt, status, qrDataUrl, i
         </p>
       </div>
 
-      {/* RIGHT PANEL: logo (top) + QR (bottom) | vertical sep | text column */}
+      {/* RIGHT PANEL: direction:ltr locks flex order regardless of page RTL */}
       <div style={{
         position: 'absolute', right: 18, top: 14, bottom: 14,
         display: 'flex', alignItems: 'stretch', gap: 10,
+        direction: 'ltr',
       }}>
         {/* Text column */}
-        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', textAlign: 'right' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', textAlign: 'right', direction: 'rtl' }}>
           {/* Top text */}
           <div>
             <p style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '0.15em', color: brandColor, lineHeight: 1.45 }}>
@@ -298,19 +295,16 @@ function LeaderCard({ memberNumber, memberSince, expiresAt, status, qrDataUrl, i
           </div>
         </div>
 
-        {/* Vertical separator */}
-        <div style={{ width: 1, background: 'rgba(255,255,255,0.08)', flexShrink: 0 }}/>
-
         {/* Logo + QR column (rightmost) */}
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <img
             src="/logo-mobile.png"
             alt="Moslim Leader"
-            style={{ height: 38, width: 'auto', opacity: isInactive ? 0.38 : 1 }}
+            style={{ height: 48, width: 'auto', opacity: isInactive ? 0.38 : 1 }}
           />
           {qrDataUrl ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-              <div style={{ background: qrBg, borderRadius: 6, padding: 3 }}>
+              <div style={{ background: isInactive ? 'rgba(200,190,170,0.75)' : 'linear-gradient(135deg, #fdf6e3 0%, #f5e6c0 60%, #ede0b0 100%)', borderRadius: 6, padding: 3 }}>
                 <img src={qrDataUrl} width={44} height={44} alt="verify" style={{ display: 'block', opacity: isInactive ? 0.55 : 1 }} />
               </div>
               <p style={{ fontSize: 7, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>

@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
-import { capturePayPalOrder } from '@/lib/paypal';
+import { capturePayPalOrder, PayPalCaptureError } from '@/lib/paypal';
 import { checkRateLimit } from '@/lib/rate-limit';
 
 const PRICE_EGY_EGP_DEFAULT  = 100;
@@ -43,7 +43,12 @@ export async function POST(req: NextRequest) {
       await capturePayPalOrder(paypalOrderId);
     } catch (err) {
       console.error('[renew-capture] PayPal capture failed', err);
-      return NextResponse.json({ error: 'فشل تأكيد الدفع مع PayPal' }, { status: 502 });
+      const detail = err instanceof PayPalCaptureError && err.issue === 'COMPLIANCE_VIOLATION'
+        ? 'هذه المعاملة غير متاحة في منطقتك حسب سياسة PayPal. يرجى التواصل مع الدعم أو الدفع عبر إنستاباي.'
+        : err instanceof PayPalCaptureError && err.description
+          ? err.description
+          : 'فشل تأكيد الدفع مع PayPal';
+      return NextResponse.json({ error: detail }, { status: 422 });
     }
 
     const base = membership.expiresAt && membership.expiresAt > new Date() ? membership.expiresAt : new Date();

@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       orderId = paypalOrder.id as string;
     } catch (err) {
       console.error('[renew] PayPal create order failed', err);
-      return NextResponse.json({ error: 'فشل إنشاء طلب الدفع مع PayPal' }, { status: 502 });
+      return NextResponse.json({ error: 'فشل إنشاء طلب الدفع مع PayPal' }, { status: 422 });
     }
     // Store the pending orderId so capture can cross-check it
     await prisma.familyMembership.update({
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       await capturePayPalOrder(paypalOrderId);
     } catch (err) {
       console.error('[renew] PayPal capture failed', err);
-      return NextResponse.json({ error: 'فشل تأكيد الدفع مع PayPal' }, { status: 502 });
+      return NextResponse.json({ error: 'فشل تأكيد الدفع مع PayPal' }, { status: 422 });
     }
 
     const base = membership.expiresAt && membership.expiresAt > new Date() ? membership.expiresAt : new Date();

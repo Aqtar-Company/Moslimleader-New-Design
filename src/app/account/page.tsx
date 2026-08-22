@@ -67,6 +67,8 @@ export default function AccountPage() {
   // Membership
   const [membership, setMembership] = useState<{ id: string; membershipNumber: string; status: string; familyName: string | null; memberSince: number; startsAt: string | null; expiresAt: string | null; familyMembers: { id: string; name: string; relation: string | null }[] } | null>(null);
   const [communityMemberNumber, setCommunityMemberNumber] = useState<string | null>(null);
+  const [communityQr, setCommunityQr] = useState<string | null>(null);
+  const [leaderQr, setLeaderQr] = useState<string | null>(null);
   const [membershipLoading, setMembershipLoading] = useState(false);
   const [perks, setPerks] = useState<{ id: string; title: string; description: string | null; imageUrl: string | null; linkUrl: string | null; validUntil: string | null; createdAt: string }[]>([]);
   const [membershipZone, setMembershipZone] = useState<'egypt' | 'international'>('international');
@@ -76,6 +78,25 @@ export default function AccountPage() {
   const [applyLoading, setApplyLoading] = useState(false);
   const [renewStep, setRenewStep] = useState<'idle' | 'paypal' | 'instapay' | 'success'>('idle');
   const renewSectionRef = useRef<HTMLDivElement>(null);
+
+  // Generate QR codes when member numbers become available
+  useEffect(() => {
+    if (!communityMemberNumber) return;
+    import('qrcode').then(QRCode => {
+      QRCode.toDataURL(`https://moslimleader.com/verify/${communityMemberNumber}`, {
+        width: 120, margin: 1, color: { dark: '#1b3a2a', light: '#d4f5e2' },
+      }).then(url => setCommunityQr(url)).catch(() => {});
+    }).catch(() => {});
+  }, [communityMemberNumber]);
+
+  useEffect(() => {
+    if (!membership?.membershipNumber) return;
+    import('qrcode').then(QRCode => {
+      QRCode.toDataURL(`https://moslimleader.com/verify/${membership.membershipNumber}`, {
+        width: 120, margin: 1, color: { dark: '#0d2318', light: '#F5E6BE' },
+      }).then(url => setLeaderQr(url)).catch(() => {});
+    }).catch(() => {});
+  }, [membership?.membershipNumber]);
 
   // Free media downloads
   const [freeMedia, setFreeMedia] = useState<FreeMediaItem[]>([]);
@@ -1160,6 +1181,7 @@ export default function AccountPage() {
                         memberNumber={communityMemberNumber}
                         name={user.name}
                         joinedYear={new Date().getFullYear()}
+                        qrDataUrl={communityQr}
                         isRtl={isRtl}
                       />
                     </div>
@@ -1454,6 +1476,7 @@ export default function AccountPage() {
                   memberNumber={communityMemberNumber}
                   name={user.name}
                   joinedYear={membership.memberSince}
+                  qrDataUrl={communityQr}
                   isRtl={isRtl}
                 />
               )}
@@ -1470,6 +1493,7 @@ export default function AccountPage() {
                       memberSince={membership.memberSince}
                       expiresAt={membership.expiresAt}
                       status={membership.status as 'ACTIVE' | 'PENDING' | 'EXPIRED' | 'CANCELLED'}
+                      qrDataUrl={leaderQr}
                       isRtl={isRtl}
                     />
                     {isInactive && renewStep === 'idle' && (

@@ -1,11 +1,12 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useId } from 'react';
 
 interface CommunityCardProps {
   variant: 'community';
   memberNumber: string;
   name: string;
   joinedYear: number;
+  qrDataUrl?: string | null;
   isRtl?: boolean;
 }
 
@@ -16,6 +17,7 @@ interface LeaderCardProps {
   memberSince: number;
   expiresAt?: string | null;
   status: 'ACTIVE' | 'PENDING' | 'EXPIRED' | 'CANCELLED';
+  qrDataUrl?: string | null;
   isRtl?: boolean;
 }
 
@@ -58,7 +60,8 @@ export default function MembershipCard(props: Props) {
   );
 }
 
-function CommunityCard({ memberNumber, name, joinedYear, isRtl }: CommunityCardProps) {
+function CommunityCard({ memberNumber, name, joinedYear, qrDataUrl, isRtl }: CommunityCardProps) {
+  const uid = useId().replace(/:/g, '');
   return (
     <div dir="ltr" style={{
       position: 'relative',
@@ -71,13 +74,13 @@ function CommunityCard({ memberNumber, name, joinedYear, isRtl }: CommunityCardP
       {/* Subtle pattern */}
       <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.05 }} viewBox="0 0 400 252" preserveAspectRatio="xMidYMid slice">
         <defs>
-          <pattern id="leaves" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+          <pattern id={`leaves-${uid}`} x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
             <circle cx="20" cy="20" r="12" fill="none" stroke="white" strokeWidth="0.8"/>
             <circle cx="0" cy="0" r="8" fill="none" stroke="white" strokeWidth="0.8"/>
             <circle cx="40" cy="40" r="8" fill="none" stroke="white" strokeWidth="0.8"/>
           </pattern>
         </defs>
-        <rect width="400" height="252" fill="url(#leaves)"/>
+        <rect width="400" height="252" fill={`url(#leaves-${uid})`}/>
       </svg>
 
       {/* Glow accent top-right */}
@@ -126,21 +129,35 @@ function CommunityCard({ memberNumber, name, joinedYear, isRtl }: CommunityCardP
               {isRtl ? 'عضو منذ' : 'MEMBER SINCE'} {joinedYear}
             </p>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: 8, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>
-              {isRtl ? 'مجتمع مسلم ليدر' : 'ML COMMUNITY'}
-            </p>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#7dd9a0', letterSpacing: '0.08em' }}>
-              moslimleader.com
-            </p>
-          </div>
+
+          {/* QR corner or fallback text */}
+          {qrDataUrl ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+              <div style={{ background: 'rgba(212,245,226,0.92)', borderRadius: 6, padding: 3 }}>
+                <img src={qrDataUrl} width={44} height={44} alt="verify" style={{ display: 'block' }} />
+              </div>
+              <p style={{ fontSize: 7, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                {isRtl ? 'تحقق' : 'VERIFY'}
+              </p>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ fontSize: 8, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>
+                {isRtl ? 'مجتمع مسلم ليدر' : 'ML COMMUNITY'}
+              </p>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#7dd9a0', letterSpacing: '0.08em' }}>
+                moslimleader.com
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function LeaderCard({ memberNumber, familyName, memberSince, expiresAt, status, isRtl }: LeaderCardProps) {
+function LeaderCard({ memberNumber, familyName, memberSince, expiresAt, status, qrDataUrl, isRtl }: LeaderCardProps) {
+  const uid = useId().replace(/:/g, '');
   const isInactive = status === 'EXPIRED' || status === 'CANCELLED';
   const cardBg = isInactive
     ? 'linear-gradient(135deg, #1c1c1e 0%, #2c2c2e 40%, #242424 70%, #1c1c1e 100%)'
@@ -161,6 +178,8 @@ function LeaderCard({ memberNumber, familyName, memberSince, expiresAt, status, 
     : status === 'PENDING' ? '#fcd34d'
     : 'rgba(200,200,200,0.8)';
 
+  const qrBg = isInactive ? 'rgba(200,200,200,0.85)' : 'rgba(245,230,190,0.92)';
+
   return (
     <div dir="ltr" style={{
       position: 'relative',
@@ -175,11 +194,11 @@ function LeaderCard({ memberNumber, familyName, memberSince, expiresAt, status, 
       {/* Hex pattern */}
       <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: isInactive ? 0.04 : 0.07 }} viewBox="0 0 400 252" preserveAspectRatio="xMidYMid slice">
         <defs>
-          <pattern id="hx" x="0" y="0" width="60" height="52" patternUnits="userSpaceOnUse">
+          <pattern id={`hx-${uid}`} x="0" y="0" width="60" height="52" patternUnits="userSpaceOnUse">
             <polygon points="30,2 58,17 58,47 30,62 2,47 2,17" fill="none" stroke="white" strokeWidth="1"/>
           </pattern>
         </defs>
-        <rect width="400" height="252" fill="url(#hx)"/>
+        <rect width="400" height="252" fill={`url(#hx-${uid})`}/>
       </svg>
 
       {!isInactive && (
@@ -236,18 +255,36 @@ function LeaderCard({ memberNumber, familyName, memberSince, expiresAt, status, 
               {isRtl ? 'عضو رائد منذ' : 'LEADER SINCE'} {memberSince}
             </p>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            {expiresAt && (
-              <>
-                <p style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>
-                  {isRtl ? 'تنتهي' : 'EXPIRES'}
-                </p>
-                <p dir="ltr" style={{ fontSize: 13, fontWeight: 900, color: isInactive ? 'rgba(200,200,200,0.5)' : '#D4A853', letterSpacing: '0.1em' }}>
+
+          {/* QR corner or expiry */}
+          {qrDataUrl ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+              {expiresAt && (
+                <p dir="ltr" style={{ fontSize: 10, fontWeight: 700, color: isInactive ? 'rgba(200,200,200,0.4)' : gold, letterSpacing: '0.08em', textAlign: 'center' }}>
                   {new Date(expiresAt).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' })}
                 </p>
-              </>
-            )}
-          </div>
+              )}
+              <div style={{ background: qrBg, borderRadius: 6, padding: 3 }}>
+                <img src={qrDataUrl} width={44} height={44} alt="verify" style={{ display: 'block' }} />
+              </div>
+              <p style={{ fontSize: 7, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                {isRtl ? 'تحقق' : 'VERIFY'}
+              </p>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'right' }}>
+              {expiresAt && (
+                <>
+                  <p style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>
+                    {isRtl ? 'تنتهي' : 'EXPIRES'}
+                  </p>
+                  <p dir="ltr" style={{ fontSize: 13, fontWeight: 900, color: isInactive ? 'rgba(200,200,200,0.5)' : '#D4A853', letterSpacing: '0.1em' }}>
+                    {new Date(expiresAt).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' })}
+                  </p>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

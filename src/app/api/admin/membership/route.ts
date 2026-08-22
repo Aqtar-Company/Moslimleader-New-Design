@@ -1,11 +1,11 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
+import { requirePerm, type Permission } from '@/lib/permissions';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(req: NextRequest) {
-  const user = await getAuthUser().catch(() => null);
-  if (!user || user.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const guard = await requirePerm(['membership.read', 'membership.write'] as Permission[]);
+  if ('response' in guard) return guard.response;
 
   const url = new URL(req.url);
   const status = url.searchParams.get('status') || undefined;
@@ -49,8 +49,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const user = await getAuthUser().catch(() => null);
-  if (!user || user.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const guard = await requirePerm('membership.write');
+  if ('response' in guard) return guard.response;
 
   const { id, status } = await req.json().catch(() => ({}));
   if (!id || !status) return NextResponse.json({ error: 'Missing fields' }, { status: 400 });

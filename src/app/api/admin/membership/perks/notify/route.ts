@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
+import { requirePerm } from '@/lib/permissions';
 import { prisma } from '@/lib/prisma';
 import { getTransporter } from '@/lib/smtp';
 
@@ -30,8 +30,9 @@ function buildPerkTareeqContent(title: string, description: string | null, linkU
 // POST /api/admin/membership/perks/notify
 // Body: { id: string; action: 'tareeq' | 'notify' | 'both' }
 export async function POST(req: NextRequest) {
-  const user = await getAuthUser().catch(() => null);
-  if (!user || user.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const guard = await requirePerm('membership.write');
+  if ('response' in guard) return guard.response;
+  const user = guard.user;
 
   const body = await req.json().catch(() => ({}));
   const { id, action } = body as { id: string; action: 'tareeq' | 'notify' | 'both' };

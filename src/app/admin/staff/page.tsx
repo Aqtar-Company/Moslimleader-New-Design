@@ -85,6 +85,8 @@ const PERM_LABELS: Record<Permission, string> = {
   'sponsors.write': 'إدارة الداعمين وطلبات الرعاية',
   'support-requests.read': 'عرض طلبات الدعم',
   'support-requests.write': 'إدارة وتنفيذ طلبات الدعم',
+  'membership.read': 'عرض العضويات',
+  'membership.write': 'إدارة العضويات (تفعيل / إلغاء / تمديد)',
 };
 
 export default function StaffPage() {

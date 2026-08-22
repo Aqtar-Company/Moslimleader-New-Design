@@ -1492,74 +1492,40 @@ export default function AccountPage() {
                       isRtl={isRtl}
                     />
                     {isInactive && renewStep === 'idle' && !showCommunityFallback && (
-                      <div style={{ marginTop: 14, borderRadius: 18, overflow: 'hidden', border: '1px solid rgba(212,168,67,0.22)' }}>
-                        {/* Header */}
-                        <div style={{ background: 'linear-gradient(135deg, #1a0c00 0%, #2a1800 100%)', padding: '16px 18px 12px', textAlign: 'center', borderBottom: '1px solid rgba(212,168,67,0.15)' }}>
-                          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D4A853" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                            </svg>
-                          </div>
-                          <p style={{ fontSize: 15, fontWeight: 900, color: '#D4A853', marginBottom: 4 }}>
-                            {isCancelled
-                              ? (isRtl ? 'عضويتك الرائدة ملغاة' : 'Your Leader membership was cancelled')
-                              : (isRtl ? 'عضويتك الرائدة انتهت' : 'Your Leader membership expired')}
-                          </p>
-                          <p style={{ fontSize: 12, color: 'rgba(245,240,232,0.55)', lineHeight: 1.6 }}>
-                            {isRtl ? 'جدّد للاستمرار في الحصول على مزايا العضو الرائد' : 'Renew to restore your Leader benefits'}
-                          </p>
-                        </div>
-                        {/* Benefits */}
-                        <div style={{ background: 'rgba(212,168,67,0.04)', padding: '12px 18px' }}>
-                          {[
-                            { label: isRtl ? 'خصم على كل منتجات المتجر' : 'Discount on all store products' },
-                            { label: isRtl ? 'الوصول لمزايا العضوية الحصرية' : 'Access to exclusive member perks' },
-                            { label: isRtl ? 'نفس رقم عضويتك المحفوظ' : 'Same membership number preserved' },
-                          ].map((item, i) => (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="#FFCC33"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.5L12 17l-6.2 4.4 2.4-7.5L2 9.4h7.6z"/></svg>
-                              <p style={{ fontSize: 12, color: 'rgba(245,240,232,0.88)' }}>{item.label}</p>
-                            </div>
-                          ))}
-                        </div>
-                        {/* CTA — two buttons side by side */}
-                        <div style={{ background: 'rgba(212,168,67,0.06)', padding: '12px 18px 16px' }}>
+                      <div style={{ marginTop: 14, padding: '18px 16px', borderRadius: 18, background: 'linear-gradient(135deg,#1a0c00,#2a1800)', border: '1px solid rgba(212,168,67,0.2)', textAlign: 'center' }}>
+                        <p style={{ fontSize: 14, fontWeight: 900, color: '#FFCC33', marginBottom: 16 }}>
+                          {isCancelled
+                            ? (isRtl ? 'عضويتك الرائدة ملغاة' : 'Your Leader membership was cancelled')
+                            : (isRtl ? 'عضويتك الرائدة انتهت' : 'Your Leader membership expired')}
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
                           <button
                             onClick={() => {
                               setRenewStep('paypal');
                               setTimeout(() => renewSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
                             }}
                             style={{
-                              width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', cursor: 'pointer', marginBottom: 10,
-                              background: 'linear-gradient(135deg, #FFCC33 0%, #f5b800 100%)',
-                              color: '#1a0800', fontWeight: 900, fontSize: 15,
-                              boxShadow: '0 4px 20px rgba(255,204,51,0.4)',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                              width: 240, padding: '13px 0', borderRadius: 14, border: 'none', cursor: 'pointer',
+                              background: 'linear-gradient(135deg,#FFCC33,#f5b800)',
+                              color: '#1a0800', fontWeight: 900, fontSize: 14,
+                              boxShadow: '0 4px 16px rgba(255,204,51,0.4)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                             }}
                           >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
                             </svg>
-                            {isRtl
-                              ? (isCancelled ? 'إعادة تفعيل عضويتي الرائدة' : 'جدّد عضويتي الرائدة الآن')
-                              : (isCancelled ? 'Reactivate Leader Membership' : 'Renew Leader Membership Now')}
+                            {isRtl ? (isCancelled ? 'إعادة تفعيل الرائدة' : 'جدّد الآن') : (isCancelled ? 'Reactivate' : 'Renew Now')}
                           </button>
-                          <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.5)', textAlign: 'center', marginBottom: 10 }}>
-                            {isRtl
-                              ? `${membershipZone === 'egypt' ? `${membershipPrices.egyEgp} ج.م` : `$${membershipPrices.intlUsd}`} / سنة · رقمك: ${membership.membershipNumber}`
-                              : `${membershipZone === 'egypt' ? `${membershipPrices.egyEgp} EGP` : `$${membershipPrices.intlUsd}`} / year · #${membership.membershipNumber}`}
-                          </p>
-                          {/* Green community fallback button */}
                           <button
                             onClick={() => setShowCommunityFallback(true)}
                             style={{
-                              width: '100%', padding: '13px 0', borderRadius: 14, border: 'none', cursor: 'pointer',
-                              background: 'linear-gradient(135deg, #1b3a2a 0%, #2d5a40 100%)',
-                              color: '#fff', fontWeight: 800, fontSize: 13,
+                              width: 240, padding: '12px 0', borderRadius: 14, border: 'none', cursor: 'pointer',
+                              background: 'linear-gradient(135deg,#1b3a2a,#2d5a40)',
+                              color: '#fff', fontWeight: 700, fontSize: 13,
                               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                              boxShadow: '0 2px 12px rgba(45,90,64,0.4)',
                             }}>
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6ee7a8" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6ee7a8" strokeWidth="2.2" strokeLinecap="round">
                               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
                               <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
                             </svg>
@@ -1572,25 +1538,22 @@ export default function AccountPage() {
                     {/* Community fallback — shown when user chooses to stay as community member */}
                     {isInactive && showCommunityFallback && (
                       <div style={{ marginTop: 14 }}>
-                        {/* Community card */}
-                        {communityMemberNumber && (
-                          <div className="mb-4">
-                            <MembershipCard
-                              variant="community"
-                              memberNumber={communityMemberNumber}
-                              name={user.name}
-                              joinedYear={new Date().getFullYear()}
-                              qrDataUrl={communityQr}
-                              isRtl={isRtl}
-                            />
-                          </div>
-                        )}
+                        <div className="mb-4">
+                          <MembershipCard
+                            variant="community"
+                            memberNumber={communityMemberNumber ?? `CM-${user.id?.slice(0,6).toUpperCase()}`}
+                            name={user.name}
+                            joinedYear={new Date().getFullYear()}
+                            qrDataUrl={communityQr}
+                            isRtl={isRtl}
+                          />
+                        </div>
                         <div style={{ borderRadius: 14, background: 'linear-gradient(135deg,#1a3a2e,#2d5a40)', padding: '14px 16px', textAlign: 'center' }}>
                           <p style={{ fontSize: 13, fontWeight: 900, color: '#fff', marginBottom: 4 }}>
                             {isRtl ? 'أنت عضو في مجتمع مسلم ليدر' : 'You are a Moslim Leader Community Member'}
                           </p>
                           <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, marginBottom: 12 }}>
-                            {isRtl ? 'عضويتك المجتمعية مفعّلة — يمكنك الترقي لعضو رائد في أي وقت' : 'Your community membership is active — upgrade anytime'}
+                            {isRtl ? 'يمكنك الترقي لعضو رائد في أي وقت' : 'You can upgrade to Leader anytime'}
                           </p>
                           <button
                             onClick={() => setShowCommunityFallback(false)}

@@ -60,18 +60,19 @@ export default function MembershipCard(props: Props) {
   );
 }
 
+/* ─── Community Card ─────────────────────────────────────────────────────── */
 function CommunityCard({ memberNumber, name, joinedYear, qrDataUrl, isRtl }: CommunityCardProps) {
   const uid = useId().replace(/:/g, '');
+  const green = '#7dd9a0';
+
   return (
     <div style={{
-      position: 'relative',
-      width: CARD_W, height: CARD_H,
-      borderRadius: 20,
-      overflow: 'hidden',
+      position: 'relative', width: CARD_W, height: CARD_H,
+      borderRadius: 20, overflow: 'hidden',
       background: 'linear-gradient(135deg, #1b3a2a 0%, #2a5240 40%, #1e4535 70%, #163020 100%)',
       boxShadow: '0 12px 40px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.15)',
     }}>
-      {/* Subtle pattern */}
+      {/* Pattern */}
       <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.05 }} viewBox="0 0 400 252" preserveAspectRatio="xMidYMid slice">
         <defs>
           <pattern id={`leaves-${uid}`} x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
@@ -82,86 +83,74 @@ function CommunityCard({ memberNumber, name, joinedYear, qrDataUrl, isRtl }: Com
         </defs>
         <rect width="400" height="252" fill={`url(#leaves-${uid})`}/>
       </svg>
+      {/* Glow */}
+      <div style={{ position: 'absolute', top: -40, right: -40, width: 160, height: 160, borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,200,120,0.13) 0%, transparent 70%)', pointerEvents: 'none' }}/>
 
-      {/* Glow accent top-left */}
-      <div style={{ position: 'absolute', top: -40, left: -40, width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,200,120,0.12) 0%, transparent 70%)', pointerEvents: 'none' }}/>
-
-      {/* RTL content layout */}
-      <div dir="rtl" style={{ position: 'relative', height: '100%', padding: '7% 8%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-
-        {/* Top: badge left, logo+brand right */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          {/* Status badge — left in RTL = visually right-far */}
-          <span style={{
-            fontSize: 9, fontWeight: 900, letterSpacing: '0.08em',
-            padding: '4px 10px', borderRadius: 20,
-            background: 'rgba(125,217,160,0.2)',
-            color: '#7dd9a0',
-            border: '1px solid rgba(125,217,160,0.35)',
-          }}>
-            🌿 {isRtl ? 'عضو المجتمع' : 'COMMUNITY'}
-          </span>
-
-          {/* Logo + brand — right in RTL = visually right */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ textAlign: 'right' }}>
-              <p style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.2em', color: '#7dd9a0', marginBottom: 1 }}>MUSLIM LEADER</p>
-              <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.05em' }}>
-                {isRtl ? 'عضو المجتمع' : 'Community Member'}
-              </p>
-            </div>
-            <img src="/logo-mobile.png" alt="ML" style={{ width: 44, height: 44, objectFit: 'contain' }} />
-          </div>
-        </div>
-
-        {/* Middle — member number, right-aligned */}
+      {/* ── TOP-RIGHT: logo + separator + membership type ── */}
+      <div style={{ position: 'absolute', top: 16, right: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ textAlign: 'right' }}>
-          <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6 }}>
-            {isRtl ? 'رقم العضوية' : 'MEMBER ID'}
-          </p>
-          <p dir="ltr" style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 900, letterSpacing: '0.2em', color: '#d4f5e2', lineHeight: 1, textAlign: 'right' }}>
-            {memberNumber}
+          <p style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.18em', color: green, lineHeight: 1.3 }}>MUSLIM LEADER</p>
+          <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.04em', lineHeight: 1.3, direction: 'rtl' }}>
+            {isRtl ? 'عضوية مجتمعية' : 'Community Member'}
           </p>
         </div>
+        <div style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.12)', flexShrink: 0 }}/>
+        <img src="/logo-mobile.png" alt="ML" style={{ width: 40, height: 40, objectFit: 'contain', flexShrink: 0 }} />
+      </div>
 
-        {/* Bottom: QR left, name+year right */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-          {/* QR — left side in RTL */}
-          {qrDataUrl ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-              <div style={{ background: 'rgba(212,245,226,0.92)', borderRadius: 6, padding: 3 }}>
-                <img src={qrDataUrl} width={44} height={44} alt="verify" style={{ display: 'block' }} />
-              </div>
-              <p style={{ fontSize: 7, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                {isRtl ? 'تحقق' : 'VERIFY'}
-              </p>
-            </div>
-          ) : (
-            <div style={{ textAlign: 'left' }}>
-              <p style={{ fontSize: 8, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>
-                {isRtl ? 'مجتمع مسلم ليدر' : 'ML COMMUNITY'}
-              </p>
-              <p style={{ fontSize: 11, fontWeight: 700, color: '#7dd9a0', letterSpacing: '0.08em' }}>
-                moslimleader.com
-              </p>
-            </div>
-          )}
+      {/* ── TOP-LEFT: community badge ── */}
+      <div style={{ position: 'absolute', top: 20, left: 18 }}>
+        <span style={{
+          fontSize: 9, fontWeight: 900, letterSpacing: '0.06em',
+          padding: '4px 10px', borderRadius: 20,
+          background: 'rgba(125,217,160,0.18)',
+          color: green,
+          border: `1px solid rgba(125,217,160,0.3)`,
+          display: 'inline-block',
+        }}>
+          🌿 {isRtl ? 'عضو المجتمع' : 'COMMUNITY'}
+        </span>
+      </div>
 
-          {/* Name + year — right side in RTL */}
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: 13, fontWeight: 800, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.04em', marginBottom: 3 }}>
-              {name}
-            </p>
-            <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              {isRtl ? `عضو منذ ${joinedYear}` : `MEMBER SINCE ${joinedYear}`}
-            </p>
+      {/* ── CENTER-LEFT: member number ── */}
+      <div style={{ position: 'absolute', left: 18, top: '50%', transform: 'translateY(-52%)' }}>
+        <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 5 }}>
+          {isRtl ? 'رقم العضوية' : 'MEMBER ID'}
+        </p>
+        <p style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 900, letterSpacing: '0.2em', color: '#d4f5e2', lineHeight: 1 }}>
+          {memberNumber}
+        </p>
+      </div>
+
+      {/* ── BOTTOM-LEFT: QR ── */}
+      {qrDataUrl && (
+        <div style={{ position: 'absolute', bottom: 16, left: 18, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+          <div style={{ background: 'rgba(212,245,226,0.9)', borderRadius: 6, padding: 3 }}>
+            <img src={qrDataUrl} width={44} height={44} alt="verify" style={{ display: 'block' }} />
           </div>
+          <p style={{ fontSize: 7, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            {isRtl ? 'تحقق' : 'VERIFY'}
+          </p>
         </div>
+      )}
+
+      {/* ── BOTTOM-RIGHT: brand text ── */}
+      <div style={{ position: 'absolute', bottom: 22, right: 18, textAlign: 'right' }}>
+        <p style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.22)', letterSpacing: '0.05em', lineHeight: 1.5, direction: 'rtl' }}>
+          مجتمع مسلم ليدر
+        </p>
+        <p style={{ fontSize: 8, color: 'rgba(255,255,255,0.15)', letterSpacing: '0.06em', lineHeight: 1.5 }}>
+          Muslim Leader Community
+        </p>
+        <p style={{ fontSize: 8, color: 'rgba(125,217,160,0.35)', letterSpacing: '0.08em', marginTop: 3 }}>
+          {isRtl ? `عضو منذ ${joinedYear}` : `Since ${joinedYear}`}
+        </p>
       </div>
     </div>
   );
 }
 
+/* ─── Leader Card ────────────────────────────────────────────────────────── */
 function LeaderCard({ memberNumber, familyName, memberSince, expiresAt, status, qrDataUrl, isRtl }: LeaderCardProps) {
   const uid = useId().replace(/:/g, '');
   const isInactive = status === 'EXPIRED' || status === 'CANCELLED';
@@ -169,29 +158,22 @@ function LeaderCard({ memberNumber, familyName, memberSince, expiresAt, status, 
     ? 'linear-gradient(135deg, #1c1c1e 0%, #2c2c2e 40%, #242424 70%, #1c1c1e 100%)'
     : 'linear-gradient(135deg, #0d2318 0%, #1a3a2e 40%, #24502f 70%, #1a3a2e 100%)';
   const gold = isInactive ? 'rgba(180,150,80,0.5)' : '#D4A853';
-  const numColor = isInactive ? 'rgba(200,200,200,0.7)' : '#F5E6BE';
-  const brandColor = isInactive ? 'rgba(200,200,200,0.7)' : '#D4A853';
+  const numColor = isInactive ? 'rgba(200,200,200,0.65)' : '#F5E6BE';
+  const brandColor = isInactive ? 'rgba(200,200,200,0.6)' : '#D4A853';
 
-  const statusLabel = status === 'ACTIVE' ? (isRtl ? 'نشطة' : 'ACTIVE')
-    : status === 'PENDING' ? (isRtl ? 'معلقة' : 'PENDING')
-    : status === 'EXPIRED' ? (isRtl ? 'منتهية' : 'EXPIRED')
+  const statusLabel = status === 'ACTIVE'    ? (isRtl ? 'نشطة'   : 'ACTIVE')
+    : status === 'PENDING'   ? (isRtl ? 'معلقة'  : 'PENDING')
+    : status === 'EXPIRED'   ? (isRtl ? 'منتهية' : 'EXPIRED')
     : (isRtl ? 'ملغاة' : 'CANCELLED');
 
-  const statusBg = status === 'ACTIVE' ? 'rgba(52,211,153,0.25)'
-    : status === 'PENDING' ? 'rgba(251,191,36,0.25)'
-    : 'rgba(160,160,160,0.2)';
-  const statusColor = status === 'ACTIVE' ? '#6ee7b7'
-    : status === 'PENDING' ? '#fcd34d'
-    : 'rgba(200,200,200,0.8)';
-
-  const qrBg = isInactive ? 'rgba(200,200,200,0.85)' : 'rgba(245,230,190,0.92)';
+  const statusBg    = status === 'ACTIVE'  ? 'rgba(52,211,153,0.22)'  : status === 'PENDING' ? 'rgba(251,191,36,0.22)' : 'rgba(160,160,160,0.18)';
+  const statusColor = status === 'ACTIVE'  ? '#6ee7b7' : status === 'PENDING' ? '#fcd34d' : 'rgba(200,200,200,0.75)';
+  const qrBg = isInactive ? 'rgba(200,200,200,0.82)' : 'rgba(245,230,190,0.92)';
 
   return (
     <div style={{
-      position: 'relative',
-      width: CARD_W, height: CARD_H,
-      borderRadius: 20,
-      overflow: 'hidden',
+      position: 'relative', width: CARD_W, height: CARD_H,
+      borderRadius: 20, overflow: 'hidden',
       background: cardBg,
       boxShadow: isInactive
         ? '0 12px 40px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2)'
@@ -206,102 +188,99 @@ function LeaderCard({ memberNumber, familyName, memberSince, expiresAt, status, 
         </defs>
         <rect width="400" height="252" fill={`url(#hx-${uid})`}/>
       </svg>
-
+      {/* Shimmer */}
       {!isInactive && (
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(115deg, transparent 30%, rgba(212,168,83,0.08) 50%, transparent 70%)', pointerEvents: 'none' }}/>
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(115deg, transparent 30%, rgba(212,168,83,0.07) 50%, transparent 70%)', pointerEvents: 'none' }}/>
       )}
-
-      {/* Decorative circle — left side */}
-      <svg style={{ position: 'absolute', left: -30, top: -30, opacity: isInactive ? 0.03 : 0.06 }} width={220} height={220} viewBox="0 0 220 220">
-        <circle cx="110" cy="110" r="100" fill="none" stroke={gold} strokeWidth="40"/>
-        <circle cx="70" cy="90" r="80" fill={isInactive ? '#1c1c1e' : '#0d2318'}/>
+      {/* Decorative circle */}
+      <svg style={{ position: 'absolute', right: -30, top: -30, opacity: isInactive ? 0.03 : 0.06 }} width={200} height={200} viewBox="0 0 200 200">
+        <circle cx="100" cy="100" r="90" fill="none" stroke={gold} strokeWidth="36"/>
       </svg>
 
-      {/* RTL content layout */}
-      <div dir="rtl" style={{ position: 'relative', height: '100%', padding: '6% 8%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-
-        {/* Top: status badge left, logo+brand right */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          {/* Status badge — left in RTL */}
-          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.1em', padding: '4px 10px', borderRadius: 20, background: statusBg, color: statusColor, border: `1px solid ${statusColor}55`, textTransform: 'uppercase' }}>
-            {statusLabel}
-          </span>
-
-          {/* Logo + brand — right in RTL */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ textAlign: 'right' }}>
-              <p style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.2em', color: brandColor, marginBottom: 2 }}>MUSLIM LEADER</p>
-              <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.05em' }}>
-                ✦ {isRtl ? 'العضوية الرائدة' : 'Leader Membership'}
-              </p>
-            </div>
-            <img src="/logo-mobile.png" alt="ML" style={{ width: 48, height: 48, objectFit: 'contain', opacity: isInactive ? 0.45 : 1 }} />
-          </div>
-        </div>
-
-        {/* Middle: chip left, member number right */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          {/* Chip — always left (LTR convention for cards) */}
-          <svg width={38} height={28} viewBox="0 0 38 28" style={{ opacity: isInactive ? 0.4 : 0.9, flexShrink: 0 }}>
-            <rect width="38" height="28" rx="5" fill={isInactive ? '#888' : '#D4A853'}/>
-            <rect x="1" y="1" width="36" height="26" rx="4" fill="none" stroke={isInactive ? '#666' : '#b8922a'} strokeWidth="0.5"/>
-            <line x1="13" y1="0" x2="13" y2="28" stroke={isInactive ? '#666' : '#b8922a'} strokeWidth="1"/>
-            <line x1="25" y1="0" x2="25" y2="28" stroke={isInactive ? '#666' : '#b8922a'} strokeWidth="1"/>
-            <line x1="0" y1="9" x2="38" y2="9" stroke={isInactive ? '#666' : '#b8922a'} strokeWidth="1"/>
-            <line x1="0" y1="19" x2="38" y2="19" stroke={isInactive ? '#666' : '#b8922a'} strokeWidth="1"/>
-            <rect x="13" y="9" width="12" height="10" rx="2" fill={isInactive ? '#999' : '#c9a040'} stroke={isInactive ? '#666' : '#b8922a'} strokeWidth="0.5"/>
-          </svg>
-
-          {/* Member number — right-aligned */}
-          <p dir="ltr" style={{ fontFamily: 'monospace', fontSize: 17, fontWeight: 900, letterSpacing: '0.22em', color: numColor, lineHeight: 1, textAlign: 'right' }}>
-            {memberNumber}
+      {/* ── TOP-RIGHT: logo + separator + membership type ── */}
+      <div style={{ position: 'absolute', top: 16, right: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ textAlign: 'right' }}>
+          <p style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.18em', color: brandColor, lineHeight: 1.4 }}>
+            Leader Membership
+          </p>
+          <p style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.04em', lineHeight: 1.4, direction: 'rtl' }}>
+            عضوية رائدة ✦
           </p>
         </div>
+        <div style={{ width: 1, height: 34, background: 'rgba(255,255,255,0.1)', flexShrink: 0 }}/>
+        <img src="/logo-mobile.png" alt="ML" style={{ width: 44, height: 44, objectFit: 'contain', flexShrink: 0, opacity: isInactive ? 0.45 : 1 }} />
+      </div>
 
-        {/* Bottom: QR+expiry left, name+year right */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-          {/* QR + expiry — left side */}
-          {qrDataUrl ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-              {expiresAt && (
-                <p dir="ltr" style={{ fontSize: 10, fontWeight: 700, color: isInactive ? 'rgba(200,200,200,0.4)' : gold, letterSpacing: '0.08em', textAlign: 'center' }}>
-                  {new Date(expiresAt).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' })}
-                </p>
-              )}
-              <div style={{ background: qrBg, borderRadius: 6, padding: 3 }}>
-                <img src={qrDataUrl} width={44} height={44} alt="verify" style={{ display: 'block' }} />
-              </div>
-              <p style={{ fontSize: 7, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                {isRtl ? 'تحقق' : 'VERIFY'}
-              </p>
-            </div>
-          ) : (
-            <div style={{ textAlign: 'left' }}>
-              {expiresAt && (
-                <>
-                  <p style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>
-                    {isRtl ? 'تنتهي' : 'EXPIRES'}
-                  </p>
-                  <p dir="ltr" style={{ fontSize: 13, fontWeight: 900, color: isInactive ? 'rgba(200,200,200,0.5)' : '#D4A853', letterSpacing: '0.1em' }}>
-                    {new Date(expiresAt).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' })}
-                  </p>
-                </>
-              )}
-            </div>
-          )}
+      {/* ── TOP-LEFT: status badge ── */}
+      <div style={{ position: 'absolute', top: 20, left: 18 }}>
+        <span style={{
+          fontSize: 9, fontWeight: 900, letterSpacing: '0.1em',
+          padding: '4px 10px', borderRadius: 20,
+          background: statusBg, color: statusColor,
+          border: `1px solid ${statusColor}44`,
+          display: 'inline-block', textTransform: 'uppercase',
+        }}>
+          {statusLabel}
+        </span>
+      </div>
 
-          {/* Name + year — right side */}
-          <div style={{ textAlign: 'right' }}>
-            {familyName && (
-              <p style={{ fontSize: 14, fontWeight: 900, color: isInactive ? 'rgba(200,200,200,0.6)' : 'white', marginBottom: 4 }}>
-                {familyName}
-              </p>
-            )}
-            <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              {isRtl ? `عضو رائد منذ ${memberSince}` : `LEADER SINCE ${memberSince}`}
+      {/* ── CENTER-LEFT: chip ── */}
+      <div style={{ position: 'absolute', left: 20, top: 88 }}>
+        <svg width={38} height={28} viewBox="0 0 38 28" style={{ opacity: isInactive ? 0.4 : 0.9 }}>
+          <rect width="38" height="28" rx="5" fill={isInactive ? '#888' : '#D4A853'}/>
+          <rect x="1" y="1" width="36" height="26" rx="4" fill="none" stroke={isInactive ? '#666' : '#b8922a'} strokeWidth="0.5"/>
+          <line x1="13" y1="0" x2="13" y2="28" stroke={isInactive ? '#666' : '#b8922a'} strokeWidth="1"/>
+          <line x1="25" y1="0" x2="25" y2="28" stroke={isInactive ? '#666' : '#b8922a'} strokeWidth="1"/>
+          <line x1="0" y1="9" x2="38" y2="9" stroke={isInactive ? '#666' : '#b8922a'} strokeWidth="1"/>
+          <line x1="0" y1="19" x2="38" y2="19" stroke={isInactive ? '#666' : '#b8922a'} strokeWidth="1"/>
+          <rect x="13" y="9" width="12" height="10" rx="2" fill={isInactive ? '#999' : '#c9a040'} stroke={isInactive ? '#666' : '#b8922a'} strokeWidth="0.5"/>
+        </svg>
+      </div>
+
+      {/* ── BELOW CHIP (LEFT): member number ── */}
+      <div style={{ position: 'absolute', left: 18, top: 128 }}>
+        <p style={{ fontFamily: 'monospace', fontSize: 16, fontWeight: 900, letterSpacing: '0.22em', color: numColor, lineHeight: 1 }}>
+          {memberNumber}
+        </p>
+      </div>
+
+      {/* ── BOTTOM-LEFT: QR + expiry ── */}
+      <div style={{ position: 'absolute', bottom: 14, left: 18, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+        {expiresAt && (
+          <p style={{ fontFamily: 'monospace', fontSize: 10, fontWeight: 700, color: isInactive ? 'rgba(200,200,200,0.35)' : gold, letterSpacing: '0.08em' }}>
+            {new Date(expiresAt).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' })}
+          </p>
+        )}
+        {qrDataUrl ? (
+          <>
+            <div style={{ background: qrBg, borderRadius: 6, padding: 3 }}>
+              <img src={qrDataUrl} width={44} height={44} alt="verify" style={{ display: 'block' }} />
+            </div>
+            <p style={{ fontSize: 7, color: 'rgba(255,255,255,0.22)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              {isRtl ? 'تحقق' : 'VERIFY'}
             </p>
-          </div>
-        </div>
+          </>
+        ) : (
+          expiresAt && null
+        )}
+      </div>
+
+      {/* ── BOTTOM-RIGHT: brand text ── */}
+      <div style={{ position: 'absolute', bottom: 18, right: 18, textAlign: 'right' }}>
+        {familyName && (
+          <p style={{ fontSize: 13, fontWeight: 900, color: isInactive ? 'rgba(200,200,200,0.5)' : 'rgba(255,255,255,0.85)', marginBottom: 6, direction: 'rtl' }}>
+            {familyName}
+          </p>
+        )}
+        <p style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.05em', lineHeight: 1.55, direction: 'rtl' }}>
+          مجتمع مسلم ليدر
+        </p>
+        <p style={{ fontSize: 8, color: 'rgba(255,255,255,0.13)', letterSpacing: '0.06em', lineHeight: 1.55 }}>
+          Muslim Leader Community
+        </p>
+        <p style={{ fontSize: 8, color: isInactive ? 'rgba(200,200,200,0.2)' : 'rgba(212,168,83,0.4)', letterSpacing: '0.05em', marginTop: 3 }}>
+          {isRtl ? `عضو رائد منذ ${memberSince}` : `Leader since ${memberSince}`}
+        </p>
       </div>
     </div>
   );

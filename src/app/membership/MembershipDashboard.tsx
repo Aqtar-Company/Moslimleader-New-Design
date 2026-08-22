@@ -209,7 +209,11 @@ export default function MembershipDashboard({
               <div style={{ marginTop: 16, borderRadius: 20, overflow: 'hidden', border: '1px solid rgba(212,168,67,0.22)' }}>
                 {/* Header strip */}
                 <div style={{ background: 'linear-gradient(135deg, #1a0c00 0%, #2a1800 100%)', padding: '18px 20px 14px', textAlign: 'center', borderBottom: '1px solid rgba(212,168,67,0.15)' }}>
-                  <p style={{ fontSize: 22, marginBottom: 6 }}>🔔</p>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    </svg>
+                  </div>
                   <p style={{ fontSize: 16, fontWeight: 900, color: GOLD, marginBottom: 4 }}>
                     {isCancelled
                       ? (isRtl ? 'عضويتك الرائدة ملغاة' : 'Your Leader membership was cancelled')
@@ -228,13 +232,14 @@ export default function MembershipDashboard({
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                     {[
-                      isRtl ? '✦ خصم على كل منتجات المتجر' : '✦ Discount on all store products',
-                      isRtl ? '✦ الوصول لمزايا العضوية الحصرية' : '✦ Access to exclusive member perks',
-                      isRtl ? '✦ نفس رقم عضويتك المحفوظ' : '✦ Same membership number preserved',
+                      isRtl ? 'خصم على كل منتجات المتجر' : 'Discount on all store products',
+                      isRtl ? 'الوصول لمزايا العضوية الحصرية' : 'Access to exclusive member perks',
+                      isRtl ? 'نفس رقم عضويتك المحفوظ' : 'Same membership number preserved',
                     ].map((line, i) => (
-                      <p key={i} style={{ fontSize: 12, color: 'rgba(245,240,232,0.65)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {line}
-                      </p>
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill={GOLD}><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.5L12 17l-6.2 4.4 2.4-7.5L2 9.4h7.6z"/></svg>
+                        <p style={{ fontSize: 12, color: 'rgba(245,240,232,0.65)' }}>{line}</p>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -251,11 +256,19 @@ export default function MembershipDashboard({
                       letterSpacing: '0.02em',
                     }}
                   >
-                    {isRtl ? '🔄 جدّد عضويتي الرائدة الآن' : '🔄 Renew Leader Membership Now'}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
+                    </svg>
+                    {isRtl ? 'جدّد عضويتي الرائدة الآن' : 'Renew Leader Membership Now'}
                   </button>
                   <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.3)', marginTop: 8 }}>
                     {isRtl ? `رقم عضويتك: ${membership.membershipNumber}` : `Your number: ${membership.membershipNumber}`}
                   </p>
+                  <button
+                    onClick={() => router.push('/membership')}
+                    style={{ marginTop: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'rgba(245,240,232,0.35)', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+                    {isRtl ? 'أو اكتفِ بعضويتك المجتمعية المجانية' : 'Or keep your free Community membership'}
+                  </button>
                 </div>
               </div>
             )}

@@ -63,7 +63,7 @@ export default function MembershipCard(props: Props) {
 function CommunityCard({ memberNumber, name, joinedYear, qrDataUrl, isRtl }: CommunityCardProps) {
   const uid = useId().replace(/:/g, '');
   return (
-    <div dir="ltr" style={{
+    <div style={{
       position: 'relative',
       width: CARD_W, height: CARD_H,
       borderRadius: 20,
@@ -83,21 +83,15 @@ function CommunityCard({ memberNumber, name, joinedYear, qrDataUrl, isRtl }: Com
         <rect width="400" height="252" fill={`url(#leaves-${uid})`}/>
       </svg>
 
-      {/* Glow accent top-right */}
-      <div style={{ position: 'absolute', top: -40, right: -40, width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,200,120,0.12) 0%, transparent 70%)', pointerEvents: 'none' }}/>
+      {/* Glow accent top-left */}
+      <div style={{ position: 'absolute', top: -40, left: -40, width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,200,120,0.12) 0%, transparent 70%)', pointerEvents: 'none' }}/>
 
-      <div style={{ position: 'relative', height: '100%', padding: '7% 8%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-        {/* Top */}
+      {/* RTL content layout */}
+      <div dir="rtl" style={{ position: 'relative', height: '100%', padding: '7% 8%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+
+        {/* Top: badge left, logo+brand right */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <img src="/logo-mobile.png" alt="ML" style={{ width: 44, height: 44, objectFit: 'contain' }} />
-            <div>
-              <p style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.2em', color: '#7dd9a0', marginBottom: 1 }}>MUSLIM LEADER</p>
-              <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.05em' }}>
-                {isRtl ? 'عضو المجتمع' : 'Community Member'}
-              </p>
-            </div>
-          </div>
+          {/* Status badge — left in RTL = visually right-far */}
           <span style={{
             fontSize: 9, fontWeight: 900, letterSpacing: '0.08em',
             padding: '4px 10px', borderRadius: 20,
@@ -107,30 +101,32 @@ function CommunityCard({ memberNumber, name, joinedYear, qrDataUrl, isRtl }: Com
           }}>
             🌿 {isRtl ? 'عضو المجتمع' : 'COMMUNITY'}
           </span>
+
+          {/* Logo + brand — right in RTL = visually right */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.2em', color: '#7dd9a0', marginBottom: 1 }}>MUSLIM LEADER</p>
+              <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.05em' }}>
+                {isRtl ? 'عضو المجتمع' : 'Community Member'}
+              </p>
+            </div>
+            <img src="/logo-mobile.png" alt="ML" style={{ width: 44, height: 44, objectFit: 'contain' }} />
+          </div>
         </div>
 
-        {/* Middle — member number */}
-        <div>
+        {/* Middle — member number, right-aligned */}
+        <div style={{ textAlign: 'right' }}>
           <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6 }}>
             {isRtl ? 'رقم العضوية' : 'MEMBER ID'}
           </p>
-          <p dir="ltr" style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 900, letterSpacing: '0.2em', color: '#d4f5e2', lineHeight: 1 }}>
+          <p dir="ltr" style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 900, letterSpacing: '0.2em', color: '#d4f5e2', lineHeight: 1, textAlign: 'right' }}>
             {memberNumber}
           </p>
         </div>
 
-        {/* Bottom */}
+        {/* Bottom: QR left, name+year right */}
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-          <div>
-            <p style={{ fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.06em', marginBottom: 3 }}>
-              {name}
-            </p>
-            <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              {isRtl ? 'عضو منذ' : 'MEMBER SINCE'} {joinedYear}
-            </p>
-          </div>
-
-          {/* QR corner or fallback text */}
+          {/* QR — left side in RTL */}
           {qrDataUrl ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
               <div style={{ background: 'rgba(212,245,226,0.92)', borderRadius: 6, padding: 3 }}>
@@ -141,7 +137,7 @@ function CommunityCard({ memberNumber, name, joinedYear, qrDataUrl, isRtl }: Com
               </p>
             </div>
           ) : (
-            <div style={{ textAlign: 'right' }}>
+            <div style={{ textAlign: 'left' }}>
               <p style={{ fontSize: 8, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>
                 {isRtl ? 'مجتمع مسلم ليدر' : 'ML COMMUNITY'}
               </p>
@@ -150,6 +146,16 @@ function CommunityCard({ memberNumber, name, joinedYear, qrDataUrl, isRtl }: Com
               </p>
             </div>
           )}
+
+          {/* Name + year — right side in RTL */}
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ fontSize: 13, fontWeight: 800, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.04em', marginBottom: 3 }}>
+              {name}
+            </p>
+            <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              {isRtl ? `عضو منذ ${joinedYear}` : `MEMBER SINCE ${joinedYear}`}
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -181,7 +187,7 @@ function LeaderCard({ memberNumber, familyName, memberSince, expiresAt, status, 
   const qrBg = isInactive ? 'rgba(200,200,200,0.85)' : 'rgba(245,230,190,0.92)';
 
   return (
-    <div dir="ltr" style={{
+    <div style={{
       position: 'relative',
       width: CARD_W, height: CARD_H,
       borderRadius: 20,
@@ -205,31 +211,38 @@ function LeaderCard({ memberNumber, familyName, memberSince, expiresAt, status, 
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(115deg, transparent 30%, rgba(212,168,83,0.08) 50%, transparent 70%)', pointerEvents: 'none' }}/>
       )}
 
-      <svg style={{ position: 'absolute', right: -30, top: -30, opacity: isInactive ? 0.03 : 0.06 }} width={220} height={220} viewBox="0 0 220 220">
+      {/* Decorative circle — left side */}
+      <svg style={{ position: 'absolute', left: -30, top: -30, opacity: isInactive ? 0.03 : 0.06 }} width={220} height={220} viewBox="0 0 220 220">
         <circle cx="110" cy="110" r="100" fill="none" stroke={gold} strokeWidth="40"/>
-        <circle cx="150" cy="90" r="80" fill={isInactive ? '#1c1c1e' : '#0d2318'}/>
+        <circle cx="70" cy="90" r="80" fill={isInactive ? '#1c1c1e' : '#0d2318'}/>
       </svg>
 
-      <div style={{ position: 'relative', height: '100%', padding: '6% 8%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-        {/* Top */}
+      {/* RTL content layout */}
+      <div dir="rtl" style={{ position: 'relative', height: '100%', padding: '6% 8%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+
+        {/* Top: status badge left, logo+brand right */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          {/* Status badge — left in RTL */}
+          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.1em', padding: '4px 10px', borderRadius: 20, background: statusBg, color: statusColor, border: `1px solid ${statusColor}55`, textTransform: 'uppercase' }}>
+            {statusLabel}
+          </span>
+
+          {/* Logo + brand — right in RTL */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <img src="/logo-mobile.png" alt="ML" style={{ width: 48, height: 48, objectFit: 'contain', opacity: isInactive ? 0.45 : 1 }} />
-            <div>
+            <div style={{ textAlign: 'right' }}>
               <p style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.2em', color: brandColor, marginBottom: 2 }}>MUSLIM LEADER</p>
               <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.05em' }}>
                 ✦ {isRtl ? 'العضوية الرائدة' : 'Leader Membership'}
               </p>
             </div>
+            <img src="/logo-mobile.png" alt="ML" style={{ width: 48, height: 48, objectFit: 'contain', opacity: isInactive ? 0.45 : 1 }} />
           </div>
-          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.1em', padding: '4px 10px', borderRadius: 20, background: statusBg, color: statusColor, border: `1px solid ${statusColor}55`, textTransform: 'uppercase' }}>
-            {statusLabel}
-          </span>
         </div>
 
-        {/* Chip + number */}
-        <div>
-          <svg width={38} height={28} viewBox="0 0 38 28" style={{ marginBottom: 10, opacity: isInactive ? 0.4 : 0.9 }}>
+        {/* Middle: chip left, member number right */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          {/* Chip — always left (LTR convention for cards) */}
+          <svg width={38} height={28} viewBox="0 0 38 28" style={{ opacity: isInactive ? 0.4 : 0.9, flexShrink: 0 }}>
             <rect width="38" height="28" rx="5" fill={isInactive ? '#888' : '#D4A853'}/>
             <rect x="1" y="1" width="36" height="26" rx="4" fill="none" stroke={isInactive ? '#666' : '#b8922a'} strokeWidth="0.5"/>
             <line x1="13" y1="0" x2="13" y2="28" stroke={isInactive ? '#666' : '#b8922a'} strokeWidth="1"/>
@@ -238,25 +251,16 @@ function LeaderCard({ memberNumber, familyName, memberSince, expiresAt, status, 
             <line x1="0" y1="19" x2="38" y2="19" stroke={isInactive ? '#666' : '#b8922a'} strokeWidth="1"/>
             <rect x="13" y="9" width="12" height="10" rx="2" fill={isInactive ? '#999' : '#c9a040'} stroke={isInactive ? '#666' : '#b8922a'} strokeWidth="0.5"/>
           </svg>
-          <p dir="ltr" style={{ fontFamily: 'monospace', fontSize: 17, fontWeight: 900, letterSpacing: '0.22em', color: numColor, lineHeight: 1 }}>
+
+          {/* Member number — right-aligned */}
+          <p dir="ltr" style={{ fontFamily: 'monospace', fontSize: 17, fontWeight: 900, letterSpacing: '0.22em', color: numColor, lineHeight: 1, textAlign: 'right' }}>
             {memberNumber}
           </p>
         </div>
 
-        {/* Bottom */}
+        {/* Bottom: QR+expiry left, name+year right */}
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-          <div>
-            {familyName && (
-              <p style={{ fontSize: 12, fontWeight: 900, color: isInactive ? 'rgba(200,200,200,0.6)' : 'white', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 3 }}>
-                {familyName}
-              </p>
-            )}
-            <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              {isRtl ? 'عضو رائد منذ' : 'LEADER SINCE'} {memberSince}
-            </p>
-          </div>
-
-          {/* QR corner or expiry */}
+          {/* QR + expiry — left side */}
           {qrDataUrl ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
               {expiresAt && (
@@ -272,7 +276,7 @@ function LeaderCard({ memberNumber, familyName, memberSince, expiresAt, status, 
               </p>
             </div>
           ) : (
-            <div style={{ textAlign: 'right' }}>
+            <div style={{ textAlign: 'left' }}>
               {expiresAt && (
                 <>
                   <p style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>
@@ -285,6 +289,18 @@ function LeaderCard({ memberNumber, familyName, memberSince, expiresAt, status, 
               )}
             </div>
           )}
+
+          {/* Name + year — right side */}
+          <div style={{ textAlign: 'right' }}>
+            {familyName && (
+              <p style={{ fontSize: 14, fontWeight: 900, color: isInactive ? 'rgba(200,200,200,0.6)' : 'white', marginBottom: 4 }}>
+                {familyName}
+              </p>
+            )}
+            <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              {isRtl ? `عضو رائد منذ ${memberSince}` : `LEADER SINCE ${memberSince}`}
+            </p>
+          </div>
         </div>
       </div>
     </div>

@@ -24,6 +24,7 @@ interface Perk {
   isActive: boolean;
   sortOrder: number;
   tareeqPostId: string | null;
+  forTier: string;
   createdAt: string;
 }
 
@@ -68,6 +69,7 @@ export default function AdminMembershipPage() {
   const [perkLink, setPerkLink] = useState('');
   const [perkUntil, setPerkUntil] = useState('');
   const [perkPostToTareeq, setPerkPostToTareeq] = useState(false);
+  const [perkForTier, setPerkForTier] = useState<'leader' | 'all'>('leader');
   const [perkImageFile, setPerkImageFile] = useState<File | null>(null);
   const [perkImagePreview, setPerkImagePreview] = useState<string | null>(null);
   const [perkSaving, setPerkSaving] = useState(false);
@@ -203,6 +205,7 @@ export default function AdminMembershipPage() {
     setEditingPerk(null);
     setPerkTitle(''); setPerkDesc(''); setPerkLink(''); setPerkUntil('');
     setPerkPostToTareeq(false); setPerkImageFile(null); setPerkImagePreview(null);
+    setPerkForTier('leader');
     setPerkError('');
     setShowPerkForm(true);
   }
@@ -212,6 +215,7 @@ export default function AdminMembershipPage() {
     setPerkTitle(p.title); setPerkDesc(p.description ?? '');
     setPerkLink(p.linkUrl ?? ''); setPerkUntil(p.validUntil ? p.validUntil.slice(0, 10) : '');
     setPerkPostToTareeq(false); setPerkImageFile(null);
+    setPerkForTier((p.forTier === 'all' ? 'all' : 'leader'));
     setPerkImagePreview(p.imageUrl ?? null);
     setPerkError('');
     setShowPerkForm(true);
@@ -238,6 +242,7 @@ export default function AdminMembershipPage() {
       validUntil: perkUntil || null,
       imageUrl,
       postToTareeq: perkPostToTareeq,
+      forTier: perkForTier,
     };
 
     const url = '/api/admin/membership/perks';
@@ -565,6 +570,24 @@ export default function AdminMembershipPage() {
                   style={{ padding: '9px 18px', borderRadius: 10, background: '#334155', color: '#f1f5f9', fontSize: 13, border: 'none', cursor: 'pointer' }}>
                   {perkImagePreview ? 'تغيير الصورة' : 'رفع صورة'}
                 </button>
+              </div>
+              {/* Tier selector */}
+              <div style={{ padding: '12px 14px', borderRadius: 12, background: '#0f172a', border: '1px solid #334155' }}>
+                <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 8 }}>الميزة متاحة لـ:</p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setPerkForTier('leader')}
+                    style={{ flex: 1, padding: '8px 0', borderRadius: 10, fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', background: perkForTier === 'leader' ? '#d4a843' : '#334155', color: perkForTier === 'leader' ? '#0f172a' : '#94a3b8' }}>
+                    ✦ عضو رائد فقط
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPerkForTier('all')}
+                    style={{ flex: 1, padding: '8px 0', borderRadius: 10, fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', background: perkForTier === 'all' ? '#22c55e' : '#334155', color: perkForTier === 'all' ? '#0f172a' : '#94a3b8' }}>
+                    🌿 كل الأعضاء
+                  </button>
+                </div>
               </div>
               {/* Post to Tareeq */}
               {!editingPerk && (

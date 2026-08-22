@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   const user = guard.user;
 
   const body = await req.json().catch(() => ({}));
-  const { title, description, imageUrl, linkUrl, validUntil, isActive, postToTareeq } = body;
+  const { title, description, imageUrl, linkUrl, validUntil, isActive, postToTareeq, forTier } = body;
 
   if (!title?.trim()) return NextResponse.json({ error: 'Title is required' }, { status: 400 });
 
@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
       validUntil: validUntil ? new Date(validUntil) : null,
       isActive: isActive !== false,
       tareeqPostId,
+      forTier: forTier === 'all' ? 'all' : 'leader',
     },
   });
 
@@ -137,7 +138,7 @@ export async function PUT(req: NextRequest) {
   if ('response' in guard) return guard.response;
 
   const body = await req.json().catch(() => ({}));
-  const { id, title, description, imageUrl, linkUrl, validUntil, isActive, sortOrder } = body;
+  const { id, title, description, imageUrl, linkUrl, validUntil, isActive, sortOrder, forTier } = body;
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
   const perk = await prisma.membershipPerk.update({
@@ -150,6 +151,7 @@ export async function PUT(req: NextRequest) {
       ...(validUntil !== undefined && { validUntil: validUntil ? new Date(validUntil) : null }),
       ...(isActive !== undefined && { isActive }),
       ...(sortOrder !== undefined && { sortOrder: Number(sortOrder) }),
+      ...(forTier !== undefined && { forTier: forTier === 'all' ? 'all' : 'leader' }),
     },
   });
 

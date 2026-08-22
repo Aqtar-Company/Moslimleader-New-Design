@@ -23,6 +23,7 @@ async function getMembershipPrices(): Promise<{ egyUsd: number; intlUsd: number;
 }
 
 export async function POST(req: NextRequest) {
+  try {
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -91,4 +92,8 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+  } catch (err) {
+    console.error('[renew] unexpected error', err);
+    return NextResponse.json({ error: 'حدث خطأ، حاول مرة أخرى' }, { status: 500 });
+  }
 }

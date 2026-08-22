@@ -34,6 +34,19 @@ export default function MembershipDashboard({
   const [adding, setAdding] = useState(false);
   const [showRenew, setShowRenew] = useState(false);
   const [renewError, setRenewError] = useState('');
+  const [membershipPrices, setMembershipPrices] = useState({ egyEgp: 100, egyUsd: 2.00, intlUsd: 5.00 });
+  const [membershipZone, setMembershipZone] = useState<'egypt' | 'international'>('international');
+
+  useEffect(() => {
+    fetch('/api/membership/price')
+      .then(r => r.json())
+      .then(d => {
+        setMembershipPrices({ egyEgp: d.egyEgp ?? 100, egyUsd: d.egyUsd ?? 2.00, intlUsd: d.intlUsd ?? 5.00 });
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (tz.startsWith('Africa/Cairo') || tz === 'Africa/Cairo') setMembershipZone('egypt');
+      })
+      .catch(() => {});
+  }, []);
 
   const isActive    = membership.status === 'ACTIVE';
   const isExpired   = membership.status === 'EXPIRED';
@@ -340,12 +353,18 @@ export default function MembershipDashboard({
             <p style={{ fontSize: 13, color: 'rgba(245,240,232,0.5)', marginBottom: 20 }}>
               {isRtl ? 'ستمتد عضويتك سنة كاملة بنفس الرقم' : 'Your membership extends by one year — same number'}
             </p>
+            <p style={{ fontSize: 13, color: 'rgba(245,240,232,0.6)', marginBottom: 8 }}>
+              {membershipZone === 'egypt'
+                ? `${membershipPrices.egyEgp} ج.م / سنة ($${membershipPrices.egyUsd})`
+                : `$${membershipPrices.intlUsd} USD / سنة`}
+            </p>
             <PayPalBookButton
-              createEndpoint="/api/membership/renew"
-              captureEndpoint="/api/membership/renew"
-              amountUsd={2.00}
+              createEndpoint="/api/membership/renew-create"
+              captureEndpoint="/api/membership/renew-capture"
+              amountUsd={membershipZone === 'egypt' ? membershipPrices.egyUsd : membershipPrices.intlUsd}
               isRtl={isRtl}
-              extraBody={{ action: 'capture' }}
+              createBody={{ zone: membershipZone }}
+              extraBody={{ zone: membershipZone }}
               onSuccess={() => { setShowRenew(false); router.refresh(); }}
               onError={msg => setRenewError(msg)}
             />

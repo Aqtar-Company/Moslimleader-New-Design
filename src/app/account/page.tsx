@@ -72,6 +72,7 @@ export default function AccountPage() {
   const [applyStep, setApplyStep] = useState<'idle' | 'form' | 'paypal' | 'instapay' | 'pending' | 'success'>('idle');
   const [applyFamilyName, setApplyFamilyName] = useState('');
   const [applyLoading, setApplyLoading] = useState(false);
+  const [renewStep, setRenewStep] = useState<'idle' | 'paypal' | 'instapay' | 'success'>('idle');
 
   // Free media downloads
   const [freeMedia, setFreeMedia] = useState<FreeMediaItem[]>([]);
@@ -1495,12 +1496,97 @@ export default function AccountPage() {
                 </div>
               )}
 
-              {/* Status message for expired/pending */}
+              {/* Status actions for expired/cancelled/pending */}
               {membership.status !== 'ACTIVE' && (
-                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-800">
-                  {membership.status === 'EXPIRED'
-                    ? (isRtl ? 'عضويتك منتهية. تواصل معنا لتجديدها والاستمرار في الاستمتاع بالامتيازات.' : 'Your membership has expired. Contact us to renew and continue enjoying benefits.')
-                    : (isRtl ? 'عضويتك قيد المراجعة. سيتم تفعيلها قريباً.' : 'Your membership is under review. It will be activated soon.')}
+                <div className="space-y-3 mt-2">
+                  {(membership.status === 'EXPIRED' || membership.status === 'CANCELLED') && renewStep === 'idle' && (
+                    <>
+                      <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-sm text-red-800 text-center">
+                        {membership.status === 'EXPIRED'
+                          ? (isRtl ? 'عضويتك منتهية الصلاحية. جدّد الآن للاستمرار في الاستمتاع بالامتيازات.' : 'Your membership has expired. Renew now to continue enjoying benefits.')
+                          : (isRtl ? 'عضويتك ملغاة. يمكنك تفعيلها مجدداً.' : 'Your membership is cancelled. You can reactivate it.')}
+                      </div>
+                      <button
+                        onClick={() => setRenewStep('paypal')}
+                        className="w-full py-3 rounded-xl font-black text-sm text-white flex items-center justify-center gap-2 transition active:scale-[0.98]"
+                        style={{ background: 'linear-gradient(135deg,#1a3a2e,#2d5a40)' }}
+                      >
+                        🔄 {isRtl ? (membership.status === 'EXPIRED' ? 'تجديد العضوية' : 'تفعيل العضوية') : (membership.status === 'EXPIRED' ? 'Renew Membership' : 'Reactivate Membership')}
+                        <span className="opacity-75 font-normal">
+                          — {membershipZone === 'egypt' ? `${membershipPrices.egyEgp} ج.م` : `$${membershipPrices.intlUsd}`}
+                        </span>
+                      </button>
+                    </>
+                  )}
+
+                  {(membership.status === 'EXPIRED' || membership.status === 'CANCELLED') && renewStep === 'paypal' && (
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+                      <h3 className="font-black text-gray-900">{isRtl ? 'تجديد العضوية' : 'Renew Membership'}</h3>
+                      <p className="text-sm text-gray-500">
+                        {membershipZone === 'egypt'
+                          ? (isRtl ? `سيُخصم ما يعادل ${membershipPrices.egyEgp} جنيه ($${membershipPrices.egyUsd})` : `~${membershipPrices.egyEgp} EGP ($${membershipPrices.egyUsd})`)
+                          : `$${membershipPrices.intlUsd} USD`}
+                      </p>
+                      <PayPalBookButton
+                        createEndpoint="/api/membership/renew"
+                        captureEndpoint="/api/membership/renew"
+                        amountUsd={membershipZone === 'egypt' ? membershipPrices.egyUsd : membershipPrices.intlUsd}
+                        createBody={{ action: 'create', zone: membershipZone }}
+                        extraBody={{ action: 'capture', zone: membershipZone }}
+                        isRtl={isRtl}
+                        onSuccess={() => {
+                          setRenewStep('success');
+                          fetch('/api/membership', { credentials: 'include' })
+                            .then(r => r.json()).then(d => setMembership(d.membership ?? null)).catch(() => {});
+                        }}
+                        onError={msg => alert(isRtl ? `خطأ في الدفع: ${msg}` : `Payment error: ${msg}`)}
+                      />
+                      {membershipPrices.instapayNumber && membershipZone === 'egypt' && (
+                        <button
+                          onClick={() => setRenewStep('instapay')}
+                          className="w-full py-3 rounded-xl font-bold text-sm border border-gray-200 text-gray-700 flex items-center justify-center gap-2 bg-gray-50 transition active:scale-[0.98]"
+                        >
+                          💳 {isRtl ? 'دفع عبر إنستاباي / محفظة' : 'Pay via InstaPay / Wallet'}
+                        </button>
+                      )}
+                      <button onClick={() => setRenewStep('idle')} className="w-full py-2 text-sm text-gray-400 text-center">
+                        {isRtl ? 'رجوع' : 'Back'}
+                      </button>
+                    </div>
+                  )}
+
+                  {(membership.status === 'EXPIRED' || membership.status === 'CANCELLED') && renewStep === 'instapay' && (
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+                      <h3 className="font-black text-gray-900">{isRtl ? 'التجديد عبر إنستاباي' : 'Renew via InstaPay'}</h3>
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
+                        <p className="text-xs text-emerald-600 mb-1">{isRtl ? 'رقم إنستاباي / ووليت' : 'InstaPay / Wallet number'}</p>
+                        <p className="text-2xl font-black text-emerald-700 tracking-widest" dir="ltr">{membershipPrices.instapayNumber}</p>
+                        <p className="text-xs text-emerald-600 mt-1">{isRtl ? 'باسم: مسلم ليدر' : 'Name: Moslim Leader'}</p>
+                        <p className="text-xs text-emerald-700 font-bold mt-2">{isRtl ? `المبلغ: ${membershipPrices.egyEgp} ج.م` : `Amount: ${membershipPrices.egyEgp} EGP`}</p>
+                      </div>
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
+                        {isRtl ? 'بعد التحويل، أرسل صورة الإيصال عبر واتساب. سيتم تفعيل العضوية خلال ٢٤ ساعة.' : 'After transfer, send the receipt via WhatsApp. Membership will be activated within 24 hours.'}
+                      </div>
+                      <button onClick={() => setRenewStep('paypal')} className="w-full py-2 text-sm text-gray-400 text-center">
+                        {isRtl ? 'رجوع' : 'Back'}
+                      </button>
+                    </div>
+                  )}
+
+                  {(membership.status === 'EXPIRED' || membership.status === 'CANCELLED') && renewStep === 'success' && (
+                    <div className="bg-green-50 border border-green-200 rounded-2xl p-6 text-center space-y-2">
+                      <div className="text-4xl">✅</div>
+                      <p className="font-black text-green-800">{isRtl ? 'تم تجديد عضويتك بنجاح!' : 'Membership renewed successfully!'}</p>
+                      <p className="text-sm text-green-600">{isRtl ? 'تمتع بجميع امتيازات العضوية.' : 'Enjoy all membership benefits.'}</p>
+                    </div>
+                  )}
+
+                  {membership.status === 'PENDING' && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-800 text-center">
+                      <p className="font-bold mb-1">⏳ {isRtl ? 'جاري مراجعة طلبك' : 'Reviewing your request'}</p>
+                      <p>{isRtl ? 'سيتم تفعيل عضويتك بعد التحقق من الدفع.' : 'Your membership will be activated after payment verification.'}</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

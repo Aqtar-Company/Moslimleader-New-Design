@@ -9,8 +9,8 @@ async function getDiscountRates(): Promise<{ leaderDiscountPct: number; communit
   }).catch(() => []);
   const map = Object.fromEntries(settings.map(s => [s.key, s.value as string]));
   return {
-    leaderDiscountPct:    parseInt(map['membership-discount-leader']    ?? '', 10) || 15,
-    communityDiscountPct: parseInt(map['membership-discount-community'] ?? '', 10) || 5,
+    leaderDiscountPct:    (() => { const v = parseInt(map['membership-discount-leader']    ?? '', 10); return Number.isNaN(v) ? 15 : v; })(),
+    communityDiscountPct: (() => { const v = parseInt(map['membership-discount-community'] ?? '', 10); return Number.isNaN(v) ? 5  : v; })(),
   };
 }
 

@@ -25,7 +25,7 @@ export async function GET() {
     egyUsd:               parseFloat(map['membership-price-egy-usd']    ?? '')     || DEFAULTS.egyUsd,
     intlUsd:              parseFloat(map['membership-price-intl-usd']   ?? '')     || DEFAULTS.intlUsd,
     instapayNumber:       (map['membership-instapay-number'] ?? '') || DEFAULTS.instapayNumber,
-    leaderDiscountPct:    parseInt(map['membership-discount-leader']     ?? '', 10) || DEFAULTS.leaderDiscountPct,
-    communityDiscountPct: parseInt(map['membership-discount-community'] ?? '', 10) || DEFAULTS.communityDiscountPct,
+    leaderDiscountPct:    (() => { const v = parseInt(map['membership-discount-leader']    ?? '', 10); return Number.isNaN(v) ? DEFAULTS.leaderDiscountPct    : v; })(),
+    communityDiscountPct: (() => { const v = parseInt(map['membership-discount-community'] ?? '', 10); return Number.isNaN(v) ? DEFAULTS.communityDiscountPct : v; })(),
   });
 }

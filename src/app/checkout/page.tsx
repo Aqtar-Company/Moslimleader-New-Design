@@ -190,8 +190,8 @@ export default function CheckoutPage() {
         const m = d.membership;
         setIsMember(m?.status === 'ACTIVE' && m?.expiresAt && new Date(m.expiresAt) > new Date());
         setHasCommunityCard(!!d.communityMemberNumber);
-        if (d.leaderDiscountPct)    setLeaderDiscountPct(d.leaderDiscountPct);
-        if (d.communityDiscountPct) setCommunityDiscountPct(d.communityDiscountPct);
+        if (d.leaderDiscountPct    != null) setLeaderDiscountPct(d.leaderDiscountPct);
+        if (d.communityDiscountPct != null) setCommunityDiscountPct(d.communityDiscountPct);
       })
       .catch(() => {});
   }, [user]);
@@ -449,7 +449,7 @@ export default function CheckoutPage() {
     try {
     // Capture snapshot and items BEFORE any async work
     const orderItems = [...items];
-    setSnapshot({ items: orderItems, total, discount, shippingCost, shippingCurrency, currency });
+    setSnapshot({ items: orderItems, total, discount: discount + membershipDiscount + pointsDiscount, shippingCost, shippingCurrency, currency });
 
     // Save order to database via API
     let orderOk = false;
@@ -695,7 +695,9 @@ export default function CheckoutPage() {
             </div>
             {snapDiscount > 0 && (
               <div className="flex justify-between text-green-600">
-                <span>{isRtl ? `خصم (${coupon?.code})` : `Discount (${coupon?.code})`}</span>
+                <span>{isRtl
+                  ? (coupon?.code ? `خصم (${coupon.code})` : 'خصم')
+                  : (coupon?.code ? `Discount (${coupon.code})` : 'Discount')}</span>
                 <span className="font-semibold">−{snapDiscount} {snapCurrency}</span>
               </div>
             )}

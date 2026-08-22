@@ -124,8 +124,10 @@ export async function POST(req: NextRequest) {
       prisma.user.findUnique({ where: { id: auth.userId }, select: { communityMemberNumber: true } }).catch(() => null),
     ]);
     const discountMapPp = Object.fromEntries(discountSettingsPp.map(s => [s.key, s.value as string]));
-    const leaderPctPp    = (parseInt(discountMapPp['membership-discount-leader']    ?? '', 10) || 15) / 100;
-    const communityPctPp = (parseInt(discountMapPp['membership-discount-community'] ?? '', 10) || 5)  / 100;
+    const leaderRawPp    = parseInt(discountMapPp['membership-discount-leader']    ?? '', 10);
+    const communityRawPp = parseInt(discountMapPp['membership-discount-community'] ?? '', 10);
+    const leaderPctPp    = (Number.isNaN(leaderRawPp)    ? 15 : leaderRawPp)    / 100;
+    const communityPctPp = (Number.isNaN(communityRawPp) ? 5  : communityRawPp) / 100;
     if (membershipPp?.status === 'ACTIVE' && membershipPp.expiresAt && membershipPp.expiresAt > nowPp) {
       membershipDiscountUsd = Math.round(totalUsd * leaderPctPp * 100) / 100;
       discountUsd += membershipDiscountUsd;

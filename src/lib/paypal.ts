@@ -45,10 +45,24 @@ export async function createPayPalOrder(amount: number, currency: string, refere
       purchase_units: [
         {
           reference_id: referenceId,
+          description: 'Moslim Leader Family Membership',
+          soft_descriptor: 'MoslimLeader',
           amount: {
             currency_code: currency,
             value: amount.toFixed(2),
+            breakdown: {
+              item_total: { currency_code: currency, value: amount.toFixed(2) },
+            },
           },
+          items: [
+            {
+              name: 'Family Membership',
+              description: 'Annual Family Membership - Moslim Leader',
+              unit_amount: { currency_code: currency, value: amount.toFixed(2) },
+              quantity: '1',
+              category: 'DIGITAL_GOODS',
+            },
+          ],
         },
       ],
       application_context: {

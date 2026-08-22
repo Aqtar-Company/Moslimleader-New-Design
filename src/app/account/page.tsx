@@ -1627,11 +1627,11 @@ export default function AccountPage() {
                           : `$${membershipPrices.intlUsd} USD`}
                       </p>
                       <PayPalBookButton
-                        createEndpoint="/api/membership/renew"
-                        captureEndpoint="/api/membership/renew"
+                        createEndpoint="/api/membership/renew-create"
+                        captureEndpoint="/api/membership/renew-capture"
                         amountUsd={membershipZone === 'egypt' ? membershipPrices.egyUsd : membershipPrices.intlUsd}
-                        createBody={{ action: 'create', zone: membershipZone }}
-                        extraBody={{ action: 'capture', zone: membershipZone }}
+                        createBody={{ zone: membershipZone }}
+                        extraBody={{ zone: membershipZone }}
                         isRtl={isRtl}
                         onSuccess={() => {
                           setRenewStep('success');

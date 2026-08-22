@@ -101,12 +101,7 @@ function CommunityCard({ memberNumber, joinedYear, qrDataUrl, isRtl }: Community
         </div>
         <div style={{ width: 1, height: 36, background: 'rgba(255,255,255,0.1)', flexShrink: 0 }}/>
         {/* Logo */}
-        <svg width={52} height={52} viewBox="0 0 52 52" fill="none" style={{ flexShrink: 0 }}>
-          <polygon points="26,2 48,14 48,38 26,50 4,38 4,14" fill="#162e1e" stroke={green} strokeWidth="1.4"/>
-          <polygon points="26,8 42,17 42,35 26,44 10,35 10,17" fill="none" stroke="rgba(125,217,160,0.22)" strokeWidth="0.6"/>
-          <text x="26" y="32" textAnchor="middle" fontFamily="serif" fontWeight="900" fontSize="16" fill={green}>M</text>
-          <circle cx="26" cy="17" r="3.2" fill={green} opacity="0.85"/>
-        </svg>
+        <img src="/logo-mobile.png" alt="Moslim Leader" style={{ height: 50, width: 'auto', flexShrink: 0 }} />
       </div>
 
       {/* CENTER-LEFT: member number */}
@@ -252,12 +247,7 @@ function LeaderCard({ memberNumber, memberSince, expiresAt, status, qrDataUrl, i
         </div>
         <div style={{ width: 1, height: 36, background: 'rgba(255,255,255,0.08)', flexShrink: 0 }}/>
         {/* Logo */}
-        <svg width={52} height={52} viewBox="0 0 52 52" fill="none" style={{ flexShrink: 0, opacity: isInactive ? 0.38 : 1 }}>
-          <polygon points="26,2 48,14 48,38 26,50 4,38 4,14" fill={logoFill} stroke={logoStroke} strokeWidth="1.4"/>
-          <polygon points="26,8 42,17 42,35 26,44 10,35 10,17" fill="none" stroke={isInactive ? 'rgba(180,150,80,0.2)' : 'rgba(212,168,83,0.22)'} strokeWidth="0.7"/>
-          <text x="26" y="32" textAnchor="middle" fontFamily="serif" fontWeight="900" fontSize="16" fill={logoStroke}>M</text>
-          <circle cx="26" cy="17" r="3.2" fill={logoStroke} opacity="0.85"/>
-        </svg>
+        <img src="/logo-mobile.png" alt="Moslim Leader" style={{ height: 50, width: 'auto', flexShrink: 0, opacity: isInactive ? 0.38 : 1 }} />
       </div>
 
       {/* CHIP (center-left) */}

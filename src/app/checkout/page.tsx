@@ -175,9 +175,13 @@ export default function CheckoutPage() {
   const { total, currency, currencyEn } = getCartRegionalTotal(items);
   const discount = coupon ? Math.round(total * coupon.pct / 100) : 0;
 
-  // Membership discount (15% auto-applied server-side, shown here for UX)
+  // Membership discount — auto-applied server-side, shown here for UX
   const [isMember, setIsMember] = useState(false);
-  const membershipDiscount = isMember ? Math.round(total * 0.15) : 0;
+  const [hasCommunityCard, setHasCommunityCard] = useState(false);
+  const [leaderDiscountPct, setLeaderDiscountPct] = useState(15);
+  const [communityDiscountPct, setCommunityDiscountPct] = useState(5);
+  const activeDiscountPct = isMember ? leaderDiscountPct : hasCommunityCard ? communityDiscountPct : 0;
+  const membershipDiscount = activeDiscountPct > 0 ? Math.round(total * activeDiscountPct / 100) : 0;
   useEffect(() => {
     if (!user) return;
     fetch('/api/membership', { credentials: 'include' })
@@ -185,6 +189,9 @@ export default function CheckoutPage() {
       .then(d => {
         const m = d.membership;
         setIsMember(m?.status === 'ACTIVE' && m?.expiresAt && new Date(m.expiresAt) > new Date());
+        setHasCommunityCard(!!d.communityMemberNumber);
+        if (d.leaderDiscountPct)    setLeaderDiscountPct(d.leaderDiscountPct);
+        if (d.communityDiscountPct) setCommunityDiscountPct(d.communityDiscountPct);
       })
       .catch(() => {});
   }, [user]);
@@ -1411,9 +1418,13 @@ export default function CheckoutPage() {
                 <span>{L.subtotal}</span>
                 <span className="font-semibold text-gray-900">{total} {L.currency}</span>
               </div>
-              {isMember && membershipDiscount > 0 && (
+              {membershipDiscount > 0 && (
                 <div className="flex justify-between text-amber-600">
-                  <span className="font-bold">🏅 {isRtl ? 'خصم العضوية (١٥٪)' : 'Membership Discount (15%)'}</span>
+                  <span className="font-bold">
+                    {isMember
+                      ? (isRtl ? `🏅 خصم العضو الرائد (${leaderDiscountPct}٪)` : `🏅 Leader Discount (${leaderDiscountPct}%)`)
+                      : (isRtl ? `🌿 خصم عضو المجتمع (${communityDiscountPct}٪)` : `🌿 Community Discount (${communityDiscountPct}%)`)}
+                  </span>
                   <span className="font-semibold">−{membershipDiscount} {L.currency}</span>
                 </div>
               )}

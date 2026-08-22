@@ -81,11 +81,13 @@ export default function AdminMembershipPage() {
   const [msg, setMsg] = useState('');
 
   // Pricing settings
-  const [priceEgyEgp,     setPriceEgyEgp]     = useState('100');
-  const [priceEgyUsd,     setPriceEgyUsd]      = useState('2.00');
-  const [priceIntlUsd,    setPriceIntlUsd]     = useState('5.00');
-  const [instapayNumber,  setInstapayNumber]   = useState('');
-  const [priceSaving,     setPriceSaving]      = useState(false);
+  const [priceEgyEgp,          setPriceEgyEgp]          = useState('100');
+  const [priceEgyUsd,          setPriceEgyUsd]           = useState('2.00');
+  const [priceIntlUsd,         setPriceIntlUsd]          = useState('5.00');
+  const [instapayNumber,       setInstapayNumber]        = useState('');
+  const [leaderDiscountPct,    setLeaderDiscountPct]     = useState('15');
+  const [communityDiscountPct, setCommunityDiscountPct]  = useState('5');
+  const [priceSaving,          setPriceSaving]           = useState(false);
 
   // Grant membership state
   const [grantEmail,      setGrantEmail]       = useState('');
@@ -111,16 +113,20 @@ export default function AdminMembershipPage() {
       setPriceEgyUsd(String(d.egyUsd));
       setPriceIntlUsd(String(d.intlUsd));
       setInstapayNumber(d.instapayNumber ?? '');
+      setLeaderDiscountPct(String(d.leaderDiscountPct ?? 15));
+      setCommunityDiscountPct(String(d.communityDiscountPct ?? 5));
     }
   }
 
   async function savePrices() {
     setPriceSaving(true);
     const keys = [
-      { key: 'membership-price-egy-egp',    value: priceEgyEgp.trim() },
-      { key: 'membership-price-egy-usd',    value: priceEgyUsd.trim() },
-      { key: 'membership-price-intl-usd',   value: priceIntlUsd.trim() },
-      { key: 'membership-instapay-number',  value: instapayNumber.trim() },
+      { key: 'membership-price-egy-egp',       value: priceEgyEgp.trim() },
+      { key: 'membership-price-egy-usd',        value: priceEgyUsd.trim() },
+      { key: 'membership-price-intl-usd',       value: priceIntlUsd.trim() },
+      { key: 'membership-instapay-number',      value: instapayNumber.trim() },
+      { key: 'membership-discount-leader',      value: leaderDiscountPct.trim() },
+      { key: 'membership-discount-community',   value: communityDiscountPct.trim() },
     ];
     await Promise.allSettled(
       keys.map(({ key, value }) =>
@@ -653,6 +659,27 @@ export default function AdminMembershipPage() {
                   style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#0f172a', border: '1px solid #334155', color: '#f1f5f9', fontSize: 15, fontWeight: 700, outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <p style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>السعر الموحد لجميع الدول خارج مصر — يُعرض ويُسحب بالدولار</p>
+            </div>
+
+            {/* Divider */}
+            <div style={{ height: 1, background: '#334155', marginBottom: 20 }} />
+
+            {/* Discount rates */}
+            <div style={{ marginBottom: 28 }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9', marginBottom: 4 }}>🏷️ نسب الخصم على المنتجات</p>
+              <p style={{ fontSize: 11, color: '#64748b', marginBottom: 14 }}>تُطبَّق تلقائياً على الطلبات — العضو الرائد له الأولوية إذا كان لديه الاثنتان</p>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 11, color: '#d4a843', display: 'block', marginBottom: 4 }}>✦ خصم العضو الرائد (%)</label>
+                  <input type="number" min="0" max="100" value={leaderDiscountPct} onChange={e => setLeaderDiscountPct(e.target.value)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#0f172a', border: '1px solid #334155', color: '#f1f5f9', fontSize: 15, fontWeight: 700, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 11, color: '#7dd9a0', display: 'block', marginBottom: 4 }}>🌿 خصم عضو المجتمع (%)</label>
+                  <input type="number" min="0" max="100" value={communityDiscountPct} onChange={e => setCommunityDiscountPct(e.target.value)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#0f172a', border: '1px solid #334155', color: '#f1f5f9', fontSize: 15, fontWeight: 700, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+              </div>
             </div>
 
             <button onClick={savePrices} disabled={priceSaving}

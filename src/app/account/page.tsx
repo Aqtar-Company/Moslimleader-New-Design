@@ -1190,33 +1190,21 @@ export default function AccountPage() {
                     </div>
                   )}
 
-                  {/* Leader card teaser — blurred preview + unlock CTA */}
-                  <div className="relative mb-5" style={{ borderRadius: 20, overflow: 'hidden' }}>
-                    <div style={{ filter: 'blur(3px)', opacity: 0.55, pointerEvents: 'none' }}>
-                      <MembershipCard
-                        variant="leader"
-                        memberNumber="ML-026-00001"
-                        memberSince={new Date().getFullYear()}
-                        status="ACTIVE"
-                        isRtl={isRtl}
-                      />
-                    </div>
-                    <div style={{
-                      position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
-                      alignItems: 'center', justifyContent: 'center', gap: 10,
-                      background: 'rgba(13,35,24,0.55)', backdropFilter: 'blur(1px)',
-                    }}>
-                      <svg width="28" height="28" viewBox="0 0 24 24" fill="#D4A853">
-                        <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.5L12 17l-6.2 4.4 2.4-7.5L2 9.4h7.6z"/>
-                      </svg>
-                      <p style={{ fontSize: 13, fontWeight: 900, color: '#fff', textAlign: 'center' }}>
-                        {isRtl ? 'ترقَّ إلى عضو رائد للحصول على البطاقة الذهبية' : 'Upgrade to Leader for the gold card'}
-                      </p>
-                      <button onClick={() => setApplyStep('form')}
-                        style={{ background: '#D4A853', color: '#1a1a1a', fontWeight: 900, fontSize: 12, padding: '8px 20px', borderRadius: 20, border: 'none', cursor: 'pointer' }}>
-                        {isRtl ? 'ترقَّ الآن ←' : 'Upgrade Now →'}
-                      </button>
-                    </div>
+                  {/* Upgrade CTA */}
+                  <div className="mb-5" style={{ borderRadius: 18, border: '1.5px solid rgba(255,204,51,0.35)', background: 'linear-gradient(135deg,#1a1200 0%,#241a00 100%)', padding: '18px 18px 16px', textAlign: 'center' }}>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="#FFCC33" style={{ marginBottom: 8 }}>
+                      <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.5L12 17l-6.2 4.4 2.4-7.5L2 9.4h7.6z"/>
+                    </svg>
+                    <p style={{ fontSize: 14, fontWeight: 900, color: '#fff', marginBottom: 4 }}>
+                      {isRtl ? 'ترقَّ إلى عضو رائد' : 'Upgrade to Leader Membership'}
+                    </p>
+                    <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginBottom: 14, lineHeight: 1.6 }}>
+                      {isRtl ? 'احصل على البطاقة الذهبية ومزايا حصرية للأعضاء الرواد' : 'Get the gold card and exclusive Leader benefits'}
+                    </p>
+                    <button onClick={() => setApplyStep('form')}
+                      style={{ width: '100%', padding: '13px 0', borderRadius: 14, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#FFCC33 0%,#f5b800 100%)', color: '#1a1000', fontWeight: 900, fontSize: 15, boxShadow: '0 4px 18px rgba(255,204,51,0.4)' }}>
+                      {isRtl ? 'ترقَّ إلى عضو رائد ←' : 'Upgrade to Leader →'}
+                    </button>
                   </div>
 
                   {/* Stats row */}
@@ -1330,7 +1318,7 @@ export default function AccountPage() {
                       </div>
                       <button onClick={() => setApplyStep('form')}
                         className="w-full py-3 rounded-xl font-black text-sm transition active:scale-95"
-                        style={{ background: 'linear-gradient(135deg,#D4A853,#b8922a)', color: '#1a0800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                        style={{ background: 'linear-gradient(135deg,#FFCC33,#f5b800)', color: '#1a0800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.5L12 17l-6.2 4.4 2.4-7.5L2 9.4h7.6z"/></svg>
                         {isRtl ? 'ترقَّ إلى عضو رائد ←' : 'Upgrade to Leader →'}
                       </button>
@@ -1529,23 +1517,23 @@ export default function AccountPage() {
                             { label: isRtl ? 'نفس رقم عضويتك المحفوظ' : 'Same membership number preserved' },
                           ].map((item, i) => (
                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="#D4A853"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.5L12 17l-6.2 4.4 2.4-7.5L2 9.4h7.6z"/></svg>
-                              <p style={{ fontSize: 12, color: 'rgba(245,240,232,0.65)' }}>{item.label}</p>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="#FFCC33"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.5L12 17l-6.2 4.4 2.4-7.5L2 9.4h7.6z"/></svg>
+                              <p style={{ fontSize: 12, color: 'rgba(245,240,232,0.88)' }}>{item.label}</p>
                             </div>
                           ))}
                         </div>
-                        {/* CTA */}
-                        <div style={{ background: 'rgba(212,168,67,0.06)', padding: '12px 18px 16px', textAlign: 'center' }}>
+                        {/* CTA — two buttons side by side */}
+                        <div style={{ background: 'rgba(212,168,67,0.06)', padding: '12px 18px 16px' }}>
                           <button
                             onClick={() => {
                               setRenewStep('paypal');
                               setTimeout(() => renewSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
                             }}
                             style={{
-                              width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', cursor: 'pointer',
-                              background: 'linear-gradient(135deg, #D4A853 0%, #c49530 100%)',
+                              width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', cursor: 'pointer', marginBottom: 10,
+                              background: 'linear-gradient(135deg, #FFCC33 0%, #f5b800 100%)',
                               color: '#1a0800', fontWeight: 900, fontSize: 15,
-                              boxShadow: '0 4px 20px rgba(212,168,83,0.35)',
+                              boxShadow: '0 4px 20px rgba(255,204,51,0.4)',
                               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
                             }}
                           >
@@ -1556,15 +1544,26 @@ export default function AccountPage() {
                               ? (isCancelled ? 'إعادة تفعيل عضويتي الرائدة' : 'جدّد عضويتي الرائدة الآن')
                               : (isCancelled ? 'Reactivate Leader Membership' : 'Renew Leader Membership Now')}
                           </button>
-                          <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.3)', marginTop: 8 }}>
+                          <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.5)', textAlign: 'center', marginBottom: 10 }}>
                             {isRtl
                               ? `${membershipZone === 'egypt' ? `${membershipPrices.egyEgp} ج.م` : `$${membershipPrices.intlUsd}`} / سنة · رقمك: ${membership.membershipNumber}`
                               : `${membershipZone === 'egypt' ? `${membershipPrices.egyEgp} EGP` : `$${membershipPrices.intlUsd}`} / year · #${membership.membershipNumber}`}
                           </p>
+                          {/* Green community fallback button */}
                           <button
                             onClick={() => setShowCommunityFallback(true)}
-                            style={{ marginTop: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'rgba(245,240,232,0.4)', textDecoration: 'underline', textUnderlineOffset: 3 }}>
-                            {isRtl ? 'أو اكتفِ بعضويتك المجتمعية المجانية' : 'Or keep your free Community membership'}
+                            style={{
+                              width: '100%', padding: '13px 0', borderRadius: 14, border: 'none', cursor: 'pointer',
+                              background: 'linear-gradient(135deg, #1b3a2a 0%, #2d5a40 100%)',
+                              color: '#fff', fontWeight: 800, fontSize: 13,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                              boxShadow: '0 2px 12px rgba(45,90,64,0.4)',
+                            }}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6ee7a8" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                              <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                            {isRtl ? 'الاكتفاء بالعضوية المجتمعية' : 'Stay as Community Member'}
                           </button>
                         </div>
                       </div>
@@ -1572,22 +1571,30 @@ export default function AccountPage() {
 
                     {/* Community fallback — shown when user chooses to stay as community member */}
                     {isInactive && showCommunityFallback && (
-                      <div style={{ marginTop: 14, borderRadius: 18, overflow: 'hidden', border: '1px solid rgba(45,90,64,0.25)', background: 'linear-gradient(135deg,#1a3a2e,#2d5a40)' }}>
-                        <div style={{ padding: '16px 18px 14px', textAlign: 'center' }}>
-                          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="2" strokeLinecap="round">
-                              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
-                            </svg>
+                      <div style={{ marginTop: 14 }}>
+                        {/* Community card */}
+                        {communityMemberNumber && (
+                          <div className="mb-4">
+                            <MembershipCard
+                              variant="community"
+                              memberNumber={communityMemberNumber}
+                              name={user.name}
+                              joinedYear={new Date().getFullYear()}
+                              qrDataUrl={communityQr}
+                              isRtl={isRtl}
+                            />
                           </div>
-                          <p style={{ fontSize: 14, fontWeight: 900, color: '#fff', marginBottom: 4 }}>
+                        )}
+                        <div style={{ borderRadius: 14, background: 'linear-gradient(135deg,#1a3a2e,#2d5a40)', padding: '14px 16px', textAlign: 'center' }}>
+                          <p style={{ fontSize: 13, fontWeight: 900, color: '#fff', marginBottom: 4 }}>
                             {isRtl ? 'أنت عضو في مجتمع مسلم ليدر' : 'You are a Moslim Leader Community Member'}
                           </p>
-                          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, marginBottom: 14 }}>
-                            {isRtl ? 'عضويتك المجتمعية مفعّلة — يمكنك الترقي لعضو رائد في أي وقت' : 'Your community membership is active — you can upgrade to Leader anytime'}
+                          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, marginBottom: 12 }}>
+                            {isRtl ? 'عضويتك المجتمعية مفعّلة — يمكنك الترقي لعضو رائد في أي وقت' : 'Your community membership is active — upgrade anytime'}
                           </p>
                           <button
                             onClick={() => setShowCommunityFallback(false)}
-                            style={{ fontSize: 12, color: 'rgba(212,168,83,0.8)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+                            style={{ fontSize: 12, color: 'rgba(255,204,51,0.85)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}>
                             {isRtl ? 'عرض خيار التجديد الرائد' : 'Show Leader renewal option'}
                           </button>
                         </div>

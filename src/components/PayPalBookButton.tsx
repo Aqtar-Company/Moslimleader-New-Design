@@ -40,14 +40,22 @@ export default function PayPalBookButton({
       credentials: 'include',
       ...(createBody ? { body: JSON.stringify(createBody) } : {}),
     });
-    const data = await res.json();
-    if (!res.ok) {
-      const msg = data.error || 'Failed to create PayPal order';
+    let data: Record<string, unknown> = {};
+    try {
+      data = await res.json();
+    } catch {
+      const msg = isRtl ? 'خطأ في الخادم، حاول مرة أخرى' : 'Server error, please try again';
       createErrorFired.current = true;
       onError(msg);
       throw new Error(msg);
     }
-    return data.paypalOrderId;
+    if (!res.ok) {
+      const msg = (data.error as string) || 'Failed to create PayPal order';
+      createErrorFired.current = true;
+      onError(msg);
+      throw new Error(msg);
+    }
+    return data.paypalOrderId as string;
   };
 
   const onApprove = async (data: { orderID: string }) => {
@@ -59,9 +67,14 @@ export default function PayPalBookButton({
         credentials: 'include',
         body: JSON.stringify({ paypalOrderId: data.orderID, ...extraBody }),
       });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || 'Payment capture failed');
-      onSuccess(result.orderId);
+      let result: Record<string, unknown> = {};
+      try {
+        result = await res.json();
+      } catch {
+        throw new Error(isRtl ? 'خطأ في الخادم، حاول مرة أخرى' : 'Server error, please try again');
+      }
+      if (!res.ok) throw new Error((result.error as string) || 'Payment capture failed');
+      onSuccess((result.orderId as string) ?? '');
     } catch (err) {
       onError(err instanceof Error ? err.message : 'حدث خطأ في تأكيد الدفع');
     } finally {

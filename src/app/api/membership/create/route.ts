@@ -43,61 +43,62 @@ async function generateMembershipNumber(): Promise<string> {
 }
 
 export async function POST(req: NextRequest) {
-  const user = await getAuthUser().catch(() => null);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const rl = checkRateLimit(`membership-create:${user.userId}`, 5, 60 * 60 * 1000);
-  if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
-
-  const { familyName, zone } = await req.json().catch(() => ({}));
-  const prices = await getMembershipPrices();
-  const amountUsd = zone === 'egypt' ? prices.egyUsd : prices.intlUsd;
-
-  // If already has active membership, deny
-  const existing = await prisma.familyMembership.findUnique({ where: { ownerUserId: user.userId } });
-  if (existing && existing.status === 'ACTIVE') {
-    return NextResponse.json({ error: 'Already an active member' }, { status: 409 });
-  }
-
-  let paypalOrderId: string;
   try {
-    const paypalOrder = await createPayPalOrder(amountUsd, 'USD', 'Moslim Leader Family Membership');
-    paypalOrderId = paypalOrder.id as string;
-  } catch (err) {
-    console.error('[membership-create] PayPal create order failed', err);
-    return NextResponse.json({ error: 'فشل إنشاء طلب الدفع مع PayPal' }, { status: 502 });
-  }
+    const user = await getAuthUser().catch(() => null);
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  if (!existing) {
-    // Create pending membership record
-    const membershipNumber = await generateMembershipNumber();
-    let qrToken = generateQRToken();
-    // Ensure QR token uniqueness
-    while (await prisma.familyMembership.findUnique({ where: { qrToken } })) {
-      qrToken = generateQRToken();
+    const rl = checkRateLimit(`membership-create:${user.userId}`, 5, 60 * 60 * 1000);
+    if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
+
+    const { familyName, zone } = await req.json().catch(() => ({}));
+    const prices = await getMembershipPrices();
+    const amountUsd = zone === 'egypt' ? prices.egyUsd : prices.intlUsd;
+
+    const existing = await prisma.familyMembership.findUnique({ where: { ownerUserId: user.userId } });
+    if (existing && existing.status === 'ACTIVE') {
+      return NextResponse.json({ error: 'Already an active member' }, { status: 409 });
     }
-    await prisma.familyMembership.create({
-      data: {
-        ownerUserId: user.userId,
-        membershipNumber,
-        qrToken,
-        familyName: familyName?.trim() || null,
-        memberSince: new Date().getFullYear(),
-        status: 'PENDING',
-        paypalOrderId,
-      },
-    });
-  } else {
-    // Update existing (expired/cancelled) with new paypal order
-    await prisma.familyMembership.update({
-      where: { id: existing.id },
-      data: {
-        familyName: familyName?.trim() || existing.familyName,
-        paypalOrderId,
-        status: 'PENDING',
-      },
-    });
-  }
 
-  return NextResponse.json({ paypalOrderId, amountUsd });
+    let paypalOrderId: string;
+    try {
+      const paypalOrder = await createPayPalOrder(amountUsd, 'USD', 'Moslim Leader Family Membership');
+      paypalOrderId = paypalOrder.id as string;
+    } catch (err) {
+      console.error('[membership-create] PayPal create order failed', err);
+      return NextResponse.json({ error: 'فشل إنشاء طلب الدفع مع PayPal' }, { status: 502 });
+    }
+
+    if (!existing) {
+      const membershipNumber = await generateMembershipNumber();
+      let qrToken = generateQRToken();
+      while (await prisma.familyMembership.findUnique({ where: { qrToken } })) {
+        qrToken = generateQRToken();
+      }
+      await prisma.familyMembership.create({
+        data: {
+          ownerUserId: user.userId,
+          membershipNumber,
+          qrToken,
+          familyName: familyName?.trim() || null,
+          memberSince: new Date().getFullYear(),
+          status: 'PENDING',
+          paypalOrderId,
+        },
+      });
+    } else {
+      await prisma.familyMembership.update({
+        where: { id: existing.id },
+        data: {
+          familyName: familyName?.trim() || existing.familyName,
+          paypalOrderId,
+          status: 'PENDING',
+        },
+      });
+    }
+
+    return NextResponse.json({ paypalOrderId, amountUsd });
+  } catch (err) {
+    console.error('[membership-create] unexpected error', err);
+    return NextResponse.json({ error: 'حدث خطأ، حاول مرة أخرى' }, { status: 500 });
+  }
 }

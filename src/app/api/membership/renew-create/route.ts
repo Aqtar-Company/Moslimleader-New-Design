@@ -20,37 +20,42 @@ async function getMembershipPrices(): Promise<{ egyUsd: number; intlUsd: number 
 }
 
 export async function POST(req: NextRequest) {
-  const user = await getAuthUser().catch(() => null);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const rl = checkRateLimit(`membership-renew:${user.userId}`, 10, 60 * 60 * 1000);
-  if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
-
-  const { zone } = await req.json().catch(() => ({}));
-
-  const membership = await prisma.familyMembership.findUnique({ where: { ownerUserId: user.userId } });
-  if (!membership) return NextResponse.json({ error: 'No membership found' }, { status: 404 });
-  if (membership.status === 'ACTIVE' && membership.expiresAt && membership.expiresAt > new Date()) {
-    return NextResponse.json({ error: 'العضوية نشطة بالفعل' }, { status: 409 });
-  }
-
-  const prices = await getMembershipPrices();
-  const amountUsd = zone === 'egypt' ? prices.egyUsd : prices.intlUsd;
-  const referenceId = `renew-${user.userId}-${Date.now()}`;
-
-  let paypalOrderId: string;
   try {
-    const paypalOrder = await createPayPalOrder(amountUsd, 'USD', referenceId);
-    paypalOrderId = paypalOrder.id as string;
+    const user = await getAuthUser().catch(() => null);
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const rl = checkRateLimit(`membership-renew:${user.userId}`, 10, 60 * 60 * 1000);
+    if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
+
+    const { zone } = await req.json().catch(() => ({}));
+
+    const membership = await prisma.familyMembership.findUnique({ where: { ownerUserId: user.userId } });
+    if (!membership) return NextResponse.json({ error: 'No membership found' }, { status: 404 });
+    if (membership.status === 'ACTIVE' && membership.expiresAt && membership.expiresAt > new Date()) {
+      return NextResponse.json({ error: 'العضوية نشطة بالفعل' }, { status: 409 });
+    }
+
+    const prices = await getMembershipPrices();
+    const amountUsd = zone === 'egypt' ? prices.egyUsd : prices.intlUsd;
+    const referenceId = `renew-${user.userId}-${Date.now()}`;
+
+    let paypalOrderId: string;
+    try {
+      const paypalOrder = await createPayPalOrder(amountUsd, 'USD', referenceId);
+      paypalOrderId = paypalOrder.id as string;
+    } catch (err) {
+      console.error('[renew-create] PayPal create order failed', err);
+      return NextResponse.json({ error: 'فشل إنشاء طلب الدفع مع PayPal' }, { status: 502 });
+    }
+
+    await prisma.familyMembership.update({
+      where: { id: membership.id },
+      data: { paypalOrderId },
+    });
+
+    return NextResponse.json({ paypalOrderId });
   } catch (err) {
-    console.error('[renew-create] PayPal create order failed', err);
-    return NextResponse.json({ error: 'فشل إنشاء طلب الدفع مع PayPal' }, { status: 502 });
+    console.error('[renew-create] unexpected error', err);
+    return NextResponse.json({ error: 'حدث خطأ، حاول مرة أخرى' }, { status: 500 });
   }
-
-  await prisma.familyMembership.update({
-    where: { id: membership.id },
-    data: { paypalOrderId },
-  });
-
-  return NextResponse.json({ paypalOrderId });
 }

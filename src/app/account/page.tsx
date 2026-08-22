@@ -1403,41 +1403,137 @@ export default function AccountPage() {
           ) : (
             /* ── MEMBER VIEW ── */
             <div className="space-y-5">
-              {/* Digital membership card */}
-              <div className="rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg,#1a3a2e 0%,#2d5a40 55%,#1e4a35 100%)' }}>
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-5">
+              {/* Digital membership card — premium design */}
+              <div dir="ltr" style={{
+                position: 'relative',
+                borderRadius: 20,
+                overflow: 'hidden',
+                aspectRatio: '1.586 / 1',
+                background: 'linear-gradient(135deg, #0d2318 0%, #1a3a2e 40%, #24502f 70%, #1a3a2e 100%)',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.45), 0 4px 16px rgba(0,0,0,0.3)',
+              }}>
+                {/* Geometric pattern overlay */}
+                <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.07 }} viewBox="0 0 400 252" preserveAspectRatio="xMidYMid slice">
+                  <defs>
+                    <pattern id="hexgrid" x="0" y="0" width="60" height="52" patternUnits="userSpaceOnUse">
+                      <polygon points="30,2 58,17 58,47 30,62 2,47 2,17" fill="none" stroke="white" strokeWidth="1"/>
+                    </pattern>
+                  </defs>
+                  <rect width="400" height="252" fill="url(#hexgrid)"/>
+                </svg>
+
+                {/* Gold shine sweep */}
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  background: 'linear-gradient(115deg, transparent 30%, rgba(212,168,83,0.08) 50%, transparent 70%)',
+                  pointerEvents: 'none',
+                }}/>
+
+                {/* Large background crescent */}
+                <svg style={{ position: 'absolute', right: -30, top: -30, opacity: 0.06 }} width={220} height={220} viewBox="0 0 220 220">
+                  <circle cx="110" cy="110" r="100" fill="none" stroke="#D4A853" strokeWidth="40"/>
+                  <circle cx="150" cy="90" r="80" fill="#0d2318"/>
+                </svg>
+
+                <div style={{ position: 'relative', height: '100%', padding: '6% 8%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  {/* Top row */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                    {/* Logo + brand */}
                     <div>
-                      <p className="text-xs font-bold tracking-wider" style={{ color: 'rgba(255,255,255,0.5)' }}>MUSLIM LEADER</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.65)' }}>{isRtl ? 'عضوية الأسرة' : 'Family Membership'}</p>
+                      <p style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.2em', color: '#D4A853', marginBottom: 2 }}>MUSLIM LEADER</p>
+                      <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.05em' }}>
+                        {isRtl ? 'عضوية الأسرة المسلمة' : 'Family Membership'}
+                      </p>
                     </div>
-                    <span className={`text-xs font-black px-3 py-1 rounded-full ${
-                      membership.status === 'ACTIVE' ? 'bg-green-400 text-green-900'
-                      : membership.status === 'PENDING' ? 'bg-yellow-400 text-yellow-900'
-                      : 'bg-red-400 text-white'
-                    }`}>
+                    {/* Status badge */}
+                    <span style={{
+                      fontSize: 9, fontWeight: 900, letterSpacing: '0.1em',
+                      padding: '4px 10px', borderRadius: 20,
+                      background: membership.status === 'ACTIVE' ? 'rgba(52,211,153,0.25)' : membership.status === 'PENDING' ? 'rgba(251,191,36,0.25)' : 'rgba(248,113,113,0.25)',
+                      color: membership.status === 'ACTIVE' ? '#6ee7b7' : membership.status === 'PENDING' ? '#fcd34d' : '#fca5a5',
+                      border: `1px solid ${membership.status === 'ACTIVE' ? 'rgba(52,211,153,0.4)' : membership.status === 'PENDING' ? 'rgba(251,191,36,0.4)' : 'rgba(248,113,113,0.4)'}`,
+                      textTransform: 'uppercase',
+                    }}>
                       {membership.status === 'ACTIVE' ? (isRtl ? 'نشطة' : 'Active')
-                      : membership.status === 'PENDING' ? (isRtl ? 'قيد الانتظار' : 'Pending')
+                      : membership.status === 'PENDING' ? (isRtl ? 'معلقة' : 'Pending')
                       : membership.status === 'EXPIRED' ? (isRtl ? 'منتهية' : 'Expired')
                       : (isRtl ? 'ملغاة' : 'Cancelled')}
                     </span>
                   </div>
-                  {membership.familyName && (
-                    <p className="text-lg font-black text-white mb-1">{membership.familyName}</p>
-                  )}
-                  <p className="font-black tracking-widest mb-5" style={{ color: '#D4A853', fontSize: 20, letterSpacing: '0.15em' }}>{membership.membershipNumber}</p>
-                  <div className="flex items-center justify-between text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                    <span>{isRtl ? `عضو منذ ${membership.memberSince}` : `Member since ${membership.memberSince}`}</span>
-                    {membership.expiresAt && (
-                      <span>{isRtl ? `تنتهي: ${new Date(membership.expiresAt).toLocaleDateString('ar-EG')}` : `Expires: ${new Date(membership.expiresAt).toLocaleDateString()}`}</span>
-                    )}
+
+                  {/* Chip + membership number */}
+                  <div>
+                    {/* EMV chip */}
+                    <svg width={38} height={28} viewBox="0 0 38 28" style={{ marginBottom: 10, opacity: 0.9 }}>
+                      <rect width="38" height="28" rx="5" fill="#D4A853"/>
+                      <rect x="1" y="1" width="36" height="26" rx="4" fill="none" stroke="#b8922a" strokeWidth="0.5"/>
+                      <line x1="13" y1="0" x2="13" y2="28" stroke="#b8922a" strokeWidth="1"/>
+                      <line x1="25" y1="0" x2="25" y2="28" stroke="#b8922a" strokeWidth="1"/>
+                      <line x1="0" y1="9" x2="38" y2="9" stroke="#b8922a" strokeWidth="1"/>
+                      <line x1="0" y1="19" x2="38" y2="19" stroke="#b8922a" strokeWidth="1"/>
+                      <rect x="13" y="9" width="12" height="10" rx="2" fill="#c9a040" stroke="#b8922a" strokeWidth="0.5"/>
+                    </svg>
+                    {/* Membership number */}
+                    <p dir="ltr" style={{ fontFamily: 'monospace', fontSize: 17, fontWeight: 900, letterSpacing: '0.22em', color: '#F5E6BE', lineHeight: 1 }}>
+                      {membership.membershipNumber}
+                    </p>
                   </div>
-                  {membership.status === 'ACTIVE' && (
-                    <div className="mt-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5" style={{ background: 'rgba(212,168,83,0.2)', border: '1px solid rgba(212,168,83,0.4)' }}>
-                      <span className="text-xs font-black" style={{ color: '#D4A853' }}>🏷️ {isRtl ? 'خصم ١٥٪ تلقائي على كل مشترياتك' : '15% automatic discount on all purchases'}</span>
+
+                  {/* Bottom row */}
+                  <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+                    <div>
+                      {membership.familyName && (
+                        <p style={{ fontSize: 12, fontWeight: 900, color: 'white', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 3 }}>
+                          {membership.familyName}
+                        </p>
+                      )}
+                      <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                        {isRtl ? 'عضو منذ' : 'MEMBER SINCE'} {membership.memberSince}
+                      </p>
                     </div>
-                  )}
+                    <div style={{ textAlign: 'right' }}>
+                      {membership.expiresAt && (
+                        <>
+                          <p style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>
+                            {isRtl ? 'تنتهي' : 'VALID THRU'}
+                          </p>
+                          <p dir="ltr" style={{ fontSize: 13, fontWeight: 900, color: '#D4A853', letterSpacing: '0.1em' }}>
+                            {new Date(membership.expiresAt).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' }).replace('/', '/')}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
+              </div>
+
+              {/* Discount badge + share row */}
+              <div className="flex items-center gap-3">
+                {membership.status === 'ACTIVE' && (
+                  <div className="flex-1 flex items-center justify-center gap-1.5 rounded-full py-2 px-4" style={{ background: 'rgba(212,168,83,0.12)', border: '1px solid rgba(212,168,83,0.3)' }}>
+                    <span className="text-xs font-black" style={{ color: '#D4A853' }}>🏷️ {isRtl ? 'خصم ١٥٪ تلقائي' : '15% auto discount'}</span>
+                  </div>
+                )}
+                <button
+                  onClick={async () => {
+                    const text = isRtl
+                      ? `عضوية مسلم ليدر 🌿\n${membership.familyName ? membership.familyName + '\n' : ''}رقم العضوية: ${membership.membershipNumber}\nعضو منذ ${membership.memberSince}`
+                      : `Muslim Leader Membership 🌿\n${membership.familyName ? membership.familyName + '\n' : ''}Membership No: ${membership.membershipNumber}\nMember since ${membership.memberSince}`;
+                    if (navigator.share) {
+                      await navigator.share({ text }).catch(() => {});
+                    } else {
+                      await navigator.clipboard.writeText(text).catch(() => {});
+                      alert(isRtl ? 'تم نسخ بيانات البطاقة' : 'Card info copied');
+                    }
+                  }}
+                  className="flex items-center gap-1.5 rounded-full py-2 px-4 transition active:scale-95"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 700 }}
+                >
+                  <svg width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"/>
+                  </svg>
+                  {isRtl ? 'مشاركة' : 'Share'}
+                </button>
               </div>
 
               {/* Family members */}

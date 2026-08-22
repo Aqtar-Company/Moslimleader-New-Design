@@ -100,9 +100,9 @@ function CommunityCard({ memberNumber, joinedYear, qrDataUrl, isRtl }: Community
         <p style={{
           fontFamily: "'Courier New', 'OCR-B', monospace",
           fontSize: 18, fontWeight: 900, letterSpacing: '0.22em',
-          color: '#a8f0c0',
+          color: '#ffffff',
           lineHeight: 1,
-          textShadow: '0 2px 4px rgba(0,0,0,0.7), 0 1px 0 rgba(180,255,200,0.35), 1px 1px 0 rgba(0,0,0,0.5)',
+          textShadow: '0 2px 4px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.4), 1px 1px 0 rgba(0,0,0,0.5)',
         }}>
           {memberNumber}
         </p>
@@ -123,13 +123,13 @@ function CommunityCard({ memberNumber, joinedYear, qrDataUrl, isRtl }: Community
             </p>
           </div>
           <div>
-            <p style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.18)', letterSpacing: '0.05em', lineHeight: 1.6 }}>
+            <p style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', lineHeight: 1.6 }}>
               {isRtl ? 'مجتمع مسلم ليدر' : 'Moslim Leader'}
             </p>
-            <p style={{ fontSize: 7.5, color: 'rgba(255,255,255,0.1)', letterSpacing: '0.06em', lineHeight: 1.6 }}>
+            <p style={{ fontSize: 7.5, color: 'rgba(255,255,255,0.22)', letterSpacing: '0.06em', lineHeight: 1.6 }}>
               Moslim Leader Community
             </p>
-            <p style={{ fontSize: 8, color: 'rgba(125,217,160,0.32)', letterSpacing: '0.05em', marginTop: 2 }}>
+            <p style={{ fontSize: 8, color: 'rgba(125,217,160,0.55)', letterSpacing: '0.05em', marginTop: 2 }}>
               {isRtl ? `عضو منذ ${joinedYear}` : `Since ${joinedYear}`}
             </p>
           </div>
@@ -270,7 +270,7 @@ function LeaderCard({ memberNumber, memberSince, expiresAt, status, qrDataUrl, i
             <p style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: '0.15em', color: brandColor, lineHeight: 1.45 }}>
               Leader Membership
             </p>
-            <p style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.04em', lineHeight: 1.45 }}>
+            <p style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.04em', lineHeight: 1.45, marginTop: 5 }}>
               {isRtl ? 'عضوية رائدة' : 'Leader Member'}
             </p>
           </div>
@@ -281,10 +281,10 @@ function LeaderCard({ memberNumber, memberSince, expiresAt, status, qrDataUrl, i
                 {new Date(expiresAt).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' })}
               </p>
             )}
-            <p style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.17)', letterSpacing: '0.05em', lineHeight: 1.6 }}>
+            <p style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.32)', letterSpacing: '0.05em', lineHeight: 1.6 }}>
               {isRtl ? 'مجتمع مسلم ليدر' : 'Moslim Leader'}
             </p>
-            <p style={{ fontSize: 7.5, color: 'rgba(255,255,255,0.1)', letterSpacing: '0.06em', lineHeight: 1.6 }}>
+            <p style={{ fontSize: 7.5, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.06em', lineHeight: 1.6 }}>
               Moslim Leader Community
             </p>
             {!expiresAt && (

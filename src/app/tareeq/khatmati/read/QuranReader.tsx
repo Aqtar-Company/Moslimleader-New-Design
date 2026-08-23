@@ -324,7 +324,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col min-h-screen" style={{ background: mode === 'listen' ? '#05101f' : '#F7F2E8', overflow: mode === 'listen' ? 'hidden' : undefined }}>
+    <div className="flex flex-col min-h-screen" style={{ background: mode === 'listen' ? '#05101f' : '#F8EBD5', overflow: mode === 'listen' ? 'hidden' : undefined }}>
 
       {/* ── Top bar ── */}
       <div className="fixed top-0 left-0 right-0 z-40 flex flex-col gap-0"
@@ -398,7 +398,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
       </div>
 
       {/* ── Content area ── */}
-      <div className={`flex-1 ${mode === 'both' ? 'pb-[80px]' : ''}`}
+      <div className="flex-1"
         style={{ paddingTop: (mode === 'both' && headerHidden) ? 0 : 88, transition: 'padding-top 0.25s ease',
           ...(mode === 'both' ? { display: 'flex', flexDirection: 'column' } : {}) }}>
         {loading ? (

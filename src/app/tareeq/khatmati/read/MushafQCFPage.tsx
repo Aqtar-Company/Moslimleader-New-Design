@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { getCachedPage, fetchAndCachePage, prefetchPage } from './mushafCache';
-import type { PageData } from './mushafCache';
+import type { PageData, MushafWord } from './mushafCache';
 
 /* ── Static data ─────────────────────────────────────────────────────── */
 
@@ -187,9 +187,28 @@ export default function MushafQCFPage({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentChapter, currentVerse, autoFollow]);
 
-  const allWords = useMemo(() => {
+  type RenderItem =
+    | { type: 'surah_header'; chapterId: number }
+    | { type: 'bismillah'; key: string }
+    | { type: 'line'; lineNum: number; words: MushafWord[] };
+
+  const renderItems = useMemo<RenderItem[]>(() => {
     if (!data) return [];
-    return [...data.lines].sort((a, b) => a.lineNum - b.lineNum).flatMap(l => l.words);
+    const sorted = [...data.lines].sort((a, b) => a.lineNum - b.lineNum);
+    const result: RenderItem[] = [];
+    let prevCh = -1;
+    for (const line of sorted) {
+      const fw = line.words[0];
+      if (fw && fw.chapterId !== prevCh && fw.verseNumber === 1) {
+        result.push({ type: 'surah_header', chapterId: fw.chapterId });
+        if (!NO_BISMILLAH.has(fw.chapterId)) result.push({ type: 'bismillah', key: `bm-${fw.chapterId}` });
+        prevCh = fw.chapterId;
+      } else if (fw) {
+        prevCh = fw.chapterId;
+      }
+      result.push({ type: 'line', lineNum: line.lineNum, words: line.words });
+    }
+    return result;
   }, [data]);
 
   const meta = data?.meta ?? { juz: null, hizb: null, surahs: [] };
@@ -243,83 +262,71 @@ export default function MushafQCFPage({
           dir="rtl"
           style={{
             flex: 1,
-            padding: '6px 14px',
-            /*
-             * Bottom padding reserves space for the fixed audio player bar (≈72px)
-             * plus any device safe-area so the last Quran line is never hidden.
-             */
+            padding: '4px 0',
             paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))',
-            direction: 'rtl',
-            textAlign: 'center',
             fontFamily: qFont,
-            fontSize: 19,
-            lineHeight: 2.6,
             color: '#010101',
             overflowX: 'hidden',
           }}
         >
-          {(() => {
-            const els: React.ReactNode[] = [];
-            let prevCh = -1;
-
-            allWords.forEach((word, i) => {
-              const isEnd = word.charType === 'end';
-
-              /* Surah header + Bismillah at chapter boundary */
-              if (word.chapterId !== prevCh && word.verseNumber === 1) {
-                els.push(<SurahHeader key={`sh-${word.chapterId}`} chapterId={word.chapterId} />);
-                if (!NO_BISMILLAH.has(word.chapterId)) {
-                  els.push(<BismillahLine key={`bm-${word.chapterId}`} />);
-                }
-              }
-              prevCh = word.chapterId;
-
-              /*
-               * Highlight only when audio is actively playing.
-               * Without isPlaying, every word of the initialSurah/initialAyah
-               * would be boxed in beige, which looks like broken UI.
-               */
-              const isHl = isPlaying === true
-                && !isEnd
-                && word.chapterId === currentChapter
-                && word.verseNumber === currentVerse;
-
-              const attachRef = isHl && !hlRefAttached;
-              if (attachRef) hlRefAttached = true;
-
-              /* Ayah end-marker: prepend U+06DD so Amiri Quran renders the traditional ornament */
-              const txt = isEnd
-                ? (word.text.startsWith(AYAH_MARK) ? word.text : `${AYAH_MARK}${word.text}`)
-                : word.text;
-
-              els.push(
-                <span
-                  key={i}
-                  ref={attachRef ? hlRef : undefined}
-                  onClick={() => {
-                    if (isEnd) return;
-                    onAyahTap?.({ chapterId: word.chapterId, verseNumber: word.verseNumber, text: word.text });
-                    onVerseClick?.(word.chapterId, word.verseNumber);
-                  }}
-                  style={{
-                    display: 'inline',
-                    fontSize: isEnd ? 17 : 19,
-                    color: isEnd ? '#b89840' : '#010101',
-                    background: isHl ? 'rgba(190,160,80,0.22)' : 'transparent',
-                    borderRadius: isHl ? 4 : 0,
-                    padding: isHl ? '1px 3px' : undefined,
-                    cursor: isEnd ? 'default' : 'pointer',
-                    transition: 'background .15s',
-                    WebkitTouchCallout: 'none',
-                  }}
-                >
-                  {txt}{' '}
-                </span>,
-              );
-            });
-
-            return els;
-          })()}
+          {renderItems.map((item) => {
+            if (item.type === 'surah_header') {
+              return <SurahHeader key={`sh-${item.chapterId}`} chapterId={item.chapterId} />;
+            }
+            if (item.type === 'bismillah') {
+              return <BismillahLine key={item.key} />;
+            }
+            /* Physical Mushaf line — space-between fills the full width like a printed page */
+            const { lineNum, words } = item;
+            const isShortLine = words.length <= 3;
+            return (
+              <div key={lineNum} dir="rtl" style={{
+                display: 'flex',
+                justifyContent: isShortLine ? 'center' : 'space-between',
+                alignItems: 'baseline',
+                padding: '0 14px',
+                lineHeight: 2.5,
+                gap: isShortLine ? 8 : 0,
+              }}>
+                {words.map((word, wi) => {
+                  const isEnd = word.charType === 'end';
+                  const isHl = isPlaying === true
+                    && !isEnd
+                    && word.chapterId === currentChapter
+                    && word.verseNumber === currentVerse;
+                  const attachRef = isHl && !hlRefAttached;
+                  if (attachRef) hlRefAttached = true;
+                  const txt = isEnd
+                    ? (word.text.startsWith(AYAH_MARK) ? word.text : `${AYAH_MARK}${word.text}`)
+                    : word.text;
+                  return (
+                    <span
+                      key={wi}
+                      ref={attachRef ? hlRef : undefined}
+                      onClick={() => {
+                        if (isEnd) return;
+                        onAyahTap?.({ chapterId: word.chapterId, verseNumber: word.verseNumber, text: word.text });
+                        onVerseClick?.(word.chapterId, word.verseNumber);
+                      }}
+                      style={{
+                        fontSize: isEnd ? 17 : 19,
+                        color: isEnd ? '#b89840' : '#010101',
+                        background: isHl ? 'rgba(190,160,80,0.22)' : 'transparent',
+                        borderRadius: isHl ? 4 : 0,
+                        padding: isHl ? '1px 3px' : undefined,
+                        cursor: isEnd ? 'default' : 'pointer',
+                        transition: 'background .15s',
+                        WebkitTouchCallout: 'none',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {txt}
+                    </span>
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
       )}
 

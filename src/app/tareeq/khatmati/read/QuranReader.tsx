@@ -399,9 +399,41 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
 
       {/* ── Content area ── */}
       <div className="flex-1"
-        style={{ paddingTop: (mode === 'both' && headerHidden) ? 0 : 88, transition: 'padding-top 0.25s ease',
-          ...(mode === 'both' ? { display: 'flex', flexDirection: 'column' } : {}) }}>
-        {loading ? (
+        style={{
+          paddingTop: (mode === 'both' && headerHidden) ? 0 : 88,
+          transition: 'padding-top 0.25s ease',
+          /*
+           * In 'both' mode reserve space for the fixed audio player at the bottom.
+           * This keeps the carousel slots from extending behind the player.
+           */
+          paddingBottom: mode === 'both' ? 'calc(83px + env(safe-area-inset-bottom, 0px))' : 0,
+          ...(mode === 'both' ? { display: 'flex', flexDirection: 'column' } : {}),
+        }}>
+
+        {/*
+         * 'both' mode — Mushaf carousel is ALWAYS rendered, independent of verse-fetch
+         * loading state. The carousel has its own mushafCache for text data and its own
+         * QCF font loading. The global `loading` state only gates audio playback (verse
+         * data for the audio engine), not the visual Mushaf.
+         */}
+        {mode === 'both' && (
+          <MushafCarousel
+            page={page}
+            currentChapter={cv?.chapter_id ?? initialSurah}
+            currentVerse={cv?.verse_number ?? initialAyah}
+            autoFollow={autoFollow}
+            isPlaying={isPlaying}
+            onPageChange={(p) => { pageRef.current = p; setPage(p); }}
+            onVerseClick={(ch, v) => {
+              const idx = versesRef.current.findIndex(x => x.chapter_id === ch && x.verse_number === v);
+              if (idx >= 0) goVerse(idx);
+            }}
+            onAyahTap={setTappedVerse}
+          />
+        )}
+
+        {/* Listen mode — loading / error / content */}
+        {mode === 'listen' && (loading ? (
           <div className="flex items-center justify-center py-24">
             <div className="w-8 h-8 border-2 rounded-full animate-spin"
               style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--nuri-gold)' }} />
@@ -418,8 +450,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
           </div>
         ) : (
           <>
-            {/* Listen mode — fixed immersive fullscreen, no scroll, embedded controls */}
-            {mode === 'listen' && cv && (
+            {cv && (
               <div className="nuri-listen-mode" style={{
                 position: 'fixed', top: 88, left: 0, right: 0, bottom: 0,
                 background: 'linear-gradient(160deg, #05101f 0%, #0a1e3d 45%, #071628 100%)',
@@ -602,24 +633,8 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
               </div>
             )}
 
-            {/* Both mode — 3-page swipe carousel */}
-            {mode === 'both' && (
-              <MushafCarousel
-                page={page}
-                currentChapter={cv?.chapter_id ?? initialSurah}
-                currentVerse={cv?.verse_number ?? initialAyah}
-                autoFollow={autoFollow}
-                isPlaying={isPlaying}
-                onPageChange={(p) => { pageRef.current = p; setPage(p); }}
-                onVerseClick={(ch, v) => {
-                  const idx = versesRef.current.findIndex(x => x.chapter_id === ch && x.verse_number === v);
-                  if (idx >= 0) goVerse(idx);
-                }}
-                onAyahTap={setTappedVerse}
-              />
-            )}
           </>
-        )}
+        ))}
       </div>
 
       {/* ── Audio player (fixed bottom — both mode only) ── */}

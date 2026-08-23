@@ -29,8 +29,39 @@ export interface PageData {
 const _cache = new Map<number, PageData>();
 const _inflight = new Map<number, Promise<PageData | null>>();
 
+// Global font-ready set — survives React re-renders and component remounts.
+// Once a QCF font is confirmed loaded, any MushafQCFPage for that page skips
+// the setQcfReady(false) flash entirely.
+const _fontLoaded = new Set<string>();
+const _fontInflight = new Map<string, Promise<void>>();
+
 export function getCachedPage(page: number): PageData | undefined {
   return _cache.get(page);
+}
+
+export function isFontLoaded(family: string): boolean {
+  return _fontLoaded.has(family);
+}
+
+export function warmQCFFont(page: number): Promise<void> {
+  const family = `p${page}-v2`;
+  if (_fontLoaded.has(family)) return Promise.resolve();
+  if (_fontInflight.has(family)) return _fontInflight.get(family)!;
+  if (typeof document === 'undefined') return Promise.resolve();
+
+  const p = document.fonts
+    .load(`16px '${family}'`)
+    .then(() => { _fontLoaded.add(family); })
+    .catch(() => {})
+    .finally(() => _fontInflight.delete(family));
+
+  _fontInflight.set(family, p);
+  return p;
+}
+
+export async function prepareMushafPage(page: number): Promise<void> {
+  if (page < 1 || page > 604) return;
+  await Promise.all([fetchAndCachePage(page), warmQCFFont(page)]);
 }
 
 export function fetchAndCachePage(page: number): Promise<PageData | null> {

@@ -1,7 +1,7 @@
 'use client';
 import { useRef, useState, useEffect } from 'react';
 import MushafQCFPage from './MushafQCFPage';
-import { prefetchPage } from './mushafCache';
+import { prepareMushafPage } from './mushafCache';
 import { TOTAL_QURAN_PAGES } from '@/lib/quran-data';
 
 interface Props {
@@ -53,11 +53,13 @@ export default function MushafCarousel({
   const prev = Math.max(1, page - 1);
   const next = Math.min(TOTAL_QURAN_PAGES, page + 1);
 
-  /* Eagerly pre-warm two pages ahead and behind every time page changes */
+  /* Eagerly prepare adjacent pages (data + QCF font) so swipe is always loader-free */
   useEffect(() => {
-    prefetchPage(prev - 1);
-    prefetchPage(next + 1);
-    prefetchPage(next + 2);
+    prepareMushafPage(prev);
+    prepareMushafPage(next);
+    prepareMushafPage(prev - 1);
+    prepareMushafPage(next + 1);
+    prepareMushafPage(next + 2);
   }, [prev, next]);
 
   function getW() { return ctnRef.current?.offsetWidth ?? 390; }

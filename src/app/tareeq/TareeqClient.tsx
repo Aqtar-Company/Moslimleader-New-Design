@@ -373,6 +373,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
                   initialLiked={likedIds.has(post.id)}
                   initialReaction={reactedPosts[post.id] ?? null}
                   onMobileOpen={(postId, focusComments) => { setSheetPostId(postId); setSheetFocusComments(!!focusComments); }}
+                  onDeleted={(id) => setPosts(prev => prev.filter(p => p.id !== id))}
                 />
               </div>
             ))}

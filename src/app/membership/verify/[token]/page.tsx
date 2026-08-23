@@ -21,6 +21,9 @@ export default async function MembershipVerifyPage({ params }: { params: { token
   const isExpired = membership.expiresAt && membership.expiresAt < new Date();
   const effectiveStatus = isExpired ? 'EXPIRED' : membership.status;
   const isActive = effectiveStatus === 'ACTIVE';
+  const displayNumber = isActive
+    ? membership.membershipNumber
+    : membership.membershipNumber.replace(/^ML-/, 'MC-');
 
   const ownerName = membership.owner?.name ?? '';
   const nameParts = ownerName.trim().split(/\s+/);
@@ -62,7 +65,7 @@ export default async function MembershipVerifyPage({ params }: { params: { token
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: '12px 16px', textAlign: 'right' }}>
             <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.45)', marginBottom: 3 }}>رقم العضوية</p>
-            <p style={{ fontSize: 16, fontWeight: 800, color: '#d4a843', letterSpacing: '0.06em' }}>{membership.membershipNumber}</p>
+            <p style={{ fontSize: 16, fontWeight: 800, color: '#d4a843', letterSpacing: '0.06em' }}>{displayNumber}</p>
           </div>
           {membership.familyName && (
             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: '12px 16px', textAlign: 'right' }}>

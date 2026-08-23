@@ -1,6 +1,7 @@
 'use client';
 import { useRef, useState, useEffect } from 'react';
 import MushafQCFPage from './MushafQCFPage';
+import { prefetchPage } from './mushafCache';
 import { TOTAL_QURAN_PAGES } from '@/lib/quran-data';
 
 interface Props {
@@ -16,13 +17,14 @@ interface Props {
 /**
  * Three-page carousel for Mushaf reading mode.
  *
- * Layout (RTL Mushaf convention: swipe right = next page / higher number):
- *   Left slot  → page + 1 (next)  — slides in from left on drag-right
- *   Center     → page     (current)
- *   Right slot → page - 1 (prev)  — slides in from right on drag-left
+ * RTL Mushaf convention: swipe right (dx>0) = next page (higher number).
+ *   Left slot  → page + 1 (next)   — slides in from left on drag-right
+ *   Center     → page      (current)
+ *   Right slot → page - 1 (prev)   — slides in from right on drag-left
  *
- * Adjacent pages are always mounted so their API calls go out immediately
- * (24 h browser cache means second visit is instant).
+ * Adjacent pages are always mounted so their data is fetched immediately.
+ * A module-level cache (mushafCache.ts) makes second-render instantaneous —
+ * no spinner shown when swiping between already-loaded pages.
  */
 export default function MushafCarousel({
   page: extPage,
@@ -39,11 +41,17 @@ export default function MushafCarousel({
   const isHoriz = useRef<boolean | null>(null);
   const ctnRef = useRef<HTMLDivElement>(null);
 
-  // Sync if audio/navigation changes page externally
+  /* Sync if audio/navigation changes page externally */
   useEffect(() => { setPage(extPage); }, [extPage]);
 
   const prev = Math.max(1, page - 1);
   const next = Math.min(TOTAL_QURAN_PAGES, page + 1);
+
+  /* Aggressively prefetch pages ±2 so swipes never hit a spinner */
+  useEffect(() => {
+    prefetchPage(prev - 1);
+    prefetchPage(next + 1);
+  }, [prev, next]);
 
   function getW() { return ctnRef.current?.offsetWidth ?? 390; }
 
@@ -65,7 +73,9 @@ export default function MushafCarousel({
     }
     if (!isHoriz.current) { isDragging.current = false; return; }
 
-    // Rubber-band at edges
+    e.preventDefault();
+
+    /* Rubber-band at edges */
     const atEdge = (dx > 0 && page >= TOTAL_QURAN_PAGES) || (dx < 0 && page <= 1);
     setDragX(dx * (atEdge ? 0.18 : 1));
   }
@@ -85,25 +95,31 @@ export default function MushafCarousel({
         setDragX(0);
         setPage(newPage);
         onPageChange(newPage);
-      }, 300);
+      }, 280);
     }
 
     if (dragX > THRESH && page < TOTAL_QURAN_PAGES) {
-      // Swipe right → next page
       commit(next, w);
     } else if (dragX < -THRESH && page > 1) {
-      // Swipe left → prev page
       commit(prev, -w);
     } else {
-      // Snap back
       setAnimated(true);
       setDragX(0);
-      setTimeout(() => setAnimated(false), 300);
+      setTimeout(() => setAnimated(false), 280);
     }
   }
 
-  const tr = animated ? 'transform 0.3s cubic-bezier(0.25,0.46,0.45,0.94)' : 'none';
-  const s = (x: string) => ({ position: 'absolute' as const, inset: 0, transform: `translateX(${x})`, transition: tr, willChange: 'transform' });
+  const tr = animated ? 'transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94)' : 'none';
+  const slot = (x: string): React.CSSProperties => ({
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    width: '100%',
+    transform: `translateX(${x})`,
+    transition: tr,
+    willChange: 'transform',
+    overflowY: 'auto',
+    overflowX: 'hidden',
+  });
 
   return (
     <div
@@ -111,15 +127,21 @@ export default function MushafCarousel({
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
-      style={{ position: 'relative', flex: 1, overflow: 'hidden', touchAction: 'pan-y' }}
+      style={{
+        position: 'relative',
+        flex: 1,
+        width: '100%',
+        overflow: 'hidden',
+        touchAction: 'pan-y',
+      }}
     >
-      {/* Next page — left of center, revealed by swiping right */}
-      <div style={s(`calc(-100% + ${dragX}px)`)}>
+      {/* Next page — left of center, slides in when swiping right */}
+      <div style={slot(`calc(-100% + ${dragX}px)`)}>
         <MushafQCFPage page={next} currentChapter={currentChapter} currentVerse={currentVerse} autoFollow={false} />
       </div>
 
       {/* Current page — center */}
-      <div style={s(`${dragX}px`)}>
+      <div style={slot(`${dragX}px`)}>
         <MushafQCFPage
           page={page}
           currentChapter={currentChapter}
@@ -130,8 +152,8 @@ export default function MushafCarousel({
         />
       </div>
 
-      {/* Prev page — right of center, revealed by swiping left */}
-      <div style={s(`calc(100% + ${dragX}px)`)}>
+      {/* Prev page — right of center, slides in when swiping left */}
+      <div style={slot(`calc(100% + ${dragX}px)`)}>
         <MushafQCFPage page={prev} currentChapter={currentChapter} currentVerse={currentVerse} autoFollow={false} />
       </div>
     </div>

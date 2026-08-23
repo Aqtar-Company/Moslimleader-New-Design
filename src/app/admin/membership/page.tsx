@@ -74,7 +74,31 @@ export default function AdminMembershipPage() {
   const [perkImagePreview, setPerkImagePreview] = useState<string | null>(null);
   const [perkSaving, setPerkSaving] = useState(false);
   const [perkError, setPerkError] = useState('');
+  const [perkCompressing, setPerkCompressing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  async function compressImage(file: File, maxW = 1200, quality = 0.82): Promise<File> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        const scale = img.width > maxW ? maxW / img.width : 1;
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(blob => {
+          if (!blob) { resolve(file); return; }
+          resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' }));
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = () => { URL.revokeObjectURL(objectUrl); resolve(file); };
+      img.src = objectUrl;
+    });
+  }
   const dragIndexRef = useRef<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
 
@@ -580,14 +604,18 @@ export default function AdminMembershipPage() {
                   <img src={perkImagePreview} alt="" style={{ width: 80, height: 80, borderRadius: 10, objectFit: 'cover', marginBottom: 8 }} />
                 )}
                 <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
-                  onChange={e => {
+                  onChange={async e => {
                     const f = e.target.files?.[0] ?? null;
-                    setPerkImageFile(f);
-                    if (f) setPerkImagePreview(URL.createObjectURL(f));
+                    if (!f) return;
+                    setPerkCompressing(true);
+                    const compressed = await compressImage(f);
+                    setPerkImageFile(compressed);
+                    setPerkImagePreview(URL.createObjectURL(compressed));
+                    setPerkCompressing(false);
                   }} />
-                <button onClick={() => fileRef.current?.click()}
-                  style={{ padding: '9px 18px', borderRadius: 10, background: '#334155', color: '#f1f5f9', fontSize: 13, border: 'none', cursor: 'pointer' }}>
-                  {perkImagePreview ? 'تغيير الصورة' : 'رفع صورة'}
+                <button onClick={() => fileRef.current?.click()} disabled={perkCompressing}
+                  style={{ padding: '9px 18px', borderRadius: 10, background: '#334155', color: '#f1f5f9', fontSize: 13, border: 'none', cursor: perkCompressing ? 'wait' : 'pointer', opacity: perkCompressing ? 0.6 : 1 }}>
+                  {perkCompressing ? 'جاري الضغط...' : perkImagePreview ? 'تغيير الصورة' : 'رفع صورة'}
                 </button>
               </div>
               {/* Tier selector */}

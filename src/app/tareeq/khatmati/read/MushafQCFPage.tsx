@@ -326,26 +326,20 @@ export default function MushafQCFPage({
             }
 
             /*
-             * Physical Mushaf line.
-             *
-             * Words flow naturally RTL inside a centered flex container.
-             * NO justify-content: space-between — the QCF font's glyph widths
-             * determine natural inter-word spacing, just like the printed page.
-             *
-             * When the QCF font has loaded, we switch word content from
-             * text_uthmani (Amiri Quran) to code_v2 (QCF glyph codes).
-             * The QCF font renders the PUA-encoded glyphs as authentic Mushaf
-             * typography where each page's font matches that page's line widths.
+             * QCF V2 glyph widths are calibrated per-word per-page to fill the line
+             * with space-between. Fallback (Amiri, font loading): keep center because
+             * Amiri widths aren't Mushaf-calibrated and space-between would stretch badly.
              */
             const { lineNum, words } = item;
+            const justify = qcfReady ? 'space-between' : 'center';
             return (
               <div key={lineNum} dir="rtl" style={{
                 display: 'flex',
                 direction: 'rtl',
-                justifyContent: 'center',  /* center the completed line — NO stretching */
+                justifyContent: justify,
                 alignItems: 'baseline',
-                gap: 0,                    /* explicit zero gap — font spacing only */
-                padding: '0 12px',
+                gap: 0,
+                padding: '0 16px',
                 lineHeight: 2.4,
               }}>
                 {words.map((word, wi) => {

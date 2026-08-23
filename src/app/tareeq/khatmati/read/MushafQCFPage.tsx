@@ -42,6 +42,7 @@ function toEastern(n: number) { return String(n).replace(/[0-9]/g, d => '٠١٢�
 function juzLabel(n: number) { return JUZ_AR[n] ? `الجزء ${JUZ_AR[n]}` : `جزء ${n}`; }
 
 const META_FONT = "'Amiri Quran','Scheherazade New','Traditional Arabic',serif";
+const RULE_COLOR = '#6B500F'; /* dark brown-gold — traditional Madinah Mushaf ink */
 
 /* ── Inject page-specific QCF font-faces ──────────────────────── */
 function QCFFontLoader({ pages }: { pages: number[] }) {
@@ -53,12 +54,15 @@ function QCFFontLoader({ pages }: { pages: number[] }) {
   return <style dangerouslySetInnerHTML={{ __html: css }} />;
 }
 
-/* ── Gold rule ─────────────────────────────────────────────────── */
-function GoldRule() {
+/* ── Triple-rule separator — Madinah Mushaf style ─────────────── */
+function MushafBorderRule() {
   return (
-    <div style={{ padding: '0 12px' }}>
-      <div style={{ height: 1.5, background: 'linear-gradient(90deg,transparent,#b89840 10%,#b89840 90%,transparent)' }} />
-      <div style={{ height: 0.5, background: 'linear-gradient(90deg,transparent,#b89840 10%,#b89840 90%,transparent)', marginTop: 2 }} />
+    <div style={{ padding: '0 10px' }}>
+      <div style={{ height: 2, background: RULE_COLOR, borderRadius: 1 }} />
+      <div style={{ height: 2 }} />
+      <div style={{ height: 0.75, background: RULE_COLOR, opacity: 0.55 }} />
+      <div style={{ height: 2 }} />
+      <div style={{ height: 1.5, background: RULE_COLOR, borderRadius: 0.5 }} />
     </div>
   );
 }
@@ -97,11 +101,16 @@ function SurahHeader({ chapterId }: { chapterId: number }) {
 /* ── Bismillah typographic line ────────────────────────────────── */
 function BismillahLine() {
   return (
-    <div style={{
-      textAlign: 'center', width: '100%', margin: '4px 0 6px',
-      fontFamily: META_FONT, fontSize: 20, color: '#010101', lineHeight: 1.8,
-    }}>
-      {BISMILLAH}
+    <div style={{ width: '100%', margin: '8px 0 6px', textAlign: 'center' }}>
+      <span style={{ fontFamily: META_FONT, fontSize: 21, color: '#0a0500', lineHeight: 1.9 }}>
+        {BISMILLAH}
+      </span>
+      {/* thin ornamental underline — line + dot + line */}
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 5, marginTop: 3 }}>
+        <div style={{ width: '22%', height: 0.75, background: RULE_COLOR, opacity: 0.5 }} />
+        <div style={{ width: 4, height: 4, borderRadius: '50%', background: RULE_COLOR, opacity: 0.55, flexShrink: 0 }} />
+        <div style={{ width: '22%', height: 0.75, background: RULE_COLOR, opacity: 0.5 }} />
+      </div>
     </div>
   );
 }
@@ -147,16 +156,17 @@ function MushafTopMetadata({ meta, surahLabel }: { meta: PageData['meta']; surah
   return (
     <div dir="rtl" style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '3px 16px',
+      padding: '5px 16px',
+      background: 'rgba(107, 80, 15, 0.035)',
     }}>
       {/* DOM first → visual RIGHT: Juz number */}
-      <span style={{ fontSize: 11, fontWeight: 700, color: '#4a3820', fontFamily: META_FONT }}>
+      <span style={{ fontSize: 12, fontWeight: 700, color: RULE_COLOR, fontFamily: META_FONT, letterSpacing: '0.01em' }}>
         {meta.juz ? juzLabel(meta.juz) : ''}
       </span>
       {/* DOM second → visual CENTER: small Mushaf book ornament */}
       <MushafBookMark />
       {/* DOM third → visual LEFT: surah/chapter range */}
-      <span style={{ fontSize: 11, fontWeight: 700, color: '#4a3820', fontFamily: META_FONT }}>
+      <span style={{ fontSize: 12, fontWeight: 700, color: RULE_COLOR, fontFamily: META_FONT, letterSpacing: '0.01em' }}>
         {surahLabel}
       </span>
     </div>
@@ -167,28 +177,28 @@ function MushafTopMetadata({ meta, surahLabel }: { meta: PageData['meta']; surah
 function MushafFooter({ meta, page }: { meta: PageData['meta']; page: number }) {
   return (
     <div style={{ paddingTop: 4, paddingBottom: 8, flexShrink: 0 }}>
-      <GoldRule />
+      <MushafBorderRule />
       <div dir="rtl" style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '4px 16px',
       }}>
-        <span style={{ fontSize: 11, color: '#72603F', fontFamily: META_FONT, fontWeight: 600 }}>
+        <span style={{ fontSize: 12, color: RULE_COLOR, fontFamily: META_FONT, fontWeight: 600 }}>
           {meta.hizb ? `الحزب ${toEastern(meta.hizb)}` : ''}
         </span>
         {/* Ornamental page-number frame */}
         <svg viewBox="0 0 52 22" style={{ width: 52, height: 22 }}>
-          <rect x="1" y="1" width="50" height="20" rx="2" fill="rgba(185,152,64,0.1)" stroke="#b89840" strokeWidth="0.8" />
-          <line x1="5" y1="5" x2="47" y2="5" stroke="#b89840" strokeWidth="0.35" opacity="0.6" />
-          <line x1="5" y1="17" x2="47" y2="17" stroke="#b89840" strokeWidth="0.35" opacity="0.6" />
+          <rect x="1" y="1" width="50" height="20" rx="2" fill={`rgba(107,80,15,0.08)`} stroke={RULE_COLOR} strokeWidth="1" />
+          <line x1="5" y1="5" x2="47" y2="5" stroke={RULE_COLOR} strokeWidth="0.4" opacity="0.5" />
+          <line x1="5" y1="17" x2="47" y2="17" stroke={RULE_COLOR} strokeWidth="0.4" opacity="0.5" />
           <text x="26" y="13" textAnchor="middle" dominantBaseline="middle"
-            fontFamily={META_FONT} fontSize="11" fontWeight="bold" fill="#010101">
+            fontFamily={META_FONT} fontSize="11" fontWeight="bold" fill="#0a0500">
             {toEastern(page)}
           </text>
         </svg>
         {/* spacer */}
-        <span style={{ fontSize: 11, color: 'transparent' }}>0</span>
+        <span style={{ fontSize: 12, color: 'transparent' }}>0</span>
       </div>
-      <GoldRule />
+      <MushafBorderRule />
     </div>
   );
 }
@@ -295,9 +305,9 @@ export default function MushafQCFPage({
 
       {/* ── Physical page top metadata ── */}
       <div style={{ paddingTop: 8, paddingBottom: 4, flexShrink: 0 }}>
-        <GoldRule />
+        <MushafBorderRule />
         <MushafTopMetadata meta={meta} surahLabel={surahLabel} />
-        <GoldRule />
+        <MushafBorderRule />
       </div>
 
       {/* ── Page body ── */}

@@ -187,13 +187,23 @@ export default function MobileMenu({ open, onClose }: MobileMenuProps) {
               </button>
             </div>
           ) : (
-            <Link
-              href='/login'
-              onClick={onClose}
-              className="flex items-center justify-center gap-2 w-full bg-[#1a1a2e] hover:bg-gray-800 text-white font-black py-3 rounded-xl text-sm transition"
-            >
-              {isRtl ? 'تسجيل الدخول / حساب جديد' : 'Sign In / Register'}
-            </Link>
+            <div className="flex flex-col gap-2">
+              <Link
+                href='/membership'
+                onClick={onClose}
+                className="flex items-center justify-center gap-2 w-full font-black py-3 rounded-xl text-sm transition"
+                style={{ background: 'linear-gradient(135deg, #FFCC00 0%, #FFD740 100%)', color: '#1a0800' }}
+              >
+                🪙 {isRtl ? 'عضوية مسلم ليدر — سجّل الآن' : 'Moslim Leader Membership'}
+              </Link>
+              <Link
+                href='/login'
+                onClick={onClose}
+                className="flex items-center justify-center gap-2 w-full bg-[#1a1a2e] hover:bg-gray-800 text-white font-black py-3 rounded-xl text-sm transition"
+              >
+                {isRtl ? 'تسجيل الدخول' : 'Sign In'}
+              </Link>
+            </div>
           )}
         </div>
       </div>

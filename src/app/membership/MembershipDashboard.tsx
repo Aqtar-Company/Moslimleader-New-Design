@@ -36,14 +36,15 @@ export default function MembershipDashboard({
   const [adding, setAdding] = useState(false);
   const [showRenew, setShowRenew] = useState(false);
   const [renewError, setRenewError] = useState('');
-  const [membershipPrices, setMembershipPrices] = useState({ egyEgp: 100, egyUsd: 2.00, intlUsd: 5.00 });
+  const [membershipPrices, setMembershipPrices] = useState<{ egyEgp: number | null; egyUsd: number; intlUsd: number }>({ egyEgp: null, egyUsd: 2.00, intlUsd: 5.00 });
   const [membershipZone, setMembershipZone] = useState<'egypt' | 'international'>('international');
+  const [communityAcknowledged, setCommunityAcknowledged] = useState(false);
 
   useEffect(() => {
     fetch('/api/membership/price')
       .then(r => r.json())
       .then(d => {
-        setMembershipPrices({ egyEgp: d.egyEgp ?? 100, egyUsd: d.egyUsd ?? 2.00, intlUsd: d.intlUsd ?? 5.00 });
+        setMembershipPrices({ egyEgp: d.egyEgp ?? null, egyUsd: d.egyUsd ?? 2.00, intlUsd: d.intlUsd ?? 5.00 });
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
         if (tz.startsWith('Africa/Cairo') || tz === 'Africa/Cairo') setMembershipZone('egypt');
       })
@@ -142,7 +143,7 @@ export default function MembershipDashboard({
           <div>
             {/* Membership Card — unified component */}
             <MembershipCard
-              variant="leader"
+              variant={communityAcknowledged && isInactive ? 'community' : 'leader'}
               memberNumber={membership.membershipNumber}
               familyName={membership.familyName}
               memberSince={membership.memberSince}
@@ -199,31 +200,55 @@ export default function MembershipDashboard({
                   </div>
                 </div>
                 {/* CTA button */}
-                <div style={{ background: 'rgba(212,168,67,0.06)', padding: '14px 20px 18px', textAlign: 'center' }}>
-                  <button
-                    onClick={() => setShowRenew(true)}
-                    style={{
-                      width: '100%', padding: '15px 0', borderRadius: 14,
-                      background: `linear-gradient(135deg, ${GOLD} 0%, #c49530 100%)`,
-                      color: '#1a0800', fontWeight: 900, fontSize: 15,
-                      border: 'none', cursor: 'pointer',
-                      boxShadow: '0 4px 20px rgba(212,168,67,0.35)',
-                      letterSpacing: '0.02em',
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
-                    </svg>
-                    {isRtl ? 'جدّد عضويتي الرائدة الآن' : 'Renew Leader Membership Now'}
-                  </button>
-                  <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.3)', marginTop: 8 }}>
-                    {isRtl ? `رقم عضويتك: ${membership.membershipNumber}` : `Your number: ${membership.membershipNumber}`}
-                  </p>
-                  <button
-                    onClick={() => router.push('/membership')}
-                    style={{ marginTop: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'rgba(245,240,232,0.35)', textDecoration: 'underline', textUnderlineOffset: 3 }}>
-                    {isRtl ? 'أو اكتفِ بعضويتك المجتمعية المجانية' : 'Or keep your free Community membership'}
-                  </button>
+                <div style={{ background: 'rgba(212,168,67,0.06)', padding: '14px 20px 18px' }}>
+                  {!communityAcknowledged ? (
+                    <>
+                      <div style={{ display: 'flex', gap: 10 }}>
+                        <button
+                          onClick={() => setShowRenew(true)}
+                          style={{
+                            flex: 1, padding: '15px 0', borderRadius: 14,
+                            background: `linear-gradient(135deg, #FFCC00 0%, #FFD740 100%)`,
+                            color: '#1a0800', fontWeight: 900, fontSize: 15,
+                            border: 'none', cursor: 'pointer',
+                            boxShadow: '0 4px 20px rgba(255,204,0,0.35)',
+                          }}
+                        >
+                          {isRtl ? 'جدّد' : 'Renew'}
+                        </button>
+                        <button
+                          onClick={() => setCommunityAcknowledged(true)}
+                          style={{
+                            flex: 1, padding: '15px 0', borderRadius: 14,
+                            background: 'rgba(255,255,255,0.08)',
+                            border: '1px solid rgba(255,255,255,0.18)',
+                            color: 'rgba(245,240,232,0.75)', fontWeight: 700, fontSize: 14,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {isRtl ? 'اكتفِ' : 'Skip'}
+                        </button>
+                      </div>
+                      <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.3)', marginTop: 8, textAlign: 'center' }}>
+                        {isRtl ? `رقم عضويتك: ${membership.membershipNumber}` : `Your number: ${membership.membershipNumber}`}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => { setCommunityAcknowledged(false); setShowRenew(true); }}
+                        style={{
+                          width: '100%', padding: '15px 0', borderRadius: 14,
+                          background: `linear-gradient(135deg, #FFCC00 0%, #FFD740 100%)`,
+                          color: '#1a0800', fontWeight: 900, fontSize: 14,
+                          border: 'none', cursor: 'pointer',
+                          boxShadow: '0 4px 20px rgba(255,204,0,0.3)',
+                        }}
+                      >
+                        {isRtl ? 'جدّد للعضوية الرائدة لمزيد من المميزات' : 'Upgrade to Leader for more perks'}
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -376,7 +401,9 @@ export default function MembershipDashboard({
             </p>
             <p style={{ fontSize: 13, color: 'rgba(245,240,232,0.6)', marginBottom: 8 }}>
               {membershipZone === 'egypt'
-                ? `${membershipPrices.egyEgp} ج.م / سنة ($${membershipPrices.egyUsd})`
+                ? membershipPrices.egyEgp !== null
+                  ? `${membershipPrices.egyEgp} ج.م / سنة ($${membershipPrices.egyUsd})`
+                  : '...'
                 : `$${membershipPrices.intlUsd} USD / سنة`}
             </p>
             <PayPalBookButton

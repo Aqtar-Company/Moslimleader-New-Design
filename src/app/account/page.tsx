@@ -75,6 +75,7 @@ export default function AccountPage() {
   const [applyFamilyName, setApplyFamilyName] = useState('');
   const [applyLoading, setApplyLoading] = useState(false);
   const [renewStep, setRenewStep] = useState<'idle' | 'paypal' | 'instapay' | 'success'>('idle');
+  const [communityAcknowledged, setCommunityAcknowledged] = useState(false);
   const renewSectionRef = useRef<HTMLDivElement>(null);
 
   // Free media downloads
@@ -1474,7 +1475,7 @@ export default function AccountPage() {
                 isRtl={isRtl}
               />
               {/* Renew CTA + اكتفِ — only for inactive, before renew flow starts */}
-              {(membership.status === 'EXPIRED' || membership.status === 'CANCELLED') && renewStep === 'idle' && (
+              {(membership.status === 'EXPIRED' || membership.status === 'CANCELLED') && renewStep === 'idle' && !communityAcknowledged && (
                 <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                   <button
                     onClick={() => {
@@ -1483,10 +1484,10 @@ export default function AccountPage() {
                     }}
                     style={{
                       width: '100%', maxWidth: 380, padding: '13px 0', borderRadius: 14,
-                      background: 'linear-gradient(135deg, #D4A853 0%, #c49530 100%)',
+                      background: 'linear-gradient(135deg, #FFCC00 0%, #FFD740 100%)',
                       color: '#1a0800', fontWeight: 900, fontSize: 15,
                       border: 'none', cursor: 'pointer',
-                      boxShadow: '0 4px 20px rgba(212,168,67,0.3)',
+                      boxShadow: '0 4px 20px rgba(255,204,0,0.35)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                     }}
                   >
@@ -1498,8 +1499,8 @@ export default function AccountPage() {
                       : (membership.status === 'EXPIRED' ? 'Renew Leader Membership' : 'Reactivate Membership')}
                   </button>
                   <button
-                    onClick={() => { /* user acknowledges community status — no action needed */ }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'rgba(100,100,100,0.55)', textDecoration: 'underline', textUnderlineOffset: 3 }}
+                    onClick={() => setCommunityAcknowledged(true)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'rgba(100,100,100,0.65)', textDecoration: 'underline', textUnderlineOffset: 3 }}
                   >
                     {isRtl ? 'أو اكتفِ بعضويتك المجتمعية المجانية' : 'Or keep your free Community membership'}
                   </button>

@@ -1,20 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
-
-interface PageMeta {
-  juz: number | null;
-  hizb: number | null;
-  surahs: number[];
-}
-
-interface Props {
-  page: number;
-  currentChapter: number;
-  currentVerse: number;
-  onVerseClick?: (chapter: number, verse: number) => void;
-  onAyahTap?: (info: { chapterId: number; verseNumber: number; text: string }) => void;
-  autoFollow?: boolean;
-}
+import { useEffect, useState, useMemo } from 'react';
 
 const SURAH_AR: Record<number, string> = {
   1:'الفاتحة',2:'البقرة',3:'آل عمران',4:'النساء',5:'المائدة',
@@ -56,35 +41,107 @@ function GoldLine() {
   );
 }
 
-export default function MushafQCFPage({ page, currentChapter, onVerseClick, onAyahTap, autoFollow }: Props) {
+function SurahNameBadge({ chapterId }: { chapterId: number }) {
+  const name = SURAH_AR[chapterId] ?? '';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, margin: '2px 0', flexShrink: 0 }}>
+      <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, transparent, #c8a84b80)' }} />
+      <div style={{
+        padding: '3px 18px',
+        border: '1px solid rgba(200,168,75,0.65)',
+        borderRadius: 4,
+        fontSize: 13,
+        fontWeight: 700,
+        color: '#5a3e10',
+        fontFamily: "'Amiri Quran','Scheherazade New',serif",
+        background: 'rgba(200,168,75,0.08)',
+        whiteSpace: 'nowrap',
+      }}>
+        سورة {name}
+      </div>
+      <div style={{ flex: 1, height: 1, background: 'linear-gradient(to left, transparent, #c8a84b80)' }} />
+    </div>
+  );
+}
+
+interface PageMeta { juz: number | null; hizb: number | null; surahs: number[]; }
+interface MushafWord { text: string; charType: string; verseNumber: number; chapterId: number; lineNumber: number; }
+interface MushafLine { lineNum: number; words: MushafWord[]; }
+
+interface Props {
+  page: number;
+  currentChapter: number;
+  currentVerse: number;
+  onVerseClick?: (chapter: number, verse: number) => void;
+  onAyahTap?: (info: { chapterId: number; verseNumber: number; text: string }) => void;
+  autoFollow?: boolean;
+}
+
+type RenderItem = { type: 'surah'; chapterId: number } | { type: 'line'; line: MushafLine };
+
+export default function MushafQCFPage({ page, currentChapter, currentVerse, onVerseClick, onAyahTap }: Props) {
+  const [lines, setLines] = useState<MushafLine[]>([]);
   const [meta, setMeta] = useState<PageMeta>({ juz: null, hizb: null, surahs: [] });
-  const [imgLoaded, setImgLoaded] = useState(false);
-  const [imgError, setImgError] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  const imgSrc = `/api/tareeq/quran/mushaf-page?page=${page}`;
+  const qFont = "'Amiri Quran','Scheherazade New','Traditional Arabic',serif";
 
-  // Fetch metadata (juz/hizb/surah names) from mushaf-lines API
   useEffect(() => {
-    setImgLoaded(false);
-    setImgError(false);
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
     fetch(`/api/tareeq/quran/mushaf-lines?page=${page}`)
-      .then(r => r.json())
-      .then(d => { if (d.meta) setMeta(d.meta); })
-      .catch(() => {});
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(d => {
+        if (cancelled) return;
+        if (d.lines) { setLines(d.lines); setMeta(d.meta); }
+        else setError(true);
+        setLoading(false);
+      })
+      .catch(() => { if (!cancelled) { setError(true); setLoading(false); } });
+    return () => { cancelled = true; };
   }, [page]);
 
-  const surahHeaderLabel = meta.surahs.length > 1
-    ? meta.surahs.map(id => SURAH_AR[id] ?? '').filter(Boolean).join(' و')
-    : (SURAH_AR[meta.surahs[0] ?? currentChapter] ?? '');
+  // Find lines where a new surah starts (verse 1)
+  const surahHeaderMap = useMemo(() => {
+    const map = new Map<number, number>(); // lineNum → chapterId
+    for (const line of lines) {
+      for (const word of line.words) {
+        if (word.verseNumber === 1 && word.charType !== 'end') {
+          if (!map.has(line.lineNum)) map.set(line.lineNum, word.chapterId);
+          break;
+        }
+      }
+    }
+    return map;
+  }, [lines]);
+
+  // Build ordered render items
+  const renderItems = useMemo((): RenderItem[] => {
+    const items: RenderItem[] = [];
+    for (const line of lines) {
+      if (surahHeaderMap.has(line.lineNum)) {
+        items.push({ type: 'surah', chapterId: surahHeaderMap.get(line.lineNum)! });
+      }
+      items.push({ type: 'line', line });
+    }
+    return items;
+  }, [lines, surahHeaderMap]);
+
+  const surahHeaderLabel = useMemo(
+    () => meta.surahs.map(id => SURAH_AR[id] ?? '').filter(Boolean).join(' و'),
+    [meta.surahs],
+  );
 
   return (
-    <div style={{ background: '#F9F4E8', minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ background: '#F9F4E8', minHeight: '100%', display: 'flex', flexDirection: 'column', userSelect: 'none', WebkitUserSelect: 'none' }}>
 
-      {/* ── Header ── */}
-      <div style={{ paddingTop: 8, paddingBottom: 4 }}>
+      {/* Header */}
+      <div style={{ paddingTop: 8, paddingBottom: 4, flexShrink: 0 }}>
         <GoldLine />
         <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '3px 16px' }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#5a3e10', fontFamily: "'Amiri','Scheherazade New',serif" }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#5a3e10', fontFamily: qFont }}>
             {meta.juz ? juzName(meta.juz) : ''}
           </span>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -92,55 +149,98 @@ export default function MushafQCFPage({ page, currentChapter, onVerseClick, onAy
             <path d="M20 4h-6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6V4z" fill="#c8a84b" opacity="0.5"/>
             <line x1="12" y1="6" x2="12" y2="18" stroke="#fff" strokeWidth="0.8"/>
           </svg>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#5a3e10', fontFamily: "'Amiri','Scheherazade New',serif" }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#5a3e10', fontFamily: qFont }}>
             {surahHeaderLabel}
           </span>
         </div>
         <GoldLine />
       </div>
 
-      {/* ── Mushaf Image ── */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', padding: '4px 6px' }}>
-        {!imgLoaded && !imgError && (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <style>{`@keyframes ms-spin{to{transform:rotate(360deg)}}`}</style>
-            <div style={{ width: 30, height: 30, borderRadius: '50%', border: '2.5px solid rgba(200,168,75,0.2)', borderTopColor: '#c8a84b', animation: 'ms-spin 0.7s linear infinite' }} />
-          </div>
-        )}
-        {imgError ? (
-          <div style={{ textAlign: 'center', color: '#9a7a40', fontFamily: "'Amiri',serif", fontSize: 14, padding: 24 }}>
-            تعذّر تحميل الصفحة
-          </div>
-        ) : (
-          <img
-            key={page}
-            src={imgSrc}
-            alt={`صفحة ${page}`}
-            onLoad={() => setImgLoaded(true)}
-            onError={() => { setImgError(true); setImgLoaded(true); }}
-            draggable={false}
-            style={{
-              width: '100%',
-              height: 'auto',
-              display: imgLoaded ? 'block' : 'none',
-              borderRadius: 4,
-              userSelect: 'none',
-              WebkitUserSelect: 'none',
-            }}
-          />
-        )}
-      </div>
+      {/* Content */}
+      {loading ? (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <style>{`@keyframes ms-spin{to{transform:rotate(360deg)}}`}</style>
+          <div style={{ width: 30, height: 30, borderRadius: '50%', border: '2.5px solid rgba(200,168,75,0.2)', borderTopColor: '#c8a84b', animation: 'ms-spin 0.7s linear infinite' }} />
+        </div>
+      ) : error ? (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <p style={{ color: '#9a7a40', fontFamily: qFont, fontSize: 14 }}>تعذّر تحميل الصفحة</p>
+        </div>
+      ) : (
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-evenly',
+          padding: '4px 10px',
+        }}>
+          {renderItems.map((item, idx) => {
+            if (item.type === 'surah') {
+              return <SurahNameBadge key={`s${item.chapterId}-${idx}`} chapterId={item.chapterId} />;
+            }
+            const { line } = item;
+            const wordCount = line.words.length;
+            const justifyContent = wordCount <= 3 ? 'center' : 'space-between';
 
-      {/* ── Footer ── */}
-      <div style={{ paddingTop: 4, paddingBottom: 8 }}>
+            return (
+              <div
+                key={line.lineNum}
+                dir="rtl"
+                style={{
+                  display: 'flex',
+                  justifyContent,
+                  alignItems: 'center',
+                  gap: wordCount <= 3 ? 6 : 0,
+                  flexShrink: 0,
+                  minHeight: 32,
+                }}
+              >
+                {line.words.map((word, wi) => {
+                  const isEnd = word.charType === 'end';
+                  const isHl = !isEnd && word.chapterId === currentChapter && word.verseNumber === currentVerse;
+
+                  return (
+                    <span
+                      key={wi}
+                      onClick={() => {
+                        if (isEnd) return;
+                        onAyahTap?.({ chapterId: word.chapterId, verseNumber: word.verseNumber, text: word.text });
+                        onVerseClick?.(word.chapterId, word.verseNumber);
+                      }}
+                      style={{
+                        fontFamily: qFont,
+                        fontSize: isEnd ? 13 : 21,
+                        lineHeight: 2,
+                        color: isEnd ? '#c8a84b' : (isHl ? '#3d1800' : '#1a0800'),
+                        background: isHl ? 'rgba(200,168,75,0.22)' : 'transparent',
+                        borderRadius: isHl ? 6 : 0,
+                        padding: isEnd ? '0 2px' : (isHl ? '1px 4px' : '1px 2px'),
+                        cursor: isEnd ? 'default' : 'pointer',
+                        display: 'inline-block',
+                        transition: 'background 0.25s, color 0.25s',
+                        WebkitTouchCallout: 'none',
+                      }}
+                    >
+                      {word.text}
+                    </span>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Footer */}
+      <div style={{ paddingTop: 4, paddingBottom: 8, flexShrink: 0 }}>
         <GoldLine />
         <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '3px 16px' }}>
-          <span style={{ fontSize: 11, color: '#5a3e10', fontFamily: "'Amiri','Scheherazade New',serif", fontWeight: 600 }}>
+          <span style={{ fontSize: 11, color: '#5a3e10', fontFamily: qFont, fontWeight: 600 }}>
             {meta.hizb ? `الحزب ${toEastern(meta.hizb)}` : ''}
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <span style={{ fontSize: 9, color: '#c8a84b' }}>◆</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#5a3e10', fontFamily: "'Amiri','Scheherazade New',serif" }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#5a3e10', fontFamily: qFont }}>
               {toEastern(page)}
             </span>
             <span style={{ fontSize: 9, color: '#c8a84b' }}>◆</span>
@@ -149,7 +249,6 @@ export default function MushafQCFPage({ page, currentChapter, onVerseClick, onAy
         </div>
         <GoldLine />
       </div>
-
     </div>
   );
 }

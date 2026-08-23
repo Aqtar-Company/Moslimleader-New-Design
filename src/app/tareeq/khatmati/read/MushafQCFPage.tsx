@@ -310,7 +310,20 @@ export default function MushafQCFPage({
     // Font not yet in global cache — show fallback until it loads
     setQcfReady(false);
     console.log('[MushafQCFPage] LOADING reason: QCF_FONT_NOT_READY page=', page, 'family=', family);
-    warmQCFFont(page).then(() => setQcfReady(true)).catch(() => {});
+    /*
+     * warmQCFFont resolves regardless of success or failure (catch swallows
+     * the error to avoid blocking swipe). After it resolves, check the global
+     * font cache to know whether the font actually loaded — only then flip
+     * qcfReady. Without this guard, a CORS/404 failure causes garbled QCF
+     * glyph codes to render in a generic Arabic fallback font.
+     */
+    warmQCFFont(page).then(() => {
+      if (isFontLoaded(family)) {
+        setQcfReady(true);
+      } else {
+        console.log('[MushafQCFPage] QCF font failed to load, keeping fallback text — page=', page);
+      }
+    }).catch(() => {});
   }, [page]);
 
   /* Auto-scroll highlighted verse into view */

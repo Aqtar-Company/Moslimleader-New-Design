@@ -1473,11 +1473,28 @@ export default function AccountPage() {
                 qrDataUrl={membershipQrUrl}
                 isRtl={isRtl}
               />
-              {/* "اكتفِ" — only for inactive, before renew flow starts */}
+              {/* Renew CTA + اكتفِ — only for inactive, before renew flow starts */}
               {(membership.status === 'EXPIRED' || membership.status === 'CANCELLED') && renewStep === 'idle' && (
-                <div style={{ textAlign: 'center', marginTop: 6 }}>
+                <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                   <button
-                    style={{ background: 'none', border: 'none', cursor: 'default', fontSize: 12, color: 'rgba(100,100,100,0.6)', textDecoration: 'underline', textUnderlineOffset: 3 }}
+                    onClick={() => {
+                      setRenewStep('paypal');
+                      setTimeout(() => renewSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+                    }}
+                    style={{
+                      width: '100%', maxWidth: 380, padding: '13px 0', borderRadius: 14,
+                      background: 'linear-gradient(135deg, #D4A853 0%, #c49530 100%)',
+                      color: '#1a0800', fontWeight: 900, fontSize: 15,
+                      border: 'none', cursor: 'pointer',
+                      boxShadow: '0 4px 20px rgba(212,168,67,0.3)',
+                    }}
+                  >
+                    {isRtl
+                      ? (membership.status === 'EXPIRED' ? '🔄 تجديد العضوية الرائدة' : '🔄 إعادة تفعيل العضوية')
+                      : (membership.status === 'EXPIRED' ? '🔄 Renew Leader Membership' : '🔄 Reactivate Membership')}
+                  </button>
+                  <button
+                    style={{ background: 'none', border: 'none', cursor: 'default', fontSize: 12, color: 'rgba(100,100,100,0.5)', textDecoration: 'underline', textUnderlineOffset: 3 }}
                   >
                     {isRtl ? 'أو اكتفِ بعضويتك المجتمعية المجانية' : 'Or keep your free Community membership'}
                   </button>

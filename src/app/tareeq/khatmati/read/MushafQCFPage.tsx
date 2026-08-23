@@ -73,7 +73,7 @@ function SurahHeader({ chapterId }: { chapterId: number }) {
         <span style={{ fontSize: 10, color: '#c8a84b', opacity: 0.8 }}>{ORNAMENT}</span>
         <span style={{
           fontFamily: "'Amiri Quran','Scheherazade New',serif",
-          fontSize: 17, fontWeight: 700, color: '#4a2e08',
+          fontSize: 17, fontWeight: 700, color: '#010101',
           letterSpacing: '0.03em',
         }}>
           سورة {name}
@@ -91,7 +91,7 @@ function BismillahHeader() {
       display: 'block', width: '100%', textAlign: 'center',
       margin: '6px 0 8px',
       fontFamily: "'Amiri Quran','Scheherazade New',serif",
-      fontSize: 20, color: '#2a1500', lineHeight: 1.8,
+      fontSize: 20, color: '#010101', lineHeight: 1.8,
       letterSpacing: '0.02em',
     }}>
       {BISMILLAH}
@@ -167,7 +167,7 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
 
   return (
     <div style={{
-      background: '#F9F4E8', minHeight: '100%',
+      background: '#F8EBD5', minHeight: '100%',
       display: 'flex', flexDirection: 'column',
       userSelect: 'none', WebkitUserSelect: 'none',
     }}>
@@ -176,7 +176,7 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
       <div style={{ paddingTop: 8, paddingBottom: 4, flexShrink: 0 }}>
         <GoldLine />
         <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 18px' }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#5a3e10', fontFamily: qFont }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#72603F', fontFamily: qFont }}>
             {meta.juz ? juzName(meta.juz) : ''}
           </span>
           {/* Mushaf icon */}
@@ -185,7 +185,7 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
             <path d="M20 4h-6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6V4z" fill="#c8a84b" opacity=".5"/>
             <line x1="12" y1="6" x2="12" y2="18" stroke="#fff" strokeWidth=".8"/>
           </svg>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#5a3e10', fontFamily: qFont }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#72603F', fontFamily: qFont }}>
             {surahLabel}
           </span>
         </div>
@@ -221,7 +221,7 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
             fontFamily: qFont,
             fontSize: 19,
             lineHeight: 2.6,
-            color: '#160900',
+            color: '#010101',
             overflowX: 'hidden',
           }}
         >
@@ -266,8 +266,8 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
                   style={{
                     display: 'inline',
                     fontSize: isEnd ? 14 : 19,
-                    color: isEnd ? '#b8922a' : (isHl ? '#2a0f00' : '#160900'),
-                    background: isHl ? 'rgba(200,168,75,.28)' : 'transparent',
+                    color: isEnd ? '#b8922a' : '#010101',
+                    background: isHl ? '#EFE2CD' : 'transparent',
                     borderRadius: isHl ? 5 : 0,
                     padding: isHl ? '2px 4px' : undefined,
                     cursor: isEnd ? 'default' : 'pointer',
@@ -295,7 +295,7 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
           {/* Page number — centered, quran.com PageFooter style */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 9, color: 'rgba(200,168,75,.7)' }}>◆</span>
-            <span style={{ fontSize: 13.5, fontWeight: 700, color: '#4a2e08', fontFamily: qFont }}>
+            <span style={{ fontSize: 13.5, fontWeight: 700, color: '#010101', fontFamily: qFont }}>
               {toEastern(page)}
             </span>
             <span style={{ fontSize: 9, color: 'rgba(200,168,75,.7)' }}>◆</span>

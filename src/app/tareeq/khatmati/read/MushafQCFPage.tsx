@@ -417,13 +417,18 @@ export default function MushafQCFPage({
           flex: 1,
           minHeight: 0,
           overflow: 'hidden',
+          /*
+           * Horizontal margins — 10px each side mirrors the printed Mushaf's
+           * inner margins and keeps text off the screen edge. The grid rows
+           * still fill the full height; only horizontal space is constrained.
+           */
+          padding: opening ? '8px 14px' : '0 10px',
           ...(opening
             ? {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'stretch',
                 justifyContent: 'center',
-                padding: '8px 0',
               }
             : {
                 display: 'grid',
@@ -474,8 +479,7 @@ export default function MushafQCFPage({
                   display: 'block',
                   direction: 'rtl',
                   textAlign: 'center',
-                  lineHeight: 2.4,
-                  padding: '0 16px',
+                  lineHeight: 2.2,
                 }
               : {
                   gridRow: lineNum,
@@ -483,7 +487,15 @@ export default function MushafQCFPage({
                   alignItems: 'center',
                   justifyContent: 'center',
                   direction: 'rtl',
-                  overflow: 'hidden',
+                  /*
+                   * 3px vertical padding inside each grid cell so upper diacritics
+                   * (shadda, sukun stacked above letters) and lower marks are not
+                   * clipped by the cell boundary. overflow:visible allows them to
+                   * breathe slightly into the adjacent row's spacing — the 1fr rows
+                   * have enough gap to absorb this without visual collision.
+                   */
+                  paddingBlock: '3px',
+                  overflow: 'visible',
                 };
 
             return (
@@ -515,7 +527,7 @@ export default function MushafQCFPage({
                       style={{
                         display: 'inline-block',
                         fontFamily: qcfReady ? qcfFont : META_FONT,
-                        fontSize: isEnd ? (opening ? 17 : 14) : (opening ? 19 : 16),
+                        fontSize: isEnd ? (opening ? 17 : 14) : (opening ? 20 : 17),
                         color: isEnd ? '#b89840' : '#010101',
                         background: isHl ? 'rgba(190,160,80,0.22)' : 'transparent',
                         borderRadius: isHl ? 4 : 0,

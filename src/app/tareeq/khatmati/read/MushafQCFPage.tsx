@@ -357,16 +357,6 @@ export default function MushafQCFPage({
     [meta.surahs],
   );
 
-  /*
-   * Determine the maximum line number on this page so the grid knows
-   * how many rows to allocate. Standard pages have 15 lines; page 1
-   * and 2 have fewer.
-   */
-  const maxLineNum = useMemo(
-    () => data ? Math.max(...data.lines.map(l => l.lineNum), 1) : 15,
-    [data],
-  );
-
   return (
     <div style={{
       background: '#F8EBD5',
@@ -424,7 +414,7 @@ export default function MushafQCFPage({
               }
             : {
                 display: 'grid',
-                gridTemplateRows: `repeat(${maxLineNum}, 1fr)`,
+                gridTemplateRows: 'repeat(15, 1fr)',
               }
           ),
         }}>

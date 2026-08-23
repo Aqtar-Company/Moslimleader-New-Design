@@ -1,5 +1,10 @@
 // Module-level cache — persists across React re-renders for the lifetime of the browser session.
 
+const QCF_CDN = 'https://fonts.qurancdn.com';
+function qcfFontUrl(page: number): string {
+  return `${QCF_CDN}/QCF_P${String(page).padStart(3, '0')}_v2.woff2`;
+}
+
 export interface MushafWord {
   text: string;
   codeV1: string;
@@ -49,8 +54,17 @@ export function warmQCFFont(page: number): Promise<void> {
   if (_fontInflight.has(family)) return _fontInflight.get(family)!;
   if (typeof document === 'undefined') return Promise.resolve();
 
-  const p = document.fonts
-    .load(`16px '${family}'`)
+  /*
+   * Use the FontFace constructor API so the font is loaded directly from the
+   * CDN URL without requiring a prior @font-face declaration in a stylesheet.
+   * document.fonts.load() silently no-ops when no @font-face is declared for
+   * the family — this was the root cause of persistent QCF_FONT_NOT_READY.
+   */
+  const url = qcfFontUrl(page);
+  const face = new FontFace(family, `url('${url}')`);
+  document.fonts.add(face);
+
+  const p = face.load()
     .then(() => { _fontLoaded.add(family); })
     .catch(() => {})
     .finally(() => _fontInflight.delete(family));

@@ -1487,14 +1487,19 @@ export default function AccountPage() {
                       color: '#1a0800', fontWeight: 900, fontSize: 15,
                       border: 'none', cursor: 'pointer',
                       boxShadow: '0 4px 20px rgba(212,168,67,0.3)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                     }}
                   >
+                    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
+                    </svg>
                     {isRtl
-                      ? (membership.status === 'EXPIRED' ? '🔄 تجديد العضوية الرائدة' : '🔄 إعادة تفعيل العضوية')
-                      : (membership.status === 'EXPIRED' ? '🔄 Renew Leader Membership' : '🔄 Reactivate Membership')}
+                      ? (membership.status === 'EXPIRED' ? 'تجديد العضوية الرائدة' : 'إعادة تفعيل العضوية')
+                      : (membership.status === 'EXPIRED' ? 'Renew Leader Membership' : 'Reactivate Membership')}
                   </button>
                   <button
-                    style={{ background: 'none', border: 'none', cursor: 'default', fontSize: 12, color: 'rgba(100,100,100,0.5)', textDecoration: 'underline', textUnderlineOffset: 3 }}
+                    onClick={() => { /* user acknowledges community status — no action needed */ }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'rgba(100,100,100,0.55)', textDecoration: 'underline', textUnderlineOffset: 3 }}
                   >
                     {isRtl ? 'أو اكتفِ بعضويتك المجتمعية المجانية' : 'Or keep your free Community membership'}
                   </button>
@@ -1619,8 +1624,8 @@ export default function AccountPage() {
                           💳 {isRtl ? 'دفع عبر إنستاباي / محفظة' : 'Pay via InstaPay / Wallet'}
                         </button>
                       )}
-                      <button onClick={() => setRenewStep('idle')} className="w-full py-2 text-sm text-gray-400 text-center">
-                        {isRtl ? 'رجوع' : 'Back'}
+                      <button onClick={() => setRenewStep('idle')} className="w-full py-2.5 text-sm font-bold text-gray-500 text-center border border-gray-200 rounded-xl hover:bg-gray-50 transition">
+                        {isRtl ? '← رجوع' : '← Back'}
                       </button>
                     </div>
                   )}
@@ -1637,8 +1642,8 @@ export default function AccountPage() {
                       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
                         {isRtl ? 'بعد التحويل، أرسل صورة الإيصال عبر واتساب. سيتم تفعيل العضوية خلال ٢٤ ساعة.' : 'After transfer, send the receipt via WhatsApp. Membership will be activated within 24 hours.'}
                       </div>
-                      <button onClick={() => setRenewStep('paypal')} className="w-full py-2 text-sm text-gray-400 text-center">
-                        {isRtl ? 'رجوع' : 'Back'}
+                      <button onClick={() => setRenewStep('paypal')} className="w-full py-2.5 text-sm font-bold text-gray-500 text-center border border-gray-200 rounded-xl hover:bg-gray-50 transition">
+                        {isRtl ? '← رجوع' : '← Back'}
                       </button>
                     </div>
                   )}

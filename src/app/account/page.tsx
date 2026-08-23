@@ -1494,7 +1494,7 @@ export default function AccountPage() {
                 !communityAcknowledged ? (
                   /* State A: grey card → two side-by-side buttons */
                   <div style={{ marginTop: 10, display: 'flex', gap: 10, maxWidth: 380, marginInline: 'auto', width: '100%' }}>
-                    {/* Renew button (gold) */}
+                    {/* Renew button — bright yellow */}
                     <button
                       onClick={() => {
                         setRenewStep('paypal');
@@ -1503,9 +1503,9 @@ export default function AccountPage() {
                       style={{
                         flex: 1, padding: '13px 0', borderRadius: 14,
                         background: 'linear-gradient(135deg, #FFCC00 0%, #FFD740 100%)',
-                        color: '#1a0800', fontWeight: 900, fontSize: 14,
+                        color: '#1a0800', fontWeight: 900, fontSize: 15,
                         border: 'none', cursor: 'pointer',
-                        boxShadow: '0 4px 20px rgba(255,204,0,0.3)',
+                        boxShadow: '0 4px 16px rgba(255,204,0,0.35)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                       }}
                     >
@@ -1514,7 +1514,7 @@ export default function AccountPage() {
                       </svg>
                       {isRtl ? 'جدد' : 'Renew'}
                     </button>
-                    {/* Keep community button (outlined) */}
+                    {/* Keep community button — visible on light bg */}
                     <button
                       onClick={async () => {
                         setCommunityAcknowledged(true);
@@ -1527,8 +1527,8 @@ export default function AccountPage() {
                       }}
                       style={{
                         flex: 1, padding: '13px 0', borderRadius: 14,
-                        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)',
-                        color: 'rgba(255,255,255,0.6)', fontWeight: 700, fontSize: 14,
+                        background: '#f3f4f6', border: '1px solid #e5e7eb',
+                        color: '#4b5563', fontWeight: 700, fontSize: 14,
                         cursor: 'pointer',
                       }}
                     >
@@ -1545,10 +1545,12 @@ export default function AccountPage() {
                         setTimeout(() => renewSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
                       }}
                       style={{
-                        width: '100%', padding: '12px 0', borderRadius: 14,
-                        background: 'rgba(255,204,0,0.08)', border: '1px solid rgba(255,204,0,0.28)',
-                        color: '#FFCC00', fontWeight: 800, fontSize: 14,
-                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                        width: '100%', padding: '13px 0', borderRadius: 14,
+                        background: 'linear-gradient(135deg, #FFCC00 0%, #FFD740 100%)',
+                        color: '#1a0800', fontWeight: 900, fontSize: 14,
+                        border: 'none', cursor: 'pointer',
+                        boxShadow: '0 4px 16px rgba(255,204,0,0.3)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
                       }}
                     >
                       <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
@@ -1556,13 +1558,13 @@ export default function AccountPage() {
                       </svg>
                       {isRtl ? 'جدد للعضوية الرائدة لمزيد من المميزات' : 'Upgrade to Leader for more benefits'}
                     </button>
-                    {/* Leader perks list — soft */}
+                    {/* Leader perks list — on light background */}
                     {upsellPerks.length > 0 && (
-                      <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 9 }}>
+                      <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px', borderRadius: 14, background: '#f9fafb', border: '1px solid #f3f4f6' }}>
                         {upsellPerks.map(p => (
-                          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                            <span style={{ color: '#FFCC00', fontSize: 10, flexShrink: 0 }}>✦</span>
-                            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', lineHeight: 1.4 }}>{p.title}</span>
+                          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ color: '#D4A853', fontSize: 11, flexShrink: 0 }}>✦</span>
+                            <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.4 }}>{p.title}</span>
                           </div>
                         ))}
                       </div>

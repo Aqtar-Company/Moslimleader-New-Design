@@ -33,12 +33,17 @@ export default function MobileMenu({ open, onClose }: MobileMenuProps) {
   }, [open, user]);
 
   const links = [
-    { href: '/',         label: isRtl ? 'الرئيسية'      : 'Home',     icon: '🏠' },
-    { href: '/tareeq',   label: isRtl ? 'طريق'          : 'Tareeq',   icon: '🌟', logoImg: '/Tareeq-small.png' },
-    { href: '/library',  label: isRtl ? 'المكتبة الرقمية': 'Library',  icon: '📚' },
-    { href: '/cart',     label: isRtl ? `السلة (${totalItems})` : `Cart (${totalItems})`, icon: '🛒' },
-    { href: '/wishlist', label: isRtl ? `المفضلة (${wishlistCount})` : `Wishlist (${wishlistCount})`, icon: '❤️' },
-    { href: '/about',    label: isRtl ? 'من نحن'        : 'About',     icon: 'ℹ️' },
+    { href: '/',           label: isRtl ? 'الرئيسية'       : 'Home',       icon: '🏠' },
+    { href: '/tareeq',     label: isRtl ? 'طريق'           : 'Tareeq',     icon: '🌟', logoImg: '/Tareeq-small.png' },
+    { href: '/library',    label: isRtl ? 'المكتبة الرقمية' : 'Library',    icon: '📚' },
+    ...(user ? [{ href: '/membership', label: isRtl ? 'عضوية الأسرة' : 'Family Membership', icon: '🪙',
+      badge: memberStatus === 'ACTIVE' ? (isRtl ? 'فعّالة' : 'Active')
+           : memberStatus === 'EXPIRED' || memberStatus === 'CANCELLED' ? (isRtl ? 'مجتمع' : 'Community')
+           : null,
+    }] : []),
+    { href: '/cart',       label: isRtl ? `السلة (${totalItems})` : `Cart (${totalItems})`, icon: '🛒' },
+    { href: '/wishlist',   label: isRtl ? `المفضلة (${wishlistCount})` : `Wishlist (${wishlistCount})`, icon: '❤️' },
+    { href: '/about',      label: isRtl ? 'من نحن'         : 'About',       icon: 'ℹ️' },
   ];
 
   if (!open) return null;
@@ -88,7 +93,16 @@ export default function MobileMenu({ open, onClose }: MobileMenuProps) {
                 {'logoImg' in link && link.logoImg
                   ? <img src={link.logoImg as string} alt="" className="w-6 h-6" />
                   : <span className="text-lg">{link.icon}</span>}
-                {link.label}
+                <span className="flex-1">{link.label}</span>
+                {'badge' in link && link.badge && (
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
+                    background: 'rgba(74,222,128,0.12)', color: '#16a34a',
+                    border: '1px solid rgba(74,222,128,0.3)',
+                  }}>
+                    {link.badge}
+                  </span>
+                )}
               </Link>
             );
           })}

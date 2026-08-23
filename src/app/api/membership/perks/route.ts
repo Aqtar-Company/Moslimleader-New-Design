@@ -5,7 +5,11 @@ import { prisma } from '@/lib/prisma';
 
 // Public: returns active perks for everyone (marketing info).
 // Authenticated active members also get their membership status.
-export async function GET() {
+// ?preview=1 returns all tiers regardless of membership (for upsell display).
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const preview = searchParams.get('preview') === '1';
+
   const user = await getAuthUser().catch(() => null);
 
   let isMember = false;
@@ -21,12 +25,12 @@ export async function GET() {
     where: {
       isActive: true,
       OR: [{ validUntil: null }, { validUntil: { gte: new Date() } }],
-      // Community members (isMember=false) only see 'all' tier perks
-      ...(isMember ? {} : { forTier: 'all' }),
+      // Community members only see 'all' tier perks, unless preview=1 (upsell view)
+      ...(!isMember && !preview ? { forTier: 'all' } : {}),
     },
     select: {
       id: true, title: true, description: true,
-      imageUrl: true, linkUrl: true, validUntil: true, createdAt: true,
+      imageUrl: true, linkUrl: true, validUntil: true, createdAt: true, forTier: true,
     },
     orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
   });

@@ -76,6 +76,7 @@ export default function AccountPage() {
   const [applyLoading, setApplyLoading] = useState(false);
   const [renewStep, setRenewStep] = useState<'idle' | 'paypal' | 'instapay' | 'success'>('idle');
   const [communityAcknowledged, setCommunityAcknowledged] = useState(false);
+  const [upsellPerks, setUpsellPerks] = useState<{ id: string; title: string }[]>([]);
   const renewSectionRef = useRef<HTMLDivElement>(null);
 
   // Free media downloads
@@ -1463,48 +1464,111 @@ export default function AccountPage() {
           ) : (
             /* ── MEMBER VIEW ── */
             <div className="space-y-5">
-              {/* Digital membership card */}
-              <MembershipCard
-                variant="leader"
-                memberNumber={membership.membershipNumber}
-                familyName={membership.familyName}
-                memberSince={membership.memberSince}
-                expiresAt={membership.expiresAt ?? undefined}
-                status={membership.status as 'ACTIVE' | 'PENDING' | 'EXPIRED' | 'CANCELLED'}
-                qrDataUrl={membershipQrUrl}
-                isRtl={isRtl}
-              />
-              {/* Renew CTA + اكتفِ — only for inactive, before renew flow starts */}
-              {(membership.status === 'EXPIRED' || membership.status === 'CANCELLED') && renewStep === 'idle' && !communityAcknowledged && (
-                <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                  <button
-                    onClick={() => {
-                      setRenewStep('paypal');
-                      setTimeout(() => renewSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
-                    }}
-                    style={{
-                      width: '100%', maxWidth: 380, padding: '13px 0', borderRadius: 14,
-                      background: 'linear-gradient(135deg, #FFCC00 0%, #FFD740 100%)',
-                      color: '#1a0800', fontWeight: 900, fontSize: 15,
-                      border: 'none', cursor: 'pointer',
-                      boxShadow: '0 4px 20px rgba(255,204,0,0.35)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    }}
-                  >
-                    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
-                    </svg>
-                    {isRtl
-                      ? (membership.status === 'EXPIRED' ? 'تجديد العضوية الرائدة' : 'إعادة تفعيل العضوية')
-                      : (membership.status === 'EXPIRED' ? 'Renew Leader Membership' : 'Reactivate Membership')}
-                  </button>
-                  <button
-                    onClick={() => setCommunityAcknowledged(true)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'rgba(100,100,100,0.65)', textDecoration: 'underline', textUnderlineOffset: 3 }}
-                  >
-                    {isRtl ? 'أو اكتفِ بعضويتك المجتمعية المجانية' : 'Or keep your free Community membership'}
-                  </button>
-                </div>
+              {/* Digital membership card — grey when inactive + not acknowledged, green community when acknowledged */}
+              {(membership.status === 'EXPIRED' || membership.status === 'CANCELLED') && communityAcknowledged
+                ? (
+                  <MembershipCard
+                    variant="community"
+                    memberNumber={membership.membershipNumber}
+                    name={user!.name}
+                    joinedYear={membership.memberSince}
+                    qrDataUrl={membershipQrUrl}
+                    isRtl={isRtl}
+                  />
+                ) : (
+                  <MembershipCard
+                    variant="leader"
+                    memberNumber={membership.membershipNumber}
+                    familyName={membership.familyName}
+                    memberSince={membership.memberSince}
+                    expiresAt={membership.expiresAt ?? undefined}
+                    status={membership.status as 'ACTIVE' | 'PENDING' | 'EXPIRED' | 'CANCELLED'}
+                    qrDataUrl={membershipQrUrl}
+                    isRtl={isRtl}
+                  />
+                )
+              }
+
+              {/* ── CTA for EXPIRED / CANCELLED ── */}
+              {(membership.status === 'EXPIRED' || membership.status === 'CANCELLED') && renewStep === 'idle' && (
+                !communityAcknowledged ? (
+                  /* State A: grey card → two side-by-side buttons */
+                  <div style={{ marginTop: 10, display: 'flex', gap: 10, maxWidth: 380, marginInline: 'auto', width: '100%' }}>
+                    {/* Renew button (gold) */}
+                    <button
+                      onClick={() => {
+                        setRenewStep('paypal');
+                        setTimeout(() => renewSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+                      }}
+                      style={{
+                        flex: 1, padding: '13px 0', borderRadius: 14,
+                        background: 'linear-gradient(135deg, #FFCC00 0%, #FFD740 100%)',
+                        color: '#1a0800', fontWeight: 900, fontSize: 14,
+                        border: 'none', cursor: 'pointer',
+                        boxShadow: '0 4px 20px rgba(255,204,0,0.3)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      }}
+                    >
+                      <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
+                      </svg>
+                      {isRtl ? 'جدد' : 'Renew'}
+                    </button>
+                    {/* Keep community button (outlined) */}
+                    <button
+                      onClick={async () => {
+                        setCommunityAcknowledged(true);
+                        if (upsellPerks.length === 0) {
+                          fetch('/api/membership/perks?preview=1')
+                            .then(r => r.ok ? r.json() : null)
+                            .then(d => setUpsellPerks((d?.perks ?? []).filter((p: {forTier?: string}) => p.forTier !== 'all').slice(0, 6)))
+                            .catch(() => {});
+                        }
+                      }}
+                      style={{
+                        flex: 1, padding: '13px 0', borderRadius: 14,
+                        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)',
+                        color: 'rgba(255,255,255,0.6)', fontWeight: 700, fontSize: 14,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {isRtl ? 'اكتفِ' : 'Keep free'}
+                    </button>
+                  </div>
+                ) : (
+                  /* State B: green community card → upgrade prompt + leader perks list */
+                  <div style={{ marginTop: 10, maxWidth: 380, marginInline: 'auto', width: '100%' }}>
+                    <button
+                      onClick={() => {
+                        setCommunityAcknowledged(false);
+                        setRenewStep('paypal');
+                        setTimeout(() => renewSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+                      }}
+                      style={{
+                        width: '100%', padding: '12px 0', borderRadius: 14,
+                        background: 'rgba(255,204,0,0.08)', border: '1px solid rgba(255,204,0,0.28)',
+                        color: '#FFCC00', fontWeight: 800, fontSize: 14,
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                      }}
+                    >
+                      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
+                      </svg>
+                      {isRtl ? 'جدد للعضوية الرائدة لمزيد من المميزات' : 'Upgrade to Leader for more benefits'}
+                    </button>
+                    {/* Leader perks list — soft */}
+                    {upsellPerks.length > 0 && (
+                      <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 9 }}>
+                        {upsellPerks.map(p => (
+                          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                            <span style={{ color: '#FFCC00', fontSize: 10, flexShrink: 0 }}>✦</span>
+                            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', lineHeight: 1.4 }}>{p.title}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
               )}
 
               {/* Discount badge + share row */}

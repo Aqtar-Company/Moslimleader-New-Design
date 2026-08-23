@@ -163,9 +163,9 @@ function LeaderCard({ memberNumber, memberSince, expiresAt, status, qrDataUrl, i
   const uid = useId().replace(/:/g, '');
   const isInactive = status === 'EXPIRED' || status === 'CANCELLED';
 
-  /* Active → navy blue (Leader tier), Inactive → forest green (community fallback) */
+  /* Active → navy blue (Leader tier), Inactive → dark charcoal/graphite */
   const cardBg = isInactive
-    ? 'linear-gradient(135deg, #0d2318 0%, #1a3a2e 40%, #24502f 70%, #1a3a2e 100%)'
+    ? 'linear-gradient(135deg, #18181c 0%, #242428 45%, #1c1c20 70%, #111114 100%)'
     : 'linear-gradient(135deg, #09152e 0%, #112040 45%, #1a2e5c 70%, #0d1a3a 100%)';
 
   const gold = isInactive ? 'rgba(180,150,80,0.45)' : '#D4A853';

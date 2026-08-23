@@ -1455,15 +1455,17 @@ export default function AccountPage() {
               {/* Digital membership card — constrained so it looks like an actual card on desktop */}
               {(() => {
                 const isInactive = membership.status === 'EXPIRED' || membership.status === 'CANCELLED';
+                /* Blue = paid Leader member (ACTIVE), Green = community (inactive/free) */
                 const cardBg = isInactive
-                  ? 'linear-gradient(135deg, #1c1c1e 0%, #2c2c2e 40%, #242424 70%, #1c1c1e 100%)'
-                  : 'linear-gradient(135deg, #0d2318 0%, #1a3a2e 40%, #24502f 70%, #1a3a2e 100%)';
-                const chipFill = isInactive ? '#888' : '#D4A853';
-                const chipStroke = isInactive ? '#666' : '#b8922a';
-                const chipInner = isInactive ? '#999' : '#c9a040';
-                const numColor = isInactive ? 'rgba(200,200,200,0.7)' : '#F5E6BE';
-                const expColor = isInactive ? 'rgba(200,200,200,0.6)' : '#D4A853';
-                const brandColor = isInactive ? 'rgba(200,200,200,0.8)' : '#D4A853';
+                  ? 'linear-gradient(135deg, #0d2318 0%, #1a3a2e 40%, #24502f 70%, #1a3a2e 100%)'
+                  : 'linear-gradient(135deg, #0d1535 0%, #1a2550 40%, #1e3060 70%, #152045 100%)';
+                /* Active (blue) = full gold accents; Inactive (green) = muted */
+                const chipFill = isInactive ? '#b8922a' : '#D4A853';
+                const chipStroke = isInactive ? '#9a7a20' : '#b8922a';
+                const chipInner = isInactive ? '#a88020' : '#c9a040';
+                const numColor = isInactive ? 'rgba(245,230,190,0.75)' : '#F5E6BE';
+                const expColor = isInactive ? 'rgba(212,168,67,0.6)' : '#D4A853';
+                const brandColor = '#D4A853';
                 return (
                   /* Card wrapper: max 380 px so it looks like a real card, not a banner */
                   <div style={{ maxWidth: 380, margin: '0 auto', width: '100%' }}>
@@ -1497,9 +1499,9 @@ export default function AccountPage() {
                     )}
 
                     {/* Background crescent */}
-                    <svg style={{ position: 'absolute', right: -30, top: -30, opacity: isInactive ? 0.03 : 0.06 }} width={220} height={220} viewBox="0 0 220 220">
-                      <circle cx="110" cy="110" r="100" fill="none" stroke={isInactive ? '#888' : '#D4A853'} strokeWidth="40"/>
-                      <circle cx="150" cy="90" r="80" fill={isInactive ? '#1c1c1e' : '#0d2318'}/>
+                    <svg style={{ position: 'absolute', right: -30, top: -30, opacity: 0.06 }} width={220} height={220} viewBox="0 0 220 220">
+                      <circle cx="110" cy="110" r="100" fill="none" stroke="#D4A853" strokeWidth="40"/>
+                      <circle cx="150" cy="90" r="80" fill={isInactive ? '#0d2318' : '#0d1535'}/>
                     </svg>
 
                     <div style={{ position: 'relative', height: '100%', padding: '6% 8%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>

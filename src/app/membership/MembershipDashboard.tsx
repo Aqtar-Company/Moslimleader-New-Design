@@ -143,7 +143,11 @@ export default function MembershipDashboard({
             {/* Membership Card */}
             <div style={{
               borderRadius: 20, overflow: 'hidden',
-              background: 'linear-gradient(135deg, #0a3838 0%, #0d5050 40%, #0e5e5e 100%)',
+              background: isActive
+                ? 'linear-gradient(135deg, #0d1535 0%, #1a2550 40%, #1e3060 70%, #152045 100%)'
+                : isInactive
+                  ? 'linear-gradient(135deg, #0d2318 0%, #1a3a2e 40%, #24502f 70%, #1a3a2e 100%)'
+                  : 'linear-gradient(135deg, #1a1500 0%, #2a2000 100%)',
               border: '1px solid rgba(212,168,67,0.25)',
               boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
               padding: '24px 22px',

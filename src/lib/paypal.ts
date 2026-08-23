@@ -52,6 +52,7 @@ export async function createPayPalOrder(amount: number, currency: string, refere
         },
       ],
       application_context: {
+        brand_name: 'Moslim Leader',
         shipping_preference: 'NO_SHIPPING',
         user_action: 'PAY_NOW',
       },

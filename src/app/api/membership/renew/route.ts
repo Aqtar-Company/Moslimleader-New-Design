@@ -23,6 +23,7 @@ async function getMembershipPrices(): Promise<{ egyUsd: number; intlUsd: number;
 }
 
 export async function POST(req: NextRequest) {
+  try {
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
       orderId = paypalOrder.id as string;
     } catch (err) {
       console.error('[renew] PayPal create order failed', err);
-      return NextResponse.json({ error: 'فشل إنشاء طلب الدفع مع PayPal' }, { status: 502 });
+      return NextResponse.json({ error: 'فشل إنشاء طلب الدفع مع PayPal' }, { status: 422 });
     }
     // Store the pending orderId so capture can cross-check it
     await prisma.familyMembership.update({
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
       await capturePayPalOrder(paypalOrderId);
     } catch (err) {
       console.error('[renew] PayPal capture failed', err);
-      return NextResponse.json({ error: 'فشل تأكيد الدفع مع PayPal' }, { status: 502 });
+      return NextResponse.json({ error: 'فشل تأكيد الدفع مع PayPal' }, { status: 422 });
     }
 
     const base = membership.expiresAt && membership.expiresAt > new Date() ? membership.expiresAt : new Date();
@@ -91,4 +92,8 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+  } catch (err) {
+    console.error('[renew] unexpected error', err);
+    return NextResponse.json({ error: 'حدث خطأ، حاول مرة أخرى' }, { status: 500 });
+  }
 }

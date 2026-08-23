@@ -21,6 +21,8 @@ export async function GET() {
     where: {
       isActive: true,
       OR: [{ validUntil: null }, { validUntil: { gte: new Date() } }],
+      // Community members (isMember=false) only see 'all' tier perks
+      ...(isMember ? {} : { forTier: 'all' }),
     },
     select: {
       id: true, title: true, description: true,

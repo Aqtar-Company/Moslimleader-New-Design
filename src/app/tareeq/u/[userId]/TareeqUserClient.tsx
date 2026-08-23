@@ -966,7 +966,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                     <>
                       <div className="flex flex-col gap-4">
                         {posts.map(post => (
-                          <TareeqCard key={post.id} post={post} initialLiked={likedIds.has(post.id)} initialReaction={reactedPosts[post.id] ?? null} />
+                          <TareeqCard key={post.id} post={post} initialLiked={likedIds.has(post.id)} initialReaction={reactedPosts[post.id] ?? null} onDeleted={(id) => setPosts(prev => prev.filter(p => p.id !== id))} />
                         ))}
                       </div>
                       {cursor && <div ref={sentinelRef} className="h-4 mt-8" />}
@@ -1174,7 +1174,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                           <GridImageCard key={post.id} post={post} liked={likedIds.has(post.id)} />
                         ) : (
                           <div key={post.id} className="col-span-2">
-                            <TareeqCard post={post} initialLiked={likedIds.has(post.id)} initialReaction={reactedPosts[post.id] ?? null} />
+                            <TareeqCard post={post} initialLiked={likedIds.has(post.id)} initialReaction={reactedPosts[post.id] ?? null} onDeleted={(id) => setPosts(prev => prev.filter(p => p.id !== id))} />
                           </div>
                         )
                       ))}
@@ -1182,7 +1182,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                   ) : (
                     <div className="flex flex-col gap-4">
                       {posts.map(post => (
-                        <TareeqCard key={post.id} post={post} initialLiked={likedIds.has(post.id)} initialReaction={reactedPosts[post.id] ?? null} />
+                        <TareeqCard key={post.id} post={post} initialLiked={likedIds.has(post.id)} initialReaction={reactedPosts[post.id] ?? null} onDeleted={(id) => setPosts(prev => prev.filter(p => p.id !== id))} />
                       ))}
                     </div>
                   )}

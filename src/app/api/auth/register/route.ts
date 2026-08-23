@@ -51,6 +51,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'البريد الإلكتروني مسجل بالفعل' }, { status: 409 });
     }
 
+    // Generate unique community member number MC-YYY-NNNNN
+    const year = String(new Date().getFullYear()).slice(1); // "026"
+    const latest = await prisma.user.findFirst({
+      where: { communityMemberNumber: { startsWith: `MC-${year}-` } },
+      orderBy: { communityMemberNumber: 'desc' },
+      select: { communityMemberNumber: true },
+    });
+    let seq = 1;
+    if (latest?.communityMemberNumber) {
+      const parts = latest.communityMemberNumber.split('-');
+      seq = (parseInt(parts[parts.length - 1], 10) || 0) + 1;
+    }
+    const communityMemberNumber = `MC-${year}-${String(seq).padStart(5, '0')}`;
+
     // Admin role is granted via ADMIN_EMAIL env var — never hardcoded
     const adminEmail = (process.env.ADMIN_EMAIL || '').toLowerCase();
     const role = (adminEmail && key === adminEmail) ? 'admin' : 'customer';
@@ -74,6 +88,7 @@ export async function POST(req: NextRequest) {
         emailVerified: isAdmin,
         verificationToken,
         verificationTokenExpiry,
+        communityMemberNumber,
       },
     });
 

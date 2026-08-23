@@ -43,7 +43,7 @@ export default async function MembershipPage() {
     }
   }
 
-  if (membership && (membership.status === 'ACTIVE' || membership.status === 'EXPIRED' || membership.status === 'PENDING')) {
+  if (membership && (membership.status === 'ACTIVE' || membership.status === 'EXPIRED' || membership.status === 'PENDING' || membership.status === 'CANCELLED')) {
     return (
       <MembershipDashboard
         membership={{

@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       paypalOrderId = paypalOrder.id as string;
     } catch (err) {
       console.error('[membership-create] PayPal create order failed', err);
-      return NextResponse.json({ error: 'فشل إنشاء طلب الدفع مع PayPal' }, { status: 502 });
+      return NextResponse.json({ error: 'فشل إنشاء طلب الدفع مع PayPal' }, { status: 422 });
     }
 
     if (!existing) {

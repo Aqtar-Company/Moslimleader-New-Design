@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export interface MushafWord {
   text: string;
-  codeV1: string;       // encoded text for QCF4 per-page font
+  codeV1: string;
+  codeV2: string;       // encoded text for QCF4 per-page font (use with QCF4{page}.woff2)
   charType: string;
   verseNumber: number;
   chapterId: number;
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const res = await fetch(
-      `https://api.quran.com/api/v4/verses/by_page/${page}?words=true&word_fields=text_uthmani,code_v1,line_number,char_type_name&fields=verse_number,chapter_id,juz_number,hizb_number&per_page=50`,
+      `https://api.quran.com/api/v4/verses/by_page/${page}?words=true&word_fields=text_uthmani,code_v1,code_v2,line_number,char_type_name&fields=verse_number,chapter_id,juz_number,hizb_number&per_page=50`,
       { signal: AbortSignal.timeout(8000) },
     );
     if (!res.ok) throw new Error(`upstream ${res.status}`);
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
       chapter_id: number;
       juz_number?: number;
       hizb_number?: number;
-      words: Array<{ text_uthmani: string; code_v1: string; line_number: number; char_type_name: string }>;
+      words: Array<{ text_uthmani: string; code_v1: string; code_v2: string; line_number: number; char_type_name: string }>;
     }> = data.verses ?? [];
 
     const allWords: MushafWord[] = [];
@@ -41,6 +42,7 @@ export async function GET(req: NextRequest) {
         allWords.push({
           text: w.text_uthmani ?? '',
           codeV1: w.code_v1 ?? '',
+          codeV2: w.code_v2 ?? '',
           charType: w.char_type_name ?? 'word',
           verseNumber: verse.verse_number,
           chapterId: verse.chapter_id,

@@ -1,14 +1,13 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { getTransporter } from '@/lib/smtp';
 import { randomBytes } from 'crypto';
+import { requirePerm } from '@/lib/permissions';
 
 async function requireAdmin() {
-  const user = await getAuthUser().catch(() => null);
-  if (!user || user.role !== 'admin') return null;
-  return user;
+  const guard = await requirePerm('membership.write');
+  return 'response' in guard ? null : guard.user;
 }
 
 function generateQRToken(): string {

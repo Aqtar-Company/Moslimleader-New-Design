@@ -192,15 +192,23 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Membership discount (15%) — server-side only, never trust client
+    // Membership discount — server-side only, never trust client
     let membershipDiscount = 0;
     const now = new Date();
-    const membership = await prisma.familyMembership.findUnique({
-      where: { ownerUserId: auth.userId },
-      select: { status: true, expiresAt: true },
-    }).catch(() => null);
+    const [membership, discountSettings, dbUser] = await Promise.all([
+      prisma.familyMembership.findUnique({ where: { ownerUserId: auth.userId }, select: { status: true, expiresAt: true } }).catch(() => null),
+      prisma.setting.findMany({ where: { key: { in: ['membership-discount-leader', 'membership-discount-community'] } } }).catch(() => []),
+      prisma.user.findUnique({ where: { id: auth.userId }, select: { communityMemberNumber: true } }).catch(() => null),
+    ]);
+    const discountMap = Object.fromEntries(discountSettings.map(s => [s.key, s.value as string]));
+    const leaderRaw    = parseInt(discountMap['membership-discount-leader']    ?? '', 10);
+    const communityRaw = parseInt(discountMap['membership-discount-community'] ?? '', 10);
+    const leaderPct    = (Number.isNaN(leaderRaw)    ? 15 : leaderRaw)    / 100;
+    const communityPct = (Number.isNaN(communityRaw) ? 5  : communityRaw) / 100;
     if (membership?.status === 'ACTIVE' && membership.expiresAt && membership.expiresAt > now) {
-      membershipDiscount = Math.round(verifiedSubtotal * 0.15);
+      membershipDiscount = Math.round(verifiedSubtotal * leaderPct);
+    } else if (dbUser?.communityMemberNumber) {
+      membershipDiscount = Math.round(verifiedSubtotal * communityPct);
     }
     verifiedDiscount += membershipDiscount;
 

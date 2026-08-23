@@ -1124,9 +1124,9 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, onReport, onDeleted, o
 }) {
   const [done, setDone] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   async function handleDelete() {
-    if (!confirm(isRtl ? 'هل تريد حذف هذا المنشور نهائياً؟' : 'Delete this post permanently?')) return;
     setDeleting(true);
     try {
       const res = await fetch(`/api/tareeq/${postId}`, { method: 'DELETE', credentials: 'include' });
@@ -1136,7 +1136,9 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, onReport, onDeleted, o
       }
     } catch { /* ignore */ }
     setDeleting(false);
-    alert(isRtl ? 'حدث خطأ أثناء الحذف' : 'Failed to delete');
+    setConfirmDelete(false);
+    setDone(isRtl ? 'حدث خطأ أثناء الحذف' : 'Failed to delete');
+    setTimeout(onClose, 1800);
   }
 
   async function handleUnfollow() {
@@ -1205,20 +1207,48 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, onReport, onDeleted, o
             <div className="px-5 py-3 hidden md:block" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
               <p className="text-xs font-bold" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'خيارات المنشور' : 'Post options'}</p>
             </div>
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className={row}
-              style={{ borderBottom: '1px solid var(--tr-border-subtle)', color: '#f43f5e' }}
-            >
-              <svg width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              <span className="font-semibold text-sm">{deleting ? (isRtl ? 'جاري الحذف...' : 'Deleting...') : (isRtl ? 'حذف المنشور' : 'Delete Post')}</span>
-            </button>
-            <button onClick={onClose} className="w-full py-4 text-center text-sm font-semibold" style={{ color: 'var(--tr-text-muted)' }}>
-              {isRtl ? 'إلغاء' : 'Cancel'}
-            </button>
+            {confirmDelete ? (
+              /* ── Confirmation panel (replaces native confirm()) ── */
+              <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                <p className="text-sm font-semibold mb-4" style={{ color: 'var(--tr-text-primary)', textAlign: isRtl ? 'right' : 'left' }}>
+                  {isRtl ? 'هل تريد حذف هذا المنشور نهائياً؟' : 'Delete this post permanently?'}
+                </p>
+                <div className="flex gap-3" dir={isRtl ? 'rtl' : 'ltr'}>
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-bold transition active:scale-95 disabled:opacity-50"
+                    style={{ background: '#f43f5e', color: '#fff' }}
+                  >
+                    {deleting ? (isRtl ? 'جاري الحذف...' : 'Deleting...') : (isRtl ? 'نعم، احذف' : 'Yes, delete')}
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    disabled={deleting}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition active:scale-95"
+                    style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}
+                  >
+                    {isRtl ? 'إلغاء' : 'Cancel'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className={row}
+                style={{ borderBottom: '1px solid var(--tr-border-subtle)', color: '#f43f5e' }}
+              >
+                <svg width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <span className="font-semibold text-sm">{isRtl ? 'حذف المنشور' : 'Delete Post'}</span>
+              </button>
+            )}
+            {!confirmDelete && (
+              <button onClick={onClose} className="w-full py-4 text-center text-sm font-semibold" style={{ color: 'var(--tr-text-muted)' }}>
+                {isRtl ? 'إلغاء' : 'Cancel'}
+              </button>
+            )}
           </>
         ) : (
           /* ── Other's post: report / not interested / unfollow ── */

@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       paypalOrderId = paypalOrder.id as string;
     } catch (err) {
       console.error('[renew-create] PayPal create order failed', err);
-      return NextResponse.json({ error: 'فشل إنشاء طلب الدفع مع PayPal' }, { status: 502 });
+      return NextResponse.json({ error: 'فشل إنشاء طلب الدفع مع PayPal' }, { status: 422 });
     }
 
     await prisma.familyMembership.update({

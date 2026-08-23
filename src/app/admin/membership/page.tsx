@@ -24,6 +24,7 @@ interface Perk {
   isActive: boolean;
   sortOrder: number;
   tareeqPostId: string | null;
+  forTier: string;
   createdAt: string;
 }
 
@@ -68,6 +69,7 @@ export default function AdminMembershipPage() {
   const [perkLink, setPerkLink] = useState('');
   const [perkUntil, setPerkUntil] = useState('');
   const [perkPostToTareeq, setPerkPostToTareeq] = useState(false);
+  const [perkForTier, setPerkForTier] = useState<'leader' | 'all'>('leader');
   const [perkImageFile, setPerkImageFile] = useState<File | null>(null);
   const [perkImagePreview, setPerkImagePreview] = useState<string | null>(null);
   const [perkSaving, setPerkSaving] = useState(false);
@@ -79,11 +81,13 @@ export default function AdminMembershipPage() {
   const [msg, setMsg] = useState('');
 
   // Pricing settings
-  const [priceEgyEgp,     setPriceEgyEgp]     = useState('100');
-  const [priceEgyUsd,     setPriceEgyUsd]      = useState('2.00');
-  const [priceIntlUsd,    setPriceIntlUsd]     = useState('5.00');
-  const [instapayNumber,  setInstapayNumber]   = useState('');
-  const [priceSaving,     setPriceSaving]      = useState(false);
+  const [priceEgyEgp,          setPriceEgyEgp]          = useState('100');
+  const [priceEgyUsd,          setPriceEgyUsd]           = useState('2.00');
+  const [priceIntlUsd,         setPriceIntlUsd]          = useState('5.00');
+  const [instapayNumber,       setInstapayNumber]        = useState('');
+  const [leaderDiscountPct,    setLeaderDiscountPct]     = useState('15');
+  const [communityDiscountPct, setCommunityDiscountPct]  = useState('5');
+  const [priceSaving,          setPriceSaving]           = useState(false);
 
   // Grant membership state
   const [grantEmail,      setGrantEmail]       = useState('');
@@ -109,16 +113,20 @@ export default function AdminMembershipPage() {
       setPriceEgyUsd(String(d.egyUsd));
       setPriceIntlUsd(String(d.intlUsd));
       setInstapayNumber(d.instapayNumber ?? '');
+      setLeaderDiscountPct(String(d.leaderDiscountPct ?? 15));
+      setCommunityDiscountPct(String(d.communityDiscountPct ?? 5));
     }
   }
 
   async function savePrices() {
     setPriceSaving(true);
     const keys = [
-      { key: 'membership-price-egy-egp',    value: priceEgyEgp.trim() },
-      { key: 'membership-price-egy-usd',    value: priceEgyUsd.trim() },
-      { key: 'membership-price-intl-usd',   value: priceIntlUsd.trim() },
-      { key: 'membership-instapay-number',  value: instapayNumber.trim() },
+      { key: 'membership-price-egy-egp',       value: priceEgyEgp.trim() },
+      { key: 'membership-price-egy-usd',        value: priceEgyUsd.trim() },
+      { key: 'membership-price-intl-usd',       value: priceIntlUsd.trim() },
+      { key: 'membership-instapay-number',      value: instapayNumber.trim() },
+      { key: 'membership-discount-leader',      value: leaderDiscountPct.trim() },
+      { key: 'membership-discount-community',   value: communityDiscountPct.trim() },
     ];
     await Promise.allSettled(
       keys.map(({ key, value }) =>
@@ -203,6 +211,7 @@ export default function AdminMembershipPage() {
     setEditingPerk(null);
     setPerkTitle(''); setPerkDesc(''); setPerkLink(''); setPerkUntil('');
     setPerkPostToTareeq(false); setPerkImageFile(null); setPerkImagePreview(null);
+    setPerkForTier('leader');
     setPerkError('');
     setShowPerkForm(true);
   }
@@ -212,6 +221,7 @@ export default function AdminMembershipPage() {
     setPerkTitle(p.title); setPerkDesc(p.description ?? '');
     setPerkLink(p.linkUrl ?? ''); setPerkUntil(p.validUntil ? p.validUntil.slice(0, 10) : '');
     setPerkPostToTareeq(false); setPerkImageFile(null);
+    setPerkForTier((p.forTier === 'all' ? 'all' : 'leader'));
     setPerkImagePreview(p.imageUrl ?? null);
     setPerkError('');
     setShowPerkForm(true);
@@ -238,6 +248,7 @@ export default function AdminMembershipPage() {
       validUntil: perkUntil || null,
       imageUrl,
       postToTareeq: perkPostToTareeq,
+      forTier: perkForTier,
     };
 
     const url = '/api/admin/membership/perks';
@@ -355,7 +366,7 @@ export default function AdminMembershipPage() {
           <button key={t} onClick={() => setTab(t)}
             style={{ padding: '8px 20px', borderRadius: 10, fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer',
               background: tab === t ? '#d4a843' : '#1e293b', color: tab === t ? '#0f172a' : '#94a3b8' }}>
-            {t === 'memberships' ? 'العضويات' : t === 'perks' ? 'المزايا' : t === 'pricing' ? 'الأسعار' : '➕ إضافة يدوية'}
+            {t === 'memberships' ? 'العضويات' : t === 'perks' ? 'المزايا' : t === 'pricing' ? 'الأسعار والخصومات' : '➕ إضافة يدوية'}
           </button>
         ))}
       </div>
@@ -487,7 +498,18 @@ export default function AdminMembershipPage() {
                       <img src={p.imageUrl} alt="" style={{ width: 60, height: 60, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
                     )}
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 800, fontSize: 15, color: '#f1f5f9', marginBottom: 4 }}>{p.title}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                        <div style={{ fontWeight: 800, fontSize: 15, color: '#f1f5f9' }}>{p.title}</div>
+                        <span style={{
+                          fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 20,
+                          background: p.forTier === 'leader' ? 'rgba(212,168,67,0.15)' : 'rgba(34,197,94,0.12)',
+                          color: p.forTier === 'leader' ? '#d4a843' : '#22c55e',
+                          border: `1px solid ${p.forTier === 'leader' ? 'rgba(212,168,67,0.3)' : 'rgba(34,197,94,0.25)'}`,
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {p.forTier === 'leader' ? '✦ عضو رائد فقط' : '🌿 كل الأعضاء'}
+                        </span>
+                      </div>
                       {p.description && <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 4, lineHeight: 1.5 }}>{p.description}</div>}
                       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                         {p.linkUrl && <a href={p.linkUrl} target="_blank" rel="noopener" style={{ fontSize: 12, color: '#60a5fa' }}>رابط ←</a>}
@@ -525,13 +547,15 @@ export default function AdminMembershipPage() {
         </>
       )}
 
-      {/* ─── PERK FORM SHEET ─── */}
+      {/* ─── PERK FORM MODAL ─── */}
       {showPerkForm && (
-        <div onClick={() => setShowPerkForm(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'flex-end' }}>
+        <div onClick={() => setShowPerkForm(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div onClick={e => e.stopPropagation()} dir="rtl"
-            style={{ width: '100%', maxHeight: '90dvh', overflowY: 'auto', background: '#1e293b', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px' }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: '#334155', margin: '0 auto 20px' }} />
-            <p style={{ fontWeight: 800, fontSize: 18, color: '#d4a843', marginBottom: 18 }}>
+            style={{ width: '100%', maxWidth: 520, maxHeight: '90dvh', overflowY: 'auto', background: '#1e293b', borderRadius: 20, padding: '28px 24px 32px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <button onClick={() => setShowPerkForm(false)} style={{ width: 32, height: 32, borderRadius: '50%', background: '#334155', border: 'none', color: '#94a3b8', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
+            </div>
+            <p style={{ fontWeight: 800, fontSize: 18, color: '#d4a843', marginBottom: 18, marginTop: 0 }}>
               {editingPerk ? 'تعديل الميزة' : 'إضافة ميزة جديدة'}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -565,6 +589,24 @@ export default function AdminMembershipPage() {
                   style={{ padding: '9px 18px', borderRadius: 10, background: '#334155', color: '#f1f5f9', fontSize: 13, border: 'none', cursor: 'pointer' }}>
                   {perkImagePreview ? 'تغيير الصورة' : 'رفع صورة'}
                 </button>
+              </div>
+              {/* Tier selector */}
+              <div style={{ padding: '12px 14px', borderRadius: 12, background: '#0f172a', border: '1px solid #334155' }}>
+                <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 8 }}>الميزة متاحة لـ:</p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setPerkForTier('leader')}
+                    style={{ flex: 1, padding: '8px 0', borderRadius: 10, fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', background: perkForTier === 'leader' ? '#d4a843' : '#334155', color: perkForTier === 'leader' ? '#0f172a' : '#94a3b8' }}>
+                    ✦ عضو رائد فقط
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPerkForTier('all')}
+                    style={{ flex: 1, padding: '8px 0', borderRadius: 10, fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', background: perkForTier === 'all' ? '#22c55e' : '#334155', color: perkForTier === 'all' ? '#0f172a' : '#94a3b8' }}>
+                    🌿 كل الأعضاء
+                  </button>
+                </div>
               </div>
               {/* Post to Tareeq */}
               {!editingPerk && (
@@ -630,6 +672,27 @@ export default function AdminMembershipPage() {
                   style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#0f172a', border: '1px solid #334155', color: '#f1f5f9', fontSize: 15, fontWeight: 700, outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <p style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>السعر الموحد لجميع الدول خارج مصر — يُعرض ويُسحب بالدولار</p>
+            </div>
+
+            {/* Divider */}
+            <div style={{ height: 1, background: '#334155', marginBottom: 20 }} />
+
+            {/* Discount rates */}
+            <div style={{ marginBottom: 28 }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9', marginBottom: 4 }}>🏷️ نسب الخصم على المنتجات</p>
+              <p style={{ fontSize: 11, color: '#64748b', marginBottom: 14 }}>تُطبَّق تلقائياً على الطلبات — العضو الرائد له الأولوية إذا كان لديه الاثنتان</p>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 11, color: '#d4a843', display: 'block', marginBottom: 4 }}>✦ خصم العضو الرائد (%)</label>
+                  <input type="number" min="0" max="100" value={leaderDiscountPct} onChange={e => setLeaderDiscountPct(e.target.value)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#0f172a', border: '1px solid #334155', color: '#f1f5f9', fontSize: 15, fontWeight: 700, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 11, color: '#7dd9a0', display: 'block', marginBottom: 4 }}>🌿 خصم عضو المجتمع (%)</label>
+                  <input type="number" min="0" max="100" value={communityDiscountPct} onChange={e => setCommunityDiscountPct(e.target.value)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#0f172a', border: '1px solid #334155', color: '#f1f5f9', fontSize: 15, fontWeight: 700, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+              </div>
             </div>
 
             <button onClick={savePrices} disabled={priceSaving}

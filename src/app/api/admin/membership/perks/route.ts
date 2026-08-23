@@ -1,12 +1,12 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/jwt';
+import { requirePerm, type Permission } from '@/lib/permissions';
 import { prisma } from '@/lib/prisma';
 import { getTransporter } from '@/lib/smtp';
 
 export async function GET(req: NextRequest) {
-  const user = await getAuthUser().catch(() => null);
-  if (!user || user.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const guard = await requirePerm(['membership.read', 'membership.write'] as Permission[]);
+  if ('response' in guard) return guard.response;
 
   const url = new URL(req.url);
   const includeInactive = url.searchParams.get('all') === '1';
@@ -20,11 +20,12 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const user = await getAuthUser().catch(() => null);
-  if (!user || user.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const guard = await requirePerm('membership.write');
+  if ('response' in guard) return guard.response;
+  const user = guard.user;
 
   const body = await req.json().catch(() => ({}));
-  const { title, description, imageUrl, linkUrl, validUntil, isActive, postToTareeq } = body;
+  const { title, description, imageUrl, linkUrl, validUntil, isActive, postToTareeq, forTier } = body;
 
   if (!title?.trim()) return NextResponse.json({ error: 'Title is required' }, { status: 400 });
 
@@ -56,6 +57,7 @@ export async function POST(req: NextRequest) {
       validUntil: validUntil ? new Date(validUntil) : null,
       isActive: isActive !== false,
       tareeqPostId,
+      forTier: forTier === 'all' ? 'all' : 'leader',
     },
   });
 
@@ -132,11 +134,11 @@ async function notifyActiveMembers(perk: { title: string; description: string | 
 }
 
 export async function PUT(req: NextRequest) {
-  const user = await getAuthUser().catch(() => null);
-  if (!user || user.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const guard = await requirePerm('membership.write');
+  if ('response' in guard) return guard.response;
 
   const body = await req.json().catch(() => ({}));
-  const { id, title, description, imageUrl, linkUrl, validUntil, isActive, sortOrder } = body;
+  const { id, title, description, imageUrl, linkUrl, validUntil, isActive, sortOrder, forTier } = body;
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
   const perk = await prisma.membershipPerk.update({
@@ -149,6 +151,7 @@ export async function PUT(req: NextRequest) {
       ...(validUntil !== undefined && { validUntil: validUntil ? new Date(validUntil) : null }),
       ...(isActive !== undefined && { isActive }),
       ...(sortOrder !== undefined && { sortOrder: Number(sortOrder) }),
+      ...(forTier !== undefined && { forTier: forTier === 'all' ? 'all' : 'leader' }),
     },
   });
 
@@ -156,8 +159,8 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const user = await getAuthUser().catch(() => null);
-  if (!user || user.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const guard = await requirePerm('membership.write');
+  if ('response' in guard) return guard.response;
 
   const { id } = await req.json().catch(() => ({}));
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });

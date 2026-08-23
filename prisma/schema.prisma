@@ -43,6 +43,7 @@ model User {
   tareeqSuspended         Boolean   @default(false)
   tareeqSuspendedAt       DateTime?
   tareeqSuspendReason     String?
+  communityMemberNumber   String?   @unique
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 
@@ -1823,6 +1824,7 @@ model MembershipPerk {
   linkUrl       String?
   validUntil    DateTime?
   isActive      Boolean   @default(true)
+  forTier       String    @default("leader") // "all" = community + leader | "leader" = leader only
   tareeqPostId  String?   // TareeqPost created when perk was published
   sortOrder     Int       @default(0)
   createdAt     DateTime  @default(now())

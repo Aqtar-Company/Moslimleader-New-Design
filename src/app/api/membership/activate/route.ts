@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
-import { capturePayPalOrder } from '@/lib/paypal';
+import { capturePayPalOrder, PayPalCaptureError } from '@/lib/paypal';
 import { checkRateLimit } from '@/lib/rate-limit';
 
 const PRICE_EGY_EGP_DEFAULT = 100;
@@ -39,7 +39,25 @@ export async function POST(req: NextRequest) {
       await capturePayPalOrder(paypalOrderId);
     } catch (err) {
       console.error('[activate] PayPal capture failed', err);
-      return NextResponse.json({ error: 'فشل تأكيد الدفع مع PayPal' }, { status: 502 });
+      if (err instanceof PayPalCaptureError) {
+        const friendlyByIssue: Record<string, string> = {
+          COMPLIANCE_VIOLATION: 'فشلت المعاملة لدى PayPal بسبب قيد على حساب التاجر. لم يتم خصم أي مبلغ. برجاء المحاولة بطريقة دفع أخرى أو التواصل مع الدعم.',
+          INSTRUMENT_DECLINED: 'البطاقة مرفوضة من البنك أو PayPal. جرّب بطاقة أخرى أو تواصل مع البنك.',
+          PAYER_ACCOUNT_RESTRICTED: 'حساب المشتري على PayPal مقيَّد. حاول طريقة دفع أخرى.',
+          PAYEE_ACCOUNT_RESTRICTED: 'حساب التاجر مقيَّد حالياً — تواصل مع الدعم.',
+          TRANSACTION_REFUSED: 'تم رفض المعاملة من PayPal. جرّب بطاقة أخرى أو طريقة دفع بديلة.',
+        };
+        const friendly = err.issue && friendlyByIssue[err.issue]
+          ? friendlyByIssue[err.issue]
+          : 'تعذّر إتمام الدفع لدى PayPal. لم يتم خصم أي مبلغ. حاول طريقة دفع أخرى.';
+        return NextResponse.json({
+          error: friendly,
+          detail: err.description ?? err.issue ?? 'PayPal rejected',
+          paypalIssue: err.issue,
+          paypalDebugId: err.debugId,
+        }, { status: 400 });
+      }
+      return NextResponse.json({ error: 'فشل تأكيد الدفع مع PayPal' }, { status: 400 });
     }
 
     const now = new Date();

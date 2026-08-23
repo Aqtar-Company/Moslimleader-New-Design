@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
-import MushafQCFPage from './MushafQCFPage';
+import MushafCarousel from './MushafCarousel';
 import VerseActionSheet, { type TappedVerse } from './VerseActionSheet';
 import {
   QuranVerse, fetchPageVerses,
@@ -324,7 +324,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col min-h-screen" style={{ background: mode === 'listen' ? '#05101f' : '#F7F2E8', overflow: mode === 'listen' ? 'hidden' : undefined }}>
+    <div className="flex flex-col min-h-screen" style={{ background: mode === 'listen' ? '#05101f' : '#F8EBD5', overflow: mode === 'listen' ? 'hidden' : undefined }}>
 
       {/* ── Top bar ── */}
       <div className="fixed top-0 left-0 right-0 z-40 flex flex-col gap-0"
@@ -397,19 +397,10 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
         </div>
       </div>
 
-      {/* ── Content area ── swipe left/right to turn pages (both mode) */}
-      <div className={`flex-1 ${mode === 'both' ? 'pb-[80px]' : ''}`}
-        style={{ paddingTop: (mode === 'both' && headerHidden) ? 0 : 88, transition: 'padding-top 0.25s ease' }}
-        onTouchStart={mode === 'both' ? (e) => { swipeStartXRef.current = e.touches[0].clientX; swipeStartYRef.current = e.touches[0].clientY; } : undefined}
-        onTouchEnd={mode === 'both' ? (e) => {
-          if (swipeStartXRef.current === null || swipeStartYRef.current === null) return;
-          const dx = e.changedTouches[0].clientX - swipeStartXRef.current;
-          const dy = e.changedTouches[0].clientY - swipeStartYRef.current;
-          swipeStartXRef.current = null; swipeStartYRef.current = null;
-          if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-          // RTL Arabic: swipe right (dx>0) = next page, swipe left = previous
-          goPage(dx > 0 ? 1 : -1);
-        } : undefined}>
+      {/* ── Content area ── */}
+      <div className="flex-1"
+        style={{ paddingTop: (mode === 'both' && headerHidden) ? 0 : 88, transition: 'padding-top 0.25s ease',
+          ...(mode === 'both' ? { display: 'flex', flexDirection: 'column' } : {}) }}>
         {loading ? (
           <div className="flex items-center justify-center py-24">
             <div className="w-8 h-8 border-2 rounded-full animate-spin"
@@ -611,13 +602,15 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
               </div>
             )}
 
-            {/* Both mode — Mushaf QCF page layout */}
+            {/* Both mode — 3-page swipe carousel */}
             {mode === 'both' && (
-              <MushafQCFPage
+              <MushafCarousel
                 page={page}
                 currentChapter={cv?.chapter_id ?? initialSurah}
                 currentVerse={cv?.verse_number ?? initialAyah}
                 autoFollow={autoFollow}
+                isPlaying={isPlaying}
+                onPageChange={(p) => { pageRef.current = p; setPage(p); }}
                 onVerseClick={(ch, v) => {
                   const idx = versesRef.current.findIndex(x => x.chapter_id === ch && x.verse_number === v);
                   if (idx >= 0) goVerse(idx);

@@ -2,6 +2,8 @@
 
 export interface MushafWord {
   text: string;
+  codeV1: string;
+  codeV2: string;
   charType: string;
   verseNumber: number;
   chapterId: number;

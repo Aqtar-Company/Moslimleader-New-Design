@@ -3,8 +3,7 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import { getCachedPage, fetchAndCachePage, prefetchPage } from './mushafCache';
 import type { PageData, MushafWord } from './mushafCache';
 
-/* ── Static data ─────────────────────────────────────────────────────── */
-
+/* ── Surah names ───────────────────────────────────────────────── */
 const SURAH_AR: Record<number, string> = {
   1:'الفاتحة',2:'البقرة',3:'آل عمران',4:'النساء',5:'المائدة',
   6:'الأنعام',7:'الأعراف',8:'الأنفال',9:'التوبة',10:'يونس',
@@ -31,103 +30,175 @@ const SURAH_AR: Record<number, string> = {
   111:'المسد',112:'الإخلاص',113:'الفلق',114:'الناس',
 };
 
+const SURAH_VERSE_COUNT: Record<number, number> = {
+  1:7,2:286,3:200,4:176,5:120,6:165,7:206,8:75,9:129,10:109,
+  11:123,12:111,13:43,14:52,15:99,16:128,17:111,18:110,19:98,20:135,
+  21:112,22:78,23:118,24:64,25:77,26:227,27:93,28:88,29:69,30:60,
+  31:34,32:30,33:73,34:54,35:45,36:83,37:182,38:88,39:75,40:85,
+  41:54,42:53,43:89,44:59,45:37,46:35,47:38,48:29,49:18,50:45,
+  51:60,52:49,53:62,54:55,55:78,56:96,57:29,58:22,59:24,60:13,
+  61:14,62:11,63:11,64:18,65:12,66:12,67:30,68:52,69:52,70:44,
+  71:28,72:28,73:20,74:56,75:40,76:31,77:50,78:40,79:46,80:42,
+  81:29,82:19,83:36,84:25,85:22,86:17,87:19,88:26,89:30,90:20,
+  91:15,92:21,93:11,94:8,95:8,96:19,97:5,98:8,99:8,100:11,
+  101:11,102:8,103:3,104:9,105:5,106:4,107:7,108:3,109:6,110:3,
+  111:5,112:4,113:5,114:6,
+};
+
+/* Madani surahs — all others are Makki */
+const SURAH_MADANI = new Set([
+  2,3,4,5,8,9,13,22,24,33,47,48,49,57,58,59,60,61,62,63,64,65,66,98,110,
+]);
+
 const JUZ_AR = ['','الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن','التاسع','العاشر','الحادي عشر','الثاني عشر','الثالث عشر','الرابع عشر','الخامس عشر','السادس عشر','السابع عشر','الثامن عشر','التاسع عشر','العشرون','الحادي والعشرون','الثاني والعشرون','الثالث والعشرون','الرابع والعشرون','الخامس والعشرون','السادس والعشرون','السابع والعشرون','الثامن والعشرون','التاسع والعشرون','الثلاثون'];
 
 const NO_BISMILLAH = new Set([1, 9]);
 const BISMILLAH = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ';
-const AYAH_MARK = '۝'; // U+06DD — Amiri Quran renders it as traditional ayah ornament
+const QCF_CDN = 'https://fonts.qurancdn.com';
 
-function juzName(n: number) { return JUZ_AR[n] ? `الجزء ${JUZ_AR[n]}` : `الجزء ${n}`; }
-function toEastern(n: number) { return String(n).replace(/[0-9]/g, d => '٠١٢٣٤٥٦٧٨٩'[parseInt(d)]); }
+function pad3(n: number) { return String(n).padStart(3, '0'); }
+function toEastern(n: number) { return String(n).replace(/[0-9]/g, d => '٠١٢٣٤٥٦٧٨٩'[+d]); }
+function juzLabel(n: number) { return JUZ_AR[n] ? `الجزء ${JUZ_AR[n]}` : `جزء ${n}`; }
 
-/* ── Gold rule ───────────────────────────────────────────────────────── */
+const META_FONT = "'Amiri Quran','Scheherazade New','Traditional Arabic',serif";
+
+/* ── Inject page-specific QCF font-faces ──────────────────────── */
+function QCFFontLoader({ pages }: { pages: number[] }) {
+  const unique = [...new Set(pages)].filter(p => p >= 1 && p <= 604);
+  const css = unique.map(p => {
+    const c = pad3(p);
+    return `@font-face{font-family:'QCFv2P${c}';src:url('${QCF_CDN}/QCFv2_P${c}.woff2')format('woff2');font-display:block}`;
+  }).join('');
+  return <style dangerouslySetInnerHTML={{ __html: css }} />;
+}
+
+/* ── Gold rule ─────────────────────────────────────────────────── */
 function GoldRule() {
   return (
-    <div style={{ padding: '0 16px' }}>
-      <div style={{ height: 1.5, background: 'linear-gradient(90deg,transparent,#b89840 15%,#b89840 85%,transparent)' }} />
-      <div style={{ height: 0.5, background: 'linear-gradient(90deg,transparent,#b89840 15%,#b89840 85%,transparent)', marginTop: 2 }} />
+    <div style={{ padding: '0 12px' }}>
+      <div style={{ height: 1.5, background: 'linear-gradient(90deg,transparent,#b89840 10%,#b89840 90%,transparent)' }} />
+      <div style={{ height: 0.5, background: 'linear-gradient(90deg,transparent,#b89840 10%,#b89840 90%,transparent)', marginTop: 2 }} />
     </div>
   );
 }
 
-/* ── Madinah-Mushaf style surah header ───────────────────────────────
- * Three-zone SVG: left geometric band | center text | right geometric band.
- * The diamond-and-connecting-line motif echoes the interlaced geometric
- * borders used in printed Madinah Mushaf section markers.
- */
+/* ── Surah header — real Madinah Mushaf SVG ornament ──────────── */
 function SurahHeader({ chapterId }: { chapterId: number }) {
   const name = SURAH_AR[chapterId] ?? '';
-  const W = 300, H = 46;
-  // diamond helper
-  const dia = (cx: number, cy: number, r: number) =>
-    `M${cx} ${cy - r} L${cx + r} ${cy} L${cx} ${cy + r} L${cx - r} ${cy}Z`;
+  const count = SURAH_VERSE_COUNT[chapterId] ?? 0;
+  const type = SURAH_MADANI.has(chapterId) ? 'مدنية' : 'مكية';
 
   return (
-    <div style={{ display: 'block', width: '100%', margin: '14px 0 2px', textAlign: 'center' }}>
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        style={{ width: '94%', maxWidth: 300, height: 'auto', display: 'inline-block', overflow: 'visible' }}
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        {/* Outer border + fill */}
-        <rect x="1" y="1" width={W - 2} height={H - 2} fill="#f4e9cc" stroke="#b89840" strokeWidth="1.3" rx="1" />
-
-        {/* Left geometric side band (0–72) */}
-        <rect x="1" y="1" width="72" height={H - 2} fill="rgba(185,148,48,0.18)" rx="1" />
-        {/* Right geometric side band (228–300) */}
-        <rect x={W - 73} y="1" width="72" height={H - 2} fill="rgba(185,148,48,0.18)" />
-        {/* Separator verticals */}
-        <line x1="73" y1="4" x2="73" y2={H - 4} stroke="#b89840" strokeWidth="0.8" />
-        <line x1={W - 73} y1="4" x2={W - 73} y2={H - 4} stroke="#b89840" strokeWidth="0.8" />
-
-        {/* Inner thin border on center section */}
-        <rect x="74" y="4" width={W - 148} height={H - 8} fill="none" stroke="#b89840" strokeWidth="0.45" />
-
-        {/* Left band: two diamonds linked */}
-        <path d={dia(17, H / 2, 8)} fill="rgba(185,148,40,0.28)" stroke="#b89840" strokeWidth="0.7" />
-        <circle cx="17" cy={H / 2} r="2.5" fill="#b89840" opacity="0.75" />
-        <line x1="25" y1={H / 2} x2="42" y2={H / 2} stroke="#b89840" strokeWidth="0.55" opacity="0.65" />
-        <path d={dia(50, H / 2, 8)} fill="rgba(185,148,40,0.28)" stroke="#b89840" strokeWidth="0.7" />
-        <circle cx="50" cy={H / 2} r="2.5" fill="#b89840" opacity="0.75" />
-
-        {/* Right band: mirror */}
-        <path d={dia(W - 17, H / 2, 8)} fill="rgba(185,148,40,0.28)" stroke="#b89840" strokeWidth="0.7" />
-        <circle cx={W - 17} cy={H / 2} r="2.5" fill="#b89840" opacity="0.75" />
-        <line x1={W - 25} y1={H / 2} x2={W - 42} y2={H / 2} stroke="#b89840" strokeWidth="0.55" opacity="0.65" />
-        <path d={dia(W - 50, H / 2, 8)} fill="rgba(185,148,40,0.28)" stroke="#b89840" strokeWidth="0.7" />
-        <circle cx={W - 50} cy={H / 2} r="2.5" fill="#b89840" opacity="0.75" />
-
-        {/* Surah name */}
-        <text
-          x={W / 2} y={H / 2 + 1}
-          textAnchor="middle" dominantBaseline="middle"
-          fontFamily="'Amiri Quran','Scheherazade New',serif"
-          fontSize="15.5" fontWeight="bold" fill="#0a0500"
-          letterSpacing="0.04em"
-        >
-          سورة {name}
-        </text>
-      </svg>
+    <div style={{ position: 'relative', width: '100%', margin: '12px 0 4px' }}>
+      {/* Actual Madinah Mushaf ornamental frame from public/surah_header_mushaf.svg */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/surah_header_mushaf.svg"
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+        style={{ width: '100%', height: 'auto', display: 'block', userSelect: 'none' }}
+      />
+      {/*
+       * Text overlay: the SVG's side panels occupy roughly the outer 17% on each side.
+       * We match that with padding so text falls inside the frame's center zone.
+       */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        direction: 'rtl', padding: '0 17%',
+      }}>
+        {/* Right panel: revelation type */}
+        <div style={{ textAlign: 'center', minWidth: 60 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: '#2a1a04', fontFamily: META_FONT }}>{type}</div>
+        </div>
+        {/* Center: surah name */}
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <span style={{
+            fontSize: 17, fontWeight: 700, color: '#0a0500',
+            fontFamily: "'Scheherazade New','" + META_FONT + "'",
+            letterSpacing: '0.04em',
+          }}>
+            سورة {name}
+          </span>
+        </div>
+        {/* Left panel: verse count */}
+        <div style={{ textAlign: 'center', minWidth: 60 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: '#2a1a04', fontFamily: META_FONT }}>
+            {toEastern(count)} آية
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-/* ── Bismillah line ──────────────────────────────────────────────────── */
+/* ── Bismillah typographic line ────────────────────────────────── */
 function BismillahLine() {
   return (
     <div style={{
-      display: 'block', width: '100%', textAlign: 'center',
-      margin: '4px 0 6px',
-      fontFamily: "'Amiri Quran','Scheherazade New','Traditional Arabic',serif",
-      fontSize: 20, color: '#010101', lineHeight: 1.8,
-      letterSpacing: '0.02em',
+      textAlign: 'center', width: '100%', margin: '4px 0 6px',
+      fontFamily: META_FONT, fontSize: 20, color: '#010101', lineHeight: 1.8,
     }}>
       {BISMILLAH}
     </div>
   );
 }
 
-/* ── Props ───────────────────────────────────────────────────────────── */
+/* ── Top metadata — printed Mushaf style ───────────────────────── */
+function MushafTopMetadata({ meta, surahLabel }: { meta: PageData['meta']; surahLabel: string }) {
+  return (
+    <div dir="rtl" style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '3px 16px',
+    }}>
+      {/* Right: surah range */}
+      <span style={{ fontSize: 11, fontWeight: 700, color: '#4a3820', fontFamily: META_FONT }}>
+        {surahLabel}
+      </span>
+      {/* Center: ۞ rub el-hizb — authentic Mushaf quarter-division marker */}
+      <span style={{ fontSize: 16, color: '#8a6c35', fontFamily: META_FONT, lineHeight: 1 }}>
+        ۞
+      </span>
+      {/* Left: Juz number */}
+      <span style={{ fontSize: 11, fontWeight: 700, color: '#4a3820', fontFamily: META_FONT }}>
+        {meta.juz ? juzLabel(meta.juz) : ''}
+      </span>
+    </div>
+  );
+}
+
+/* ── Mushaf footer — physical page footer ──────────────────────── */
+function MushafFooter({ meta, page }: { meta: PageData['meta']; page: number }) {
+  return (
+    <div style={{ paddingTop: 4, paddingBottom: 8, flexShrink: 0 }}>
+      <GoldRule />
+      <div dir="rtl" style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '4px 16px',
+      }}>
+        <span style={{ fontSize: 11, color: '#72603F', fontFamily: META_FONT, fontWeight: 600 }}>
+          {meta.hizb ? `الحزب ${toEastern(meta.hizb)}` : ''}
+        </span>
+        {/* Ornamental page-number frame */}
+        <svg viewBox="0 0 52 22" style={{ width: 52, height: 22 }}>
+          <rect x="1" y="1" width="50" height="20" rx="2" fill="rgba(185,152,64,0.1)" stroke="#b89840" strokeWidth="0.8" />
+          <line x1="5" y1="5" x2="47" y2="5" stroke="#b89840" strokeWidth="0.35" opacity="0.6" />
+          <line x1="5" y1="17" x2="47" y2="17" stroke="#b89840" strokeWidth="0.35" opacity="0.6" />
+          <text x="26" y="13" textAnchor="middle" dominantBaseline="middle"
+            fontFamily={META_FONT} fontSize="11" fontWeight="bold" fill="#010101">
+            {toEastern(page)}
+          </text>
+        </svg>
+        {/* spacer */}
+        <span style={{ fontSize: 11, color: 'transparent' }}>0</span>
+      </div>
+      <GoldRule />
+    </div>
+  );
+}
+
+/* ── Props ─────────────────────────────────────────────────────── */
 interface Props {
   page: number;
   currentChapter: number;
@@ -138,40 +209,33 @@ interface Props {
   autoFollow?: boolean;
 }
 
-/* ── Main component ──────────────────────────────────────────────────── */
+/* ── Main component ─────────────────────────────────────────────── */
 export default function MushafQCFPage({
   page, currentChapter, currentVerse, isPlaying,
   onVerseClick, onAyahTap, autoFollow,
 }: Props) {
-
-  /*
-   * Synchronous cache read — if data for this page is already in the module-level
-   * cache (because the carousel pre-fetched it), we derive it directly in render
-   * without setState, so there is NO loading state or flash on normal swipes.
-   */
   const [localData, setLocalData] = useState<PageData | null>(null);
   const data: PageData | null = getCachedPage(page) ?? localData;
   const loading = !data;
 
+  /* Track whether the page-specific QCF font has loaded */
+  const [qcfReady, setQcfReady] = useState(false);
+  const qcfFamily = `QCFv2P${pad3(page)}`;
+  const qcfFont = `'${qcfFamily}',sans-serif`;
+
   const hlRef = useRef<HTMLSpanElement | null>(null);
   let hlRefAttached = false;
 
-  const qFont = "'Amiri Quran','Scheherazade New','Traditional Arabic',serif";
-
+  /* Fetch page data if not cached */
   useEffect(() => {
-    // Clear stale localData from previous page immediately to avoid wrong content
     setLocalData(null);
-    // If the page is already in the module cache, nothing to fetch
     if (getCachedPage(page)) return;
-
     let cancelled = false;
-    fetchAndCachePage(page).then(d => {
-      if (!cancelled && d) setLocalData(d);
-    });
+    fetchAndCachePage(page).then(d => { if (!cancelled && d) setLocalData(d); });
     return () => { cancelled = true; };
   }, [page]);
 
-  /* Pre-warm surrounding pages while this one is displayed */
+  /* Pre-warm ±2 pages */
   useEffect(() => {
     prefetchPage(page - 2);
     prefetchPage(page - 1);
@@ -179,7 +243,14 @@ export default function MushafQCFPage({
     prefetchPage(page + 2);
   }, [page]);
 
-  /* Auto-scroll to highlighted verse */
+  /* Watch for QCF font to finish loading so we switch to glyph codes */
+  useEffect(() => {
+    setQcfReady(false);
+    if (typeof document === 'undefined') return;
+    document.fonts.load(`16px '${qcfFamily}'`).then(() => setQcfReady(true)).catch(() => {});
+  }, [qcfFamily]);
+
+  /* Auto-scroll highlighted verse into view */
   useEffect(() => {
     if (autoFollow && hlRef.current) {
       hlRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -187,6 +258,7 @@ export default function MushafQCFPage({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentChapter, currentVerse, autoFollow]);
 
+  /* Build physical page render items from sorted API lines */
   type RenderItem =
     | { type: 'surah_header'; chapterId: number }
     | { type: 'bismillah'; key: string }
@@ -212,7 +284,6 @@ export default function MushafQCFPage({
   }, [data]);
 
   const meta = data?.meta ?? { juz: null, hizb: null, surahs: [] };
-
   const surahLabel = useMemo(
     () => meta.surahs.map(id => SURAH_AR[id] ?? '').filter(Boolean).join(' و'),
     [meta.surahs],
@@ -220,34 +291,21 @@ export default function MushafQCFPage({
 
   return (
     <div style={{
-      background: '#F8EBD5',
-      minHeight: '100%', width: '100%',
+      background: '#F8EBD5', minHeight: '100%', width: '100%',
       display: 'flex', flexDirection: 'column',
       userSelect: 'none', WebkitUserSelect: 'none',
     }}>
+      {/* Inject QCF font-faces for this page and neighbours */}
+      <QCFFontLoader pages={[page - 1, page, page + 1]} />
 
-      {/* ── Metadata header ── */}
+      {/* ── Physical page top metadata ── */}
       <div style={{ paddingTop: 8, paddingBottom: 4, flexShrink: 0 }}>
         <GoldRule />
-        <div dir="rtl" style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '4px 18px',
-        }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#72603F', fontFamily: qFont }}>
-            {meta.juz ? juzName(meta.juz) : ''}
-          </span>
-          {/* Madinah Mushaf centre mark — a small geometric rub-el-hizb / star */}
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M8 1l1.5 4.5H14l-3.5 2.5 1.5 4.5L8 10l-4 2.5 1.5-4.5L2 5.5h4.5z" fill="#b89840" opacity=".7"/>
-          </svg>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#72603F', fontFamily: qFont }}>
-            {surahLabel}
-          </span>
-        </div>
+        <MushafTopMetadata meta={meta} surahLabel={surahLabel} />
         <GoldRule />
       </div>
 
-      {/* ── Body ── */}
+      {/* ── Page body ── */}
       {loading ? (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <style>{`@keyframes ms-spin{to{transform:rotate(360deg)}}`}</style>
@@ -258,17 +316,12 @@ export default function MushafQCFPage({
           }} />
         </div>
       ) : (
-        <div
-          dir="rtl"
-          style={{
-            flex: 1,
-            padding: '4px 0',
-            paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))',
-            fontFamily: qFont,
-            color: '#010101',
-            overflowX: 'hidden',
-          }}
-        >
+        <div style={{
+          flex: 1,
+          padding: '4px 0',
+          paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))',
+          overflowX: 'hidden',
+        }}>
           {renderItems.map((item) => {
             if (item.type === 'surah_header') {
               return <SurahHeader key={`sh-${item.chapterId}`} chapterId={item.chapterId} />;
@@ -276,17 +329,28 @@ export default function MushafQCFPage({
             if (item.type === 'bismillah') {
               return <BismillahLine key={item.key} />;
             }
-            /* Physical Mushaf line — space-between fills the full width like a printed page */
+
+            /*
+             * Physical Mushaf line.
+             *
+             * Words flow naturally RTL inside a centered flex container.
+             * NO justify-content: space-between — the QCF font's glyph widths
+             * determine natural inter-word spacing, just like the printed page.
+             *
+             * When the QCF font has loaded, we switch word content from
+             * text_uthmani (Amiri Quran) to code_v2 (QCF glyph codes).
+             * The QCF font renders the PUA-encoded glyphs as authentic Mushaf
+             * typography where each page's font matches that page's line widths.
+             */
             const { lineNum, words } = item;
-            const isShortLine = words.length <= 3;
             return (
               <div key={lineNum} dir="rtl" style={{
                 display: 'flex',
-                justifyContent: isShortLine ? 'center' : 'space-between',
+                direction: 'rtl',
+                justifyContent: 'center',   /* center the completed line — NO stretching */
                 alignItems: 'baseline',
-                padding: '0 14px',
-                lineHeight: 2.5,
-                gap: isShortLine ? 8 : 0,
+                padding: '0 12px',
+                lineHeight: 2.4,
               }}>
                 {words.map((word, wi) => {
                   const isEnd = word.charType === 'end';
@@ -296,9 +360,18 @@ export default function MushafQCFPage({
                     && word.verseNumber === currentVerse;
                   const attachRef = isHl && !hlRefAttached;
                   if (attachRef) hlRefAttached = true;
-                  const txt = isEnd
-                    ? (word.text.startsWith(AYAH_MARK) ? word.text : `${AYAH_MARK}${word.text}`)
-                    : word.text;
+
+                  /*
+                   * With QCF: use code_v2 — the PUA-encoded glyph for this word.
+                   * Without QCF (font still loading): fall back to text_uthmani
+                   * with ۝ prepended to end markers so Amiri Quran shows the ornament.
+                   */
+                  const txt = qcfReady
+                    ? (word.codeV2 || word.text)
+                    : isEnd
+                      ? (word.text.startsWith('۝') ? word.text : `۝${word.text}`)
+                      : word.text;
+
                   return (
                     <span
                       key={wi}
@@ -309,6 +382,7 @@ export default function MushafQCFPage({
                         onVerseClick?.(word.chapterId, word.verseNumber);
                       }}
                       style={{
+                        fontFamily: qcfReady ? qcfFont : META_FONT,
                         fontSize: isEnd ? 17 : 19,
                         color: isEnd ? '#b89840' : '#010101',
                         background: isHl ? 'rgba(190,160,80,0.22)' : 'transparent',
@@ -330,32 +404,8 @@ export default function MushafQCFPage({
         </div>
       )}
 
-      {/* ── Page footer ── */}
-      <div style={{ paddingTop: 4, paddingBottom: 8, flexShrink: 0 }}>
-        <GoldRule />
-        <div dir="rtl" style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '4px 18px',
-        }}>
-          <span style={{ fontSize: 11, color: '#72603F', fontFamily: qFont, fontWeight: 600 }}>
-            {meta.hizb ? `الحزب ${toEastern(meta.hizb)}` : ''}
-          </span>
-          {/* Page number in decorative frame */}
-          <svg viewBox="0 0 52 22" style={{ width: 52, height: 22 }}>
-            <rect x="1" y="1" width="50" height="20" rx="2" fill="rgba(185,152,64,0.1)" stroke="#b89840" strokeWidth="0.8" />
-            <line x1="5" y1="5" x2="47" y2="5" stroke="#b89840" strokeWidth="0.35" opacity="0.6" />
-            <line x1="5" y1="17" x2="47" y2="17" stroke="#b89840" strokeWidth="0.35" opacity="0.6" />
-            <text x="26" y="13" textAnchor="middle" dominantBaseline="middle"
-              fontFamily="'Amiri Quran','Scheherazade New',serif"
-              fontSize="11" fontWeight="bold" fill="#010101">
-              {toEastern(page)}
-            </text>
-          </svg>
-          <span style={{ fontSize: 11, color: 'transparent', fontFamily: qFont }}>0</span>
-        </div>
-        <GoldRule />
-      </div>
-
+      {/* ── Physical page footer ── */}
+      <MushafFooter meta={meta} page={page} />
     </div>
   );
 }

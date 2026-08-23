@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import {
   getCachedPage, fetchAndCachePage, prepareMushafPage,
   isFontLoaded, warmQCFFont,
+  isSurahNamesFontLoaded, warmSurahNamesFont,
 } from './mushafCache';
 import type { PageData, MushafWord } from './mushafCache';
 
@@ -36,34 +37,26 @@ const SURAH_AR: Record<number, string> = {
 const JUZ_AR = ['','الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن','التاسع','العاشر','الحادي عشر','الثاني عشر','الثالث عشر','الرابع عشر','الخامس عشر','السادس عشر','السابع عشر','الثامن عشر','التاسع عشر','العشرون','الحادي والعشرون','الثاني والعشرون','الثالث والعشرون','الرابع والعشرون','الخامس والعشرون','السادس والعشرون','السابع والعشرون','الثامن والعشرون','التاسع والعشرون','الثلاثون'];
 
 const NO_BISMILLAH = new Set([1, 9]);
-const QCF_CDN = 'https://fonts.qurancdn.com';
 
-// Pages 1 and 2 are opening pages — special vertically-centered composition.
-// All other pages (3–604) use the fixed top-aligned 15-line physical grid.
+// Pages 1 and 2 are opening pages — vertically-centered composition.
+// All other pages (3–604) use natural top-aligned document flow with scrolling.
 function isOpeningPage(page: number) { return page === 1 || page === 2; }
 
-function pad3(n: number) { return String(n).padStart(3, '0'); }
-function toEastern(n: number) { return String(n).replace(/[0-9]/g, d => '٠١٢٣٤٥٦٧٨٩'[+d]); }
 function juzLabel(n: number) { return JUZ_AR[n] ? `الجزء ${JUZ_AR[n]}` : `جزء ${n}`; }
 function qcfFamilyName(page: number) { return `p${page}-v2`; }
 
 const META_FONT = "'Amiri Quran','Scheherazade New','Traditional Arabic',serif";
-const RULE_COLOR = '#6B500F';
 
-/* ── surahnames @font-face only (QCF fonts loaded via FontFace API in mushafCache) ── */
-function SurahNamesFontStyle() {
-  return (
-    <style dangerouslySetInnerHTML={{
-      __html: `@font-face{font-family:'surahnames';src:url('/fonts/sura_names.woff2')format('woff2');font-display:block}`,
-    }} />
-  );
-}
-
-/* ── Thin single hairline separator (used only internally, not top/bottom) ── */
-// Kept for potential internal use; top/bottom metadata no longer use heavy borders.
-
-/* ── Surah header — SVG frame + surahnames icon font ──────────────── */
-function SurahHeader({ chapterId }: { chapterId: number }) {
+/*
+ * Surah header — SVG ornamental frame + surahnames icon font inside.
+ *
+ * fontReady: whether the surahnames font has finished loading via FontFace API.
+ * When false (font still loading or failed), we render the Arabic name from
+ * SURAH_AR as fallback so the ornament is NEVER visually empty. The surahnames
+ * font converts "002" → calligraphic البقرة via OpenType ligature, but we don't
+ * wait for it — we show the Arabic text immediately and it upgrades silently.
+ */
+function SurahHeader({ chapterId, fontReady }: { chapterId: number; fontReady: boolean }) {
   return (
     <div style={{ position: 'relative', width: '100%' }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -75,12 +68,20 @@ function SurahHeader({ chapterId }: { chapterId: number }) {
         style={{ width: '100%', height: 'auto', display: 'block', userSelect: 'none' }}
       />
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span
-          style={{ fontFamily: "'surahnames', serif", fontSize: 36, color: '#0a0500', lineHeight: 1 }}
-          translate="no"
-        >
-          {String(chapterId).padStart(3, '0')}
-        </span>
+        {fontReady ? (
+          /* surahnames font ready — "002" → calligraphic ligature */
+          <span
+            style={{ fontFamily: "'surahnames', serif", fontSize: 36, color: '#0a0500', lineHeight: 1 }}
+            translate="no"
+          >
+            {String(chapterId).padStart(3, '0')}
+          </span>
+        ) : (
+          /* Fallback: Arabic surah name in META_FONT — always visible, never empty */
+          <span style={{ fontFamily: META_FONT, fontSize: 18, fontWeight: 700, color: '#0a0500', lineHeight: 1 }}>
+            {SURAH_AR[chapterId] ?? ''}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -275,6 +276,9 @@ export default function MushafQCFPage({
   const qcfFont = `'${qcfFamily}', sans-serif`;
   const [qcfReady, setQcfReady] = useState(() => isFontLoaded(qcfFamily));
 
+  // Surahnames font — loaded once globally, tracked here for SurahHeader
+  const [surahNamesReady, setSurahNamesReady] = useState(() => isSurahNamesFontLoaded());
+
   const hlRef = useRef<HTMLSpanElement | null>(null);
   let hlRefAttached = false;
 
@@ -326,6 +330,14 @@ export default function MushafQCFPage({
     }).catch(() => {});
   }, [page]);
 
+  /* Surahnames font — warm once, update state when done */
+  useEffect(() => {
+    if (isSurahNamesFontLoaded()) { setSurahNamesReady(true); return; }
+    warmSurahNamesFont().then(() => {
+      if (isSurahNamesFontLoaded()) setSurahNamesReady(true);
+    });
+  }, []);
+
   /* Auto-scroll highlighted verse into view */
   useEffect(() => {
     if (autoFollow && hlRef.current) {
@@ -374,18 +386,19 @@ export default function MushafQCFPage({
     <div style={{
       background: '#F8EBD5',
       /*
-       * height:100% fills the absolute-positioned carousel slot exactly.
-       * This is the physical page canvas — nothing inside should extend
-       * beyond it (overflow:hidden on the text area enforces this).
+       * minHeight:100% — fills the carousel slot at minimum, but allows the
+       * content to grow beyond the slot for normal (full) pages. The slot has
+       * overflowY:auto so excess height is scrollable. Opening pages (1, 2)
+       * center their content within the viewport via flex:1 on the text area,
+       * which works because root is at least 100% tall.
        */
-      height: '100%',
+      minHeight: '100%',
       width: '100%',
       display: 'flex',
       flexDirection: 'column',
       userSelect: 'none',
       WebkitUserSelect: 'none',
     }}>
-      <SurahNamesFontStyle />
 
       {/* ── Physical page top metadata — no borders, whitespace only ── */}
       <div style={{ flexShrink: 0 }}>
@@ -413,37 +426,37 @@ export default function MushafQCFPage({
          *   so their visual position is fixed regardless of surrounding content.
          *   overflow:hidden ensures the page never overflows its slot.
          */
-        <div style={{
+        <div style={opening ? {
+          /*
+           * OPENING PAGES (1, 2):
+           * flex:1 expands to fill remaining viewport height (root is minHeight:100%,
+           * so flex:1 here = 100% − header − footer). justifyContent:center
+           * vertically centers the whole content group (header + bismillah + verses)
+           * as a single block within that space.
+           */
           flex: 1,
           minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'stretch',
+          justifyContent: 'center',
+          padding: '0 14px',
           overflow: 'hidden',
+        } : {
           /*
-           * Horizontal margins — 10px each side mirrors the printed Mushaf's
-           * inner margins and keeps text off the screen edge. The grid rows
-           * still fill the full height; only horizontal space is constrained.
+           * NORMAL PAGES (3–604):
+           * No height constraint — content grows to its natural height.
+           * The carousel slot has overflowY:auto so the user can scroll if
+           * 15 lines exceed the visible area. No grid: lines stack in document
+           * order (sorted by lineNum in renderItems), which is correct.
            */
-          padding: opening ? '8px 14px' : '0 10px',
-          ...(opening
-            ? {
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'stretch',
-                justifyContent: 'center',
-              }
-            : {
-                display: 'grid',
-                gridTemplateRows: 'repeat(15, 1fr)',
-              }
-          ),
+          padding: '4px 10px 8px',
         }}>
           {renderItems.map((item) => {
             if (item.type === 'surah_header') {
               return (
-                <div
-                  key={`sh-${item.chapterId}`}
-                  style={opening ? {} : { gridRow: item.gridRow, alignSelf: 'center' }}
-                >
-                  <SurahHeader chapterId={item.chapterId} />
+                <div key={`sh-${item.chapterId}`} style={{ alignSelf: 'center', width: '100%' }}>
+                  <SurahHeader chapterId={item.chapterId} fontReady={surahNamesReady} />
                 </div>
               );
             }
@@ -452,9 +465,7 @@ export default function MushafQCFPage({
               return (
                 <div
                   key={item.key}
-                  style={opening
-                    ? { display: 'flex', alignItems: 'center', justifyContent: 'center' }
-                    : { gridRow: item.gridRow, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
                   <BismillahLine />
                 </div>
@@ -462,16 +473,13 @@ export default function MushafQCFPage({
             }
 
             /*
-             * Physical Mushaf line.
+             * Quran line.
              *
-             * Normal pages: grid-row maps the physical line_number to its fixed
-             * visual slot. The QCF V2 glyph widths are pre-calibrated so words
-             * at the correct font size fill the line width; text-align:center
-             * handles any minor remainder.
-             *
-             * Font size 16px (down from 19px) ensures 15 lines fit the grid
-             * on mid-size phones (375–414px wide). Opening pages keep 19px
-             * since they have far fewer lines.
+             * Opening pages: block with lineHeight for vertical rhythm.
+             * Normal pages: flex-row centered, paddingBlock gives diacritics
+             *   (shadda, sukun stacked above) enough vertical breathing room
+             *   without clipping. Lines stack in natural document flow —
+             *   no grid, no viewport-height constraint, scrollable if needed.
              */
             const { lineNum, words } = item;
             const lineStyle: React.CSSProperties = opening
@@ -482,20 +490,11 @@ export default function MushafQCFPage({
                   lineHeight: 2.2,
                 }
               : {
-                  gridRow: lineNum,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   direction: 'rtl',
-                  /*
-                   * 3px vertical padding inside each grid cell so upper diacritics
-                   * (shadda, sukun stacked above letters) and lower marks are not
-                   * clipped by the cell boundary. overflow:visible allows them to
-                   * breathe slightly into the adjacent row's spacing — the 1fr rows
-                   * have enough gap to absorb this without visual collision.
-                   */
-                  paddingBlock: '3px',
-                  overflow: 'visible',
+                  paddingBlock: '5px',
                 };
 
             return (

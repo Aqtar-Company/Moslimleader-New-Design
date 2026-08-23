@@ -40,10 +40,12 @@ const _cache = new Map<number, PageData>();
 const _inflight = new Map<number, Promise<PageData | null>>();
 
 // Global font-ready set — survives React re-renders and component remounts.
-// Once a QCF font is confirmed loaded, any MushafQCFPage for that page skips
-// the setQcfReady(false) flash entirely.
 const _fontLoaded = new Set<string>();
 const _fontInflight = new Map<string, Promise<void>>();
+
+// Surahnames icon font — single shared file, not per-page.
+let _surahNamesLoaded = false;
+let _surahNamesInflight: Promise<void> | null = null;
 
 export function getCachedPage(page: number): PageData | undefined {
   return _cache.get(page);
@@ -51,6 +53,32 @@ export function getCachedPage(page: number): PageData | undefined {
 
 export function isFontLoaded(family: string): boolean {
   return _fontLoaded.has(family);
+}
+
+export function isSurahNamesFontLoaded(): boolean {
+  return _surahNamesLoaded;
+}
+
+/*
+ * Warm the surahnames icon font using the FontFace API so it is guaranteed
+ * loaded before any SurahHeader renders. This avoids the font-display:block
+ * FOIT window (invisible text for up to 3 s) that caused the ornament to
+ * appear empty on swipe — especially visible on page 2 (البقرة header).
+ */
+export function warmSurahNamesFont(): Promise<void> {
+  if (_surahNamesLoaded) return Promise.resolve();
+  if (_surahNamesInflight) return _surahNamesInflight;
+  if (typeof document === 'undefined') return Promise.resolve();
+
+  const face = new FontFace('surahnames', "url('/fonts/sura_names.woff2') format('woff2')");
+  document.fonts.add(face);
+
+  _surahNamesInflight = face.load()
+    .then(() => { _surahNamesLoaded = true; })
+    .catch(() => {})
+    .finally(() => { _surahNamesInflight = null; });
+
+  return _surahNamesInflight;
 }
 
 export function warmQCFFont(page: number): Promise<void> {

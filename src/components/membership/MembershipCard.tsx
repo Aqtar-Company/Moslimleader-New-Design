@@ -64,6 +64,8 @@ export default function MembershipCard(props: Props) {
 function CommunityCard({ memberNumber, joinedYear, qrDataUrl, isRtl }: CommunityCardProps) {
   const uid = useId().replace(/:/g, '');
   const green = '#7dd9a0';
+  // Display: swap ML- prefix → MC- so community card reads as a distinct tier
+  const displayNumber = memberNumber.replace(/^ML-/, 'MC-');
 
   return (
     <div style={{
@@ -104,7 +106,7 @@ function CommunityCard({ memberNumber, joinedYear, qrDataUrl, isRtl }: Community
           lineHeight: 1,
           textShadow: '0 2px 4px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.4), 1px 1px 0 rgba(0,0,0,0.5)',
         }}>
-          {memberNumber}
+          {displayNumber}
         </p>
       </div>
 

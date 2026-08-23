@@ -450,7 +450,7 @@ export default function MushafQCFPage({
            * 15 lines exceed the visible area. No grid: lines stack in document
            * order (sorted by lineNum in renderItems), which is correct.
            */
-          padding: '4px 10px 8px',
+          padding: '4px 2px 8px',
         }}>
           {renderItems.map((item) => {
             if (item.type === 'surah_header') {
@@ -512,19 +512,21 @@ export default function MushafQCFPage({
                   justifyContent: useFullWidth ? 'space-between' : 'center',
                   direction: 'rtl',
                   paddingBlock: '4px',
-                  width: '100%',
                   /*
-                   * Responsive font size derived from usable Mushaf text-area width.
-                   * text-area ≈ vw − 2×10 px horizontal padding.
-                   * Calibrated: at 375 px viewport → ~17 px (same as previous fixed),
-                   * scales with viewport width, clamped at 15 px / 21 px.
-                   *   320 px → 14.4 → 15 px (clamped)
-                   *   375 px → 16.9 px
-                   *   390 px → 17.6 px
-                   *   430 px → 19.4 px
-                   *   500 px → 22.5 → 21 px (clamped)
+                   * Constrain each line to the calibrated QCF line width, then
+                   * centre it within the text area. This prevents space-between
+                   * from spreading words across the full container width (~355 px)
+                   * when QCF glyphs are calibrated for ~270 px.
+                   *
+                   * ratio: lineWidth / fontSize ≈ 16  →  72 vw / 4.5 vw = 16 ✓
+                   *   320 px → 230 px / 14.4 px → clamped to 240 px / 15 px
+                   *   375 px → 270 px / 16.9 px
+                   *   390 px → 281 px / 17.6 px
+                   *   430 px → 295 px / 19.4 px → clamped to 295 px / 18.4 px
                    */
-                  fontSize: 'clamp(15px, 4.5vw, 21px)',
+                  width: 'clamp(240px, 72vw, 295px)',
+                  marginInline: 'auto',
+                  fontSize: 'clamp(15px, 4.5vw, 18.4px)',
                 };
 
             return (

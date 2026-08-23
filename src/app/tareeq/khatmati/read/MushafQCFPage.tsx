@@ -59,18 +59,8 @@ function SurahNamesFontStyle() {
   );
 }
 
-/* ── Triple-rule separator ─────────────────────────────────────────── */
-function MushafBorderRule() {
-  return (
-    <div style={{ padding: '0 10px' }}>
-      <div style={{ height: 2, background: RULE_COLOR, borderRadius: 1 }} />
-      <div style={{ height: 2 }} />
-      <div style={{ height: 0.75, background: RULE_COLOR, opacity: 0.55 }} />
-      <div style={{ height: 2 }} />
-      <div style={{ height: 1.5, background: RULE_COLOR, borderRadius: 0.5 }} />
-    </div>
-  );
-}
+/* ── Thin single hairline separator (used only internally, not top/bottom) ── */
+// Kept for potential internal use; top/bottom metadata no longer use heavy borders.
 
 /* ── Surah header — SVG frame + surahnames icon font ──────────────── */
 function SurahHeader({ chapterId }: { chapterId: number }) {
@@ -111,68 +101,143 @@ function BismillahLine() {
   );
 }
 
-/* ── Open-book ornament for top metadata centre ───────────────────── */
+/*
+ * Small open-book symbol for the center of the top metadata row.
+ * Matches the visual weight of the printed Madinah Mushaf center ornament —
+ * understated, not decorative clutter.
+ */
 function MushafBookMark() {
   return (
-    <svg width="20" height="15" viewBox="0 0 20 15" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
-      <path d="M10 1.5 C8 1.5 3.5 2.5 3.5 4 L3.5 13 C3.5 13 7 12 10 13 L10 1.5 Z"
-        fill="#f4e9ca" stroke="#b89840" strokeWidth="0.7" strokeLinejoin="round"/>
-      <path d="M10 1.5 C12 1.5 16.5 2.5 16.5 4 L16.5 13 C16.5 13 13 12 10 13 L10 1.5 Z"
-        fill="#f4e9ca" stroke="#b89840" strokeWidth="0.7" strokeLinejoin="round"/>
-      <line x1="10" y1="1.5" x2="10" y2="13" stroke="#b89840" strokeWidth="1"/>
-      <line x1="5.5" y1="5" x2="8.5" y2="5" stroke="#b89840" strokeWidth="0.35" opacity="0.65"/>
-      <line x1="5.5" y1="7" x2="8.5" y2="7" stroke="#b89840" strokeWidth="0.35" opacity="0.65"/>
-      <line x1="5.5" y1="9" x2="8.5" y2="9" stroke="#b89840" strokeWidth="0.35" opacity="0.65"/>
-      <line x1="11.5" y1="5" x2="14.5" y2="5" stroke="#b89840" strokeWidth="0.35" opacity="0.65"/>
-      <line x1="11.5" y1="7" x2="14.5" y2="7" stroke="#b89840" strokeWidth="0.35" opacity="0.65"/>
-      <line x1="11.5" y1="9" x2="14.5" y2="9" stroke="#b89840" strokeWidth="0.35" opacity="0.65"/>
+    <svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"
+      style={{ display: 'block', flexShrink: 0 }}>
+      {/* Left page */}
+      <path d="M9 1.2 C7.2 1.2 3 2 3 3.4 L3 12 C6 11.1 8 11.5 9 12 L9 1.2 Z"
+        fill="none" stroke="#4a3a1a" strokeWidth="0.8" strokeLinejoin="round"/>
+      {/* Right page */}
+      <path d="M9 1.2 C10.8 1.2 15 2 15 3.4 L15 12 C12 11.1 10 11.5 9 12 L9 1.2 Z"
+        fill="none" stroke="#4a3a1a" strokeWidth="0.8" strokeLinejoin="round"/>
+      {/* Spine */}
+      <line x1="9" y1="1.2" x2="9" y2="12" stroke="#4a3a1a" strokeWidth="0.9"/>
+      {/* Text lines — left page */}
+      <line x1="4.5" y1="4.5" x2="7.5" y2="4.5" stroke="#4a3a1a" strokeWidth="0.45" opacity="0.6"/>
+      <line x1="4.5" y1="6.2" x2="7.5" y2="6.2" stroke="#4a3a1a" strokeWidth="0.45" opacity="0.6"/>
+      <line x1="4.5" y1="7.9" x2="7.5" y2="7.9" stroke="#4a3a1a" strokeWidth="0.45" opacity="0.6"/>
+      {/* Text lines — right page */}
+      <line x1="10.5" y1="4.5" x2="13.5" y2="4.5" stroke="#4a3a1a" strokeWidth="0.45" opacity="0.6"/>
+      <line x1="10.5" y1="6.2" x2="13.5" y2="6.2" stroke="#4a3a1a" strokeWidth="0.45" opacity="0.6"/>
+      <line x1="10.5" y1="7.9" x2="13.5" y2="7.9" stroke="#4a3a1a" strokeWidth="0.45" opacity="0.6"/>
     </svg>
   );
 }
 
-/* ── Top metadata ─────────────────────────────────────────────────── */
+/*
+ * Top metadata row — matches the printed Madinah Mushaf header exactly:
+ *
+ *   RTL visual layout:
+ *   RIGHT: Juz label          CENTER: book ornament          LEFT: Surah label(s)
+ *   "الجزء السادس والعشرون"       📖                      "الجاثية والأحقاف"
+ *
+ * No borders. No background. No boxes. Only restrained dark typography
+ * with generous breathing room, as in the printed Mushaf.
+ */
 function MushafTopMetadata({ meta, surahLabel }: { meta: PageData['meta']; surahLabel: string }) {
   return (
     <div dir="rtl" style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '5px 16px',
-      background: 'rgba(107, 80, 15, 0.035)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '10px 18px 8px',
     }}>
-      <span style={{ fontSize: 12, fontWeight: 700, color: RULE_COLOR, fontFamily: META_FONT, letterSpacing: '0.01em' }}>
+      {/* Visual RIGHT (DOM first in RTL): Juz */}
+      <span style={{
+        fontSize: 12.5, fontWeight: 600, color: '#0a0500',
+        fontFamily: META_FONT, letterSpacing: '0.01em', lineHeight: 1.4,
+      }}>
         {meta.juz ? juzLabel(meta.juz) : ''}
       </span>
+      {/* CENTER: book ornament */}
       <MushafBookMark />
-      <span style={{ fontSize: 12, fontWeight: 700, color: RULE_COLOR, fontFamily: META_FONT, letterSpacing: '0.01em' }}>
+      {/* Visual LEFT (DOM last in RTL): Surah name(s) */}
+      <span style={{
+        fontSize: 12.5, fontWeight: 600, color: '#0a0500',
+        fontFamily: META_FONT, letterSpacing: '0.01em', lineHeight: 1.4,
+      }}>
         {surahLabel}
       </span>
     </div>
   );
 }
 
-/* ── Footer ───────────────────────────────────────────────────────── */
-function MushafFooter({ meta, page }: { meta: PageData['meta']; page: number }) {
+/*
+ * Ornamental rosette flanking the page number — a small 8-petal motif
+ * matching the teal decorative elements in the printed Madinah Mushaf footer.
+ * Color: #2A7A6E (teal).
+ */
+function FooterRosette() {
+  const C = '#2A7A6E';
+  // 8 petals: pairs of ellipses at 0/90/45/135 degrees, all passing through center
   return (
-    <div style={{ paddingTop: 4, paddingBottom: 8, flexShrink: 0 }}>
-      <MushafBorderRule />
-      <div dir="rtl" style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '4px 16px',
+    <svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true" style={{ display: 'block', flexShrink: 0 }}>
+      <ellipse cx="5.5" cy="5.5" rx="2.2" ry="4.5" fill={C} opacity="0.85"/>
+      <ellipse cx="5.5" cy="5.5" rx="4.5" ry="2.2" fill={C} opacity="0.85"/>
+      <ellipse cx="5.5" cy="5.5" rx="2.2" ry="4.5" transform="rotate(45 5.5 5.5)" fill={C} opacity="0.85"/>
+      <ellipse cx="5.5" cy="5.5" rx="2.2" ry="4.5" transform="rotate(-45 5.5 5.5)" fill={C} opacity="0.85"/>
+      {/* Center circle — white cutout creates the open-centre rosette look */}
+      <circle cx="5.5" cy="5.5" r="1.6" fill="#F8EBD5"/>
+    </svg>
+  );
+}
+
+/*
+ * Physical Mushaf footer — matches the printed Madinah Mushaf:
+ *
+ *   RTL visual layout:
+ *   RIGHT: Hizb label    CENTER: ornamental page number    LEFT: (empty)
+ *   "الحزب 51"                ❁ 502 ❁
+ *
+ * Western numerals match the reference. No heavy divider above — whitespace only.
+ */
+function MushafFooter({ meta, page }: { meta: PageData['meta']; page: number }) {
+  const TEAL = '#2A7A6E';
+  return (
+    <div dir="rtl" style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '6px 18px 10px',
+      flexShrink: 0,
+    }}>
+      {/* Visual RIGHT (DOM first in RTL): Hizb — Western numeral matches reference */}
+      <span style={{
+        fontSize: 12, color: '#0a0500', fontFamily: META_FONT, fontWeight: 500,
+        minWidth: 60,
       }}>
-        <span style={{ fontSize: 12, color: RULE_COLOR, fontFamily: META_FONT, fontWeight: 600 }}>
-          {meta.hizb ? `الحزب ${toEastern(meta.hizb)}` : ''}
-        </span>
-        <svg viewBox="0 0 52 22" style={{ width: 52, height: 22 }}>
-          <rect x="1" y="1" width="50" height="20" rx="2" fill="rgba(107,80,15,0.08)" stroke={RULE_COLOR} strokeWidth="1" />
-          <line x1="5" y1="5" x2="47" y2="5" stroke={RULE_COLOR} strokeWidth="0.4" opacity="0.5" />
-          <line x1="5" y1="17" x2="47" y2="17" stroke={RULE_COLOR} strokeWidth="0.4" opacity="0.5" />
-          <text x="26" y="13" textAnchor="middle" dominantBaseline="middle"
-            fontFamily={META_FONT} fontSize="11" fontWeight="bold" fill="#0a0500">
-            {toEastern(page)}
-          </text>
-        </svg>
-        <span style={{ fontSize: 12, color: 'transparent' }}>0</span>
+        {meta.hizb ? `الحزب ${meta.hizb}` : ''}
+      </span>
+
+      {/* CENTER: ornamental teal page-number frame */}
+      <div dir="ltr" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+        <FooterRosette />
+        <div style={{
+          minWidth: 36, height: 20,
+          border: `1.5px solid ${TEAL}`,
+          borderRadius: 4,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '0 7px',
+          background: `rgba(42,122,110,0.06)`,
+        }}>
+          <span style={{
+            fontSize: 11.5, fontWeight: 700, color: '#1a5a50',
+            fontFamily: META_FONT, lineHeight: 1,
+          }}>
+            {page}
+          </span>
+        </div>
+        <FooterRosette />
       </div>
-      <MushafBorderRule />
+
+      {/* Visual LEFT (DOM last in RTL): empty — balances the row */}
+      <span style={{ minWidth: 60 }} />
     </div>
   );
 }
@@ -319,11 +384,9 @@ export default function MushafQCFPage({
     }}>
       <SurahNamesFontStyle />
 
-      {/* ── Physical page top metadata ── */}
-      <div style={{ paddingTop: 8, paddingBottom: 4, flexShrink: 0 }}>
-        <MushafBorderRule />
+      {/* ── Physical page top metadata — no borders, whitespace only ── */}
+      <div style={{ flexShrink: 0 }}>
         <MushafTopMetadata meta={meta} surahLabel={surahLabel} />
-        <MushafBorderRule />
       </div>
 
       {/* ── Page body ── */}

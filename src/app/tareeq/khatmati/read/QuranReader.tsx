@@ -400,8 +400,14 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
       {/* ── Content area ── */}
       <div className="flex-1"
         style={{
-          paddingTop: (mode === 'both' && headerHidden) ? 0 : 88,
-          transition: 'padding-top 0.25s ease',
+          /*
+           * paddingTop is ALWAYS 88px — never transitions with header visibility.
+           * The header hides via transform:translateY(-100%) which does not affect
+           * layout. Keeping paddingTop constant means the carousel height never
+           * changes, so the CSS Grid rows never reflow and the Mushaf content
+           * never jumps vertically when the chrome shows or hides.
+           */
+          paddingTop: 88,
           /*
            * In 'both' mode reserve space for the fixed audio player at the bottom.
            * This keeps the carousel slots from extending behind the player.

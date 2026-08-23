@@ -482,6 +482,13 @@ export default function MushafQCFPage({
              *   no grid, no viewport-height constraint, scrollable if needed.
              */
             const { lineNum, words } = item;
+            /*
+             * space-between alignment needs ≥ 3 flex items to look natural.
+             * Short lines (disconnected letters, terminal short phrases) keep
+             * the centered layout — spreading 1–2 words to opposite edges
+             * creates a huge visual gap that looks wrong.
+             */
+            const useFullWidth = !opening && words.length >= 3;
             const lineStyle: React.CSSProperties = opening
               ? {
                   display: 'block',
@@ -492,9 +499,32 @@ export default function MushafQCFPage({
               : {
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
+                  /*
+                   * space-between: first word at right edge, last at left edge,
+                   * equal inter-word spacing between. This is NOT letter-spacing
+                   * or glyph stretching — only the space between word groups
+                   * increases. QCF glyphs remain unmodified.
+                   *
+                   * At the correct responsive font size the QCF calibration
+                   * ensures words already nearly fill the line, so the added
+                   * space-between gap is small and looks like a real Mushaf.
+                   */
+                  justifyContent: useFullWidth ? 'space-between' : 'center',
                   direction: 'rtl',
-                  paddingBlock: '5px',
+                  paddingBlock: '4px',
+                  width: '100%',
+                  /*
+                   * Responsive font size derived from usable Mushaf text-area width.
+                   * text-area ≈ vw − 2×10 px horizontal padding.
+                   * Calibrated: at 375 px viewport → ~17 px (same as previous fixed),
+                   * scales with viewport width, clamped at 15 px / 21 px.
+                   *   320 px → 14.4 → 15 px (clamped)
+                   *   375 px → 16.9 px
+                   *   390 px → 17.6 px
+                   *   430 px → 19.4 px
+                   *   500 px → 22.5 → 21 px (clamped)
+                   */
+                  fontSize: 'clamp(15px, 4.5vw, 21px)',
                 };
 
             return (
@@ -526,7 +556,16 @@ export default function MushafQCFPage({
                       style={{
                         display: 'inline-block',
                         fontFamily: qcfReady ? qcfFont : META_FONT,
-                        fontSize: isEnd ? (opening ? 17 : 14) : (opening ? 20 : 17),
+                        /*
+                         * Opening pages: explicit px so centered layout is unaffected.
+                         * Normal pages: font-size is set on the line container (responsive
+                         * clamp). Word spans inherit it (undefined = no override).
+                         * End markers use 0.85em — proportional to the line container
+                         * size, equivalent to the previous 14/17 ≈ 82% ratio.
+                         */
+                        fontSize: opening
+                          ? (isEnd ? 17 : 20)
+                          : (isEnd ? '0.85em' : undefined),
                         color: isEnd ? '#b89840' : '#010101',
                         background: isHl ? 'rgba(190,160,80,0.22)' : 'transparent',
                         borderRadius: isHl ? 4 : 0,

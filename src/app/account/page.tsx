@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LanguageContext';
 
 const PayPalBookButton = dynamic(() => import('@/components/PayPalBookButton'), { ssr: false });
+const MembershipCard = dynamic(() => import('@/components/membership/MembershipCard'), { ssr: false });
 
 const SUPPORT_WA = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP || '201000000000';
 import { ageInYears } from '@/lib/child-age';
@@ -64,7 +65,8 @@ export default function AccountPage() {
   const [loyaltyLoading, setLoyaltyLoading] = useState(false);
 
   // Membership
-  const [membership, setMembership] = useState<{ id: string; membershipNumber: string; status: string; familyName: string | null; memberSince: number; startsAt: string | null; expiresAt: string | null; familyMembers: { id: string; name: string; relation: string | null }[] } | null>(null);
+  const [membership, setMembership] = useState<{ id: string; membershipNumber: string; qrToken?: string; status: string; familyName: string | null; memberSince: number; startsAt: string | null; expiresAt: string | null; familyMembers: { id: string; name: string; relation: string | null }[] } | null>(null);
+  const [membershipQrUrl, setMembershipQrUrl] = useState<string | null>(null);
   const [membershipLoading, setMembershipLoading] = useState(false);
   const [perks, setPerks] = useState<{ id: string; title: string; description: string | null; imageUrl: string | null; linkUrl: string | null; validUntil: string | null; createdAt: string }[]>([]);
   const [membershipZone, setMembershipZone] = useState<'egypt' | 'international'>('international');
@@ -201,8 +203,16 @@ export default function AccountPage() {
       setMembershipLoading(true);
       fetch('/api/membership', { credentials: 'include' })
         .then(r => r.json())
-        .then(d => {
+        .then(async d => {
           setMembership(d.membership ?? null);
+          if (d.membership?.qrToken) {
+            try {
+              const QRCode = (await import('qrcode')).default;
+              const url = `https://moslimleader.com/membership/verify/${d.membership.qrToken}`;
+              const dataUrl = await QRCode.toDataURL(url, { width: 80, margin: 1, color: { dark: '#0a1020', light: '#ffffff' } });
+              setMembershipQrUrl(dataUrl);
+            } catch { /* non-fatal */ }
+          }
           fetch('/api/membership/perks', { credentials: 'include' })
             .then(r => r.json())
             .then(pd => setPerks(pd.perks ?? []))
@@ -1452,177 +1462,27 @@ export default function AccountPage() {
           ) : (
             /* ── MEMBER VIEW ── */
             <div className="space-y-5">
-              {/* Digital membership card — constrained so it looks like an actual card on desktop */}
-              {(() => {
-                const isInactive = membership.status === 'EXPIRED' || membership.status === 'CANCELLED';
-                /* Blue = paid Leader member (ACTIVE), Green = community (inactive/free) */
-                const cardBg = isInactive
-                  ? 'linear-gradient(135deg, #0d2318 0%, #1a3a2e 40%, #24502f 70%, #1a3a2e 100%)'
-                  : 'linear-gradient(135deg, #0d1535 0%, #1a2550 40%, #1e3060 70%, #152045 100%)';
-                /* Active (blue) = full gold accents; Inactive (green) = muted */
-                const chipFill = isInactive ? '#b8922a' : '#D4A853';
-                const chipStroke = isInactive ? '#9a7a20' : '#b8922a';
-                const chipInner = isInactive ? '#a88020' : '#c9a040';
-                const numColor = isInactive ? 'rgba(245,230,190,0.75)' : '#F5E6BE';
-                const expColor = isInactive ? 'rgba(212,168,67,0.6)' : '#D4A853';
-                const brandColor = '#D4A853';
-                return (
-                  /* Card wrapper: max 380 px so it looks like a real card, not a banner */
-                  <div style={{ maxWidth: 380, margin: '0 auto', width: '100%' }}>
-                  <div dir="ltr" style={{
-                    position: 'relative',
-                    borderRadius: 20,
-                    overflow: 'hidden',
-                    aspectRatio: '1.586 / 1',
-                    background: cardBg,
-                    boxShadow: isInactive
-                      ? '0 12px 40px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2)'
-                      : '0 20px 60px rgba(0,0,0,0.45), 0 4px 16px rgba(0,0,0,0.3)',
-                  }}>
-                    {/* Geometric pattern overlay */}
-                    <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: isInactive ? 0.04 : 0.07 }} viewBox="0 0 400 252" preserveAspectRatio="xMidYMid slice">
-                      <defs>
-                        <pattern id="hexgrid" x="0" y="0" width="60" height="52" patternUnits="userSpaceOnUse">
-                          <polygon points="30,2 58,17 58,47 30,62 2,47 2,17" fill="none" stroke="white" strokeWidth="1"/>
-                        </pattern>
-                      </defs>
-                      <rect width="400" height="252" fill="url(#hexgrid)"/>
-                    </svg>
-
-                    {/* Shine sweep — only for active */}
-                    {!isInactive && (
-                      <div style={{
-                        position: 'absolute', inset: 0,
-                        background: 'linear-gradient(115deg, transparent 30%, rgba(212,168,83,0.08) 50%, transparent 70%)',
-                        pointerEvents: 'none',
-                      }}/>
-                    )}
-
-                    {/* Background crescent */}
-                    <svg style={{ position: 'absolute', right: -30, top: -30, opacity: 0.06 }} width={220} height={220} viewBox="0 0 220 220">
-                      <circle cx="110" cy="110" r="100" fill="none" stroke="#D4A853" strokeWidth="40"/>
-                      <circle cx="150" cy="90" r="80" fill={isInactive ? '#0d2318' : '#0d1535'}/>
-                    </svg>
-
-                    <div style={{ position: 'relative', height: '100%', padding: '6% 8%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                      {/* Top row */}
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                        {/* Logo + brand */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <img src="/logo-mobile.png" alt="Muslim Leader" style={{ width: 48, height: 48, objectFit: 'contain', opacity: isInactive ? 0.45 : 1 }} />
-                          <div>
-                            <p style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.2em', color: brandColor, marginBottom: 2 }}>MUSLIM LEADER</p>
-                            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.05em' }}>
-                              {isRtl ? 'عضوية الأسرة المسلمة' : 'Family Membership'}
-                            </p>
-                          </div>
-                        </div>
-                        {/* Status badge */}
-                        <span style={{
-                          fontSize: 9, fontWeight: 900, letterSpacing: '0.1em',
-                          padding: '4px 10px', borderRadius: 20,
-                          background: membership.status === 'ACTIVE' ? 'rgba(52,211,153,0.25)' : membership.status === 'PENDING' ? 'rgba(251,191,36,0.25)' : 'rgba(160,160,160,0.2)',
-                          color: membership.status === 'ACTIVE' ? '#6ee7b7' : membership.status === 'PENDING' ? '#fcd34d' : 'rgba(200,200,200,0.8)',
-                          border: `1px solid ${membership.status === 'ACTIVE' ? 'rgba(52,211,153,0.4)' : membership.status === 'PENDING' ? 'rgba(251,191,36,0.4)' : 'rgba(160,160,160,0.3)'}`,
-                          textTransform: 'uppercase',
-                        }}>
-                          {membership.status === 'ACTIVE' ? (isRtl ? 'نشطة' : 'Active')
-                          : membership.status === 'PENDING' ? (isRtl ? 'معلقة' : 'Pending')
-                          : membership.status === 'EXPIRED' ? (isRtl ? 'منتهية' : 'Expired')
-                          : (isRtl ? 'ملغاة' : 'Cancelled')}
-                        </span>
-                      </div>
-
-                      {/* Chip + membership number */}
-                      <div>
-                        <svg width={38} height={28} viewBox="0 0 38 28" style={{ marginBottom: 10, opacity: isInactive ? 0.4 : 0.9 }}>
-                          <rect width="38" height="28" rx="5" fill={chipFill}/>
-                          <rect x="1" y="1" width="36" height="26" rx="4" fill="none" stroke={chipStroke} strokeWidth="0.5"/>
-                          <line x1="13" y1="0" x2="13" y2="28" stroke={chipStroke} strokeWidth="1"/>
-                          <line x1="25" y1="0" x2="25" y2="28" stroke={chipStroke} strokeWidth="1"/>
-                          <line x1="0" y1="9" x2="38" y2="9" stroke={chipStroke} strokeWidth="1"/>
-                          <line x1="0" y1="19" x2="38" y2="19" stroke={chipStroke} strokeWidth="1"/>
-                          <rect x="13" y="9" width="12" height="10" rx="2" fill={chipInner} stroke={chipStroke} strokeWidth="0.5"/>
-                        </svg>
-                        <p dir="ltr" style={{ fontFamily: 'monospace', fontSize: 17, fontWeight: 900, letterSpacing: '0.22em', color: numColor, lineHeight: 1 }}>
-                          {membership.membershipNumber}
-                        </p>
-                      </div>
-
-                      {/* Bottom row */}
-                      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-                        <div>
-                          {membership.familyName && (
-                            <p style={{ fontSize: 12, fontWeight: 900, color: isInactive ? 'rgba(200,200,200,0.6)' : 'white', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 3 }}>
-                              {membership.familyName}
-                            </p>
-                          )}
-                          <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                            {isRtl ? 'عضو منذ' : 'MEMBER SINCE'} {membership.memberSince}
-                          </p>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          {membership.expiresAt && (
-                            <>
-                              <p style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>
-                                {isRtl ? 'انتهت' : 'EXPIRED'}
-                              </p>
-                              <p dir="ltr" style={{ fontSize: 13, fontWeight: 900, color: expColor, letterSpacing: '0.1em' }}>
-                                {new Date(membership.expiresAt).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' }).replace('/', '/')}
-                              </p>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Renew overlay popup — only for inactive cards */}
-                    {isInactive && renewStep === 'idle' && (
-                      <div style={{
-                        position: 'absolute', inset: 0,
-                        background: 'rgba(0,0,0,0.52)',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
-                      }}>
-                        <button
-                          onClick={() => {
-                            setRenewStep('paypal');
-                            setTimeout(() => renewSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
-                          }}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 8,
-                            padding: '11px 24px', borderRadius: 14, border: 'none', cursor: 'pointer',
-                            background: '#D4A853', color: '#1a1a1a', fontWeight: 900, fontSize: 14,
-                            boxShadow: '0 4px 20px rgba(212,168,83,0.5)',
-                          }}
-                        >
-                          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                            <path d="M3 3v5h5"/>
-                          </svg>
-                          {isRtl
-                            ? (membership.status === 'EXPIRED' ? 'تجديد العضوية' : 'إعادة تفعيل العضوية')
-                            : (membership.status === 'EXPIRED' ? 'Renew Membership' : 'Reactivate')}
-                        </button>
-                        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', textAlign: 'center' }}>
-                          {isRtl ? `${membershipZone === 'egypt' ? `${membershipPrices.egyEgp} ج.م` : `$${membershipPrices.intlUsd}`} / سنة` : `${membershipZone === 'egypt' ? `${membershipPrices.egyEgp} EGP` : `$${membershipPrices.intlUsd}`} / year`}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                  {/* "اكتفِ" link — visible below card for inactive members */}
-                  {isInactive && renewStep === 'idle' && (
-                    <div style={{ textAlign: 'center', marginTop: 10 }}>
-                      <button
-                        onClick={() => {/* already a community member — just close/ignore */}}
-                        style={{ background: 'none', border: 'none', cursor: 'default', fontSize: 12, color: 'rgba(255,255,255,0.35)', textDecoration: 'underline', textUnderlineOffset: 3 }}
-                      >
-                        {isRtl ? 'أو اكتفِ بعضويتك المجتمعية المجانية' : 'Or keep your free Community membership'}
-                      </button>
-                    </div>
-                  )}
-                  </div>
-                );
-              })()}
+              {/* Digital membership card */}
+              <MembershipCard
+                variant="leader"
+                memberNumber={membership.membershipNumber}
+                familyName={membership.familyName}
+                memberSince={membership.memberSince}
+                expiresAt={membership.expiresAt ?? undefined}
+                status={membership.status as 'ACTIVE' | 'PENDING' | 'EXPIRED' | 'CANCELLED'}
+                qrDataUrl={membershipQrUrl}
+                isRtl={isRtl}
+              />
+              {/* "اكتفِ" — only for inactive, before renew flow starts */}
+              {(membership.status === 'EXPIRED' || membership.status === 'CANCELLED') && renewStep === 'idle' && (
+                <div style={{ textAlign: 'center', marginTop: 6 }}>
+                  <button
+                    style={{ background: 'none', border: 'none', cursor: 'default', fontSize: 12, color: 'rgba(100,100,100,0.6)', textDecoration: 'underline', textUnderlineOffset: 3 }}
+                  >
+                    {isRtl ? 'أو اكتفِ بعضويتك المجتمعية المجانية' : 'Or keep your free Community membership'}
+                  </button>
+                </div>
+              )}
 
               {/* Discount badge + share row */}
               <div className="flex items-center gap-3">

@@ -4,6 +4,7 @@ import { useLang } from '@/context/LanguageContext';
 import PayPalBookButton from '@/components/PayPalBookButton';
 import { useRouter } from 'next/navigation';
 import QRCode from 'qrcode';
+import MembershipCard from '@/components/membership/MembershipCard';
 
 const TEAL  = '#0d6e6e';
 const GOLD  = '#d4a843';
@@ -25,6 +26,7 @@ export default function MembershipDashboard({
   const { isRtl } = useLang();
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('card');
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(membership.familyMembers);
   const [showAddMember, setShowAddMember] = useState(false);
@@ -58,13 +60,11 @@ export default function MembershipDashboard({
   const nearExpiry  = isActive && daysLeft <= 30;
   const verifyUrl   = `https://moslimleader.com/membership/verify/${membership.qrToken}`;
 
-  // Generate QR code
+  // Generate QR as data URL for MembershipCard
   useEffect(() => {
-    if (!canvasRef.current) return;
-    QRCode.toCanvas(canvasRef.current, verifyUrl, {
-      width: 160, margin: 1,
-      color: { dark: '#0a2e2e', light: '#f5efe0' },
-    }).catch(() => {});
+    QRCode.toDataURL(verifyUrl, { width: 80, margin: 1, color: { dark: '#0a1020', light: '#ffffff' } })
+      .then(url => setQrDataUrl(url))
+      .catch(() => {});
   }, [verifyUrl]);
 
   const expiryText = expiresAt
@@ -140,68 +140,17 @@ export default function MembershipDashboard({
         {/* ── CARD TAB ── */}
         {tab === 'card' && (
           <div>
-            {/* Membership Card */}
-            <div style={{
-              borderRadius: 20, overflow: 'hidden',
-              background: isActive
-                ? 'linear-gradient(135deg, #0d1535 0%, #1a2550 40%, #1e3060 70%, #152045 100%)'
-                : isInactive
-                  ? 'linear-gradient(135deg, #0d2318 0%, #1a3a2e 40%, #24502f 70%, #1a3a2e 100%)'
-                  : 'linear-gradient(135deg, #1a1500 0%, #2a2000 100%)',
-              border: '1px solid rgba(212,168,67,0.25)',
-              boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
-              padding: '24px 22px',
-              position: 'relative',
-            }}>
-              {/* Top row: brand + type */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-                <div>
-                  <p style={{ fontSize: 11, letterSpacing: '0.2em', color: GOLD, fontWeight: 800 }}>MOSLIM LEADER</p>
-                  <p style={{ fontSize: 9, letterSpacing: '0.15em', color: 'rgba(245,240,232,0.5)', marginTop: 3 }}>FAMILY MEMBER</p>
-                </div>
-                {/* Status dot */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 12, background: (isActive || isInactive) ? 'rgba(74,222,128,0.15)' : 'rgba(251,191,36,0.15)', border: `1px solid ${(isActive || isInactive) ? 'rgba(74,222,128,0.3)' : 'rgba(251,191,36,0.3)'}` }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: (isActive || isInactive) ? '#4ade80' : '#fbbf24' }} />
-                  <span style={{ fontSize: 9, fontWeight: 700, color: (isActive || isInactive) ? '#4ade80' : '#fbbf24', letterSpacing: '0.1em' }}>
-                    {isActive ? 'ACTIVE' : isInactive ? 'COMMUNITY' : 'PENDING'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Middle: QR + info */}
-              <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start', marginBottom: 20 }}>
-                <div style={{ background: '#f5efe0', borderRadius: 10, padding: 6, flexShrink: 0 }}>
-                  <canvas ref={canvasRef} style={{ display: 'block', borderRadius: 6 }} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  {membership.familyName && (
-                    <p style={{ fontSize: 14, fontWeight: 800, color: BEIGE, marginBottom: 8, lineHeight: 1.3, wordBreak: 'break-word' }}>
-                      {membership.familyName}
-                    </p>
-                  )}
-                  <p style={{ fontSize: 13, fontWeight: 700, color: GOLD, letterSpacing: '0.06em', marginBottom: 6 }}>
-                    {membership.membershipNumber}
-                  </p>
-                  <p style={{ fontSize: 10, color: 'rgba(245,240,232,0.5)' }}>Member Since {membership.memberSince}</p>
-                </div>
-              </div>
-
-              {/* Bottom: validity */}
-              <div style={{ borderTop: '1px solid rgba(212,168,67,0.2)', paddingTop: 14 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <p style={{ fontSize: 9, color: 'rgba(245,240,232,0.4)', letterSpacing: '0.1em' }}>عضو مجتمع مسلم ليدر</p>
-                    <p style={{ fontSize: 10, color: 'rgba(245,240,232,0.4)', letterSpacing: '0.08em', marginTop: 2 }}>MOSLIM LEADER COMMUNITY</p>
-                  </div>
-                  {expiryText && (
-                    <div style={{ textAlign: isRtl ? 'left' : 'right' }}>
-                      <p style={{ fontSize: 9, color: 'rgba(245,240,232,0.4)', letterSpacing: '0.08em' }}>Valid until</p>
-                      <p style={{ fontSize: 10, fontWeight: 700, color: GOLD, marginTop: 2 }}>{expiryText}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            {/* Membership Card — unified component */}
+            <MembershipCard
+              variant="leader"
+              memberNumber={membership.membershipNumber}
+              familyName={membership.familyName}
+              memberSince={membership.memberSince}
+              expiresAt={membership.expiresAt ?? undefined}
+              status={membership.status as 'ACTIVE' | 'PENDING' | 'EXPIRED' | 'CANCELLED'}
+              qrDataUrl={qrDataUrl}
+              isRtl={isRtl}
+            />
 
             {/* Near-expiry warning */}
             {nearExpiry && !isExpired && (

@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { getCachedPage, fetchAndCachePage, prefetchPage, type PageData } from './mushafCache';
+import { getCachedPage, fetchAndCachePage, prefetchPage } from './mushafCache';
+import type { PageData } from './mushafCache';
 
 /* ── Static data ─────────────────────────────────────────────────────── */
 
@@ -32,78 +33,76 @@ const SURAH_AR: Record<number, string> = {
 
 const JUZ_AR = ['','الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن','التاسع','العاشر','الحادي عشر','الثاني عشر','الثالث عشر','الرابع عشر','الخامس عشر','السادس عشر','السابع عشر','الثامن عشر','التاسع عشر','العشرون','الحادي والعشرون','الثاني والعشرون','الثالث والعشرون','الرابع والعشرون','الخامس والعشرون','السادس والعشرون','السابع والعشرون','الثامن والعشرون','التاسع والعشرون','الثلاثون'];
 
-/* Chapters 1 and 9 have no Bismillah header */
 const NO_BISMILLAH = new Set([1, 9]);
-
 const BISMILLAH = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ';
-/* Unicode Ayah End marker — Amiri Quran renders it as the traditional enclosing ornament */
-const AYAH_MARK = '۝';
+const AYAH_MARK = '۝'; // U+06DD — Amiri Quran renders it as traditional ayah ornament
 
 function juzName(n: number) { return JUZ_AR[n] ? `الجزء ${JUZ_AR[n]}` : `الجزء ${n}`; }
 function toEastern(n: number) { return String(n).replace(/[0-9]/g, d => '٠١٢٣٤٥٦٧٨٩'[parseInt(d)]); }
 
-/* ── Decorative helpers ──────────────────────────────────────────────── */
-
-function GoldLine() {
+/* ── Gold rule ───────────────────────────────────────────────────────── */
+function GoldRule() {
   return (
     <div style={{ padding: '0 16px' }}>
-      <div style={{ height: 1.5, background: 'linear-gradient(90deg,transparent,#c8a84b 15%,#c8a84b 85%,transparent)' }} />
-      <div style={{ height: 0.5, background: 'linear-gradient(90deg,transparent,#c8a84b 15%,#c8a84b 85%,transparent)', marginTop: 2 }} />
+      <div style={{ height: 1.5, background: 'linear-gradient(90deg,transparent,#b89840 15%,#b89840 85%,transparent)' }} />
+      <div style={{ height: 0.5, background: 'linear-gradient(90deg,transparent,#b89840 15%,#b89840 85%,transparent)', marginTop: 2 }} />
     </div>
   );
 }
 
-/* Authentic Madinah-Mushaf style surah header — SVG ornamental frame */
+/* ── Madinah-Mushaf style surah header ───────────────────────────────
+ * Three-zone SVG: left geometric band | center text | right geometric band.
+ * The diamond-and-connecting-line motif echoes the interlaced geometric
+ * borders used in printed Madinah Mushaf section markers.
+ */
 function SurahHeader({ chapterId }: { chapterId: number }) {
   const name = SURAH_AR[chapterId] ?? '';
-  const W = 280, H = 50;
-  const op = 3;   // outer padding from edge
-  const ip = 7;   // inner border inset
+  const W = 300, H = 46;
+  // diamond helper
+  const dia = (cx: number, cy: number, r: number) =>
+    `M${cx} ${cy - r} L${cx + r} ${cy} L${cx} ${cy + r} L${cx - r} ${cy}Z`;
 
   return (
     <div style={{ display: 'block', width: '100%', margin: '14px 0 2px', textAlign: 'center' }}>
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        style={{ width: '90%', maxWidth: 280, height: 'auto', display: 'inline-block', overflow: 'visible' }}
+        style={{ width: '94%', maxWidth: 300, height: 'auto', display: 'inline-block', overflow: 'visible' }}
         xmlns="http://www.w3.org/2000/svg"
       >
-        {/* Outer rect with subtle fill */}
-        <rect x={op} y={op} width={W - op * 2} height={H - op * 2}
-          fill="rgba(200,168,75,0.07)" stroke="#c8a84b" strokeWidth="1.4" />
-        {/* Inner rect — thinner, slightly inset */}
-        <rect x={ip} y={ip} width={W - ip * 2} height={H - ip * 2}
-          fill="none" stroke="#c8a84b" strokeWidth="0.6" />
+        {/* Outer border + fill */}
+        <rect x="1" y="1" width={W - 2} height={H - 2} fill="#f4e9cc" stroke="#b89840" strokeWidth="1.3" rx="1" />
 
-        {/* Corner bracket ornaments — each is an L-shaped pair of lines at the inner rect corners */}
-        {/* Top-left */}
-        <path d={`M${ip} ${ip + 9} L${ip} ${ip} L${ip + 9} ${ip}`} stroke="#c8a84b" strokeWidth="1.6" fill="none" strokeLinecap="square" />
-        {/* Top-right */}
-        <path d={`M${W - ip - 9} ${ip} L${W - ip} ${ip} L${W - ip} ${ip + 9}`} stroke="#c8a84b" strokeWidth="1.6" fill="none" strokeLinecap="square" />
-        {/* Bottom-left */}
-        <path d={`M${ip} ${H - ip - 9} L${ip} ${H - ip} L${ip + 9} ${H - ip}`} stroke="#c8a84b" strokeWidth="1.6" fill="none" strokeLinecap="square" />
-        {/* Bottom-right */}
-        <path d={`M${W - ip - 9} ${H - ip} L${W - ip} ${H - ip} L${W - ip} ${H - ip - 9}`} stroke="#c8a84b" strokeWidth="1.6" fill="none" strokeLinecap="square" />
+        {/* Left geometric side band (0–72) */}
+        <rect x="1" y="1" width="72" height={H - 2} fill="rgba(185,148,48,0.18)" rx="1" />
+        {/* Right geometric side band (228–300) */}
+        <rect x={W - 73} y="1" width="72" height={H - 2} fill="rgba(185,148,48,0.18)" />
+        {/* Separator verticals */}
+        <line x1="73" y1="4" x2="73" y2={H - 4} stroke="#b89840" strokeWidth="0.8" />
+        <line x1={W - 73} y1="4" x2={W - 73} y2={H - 4} stroke="#b89840" strokeWidth="0.8" />
 
-        {/* Left side diamond ornament */}
-        <path d={`M${ip + 18} ${H / 2} L${ip + 24} ${H / 2 - 5} L${ip + 30} ${H / 2} L${ip + 24} ${H / 2 + 5}Z`}
-          fill="#c8a84b" opacity="0.72" />
-        {/* Right side diamond ornament */}
-        <path d={`M${W - ip - 18} ${H / 2} L${W - ip - 24} ${H / 2 - 5} L${W - ip - 30} ${H / 2} L${W - ip - 24} ${H / 2 + 5}Z`}
-          fill="#c8a84b" opacity="0.72" />
+        {/* Inner thin border on center section */}
+        <rect x="74" y="4" width={W - 148} height={H - 8} fill="none" stroke="#b89840" strokeWidth="0.45" />
 
-        {/* Top-center small dot on outer border */}
-        <circle cx={W / 2} cy={op} r="2.2" fill="#c8a84b" />
-        <circle cx={W / 2} cy={ip} r="1.2" fill="#c8a84b" opacity="0.6" />
-        {/* Bottom-center small dot on outer border */}
-        <circle cx={W / 2} cy={H - op} r="2.2" fill="#c8a84b" />
-        <circle cx={W / 2} cy={H - ip} r="1.2" fill="#c8a84b" opacity="0.6" />
+        {/* Left band: two diamonds linked */}
+        <path d={dia(17, H / 2, 8)} fill="rgba(185,148,40,0.28)" stroke="#b89840" strokeWidth="0.7" />
+        <circle cx="17" cy={H / 2} r="2.5" fill="#b89840" opacity="0.75" />
+        <line x1="25" y1={H / 2} x2="42" y2={H / 2} stroke="#b89840" strokeWidth="0.55" opacity="0.65" />
+        <path d={dia(50, H / 2, 8)} fill="rgba(185,148,40,0.28)" stroke="#b89840" strokeWidth="0.7" />
+        <circle cx="50" cy={H / 2} r="2.5" fill="#b89840" opacity="0.75" />
 
-        {/* Surah name centered */}
+        {/* Right band: mirror */}
+        <path d={dia(W - 17, H / 2, 8)} fill="rgba(185,148,40,0.28)" stroke="#b89840" strokeWidth="0.7" />
+        <circle cx={W - 17} cy={H / 2} r="2.5" fill="#b89840" opacity="0.75" />
+        <line x1={W - 25} y1={H / 2} x2={W - 42} y2={H / 2} stroke="#b89840" strokeWidth="0.55" opacity="0.65" />
+        <path d={dia(W - 50, H / 2, 8)} fill="rgba(185,148,40,0.28)" stroke="#b89840" strokeWidth="0.7" />
+        <circle cx={W - 50} cy={H / 2} r="2.5" fill="#b89840" opacity="0.75" />
+
+        {/* Surah name */}
         <text
           x={W / 2} y={H / 2 + 1}
           textAnchor="middle" dominantBaseline="middle"
           fontFamily="'Amiri Quran','Scheherazade New',serif"
-          fontSize="16" fontWeight="700" fill="#010101"
+          fontSize="15.5" fontWeight="bold" fill="#0a0500"
           letterSpacing="0.04em"
         >
           سورة {name}
@@ -113,12 +112,12 @@ function SurahHeader({ chapterId }: { chapterId: number }) {
   );
 }
 
-/* Bismillah — shown for all surahs except 1 and 9 */
-function BismillahHeader() {
+/* ── Bismillah line ──────────────────────────────────────────────────── */
+function BismillahLine() {
   return (
     <div style={{
       display: 'block', width: '100%', textAlign: 'center',
-      margin: '4px 0 8px',
+      margin: '4px 0 6px',
       fontFamily: "'Amiri Quran','Scheherazade New','Traditional Arabic',serif",
       fontSize: 20, color: '#010101', lineHeight: 1.8,
       letterSpacing: '0.02em',
@@ -128,27 +127,31 @@ function BismillahHeader() {
   );
 }
 
-/* ── Types ───────────────────────────────────────────────────────────── */
-
+/* ── Props ───────────────────────────────────────────────────────────── */
 interface Props {
   page: number;
   currentChapter: number;
   currentVerse: number;
+  isPlaying?: boolean;
   onVerseClick?: (chapter: number, verse: number) => void;
   onAyahTap?: (info: { chapterId: number; verseNumber: number; text: string }) => void;
   autoFollow?: boolean;
 }
 
-const EMPTY_META = { juz: null, hizb: null, surahs: [] };
-
 /* ── Main component ──────────────────────────────────────────────────── */
+export default function MushafQCFPage({
+  page, currentChapter, currentVerse, isPlaying,
+  onVerseClick, onAyahTap, autoFollow,
+}: Props) {
 
-export default function MushafQCFPage({ page, currentChapter, currentVerse, onVerseClick, onAyahTap, autoFollow }: Props) {
-  /* Check module-level cache first — no loading spinner if data is already there */
-  const cached = getCachedPage(page);
-  const [data, setData] = useState<PageData | null>(cached ?? null);
-  const [loading, setLoading] = useState(!cached);
-  const [error, setError] = useState(false);
+  /*
+   * Synchronous cache read — if data for this page is already in the module-level
+   * cache (because the carousel pre-fetched it), we derive it directly in render
+   * without setState, so there is NO loading state or flash on normal swipes.
+   */
+  const [localData, setLocalData] = useState<PageData | null>(null);
+  const data: PageData | null = getCachedPage(page) ?? localData;
+  const loading = !data;
 
   const hlRef = useRef<HTMLSpanElement | null>(null);
   let hlRefAttached = false;
@@ -156,22 +159,24 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
   const qFont = "'Amiri Quran','Scheherazade New','Traditional Arabic',serif";
 
   useEffect(() => {
-    const hit = getCachedPage(page);
-    if (hit) {
-      setData(hit);
-      setLoading(false);
-      setError(false);
-      return;
-    }
+    // Clear stale localData from previous page immediately to avoid wrong content
+    setLocalData(null);
+    // If the page is already in the module cache, nothing to fetch
+    if (getCachedPage(page)) return;
+
     let cancelled = false;
-    setLoading(true);
-    setError(false);
     fetchAndCachePage(page).then(d => {
-      if (cancelled) return;
-      if (d) { setData(d); setLoading(false); }
-      else { setError(true); setLoading(false); }
+      if (!cancelled && d) setLocalData(d);
     });
     return () => { cancelled = true; };
+  }, [page]);
+
+  /* Pre-warm surrounding pages while this one is displayed */
+  useEffect(() => {
+    prefetchPage(page - 2);
+    prefetchPage(page - 1);
+    prefetchPage(page + 1);
+    prefetchPage(page + 2);
   }, [page]);
 
   /* Auto-scroll to highlighted verse */
@@ -187,62 +192,63 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
     return [...data.lines].sort((a, b) => a.lineNum - b.lineNum).flatMap(l => l.words);
   }, [data]);
 
-  const meta = data?.meta ?? EMPTY_META;
+  const meta = data?.meta ?? { juz: null, hizb: null, surahs: [] };
 
   const surahLabel = useMemo(
     () => meta.surahs.map(id => SURAH_AR[id] ?? '').filter(Boolean).join(' و'),
     [meta.surahs],
   );
 
-  /* Prefetch pages adjacent to adjacent (so N+2 is ready when user swipes to N+1) */
-  useEffect(() => {
-    prefetchPage(page - 1);
-    prefetchPage(page + 1);
-    prefetchPage(page + 2);
-  }, [page]);
-
   return (
     <div style={{
-      background: '#F8EBD5', minHeight: '100%', width: '100%',
+      background: '#F8EBD5',
+      minHeight: '100%', width: '100%',
       display: 'flex', flexDirection: 'column',
       userSelect: 'none', WebkitUserSelect: 'none',
     }}>
 
-      {/* ── Page header: Juz name ── icon ── Surah name ── */}
+      {/* ── Metadata header ── */}
       <div style={{ paddingTop: 8, paddingBottom: 4, flexShrink: 0 }}>
-        <GoldLine />
-        <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 18px' }}>
+        <GoldRule />
+        <div dir="rtl" style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '4px 18px',
+        }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: '#72603F', fontFamily: qFont }}>
             {meta.juz ? juzName(meta.juz) : ''}
           </span>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M4 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4V4z" fill="#c8a84b" opacity=".85"/>
-            <path d="M20 4h-6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6V4z" fill="#c8a84b" opacity=".5"/>
-            <line x1="12" y1="6" x2="12" y2="18" stroke="#fff" strokeWidth=".8"/>
+          {/* Madinah Mushaf centre mark — a small geometric rub-el-hizb / star */}
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M8 1l1.5 4.5H14l-3.5 2.5 1.5 4.5L8 10l-4 2.5 1.5-4.5L2 5.5h4.5z" fill="#b89840" opacity=".7"/>
           </svg>
           <span style={{ fontSize: 11, fontWeight: 700, color: '#72603F', fontFamily: qFont }}>
             {surahLabel}
           </span>
         </div>
-        <GoldLine />
+        <GoldRule />
       </div>
 
       {/* ── Body ── */}
       {loading ? (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <style>{`@keyframes ms-spin{to{transform:rotate(360deg)}}`}</style>
-          <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2.5px solid rgba(200,168,75,.2)', borderTopColor: '#c8a84b', animation: 'ms-spin .7s linear infinite' }} />
-        </div>
-      ) : error ? (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <p style={{ color: '#9a7a40', fontFamily: qFont, fontSize: 14 }}>تعذّر تحميل الصفحة</p>
+          <div style={{
+            width: 26, height: 26, borderRadius: '50%',
+            border: '2px solid rgba(184,152,64,.2)', borderTopColor: '#b89840',
+            animation: 'ms-spin .7s linear infinite',
+          }} />
         </div>
       ) : (
         <div
           dir="rtl"
           style={{
             flex: 1,
-            padding: '6px 14px 10px',
+            padding: '6px 14px',
+            /*
+             * Bottom padding reserves space for the fixed audio player bar (≈72px)
+             * plus any device safe-area so the last Quran line is never hidden.
+             */
+            paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))',
             direction: 'rtl',
             textAlign: 'center',
             fontFamily: qFont,
@@ -253,40 +259,40 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
           }}
         >
           {(() => {
-            const elements: React.ReactNode[] = [];
-            let prevChapterId = -1;
+            const els: React.ReactNode[] = [];
+            let prevCh = -1;
 
             allWords.forEach((word, i) => {
               const isEnd = word.charType === 'end';
-              const isHl = !isEnd
+
+              /* Surah header + Bismillah at chapter boundary */
+              if (word.chapterId !== prevCh && word.verseNumber === 1) {
+                els.push(<SurahHeader key={`sh-${word.chapterId}`} chapterId={word.chapterId} />);
+                if (!NO_BISMILLAH.has(word.chapterId)) {
+                  els.push(<BismillahLine key={`bm-${word.chapterId}`} />);
+                }
+              }
+              prevCh = word.chapterId;
+
+              /*
+               * Highlight only when audio is actively playing.
+               * Without isPlaying, every word of the initialSurah/initialAyah
+               * would be boxed in beige, which looks like broken UI.
+               */
+              const isHl = isPlaying === true
+                && !isEnd
                 && word.chapterId === currentChapter
                 && word.verseNumber === currentVerse;
 
-              /* Insert Surah header + Bismillah when a new surah begins */
-              if (word.chapterId !== prevChapterId && word.verseNumber === 1) {
-                elements.push(
-                  <SurahHeader key={`sh-${word.chapterId}`} chapterId={word.chapterId} />,
-                );
-                if (!NO_BISMILLAH.has(word.chapterId)) {
-                  elements.push(<BismillahHeader key={`bm-${word.chapterId}`} />);
-                }
-              }
-              prevChapterId = word.chapterId;
-
-              /* Attach scroll ref to first highlighted word */
               const attachRef = isHl && !hlRefAttached;
               if (attachRef) hlRefAttached = true;
 
-              /*
-               * End-of-ayah marker: QF API text_uthmani for char_type "end" is the
-               * verse number in Eastern Arabic. Prepend U+06DD (Arabic End of Ayah)
-               * so Amiri Quran renders the traditional ornamental enclosing circle.
-               */
-              const displayText = isEnd
+              /* Ayah end-marker: prepend U+06DD so Amiri Quran renders the traditional ornament */
+              const txt = isEnd
                 ? (word.text.startsWith(AYAH_MARK) ? word.text : `${AYAH_MARK}${word.text}`)
                 : word.text;
 
-              elements.push(
+              els.push(
                 <span
                   key={i}
                   ref={attachRef ? hlRef : undefined}
@@ -298,42 +304,49 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
                   style={{
                     display: 'inline',
                     fontSize: isEnd ? 17 : 19,
-                    color: isEnd ? '#c8a84b' : '#010101',
-                    background: isHl ? '#EFE2CD' : 'transparent',
-                    borderRadius: isHl ? 5 : 0,
-                    padding: isHl ? '2px 4px' : undefined,
+                    color: isEnd ? '#b89840' : '#010101',
+                    background: isHl ? 'rgba(190,160,80,0.22)' : 'transparent',
+                    borderRadius: isHl ? 4 : 0,
+                    padding: isHl ? '1px 3px' : undefined,
                     cursor: isEnd ? 'default' : 'pointer',
-                    transition: 'background .2s',
+                    transition: 'background .15s',
                     WebkitTouchCallout: 'none',
                   }}
                 >
-                  {displayText}{' '}
+                  {txt}{' '}
                 </span>,
               );
             });
 
-            return elements;
+            return els;
           })()}
         </div>
       )}
 
-      {/* ── Page footer: Hizb ◆ page number ◆ ── */}
+      {/* ── Page footer ── */}
       <div style={{ paddingTop: 4, paddingBottom: 8, flexShrink: 0 }}>
-        <GoldLine />
-        <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 18px' }}>
+        <GoldRule />
+        <div dir="rtl" style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '4px 18px',
+        }}>
           <span style={{ fontSize: 11, color: '#72603F', fontFamily: qFont, fontWeight: 600 }}>
             {meta.hizb ? `الحزب ${toEastern(meta.hizb)}` : ''}
           </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 9, color: 'rgba(200,168,75,.7)' }}>◆</span>
-            <span style={{ fontSize: 13.5, fontWeight: 700, color: '#010101', fontFamily: qFont }}>
+          {/* Page number in decorative frame */}
+          <svg viewBox="0 0 52 22" style={{ width: 52, height: 22 }}>
+            <rect x="1" y="1" width="50" height="20" rx="2" fill="rgba(185,152,64,0.1)" stroke="#b89840" strokeWidth="0.8" />
+            <line x1="5" y1="5" x2="47" y2="5" stroke="#b89840" strokeWidth="0.35" opacity="0.6" />
+            <line x1="5" y1="17" x2="47" y2="17" stroke="#b89840" strokeWidth="0.35" opacity="0.6" />
+            <text x="26" y="13" textAnchor="middle" dominantBaseline="middle"
+              fontFamily="'Amiri Quran','Scheherazade New',serif"
+              fontSize="11" fontWeight="bold" fill="#010101">
               {toEastern(page)}
-            </span>
-            <span style={{ fontSize: 9, color: 'rgba(200,168,75,.7)' }}>◆</span>
-          </div>
-          <span style={{ fontSize: 11, color: 'transparent' }}>0</span>
+            </text>
+          </svg>
+          <span style={{ fontSize: 11, color: 'transparent', fontFamily: qFont }}>0</span>
         </div>
-        <GoldLine />
+        <GoldRule />
       </div>
 
     </div>

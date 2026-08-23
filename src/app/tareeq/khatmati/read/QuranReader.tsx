@@ -609,6 +609,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                 currentChapter={cv?.chapter_id ?? initialSurah}
                 currentVerse={cv?.verse_number ?? initialAyah}
                 autoFollow={autoFollow}
+                isPlaying={isPlaying}
                 onPageChange={(p) => { pageRef.current = p; setPage(p); }}
                 onVerseClick={(ch, v) => {
                   const idx = versesRef.current.findIndex(x => x.chapter_id === ch && x.verse_number === v);

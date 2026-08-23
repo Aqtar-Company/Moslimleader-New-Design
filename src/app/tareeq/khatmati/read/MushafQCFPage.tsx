@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, useMemo } from 'react';
 
-/* ── Metadata helpers ──────────────────────────────────────────────────── */
+/* ── Static data ─────────────────────────────────────────────────────── */
 
 const SURAH_AR: Record<number, string> = {
   1:'الفاتحة',2:'البقرة',3:'آل عمران',4:'النساء',5:'المائدة',
@@ -31,38 +31,75 @@ const SURAH_AR: Record<number, string> = {
 
 const JUZ_AR = ['','الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن','التاسع','العاشر','الحادي عشر','الثاني عشر','الثالث عشر','الرابع عشر','الخامس عشر','السادس عشر','السابع عشر','الثامن عشر','التاسع عشر','العشرون','الحادي والعشرون','الثاني والعشرون','الثالث والعشرون','الرابع والعشرون','الخامس والعشرون','السادس والعشرون','السابع والعشرون','الثامن والعشرون','التاسع والعشرون','الثلاثون'];
 
+/* Chapters 1 and 9 have no Bismillah header (per quran.com BismillahSection) */
+const NO_BISMILLAH = new Set([1, 9]);
+
+const BISMILLAH = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ';
+
 function juzName(n: number) { return JUZ_AR[n] ? `الجزء ${JUZ_AR[n]}` : `الجزء ${n}`; }
 function toEastern(n: number) { return String(n).replace(/[0-9]/g, d => '٠١٢٣٤٥٦٧٨٩'[parseInt(d)]); }
 
-/* ── Static UI ─────────────────────────────────────────────────────────── */
+/* ── Decorative helpers ──────────────────────────────────────────────── */
+
+const ORNAMENT = '❖'; // ❖
 
 function GoldLine() {
   return (
-    <div style={{ padding: '0 12px' }}>
-      <div style={{ height: 1.5, background: 'linear-gradient(90deg,transparent,#c8a84b 20%,#c8a84b 80%,transparent)' }} />
-      <div style={{ height: 0.5, background: 'linear-gradient(90deg,transparent,#c8a84b 20%,#c8a84b 80%,transparent)', marginTop: 2 }} />
+    <div style={{ padding: '0 16px' }}>
+      <div style={{ height: 1.5, background: 'linear-gradient(90deg,transparent,#c8a84b 15%,#c8a84b 85%,transparent)' }} />
+      <div style={{ height: 0.5, background: 'linear-gradient(90deg,transparent,#c8a84b 15%,#c8a84b 85%,transparent)', marginTop: 2 }} />
     </div>
   );
 }
 
-function SurahBadge({ chapterId }: { chapterId: number }) {
+/* Surah name header — matches quran.com ChapterHeader spirit */
+function SurahHeader({ chapterId }: { chapterId: number }) {
+  const name = SURAH_AR[chapterId] ?? '';
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '3px 0' }}>
-      <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right,transparent,rgba(200,168,75,.5))' }} />
+    <div style={{
+      display: 'block', width: '100%', margin: '12px 0 4px',
+      textAlign: 'center',
+    }}>
+      {/* Ornate frame */}
       <div style={{
-        padding: '3px 18px', border: '1px solid rgba(200,168,75,.6)', borderRadius: 4,
-        fontSize: 13, fontWeight: 700, color: '#5a3e10', whiteSpace: 'nowrap',
-        fontFamily: "'Amiri Quran','Scheherazade New',serif",
-        background: 'rgba(200,168,75,.07)',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+        border: '1px solid rgba(200,168,75,.7)',
+        borderRadius: 6,
+        padding: '6px 20px',
+        background: 'linear-gradient(180deg, rgba(200,168,75,.12) 0%, rgba(200,168,75,.04) 100%)',
+        position: 'relative',
       }}>
-        سورة {SURAH_AR[chapterId] ?? ''}
+        {/* Side ornaments */}
+        <span style={{ fontSize: 10, color: '#c8a84b', opacity: 0.8 }}>{ORNAMENT}</span>
+        <span style={{
+          fontFamily: "'Amiri Quran','Scheherazade New',serif",
+          fontSize: 17, fontWeight: 700, color: '#4a2e08',
+          letterSpacing: '0.03em',
+        }}>
+          سورة {name}
+        </span>
+        <span style={{ fontSize: 10, color: '#c8a84b', opacity: 0.8 }}>{ORNAMENT}</span>
       </div>
-      <div style={{ flex: 1, height: 1, background: 'linear-gradient(to left,transparent,rgba(200,168,75,.5))' }} />
     </div>
   );
 }
 
-/* ── Types ─────────────────────────────────────────────────────────────── */
+/* Bismillah — styled header (shown for all surahs except 1 and 9) */
+function BismillahHeader() {
+  return (
+    <div style={{
+      display: 'block', width: '100%', textAlign: 'center',
+      margin: '6px 0 8px',
+      fontFamily: "'Amiri Quran','Scheherazade New',serif",
+      fontSize: 20, color: '#2a1500', lineHeight: 1.8,
+      letterSpacing: '0.02em',
+    }}>
+      {BISMILLAH}
+    </div>
+  );
+}
+
+/* ── Types ───────────────────────────────────────────────────────────── */
 
 interface PageMeta { juz: number | null; hizb: number | null; surahs: number[]; }
 interface MushafWord {
@@ -80,17 +117,21 @@ interface Props {
   autoFollow?: boolean;
 }
 
-/* ── Component ─────────────────────────────────────────────────────────── */
+/* ── Main component ──────────────────────────────────────────────────── */
 
 export default function MushafQCFPage({ page, currentChapter, currentVerse, onVerseClick, onAyahTap, autoFollow }: Props) {
   const [lines, setLines] = useState<MushafLine[]>([]);
   const [meta, setMeta] = useState<PageMeta>({ juz: null, hizb: null, surahs: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const hlRef = useRef<HTMLDivElement | null>(null);
+
+  /* Ref for auto-scroll to current verse */
+  const hlRef = useRef<HTMLSpanElement | null>(null);
+  let hlRefAttached = false;
+
   const qFont = "'Amiri Quran','Scheherazade New','Traditional Arabic',serif";
 
-  /* Fetch page words grouped by line */
+  /* Fetch word data grouped by line from the QF-powered mushaf-lines API */
   useEffect(() => {
     let cancelled = false;
     setLoading(true); setError(false);
@@ -106,35 +147,22 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
     return () => { cancelled = true; };
   }, [page]);
 
-  /* Scroll highlighted line into view */
+  /* Auto-scroll to highlighted verse */
   useEffect(() => {
     if (autoFollow && hlRef.current) {
       hlRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentChapter, currentVerse, autoFollow]);
 
-  /* For each line, determine if a surah header should appear before it */
-  const surahBeforeLine = useMemo(() => {
-    const map = new Map<number, number>(); // lineNum → chapterId
-    for (const line of lines) {
-      for (const w of line.words) {
-        if (w.verseNumber === 1 && w.charType !== 'end') {
-          if (!map.has(line.lineNum)) map.set(line.lineNum, w.chapterId);
-          break;
-        }
-      }
-    }
-    return map;
-  }, [lines]);
+  /* Flatten & sort all words from all lines */
+  const allWords = useMemo((): MushafWord[] =>
+    [...lines].sort((a, b) => a.lineNum - b.lineNum).flatMap(l => l.words),
+  [lines]);
 
   const surahLabel = useMemo(
     () => meta.surahs.map(id => SURAH_AR[id] ?? '').filter(Boolean).join(' و'),
     [meta.surahs],
-  );
-
-  const sortedLines = useMemo(
-    () => [...lines].sort((a, b) => a.lineNum - b.lineNum),
-    [lines],
   );
 
   return (
@@ -144,13 +172,14 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
       userSelect: 'none', WebkitUserSelect: 'none',
     }}>
 
-      {/* ── Header ── */}
+      {/* ── Page header: Juz name ◼ Surah name ── */}
       <div style={{ paddingTop: 8, paddingBottom: 4, flexShrink: 0 }}>
         <GoldLine />
-        <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '3px 16px' }}>
+        <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 18px' }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: '#5a3e10', fontFamily: qFont }}>
             {meta.juz ? juzName(meta.juz) : ''}
           </span>
+          {/* Mushaf icon */}
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path d="M4 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4V4z" fill="#c8a84b" opacity=".85"/>
             <path d="M20 4h-6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6V4z" fill="#c8a84b" opacity=".5"/>
@@ -175,103 +204,101 @@ export default function MushafQCFPage({ page, currentChapter, currentVerse, onVe
         </div>
       ) : (
         /*
-          Reading View — line-by-line per QF Page Layout spec.
-          Words are grouped by line_number from the API so they match
-          physical Mushaf line boundaries. Each line rendered RTL with
-          space-between to fill width like the printed page.
+          Big Text Layout (quran.com mobile pattern):
+          - direction: rtl on wrapper
+          - text-align: center
+          - All words rendered as display:inline spans — natural RTL word-wrap
+          - Surah headers inserted as display:block elements to break the flow
+          - This matches quran.com's `.mobileInline` + `.mobileCenterText` behavior
         */
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-evenly',
-          padding: '2px 10px 4px',
-          overflow: 'hidden',
-        }}>
-          {sortedLines.map((line) => {
-            const lineHasCurrentVerse = line.words.some(
-              w => w.chapterId === currentChapter && w.verseNumber === currentVerse && w.charType !== 'end',
-            );
+        <div
+          dir="rtl"
+          style={{
+            flex: 1,
+            padding: '6px 14px 10px',
+            direction: 'rtl',
+            textAlign: 'center',
+            fontFamily: qFont,
+            fontSize: 19,
+            lineHeight: 2.6,
+            color: '#160900',
+            overflowX: 'hidden',
+          }}
+        >
+          {(() => {
+            const elements: React.ReactNode[] = [];
+            let prevChapterId = -1;
+            let firstWordOfSurah = false;
 
-            return (
-              <div key={line.lineNum}>
-                {/* Surah header before this line if a new surah starts here */}
-                {surahBeforeLine.has(line.lineNum) && (
-                  <SurahBadge chapterId={surahBeforeLine.get(line.lineNum)!} />
-                )}
+            allWords.forEach((word, i) => {
+              const isEnd = word.charType === 'end';
+              const isHl = !isEnd
+                && word.chapterId === currentChapter
+                && word.verseNumber === currentVerse;
 
-                {/*
-                  Line row: render words RTL, spread across full width.
-                  Lines with ≤ 3 words are centered (e.g. basmala, isolated word).
-                  Lines with more words use space-between.
-                */}
-                <div
-                  ref={lineHasCurrentVerse ? hlRef : undefined}
-                  dir="rtl"
+              /* Insert Surah header + Bismillah when a new surah starts */
+              if (word.chapterId !== prevChapterId && word.verseNumber === 1) {
+                firstWordOfSurah = true;
+                elements.push(
+                  <SurahHeader key={`sh-${word.chapterId}`} chapterId={word.chapterId} />,
+                );
+                if (!NO_BISMILLAH.has(word.chapterId)) {
+                  elements.push(<BismillahHeader key={`bm-${word.chapterId}`} />);
+                }
+                prevChapterId = word.chapterId;
+              } else if (word.chapterId !== prevChapterId) {
+                prevChapterId = word.chapterId;
+              }
+
+              /* Attach scroll ref to first highlighted word */
+              const attachRef = isHl && !hlRefAttached;
+              if (attachRef) hlRefAttached = true;
+
+              elements.push(
+                <span
+                  key={i}
+                  ref={attachRef ? hlRef : undefined}
+                  onClick={() => {
+                    if (isEnd) return;
+                    onAyahTap?.({ chapterId: word.chapterId, verseNumber: word.verseNumber, text: word.text });
+                    onVerseClick?.(word.chapterId, word.verseNumber);
+                  }}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: line.words.length <= 3 ? 'center' : 'space-between',
-                    gap: line.words.length <= 3 ? 6 : 0,
-                    width: '100%',
-                    overflow: 'hidden',
-                    flexShrink: 0,
+                    display: 'inline',
+                    fontSize: isEnd ? 14 : 19,
+                    color: isEnd ? '#b8922a' : (isHl ? '#2a0f00' : '#160900'),
+                    background: isHl ? 'rgba(200,168,75,.28)' : 'transparent',
+                    borderRadius: isHl ? 5 : 0,
+                    padding: isHl ? '2px 4px' : undefined,
+                    cursor: isEnd ? 'default' : 'pointer',
+                    transition: 'background .2s, color .15s',
+                    WebkitTouchCallout: 'none',
                   }}
                 >
-                  {line.words.map((word, wi) => {
-                    const isEnd = word.charType === 'end';
-                    const isHl = !isEnd
-                      && word.chapterId === currentChapter
-                      && word.verseNumber === currentVerse;
+                  {word.text}{' '}
+                </span>,
+              );
+            });
 
-                    return (
-                      <span
-                        key={wi}
-                        onClick={() => {
-                          if (isEnd) return;
-                          onAyahTap?.({ chapterId: word.chapterId, verseNumber: word.verseNumber, text: word.text });
-                          onVerseClick?.(word.chapterId, word.verseNumber);
-                        }}
-                        style={{
-                          fontFamily: qFont,
-                          fontSize: isEnd ? 13 : 18,
-                          lineHeight: 2.2,
-                          color: isEnd ? '#c8a84b' : (isHl ? '#3a1500' : '#160900'),
-                          background: isHl ? 'rgba(200,168,75,.25)' : 'transparent',
-                          borderRadius: isHl ? 5 : 0,
-                          padding: isHl ? '1px 4px' : (isEnd ? '0 2px' : '1px 1px'),
-                          cursor: isEnd ? 'default' : 'pointer',
-                          display: 'inline-block',
-                          whiteSpace: 'nowrap',
-                          flexShrink: 0,
-                          transition: 'background .2s, color .2s',
-                          WebkitTouchCallout: 'none',
-                        }}
-                      >
-                        {word.text}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
+            return elements;
+          })()}
         </div>
       )}
 
-      {/* ── Footer ── */}
+      {/* ── Page footer: Hizb ◆ page number ◆ ── */}
       <div style={{ paddingTop: 4, paddingBottom: 8, flexShrink: 0 }}>
         <GoldLine />
-        <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '3px 16px' }}>
+        <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 18px' }}>
           <span style={{ fontSize: 11, color: '#5a3e10', fontFamily: qFont, fontWeight: 600 }}>
             {meta.hizb ? `الحزب ${toEastern(meta.hizb)}` : ''}
           </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ fontSize: 9, color: '#c8a84b' }}>◆</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#5a3e10', fontFamily: qFont }}>
+          {/* Page number — centered, quran.com PageFooter style */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 9, color: 'rgba(200,168,75,.7)' }}>◆</span>
+            <span style={{ fontSize: 13.5, fontWeight: 700, color: '#4a2e08', fontFamily: qFont }}>
               {toEastern(page)}
             </span>
-            <span style={{ fontSize: 9, color: '#c8a84b' }}>◆</span>
+            <span style={{ fontSize: 9, color: 'rgba(200,168,75,.7)' }}>◆</span>
           </div>
           <span style={{ fontSize: 11, color: 'transparent' }}>0</span>
         </div>

@@ -112,10 +112,12 @@ export default function MembershipDashboard({
           {isRtl ? 'عضوية الأسرة' : 'Family Membership'}
         </h1>
         {/* Status pill */}
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8, padding: '4px 14px', borderRadius: 20, background: isActive ? 'rgba(74,222,128,0.12)' : isInactive ? 'rgba(248,113,113,0.12)' : 'rgba(251,191,36,0.12)', border: `1px solid ${isActive ? 'rgba(74,222,128,0.3)' : isInactive ? 'rgba(248,113,113,0.3)' : 'rgba(251,191,36,0.3)'}` }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: isActive ? '#4ade80' : isInactive ? '#f87171' : '#fbbf24', flexShrink: 0, boxShadow: isActive ? '0 0 8px rgba(74,222,128,0.7)' : 'none' }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: isActive ? '#4ade80' : isInactive ? '#f87171' : '#fbbf24' }}>
-            {isActive ? (isRtl ? 'عضوية فعّالة' : 'Active') : isExpired ? (isRtl ? 'منتهية الصلاحية' : 'Expired') : isCancelled ? (isRtl ? 'ملغاة' : 'Cancelled') : (isRtl ? 'قيد المعالجة' : 'Pending')}
+        {/* Status pill — inactive members show green "Community" so the card
+            never appears broken/alarming; the renewal CTA below handles the upsell */}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8, padding: '4px 14px', borderRadius: 20, background: (isActive || isInactive) ? 'rgba(74,222,128,0.12)' : 'rgba(251,191,36,0.12)', border: `1px solid ${(isActive || isInactive) ? 'rgba(74,222,128,0.3)' : 'rgba(251,191,36,0.3)'}` }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: (isActive || isInactive) ? '#4ade80' : '#fbbf24', flexShrink: 0, boxShadow: (isActive || isInactive) ? '0 0 8px rgba(74,222,128,0.7)' : 'none' }} />
+          <span style={{ fontSize: 12, fontWeight: 700, color: (isActive || isInactive) ? '#4ade80' : '#fbbf24' }}>
+            {isActive ? (isRtl ? 'عضوية فعّالة' : 'Active') : isInactive ? (isRtl ? 'عضوية مجتمع' : 'Community Membership') : (isRtl ? 'قيد المعالجة' : 'Pending')}
           </span>
         </div>
       </div>
@@ -154,10 +156,10 @@ export default function MembershipDashboard({
                   <p style={{ fontSize: 9, letterSpacing: '0.15em', color: 'rgba(245,240,232,0.5)', marginTop: 3 }}>FAMILY MEMBER</p>
                 </div>
                 {/* Status dot */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 12, background: isActive ? 'rgba(74,222,128,0.15)' : isInactive ? 'rgba(248,113,113,0.15)' : 'rgba(251,191,36,0.15)', border: `1px solid ${isActive ? 'rgba(74,222,128,0.3)' : isInactive ? 'rgba(248,113,113,0.3)' : 'rgba(251,191,36,0.3)'}` }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: isActive ? '#4ade80' : isInactive ? '#f87171' : '#fbbf24' }} />
-                  <span style={{ fontSize: 9, fontWeight: 700, color: isActive ? '#4ade80' : isInactive ? '#f87171' : '#fbbf24', letterSpacing: '0.1em' }}>
-                    {isActive ? 'ACTIVE' : isExpired ? 'EXPIRED' : isCancelled ? 'CANCELLED' : 'PENDING'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 12, background: (isActive || isInactive) ? 'rgba(74,222,128,0.15)' : 'rgba(251,191,36,0.15)', border: `1px solid ${(isActive || isInactive) ? 'rgba(74,222,128,0.3)' : 'rgba(251,191,36,0.3)'}` }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: (isActive || isInactive) ? '#4ade80' : '#fbbf24' }} />
+                  <span style={{ fontSize: 9, fontWeight: 700, color: (isActive || isInactive) ? '#4ade80' : '#fbbf24', letterSpacing: '0.1em' }}>
+                    {isActive ? 'ACTIVE' : isInactive ? 'COMMUNITY' : 'PENDING'}
                   </span>
                 </div>
               </div>
@@ -190,7 +192,7 @@ export default function MembershipDashboard({
                   {expiryText && (
                     <div style={{ textAlign: isRtl ? 'left' : 'right' }}>
                       <p style={{ fontSize: 9, color: 'rgba(245,240,232,0.4)', letterSpacing: '0.08em' }}>Valid until</p>
-                      <p style={{ fontSize: 10, fontWeight: 700, color: isInactive ? '#f87171' : GOLD, marginTop: 2 }}>{expiryText}</p>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: GOLD, marginTop: 2 }}>{expiryText}</p>
                     </div>
                   )}
                 </div>

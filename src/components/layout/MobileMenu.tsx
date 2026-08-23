@@ -6,11 +6,14 @@ import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LanguageContext';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
+import { useState, useEffect } from 'react';
 
 interface MobileMenuProps {
   open: boolean;
   onClose: () => void;
 }
+
+type MemberStatus = 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | 'PENDING' | null;
 
 export default function MobileMenu({ open, onClose }: MobileMenuProps) {
   const pathname = usePathname();
@@ -18,6 +21,16 @@ export default function MobileMenu({ open, onClose }: MobileMenuProps) {
   const { isRtl, lang, toggleLang } = useLang();
   const { totalItems } = useCart();
   const { totalItems: wishlistCount } = useWishlist();
+  const [memberStatus, setMemberStatus] = useState<MemberStatus>(null);
+
+  /* Fetch membership status whenever the menu opens and user is logged in */
+  useEffect(() => {
+    if (!open || !user) { setMemberStatus(null); return; }
+    fetch('/api/membership', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setMemberStatus(d?.membership?.status ?? null))
+      .catch(() => {});
+  }, [open, user]);
 
   const links = [
     { href: '/',         label: isRtl ? 'الرئيسية'      : 'Home',     icon: '🏠' },
@@ -106,6 +119,52 @@ export default function MobileMenu({ open, onClose }: MobileMenuProps) {
                 </div>
                 {user.name}
               </Link>
+
+              {/* Membership status chip */}
+              {memberStatus && (
+                <Link
+                  href="/membership"
+                  onClick={onClose}
+                  style={{ textDecoration: 'none' }}
+                >
+                  <div style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '5px 12px', borderRadius: 20, marginBottom: 4,
+                    background: memberStatus === 'ACTIVE'
+                      ? 'rgba(74,222,128,0.12)'
+                      : memberStatus === 'PENDING'
+                        ? 'rgba(251,191,36,0.12)'
+                        : 'rgba(74,222,128,0.12)',
+                    border: `1px solid ${memberStatus === 'ACTIVE'
+                      ? 'rgba(74,222,128,0.35)'
+                      : memberStatus === 'PENDING'
+                        ? 'rgba(251,191,36,0.35)'
+                        : 'rgba(74,222,128,0.35)'}`,
+                  }}>
+                    <span style={{
+                      width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                      background: memberStatus === 'ACTIVE' || memberStatus === 'EXPIRED' || memberStatus === 'CANCELLED'
+                        ? '#4ade80' : '#fbbf24',
+                      boxShadow: '0 0 6px rgba(74,222,128,0.6)',
+                    }} />
+                    <span style={{
+                      fontSize: 12, fontWeight: 700,
+                      color: memberStatus === 'ACTIVE' || memberStatus === 'EXPIRED' || memberStatus === 'CANCELLED'
+                        ? '#16a34a' : '#d97706',
+                    }}>
+                      {memberStatus === 'ACTIVE'
+                        ? (isRtl ? 'عضوية فعّالة' : 'Active Member')
+                        : memberStatus === 'PENDING'
+                          ? (isRtl ? 'قيد المعالجة' : 'Pending')
+                          : (isRtl ? 'عضوية مجتمع' : 'Community')}
+                    </span>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: '#9ca3af', flexShrink: 0 }}>
+                      <path d={isRtl ? 'M15 18l-6-6 6-6' : 'M9 18l6-6-6-6'}/>
+                    </svg>
+                  </div>
+                </Link>
+              )}
+
               <button
                 onClick={() => { signOut(); onClose(); }}
                 className="w-full text-right text-xs text-red-500 hover:text-red-700 font-semibold py-1 transition"

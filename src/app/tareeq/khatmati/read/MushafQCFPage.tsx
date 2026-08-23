@@ -30,25 +30,6 @@ const SURAH_AR: Record<number, string> = {
   111:'المسد',112:'الإخلاص',113:'الفلق',114:'الناس',
 };
 
-const SURAH_VERSE_COUNT: Record<number, number> = {
-  1:7,2:286,3:200,4:176,5:120,6:165,7:206,8:75,9:129,10:109,
-  11:123,12:111,13:43,14:52,15:99,16:128,17:111,18:110,19:98,20:135,
-  21:112,22:78,23:118,24:64,25:77,26:227,27:93,28:88,29:69,30:60,
-  31:34,32:30,33:73,34:54,35:45,36:83,37:182,38:88,39:75,40:85,
-  41:54,42:53,43:89,44:59,45:37,46:35,47:38,48:29,49:18,50:45,
-  51:60,52:49,53:62,54:55,55:78,56:96,57:29,58:22,59:24,60:13,
-  61:14,62:11,63:11,64:18,65:12,66:12,67:30,68:52,69:52,70:44,
-  71:28,72:28,73:20,74:56,75:40,76:31,77:50,78:40,79:46,80:42,
-  81:29,82:19,83:36,84:25,85:22,86:17,87:19,88:26,89:30,90:20,
-  91:15,92:21,93:11,94:8,95:8,96:19,97:5,98:8,99:8,100:11,
-  101:11,102:8,103:3,104:9,105:5,106:4,107:7,108:3,109:6,110:3,
-  111:5,112:4,113:5,114:6,
-};
-
-/* Madani surahs — all others are Makki */
-const SURAH_MADANI = new Set([
-  2,3,4,5,8,9,13,22,24,33,47,48,49,57,58,59,60,61,62,63,64,65,66,98,110,
-]);
 
 const JUZ_AR = ['','الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن','التاسع','العاشر','الحادي عشر','الثاني عشر','الثالث عشر','الرابع عشر','الخامس عشر','السادس عشر','السابع عشر','الثامن عشر','التاسع عشر','العشرون','الحادي والعشرون','الثاني والعشرون','الثالث والعشرون','الرابع والعشرون','الخامس والعشرون','السادس والعشرون','السابع والعشرون','الثامن والعشرون','التاسع والعشرون','الثلاثون'];
 
@@ -82,15 +63,12 @@ function GoldRule() {
   );
 }
 
-/* ── Surah header — real Madinah Mushaf SVG ornament ──────────── */
+/* ── Surah header — real Madinah Mushaf SVG ornamental frame ──── */
 function SurahHeader({ chapterId }: { chapterId: number }) {
   const name = SURAH_AR[chapterId] ?? '';
-  const count = SURAH_VERSE_COUNT[chapterId] ?? 0;
-  const type = SURAH_MADANI.has(chapterId) ? 'مدنية' : 'مكية';
 
   return (
     <div style={{ position: 'relative', width: '100%', margin: '12px 0 4px' }}>
-      {/* Actual Madinah Mushaf ornamental frame from public/surah_header_mushaf.svg */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/surah_header_mushaf.svg"
@@ -99,35 +77,18 @@ function SurahHeader({ chapterId }: { chapterId: number }) {
         draggable={false}
         style={{ width: '100%', height: 'auto', display: 'block', userSelect: 'none' }}
       />
-      {/*
-       * Text overlay: the SVG's side panels occupy roughly the outer 17% on each side.
-       * We match that with padding so text falls inside the frame's center zone.
-       */}
+      {/* Surah name centered over the frame — no invented side labels */}
       <div style={{
         position: 'absolute', inset: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        direction: 'rtl', padding: '0 17%',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        {/* Right panel: revelation type */}
-        <div style={{ textAlign: 'center', minWidth: 60 }}>
-          <div style={{ fontSize: 11.5, fontWeight: 700, color: '#2a1a04', fontFamily: META_FONT }}>{type}</div>
-        </div>
-        {/* Center: surah name */}
-        <div style={{ flex: 1, textAlign: 'center' }}>
-          <span style={{
-            fontSize: 17, fontWeight: 700, color: '#0a0500',
-            fontFamily: "'Scheherazade New','" + META_FONT + "'",
-            letterSpacing: '0.04em',
-          }}>
-            سورة {name}
-          </span>
-        </div>
-        {/* Left panel: verse count */}
-        <div style={{ textAlign: 'center', minWidth: 60 }}>
-          <div style={{ fontSize: 11.5, fontWeight: 700, color: '#2a1a04', fontFamily: META_FONT }}>
-            {toEastern(count)} آية
-          </div>
-        </div>
+        <span style={{
+          fontSize: 17, fontWeight: 700, color: '#0a0500',
+          fontFamily: "'Scheherazade New','Amiri Quran','Traditional Arabic',serif",
+          letterSpacing: '0.04em',
+        }}>
+          سورة {name}
+        </span>
       </div>
     </div>
   );
@@ -145,24 +106,58 @@ function BismillahLine() {
   );
 }
 
+/*
+ * Small book-like ornamental symbol matching the printed Madinah Mushaf
+ * center header mark — two pages meeting at a spine, rendered in gold.
+ */
+function MushafBookMark() {
+  return (
+    <svg width="20" height="15" viewBox="0 0 20 15" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+      {/* Left page */}
+      <path d="M10 1.5 C8 1.5 3.5 2.5 3.5 4 L3.5 13 C3.5 13 7 12 10 13 L10 1.5 Z"
+        fill="#f4e9ca" stroke="#b89840" strokeWidth="0.7" strokeLinejoin="round"/>
+      {/* Right page */}
+      <path d="M10 1.5 C12 1.5 16.5 2.5 16.5 4 L16.5 13 C16.5 13 13 12 10 13 L10 1.5 Z"
+        fill="#f4e9ca" stroke="#b89840" strokeWidth="0.7" strokeLinejoin="round"/>
+      {/* Spine */}
+      <line x1="10" y1="1.5" x2="10" y2="13" stroke="#b89840" strokeWidth="1"/>
+      {/* Lines on left page */}
+      <line x1="5.5" y1="5" x2="8.5" y2="5" stroke="#b89840" strokeWidth="0.35" opacity="0.65"/>
+      <line x1="5.5" y1="7" x2="8.5" y2="7" stroke="#b89840" strokeWidth="0.35" opacity="0.65"/>
+      <line x1="5.5" y1="9" x2="8.5" y2="9" stroke="#b89840" strokeWidth="0.35" opacity="0.65"/>
+      {/* Lines on right page */}
+      <line x1="11.5" y1="5" x2="14.5" y2="5" stroke="#b89840" strokeWidth="0.35" opacity="0.65"/>
+      <line x1="11.5" y1="7" x2="14.5" y2="7" stroke="#b89840" strokeWidth="0.35" opacity="0.65"/>
+      <line x1="11.5" y1="9" x2="14.5" y2="9" stroke="#b89840" strokeWidth="0.35" opacity="0.65"/>
+    </svg>
+  );
+}
+
 /* ── Top metadata — printed Mushaf style ───────────────────────── */
+/*
+ * Printed Madinah Mushaf header convention (RTL page):
+ *   Visual LEFT:   chapter/surah range (e.g. الجاثية والأحقاف)
+ *   Visual CENTER: small book ornament
+ *   Visual RIGHT:  Juz title (e.g. الجزء السادس والعشرون)
+ *
+ * With dir="rtl" flex, DOM order maps: first child → visual RIGHT.
+ * So DOM order must be: [juz] [ornament] [surahLabel].
+ */
 function MushafTopMetadata({ meta, surahLabel }: { meta: PageData['meta']; surahLabel: string }) {
   return (
     <div dir="rtl" style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '3px 16px',
     }}>
-      {/* Right: surah range */}
-      <span style={{ fontSize: 11, fontWeight: 700, color: '#4a3820', fontFamily: META_FONT }}>
-        {surahLabel}
-      </span>
-      {/* Center: ۞ rub el-hizb — authentic Mushaf quarter-division marker */}
-      <span style={{ fontSize: 16, color: '#8a6c35', fontFamily: META_FONT, lineHeight: 1 }}>
-        ۞
-      </span>
-      {/* Left: Juz number */}
+      {/* DOM first → visual RIGHT: Juz number */}
       <span style={{ fontSize: 11, fontWeight: 700, color: '#4a3820', fontFamily: META_FONT }}>
         {meta.juz ? juzLabel(meta.juz) : ''}
+      </span>
+      {/* DOM second → visual CENTER: small Mushaf book ornament */}
+      <MushafBookMark />
+      {/* DOM third → visual LEFT: surah/chapter range */}
+      <span style={{ fontSize: 11, fontWeight: 700, color: '#4a3820', fontFamily: META_FONT }}>
+        {surahLabel}
       </span>
     </div>
   );
@@ -347,8 +342,9 @@ export default function MushafQCFPage({
               <div key={lineNum} dir="rtl" style={{
                 display: 'flex',
                 direction: 'rtl',
-                justifyContent: 'center',   /* center the completed line — NO stretching */
+                justifyContent: 'center',  /* center the completed line — NO stretching */
                 alignItems: 'baseline',
+                gap: 0,                    /* explicit zero gap — font spacing only */
                 padding: '0 12px',
                 lineHeight: 2.4,
               }}>
@@ -362,15 +358,19 @@ export default function MushafQCFPage({
                   if (attachRef) hlRefAttached = true;
 
                   /*
-                   * With QCF: use code_v2 — the PUA-encoded glyph for this word.
-                   * Without QCF (font still loading): fall back to text_uthmani
-                   * with ۝ prepended to end markers so Amiri Quran shows the ornament.
+                   * QCF mode: use code_v2 (PUA glyph codes) — the font itself
+                   * embeds correct inter-glyph spacing, no extra characters needed.
+                   *
+                   * Fallback (Amiri Quran, font still loading): use text_uthmani.
+                   * Append a single space after non-end words so Arabic words don't
+                   * collide visually — this is the natural Unicode word separator,
+                   * not artificial CSS letter/word-spacing.
                    */
                   const txt = qcfReady
                     ? (word.codeV2 || word.text)
                     : isEnd
                       ? (word.text.startsWith('۝') ? word.text : `۝${word.text}`)
-                      : word.text;
+                      : word.text + ' '; /* Arabic word separator in fallback */
 
                   return (
                     <span

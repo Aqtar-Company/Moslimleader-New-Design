@@ -1,8 +1,13 @@
 // Module-level cache — persists across React re-renders for the lifetime of the browser session.
 
-const QCF_CDN = 'https://fonts.qurancdn.com';
+/*
+ * QCF font URL — routed through our own Next.js proxy because
+ * fonts.qurancdn.com returns 403 on direct browser requests from
+ * non-quran.com origins. The proxy fetches server-side and caches
+ * the response for 1 year.
+ */
 function qcfFontUrl(page: number): string {
-  return `${QCF_CDN}/QCF_P${String(page).padStart(3, '0')}_v2.woff2`;
+  return `/api/tareeq/quran/qcf-font?page=${page}`;
 }
 
 export interface MushafWord {

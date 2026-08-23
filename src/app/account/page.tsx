@@ -1452,7 +1452,7 @@ export default function AccountPage() {
           ) : (
             /* ── MEMBER VIEW ── */
             <div className="space-y-5">
-              {/* Digital membership card */}
+              {/* Digital membership card — constrained so it looks like an actual card on desktop */}
               {(() => {
                 const isInactive = membership.status === 'EXPIRED' || membership.status === 'CANCELLED';
                 const cardBg = isInactive
@@ -1465,6 +1465,8 @@ export default function AccountPage() {
                 const expColor = isInactive ? 'rgba(200,200,200,0.6)' : '#D4A853';
                 const brandColor = isInactive ? 'rgba(200,200,200,0.8)' : '#D4A853';
                 return (
+                  /* Card wrapper: max 380 px so it looks like a real card, not a banner */
+                  <div style={{ maxWidth: 380, margin: '0 auto', width: '100%' }}>
                   <div dir="ltr" style={{
                     position: 'relative',
                     borderRadius: 20,
@@ -1591,7 +1593,6 @@ export default function AccountPage() {
                             boxShadow: '0 4px 20px rgba(212,168,83,0.5)',
                           }}
                         >
-                          {/* Refresh icon */}
                           <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
                             <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
                             <path d="M3 3v5h5"/>
@@ -1605,6 +1606,18 @@ export default function AccountPage() {
                         </p>
                       </div>
                     )}
+                  </div>
+                  {/* "اكتفِ" link — visible below card for inactive members */}
+                  {isInactive && renewStep === 'idle' && (
+                    <div style={{ textAlign: 'center', marginTop: 10 }}>
+                      <button
+                        onClick={() => {/* already a community member — just close/ignore */}}
+                        style={{ background: 'none', border: 'none', cursor: 'default', fontSize: 12, color: 'rgba(255,255,255,0.35)', textDecoration: 'underline', textUnderlineOffset: 3 }}
+                      >
+                        {isRtl ? 'أو اكتفِ بعضويتك المجتمعية المجانية' : 'Or keep your free Community membership'}
+                      </button>
+                    </div>
+                  )}
                   </div>
                 );
               })()}

@@ -6,6 +6,7 @@ interface Membership {
   id: string;
   membershipNumber: string;
   status: 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+  tier?: string | null;
   familyName: string | null;
   memberSince: number;
   expiresAt: string | null;
@@ -428,6 +429,11 @@ export default function AdminMembershipPage() {
                         <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6, background: `${STATUS_COLORS[m.status]}22`, color: STATUS_COLORS[m.status], fontWeight: 700 }}>
                           {STATUS_AR[m.status]}
                         </span>
+                        {m.tier === 'community' && (
+                          <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 6, background: 'rgba(34,197,94,0.12)', color: '#22c55e', fontWeight: 700, border: '1px solid rgba(34,197,94,0.25)' }}>
+                            مجتمعية
+                          </span>
+                        )}
                       </div>
                       <div style={{ fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>{m.owner.name}</div>
                       <div style={{ fontSize: 12, color: '#94a3b8' }}>{m.owner.email}</div>

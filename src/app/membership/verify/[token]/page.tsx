@@ -9,6 +9,7 @@ export default async function MembershipVerifyPage({ params }: { params: { token
     select: {
       membershipNumber: true,
       status: true,
+      tier: true,
       familyName: true,
       memberSince: true,
       expiresAt: true,
@@ -18,12 +19,12 @@ export default async function MembershipVerifyPage({ params }: { params: { token
 
   if (!membership) notFound();
 
-  const isExpired = membership.expiresAt && membership.expiresAt < new Date();
+  const isCommunity = membership.tier === 'community';
+  // Community memberships never expire
+  const isExpired = !isCommunity && membership.expiresAt && membership.expiresAt < new Date();
   const effectiveStatus = isExpired ? 'EXPIRED' : membership.status;
   const isActive = effectiveStatus === 'ACTIVE';
-  const displayNumber = isActive
-    ? membership.membershipNumber
-    : membership.membershipNumber.replace(/^ML-/, 'MC-');
+  const displayNumber = membership.membershipNumber;
 
   const ownerName = membership.owner?.name ?? '';
   const nameParts = ownerName.trim().split(/\s+/);
@@ -56,10 +57,12 @@ export default async function MembershipVerifyPage({ params }: { params: { token
           {isActive ? '✅' : '❌'}
         </div>
         <h1 style={{ fontSize: 22, fontWeight: 900, color: isActive ? '#4ade80' : '#f87171', marginBottom: 8 }}>
-          {isActive ? 'العضوية سارية' : effectiveStatus === 'EXPIRED' ? 'العضوية منتهية' : 'العضوية غير سارية'}
+          {isActive
+            ? (isCommunity ? 'عضوية مجتمعية سارية' : 'العضوية سارية')
+            : effectiveStatus === 'EXPIRED' ? 'العضوية منتهية' : 'العضوية غير سارية'}
         </h1>
         <p style={{ fontSize: 12, color: 'rgba(245,240,232,0.5)', letterSpacing: '0.08em', marginBottom: 24 }}>
-          عضوية أسرة مسلم ليدر
+          {isCommunity ? 'عضو مجتمع مسلم ليدر' : 'عضوية أسرة مسلم ليدر'}
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -77,10 +80,16 @@ export default async function MembershipVerifyPage({ params }: { params: { token
             <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.45)', marginBottom: 3 }}>الاسم</p>
             <p style={{ fontSize: 15, fontWeight: 700, color: '#f5f0e8' }}>{maskedName}</p>
           </div>
-          {expiryFormatted && (
+          {expiryFormatted && !isCommunity && (
             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: '12px 16px', textAlign: 'right' }}>
               <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.45)', marginBottom: 3 }}>صالحة حتى</p>
               <p style={{ fontSize: 15, fontWeight: 700, color: isActive ? '#4ade80' : '#f87171' }}>{expiryFormatted}</p>
+            </div>
+          )}
+          {isCommunity && (
+            <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: '12px 16px', textAlign: 'right' }}>
+              <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.45)', marginBottom: 3 }}>نوع العضوية</p>
+              <p style={{ fontSize: 15, fontWeight: 700, color: '#4ade80' }}>مجتمعية — دائمة</p>
             </div>
           )}
         </div>

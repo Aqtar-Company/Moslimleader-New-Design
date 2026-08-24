@@ -14,7 +14,7 @@ interface FamilyMember { id: string; name: string; relation: string | null; birt
 interface Perk { id: string; title: string; description: string | null; imageUrl: string | null; linkUrl: string | null; validUntil: string | null; }
 interface Membership {
   id: string; membershipNumber: string; qrToken: string; familyName: string | null;
-  memberSince: number; status: string; startsAt: string | null; expiresAt: string | null;
+  memberSince: number; status: string; tier?: string | null; startsAt: string | null; expiresAt: string | null;
   familyMembers: FamilyMember[];
 }
 
@@ -38,13 +38,14 @@ export default function MembershipDashboard({
   const [renewError, setRenewError] = useState('');
   const [membershipPrices, setMembershipPrices] = useState<{ egyEgp: number | null; egyUsd: number; intlUsd: number }>({ egyEgp: null, egyUsd: 2.00, intlUsd: 5.00 });
   const [membershipZone, setMembershipZone] = useState<'egypt' | 'international'>('international');
-  // Lazy-init from localStorage so refresh never flashes the grey card
+  // DB tier drives community mode; localStorage is a cache so there's no flash on refresh
+  const isCommunityTier = membership.tier === 'community';
   const [communityAcknowledged, setCommunityAcknowledged] = useState<boolean>(() => {
+    if (isCommunityTier) return true;
     try { return typeof localStorage !== 'undefined' && localStorage.getItem('ml_comm_choice') === '1'; } catch { return false; }
   });
   const [leaderPerks, setLeaderPerks] = useState<{ id: string; title: string; description: string | null }[]>([]);
   const [leaderPerksLoaded, setLeaderPerksLoaded] = useState(false);
-  // showLeaderPreview removed — leader card now always visible in community mode
 
   useEffect(() => {
     fetch('/api/membership/price')
@@ -57,7 +58,7 @@ export default function MembershipDashboard({
       .catch(() => {});
   }, []);
 
-  // Fetch leader perks when in community mode (on mount if already acknowledged, or on first acknowledge)
+  // Fetch leader perks when in community mode
   useEffect(() => {
     if (!communityAcknowledged || leaderPerksLoaded) return;
     setLeaderPerksLoaded(true);
@@ -67,19 +68,25 @@ export default function MembershipDashboard({
       .catch(() => {});
   }, [communityAcknowledged, leaderPerksLoaded]);
 
-  function acknowledgeAsCommunity() {
+  async function acknowledgeAsCommunity() {
+    // Optimistic update
     setCommunityAcknowledged(true);
     try { localStorage.setItem('ml_comm_choice', '1'); } catch {}
+    // Persist to DB so QR + admin reflect community status
+    try {
+      await fetch('/api/membership/community-choice', { method: 'POST', credentials: 'include' });
+    } catch { /* ignore — UI already updated */ }
   }
 
   const isActive      = membership.status === 'ACTIVE';
   const isExpired     = membership.status === 'EXPIRED';
   const isCancelled   = membership.status === 'CANCELLED';
   const isPending     = membership.status === 'PENDING';
-  const isInactive    = isExpired || isCancelled;
+  // Community-tier memberships are ACTIVE; only show grey/inactive for expired leader memberships
+  const isInactive    = (isExpired || isCancelled) && !isCommunityTier;
   const expiresAt   = membership.expiresAt ? new Date(membership.expiresAt) : null;
   const daysLeft    = expiresAt ? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 86400000)) : 0;
-  const nearExpiry  = isActive && daysLeft <= 30;
+  const nearExpiry  = isActive && !isCommunityTier && daysLeft <= 30;
   const verifyUrl   = `https://moslimleader.com/membership/verify/${membership.qrToken}`;
 
   // Generate QR as data URL for MembershipCard
@@ -163,8 +170,8 @@ export default function MembershipDashboard({
         {tab === 'card' && (
           <div>
 
-            {/* ════ COMMUNITY MODE (after "اكتفِ") ════ */}
-            {communityAcknowledged && isInactive ? (
+            {/* ════ COMMUNITY MODE (after "اكتفِ" or DB tier = community) ════ */}
+            {(isCommunityTier || (communityAcknowledged && isInactive)) ? (
               <div>
                 {/* Green community card */}
                 <MembershipCard

@@ -1777,6 +1777,7 @@ model FamilyMembership {
   ownerUserId      String           @unique
   owner            User             @relation("MembershipOwner", fields: [ownerUserId], references: [id])
   status           MembershipStatus @default(PENDING)
+  tier             String           @default("leader")  // "leader" | "community"
   familyName       String?          // e.g. "أسرة إبراهيم حسن"
   memberSince      Int              // Year of first activation — never changes on renewal
   startsAt         DateTime?

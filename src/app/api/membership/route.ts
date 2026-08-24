@@ -26,6 +26,7 @@ export async function GET() {
     prisma.familyMembership.findUnique({
       where: { ownerUserId: user.userId },
       include: { familyMembers: { orderBy: { createdAt: 'asc' } } },
+      // tier field is included via default select (all scalar fields)
     }),
     getDiscountRates(),
   ]);

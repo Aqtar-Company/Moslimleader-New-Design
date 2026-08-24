@@ -13,6 +13,7 @@ export async function GET(req: NextRequest, { params }: { params: { token: strin
     select: {
       membershipNumber: true,
       status: true,
+      tier: true,
       familyName: true,
       memberSince: true,
       expiresAt: true,
@@ -22,8 +23,9 @@ export async function GET(req: NextRequest, { params }: { params: { token: strin
 
   if (!membership) return NextResponse.json({ valid: false, error: 'Not found' }, { status: 404 });
 
-  // Auto-check expiry
-  const isExpired = membership.expiresAt && membership.expiresAt < new Date();
+  const isCommunity = membership.tier === 'community';
+  // Auto-check expiry — community memberships never expire
+  const isExpired = !isCommunity && membership.expiresAt && membership.expiresAt < new Date();
   const effectiveStatus = isExpired ? 'EXPIRED' : membership.status;
 
   // Privacy: show only first name + initial
@@ -36,10 +38,11 @@ export async function GET(req: NextRequest, { params }: { params: { token: strin
   return NextResponse.json({
     valid: effectiveStatus === 'ACTIVE',
     status: effectiveStatus,
+    tier: membership.tier ?? 'leader',
     membershipNumber: membership.membershipNumber,
     familyName: membership.familyName,
     ownerName: maskedName,
     memberSince: membership.memberSince,
-    expiresAt: membership.expiresAt,
+    expiresAt: isCommunity ? null : membership.expiresAt,
   });
 }

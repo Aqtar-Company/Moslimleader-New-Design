@@ -24,7 +24,7 @@ const COUNTRIES_LIST = [
     .map(([code, c]) => ({ code, name: c.nameAr, nameEn: c.nameEn }))
 ];
 
-type Tab = 'profile' | 'addresses' | 'orders' | 'books' | 'loyalty' | 'children' | 'downloads' | 'membership';
+type Tab = 'profile' | 'addresses' | 'orders' | 'books' | 'loyalty' | 'children' | 'downloads' | 'membership' | 'support';
 
 interface FreeMediaItem {
   id: number; title: string; titleEn: string | null; type: string;
@@ -396,6 +396,7 @@ export default function AccountPage() {
           ['children',  isRtl ? 'أطفالي'   : 'Kids',     isRtl ? 'أطفالي'     : 'My Kids',   <svg key="c" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><circle cx="10" cy="6" r="3"/><path d="M10 11c-4 0-6 2-6 3v1h12v-1c0-1-2-3-6-3z"/></svg>],
           ['downloads', isRtl ? 'وسائط'    : 'Media',    isRtl ? 'وسائط مجانية' : 'Free Media', <svg key="d" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M3 17a1 1 0 0 1 1-1h12a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1zm3.293-7.707a1 1 0 0 1 1.414 0L9 10.586V3a1 1 0 1 1 2 0v7.586l1.293-1.293a1 1 0 1 1 1.414 1.414l-3 3a1 1 0 0 1-1.414 0l-3-3a1 1 0 0 1 0-1.414z" clipRule="evenodd"/></svg>],
           ['membership', isRtl ? 'عضويتي'  : 'Member',   isRtl ? 'عضوية الأسرة' : 'Family Membership', <svg key="m" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>],
+          ['support',    isRtl ? 'دعم'      : 'Support',  isRtl ? 'طلبات الدعم' : 'Support Requests',  <svg key="s" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd"/></svg>],
         ] as [Tab, string, string, React.ReactNode][]).map(([t, shortLabel, fullLabel, icon]) => (
           <button
             key={t}
@@ -409,14 +410,6 @@ export default function AccountPage() {
             <span className="hidden sm:inline text-sm">{fullLabel}</span>
           </button>
         ))}
-        <Link
-          href="/account/support-requests"
-          className="shrink-0 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-2.5 px-2 sm:px-3 rounded-xl font-bold transition whitespace-nowrap text-gray-500 hover:text-gray-700"
-        >
-          <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm1-11a1 1 0 1 0-2 0v3.586l-1.293-1.293a1 1 0 0 0-1.414 1.414l3 3a1 1 0 0 0 1.414 0l3-3a1 1 0 0 0-1.414-1.414L11 10.586V7z" clipRule="evenodd"/></svg>
-          <span className="text-[9px] sm:hidden leading-none">{isRtl ? 'دعم' : 'Support'}</span>
-          <span className="hidden sm:inline text-sm">{isRtl ? 'طلبات الدعم' : 'Support'}</span>
-        </Link>
       </div>
 
       {/* Profile Tab */}
@@ -1735,6 +1728,100 @@ export default function AccountPage() {
           )}
         </div>
       )}
+
+      {/* ── SUPPORT TAB ── */}
+      {tab === 'support' && (
+        <SupportTab />
+      )}
+    </div>
+  );
+}
+
+interface SupportRequest {
+  id: string; status: string; reason: string; note?: string;
+  createdAt: string; expiresAt?: string;
+  product: { id: string; name: string; slug: string; images?: string[] };
+  allocation?: { supportType: string; mlSupportAmount: number; customerPayAmount: number } | null;
+  currency: string;
+}
+
+function SupportTab() {
+  const { user } = useAuth();
+  const [requests, setRequests] = useState<SupportRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    fetch('/api/support-requests').then(r => r.json()).then(d => {
+      setRequests(d.requests ?? []);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [user]);
+
+  const cancel = async (id: string) => {
+    const res = await fetch(`/api/support-requests/${id}`, { method: 'DELETE' });
+    if (res.ok) setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'CANCELLED' } : r));
+  };
+
+  if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" /></div>;
+
+  if (requests.length === 0) return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+      <div className="text-4xl mb-3">📋</div>
+      <p className="text-gray-500 text-sm">لا توجد طلبات دعم بعد</p>
+      <a href="/shop" className="inline-block mt-4 text-sm text-blue-600 hover:underline">تصفح المنتجات</a>
+    </div>
+  );
+
+  const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+    PENDING:      { label: 'قيد المراجعة', color: 'bg-yellow-100 text-yellow-800' },
+    UNDER_REVIEW: { label: 'جاري المراجعة', color: 'bg-blue-100 text-blue-800' },
+    APPROVED:     { label: 'موافق — في انتظار الاستخدام', color: 'bg-green-100 text-green-800' },
+    COPY_ASSIGNED:{ label: 'نسخة مخصصة لك', color: 'bg-green-100 text-green-800' },
+    REJECTED:     { label: 'لم تتم الموافقة', color: 'bg-red-100 text-red-800' },
+    EXPIRED:      { label: 'انتهت الصلاحية', color: 'bg-gray-100 text-gray-600' },
+    CANCELLED:    { label: 'ملغى', color: 'bg-gray-100 text-gray-500' },
+    USED:         { label: 'تم الاستخدام', color: 'bg-green-100 text-green-800' },
+  };
+
+  return (
+    <div className="space-y-4" dir="rtl">
+      <h2 className="text-lg font-black text-gray-900">طلبات دعم السعر</h2>
+      {requests.map(req => {
+        const statusInfo = STATUS_LABELS[req.status] ?? { label: req.status, color: 'bg-gray-100 text-gray-600' };
+        const img = req.product?.images?.[0];
+        return (
+          <div key={req.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+            <div className="p-5">
+              <div className="flex items-start gap-4">
+                {img && <img src={img} alt={req.product.name} className="w-16 h-16 rounded-xl object-cover border border-gray-100 shrink-0" />}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <a href={`/shop/${req.product.slug}`} className="font-semibold text-gray-900 hover:text-blue-700 text-sm leading-tight">{req.product.name}</a>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium shrink-0 ${statusInfo.color}`}>{statusInfo.label}</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">{new Date(req.createdAt).toLocaleDateString('ar-EG')}</p>
+                  {req.allocation && (
+                    <div className="mt-3 bg-green-50 border border-green-200 rounded-xl p-3 text-sm">
+                      <p className="font-medium text-green-800">تمت الموافقة على الدعم</p>
+                      <div className="flex items-center justify-between mt-1 text-xs text-green-700">
+                        <span>السعر بعد الدعم</span>
+                        <span className="font-bold">{req.allocation.customerPayAmount.toLocaleString('ar-EG')} {req.currency === 'EGP' ? 'ج.م' : req.currency}</span>
+                      </div>
+                      {req.expiresAt && <p className="text-xs text-green-600 mt-1">صالح حتى: {new Date(req.expiresAt).toLocaleDateString('ar-EG')}</p>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            {req.status === 'PENDING' && (
+              <div className="px-5 pb-4">
+                <button onClick={() => cancel(req.id)} className="text-xs text-red-500 hover:text-red-700">إلغاء الطلب</button>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

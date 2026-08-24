@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
         likeCount: true, commentCount: true, savedCount: true, createdAt: true, userId: true,
         pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
         seriesId: true, seriesTitle: true, seriesOrder: true,
-        user: { select: { id: true, name: true, avatarUrl: true } },
+        user: { select: { id: true, name: true, avatarUrl: true, role: true } },
       },
     });
 
@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
             likeCount: true, commentCount: true, savedCount: true, createdAt: true, userId: true,
             pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
             seriesId: true, seriesTitle: true, seriesOrder: true,
-            user: { select: { id: true, name: true, avatarUrl: true } },
+            user: { select: { id: true, name: true, avatarUrl: true, role: true } },
           },
         },
       },

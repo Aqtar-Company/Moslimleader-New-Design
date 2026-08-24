@@ -38,9 +38,13 @@ export default function MembershipDashboard({
   const [renewError, setRenewError] = useState('');
   const [membershipPrices, setMembershipPrices] = useState<{ egyEgp: number | null; egyUsd: number; intlUsd: number }>({ egyEgp: null, egyUsd: 2.00, intlUsd: 5.00 });
   const [membershipZone, setMembershipZone] = useState<'egypt' | 'international'>('international');
-  const [communityAcknowledged, setCommunityAcknowledged] = useState(false);
-  const [showLeaderPreview, setShowLeaderPreview] = useState(false);
+  // Lazy-init from localStorage so refresh never flashes the grey card
+  const [communityAcknowledged, setCommunityAcknowledged] = useState<boolean>(() => {
+    try { return typeof localStorage !== 'undefined' && localStorage.getItem('ml_comm_choice') === '1'; } catch { return false; }
+  });
   const [leaderPerks, setLeaderPerks] = useState<{ id: string; title: string; description: string | null }[]>([]);
+  const [leaderPerksLoaded, setLeaderPerksLoaded] = useState(false);
+  // showLeaderPreview removed — leader card now always visible in community mode
 
   useEffect(() => {
     fetch('/api/membership/price')
@@ -51,25 +55,21 @@ export default function MembershipDashboard({
         if (tz.startsWith('Africa/Cairo') || tz === 'Africa/Cairo') setMembershipZone('egypt');
       })
       .catch(() => {});
-    // Restore community-acknowledged choice from localStorage
-    try {
-      if (localStorage.getItem('ml_comm_choice') === '1') setCommunityAcknowledged(true);
-    } catch {}
   }, []);
+
+  // Fetch leader perks when in community mode (on mount if already acknowledged, or on first acknowledge)
+  useEffect(() => {
+    if (!communityAcknowledged || leaderPerksLoaded) return;
+    setLeaderPerksLoaded(true);
+    fetch('/api/membership/perks?preview=1')
+      .then(r => r.json())
+      .then(d => setLeaderPerks((d.perks ?? []).filter((p: { forTier: string }) => p.forTier !== 'all')))
+      .catch(() => {});
+  }, [communityAcknowledged, leaderPerksLoaded]);
 
   function acknowledgeAsCommunity() {
     setCommunityAcknowledged(true);
     try { localStorage.setItem('ml_comm_choice', '1'); } catch {}
-  }
-
-  function handlePreviewLeader() {
-    setShowLeaderPreview(true);
-    if (leaderPerks.length === 0) {
-      fetch('/api/membership/perks?preview=1')
-        .then(r => r.json())
-        .then(d => setLeaderPerks((d.perks ?? []).filter((p: { forTier: string }) => p.forTier !== 'all')))
-        .catch(() => {});
-    }
   }
 
   const isActive      = membership.status === 'ACTIVE';
@@ -163,54 +163,10 @@ export default function MembershipDashboard({
         {tab === 'card' && (
           <div>
 
-            {/* ════ LEADER PREVIEW MODE ════ */}
-            {communityAcknowledged && isInactive && showLeaderPreview ? (
+            {/* ════ COMMUNITY MODE (after "اكتفِ") ════ */}
+            {communityAcknowledged && isInactive ? (
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                  <button onClick={() => setShowLeaderPreview(false)}
-                    style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '6px 12px', color: 'rgba(245,240,232,0.6)', fontSize: 12, cursor: 'pointer' }}>
-                    {isRtl ? '← رجوع' : '← Back'}
-                  </button>
-                  <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.35)', letterSpacing: '0.08em' }}>
-                    {isRtl ? 'معاينة العضوية الرائدة' : 'LEADER PREVIEW'}
-                  </p>
-                </div>
-                {/* Active-style leader card — preview only */}
-                <MembershipCard
-                  variant="leader"
-                  memberNumber={membership.membershipNumber}
-                  familyName={membership.familyName}
-                  memberSince={membership.memberSince}
-                  expiresAt={undefined}
-                  status="ACTIVE"
-                  qrDataUrl={null}
-                  isRtl={isRtl}
-                />
-                {/* Leader perks preview */}
-                {leaderPerks.length > 0 && (
-                  <div style={{ marginTop: 14, background: 'rgba(212,168,67,0.05)', border: '1px solid rgba(212,168,67,0.15)', borderRadius: 16, padding: '14px 16px' }}>
-                    <p style={{ fontSize: 10, color: 'rgba(245,240,232,0.35)', letterSpacing: '0.1em', marginBottom: 10 }}>
-                      {isRtl ? 'مميزات العضوية الرائدة' : 'LEADER PERKS'}
-                    </p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {leaderPerks.map(p => (
-                        <div key={p.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                          <svg width="9" height="9" viewBox="0 0 24 24" fill={GOLD} style={{ flexShrink: 0, marginTop: 3 }}><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.5L12 17l-6.2 4.4 2.4-7.5L2 9.4h7.6z"/></svg>
-                          <p style={{ fontSize: 12, color: 'rgba(245,240,232,0.7)', lineHeight: 1.5 }}>{p.title}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <button onClick={() => setShowRenew(true)}
-                  style={{ marginTop: 14, width: '100%', padding: '15px 0', borderRadius: 14, background: 'linear-gradient(135deg, #FFCC00 0%, #FFD740 100%)', color: '#1a0800', fontWeight: 900, fontSize: 15, border: 'none', cursor: 'pointer', boxShadow: '0 4px 20px rgba(255,204,0,0.3)' }}>
-                  {isRtl ? 'جدّد واحصل على العضوية الرائدة' : 'Renew to get Leader Membership'}
-                </button>
-              </div>
-
-            ) : communityAcknowledged && isInactive ? (
-              /* ════ COMMUNITY MODE (acknowledged) ════ */
-              <div>
+                {/* Green community card */}
                 <MembershipCard
                   variant="community"
                   memberNumber={membership.membershipNumber}
@@ -219,19 +175,58 @@ export default function MembershipDashboard({
                   qrDataUrl={qrDataUrl}
                   isRtl={isRtl}
                 />
-                {/* Upsell: see leader card */}
-                <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <button onClick={handlePreviewLeader}
-                    style={{ width: '100%', padding: '13px 0', borderRadius: 14, background: 'rgba(212,168,67,0.1)', border: '1px solid rgba(212,168,67,0.25)', color: GOLD, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
-                    {isRtl ? 'شوف العضوية الرائدة ←' : 'View Leader Membership →'}
-                  </button>
-                  <button onClick={() => setShowRenew(true)}
-                    style={{ width: '100%', padding: '13px 0', borderRadius: 14, background: 'linear-gradient(135deg, #FFCC00 0%, #FFD740 100%)', color: '#1a0800', fontWeight: 900, fontSize: 14, border: 'none', cursor: 'pointer' }}>
-                    {isRtl ? 'جدّد للعضوية الرائدة' : 'Renew to Leader'}
-                  </button>
+
+                {/* ── Leader upsell section — always visible ── */}
+                <div style={{ marginTop: 18, borderRadius: 18, overflow: 'hidden', border: '1px solid rgba(212,168,67,0.2)' }}>
+                  {/* Section header */}
+                  <div style={{ background: 'rgba(212,168,67,0.07)', padding: '12px 16px', borderBottom: '1px solid rgba(212,168,67,0.12)', textAlign: 'center' }}>
+                    <p style={{ fontSize: 11, fontWeight: 800, color: GOLD, letterSpacing: '0.1em' }}>
+                      {isRtl ? 'العضوية الرائدة — ارتقِ بمستواك' : 'LEADER MEMBERSHIP'}
+                    </p>
+                  </div>
+
+                  <div style={{ padding: '14px 14px 0' }}>
+                    {/* Leader card preview (active style) */}
+                    <MembershipCard
+                      variant="leader"
+                      memberNumber={membership.membershipNumber}
+                      familyName={membership.familyName}
+                      memberSince={membership.memberSince}
+                      expiresAt={undefined}
+                      status="ACTIVE"
+                      qrDataUrl={null}
+                      isRtl={isRtl}
+                    />
+                  </div>
+
+                  {/* Leader perks */}
+                  {leaderPerks.length > 0 && (
+                    <div style={{ padding: '14px 16px 0' }}>
+                      <p style={{ fontSize: 10, color: 'rgba(245,240,232,0.3)', letterSpacing: '0.1em', marginBottom: 8 }}>
+                        {isRtl ? 'مميزات العضو الرائد' : 'LEADER BENEFITS'}
+                      </p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                        {leaderPerks.map(p => (
+                          <div key={p.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill={GOLD} style={{ flexShrink: 0, marginTop: 3 }}><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.5L12 17l-6.2 4.4 2.4-7.5L2 9.4h7.6z"/></svg>
+                            <p style={{ fontSize: 12, color: 'rgba(245,240,232,0.65)', lineHeight: 1.5 }}>{p.title}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Renew CTA */}
+                  <div style={{ padding: '14px 16px 18px' }}>
+                    <button onClick={() => setShowRenew(true)}
+                      style={{ width: '100%', padding: '14px 0', borderRadius: 14, background: 'linear-gradient(135deg, #FFCC00 0%, #FFD740 100%)', color: '#1a0800', fontWeight: 900, fontSize: 15, border: 'none', cursor: 'pointer', boxShadow: '0 4px 20px rgba(255,204,0,0.28)' }}>
+                      {isRtl ? 'جدّد للعضوية الرائدة' : 'Upgrade to Leader'}
+                    </button>
+                  </div>
                 </div>
-                <div style={{ marginTop: 12, textAlign: 'center' }}>
-                  <a href={verifyUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'rgba(212,168,67,0.4)', textDecoration: 'none' }}>
+
+                <div style={{ marginTop: 10, textAlign: 'center' }}>
+                  <a href={verifyUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'rgba(212,168,67,0.35)', textDecoration: 'none' }}>
                     {isRtl ? 'رابط التحقق' : 'Verify link'} ↗
                   </a>
                 </div>

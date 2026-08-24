@@ -65,7 +65,7 @@ export default function AccountPage() {
   const [loyaltyLoading, setLoyaltyLoading] = useState(false);
 
   // Membership
-  const [membership, setMembership] = useState<{ id: string; membershipNumber: string; qrToken?: string; status: string; familyName: string | null; memberSince: number; startsAt: string | null; expiresAt: string | null; familyMembers: { id: string; name: string; relation: string | null }[] } | null>(null);
+  const [membership, setMembership] = useState<{ id: string; membershipNumber: string; qrToken?: string; status: string; tier?: string | null; familyName: string | null; memberSince: number; startsAt: string | null; expiresAt: string | null; familyMembers: { id: string; name: string; relation: string | null }[] } | null>(null);
   const [membershipQrUrl, setMembershipQrUrl] = useState<string | null>(null);
   const [membershipLoading, setMembershipLoading] = useState(false);
   const [perks, setPerks] = useState<{ id: string; title: string; description: string | null; imageUrl: string | null; linkUrl: string | null; validUntil: string | null; createdAt: string }[]>([]);
@@ -75,7 +75,9 @@ export default function AccountPage() {
   const [applyFamilyName, setApplyFamilyName] = useState('');
   const [applyLoading, setApplyLoading] = useState(false);
   const [renewStep, setRenewStep] = useState<'idle' | 'paypal' | 'instapay' | 'success'>('idle');
-  const [communityAcknowledged, setCommunityAcknowledged] = useState(false);
+  const [communityAcknowledged, setCommunityAcknowledged] = useState(() => {
+    try { return typeof localStorage !== 'undefined' && localStorage.getItem('ml_comm_choice') === '1'; } catch { return false; }
+  });
   const [upsellPerks, setUpsellPerks] = useState<{ id: string; title: string }[]>([]);
   const renewSectionRef = useRef<HTMLDivElement>(null);
 
@@ -207,6 +209,7 @@ export default function AccountPage() {
         .then(r => r.json())
         .then(async d => {
           setMembership(d.membership ?? null);
+          if (d.membership?.tier === 'community') setCommunityAcknowledged(true);
           if (d.membership?.qrToken) {
             try {
               const QRCode = (await import('qrcode')).default;
@@ -1458,7 +1461,7 @@ export default function AccountPage() {
             /* ── MEMBER VIEW ── */
             <div className="space-y-5">
               {/* Digital membership card — grey when inactive + not acknowledged, green community when acknowledged */}
-              {(membership.status === 'EXPIRED' || membership.status === 'CANCELLED') && communityAcknowledged
+              {(membership.tier === 'community' || ((membership.status === 'EXPIRED' || membership.status === 'CANCELLED') && communityAcknowledged))
                 ? (
                   <MembershipCard
                     variant="community"
@@ -1511,6 +1514,8 @@ export default function AccountPage() {
                     <button
                       onClick={async () => {
                         setCommunityAcknowledged(true);
+                        try { localStorage.setItem('ml_comm_choice', '1'); } catch {}
+                        fetch('/api/membership/community-choice', { method: 'POST', credentials: 'include' }).catch(() => {});
                         if (upsellPerks.length === 0) {
                           fetch('/api/membership/perks?preview=1')
                             .then(r => r.ok ? r.json() : null)

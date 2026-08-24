@@ -425,13 +425,19 @@ export default function AdminMembershipPage() {
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
                     <div style={{ flex: 1, minWidth: 200 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        <span style={{ fontWeight: 800, fontSize: 15, color: '#d4a843', fontFamily: 'monospace' }}>{m.membershipNumber}</span>
+                        <span style={{ fontWeight: 800, fontSize: 15, color: '#d4a843', fontFamily: 'monospace' }}>
+                          {m.tier === 'community' ? m.membershipNumber.replace(/^ML-/, 'MC-') : m.membershipNumber}
+                        </span>
                         <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6, background: `${STATUS_COLORS[m.status]}22`, color: STATUS_COLORS[m.status], fontWeight: 700 }}>
                           {STATUS_AR[m.status]}
                         </span>
-                        {m.tier === 'community' && (
+                        {m.tier === 'community' ? (
                           <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 6, background: 'rgba(34,197,94,0.12)', color: '#22c55e', fontWeight: 700, border: '1px solid rgba(34,197,94,0.25)' }}>
                             مجتمعية
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 6, background: 'rgba(212,168,67,0.12)', color: '#d4a843', fontWeight: 700, border: '1px solid rgba(212,168,67,0.25)' }}>
+                            رائدة
                           </span>
                         )}
                       </div>

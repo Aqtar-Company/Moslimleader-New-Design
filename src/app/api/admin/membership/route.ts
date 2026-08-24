@@ -60,9 +60,10 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
   }
 
-  // When admin manually activates, set sensible dates if not already set
+  // When admin manually activates, reset to leader tier + set sensible dates
   const updateData: Record<string, unknown> = { status };
   if (status === 'ACTIVE') {
+    updateData.tier = 'leader';
     const existing = await prisma.familyMembership.findUnique({
       where: { id },
       select: { startsAt: true, expiresAt: true },

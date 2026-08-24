@@ -39,6 +39,8 @@ export default function MembershipDashboard({
   const [membershipPrices, setMembershipPrices] = useState<{ egyEgp: number | null; egyUsd: number; intlUsd: number }>({ egyEgp: null, egyUsd: 2.00, intlUsd: 5.00 });
   const [membershipZone, setMembershipZone] = useState<'egypt' | 'international'>('international');
   const [communityAcknowledged, setCommunityAcknowledged] = useState(false);
+  const [showLeaderPreview, setShowLeaderPreview] = useState(false);
+  const [leaderPerks, setLeaderPerks] = useState<{ id: string; title: string; description: string | null }[]>([]);
 
   useEffect(() => {
     fetch('/api/membership/price')
@@ -49,7 +51,26 @@ export default function MembershipDashboard({
         if (tz.startsWith('Africa/Cairo') || tz === 'Africa/Cairo') setMembershipZone('egypt');
       })
       .catch(() => {});
+    // Restore community-acknowledged choice from localStorage
+    try {
+      if (localStorage.getItem('ml_comm_choice') === '1') setCommunityAcknowledged(true);
+    } catch {}
   }, []);
+
+  function acknowledgeAsCommunity() {
+    setCommunityAcknowledged(true);
+    try { localStorage.setItem('ml_comm_choice', '1'); } catch {}
+  }
+
+  function handlePreviewLeader() {
+    setShowLeaderPreview(true);
+    if (leaderPerks.length === 0) {
+      fetch('/api/membership/perks?preview=1')
+        .then(r => r.json())
+        .then(d => setLeaderPerks((d.perks ?? []).filter((p: { forTier: string }) => p.forTier !== 'all')))
+        .catch(() => {});
+    }
+  }
 
   const isActive      = membership.status === 'ACTIVE';
   const isExpired     = membership.status === 'EXPIRED';
@@ -141,148 +162,165 @@ export default function MembershipDashboard({
         {/* ── CARD TAB ── */}
         {tab === 'card' && (
           <div>
-            {/* Membership Card — unified component */}
-            <MembershipCard
-              variant={communityAcknowledged && isInactive ? 'community' : 'leader'}
-              memberNumber={membership.membershipNumber}
-              familyName={membership.familyName}
-              memberSince={membership.memberSince}
-              expiresAt={membership.expiresAt ?? undefined}
-              status={membership.status as 'ACTIVE' | 'PENDING' | 'EXPIRED' | 'CANCELLED'}
-              qrDataUrl={qrDataUrl}
-              isRtl={isRtl}
-            />
 
-            {/* Near-expiry warning */}
-            {nearExpiry && !isExpired && (
-              <div style={{ marginTop: 14, background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: 14, padding: '12px 16px', fontSize: 13, color: '#fbbf24', textAlign: 'center' }}>
-                {isRtl ? `ينتهي خلال ${daysLeft} يوم — جدّد الآن للحفاظ على رقمك` : `Expires in ${daysLeft} days — renew now to keep your number`}
+            {/* ════ LEADER PREVIEW MODE ════ */}
+            {communityAcknowledged && isInactive && showLeaderPreview ? (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <button onClick={() => setShowLeaderPreview(false)}
+                    style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '6px 12px', color: 'rgba(245,240,232,0.6)', fontSize: 12, cursor: 'pointer' }}>
+                    {isRtl ? '← رجوع' : '← Back'}
+                  </button>
+                  <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.35)', letterSpacing: '0.08em' }}>
+                    {isRtl ? 'معاينة العضوية الرائدة' : 'LEADER PREVIEW'}
+                  </p>
+                </div>
+                {/* Active-style leader card — preview only */}
+                <MembershipCard
+                  variant="leader"
+                  memberNumber={membership.membershipNumber}
+                  familyName={membership.familyName}
+                  memberSince={membership.memberSince}
+                  expiresAt={undefined}
+                  status="ACTIVE"
+                  qrDataUrl={null}
+                  isRtl={isRtl}
+                />
+                {/* Leader perks preview */}
+                {leaderPerks.length > 0 && (
+                  <div style={{ marginTop: 14, background: 'rgba(212,168,67,0.05)', border: '1px solid rgba(212,168,67,0.15)', borderRadius: 16, padding: '14px 16px' }}>
+                    <p style={{ fontSize: 10, color: 'rgba(245,240,232,0.35)', letterSpacing: '0.1em', marginBottom: 10 }}>
+                      {isRtl ? 'مميزات العضوية الرائدة' : 'LEADER PERKS'}
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {leaderPerks.map(p => (
+                        <div key={p.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill={GOLD} style={{ flexShrink: 0, marginTop: 3 }}><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.5L12 17l-6.2 4.4 2.4-7.5L2 9.4h7.6z"/></svg>
+                          <p style={{ fontSize: 12, color: 'rgba(245,240,232,0.7)', lineHeight: 1.5 }}>{p.title}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <button onClick={() => setShowRenew(true)}
+                  style={{ marginTop: 14, width: '100%', padding: '15px 0', borderRadius: 14, background: 'linear-gradient(135deg, #FFCC00 0%, #FFD740 100%)', color: '#1a0800', fontWeight: 900, fontSize: 15, border: 'none', cursor: 'pointer', boxShadow: '0 4px 20px rgba(255,204,0,0.3)' }}>
+                  {isRtl ? 'جدّد واحصل على العضوية الرائدة' : 'Renew to get Leader Membership'}
+                </button>
               </div>
-            )}
 
-            {/* ── EXPIRED / CANCELLED: prominent CTA ── */}
-            {isInactive && (
-              <div style={{ marginTop: 16, borderRadius: 20, overflow: 'hidden', border: '1px solid rgba(212,168,67,0.22)' }}>
-                {/* Header strip */}
-                <div style={{ background: 'linear-gradient(135deg, #1a0c00 0%, #2a1800 100%)', padding: '18px 20px 14px', textAlign: 'center', borderBottom: '1px solid rgba(212,168,67,0.15)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                    </svg>
-                  </div>
-                  <p style={{ fontSize: 16, fontWeight: 900, color: GOLD, marginBottom: 4 }}>
-                    {isCancelled
-                      ? (isRtl ? 'عضويتك الرائدة ملغاة' : 'Your Leader membership was cancelled')
-                      : (isRtl ? 'عضويتك الرائدة انتهت' : 'Your Leader membership expired')}
-                  </p>
-                  <p style={{ fontSize: 12, color: 'rgba(245,240,232,0.55)', lineHeight: 1.6 }}>
-                    {isRtl
-                      ? 'جدّد للاستمرار في الحصول على مزايا العضو الرائد'
-                      : 'Renew to restore your Leader benefits'}
-                  </p>
+            ) : communityAcknowledged && isInactive ? (
+              /* ════ COMMUNITY MODE (acknowledged) ════ */
+              <div>
+                <MembershipCard
+                  variant="community"
+                  memberNumber={membership.membershipNumber}
+                  name={ownerName}
+                  joinedYear={membership.memberSince}
+                  qrDataUrl={qrDataUrl}
+                  isRtl={isRtl}
+                />
+                {/* Upsell: see leader card */}
+                <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <button onClick={handlePreviewLeader}
+                    style={{ width: '100%', padding: '13px 0', borderRadius: 14, background: 'rgba(212,168,67,0.1)', border: '1px solid rgba(212,168,67,0.25)', color: GOLD, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                    {isRtl ? 'شوف العضوية الرائدة ←' : 'View Leader Membership →'}
+                  </button>
+                  <button onClick={() => setShowRenew(true)}
+                    style={{ width: '100%', padding: '13px 0', borderRadius: 14, background: 'linear-gradient(135deg, #FFCC00 0%, #FFD740 100%)', color: '#1a0800', fontWeight: 900, fontSize: 14, border: 'none', cursor: 'pointer' }}>
+                    {isRtl ? 'جدّد للعضوية الرائدة' : 'Renew to Leader'}
+                  </button>
                 </div>
-                {/* Benefits reminder */}
-                <div style={{ background: 'rgba(212,168,67,0.04)', padding: '14px 20px' }}>
-                  <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.4)', marginBottom: 10, letterSpacing: '0.05em' }}>
-                    {isRtl ? 'ما ستستعيده بالتجديد' : 'What you get back by renewing'}
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                    {[
-                      isRtl ? 'خصم على كل منتجات المتجر' : 'Discount on all store products',
-                      isRtl ? 'الوصول لمزايا العضوية الحصرية' : 'Access to exclusive member perks',
-                      isRtl ? 'نفس رقم عضويتك المحفوظ' : 'Same membership number preserved',
-                    ].map((line, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill={GOLD}><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.5L12 17l-6.2 4.4 2.4-7.5L2 9.4h7.6z"/></svg>
-                        <p style={{ fontSize: 12, color: 'rgba(245,240,232,0.65)' }}>{line}</p>
-                      </div>
-                    ))}
-                  </div>
+                <div style={{ marginTop: 12, textAlign: 'center' }}>
+                  <a href={verifyUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'rgba(212,168,67,0.4)', textDecoration: 'none' }}>
+                    {isRtl ? 'رابط التحقق' : 'Verify link'} ↗
+                  </a>
                 </div>
-                {/* CTA button */}
-                <div style={{ background: 'rgba(212,168,67,0.06)', padding: '14px 20px 18px' }}>
-                  {!communityAcknowledged ? (
-                    <>
+              </div>
+
+            ) : (
+              /* ════ NORMAL MODE ════ */
+              <div>
+                <MembershipCard
+                  variant="leader"
+                  memberNumber={membership.membershipNumber}
+                  familyName={membership.familyName}
+                  memberSince={membership.memberSince}
+                  expiresAt={membership.expiresAt ?? undefined}
+                  status={membership.status as 'ACTIVE' | 'PENDING' | 'EXPIRED' | 'CANCELLED'}
+                  qrDataUrl={qrDataUrl}
+                  isRtl={isRtl}
+                />
+
+                {/* Near-expiry warning */}
+                {nearExpiry && !isExpired && (
+                  <div style={{ marginTop: 14, background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: 14, padding: '12px 16px', fontSize: 13, color: '#fbbf24', textAlign: 'center' }}>
+                    {isRtl ? `ينتهي خلال ${daysLeft} يوم — جدّد الآن للحفاظ على رقمك` : `Expires in ${daysLeft} days — renew now to keep your number`}
+                  </div>
+                )}
+
+                {/* ── EXPIRED / CANCELLED: one-time decision CTA ── */}
+                {isInactive && (
+                  <div style={{ marginTop: 16, borderRadius: 20, overflow: 'hidden', border: '1px solid rgba(212,168,67,0.22)' }}>
+                    <div style={{ background: 'linear-gradient(135deg, #1a0c00 0%, #2a1800 100%)', padding: '18px 20px 14px', textAlign: 'center', borderBottom: '1px solid rgba(212,168,67,0.15)' }}>
+                      <p style={{ fontSize: 16, fontWeight: 900, color: GOLD, marginBottom: 4 }}>
+                        {isCancelled
+                          ? (isRtl ? 'عضويتك الرائدة ملغاة' : 'Your Leader membership was cancelled')
+                          : (isRtl ? 'عضويتك الرائدة انتهت' : 'Your Leader membership expired')}
+                      </p>
+                      <p style={{ fontSize: 12, color: 'rgba(245,240,232,0.5)', lineHeight: 1.6 }}>
+                        {isRtl ? 'جدّد أو استمر بالعضوية المجتمعية المجانية' : 'Renew or continue with free Community membership'}
+                      </p>
+                    </div>
+                    <div style={{ background: 'rgba(212,168,67,0.06)', padding: '16px 20px 20px' }}>
                       <div style={{ display: 'flex', gap: 10 }}>
-                        <button
-                          onClick={() => setShowRenew(true)}
-                          style={{
-                            flex: 1, padding: '15px 0', borderRadius: 14,
-                            background: `linear-gradient(135deg, #FFCC00 0%, #FFD740 100%)`,
-                            color: '#1a0800', fontWeight: 900, fontSize: 15,
-                            border: 'none', cursor: 'pointer',
-                            boxShadow: '0 4px 20px rgba(255,204,0,0.35)',
-                          }}
-                        >
+                        <button onClick={() => setShowRenew(true)}
+                          style={{ flex: 1, padding: '15px 0', borderRadius: 14, background: 'linear-gradient(135deg, #FFCC00 0%, #FFD740 100%)', color: '#1a0800', fontWeight: 900, fontSize: 15, border: 'none', cursor: 'pointer', boxShadow: '0 4px 20px rgba(255,204,0,0.35)' }}>
                           {isRtl ? 'جدّد' : 'Renew'}
                         </button>
-                        <button
-                          onClick={() => setCommunityAcknowledged(true)}
-                          style={{
-                            flex: 1, padding: '15px 0', borderRadius: 14,
-                            background: 'rgba(255,255,255,0.08)',
-                            border: '1px solid rgba(255,255,255,0.18)',
-                            color: 'rgba(245,240,232,0.75)', fontWeight: 700, fontSize: 14,
-                            cursor: 'pointer',
-                          }}
-                        >
+                        <button onClick={acknowledgeAsCommunity}
+                          style={{ flex: 1, padding: '15px 0', borderRadius: 14, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.18)', color: 'rgba(245,240,232,0.75)', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
                           {isRtl ? 'اكتفِ' : 'Skip'}
                         </button>
                       </div>
-                      <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.3)', marginTop: 8, textAlign: 'center' }}>
-                        {isRtl ? `رقم عضويتك: ${membership.membershipNumber}` : `Your number: ${membership.membershipNumber}`}
+                      <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.25)', marginTop: 8, textAlign: 'center' }}>
+                        {isRtl ? 'اختيار "اكتفِ" يُبقيك كعضو مجتمعي مجاناً' : 'Choosing Skip keeps you as a free Community member'}
                       </p>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => { setCommunityAcknowledged(false); setShowRenew(true); }}
-                        style={{
-                          width: '100%', padding: '15px 0', borderRadius: 14,
-                          background: `linear-gradient(135deg, #FFCC00 0%, #FFD740 100%)`,
-                          color: '#1a0800', fontWeight: 900, fontSize: 14,
-                          border: 'none', cursor: 'pointer',
-                          boxShadow: '0 4px 20px rgba(255,204,0,0.3)',
-                        }}
-                      >
-                        {isRtl ? 'جدّد للعضوية الرائدة لمزيد من المميزات' : 'Upgrade to Leader for more perks'}
-                      </button>
-                    </>
+                    </div>
+                  </div>
+                )}
+
+                {/* Expiry + dates */}
+                <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {membership.startsAt && (
+                    <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '12px 14px' }}>
+                      <p style={{ fontSize: 10, color: 'rgba(245,240,232,0.4)', marginBottom: 4 }}>{isRtl ? 'بداية العضوية' : 'Start date'}</p>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: BEIGE }}>{new Date(membership.startsAt).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                    </div>
                   )}
+                  {expiryText && (
+                    <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '12px 14px' }}>
+                      <p style={{ fontSize: 10, color: 'rgba(245,240,232,0.4)', marginBottom: 4 }}>{isRtl ? 'تنتهي في' : 'Valid until'}</p>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: isInactive ? '#f87171' : GOLD }}>{expiryText}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Renew button for near-expiry */}
+                {isActive && nearExpiry ? (
+                  <button onClick={() => setShowRenew(true)}
+                    style={{ marginTop: 14, width: '100%', padding: '14px 0', borderRadius: 16, background: GOLD, color: '#1a0f00', fontWeight: 900, fontSize: 15, border: 'none', cursor: 'pointer' }}>
+                    {isRtl ? 'تجديد العضوية' : 'Renew Membership'}
+                  </button>
+                ) : null}
+
+                {/* QR verify link */}
+                <div style={{ marginTop: 14, textAlign: 'center' }}>
+                  <a href={verifyUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: 'rgba(212,168,67,0.6)', textDecoration: 'none' }}>
+                    {isRtl ? 'رابط التحقق من العضوية' : 'Membership verification link'} ↗
+                  </a>
                 </div>
               </div>
             )}
-
-            {/* Expiry + dates */}
-            <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              {membership.startsAt && (
-                <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '12px 14px' }}>
-                  <p style={{ fontSize: 10, color: 'rgba(245,240,232,0.4)', marginBottom: 4 }}>{isRtl ? 'بداية العضوية' : 'Start date'}</p>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: BEIGE }}>{new Date(membership.startsAt).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                </div>
-              )}
-              {expiryText && (
-                <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '12px 14px' }}>
-                  <p style={{ fontSize: 10, color: 'rgba(245,240,232,0.4)', marginBottom: 4 }}>{isRtl ? 'تنتهي في' : 'Valid until'}</p>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: isInactive ? '#f87171' : GOLD }}>{expiryText}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Renew button — only for near-expiry (expired has its own CTA above) */}
-            {isActive && nearExpiry ? (
-              <button onClick={() => setShowRenew(true)}
-                style={{ marginTop: 14, width: '100%', padding: '14px 0', borderRadius: 16, background: GOLD, color: '#1a0f00', fontWeight: 900, fontSize: 15, border: 'none', cursor: 'pointer' }}>
-                {isRtl ? 'تجديد العضوية' : 'Renew Membership'}
-              </button>
-            ) : null}
-
-            {/* QR verify link */}
-            <div style={{ marginTop: 14, textAlign: 'center' }}>
-              <a href={verifyUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: 'rgba(212,168,67,0.6)', textDecoration: 'none' }}>
-                {isRtl ? 'رابط التحقق من العضوية' : 'Membership verification link'} ↗
-              </a>
-            </div>
           </div>
         )}
 

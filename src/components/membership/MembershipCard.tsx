@@ -94,6 +94,19 @@ function CommunityCard({ memberNumber, joinedYear, qrDataUrl, isRtl }: Community
         </span>
       </div>
 
+      {/* CHIP — golden EMV chip */}
+      <div style={{ position: 'absolute', left: 18, top: 82 }}>
+        <svg width={34} height={25} viewBox="0 0 38 28" style={{ opacity: 0.82 }}>
+          <rect width="38" height="28" rx="5" fill="#c9a040"/>
+          <rect x="1" y="1" width="36" height="26" rx="4" fill="none" stroke="#9a7820" strokeWidth="0.5"/>
+          <line x1="13" y1="0" x2="13" y2="28" stroke="#9a7820" strokeWidth="1"/>
+          <line x1="25" y1="0" x2="25" y2="28" stroke="#9a7820" strokeWidth="1"/>
+          <line x1="0" y1="9" x2="38" y2="9" stroke="#9a7820" strokeWidth="1"/>
+          <line x1="0" y1="19" x2="38" y2="19" stroke="#9a7820" strokeWidth="1"/>
+          <rect x="13" y="9" width="12" height="10" rx="2" fill="#d4b050" stroke="#9a7820" strokeWidth="0.5"/>
+        </svg>
+      </div>
+
       {/* CENTER-LEFT: member number */}
       <div style={{ position: 'absolute', left: 18, top: '50%', transform: 'translateY(-52%)' }}>
         <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 5 }}>

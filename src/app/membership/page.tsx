@@ -18,8 +18,8 @@ export default async function MembershipPage() {
       include: { familyMembers: { orderBy: { createdAt: 'asc' } } },
     });
 
-    // Auto-expire
-    if (membership && membership.status === 'ACTIVE' && membership.expiresAt && membership.expiresAt < new Date()) {
+    // Auto-expire (community tier never expires)
+    if (membership && membership.status === 'ACTIVE' && membership.tier !== 'community' && membership.expiresAt && membership.expiresAt < new Date()) {
       membership = await prisma.familyMembership.update({
         where: { id: membership.id },
         data: { status: 'EXPIRED' },
@@ -53,6 +53,7 @@ export default async function MembershipPage() {
           familyName: membership.familyName,
           memberSince: membership.memberSince,
           status: membership.status,
+          tier: membership.tier,
           startsAt: membership.startsAt?.toISOString() ?? null,
           expiresAt: membership.expiresAt?.toISOString() ?? null,
           familyMembers: membership.familyMembers.map(m => ({

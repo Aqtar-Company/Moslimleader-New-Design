@@ -22,13 +22,17 @@ export default function MobileMenu({ open, onClose }: MobileMenuProps) {
   const { totalItems } = useCart();
   const { totalItems: wishlistCount } = useWishlist();
   const [memberStatus, setMemberStatus] = useState<MemberStatus>(null);
+  const [memberTier, setMemberTier] = useState<string | null>(null);
 
-  /* Fetch membership status whenever the menu opens and user is logged in */
+  /* Fetch membership status + tier whenever the menu opens and user is logged in */
   useEffect(() => {
-    if (!open || !user) { setMemberStatus(null); return; }
+    if (!open || !user) { setMemberStatus(null); setMemberTier(null); return; }
     fetch('/api/membership', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
-      .then(d => setMemberStatus(d?.membership?.status ?? null))
+      .then(d => {
+        setMemberStatus(d?.membership?.status ?? null);
+        setMemberTier(d?.membership?.tier ?? null);
+      })
       .catch(() => {});
   }, [open, user]);
 
@@ -37,9 +41,10 @@ export default function MobileMenu({ open, onClose }: MobileMenuProps) {
     { href: '/tareeq',     label: isRtl ? 'طريق'           : 'Tareeq',     icon: '🌟', logoImg: '/Tareeq-small.png' },
     { href: '/library',    label: isRtl ? 'المكتبة الرقمية' : 'Library',    icon: '📚' },
     ...(user ? [{ href: '/membership', label: isRtl ? 'عضوية الأسرة' : 'Family Membership', icon: '🪙',
-      badge: memberStatus === 'ACTIVE' ? (isRtl ? 'فعّالة' : 'Active')
-           : memberStatus === 'EXPIRED' || memberStatus === 'CANCELLED' ? (isRtl ? 'مجتمع' : 'Community')
-           : null,
+      badge: memberStatus === 'ACTIVE'
+        ? (memberTier === 'community' ? (isRtl ? 'مجتمع' : 'Community') : (isRtl ? 'فعّالة' : 'Active'))
+        : memberStatus === 'EXPIRED' || memberStatus === 'CANCELLED' ? (isRtl ? 'مجتمع' : 'Community')
+        : null,
     }] : []),
     { href: '/cart',       label: isRtl ? `السلة (${totalItems})` : `Cart (${totalItems})`, icon: '🛒' },
     { href: '/wishlist',   label: isRtl ? `المفضلة (${wishlistCount})` : `Wishlist (${wishlistCount})`, icon: '❤️' },
@@ -166,11 +171,13 @@ export default function MobileMenu({ open, onClose }: MobileMenuProps) {
                       color: memberStatus === 'ACTIVE' || memberStatus === 'EXPIRED' || memberStatus === 'CANCELLED'
                         ? '#16a34a' : '#d97706',
                     }}>
-                      {memberStatus === 'ACTIVE'
-                        ? (isRtl ? 'عضوية فعّالة' : 'Active Member')
-                        : memberStatus === 'PENDING'
-                          ? (isRtl ? 'قيد المعالجة' : 'Pending')
-                          : (isRtl ? 'عضوية مجتمع' : 'Community')}
+                      {memberStatus === 'ACTIVE' && memberTier === 'community'
+                        ? (isRtl ? 'عضوية مجتمع' : 'Community')
+                        : memberStatus === 'ACTIVE'
+                          ? (isRtl ? 'عضوية فعّالة' : 'Active Member')
+                          : memberStatus === 'PENDING'
+                            ? (isRtl ? 'قيد المعالجة' : 'Pending')
+                            : (isRtl ? 'عضوية مجتمع' : 'Community')}
                     </span>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: '#9ca3af', flexShrink: 0 }}>
                       <path d={isRtl ? 'M15 18l-6-6 6-6' : 'M9 18l6-6-6-6'}/>

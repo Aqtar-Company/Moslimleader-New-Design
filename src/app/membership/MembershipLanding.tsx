@@ -71,13 +71,34 @@ export default function MembershipLanding({ isLoggedIn }: Props) {
         <h1 style={{ fontSize: 28, fontWeight: 900, color: BEIGE, lineHeight: 1.25, marginBottom: 8 }}>
           {isRtl ? 'عضوية أسرة مسلم ليدر' : 'Moslim Leader Family Membership'}
         </h1>
-        <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6, marginTop: 8 }}>
-          <span style={{ fontSize: 36, fontWeight: 900, color: GOLD }}>١٠٠</span>
-          <span style={{ fontSize: 16, color: 'rgba(245,240,232,0.7)' }}>{isRtl ? 'جنيه / سنة' : 'EGP / year'}</span>
+        {/* Two-tier pricing */}
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 20, maxWidth: 340, margin: '20px auto 0' }}>
+          {/* Community — Free */}
+          <div style={{ background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.25)', borderRadius: 16, padding: '16px 14px', flex: 1, textAlign: 'center' }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(74,222,128,0.8)', marginBottom: 6, letterSpacing: '0.05em' }}>
+              {isRtl ? 'مجتمعية' : 'COMMUNITY'}
+            </p>
+            <p style={{ fontSize: 26, fontWeight: 900, color: '#4ade80', margin: 0 }}>
+              {isRtl ? 'مجانية' : 'Free'}
+            </p>
+            <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.4)', marginTop: 4 }}>
+              {isRtl ? 'دائمة — لا تنتهي' : 'Permanent'}
+            </p>
+          </div>
+          {/* Leader — Paid */}
+          <div style={{ background: 'rgba(212,168,67,0.1)', border: '1px solid rgba(212,168,67,0.35)', borderRadius: 16, padding: '16px 14px', flex: 1, textAlign: 'center' }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: GOLD, marginBottom: 6, letterSpacing: '0.05em' }}>
+              {isRtl ? 'ريادية' : 'LEADER'}
+            </p>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 3, justifyContent: 'center' }}>
+              <span style={{ fontSize: 26, fontWeight: 900, color: GOLD }}>١٠٠</span>
+              <span style={{ fontSize: 12, color: 'rgba(245,240,232,0.6)' }}>{isRtl ? 'ج' : 'EGP'}</span>
+            </div>
+            <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.4)', marginTop: 4 }}>
+              {isRtl ? 'تجديد سنوي' : 'Per year'}
+            </p>
+          </div>
         </div>
-        <p style={{ fontSize: 13, color: 'rgba(245,240,232,0.5)', marginTop: 6 }}>
-          {isRtl ? 'للأسرة بالكامل' : 'For the whole family'}
-        </p>
       </div>
 
       {/* Benefits */}

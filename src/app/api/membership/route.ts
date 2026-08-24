@@ -52,8 +52,8 @@ export async function GET() {
     }
   }
 
-  // Auto-expire if past expiresAt
-  if (membership && membership.status === 'ACTIVE' && membership.expiresAt && membership.expiresAt < new Date()) {
+  // Auto-expire if past expiresAt (community tier never expires)
+  if (membership && membership.status === 'ACTIVE' && membership.tier !== 'community' && membership.expiresAt && membership.expiresAt < new Date()) {
     await prisma.familyMembership.update({
       where: { id: membership.id },
       data: { status: 'EXPIRED' },

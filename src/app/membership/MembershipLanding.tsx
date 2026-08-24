@@ -6,7 +6,7 @@ import PayPalBookButton from '@/components/PayPalBookButton';
 import { useRouter } from 'next/navigation';
 
 const TEAL   = '#0d6e6e';
-const GOLD   = '#d4a843';
+const GOLD   = '#FFCC33';
 const BEIGE  = '#f5f0e8';
 const PRICE_USD = 2.00;
 

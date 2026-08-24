@@ -24,7 +24,10 @@ export default async function MembershipVerifyPage({ params }: { params: { token
   const isExpired = !isCommunity && membership.expiresAt && membership.expiresAt < new Date();
   const effectiveStatus = isExpired ? 'EXPIRED' : membership.status;
   const isActive = effectiveStatus === 'ACTIVE';
-  const displayNumber = membership.membershipNumber;
+  // Community members display MC- prefix instead of ML-
+  const displayNumber = isCommunity
+    ? (membership.membershipNumber ?? '').replace(/^ML-/, 'MC-')
+    : membership.membershipNumber;
 
   const ownerName = membership.owner?.name ?? '';
   const nameParts = ownerName.trim().split(/\s+/);

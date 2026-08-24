@@ -7,7 +7,7 @@ import QRCode from 'qrcode';
 import MembershipCard from '@/components/membership/MembershipCard';
 
 const TEAL  = '#0d6e6e';
-const GOLD  = '#d4a843';
+const GOLD  = '#FFCC33';
 const BEIGE = '#f5f0e8';
 
 interface FamilyMember { id: string; name: string; relation: string | null; birthdate: string | null; }

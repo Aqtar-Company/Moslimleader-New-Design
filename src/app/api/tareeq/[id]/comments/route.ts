@@ -6,29 +6,43 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { sendPushToUser } from '@/lib/tareeq-push';
 import { filterContent } from '@/lib/tareeq-content-filter';
 
-// GET /api/tareeq/[id]/comments?cursor=xxx
+// GET /api/tareeq/[id]/comments?cursor=xxx&parentId=xxx
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { id: true } });
   if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
 
   const cursor = req.nextUrl.searchParams.get('cursor') || undefined;
+  const parentId = req.nextUrl.searchParams.get('parentId') || null;
   const limit = 50;
 
+  const where = {
+    postId: params.id,
+    isHidden: false,
+    parentId: parentId ?? null,
+  };
+
   const comments = await prisma.tareeqComment.findMany({
-    where: { postId: params.id, isHidden: false },
+    where,
     orderBy: { createdAt: 'asc' },
     take: limit + 1,
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     select: {
-      id: true, content: true, createdAt: true, userId: true,
+      id: true, content: true, createdAt: true, userId: true, parentId: true,
       user: { select: { id: true, name: true } },
+      _count: { select: { replies: true } },
     },
   });
 
   const hasMore = comments.length > limit;
   const items = hasMore ? comments.slice(0, limit) : comments;
   const nextCursor = hasMore ? items[items.length - 1].id : null;
-  return NextResponse.json({ comments: items, nextCursor });
+  const shaped = items.map(c => ({
+    id: c.id, content: c.content, createdAt: c.createdAt,
+    userId: c.userId, parentId: c.parentId,
+    user: c.user,
+    replyCount: c._count.replies,
+  }));
+  return NextResponse.json({ comments: shaped, nextCursor });
 }
 
 // POST /api/tareeq/[id]/comments
@@ -42,6 +56,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const body = await req.json().catch(() => ({}));
   const content = String(body.content ?? '').trim();
+  const parentId: string | undefined = body.parentId || undefined;
 
   if (content.length < 2) return NextResponse.json({ error: 'اكتب تعليقك' }, { status: 400 });
   if (content.length > 500) return NextResponse.json({ error: 'التعليق طويل جداً' }, { status: 400 });
@@ -52,22 +67,38 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { id: true, userId: true, title: true, imageUrl: true } });
   if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
 
+  // Validate parentId belongs to this post
+  let parentAuthorId: string | null = null;
+  if (parentId) {
+    const parent = await prisma.tareeqComment.findUnique({
+      where: { id: parentId },
+      select: { id: true, postId: true, userId: true },
+    });
+    if (!parent || parent.postId !== params.id) {
+      return NextResponse.json({ error: 'تعليق غير صالح' }, { status: 400 });
+    }
+    parentAuthorId = parent.userId;
+  }
+
   const [comment] = await prisma.$transaction([
     prisma.tareeqComment.create({
       data: {
         postId: params.id, userId: user.userId, content,
+        ...(parentId ? { parentId } : {}),
         ...(commentAutoHide ? { isHidden: true, hiddenBy: 'auto-filter' } : {}),
       },
       select: {
-        id: true, content: true, createdAt: true, userId: true,
+        id: true, content: true, createdAt: true, userId: true, parentId: true,
         user: { select: { id: true, name: true } },
       },
     }),
-    prisma.tareeqPost.update({ where: { id: params.id }, data: { commentCount: { increment: 1 } } }),
+    // Only increment commentCount for top-level comments
+    ...(!parentId ? [prisma.tareeqPost.update({ where: { id: params.id }, data: { commentCount: { increment: 1 } } })] : []),
   ]);
 
-  // Parse @mentions and notify mentioned users (non-blocking, batched, max 3)
   const commenterName = comment.user?.name ?? 'شخص ما';
+
+  // Parse @mentions and notify mentioned users (non-blocking, max 3)
   const mentionMatches = (content.match(/@([؀-ۿa-zA-Z0-9_][^\s@]{1,19})/g) ?? []).slice(0, 3);
   if (mentionMatches.length > 0) {
     const names = mentionMatches.map(m => m.slice(1).trim());
@@ -77,32 +108,46 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           if (m.id !== user.userId) {
             prisma.tareeqNotification.create({
               data: {
-                userId: m.id,
-                type: 'mention',
-                actorId: user.userId,
-                actorName: commenterName,
-                postId: params.id,
-                postTitle: post.title ?? null,
+                userId: m.id, type: 'mention',
+                actorId: user.userId, actorName: commenterName,
+                postId: params.id, postTitle: post.title ?? null,
                 body: content.slice(0, 120),
               },
             }).catch(() => {});
           }
         }
-      })
-      .catch(() => {});
+      }).catch(() => {});
+  }
+
+  // Notify comment author when someone replies (non-blocking)
+  if (parentId && parentAuthorId && parentAuthorId !== user.userId) {
+    prisma.tareeqNotification.create({
+      data: {
+        userId: parentAuthorId, type: 'comment',
+        actorId: user.userId, actorName: commenterName,
+        postId: post.id, postTitle: post.title ?? null,
+        body: content.slice(0, 120),
+      },
+    }).catch(() => {});
+    sendPushToUser(parentAuthorId, {
+      title: 'طريق ★',
+      body: `${commenterName} ردّ على تعليقك: ${content.slice(0, 60)}`,
+      url: `/tareeq/${post.id}`,
+      tag: `reply-${parentId}`,
+      type: 'comment',
+      postId: post.id,
+      image: post.imageUrl ?? undefined,
+    }).catch(() => {});
   }
 
   // Notify post author (non-blocking)
-  if (post.userId && post.userId !== user.userId) {
+  if (!parentId && post.userId && post.userId !== user.userId) {
     const actorName = user.name ?? 'شخص ما';
     prisma.tareeqNotification.create({
       data: {
-        userId: post.userId,
-        type: 'comment',
-        actorId: user.userId,
-        actorName: actorName,
-        postId: post.id,
-        postTitle: post.title ?? null,
+        userId: post.userId, type: 'comment',
+        actorId: user.userId, actorName: actorName,
+        postId: post.id, postTitle: post.title ?? null,
         body: content.slice(0, 120),
       },
     }).catch(() => {});
@@ -118,35 +163,34 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   // Notify post subscribers (non-blocking)
-  prisma.tareeqPostSubscription.findMany({
-    where: { postId: params.id },
-    select: { userId: true },
-  }).then(async (subs) => {
-    for (const sub of subs) {
-      if (sub.userId === user.userId) continue;
-      if (sub.userId === post.userId) continue;
-      await prisma.tareeqNotification.create({
-        data: {
-          userId: sub.userId,
-          type: 'subscribed_comment',
-          actorId: user.userId,
-          actorName: commenterName,
+  if (!parentId) {
+    prisma.tareeqPostSubscription.findMany({
+      where: { postId: params.id },
+      select: { userId: true },
+    }).then(async (subs) => {
+      for (const sub of subs) {
+        if (sub.userId === user.userId) continue;
+        if (sub.userId === post.userId) continue;
+        await prisma.tareeqNotification.create({
+          data: {
+            userId: sub.userId, type: 'subscribed_comment',
+            actorId: user.userId, actorName: commenterName,
+            postId: post.id, postTitle: post.title ?? null,
+            body: content.slice(0, 120),
+          },
+        }).catch(() => {});
+        sendPushToUser(sub.userId, {
+          title: `${commenterName} — طريق`,
+          body: content.slice(0, 80),
+          url: `/tareeq/${post.id}`,
+          tag: `sub-comment-${post.id}`,
+          type: 'comment',
           postId: post.id,
-          postTitle: post.title ?? null,
-          body: content.slice(0, 120),
-        },
-      }).catch(() => {});
-      sendPushToUser(sub.userId, {
-        title: `${commenterName} — طريق`,
-        body: content.slice(0, 80),
-        url: `/tareeq/${post.id}`,
-        tag: `sub-comment-${post.id}`,
-        type: 'comment',
-        postId: post.id,
-        image: post.imageUrl ?? undefined,
-      }).catch(() => {});
-    }
-  }).catch(() => {});
+          image: post.imageUrl ?? undefined,
+        }).catch(() => {});
+      }
+    }).catch(() => {});
+  }
 
-  return NextResponse.json({ ok: true, comment });
+  return NextResponse.json({ ok: true, comment: { ...comment, replyCount: 0 } });
 }

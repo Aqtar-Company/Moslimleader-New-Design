@@ -511,9 +511,10 @@ export default function MushafQCFPage({
                    */
                   justifyContent: useFullWidth ? 'space-between' : 'center',
                   direction: 'rtl',
-                  paddingBlock: '4px',
+                  paddingBlock: '7px',
+                  columnGap: '3px',
                   width: '100%',
-                  fontSize: 'clamp(15px, 4.5vw, 21px)',
+                  fontSize: 'clamp(16px, 4.8vw, 22px)',
                 };
 
             return (

@@ -20,6 +20,8 @@ interface Comment {
   content: string;
   createdAt: string;
   userId: string;
+  parentId?: string | null;
+  replyCount?: number;
   user: { id: string; name: string } | null;
 }
 
@@ -59,6 +61,9 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
   const [submitting, setSubmitting] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [showGate, setShowGate] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{ commentId: string; authorName: string } | null>(null);
+  const [expandedReplies, setExpandedReplies] = useState<Record<string, Comment[]>>({});
+  const [loadingReplies, setLoadingReplies] = useState<Record<string, boolean>>({});
   const [visible, setVisible] = useState(false);
   const [closing, setClosing] = useState(false);
 
@@ -102,12 +107,11 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
     Promise.all([
       fetch(`/api/tareeq/${postId}`, { credentials: 'include' }).then(r => r.json()),
       fetch(`/api/tareeq/${postId}/react`, { credentials: 'include' }).then(r => r.json()).catch(() => ({})),
-    ]).then(([postData, reactData]) => {
+      fetch(`/api/tareeq/${postId}/comments`, { credentials: 'include' }).then(r => r.json()).catch(() => ({ comments: [] })),
+    ]).then(([postData, reactData, commentData]) => {
       const p = postData.post ?? postData;
-      if (p) {
-        setPost(p);
-        setComments(p.comments ?? []);
-      }
+      if (p) setPost(p);
+      setComments(commentData.comments ?? p?.comments ?? []);
       setCurrentReaction(reactData.userReaction ?? postData.userReaction ?? null);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [postId]);
@@ -156,6 +160,21 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
     }
   }
 
+  async function loadReplies(commentId: string) {
+    if (expandedReplies[commentId]) {
+      // toggle collapse
+      setExpandedReplies(prev => { const n = { ...prev }; delete n[commentId]; return n; });
+      return;
+    }
+    setLoadingReplies(prev => ({ ...prev, [commentId]: true }));
+    const res = await fetch(`/api/tareeq/${postId}/comments?parentId=${commentId}`, { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      setExpandedReplies(prev => ({ ...prev, [commentId]: data.comments ?? [] }));
+    }
+    setLoadingReplies(prev => ({ ...prev, [commentId]: false }));
+  }
+
   async function handleComment(e: React.FormEvent) {
     e.preventDefault();
     if (!user) { setShowGate(true); return; }
@@ -163,12 +182,26 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
     setSubmitting(true);
     const res = await fetch(`/api/tareeq/${postId}/comments`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-      body: JSON.stringify({ content: commentText.trim() }),
+      body: JSON.stringify({ content: commentText.trim(), parentId: replyingTo?.commentId }),
     });
     if (res.ok) {
       const data = await res.json();
-      if (data.comment) setComments(prev => [...prev, data.comment]);
+      if (data.comment) {
+        if (replyingTo) {
+          // Add reply to expanded replies and increment replyCount on parent
+          setExpandedReplies(prev => ({
+            ...prev,
+            [replyingTo.commentId]: [...(prev[replyingTo.commentId] ?? []), data.comment],
+          }));
+          setComments(prev => prev.map(c =>
+            c.id === replyingTo.commentId ? { ...c, replyCount: (c.replyCount ?? 0) + 1 } : c
+          ));
+        } else {
+          setComments(prev => [...prev, data.comment]);
+        }
+      }
       setCommentText('');
+      setReplyingTo(null);
     }
     setSubmitting(false);
   }
@@ -310,15 +343,37 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                     ) : (
                       <div style={{ paddingBottom: 12 }}>
                         {comments.map(c => (
-                          <div key={c.id} style={{ display: 'flex', gap: 10, padding: '9px 16px', borderBottom: '1px solid var(--tr-border-subtle)' }}>
-                            <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold)' }}>{(c.user?.name ?? '?').charAt(0)}</div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
-                                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tr-text-primary)' }}>{c.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}</span>
-                                <span style={{ fontSize: 10, color: 'var(--tr-text-muted)' }}>{timeAgo(c.createdAt, isRtl)}</span>
+                          <div key={c.id}>
+                            <div style={{ display: 'flex', gap: 10, padding: '9px 16px', borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                              <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold)' }}>{(c.user?.name ?? '?').charAt(0)}</div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
+                                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tr-text-primary)' }}>{c.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}</span>
+                                  <span style={{ fontSize: 10, color: 'var(--tr-text-muted)' }}>{timeAgo(c.createdAt, isRtl)}</span>
+                                </div>
+                                <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{c.content}</p>
+                                <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+                                  <button onClick={() => { setReplyingTo({ commentId: c.id, authorName: c.user?.name ?? '' }); commentInputRef.current?.focus(); }} style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{isRtl ? 'رد' : 'Reply'}</button>
+                                  {(c.replyCount ?? 0) > 0 && (
+                                    <button onClick={() => loadReplies(c.id)} style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-gold)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                                      {loadingReplies[c.id] ? '...' : expandedReplies[c.id] ? (isRtl ? 'إخفاء' : 'Hide') : (isRtl ? `${c.replyCount} ردود` : `${c.replyCount} replies`)}
+                                    </button>
+                                  )}
+                                </div>
                               </div>
-                              <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{c.content}</p>
                             </div>
+                            {expandedReplies[c.id]?.map(r => (
+                              <div key={r.id} style={{ display: 'flex', gap: 8, padding: '7px 16px 7px 46px', background: 'var(--tr-overlay)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                                <div style={{ width: 24, height: 24, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 900, background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold)' }}>{(r.user?.name ?? '?').charAt(0)}</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 2 }}>
+                                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--tr-text-primary)' }}>{r.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}</span>
+                                    <span style={{ fontSize: 10, color: 'var(--tr-text-muted)' }}>{timeAgo(r.createdAt, isRtl)}</span>
+                                  </div>
+                                  <p style={{ fontSize: 12, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{r.content}</p>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         ))}
                       </div>
@@ -331,10 +386,18 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
               </div>
 
               {/* Comment input */}
-              <form onSubmit={handleComment} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderTop: '1px solid var(--tr-border-subtle)', background: 'var(--tr-surface)', flexShrink: 0 }}>
-                <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold)' }}>{user?.name?.charAt(0) ?? '?'}</div>
-                <input ref={commentInputRef} value={commentText} onChange={e => setCommentText(e.target.value)} placeholder={isRtl ? 'أضف تعليقاً...' : 'Add a comment...'} maxLength={500} style={{ flex: 1, minWidth: 0, borderRadius: 20, padding: '8px 14px', fontSize: 14, background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)', outline: 'none' }} onFocus={e => { if (!user) { setShowGate(true); e.currentTarget.blur(); } }} />
-                <button type="submit" disabled={submitting || commentText.trim().length < 2} style={{ padding: '8px 16px', borderRadius: 20, fontSize: 13, fontWeight: 700, background: 'var(--tr-gold)', color: '#fff', border: 'none', cursor: 'pointer', opacity: submitting || commentText.trim().length < 2 ? 0.4 : 1, transition: 'opacity 150ms', flexShrink: 0 }}>{submitting ? '...' : (isRtl ? 'إرسال' : 'Send')}</button>
+              <form onSubmit={handleComment} style={{ display: 'flex', flexDirection: 'column', gap: 0, borderTop: '1px solid var(--tr-border-subtle)', background: 'var(--tr-surface)', flexShrink: 0 }}>
+                {replyingTo && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 14px', background: 'var(--tr-overlay)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                    <span style={{ fontSize: 12, color: 'var(--tr-gold)', flex: 1 }}>{isRtl ? `ردًا على ${replyingTo.authorName}` : `Replying to ${replyingTo.authorName}`}</span>
+                    <button type="button" onClick={() => setReplyingTo(null)} style={{ fontSize: 16, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>×</button>
+                  </div>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px' }}>
+                  <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold)' }}>{user?.name?.charAt(0) ?? '?'}</div>
+                  <input ref={commentInputRef} value={commentText} onChange={e => setCommentText(e.target.value)} placeholder={isRtl ? (replyingTo ? 'اكتب ردك...' : 'أضف تعليقاً...') : (replyingTo ? 'Write a reply...' : 'Add a comment...')} maxLength={500} style={{ flex: 1, minWidth: 0, borderRadius: 20, padding: '8px 14px', fontSize: 14, background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)', outline: 'none' }} onFocus={e => { if (!user) { setShowGate(true); e.currentTarget.blur(); } }} />
+                  <button type="submit" disabled={submitting || commentText.trim().length < 2} style={{ padding: '8px 16px', borderRadius: 20, fontSize: 13, fontWeight: 700, background: 'var(--tr-gold)', color: '#fff', border: 'none', cursor: 'pointer', opacity: submitting || commentText.trim().length < 2 ? 0.4 : 1, transition: 'opacity 150ms', flexShrink: 0 }}>{submitting ? '...' : (isRtl ? 'إرسال' : 'Send')}</button>
+                </div>
               </form>
             </div>
           </div>
@@ -535,28 +598,68 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
               ) : (
                 <div style={{ paddingBottom: 16 }}>
                   {comments.map(c => (
-                    <div key={c.id} style={{ display: 'flex', gap: 10, padding: '10px 16px', borderBottom: '1px solid var(--tr-border-subtle)' }}>
-                      <div style={{
-                        width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 12, fontWeight: 900,
-                        background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold)',
-                      }}>
-                        {(c.user?.name ?? '?').charAt(0)}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 3 }}>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tr-text-primary)' }}>
-                            {c.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}
-                          </span>
-                          <span style={{ fontSize: 10, color: 'var(--tr-text-muted)' }}>
-                            {timeAgo(c.createdAt, isRtl)}
-                          </span>
+                    <div key={c.id}>
+                      <div style={{ display: 'flex', gap: 10, padding: '10px 16px', borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                        <div style={{
+                          width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 12, fontWeight: 900,
+                          background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold)',
+                        }}>
+                          {(c.user?.name ?? '?').charAt(0)}
                         </div>
-                        <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>
-                          {c.content}
-                        </p>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 3 }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tr-text-primary)' }}>
+                              {c.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}
+                            </span>
+                            <span style={{ fontSize: 10, color: 'var(--tr-text-muted)' }}>
+                              {timeAgo(c.createdAt, isRtl)}
+                            </span>
+                          </div>
+                          <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>
+                            {c.content}
+                          </p>
+                          <div style={{ display: 'flex', gap: 12, marginTop: 6 }}>
+                            <button
+                              onClick={() => { setReplyingTo({ commentId: c.id, authorName: c.user?.name ?? '' }); commentInputRef.current?.focus(); }}
+                              style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                            >
+                              {isRtl ? 'رد' : 'Reply'}
+                            </button>
+                            {(c.replyCount ?? 0) > 0 && (
+                              <button
+                                onClick={() => loadReplies(c.id)}
+                                style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-gold)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                              >
+                                {loadingReplies[c.id] ? '...' : expandedReplies[c.id]
+                                  ? (isRtl ? 'إخفاء الردود' : 'Hide replies')
+                                  : (isRtl ? `${c.replyCount} ردود` : `${c.replyCount} replies`)}
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
+                      {/* Inline replies */}
+                      {expandedReplies[c.id]?.map(r => (
+                        <div key={r.id} style={{ display: 'flex', gap: 8, padding: '8px 16px 8px 52px', background: 'var(--tr-overlay)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                          <div style={{
+                            width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 10, fontWeight: 900,
+                            background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold)',
+                          }}>
+                            {(r.user?.name ?? '?').charAt(0)}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 2 }}>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--tr-text-primary)' }}>{r.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}</span>
+                              <span style={{ fontSize: 10, color: 'var(--tr-text-muted)' }}>{timeAgo(r.createdAt, isRtl)}</span>
+                            </div>
+                            <p style={{ fontSize: 12, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{r.content}</p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ))}
                 </div>
@@ -576,13 +679,21 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
         <form
           onSubmit={handleComment}
           style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '10px 12px',
-            paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
+            display: 'flex', flexDirection: 'column', gap: 0,
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
             borderTop: '1px solid var(--tr-border-subtle)',
             background: 'var(--tr-surface)', flexShrink: 0,
           }}
         >
+          {replyingTo && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: 'var(--tr-overlay)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
+              <span style={{ fontSize: 12, color: 'var(--tr-gold)', flex: 1 }}>
+                {isRtl ? `ردًا على ${replyingTo.authorName}` : `Replying to ${replyingTo.authorName}`}
+              </span>
+              <button type="button" onClick={() => setReplyingTo(null)} style={{ fontSize: 16, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>
+            </div>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px' }}>
           <div style={{
             width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -616,6 +727,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
           >
             {submitting ? '...' : (isRtl ? 'إرسال' : 'Send')}
           </button>
+          </div>
         </form>
       </div>
 

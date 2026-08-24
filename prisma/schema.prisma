@@ -1007,19 +1007,23 @@ model TareeqLike {
 }
 
 model TareeqComment {
-  id        String         @id @default(cuid())
+  id        String          @id @default(cuid())
   postId    String
-  post      TareeqPost     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post      TareeqPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
   userId    String
-  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  content   String         @db.Text
-  isHidden  Boolean        @default(false)
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String          @db.Text
+  isHidden  Boolean         @default(false)
   hiddenBy  String?
-  reports   TareeqReport[] @relation("TareeqCommentReports")
-  createdAt DateTime       @default(now())
+  parentId  String?
+  parent    TareeqComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   TareeqComment[] @relation("CommentReplies")
+  reports   TareeqReport[]  @relation("TareeqCommentReports")
+  createdAt DateTime        @default(now())
 
   @@index([postId])
   @@index([userId])
+  @@index([parentId])
 }
 
 model TareeqBookmarkFolder {

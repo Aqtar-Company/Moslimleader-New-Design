@@ -353,7 +353,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                                 </div>
                                 <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{c.content}</p>
                                 <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
-                                  <button onClick={() => { setReplyingTo({ commentId: c.id, authorName: c.user?.name ?? '' }); commentInputRef.current?.focus(); }} style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{isRtl ? 'رد' : 'Reply'}</button>
+                                  <button type="button" onClick={() => setReplyingTo({ commentId: c.id, authorName: c.user?.name ?? '' })} style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{isRtl ? 'رد' : 'Reply'}</button>
                                   {(c.replyCount ?? 0) > 0 && (
                                     <button onClick={() => loadReplies(c.id)} style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-gold)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                                       {loadingReplies[c.id] ? '...' : expandedReplies[c.id] ? (isRtl ? 'إخفاء' : 'Hide') : (isRtl ? `${c.replyCount} ردود` : `${c.replyCount} replies`)}
@@ -622,7 +622,8 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                           </p>
                           <div style={{ display: 'flex', gap: 12, marginTop: 6 }}>
                             <button
-                              onClick={() => { setReplyingTo({ commentId: c.id, authorName: c.user?.name ?? '' }); commentInputRef.current?.focus(); }}
+                              type="button"
+                              onClick={() => setReplyingTo({ commentId: c.id, authorName: c.user?.name ?? '' })}
                               style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                             >
                               {isRtl ? 'رد' : 'Reply'}

@@ -504,6 +504,9 @@ export default function MushafQCFPage({
                   display: 'block',
                   direction: 'rtl',
                   textAlign: useFullWidth ? 'justify' : 'center',
+                  // text-align-last:justify forces the single line in each div to also be justified
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  textAlignLast: (useFullWidth ? 'justify' : 'center') as any,
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   textJustify: 'auto' as any,
                   paddingBlock: '7px',

@@ -493,10 +493,10 @@ export default function MushafQCFPage({
              */
             /*
              * QCF fonts have kashida baked into each per-page glyph.
-             * space-between fills the line width using inter-word gaps —
-             * short lines (< 5 words) stay centered to avoid huge gaps.
+             * All non-opening page lines use space-between to fill edge to edge.
+             * Single-word lines (1 item in flex) naturally stay at start.
              */
-            const useFullWidth = !opening && words.length >= 5;
+            const useFullWidth = !opening;
             const lineStyle: React.CSSProperties = opening
               ? {
                   display: 'block',

@@ -491,7 +491,12 @@ export default function MushafQCFPage({
              * the centered layout — spreading 1–2 words to opposite edges
              * creates a huge visual gap that looks wrong.
              */
-            const useFullWidth = !opening && words.length >= 3;
+            /*
+             * QCF fonts have kashida baked into each per-page glyph.
+             * space-between fills the line width using inter-word gaps —
+             * short lines (< 5 words) stay centered to avoid huge gaps.
+             */
+            const useFullWidth = !opening && words.length >= 5;
             const lineStyle: React.CSSProperties = opening
               ? {
                   display: 'block',
@@ -499,16 +504,22 @@ export default function MushafQCFPage({
                   textAlign: 'center',
                   lineHeight: 2.2,
                 }
+              : qcfReady
+              ? {
+                  // QCF glyph mode — kashida is in the glyph; space-between fills the line
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: useFullWidth ? 'space-between' : 'center',
+                  direction: 'rtl',
+                  paddingBlock: '7px',
+                  width: '100%',
+                  fontSize: 'clamp(17px, 5.5vw, 24px)',
+                }
               : {
-                  // Amiri Quran — real Arabic text, browser applies kashida via text-justify
+                  // Fallback (Amiri Quran) while QCF loads
                   display: 'block',
                   direction: 'rtl',
-                  textAlign: useFullWidth ? 'justify' : 'center',
-                  // text-align-last:justify forces the single line in each div to also be justified
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  textAlignLast: (useFullWidth ? 'justify' : 'center') as any,
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  textJustify: 'auto' as any,
+                  textAlign: 'center',
                   paddingBlock: '7px',
                   width: '100%',
                   fontSize: 'clamp(17px, 5.5vw, 24px)',
@@ -526,9 +537,11 @@ export default function MushafQCFPage({
                   const attachRef = isHl && !hlRefAttached;
                   if (attachRef) hlRefAttached = true;
 
-                  const txt = isEnd
-                    ? (word.text.startsWith('۝') ? word.text : `۝${word.text}`)
-                    : word.text + ' ';
+                  const txt = qcfReady
+                    ? (word.codeV2 || word.text)
+                    : isEnd
+                      ? (word.text.startsWith('۝') ? word.text : `۝${word.text}`)
+                      : word.text;
 
                   return (
                     <span
@@ -540,8 +553,8 @@ export default function MushafQCFPage({
                         onVerseClick?.(word.chapterId, word.verseNumber);
                       }}
                       style={{
-                        display: 'inline',
-                        fontFamily: META_FONT,
+                        display: qcfReady ? 'inline-block' : 'inline',
+                        fontFamily: qcfReady ? qcfFont : META_FONT,
                         /*
                          * Opening pages: explicit px so centered layout is unaffected.
                          * Normal pages: font-size is set on the line container (responsive

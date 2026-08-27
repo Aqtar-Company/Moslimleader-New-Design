@@ -486,35 +486,32 @@ export default function MushafQCFPage({
              */
             const { lineNum, words } = item;
             /*
-             * space-between alignment needs ≥ 3 flex items to look natural.
-             * Short lines (disconnected letters, terminal short phrases) keep
-             * the centered layout — spreading 1–2 words to opposite edges
-             * creates a huge visual gap that looks wrong.
+             * Render each line as flowing Arabic text (Amiri Quran) so the
+             * browser's shaping engine can apply kashida-based justification.
+             * Lines with ≥ 3 words are justified; short lines stay centered.
+             *
+             * Key: word spans must be display:inline with no whiteSpace:nowrap
+             * so the browser treats the whole line as one continuous Arabic
+             * text run — this is what enables kashida via text-justify:auto.
              */
-            const useFullWidth = !opening && words.length >= 3;
+            const justify = !opening && words.length >= 3;
             const lineStyle: React.CSSProperties = opening
               ? {
                   display: 'block',
                   direction: 'rtl',
                   textAlign: 'center',
+                  fontFamily: META_FONT,
                   lineHeight: 2.2,
                 }
-              : qcfReady
-              ? {
-                  // QCF glyph mode — kashida is in the glyph; space-between fills the line
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: useFullWidth ? 'space-between' : 'center',
-                  direction: 'rtl',
-                  paddingBlock: '7px',
-                  width: '100%',
-                  fontSize: 'clamp(17px, 5.5vw, 24px)',
-                }
               : {
-                  // Fallback (Amiri Quran) while QCF loads
                   display: 'block',
                   direction: 'rtl',
-                  textAlign: 'center',
+                  textAlign: justify ? 'justify' : 'center',
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  textAlignLast: (justify ? 'justify' : 'center') as any,
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  textJustify: 'auto' as any,
+                  fontFamily: META_FONT,
                   paddingBlock: '7px',
                   width: '100%',
                   fontSize: 'clamp(17px, 5.5vw, 24px)',
@@ -532,11 +529,10 @@ export default function MushafQCFPage({
                   const attachRef = isHl && !hlRefAttached;
                   if (attachRef) hlRefAttached = true;
 
-                  const txt = qcfReady
-                    ? (word.codeV2 || word.text)
-                    : isEnd
-                      ? (word.text.startsWith('۝') ? word.text : `۝${word.text}`)
-                      : word.text;
+                  // Real Arabic text — verse-end marker gets ۝ prefix
+                  const txt = isEnd
+                    ? (word.text.startsWith('۝') ? word.text : `۝${word.text}`)
+                    : word.text;
 
                   return (
                     <span
@@ -548,15 +544,8 @@ export default function MushafQCFPage({
                         onVerseClick?.(word.chapterId, word.verseNumber);
                       }}
                       style={{
-                        display: qcfReady ? 'inline-block' : 'inline',
-                        fontFamily: qcfReady ? qcfFont : META_FONT,
-                        /*
-                         * Opening pages: explicit px so centered layout is unaffected.
-                         * Normal pages: font-size is set on the line container (responsive
-                         * clamp). Word spans inherit it (undefined = no override).
-                         * End markers use 0.85em — proportional to the line container
-                         * size, equivalent to the previous 14/17 ≈ 82% ratio.
-                         */
+                        // inline (not inline-block) so browser sees one continuous text run
+                        display: 'inline',
                         fontSize: opening
                           ? (isEnd ? 17 : 20)
                           : (isEnd ? '0.85em' : undefined),
@@ -567,11 +556,9 @@ export default function MushafQCFPage({
                         cursor: isEnd ? 'default' : 'pointer',
                         transition: 'background .15s',
                         WebkitTouchCallout: 'none',
-                        whiteSpace: 'nowrap',
-                        verticalAlign: 'baseline',
                       }}
                     >
-                      {txt}
+                      {txt}{!isEnd ? ' ' : ''}
                     </span>
                   );
                 })}

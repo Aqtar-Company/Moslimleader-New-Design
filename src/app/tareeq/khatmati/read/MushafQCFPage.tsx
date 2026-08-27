@@ -499,20 +499,8 @@ export default function MushafQCFPage({
                   textAlign: 'center',
                   lineHeight: 2.2,
                 }
-              : qcfReady
-              ? {
-                  // QCF glyph mode — flex space-between (glyphs can't kashida)
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: useFullWidth ? 'space-between' : 'center',
-                  direction: 'rtl',
-                  paddingBlock: '7px',
-                  columnGap: '2px',
-                  width: '100%',
-                  fontSize: 'clamp(17px, 5.5vw, 24px)',
-                }
               : {
-                  // Fallback (Amiri Quran) — real Arabic, browser applies kashida
+                  // Amiri Quran — real Arabic text, browser applies kashida via text-justify
                   display: 'block',
                   direction: 'rtl',
                   textAlign: useFullWidth ? 'justify' : 'center',
@@ -521,7 +509,7 @@ export default function MushafQCFPage({
                   paddingBlock: '7px',
                   width: '100%',
                   fontSize: 'clamp(17px, 5.5vw, 24px)',
-                  lineHeight: 2.0,
+                  lineHeight: 2.2,
                 };
 
             return (
@@ -535,11 +523,9 @@ export default function MushafQCFPage({
                   const attachRef = isHl && !hlRefAttached;
                   if (attachRef) hlRefAttached = true;
 
-                  const txt = qcfReady
-                    ? (word.codeV2 || word.text)
-                    : isEnd
-                      ? (word.text.startsWith('۝') ? word.text : `۝${word.text}`)
-                      : word.text + ' ';
+                  const txt = isEnd
+                    ? (word.text.startsWith('۝') ? word.text : `۝${word.text}`)
+                    : word.text + ' ';
 
                   return (
                     <span
@@ -551,8 +537,8 @@ export default function MushafQCFPage({
                         onVerseClick?.(word.chapterId, word.verseNumber);
                       }}
                       style={{
-                        display: qcfReady ? 'inline-block' : 'inline',
-                        fontFamily: qcfReady ? qcfFont : META_FONT,
+                        display: 'inline',
+                        fontFamily: META_FONT,
                         /*
                          * Opening pages: explicit px so centered layout is unaffected.
                          * Normal pages: font-size is set on the line container (responsive

@@ -491,12 +491,7 @@ export default function MushafQCFPage({
              * the centered layout — spreading 1–2 words to opposite edges
              * creates a huge visual gap that looks wrong.
              */
-            /*
-             * QCF fonts have kashida baked into each per-page glyph.
-             * All non-opening page lines use space-between to fill edge to edge.
-             * Single-word lines (1 item in flex) naturally stay at start.
-             */
-            const useFullWidth = !opening;
+            const useFullWidth = !opening && words.length >= 3;
             const lineStyle: React.CSSProperties = opening
               ? {
                   display: 'block',

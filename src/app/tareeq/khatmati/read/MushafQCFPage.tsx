@@ -451,6 +451,9 @@ export default function MushafQCFPage({
            * order (sorted by lineNum in renderItems), which is correct.
            */
           padding: '4px 10px 8px',
+          maxWidth: '420px',
+          margin: '0 auto',
+          width: '100%',
         }}>
           {renderItems.map((item) => {
             if (item.type === 'surah_header') {
@@ -496,25 +499,29 @@ export default function MushafQCFPage({
                   textAlign: 'center',
                   lineHeight: 2.2,
                 }
-              : {
+              : qcfReady
+              ? {
+                  // QCF glyph mode — flex space-between (glyphs can't kashida)
                   display: 'flex',
                   alignItems: 'center',
-                  /*
-                   * space-between: first word at right edge, last at left edge,
-                   * equal inter-word spacing between. This is NOT letter-spacing
-                   * or glyph stretching — only the space between word groups
-                   * increases. QCF glyphs remain unmodified.
-                   *
-                   * At the correct responsive font size the QCF calibration
-                   * ensures words already nearly fill the line, so the added
-                   * space-between gap is small and looks like a real Mushaf.
-                   */
                   justifyContent: useFullWidth ? 'space-between' : 'center',
                   direction: 'rtl',
                   paddingBlock: '7px',
-                  columnGap: '3px',
+                  columnGap: '2px',
                   width: '100%',
-                  fontSize: 'clamp(16px, 4.8vw, 22px)',
+                  fontSize: 'clamp(17px, 5.5vw, 24px)',
+                }
+              : {
+                  // Fallback (Amiri Quran) — real Arabic, browser applies kashida
+                  display: 'block',
+                  direction: 'rtl',
+                  textAlign: useFullWidth ? 'justify' : 'center',
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  textJustify: 'auto' as any,
+                  paddingBlock: '7px',
+                  width: '100%',
+                  fontSize: 'clamp(17px, 5.5vw, 24px)',
+                  lineHeight: 2.0,
                 };
 
             return (
@@ -544,7 +551,7 @@ export default function MushafQCFPage({
                         onVerseClick?.(word.chapterId, word.verseNumber);
                       }}
                       style={{
-                        display: 'inline-block',
+                        display: qcfReady ? 'inline-block' : 'inline',
                         fontFamily: qcfReady ? qcfFont : META_FONT,
                         /*
                          * Opening pages: explicit px so centered layout is unaffected.

@@ -53,7 +53,7 @@ export default function MushafCarousel({
   const prev = Math.max(1, page - 1);
   const next = Math.min(TOTAL_QURAN_PAGES, page + 1);
 
-  /* Eagerly prepare adjacent pages (data + QCF font) so swipe is always loader-free */
+  /* Eagerly pre-fetch adjacent page JSON so swipe is always loader-free */
   useEffect(() => {
     prepareMushafPage(prev);
     prepareMushafPage(next);

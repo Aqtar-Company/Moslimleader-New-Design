@@ -41,7 +41,6 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
-  const [fontLoaded, setFontLoaded] = useState(false);
 
   // New UI state
   const [reciterId, setReciterId] = useState('ar.alafasy');
@@ -106,20 +105,6 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   useEffect(() => { currentRef.current = currentIdx; }, [currentIdx]);
   useEffect(() => { playingRef.current = isPlaying; }, [isPlaying]);
   useEffect(() => { pageRef.current = page; }, [page]);
-
-  // Load Amiri Quran font once as a page-level resource (never removed on unmount)
-  useEffect(() => {
-    if (document.querySelector('link[data-amiri-quran]')) {
-      setFontLoaded(true);
-      return;
-    }
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=Amiri+Quran&display=swap';
-    (link as HTMLLinkElement & { dataset: DOMStringMap }).dataset.amiriQuran = '1';
-    link.onload = () => setFontLoaded(true);
-    document.head.appendChild(link);
-  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -316,9 +301,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   const surahNameAr = SURAH_NAMES_AR[(cv?.chapter_id ?? 1) - 1] ?? '';
   const surahNameEn = SURAH_NAMES_EN[(cv?.chapter_id ?? 1) - 1] ?? '';
 
-  const qFont = fontLoaded
-    ? "'Amiri Quran', 'Scheherazade New', 'Traditional Arabic', serif"
-    : "'Scheherazade New', 'Traditional Arabic', 'Arabic Typesetting', serif";
+  const qFont = "'Amiri Quran', 'Scheherazade New', 'Traditional Arabic', serif";
 
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -418,9 +401,8 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
 
         {/*
          * 'both' mode — Mushaf carousel is ALWAYS rendered, independent of verse-fetch
-         * loading state. The carousel has its own mushafCache for text data and its own
-         * QCF font loading. The global `loading` state only gates audio playback (verse
-         * data for the audio engine), not the visual Mushaf.
+         * loading state. The carousel fetches its own page JSON. The global `loading`
+         * state only gates audio playback (verse data), not the visual Mushaf.
          */}
         {mode === 'both' && (
           <MushafCarousel

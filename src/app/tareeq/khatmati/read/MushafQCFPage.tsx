@@ -1,13 +1,9 @@
 'use client';
 import { useEffect, useRef, useState, useMemo } from 'react';
-import {
-  getCachedPage, fetchAndCachePage, prepareMushafPage,
-  isFontLoaded, warmQCFFont,
-  isSurahNamesFontLoaded, warmSurahNamesFont,
-} from './mushafCache';
-import type { PageData, MushafWord } from './mushafCache';
+import { getCachedPage, fetchAndCachePage, prepareMushafPage, getPageJuz, getPageHizb } from './mushafCache';
+import type { PageData, MushafLine } from './mushafCache';
 
-/* ── Surah names (metadata header only) ────────────────────────────── */
+// ── Surah names ────────────────────────────────────────────────────────
 const SURAH_AR: Record<number, string> = {
   1:'الفاتحة',2:'البقرة',3:'آل عمران',4:'النساء',5:'المائدة',
   6:'الأنعام',7:'الأعراف',8:'الأنفال',9:'التوبة',10:'يونس',
@@ -36,50 +32,38 @@ const SURAH_AR: Record<number, string> = {
 
 const JUZ_AR = ['','الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن','التاسع','العاشر','الحادي عشر','الثاني عشر','الثالث عشر','الرابع عشر','الخامس عشر','السادس عشر','السابع عشر','الثامن عشر','التاسع عشر','العشرون','الحادي والعشرون','الثاني والعشرون','الثالث والعشرون','الرابع والعشرون','الخامس والعشرون','السادس والعشرون','السابع والعشرون','الثامن والعشرون','التاسع والعشرون','الثلاثون'];
 
+const QURAN_FONT = "'Amiri Quran','Scheherazade New','Traditional Arabic',serif";
 const NO_BISMILLAH = new Set([1, 9]);
 
-// Pages 1 and 2 are opening pages — vertically-centered composition.
-// All other pages (3–604) use natural top-aligned document flow with scrolling.
 function isOpeningPage(page: number) { return page === 1 || page === 2; }
-
 function juzLabel(n: number) { return JUZ_AR[n] ? `الجزء ${JUZ_AR[n]}` : `جزء ${n}`; }
-function qcfFamilyName(page: number) { return `p${page}-v2`; }
 
-const META_FONT = "'Amiri Quran','Scheherazade New','Traditional Arabic',serif";
+// ── Surah header ────────────────────────────────────────────────────────
+function SurahHeader({ surahNum }: { surahNum: number }) {
+  const [fontReady, setFontReady] = useState(false);
+  useEffect(() => {
+    const face = document.fonts && [...document.fonts].find(f => f.family === 'surahnames');
+    if (face && face.status === 'loaded') { setFontReady(true); return; }
+    const ff = new FontFace('surahnames', "url('/fonts/sura_names.woff2') format('woff2')");
+    document.fonts.add(ff);
+    ff.load().then(() => setFontReady(true)).catch(() => {});
+  }, []);
 
-/*
- * Surah header — SVG ornamental frame + surahnames icon font inside.
- *
- * fontReady: whether the surahnames font has finished loading via FontFace API.
- * When false (font still loading or failed), we render the Arabic name from
- * SURAH_AR as fallback so the ornament is NEVER visually empty. The surahnames
- * font converts "002" → calligraphic البقرة via OpenType ligature, but we don't
- * wait for it — we show the Arabic text immediately and it upgrades silently.
- */
-function SurahHeader({ chapterId, fontReady }: { chapterId: number; fontReady: boolean }) {
   return (
     <div style={{ position: 'relative', width: '100%' }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/surah_header_mushaf.svg"
-        alt=""
-        aria-hidden="true"
-        draggable={false}
+        src="/surah_header_mushaf.svg" alt="" aria-hidden="true" draggable={false}
         style={{ width: '100%', height: 'auto', display: 'block', userSelect: 'none' }}
       />
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {fontReady ? (
-          /* surahnames font ready — "002" → calligraphic ligature */
-          <span
-            style={{ fontFamily: "'surahnames', serif", fontSize: 36, color: '#0a0500', lineHeight: 1 }}
-            translate="no"
-          >
-            {String(chapterId).padStart(3, '0')}
+          <span style={{ fontFamily: "'surahnames',serif", fontSize: 36, color: '#0a0500', lineHeight: 1 }} translate="no">
+            {String(surahNum).padStart(3, '0')}
           </span>
         ) : (
-          /* Fallback: Arabic surah name in META_FONT — always visible, never empty */
-          <span style={{ fontFamily: META_FONT, fontSize: 18, fontWeight: 700, color: '#0a0500', lineHeight: 1 }}>
-            {SURAH_AR[chapterId] ?? ''}
+          <span style={{ fontFamily: QURAN_FONT, fontSize: 18, fontWeight: 700, color: '#0a0500', lineHeight: 1 }}>
+            {SURAH_AR[surahNum] ?? ''}
           </span>
         )}
       </div>
@@ -87,43 +71,29 @@ function SurahHeader({ chapterId, fontReady }: { chapterId: number; fontReady: b
   );
 }
 
-/* ── Bismillah — authentic SVG ────────────────────────────────────── */
+// ── Bismillah ───────────────────────────────────────────────────────────
 function BismillahLine() {
   return (
-    <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBlock: '4px' }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/bismillah.svg"
-        alt="بسم الله الرحمن الرحيم"
-        draggable={false}
-        style={{ width: 220, height: 'auto', display: 'block', color: '#0a0500' }}
+        src="/bismillah.svg" alt="بسم الله الرحمن الرحيم" draggable={false}
+        style={{ width: 220, height: 'auto', display: 'block' }}
       />
     </div>
   );
 }
 
-/*
- * Small open-book symbol for the center of the top metadata row.
- * Matches the visual weight of the printed Madinah Mushaf center ornament —
- * understated, not decorative clutter.
- */
+// ── Header ──────────────────────────────────────────────────────────────
 function MushafBookMark() {
   return (
-    <svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"
-      style={{ display: 'block', flexShrink: 0 }}>
-      {/* Left page */}
-      <path d="M9 1.2 C7.2 1.2 3 2 3 3.4 L3 12 C6 11.1 8 11.5 9 12 L9 1.2 Z"
-        fill="none" stroke="#4a3a1a" strokeWidth="0.8" strokeLinejoin="round"/>
-      {/* Right page */}
-      <path d="M9 1.2 C10.8 1.2 15 2 15 3.4 L15 12 C12 11.1 10 11.5 9 12 L9 1.2 Z"
-        fill="none" stroke="#4a3a1a" strokeWidth="0.8" strokeLinejoin="round"/>
-      {/* Spine */}
+    <svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true" style={{ display: 'block', flexShrink: 0 }}>
+      <path d="M9 1.2 C7.2 1.2 3 2 3 3.4 L3 12 C6 11.1 8 11.5 9 12 L9 1.2 Z" fill="none" stroke="#4a3a1a" strokeWidth="0.8" strokeLinejoin="round"/>
+      <path d="M9 1.2 C10.8 1.2 15 2 15 3.4 L15 12 C12 11.1 10 11.5 9 12 L9 1.2 Z" fill="none" stroke="#4a3a1a" strokeWidth="0.8" strokeLinejoin="round"/>
       <line x1="9" y1="1.2" x2="9" y2="12" stroke="#4a3a1a" strokeWidth="0.9"/>
-      {/* Text lines — left page */}
       <line x1="4.5" y1="4.5" x2="7.5" y2="4.5" stroke="#4a3a1a" strokeWidth="0.45" opacity="0.6"/>
       <line x1="4.5" y1="6.2" x2="7.5" y2="6.2" stroke="#4a3a1a" strokeWidth="0.45" opacity="0.6"/>
       <line x1="4.5" y1="7.9" x2="7.5" y2="7.9" stroke="#4a3a1a" strokeWidth="0.45" opacity="0.6"/>
-      {/* Text lines — right page */}
       <line x1="10.5" y1="4.5" x2="13.5" y2="4.5" stroke="#4a3a1a" strokeWidth="0.45" opacity="0.6"/>
       <line x1="10.5" y1="6.2" x2="13.5" y2="6.2" stroke="#4a3a1a" strokeWidth="0.45" opacity="0.6"/>
       <line x1="10.5" y1="7.9" x2="13.5" y2="7.9" stroke="#4a3a1a" strokeWidth="0.45" opacity="0.6"/>
@@ -131,119 +101,54 @@ function MushafBookMark() {
   );
 }
 
-/*
- * Top metadata row — matches the printed Madinah Mushaf header exactly:
- *
- *   RTL visual layout:
- *   RIGHT: Juz label          CENTER: book ornament          LEFT: Surah label(s)
- *   "الجزء السادس والعشرون"       📖                      "الجاثية والأحقاف"
- *
- * No borders. No background. No boxes. Only restrained dark typography
- * with generous breathing room, as in the printed Mushaf.
- */
-function MushafTopMetadata({ meta, surahLabel }: { meta: PageData['meta']; surahLabel: string }) {
+function MushafTopMetadata({ juz, surahLabel }: { juz: number; surahLabel: string }) {
   return (
-    <div dir="rtl" style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '10px 18px 8px',
-    }}>
-      {/* Visual RIGHT (DOM first in RTL): Juz */}
-      <span style={{
-        fontSize: 12.5, fontWeight: 600, color: '#0a0500',
-        fontFamily: META_FONT, letterSpacing: '0.01em', lineHeight: 1.4,
-      }}>
-        {meta.juz ? juzLabel(meta.juz) : ''}
+    <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 18px 8px' }}>
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: '#0a0500', fontFamily: QURAN_FONT, lineHeight: 1.4 }}>
+        {juz ? juzLabel(juz) : ''}
       </span>
-      {/* CENTER: book ornament */}
       <MushafBookMark />
-      {/* Visual LEFT (DOM last in RTL): Surah name(s) */}
-      <span style={{
-        fontSize: 12.5, fontWeight: 600, color: '#0a0500',
-        fontFamily: META_FONT, letterSpacing: '0.01em', lineHeight: 1.4,
-      }}>
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: '#0a0500', fontFamily: QURAN_FONT, lineHeight: 1.4 }}>
         {surahLabel}
       </span>
     </div>
   );
 }
 
-/*
- * Ornamental rosette flanking the page number — a small 8-petal motif
- * matching the teal decorative elements in the printed Madinah Mushaf footer.
- * Color: #2A7A6E (teal).
- */
+// ── Footer ──────────────────────────────────────────────────────────────
 function FooterRosette() {
   const C = '#2A7A6E';
-  // 8 petals: pairs of ellipses at 0/90/45/135 degrees, all passing through center
   return (
     <svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true" style={{ display: 'block', flexShrink: 0 }}>
       <ellipse cx="5.5" cy="5.5" rx="2.2" ry="4.5" fill={C} opacity="0.85"/>
       <ellipse cx="5.5" cy="5.5" rx="4.5" ry="2.2" fill={C} opacity="0.85"/>
       <ellipse cx="5.5" cy="5.5" rx="2.2" ry="4.5" transform="rotate(45 5.5 5.5)" fill={C} opacity="0.85"/>
       <ellipse cx="5.5" cy="5.5" rx="2.2" ry="4.5" transform="rotate(-45 5.5 5.5)" fill={C} opacity="0.85"/>
-      {/* Center circle — white cutout creates the open-centre rosette look */}
       <circle cx="5.5" cy="5.5" r="1.6" fill="#F8EBD5"/>
     </svg>
   );
 }
 
-/*
- * Physical Mushaf footer — matches the printed Madinah Mushaf:
- *
- *   RTL visual layout:
- *   RIGHT: Hizb label    CENTER: ornamental page number    LEFT: (empty)
- *   "الحزب 51"                ❁ 502 ❁
- *
- * Western numerals match the reference. No heavy divider above — whitespace only.
- */
-function MushafFooter({ meta, page }: { meta: PageData['meta']; page: number }) {
+function MushafFooter({ hizb, page }: { hizb: number; page: number }) {
   const TEAL = '#2A7A6E';
   return (
-    <div dir="rtl" style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '6px 18px 10px',
-      flexShrink: 0,
-    }}>
-      {/* Visual RIGHT (DOM first in RTL): Hizb — Western numeral matches reference */}
-      <span style={{
-        fontSize: 12, color: '#0a0500', fontFamily: META_FONT, fontWeight: 500,
-        minWidth: 60,
-      }}>
-        {meta.hizb ? `الحزب ${meta.hizb}` : ''}
+    <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 18px 10px', flexShrink: 0 }}>
+      <span style={{ fontSize: 12, color: '#0a0500', fontFamily: QURAN_FONT, fontWeight: 500, minWidth: 60 }}>
+        {hizb ? `الحزب ${hizb}` : ''}
       </span>
-
-      {/* CENTER: ornamental teal page-number frame */}
       <div dir="ltr" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
         <FooterRosette />
-        <div style={{
-          minWidth: 36, height: 20,
-          border: `1.5px solid ${TEAL}`,
-          borderRadius: 4,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '0 7px',
-          background: `rgba(42,122,110,0.06)`,
-        }}>
-          <span style={{
-            fontSize: 11.5, fontWeight: 700, color: '#1a5a50',
-            fontFamily: META_FONT, lineHeight: 1,
-          }}>
-            {page}
-          </span>
+        <div style={{ minWidth: 36, height: 20, border: `1.5px solid ${TEAL}`, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 7px', background: `rgba(42,122,110,0.06)` }}>
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: '#1a5a50', fontFamily: QURAN_FONT, lineHeight: 1 }}>{page}</span>
         </div>
         <FooterRosette />
       </div>
-
-      {/* Visual LEFT (DOM last in RTL): empty — balances the row */}
       <span style={{ minWidth: 60 }} />
     </div>
   );
 }
 
-/* ── Props ─────────────────────────────────────────────────────────── */
+// ── Props ────────────────────────────────────────────────────────────────
 interface Props {
   page: number;
   currentChapter: number;
@@ -254,7 +159,7 @@ interface Props {
   autoFollow?: boolean;
 }
 
-/* ── Main component ─────────────────────────────────────────────────── */
+// ── Main component ───────────────────────────────────────────────────────
 export default function MushafQCFPage({
   page, currentChapter, currentVerse, isPlaying,
   onVerseClick, onAyahTap, autoFollow,
@@ -263,36 +168,20 @@ export default function MushafQCFPage({
 
   const [localData, setLocalData] = useState<PageData | null>(null);
   const data: PageData | null = getCachedPage(page) ?? localData;
-  const dataLoading = !data;
-
-  /*
-   * QCF font readiness — initialised from the global font cache so that
-   * when the carousel re-assigns a page prop, component instances that
-   * already loaded the font for this page skip the flash entirely.
-   * isFontLoaded() is a module-level Set: once set, any React instance
-   * reading it sees the cached value immediately.
-   */
-  const qcfFamily = qcfFamilyName(page);
-  const qcfFont = `'${qcfFamily}', sans-serif`;
-  const [qcfReady, setQcfReady] = useState(() => isFontLoaded(qcfFamily));
-
-  // Surahnames font — loaded once globally, tracked here for SurahHeader
-  const [surahNamesReady, setSurahNamesReady] = useState(() => isSurahNamesFontLoaded());
 
   const hlRef = useRef<HTMLSpanElement | null>(null);
   let hlRefAttached = false;
 
-  /* Data fetch — cache hit is synchronous, no loading state for cached pages */
+  // Fetch page data
   useEffect(() => {
     setLocalData(null);
     if (getCachedPage(page)) return;
     let cancelled = false;
-    console.log('[MushafQCFPage] LOADING reason: PAGE_DATA_MISSING page=', page);
     fetchAndCachePage(page).then(d => { if (!cancelled && d) setLocalData(d); });
     return () => { cancelled = true; };
   }, [page]);
 
-  /* Prepare adjacent pages (data + font) so next swipe is loader-free */
+  // Pre-warm adjacent pages
   useEffect(() => {
     prepareMushafPage(page - 2);
     prepareMushafPage(page - 1);
@@ -300,45 +189,7 @@ export default function MushafQCFPage({
     prepareMushafPage(page + 2);
   }, [page]);
 
-  /*
-   * QCF font loading — global cache check first.
-   * If the font was already loaded (by any other MushafQCFPage for this page),
-   * immediately set ready=true without going through false → avoids flash.
-   */
-  useEffect(() => {
-    const family = qcfFamilyName(page);
-    if (isFontLoaded(family)) {
-      setQcfReady(true);
-      return;
-    }
-    // Font not yet in global cache — show fallback until it loads
-    setQcfReady(false);
-    console.log('[MushafQCFPage] LOADING reason: QCF_FONT_NOT_READY page=', page, 'family=', family);
-    /*
-     * warmQCFFont resolves regardless of success or failure (catch swallows
-     * the error to avoid blocking swipe). After it resolves, check the global
-     * font cache to know whether the font actually loaded — only then flip
-     * qcfReady. Without this guard, a CORS/404 failure causes garbled QCF
-     * glyph codes to render in a generic Arabic fallback font.
-     */
-    warmQCFFont(page).then(() => {
-      if (isFontLoaded(family)) {
-        setQcfReady(true);
-      } else {
-        console.log('[MushafQCFPage] QCF font failed to load, keeping fallback text — page=', page);
-      }
-    }).catch(() => {});
-  }, [page]);
-
-  /* Surahnames font — warm once, update state when done */
-  useEffect(() => {
-    if (isSurahNamesFontLoaded()) { setSurahNamesReady(true); return; }
-    warmSurahNamesFont().then(() => {
-      if (isSurahNamesFontLoaded()) setSurahNamesReady(true);
-    });
-  }, []);
-
-  /* Auto-scroll highlighted verse into view */
+  // Auto-scroll highlighted verse
   useEffect(() => {
     if (autoFollow && hlRef.current) {
       hlRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -346,52 +197,43 @@ export default function MushafQCFPage({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentChapter, currentVerse, autoFollow]);
 
-  type RenderItem =
-    | { type: 'surah_header'; chapterId: number; gridRow: number }
-    | { type: 'bismillah'; key: string; gridRow: number }
-    | { type: 'line'; lineNum: number; words: MushafWord[] };
-
-  const renderItems = useMemo<RenderItem[]>(() => {
+  // Derive surah list from page lines for header
+  const surahsOnPage = useMemo<number[]>(() => {
     if (!data) return [];
-    const sorted = [...data.lines].sort((a, b) => a.lineNum - b.lineNum);
-    const result: RenderItem[] = [];
-    let prevCh = -1;
-    for (const line of sorted) {
-      const fw = line.words[0];
-      if (fw && fw.chapterId !== prevCh && fw.verseNumber === 1) {
-        // Surah header occupies the grid row(s) immediately before this line.
-        // If no bismillah: header = lineNum - 1. If bismillah: header = lineNum - 2.
-        const hasBism = !NO_BISMILLAH.has(fw.chapterId);
-        const headerRow = Math.max(1, line.lineNum - (hasBism ? 2 : 1));
-        result.push({ type: 'surah_header', chapterId: fw.chapterId, gridRow: headerRow });
-        if (hasBism) {
-          result.push({ type: 'bismillah', key: `bm-${fw.chapterId}`, gridRow: headerRow + 1 });
-        }
-        prevCh = fw.chapterId;
-      } else if (fw) {
-        prevCh = fw.chapterId;
+    const seen = new Set<number>();
+    for (const line of data.lines) {
+      if (line.type === 'surah-header' && line.surah) {
+        seen.add(parseInt(line.surah, 10));
       }
-      result.push({ type: 'line', lineNum: line.lineNum, words: line.words });
+      if (line.type === 'text' && line.words) {
+        for (const w of line.words) {
+          if (w.surah) seen.add(w.surah);
+        }
+      }
     }
-    return result;
+    return [...seen];
   }, [data]);
 
-  const meta = data?.meta ?? { juz: null, hizb: null, surahs: [] };
-  const surahLabel = useMemo(
-    () => meta.surahs.map(id => SURAH_AR[id] ?? '').filter(Boolean).join(' و'),
-    [meta.surahs],
-  );
+  const surahLabel = surahsOnPage.map(id => SURAH_AR[id] ?? '').filter(Boolean).join(' و');
+  const juz = getPageJuz(page);
+  const hizb = getPageHizb(page);
+
+  if (!data) {
+    return (
+      <div style={{ background: '#F8EBD5', minHeight: '100%', width: '100%', display: 'flex', flexDirection: 'column', userSelect: 'none' }}>
+        <MushafTopMetadata juz={juz} surahLabel={surahLabel} />
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <style>{`@keyframes ms-spin{to{transform:rotate(360deg)}}`}</style>
+          <div style={{ width: 26, height: 26, borderRadius: '50%', border: '2px solid rgba(184,152,64,.2)', borderTopColor: '#b89840', animation: 'ms-spin .7s linear infinite' }} />
+        </div>
+        <MushafFooter hizb={hizb} page={page} />
+      </div>
+    );
+  }
 
   return (
     <div style={{
       background: '#F8EBD5',
-      /*
-       * minHeight:100% — fills the carousel slot at minimum, but allows the
-       * content to grow beyond the slot for normal (full) pages. The slot has
-       * overflowY:auto so excess height is scrollable. Opening pages (1, 2)
-       * center their content within the viewport via flex:1 on the text area,
-       * which works because root is at least 100% tall.
-       */
       minHeight: '100%',
       width: '100%',
       display: 'flex',
@@ -399,177 +241,104 @@ export default function MushafQCFPage({
       userSelect: 'none',
       WebkitUserSelect: 'none',
     }}>
-
-      {/* ── Physical page top metadata — no borders, whitespace only ── */}
       <div style={{ flexShrink: 0 }}>
-        <MushafTopMetadata meta={meta} surahLabel={surahLabel} />
+        <MushafTopMetadata juz={juz} surahLabel={surahLabel} />
       </div>
 
-      {/* ── Page body ── */}
-      {dataLoading ? (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <style>{`@keyframes ms-spin{to{transform:rotate(360deg)}}`}</style>
-          <div style={{
-            width: 26, height: 26, borderRadius: '50%',
-            border: '2px solid rgba(184,152,64,.2)', borderTopColor: '#b89840',
-            animation: 'ms-spin .7s linear infinite',
-          }} />
-        </div>
-      ) : (
-        /*
-         * MushafTextArea — the physical text canvas between header and footer.
-         *
-         * OPENING PAGES (1, 2): few lines → content is vertically centred.
-         * NORMAL PAGES (3–604): content top-aligned in a CSS Grid with one row
-         *   per physical Mushaf line. Each grid row = equal fraction of the
-         *   available text area height. Lines are placed at grid-row: lineNum
-         *   so their visual position is fixed regardless of surrounding content.
-         *   overflow:hidden ensures the page never overflows its slot.
-         */
-        <div style={opening ? {
-          /*
-           * OPENING PAGES (1, 2):
-           * flex:1 expands to fill remaining viewport height (root is minHeight:100%,
-           * so flex:1 here = 100% − header − footer). justifyContent:center
-           * vertically centers the whole content group (header + bismillah + verses)
-           * as a single block within that space.
-           */
-          flex: 1,
-          minHeight: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'stretch',
-          justifyContent: 'center',
-          padding: '0 14px',
-          overflow: 'hidden',
-        } : {
-          /*
-           * NORMAL PAGES (3–604):
-           * No height constraint — content grows to its natural height.
-           * The carousel slot has overflowY:auto so the user can scroll if
-           * 15 lines exceed the visible area. No grid: lines stack in document
-           * order (sorted by lineNum in renderItems), which is correct.
-           */
-          padding: '4px 10px 8px',
-          maxWidth: '420px',
-          margin: '0 auto',
-          width: '100%',
-        }}>
-          {renderItems.map((item) => {
-            if (item.type === 'surah_header') {
-              return (
-                <div key={`sh-${item.chapterId}`} style={{ alignSelf: 'center', width: '100%' }}>
-                  <SurahHeader chapterId={item.chapterId} fontReady={surahNamesReady} />
-                </div>
-              );
-            }
+      {/* Page body */}
+      <div style={opening ? {
+        flex: 1, minHeight: 0,
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'stretch', justifyContent: 'center',
+        padding: '0 18px', overflow: 'hidden',
+      } : {
+        padding: '4px 12px 8px',
+        maxWidth: '500px',
+        margin: '0 auto',
+        width: '100%',
+      }}>
+        {data.lines.map(line => renderLine(line))}
+      </div>
 
-            if (item.type === 'bismillah') {
-              return (
-                <div
-                  key={item.key}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <BismillahLine />
-                </div>
-              );
-            }
-
-            /*
-             * Quran line.
-             *
-             * Opening pages: block with lineHeight for vertical rhythm.
-             * Normal pages: flex-row centered, paddingBlock gives diacritics
-             *   (shadda, sukun stacked above) enough vertical breathing room
-             *   without clipping. Lines stack in natural document flow —
-             *   no grid, no viewport-height constraint, scrollable if needed.
-             */
-            const { lineNum, words } = item;
-            /*
-             * Render each line as flowing Arabic text (Amiri Quran) so the
-             * browser's shaping engine can apply kashida-based justification.
-             * Lines with ≥ 3 words are justified; short lines stay centered.
-             *
-             * Key: word spans must be display:inline with no whiteSpace:nowrap
-             * so the browser treats the whole line as one continuous Arabic
-             * text run — this is what enables kashida via text-justify:auto.
-             */
-            const justify = !opening && words.length >= 3;
-            const lineStyle: React.CSSProperties = opening
-              ? {
-                  display: 'block',
-                  direction: 'rtl',
-                  textAlign: 'center',
-                  fontFamily: META_FONT,
-                  lineHeight: 2.2,
-                }
-              : {
-                  display: 'block',
-                  direction: 'rtl',
-                  textAlign: justify ? 'justify' : 'center',
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  textAlignLast: (justify ? 'justify' : 'center') as any,
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  textJustify: 'auto' as any,
-                  fontFamily: META_FONT,
-                  paddingBlock: '7px',
-                  width: '100%',
-                  fontSize: 'clamp(17px, 5.5vw, 24px)',
-                  lineHeight: 2.2,
-                };
-
-            return (
-              <div key={lineNum} dir="rtl" style={lineStyle}>
-                {words.map((word, wi) => {
-                  const isEnd = word.charType === 'end';
-                  const isHl = isPlaying === true
-                    && !isEnd
-                    && word.chapterId === currentChapter
-                    && word.verseNumber === currentVerse;
-                  const attachRef = isHl && !hlRefAttached;
-                  if (attachRef) hlRefAttached = true;
-
-                  // Real Arabic text — verse-end marker gets ۝ prefix
-                  const txt = isEnd
-                    ? (word.text.startsWith('۝') ? word.text : `۝${word.text}`)
-                    : word.text;
-
-                  return (
-                    <span
-                      key={wi}
-                      ref={attachRef ? hlRef : undefined}
-                      onClick={() => {
-                        if (isEnd) return;
-                        onAyahTap?.({ chapterId: word.chapterId, verseNumber: word.verseNumber, text: word.text });
-                        onVerseClick?.(word.chapterId, word.verseNumber);
-                      }}
-                      style={{
-                        // inline (not inline-block) so browser sees one continuous text run
-                        display: 'inline',
-                        fontSize: opening
-                          ? (isEnd ? 17 : 20)
-                          : (isEnd ? '0.85em' : undefined),
-                        color: isEnd ? '#b89840' : '#010101',
-                        background: isHl ? 'rgba(190,160,80,0.22)' : 'transparent',
-                        borderRadius: isHl ? 4 : 0,
-                        padding: isHl ? '1px 3px' : undefined,
-                        cursor: isEnd ? 'default' : 'pointer',
-                        transition: 'background .15s',
-                        WebkitTouchCallout: 'none',
-                      }}
-                    >
-                      {txt}{!isEnd ? ' ' : ''}
-                    </span>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ── Physical page footer ── */}
-      <MushafFooter meta={meta} page={page} />
+      <div style={{ flexShrink: 0 }}>
+        <MushafFooter hizb={hizb} page={page} />
+      </div>
     </div>
   );
+
+  function renderLine(line: MushafLine) {
+    if (line.type === 'surah-header') {
+      const num = line.surah ? parseInt(line.surah, 10) : 0;
+      return (
+        <div key={`sh-${line.line}`} style={{ width: '100%' }}>
+          <SurahHeader surahNum={num} />
+        </div>
+      );
+    }
+
+    if (line.type === 'basmala') {
+      return <BismillahLine key={`bm-${line.line}`} />;
+    }
+
+    // type === 'text'
+    const words = line.words ?? [];
+    /*
+     * Render as flowing inline Arabic text so the browser's shaping engine
+     * treats the whole line as one text run and can apply kashida via
+     * text-justify:auto. Requires display:inline on spans (not inline-block).
+     */
+    const justify = !opening && words.length >= 3;
+
+    return (
+      <div
+        key={line.line}
+        dir="rtl"
+        style={{
+          display: 'block',
+          direction: 'rtl',
+          textAlign: justify ? 'justify' : 'center',
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          textAlignLast: (justify ? 'justify' : 'center') as any,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          textJustify: 'auto' as any,
+          fontFamily: QURAN_FONT,
+          fontSize: opening ? 20 : 'clamp(17px, 5.2vw, 23px)',
+          lineHeight: opening ? 2.4 : 2.2,
+          paddingBlock: opening ? '2px' : '5px',
+          width: '100%',
+        }}
+      >
+        {words.map((word, wi) => {
+          const isHl = isPlaying === true
+            && word.surah === currentChapter
+            && word.verse === currentVerse;
+          const attachRef = isHl && !hlRefAttached;
+          if (attachRef) hlRefAttached = true;
+
+          return (
+            <span
+              key={wi}
+              ref={attachRef ? hlRef : undefined}
+              onClick={() => {
+                onAyahTap?.({ chapterId: word.surah, verseNumber: word.verse, text: word.word });
+                onVerseClick?.(word.surah, word.verse);
+              }}
+              style={{
+                display: 'inline',
+                color: '#010101',
+                background: isHl ? 'rgba(190,160,80,0.25)' : 'transparent',
+                borderRadius: isHl ? 4 : 0,
+                padding: isHl ? '1px 3px' : undefined,
+                cursor: 'pointer',
+                transition: 'background .15s',
+                WebkitTouchCallout: 'none',
+              }}
+            >
+              {word.word}{' '}
+            </span>
+          );
+        })}
+      </div>
+    );
+  }
 }

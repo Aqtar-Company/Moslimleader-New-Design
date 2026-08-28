@@ -1,135 +1,111 @@
-// Module-level cache — persists across React re-renders for the lifetime of the browser session.
-
-/*
- * QCF font URL — routed through our own Next.js proxy because
- * fonts.qurancdn.com returns 403 on direct browser requests from
- * non-quran.com origins. The proxy fetches server-side and caches
- * the response for 1 year.
- */
-function qcfFontUrl(page: number): string {
-  return `/api/tareeq/quran/qcf-font?page=${page}`;
-}
+// Module-level cache — persists across React re-renders for the browser session.
 
 export interface MushafWord {
-  text: string;
-  codeV1: string;
-  codeV2: string;
-  charType: string;
-  verseNumber: number;
-  chapterId: number;
-  lineNumber: number;
+  location: string;   // "surah:verse:wordIndex"
+  word: string;       // real Arabic Unicode text
+  surah: number;      // parsed from location
+  verse: number;      // parsed from location
+  position: number;   // parsed from location (1-based)
 }
 
 export interface MushafLine {
-  lineNum: number;
-  words: MushafWord[];
-}
-
-export interface PageMeta {
-  juz: number | null;
-  hizb: number | null;
-  surahs: number[];
+  line: number;
+  type: 'text' | 'surah-header' | 'basmala';
+  text?: string;        // for type=text — full line Arabic text
+  verseRange?: string;  // for type=text — "surah:verse-surah:verse"
+  words?: MushafWord[];
+  surah?: string;       // for type=surah-header — "001" format
 }
 
 export interface PageData {
+  page: number;
   lines: MushafLine[];
-  meta: PageMeta;
 }
 
+// Juz start pages for standard Hafs Madinah Mushaf (604 pages, 30 juz)
+const JUZ_START_PAGES = [
+  1, 22, 42, 62, 82, 102, 121, 142, 162, 182,
+  201, 222, 241, 261, 281, 301, 321, 341, 361, 381,
+  401, 421, 441, 461, 481, 501, 521, 541, 561, 581,
+];
+
+export function getPageJuz(page: number): number {
+  let juz = 1;
+  for (let i = 0; i < JUZ_START_PAGES.length; i++) {
+    if (page >= JUZ_START_PAGES[i]) juz = i + 1;
+    else break;
+  }
+  return juz;
+}
+
+// Hizb = 2 per juz, approximated from page position within juz
+export function getPageHizb(page: number): number {
+  const juz = getPageJuz(page);
+  const juzStart = JUZ_START_PAGES[juz - 1];
+  const juzEnd = JUZ_START_PAGES[juz] ?? 605;
+  const midPage = Math.floor((juzStart + juzEnd) / 2);
+  return (juz - 1) * 2 + (page >= midPage ? 2 : 1);
+}
+
+// In-memory page cache
 const _cache = new Map<number, PageData>();
 const _inflight = new Map<number, Promise<PageData | null>>();
 
-// Global font-ready set — survives React re-renders and component remounts.
-const _fontLoaded = new Set<string>();
-const _fontInflight = new Map<string, Promise<void>>();
+function pageUrl(page: number): string {
+  return `/mushaf-data/page-${String(page).padStart(3, '0')}.json`;
+}
 
-// Surahnames icon font — single shared file, not per-page.
-let _surahNamesLoaded = false;
-let _surahNamesInflight: Promise<void> | null = null;
+function parseLocation(location: string): { surah: number; verse: number; position: number } {
+  const [s, v, p] = location.split(':').map(Number);
+  return { surah: s ?? 0, verse: v ?? 0, position: p ?? 0 };
+}
+
+function processWords(rawWords: Array<{ location: string; word: string; qpcV2?: string; qpcV1?: string }>): MushafWord[] {
+  return rawWords.map(w => {
+    const { surah, verse, position } = parseLocation(w.location);
+    return { location: w.location, word: w.word, surah, verse, position };
+  });
+}
 
 export function getCachedPage(page: number): PageData | undefined {
   return _cache.get(page);
-}
-
-export function isFontLoaded(family: string): boolean {
-  return _fontLoaded.has(family);
-}
-
-export function isSurahNamesFontLoaded(): boolean {
-  return _surahNamesLoaded;
-}
-
-/*
- * Warm the surahnames icon font using the FontFace API so it is guaranteed
- * loaded before any SurahHeader renders. This avoids the font-display:block
- * FOIT window (invisible text for up to 3 s) that caused the ornament to
- * appear empty on swipe — especially visible on page 2 (البقرة header).
- */
-export function warmSurahNamesFont(): Promise<void> {
-  if (_surahNamesLoaded) return Promise.resolve();
-  if (_surahNamesInflight) return _surahNamesInflight;
-  if (typeof document === 'undefined') return Promise.resolve();
-
-  const face = new FontFace('surahnames', "url('/fonts/sura_names.woff2') format('woff2')");
-  document.fonts.add(face);
-
-  _surahNamesInflight = face.load()
-    .then(() => { _surahNamesLoaded = true; })
-    .catch(() => {})
-    .finally(() => { _surahNamesInflight = null; });
-
-  return _surahNamesInflight;
-}
-
-export function warmQCFFont(page: number): Promise<void> {
-  const family = `p${page}-v2`;
-  if (_fontLoaded.has(family)) return Promise.resolve();
-  if (_fontInflight.has(family)) return _fontInflight.get(family)!;
-  if (typeof document === 'undefined') return Promise.resolve();
-
-  /*
-   * Use the FontFace constructor API so the font is loaded directly from the
-   * CDN URL without requiring a prior @font-face declaration in a stylesheet.
-   * document.fonts.load() silently no-ops when no @font-face is declared for
-   * the family — this was the root cause of persistent QCF_FONT_NOT_READY.
-   */
-  const url = qcfFontUrl(page);
-  const face = new FontFace(family, `url('${url}')`);
-  document.fonts.add(face);
-
-  const p = face.load()
-    .then(() => { _fontLoaded.add(family); })
-    .catch(() => {})
-    .finally(() => _fontInflight.delete(family));
-
-  _fontInflight.set(family, p);
-  return p;
-}
-
-export async function prepareMushafPage(page: number): Promise<void> {
-  if (page < 1 || page > 604) return;
-  await Promise.all([fetchAndCachePage(page), warmQCFFont(page)]);
 }
 
 export function fetchAndCachePage(page: number): Promise<PageData | null> {
   if (_cache.has(page)) return Promise.resolve(_cache.get(page)!);
   if (_inflight.has(page)) return _inflight.get(page)!;
 
-  const p = fetch(`/api/tareeq/quran/mushaf-lines?page=${page}`)
+  const p = fetch(pageUrl(page))
     .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
-    .then(d => {
-      if (d.lines) {
-        const data: PageData = { lines: d.lines, meta: d.meta };
-        _cache.set(page, data);
-        return data;
-      }
-      return null;
+    .then((raw: { page: number; lines: Array<{
+      line: number; type: string; text?: string;
+      verseRange?: string; words?: Array<{ location: string; word: string }>;
+      surah?: string;
+    }> }) => {
+      const data: PageData = {
+        page: raw.page,
+        lines: raw.lines.map(l => ({
+          line: l.line,
+          type: l.type as MushafLine['type'],
+          text: l.text,
+          verseRange: l.verseRange,
+          surah: l.surah,
+          words: l.words ? processWords(l.words) : undefined,
+        })),
+      };
+      _cache.set(page, data);
+      return data;
     })
     .catch(() => null)
     .finally(() => _inflight.delete(page));
 
   _inflight.set(page, p);
   return p;
+}
+
+export async function prepareMushafPage(page: number): Promise<void> {
+  if (page < 1 || page > 604) return;
+  await fetchAndCachePage(page);
 }
 
 export function prefetchPage(page: number): void {

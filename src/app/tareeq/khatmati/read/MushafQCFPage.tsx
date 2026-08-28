@@ -271,10 +271,14 @@ export default function MushafQCFPage({
         alignItems: 'stretch', justifyContent: 'center',
         padding: '0 18px', overflow: 'hidden',
       } : {
-        padding: '4px 12px 8px',
-        maxWidth: '500px',
+        flex: 1, minHeight: 0,
+        display: 'flex', flexDirection: 'column',
+        justifyContent: 'space-evenly',
+        padding: '2px 14px 4px',
+        maxWidth: '520px',
         margin: '0 auto',
         width: '100%',
+        overflow: 'hidden',
       }}>
         {data.lines.map(line => renderLine(line))}
       </div>
@@ -302,29 +306,32 @@ export default function MushafQCFPage({
     // type === 'text'
     const words = line.words ?? [];
     /*
-     * Render as flowing inline Arabic text so the browser's shaping engine
-     * treats the whole line as one text run and can apply kashida via
-     * text-justify:auto. Requires display:inline on spans (not inline-block).
+     * Each JSON line = exactly ONE physical Mushaf line.
+     * flex-wrap:nowrap guarantees no wrapping.
+     * justify-content:space-between spreads words to fill the full line width,
+     * matching the printed Mushaf look. Short lines (≤2 words) stay centered.
      */
-    const justify = !opening && words.length >= 3;
+    const spread = words.length >= 3;
+    const fontSize = opening ? 20 : 'clamp(17px, 5.2vw, 23px)';
 
     return (
       <div
         key={line.line}
         dir="rtl"
         style={{
-          display: 'block',
+          display: 'flex',
+          flexDirection: 'row',
+          flexWrap: 'nowrap',
+          justifyContent: spread ? 'space-between' : 'center',
+          alignItems: 'baseline',
           direction: 'rtl',
-          textAlign: justify ? 'justify' : 'center',
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          textAlignLast: (justify ? 'justify' : 'center') as any,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          textJustify: 'auto' as any,
           fontFamily: QURAN_FONT,
-          fontSize: opening ? 20 : 'clamp(17px, 5.2vw, 23px)',
+          fontSize,
           lineHeight: opening ? 2.4 : 2.2,
           paddingBlock: opening ? '2px' : '5px',
           width: '100%',
+          minHeight: 0,
+          overflow: 'hidden',
         }}
       >
         {words.map((word, wi) => {
@@ -344,7 +351,8 @@ export default function MushafQCFPage({
                 onVerseClick?.(word.surah, word.verse);
               }}
               style={{
-                display: 'inline',
+                display: 'inline-block',
+                whiteSpace: 'nowrap',
                 color: '#010101',
                 background: isHl ? 'rgba(190,160,80,0.25)' : 'transparent',
                 borderRadius: isHl ? 4 : 0,
@@ -352,9 +360,10 @@ export default function MushafQCFPage({
                 cursor: 'pointer',
                 transition: 'background .15s',
                 WebkitTouchCallout: 'none',
+                flexShrink: 0,
               }}
             >
-              {word.word}{' '}
+              {word.word}
             </span>
           );
         })}

@@ -52,7 +52,7 @@ const _cache = new Map<number, PageData>();
 const _inflight = new Map<number, Promise<PageData | null>>();
 
 function pageUrl(page: number): string {
-  return `/mushaf-data/page-${String(page).padStart(3, '0')}.json`;
+  return `/Mushaf-nori/Mushaf/page-${String(page).padStart(3, '0')}.json`;
 }
 
 function parseLocation(location: string): { surah: number; verse: number; position: number } {

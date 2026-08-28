@@ -311,7 +311,9 @@ export default function MushafQCFPage({
      * justify-content:space-between spreads words to fill the full line width,
      * matching the printed Mushaf look. Short lines (≤2 words) stay centered.
      */
-    const spread = words.length >= 3;
+    // Lines with 8+ words spread to full width; shorter lines stay centered.
+    // This keeps short-surah pages and opening pages visually centered.
+    const spread = !opening && words.length >= 8;
     const fontSize = opening ? 20 : 'clamp(17px, 5.2vw, 23px)';
 
     return (

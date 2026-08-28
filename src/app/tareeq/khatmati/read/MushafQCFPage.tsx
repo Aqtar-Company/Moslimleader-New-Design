@@ -38,6 +38,37 @@ const QURAN_FONT = "'Amiri Quran','Scheherazade New','Traditional Arabic',serif"
 function isOpeningPage(page: number) { return page === 1 || page === 2; }
 function juzLabel(n: number) { return JUZ_AR[n] ? `الجزء ${JUZ_AR[n]}` : `جزء ${n}`; }
 
+// ── Ayah end marker (decorative circle around verse number) ─────────────
+function AyahMarker({ num }: { num: string }) {
+  const TEAL = '#2A7A6E';
+  return (
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: '1.35em',
+      height: '1.35em',
+      borderRadius: '50%',
+      border: `1px solid ${TEAL}`,
+      background: 'rgba(42,122,110,0.08)',
+      flexShrink: 0,
+      verticalAlign: 'middle',
+      lineHeight: 1,
+      position: 'relative',
+      top: '-0.05em',
+    }}>
+      <span style={{
+        fontFamily: QURAN_FONT,
+        fontSize: '0.62em',
+        color: TEAL,
+        fontWeight: 600,
+        lineHeight: 1,
+        userSelect: 'none',
+      }}>{num}</span>
+    </span>
+  );
+}
+
 // ── Surah header ────────────────────────────────────────────────────────
 function SurahHeader({ surahNum }: { surahNum: number }) {
   const [fontReady, setFontReady] = useState(false);
@@ -343,6 +374,11 @@ export default function MushafQCFPage({
           const attachRef = isHl && !hlRefAttached;
           if (attachRef) hlRefAttached = true;
 
+          // Split Arabic-Indic verse number suffix (e.g. "ٱلرَّحِيمِ ١" → text + "١")
+          const verseNumMatch = word.word.match(/^([\s\S]*?)\s*([٠-٩]+)$/);
+          const wordText = verseNumMatch ? verseNumMatch[1] : word.word;
+          const verseNum = verseNumMatch ? verseNumMatch[2] : null;
+
           return (
             <span
               key={wi}
@@ -353,7 +389,9 @@ export default function MushafQCFPage({
                 onVerseClick?.(word.surah, word.verse);
               }}
               style={{
-                display: 'inline-block',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
                 whiteSpace: 'nowrap',
                 color: '#010101',
                 background: isHl ? 'rgba(190,160,80,0.25)' : 'transparent',
@@ -365,7 +403,8 @@ export default function MushafQCFPage({
                 flexShrink: 0,
               }}
             >
-              {word.word}
+              {wordText}
+              {verseNum && <AyahMarker num={verseNum} />}
             </span>
           );
         })}

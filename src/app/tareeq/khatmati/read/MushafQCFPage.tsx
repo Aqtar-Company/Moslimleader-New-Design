@@ -33,7 +33,7 @@ const SURAH_AR: Record<number, string> = {
 const JUZ_AR = ['','الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن','التاسع','العاشر','الحادي عشر','الثاني عشر','الثالث عشر','الرابع عشر','الخامس عشر','السادس عشر','السابع عشر','الثامن عشر','التاسع عشر','العشرون','الحادي والعشرون','الثاني والعشرون','الثالث والعشرون','الرابع والعشرون','الخامس والعشرون','السادس والعشرون','السابع والعشرون','الثامن والعشرون','التاسع والعشرون','الثلاثون'];
 
 const QURAN_FONT = "'Amiri Quran','Scheherazade New','Traditional Arabic',serif";
-const NO_BISMILLAH = new Set([1, 9]);
+// Basmala suppression is handled by the JSON data itself (no basmala line for surahs 1 & 9)
 
 function isOpeningPage(page: number) { return page === 1 || page === 2; }
 function juzLabel(n: number) { return JUZ_AR[n] ? `الجزء ${JUZ_AR[n]}` : `جزء ${n}`; }
@@ -43,7 +43,11 @@ function SurahHeader({ surahNum }: { surahNum: number }) {
   const [fontReady, setFontReady] = useState(false);
   useEffect(() => {
     const face = document.fonts && [...document.fonts].find(f => f.family === 'surahnames');
-    if (face && face.status === 'loaded') { setFontReady(true); return; }
+    if (face) {
+      // Font already loading or loaded — reuse the existing FontFace, don't create a duplicate
+      face.loaded.then(() => setFontReady(true)).catch(() => {});
+      return;
+    }
     const ff = new FontFace('surahnames', "url('/fonts/sura_names.woff2') format('woff2')");
     document.fonts.add(ff);
     ff.load().then(() => setFontReady(true)).catch(() => {});
@@ -167,7 +171,8 @@ export default function MushafQCFPage({
   const opening = isOpeningPage(page);
 
   const [localData, setLocalData] = useState<PageData | null>(null);
-  const data: PageData | null = getCachedPage(page) ?? localData;
+  // Only use localData if it belongs to the current page — never show a previous page's content
+  const data: PageData | null = getCachedPage(page) ?? (localData?.page === page ? localData : null);
 
   const hlRef = useRef<HTMLSpanElement | null>(null);
   let hlRefAttached = false;
@@ -217,6 +222,20 @@ export default function MushafQCFPage({
   const surahLabel = surahsOnPage.map(id => SURAH_AR[id] ?? '').filter(Boolean).join(' و');
   const juz = getPageJuz(page);
   const hizb = getPageHizb(page);
+
+  // Build a lookup map of full verse text: "surah:verse" → joined Arabic words
+  const verseTextMap = useMemo<Map<string, string>>(() => {
+    const map = new Map<string, string>();
+    if (!data) return map;
+    for (const line of data.lines) {
+      if (line.type !== 'text' || !line.words) continue;
+      for (const w of line.words) {
+        const key = `${w.surah}:${w.verse}`;
+        map.set(key, (map.get(key) ? map.get(key) + ' ' : '') + w.word);
+      }
+    }
+    return map;
+  }, [data]);
 
   if (!data) {
     return (
@@ -320,7 +339,8 @@ export default function MushafQCFPage({
               key={wi}
               ref={attachRef ? hlRef : undefined}
               onClick={() => {
-                onAyahTap?.({ chapterId: word.surah, verseNumber: word.verse, text: word.word });
+                const verseText = verseTextMap.get(`${word.surah}:${word.verse}`) ?? word.word;
+                onAyahTap?.({ chapterId: word.surah, verseNumber: word.verse, text: verseText });
                 onVerseClick?.(word.surah, word.verse);
               }}
               style={{

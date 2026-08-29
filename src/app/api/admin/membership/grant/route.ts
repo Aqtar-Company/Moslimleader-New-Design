@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { getTransporter } from '@/lib/smtp';
 import { randomBytes } from 'crypto';
 import { requirePerm } from '@/lib/permissions';
+import { SignJWT } from 'jose';
 
 async function requireAdmin() {
   const guard = await requirePerm('membership.write');
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
   // User not found → send invite email
   if (!targetUser) {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://moslimleader.com';
-    const registerUrl = `${siteUrl}/auth/register`;
+    const registerUrl = `${siteUrl}/auth/register?email=${encodeURIComponent(trimmedEmail)}&membershipPending=1`;
     try {
       const transporter = getTransporter();
       const fromUser = process.env.SMTP_USER || 'orders@moslimleader.com';
@@ -82,9 +83,8 @@ export async function POST(req: NextRequest) {
 <div class="body">
   <p>السلام عليكم ورحمة الله،</p>
   <p>تمت دعوتك للانضمام إلى <strong>عضوية مجتمع مسلم ليدر</strong> — مجتمع حصري للأسر المسلمة الواعية.</p>
-  <p>لتفعيل عضويتك المجانية، يرجى إنشاء حساب على منصتنا باستخدام هذا البريد الإلكتروني:</p>
-  <a href="${registerUrl}" class="btn">إنشاء حساب وتفعيل العضوية</a>
-  <p style="font-size:13px;color:#6b7280">بعد إنشاء حسابك، تواصل معنا لتفعيل عضويتك.</p>
+  <p>لتفعيل عضويتك، يرجى إنشاء حساب على منصتنا باستخدام هذا البريد الإلكتروني:</p>
+  <a href="${registerUrl}" class="btn">أنشئ حسابك الآن</a>
 </div>
 <div class="footer">مسلم ليدر — ${siteUrl}</div>
 </div></body></html>`,
@@ -160,6 +160,85 @@ export async function POST(req: NextRequest) {
       expiresAt,
     },
   });
+
+  // Send celebration welcome email to the existing user
+  try {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://moslimleader.com';
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'dev-only-fallback-secret-not-for-production');
+    const welcomeToken = await new SignJWT({
+      type: 'membership-welcome',
+      userId: targetUser.id,
+      email: targetUser.email,
+      membershipId: membership.id,
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime('30d')
+      .sign(secret);
+
+    const welcomeUrl = `${siteUrl}/membership/welcome?token=${welcomeToken}`;
+    const expiryYear = expiresAt.getFullYear();
+    const userName = targetUser.name || 'عضونا الكريم';
+
+    const transporter = getTransporter();
+    const fromUser = process.env.SMTP_USER || 'orders@moslimleader.com';
+    await transporter.sendMail({
+      from: `مسلم ليدر <${fromUser}>`,
+      to: targetUser.email,
+      subject: 'مبروك! عضويتك الرائدة في مسلم ليدر جاهزة 🌟',
+      html: `
+<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8">
+<style>
+body{font-family:Arial,sans-serif;background:#f4f7f6;margin:0;padding:0}
+.wrap{max-width:560px;margin:32px auto;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.1)}
+.header{background:#1a3a2e;padding:40px 24px 32px;text-align:center}
+.header .emoji{font-size:48px;display:block;margin-bottom:12px}
+.header h1{color:#FFCC33;margin:0;font-size:30px;font-weight:800}
+.header .name{color:rgba(255,255,255,.8);margin:10px 0 0;font-size:16px}
+.member-num{background:rgba(255,204,51,.12);border:1px solid rgba(255,204,51,.3);border-radius:12px;padding:12px 20px;margin:0 24px;text-align:center}
+.member-num .label{font-size:11px;color:#6b7280;letter-spacing:.1em;text-transform:uppercase}
+.member-num .num{font-size:22px;font-weight:800;color:#1a3a2e;margin-top:4px;letter-spacing:.05em}
+.divider{height:2px;background:linear-gradient(90deg,transparent,#D4A853,transparent);margin:24px auto;width:80%;border:none}
+.body{padding:20px 28px}
+.benefit{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+.benefit .check{color:#1a3a2e;font-size:18px;flex-shrink:0;margin-top:1px}
+.benefit p{color:#374151;font-size:15px;line-height:1.5;margin:0}
+.cta-wrap{text-align:center;padding:24px 28px 20px}
+.cta{display:inline-block;padding:16px 36px;background:#1a3a2e;color:#FFCC33;text-decoration:none;border-radius:14px;font-weight:800;font-size:17px;letter-spacing:.02em}
+.footer{padding:18px 24px;text-align:center;color:#9ca3af;font-size:12px;border-top:1px solid #f3f4f6;line-height:1.7}
+</style></head>
+<body><div class="wrap">
+<div class="header">
+  <span class="emoji">🌟</span>
+  <h1>مبروك</h1>
+  <p class="name">${userName}</p>
+</div>
+<div style="padding:24px 24px 12px">
+  <div class="member-num">
+    <p class="label">رقم عضويتك</p>
+    <p class="num">${membership.membershipNumber}</p>
+  </div>
+</div>
+<hr class="divider" />
+<div class="body">
+  <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px">عضويتك الرائدة في مجتمع مسلم ليدر فعّالة الآن — إليك ما ينتظرك:</p>
+  <div class="benefit"><span class="check">✅</span><p>مكتبة رقمية حصرية</p></div>
+  <div class="benefit"><span class="check">✅</span><p>فعاليات وأنشطة مجانية</p></div>
+  <div class="benefit"><span class="check">✅</span><p>مجتمع الأسرة المسلمة</p></div>
+  <div class="benefit"><span class="check">✅</span><p>تطبيق مسلم ليدر كاملاً</p></div>
+</div>
+<div class="cta-wrap">
+  <a href="${welcomeUrl}" class="cta">افتح عضويتي الآن ←</a>
+</div>
+<div class="footer">
+  رقم العضوية: ${membership.membershipNumber} · تنتهي ${expiryYear}<br>
+  مسلم ليدر — ${siteUrl}
+</div>
+</div></body></html>`,
+    });
+  } catch (emailErr) {
+    console.error('[membership grant] welcome email failed', emailErr);
+    // Email failure must not block the API response
+  }
 
   return NextResponse.json({
     granted: true,

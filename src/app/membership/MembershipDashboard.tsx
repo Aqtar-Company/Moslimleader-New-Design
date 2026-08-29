@@ -21,13 +21,14 @@ interface Membership {
 type Tab = 'card' | 'family' | 'perks';
 
 export default function MembershipDashboard({
-  membership, ownerName, perks, isLoggedIn,
-}: { membership: Membership; ownerName: string; perks: Perk[]; isLoggedIn: boolean }) {
+  membership, ownerName, perks, isLoggedIn, celebrate,
+}: { membership: Membership; ownerName: string; perks: Perk[]; isLoggedIn: boolean; celebrate?: boolean }) {
   const { isRtl } = useLang();
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('card');
+  const [showCelebration, setShowCelebration] = useState(false);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(membership.familyMembers);
   const [showAddMember, setShowAddMember] = useState(false);
   const [newName, setNewName] = useState('');
@@ -67,6 +68,18 @@ export default function MembershipDashboard({
       .then(d => setLeaderPerks((d.perks ?? []).filter((p: { forTier: string }) => p.forTier !== 'all')))
       .catch(() => {});
   }, [communityAcknowledged, leaderPerksLoaded]);
+
+  // Show celebration modal once per membership (on first visit from welcome link)
+  useEffect(() => {
+    if (!celebrate) return;
+    const key = `ml_celebrated_${membership.id}`;
+    try {
+      if (!localStorage.getItem(key)) {
+        setShowCelebration(true);
+        localStorage.setItem(key, '1');
+      }
+    } catch { /* ignore */ }
+  }, [celebrate, membership.id]);
 
   async function acknowledgeAsCommunity() {
     // Optimistic update
@@ -428,6 +441,24 @@ export default function MembershipDashboard({
           </div>
         )}
       </div>
+
+      {/* Celebration modal — shown once on first visit from welcome magic link */}
+      {showCelebration && (
+        <div onClick={() => setShowCelebration(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'linear-gradient(135deg,#1a3a2e,#2d5a40)', borderRadius: 24, padding: '40px 32px', maxWidth: 340, width: '90%', textAlign: 'center', color: '#fff', position: 'relative' }}>
+            {/* Confetti emoji row */}
+            <div style={{ fontSize: 32, marginBottom: 8 }}>🎉 🌟 🎊</div>
+            <h2 style={{ fontSize: 26, fontWeight: 800, color: '#FFCC33', margin: '0 0 12px', fontFamily: 'system-ui,sans-serif' }}>مبروك!</h2>
+            <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.85)', lineHeight: 1.7, margin: '0 0 8px' }}>
+              {isRtl ? 'عضويتك الرائدة في مجتمع مسلم ليدر فعّالة الآن' : 'Your Leader membership is now active'}
+            </p>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', margin: '0 0 28px' }}>رقم العضوية: {membership.membershipNumber}</p>
+            <button onClick={() => setShowCelebration(false)} style={{ padding: '12px 32px', background: '#FFCC33', color: '#1a3a2e', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 16, cursor: 'pointer', width: '100%' }}>
+              {isRtl ? 'استكشف مزاياك 🌿' : 'Explore your benefits 🌿'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Renew modal */}
       {showRenew && (

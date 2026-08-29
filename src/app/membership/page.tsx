@@ -5,7 +5,12 @@ import MembershipLanding from './MembershipLanding';
 
 export const dynamic = 'force-dynamic';
 
-export default async function MembershipPage() {
+export default async function MembershipPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ celebrate?: string }>;
+}) {
+  const { celebrate } = await searchParams;
   const user = await getAuthUser().catch(() => null);
 
   let membership = null;
@@ -63,6 +68,7 @@ export default async function MembershipPage() {
         ownerName={ownerName}
         perks={perks.map(p => ({ ...p, validUntil: p.validUntil?.toISOString() ?? null }))}
         isLoggedIn={!!user}
+        celebrate={celebrate === '1'}
       />
     );
   }

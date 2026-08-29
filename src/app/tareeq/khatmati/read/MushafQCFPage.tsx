@@ -38,33 +38,13 @@ const QURAN_FONT = "'Amiri Quran','Scheherazade New','Traditional Arabic',serif"
 function isOpeningPage(page: number) { return page === 1 || page === 2; }
 function juzLabel(n: number) { return JUZ_AR[n] ? `الجزء ${JUZ_AR[n]}` : `جزء ${n}`; }
 
-// ── Ayah end marker (decorative circle around verse number) ─────────────
+// ── Ayah end marker — inline glyph, part of the text flow ──────────────
+// Rendered as ۝N inline (same font, gold colour) — no separate flex element
+// so space-between justification treats the whole word+marker as one unit.
 function AyahMarker({ num }: { num: string }) {
-  const TEAL = '#2A7A6E';
   return (
-    <span style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      width: '1.35em',
-      height: '1.35em',
-      borderRadius: '50%',
-      border: `1px solid ${TEAL}`,
-      background: 'rgba(42,122,110,0.08)',
-      flexShrink: 0,
-      verticalAlign: 'middle',
-      lineHeight: 1,
-      position: 'relative',
-      top: '-0.05em',
-    }}>
-      <span style={{
-        fontFamily: QURAN_FONT,
-        fontSize: '0.62em',
-        color: TEAL,
-        fontWeight: 600,
-        lineHeight: 1,
-        userSelect: 'none',
-      }}>{num}</span>
+    <span style={{ color: '#7a5200', fontSize: '0.78em', fontFamily: QURAN_FONT, userSelect: 'none', fontWeight: 400, letterSpacing: 0 }}>
+      ۝{num}
     </span>
   );
 }
@@ -152,20 +132,19 @@ function MushafTopMetadata({ juz, surahLabel }: { juz: number; surahLabel: strin
 
 // ── Footer ──────────────────────────────────────────────────────────────
 function FooterRosette() {
-  const C = '#2A7A6E';
+  const G = '#b89840';
   return (
     <svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true" style={{ display: 'block', flexShrink: 0 }}>
-      <ellipse cx="5.5" cy="5.5" rx="2.2" ry="4.5" fill={C} opacity="0.85"/>
-      <ellipse cx="5.5" cy="5.5" rx="4.5" ry="2.2" fill={C} opacity="0.85"/>
-      <ellipse cx="5.5" cy="5.5" rx="2.2" ry="4.5" transform="rotate(45 5.5 5.5)" fill={C} opacity="0.85"/>
-      <ellipse cx="5.5" cy="5.5" rx="2.2" ry="4.5" transform="rotate(-45 5.5 5.5)" fill={C} opacity="0.85"/>
+      <ellipse cx="5.5" cy="5.5" rx="2.2" ry="4.5" fill={G} opacity="0.85"/>
+      <ellipse cx="5.5" cy="5.5" rx="4.5" ry="2.2" fill={G} opacity="0.85"/>
+      <ellipse cx="5.5" cy="5.5" rx="2.2" ry="4.5" transform="rotate(45 5.5 5.5)" fill={G} opacity="0.85"/>
+      <ellipse cx="5.5" cy="5.5" rx="2.2" ry="4.5" transform="rotate(-45 5.5 5.5)" fill={G} opacity="0.85"/>
       <circle cx="5.5" cy="5.5" r="1.6" fill="#F8EBD5"/>
     </svg>
   );
 }
 
 function MushafFooter({ hizb, page }: { hizb: number; page: number }) {
-  const TEAL = '#2A7A6E';
   return (
     <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 18px 10px', flexShrink: 0 }}>
       <span style={{ fontSize: 12, color: '#0a0500', fontFamily: QURAN_FONT, fontWeight: 500, minWidth: 60 }}>
@@ -173,8 +152,8 @@ function MushafFooter({ hizb, page }: { hizb: number; page: number }) {
       </span>
       <div dir="ltr" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
         <FooterRosette />
-        <div style={{ minWidth: 36, height: 20, border: `1.5px solid ${TEAL}`, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 7px', background: `rgba(42,122,110,0.06)` }}>
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: '#1a5a50', fontFamily: QURAN_FONT, lineHeight: 1 }}>{page}</span>
+        <div style={{ minWidth: 36, height: 20, border: '1.5px solid #b89840', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 7px', background: 'rgba(184,152,64,0.07)' }}>
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: '#4a3a1a', fontFamily: QURAN_FONT, lineHeight: 1 }}>{page}</span>
         </div>
         <FooterRosette />
       </div>
@@ -295,17 +274,13 @@ export default function MushafQCFPage({
         <MushafTopMetadata juz={juz} surahLabel={surahLabel} />
       </div>
 
-      {/* Page body */}
-      <div style={opening ? {
-        flex: 1, minHeight: 0,
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'stretch', justifyContent: 'center',
-        padding: '0 18px', overflow: 'hidden',
-      } : {
+      {/* Page body — both opening and regular pages use space-evenly so
+          every line slot (text, surah-header, basmala) lands on the grid */}
+      <div style={{
         flex: 1, minHeight: 0,
         display: 'flex', flexDirection: 'column',
         justifyContent: 'space-evenly',
-        padding: '2px 14px 4px',
+        padding: opening ? '0 18px' : '2px 14px 4px',
         maxWidth: '520px',
         margin: '0 auto',
         width: '100%',
@@ -342,9 +317,14 @@ export default function MushafQCFPage({
      * justify-content:space-between spreads words to fill the full line width,
      * matching the printed Mushaf look. Short lines (≤2 words) stay centered.
      */
-    // Lines with 8+ words spread to full width; shorter lines stay centered.
-    // This keeps short-surah pages and opening pages visually centered.
-    const spread = !opening && words.length >= 8;
+    // 3-tier word spreading to calibrate inter-word spacing:
+    //   ≥10 words → space-between (full spread, tight lines)
+    //    5–9 words → space-around  (moderate spread)
+    //    <5 words  → center        (short lines, opening pages)
+    const wCount = words.length;
+    const justify = (!opening && wCount >= 10) ? 'space-between'
+                  : (!opening && wCount >= 5)  ? 'space-around'
+                  : 'center';
     const fontSize = opening ? 20 : 'clamp(17px, 5.2vw, 23px)';
 
     return (
@@ -355,13 +335,13 @@ export default function MushafQCFPage({
           display: 'flex',
           flexDirection: 'row',
           flexWrap: 'nowrap',
-          justifyContent: spread ? 'space-between' : 'center',
+          justifyContent: justify,
           alignItems: 'baseline',
           direction: 'rtl',
           fontFamily: QURAN_FONT,
           fontSize,
-          lineHeight: opening ? 2.4 : 2.2,
-          paddingBlock: opening ? '2px' : '5px',
+          lineHeight: opening ? 2.2 : 2.2,
+          paddingBlock: opening ? '0' : '0',
           width: '100%',
           minHeight: 0,
           overflow: 'hidden',
@@ -389,9 +369,7 @@ export default function MushafQCFPage({
                 onVerseClick?.(word.surah, word.verse);
               }}
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
+                display: 'inline',
                 whiteSpace: 'nowrap',
                 color: '#010101',
                 background: isHl ? 'rgba(190,160,80,0.25)' : 'transparent',
@@ -403,8 +381,7 @@ export default function MushafQCFPage({
                 flexShrink: 0,
               }}
             >
-              {wordText}
-              {verseNum && <AyahMarker num={verseNum} />}
+              {wordText}{verseNum && <AyahMarker num={verseNum} />}
             </span>
           );
         })}

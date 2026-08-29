@@ -2,34 +2,13 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getTransporter } from '@/lib/smtp';
-import { randomBytes } from 'crypto';
 import { requirePerm } from '@/lib/permissions';
 import { SignJWT } from 'jose';
+import { generateMembershipNumber, generateUniqueQRToken } from '@/lib/membership-utils';
 
 async function requireAdmin() {
   const guard = await requirePerm('membership.write');
   return 'response' in guard ? null : guard.user;
-}
-
-function generateQRToken(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  const bytes = randomBytes(8);
-  return 'ML-' + Array.from(bytes, b => chars[b % chars.length]).join('');
-}
-
-async function generateMembershipNumber(): Promise<string> {
-  const year = String(new Date().getFullYear()).slice(1);
-  const latest = await prisma.familyMembership.findFirst({
-    where: { membershipNumber: { startsWith: `ML-${year}-` } },
-    orderBy: { membershipNumber: 'desc' },
-    select: { membershipNumber: true },
-  });
-  let seq = 1;
-  if (latest?.membershipNumber) {
-    const parts = latest.membershipNumber.split('-');
-    seq = (parseInt(parts[parts.length - 1], 10) || 0) + 1;
-  }
-  return `ML-${year}-${String(seq).padStart(5, '0')}`;
 }
 
 export async function POST(req: NextRequest) {
@@ -58,7 +37,7 @@ export async function POST(req: NextRequest) {
     const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'dev-only-fallback-secret-not-for-production');
     const inviteToken = await new SignJWT({ type: 'membership-invite', email: trimmedEmail })
       .setProtectedHeader({ alg: 'HS256' })
-      .setExpirationTime('7d')
+      .setExpirationTime('48h')
       .sign(secret);
     const registerUrl = `${siteUrl}/login?mode=signup&email=${encodeURIComponent(trimmedEmail)}&inviteToken=${inviteToken}`;
     try {
@@ -103,7 +82,7 @@ body{font-family:Arial,sans-serif;background:#f4f7f6;margin:0;padding:0}
 <div class="cta-wrap">
   <a href="${registerUrl}" class="cta">فعّل عضويتي الآن ←</a>
 </div>
-<div class="footer">مسلم ليدر — ${siteUrl} · الرابط صالح 7 أيام</div>
+<div class="footer">مسلم ليدر — ${siteUrl} · الرابط صالح 48 ساعة</div>
 </div></body></html>`,
       });
     } catch (err) {
@@ -130,10 +109,7 @@ body{font-family:Arial,sans-serif;background:#f4f7f6;margin:0;padding:0}
   let membership;
   if (!existing) {
     const membershipNumber = await generateMembershipNumber();
-    let qrToken = generateQRToken();
-    while (await prisma.familyMembership.findUnique({ where: { qrToken } })) {
-      qrToken = generateQRToken();
-    }
+    const qrToken = await generateUniqueQRToken();
     try {
       membership = await prisma.familyMembership.create({
         data: {

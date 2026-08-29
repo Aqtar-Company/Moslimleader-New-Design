@@ -7,6 +7,7 @@ import { jwtVerify } from 'jose';
 import { prisma } from '@/lib/prisma';
 import { signToken, makeAuthCookie } from '@/lib/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { generateMembershipNumber, generateUniqueQRToken } from '@/lib/membership-utils';
 
 // Email regex — basic RFC 5322 subset
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -116,21 +117,8 @@ export async function POST(req: NextRequest) {
       let membershipGranted = false;
       if (hasValidInvite) {
         try {
-          const inviteYear = String(new Date().getFullYear()).slice(1);
-          const latestMembership = await prisma.familyMembership.findFirst({
-            where: { membershipNumber: { startsWith: `ML-${inviteYear}-` } },
-            orderBy: { membershipNumber: 'desc' },
-            select: { membershipNumber: true },
-          });
-          let seq = 1;
-          if (latestMembership?.membershipNumber) {
-            const parts = latestMembership.membershipNumber.split('-');
-            seq = (parseInt(parts[parts.length - 1], 10) || 0) + 1;
-          }
-          const membershipNumber = `ML-${inviteYear}-${String(seq).padStart(5, '0')}`;
-          const qrChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-          const qrBytes = crypto.randomBytes(8);
-          const qrToken = 'ML-' + Array.from(qrBytes, (b: number) => qrChars[b % qrChars.length]).join('');
+          const membershipNumber = await generateMembershipNumber();
+          const qrToken = await generateUniqueQRToken();
           const now = new Date();
           const expiresAt = new Date(now);
           expiresAt.setFullYear(expiresAt.getFullYear() + 1);
@@ -150,7 +138,13 @@ export async function POST(req: NextRequest) {
           });
           membershipGranted = true;
         } catch (memberErr) {
-          console.error('[register] membership auto-grant failed', memberErr);
+          const isUniqueViolation = memberErr instanceof Error && memberErr.message.includes('Unique constraint');
+          if (isUniqueViolation) {
+            // Race: another process just created a membership for this user — still grant
+            membershipGranted = true;
+          } else {
+            console.error('[register] membership auto-grant failed', memberErr);
+          }
         }
       }
 

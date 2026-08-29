@@ -28,7 +28,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error?: string; needsVerification?: boolean; email?: string }>;
-  signUp: (name: string, email: string, password: string, phone?: string, marketingOptIn?: boolean) => Promise<{ error?: string; needsVerification?: boolean; email?: string }>;
+  signUp: (name: string, email: string, password: string, phone?: string, marketingOptIn?: boolean, inviteToken?: string) => Promise<{ error?: string; needsVerification?: boolean; email?: string; membershipGranted?: boolean }>;
   signOut: () => void;
   updateUser: (data: Partial<User>) => Promise<void>;
 }
@@ -74,19 +74,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUp = async (name: string, email: string, password: string, phone?: string, marketingOptIn?: boolean) => {
+  const signUp = async (name: string, email: string, password: string, phone?: string, marketingOptIn?: boolean, inviteToken?: string) => {
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ name, email, password, phone, marketingOptIn }),
+        body: JSON.stringify({ name, email, password, phone, marketingOptIn, inviteToken }),
       });
       const data = await res.json();
       if (!res.ok) return { error: data.error ?? 'فشل إنشاء الحساب' };
-      // 201 with needsVerification = email sent, not logged in yet
       if (data.needsVerification) return { needsVerification: true, email: data.email };
       setUser(data.user);
+      if (data.membershipGranted) return { membershipGranted: true };
       return {};
     } catch {
       return { error: 'حدث خطأ في الاتصال بالخادم' };

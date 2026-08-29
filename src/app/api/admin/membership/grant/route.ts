@@ -52,41 +52,58 @@ export async function POST(req: NextRequest) {
     select: { id: true, name: true, email: true },
   });
 
-  // User not found → send invite email
+  // User not found → generate signed invite token and send celebration invite email
   if (!targetUser) {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://moslimleader.com';
-    const registerUrl = `${siteUrl}/auth/register?email=${encodeURIComponent(trimmedEmail)}&membershipPending=1`;
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'dev-only-fallback-secret-not-for-production');
+    const inviteToken = await new SignJWT({ type: 'membership-invite', email: trimmedEmail })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime('7d')
+      .sign(secret);
+    const registerUrl = `${siteUrl}/login?mode=signup&email=${encodeURIComponent(trimmedEmail)}&inviteToken=${inviteToken}`;
     try {
       const transporter = getTransporter();
       const fromUser = process.env.SMTP_USER || 'orders@moslimleader.com';
       await transporter.sendMail({
         from: `مسلم ليدر <${fromUser}>`,
         to: trimmedEmail,
-        subject: 'دعوة للانضمام إلى عضوية مجتمع مسلم ليدر 🌿',
+        subject: 'مبروك! عضويتك الرائدة في مسلم ليدر جاهزة 🌟',
         html: `
 <!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8">
-<style>body{font-family:Arial,sans-serif;background:#f4f7f6;margin:0;padding:0}
-.wrap{max-width:560px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)}
-.header{background:linear-gradient(135deg,#1a3a2e,#2d5a40);padding:32px 24px;text-align:center}
-.header h1{color:#D4A853;margin:0;font-size:22px}
-.header p{color:rgba(255,255,255,.75);margin:8px 0 0;font-size:14px}
-.body{padding:28px 24px}
+<style>
+body{font-family:Arial,sans-serif;background:#f4f7f6;margin:0;padding:0}
+.wrap{max-width:560px;margin:32px auto;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.1)}
+.header{background:#1a3a2e;padding:40px 24px 32px;text-align:center}
+.header .emoji{font-size:48px;display:block;margin-bottom:12px}
+.header h1{color:#FFCC33;margin:0;font-size:30px;font-weight:800}
+.header .sub{color:rgba(255,255,255,.75);margin:10px 0 0;font-size:15px}
+.body{padding:24px 28px}
 .body p{color:#374151;line-height:1.7;margin:0 0 16px;font-size:15px}
-.btn{display:block;width:fit-content;margin:24px auto;padding:14px 32px;background:#1a3a2e;color:#fff;text-decoration:none;border-radius:12px;font-weight:700;font-size:15px}
+.benefit{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+.benefit .check{color:#1a3a2e;font-size:18px;flex-shrink:0;margin-top:1px}
+.benefit p{color:#374151;font-size:15px;line-height:1.5;margin:0}
+.cta-wrap{text-align:center;padding:20px 28px 24px}
+.cta{display:inline-block;padding:16px 36px;background:#1a3a2e;color:#FFCC33;text-decoration:none;border-radius:14px;font-weight:800;font-size:17px}
 .footer{padding:16px 24px;text-align:center;color:#9ca3af;font-size:12px;border-top:1px solid #f3f4f6}
 </style></head>
 <body><div class="wrap">
 <div class="header">
-  <h1>🌿 مجتمع مسلم ليدر</h1>
-  <p>عضوية الأسرة المسلمة</p>
+  <span class="emoji">🌟</span>
+  <h1>مبروك!</h1>
+  <p class="sub">عضويتك الرائدة جاهزة — أنشئ حسابك لتفعيلها</p>
 </div>
 <div class="body">
   <p>السلام عليكم ورحمة الله،</p>
-  <p>تمت دعوتك للانضمام إلى <strong>عضوية مجتمع مسلم ليدر</strong> — مجتمع حصري للأسر المسلمة الواعية.</p>
-  <p>لتفعيل عضويتك، يرجى إنشاء حساب على منصتنا باستخدام هذا البريد الإلكتروني:</p>
-  <a href="${registerUrl}" class="btn">أنشئ حسابك الآن</a>
+  <p>تم تخصيص <strong>عضوية رائدة حصرية</strong> لك في مجتمع مسلم ليدر. كل ما تحتاجه هو إنشاء حسابك بهذا البريد لتفعيلها فوراً:</p>
+  <div class="benefit"><span class="check">✅</span><p>مكتبة رقمية حصرية</p></div>
+  <div class="benefit"><span class="check">✅</span><p>فعاليات وأنشطة مجانية</p></div>
+  <div class="benefit"><span class="check">✅</span><p>مجتمع الأسرة المسلمة</p></div>
+  <div class="benefit"><span class="check">✅</span><p>تطبيق مسلم ليدر كاملاً</p></div>
 </div>
-<div class="footer">مسلم ليدر — ${siteUrl}</div>
+<div class="cta-wrap">
+  <a href="${registerUrl}" class="cta">فعّل عضويتي الآن ←</a>
+</div>
+<div class="footer">مسلم ليدر — ${siteUrl} · الرابط صالح 7 أيام</div>
 </div></body></html>`,
       });
     } catch (err) {

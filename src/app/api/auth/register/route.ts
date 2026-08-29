@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
+import { jwtVerify } from 'jose';
 import { prisma } from '@/lib/prisma';
 import { signToken, makeAuthCookie } from '@/lib/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
@@ -19,11 +20,24 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const name     = typeof body.name     === 'string' ? body.name.trim()     : '';
-    const email    = typeof body.email    === 'string' ? body.email.trim()    : '';
-    const password = typeof body.password === 'string' ? body.password        : '';
-    const phone    = typeof body.phone    === 'string' ? body.phone.trim()    : null;
+    const name        = typeof body.name        === 'string' ? body.name.trim()        : '';
+    const email       = typeof body.email       === 'string' ? body.email.trim()       : '';
+    const password    = typeof body.password    === 'string' ? body.password           : '';
+    const phone       = typeof body.phone       === 'string' ? body.phone.trim()       : null;
+    const inviteToken = typeof body.inviteToken === 'string' ? body.inviteToken.trim() : null;
     const marketingOptIn = body.marketingOptIn === true;
+
+    // Verify membership invite token if present
+    let inviteEmail: string | null = null;
+    if (inviteToken) {
+      try {
+        const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'dev-only-fallback-secret-not-for-production');
+        const { payload } = await jwtVerify(inviteToken, secret);
+        if ((payload as Record<string, unknown>).type === 'membership-invite' && typeof payload.email === 'string') {
+          inviteEmail = (payload.email as string).toLowerCase();
+        }
+      } catch { /* invalid/expired token — treat as no invite */ }
+    }
 
     // ── Input validation ──────────────────────────────────────────────────────
     if (!name || !email || !password) {
@@ -72,9 +86,13 @@ export async function POST(req: NextRequest) {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Admin accounts skip email verification
-    const verificationToken = isAdmin ? null : crypto.randomBytes(32).toString('hex');
-    const verificationTokenExpiry = isAdmin ? null : new Date(Date.now() + 24 * 60 * 60 * 1000);
+    // Valid invite must match the registering email
+    const hasValidInvite = !!(inviteEmail && inviteEmail === key);
+
+    // Admin accounts and invited users skip email verification
+    const skipVerification = isAdmin || hasValidInvite;
+    const verificationToken = skipVerification ? null : crypto.randomBytes(32).toString('hex');
+    const verificationTokenExpiry = skipVerification ? null : new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const user = await prisma.user.create({
       data: {
@@ -85,24 +103,67 @@ export async function POST(req: NextRequest) {
         role,
         savedAddresses: [],
         marketingOptIn,
-        emailVerified: isAdmin,
+        emailVerified: skipVerification,
         verificationToken,
         verificationTokenExpiry,
         communityMemberNumber,
       },
     });
 
-    // Admin accounts get logged in immediately; customers must verify email first
-    if (isAdmin) {
+    // Admin or invited user → auto-login immediately
+    if (isAdmin || hasValidInvite) {
+      // If invited, auto-create their membership
+      let membershipGranted = false;
+      if (hasValidInvite) {
+        try {
+          const inviteYear = String(new Date().getFullYear()).slice(1);
+          const latestMembership = await prisma.familyMembership.findFirst({
+            where: { membershipNumber: { startsWith: `ML-${inviteYear}-` } },
+            orderBy: { membershipNumber: 'desc' },
+            select: { membershipNumber: true },
+          });
+          let seq = 1;
+          if (latestMembership?.membershipNumber) {
+            const parts = latestMembership.membershipNumber.split('-');
+            seq = (parseInt(parts[parts.length - 1], 10) || 0) + 1;
+          }
+          const membershipNumber = `ML-${inviteYear}-${String(seq).padStart(5, '0')}`;
+          const qrChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+          const qrBytes = crypto.randomBytes(8);
+          const qrToken = 'ML-' + Array.from(qrBytes, (b: number) => qrChars[b % qrChars.length]).join('');
+          const now = new Date();
+          const expiresAt = new Date(now);
+          expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+          const membership = await prisma.familyMembership.create({
+            data: {
+              ownerUserId: user.id,
+              membershipNumber,
+              qrToken,
+              memberSince: now.getFullYear(),
+              status: 'ACTIVE',
+              startsAt: now,
+              expiresAt,
+            },
+          });
+          await prisma.membershipRenewal.create({
+            data: { membershipId: membership.id, paypalOrderId: null, amountEgp: 0, expiresAt },
+          });
+          membershipGranted = true;
+        } catch (memberErr) {
+          console.error('[register] membership auto-grant failed', memberErr);
+        }
+      }
+
       const token = await signToken({ userId: user.id, email: user.email, role: user.role, name: user.name });
       const res = NextResponse.json({
         user: { id: user.id, name: user.name, email: user.email, phone: user.phone, savedAddresses: [] },
+        membershipGranted,
       });
       res.cookies.set(makeAuthCookie(token));
       return res;
     }
 
-    // Send verification email
+    // Regular customer → send verification email
     try {
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://moslimleader.com';
       const verifyUrl = `${siteUrl}/verify-email?token=${verificationToken}`;
@@ -148,7 +209,6 @@ export async function POST(req: NextRequest) {
       });
     } catch (mailErr) {
       console.error('[register] email send failed:', mailErr);
-      // Don't fail registration if email fails — user can resend
     }
 
     return NextResponse.json(

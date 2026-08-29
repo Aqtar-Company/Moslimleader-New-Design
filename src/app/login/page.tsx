@@ -11,10 +11,12 @@ function AuthContent() {
   const rawRedirect = searchParams.get('redirect') || '/';
   const redirect = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/';
   const initMode = searchParams.get('mode') === 'signup' ? 'signup' : 'signin';
+  const initEmail = searchParams.get('email') || '';
+  const inviteToken = searchParams.get('inviteToken') || '';
   const { signIn, signUp } = useAuth();
   const { lang } = useLang();
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>(initMode);
-  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', marketingOptIn: false });
+  const [form, setForm] = useState({ name: '', email: initEmail, password: '', phone: '', marketingOptIn: false });
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -56,11 +58,12 @@ function AuthContent() {
         setLoading(false);
         return;
       }
-      result = await signUp(form.name, form.email, form.password, form.phone, form.marketingOptIn);
+      result = await signUp(form.name, form.email, form.password, form.phone, form.marketingOptIn, inviteToken || undefined);
     }
     setLoading(false);
     if (result.needsVerification) { setVerifyEmail(result.email || form.email); return; }
     if (result.error) { setError(result.error); return; }
+    if ('membershipGranted' in result && result.membershipGranted) { router.push('/membership?celebrate=1'); return; }
     router.push(redirect);
   }
 

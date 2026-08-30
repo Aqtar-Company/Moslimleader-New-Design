@@ -12,7 +12,7 @@ interface Props {
   isPlaying?: boolean;
   onPageChange: (p: number) => void;
   onVerseClick?: (ch: number, v: number) => void;
-  onAyahTap?: (info: { chapterId: number; verseNumber: number; text: string; openTafsir?: boolean }) => void;
+  onAyahTap?: (info: { chapterId: number; verseNumber: number; text: string }) => void;
   onPageTap?: () => void;
 }
 

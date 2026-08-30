@@ -128,6 +128,107 @@ function MushafFooter({ hizb, page }: { hizb: number; page: number }) {
   );
 }
 
+// ── Text line — auto shrink-to-fit ─────────────────────────────────────────
+// QCF4 words are fixed-width precomposed glyphs (no Uthmani letter-stretching
+// the way the printed Mushaf has), so a handful of dense lines (measured: 21
+// of 604 pages, up to 18px at a 390px-wide phone) overflow the fixed-width
+// overflow:hidden row and get silently clipped on the left. Measure each
+// row's natural width against its available width and squeeze it down with
+// scaleX only when it doesn't fit — invisible on the ~97% of lines that
+// already fit, since scaleX stays 1.
+function LineRow({
+  words, justify, fontSize, isPlaying, currentChapter, currentVerse,
+  verseTextMap, onAyahTap, onVerseClick, checkAttachRef,
+}: {
+  words: MushafWord[];
+  justify: string;
+  fontSize: number | string;
+  isPlaying?: boolean;
+  currentChapter: number;
+  currentVerse: number;
+  verseTextMap: Map<string, string>;
+  onAyahTap?: (info: { chapterId: number; verseNumber: number; text: string }) => void;
+  onVerseClick?: (chapter: number, verse: number) => void;
+  checkAttachRef: (isHl: boolean) => React.RefObject<HTMLSpanElement> | undefined;
+}) {
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  const [scaleX, setScaleX] = useState(1);
+
+  useEffect(() => {
+    const el = rowRef.current;
+    if (!el) return;
+    const measure = () => {
+      const overflow = el.scrollWidth - el.clientWidth;
+      setScaleX(overflow > 0 ? el.clientWidth / el.scrollWidth : 1);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [words]);
+
+  return (
+    <div
+      ref={rowRef}
+      dir="rtl"
+      style={{
+        display: 'flex',
+        flexDirection: 'row',
+        flexWrap: 'nowrap',
+        justifyContent: justify,
+        alignItems: 'baseline',
+        direction: 'rtl',
+        fontSize,
+        lineHeight: 2.1,
+        width: '100%',
+        minHeight: 0,
+        overflow: 'hidden',
+        transform: scaleX < 1 ? `scaleX(${scaleX})` : undefined,
+        // space-between/space-around have no free space to distribute once a
+        // line overflows, so they degenerate to flush-right with all the
+        // excess spilling past the left edge (RTL flex-start is the right
+        // edge). Anchor the shrink there so the visible right edge doesn't
+        // shift; a genuinely centered line (justify:'center') scales from its
+        // own center since it already overflows symmetrically both sides.
+        transformOrigin: justify === 'center' ? 'center' : 'right center',
+      }}
+    >
+      {words.map((word, wi) => {
+        const clickable = word.type === 'word' || word.type === 'end';
+        const isHl = isPlaying === true && clickable
+          && word.surah === currentChapter && word.verse === currentVerse;
+
+        return (
+          <span
+            key={wi}
+            ref={checkAttachRef(isHl)}
+            onClick={clickable ? () => {
+              const verseText = verseTextMap.get(`${word.surah}:${word.verse}`) ?? word.text;
+              onAyahTap?.({ chapterId: word.surah, verseNumber: word.verse, text: verseText });
+              onVerseClick?.(word.surah, word.verse);
+            } : undefined}
+            style={{
+              display: 'inline',
+              whiteSpace: 'nowrap',
+              fontFamily: `"${word.font}"`,
+              color: word.type === 'end' ? '#7a5200' : '#010101',
+              background: isHl ? 'rgba(190,160,80,0.25)' : 'transparent',
+              borderRadius: isHl ? 4 : 0,
+              padding: isHl ? '1px 3px' : undefined,
+              cursor: clickable ? 'pointer' : 'default',
+              transition: 'background .15s',
+              WebkitTouchCallout: 'none',
+              flexShrink: 0,
+            }}
+          >
+            {word.char}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Props ────────────────────────────────────────────────────────────────
 interface Props {
   page: number;
@@ -301,58 +402,22 @@ export default function MushafQCFPage({
     const fontSize = opening ? 24 : 'clamp(20px, 6vw, 28px)';
 
     return (
-      <div
+      <LineRow
         key={line.line}
-        dir="rtl"
-        style={{
-          display: 'flex',
-          flexDirection: 'row',
-          flexWrap: 'nowrap',
-          justifyContent: justify,
-          alignItems: 'baseline',
-          direction: 'rtl',
-          fontSize,
-          lineHeight: 2.1,
-          width: '100%',
-          minHeight: 0,
-          overflow: 'hidden',
+        words={words}
+        justify={justify}
+        fontSize={fontSize}
+        isPlaying={isPlaying}
+        currentChapter={currentChapter}
+        currentVerse={currentVerse}
+        verseTextMap={verseTextMap}
+        onAyahTap={onAyahTap}
+        onVerseClick={onVerseClick}
+        checkAttachRef={(isHl) => {
+          if (isHl && !hlRefAttached) { hlRefAttached = true; return hlRef; }
+          return undefined;
         }}
-      >
-        {words.map((word, wi) => {
-          const clickable = word.type === 'word' || word.type === 'end';
-          const isHl = isPlaying === true && clickable
-            && word.surah === currentChapter && word.verse === currentVerse;
-          const attachRef = isHl && !hlRefAttached;
-          if (attachRef) hlRefAttached = true;
-
-          return (
-            <span
-              key={wi}
-              ref={attachRef ? hlRef : undefined}
-              onClick={clickable ? () => {
-                const verseText = verseTextMap.get(`${word.surah}:${word.verse}`) ?? word.text;
-                onAyahTap?.({ chapterId: word.surah, verseNumber: word.verse, text: verseText });
-                onVerseClick?.(word.surah, word.verse);
-              } : undefined}
-              style={{
-                display: 'inline',
-                whiteSpace: 'nowrap',
-                fontFamily: `"${word.font}"`,
-                color: word.type === 'end' ? '#7a5200' : '#010101',
-                background: isHl ? 'rgba(190,160,80,0.25)' : 'transparent',
-                borderRadius: isHl ? 4 : 0,
-                padding: isHl ? '1px 3px' : undefined,
-                cursor: clickable ? 'pointer' : 'default',
-                transition: 'background .15s',
-                WebkitTouchCallout: 'none',
-                flexShrink: 0,
-              }}
-            >
-              {word.char}
-            </span>
-          );
-        })}
-      </div>
+      />
     );
   }
 }

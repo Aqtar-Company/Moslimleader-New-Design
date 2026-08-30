@@ -81,6 +81,9 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   // Reading mode scroll handler — only active in 'both' tab
   useEffect(() => {
     if (mode !== 'both') { setHeaderHidden(false); return; }
+    // Mushaf reading is immersive by default — no header/footer chrome until
+    // the user taps the page (see toggleChrome / onPageTap below).
+    setHeaderHidden(true);
     const onScroll = () => {
       const y = window.scrollY;
       const delta = y - lastScrollYRef.current;
@@ -293,6 +296,12 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
     }
   }
 
+  // A light tap on the Mushaf page (not a long-press on a word) reveals or
+  // re-hides the header/footer chrome — the page itself stays full-bleed.
+  function toggleChrome() {
+    setHeaderHidden(h => !h);
+  }
+
   function changeMode(m: Mode) {
     setMode(m);
     localStorage.setItem('khatmati-mode', m);
@@ -404,6 +413,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
               if (idx >= 0) goVerse(idx);
             }}
             onAyahTap={setTappedVerse}
+            onPageTap={toggleChrome}
           />
         )}
 
@@ -615,7 +625,12 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
       {/* ── Audio player (fixed bottom — both mode only) ── */}
       {mode === 'both' && (
         <div className="fixed bottom-0 left-0 right-0 z-40"
-          style={{ background: 'rgba(240,232,210,0.97)', borderTop: '1px solid rgba(171,136,68,0.3)', boxShadow: '0 -4px 24px rgba(90,62,16,0.12)', backdropFilter: 'blur(12px)' }}>
+          style={{
+            background: 'rgba(240,232,210,0.97)', borderTop: '1px solid rgba(171,136,68,0.3)', boxShadow: '0 -4px 24px rgba(90,62,16,0.12)', backdropFilter: 'blur(12px)',
+            // Shares headerHidden with the top bar — a light tap on the Mushaf
+            // page's background (see onPageTap) shows/hides both together.
+            transform: headerHidden ? 'translateY(100%)' : 'translateY(0)', transition: 'transform 0.25s ease',
+          }}>
 
           <div style={{ height: 3, background: 'rgba(171,136,68,0.15)' }} dir="ltr">
             <div style={{ height: '100%', background: 'linear-gradient(90deg, #c8a84b, #e8c870)', width: `${audioProgress * 100}%`, transition: 'width 0.3s linear' }} />

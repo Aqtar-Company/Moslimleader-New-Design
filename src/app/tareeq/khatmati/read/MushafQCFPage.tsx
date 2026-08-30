@@ -60,7 +60,7 @@ function SurahHeader({ word, nameArabic }: { word: MushafWord; nameArabic: strin
 function BismillahLine({ word }: { word: MushafWord }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 10 }}>
-      <span style={{ fontFamily: `"${word.font}"`, fontSize: 30, color: '#0a0500', lineHeight: 1.6 }} translate="no">
+      <span style={{ fontFamily: `"${word.font}"`, fontSize: 27, color: '#0a0500', lineHeight: 1.6 }} translate="no">
         {word.char}
       </span>
     </div>
@@ -84,7 +84,7 @@ function PageSideIcon({ page }: { page: number }) {
 
 function MushafTopMetadata({ juz, surahLabel, page }: { juz: number; surahLabel: string; page: number }) {
   return (
-    <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 18px 8px' }}>
+    <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 18px 8px', maxWidth: 520, margin: '0 auto', width: '100%' }}>
       <span style={{ fontSize: 12.5, fontWeight: 600, color: '#0a0500', fontFamily: UI_FONT, lineHeight: 1.4 }}>
         {juz ? juzLabel(juz) : ''}
       </span>
@@ -118,7 +118,7 @@ function PageNumberBadge({ page }: { page: number }) {
 
 function MushafFooter({ hizb, page }: { hizb: number; page: number }) {
   return (
-    <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 18px 10px', flexShrink: 0 }}>
+    <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 18px 10px', flexShrink: 0, maxWidth: 520, margin: '0 auto', width: '100%' }}>
       <span style={{ fontSize: 12, color: '#0a0500', fontFamily: UI_FONT, fontWeight: 500, minWidth: 60 }}>
         {hizb ? `الحزب ${hizb}` : ''}
       </span>
@@ -147,6 +147,13 @@ function MushafFooter({ hizb, page }: { hizb: number; page: number }) {
 // into a distorted, oversized line just to reach both edges.
 const FULL_LINE_THRESHOLD = 0.6;
 
+// Long-press (not a short tap) on an ayah opens its tafsir — a short tap just
+// syncs the audio cursor to that verse, same as before (which already reveals
+// the header via goVerse). The page-wide "light tap that reveals the chrome"
+// lives on the page's own background (see onPageTap on the root element in
+// MushafQCFPage) so it only fires for taps that don't land on a word.
+const LONG_PRESS_MS = 500;
+
 function LineRow({
   words, compact, fontSize, isPlaying, currentChapter, currentVerse,
   verseTextMap, onAyahTap, onVerseClick, checkAttachRef,
@@ -158,11 +165,13 @@ function LineRow({
   currentChapter: number;
   currentVerse: number;
   verseTextMap: Map<string, string>;
-  onAyahTap?: (info: { chapterId: number; verseNumber: number; text: string }) => void;
+  onAyahTap?: (info: { chapterId: number; verseNumber: number; text: string; openTafsir?: boolean }) => void;
   onVerseClick?: (chapter: number, verse: number) => void;
   checkAttachRef: (isHl: boolean) => React.RefObject<HTMLSpanElement> | undefined;
 }) {
   const rowRef = useRef<HTMLDivElement | null>(null);
+  const mountedRef = useRef(true);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
   const [layout, setLayout] = useState<{ justify: 'center' | 'flex-start'; scaleX: number }>({ justify: 'center', scaleX: 1 });
 
   useLayoutEffect(() => {
@@ -228,15 +237,37 @@ function LineRow({
         const isHl = isPlaying === true && clickable
           && word.surah === currentChapter && word.verse === currentVerse;
 
+        // Plain closures per word span — recreated each render, no hooks-in-a-loop issue.
+        let pressTimer: ReturnType<typeof setTimeout> | null = null;
+        let longPressed = false;
+        const clearPressTimer = () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } };
+
         return (
           <span
             key={wi}
             ref={checkAttachRef(isHl)}
-            onClick={clickable ? () => {
-              const verseText = verseTextMap.get(`${word.surah}:${word.verse}`) ?? word.text;
-              onAyahTap?.({ chapterId: word.surah, verseNumber: word.verse, text: verseText });
+            onPointerDown={clickable ? () => {
+              longPressed = false;
+              pressTimer = setTimeout(() => {
+                longPressed = true;
+                if (!mountedRef.current) return;
+                const verseText = verseTextMap.get(`${word.surah}:${word.verse}`) ?? word.text;
+                onAyahTap?.({ chapterId: word.surah, verseNumber: word.verse, text: verseText, openTafsir: true });
+              }, LONG_PRESS_MS);
+            } : undefined}
+            onPointerUp={clickable ? clearPressTimer : undefined}
+            onPointerLeave={clickable ? clearPressTimer : undefined}
+            onPointerCancel={clickable ? clearPressTimer : undefined}
+            // Deliberately a click handler, not pointerup: native click is
+            // suppressed by the browser after a drag (a page-turn swipe), so
+            // this only ever fires for a genuine stationary tap/long-press —
+            // pointerup alone would also fire at the end of every swipe.
+            onClick={clickable ? (e) => {
+              e.stopPropagation();
+              if (longPressed) return; // already handled by the long-press timer
               onVerseClick?.(word.surah, word.verse);
             } : undefined}
+            onContextMenu={clickable ? (e) => e.preventDefault() : undefined}
             style={{
               display: 'inline',
               whiteSpace: 'nowrap',
@@ -267,14 +298,15 @@ interface Props {
   currentVerse: number;
   isPlaying?: boolean;
   onVerseClick?: (chapter: number, verse: number) => void;
-  onAyahTap?: (info: { chapterId: number; verseNumber: number; text: string }) => void;
+  onAyahTap?: (info: { chapterId: number; verseNumber: number; text: string; openTafsir?: boolean }) => void;
+  onPageTap?: () => void;
   autoFollow?: boolean;
 }
 
 // ── Main component ───────────────────────────────────────────────────────
 export default function MushafQCFPage({
   page, currentChapter, currentVerse, isPlaying,
-  onVerseClick, onAyahTap, autoFollow,
+  onVerseClick, onAyahTap, onPageTap, autoFollow,
 }: Props) {
   const opening = isOpeningPage(page);
   // "قصار السور" (juz 30, An-Naba → An-Nas) has naturally short ayahs — edge-to-edge
@@ -367,15 +399,23 @@ export default function MushafQCFPage({
   }
 
   return (
-    <div style={{
-      ...pageBackground,
-      minHeight: '100%',
-      width: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      userSelect: 'none',
-      WebkitUserSelect: 'none',
-    }}>
+    <div
+      // A tap anywhere on the page that isn't a word (margins, the metadata
+      // rows, the footer) reaches here and reveals the hidden header/footer
+      // chrome. A click handler (not pointerup) so a page-turn swipe never
+      // triggers it — native click is suppressed after a drag. Word spans
+      // stopPropagation on their own click so this only fires for genuine
+      // "background" taps.
+      onClick={() => onPageTap?.()}
+      style={{
+        ...pageBackground,
+        minHeight: '100%',
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+      }}>
       <div style={{ flexShrink: 0 }}>
         <MushafTopMetadata juz={juz} surahLabel={surahLabel} page={page} />
       </div>
@@ -421,7 +461,7 @@ export default function MushafQCFPage({
     // Each JSON line = exactly ONE physical Mushaf line. LineRow decides for
     // itself (by measuring) whether this is a full line to stretch edge-to-edge
     // or a short one to center — see its comment for why.
-    const fontSize = opening ? 24 : 'clamp(20px, 6vw, 28px)';
+    const fontSize = opening ? 23 : 'clamp(19px, 5.7vw, 27px)';
 
     return (
       <LineRow

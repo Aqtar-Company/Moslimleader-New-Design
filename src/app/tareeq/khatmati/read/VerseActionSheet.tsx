@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { SURAH_NAMES_AR } from '@/lib/quran-data';
 
-export interface TappedVerse { chapterId: number; verseNumber: number; text: string; }
+export interface TappedVerse { chapterId: number; verseNumber: number; text: string; openTafsir?: boolean; }
 
 interface Props { verse: TappedVerse; onClose: () => void; }
 
@@ -39,7 +39,7 @@ function rRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h
 }
 
 export default function VerseActionSheet({ verse, onClose }: Props) {
-  const [view, setView] = useState<'menu' | 'tafsir' | 'card'>('menu');
+  const [view, setView] = useState<'menu' | 'tafsir' | 'card'>(verse.openTafsir ? 'tafsir' : 'menu');
   const [tafsir, setTafsir] = useState('');
   const [loading, setLoading] = useState(false);
   const [cardUrl, setCardUrl] = useState<string | null>(null);
@@ -52,6 +52,12 @@ export default function VerseActionSheet({ verse, onClose }: Props) {
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
+
+  // Long-press on an ayah opens straight into the tafsir view — fetch immediately.
+  useEffect(() => {
+    if (verse.openTafsir) fetchTafsir();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function fetchTafsir(): Promise<string> {
     if (tafsir) return tafsir;

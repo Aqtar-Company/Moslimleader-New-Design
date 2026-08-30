@@ -1,24 +1,33 @@
 // Module-level cache — persists across React re-renders for the browser session.
+//
+// Data source: QCF4 (Quran Complex Font v4) — Madinah Mushaf 1441 AH, Uthman Taha
+// calligraphy, King Fahd Complex. Each word is ONE precomposed glyph (PUA codepoint)
+// in one of 47 per-page-range fonts, so no Arabic shaping is needed — just render
+// `char` with `font-family: word.font`. See /mushaf-qcf4/ for the raw dataset.
 
 export interface MushafWord {
-  location: string;   // "surah:verse:wordIndex"
-  word: string;       // real Arabic Unicode text
-  surah: number;      // parsed from location
-  verse: number;      // parsed from location
-  position: number;   // parsed from location (1-based)
+  char: string;        // precomposed glyph character to render
+  font: string;        // font-family required to render `char` (QCF4_Hafs_NN or QCF4_QBSML)
+  text: string;        // plain Arabic text (for verse-text lookups, sharing, tafsir taps)
+  type: 'word' | 'end' | 'surah_header' | 'bismillah' | 'quarter';
+  surah: number;        // 0 when not applicable
+  verse: number;        // 0 when not applicable
 }
 
 export interface MushafLine {
   line: number;
-  type: 'text' | 'surah-header' | 'basmala';
-  text?: string;        // for type=text — full line Arabic text
-  verseRange?: string;  // for type=text — "surah:verse-surah:verse"
-  words?: MushafWord[];
-  surah?: string;       // for type=surah-header — "001" format
+  words: MushafWord[];
+}
+
+export interface SurahOnPage {
+  id: number;
+  nameArabic: string;
 }
 
 export interface PageData {
   page: number;
+  font: string;           // primary QCF4_Hafs_NN font for this page (from font-map.json)
+  surahs: SurahOnPage[];
   lines: MushafLine[];
 }
 
@@ -52,18 +61,47 @@ const _cache = new Map<number, PageData>();
 const _inflight = new Map<number, Promise<PageData | null>>();
 
 function pageUrl(page: number): string {
-  return `/Mushaf-nori/Mushaf/page-${String(page).padStart(3, '0')}.json`;
+  return `/mushaf-qcf4/pages/${String(page).padStart(3, '0')}.json`;
 }
 
-function parseLocation(location: string): { surah: number; verse: number; position: number } {
-  const [s, v, p] = location.split(':').map(Number);
-  return { surah: s ?? 0, verse: v ?? 0, position: p ?? 0 };
+function parseVerseKey(key: string | undefined): { surah: number; verse: number } {
+  if (!key) return { surah: 0, verse: 0 };
+  const [s, v] = key.split(':').map(Number);
+  return { surah: s ?? 0, verse: v ?? 0 };
 }
 
-function processWords(rawWords: Array<{ location: string; word: string; qpcV2?: string; qpcV1?: string }>): MushafWord[] {
+interface RawWord {
+  char: string;
+  font: string;
+  text?: string;
+  type: MushafWord['type'];
+  verse_key?: string;
+  sura?: number;
+}
+
+interface RawLine {
+  line: number;
+  words: RawWord[];
+}
+
+interface RawPage {
+  page: number;
+  font: string;
+  surahs?: Array<{ id: number; name_arabic: string }>;
+  lines: RawLine[];
+}
+
+function processWords(rawWords: RawWord[]): MushafWord[] {
   return rawWords.map(w => {
-    const { surah, verse, position } = parseLocation(w.location);
-    return { location: w.location, word: w.word, surah, verse, position };
+    const { surah, verse } = parseVerseKey(w.verse_key);
+    return {
+      char: w.char,
+      font: w.font,
+      text: w.text ?? '',
+      type: w.type,
+      surah: surah || w.sura || 0,
+      verse,
+    };
   });
 }
 
@@ -77,20 +115,14 @@ export function fetchAndCachePage(page: number): Promise<PageData | null> {
 
   const p = fetch(pageUrl(page))
     .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
-    .then((raw: { page: number; lines: Array<{
-      line: number; type: string; text?: string;
-      verseRange?: string; words?: Array<{ location: string; word: string }>;
-      surah?: string;
-    }> }) => {
+    .then((raw: RawPage) => {
       const data: PageData = {
         page: raw.page,
+        font: raw.font,
+        surahs: (raw.surahs ?? []).map(s => ({ id: s.id, nameArabic: s.name_arabic })),
         lines: raw.lines.map(l => ({
           line: l.line,
-          type: l.type as MushafLine['type'],
-          text: l.text,
-          verseRange: l.verseRange,
-          surah: l.surah,
-          words: l.words ? processWords(l.words) : undefined,
+          words: processWords(l.words ?? []),
         })),
       };
       _cache.set(page, data);

@@ -7,7 +7,31 @@ export interface TappedVerse { chapterId: number; verseNumber: number; text: str
 
 interface Props { verse: TappedVerse; onClose: () => void; }
 
-const MUYASSAR_ID = 169;
+// The hardcoded id here was wrong (returned English Ibn Kathir tafsir instead
+// of Arabic "التفسير الميسر") — resolved dynamically instead of guessing
+// another number: fetch the tafsir resource list once, find the entry whose
+// name contains "الميسر", and cache its real id for the rest of the session.
+const MUYASSAR_ID_FALLBACK = 169;
+let _muyassarIdPromise: Promise<number> | null = null;
+function resolveMuyassarTafsirId(): Promise<number> {
+  if (_muyassarIdPromise) return _muyassarIdPromise;
+  _muyassarIdPromise = fetch('https://api.qurancdn.com/api/qdc/resources/tafsirs?locale=ar')
+    .then(r => r.json())
+    .then((data: unknown) => {
+      const list: unknown[] = (data as { tafsirs?: unknown[]; data?: unknown[] })?.tafsirs
+        ?? (data as { tafsirs?: unknown[]; data?: unknown[] })?.data
+        ?? [];
+      for (const entry of list) {
+        if (JSON.stringify(entry).includes('الميسر')) {
+          const id = (entry as { id?: unknown })?.id;
+          if (typeof id === 'number') return id;
+        }
+      }
+      return MUYASSAR_ID_FALLBACK;
+    })
+    .catch(() => MUYASSAR_ID_FALLBACK);
+  return _muyassarIdPromise;
+}
 const QF = '"Amiri Quran","Scheherazade New","Traditional Arabic",serif';
 const AF = '"Amiri","Scheherazade New",serif';
 
@@ -63,7 +87,8 @@ export default function VerseActionSheet({ verse, onClose }: Props) {
     if (tafsir) return tafsir;
     setLoading(true);
     try {
-      const res = await fetch(`https://api.qurancdn.com/api/qdc/tafsirs/${MUYASSAR_ID}/by_ayah/${verseKey}`);
+      const tafsirId = await resolveMuyassarTafsirId();
+      const res = await fetch(`https://api.qurancdn.com/api/qdc/tafsirs/${tafsirId}/by_ayah/${verseKey}`);
       const data = await res.json();
       const html: string = data?.tafsir?.text ?? data?.data?.tafsir?.text ?? '';
       const stripped = html.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();

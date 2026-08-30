@@ -279,9 +279,13 @@ function LineRow({
               fontFamily: `"${word.font}"`,
               fontSize: word.type === 'end' ? '0.72em' : undefined,
               color: word.type === 'end' ? '#7a5200' : '#010101',
-              background: isHl ? 'rgba(190,160,80,0.25)' : 'transparent',
-              borderRadius: isHl ? 4 : 0,
-              padding: isHl ? '1px 3px' : undefined,
+              // Padding/radius are constant regardless of isHl — only the
+              // background color toggles. Making them conditional on isHl
+              // (as before) changed the word's own box size the instant it
+              // got highlighted, reading as the word "growing".
+              background: isHl ? 'rgba(190,160,80,0.32)' : 'transparent',
+              borderRadius: clickable ? 6 : 0,
+              padding: clickable ? '4px 3px' : undefined,
               cursor: clickable ? 'pointer' : 'default',
               transition: 'background .15s',
               WebkitTouchCallout: 'none',

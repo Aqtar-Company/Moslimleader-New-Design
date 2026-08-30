@@ -111,6 +111,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
+  const [repeatVerse, setRepeatVerse] = useState(false);
 
   // New UI state
   const [reciterId, setReciterId] = useState('ar.alafasy');
@@ -134,6 +135,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   const versesRef   = useRef<QuranVerse[]>([]);
   const currentRef  = useRef(0);
   const playingRef  = useRef(false);
+  const repeatRef   = useRef(false);
   const pageRef     = useRef(initialPage);
   const audioRef    = useRef<HTMLAudioElement | null>(null);
   const saveTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -170,6 +172,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   useEffect(() => { versesRef.current = verses; }, [verses]);
   useEffect(() => { currentRef.current = currentIdx; }, [currentIdx]);
   useEffect(() => { playingRef.current = isPlaying; }, [isPlaying]);
+  useEffect(() => { repeatRef.current = repeatVerse; }, [repeatVerse]);
   useEffect(() => { pageRef.current = page; }, [page]);
 
   // Cleanup on unmount
@@ -271,6 +274,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
       if (!isMountedRef.current) return;
       setAudioProgress(0);
       if (!playingRef.current) return;
+      if (repeatRef.current) { playFromRef(); return; }
       const next = currentRef.current + 1;
       if (next < versesRef.current.length) {
         currentRef.current = next;
@@ -411,7 +415,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
         style={{ transform: (mode === 'both' && headerHidden) ? 'translateY(-100%)' : 'translateY(0)', transition: 'transform 0.25s ease' }}>
         {/* Row 1: surah list (right) | page nav | search | back arrow (left) */}
         <div className="flex items-center gap-2 px-3 py-2" dir="rtl"
-          style={{ background: mode === 'both' ? 'rgba(247,242,232,0.97)' : 'var(--tr-header-bg)', backdropFilter: 'blur(16px)', borderBottom: mode === 'both' ? '1px solid rgba(171,136,68,0.2)' : '1px solid var(--tr-border-subtle)' }}>
+          style={{ background: mode === 'both' ? 'rgba(247,242,232,0.55)' : 'var(--tr-header-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderBottom: mode === 'both' ? '1px solid rgba(171,136,68,0.2)' : '1px solid var(--tr-border-subtle)' }}>
 
           {/* Surah list button — rightmost in RTL */}
           <button onClick={() => setShowSearch(true)}
@@ -446,7 +450,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
         </div>
 
         {/* Row 2: Mode tabs — right→left: استماع | قراءة واستماع */}
-        <div className="flex" style={{ background: mode === 'both' ? 'rgba(240,232,210,0.97)' : 'var(--tr-surface)', borderBottom: mode === 'both' ? '1px solid rgba(171,136,68,0.2)' : '1px solid var(--tr-border-subtle)' }}>
+        <div className="flex" style={{ background: mode === 'both' ? 'rgba(240,232,210,0.5)' : 'var(--tr-surface)', backdropFilter: mode === 'both' ? 'blur(20px)' : undefined, WebkitBackdropFilter: mode === 'both' ? 'blur(20px)' : undefined, borderBottom: mode === 'both' ? '1px solid rgba(171,136,68,0.2)' : '1px solid var(--tr-border-subtle)' }}>
           {(['listen', 'both'] as Mode[]).map(m => (
             <button key={m} onClick={() => changeMode(m)}
               className="flex-1 py-2.5 text-xs font-bold transition"
@@ -586,27 +590,45 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                     ))}
                   </div>
 
-                  {/* Reciter chip */}
-                  <button onClick={() => setShowReciterPicker(true)} style={{
-                    display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
-                    background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
-                    borderRadius: 20, padding: '6px 14px', cursor: 'pointer',
-                  }}>
-                    <div style={{
-                      width: 22, height: 22, borderRadius: '50%',
-                      background: RECITERS.find(x => x.id === reciterId)?.color ?? '#1a4a8a',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 10, color: '#fff', fontWeight: 700,
+                  {/* Reciter chip + repeat-ayah toggle */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                    <button onClick={() => setShowReciterPicker(true)} style={{
+                      display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
+                      background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: 20, padding: '6px 14px', cursor: 'pointer',
                     }}>
-                      {(RECITERS.find(x => x.id === reciterId)?.nameAr ?? 'م')[0]}
-                    </div>
-                    <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontFamily: qFont }}>
-                      {RECITERS.find(x => x.id === reciterId)?.nameAr ?? ''}
-                    </span>
-                    <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                    </svg>
-                  </button>
+                      <div style={{
+                        width: 22, height: 22, borderRadius: '50%',
+                        background: RECITERS.find(x => x.id === reciterId)?.color ?? '#1a4a8a',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 10, color: '#fff', fontWeight: 700,
+                      }}>
+                        {(RECITERS.find(x => x.id === reciterId)?.nameAr ?? 'م')[0]}
+                      </div>
+                      <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontFamily: qFont }}>
+                        {RECITERS.find(x => x.id === reciterId)?.nameAr ?? ''}
+                      </span>
+                      <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    </button>
+
+                    <button onClick={() => setRepeatVerse(r => !r)} title={isRtl ? 'تكرار الآية' : 'Repeat ayah'} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      width: 34, height: 34, borderRadius: '50%', flexShrink: 0, cursor: 'pointer',
+                      background: repeatVerse ? 'linear-gradient(135deg, #60a5fa, #2563eb)' : 'rgba(255,255,255,0.08)',
+                      border: repeatVerse ? '1px solid rgba(147,197,253,0.6)' : '1px solid rgba(255,255,255,0.15)',
+                      boxShadow: repeatVerse ? '0 2px 10px rgba(37,99,235,0.45)' : 'none',
+                      transition: 'background .2s, box-shadow .2s',
+                    }}>
+                      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={repeatVerse ? '#fff' : 'rgba(255,255,255,0.6)'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17 2.1l4 4-4 4"/>
+                        <path d="M3 12.1v-2a4 4 0 0 1 4-4h14"/>
+                        <path d="M7 21.9l-4-4 4-4"/>
+                        <path d="M21 11.9v2a4 4 0 0 1-4 4H3"/>
+                      </svg>
+                    </button>
+                  </div>
 
                   {/* Verse text card — all touch events intercepted to block Android Google Search */}
                   <div dir="rtl"
@@ -717,7 +739,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
       {mode === 'both' && (
         <div className="fixed bottom-0 left-0 right-0 z-40"
           style={{
-            background: 'rgba(240,232,210,0.97)', borderTop: '1px solid rgba(171,136,68,0.3)', boxShadow: '0 -4px 24px rgba(90,62,16,0.12)', backdropFilter: 'blur(12px)',
+            background: 'rgba(240,232,210,0.55)', borderTop: '1px solid rgba(171,136,68,0.3)', boxShadow: '0 -4px 24px rgba(90,62,16,0.12)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
             // Shares headerHidden with the top bar — a light tap on the Mushaf
             // page's background (see onPageTap) shows/hides both together.
             transform: headerHidden ? 'translateY(100%)' : 'translateY(0)', transition: 'transform 0.25s ease',

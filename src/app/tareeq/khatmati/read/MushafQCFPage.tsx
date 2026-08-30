@@ -176,18 +176,19 @@ function LineRow({
   onPageTap?: () => void;
   checkAttachRef: (isHl: boolean) => React.RefObject<HTMLSpanElement> | undefined;
 }) {
-  // Two elements, not one — this is load-bearing. overflow:hidden and
-  // transform on the SAME element clip based on that element's PRE-transform
-  // layout size (verified: a scaled-down overflowing row still loses
-  // whatever didn't fit before the scale — the transform can't "unclip"
-  // content that was already discarded at layout/paint time). Putting the
-  // clip on an outer wrapper (always width:100%) and the transform on an
-  // inner row (always width:max-content, so nothing about IT ever needs
-  // clipping) makes the outer's overflow correctly track the inner's
-  // rendered/transformed footprint instead.
+  // Fitting a line to the available width now adjusts the GAP between
+  // words, not a uniform transform — a transform squeezes/stretches every
+  // glyph's own shape (visibly distorted letters, and it stretches the
+  // gaps between words too, which read as "extra" empty space on lines
+  // that only needed a little help reaching the edge). Shrinking or growing
+  // only the space BETWEEN words leaves every glyph exactly its natural,
+  // undistorted shape. CSS `gap` can't go negative, though — for the rare
+  // line still too wide at gap:0 (all words already touching), a small
+  // residual scaleX is the fallback, kept separate from the two-element
+  // clip/transform split below so it stays safe when it's actually needed.
   const outerRef = useRef<HTMLDivElement | null>(null);
   const rowRef = useRef<HTMLDivElement | null>(null);
-  const [layout, setLayout] = useState<{ justify: 'center' | 'flex-start'; scaleX: number }>({ justify: 'center', scaleX: 1 });
+  const [layout, setLayout] = useState<{ justify: 'center' | 'flex-start'; gap: number; scaleX: number }>({ justify: 'center', gap: 0, scaleX: 1 });
 
   useLayoutEffect(() => {
     const outer = outerRef.current;
@@ -195,13 +196,26 @@ function LineRow({
     if (!outer || !row) return;
     const measure = () => {
       const available = outer.clientWidth;
-      // row is permanently width:max-content, so scrollWidth is always its
-      // true natural width — no more temporarily mutating width to measure.
-      const naturalWidth = row.scrollWidth;
-      if (!compact && naturalWidth / available >= FULL_LINE_THRESHOLD) {
-        setLayout({ justify: 'flex-start', scaleX: available / naturalWidth });
+      // Measure at gap:0 first — this is each word's own natural width
+      // (including its own padding) with zero artificial space between
+      // them, i.e. the tightest the line can possibly get without scaling.
+      row.style.gap = '0px';
+      const minWidth = row.scrollWidth;
+      const gapCount = words.length - 1;
+      if (!compact && minWidth / available >= FULL_LINE_THRESHOLD) {
+        if (gapCount > 0 && minWidth <= available) {
+          // Normal case: distribute the remaining room evenly between
+          // words (or compress it out of existing padding-driven gaps)
+          // so the line reaches the edge with no distortion at all.
+          setLayout({ justify: 'flex-start', gap: (available - minWidth) / gapCount, scaleX: 1 });
+        } else {
+          // Even fully tight, this line's own glyphs exceed the width —
+          // extremely rare; fall back to a minimal, last-resort scale.
+          setLayout({ justify: 'flex-start', gap: 0, scaleX: minWidth > available ? available / minWidth : 1 });
+        }
       } else {
-        setLayout({ justify: 'center', scaleX: naturalWidth > available ? available / naturalWidth : 1 });
+        // Short/compact line — natural tight spacing, no stretching.
+        setLayout({ justify: 'center', gap: 0, scaleX: minWidth > available ? available / minWidth : 1 });
       }
     };
     measure();
@@ -246,6 +260,9 @@ function LineRow({
         // its width cap) while the whole page still fits without clipping.
         lineHeight: 1.85,
         width: 'max-content',
+        gap: layout.gap > 0 ? `${layout.gap}px` : undefined,
+        // Only the rare fallback case (see the measure() comment above)
+        // ever sets a scaleX other than 1 — the normal fit is via gap.
         transform: layout.scaleX !== 1 ? `scaleX(${layout.scaleX})` : undefined,
         // A full (flex-start) line is anchored at the right — RTL's start
         // edge — so scaling never shifts where the line begins, only how far
@@ -296,7 +313,7 @@ function LineRow({
               // got highlighted, reading as the word "growing".
               background: isHl ? 'rgba(190,160,80,0.32)' : 'transparent',
               borderRadius: clickable ? 6 : 0,
-              padding: clickable ? '4px 3px' : undefined,
+              padding: clickable ? '3px 2px' : undefined,
               cursor: clickable ? 'pointer' : 'default',
               transition: 'background .15s',
               WebkitTouchCallout: 'none',

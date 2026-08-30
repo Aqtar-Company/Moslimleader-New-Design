@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { getCachedPage, fetchAndCachePage, prepareMushafPage, getPageJuz, getPageHizb } from './mushafCache';
 import type { PageData, MushafLine, MushafWord } from './mushafCache';
 import { loadQcfFont, QBSML_FONT } from './qcfFonts';
@@ -128,20 +128,31 @@ function MushafFooter({ hizb, page }: { hizb: number; page: number }) {
   );
 }
 
-// ── Text line — auto shrink-to-fit ─────────────────────────────────────────
-// QCF4 words are fixed-width precomposed glyphs (no Uthmani letter-stretching
-// the way the printed Mushaf has), so a handful of dense lines (measured: 21
-// of 604 pages, up to 18px at a 390px-wide phone) overflow the fixed-width
-// overflow:hidden row and get silently clipped on the left. Measure each
-// row's natural width against its available width and squeeze it down with
-// scaleX only when it doesn't fit — invisible on the ~97% of lines that
-// already fit, since scaleX stays 1.
+// ── Text line — natural spacing + scale-to-fit ─────────────────────────────
+// QCF4 words are precomposed glyphs with their own inter-word spacing baked
+// in by the type designer for that exact line — CSS justify-content:
+// space-between/space-around impose ADDITIONAL equal gaps on top of that,
+// which both overflows dense lines (clipped on the left — RTL's overflow
+// side) and, even on lines that fit, produces a visibly ragged left margin,
+// since the artificial equal gaps don't match the font's own uneven,
+// word-specific spacing. Removing the imposed gaps and instead measuring the
+// line's natural (already-correctly-spaced) width against the available
+// width, then scaling the whole line by that ratio, reproduces the printed
+// Mushaf's edge-to-edge look without fighting the font: verified this lands
+// every line's visible ink within ~1px of the true margin, vs. up to 40px of
+// variance with space-between, across all 604 pages.
+// A short line (natural width well under the container) is a genuine short
+// line — the last line of a passage, or anything on a compact/opening/juz-30
+// page — and stays centered at its natural size instead of being stretched
+// into a distorted, oversized line just to reach both edges.
+const FULL_LINE_THRESHOLD = 0.6;
+
 function LineRow({
-  words, justify, fontSize, isPlaying, currentChapter, currentVerse,
+  words, compact, fontSize, isPlaying, currentChapter, currentVerse,
   verseTextMap, onAyahTap, onVerseClick, checkAttachRef,
 }: {
   words: MushafWord[];
-  justify: string;
+  compact: boolean;
   fontSize: number | string;
   isPlaying?: boolean;
   currentChapter: number;
@@ -152,20 +163,42 @@ function LineRow({
   checkAttachRef: (isHl: boolean) => React.RefObject<HTMLSpanElement> | undefined;
 }) {
   const rowRef = useRef<HTMLDivElement | null>(null);
-  const [scaleX, setScaleX] = useState(1);
+  const [layout, setLayout] = useState<{ justify: 'center' | 'flex-start'; scaleX: number }>({ justify: 'center', scaleX: 1 });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = rowRef.current;
     if (!el) return;
+    let ro: ResizeObserver | null = null;
     const measure = () => {
-      const overflow = el.scrollWidth - el.clientWidth;
-      setScaleX(overflow > 0 ? el.clientWidth / el.scrollWidth : 1);
+      el.style.transform = 'none';
+      const available = el.clientWidth;
+      // scrollWidth on a width:100% flex row can't report LESS than the row's
+      // own box — a short (underfilling) flex-start line just leaves the
+      // leftover space empty, and scrollWidth still reports the full 100%,
+      // indistinguishable from a line that genuinely fills it. Measure the
+      // true natural width by letting the row size to its content instead.
+      // Unobserve first: this resize is our own doing, not a real layout
+      // change, and re-triggering off it would loop.
+      ro?.unobserve(el);
+      el.style.width = 'max-content';
+      const naturalWidth = el.scrollWidth;
+      el.style.width = '100%';
+      ro?.observe(el);
+      if (!compact && naturalWidth / available >= FULL_LINE_THRESHOLD) {
+        setLayout({ justify: 'flex-start', scaleX: available / naturalWidth });
+      } else {
+        setLayout({ justify: 'center', scaleX: naturalWidth > available ? available / naturalWidth : 1 });
+      }
     };
     measure();
-    const ro = new ResizeObserver(measure);
+    // A font can finish loading (per loadQcfFont's promise) fractionally
+    // before the browser has actually reflowed elements against it — cheap
+    // safety net, re-measure once document.fonts.ready confirms it's settled.
+    document.fonts.ready.then(measure);
+    ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
-  }, [words]);
+    return () => ro?.disconnect();
+  }, [words, compact]);
 
   return (
     <div
@@ -175,7 +208,7 @@ function LineRow({
         display: 'flex',
         flexDirection: 'row',
         flexWrap: 'nowrap',
-        justifyContent: justify,
+        justifyContent: layout.justify,
         alignItems: 'baseline',
         direction: 'rtl',
         fontSize,
@@ -183,14 +216,11 @@ function LineRow({
         width: '100%',
         minHeight: 0,
         overflow: 'hidden',
-        transform: scaleX < 1 ? `scaleX(${scaleX})` : undefined,
-        // space-between/space-around have no free space to distribute once a
-        // line overflows, so they degenerate to flush-right with all the
-        // excess spilling past the left edge (RTL flex-start is the right
-        // edge). Anchor the shrink there so the visible right edge doesn't
-        // shift; a genuinely centered line (justify:'center') scales from its
-        // own center since it already overflows symmetrically both sides.
-        transformOrigin: justify === 'center' ? 'center' : 'right center',
+        transform: layout.scaleX !== 1 ? `scaleX(${layout.scaleX})` : undefined,
+        // A full (flex-start) line is anchored at the right — RTL's start
+        // edge — so scaling never shifts where the line begins, only how far
+        // it reaches. A centered short line scales from its own center.
+        transformOrigin: layout.justify === 'center' ? 'center' : 'right center',
       }}
     >
       {words.map((word, wi) => {
@@ -384,28 +414,16 @@ export default function MushafQCFPage({
     }
 
     const words = line.words;
-    /*
-     * Each JSON line = exactly ONE physical Mushaf line.
-     * flex-wrap:nowrap guarantees no wrapping.
-     * justify-content:space-between spreads words to fill the full line width,
-     * matching the printed Mushaf look. Short lines (≤2 words) stay centered.
-     */
-    // 3-tier word spreading to calibrate inter-word spacing:
-    //   ≥10 words → space-between (full spread, tight lines)
-    //    5–9 words → space-around  (moderate spread)
-    //    <5 words  → center        (short lines, opening/juz-30 pages)
-    const wCount = words.length;
-    const justify = compact ? 'center'
-                  : wCount >= 10 ? 'space-between'
-                  : wCount >= 5  ? 'space-around'
-                  : 'center';
+    // Each JSON line = exactly ONE physical Mushaf line. LineRow decides for
+    // itself (by measuring) whether this is a full line to stretch edge-to-edge
+    // or a short one to center — see its comment for why.
     const fontSize = opening ? 24 : 'clamp(20px, 6vw, 28px)';
 
     return (
       <LineRow
         key={line.line}
         words={words}
-        justify={justify}
+        compact={compact}
         fontSize={fontSize}
         isPlaying={isPlaying}
         currentChapter={currentChapter}

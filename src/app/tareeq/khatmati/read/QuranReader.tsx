@@ -341,6 +341,21 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
     if (isPlaying) playFromRef();
   }
 
+  // "استماع" from the long-press action menu — jump to this verse and start
+  // playback unconditionally (unlike goVerse, which only resumes playback if
+  // already playing).
+  function listenToVerse(chapterId: number, verseNumber: number) {
+    const idx = versesRef.current.findIndex(x => x.chapter_id === chapterId && x.verse_number === verseNumber);
+    if (idx < 0) return;
+    currentRef.current = idx;
+    setCurrentIdx(idx);
+    setAutoFollow(true);
+    setHeaderHidden(false);
+    playingRef.current = true;
+    setIsPlaying(true);
+    playFromRef();
+  }
+
   // Fires on every manual page change — swipe is now the only way to turn
   // pages, so this (previously only wired to the prev/next buttons) has to
   // live on the swipe callback: stop playback and count the page toward
@@ -927,7 +942,11 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
       )}
       {/* Verse action sheet — tafsir + card */}
       {tappedVerse && (
-        <VerseActionSheet verse={tappedVerse} onClose={() => setTappedVerse(null)} />
+        <VerseActionSheet
+          verse={tappedVerse}
+          onClose={() => setTappedVerse(null)}
+          onListen={() => listenToVerse(tappedVerse.chapterId, tappedVerse.verseNumber)}
+        />
       )}
     </div>
   );

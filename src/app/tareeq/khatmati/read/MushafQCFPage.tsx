@@ -147,20 +147,19 @@ function MushafFooter({ hizb, page }: { hizb: number; page: number }) {
 // into a distorted, oversized line just to reach both edges.
 const FULL_LINE_THRESHOLD = 0.6;
 
-// Long-press (not a short tap) on an ayah opens its tafsir — a short tap just
-// syncs the audio cursor to that verse, same as before (which already reveals
-// the header via goVerse). The page-wide "light tap that reveals the chrome"
-// lives on the page's own background (see onPageTap on the root element in
-// MushafQCFPage) so it only fires for taps that don't land on a word.
-// Decided by elapsed time AT RELEASE (pointerdown timestamp vs. click time),
-// not by racing a setTimeout against a cancel-on-release handler — touch
-// event timing on mobile is inconsistent enough that the timer-race version
-// was firing the long-press action on ordinary short taps.
+// Long-press (not a short tap) on an ayah opens its action menu (استماع /
+// تفسير / مشاركة) — a short tap just syncs the audio cursor to that verse
+// and also counts as a "light tap" toggling the page's hidden header/footer
+// chrome, same as tapping the page's background. Decided by elapsed time AT
+// RELEASE (pointerdown timestamp vs. click time), not by racing a setTimeout
+// against a cancel-on-release handler — touch event timing on mobile is
+// inconsistent enough that the timer-race version was firing the long-press
+// action on ordinary short taps.
 const LONG_PRESS_MS = 500;
 
 function LineRow({
   words, compact, fontSize, isPlaying, currentChapter, currentVerse,
-  verseTextMap, onAyahTap, onVerseClick, checkAttachRef,
+  verseTextMap, onAyahTap, onVerseClick, onPageTap, checkAttachRef,
 }: {
   words: MushafWord[];
   compact: boolean;
@@ -169,8 +168,9 @@ function LineRow({
   currentChapter: number;
   currentVerse: number;
   verseTextMap: Map<string, string>;
-  onAyahTap?: (info: { chapterId: number; verseNumber: number; text: string; openTafsir?: boolean }) => void;
+  onAyahTap?: (info: { chapterId: number; verseNumber: number; text: string }) => void;
   onVerseClick?: (chapter: number, verse: number) => void;
+  onPageTap?: () => void;
   checkAttachRef: (isHl: boolean) => React.RefObject<HTMLSpanElement> | undefined;
 }) {
   const rowRef = useRef<HTMLDivElement | null>(null);
@@ -258,9 +258,10 @@ function LineRow({
               const held = Date.now() - pressStartAt;
               if (held >= LONG_PRESS_MS) {
                 const verseText = verseTextMap.get(`${word.surah}:${word.verse}`) ?? word.text;
-                onAyahTap?.({ chapterId: word.surah, verseNumber: word.verse, text: verseText, openTafsir: true });
+                onAyahTap?.({ chapterId: word.surah, verseNumber: word.verse, text: verseText });
               } else {
                 onVerseClick?.(word.surah, word.verse);
+                onPageTap?.();
               }
             } : undefined}
             onContextMenu={clickable ? (e) => e.preventDefault() : undefined}
@@ -294,7 +295,7 @@ interface Props {
   currentVerse: number;
   isPlaying?: boolean;
   onVerseClick?: (chapter: number, verse: number) => void;
-  onAyahTap?: (info: { chapterId: number; verseNumber: number; text: string; openTafsir?: boolean }) => void;
+  onAyahTap?: (info: { chapterId: number; verseNumber: number; text: string }) => void;
   onPageTap?: () => void;
   autoFollow?: boolean;
 }
@@ -471,6 +472,7 @@ export default function MushafQCFPage({
         verseTextMap={verseTextMap}
         onAyahTap={onAyahTap}
         onVerseClick={onVerseClick}
+        onPageTap={onPageTap}
         checkAttachRef={(isHl) => {
           if (isHl && !hlRefAttached) { hlRefAttached = true; return hlRef; }
           return undefined;

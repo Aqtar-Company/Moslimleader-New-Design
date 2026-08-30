@@ -3,9 +3,9 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { SURAH_NAMES_AR } from '@/lib/quran-data';
 
-export interface TappedVerse { chapterId: number; verseNumber: number; text: string; openTafsir?: boolean; }
+export interface TappedVerse { chapterId: number; verseNumber: number; text: string; }
 
-interface Props { verse: TappedVerse; onClose: () => void; }
+interface Props { verse: TappedVerse; onClose: () => void; onListen?: () => void; }
 
 // The hardcoded id here was wrong (returned English Ibn Kathir tafsir instead
 // of Arabic "التفسير الميسر") — resolved dynamically instead of guessing
@@ -62,8 +62,8 @@ function rRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h
   ctx.closePath();
 }
 
-export default function VerseActionSheet({ verse, onClose }: Props) {
-  const [view, setView] = useState<'menu' | 'tafsir' | 'card'>(verse.openTafsir ? 'tafsir' : 'menu');
+export default function VerseActionSheet({ verse, onClose, onListen }: Props) {
+  const [view, setView] = useState<'menu' | 'tafsir' | 'card'>('menu');
   const [tafsir, setTafsir] = useState('');
   const [loading, setLoading] = useState(false);
   const [cardUrl, setCardUrl] = useState<string | null>(null);
@@ -76,12 +76,6 @@ export default function VerseActionSheet({ verse, onClose }: Props) {
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
-
-  // Long-press on an ayah opens straight into the tafsir view — fetch immediately.
-  useEffect(() => {
-    if (verse.openTafsir) fetchTafsir();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   async function fetchTafsir(): Promise<string> {
     if (tafsir) return tafsir;
@@ -233,12 +227,23 @@ export default function VerseActionSheet({ verse, onClose }: Props) {
 
         {/* ── MENU ── */}
         {view === 'menu' && (
-          <div style={{ padding: '18px 20px 44px', display: 'flex', gap: 12 }}>
+          <div style={{ padding: '18px 20px 44px', display: 'flex', gap: 10 }}>
+            <button onClick={() => { onListen?.(); onClose(); }} style={{
+              flex: 1, padding: '14px 0', borderRadius: 14,
+              background: 'rgba(96,165,250,0.10)', border: '1px solid rgba(96,165,250,0.32)',
+              color: '#93c5fd', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+              fontFamily: AF, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}>
+              <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 5v14l11-7z"/>
+              </svg>
+              استماع
+            </button>
             <button onClick={openTafsir} style={{
-              flex: 1, padding: '16px 0', borderRadius: 14,
+              flex: 1, padding: '14px 0', borderRadius: 14,
               background: 'rgba(255,204,51,0.08)', border: '1px solid rgba(255,204,51,0.28)',
-              color: '#FFCC33', fontWeight: 700, fontSize: 16, cursor: 'pointer',
-              fontFamily: AF, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              color: '#FFCC33', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+              fontFamily: AF, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
             }}>
               <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.966 8.966 0 00-6 2.292m0-14.25v14.25"/>
@@ -246,15 +251,15 @@ export default function VerseActionSheet({ verse, onClose }: Props) {
               تفسير
             </button>
             <button onClick={openCard} style={{
-              flex: 1, padding: '16px 0', borderRadius: 14,
+              flex: 1, padding: '14px 0', borderRadius: 14,
               background: '#FFCC33', border: 'none',
-              color: '#081320', fontWeight: 700, fontSize: 16, cursor: 'pointer',
-              fontFamily: AF, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              color: '#081320', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+              fontFamily: AF, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
             }}>
               <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
-                <rect x="3" y="5" width="18" height="14" rx="2"/><path strokeLinecap="round" d="M3 10h18"/>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"/>
               </svg>
-              بطاقة
+              مشاركة
             </button>
           </div>
         )}

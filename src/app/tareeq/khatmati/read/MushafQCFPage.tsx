@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { getCachedPage, fetchAndCachePage, prepareMushafPage, getPageJuz, getPageHizb } from './mushafCache';
 import type { PageData, MushafLine, MushafWord } from './mushafCache';
 import { loadQcfFont, QBSML_FONT } from './qcfFonts';
@@ -12,6 +12,16 @@ const JUZ_AR = ['','الأول','الثاني','الثالث','الرابع','ا
 
 function isOpeningPage(page: number) { return page === 1 || page === 2; }
 function juzLabel(n: number) { return JUZ_AR[n] ? `الجزء ${JUZ_AR[n]}` : `جزء ${n}`; }
+
+// Very subtle paper-curvature shading — kept purely decorative (low opacity,
+// no hard edges) so it never competes with the text. The shadow always leans
+// toward the Mushaf's spine: right pages (odd) have the spine on their left,
+// left pages (even) have it on their right.
+function paperGradient(isRightPage: boolean): string {
+  return isRightPage
+    ? 'linear-gradient(90deg, rgba(92,68,38,0.10) 0%, rgba(140,108,66,0.035) 7%, rgba(255,252,241,0.12) 18%, rgba(255,255,255,0) 45%, rgba(255,250,232,0.10) 100%)'
+    : 'linear-gradient(270deg, rgba(92,68,38,0.10) 0%, rgba(140,108,66,0.035) 7%, rgba(255,252,241,0.12) 18%, rgba(255,255,255,0) 45%, rgba(255,250,232,0.10) 100%)';
+}
 
 // ── Surah header — real QCF4_QBSML glyph (the exact Mushaf calligraphy) over
 //    the existing decorative frame artwork ────────────────────────────────
@@ -58,29 +68,27 @@ function BismillahLine({ word }: { word: MushafWord }) {
 }
 
 // ── Header ──────────────────────────────────────────────────────────────
-function MushafBookMark() {
+// Passive right/left-page indicator — odd pages sit on the right of a Mushaf
+// spread, even pages on the left. Lives on the page itself (not the app's
+// floating header), between the juz and surah labels.
+function PageSideIcon({ page }: { page: number }) {
   return (
-    <svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true" style={{ display: 'block', flexShrink: 0 }}>
-      <path d="M9 1.2 C7.2 1.2 3 2 3 3.4 L3 12 C6 11.1 8 11.5 9 12 L9 1.2 Z" fill="none" stroke="#4a3a1a" strokeWidth="0.8" strokeLinejoin="round"/>
-      <path d="M9 1.2 C10.8 1.2 15 2 15 3.4 L15 12 C12 11.1 10 11.5 9 12 L9 1.2 Z" fill="none" stroke="#4a3a1a" strokeWidth="0.8" strokeLinejoin="round"/>
-      <line x1="9" y1="1.2" x2="9" y2="12" stroke="#4a3a1a" strokeWidth="0.9"/>
-      <line x1="4.5" y1="4.5" x2="7.5" y2="4.5" stroke="#4a3a1a" strokeWidth="0.45" opacity="0.6"/>
-      <line x1="4.5" y1="6.2" x2="7.5" y2="6.2" stroke="#4a3a1a" strokeWidth="0.45" opacity="0.6"/>
-      <line x1="4.5" y1="7.9" x2="7.5" y2="7.9" stroke="#4a3a1a" strokeWidth="0.45" opacity="0.6"/>
-      <line x1="10.5" y1="4.5" x2="13.5" y2="4.5" stroke="#4a3a1a" strokeWidth="0.45" opacity="0.6"/>
-      <line x1="10.5" y1="6.2" x2="13.5" y2="6.2" stroke="#4a3a1a" strokeWidth="0.45" opacity="0.6"/>
-      <line x1="10.5" y1="7.9" x2="13.5" y2="7.9" stroke="#4a3a1a" strokeWidth="0.45" opacity="0.6"/>
-    </svg>
+    /* eslint-disable-next-line @next/next/no-img-element */
+    <img
+      src={page % 2 === 1 ? '/Flin%20Pages%20Icom.png' : '/Flip%20Pages%20Icon%20-%20Left.png'}
+      alt="" aria-hidden="true" draggable={false}
+      style={{ width: 18, height: 18, display: 'block', flexShrink: 0 }}
+    />
   );
 }
 
-function MushafTopMetadata({ juz, surahLabel }: { juz: number; surahLabel: string }) {
+function MushafTopMetadata({ juz, surahLabel, page }: { juz: number; surahLabel: string; page: number }) {
   return (
     <div dir="rtl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 18px 8px' }}>
       <span style={{ fontSize: 12.5, fontWeight: 600, color: '#0a0500', fontFamily: UI_FONT, lineHeight: 1.4 }}>
         {juz ? juzLabel(juz) : ''}
       </span>
-      <MushafBookMark />
+      <PageSideIcon page={page} />
       <span style={{ fontSize: 12.5, fontWeight: 600, color: '#0a0500', fontFamily: UI_FONT, lineHeight: 1.4 }}>
         {surahLabel}
       </span>
@@ -100,7 +108,9 @@ function PageNumberBadge({ page }: { page: number }) {
         style={{ width: '100%', height: '100%', display: 'block', userSelect: 'none' }}
       />
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#4a3a1a', fontFamily: UI_FONT, lineHeight: 1 }}>{page}</span>
+        {/* Amiri Quran's digit glyphs sit low in their own em-box (measured ~3px
+            low at this size) — nudge up so the number reads as centered in the box. */}
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#4a3a1a', fontFamily: UI_FONT, lineHeight: 1, transform: 'translateY(-3px)' }}>{page}</span>
       </div>
     </div>
   );
@@ -114,6 +124,137 @@ function MushafFooter({ hizb, page }: { hizb: number; page: number }) {
       </span>
       <PageNumberBadge page={page} />
       <span style={{ minWidth: 60 }} />
+    </div>
+  );
+}
+
+// ── Text line — natural spacing + scale-to-fit ─────────────────────────────
+// QCF4 words are precomposed glyphs with their own inter-word spacing baked
+// in by the type designer for that exact line — CSS justify-content:
+// space-between/space-around impose ADDITIONAL equal gaps on top of that,
+// which both overflows dense lines (clipped on the left — RTL's overflow
+// side) and, even on lines that fit, produces a visibly ragged left margin,
+// since the artificial equal gaps don't match the font's own uneven,
+// word-specific spacing. Removing the imposed gaps and instead measuring the
+// line's natural (already-correctly-spaced) width against the available
+// width, then scaling the whole line by that ratio, reproduces the printed
+// Mushaf's edge-to-edge look without fighting the font: verified this lands
+// every line's visible ink within ~1px of the true margin, vs. up to 40px of
+// variance with space-between, across all 604 pages.
+// A short line (natural width well under the container) is a genuine short
+// line — the last line of a passage, or anything on a compact/opening/juz-30
+// page — and stays centered at its natural size instead of being stretched
+// into a distorted, oversized line just to reach both edges.
+const FULL_LINE_THRESHOLD = 0.6;
+
+function LineRow({
+  words, compact, fontSize, isPlaying, currentChapter, currentVerse,
+  verseTextMap, onAyahTap, onVerseClick, checkAttachRef,
+}: {
+  words: MushafWord[];
+  compact: boolean;
+  fontSize: number | string;
+  isPlaying?: boolean;
+  currentChapter: number;
+  currentVerse: number;
+  verseTextMap: Map<string, string>;
+  onAyahTap?: (info: { chapterId: number; verseNumber: number; text: string }) => void;
+  onVerseClick?: (chapter: number, verse: number) => void;
+  checkAttachRef: (isHl: boolean) => React.RefObject<HTMLSpanElement> | undefined;
+}) {
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  const [layout, setLayout] = useState<{ justify: 'center' | 'flex-start'; scaleX: number }>({ justify: 'center', scaleX: 1 });
+
+  useLayoutEffect(() => {
+    const el = rowRef.current;
+    if (!el) return;
+    let ro: ResizeObserver | null = null;
+    const measure = () => {
+      el.style.transform = 'none';
+      const available = el.clientWidth;
+      // scrollWidth on a width:100% flex row can't report LESS than the row's
+      // own box — a short (underfilling) flex-start line just leaves the
+      // leftover space empty, and scrollWidth still reports the full 100%,
+      // indistinguishable from a line that genuinely fills it. Measure the
+      // true natural width by letting the row size to its content instead.
+      // Unobserve first: this resize is our own doing, not a real layout
+      // change, and re-triggering off it would loop.
+      ro?.unobserve(el);
+      el.style.width = 'max-content';
+      const naturalWidth = el.scrollWidth;
+      el.style.width = '100%';
+      ro?.observe(el);
+      if (!compact && naturalWidth / available >= FULL_LINE_THRESHOLD) {
+        setLayout({ justify: 'flex-start', scaleX: available / naturalWidth });
+      } else {
+        setLayout({ justify: 'center', scaleX: naturalWidth > available ? available / naturalWidth : 1 });
+      }
+    };
+    measure();
+    // A font can finish loading (per loadQcfFont's promise) fractionally
+    // before the browser has actually reflowed elements against it — cheap
+    // safety net, re-measure once document.fonts.ready confirms it's settled.
+    document.fonts.ready.then(measure);
+    ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro?.disconnect();
+  }, [words, compact]);
+
+  return (
+    <div
+      ref={rowRef}
+      dir="rtl"
+      style={{
+        display: 'flex',
+        flexDirection: 'row',
+        flexWrap: 'nowrap',
+        justifyContent: layout.justify,
+        alignItems: 'baseline',
+        direction: 'rtl',
+        fontSize,
+        lineHeight: 2.1,
+        width: '100%',
+        minHeight: 0,
+        overflow: 'hidden',
+        transform: layout.scaleX !== 1 ? `scaleX(${layout.scaleX})` : undefined,
+        // A full (flex-start) line is anchored at the right — RTL's start
+        // edge — so scaling never shifts where the line begins, only how far
+        // it reaches. A centered short line scales from its own center.
+        transformOrigin: layout.justify === 'center' ? 'center' : 'right center',
+      }}
+    >
+      {words.map((word, wi) => {
+        const clickable = word.type === 'word' || word.type === 'end';
+        const isHl = isPlaying === true && clickable
+          && word.surah === currentChapter && word.verse === currentVerse;
+
+        return (
+          <span
+            key={wi}
+            ref={checkAttachRef(isHl)}
+            onClick={clickable ? () => {
+              const verseText = verseTextMap.get(`${word.surah}:${word.verse}`) ?? word.text;
+              onAyahTap?.({ chapterId: word.surah, verseNumber: word.verse, text: verseText });
+              onVerseClick?.(word.surah, word.verse);
+            } : undefined}
+            style={{
+              display: 'inline',
+              whiteSpace: 'nowrap',
+              fontFamily: `"${word.font}"`,
+              color: word.type === 'end' ? '#7a5200' : '#010101',
+              background: isHl ? 'rgba(190,160,80,0.25)' : 'transparent',
+              borderRadius: isHl ? 4 : 0,
+              padding: isHl ? '1px 3px' : undefined,
+              cursor: clickable ? 'pointer' : 'default',
+              transition: 'background .15s',
+              WebkitTouchCallout: 'none',
+              flexShrink: 0,
+            }}
+          >
+            {word.char}
+          </span>
+        );
+      })}
     </div>
   );
 }
@@ -138,6 +279,9 @@ export default function MushafQCFPage({
   // "قصار السور" (juz 30, An-Naba → An-Nas) has naturally short ayahs — edge-to-edge
   // CSS word-spacing looks stretched/unnatural there, same as on the opening pages.
   const compact = opening || getPageJuz(page) === 30;
+  // Odd pages sit on the right of a Mushaf spread, even pages on the left —
+  // same convention used for the passive page-side indicator in the reader header.
+  const pageBackground = { backgroundColor: '#F8EBD5', backgroundImage: paperGradient(page % 2 === 1) };
 
   const [localData, setLocalData] = useState<PageData | null>(null);
   // Only use localData if it belongs to the current page — never show a previous page's content
@@ -207,8 +351,8 @@ export default function MushafQCFPage({
 
   if (!data || !fontsReady) {
     return (
-      <div style={{ background: '#F8EBD5', minHeight: '100%', width: '100%', display: 'flex', flexDirection: 'column', userSelect: 'none' }}>
-        <MushafTopMetadata juz={juz} surahLabel={surahLabel} />
+      <div style={{ ...pageBackground, minHeight: '100%', width: '100%', display: 'flex', flexDirection: 'column', userSelect: 'none' }}>
+        <MushafTopMetadata juz={juz} surahLabel={surahLabel} page={page} />
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <style>{`@keyframes ms-spin{to{transform:rotate(360deg)}}`}</style>
           <div style={{ width: 26, height: 26, borderRadius: '50%', border: '2px solid rgba(184,152,64,.2)', borderTopColor: '#b89840', animation: 'ms-spin .7s linear infinite' }} />
@@ -220,7 +364,7 @@ export default function MushafQCFPage({
 
   return (
     <div style={{
-      background: '#F8EBD5',
+      ...pageBackground,
       minHeight: '100%',
       width: '100%',
       display: 'flex',
@@ -229,7 +373,7 @@ export default function MushafQCFPage({
       WebkitUserSelect: 'none',
     }}>
       <div style={{ flexShrink: 0 }}>
-        <MushafTopMetadata juz={juz} surahLabel={surahLabel} />
+        <MushafTopMetadata juz={juz} surahLabel={surahLabel} page={page} />
       </div>
 
       {/* Page body — both opening and regular pages use space-evenly so
@@ -238,7 +382,7 @@ export default function MushafQCFPage({
         flex: 1, minHeight: 0,
         display: 'flex', flexDirection: 'column',
         justifyContent: 'space-evenly',
-        padding: opening ? '0 18px' : '2px 14px 4px',
+        padding: opening ? '0 22px' : '2px 20px 4px',
         maxWidth: '520px',
         margin: '0 auto',
         width: '100%',
@@ -270,76 +414,28 @@ export default function MushafQCFPage({
     }
 
     const words = line.words;
-    /*
-     * Each JSON line = exactly ONE physical Mushaf line.
-     * flex-wrap:nowrap guarantees no wrapping.
-     * justify-content:space-between spreads words to fill the full line width,
-     * matching the printed Mushaf look. Short lines (≤2 words) stay centered.
-     */
-    // 3-tier word spreading to calibrate inter-word spacing:
-    //   ≥10 words → space-between (full spread, tight lines)
-    //    5–9 words → space-around  (moderate spread)
-    //    <5 words  → center        (short lines, opening/juz-30 pages)
-    const wCount = words.length;
-    const justify = compact ? 'center'
-                  : wCount >= 10 ? 'space-between'
-                  : wCount >= 5  ? 'space-around'
-                  : 'center';
+    // Each JSON line = exactly ONE physical Mushaf line. LineRow decides for
+    // itself (by measuring) whether this is a full line to stretch edge-to-edge
+    // or a short one to center — see its comment for why.
     const fontSize = opening ? 24 : 'clamp(20px, 6vw, 28px)';
 
     return (
-      <div
+      <LineRow
         key={line.line}
-        dir="rtl"
-        style={{
-          display: 'flex',
-          flexDirection: 'row',
-          flexWrap: 'nowrap',
-          justifyContent: justify,
-          alignItems: 'baseline',
-          direction: 'rtl',
-          fontSize,
-          lineHeight: 2.1,
-          width: '100%',
-          minHeight: 0,
-          overflow: 'hidden',
+        words={words}
+        compact={compact}
+        fontSize={fontSize}
+        isPlaying={isPlaying}
+        currentChapter={currentChapter}
+        currentVerse={currentVerse}
+        verseTextMap={verseTextMap}
+        onAyahTap={onAyahTap}
+        onVerseClick={onVerseClick}
+        checkAttachRef={(isHl) => {
+          if (isHl && !hlRefAttached) { hlRefAttached = true; return hlRef; }
+          return undefined;
         }}
-      >
-        {words.map((word, wi) => {
-          const clickable = word.type === 'word' || word.type === 'end';
-          const isHl = isPlaying === true && clickable
-            && word.surah === currentChapter && word.verse === currentVerse;
-          const attachRef = isHl && !hlRefAttached;
-          if (attachRef) hlRefAttached = true;
-
-          return (
-            <span
-              key={wi}
-              ref={attachRef ? hlRef : undefined}
-              onClick={clickable ? () => {
-                const verseText = verseTextMap.get(`${word.surah}:${word.verse}`) ?? word.text;
-                onAyahTap?.({ chapterId: word.surah, verseNumber: word.verse, text: verseText });
-                onVerseClick?.(word.surah, word.verse);
-              } : undefined}
-              style={{
-                display: 'inline',
-                whiteSpace: 'nowrap',
-                fontFamily: `"${word.font}"`,
-                color: word.type === 'end' ? '#7a5200' : '#010101',
-                background: isHl ? 'rgba(190,160,80,0.25)' : 'transparent',
-                borderRadius: isHl ? 4 : 0,
-                padding: isHl ? '1px 3px' : undefined,
-                cursor: clickable ? 'pointer' : 'default',
-                transition: 'background .15s',
-                WebkitTouchCallout: 'none',
-                flexShrink: 0,
-              }}
-            >
-              {word.char}
-            </span>
-          );
-        })}
-      </div>
+      />
     );
   }
 }

@@ -144,3 +144,34 @@ export function prefetchPage(page: number): void {
   if (page < 1 || page > 604) return;
   fetchAndCachePage(page);
 }
+
+// Surah-name glyphs from the QBSML font — the same calligraphic style used
+// for in-Mushaf surah header frames (see SurahHeader in MushafQCFPage.tsx).
+// "surah_headers_style_a" is qbsml.json's canonical, purpose-built set for
+// this exact use (one entry per surah, normally-kerned).
+let _surahGlyphs: Map<number, string> | null = null;
+let _surahGlyphsPromise: Promise<Map<number, string>> | null = null;
+
+interface QbsmlData {
+  sets: Array<{ name: string; entries: Array<{ sura: number; codepoint: number }> }>;
+}
+
+export function fetchSurahHeaderGlyphs(): Promise<Map<number, string>> {
+  if (_surahGlyphs) return Promise.resolve(_surahGlyphs);
+  if (_surahGlyphsPromise) return _surahGlyphsPromise;
+
+  const p = fetch('/mushaf-qcf4/qbsml.json')
+    .then(r => r.json())
+    .then((data: QbsmlData) => {
+      const map = new Map<number, string>();
+      const styleA = data.sets.find(s => s.name === 'surah_headers_style_a');
+      for (const e of styleA?.entries ?? []) map.set(e.sura, String.fromCharCode(e.codepoint));
+      _surahGlyphs = map;
+      return map;
+    })
+    .catch(() => new Map<number, string>())
+    .finally(() => { _surahGlyphsPromise = null; });
+
+  _surahGlyphsPromise = p;
+  return p;
+}

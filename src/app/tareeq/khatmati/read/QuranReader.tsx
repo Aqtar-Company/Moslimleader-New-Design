@@ -464,19 +464,17 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
       {/* ── Content area ── */}
       <div className="flex-1"
         style={{
+          position: 'relative',
           /*
-           * paddingTop is ALWAYS 88px — never transitions with header visibility.
-           * The header hides via transform:translateY(-100%) which does not affect
-           * layout. Keeping paddingTop constant means the carousel height never
-           * changes, so the CSS Grid rows never reflow and the Mushaf content
-           * never jumps vertically when the chrome shows or hides.
+           * In Mushaf mode, the page uses the FULL screen while the chrome is
+           * hidden (true immersive reading — no reserved gap at the top) and
+           * only makes room for the header/audio-player once a tap reveals
+           * them. 'listen' mode's chrome is always visible, so it keeps the
+           * constant reservation.
            */
-          paddingTop: 88,
-          /*
-           * In 'both' mode reserve space for the fixed audio player at the bottom.
-           * This keeps the carousel slots from extending behind the player.
-           */
-          paddingBottom: mode === 'both' ? 'calc(83px + env(safe-area-inset-bottom, 0px))' : 0,
+          paddingTop: mode === 'both' && headerHidden ? 0 : 88,
+          paddingBottom: mode === 'both' ? (headerHidden ? 0 : 'calc(83px + env(safe-area-inset-bottom, 0px))') : 0,
+          transition: 'padding 0.25s ease',
           ...(mode === 'both' ? { display: 'flex', flexDirection: 'column' } : {}),
         }}>
 
@@ -500,6 +498,14 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
             onAyahTap={setTappedVerse}
             onPageTap={toggleChrome}
           />
+        )}
+
+        {/* Dims the page whenever the header/footer chrome is showing — the
+            visual cue that you're outside pure reading mode. Purely visual:
+            pointerEvents:none lets the tap that hides the chrome again reach
+            the Mushaf page underneath. */}
+        {mode === 'both' && !headerHidden && (
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', pointerEvents: 'none', transition: 'opacity 0.25s ease', zIndex: 5 }} />
         )}
 
         {/* Listen mode — loading / error / content */}

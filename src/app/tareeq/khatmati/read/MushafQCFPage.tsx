@@ -384,7 +384,7 @@ export default function MushafQCFPage({
 
   if (!data || !fontsReady) {
     return (
-      <div style={{ ...pageBackground, minHeight: '100%', width: '100%', display: 'flex', flexDirection: 'column', userSelect: 'none' }}>
+      <div style={{ ...pageBackground, height: '100%', width: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', userSelect: 'none' }}>
         <MushafTopMetadata juz={juz} surahLabel={surahLabel} page={page} />
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <style>{`@keyframes ms-spin{to{transform:rotate(360deg)}}`}</style>
@@ -406,8 +406,14 @@ export default function MushafQCFPage({
       onClick={() => onPageTap?.()}
       style={{
         ...pageBackground,
-        minHeight: '100%',
+        // A fixed height (not minHeight) is load-bearing: it caps the page
+        // at exactly the space it's given, so the body's flex:1 + its own
+        // overflow:hidden actually constrain content instead of letting the
+        // whole page grow taller than the viewport and forcing the carousel
+        // slot to scroll — which is what "minHeight" was silently doing.
+        height: '100%',
         width: '100%',
+        overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
         userSelect: 'none',
@@ -458,7 +464,12 @@ export default function MushafQCFPage({
     // Each JSON line = exactly ONE physical Mushaf line. LineRow decides for
     // itself (by measuring) whether this is a full line to stretch edge-to-edge
     // or a short one to center — see its comment for why.
-    const fontSize = opening ? 23 : 'clamp(19px, 5.7vw, 27px)';
+    // Sized against BOTH viewport width and height (min() picks whichever is
+    // tighter) — the page has a fixed number of line slots, so on a short or
+    // wide viewport a width-only size can be taller than the space actually
+    // available, which combined with the page's fixed height (see the root
+    // element above) would clip lines instead of fitting them.
+    const fontSize = opening ? 'clamp(18px, 2.6vh, 23px)' : 'clamp(16px, min(5.7vw, 2.3vh), 27px)';
 
     return (
       <LineRow

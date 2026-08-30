@@ -268,14 +268,17 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
     if (isPlaying) playFromRef();
   }
 
-  function goPage(delta: number) {
-    const next = Math.max(1, Math.min(TOTAL_QURAN_PAGES, page + delta));
+  // Fires on every manual page change — swipe is now the only way to turn
+  // pages, so this (previously only wired to the prev/next buttons) has to
+  // live on the swipe callback: stop playback and count the page toward
+  // today's wird, same as the buttons used to.
+  function handlePageChange(next: number) {
     if (next === page) return;
     audioRef.current?.pause();
     setIsPlaying(false);
     playingRef.current = false;
+    pageRef.current = next;
     setPage(next);
-    // Track daily wird — each page navigation counts as one page read
     if (mode === 'both') {
       try {
         const today = new Date().toLocaleDateString('en-CA');
@@ -328,29 +331,22 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
             </span>
           </button>
 
-          {/* Prev page — right page filled (moving toward the start of the Mushaf) */}
-          <button onClick={() => goPage(-1)} disabled={page <= 1}
-            className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30 shrink-0"
-            style={{ background: mode === 'both' ? 'rgba(171,136,68,0.1)' : 'var(--tr-overlay)' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/Flin%20Pages%20Icom.png" alt="" draggable={false} className="w-4 h-4" />
-          </button>
-
-          {/* Page + surah info (center) */}
-          <div className="flex-1 text-center">
-            <p className="text-xs font-black leading-none" style={{ color: mode === 'both' ? '#2e1a00' : 'var(--tr-text-primary)' }}>
-              {isRtl ? `صفحة ${toArabicNum(page)}` : `Page ${page}`}
-            </p>
+          {/* Page + surah info (center) — no nav buttons, page turning is swipe-only.
+              The book icon is a passive right/left-page indicator, not a control:
+              odd pages sit on the right of a Mushaf spread, even pages on the left. */}
+          <div className="flex-1 flex flex-col items-center">
+            <div className="flex items-center gap-1.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={page % 2 === 1 ? '/Flin%20Pages%20Icom.png' : '/Flip%20Pages%20Icon%20-%20Left.png'}
+                alt="" aria-hidden="true" draggable={false} className="w-3.5 h-3.5 shrink-0"
+              />
+              <p className="text-xs font-black leading-none" style={{ color: mode === 'both' ? '#2e1a00' : 'var(--tr-text-primary)' }}>
+                {isRtl ? `صفحة ${toArabicNum(page)}` : `Page ${page}`}
+              </p>
+            </div>
             {cv && <p className="text-[10px] mt-0.5 leading-none" style={{ color: mode === 'both' ? '#7a5a30' : 'var(--tr-text-muted)' }}>{isRtl ? surahNameAr : surahNameEn}</p>}
           </div>
-
-          {/* Next page — left page filled (moving deeper into the Mushaf) */}
-          <button onClick={() => goPage(1)} disabled={page >= TOTAL_QURAN_PAGES}
-            className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30 shrink-0"
-            style={{ background: mode === 'both' ? 'rgba(171,136,68,0.1)' : 'var(--tr-overlay)' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/Flip%20Pages%20Icon%20-%20Left.png" alt="" draggable={false} className="w-4 h-4" />
-          </button>
 
           {/* Back button — goes to group page or nuri home */}
           <button onClick={() => router.push(groupId ? `/tareeq/khatmati/groups/${groupId}` : '/tareeq/khatmati')}
@@ -409,7 +405,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
             currentVerse={cv?.verse_number ?? initialAyah}
             autoFollow={autoFollow}
             isPlaying={isPlaying}
-            onPageChange={(p) => { pageRef.current = p; setPage(p); }}
+            onPageChange={handlePageChange}
             onVerseClick={(ch, v) => {
               const idx = versesRef.current.findIndex(x => x.chapter_id === ch && x.verse_number === v);
               if (idx >= 0) goVerse(idx);

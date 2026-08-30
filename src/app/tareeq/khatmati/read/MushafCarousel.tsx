@@ -12,7 +12,8 @@ interface Props {
   isPlaying?: boolean;
   onPageChange: (p: number) => void;
   onVerseClick?: (ch: number, v: number) => void;
-  onAyahTap?: (info: { chapterId: number; verseNumber: number; text: string }) => void;
+  onAyahTap?: (info: { chapterId: number; verseNumber: number; text: string; openTafsir?: boolean }) => void;
+  onPageTap?: () => void;
 }
 
 /**
@@ -35,7 +36,7 @@ interface Props {
 export default function MushafCarousel({
   page: extPage,
   currentChapter, currentVerse, autoFollow, isPlaying,
-  onPageChange, onVerseClick, onAyahTap,
+  onPageChange, onVerseClick, onAyahTap, onPageTap,
 }: Props) {
   const [page, setPage] = useState(extPage);
   const [dragX, setDragX] = useState(0);
@@ -173,6 +174,7 @@ export default function MushafCarousel({
           autoFollow={autoFollow}
           onVerseClick={onVerseClick}
           onAyahTap={onAyahTap}
+          onPageTap={onPageTap}
         />
       </div>
 

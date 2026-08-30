@@ -89,16 +89,20 @@ function MushafTopMetadata({ juz, surahLabel }: { juz: number; surahLabel: strin
 }
 
 // ── Footer ──────────────────────────────────────────────────────────────
-function FooterRosette() {
-  const G = '#b89840';
+// Page-number ornament already carries its own flourishes on both sides,
+// so it stands alone — no separate rosette bookends needed.
+function PageNumberBadge({ page }: { page: number }) {
   return (
-    <svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true" style={{ display: 'block', flexShrink: 0 }}>
-      <ellipse cx="5.5" cy="5.5" rx="2.2" ry="4.5" fill={G} opacity="0.85"/>
-      <ellipse cx="5.5" cy="5.5" rx="4.5" ry="2.2" fill={G} opacity="0.85"/>
-      <ellipse cx="5.5" cy="5.5" rx="2.2" ry="4.5" transform="rotate(45 5.5 5.5)" fill={G} opacity="0.85"/>
-      <ellipse cx="5.5" cy="5.5" rx="2.2" ry="4.5" transform="rotate(-45 5.5 5.5)" fill={G} opacity="0.85"/>
-      <circle cx="5.5" cy="5.5" r="1.6" fill="#F8EBD5"/>
-    </svg>
+    <div style={{ position: 'relative', width: 104, height: 26, flexShrink: 0 }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/quran-page-num-box.png" alt="" aria-hidden="true" draggable={false}
+        style={{ width: '100%', height: '100%', display: 'block', userSelect: 'none' }}
+      />
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#4a3a1a', fontFamily: UI_FONT, lineHeight: 1 }}>{page}</span>
+      </div>
+    </div>
   );
 }
 
@@ -108,13 +112,7 @@ function MushafFooter({ hizb, page }: { hizb: number; page: number }) {
       <span style={{ fontSize: 12, color: '#0a0500', fontFamily: UI_FONT, fontWeight: 500, minWidth: 60 }}>
         {hizb ? `الحزب ${hizb}` : ''}
       </span>
-      <div dir="ltr" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-        <FooterRosette />
-        <div style={{ minWidth: 36, height: 20, border: '1.5px solid #b89840', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 7px', background: 'rgba(184,152,64,0.07)' }}>
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: '#4a3a1a', fontFamily: UI_FONT, lineHeight: 1 }}>{page}</span>
-        </div>
-        <FooterRosette />
-      </div>
+      <PageNumberBadge page={page} />
       <span style={{ minWidth: 60 }} />
     </div>
   );

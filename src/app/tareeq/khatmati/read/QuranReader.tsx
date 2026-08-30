@@ -328,13 +328,12 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
             </span>
           </button>
 
-          {/* Prev page */}
+          {/* Prev page — right page filled (moving toward the start of the Mushaf) */}
           <button onClick={() => goPage(-1)} disabled={page <= 1}
             className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30 shrink-0"
-            style={{ background: mode === 'both' ? 'rgba(171,136,68,0.1)' : 'var(--tr-overlay)', color: mode === 'both' ? '#5a3e10' : 'var(--tr-text-secondary)' }}>
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-            </svg>
+            style={{ background: mode === 'both' ? 'rgba(171,136,68,0.1)' : 'var(--tr-overlay)' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/Flin%20Pages%20Icom.png" alt="" draggable={false} className="w-4 h-4" />
           </button>
 
           {/* Page + surah info (center) */}
@@ -345,13 +344,12 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
             {cv && <p className="text-[10px] mt-0.5 leading-none" style={{ color: mode === 'both' ? '#7a5a30' : 'var(--tr-text-muted)' }}>{isRtl ? surahNameAr : surahNameEn}</p>}
           </div>
 
-          {/* Next page */}
+          {/* Next page — left page filled (moving deeper into the Mushaf) */}
           <button onClick={() => goPage(1)} disabled={page >= TOTAL_QURAN_PAGES}
             className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-30 shrink-0"
-            style={{ background: mode === 'both' ? 'rgba(171,136,68,0.1)' : 'var(--tr-overlay)', color: mode === 'both' ? '#5a3e10' : 'var(--tr-text-secondary)' }}>
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-            </svg>
+            style={{ background: mode === 'both' ? 'rgba(171,136,68,0.1)' : 'var(--tr-overlay)' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/Flip%20Pages%20Icon%20-%20Left.png" alt="" draggable={false} className="w-4 h-4" />
           </button>
 
           {/* Back button — goes to group page or nuri home */}

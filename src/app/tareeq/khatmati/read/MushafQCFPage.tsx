@@ -241,6 +241,7 @@ function LineRow({
               display: 'inline',
               whiteSpace: 'nowrap',
               fontFamily: `"${word.font}"`,
+              fontSize: word.type === 'end' ? '0.72em' : undefined,
               color: word.type === 'end' ? '#7a5200' : '#010101',
               background: isHl ? 'rgba(190,160,80,0.25)' : 'transparent',
               borderRadius: isHl ? 4 : 0,
@@ -316,7 +317,10 @@ export default function MushafQCFPage({
     if (!data) return;
     let cancelled = false;
     setFontsReady(false);
-    Promise.all([loadQcfFont(data.font), loadQcfFont(QBSML_FONT)]).then(() => {
+    // Bismillah glyphs always use QCF4_Hafs_01 regardless of the page's own
+    // font (verified across pages 1, 2, 300, 577, 604), so it must always be
+    // loaded alongside the page's main font — not just when they coincide.
+    Promise.all([loadQcfFont(data.font), loadQcfFont(QBSML_FONT), loadQcfFont('QCF4_Hafs_01')]).then(() => {
       if (!cancelled) setFontsReady(true);
     });
     return () => { cancelled = true; };
@@ -382,7 +386,7 @@ export default function MushafQCFPage({
         flex: 1, minHeight: 0,
         display: 'flex', flexDirection: 'column',
         justifyContent: 'space-evenly',
-        padding: opening ? '0 22px' : '2px 20px 4px',
+        padding: opening ? '0 8px' : '2px 6px 4px',
         maxWidth: '520px',
         margin: '0 auto',
         width: '100%',

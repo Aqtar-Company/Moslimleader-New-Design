@@ -34,19 +34,22 @@ function SurahHeader({ word, nameArabic }: { word: MushafWord; nameArabic: strin
   }, []);
 
   return (
-    <div style={{ position: 'relative', width: '100%' }}>
+    // Frame narrowed to 82% (was 100%) and centered — since it keeps its own
+    // aspect ratio, a narrower frame is also a SHORTER one, freeing vertical
+    // space for the body's 15 line-slots on the page's now-fixed height.
+    <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center' }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/surah_header_mushaf.svg" alt="" aria-hidden="true" draggable={false}
-        style={{ width: '100%', height: 'auto', display: 'block', userSelect: 'none' }}
+        style={{ width: '82%', height: 'auto', display: 'block', userSelect: 'none' }}
       />
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {ready ? (
-          <span style={{ fontFamily: `"${word.font}"`, fontSize: 30, color: '#0a0500', lineHeight: 1 }} translate="no">
+          <span style={{ fontFamily: `"${word.font}"`, fontSize: 26, color: '#0a0500', lineHeight: 1 }} translate="no">
             {word.char}
           </span>
         ) : (
-          <span style={{ fontFamily: UI_FONT, fontSize: 18, fontWeight: 700, color: '#0a0500', lineHeight: 1 }}>
+          <span style={{ fontFamily: UI_FONT, fontSize: 16, fontWeight: 700, color: '#0a0500', lineHeight: 1 }}>
             {nameArabic}
           </span>
         )}
@@ -59,8 +62,8 @@ function SurahHeader({ word, nameArabic }: { word: MushafWord; nameArabic: strin
 //    of the page uses, so it never looks like a mismatched insert) ─────────
 function BismillahLine({ word }: { word: MushafWord }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 10 }}>
-      <span style={{ fontFamily: `"${word.font}"`, fontSize: 27, color: '#0a0500', lineHeight: 1.6 }} translate="no">
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 6 }}>
+      <span style={{ fontFamily: `"${word.font}"`, fontSize: 24, color: '#0a0500', lineHeight: 1.5 }} translate="no">
         {word.char}
       </span>
     </div>
@@ -223,7 +226,12 @@ function LineRow({
         alignItems: 'baseline',
         direction: 'rtl',
         fontSize,
-        lineHeight: 2.1,
+        // Tighter than a generic reading line-height on purpose — with 15
+        // fixed line-slots per page and a hard page-height cap (see the root
+        // element in MushafQCFPage), less vertical space per line means the
+        // vh-aware fontSize clamp below can pick a bigger size (closer to
+        // its width cap) while the whole page still fits without clipping.
+        lineHeight: 1.85,
         width: '100%',
         minHeight: 0,
         overflow: 'hidden',
@@ -469,7 +477,9 @@ export default function MushafQCFPage({
     // wide viewport a width-only size can be taller than the space actually
     // available, which combined with the page's fixed height (see the root
     // element above) would clip lines instead of fitting them.
-    const fontSize = opening ? 'clamp(18px, 2.6vh, 23px)' : 'clamp(16px, min(5.7vw, 2.3vh), 27px)';
+    // vh coefficients scaled up to match the tighter 1.85 line-height above
+    // (was tuned for 2.1) — same available height now buys a bigger font.
+    const fontSize = opening ? 'clamp(18px, 2.9vh, 24px)' : 'clamp(16px, min(5.9vw, 2.6vh), 28px)';
 
     return (
       <LineRow

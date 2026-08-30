@@ -326,25 +326,18 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
             <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" d="M4 6h16M4 12h10M4 18h7"/>
             </svg>
-            <span className="text-[11px] font-bold truncate">
+            <span className="text-[11px] font-bold truncate" style={{ fontFamily: qFont }}>
               {cv ? (isRtl ? surahNameAr : surahNameEn) : (isRtl ? 'السور' : 'Surahs')}
             </span>
           </button>
 
           {/* Page + surah info (center) — no nav buttons, page turning is swipe-only.
-              The book icon is a passive right/left-page indicator, not a control:
-              odd pages sit on the right of a Mushaf spread, even pages on the left. */}
-          <div className="flex-1 flex flex-col items-center">
-            <div className="flex items-center gap-1.5">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={page % 2 === 1 ? '/Flin%20Pages%20Icom.png' : '/Flip%20Pages%20Icon%20-%20Left.png'}
-                alt="" aria-hidden="true" draggable={false} className="w-3.5 h-3.5 shrink-0"
-              />
-              <p className="text-xs font-black leading-none" style={{ color: mode === 'both' ? '#2e1a00' : 'var(--tr-text-primary)' }}>
-                {isRtl ? `صفحة ${toArabicNum(page)}` : `Page ${page}`}
-              </p>
-            </div>
+              The right/left-page indicator lives on the Mushaf page itself
+              (MushafTopMetadata), not in this floating app header. */}
+          <div className="flex-1 text-center">
+            <p className="text-xs font-black leading-none" style={{ color: mode === 'both' ? '#2e1a00' : 'var(--tr-text-primary)' }}>
+              {isRtl ? `صفحة ${toArabicNum(page)}` : `Page ${page}`}
+            </p>
             {cv && <p className="text-[10px] mt-0.5 leading-none" style={{ color: mode === 'both' ? '#7a5a30' : 'var(--tr-text-muted)' }}>{isRtl ? surahNameAr : surahNameEn}</p>}
           </div>
 

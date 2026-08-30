@@ -152,6 +152,10 @@ const FULL_LINE_THRESHOLD = 0.6;
 // the header via goVerse). The page-wide "light tap that reveals the chrome"
 // lives on the page's own background (see onPageTap on the root element in
 // MushafQCFPage) so it only fires for taps that don't land on a word.
+// Decided by elapsed time AT RELEASE (pointerdown timestamp vs. click time),
+// not by racing a setTimeout against a cancel-on-release handler — touch
+// event timing on mobile is inconsistent enough that the timer-race version
+// was firing the long-press action on ordinary short taps.
 const LONG_PRESS_MS = 500;
 
 function LineRow({
@@ -170,8 +174,6 @@ function LineRow({
   checkAttachRef: (isHl: boolean) => React.RefObject<HTMLSpanElement> | undefined;
 }) {
   const rowRef = useRef<HTMLDivElement | null>(null);
-  const mountedRef = useRef(true);
-  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
   const [layout, setLayout] = useState<{ justify: 'center' | 'flex-start'; scaleX: number }>({ justify: 'center', scaleX: 1 });
 
   useLayoutEffect(() => {
@@ -237,35 +239,29 @@ function LineRow({
         const isHl = isPlaying === true && clickable
           && word.surah === currentChapter && word.verse === currentVerse;
 
-        // Plain closures per word span — recreated each render, no hooks-in-a-loop issue.
-        let pressTimer: ReturnType<typeof setTimeout> | null = null;
-        let longPressed = false;
-        const clearPressTimer = () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } };
+        // Plain closure per word span — recreated each render, no hooks-in-a-loop issue.
+        let pressStartAt = 0;
 
         return (
           <span
             key={wi}
             ref={checkAttachRef(isHl)}
-            onPointerDown={clickable ? () => {
-              longPressed = false;
-              pressTimer = setTimeout(() => {
-                longPressed = true;
-                if (!mountedRef.current) return;
-                const verseText = verseTextMap.get(`${word.surah}:${word.verse}`) ?? word.text;
-                onAyahTap?.({ chapterId: word.surah, verseNumber: word.verse, text: verseText, openTafsir: true });
-              }, LONG_PRESS_MS);
-            } : undefined}
-            onPointerUp={clickable ? clearPressTimer : undefined}
-            onPointerLeave={clickable ? clearPressTimer : undefined}
-            onPointerCancel={clickable ? clearPressTimer : undefined}
+            onPointerDown={clickable ? () => { pressStartAt = Date.now(); } : undefined}
             // Deliberately a click handler, not pointerup: native click is
             // suppressed by the browser after a drag (a page-turn swipe), so
             // this only ever fires for a genuine stationary tap/long-press —
             // pointerup alone would also fire at the end of every swipe.
+            // Long vs. short is decided here, from real elapsed time, rather
+            // than by a setTimeout racing a cancel-on-release handler.
             onClick={clickable ? (e) => {
               e.stopPropagation();
-              if (longPressed) return; // already handled by the long-press timer
-              onVerseClick?.(word.surah, word.verse);
+              const held = Date.now() - pressStartAt;
+              if (held >= LONG_PRESS_MS) {
+                const verseText = verseTextMap.get(`${word.surah}:${word.verse}`) ?? word.text;
+                onAyahTap?.({ chapterId: word.surah, verseNumber: word.verse, text: verseText, openTafsir: true });
+              } else {
+                onVerseClick?.(word.surah, word.verse);
+              }
             } : undefined}
             onContextMenu={clickable ? (e) => e.preventDefault() : undefined}
             style={{

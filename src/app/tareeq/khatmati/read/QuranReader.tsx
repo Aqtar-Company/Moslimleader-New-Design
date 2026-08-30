@@ -63,8 +63,13 @@ function QcfVerseText({ page, chapterId, verseNumber, fallback }: { page: number
 
   if (!words) return <>{fallback}</>;
 
+  // flexDirection:'row' + direction:'rtl' (not plain bidi text flow) — the
+  // QCF4 glyphs are PUA codepoints with no defined Unicode bidi class, so
+  // the browser's bidi algorithm doesn't reliably reorder them right-to-left
+  // on its own; flexbox's axis reversal doesn't depend on that at all. Same
+  // technique LineRow uses for the same reason in MushafQCFPage.
   return (
-    <span dir="rtl" style={{ direction: 'rtl' }}>
+    <span dir="rtl" style={{ display: 'inline-flex', flexDirection: 'row', flexWrap: 'wrap', direction: 'rtl', justifyContent: 'center' }}>
       {words.map((w, i) => (
         <span key={i} style={{
           fontFamily: `"${w.font}"`,

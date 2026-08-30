@@ -382,7 +382,7 @@ export default function MushafQCFPage({
         flex: 1, minHeight: 0,
         display: 'flex', flexDirection: 'column',
         justifyContent: 'space-evenly',
-        padding: opening ? '0 18px' : '2px 14px 4px',
+        padding: opening ? '0 22px' : '2px 20px 4px',
         maxWidth: '520px',
         margin: '0 auto',
         width: '100%',

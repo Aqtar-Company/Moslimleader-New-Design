@@ -49,7 +49,7 @@ function SurahHeader({ word, nameArabic }: { word: MushafWord; nameArabic: strin
 //    of the page uses, so it never looks like a mismatched insert) ─────────
 function BismillahLine({ word }: { word: MushafWord }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 10 }}>
       <span style={{ fontFamily: `"${word.font}"`, fontSize: 30, color: '#0a0500', lineHeight: 1.6 }} translate="no">
         {word.char}
       </span>

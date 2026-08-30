@@ -396,11 +396,15 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <svg width={10} height={10} viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="none" stroke={NURI_YELLOW} strokeWidth="1.5"/></svg>
-              <span style={{ fontSize: 10, color: TEXT_MUT }}>{isRtl ? 'الختمة' : 'Khatma'}</span>
+              <span style={{ fontSize: 10, color: TEXT_MUT }}>
+                {isRtl ? `الختمة — ${pct}%` : `Khatma — ${pct}%`}
+              </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <svg width={10} height={10} viewBox="0 0 10 10"><circle cx="5" cy="5" r="3" fill="none" stroke="rgba(255,204,51,0.65)" strokeWidth="1.5"/></svg>
-              <span style={{ fontSize: 10, color: TEXT_MUT }}>{isRtl ? 'الورد اليومي' : 'Daily wird'}</span>
+              <span style={{ fontSize: 10, color: TEXT_MUT }}>
+                {isRtl ? `الورد اليومي — ${Math.round(wardProgress * 100)}%` : `Daily wird — ${Math.round(wardProgress * 100)}%`}
+              </span>
             </div>
           </div>
         </div>
@@ -575,6 +579,32 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
                   </button>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* ── Quick stats ── */}
+        {p && (
+          <div style={{ paddingInline: 20, marginTop: 18, flexShrink: 0 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+              <div style={{ background: BG_CARD, border: `1px solid ${BG_CARD_BD}`, borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
+                <p style={{ fontSize: 18, fontWeight: 900, color: streak > 0 ? NURI_YELLOW : TEXT_MUT, margin: '0 0 2px' }}>
+                  {streak}{streak > 0 ? ' 🔥' : ''}
+                </p>
+                <p style={{ fontSize: 10, color: TEXT_MUT, margin: 0 }}>{isRtl ? 'يوم متتالي' : 'day streak'}</p>
+              </div>
+              <div style={{ background: BG_CARD, border: `1px solid ${BG_CARD_BD}`, borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
+                <p style={{ fontSize: 18, fontWeight: 900, color: NURI_YELLOW, margin: '0 0 2px' }}>
+                  {p.totalPagesRead}
+                </p>
+                <p style={{ fontSize: 10, color: TEXT_MUT, margin: 0 }}>{isRtl ? 'صفحة مقروءة' : 'pages read'}</p>
+              </div>
+              <div style={{ background: BG_CARD, border: `1px solid ${BG_CARD_BD}`, borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
+                <p style={{ fontSize: 18, fontWeight: 900, color: NURI_YELLOW, margin: '0 0 2px' }}>
+                  {dailyPages > 0 ? Math.max(0, Math.ceil((TOTAL_QURAN_PAGES - page) / dailyPages)) : '—'}
+                </p>
+                <p style={{ fontSize: 10, color: TEXT_MUT, margin: 0 }}>{isRtl ? 'يوم للختمة' : 'days to finish'}</p>
+              </div>
             </div>
           </div>
         )}

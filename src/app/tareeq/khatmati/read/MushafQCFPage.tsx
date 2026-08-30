@@ -49,8 +49,8 @@ function SurahHeader({ word, nameArabic }: { word: MushafWord; nameArabic: strin
 //    of the page uses, so it never looks like a mismatched insert) ─────────
 function BismillahLine({ word }: { word: MushafWord }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBlock: '6px' }}>
-      <span style={{ fontFamily: `"${word.font}"`, fontSize: 32, color: '#0a0500', lineHeight: 1 }} translate="no">
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <span style={{ fontFamily: `"${word.font}"`, fontSize: 30, color: '#0a0500', lineHeight: 1.6 }} translate="no">
         {word.char}
       </span>
     </div>
@@ -137,6 +137,9 @@ export default function MushafQCFPage({
   onVerseClick, onAyahTap, autoFollow,
 }: Props) {
   const opening = isOpeningPage(page);
+  // "قصار السور" (juz 30, An-Naba → An-Nas) has naturally short ayahs — edge-to-edge
+  // CSS word-spacing looks stretched/unnatural there, same as on the opening pages.
+  const compact = opening || getPageJuz(page) === 30;
 
   const [localData, setLocalData] = useState<PageData | null>(null);
   // Only use localData if it belongs to the current page — never show a previous page's content
@@ -278,10 +281,11 @@ export default function MushafQCFPage({
     // 3-tier word spreading to calibrate inter-word spacing:
     //   ≥10 words → space-between (full spread, tight lines)
     //    5–9 words → space-around  (moderate spread)
-    //    <5 words  → center        (short lines, opening pages)
+    //    <5 words  → center        (short lines, opening/juz-30 pages)
     const wCount = words.length;
-    const justify = (!opening && wCount >= 10) ? 'space-between'
-                  : (!opening && wCount >= 5)  ? 'space-around'
+    const justify = compact ? 'center'
+                  : wCount >= 10 ? 'space-between'
+                  : wCount >= 5  ? 'space-around'
                   : 'center';
     const fontSize = opening ? 24 : 'clamp(20px, 6vw, 28px)';
 

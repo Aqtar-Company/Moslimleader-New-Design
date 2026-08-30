@@ -470,15 +470,18 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
         style={{
           position: 'relative',
           /*
-           * In Mushaf mode, the page uses the FULL screen while the chrome is
-           * hidden (true immersive reading — no reserved gap at the top) and
-           * only makes room for the header/audio-player once a tap reveals
-           * them. 'listen' mode's chrome is always visible, so it keeps the
-           * constant reservation.
+           * In Mushaf mode the page NEVER reflows — it always fills the full
+           * screen (0 padding), whether the header/audio-player are shown or
+           * hidden. They're fixed-position OVERLAYS on top of it (see below),
+           * not space the layout reserves — that's what makes their
+           * backdrop-blur an actual glass effect (there's real page content
+           * behind them to blur) instead of blurring a blank reserved strip,
+           * and it means the page's own size/fontSize never jumps when the
+           * chrome toggles. 'listen' mode's chrome is a normal fixed top bar,
+           * so it keeps the constant reservation.
            */
-          paddingTop: mode === 'both' && headerHidden ? 0 : 88,
-          paddingBottom: mode === 'both' ? (headerHidden ? 0 : 'calc(83px + env(safe-area-inset-bottom, 0px))') : 0,
-          transition: 'padding 0.25s ease',
+          paddingTop: mode === 'both' ? 0 : 88,
+          paddingBottom: 0,
           ...(mode === 'both' ? { display: 'flex', flexDirection: 'column' } : {}),
         }}>
 

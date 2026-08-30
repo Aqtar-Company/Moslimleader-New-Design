@@ -176,28 +176,28 @@ function LineRow({
   onPageTap?: () => void;
   checkAttachRef: (isHl: boolean) => React.RefObject<HTMLSpanElement> | undefined;
 }) {
+  // Two elements, not one — this is load-bearing. overflow:hidden and
+  // transform on the SAME element clip based on that element's PRE-transform
+  // layout size (verified: a scaled-down overflowing row still loses
+  // whatever didn't fit before the scale — the transform can't "unclip"
+  // content that was already discarded at layout/paint time). Putting the
+  // clip on an outer wrapper (always width:100%) and the transform on an
+  // inner row (always width:max-content, so nothing about IT ever needs
+  // clipping) makes the outer's overflow correctly track the inner's
+  // rendered/transformed footprint instead.
+  const outerRef = useRef<HTMLDivElement | null>(null);
   const rowRef = useRef<HTMLDivElement | null>(null);
   const [layout, setLayout] = useState<{ justify: 'center' | 'flex-start'; scaleX: number }>({ justify: 'center', scaleX: 1 });
 
   useLayoutEffect(() => {
-    const el = rowRef.current;
-    if (!el) return;
-    let ro: ResizeObserver | null = null;
+    const outer = outerRef.current;
+    const row = rowRef.current;
+    if (!outer || !row) return;
     const measure = () => {
-      el.style.transform = 'none';
-      const available = el.clientWidth;
-      // scrollWidth on a width:100% flex row can't report LESS than the row's
-      // own box — a short (underfilling) flex-start line just leaves the
-      // leftover space empty, and scrollWidth still reports the full 100%,
-      // indistinguishable from a line that genuinely fills it. Measure the
-      // true natural width by letting the row size to its content instead.
-      // Unobserve first: this resize is our own doing, not a real layout
-      // change, and re-triggering off it would loop.
-      ro?.unobserve(el);
-      el.style.width = 'max-content';
-      const naturalWidth = el.scrollWidth;
-      el.style.width = '100%';
-      ro?.observe(el);
+      const available = outer.clientWidth;
+      // row is permanently width:max-content, so scrollWidth is always its
+      // true natural width — no more temporarily mutating width to measure.
+      const naturalWidth = row.scrollWidth;
       if (!compact && naturalWidth / available >= FULL_LINE_THRESHOLD) {
         setLayout({ justify: 'flex-start', scaleX: available / naturalWidth });
       } else {
@@ -209,20 +209,33 @@ function LineRow({
     // before the browser has actually reflowed elements against it — cheap
     // safety net, re-measure once document.fonts.ready confirms it's settled.
     document.fonts.ready.then(measure);
-    ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro?.disconnect();
+    const ro = new ResizeObserver(measure);
+    ro.observe(outer);
+    return () => ro.disconnect();
   }, [words, compact]);
 
   return (
     <div
-      ref={rowRef}
+      ref={outerRef}
       dir="rtl"
+      style={{
+        width: '100%',
+        minHeight: 0,
+        overflow: 'hidden',
+        direction: 'rtl',
+        display: 'flex',
+        // Positions the (max-content-width) row as a whole within the full
+        // available width — a single flex item has nothing for its OWN
+        // justify-content to distribute, so this has to live one level up.
+        justifyContent: layout.justify === 'center' ? 'center' : 'flex-start',
+      }}
+    >
+    <div
+      ref={rowRef}
       style={{
         display: 'flex',
         flexDirection: 'row',
         flexWrap: 'nowrap',
-        justifyContent: layout.justify,
         alignItems: 'baseline',
         direction: 'rtl',
         fontSize,
@@ -232,9 +245,7 @@ function LineRow({
         // vh-aware fontSize clamp below can pick a bigger size (closer to
         // its width cap) while the whole page still fits without clipping.
         lineHeight: 1.85,
-        width: '100%',
-        minHeight: 0,
-        overflow: 'hidden',
+        width: 'max-content',
         transform: layout.scaleX !== 1 ? `scaleX(${layout.scaleX})` : undefined,
         // A full (flex-start) line is anchored at the right — RTL's start
         // edge — so scaling never shifts where the line begins, only how far
@@ -296,6 +307,7 @@ function LineRow({
           </span>
         );
       })}
+    </div>
     </div>
   );
 }
@@ -435,12 +447,16 @@ export default function MushafQCFPage({
         <MushafTopMetadata juz={juz} surahLabel={surahLabel} page={page} />
       </div>
 
-      {/* Page body — both opening and regular pages use space-evenly so
-          every line slot (text, surah-header, basmala) lands on the grid */}
+      {/* Page body — regular (15-line) pages use space-evenly so every line
+          slot lands on the printed Mushaf's grid. Compact pages (opening 1-2,
+          juz 30's short surahs) genuinely have fewer lines — space-evenly
+          would stretch them out to reach the bottom of the page with large
+          gaps, which isn't how those pages actually look; they use the
+          standard top-down flow instead, sized to their own content. */}
       <div style={{
         flex: 1, minHeight: 0,
         display: 'flex', flexDirection: 'column',
-        justifyContent: 'space-evenly',
+        justifyContent: compact ? 'flex-start' : 'space-evenly',
         padding: opening ? '0 8px' : '2px 6px 4px',
         maxWidth: '520px',
         margin: '0 auto',
@@ -481,9 +497,12 @@ export default function MushafQCFPage({
     // wide viewport a width-only size can be taller than the space actually
     // available, which combined with the page's fixed height (see the root
     // element above) would clip lines instead of fitting them.
-    // vh coefficients scaled up to match the tighter 1.85 line-height above
-    // (was tuned for 2.1) — same available height now buys a bigger font.
-    const fontSize = opening ? 'clamp(18px, 2.9vh, 24px)' : 'clamp(16px, min(5.9vw, 2.6vh), 28px)';
+    // vh coefficients: verified against a realistic body budget (viewport
+    // minus the top-metadata/footer chrome, ~78px combined) that 13 full
+    // text lines at this size stay well within the remaining space even
+    // before the LineRow-level width fit does its own (now fixed — see
+    // LineRow's comment) horizontal scale-to-fit.
+    const fontSize = opening ? 'clamp(18px, 3.2vh, 26px)' : 'clamp(16px, min(6.3vw, 3vh), 30px)';
 
     return (
       <LineRow

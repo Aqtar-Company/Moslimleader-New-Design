@@ -4,6 +4,9 @@ import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import MushafCarousel from './MushafCarousel';
 import VerseActionSheet, { type TappedVerse } from './VerseActionSheet';
+import { fetchAndCachePage, fetchSurahHeaderGlyphs, getCachedPage } from './mushafCache';
+import type { MushafWord } from './mushafCache';
+import { loadQcfFont, QBSML_FONT } from './qcfFonts';
 import {
   QuranVerse, fetchPageVerses,
   toArabicNum,
@@ -12,6 +15,68 @@ import {
 } from '@/lib/quran-data';
 
 type Mode = 'listen' | 'both';
+
+// Surah name rendered with the same QBSML calligraphy glyph used for
+// in-Mushaf surah header frames — falls back to plain text while the glyph
+// set loads (or for any surah missing from it, which shouldn't happen).
+function SurahHeaderName({ surahNum, fallback }: { surahNum: number; fallback: string }) {
+  const [glyph, setGlyph] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([fetchSurahHeaderGlyphs(), loadQcfFont(QBSML_FONT)]).then(([map]) => {
+      if (!cancelled) setGlyph(map.get(surahNum) ?? null);
+    });
+    return () => { cancelled = true; };
+  }, [surahNum]);
+
+  if (glyph) {
+    return <span style={{ fontFamily: `"${QBSML_FONT}"`, fontSize: 17 }} translate="no">{glyph}</span>;
+  }
+  return <>{fallback}</>;
+}
+
+// Verse text rendered word-by-word with the real per-word QCF4 glyphs — the
+// same precomposed Mushaf font used in 'both' mode — instead of a generic
+// Uthmani webfont. Falls back to the plain Uthmani text while the page's
+// QCF4 data/fonts are loading, or if the verse can't be found there.
+function QcfVerseText({ page, chapterId, verseNumber, fallback }: { page: number; chapterId: number; verseNumber: number; fallback: string }) {
+  const [words, setWords] = useState<MushafWord[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setWords(null);
+    (getCachedPage(page) ? Promise.resolve(getCachedPage(page)!) : fetchAndCachePage(page)).then(data => {
+      if (cancelled || !data) return;
+      const found: MushafWord[] = [];
+      for (const line of data.lines) {
+        for (const w of line.words) {
+          if ((w.type === 'word' || w.type === 'end') && w.surah === chapterId && w.verse === verseNumber) found.push(w);
+        }
+      }
+      if (!found.length) return; // verse not on this page (boundary edge case) — keep fallback
+      const fonts = Array.from(new Set(found.map(w => w.font)));
+      Promise.all(fonts.map(loadQcfFont)).then(() => { if (!cancelled) setWords(found); });
+    });
+    return () => { cancelled = true; };
+  }, [page, chapterId, verseNumber]);
+
+  if (!words) return <>{fallback}</>;
+
+  return (
+    <span dir="rtl" style={{ direction: 'rtl' }}>
+      {words.map((w, i) => (
+        <span key={i} style={{
+          fontFamily: `"${w.font}"`,
+          fontSize: w.type === 'end' ? '0.72em' : undefined,
+          color: w.type === 'end' ? '#c9a24b' : undefined,
+        }} translate="no">
+          {w.char}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 const RECITERS = [
   { id: 'ar.alafasy',           nameAr: 'مشاري العفاسي',        color: '#1a6b3a' },
@@ -51,11 +116,10 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   const [searchAyah, setSearchAyah] = useState(1);
   const [tappedVerse, setTappedVerse] = useState<TappedVerse | null>(null);
 
-  // Reading mode — collapse header on scroll down in 'both' mode
+  // Header/footer chrome — hidden by default in Mushaf ('both') mode,
+  // toggled only by a tap on the page background (toggleChrome/onPageTap).
   const [headerHidden, setHeaderHidden] = useState(false);
   const [autoFollow, setAutoFollow] = useState(true);
-  const lastScrollYRef = useRef(0);
-  const scrollPauseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Swipe-to-turn-page refs (Arabic RTL: swipe left = next, swipe right = prev)
   const swipeStartXRef = useRef<number | null>(null);
@@ -70,6 +134,12 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   const saveTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const verseRefs   = useRef<(HTMLSpanElement | null)[]>([]);
   const isMountedRef = useRef(true);
+  // Set right before navigating to a page so the page's own verse-fetch
+  // effect can land on a specific verse instead of defaulting to index 0 —
+  // needed because a page can open mid-surah (the previous surah's tail
+  // verses share the page, common in juz 30's short surahs), so "index 0 of
+  // this page" is not always "ayah 1 of the surah the user picked".
+  const targetVerseRef = useRef<{ chapter: number; verse: number } | null>(null);
 
   // Read mode from localStorage after mount (avoids SSR hydration mismatch)
   useEffect(() => {
@@ -78,29 +148,17 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
     if (stored === 'listen' || stored === 'both') setMode(stored);
   }, []);
 
-  // Reading mode scroll handler — only active in 'both' tab
+  // Mushaf reading ('both' mode) is immersive by default — chrome revealed
+  // only via a tap on the page background (toggleChrome/onPageTap). This
+  // used to also run a scroll-direction auto-hide left over from a removed
+  // vertical verse-list view ('read' mode, see the comment below) — the
+  // Mushaf carousel never produces real window scroll, so that listener was
+  // dead weight that could still fire from iOS overscroll bounce and stomp
+  // on the deliberate tap toggle. Single source of truth now: this effect
+  // sets the immersive default on mode entry, and toggleChrome/goVerse are
+  // the only other writers.
   useEffect(() => {
-    if (mode !== 'both') { setHeaderHidden(false); return; }
-    // Mushaf reading is immersive by default — no header/footer chrome until
-    // the user taps the page (see toggleChrome / onPageTap below).
-    setHeaderHidden(true);
-    const onScroll = () => {
-      const y = window.scrollY;
-      const delta = y - lastScrollYRef.current;
-      lastScrollYRef.current = y;
-      if (y < 10) { setHeaderHidden(false); return; }
-      if (delta > 8) setHeaderHidden(true);
-      else if (delta < -8) setHeaderHidden(false);
-      // Pause auto-follow while user scrolls; resume after 4s of stillness
-      setAutoFollow(false);
-      if (scrollPauseRef.current) clearTimeout(scrollPauseRef.current);
-      scrollPauseRef.current = setTimeout(() => setAutoFollow(true), 4000);
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      if (scrollPauseRef.current) clearTimeout(scrollPauseRef.current);
-    };
+    setHeaderHidden(mode === 'both');
   }, [mode]);
 
   // Sync state → refs so audio callbacks always read current values
@@ -138,8 +196,12 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
           currentRef.current = start;
           setCurrentIdx(start);
         } else {
-          currentRef.current = 0;
-          setCurrentIdx(0);
+          const target = targetVerseRef.current;
+          targetVerseRef.current = null;
+          const idx = target ? v.findIndex(x => x.chapter_id === target.chapter && x.verse_number === target.verse) : -1;
+          const start = idx >= 0 ? idx : 0;
+          currentRef.current = start;
+          setCurrentIdx(start);
         }
         if (playingRef.current) playFromRef();
       })
@@ -262,12 +324,15 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
     }
   }
 
-  function goVerse(idx: number) {
+  // revealChrome defaults to true for explicit navigation (search, prev/next
+  // buttons) — false for a Mushaf word tap, which only syncs the audio
+  // cursor and must not fight the page's own tap-to-toggle chrome gesture.
+  function goVerse(idx: number, revealChrome = true) {
     if (idx < 0 || idx >= verses.length) return;
     currentRef.current = idx;
     setCurrentIdx(idx);
     setAutoFollow(true); // resume auto-follow on explicit navigation
-    setHeaderHidden(false);
+    if (revealChrome) setHeaderHidden(false);
     if (isPlaying) playFromRef();
   }
 
@@ -410,7 +475,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
             onPageChange={handlePageChange}
             onVerseClick={(ch, v) => {
               const idx = versesRef.current.findIndex(x => x.chapter_id === ch && x.verse_number === v);
-              if (idx >= 0) goVerse(idx);
+              if (idx >= 0) goVerse(idx, false);
             }}
             onAyahTap={setTappedVerse}
             onPageTap={toggleChrome}
@@ -531,7 +596,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                       flexShrink: 0, cursor: 'default',
                     }}>
                     <p style={{ fontFamily: qFont, fontSize: 22, lineHeight: 2.1, color: '#e8effe', pointerEvents: 'none' }}>
-                      {cv.text_uthmani}
+                      <QcfVerseText page={page} chapterId={cv.chapter_id} verseNumber={cv.verse_number} fallback={cv.text_uthmani} />
                     </p>
                     <p style={{ marginTop: 8, fontSize: 12, color: 'rgba(148,163,184,0.85)', pointerEvents: 'none' }}>
                       {surahNameAr} ﴿{toArabicNum(cv.verse_number)}﴾
@@ -794,6 +859,10 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                           audioRef.current?.pause();
                           setIsPlaying(false);
                           playingRef.current = false;
+                          // Some pages open mid-surah (the previous surah's
+                          // tail verses share the page) — target ayah 1 of
+                          // the picked surah explicitly, not "index 0".
+                          targetVerseRef.current = { chapter: num, verse: 1 };
                           setPage(targetPage);
                         }
                         setShowSearch(false);
@@ -821,7 +890,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                       {/* Names */}
                       <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
                         <p style={{ fontSize: 15, fontWeight: 700, color: isCurrent ? 'var(--nuri-gold)' : 'var(--tr-text-primary)', marginBottom: 2, fontFamily: qFont }}>
-                          {ar}
+                          <SurahHeaderName surahNum={num} fallback={ar} />
                         </p>
                         <p style={{ fontSize: 11, color: 'var(--tr-text-muted)' }}>{en}</p>
                       </div>

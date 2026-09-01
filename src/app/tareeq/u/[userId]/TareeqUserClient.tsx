@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { compressImage } from '@/lib/compress-image';
-import TareeqCard, { TareeqPostSummary } from '@/components/tareeq/TareeqCard';
+import TareeqCard, { TareeqPostSummary, ReportModal } from '@/components/tareeq/TareeqCard';
 import TareeqCreateModal from '@/components/tareeq/TareeqCreateModal';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
 import TareeqHeader from '@/components/tareeq/TareeqHeader';
@@ -149,6 +149,10 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [showCreate, setShowCreate] = useState(false);
   const [showGate, setShowGate] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [isBlocking, setIsBlocking] = useState(false);
+  const [isBlockedBy, setIsBlockedBy] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showReportUser, setShowReportUser] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Bookmarks state
@@ -266,7 +270,31 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.reactedPosts) setReactedPosts(d.reactedPosts); })
       .catch(() => {});
-  }, [profileUser.id]);
+    if (!isOwnProfile) {
+      fetch(`/api/tareeq/block/${profileUser.id}`, { credentials: 'include' })
+        .then(r => r.json())
+        .then(d => { setIsBlocking(d.blocking ?? false); setIsBlockedBy(d.blockedBy ?? false); })
+        .catch(() => {});
+    }
+  }, [profileUser.id, isOwnProfile]);
+
+  async function toggleBlock() {
+    const was = isBlocking;
+    setIsBlocking(!was);
+    setShowUserMenu(false);
+    try {
+      const res = await fetch(`/api/tareeq/block/${profileUser.id}`, { method: 'POST', credentials: 'include' });
+      if (res.ok) {
+        const d = await res.json();
+        setIsBlocking(d.blocking);
+        if (d.blocking) setIsFollowing(false);
+      } else {
+        setIsBlocking(was);
+      }
+    } catch {
+      setIsBlocking(was);
+    }
+  }
 
   const loadMore = useCallback(async (cur: string) => {
     setLoading(true);
@@ -935,6 +963,11 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                       >
                         {isRtl ? 'رسالة' : 'Message'}
                       </button>
+                      <UserOptionsMenu
+                        isRtl={isRtl} isBlocking={isBlocking} showUserMenu={showUserMenu}
+                        setShowUserMenu={setShowUserMenu} toggleBlock={toggleBlock}
+                        onReport={() => { setShowUserMenu(false); setShowReportUser(true); }}
+                      />
                     </>
                   )}
                 </div>
@@ -1131,6 +1164,11 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                       <path strokeLinecap="round" d="M14 14h2M14 17h2M17 14v3M20 14v2M20 17v3M17 20h3"/>
                     </svg>
                   </button>
+                  <UserOptionsMenu
+                    isRtl={isRtl} isBlocking={isBlocking} showUserMenu={showUserMenu}
+                    setShowUserMenu={setShowUserMenu} toggleBlock={toggleBlock}
+                    onReport={() => { setShowUserMenu(false); setShowReportUser(true); }}
+                  />
                 </div>
               )}
             </div>
@@ -1203,6 +1241,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
       {/* ── Shared modals ── */}
       {showCreate && <TareeqCreateModal onClose={() => setShowCreate(false)} onCreated={() => {}} />}
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
+      {showReportUser && <ReportModal targetType="user" targetId={profileUser.id} isRtl={isRtl} onClose={() => setShowReportUser(false)} />}
 
       {/* Followers / Following modal */}
       {followListType && (
@@ -1313,6 +1352,48 @@ function StatItem({ count, label, onClick }: { count: number; label: string; onC
   );
   if (onClick) return <button onClick={onClick} className="transition active:scale-95">{content}</button>;
   return content;
+}
+
+// Kebab menu with block/report — a profile previously had no self-serve way
+// at all to stop a harassing user from contacting/seeing you, or to report
+// them directly (only posts could be reported).
+function UserOptionsMenu({ isRtl, isBlocking, showUserMenu, setShowUserMenu, toggleBlock, onReport }: {
+  isRtl: boolean; isBlocking: boolean; showUserMenu: boolean;
+  setShowUserMenu: (v: boolean | ((prev: boolean) => boolean)) => void;
+  toggleBlock: () => void; onReport: () => void;
+}) {
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setShowUserMenu(v => !v)}
+        className="w-9 h-9 flex items-center justify-center rounded-full transition active:scale-95"
+        style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-muted)', border: '1px solid var(--tr-border-soft)' }}
+        title={isRtl ? 'خيارات' : 'Options'}
+      >
+        <svg width={17} height={17} viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/>
+        </svg>
+      </button>
+      {showUserMenu && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
+          <div className="absolute z-50 mt-2 rounded-xl overflow-hidden shadow-lg"
+            style={{ insetInlineEnd: 0, background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', minWidth: 190 }}>
+            <button onClick={toggleBlock}
+              className="w-full text-start px-4 py-2.5 text-sm font-semibold transition"
+              style={{ color: isBlocking ? 'var(--tr-text-primary)' : '#f43f5e', background: 'transparent' }}>
+              {isBlocking ? (isRtl ? 'إلغاء حظر المستخدم' : 'Unblock user') : (isRtl ? 'حظر المستخدم' : 'Block user')}
+            </button>
+            <button onClick={onReport}
+              className="w-full text-start px-4 py-2.5 text-sm font-semibold transition"
+              style={{ color: 'var(--tr-text-secondary)', borderTop: '1px solid var(--tr-border-subtle)', background: 'transparent' }}>
+              {isRtl ? 'إبلاغ عن المستخدم' : 'Report user'}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 function GridImageCard({ post, liked }: { post: TareeqPostSummary; liked: boolean }) {

@@ -89,6 +89,8 @@ model User {
   tareeqNotes             TareeqNote[]             @relation("TareeqNotes")
   khatmatiProgress        KhatmatiProgress?
   khatmatiWirds           KhatmatiWird[]
+  tareeqBlocksMade        TareeqBlock[]            @relation("TareeqBlocksMade")
+  tareeqBlocksReceived    TareeqBlock[]            @relation("TareeqBlocksReceived")
   khatmaGroupsAdmin       KhatmaGroup[]            @relation("KhatmaGroupAdmin")
   khatmaGroupMemberships  KhatmaGroupMember[]      @relation("KhatmaGroupMemberships")
   familyMembership        FamilyMembership?        @relation("MembershipOwner")
@@ -1100,6 +1102,19 @@ model KhatmatiProgress {
   updatedAt      DateTime  @updatedAt
 }
 
+model TareeqBlock {
+  id        String   @id @default(cuid())
+  blockerId String
+  blocker   User     @relation("TareeqBlocksMade", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String
+  blocked   User     @relation("TareeqBlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+}
+
 model KhatmatiWird {
   id        String   @id @default(cuid())
   userId    String
@@ -1203,6 +1218,7 @@ model TareeqGroup {
   name          String
   description   String?              @db.Text
   imageUrl      String?              @db.Text
+  isPublic      Boolean              @default(false)
   createdBy     String
   creator       User                 @relation("TareeqGroupCreator", fields: [createdBy], references: [id], onDelete: Cascade)
   members       TareeqGroupMember[]
@@ -1213,6 +1229,7 @@ model TareeqGroup {
   updatedAt     DateTime             @updatedAt
 
   @@index([createdBy])
+  @@index([isPublic])
 }
 
 model TareeqGroupMember {

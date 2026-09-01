@@ -2,22 +2,30 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
-import { checkRateLimit } from '@/lib/rate-limit';
+import { tareeqRateLimit, isTareeqSuspended, isBlockedEitherWay } from '@/lib/tareeq-guard';
 import { sendPushToUser } from '@/lib/tareeq-push';
 
 // POST /api/tareeq/conversations/[id]/messages — send message
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
-  const rl = checkRateLimit(`tareeq-msg:${ip}`, 30, 600_000);
-  if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
-
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
+
+  const rl = tareeqRateLimit('msg', user.userId, 30, 600_000);
+  if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
+
+  if (await isTareeqSuspended(user.userId)) {
+    return NextResponse.json({ error: 'تم تعليق حسابك في طريق' }, { status: 403 });
+  }
 
   const convo = await prisma.tareeqConversation.findUnique({ where: { id: params.id } });
   if (!convo) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
   if (convo.participantA !== user.userId && convo.participantB !== user.userId) {
     return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+  }
+
+  const otherParticipant = convo.participantA === user.userId ? convo.participantB : convo.participantA;
+  if (await isBlockedEitherWay(user.userId, otherParticipant)) {
+    return NextResponse.json({ error: 'لا يمكن إرسال رسالة لهذا المستخدم' }, { status: 403 });
   }
 
   const body = await req.json().catch(() => ({}));

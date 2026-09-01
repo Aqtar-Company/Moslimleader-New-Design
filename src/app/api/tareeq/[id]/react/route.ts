@@ -2,19 +2,22 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
-import { checkRateLimit } from '@/lib/rate-limit';
+import { tareeqRateLimit, isTareeqSuspended } from '@/lib/tareeq-guard';
 import { sendPushToUser } from '@/lib/tareeq-push';
 
 const VALID_TYPES = ['inspired', 'thanks', 'agree', 'yarabb'] as const;
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
-  const rl = checkRateLimit(`tareeq-react:${ip}`, 60, 60 * 1000);
-  if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
-
   const authResult = await getAuthUser().catch(() => null);
   if (!authResult) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const me = authResult;
+
+  const rl = tareeqRateLimit('react', me.userId, 60, 60 * 1000);
+  if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
+
+  if (await isTareeqSuspended(me.userId)) {
+    return NextResponse.json({ error: 'تم تعليق حسابك في طريق' }, { status: 403 });
+  }
 
   const body = await req.json().catch(() => ({}));
   const { type } = body;

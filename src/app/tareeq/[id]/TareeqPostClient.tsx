@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
+import { ReportModal } from '@/components/tareeq/TareeqCard';
 import { TAREEQ_CATEGORIES, CATEGORY_COLORS, CATEGORY_ICONS } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import { timeAgo } from '@/lib/tareeq-utils';
@@ -56,6 +57,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   const [commentSort, setCommentSort] = useState<'asc' | 'desc'>('asc');
   const [deleting, setDeleting] = useState(false);
   const [pinnedCommentId, setPinnedCommentId] = useState<string | null>(post.pinnedCommentId ?? null);
+  const [reportCommentId, setReportCommentId] = useState<string | null>(null);
   const [showUpdateInput, setShowUpdateInput] = useState(false);
   const [updateText, setUpdateText] = useState('');
   const [updateSaving, setUpdateSaving] = useState(false);
@@ -599,6 +601,18 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                         )}
                         <span className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(c.createdAt, isRtl)}</span>
                         <div className="ms-auto flex items-center gap-2">
+                          {user && user.id !== c.userId && (
+                            <button
+                              onClick={() => setReportCommentId(c.id)}
+                              title={isRtl ? 'إبلاغ عن التعليق' : 'Report comment'}
+                              className="transition opacity-0 group-hover:opacity-100"
+                              style={{ color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
+                            >
+                              <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18M3 4.5h13.5l-1.5 4.5 1.5 4.5H3" />
+                              </svg>
+                            </button>
+                          )}
                           {isOwner && (
                             <button
                               onClick={() => pinComment(c.id)}
@@ -653,6 +667,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
       </div>
 
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
+      {reportCommentId && <ReportModal targetType="comment" targetId={reportCommentId} isRtl={isRtl} onClose={() => setReportCommentId(null)} />}
     </div>
   );
 }

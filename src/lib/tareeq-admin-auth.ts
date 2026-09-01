@@ -75,15 +75,31 @@ export async function getAdminSession(req: Request) {
  * Throws a 401 or 403 Response if the request is not authenticated or lacks
  * the required role. Otherwise returns the TareeqAdmin record.
  *
+ * 2FA setup was previously only a client-side UI nudge ("needsSetup") — an
+ * admin could dismiss it and keep operating password-only forever, since
+ * nothing on the server actually required `totpEnabled`. Every admin route
+ * except the 2FA-setup route itself now requires it, closing that gap
+ * without a bootstrapping deadlock (a fresh admin can still log in and use
+ * ONLY the setup route to turn 2FA on).
+ *
  * Usage in route handlers:
  *   let admin;
  *   try { admin = await requireAdmin(req); }
  *   catch (e) { return e as Response; }
+ *
+ * Pass `{ allowSetupIncomplete: true }` only from the TOTP setup route.
  */
-export async function requireAdmin(req: Request, allowedRoles?: TareeqAdminRole[]) {
+export async function requireAdmin(
+  req: Request,
+  allowedRoles?: TareeqAdminRole[],
+  opts?: { allowSetupIncomplete?: boolean },
+) {
   const result = await getAdminSession(req);
   if (!result) {
     throw Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (!result.admin.totpEnabled && !opts?.allowSetupIncomplete) {
+    throw Response.json({ error: 'يجب تفعيل التحقق بخطوتين أولاً', needsTotpSetup: true }, { status: 403 });
   }
   if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(result.admin.role)) {
     throw Response.json({ error: 'Forbidden' }, { status: 403 });

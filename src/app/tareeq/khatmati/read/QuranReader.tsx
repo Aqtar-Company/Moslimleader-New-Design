@@ -16,6 +16,24 @@ import {
 
 type Mode = 'listen' | 'both';
 
+interface QuranSearchResult {
+  surah: number;
+  verse: number;
+  page: number;
+  surahNameAr: string;
+  surahNameEn: string;
+  text: string;
+}
+
+interface WirdMark {
+  id: string;
+  name: string;
+  page: number;
+  surah: number;
+  ayah: number;
+  updatedAt: string;
+}
+
 // Surah name rendered with the same QBSML calligraphy glyph used for
 // in-Mushaf surah header frames — falls back to plain text while the glyph
 // set loads (or for any surah missing from it, which shouldn't happen).
@@ -102,7 +120,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   const { isRtl } = useLang();
   const router = useRouter();
 
-  const [mode, setMode] = useState<Mode>('listen');
+  const [mode, setMode] = useState<Mode>('both');
   const [page, setPage] = useState(initialPage);
   const [retryKey, setRetryKey] = useState(0);
   const [verses, setVerses] = useState<QuranVerse[]>([]);
@@ -114,6 +132,11 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   // 0 = off, -1 = repeat forever, 1-5 = repeat that many extra times then advance
   const [repeatMode, setRepeatMode] = useState(0);
   const [showRepeatMenu, setShowRepeatMenu] = useState(false);
+  // How many of the current verse's repeats have already played — mirrors
+  // repeatDoneRef into state purely so the button badge can show live
+  // progress (e.g. "2/5") instead of a static target count, so it's visibly
+  // obvious the repeat is finite and actually advancing.
+  const [repeatProgress, setRepeatProgress] = useState(0);
 
   // New UI state
   const [reciterId, setReciterId] = useState('ar.alafasy');
@@ -123,6 +146,22 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   const [searchSurah, setSearchSurah] = useState(initialSurah);
   const [searchAyah, setSearchAyah] = useState(1);
   const [tappedVerse, setTappedVerse] = useState<TappedVerse | null>(null);
+
+  // Word/verse text search — replaces the header's page/surah display, which
+  // was purely informational, with something actionable: type a word, get a
+  // list of every ayah containing it (with its surah + page), tap one to jump
+  // straight there.
+  const [showWordSearch, setShowWordSearch] = useState(false);
+  const [wordQuery, setWordQuery] = useState('');
+  const [wordResults, setWordResults] = useState<QuranSearchResult[]>([]);
+  const [wordSearching, setWordSearching] = useState(false);
+
+  // Wird (reading-plan bookmarks) — named saved positions, e.g. "Memorization
+  // ward" / "Recitation ward". Loaded lazily the first time the sheet opens.
+  const [showWirdSheet, setShowWirdSheet] = useState(false);
+  const [wirdList, setWirdList] = useState<WirdMark[] | null>(null);
+  const [wirdLoading, setWirdLoading] = useState(false);
+  const [wirdSavedFlash, setWirdSavedFlash] = useState<string | null>(null);
 
   // Header/footer chrome — hidden by default in Mushaf ('both') mode,
   // toggled only by a tap on the page background (toggleChrome/onPageTap).
@@ -278,13 +317,15 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
       setAudioProgress(0);
       if (!playingRef.current) return;
       const mode = repeatModeRef.current;
-      if (mode === -1) { playFromRef(); return; } // repeat forever
+      if (mode === -1) { setRepeatProgress(p => p + 1); playFromRef(); return; } // repeat forever
       if (mode > 0 && repeatDoneRef.current < mode) {
         repeatDoneRef.current += 1;
+        setRepeatProgress(repeatDoneRef.current);
         playFromRef();
         return;
       }
       repeatDoneRef.current = 0; // moving to a new verse — reset the count
+      setRepeatProgress(0);
       const next = currentRef.current + 1;
       if (next < versesRef.current.length) {
         currentRef.current = next;
@@ -309,6 +350,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
       if (next < versesRef.current.length && playingRef.current) {
         // Skip to next verse on this page
         repeatDoneRef.current = 0;
+        setRepeatProgress(0);
         currentRef.current = next;
         setCurrentIdx(next);
         playFromRef();
@@ -325,11 +367,30 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
       }
     };
 
-    audio.play().catch(() => {
-      if (!isMountedRef.current) return;
-      playingRef.current = false;
-      setIsPlaying(false);
-    });
+    // A rapid string of automatic replays (page-turn, verse-advance, or a
+    // multi-repeat) can occasionally have a single .play() call rejected by
+    // the browser (buffering hiccup, brief network stall) even though
+    // playback is legitimately still active — retrying once before giving up
+    // means a one-off glitch skips a beat instead of silently halting
+    // playback altogether ("stopped instead of continuing").
+    const attemptPlay = (retried = false) => {
+      audio.play().catch(() => {
+        if (!isMountedRef.current || !playingRef.current) return;
+        if (!retried) { setTimeout(() => attemptPlay(true), 300); return; }
+        const next = currentRef.current + 1;
+        if (next < versesRef.current.length) {
+          repeatDoneRef.current = 0;
+          setRepeatProgress(0);
+          currentRef.current = next;
+          setCurrentIdx(next);
+          playFromRef();
+        } else {
+          playingRef.current = false;
+          setIsPlaying(false);
+        }
+      });
+    };
+    attemptPlay();
   }, [reciterId]);
 
   function togglePlay() {
@@ -352,6 +413,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
     currentRef.current = idx;
     setCurrentIdx(idx);
     repeatDoneRef.current = 0;
+    setRepeatProgress(0);
     setAutoFollow(true); // resume auto-follow on explicit navigation
     if (revealChrome) setHeaderHidden(false);
     if (isPlaying) playFromRef();
@@ -366,6 +428,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
     currentRef.current = idx;
     setCurrentIdx(idx);
     repeatDoneRef.current = 0;
+    setRepeatProgress(0);
     setAutoFollow(true);
     setHeaderHidden(false);
     playingRef.current = true;
@@ -409,6 +472,109 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
     localStorage.setItem('khatmati-mode', m);
   }
 
+  // Debounced word/verse text search — fires 300ms after typing stops so
+  // every keystroke doesn't trigger its own request.
+  useEffect(() => {
+    if (!showWordSearch || wordQuery.trim().length < 2) { setWordResults([]); return; }
+    let cancelled = false;
+    setWordSearching(true);
+    const t = setTimeout(() => {
+      fetch(`/api/tareeq/quran/search?q=${encodeURIComponent(wordQuery.trim())}`)
+        .then(r => r.json())
+        .then(d => { if (!cancelled) setWordResults(d.results ?? []); })
+        .catch(() => { if (!cancelled) setWordResults([]); })
+        .finally(() => { if (!cancelled) setWordSearching(false); });
+    }, 300);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [wordQuery, showWordSearch]);
+
+  function goToSearchResult(r: QuranSearchResult) {
+    audioRef.current?.pause();
+    setIsPlaying(false);
+    playingRef.current = false;
+    targetVerseRef.current = { chapter: r.surah, verse: r.verse };
+    setPage(r.page);
+    setShowWordSearch(false);
+    setWordQuery('');
+    setWordResults([]);
+  }
+
+  // ── Wird (named reading-plan bookmarks) — defaults are seeded server-side
+  // on first fetch (see /api/tareeq/khatmati/wird GET) ─────────────────────
+
+  async function loadWirdList() {
+    setWirdLoading(true);
+    try {
+      const res = await fetch('/api/tareeq/khatmati/wird', { credentials: 'include' });
+      if (res.ok) {
+        const d = await res.json();
+        setWirdList(d.wirds ?? []);
+      } else {
+        setWirdList([]);
+      }
+    } catch {
+      setWirdList([]);
+    } finally {
+      setWirdLoading(false);
+    }
+  }
+
+  function openWirdSheet() {
+    setShowWirdSheet(true);
+    if (!wirdList) loadWirdList();
+  }
+
+  async function saveWirdHere(id: string) {
+    if (!cv) return;
+    try {
+      const res = await fetch(`/api/tareeq/khatmati/wird/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ page, surah: cv.chapter_id, ayah: cv.verse_number }),
+      });
+      if (res.ok) {
+        setWirdList(list => (list ?? []).map(w => w.id === id
+          ? { ...w, page, surah: cv.chapter_id, ayah: cv.verse_number, updatedAt: new Date().toISOString() }
+          : w));
+        setWirdSavedFlash(id);
+        setTimeout(() => setWirdSavedFlash(f => (f === id ? null : f)), 1500);
+      }
+    } catch { /* ignore */ }
+  }
+
+  function goToWird(w: WirdMark) {
+    audioRef.current?.pause();
+    setIsPlaying(false);
+    playingRef.current = false;
+    targetVerseRef.current = { chapter: w.surah, verse: w.ayah };
+    setPage(w.page);
+    setShowWirdSheet(false);
+  }
+
+  async function addCustomWird(name: string) {
+    if (!name.trim() || !cv) return;
+    try {
+      const res = await fetch('/api/tareeq/khatmati/wird', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name: name.trim(), page, surah: cv.chapter_id, ayah: cv.verse_number }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        if (d.wird) setWirdList(list => [...(list ?? []), d.wird]);
+      }
+    } catch { /* ignore */ }
+  }
+
+  async function deleteWird(id: string) {
+    try {
+      await fetch(`/api/tareeq/khatmati/wird/${id}`, { method: 'DELETE', credentials: 'include' });
+      setWirdList(list => (list ?? []).filter(w => w.id !== id));
+    } catch { /* ignore */ }
+  }
+
   // ── Current verse info ────────────────────────────────────────────────────
 
   const cv = verses[currentIdx];
@@ -432,11 +598,17 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
             // A cooler, neutral glass (not the Mushaf's own warm paper tone)
             // with Tareeq's signature blue as the accent — the page under
             // it stays beige, this is app chrome, not part of the "book".
-            background: mode === 'both' ? 'rgba(255,255,255,0.62)' : 'var(--tr-header-bg)',
-            backdropFilter: mode === 'both' ? 'blur(24px) saturate(180%)' : 'blur(16px)',
-            WebkitBackdropFilter: mode === 'both' ? 'blur(24px) saturate(180%)' : 'blur(16px)',
-            borderBottom: mode === 'both' ? '1px solid rgba(37,99,235,0.14)' : '1px solid var(--tr-border-subtle)',
-            boxShadow: mode === 'both' ? '0 4px 24px rgba(30,58,110,0.08)' : undefined,
+            // A faint top-to-bottom gradient + inset top highlight gives it
+            // real glass depth instead of a flat tinted rectangle.
+            background: mode === 'both'
+              ? 'linear-gradient(180deg, rgba(255,255,255,0.80) 0%, rgba(232,240,255,0.58) 100%)'
+              : 'var(--tr-header-bg)',
+            backdropFilter: mode === 'both' ? 'blur(26px) saturate(190%)' : 'blur(16px)',
+            WebkitBackdropFilter: mode === 'both' ? 'blur(26px) saturate(190%)' : 'blur(16px)',
+            borderBottom: mode === 'both' ? '1px solid rgba(37,99,235,0.16)' : '1px solid var(--tr-border-subtle)',
+            boxShadow: mode === 'both'
+              ? '0 6px 28px rgba(20,45,90,0.12), inset 0 1px 0 rgba(255,255,255,0.9)'
+              : undefined,
           }}>
 
           {/* Surah list button — rightmost in RTL */}
@@ -451,15 +623,32 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
             </span>
           </button>
 
-          {/* Page + surah info (center) — no nav buttons, page turning is swipe-only.
-              The right/left-page indicator lives on the Mushaf page itself
-              (MushafTopMetadata), not in this floating app header. */}
-          <div className="flex-1 text-center">
-            <p className="text-xs font-black leading-none" style={{ color: mode === 'both' ? '#16233f' : 'var(--tr-text-primary)' }}>
-              {isRtl ? `صفحة ${toArabicNum(page)}` : `Page ${page}`}
-            </p>
-            {cv && <p className="text-[10px] mt-0.5 leading-none" style={{ color: mode === 'both' ? '#4a5a7a' : 'var(--tr-text-muted)' }}>{isRtl ? surahNameAr : surahNameEn}</p>}
-          </div>
+          {/* Word/verse search (center) — replaces the old static page/surah
+              display: that was purely informational, this is actionable.
+              Page turning stays swipe-only; the right/left-page indicator
+              lives on the Mushaf page itself (MushafTopMetadata). */}
+          <button onClick={() => setShowWordSearch(true)}
+            className="flex-1 flex items-center gap-2 h-8 px-3 rounded-full transition active:scale-95 min-w-0"
+            style={{
+              background: mode === 'both' ? 'rgba(255,255,255,0.55)' : 'var(--tr-overlay)',
+              border: mode === 'both' ? '1px solid rgba(37,99,235,0.16)' : '1px solid var(--tr-border-subtle)',
+            }}>
+            <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke={mode === 'both' ? '#5a7bb8' : 'var(--tr-text-muted)'} strokeWidth={2.2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+            </svg>
+            <span className="text-[11.5px] font-semibold truncate" style={{ color: mode === 'both' ? '#5a6a8a' : 'var(--tr-text-muted)' }}>
+              {isRtl ? 'ابحث في القرآن...' : 'Search the Quran...'}
+            </span>
+          </button>
+
+          {/* Wird (reading-plan bookmarks) button */}
+          <button onClick={openWirdSheet}
+            className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 shrink-0"
+            style={{ background: mode === 'both' ? 'rgba(37,99,235,0.09)' : 'var(--tr-overlay)', color: mode === 'both' ? '#1e3a6e' : 'var(--tr-text-secondary)' }}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/>
+            </svg>
+          </button>
 
           {/* Back button — Tareeq's own blue gradient, matching the listen-mode player */}
           <button onClick={() => router.push(groupId ? `/tareeq/khatmati/groups/${groupId}` : '/tareeq/khatmati')}
@@ -475,14 +664,16 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
           </button>
         </div>
 
-        {/* Row 2: Mode tabs — right→left: استماع | قراءة واستماع */}
+        {/* Row 2: Mode tabs — right→left: قراءة فقط (default) | استماع */}
         <div className="flex" style={{
-          background: mode === 'both' ? 'rgba(255,255,255,0.5)' : 'var(--tr-surface)',
-          backdropFilter: mode === 'both' ? 'blur(24px) saturate(180%)' : undefined,
-          WebkitBackdropFilter: mode === 'both' ? 'blur(24px) saturate(180%)' : undefined,
-          borderBottom: mode === 'both' ? '1px solid rgba(37,99,235,0.14)' : '1px solid var(--tr-border-subtle)',
+          background: mode === 'both'
+            ? 'linear-gradient(180deg, rgba(255,255,255,0.60) 0%, rgba(225,235,255,0.44) 100%)'
+            : 'var(--tr-surface)',
+          backdropFilter: mode === 'both' ? 'blur(26px) saturate(190%)' : undefined,
+          WebkitBackdropFilter: mode === 'both' ? 'blur(26px) saturate(190%)' : undefined,
+          borderBottom: mode === 'both' ? '1px solid rgba(37,99,235,0.16)' : '1px solid var(--tr-border-subtle)',
         }}>
-          {(['listen', 'both'] as Mode[]).map(m => (
+          {(['both', 'listen'] as Mode[]).map(m => (
             <button key={m} onClick={() => changeMode(m)}
               className="flex-1 py-2.5 text-xs font-bold transition"
               style={{
@@ -490,7 +681,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                 borderBottom: mode === m ? '2px solid #2563eb' : '2px solid transparent',
                 background: 'none',
               }}>
-              {m === 'listen' ? (isRtl ? 'استماع' : 'Listen') : (isRtl ? 'قراءة واستماع' : 'Listen + Read')}
+              {m === 'both' ? (isRtl ? 'قراءة فقط' : 'Reading') : (isRtl ? 'استماع' : 'Listen')}
             </button>
           ))}
         </div>
@@ -647,7 +838,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                       </svg>
                     </button>
 
-                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <div style={{ position: 'relative', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
                       <button onClick={() => setShowRepeatMenu(v => !v)} title={isRtl ? 'تكرار الآية' : 'Repeat ayah'} style={{
                         position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         width: 34, height: 34, borderRadius: '50%', flexShrink: 0, cursor: 'pointer',
@@ -663,17 +854,46 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                           <path d="M21 11.9v2a4 4 0 0 1-4 4H3"/>
                         </svg>
                         {repeatMode !== 0 && (
+                          // Live progress ("2/5"), not a static target — makes
+                          // it visible at a glance that the repeat is finite
+                          // and actually counting down, not stuck forever.
                           <span style={{
                             position: 'absolute', top: -4, insetInlineEnd: -4,
-                            minWidth: 15, height: 15, borderRadius: 8, padding: '0 3px',
+                            minWidth: 17, height: 15, borderRadius: 8, padding: '0 3px',
                             background: '#0f2a52', border: '1px solid rgba(255,255,255,0.4)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 9, fontWeight: 800, color: '#fff', lineHeight: 1,
+                            fontSize: 8.5, fontWeight: 800, color: '#fff', lineHeight: 1,
+                            fontVariantNumeric: 'tabular-nums',
                           }}>
-                            {repeatMode === -1 ? '∞' : repeatMode}
+                            {repeatMode === -1 ? '∞' : `${repeatProgress}/${repeatMode}`}
                           </span>
                         )}
                       </button>
+
+                      {/* Always-visible one-tap stop — the menu is for CHOOSING
+                          a repeat count, this is for immediately cancelling an
+                          active one without hunting through it. */}
+                      {repeatMode !== 0 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRepeatMode(0);
+                            repeatModeRef.current = 0;
+                            repeatDoneRef.current = 0;
+                            setRepeatProgress(0);
+                            setShowRepeatMenu(false);
+                          }}
+                          title={isRtl ? 'إيقاف التكرار' : 'Stop repeat'}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: 20, height: 20, borderRadius: '50%', marginInlineStart: -8, marginTop: -14,
+                            background: '#1f2937', border: '1.5px solid rgba(255,255,255,0.5)',
+                            color: '#fca5a5', fontSize: 12, fontWeight: 900, lineHeight: 1, cursor: 'pointer',
+                            flexShrink: 0, zIndex: 1,
+                          }}>
+                          ×
+                        </button>
+                      )}
 
                       {showRepeatMenu && (
                         <>
@@ -689,7 +909,13 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                               {isRtl ? 'تكرار الآية' : 'Repeat ayah'}
                             </div>
                             {[0, 1, 2, 3, 4, 5, -1].map(m => (
-                              <button key={m} onClick={() => { setRepeatMode(m); repeatDoneRef.current = 0; setShowRepeatMenu(false); }} style={{
+                              <button key={m} onClick={() => {
+                                setRepeatMode(m);
+                                repeatModeRef.current = m;
+                                repeatDoneRef.current = 0;
+                                setRepeatProgress(0);
+                                setShowRepeatMenu(false);
+                              }} style={{
                                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
                                 padding: '7px 10px', borderRadius: 10, border: 'none', cursor: 'pointer',
                                 background: repeatMode === m ? 'rgba(37,99,235,0.35)' : 'transparent',
@@ -823,7 +1049,10 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
       {mode === 'both' && (
         <div className="fixed bottom-0 left-0 right-0 z-40"
           style={{
-            background: 'rgba(255,255,255,0.62)', borderTop: '1px solid rgba(37,99,235,0.14)', boxShadow: '0 -4px 24px rgba(30,58,110,0.08)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+            background: 'linear-gradient(0deg, rgba(255,255,255,0.80) 0%, rgba(232,240,255,0.60) 100%)',
+            borderTop: '1px solid rgba(37,99,235,0.16)',
+            boxShadow: '0 -6px 28px rgba(20,45,90,0.12), inset 0 -1px 0 rgba(255,255,255,0.9)',
+            backdropFilter: 'blur(26px) saturate(190%)', WebkitBackdropFilter: 'blur(26px) saturate(190%)',
             // Shares headerHidden with the top bar — a light tap on the Mushaf
             // page's background (see onPageTap) shows/hides both together.
             transform: headerHidden ? 'translateY(100%)' : 'translateY(0)', transition: 'transform 0.25s ease',
@@ -1059,6 +1288,181 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
           onClose={() => setTappedVerse(null)}
           onListen={() => listenToVerse(tappedVerse.chapterId, tappedVerse.verseNumber)}
         />
+      )}
+
+      {/* ── Word/verse search sheet ── */}
+      {showWordSearch && (
+        <div onClick={() => { setShowWordSearch(false); setWordQuery(''); setWordResults([]); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+          <div onClick={e => e.stopPropagation()} dir="rtl"
+            style={{ background: 'var(--tr-surface)', borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column', maxHeight: '88dvh' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--tr-border-soft)', margin: '14px auto 0', flexShrink: 0 }} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px 0', flexShrink: 0 }}>
+              <p style={{ fontWeight: 800, fontSize: 16, color: 'var(--tr-text-primary)' }}>
+                {isRtl ? 'ابحث في القرآن' : 'Search the Quran'}
+              </p>
+              <button onClick={() => { setShowWordSearch(false); setWordQuery(''); setWordResults([]); }}
+                style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--tr-overlay)', border: 'none', cursor: 'pointer', color: 'var(--tr-text-muted)', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                ✕
+              </button>
+            </div>
+            <div style={{ padding: '10px 16px 8px', flexShrink: 0 }}>
+              <div style={{ position: 'relative' }}>
+                <svg style={{ position: 'absolute', top: '50%', right: 12, transform: 'translateY(-50%)', pointerEvents: 'none' }}
+                  width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--tr-text-muted)" strokeWidth={2.2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                </svg>
+                {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
+                <input
+                  autoFocus
+                  value={wordQuery}
+                  onChange={e => setWordQuery(e.target.value)}
+                  placeholder={isRtl ? 'اكتب كلمة أو جزءًا من آية...' : 'Type a word or part of a verse...'}
+                  style={{
+                    width: '100%', padding: '10px 38px 10px 14px', borderRadius: 12,
+                    background: 'var(--tr-raised)', color: 'var(--tr-text-primary)',
+                    border: '1px solid var(--tr-border-soft)', outline: 'none', fontSize: 14,
+                    boxSizing: 'border-box', textAlign: 'right', fontFamily: qFont,
+                  }}
+                />
+              </div>
+            </div>
+            <div style={{ overflowY: 'auto', flex: 1, paddingBottom: 24, minHeight: 120 }}>
+              {wordQuery.trim().length < 2 ? (
+                <p style={{ textAlign: 'center', color: 'var(--tr-text-muted)', fontSize: 13, padding: '30px 20px' }}>
+                  {isRtl ? 'اكتب حرفين على الأقل لبدء البحث' : 'Type at least 2 characters to search'}
+                </p>
+              ) : wordSearching ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: 30 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', border: '2px solid rgba(37,99,235,.2)', borderTopColor: '#2563eb', animation: 'ms-spin .7s linear infinite' }} />
+                  <style>{`@keyframes ms-spin{to{transform:rotate(360deg)}}`}</style>
+                </div>
+              ) : wordResults.length === 0 ? (
+                <p style={{ textAlign: 'center', color: 'var(--tr-text-muted)', fontSize: 13, padding: '30px 20px' }}>
+                  {isRtl ? 'لا توجد نتائج' : 'No results'}
+                </p>
+              ) : (
+                wordResults.map((r, i) => (
+                  <button key={i} onClick={() => goToSearchResult(r)} style={{
+                    display: 'block', width: '100%', padding: '12px 20px', border: 'none',
+                    cursor: 'pointer', textAlign: 'right', background: 'transparent',
+                    borderBottom: '1px solid var(--tr-border-subtle)',
+                  }}>
+                    <p style={{ fontFamily: qFont, fontSize: 16, lineHeight: 1.9, color: 'var(--tr-text-primary)', marginBottom: 6 }}>
+                      {r.text}
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: '#2563eb', fontWeight: 700 }}>
+                      <span>{isRtl ? r.surahNameAr : r.surahNameEn}</span>
+                      <span style={{ color: 'var(--tr-text-muted)', fontWeight: 500 }}>﴿{toArabicNum(r.verse)}﴾</span>
+                      <span style={{ marginInlineStart: 'auto', color: 'var(--tr-text-muted)', fontWeight: 500 }}>
+                        {isRtl ? `صفحة ${toArabicNum(r.page)}` : `Page ${r.page}`}
+                      </span>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Wird (reading-plan bookmarks) sheet ── */}
+      {showWirdSheet && (
+        <div onClick={() => setShowWirdSheet(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+          <div onClick={e => e.stopPropagation()} dir="rtl"
+            style={{ background: 'var(--tr-surface)', borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column', maxHeight: '88dvh' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--tr-border-soft)', margin: '14px auto 0', flexShrink: 0 }} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px 6px', flexShrink: 0 }}>
+              <p style={{ fontWeight: 800, fontSize: 16, color: 'var(--tr-text-primary)' }}>
+                {isRtl ? 'أورادي' : 'My Wirds'}
+              </p>
+              <button onClick={() => setShowWirdSheet(false)}
+                style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--tr-overlay)', border: 'none', cursor: 'pointer', color: 'var(--tr-text-muted)', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                ✕
+              </button>
+            </div>
+            <div style={{ overflowY: 'auto', flex: 1, padding: '4px 16px 16px' }}>
+              {wirdLoading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: 30 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', border: '2px solid rgba(37,99,235,.2)', borderTopColor: '#2563eb', animation: 'ms-spin .7s linear infinite' }} />
+                </div>
+              ) : (wirdList ?? []).length === 0 ? (
+                <p style={{ textAlign: 'center', color: 'var(--tr-text-muted)', fontSize: 13, padding: '20px 10px' }}>
+                  {isRtl ? 'سجّل الدخول لحفظ أوراد القراءة' : 'Sign in to save reading wirds'}
+                </p>
+              ) : (
+                (wirdList ?? []).map(w => (
+                  <div key={w.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '12px 6px',
+                    borderBottom: '1px solid var(--tr-border-subtle)',
+                  }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                      background: 'rgba(37,99,235,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/>
+                      </svg>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--tr-text-primary)', marginBottom: 2 }}>{w.name}</p>
+                      <p style={{ fontSize: 11.5, color: 'var(--tr-text-muted)' }}>
+                        {isRtl
+                          ? `${SURAH_NAMES_AR[w.surah - 1] ?? ''} ﴿${toArabicNum(w.ayah)}﴾ • صفحة ${toArabicNum(w.page)}`
+                          : `${SURAH_NAMES_EN[w.surah - 1] ?? ''} (${w.ayah}) • Page ${w.page}`}
+                      </p>
+                    </div>
+                    <button onClick={() => saveWirdHere(w.id)} title={isRtl ? 'احفظ هنا' : 'Save here'}
+                      style={{
+                        width: 32, height: 32, borderRadius: '50%', flexShrink: 0, cursor: 'pointer',
+                        background: wirdSavedFlash === w.id ? 'rgba(34,197,94,0.16)' : 'rgba(37,99,235,0.09)',
+                        border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                      {wirdSavedFlash === w.id ? (
+                        <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                      ) : (
+                        <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/>
+                        </svg>
+                      )}
+                    </button>
+                    <button onClick={() => goToWird(w)} title={isRtl ? 'اذهب' : 'Go'}
+                      style={{
+                        width: 32, height: 32, borderRadius: '50%', flexShrink: 0, cursor: 'pointer',
+                        background: 'linear-gradient(135deg, #1e3a6e, #2563eb)', border: 'none',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+                      </svg>
+                    </button>
+                    <button onClick={() => deleteWird(w.id)} title={isRtl ? 'حذف' : 'Delete'}
+                      style={{
+                        width: 26, height: 26, borderRadius: '50%', flexShrink: 0, cursor: 'pointer',
+                        background: 'transparent', border: 'none', color: 'var(--tr-text-muted)', fontSize: 15,
+                      }}>
+                      ×
+                    </button>
+                  </div>
+                ))
+              )}
+
+              {wirdList && (
+                <button onClick={() => {
+                  const name = window.prompt(isRtl ? 'اسم الورد الجديد' : 'New wird name');
+                  if (name) addCustomWird(name);
+                }} style={{
+                  width: '100%', marginTop: 12, padding: '11px 0', borderRadius: 12,
+                  background: 'rgba(37,99,235,0.08)', border: '1px dashed rgba(37,99,235,0.35)',
+                  color: '#2563eb', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                }}>
+                  {isRtl ? '+ إضافة ورد جديد' : '+ Add new wird'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

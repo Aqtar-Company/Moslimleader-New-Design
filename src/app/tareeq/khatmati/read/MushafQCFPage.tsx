@@ -19,8 +19,8 @@ function juzLabel(n: number) { return JUZ_AR[n] ? `الجزء ${JUZ_AR[n]}` : `�
 // left pages (even) have it on their right.
 function paperGradient(isRightPage: boolean): string {
   return isRightPage
-    ? 'linear-gradient(90deg, rgba(92,68,38,0.10) 0%, rgba(140,108,66,0.035) 7%, rgba(255,252,241,0.12) 18%, rgba(255,255,255,0) 45%, rgba(255,250,232,0.10) 100%)'
-    : 'linear-gradient(270deg, rgba(92,68,38,0.10) 0%, rgba(140,108,66,0.035) 7%, rgba(255,252,241,0.12) 18%, rgba(255,255,255,0) 45%, rgba(255,250,232,0.10) 100%)';
+    ? 'linear-gradient(90deg, rgba(92,68,38,0.15) 0%, rgba(140,108,66,0.055) 7%, rgba(255,252,241,0.17) 18%, rgba(255,255,255,0) 45%, rgba(255,250,232,0.15) 100%)'
+    : 'linear-gradient(270deg, rgba(92,68,38,0.15) 0%, rgba(140,108,66,0.055) 7%, rgba(255,252,241,0.17) 18%, rgba(255,255,255,0) 45%, rgba(255,250,232,0.15) 100%)';
 }
 
 // ── Surah header — real QCF4_QBSML glyph (the exact Mushaf calligraphy) over
@@ -296,7 +296,12 @@ function LineRow({
                 const verseText = verseTextMap.get(`${word.surah}:${word.verse}`) ?? word.text;
                 onAyahTap?.({ chapterId: word.surah, verseNumber: word.verse, text: verseText });
               } else {
-                onVerseClick?.(word.surah, word.verse);
+                // A short tap — on a word or on empty page background — does
+                // ONE thing only: toggle the header/footer chrome. It used to
+                // also jump the audio cursor to the tapped word (onVerseClick),
+                // which fought the chrome-toggle gesture by also restarting
+                // playback / moving the highlight — a tap should never have
+                // two different effects at once.
                 onPageTap?.();
               }
             } : undefined}

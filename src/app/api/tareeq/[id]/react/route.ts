@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
-import { tareeqRateLimit, isTareeqSuspended } from '@/lib/tareeq-guard';
+import { tareeqRateLimit, isTareeqSuspended, isBlockedEitherWay } from '@/lib/tareeq-guard';
 import { sendPushToUser } from '@/lib/tareeq-push';
 
 const VALID_TYPES = ['inspired', 'thanks', 'agree', 'yarabb'] as const;
@@ -26,6 +26,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   // Verify post exists before any mutation
   const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { id: true, userId: true, title: true } });
   if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
+
+  if (post.userId && await isBlockedEitherWay(me.userId, post.userId)) {
+    return NextResponse.json({ error: 'لا يمكن التفاعل مع هذا المنشور' }, { status: 403 });
+  }
 
   const existing = await prisma.tareeqReaction.findUnique({
     where: { postId_userId: { postId: params.id, userId: me.userId } },

@@ -2,7 +2,8 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
-import { tareeqRateLimit } from '@/lib/tareeq-guard';
+import { tareeqRateLimit, isTareeqSuspended } from '@/lib/tareeq-guard';
+import { filterContent } from '@/lib/tareeq-content-filter';
 
 // GET /api/tareeq/[id] — returns post + userLiked + userBookmarked
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -59,6 +60,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const rl = tareeqRateLimit('edit', user.userId, 20, 60 * 60 * 1000);
   if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
 
+  if (await isTareeqSuspended(user.userId)) {
+    return NextResponse.json({ error: 'تم تعليق حسابك في طريق' }, { status: 403 });
+  }
+
   const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { userId: true, createdAt: true } });
   if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
   if (post.userId !== user.userId) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
@@ -75,12 +80,20 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (content.length < 10) return NextResponse.json({ error: 'اكتب أكثر' }, { status: 400 });
   if (content.length > 5000) return NextResponse.json({ error: 'النص طويل جداً' }, { status: 400 });
 
+  // The create route runs edited text through the same content filter — an
+  // edit was previously a way to reintroduce content that filter would have
+  // auto-hidden at creation time, with no re-check at all.
+  const filterResult = filterContent([content, title].filter(Boolean).join(' '));
+
   await prisma.tareeqPost.update({
     where: { id: params.id },
-    data: { content, title, updatedAt: new Date() },
+    data: {
+      content, title, updatedAt: new Date(),
+      ...(filterResult.flagged ? { isHidden: true, hiddenReason: filterResult.reason ?? 'auto-filter' } : {}),
+    },
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, flagged: filterResult.flagged });
 }
 
 // DELETE /api/tareeq/[id] — owner or admin only

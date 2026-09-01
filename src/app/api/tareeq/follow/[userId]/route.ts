@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
-import { tareeqRateLimit, isTareeqSuspended } from '@/lib/tareeq-guard';
+import { tareeqRateLimit, isTareeqSuspended, isBlockedEitherWay } from '@/lib/tareeq-guard';
 import { sendPushToUser } from '@/lib/tareeq-push';
 
 // GET — check if current user follows this profile + counts
@@ -50,6 +50,11 @@ export async function POST(_req: NextRequest, { params }: { params: { userId: st
     await prisma.tareeqFollow.deleteMany({ where: { followerId: me.userId, followingId: params.userId } });
     return NextResponse.json({ following: false });
   } else {
+    // Blocking severs an EXISTING follow, but nothing stopped either side
+    // from immediately re-following right after — check it here too.
+    if (await isBlockedEitherWay(me.userId, params.userId)) {
+      return NextResponse.json({ error: 'لا يمكن متابعة هذا المستخدم' }, { status: 403 });
+    }
     try {
       await prisma.tareeqFollow.create({ data: { followerId: me.userId, followingId: params.userId } });
     } catch (e: any) {

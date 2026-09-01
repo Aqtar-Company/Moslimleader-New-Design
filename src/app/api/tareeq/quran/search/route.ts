@@ -55,7 +55,11 @@ async function buildIndex(): Promise<IndexedVerse[]> {
     }
     for (const line of raw.lines ?? []) {
       for (const w of line.words ?? []) {
-        if (w.type !== 'word' || !w.verse_key || !w.text) continue;
+        // A handful of sajda (prostration) ornament entries are mistagged
+        // type:'word' with a placeholder reference string for `text`
+        // (e.g. "#1969" at 19:58) instead of real Arabic — skip anything
+        // with no Arabic letters so it can't surface in search results.
+        if (w.type !== 'word' || !w.verse_key || !w.text || !/[؀-ۿ]/.test(w.text)) continue;
         const [sStr, vStr] = w.verse_key.split(':');
         const surah = Number(sStr);
         const verse = Number(vStr);

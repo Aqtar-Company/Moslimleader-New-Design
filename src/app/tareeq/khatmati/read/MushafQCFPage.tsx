@@ -414,13 +414,19 @@ export default function MushafQCFPage({
   const hizb = getPageHizb(page);
 
   // Build a lookup map of full verse text: "surah:verse" → joined Arabic words
-  // (only real word glyphs — 'end'/'surah_header'/'bismillah' carry placeholder text)
+  // (only real word glyphs — 'end'/'surah_header'/'bismillah' carry placeholder text).
+  // A handful of sajda (prostration) ornament entries in the source data are
+  // mistagged type:'word' with a placeholder reference string for `text`
+  // (e.g. "#1969" at 19:58) instead of real Arabic — their glyph still
+  // renders correctly (that comes from `char`), but that placeholder must
+  // not leak into any text built from `text` (tafsir header, share card,
+  // search index). Filtered by requiring at least one Arabic letter.
   const verseTextMap = useMemo<Map<string, string>>(() => {
     const map = new Map<string, string>();
     if (!data) return map;
     for (const line of data.lines) {
       for (const w of line.words) {
-        if (w.type !== 'word') continue;
+        if (w.type !== 'word' || !/[؀-ۿ]/.test(w.text)) continue;
         const key = `${w.surah}:${w.verse}`;
         map.set(key, (map.get(key) ? map.get(key) + ' ' : '') + w.text);
       }

@@ -65,6 +65,7 @@ function rRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h
 export default function VerseActionSheet({ verse, onClose, onListen }: Props) {
   const [view, setView] = useState<'menu' | 'tafsir' | 'card'>('menu');
   const [tafsir, setTafsir] = useState('');
+  const [tafsirFailed, setTafsirFailed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [cardUrl, setCardUrl] = useState<string | null>(null);
 
@@ -77,8 +78,8 @@ export default function VerseActionSheet({ verse, onClose, onListen }: Props) {
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
 
-  async function fetchTafsir(): Promise<string> {
-    if (tafsir) return tafsir;
+  async function fetchTafsir(): Promise<{ text: string; failed: boolean }> {
+    if (tafsir && !tafsirFailed) return { text: tafsir, failed: false };
     setLoading(true);
     try {
       const tafsirId = await resolveMuyassarTafsirId();
@@ -86,11 +87,15 @@ export default function VerseActionSheet({ verse, onClose, onListen }: Props) {
       const data = await res.json();
       const html: string = data?.tafsir?.text ?? data?.data?.tafsir?.text ?? '';
       const stripped = html.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+      if (!stripped) throw new Error('empty tafsir');
       setTafsir(stripped);
-      return stripped;
+      setTafsirFailed(false);
+      return { text: stripped, failed: false };
     } catch {
       const fb = 'تعذّر تحميل التفسير، تحقق من الاتصال.';
-      setTafsir(fb); return fb;
+      setTafsir(fb);
+      setTafsirFailed(true);
+      return { text: fb, failed: true };
     } finally { setLoading(false); }
   }
 
@@ -101,8 +106,8 @@ export default function VerseActionSheet({ verse, onClose, onListen }: Props) {
 
   async function openCard() {
     setView('tafsir'); setLoading(true);
-    const t = await fetchTafsir();
-    await buildCard(t);
+    const { text, failed } = await fetchTafsir();
+    await buildCard(failed ? '' : text);
     setView('card');
   }
 
@@ -164,20 +169,24 @@ export default function VerseActionSheet({ verse, onClose, onListen }: Props) {
     ctx.font = `26px ${AF}`; ctx.fillStyle = 'rgba(200,168,75,0.5)';
     ctx.fillText('۩', W / 2, y + 14); y += 56;
 
-    // Mid divider
-    ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(76, y, W - 152, 1);
-    y += 34;
+    // Tafsir section — omitted entirely (not a fabricated error message
+    // baked into the shareable image) when it failed to load.
+    if (tafsirText) {
+      // Mid divider
+      ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(76, y, W - 152, 1);
+      y += 34;
 
-    // Tafsir label
-    ctx.font = `bold 21px ${AF}`; ctx.fillStyle = 'rgba(255,204,51,0.5)';
-    ctx.fillText('التفسير الميسَّر', W / 2, y); y += 36;
+      // Tafsir label
+      ctx.font = `bold 21px ${AF}`; ctx.fillStyle = 'rgba(255,204,51,0.5)';
+      ctx.fillText('التفسير الميسَّر', W / 2, y); y += 36;
 
-    // Tafsir text
-    ctx.font = `26px ${AF}`; ctx.fillStyle = 'rgba(255,255,255,0.70)';
-    const tLines = wrapText(ctx, tafsirText, 800);
-    for (const line of tLines) {
-      if (y > H - 110) { ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillText('...', W / 2, y); break; }
-      ctx.fillText(line, W / 2, y); y += 46;
+      // Tafsir text
+      ctx.font = `26px ${AF}`; ctx.fillStyle = 'rgba(255,255,255,0.70)';
+      const tLines = wrapText(ctx, tafsirText, 800);
+      for (const line of tLines) {
+        if (y > H - 110) { ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillText('...', W / 2, y); break; }
+        ctx.fillText(line, W / 2, y); y += 46;
+      }
     }
 
     // Brand
@@ -307,7 +316,7 @@ export default function VerseActionSheet({ verse, onClose, onListen }: Props) {
                 {tafsir}
               </p>
             )}
-            {!loading && tafsir && (
+            {!loading && tafsir && !tafsirFailed && (
               <button onClick={openCard} style={{
                 width: '100%', marginTop: 20, padding: '13px 0', borderRadius: 13,
                 background: '#FFCC33', color: '#081320', fontWeight: 700, fontSize: 15,

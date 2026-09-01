@@ -162,15 +162,12 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   const [wirdList, setWirdList] = useState<WirdMark[] | null>(null);
   const [wirdLoading, setWirdLoading] = useState(false);
   const [wirdSavedFlash, setWirdSavedFlash] = useState<string | null>(null);
+  const [wirdSignedOut, setWirdSignedOut] = useState(false);
 
   // Header/footer chrome — hidden by default in Mushaf ('both') mode,
   // toggled only by a tap on the page background (toggleChrome/onPageTap).
   const [headerHidden, setHeaderHidden] = useState(false);
   const [autoFollow, setAutoFollow] = useState(true);
-
-  // Swipe-to-turn-page refs (Arabic RTL: swipe left = next, swipe right = prev)
-  const swipeStartXRef = useRef<number | null>(null);
-  const swipeStartYRef = useRef<number | null>(null);
 
   // Refs for closure-safe access in audio callbacks
   const versesRef   = useRef<QuranVerse[]>([]);
@@ -509,8 +506,10 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
       if (res.ok) {
         const d = await res.json();
         setWirdList(d.wirds ?? []);
+        setWirdSignedOut(false);
       } else {
         setWirdList([]);
+        setWirdSignedOut(res.status === 401);
       }
     } catch {
       setWirdList([]);
@@ -1448,7 +1447,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                 ))
               )}
 
-              {wirdList && (
+              {wirdList && !wirdSignedOut && (
                 <button onClick={() => {
                   const name = window.prompt(isRtl ? 'اسم الورد الجديد' : 'New wird name');
                   if (name) addCustomWird(name);

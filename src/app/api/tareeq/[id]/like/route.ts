@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
-import { tareeqRateLimit, isTareeqSuspended } from '@/lib/tareeq-guard';
+import { tareeqRateLimit, isTareeqSuspended, isBlockedEitherWay } from '@/lib/tareeq-guard';
 import { sendPushToUser } from '@/lib/tareeq-push';
 
 // POST /api/tareeq/[id]/like — toggle like (atomic)
@@ -22,6 +22,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     select: { id: true, userId: true, title: true, imageUrl: true },
   });
   if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
+
+  if (post.userId && await isBlockedEitherWay(user.userId, post.userId)) {
+    return NextResponse.json({ error: 'لا يمكن الإعجاب بهذا المنشور' }, { status: 403 });
+  }
 
   const existing = await prisma.tareeqLike.findUnique({
     where: { postId_userId: { postId: params.id, userId: user.userId } },

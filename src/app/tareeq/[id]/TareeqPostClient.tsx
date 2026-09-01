@@ -605,7 +605,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                             <button
                               onClick={() => setReportCommentId(c.id)}
                               title={isRtl ? 'إبلاغ عن التعليق' : 'Report comment'}
-                              className="transition opacity-0 group-hover:opacity-100"
+                              className="transition opacity-100 md:opacity-0 md:group-hover:opacity-100"
                               style={{ color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
                             >
                               <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">

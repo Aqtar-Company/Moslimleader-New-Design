@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
-import { tareeqRateLimit, isTareeqSuspended } from '@/lib/tareeq-guard';
+import { tareeqRateLimit, isTareeqSuspended, isBlockedEitherWay } from '@/lib/tareeq-guard';
 import { sendPushToUser } from '@/lib/tareeq-push';
 import { filterContent } from '@/lib/tareeq-content-filter';
 
@@ -69,6 +69,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { id: true, userId: true, title: true, imageUrl: true } });
   if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
+
+  if (post.userId && await isBlockedEitherWay(user.userId, post.userId)) {
+    return NextResponse.json({ error: 'لا يمكن التعليق على هذا المنشور' }, { status: 403 });
+  }
 
   // Validate parentId belongs to this post
   let parentAuthorId: string | null = null;

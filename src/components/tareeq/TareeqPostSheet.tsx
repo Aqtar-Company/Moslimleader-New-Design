@@ -8,6 +8,7 @@ import { timeAgo } from '@/lib/tareeq-utils';
 import { TAREEQ_CATEGORIES, CATEGORY_ICONS, CATEGORY_ACCENT_HEX } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import TareeqLoginGate from './TareeqLoginGate';
+import { ReportModal } from './TareeqCard';
 
 interface Props {
   postId: string;
@@ -62,6 +63,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
   const [comments, setComments] = useState<Comment[]>([]);
   const [showGate, setShowGate] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{ commentId: string; authorName: string } | null>(null);
+  const [reportCommentId, setReportCommentId] = useState<string | null>(null);
   const [expandedReplies, setExpandedReplies] = useState<Record<string, Comment[]>>({});
   const [loadingReplies, setLoadingReplies] = useState<Record<string, boolean>>({});
   const [visible, setVisible] = useState(false);
@@ -354,6 +356,9 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                                 <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{c.content}</p>
                                 <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
                                   <button type="button" onClick={() => setReplyingTo({ commentId: c.id, authorName: c.user?.name ?? '' })} style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{isRtl ? 'رد' : 'Reply'}</button>
+                                  {user && user.id !== c.userId && (
+                                    <button type="button" onClick={() => setReportCommentId(c.id)} style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{isRtl ? 'إبلاغ' : 'Report'}</button>
+                                  )}
                                   {(c.replyCount ?? 0) > 0 && (
                                     <button onClick={() => loadReplies(c.id)} style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-gold)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                                       {loadingReplies[c.id] ? '...' : expandedReplies[c.id] ? (isRtl ? 'إخفاء' : 'Hide') : (isRtl ? `${c.replyCount} ردود` : `${c.replyCount} replies`)}
@@ -403,6 +408,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
           </div>
         </div>
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
+        {reportCommentId && <ReportModal targetType="comment" targetId={reportCommentId} isRtl={isRtl} onClose={() => setReportCommentId(null)} />}
       </>
     );
     if (typeof document === 'undefined') return null;

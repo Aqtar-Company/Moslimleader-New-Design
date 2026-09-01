@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
+import { isBlockedEitherWay } from '@/lib/tareeq-guard';
 
 // POST /api/tareeq/presence — update current user's last-seen timestamp
 export async function POST() {
@@ -24,6 +25,12 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const targetId = searchParams.get('userId');
   if (!targetId) return NextResponse.json({ online: false });
+
+  // Presence used to be visible to literally any signed-in caller with no
+  // relationship check at all — block it in either direction, same as DMs.
+  if (await isBlockedEitherWay(user.userId, targetId)) {
+    return NextResponse.json({ online: false, lastSeen: null });
+  }
 
   const target = await prisma.user.findUnique({
     where: { id: targetId },

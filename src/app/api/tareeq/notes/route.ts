@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
-import { checkRateLimit } from '@/lib/rate-limit';
+import { tareeqRateLimit } from '@/lib/tareeq-guard';
 import { Prisma } from '@prisma/client';
 
 // Strip MySQL BOOLEAN MODE operators to avoid syntax errors in MATCH...AGAINST
@@ -84,12 +84,11 @@ export async function GET(req: NextRequest) {
 
 // POST /api/tareeq/notes — create note
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
-  const rl = checkRateLimit(`tareeq-note-create:${ip}`, 30, 60 * 60 * 1000);
-  if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
-
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
+
+  const rl = tareeqRateLimit('note-create', user.userId, 30, 60 * 60 * 1000);
+  if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
 
   const body    = await req.json().catch(() => ({}));
   const title   = String(body.title   ?? '').trim().slice(0, 200) || null;

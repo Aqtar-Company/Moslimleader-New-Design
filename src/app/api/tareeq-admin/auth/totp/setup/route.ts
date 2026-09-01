@@ -12,7 +12,7 @@ import { requireAdmin } from '@/lib/tareeq-admin-auth';
 export async function GET(req: Request) {
   let admin;
   try {
-    admin = await requireAdmin(req);
+    admin = await requireAdmin(req, undefined, { allowSetupIncomplete: true });
   } catch (e) {
     return e as Response;
   }
@@ -49,7 +49,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let admin;
   try {
-    admin = await requireAdmin(req);
+    admin = await requireAdmin(req, undefined, { allowSetupIncomplete: true });
   } catch (e) {
     return e as Response;
   }

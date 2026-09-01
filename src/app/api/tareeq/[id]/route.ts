@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
-import { checkRateLimit } from '@/lib/rate-limit';
+import { tareeqRateLimit } from '@/lib/tareeq-guard';
 
 // GET /api/tareeq/[id] — returns post + userLiked + userBookmarked
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -53,12 +53,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 // PUT /api/tareeq/[id] — edit (owner only)
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
-  const rl = checkRateLimit(`tareeq-edit:${ip}`, 20, 60 * 60 * 1000);
-  if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
-
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
+
+  const rl = tareeqRateLimit('edit', user.userId, 20, 60 * 60 * 1000);
+  if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
 
   const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { userId: true, createdAt: true } });
   if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
@@ -86,12 +85,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
 // DELETE /api/tareeq/[id] — owner or admin only
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
-  const rl = checkRateLimit(`tareeq-delete:${ip}`, 10, 60 * 60 * 1000);
-  if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
-
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
+
+  const rl = tareeqRateLimit('delete', user.userId, 10, 60 * 60 * 1000);
+  if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
 
   const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { userId: true } });
   if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });

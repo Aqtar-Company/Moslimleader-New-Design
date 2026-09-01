@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
+import { isBlockedEitherWay } from '@/lib/tareeq-guard';
 
 // GET /api/tareeq/conversations — list current user's conversations
 // ?countOnly=true → returns { unreadCount: N } cheaply
@@ -82,6 +83,10 @@ export async function POST(req: NextRequest) {
 
   const otherUser = await prisma.user.findUnique({ where: { id: otherId }, select: { id: true } });
   if (!otherUser) return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 404 });
+
+  if (await isBlockedEitherWay(user.userId, otherId)) {
+    return NextResponse.json({ error: 'لا يمكن بدء محادثة مع هذا المستخدم' }, { status: 403 });
+  }
 
   // Always sort alphabetically to ensure deduplication
   const [pA, pB] = [user.userId, otherId].sort();

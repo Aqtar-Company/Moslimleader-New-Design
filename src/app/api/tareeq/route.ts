@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
-import { checkRateLimit } from '@/lib/rate-limit';
+import { tareeqRateLimit } from '@/lib/tareeq-guard';
 import { CATEGORY_KEY } from '@/lib/tareeq-constants';
 import { filterContent, validateMediaUrl } from '@/lib/tareeq-content-filter';
 
@@ -107,10 +107,23 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ posts: items, nextCursor });
   }
 
+  // Exclude posts from anyone in a block relationship with the viewer (either
+  // direction) — blocking previously did nothing to the feed itself.
+  let blockedIds: string[] = [];
+  const viewerForBlocks = await getAuthUser().catch(() => null);
+  if (viewerForBlocks && !userId) {
+    const blocks = await prisma.tareeqBlock.findMany({
+      where: { OR: [{ blockerId: viewerForBlocks.userId }, { blockedId: viewerForBlocks.userId }] },
+      select: { blockerId: true, blockedId: true },
+    });
+    blockedIds = blocks.map(b => (b.blockerId === viewerForBlocks.userId ? b.blockedId : b.blockerId));
+  }
+
   const where = {
     isHidden: false,
     ...(category ? { category } : {}),
     ...(userId ? { userId } : {}),
+    ...(blockedIds.length ? { userId: { notIn: blockedIds } } : {}),
     ...(sort === 'useful' ? { createdAt: { gte: new Date(Date.now() - 30 * 24 * 3600 * 1000) } } : {}),
     ...(search ? {
       OR: [
@@ -145,12 +158,11 @@ export async function GET(req: NextRequest) {
 
 // POST /api/tareeq — create a new علامة
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
-  const rl = checkRateLimit(`tareeq:${ip}`, 10, 60 * 60 * 1000);
-  if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
-
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
+
+  const rl = tareeqRateLimit('post', user.userId, 10, 60 * 60 * 1000);
+  if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
 
   // Check if user is suspended from Tareeq (also fetch name/avatar for post creation below)
   const dbUser = await prisma.user.findUnique({ where: { id: user.userId }, select: { tareeqSuspended: true, name: true, avatarUrl: true } });

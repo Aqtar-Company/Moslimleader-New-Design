@@ -2,17 +2,20 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
-import { checkRateLimit } from '@/lib/rate-limit';
+import { tareeqRateLimit, isTareeqSuspended } from '@/lib/tareeq-guard';
 import { sendPushToUser } from '@/lib/tareeq-push';
 
 // POST /api/tareeq/[id]/like — toggle like (atomic)
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
-  const rl = checkRateLimit(`tareeq-like:${ip}`, 30, 60_000);
-  if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
-
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
+
+  const rl = tareeqRateLimit('like', user.userId, 30, 60_000);
+  if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
+
+  if (await isTareeqSuspended(user.userId)) {
+    return NextResponse.json({ error: 'تم تعليق حسابك في طريق' }, { status: 403 });
+  }
 
   const post = await prisma.tareeqPost.findUnique({
     where: { id: params.id },

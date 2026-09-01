@@ -31,9 +31,10 @@ function timeAgo(iso: string, isRtl: boolean): string {
   return isRtl ? `${Math.floor(diff/86400)} ي` : `${Math.floor(diff/86400)}d`;
 }
 
-function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreated: (groupId: string) => void }) {
+export function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreated: (groupId: string) => void }) {
   const { isRtl } = useLang();
   const [name, setName] = useState('');
+  const [isPublic, setIsPublic] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -43,7 +44,7 @@ function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreat
     try {
       const res = await fetch('/api/tareeq/groups', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', body: JSON.stringify({ name: name.trim() }),
+        credentials: 'include', body: JSON.stringify({ name: name.trim(), isPublic }),
       });
       const d = await res.json();
       if (res.ok) { onCreated(d.group?.id ?? ''); onClose(); }
@@ -77,6 +78,13 @@ function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreat
           className="w-full rounded-xl px-4 py-3 text-sm outline-none"
           style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
         />
+        <label className="flex items-center gap-2.5 px-1 cursor-pointer select-none">
+          <input type="checkbox" checked={isPublic} onChange={e => setIsPublic(e.target.checked)}
+            className="w-4 h-4 rounded" style={{ accentColor: BLUE }} />
+          <span className="text-xs font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>
+            {isRtl ? 'مجموعة عامة (يظهر في الاستكشاف، يمكن لأي شخص الانضمام)' : 'Public group (shown in discovery, anyone can join)'}
+          </span>
+        </label>
         <button onClick={submit} disabled={loading || !name.trim()}
           className="w-full py-3 rounded-xl font-black text-sm transition disabled:opacity-40"
           style={{ background: BLUE, color: '#fff' }}>

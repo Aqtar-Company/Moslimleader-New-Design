@@ -110,6 +110,20 @@ const RECITERS = [
   { id: 'ar.saoodshuraym',      nameAr: 'سعود الشريم',          color: '#004a4a' },
 ];
 
+// Fixed colors for the four default wirds, so each reading-plan track reads
+// as its own distinct thing at a glance rather than four identical blue
+// bookmarks — a custom wird cycles through the same palette by creation order.
+const WIRD_COLORS: Record<string, string> = {
+  'ورد حفظ': '#2563eb',
+  'ورد تلاوة': '#16a34a',
+  'ورد مراجعة': '#d97706',
+  'ورد تدبر': '#7c3aed',
+};
+const WIRD_COLOR_CYCLE = ['#2563eb', '#16a34a', '#d97706', '#7c3aed', '#db2777', '#0891b2'];
+function wirdColor(name: string, index: number): string {
+  return WIRD_COLORS[name] ?? WIRD_COLOR_CYCLE[index % WIRD_COLOR_CYCLE.length];
+}
+
 function getAudioUrlForReciter(globalAyahId: number, reciterId: string): string {
   return `https://cdn.islamic.network/quran/audio/128/${reciterId}/${globalAyahId}.mp3`;
 }
@@ -193,6 +207,12 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
     // 'read' tab removed — fall back to listen
     if (stored === 'listen' || stored === 'both') setMode(stored);
   }, []);
+
+  // Preload the wird list eagerly (not just when the sheet opens) so the
+  // colored-dot preview on the header's bookmark button has something to
+  // show without requiring a visit to the sheet first. Silently resolves to
+  // an empty/signed-out state if there's no session — no visible error.
+  useEffect(() => { loadWirdList(); }, []);
 
   // Mushaf reading ('both' mode) is immersive by default — chrome revealed
   // only via a tap on the page background (toggleChrome/onPageTap). This
@@ -594,6 +614,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
         {/* Row 1: surah list (right) | page nav | search | back arrow (left) */}
         <div className="flex items-center gap-2 px-3 py-2" dir="rtl"
           style={{
+            position: 'relative', // anchors the search-results dropdown below
             // A cooler, neutral glass (not the Mushaf's own warm paper tone)
             // with Tareeq's signature blue as the accent — the page under
             // it stays beige, this is app chrome, not part of the "book".
@@ -610,60 +631,155 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
               : undefined,
           }}>
 
-          {/* Surah list button — rightmost in RTL */}
-          <button onClick={() => setShowSearch(true)}
-            className="flex items-center gap-1 h-8 px-2 rounded-full shrink-0 transition active:scale-90"
-            style={{ background: mode === 'both' ? 'rgba(37,99,235,0.09)' : 'var(--tr-overlay)', color: mode === 'both' ? '#1e3a6e' : 'var(--tr-text-secondary)', maxWidth: 120 }}>
-            <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" d="M4 6h16M4 12h10M4 18h7"/>
-            </svg>
-            <span className="text-[11px] font-bold truncate" style={{ fontFamily: qFont }}>
-              {cv ? (isRtl ? surahNameAr : surahNameEn) : (isRtl ? 'السور' : 'Surahs')}
-            </span>
-          </button>
+          {showWordSearch ? (
+            <>
+              {/* Search mode — the search icon expands to take over the whole
+                  row instead of opening a separate sheet, so it costs zero
+                  header space until actually used. */}
+              <button onClick={() => { setShowWordSearch(false); setWordQuery(''); setWordResults([]); }}
+                className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 shrink-0"
+                style={{ background: mode === 'both' ? 'rgba(37,99,235,0.09)' : 'var(--tr-overlay)', color: mode === 'both' ? '#1e3a6e' : 'var(--tr-text-secondary)' }}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.3} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              <div className="flex-1 flex items-center gap-2 h-8 px-3 rounded-full min-w-0"
+                style={{
+                  background: mode === 'both' ? 'rgba(255,255,255,0.65)' : 'var(--tr-overlay)',
+                  border: mode === 'both' ? '1px solid rgba(37,99,235,0.20)' : '1px solid var(--tr-border-subtle)',
+                }}>
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke={mode === 'both' ? '#5a7bb8' : 'var(--tr-text-muted)'} strokeWidth={2.2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                </svg>
+                {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
+                <input
+                  autoFocus
+                  value={wordQuery}
+                  onChange={e => setWordQuery(e.target.value)}
+                  placeholder={isRtl ? 'ابحث في القرآن...' : 'Search the Quran...'}
+                  className="flex-1 min-w-0 bg-transparent outline-none text-[13px] font-semibold"
+                  style={{ color: mode === 'both' ? '#16233f' : 'var(--tr-text-primary)', fontFamily: qFont }}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Surah list button — rightmost in RTL */}
+              <button onClick={() => setShowSearch(true)}
+                className="flex items-center gap-1 h-8 px-2 rounded-full shrink-0 transition active:scale-90"
+                style={{ background: mode === 'both' ? 'rgba(37,99,235,0.09)' : 'var(--tr-overlay)', color: mode === 'both' ? '#1e3a6e' : 'var(--tr-text-secondary)', maxWidth: 120 }}>
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" d="M4 6h16M4 12h10M4 18h7"/>
+                </svg>
+                <span className="text-[11px] font-bold truncate" style={{ fontFamily: qFont }}>
+                  {cv ? (isRtl ? surahNameAr : surahNameEn) : (isRtl ? 'السور' : 'Surahs')}
+                </span>
+              </button>
 
-          {/* Word/verse search (center) — replaces the old static page/surah
-              display: that was purely informational, this is actionable.
-              Page turning stays swipe-only; the right/left-page indicator
-              lives on the Mushaf page itself (MushafTopMetadata). */}
-          <button onClick={() => setShowWordSearch(true)}
-            className="flex-1 flex items-center gap-2 h-8 px-3 rounded-full transition active:scale-95 min-w-0"
-            style={{
-              background: mode === 'both' ? 'rgba(255,255,255,0.55)' : 'var(--tr-overlay)',
-              border: mode === 'both' ? '1px solid rgba(37,99,235,0.16)' : '1px solid var(--tr-border-subtle)',
-            }}>
-            <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke={mode === 'both' ? '#5a7bb8' : 'var(--tr-text-muted)'} strokeWidth={2.2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
-            </svg>
-            <span className="text-[11.5px] font-semibold truncate" style={{ color: mode === 'both' ? '#5a6a8a' : 'var(--tr-text-muted)' }}>
-              {isRtl ? 'ابحث في القرآن...' : 'Search the Quran...'}
-            </span>
-          </button>
+              <div className="flex-1" />
 
-          {/* Wird (reading-plan bookmarks) button */}
-          <button onClick={openWirdSheet}
-            className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 shrink-0"
-            style={{ background: mode === 'both' ? 'rgba(37,99,235,0.09)' : 'var(--tr-overlay)', color: mode === 'both' ? '#1e3a6e' : 'var(--tr-text-secondary)' }}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/>
-            </svg>
-          </button>
+              {/* Wird (reading-plan bookmarks) button — small colored dots
+                  preview so the saved-position marks are visible from the
+                  header itself, not only inside the sheet. */}
+              <button onClick={openWirdSheet}
+                className="relative w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 shrink-0"
+                style={{ background: mode === 'both' ? 'rgba(37,99,235,0.09)' : 'var(--tr-overlay)', color: mode === 'both' ? '#1e3a6e' : 'var(--tr-text-secondary)' }}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/>
+                </svg>
+                {wirdList && wirdList.length > 0 && (
+                  <span style={{
+                    position: 'absolute', bottom: -1, insetInlineEnd: -1, display: 'flex', gap: 1.5,
+                    padding: '1.5px 3px', borderRadius: 6, background: mode === 'both' ? '#fff' : 'var(--tr-surface)',
+                    boxShadow: '0 0 0 1.5px rgba(255,255,255,0.9)',
+                  }}>
+                    {wirdList.slice(0, 4).map((w, i) => (
+                      <span key={w.id} style={{ width: 4, height: 4, borderRadius: '50%', background: wirdColor(w.name, i) }} />
+                    ))}
+                  </span>
+                )}
+              </button>
 
-          {/* Back button — Tareeq's own blue gradient, matching the listen-mode player */}
-          <button onClick={() => router.push(groupId ? `/tareeq/khatmati/groups/${groupId}` : '/tareeq/khatmati')}
-            className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 shrink-0"
-            style={{
-              background: mode === 'both' ? 'linear-gradient(135deg, #1e3a6e, #2563eb)' : '#2563eb',
-              color: '#fff',
-              boxShadow: mode === 'both' ? '0 2px 10px rgba(37,99,235,0.35)' : undefined,
-            }}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-            </svg>
-          </button>
+              {/* Search icon — square, expands in place when tapped (see above) */}
+              <button onClick={() => setShowWordSearch(true)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center transition active:scale-90 shrink-0"
+                style={{ background: mode === 'both' ? 'rgba(37,99,235,0.09)' : 'var(--tr-overlay)', color: mode === 'both' ? '#1e3a6e' : 'var(--tr-text-secondary)' }}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                </svg>
+              </button>
+
+              {/* Back button — Tareeq's own blue gradient, matching the listen-mode player */}
+              <button onClick={() => router.push(groupId ? `/tareeq/khatmati/groups/${groupId}` : '/tareeq/khatmati')}
+                className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90 shrink-0"
+                style={{
+                  background: mode === 'both' ? 'linear-gradient(135deg, #1e3a6e, #2563eb)' : '#2563eb',
+                  color: '#fff',
+                  boxShadow: mode === 'both' ? '0 2px 10px rgba(37,99,235,0.35)' : undefined,
+                }}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                </svg>
+              </button>
+            </>
+          )}
         </div>
 
-        {/* Row 2: Mode tabs — right→left: قراءة فقط (default) | استماع */}
+        {/* Search results dropdown — appears directly under row 1 while
+            the inline search is expanded, styled as list cards. */}
+        {showWordSearch && (
+          <div dir="rtl" style={{
+            position: 'absolute', top: '100%', left: 0, right: 0, maxHeight: '60vh', overflowY: 'auto',
+            background: mode === 'both' ? 'rgba(255,255,255,0.94)' : 'var(--tr-surface)',
+            backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+            borderBottom: '1px solid rgba(37,99,235,0.16)',
+            boxShadow: '0 12px 28px rgba(20,45,90,0.16)',
+            padding: 10,
+          }}>
+            {wordQuery.trim().length < 2 ? (
+              <p style={{ textAlign: 'center', color: 'var(--tr-text-muted)', fontSize: 13, padding: '20px 10px' }}>
+                {isRtl ? 'اكتب حرفين على الأقل لبدء البحث' : 'Type at least 2 characters to search'}
+              </p>
+            ) : wordSearching ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 24 }}>
+                <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid rgba(37,99,235,.2)', borderTopColor: '#2563eb', animation: 'ms-spin .7s linear infinite' }} />
+                <style>{`@keyframes ms-spin{to{transform:rotate(360deg)}}`}</style>
+              </div>
+            ) : wordResults.length === 0 ? (
+              <p style={{ textAlign: 'center', color: 'var(--tr-text-muted)', fontSize: 13, padding: '20px 10px' }}>
+                {isRtl ? 'لا توجد نتائج' : 'No results'}
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {wordResults.map((r, i) => (
+                  <button key={i} onClick={() => goToSearchResult(r)} style={{
+                    display: 'block', width: '100%', padding: '12px 14px', border: 'none',
+                    cursor: 'pointer', textAlign: 'right',
+                    background: mode === 'both' ? 'rgba(37,99,235,0.045)' : 'var(--tr-raised)',
+                    borderRadius: 14,
+                  }}>
+                    <p style={{ fontFamily: qFont, fontSize: 16, lineHeight: 1.85, color: 'var(--tr-text-primary)', marginBottom: 8 }}>
+                      {r.text}
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
+                      <span style={{
+                        background: 'rgba(37,99,235,0.12)', color: '#1e3a6e', fontWeight: 800,
+                        borderRadius: 999, padding: '2px 9px',
+                      }}>
+                        {isRtl ? r.surahNameAr : r.surahNameEn} ﴿{toArabicNum(r.verse)}﴾
+                      </span>
+                      <span style={{ marginInlineStart: 'auto', color: 'var(--tr-text-muted)', fontWeight: 600 }}>
+                        {isRtl ? `صفحة ${toArabicNum(r.page)}` : `Page ${r.page}`}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Row 2: Mode tabs — right→left: قراءة (default) | استماع */}
         <div className="flex" style={{
           background: mode === 'both'
             ? 'linear-gradient(180deg, rgba(255,255,255,0.60) 0%, rgba(225,235,255,0.44) 100%)'
@@ -680,7 +796,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                 borderBottom: mode === m ? '2px solid #2563eb' : '2px solid transparent',
                 background: 'none',
               }}>
-              {m === 'both' ? (isRtl ? 'قراءة فقط' : 'Reading') : (isRtl ? 'استماع' : 'Listen')}
+              {m === 'both' ? (isRtl ? 'قراءة' : 'Reading') : (isRtl ? 'استماع' : 'Listen')}
             </button>
           ))}
         </div>
@@ -1289,82 +1405,6 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
         />
       )}
 
-      {/* ── Word/verse search sheet ── */}
-      {showWordSearch && (
-        <div onClick={() => { setShowWordSearch(false); setWordQuery(''); setWordResults([]); }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-          <div onClick={e => e.stopPropagation()} dir="rtl"
-            style={{ background: 'var(--tr-surface)', borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column', maxHeight: '88dvh' }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--tr-border-soft)', margin: '14px auto 0', flexShrink: 0 }} />
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px 0', flexShrink: 0 }}>
-              <p style={{ fontWeight: 800, fontSize: 16, color: 'var(--tr-text-primary)' }}>
-                {isRtl ? 'ابحث في القرآن' : 'Search the Quran'}
-              </p>
-              <button onClick={() => { setShowWordSearch(false); setWordQuery(''); setWordResults([]); }}
-                style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--tr-overlay)', border: 'none', cursor: 'pointer', color: 'var(--tr-text-muted)', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                ✕
-              </button>
-            </div>
-            <div style={{ padding: '10px 16px 8px', flexShrink: 0 }}>
-              <div style={{ position: 'relative' }}>
-                <svg style={{ position: 'absolute', top: '50%', right: 12, transform: 'translateY(-50%)', pointerEvents: 'none' }}
-                  width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--tr-text-muted)" strokeWidth={2.2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
-                </svg>
-                {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
-                <input
-                  autoFocus
-                  value={wordQuery}
-                  onChange={e => setWordQuery(e.target.value)}
-                  placeholder={isRtl ? 'اكتب كلمة أو جزءًا من آية...' : 'Type a word or part of a verse...'}
-                  style={{
-                    width: '100%', padding: '10px 38px 10px 14px', borderRadius: 12,
-                    background: 'var(--tr-raised)', color: 'var(--tr-text-primary)',
-                    border: '1px solid var(--tr-border-soft)', outline: 'none', fontSize: 14,
-                    boxSizing: 'border-box', textAlign: 'right', fontFamily: qFont,
-                  }}
-                />
-              </div>
-            </div>
-            <div style={{ overflowY: 'auto', flex: 1, paddingBottom: 24, minHeight: 120 }}>
-              {wordQuery.trim().length < 2 ? (
-                <p style={{ textAlign: 'center', color: 'var(--tr-text-muted)', fontSize: 13, padding: '30px 20px' }}>
-                  {isRtl ? 'اكتب حرفين على الأقل لبدء البحث' : 'Type at least 2 characters to search'}
-                </p>
-              ) : wordSearching ? (
-                <div style={{ display: 'flex', justifyContent: 'center', padding: 30 }}>
-                  <div style={{ width: 22, height: 22, borderRadius: '50%', border: '2px solid rgba(37,99,235,.2)', borderTopColor: '#2563eb', animation: 'ms-spin .7s linear infinite' }} />
-                  <style>{`@keyframes ms-spin{to{transform:rotate(360deg)}}`}</style>
-                </div>
-              ) : wordResults.length === 0 ? (
-                <p style={{ textAlign: 'center', color: 'var(--tr-text-muted)', fontSize: 13, padding: '30px 20px' }}>
-                  {isRtl ? 'لا توجد نتائج' : 'No results'}
-                </p>
-              ) : (
-                wordResults.map((r, i) => (
-                  <button key={i} onClick={() => goToSearchResult(r)} style={{
-                    display: 'block', width: '100%', padding: '12px 20px', border: 'none',
-                    cursor: 'pointer', textAlign: 'right', background: 'transparent',
-                    borderBottom: '1px solid var(--tr-border-subtle)',
-                  }}>
-                    <p style={{ fontFamily: qFont, fontSize: 16, lineHeight: 1.9, color: 'var(--tr-text-primary)', marginBottom: 6 }}>
-                      {r.text}
-                    </p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: '#2563eb', fontWeight: 700 }}>
-                      <span>{isRtl ? r.surahNameAr : r.surahNameEn}</span>
-                      <span style={{ color: 'var(--tr-text-muted)', fontWeight: 500 }}>﴿{toArabicNum(r.verse)}﴾</span>
-                      <span style={{ marginInlineStart: 'auto', color: 'var(--tr-text-muted)', fontWeight: 500 }}>
-                        {isRtl ? `صفحة ${toArabicNum(r.page)}` : `Page ${r.page}`}
-                      </span>
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── Wird (reading-plan bookmarks) sheet ── */}
       {showWirdSheet && (
         <div onClick={() => setShowWirdSheet(false)}
@@ -1391,16 +1431,19 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                   {isRtl ? 'سجّل الدخول لحفظ أوراد القراءة' : 'Sign in to save reading wirds'}
                 </p>
               ) : (
-                (wirdList ?? []).map(w => (
+                (wirdList ?? []).map((w, i) => {
+                  const color = wirdColor(w.name, i);
+                  return (
                   <div key={w.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 10, padding: '12px 6px',
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '12px 8px 12px 6px',
                     borderBottom: '1px solid var(--tr-border-subtle)',
+                    borderInlineStart: `3px solid ${color}`,
                   }}>
                     <div style={{
                       width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                      background: 'rgba(37,99,235,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: `${color}1a`, display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
-                      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth={2}>
+                      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/>
                       </svg>
                     </div>
@@ -1415,13 +1458,13 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                     <button onClick={() => saveWirdHere(w.id)} title={isRtl ? 'احفظ هنا' : 'Save here'}
                       style={{
                         width: 32, height: 32, borderRadius: '50%', flexShrink: 0, cursor: 'pointer',
-                        background: wirdSavedFlash === w.id ? 'rgba(34,197,94,0.16)' : 'rgba(37,99,235,0.09)',
+                        background: wirdSavedFlash === w.id ? 'rgba(34,197,94,0.16)' : `${color}17`,
                         border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}>
                       {wirdSavedFlash === w.id ? (
                         <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
                       ) : (
-                        <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth={2}>
+                        <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/>
                         </svg>
                       )}
@@ -1429,7 +1472,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                     <button onClick={() => goToWird(w)} title={isRtl ? 'اذهب' : 'Go'}
                       style={{
                         width: 32, height: 32, borderRadius: '50%', flexShrink: 0, cursor: 'pointer',
-                        background: 'linear-gradient(135deg, #1e3a6e, #2563eb)', border: 'none',
+                        background: `linear-gradient(135deg, ${color}, ${color}cc)`, border: 'none',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}>
                       <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5}>
@@ -1444,7 +1487,8 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                       ×
                     </button>
                   </div>
-                ))
+                  );
+                })
               )}
 
               {wirdList && !wirdSignedOut && (

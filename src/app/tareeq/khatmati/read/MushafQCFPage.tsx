@@ -154,11 +154,29 @@ const FULL_LINE_THRESHOLD = 0.6;
 // تفسير / مشاركة) — a short tap just syncs the audio cursor to that verse
 // and also counts as a "light tap" toggling the page's hidden header/footer
 // chrome, same as tapping the page's background. Decided by elapsed time AT
-// RELEASE (pointerdown timestamp vs. click time), not by racing a setTimeout
-// against a cancel-on-release handler — touch event timing on mobile is
-// inconsistent enough that the timer-race version was firing the long-press
-// action on ordinary short taps.
+// RELEASE (pointerdown timestamp vs. pointerup time), not by racing a
+// setTimeout against a cancel-on-release handler — touch event timing on
+// mobile is inconsistent enough that the timer-race version was firing the
+// long-press action on ordinary short taps.
 const LONG_PRESS_MS = 500;
+
+// A genuine tap/long-press must stay roughly still — real fingers always
+// drift a few px, but this rules out the case that was silently breaking
+// word taps on real devices: the browser's OWN native touch-to-click
+// synthesis suppresses `click` entirely once total finger movement crosses
+// a hidden internal threshold (measured on real Chromium: click still fires
+// at ~15px of drift, is gone by ~20px) — completely independent of any
+// preventDefault this app calls. A single glyph is a much smaller, more
+// fiddly target than the open page background, so real users correct their
+// finger position mid-tap far more often when aiming at one word among many
+// tightly-packed ones — easily crossing that threshold — while a synthetic
+// zero-movement Playwright click can never reproduce it. Deciding tap-vs-
+// drag ourselves from pointerdown/pointerup coordinates (instead of trusting
+// the browser's opaque, movement-dependent `click` firing) fixes this for
+// any amount of real-world drift up to the threshold below, and safely bows
+// out (does nothing, lets the carousel's own drag/swipe logic own the
+// gesture) past it.
+const TAP_MOVE_THRESHOLD_PX = 12;
 
 function LineRow({
   words, compact, fontSize, isPlaying, currentChapter, currentVerse,
@@ -189,6 +207,13 @@ function LineRow({
   const outerRef = useRef<HTMLDivElement | null>(null);
   const rowRef = useRef<HTMLDivElement | null>(null);
   const [layout, setLayout] = useState<{ justify: 'center' | 'flex-start'; gap: number; scaleX: number }>({ justify: 'center', gap: 0, scaleX: 1 });
+
+  // One shared ref (not a per-word closure variable) so the press start info
+  // survives a re-render between pointerdown and pointerup — LineRow can
+  // legitimately re-render mid-press (e.g. the playing verse's highlight
+  // changing while a finger is still down), which would otherwise hand
+  // pointerup a brand-new closure with its start values reset to nothing.
+  const pressRef = useRef<{ pointerId: number; startAt: number; x: number; y: number } | null>(null);
 
   useLayoutEffect(() => {
     const outer = outerRef.current;
@@ -275,23 +300,39 @@ function LineRow({
         const isHl = isPlaying === true && clickable
           && word.surah === currentChapter && word.verse === currentVerse;
 
-        // Plain closure per word span — recreated each render, no hooks-in-a-loop issue.
-        let pressStartAt = 0;
-
         return (
           <span
             key={wi}
             ref={checkAttachRef(isHl)}
-            onPointerDown={clickable ? () => { pressStartAt = Date.now(); } : undefined}
-            // Deliberately a click handler, not pointerup: native click is
-            // suppressed by the browser after a drag (a page-turn swipe), so
-            // this only ever fires for a genuine stationary tap/long-press —
-            // pointerup alone would also fire at the end of every swipe.
-            // Long vs. short is decided here, from real elapsed time, rather
-            // than by a setTimeout racing a cancel-on-release handler.
-            onClick={clickable ? (e) => {
+            onPointerDown={clickable ? (e) => {
+              pressRef.current = { pointerId: e.pointerId, startAt: Date.now(), x: e.clientX, y: e.clientY };
+            } : undefined}
+            // Deciding the tap here — from pointerdown/pointerup coordinates
+            // and elapsed time — rather than trusting the browser's native
+            // `click` event. `click` firing at all is gated by the browser's
+            // OWN opaque, movement-dependent tap-vs-drag heuristic: verified
+            // on real Chromium that `click` still fires after ~15px of finger
+            // drift but is silently gone by ~20px, regardless of anything
+            // this app does. A single glyph is a far fiddlier target than the
+            // open page background, so real fingers correct position mid-tap
+            // — and drift past that threshold — far more often when aiming at
+            // one word among many tightly-packed ones. That made word taps
+            // fail intermittently on real touchscreens while a zero-movement
+            // synthetic click (or an easy, generous background tap) never
+            // showed it. Measuring the actual distance ourselves and only
+            // ever treating it as a genuine tap under TAP_MOVE_THRESHOLD_PX
+            // removes the browser's guesswork entirely; past the threshold we
+            // do nothing and let the carousel's own drag/swipe logic own the
+            // gesture, same as before.
+            onPointerUp={clickable ? (e) => {
+              const press = pressRef.current;
+              pressRef.current = null;
+              if (!press || press.pointerId !== e.pointerId) return;
+              const dist = Math.hypot(e.clientX - press.x, e.clientY - press.y);
+              if (dist > TAP_MOVE_THRESHOLD_PX) return;
+              e.preventDefault();
               e.stopPropagation();
-              const held = Date.now() - pressStartAt;
+              const held = Date.now() - press.startAt;
               if (held >= LONG_PRESS_MS) {
                 const verseText = verseTextMap.get(`${word.surah}:${word.verse}`) ?? word.text;
                 onAyahTap?.({ chapterId: word.surah, verseNumber: word.verse, text: verseText });
@@ -305,6 +346,13 @@ function LineRow({
                 onPageTap?.();
               }
             } : undefined}
+            onPointerCancel={clickable ? () => { pressRef.current = null; } : undefined}
+            // Some browsers still synthesize a `click` after a handled
+            // pointerup regardless of preventDefault there — swallow it here
+            // (stopPropagation only, no logic) so it can never also bubble to
+            // the page's root onClick and double-toggle the chrome. All real
+            // tap/long-press handling already happened above, on pointerup.
+            onClick={clickable ? (e) => e.stopPropagation() : undefined}
             onContextMenu={clickable ? (e) => e.preventDefault() : undefined}
             style={{
               display: 'inline',

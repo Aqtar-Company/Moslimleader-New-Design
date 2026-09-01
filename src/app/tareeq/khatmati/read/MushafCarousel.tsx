@@ -65,7 +65,7 @@ export default function MushafCarousel({
 
   function getW() { return ctnRef.current?.offsetWidth ?? 390; }
 
-  function onTouchStart(e: React.TouchEvent) {
+  function onTouchStart(e: TouchEvent) {
     if (animated) return;
     startX.current = e.touches[0].clientX;
     startY.current = e.touches[0].clientY;
@@ -73,7 +73,7 @@ export default function MushafCarousel({
     isDragging.current = true;
   }
 
-  function onTouchMove(e: React.TouchEvent) {
+  function onTouchMove(e: TouchEvent) {
     if (!isDragging.current || animated) return;
     const dx = e.touches[0].clientX - startX.current;
     const dy = e.touches[0].clientY - startY.current;
@@ -83,12 +83,33 @@ export default function MushafCarousel({
     }
     if (!isHoriz.current) { isDragging.current = false; return; }
 
+    // React attaches JSX touchstart/touchmove handlers as PASSIVE by default
+    // (confirmed live: calling preventDefault() here as a plain onTouchMove
+    // prop logs "Unable to preventDefault inside passive event listener
+    // invocation" and silently does nothing — the page could still natively
+    // scroll vertically mid-swipe). These two listeners are attached manually
+    // below via addEventListener(..., { passive: false }) instead, so this
+    // preventDefault actually takes effect.
     e.preventDefault();
 
     /* Rubber-band at boundaries */
     const atEdge = (dx > 0 && page >= TOTAL_QURAN_PAGES) || (dx < 0 && page <= 1);
     setDragX(dx * (atEdge ? 0.15 : 1));
   }
+
+  // Manually attached (not JSX props) and explicitly non-passive — see the
+  // comment on onTouchMove's preventDefault() above for why.
+  useEffect(() => {
+    const el = ctnRef.current;
+    if (!el) return;
+    el.addEventListener('touchstart', onTouchStart, { passive: false });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [animated, page]);
 
   function onTouchEnd() {
     if (!isDragging.current) return;
@@ -136,8 +157,8 @@ export default function MushafCarousel({
   return (
     <div
       ref={ctnRef}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
+      // touchstart/touchmove are attached natively (non-passive) in the
+      // useEffect above instead of as JSX props — see onTouchMove's comment.
       onTouchEnd={onTouchEnd}
       style={{
         position: 'relative',

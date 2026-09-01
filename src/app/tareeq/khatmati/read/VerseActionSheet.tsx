@@ -205,60 +205,87 @@ export default function VerseActionSheet({ verse, onClose, onListen }: Props) {
   return createPortal(
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.62)', zIndex: 9998, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: 'linear-gradient(180deg, #0D2244 0%, #091830 100%)',
-        borderRadius: '22px 22px 0 0',
+        background: 'linear-gradient(165deg, #0F2749 0%, #0A1B33 55%, #081428 100%)',
+        borderRadius: '24px 24px 0 0',
         width: '100%', maxWidth: 620,
         maxHeight: '88vh',
         display: 'flex', flexDirection: 'column',
         overflow: 'hidden',
-        boxShadow: '0 -4px 32px rgba(0,0,0,0.5)',
+        border: '1px solid rgba(96,165,250,0.18)',
+        borderBottom: 'none',
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)',
       }}>
         {/* Handle */}
         <div style={{ flexShrink: 0, paddingTop: 12, display: 'flex', justifyContent: 'center' }}>
-          <div style={{ width: 38, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.18)' }} />
+          <div style={{ width: 38, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)' }} />
         </div>
 
         {/* Surah + verse label */}
-        <div style={{ padding: '10px 20px 0', textAlign: 'center', flexShrink: 0 }}>
-          <p style={{ fontFamily: AF, fontWeight: 700, fontSize: 16, color: '#FFCC33', margin: 0 }}>
+        <div style={{ padding: '12px 20px 0', textAlign: 'center', flexShrink: 0 }}>
+          <p style={{ fontFamily: AF, fontWeight: 700, fontSize: 17, color: '#FFCC33', margin: 0, letterSpacing: 0.2 }}>
             {surahName} ﴿{toE(verse.verseNumber)}﴾
           </p>
+          <div style={{
+            width: 64, height: 2, margin: '10px auto 0', borderRadius: 1,
+            background: 'linear-gradient(90deg, transparent, rgba(255,204,51,0.5), transparent)',
+          }} />
         </div>
 
         {/* ── MENU ── */}
         {view === 'menu' && (
-          <div style={{ padding: '18px 20px 44px', display: 'flex', gap: 10 }}>
+          <div style={{ padding: '20px 20px 44px', display: 'flex', gap: 12 }}>
             <button onClick={() => { onListen?.(); onClose(); }} style={{
-              flex: 1, padding: '14px 0', borderRadius: 14,
-              background: 'rgba(96,165,250,0.10)', border: '1px solid rgba(96,165,250,0.32)',
-              color: '#93c5fd', fontWeight: 700, fontSize: 14, cursor: 'pointer',
-              fontFamily: AF, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
+              flex: 1, padding: '18px 0 15px', borderRadius: 18,
+              background: 'linear-gradient(160deg, rgba(96,165,250,0.16), rgba(37,99,235,0.06))',
+              border: '1px solid rgba(96,165,250,0.35)',
+              color: '#bfdbfe', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+              fontFamily: AF, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
+              transition: 'transform .15s',
             }}>
-              <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 5v14l11-7z"/>
-              </svg>
+              <span style={{
+                width: 42, height: 42, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'linear-gradient(135deg, #1e3a6e, #2563eb)', boxShadow: '0 4px 14px rgba(37,99,235,0.45)',
+              }}>
+                <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 5v14l11-7z"/>
+                </svg>
+              </span>
               استماع
             </button>
             <button onClick={openTafsir} style={{
-              flex: 1, padding: '14px 0', borderRadius: 14,
-              background: 'rgba(255,204,51,0.08)', border: '1px solid rgba(255,204,51,0.28)',
-              color: '#FFCC33', fontWeight: 700, fontSize: 14, cursor: 'pointer',
-              fontFamily: AF, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
+              flex: 1, padding: '18px 0 15px', borderRadius: 18,
+              background: 'linear-gradient(160deg, rgba(255,204,51,0.14), rgba(255,204,51,0.04))',
+              border: '1px solid rgba(255,204,51,0.32)',
+              color: '#FFCC33', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+              fontFamily: AF, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
+              transition: 'transform .15s',
             }}>
-              <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.966 8.966 0 00-6 2.292m0-14.25v14.25"/>
-              </svg>
+              <span style={{
+                width: 42, height: 42, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'linear-gradient(135deg, #FFCC33, #E8A800)', boxShadow: '0 4px 14px rgba(255,204,51,0.4)',
+              }}>
+                <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#081320" strokeWidth={1.9}>
+                  <path strokeLinecap="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.966 8.966 0 00-6 2.292m0-14.25v14.25"/>
+                </svg>
+              </span>
               تفسير
             </button>
             <button onClick={openCard} style={{
-              flex: 1, padding: '14px 0', borderRadius: 14,
-              background: '#FFCC33', border: 'none',
-              color: '#081320', fontWeight: 700, fontSize: 14, cursor: 'pointer',
-              fontFamily: AF, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
+              flex: 1, padding: '18px 0 15px', borderRadius: 18,
+              background: 'linear-gradient(160deg, rgba(52,211,153,0.16), rgba(16,185,129,0.05))',
+              border: '1px solid rgba(52,211,153,0.32)',
+              color: '#86efac', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+              fontFamily: AF, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
+              transition: 'transform .15s',
             }}>
-              <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"/>
-              </svg>
+              <span style={{
+                width: 42, height: 42, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 4px 14px rgba(16,185,129,0.4)',
+              }}>
+                <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.9}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"/>
+                </svg>
+              </span>
               مشاركة
             </button>
           </div>

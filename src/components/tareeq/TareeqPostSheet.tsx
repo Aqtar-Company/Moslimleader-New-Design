@@ -60,6 +60,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
   const [currentReaction, setCurrentReaction] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [showGate, setShowGate] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{ commentId: string; authorName: string } | null>(null);
@@ -184,14 +185,15 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
     e.preventDefault();
     if (!user) { setShowGate(true); return; }
     if (commentText.trim().length < 2) return;
+    setCommentError(null);
     setSubmitting(true);
     try {
       const res = await fetch(`/api/tareeq/${postId}/comments`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ content: commentText.trim(), parentId: replyingTo?.commentId }),
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        const data = await res.json();
         if (data.comment) {
           if (replyingTo) {
             setExpandedReplies(prev => ({
@@ -207,8 +209,10 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
         }
         setCommentText('');
         setReplyingTo(null);
+      } else {
+        setCommentError(data.error ?? (isRtl ? 'حدث خطأ، حاول مرة أخرى' : 'Error, please try again'));
       }
-    } catch { /* network error */ } finally {
+    } catch { setCommentError(isRtl ? 'تحقق من اتصالك بالإنترنت' : 'Check your internet connection'); } finally {
       setSubmitting(false);
     }
   }
@@ -403,9 +407,12 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                     <button type="button" onClick={() => setReplyingTo(null)} style={{ fontSize: 16, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>×</button>
                   </div>
                 )}
+                {commentError && (
+                  <p style={{ padding: '4px 14px 0', fontSize: 12, fontWeight: 600, color: '#ef4444' }}>{commentError}</p>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px' }}>
                   <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold)' }}>{user?.name?.charAt(0) ?? '?'}</div>
-                  <input ref={commentInputRef} value={commentText} onChange={e => setCommentText(e.target.value)} placeholder={isRtl ? (replyingTo ? 'اكتب ردك...' : 'أضف تعليقاً...') : (replyingTo ? 'Write a reply...' : 'Add a comment...')} maxLength={500} style={{ flex: 1, minWidth: 0, borderRadius: 20, padding: '8px 14px', fontSize: 14, background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)', outline: 'none' }} onFocus={e => { if (!user) { setShowGate(true); e.currentTarget.blur(); } }} />
+                  <input ref={commentInputRef} value={commentText} onChange={e => { setCommentText(e.target.value); if (commentError) setCommentError(null); }} placeholder={isRtl ? (replyingTo ? 'اكتب ردك...' : 'أضف تعليقاً...') : (replyingTo ? 'Write a reply...' : 'Add a comment...')} maxLength={500} style={{ flex: 1, minWidth: 0, borderRadius: 20, padding: '8px 14px', fontSize: 14, background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)', outline: 'none' }} onFocus={e => { if (!user) { setShowGate(true); e.currentTarget.blur(); } }} />
                   <button type="submit" disabled={submitting || commentText.trim().length < 2} style={{ padding: '8px 16px', borderRadius: 20, fontSize: 13, fontWeight: 700, background: 'var(--tr-gold)', color: '#fff', border: 'none', cursor: 'pointer', opacity: submitting || commentText.trim().length < 2 ? 0.4 : 1, transition: 'opacity 150ms', flexShrink: 0 }}>{submitting ? '...' : (isRtl ? 'إرسال' : 'Send')}</button>
                 </div>
               </form>
@@ -705,6 +712,9 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
               <button type="button" onClick={() => setReplyingTo(null)} style={{ fontSize: 16, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>
             </div>
           )}
+          {commentError && (
+            <p style={{ padding: '4px 12px 0', fontSize: 12, fontWeight: 600, color: '#ef4444' }}>{commentError}</p>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px' }}>
           <div style={{
             width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
@@ -717,7 +727,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
           <input
             ref={commentInputRef}
             value={commentText}
-            onChange={e => setCommentText(e.target.value)}
+            onChange={e => { setCommentText(e.target.value); if (commentError) setCommentError(null); }}
             placeholder={isRtl ? 'أضف تعليقاً...' : 'Add a comment...'}
             maxLength={500}
             style={{

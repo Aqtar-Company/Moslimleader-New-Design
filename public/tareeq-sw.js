@@ -178,7 +178,7 @@ self.addEventListener('push', e => {
   const options = {
     body:              data.body  ?? '',
     icon:              '/Tareeq-big.png',
-    badge:             '/Tareeq-small.png',
+    badge:             '/tareeq-icon.svg',
     image:             data.image ?? undefined,
     tag:               data.tag   ?? 'tareeq',
     renotify:          true,

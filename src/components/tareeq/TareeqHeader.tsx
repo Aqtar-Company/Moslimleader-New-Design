@@ -57,33 +57,39 @@ function NotifIcon({ type }: { type: string }) {
   if (REACTION_EMOJIS[type]) {
     const color = REACTION_COLORS[type];
     return (
-      <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-base" style={{ background: `${color}22` }}>
+      <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-base" style={{ background: `${color}30`, border: `1px solid ${color}50` }}>
         {REACTION_EMOJIS[type]}
       </div>
     );
   }
   if (type === 'like') return (
-    <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-base" style={{ background: 'rgba(245,158,11,0.15)' }}>
+    <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-base" style={{ background: 'rgba(245,158,11,0.25)', border: '1px solid rgba(245,158,11,0.4)' }}>
       ⭐
     </div>
   );
-  if (type === 'comment') return (
-    <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(45,212,191,0.10)' }}>
-      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-teal)' }}>
+  if (type === 'comment' || type === 'subscribed_comment') return (
+    <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(20,184,166,0.20)', border: '1px solid rgba(20,184,166,0.40)' }}>
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" style={{ color: '#14b8a6' }}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
       </svg>
     </div>
   );
+  if (type === 'mention') return (
+    <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-sm font-black" style={{ background: 'rgba(139,92,246,0.20)', border: '1px solid rgba(139,92,246,0.40)', color: '#8b5cf6' }}>
+      @
+    </div>
+  );
   if (type === 'follow') return (
-    <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--tr-gold-glow)' }}>
-      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+    <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(212,168,83,0.25)', border: '1px solid rgba(212,168,83,0.50)' }}>
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" style={{ color: '#d4a853' }}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 019.374 21c-2.331 0-4.512-.645-6.374-1.766z" />
       </svg>
     </div>
   );
+  /* default / message */
   return (
-    <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--tr-gold-glow)' }}>
-      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}>
+    <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(212,168,83,0.25)', border: '1px solid rgba(212,168,83,0.50)' }}>
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" style={{ color: '#d4a853' }}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
       </svg>
     </div>

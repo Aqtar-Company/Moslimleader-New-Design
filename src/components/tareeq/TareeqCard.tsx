@@ -263,6 +263,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   const [inlineComments, setInlineComments] = useState<Array<{ id: string; content: string; createdAt: string; userId: string | null; user: { id: string; name: string } | null }>>([]);
   const [inlineCommentsLoading, setInlineCommentsLoading] = useState(false);
   const [inlineLoaded, setInlineLoaded] = useState(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
   const shareMenuRef = useRef<HTMLDivElement>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
 
@@ -382,19 +383,22 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   async function handleComment(e: React.FormEvent) {
     e.preventDefault(); e.stopPropagation();
     if (!user || commentText.trim().length < 2) return;
+    setCommentError(null);
     setSubmitting(true);
     try {
       const res = await fetch(`/api/tareeq/${post.id}/comments`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ content: commentText.trim() }),
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        const data = await res.json();
         setCommentCount(c => c + 1);
         setCommentText('');
         if (data.comment) setInlineComments(prev => [...prev, data.comment]);
+      } else {
+        setCommentError(data.error ?? (isRtl ? 'حدث خطأ، حاول مرة أخرى' : 'Error, please try again'));
       }
-    } catch { /* network error — button re-enables via finally */ } finally {
+    } catch { setCommentError(isRtl ? 'تحقق من اتصالك بالإنترنت' : 'Check your internet connection'); } finally {
       setSubmitting(false);
     }
   }
@@ -462,26 +466,31 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         </div>
       ) : null}
       {/* Comment input */}
-      <form onSubmit={handleComment} className="px-4 pb-3 pt-2.5 flex gap-2 items-center" style={{ borderTop: inlineComments.length === 0 ? '1px solid var(--tr-border-subtle)' : 'none' }}>
-        <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold)' }}>
-          {user?.name?.charAt(0) ?? '?'}
-        </div>
-        <input
-          ref={commentInputRef}
-          value={commentText}
-          onChange={e => setCommentText(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Escape') setShowCommentInput(false); }}
-          placeholder={isRtl ? 'أضف تعليقاً...' : 'Add a comment...'}
-          maxLength={500}
-          className="flex-1 min-w-0 rounded-full px-3 py-1.5 text-sm outline-none transition"
-          style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
-          onFocus={e => (e.currentTarget.style.borderColor = 'var(--tr-gold)')}
-          onBlur={e => (e.currentTarget.style.borderColor = 'var(--tr-border-soft)')}
-        />
-        <button type="submit" disabled={submitting || commentText.trim().length < 2} className="px-4 py-1.5 rounded-full text-sm font-bold disabled:opacity-40 transition shrink-0 text-white" style={{ background: 'var(--tr-gold)' }}>
-          {submitting ? '...' : (isRtl ? 'إرسال' : 'Send')}
-        </button>
-      </form>
+      <div style={{ borderTop: inlineComments.length === 0 ? '1px solid var(--tr-border-subtle)' : 'none' }}>
+        {commentError && (
+          <p className="px-4 pt-2 text-xs font-semibold" style={{ color: '#ef4444' }}>{commentError}</p>
+        )}
+        <form onSubmit={handleComment} className="px-4 pb-3 pt-2.5 flex gap-2 items-center">
+          <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold)' }}>
+            {user?.name?.charAt(0) ?? '?'}
+          </div>
+          <input
+            ref={commentInputRef}
+            value={commentText}
+            onChange={e => { setCommentText(e.target.value); if (commentError) setCommentError(null); }}
+            onKeyDown={e => { if (e.key === 'Escape') setShowCommentInput(false); }}
+            placeholder={isRtl ? 'أضف تعليقاً...' : 'Add a comment...'}
+            maxLength={500}
+            className="flex-1 min-w-0 rounded-full px-3 py-1.5 text-sm outline-none transition"
+            style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
+            onFocus={e => (e.currentTarget.style.borderColor = 'var(--tr-gold)')}
+            onBlur={e => (e.currentTarget.style.borderColor = 'var(--tr-border-soft)')}
+          />
+          <button type="submit" disabled={submitting || commentText.trim().length < 2} className="px-4 py-1.5 rounded-full text-sm font-bold disabled:opacity-40 transition shrink-0 text-white" style={{ background: 'var(--tr-gold)' }}>
+            {submitting ? '...' : (isRtl ? 'إرسال' : 'Send')}
+          </button>
+        </form>
+      </div>
     </div>
   ) : null;
 
@@ -832,8 +841,11 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               {/* ── MOBILE ONLY: comment input overlay ── */}
               {showCommentInput && (
                 <div className="absolute bottom-0 inset-x-0 z-20 px-4 pb-4 pt-3 lg:hidden" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(12px)' }}>
+                  {commentError && (
+                    <p className="text-[11px] font-semibold mb-1.5" style={{ color: '#fca5a5' }}>{commentError}</p>
+                  )}
                   <form onSubmit={handleComment} onClick={e => e.stopPropagation()} className="flex gap-2 items-center">
-                    <input ref={commentInputRef} value={commentText} onChange={e => setCommentText(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') setShowCommentInput(false); }} placeholder={isRtl ? 'أضف تعليقاً...' : 'Add a comment...'} maxLength={500} className="flex-1 rounded-full px-4 py-2 text-xs text-white outline-none" style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }} />
+                    <input ref={commentInputRef} value={commentText} onChange={e => { setCommentText(e.target.value); if (commentError) setCommentError(null); }} onKeyDown={e => { if (e.key === 'Escape') setShowCommentInput(false); }} placeholder={isRtl ? 'أضف تعليقاً...' : 'Add a comment...'} maxLength={500} className="flex-1 rounded-full px-4 py-2 text-xs text-white outline-none" style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }} />
                     <button type="submit" disabled={submitting || commentText.trim().length < 2} className="px-4 py-2 rounded-full text-xs font-bold text-white disabled:opacity-40 transition shrink-0" style={{ background: 'var(--tr-gold)' }}>
                       {submitting ? '...' : (isRtl ? 'إرسال' : 'Send')}
                     </button>
@@ -1214,7 +1226,7 @@ function ReactorsModal({ postId, isRtl, onClose }: { postId: string; isRtl: bool
             filtered.map((r) => {
               const rc = REACTIONS.find(x => x.type === r.type);
               return (
-                <div key={r.user.id} className="flex items-center gap-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                <Link key={r.user.id} href={`/tareeq/u/${r.user.id}`} onClick={onClose} className="flex items-center gap-3 py-2.5 transition hover:bg-[var(--tr-overlay)] rounded-xl px-1 -mx-1" style={{ borderBottom: '1px solid var(--tr-border-subtle)', textDecoration: 'none' }}>
                   {r.user.avatarUrl ? (
                     <img src={r.user.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
                   ) : (
@@ -1224,7 +1236,7 @@ function ReactorsModal({ postId, isRtl, onClose }: { postId: string; isRtl: bool
                   )}
                   <p className="flex-1 text-sm font-semibold" style={{ color: 'var(--tr-text-primary)' }}>{r.user.name}</p>
                   <span className="text-lg shrink-0">{rc?.emoji ?? '⭐'}</span>
-                </div>
+                </Link>
               );
             })
           )}

@@ -27,6 +27,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     take: limit,
     select: {
       id: true, content: true, imageUrl: true, videoUrl: true, audioUrl: true, read: true, createdAt: true, senderId: true,
+      replyToId: true, replyToContent: true, sharedPostId: true, sharedPostTitle: true, sharedPostImageUrl: true,
       sender: { select: { id: true, name: true, avatarUrl: true } },
     },
   });

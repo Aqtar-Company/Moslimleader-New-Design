@@ -1173,17 +1173,22 @@ model TareeqConversation {
 }
 
 model TareeqMessage {
-  id             String             @id @default(cuid())
-  conversationId String
-  conversation   TareeqConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  senderId       String
-  sender         User               @relation("TareeqMsgSender", fields: [senderId], references: [id], onDelete: Cascade)
-  content        String             @db.Text
-  imageUrl       String?            @db.Text
-  videoUrl       String?            @db.Text
-  audioUrl       String?            @db.Text
-  read           Boolean            @default(false)
-  createdAt      DateTime           @default(now())
+  id               String             @id @default(cuid())
+  conversationId   String
+  conversation     TareeqConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId         String
+  sender           User               @relation("TareeqMsgSender", fields: [senderId], references: [id], onDelete: Cascade)
+  content          String             @db.Text
+  imageUrl         String?            @db.Text
+  videoUrl         String?            @db.Text
+  audioUrl         String?            @db.Text
+  read             Boolean            @default(false)
+  replyToId        String?
+  replyToContent   String?            @db.Text
+  sharedPostId     String?
+  sharedPostTitle  String?
+  sharedPostImageUrl String?          @db.Text
+  createdAt        DateTime           @default(now())
 
   @@index([conversationId, createdAt])
   @@index([senderId])

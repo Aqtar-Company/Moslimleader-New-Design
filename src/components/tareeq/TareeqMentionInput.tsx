@@ -85,9 +85,15 @@ export default function TareeqMentionInput({
       if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIdx(i => Math.min(i + 1, users.length - 1)); return; }
       if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIdx(i => Math.max(i - 1, 0)); return; }
       if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); if (users[selectedIdx]) { insertMention(users[selectedIdx]); } return; }
-      if (e.key === 'Escape') { setMentionQuery(null); setUsers([]); }
+      if (e.key === 'Escape') { setMentionQuery(null); setUsers([]); return; }
     }
     onKeyDown?.(e);
+  }
+
+  function handleBlur(e: React.FocusEvent<HTMLInputElement>) {
+    setMentionQuery(null);
+    setUsers([]);
+    onBlur?.(e);
   }
 
   const showDrop = mentionQuery !== null && (loading || users.length > 0);
@@ -100,7 +106,7 @@ export default function TareeqMentionInput({
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         onFocus={onFocus}
-        onBlur={onBlur}
+        onBlur={handleBlur}
         placeholder={placeholder}
         maxLength={maxLength}
         className={className}

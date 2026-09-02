@@ -20,6 +20,11 @@ interface Message {
   createdAt: string;
   senderId: string;
   sender: { id: string; name: string; avatarUrl?: string | null };
+  replyToId?: string | null;
+  replyToContent?: string | null;
+  sharedPostId?: string | null;
+  sharedPostTitle?: string | null;
+  sharedPostImageUrl?: string | null;
 }
 interface OtherUser { id: string; name: string; avatarUrl?: string | null; tareeqLastSeen?: string | null }
 
@@ -299,6 +304,8 @@ function Inner({ conversationId }: { conversationId: string }) {
   const [micError, setMicError] = useState('');
   const [waveformBars, setWaveformBars] = useState<number[]>(Array(24).fill(0.15));
   const [showNotebook, setShowNotebook] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{ id: string; content: string; senderName: string } | null>(null);
+  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const micTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const micIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -544,6 +551,7 @@ function Inner({ conversationId }: { conversationId: string }) {
           imageUrl: mediaType === 'image' ? mediaUrl : null,
           videoUrl: mediaType === 'video' ? mediaUrl : null,
           audioUrl: mediaType === 'audio' ? mediaUrl : null,
+          ...(replyingTo ? { replyToId: replyingTo.id } : {}),
         }),
       });
       if (res.ok) {
@@ -555,6 +563,7 @@ function Inner({ conversationId }: { conversationId: string }) {
         setInput('');
         setShowEmoji(false);
         setMediaUrl(null); setMediaType(null); setLocalPreview(null); setUploadProgress(0);
+        setReplyingTo(null);
         refresh();
         // Refocus textarea to keep keyboard visible on mobile
         setTimeout(() => textareaRef.current?.focus(), 0);
@@ -976,7 +985,35 @@ function Inner({ conversationId }: { conversationId: string }) {
                             ...(group.mine ? {} : { border: '1px solid var(--tr-border-soft)' }),
                             borderRadius: group.mine ? mineRadius : otherRadius,
                           }}
+                          onContextMenu={e => { e.preventDefault(); setReplyingTo({ id: m.id, content: m.replyToContent ?? m.content ?? (m.imageUrl ? '📷' : m.audioUrl ? '🎙️' : '...'), senderName: group.senderInfo.name }); setTimeout(() => textareaRef.current?.focus(), 50); }}
+                          onTouchStart={() => { longPressRef.current = setTimeout(() => { setReplyingTo({ id: m.id, content: m.content || (m.imageUrl ? '📷' : m.audioUrl ? '🎙️' : '...'), senderName: group.senderInfo.name }); setTimeout(() => textareaRef.current?.focus(), 50); }, 500); }}
+                          onTouchEnd={() => { if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; } }}
+                          onTouchMove={() => { if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; } }}
                         >
+                          {/* Reply quote */}
+                          {m.replyToId && m.replyToContent !== null && (
+                            <div className="mx-2 mt-2 mb-0 px-2 py-1.5 rounded-lg text-xs" style={{
+                              borderInlineStart: `3px solid ${group.mine ? 'rgba(255,255,255,0.50)' : MSG_BLUE}`,
+                              background: group.mine ? 'rgba(0,0,0,0.18)' : 'rgba(26,110,212,0.07)',
+                              color: group.mine ? 'rgba(255,255,255,0.75)' : 'var(--tr-text-muted)',
+                              maxWidth: '100%',
+                            }}>
+                              <p className="font-semibold mb-0.5" style={{ fontSize: 10 }}>{group.mine ? (isRtl ? 'أنت رددت على' : 'You replied to') : group.senderInfo.name}</p>
+                              <p className="truncate" style={{ maxWidth: 200 }}>{m.replyToContent}</p>
+                            </div>
+                          )}
+                          {/* Shared post card */}
+                          {m.sharedPostId && (
+                            <a href={`/tareeq/${m.sharedPostId}`} className="block mx-2 mt-2 mb-0 rounded-lg overflow-hidden" style={{ border: `1px solid ${group.mine ? 'rgba(255,255,255,0.25)' : 'var(--tr-border-soft)'}`, textDecoration: 'none' }}>
+                              {m.sharedPostImageUrl && (
+                                <img src={m.sharedPostImageUrl} alt="" className="w-full object-cover" style={{ maxHeight: 120 }} />
+                              )}
+                              <div className="px-2 py-1.5">
+                                <p className="text-xs font-semibold" style={{ color: group.mine ? 'rgba(255,255,255,0.85)' : 'var(--tr-text-primary)', lineClamp: 2 } as React.CSSProperties}>{m.sharedPostTitle || (isRtl ? 'منشور طريق' : 'Tareeq post')}</p>
+                                <p className="text-[10px] mt-0.5" style={{ color: group.mine ? 'rgba(255,255,255,0.55)' : 'var(--tr-text-muted)' }}>طريق ★</p>
+                              </div>
+                            </a>
+                          )}
                           {m.imageUrl && <img src={m.imageUrl} alt="" className="w-full max-w-xs rounded-xl object-cover" style={{ maxHeight: 220 }} />}
                           {m.videoUrl && <video src={m.videoUrl} className="w-full max-w-xs rounded-xl" style={{ maxHeight: 220 }} controls playsInline />}
                           {m.audioUrl && (
@@ -1030,6 +1067,17 @@ function Inner({ conversationId }: { conversationId: string }) {
           className="hidden" disabled={uploading} onChange={handleMedia} />
 
         <div className="w-full px-3 py-2 flex flex-col gap-2 relative">
+          {/* Reply preview bar */}
+          {replyingTo && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ background: 'rgba(26,110,212,0.08)', border: '1px solid rgba(26,110,212,0.18)' }}>
+              <div className="w-0.5 self-stretch rounded-full" style={{ background: MSG_BLUE }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold" style={{ color: MSG_BLUE }}>{isRtl ? `رداً على ${replyingTo.senderName}` : `Replying to ${replyingTo.senderName}`}</p>
+                <p className="text-xs truncate" style={{ color: 'var(--tr-text-muted)' }}>{replyingTo.content}</p>
+              </div>
+              <button onClick={() => setReplyingTo(null)} className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-xs font-bold" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}>×</button>
+            </div>
+          )}
           {sendError && <p className="text-xs text-center font-semibold" style={{ color: '#f43f5e' }}>{sendError}</p>}
 
           {/* Mic error */}

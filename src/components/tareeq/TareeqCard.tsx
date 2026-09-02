@@ -249,6 +249,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
+  const [showReactors, setShowReactors] = useState(false);
   const [textExpanded, setTextExpanded] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(initialBookmarked);
   const [showBookmarkPicker, setShowBookmarkPicker] = useState(false);
@@ -382,17 +383,20 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     e.preventDefault(); e.stopPropagation();
     if (!user || commentText.trim().length < 2) return;
     setSubmitting(true);
-    const res = await fetch(`/api/tareeq/${post.id}/comments`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-      body: JSON.stringify({ content: commentText.trim() }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setCommentCount(c => c + 1);
-      setCommentText('');
-      if (data.comment) setInlineComments(prev => [...prev, data.comment]);
+    try {
+      const res = await fetch(`/api/tareeq/${post.id}/comments`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ content: commentText.trim() }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCommentCount(c => c + 1);
+        setCommentText('');
+        if (data.comment) setInlineComments(prev => [...prev, data.comment]);
+      }
+    } catch { /* network error — button re-enables via finally */ } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   }
 
   async function handleBookmarkClick(e: React.MouseEvent) {
@@ -590,10 +594,14 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     return (
       <div className="px-4 py-2 flex items-center justify-between" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
         {likeCount > 0 && (
-          <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--tr-text-muted)' }}>
+          <button
+            onClick={e => { e.preventDefault(); e.stopPropagation(); setShowReactors(true); }}
+            className="flex items-center gap-1.5 text-xs transition hover:underline"
+            style={{ color: 'var(--tr-text-muted)' }}
+          >
             {currentReaction ? reactionEmoji(currentReaction) : '⭐'}
             <span>{fmt(likeCount)}</span>
-          </span>
+          </button>
         )}
         {commentCount > 0 && (
           <button onClick={handleCommentToggle} className="text-xs ms-auto transition hover:underline" style={{ color: 'var(--tr-text-muted)' }}>
@@ -1125,7 +1133,100 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
       {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
       {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
       {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
+      {showReactors && <ReactorsModal postId={post.id} isRtl={isRtl} onClose={() => setShowReactors(false)} />}
     </>
+  );
+}
+
+/* ── Reactors modal — who reacted and with what ─────────────────── */
+function ReactorsModal({ postId, isRtl, onClose }: { postId: string; isRtl: boolean; onClose: () => void }) {
+  const [reactors, setReactors] = useState<{ type: string; user: { id: string; name: string; avatarUrl?: string | null } }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<string>('');
+
+  useEffect(() => {
+    fetch(`/api/tareeq/${postId}/react?users=1`)
+      .then(r => r.json())
+      .then(d => setReactors(d.reactions ?? []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [postId]);
+
+  const filtered = filter ? reactors.filter(r => r.type === filter) : reactors;
+  const typeGroups = Array.from(new Set(reactors.map(r => r.type)));
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.55)' }} />
+      <div
+        className="relative w-full max-w-sm mx-auto rounded-t-3xl sm:rounded-2xl overflow-hidden flex flex-col"
+        style={{ background: 'var(--tr-surface)', maxHeight: '75dvh', zIndex: 1 }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-5 pt-4 pb-3 flex items-center justify-between shrink-0" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+          <p className="font-black text-[15px]" style={{ color: 'var(--tr-text-primary)' }}>
+            {isRtl ? 'التفاعلات' : 'Reactions'}
+          </p>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}>
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        {/* Filter tabs */}
+        {typeGroups.length > 1 && (
+          <div className="px-4 pt-2 pb-1 flex gap-2 overflow-x-auto shrink-0" style={{ scrollbarWidth: 'none' }}>
+            <button
+              onClick={() => setFilter('')}
+              className="text-xs font-bold px-3 py-1 rounded-full shrink-0 transition"
+              style={!filter ? { background: 'var(--tr-gold)', color: '#fff' } : { background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}
+            >
+              {isRtl ? 'الكل' : 'All'} ({reactors.length})
+            </button>
+            {typeGroups.map(t => {
+              const r = REACTIONS.find(x => x.type === t);
+              return (
+                <button key={t}
+                  onClick={() => setFilter(t)}
+                  className="text-xs font-bold px-3 py-1 rounded-full shrink-0 transition"
+                  style={filter === t ? { background: r?.color ?? 'var(--tr-gold)', color: '#fff' } : { background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)' }}
+                >
+                  {r?.emoji} {reactors.filter(x => x.type === t).length}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {/* List */}
+        <div className="overflow-y-auto flex-1 px-4 py-2">
+          {loading ? (
+            <div className="flex justify-center py-10">
+              <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} />
+            </div>
+          ) : filtered.length === 0 ? (
+            <p className="text-center py-10 text-sm" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'لا تفاعلات بعد' : 'No reactions yet'}</p>
+          ) : (
+            filtered.map((r, i) => {
+              const rc = REACTIONS.find(x => x.type === r.type);
+              return (
+                <div key={i} className="flex items-center gap-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                  {r.user.avatarUrl ? (
+                    <img src={r.user.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center font-black text-sm shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)' }}>
+                      {r.user.name?.charAt(0) ?? '?'}
+                    </div>
+                  )}
+                  <p className="flex-1 text-sm font-semibold" style={{ color: 'var(--tr-text-primary)' }}>{r.user.name}</p>
+                  <span className="text-lg shrink-0">{rc?.emoji ?? '⭐'}</span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

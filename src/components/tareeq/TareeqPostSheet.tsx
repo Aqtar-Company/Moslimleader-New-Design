@@ -182,30 +182,32 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
     if (!user) { setShowGate(true); return; }
     if (commentText.trim().length < 2) return;
     setSubmitting(true);
-    const res = await fetch(`/api/tareeq/${postId}/comments`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-      body: JSON.stringify({ content: commentText.trim(), parentId: replyingTo?.commentId }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.comment) {
-        if (replyingTo) {
-          // Add reply to expanded replies and increment replyCount on parent
-          setExpandedReplies(prev => ({
-            ...prev,
-            [replyingTo.commentId]: [...(prev[replyingTo.commentId] ?? []), data.comment],
-          }));
-          setComments(prev => prev.map(c =>
-            c.id === replyingTo.commentId ? { ...c, replyCount: (c.replyCount ?? 0) + 1 } : c
-          ));
-        } else {
-          setComments(prev => [...prev, data.comment]);
+    try {
+      const res = await fetch(`/api/tareeq/${postId}/comments`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ content: commentText.trim(), parentId: replyingTo?.commentId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.comment) {
+          if (replyingTo) {
+            setExpandedReplies(prev => ({
+              ...prev,
+              [replyingTo.commentId]: [...(prev[replyingTo.commentId] ?? []), data.comment],
+            }));
+            setComments(prev => prev.map(c =>
+              c.id === replyingTo.commentId ? { ...c, replyCount: (c.replyCount ?? 0) + 1 } : c
+            ));
+          } else {
+            setComments(prev => [...prev, data.comment]);
+          }
         }
+        setCommentText('');
+        setReplyingTo(null);
       }
-      setCommentText('');
-      setReplyingTo(null);
+    } catch { /* network error */ } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   }
 
   const catKey = post?.category as TareeqCategoryKey | null;

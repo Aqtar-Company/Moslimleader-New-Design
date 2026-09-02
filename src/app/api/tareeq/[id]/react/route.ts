@@ -81,8 +81,18 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 }
 
-// GET — fetch reaction counts for a post
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+// GET — fetch reaction counts or full reactor list (?users=1)
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  const withUsers = req.nextUrl.searchParams.get('users') === '1';
+  if (withUsers) {
+    const reactions = await prisma.tareeqReaction.findMany({
+      where: { postId: params.id },
+      select: { type: true, user: { select: { id: true, name: true, avatarUrl: true } } },
+      orderBy: { createdAt: 'asc' },
+      take: 200,
+    });
+    return NextResponse.json({ reactions });
+  }
   const reactions = await prisma.tareeqReaction.groupBy({
     by: ['type'],
     where: { postId: params.id },

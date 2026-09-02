@@ -621,6 +621,21 @@ function Inner({ groupId }: { groupId: string }) {
   const [showSettings, setShowSettings] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
 
+  // Keyboard offset (iOS visualViewport)
+  const [kbOffset, setKbOffset] = useState(0);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    function onResize() {
+      const offset = Math.max(0, window.innerHeight - vv!.height - vv!.offsetTop);
+      setKbOffset(offset);
+    }
+    vv.addEventListener('resize', onResize);
+    vv.addEventListener('scroll', onResize);
+    return () => { vv.removeEventListener('resize', onResize); vv.removeEventListener('scroll', onResize); };
+  }, []);
+
   // Refs
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -634,7 +649,7 @@ function Inner({ groupId }: { groupId: string }) {
     if (!silent) setLoading(true);
     try {
       const res = await fetch(`/api/tareeq/groups/${groupId}`, { credentials: 'include' });
-      if (res.status === 403 || res.status === 404) { router.push('/tareeq/inbox'); return; }
+      if (res.status === 403 || res.status === 404) { router.push('/tareeq/groups'); return; }
       if (res.ok) {
         const d = await res.json();
         setGroup(d.group ?? null);
@@ -884,7 +899,7 @@ function Inner({ groupId }: { groupId: string }) {
       <div className="px-3 py-2.5 flex items-center gap-2.5 shrink-0"
         style={{ background: 'var(--tr-surface)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
         {/* Back (mobile) */}
-        <button onClick={() => router.push('/tareeq/inbox')}
+        <button onClick={() => router.push('/tareeq/groups')}
           className="shrink-0 transition lg:hidden" style={{ color: 'var(--tr-text-muted)' }}>
           <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d={isRtl ? 'M9 5l7 7-7 7' : 'M15 19l-7-7 7-7'} />
@@ -1174,7 +1189,7 @@ function Inner({ groupId }: { groupId: string }) {
   );
 
   return (
-    <div style={{ background: 'var(--tr-base)', height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ background: 'var(--tr-base)', height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', paddingBottom: kbOffset }}>
       <div className="h-[60px] shrink-0 lg:hidden" />
 
       <div className="flex-1 min-h-0 flex overflow-hidden lg:max-w-[1100px] lg:w-full lg:mx-auto lg:px-6 lg:pt-6 lg:gap-4">

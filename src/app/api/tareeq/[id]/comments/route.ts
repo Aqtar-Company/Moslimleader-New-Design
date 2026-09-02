@@ -8,6 +8,8 @@ import { filterContent } from '@/lib/tareeq-content-filter';
 
 // GET /api/tareeq/[id]/comments?cursor=xxx&parentId=xxx
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  const authResult = await getAuthUser().catch(() => null);
+
   const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { id: true } });
   if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
 
@@ -29,18 +31,31 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     select: {
       id: true, content: true, createdAt: true, userId: true, parentId: true,
       user: { select: { id: true, name: true } },
-      _count: { select: { replies: true } },
+      _count: { select: { replies: true, reactions: true } },
     },
   });
 
   const hasMore = comments.length > limit;
   const items = hasMore ? comments.slice(0, limit) : comments;
   const nextCursor = hasMore ? items[items.length - 1].id : null;
+
+  // Fetch which comments the current user has liked (one batch query)
+  let likedIds = new Set<string>();
+  if (authResult && items.length > 0) {
+    const myReactions = await prisma.tareeqCommentReaction.findMany({
+      where: { commentId: { in: items.map(c => c.id) }, userId: authResult.userId },
+      select: { commentId: true },
+    });
+    likedIds = new Set(myReactions.map(r => r.commentId));
+  }
+
   const shaped = items.map(c => ({
     id: c.id, content: c.content, createdAt: c.createdAt,
     userId: c.userId, parentId: c.parentId,
     user: c.user,
     replyCount: c._count.replies,
+    likeCount: c._count.reactions,
+    liked: likedIds.has(c.id),
   }));
   return NextResponse.json({ comments: shaped, nextCursor });
 }

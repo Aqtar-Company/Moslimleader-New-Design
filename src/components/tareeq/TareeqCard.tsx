@@ -8,6 +8,7 @@ import { savePostOffline, removePostOffline, isPostSavedOffline } from '@/lib/ta
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import { timeAgo } from '@/lib/tareeq-utils';
 import TareeqLoginGate from './TareeqLoginGate';
+import TareeqMentionInput from './TareeqMentionInput';
 
 function extractYouTubeId(text: string): string | null {
   const m = text.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
@@ -474,17 +475,16 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold)' }}>
             {user?.name?.charAt(0) ?? '?'}
           </div>
-          <input
-            ref={commentInputRef}
+          <TareeqMentionInput
+            inputRef={commentInputRef}
             value={commentText}
-            onChange={e => { setCommentText(e.target.value); if (commentError) setCommentError(null); }}
+            onValueChange={v => { setCommentText(v); if (commentError) setCommentError(null); }}
             onKeyDown={e => { if (e.key === 'Escape') setShowCommentInput(false); }}
             placeholder={isRtl ? 'أضف تعليقاً...' : 'Add a comment...'}
             maxLength={500}
-            className="flex-1 min-w-0 rounded-full px-3 py-1.5 text-sm outline-none transition"
+            className="rounded-full px-3 py-1.5 text-sm outline-none transition"
             style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
-            onFocus={e => (e.currentTarget.style.borderColor = 'var(--tr-gold)')}
-            onBlur={e => (e.currentTarget.style.borderColor = 'var(--tr-border-soft)')}
+            isRtl={isRtl}
           />
           <button type="submit" disabled={submitting || commentText.trim().length < 2} className="px-4 py-1.5 rounded-full text-sm font-bold disabled:opacity-40 transition shrink-0 text-white" style={{ background: 'var(--tr-gold)' }}>
             {submitting ? '...' : (isRtl ? 'إرسال' : 'Send')}

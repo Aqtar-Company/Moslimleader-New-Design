@@ -75,6 +75,7 @@ model User {
   tareeqFollowing         TareeqFollow[]           @relation("TareeqFollowing")
   tareeqFollowers         TareeqFollow[]           @relation("TareeqFollowers")
   tareeqReactions         TareeqReaction[]
+  tareeqCommentReactions  TareeqCommentReaction[]  @relation("TareeqCommentReactions")
   tareeqGroupsCreated     TareeqGroup[]            @relation("TareeqGroupCreator")
   tareeqGroupMembers      TareeqGroupMember[]      @relation("TareeqGroupMemberships")
   tareeqGroupMessages     TareeqGroupMessage[]     @relation("TareeqGroupMsgSender")
@@ -1010,23 +1011,37 @@ model TareeqLike {
 }
 
 model TareeqComment {
-  id        String          @id @default(cuid())
+  id        String                  @id @default(cuid())
   postId    String
-  post      TareeqPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post      TareeqPost              @relation(fields: [postId], references: [id], onDelete: Cascade)
   userId    String
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  content   String          @db.Text
-  isHidden  Boolean         @default(false)
+  user      User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String                  @db.Text
+  isHidden  Boolean                 @default(false)
   hiddenBy  String?
   parentId  String?
-  parent    TareeqComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies   TareeqComment[] @relation("CommentReplies")
-  reports   TareeqReport[]  @relation("TareeqCommentReports")
-  createdAt DateTime        @default(now())
+  parent    TareeqComment?          @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   TareeqComment[]         @relation("CommentReplies")
+  reports   TareeqReport[]          @relation("TareeqCommentReports")
+  reactions TareeqCommentReaction[]
+  createdAt DateTime                @default(now())
 
   @@index([postId])
   @@index([userId])
   @@index([parentId])
+}
+
+model TareeqCommentReaction {
+  id        String        @id @default(cuid())
+  commentId String
+  comment   TareeqComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User          @relation("TareeqCommentReactions", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+
+  @@unique([commentId, userId])
+  @@index([commentId])
+  @@index([userId])
 }
 
 model TareeqBookmarkFolder {

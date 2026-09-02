@@ -9,6 +9,7 @@ import { TAREEQ_CATEGORIES, CATEGORY_ICONS, CATEGORY_ACCENT_HEX } from '@/lib/ta
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import TareeqLoginGate from './TareeqLoginGate';
 import { ReportModal } from './TareeqCard';
+import TareeqMentionInput from './TareeqMentionInput';
 
 interface Props {
   postId: string;
@@ -23,6 +24,8 @@ interface Comment {
   userId: string;
   parentId?: string | null;
   replyCount?: number;
+  likeCount?: number;
+  liked?: boolean;
   user: { id: string; name: string } | null;
 }
 
@@ -62,6 +65,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
   const [submitting, setSubmitting] = useState(false);
   const [commentError, setCommentError] = useState<string | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [commentLikes, setCommentLikes] = useState<Record<string, { liked: boolean; count: number }>>({});
   const [showGate, setShowGate] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{ commentId: string; authorName: string } | null>(null);
   const [reportCommentId, setReportCommentId] = useState<string | null>(null);
@@ -114,7 +118,9 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
     ]).then(([postData, reactData, commentData]) => {
       const p = postData.post ?? postData;
       if (p) setPost(p);
-      setComments(commentData.comments ?? p?.comments ?? []);
+      const loadedComments = commentData.comments ?? p?.comments ?? [];
+      setComments(loadedComments);
+      seedCommentLikes(loadedComments);
       setCurrentReaction(reactData.userReaction ?? postData.userReaction ?? null);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [postId]);
@@ -215,6 +221,33 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
     } catch { setCommentError(isRtl ? 'تحقق من اتصالك بالإنترنت' : 'Check your internet connection'); } finally {
       setSubmitting(false);
     }
+  }
+
+  async function handleCommentLike(commentId: string) {
+    if (!user) { setShowGate(true); return; }
+    const prev = commentLikes[commentId] ?? { liked: false, count: 0 };
+    // Optimistic update
+    setCommentLikes(s => ({ ...s, [commentId]: { liked: !prev.liked, count: prev.liked ? Math.max(0, prev.count - 1) : prev.count + 1 } }));
+    try {
+      const res = await fetch(`/api/tareeq/comments/${commentId}/react`, { method: 'POST', credentials: 'include' });
+      if (res.ok) {
+        const d = await res.json();
+        setCommentLikes(s => ({ ...s, [commentId]: { liked: d.liked, count: d.count } }));
+      } else {
+        setCommentLikes(s => ({ ...s, [commentId]: prev })); // revert
+      }
+    } catch { setCommentLikes(s => ({ ...s, [commentId]: prev })); }
+  }
+
+  // Seed commentLikes from loaded comments
+  function seedCommentLikes(list: Comment[]) {
+    setCommentLikes(prev => {
+      const next = { ...prev };
+      for (const c of list) {
+        if (!(c.id in next)) next[c.id] = { liked: !!c.liked, count: c.likeCount ?? 0 };
+      }
+      return next;
+    });
   }
 
   const catKey = post?.category as TareeqCategoryKey | null;
@@ -363,8 +396,13 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                                   <span style={{ fontSize: 10, color: 'var(--tr-text-muted)' }}>{timeAgo(c.createdAt, isRtl)}</span>
                                 </div>
                                 <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{c.content}</p>
-                                <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+                                <div style={{ display: 'flex', gap: 12, marginTop: 4, alignItems: 'center' }}>
                                   <button type="button" onClick={() => setReplyingTo({ commentId: c.id, authorName: c.user?.name ?? '' })} style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{isRtl ? 'رد' : 'Reply'}</button>
+                                  {/* Heart like */}
+                                  <button type="button" onClick={() => handleCommentLike(c.id)} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: commentLikes[c.id]?.liked ? '#ef4444' : 'var(--tr-text-muted)', transition: 'color 150ms' }}>
+                                    <span style={{ fontSize: 13 }}>{commentLikes[c.id]?.liked ? '❤️' : '🤍'}</span>
+                                    {(commentLikes[c.id]?.count ?? 0) > 0 && <span>{commentLikes[c.id]?.count}</span>}
+                                  </button>
                                   {user && user.id !== c.userId && (
                                     <button type="button" onClick={() => setReportCommentId(c.id)} style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{isRtl ? 'إبلاغ' : 'Report'}</button>
                                   )}
@@ -412,7 +450,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px' }}>
                   <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold)' }}>{user?.name?.charAt(0) ?? '?'}</div>
-                  <input ref={commentInputRef} value={commentText} onChange={e => { setCommentText(e.target.value); if (commentError) setCommentError(null); }} placeholder={isRtl ? (replyingTo ? 'اكتب ردك...' : 'أضف تعليقاً...') : (replyingTo ? 'Write a reply...' : 'Add a comment...')} maxLength={500} style={{ flex: 1, minWidth: 0, borderRadius: 20, padding: '8px 14px', fontSize: 14, background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)', outline: 'none' }} onFocus={e => { if (!user) { setShowGate(true); e.currentTarget.blur(); } }} />
+                  <TareeqMentionInput inputRef={commentInputRef} value={commentText} onValueChange={v => { setCommentText(v); if (commentError) setCommentError(null); }} placeholder={isRtl ? (replyingTo ? 'اكتب ردك...' : 'أضف تعليقاً...') : (replyingTo ? 'Write a reply...' : 'Add a comment...')} maxLength={500} style={{ borderRadius: 20, padding: '8px 14px', fontSize: 14, background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)', outline: 'none' }} onFocus={e => { if (!user) { setShowGate(true); e.currentTarget.blur(); } }} isRtl={isRtl} />
                   <button type="submit" disabled={submitting || commentText.trim().length < 2} style={{ padding: '8px 16px', borderRadius: 20, fontSize: 13, fontWeight: 700, background: 'var(--tr-gold)', color: '#fff', border: 'none', cursor: 'pointer', opacity: submitting || commentText.trim().length < 2 ? 0.4 : 1, transition: 'opacity 150ms', flexShrink: 0 }}>{submitting ? '...' : (isRtl ? 'إرسال' : 'Send')}</button>
                 </div>
               </form>
@@ -638,13 +676,22 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                           <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>
                             {c.content}
                           </p>
-                          <div style={{ display: 'flex', gap: 12, marginTop: 6 }}>
+                          <div style={{ display: 'flex', gap: 12, marginTop: 6, alignItems: 'center' }}>
                             <button
                               type="button"
                               onClick={() => setReplyingTo({ commentId: c.id, authorName: c.user?.name ?? '' })}
                               style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                             >
                               {isRtl ? 'رد' : 'Reply'}
+                            </button>
+                            {/* Heart like button */}
+                            <button
+                              type="button"
+                              onClick={() => handleCommentLike(c.id)}
+                              style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: (commentLikes[c.id]?.liked) ? '#ef4444' : 'var(--tr-text-muted)', transition: 'color 150ms' }}
+                            >
+                              <span style={{ fontSize: 13 }}>{(commentLikes[c.id]?.liked) ? '❤️' : '🤍'}</span>
+                              {(commentLikes[c.id]?.count ?? 0) > 0 && <span>{commentLikes[c.id]?.count}</span>}
                             </button>
                             {(c.replyCount ?? 0) > 0 && (
                               <button
@@ -724,18 +771,15 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
           }}>
             {user?.name?.charAt(0) ?? '?'}
           </div>
-          <input
-            ref={commentInputRef}
+          <TareeqMentionInput
+            inputRef={commentInputRef}
             value={commentText}
-            onChange={e => { setCommentText(e.target.value); if (commentError) setCommentError(null); }}
+            onValueChange={v => { setCommentText(v); if (commentError) setCommentError(null); }}
             placeholder={isRtl ? 'أضف تعليقاً...' : 'Add a comment...'}
             maxLength={500}
-            style={{
-              flex: 1, minWidth: 0, borderRadius: 20, padding: '8px 14px', fontSize: 14,
-              background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)',
-              color: 'var(--tr-text-primary)', outline: 'none',
-            }}
+            style={{ borderRadius: 20, padding: '8px 14px', fontSize: 14, background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)', outline: 'none' }}
             onFocus={e => { if (!user) { setShowGate(true); e.currentTarget.blur(); } }}
+            isRtl={isRtl}
           />
           <button
             type="submit"

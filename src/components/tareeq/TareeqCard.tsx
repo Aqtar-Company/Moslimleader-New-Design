@@ -780,6 +780,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
         {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
+        {showReactors && <ReactorsModal postId={post.id} isRtl={isRtl} onClose={() => setShowReactors(false)} />}
       </>
     );
   }
@@ -939,6 +940,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
         {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
+        {showReactors && <ReactorsModal postId={post.id} isRtl={isRtl} onClose={() => setShowReactors(false)} />}
       </>
     );
   }
@@ -1145,11 +1147,13 @@ function ReactorsModal({ postId, isRtl, onClose }: { postId: string; isRtl: bool
   const [filter, setFilter] = useState<string>('');
 
   useEffect(() => {
-    fetch(`/api/tareeq/${postId}/react?users=1`)
+    const ctrl = new AbortController();
+    fetch(`/api/tareeq/${postId}/react?users=1`, { signal: ctrl.signal, credentials: 'include' })
       .then(r => r.json())
       .then(d => setReactors(d.reactions ?? []))
       .catch(() => {})
       .finally(() => setLoading(false));
+    return () => ctrl.abort();
   }, [postId]);
 
   const filtered = filter ? reactors.filter(r => r.type === filter) : reactors;
@@ -1207,10 +1211,10 @@ function ReactorsModal({ postId, isRtl, onClose }: { postId: string; isRtl: bool
           ) : filtered.length === 0 ? (
             <p className="text-center py-10 text-sm" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'لا تفاعلات بعد' : 'No reactions yet'}</p>
           ) : (
-            filtered.map((r, i) => {
+            filtered.map((r) => {
               const rc = REACTIONS.find(x => x.type === r.type);
               return (
-                <div key={i} className="flex items-center gap-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                <div key={r.user.id} className="flex items-center gap-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
                   {r.user.avatarUrl ? (
                     <img src={r.user.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
                   ) : (

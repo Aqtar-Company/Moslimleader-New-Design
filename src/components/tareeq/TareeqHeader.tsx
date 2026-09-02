@@ -19,7 +19,7 @@ function Badge({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
     <span
-      className="absolute -top-1 -end-1 text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center leading-none"
+      className="absolute -top-1 -right-1 text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center leading-none"
       style={{ background: '#f43f5e', color: '#fff' }}
     >
       {count > 9 ? '9+' : count}
@@ -636,7 +636,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                           {n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>
                       )}
                       {n.type === 'yarabb' && (
-                        <>{isRtl ? `${n.actorName || 'شخص ما'} دعا لك بسبب علامتك 🤲` : `${n.actorName || 'Someone'} prayed on your mark 🤲`}
+                        <>{isRtl ? `${n.actorName || 'شخص ما'} دعا لك بسبب علامتك 🤲` : `${n.actorName || 'Someone'} made du'a for your mark 🤲`}
                           {n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>
                       )}
                       {n.type === 'comment' && (
@@ -660,14 +660,6 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                 </button>
               ))
             )}
-            {/* Close hint */}
-            <button
-              onClick={() => setShowMobileNotifPanel(false)}
-              className="text-center py-2 text-xs font-semibold"
-              style={{ color: 'rgba(255,255,255,0.45)' }}
-            >
-              {isRtl ? 'اضغط للإغلاق' : 'Tap to close'}
-            </button>
           </div>
         </div>
       )}
@@ -977,7 +969,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                                   {n.type === 'inspired' && <>{isRtl ? `${n.actorName || 'شخص ما'} ألهمته علامتك ⭐` : `${n.actorName || 'Someone'} was inspired ⭐`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
                                   {n.type === 'thanks' && <>{isRtl ? `${n.actorName || 'شخص ما'} شكرك على علامتك 🙏` : `${n.actorName || 'Someone'} thanked you 🙏`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
                                   {n.type === 'agree' && <>{isRtl ? `${n.actorName || 'شخص ما'} يتفق مع علامتك ✊` : `${n.actorName || 'Someone'} agreed ✊`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
-                                  {n.type === 'yarabb' && <>{isRtl ? `${n.actorName || 'شخص ما'} دعا لك 🤲` : `${n.actorName || 'Someone'} prayed 🤲`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
+                                  {n.type === 'yarabb' && <>{isRtl ? `${n.actorName || 'شخص ما'} دعا لك 🤲` : `${n.actorName || 'Someone'} made du'a 🤲`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
                                   {n.type === 'comment' && <>{isRtl ? `${n.actorName || 'شخص ما'} علّق على` : `${n.actorName || 'Someone'} commented on`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}
                                   {n.type === 'follow' && <>{isRtl ? `${n.actorName || 'شخص ما'} بدأ متابعتك` : `${n.actorName || 'Someone'} started following you`}</>}
                                   {n.type !== 'like' && n.type !== 'inspired' && n.type !== 'thanks' && n.type !== 'agree' && n.type !== 'yarabb' && n.type !== 'comment' && n.type !== 'follow' && <>{isRtl ? `رسالة من ${n.actorName || 'شخص ما'}` : `Message from ${n.actorName || 'Someone'}`}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}
@@ -1353,7 +1345,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                                 {n.type === 'inspired' && <>{isRtl ? `${n.actorName || 'شخص ما'} ألهمته علامتك ⭐` : `${n.actorName || 'Someone'} was inspired ⭐`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
                                 {n.type === 'thanks' && <>{isRtl ? `${n.actorName || 'شخص ما'} شكرك على علامتك 🙏` : `${n.actorName || 'Someone'} thanked you 🙏`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
                                 {n.type === 'agree' && <>{isRtl ? `${n.actorName || 'شخص ما'} يتفق مع علامتك ✊` : `${n.actorName || 'Someone'} agreed ✊`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
-                                {n.type === 'yarabb' && <>{isRtl ? `${n.actorName || 'شخص ما'} دعا لك 🤲` : `${n.actorName || 'Someone'} prayed 🤲`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
+                                {n.type === 'yarabb' && <>{isRtl ? `${n.actorName || 'شخص ما'} دعا لك 🤲` : `${n.actorName || 'Someone'} made du'a 🤲`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
                                 {n.type === 'comment' && <>{isRtl ? `${n.actorName || 'شخص ما'} علّق على` : `${n.actorName || 'Someone'} commented on`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}
                                 {n.type === 'follow' && <>{isRtl ? `${n.actorName || 'شخص ما'} بدأ متابعتك` : `${n.actorName || 'Someone'} started following you`}</>}
                                 {n.type !== 'like' && n.type !== 'inspired' && n.type !== 'thanks' && n.type !== 'agree' && n.type !== 'yarabb' && n.type !== 'comment' && n.type !== 'follow' && <>{isRtl ? `رسالة من ${n.actorName || 'شخص ما'}` : `Message from ${n.actorName || 'Someone'}`}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}

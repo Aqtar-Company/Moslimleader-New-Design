@@ -85,6 +85,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const withUsers = req.nextUrl.searchParams.get('users') === '1';
   if (withUsers) {
+    const authResult = await getAuthUser().catch(() => null);
+    if (!authResult) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const reactions = await prisma.tareeqReaction.findMany({
       where: { postId: params.id },
       select: { type: true, user: { select: { id: true, name: true, avatarUrl: true } } },

@@ -169,12 +169,15 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
       return;
     }
     setLoadingReplies(prev => ({ ...prev, [commentId]: true }));
-    const res = await fetch(`/api/tareeq/${postId}/comments?parentId=${commentId}`, { credentials: 'include' });
-    if (res.ok) {
-      const data = await res.json();
-      setExpandedReplies(prev => ({ ...prev, [commentId]: data.comments ?? [] }));
+    try {
+      const res = await fetch(`/api/tareeq/${postId}/comments?parentId=${commentId}`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setExpandedReplies(prev => ({ ...prev, [commentId]: data.comments ?? [] }));
+      }
+    } catch { /* offline */ } finally {
+      setLoadingReplies(prev => ({ ...prev, [commentId]: false }));
     }
-    setLoadingReplies(prev => ({ ...prev, [commentId]: false }));
   }
 
   async function handleComment(e: React.FormEvent) {

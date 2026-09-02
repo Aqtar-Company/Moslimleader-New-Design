@@ -5,8 +5,12 @@ import TareeqContentWrapper from '@/components/tareeq/TareeqContentWrapper';
 
 export const metadata: Metadata = {
   icons: {
-    icon: '/Tareeq-small.png',
+    icon: [
+      { url: '/tareeq-icon.svg', type: 'image/svg+xml' },
+      { url: '/Tareeq-small.png', sizes: '192x192', type: 'image/png' },
+    ],
     apple: '/Tareeq-small.png',
+    shortcut: '/tareeq-icon.svg',
   },
 };
 

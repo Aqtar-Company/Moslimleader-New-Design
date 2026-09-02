@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { products as staticProducts, categories } from '@/lib/products';
 import { Product } from '@/types';
 import ProductCard from '@/components/product/ProductCard';
@@ -102,8 +102,19 @@ function expandProducts(products: Product[]) {
 function ShopContent({ ssrProducts }: { ssrProducts?: Product[] }) {
   const searchParams = useSearchParams();
   const { t, isRtl } = useLang();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const router = useRouter();
   const initialCategory = searchParams.get('category') || 'all';
+
+  // Client-side fallback: redirect logged-in mobile users to /tareeq.
+  // The middleware redirect is unreliable on iOS Safari because sameSite:none
+  // cookies are not sent on initial top-level navigation.
+  useEffect(() => {
+    if (authLoading || !user) return;
+    if (/mobile|android|iphone|ipad|ipod/i.test(navigator.userAgent)) {
+      router.replace('/tareeq');
+    }
+  }, [user, authLoading, router]);
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [ageFilter, setAgeFilter] = useState('');
   const [genderFilter, setGenderFilter] = useState<'male' | 'female' | ''>('');

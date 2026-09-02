@@ -582,7 +582,7 @@ function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreat
 // ── Main component ────────────────────────────────────────────────────
 function Inner({ groupId }: { groupId: string }) {
   const { isRtl } = useLang();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
   // Core state
@@ -651,6 +651,7 @@ function Inner({ groupId }: { groupId: string }) {
   }, [groupId]);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) { router.push('/login'); return; }
     load();
     pollingRef.current = setInterval(async () => {
@@ -666,7 +667,7 @@ function Inner({ groupId }: { groupId: string }) {
       }
     }, 8_000);
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
-  }, [user, router, load, groupId]);
+  }, [authLoading, user, router, load, groupId]);
 
   useLayoutEffect(() => {
     const el = messagesContainerRef.current;

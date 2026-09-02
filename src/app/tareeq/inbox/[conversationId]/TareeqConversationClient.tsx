@@ -278,7 +278,7 @@ function VoiceMessage({ url, mine }: { url: string; mine: boolean }) {
 
 function Inner({ conversationId }: { conversationId: string }) {
   const { isRtl } = useLang();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { refresh } = useTareeqNotifications();
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -389,6 +389,7 @@ function Inner({ conversationId }: { conversationId: string }) {
   }, [user]);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) { router.push('/login'); return; }
     loadMessages();
     pollingRef.current = setInterval(async () => {
@@ -430,7 +431,7 @@ function Inner({ conversationId }: { conversationId: string }) {
       if (d.otherUser) setOtherUser(d.otherUser);
     }, 3_000);
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
-  }, [user, router, loadMessages, conversationId, refresh]);
+  }, [authLoading, user, router, loadMessages, conversationId, refresh]);
 
   function scrollToBottom(smooth = false) {
     const el = messagesContainerRef.current;

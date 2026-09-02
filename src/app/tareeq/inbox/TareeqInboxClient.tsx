@@ -111,7 +111,7 @@ function RowAvatar({ url, name, emoji }: { url?: string | null; name: string; em
 
 function Inner() {
   const { isRtl } = useLang();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [tab, setTab] = useState<'dms' | 'groups'>('dms');
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -134,12 +134,13 @@ function Inner() {
   }
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) { router.push('/login'); return; }
     loadAll();
     const onVisible = () => { if (!document.hidden) loadAll(); };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [user, router]);
+  }, [authLoading, user, router]);
 
   const tabStyle = (active: boolean) => ({
     flex: 1, padding: '9px 0', fontWeight: 700, fontSize: 13, borderRadius: 10,

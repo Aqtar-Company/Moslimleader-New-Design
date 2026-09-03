@@ -98,6 +98,12 @@ html[dir="ltr"],
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
 }
 
+/* ── Tareeq: Noto Sans Arabic instead of Cairo (closer to system/Facebook feel) ── */
+[data-tareeq-root],
+[data-tareeq-root] * {
+  font-family: 'Noto Sans Arabic', 'Segoe UI', system-ui, sans-serif;
+}
+
 [dir="ltr"] input,
 [dir="ltr"] textarea,
 [dir="ltr"] select {

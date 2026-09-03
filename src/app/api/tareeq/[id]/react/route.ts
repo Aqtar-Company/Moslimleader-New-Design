@@ -5,7 +5,7 @@ import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isTareeqSuspended, isBlockedEitherWay } from '@/lib/tareeq-guard';
 import { sendPushToUser } from '@/lib/tareeq-push';
 
-const VALID_TYPES = ['inspired', 'thanks', 'agree', 'yarabb'] as const;
+const VALID_TYPES = ['inspired', 'thanks', 'agree', 'yarabb', 'mashaallah'] as const;
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const authResult = await getAuthUser().catch(() => null);
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     // New reaction (atomic: create + increment)
     const actor = await prisma.user.findUnique({ where: { id: me.userId }, select: { name: true, avatarUrl: true } });
     const actorName = actor?.name ?? 'شخص ما';
-    const LABELS: Record<string, string> = { inspired: 'ألهمه ⭐', thanks: 'شكره 🙏', agree: 'يتفق معه ✊', yarabb: 'يارب 🤲' };
+    const LABELS: Record<string, string> = { inspired: 'ألهمه ⭐', thanks: 'شكره 🙏', agree: 'يتفق معه ✊', yarabb: 'يارب 🤲', mashaallah: 'ماشاء الله 🌴' };
     await prisma.$transaction([
       prisma.tareeqReaction.create({ data: { postId: params.id, userId: me.userId, type } }),
       prisma.tareeqPost.update({ where: { id: params.id }, data: { likeCount: { increment: 1 } } }),

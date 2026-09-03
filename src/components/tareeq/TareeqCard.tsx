@@ -115,10 +115,11 @@ interface Props {
 }
 
 const REACTIONS = [
-  { type: 'inspired', emoji: '⭐', labelAr: 'ألهمني', labelEn: 'Inspiring', color: '#f59e0b' },
-  { type: 'thanks',   emoji: '🙏', labelAr: 'شكرًا',  labelEn: 'Thanks',    color: '#10b981' },
-  { type: 'agree',    emoji: '✊', labelAr: 'أتفق',   labelEn: 'Agree',     color: '#3b82f6' },
-  { type: 'yarabb',   emoji: '🤲', labelAr: 'يارب',   labelEn: 'Ameen',     color: '#8b5cf6' },
+  { type: 'inspired',    emoji: '⭐', labelAr: 'ألهمني',      labelEn: 'Inspiring',  color: '#f59e0b' },
+  { type: 'thanks',      emoji: '🙏', labelAr: 'شكرًا',       labelEn: 'Thanks',     color: '#10b981' },
+  { type: 'agree',       emoji: '✊', labelAr: 'أتفق',        labelEn: 'Agree',      color: '#3b82f6' },
+  { type: 'yarabb',      emoji: '🤲', labelAr: 'يارب',        labelEn: 'Ameen',      color: '#8b5cf6' },
+  { type: 'mashaallah',  emoji: '🌴', labelAr: 'ماشاء الله',  labelEn: 'MashaAllah', color: '#16a34a' },
 ] as const;
 
 type ReactionType = typeof REACTIONS[number]['type'];
@@ -845,9 +846,17 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           {/* Author + caption strip */}
           <div className="px-4 pt-3.5 pb-2">
             <div className="flex items-center gap-2.5 mb-2">
-              {post.user?.avatarUrl
-                ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-8 h-8 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold)' }} />
-                : <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
+              {post.userId
+                ? <Link href={`/tareeq/u/${post.userId}`} onClick={e => e.stopPropagation()} className="shrink-0">
+                    {post.user?.avatarUrl
+                      ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-8 h-8 rounded-full object-cover" style={{ border: '2px solid var(--tr-gold)' }} />
+                      : <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
+                    }
+                  </Link>
+                : (post.user?.avatarUrl
+                    ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-8 h-8 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold)' }} />
+                    : <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
+                  )
               }
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 min-w-0">
@@ -1062,9 +1071,17 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           <div className="hidden lg:block">
             <div className="px-4 pt-3.5 pb-2">
               <div className="flex items-center gap-2.5 mb-2.5">
-                {post.user?.avatarUrl
-                  ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold)' }} />
-                  : <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
+                {post.userId
+                  ? <Link href={`/tareeq/u/${post.userId}`} onClick={e => e.stopPropagation()} className="shrink-0">
+                      {post.user?.avatarUrl
+                        ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-9 h-9 rounded-full object-cover" style={{ border: '2px solid var(--tr-gold)' }} />
+                        : <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
+                      }
+                    </Link>
+                  : (post.user?.avatarUrl
+                      ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold)' }} />
+                      : <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
+                    )
                 }
                 <div className="flex-1 min-w-0">
                   {post.userId
@@ -1125,9 +1142,17 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         <Link href={`/tareeq/${post.id}`} className="block px-4 pt-5 pb-3.5" onClick={handlePostLinkClick}>
           {/* Author row */}
           <div className="flex items-center gap-3 mb-3.5">
-            {post.user?.avatarUrl
-              ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-11 h-11 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold)' }} />
-              : <div className="w-11 h-11 rounded-full flex items-center justify-center text-base font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
+            {post.userId
+              ? <Link href={`/tareeq/u/${post.userId}`} onClick={e => e.stopPropagation()} className="shrink-0">
+                  {post.user?.avatarUrl
+                    ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-11 h-11 rounded-full object-cover" style={{ border: '2px solid var(--tr-gold)' }} />
+                    : <div className="w-11 h-11 rounded-full flex items-center justify-center text-base font-black" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
+                  }
+                </Link>
+              : (post.user?.avatarUrl
+                  ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-11 h-11 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold)' }} />
+                  : <div className="w-11 h-11 rounded-full flex items-center justify-center text-base font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
+                )
             }
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 min-w-0">
@@ -1167,8 +1192,11 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             {renderRichText(textExpanded ? post.content : snippet)}
           </p>
           {isLong && !textExpanded && (
-            <button onClick={e => { e.preventDefault(); e.stopPropagation(); setTextExpanded(true); }} className="text-xs font-bold mt-1.5 transition" style={{ color: 'var(--tr-gold)' }}>
-              {isRtl ? 'اقرأ أكثر' : 'Read more'}
+            <button onClick={e => { e.preventDefault(); e.stopPropagation(); setTextExpanded(true); }} className="text-sm font-bold mt-2 transition flex items-center gap-1" style={{ color: 'var(--tr-gold)' }}>
+              {isRtl ? '...المزيد' : 'Read more'}
+              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                <path d={isRtl ? 'M15 18l-6-6 6-6' : 'M9 18l6-6-6-6'} />
+              </svg>
             </button>
           )}
 

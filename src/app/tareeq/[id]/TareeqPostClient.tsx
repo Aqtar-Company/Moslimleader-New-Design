@@ -28,10 +28,11 @@ interface Post {
 
 // ── Reaction config ───────────────────────────────────────────────────
 const REACTIONS = [
-  { type: 'inspired', emoji: '⭐', labelAr: 'ألهمني', labelEn: 'Inspiring', color: '#f59e0b' },
-  { type: 'thanks',   emoji: '🙏', labelAr: 'شكرًا',  labelEn: 'Thanks',    color: '#10b981' },
-  { type: 'agree',    emoji: '✊', labelAr: 'أتفق',   labelEn: 'Agree',     color: '#3b82f6' },
-  { type: 'yarabb',   emoji: '🤲', labelAr: 'يارب',   labelEn: 'Ameen',     color: '#8b5cf6' },
+  { type: 'inspired',    emoji: '⭐', labelAr: 'ألهمني',      labelEn: 'Inspiring',  color: '#f59e0b' },
+  { type: 'thanks',      emoji: '🙏', labelAr: 'شكرًا',       labelEn: 'Thanks',     color: '#10b981' },
+  { type: 'agree',       emoji: '✊', labelAr: 'أتفق',        labelEn: 'Agree',      color: '#3b82f6' },
+  { type: 'yarabb',      emoji: '🤲', labelAr: 'يارب',        labelEn: 'Ameen',      color: '#8b5cf6' },
+  { type: 'mashaallah',  emoji: '🌴', labelAr: 'ماشاء الله',  labelEn: 'MashaAllah', color: '#16a34a' },
 ] as const;
 
 type ReactionType = typeof REACTIONS[number]['type'];

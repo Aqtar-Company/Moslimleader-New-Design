@@ -1041,7 +1041,35 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             </span>
           </button>
 
-          {/* 2 — Chat / Messages */}
+          {/* 2 — اكتشف (discover) */}
+          <Link
+            href="/tareeq"
+            className="relative flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
+            style={{ minWidth: 44 }}
+          >
+            {isHome && <div style={{ position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)', width: 20, height: 3, borderRadius: 2, background: NAV_ACCENT, boxShadow: `0 0 8px 1px ${NAV_ACCENT}99`, transition: 'opacity 0.25s' }} />}
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.65} viewBox="0 0 24 24"
+              style={{
+                color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
+                filter: isHome ? 'drop-shadow(0 0 6px var(--tr-gold-glow))' : 'none',
+                transition: 'all 0.2s',
+              }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
+              {isRtl ? 'اكتشف' : 'Discover'}
+            </span>
+          </Link>
+
+          {/* 3 — Center spacer + label */}
+          <div className="flex flex-col items-center justify-end pb-2" style={{ width: CIRCLE_SIZE, minWidth: CIRCLE_SIZE }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--tr-gold)', lineHeight: 1, letterSpacing: '0.02em' }}>
+              {isRtl ? 'ضع علامة' : 'Post'}
+            </span>
+          </div>
+
+          {/* 4 — Chat / Messages */}
           <Link
             href="/tareeq/inbox"
             className="relative flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
@@ -1064,34 +1092,6 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             )}
             <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isInbox ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
               {isRtl ? 'الشات' : 'Chat'}
-            </span>
-          </Link>
-
-          {/* 3 — Center spacer + label */}
-          <div className="flex flex-col items-center justify-end pb-2" style={{ width: CIRCLE_SIZE, minWidth: CIRCLE_SIZE }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--tr-gold)', lineHeight: 1, letterSpacing: '0.02em' }}>
-              {isRtl ? 'ضع علامة' : 'Post'}
-            </span>
-          </div>
-
-          {/* 4 — اكتشف (discover) */}
-          <Link
-            href="/tareeq"
-            className="relative flex flex-col items-center justify-end gap-0.5 pb-2 transition-all active:scale-90"
-            style={{ minWidth: 44 }}
-          >
-            {isHome && <div style={{ position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)', width: 20, height: 3, borderRadius: 2, background: NAV_ACCENT, boxShadow: `0 0 8px 1px ${NAV_ACCENT}99`, transition: 'opacity 0.25s' }} />}
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.65} viewBox="0 0 24 24"
-              style={{
-                color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
-                filter: isHome ? 'drop-shadow(0 0 6px var(--tr-gold-glow))' : 'none',
-                transition: 'all 0.2s',
-              }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
-              {isRtl ? 'اكتشف' : 'Discover'}
             </span>
           </Link>
 

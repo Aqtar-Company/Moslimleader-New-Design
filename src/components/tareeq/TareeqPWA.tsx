@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
 import { useLang } from '@/context/LanguageContext';
+import { useTareeqPush } from '@/hooks/useTareeqPush';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -53,6 +54,7 @@ export function useTareeqInstall() {
 }
 
 export default function TareeqPWA() {
+  useTareeqPush();
   useEffect(() => {
     // Swap manifest to Tareeq-specific one
     let link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');

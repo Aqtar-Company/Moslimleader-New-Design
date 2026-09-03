@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { TareeqNotificationsProvider, useTareeqNotifications } from '@/context/TareeqNotificationsContext';
+import { requestTareeqPush } from '@/hooks/useTareeqPush';
 
 interface Notification {
   id: string;
@@ -107,6 +108,44 @@ function NotifText({ n, isRtl }: { n: Notification; isRtl: boolean }) {
   );
 }
 
+function PushPermissionBanner({ isRtl }: { isRtl: boolean }) {
+  const [perm, setPerm] = useState<NotificationPermission | null>(null);
+  const [requesting, setRequesting] = useState(false);
+
+  useEffect(() => {
+    if ('Notification' in window) setPerm(Notification.permission);
+  }, []);
+
+  if (perm === 'granted' || perm === 'denied' || perm === null) return null;
+
+  return (
+    <div className="mt-4 mx-auto max-w-sm flex items-center gap-3 px-4 py-3 rounded-2xl"
+      style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)' }}>
+      <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+        style={{ background: 'var(--tr-gold-glow)', border: '1px solid var(--tr-gold-dim)' }}>
+        <svg width={18} height={18} fill="none" stroke="var(--tr-gold)" strokeWidth={1.8} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+        </svg>
+      </div>
+      <p className="text-xs font-semibold flex-1 text-start" style={{ color: 'var(--tr-text-secondary)' }}>
+        {isRtl ? 'فعّل الإشعارات لتصلك رسائل وردود على الفور' : 'Enable notifications to get messages instantly'}
+      </p>
+      <button
+        disabled={requesting}
+        onClick={async () => {
+          setRequesting(true);
+          const result = await requestTareeqPush();
+          setPerm(result);
+          setRequesting(false);
+        }}
+        className="shrink-0 px-3 py-1.5 rounded-xl text-xs font-black transition-all active:scale-95"
+        style={{ background: 'var(--tr-gold)', color: '#080E1C', opacity: requesting ? 0.6 : 1 }}>
+        {requesting ? '...' : (isRtl ? 'تفعيل' : 'Enable')}
+      </button>
+    </div>
+  );
+}
+
 function Inner() {
   const { isRtl } = useLang();
   const { user } = useAuth();
@@ -150,6 +189,7 @@ function Inner() {
     <div className="min-h-screen">
       <div className="py-8 px-4 text-center">
         <h1 className="font-black text-2xl" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الإشعارات' : 'Notifications'}</h1>
+        <PushPermissionBanner isRtl={isRtl} />
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-2">

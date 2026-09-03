@@ -648,13 +648,13 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
 
       {/* ── Settings sheet ── */}
       {showSettings && (
-        <div onClick={() => setShowSettings(false)}
+        <div onClick={() => { setShowSettings(false); setConfirmReset(false); }}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9998, display: 'flex', alignItems: 'flex-end' }}>
           <div onClick={e => e.stopPropagation()} dir={isRtl ? 'rtl' : 'ltr'}
             style={{ width: '100%', background: '#111827', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', animation: 'nuri-sheet 0.28s cubic-bezier(0.32,0.72,0,1)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <p style={{ fontWeight: 800, fontSize: 16, color: NURI_YELLOW }}>{isRtl ? 'إعدادات ختمتك' : 'Khatmah Settings'}</p>
-              <button onClick={() => setShowSettings(false)}
+              <button onClick={() => { setShowSettings(false); setConfirmReset(false); }}
                 style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', border: 'none', cursor: 'pointer', color: TEXT_MUT, fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
             </div>
 

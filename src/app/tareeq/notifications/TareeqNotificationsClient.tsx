@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { TareeqNotificationsProvider, useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 import { requestTareeqPush } from '@/hooks/useTareeqPush';
 
-interface Notification {
+interface TareeqNotif {
   id: string;
   type: string;
   actorId?: string | null;
@@ -55,7 +55,7 @@ function NotifIcon({ type }: { type: string }) {
   );
 }
 
-function NotifText({ n, isRtl }: { n: Notification; isRtl: boolean }) {
+function NotifText({ n, isRtl }: { n: TareeqNotif; isRtl: boolean }) {
   const actor = n.actorName || (isRtl ? 'شخص ما' : 'Someone');
   const title = n.postTitle ? `«${n.postTitle}»` : '';
   if (n.type === 'like') {
@@ -151,14 +151,14 @@ function Inner() {
   const { user } = useAuth();
   const { refresh } = useTareeqNotifications();
   const router = useRouter();
-  const [notifs, setNotifs] = useState<Notification[]>([]);
+  const [notifs, setNotifs] = useState<TareeqNotif[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
     fetch('/api/tareeq/notifications?limit=50', { credentials: 'include' })
       .then(r => r.json())
-      .then(d => setNotifs((d.notifications ?? []).filter((n: Notification) => n.type !== 'message')))
+      .then(d => setNotifs((d.notifications ?? []).filter((n: TareeqNotif) => n.type !== 'message')))
       .catch(() => {})
       .finally(() => setLoading(false));
     // Mark all read
@@ -167,7 +167,7 @@ function Inner() {
       .catch(() => {});
   }, [user, refresh]);
 
-  function handleClick(n: Notification) {
+  function handleClick(n: TareeqNotif) {
     if (n.type === 'message' && n.postId) {
       router.push(`/tareeq/inbox/${n.postId}`);
     } else if (n.type === 'message') {

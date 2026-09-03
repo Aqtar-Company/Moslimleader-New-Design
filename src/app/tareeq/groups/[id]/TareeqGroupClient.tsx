@@ -297,6 +297,8 @@ function GroupSettingsSheet({ group, myId, isAdmin, onClose, onChanged, onLeft }
   const [removing, setRemoving] = useState<string | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   async function saveField(field: 'name' | 'desc') {
     setSaving(true); setSaveErr('');
@@ -323,6 +325,8 @@ function GroupSettingsSheet({ group, myId, isAdmin, onClose, onChanged, onLeft }
   }
 
   async function leaveGroup() {
+    // Admin must delete the group instead — leaving as admin orphans it
+    if (isAdmin) return;
     setLeaving(true);
     try {
       await fetch(`/api/tareeq/groups/${group.id}/members`, {
@@ -331,6 +335,17 @@ function GroupSettingsSheet({ group, myId, isAdmin, onClose, onChanged, onLeft }
       });
       onLeft();
     } catch { setLeaving(false); }
+  }
+
+  async function deleteGroup() {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/tareeq/groups/${group.id}`, {
+        method: 'DELETE', credentials: 'include',
+      });
+      if (res.ok) onLeft();
+      else setDeleting(false);
+    } catch { setDeleting(false); }
   }
 
   return (
@@ -493,9 +508,33 @@ function GroupSettingsSheet({ group, myId, isAdmin, onClose, onChanged, onLeft }
             </div>
           </div>
 
-          {/* Leave group */}
+          {/* Leave / Delete group */}
           <div className="px-5 py-4 mt-2" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
-            {confirmLeave ? (
+            {isAdmin ? (
+              confirmDelete ? (
+                <div className="flex flex-col gap-2 p-3 rounded-xl" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.18)' }}>
+                  <p className="text-sm text-center font-semibold" style={{ color: 'var(--tr-text-primary)' }}>
+                    {isRtl ? 'سيتم حذف المجموعة وكل رسائلها نهائياً' : 'Group and all its messages will be permanently deleted'}
+                  </p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setConfirmDelete(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                      style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}>
+                      {isRtl ? 'إلغاء' : 'Cancel'}
+                    </button>
+                    <button onClick={deleteGroup} disabled={deleting}
+                      className="flex-1 py-2.5 rounded-xl text-sm font-black transition disabled:opacity-50"
+                      style={{ background: '#ef4444', color: '#fff' }}>
+                      {deleting ? '...' : (isRtl ? 'حذف نهائي' : 'Delete')}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setConfirmDelete(true)} className="w-full py-3 rounded-xl text-sm font-semibold transition active:scale-[0.98]"
+                  style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)' }}>
+                  {isRtl ? '🗑️ حذف المجموعة' : '🗑️ Delete Group'}
+                </button>
+              )
+            ) : confirmLeave ? (
               <div className="flex flex-col gap-3">
                 <p className="text-sm text-center font-semibold" style={{ color: 'var(--tr-text-primary)' }}>
                   {isRtl ? 'هل تريد مغادرة المجموعة؟' : 'Leave this group?'}

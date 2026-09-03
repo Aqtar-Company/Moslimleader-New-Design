@@ -53,6 +53,20 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   return NextResponse.json({ group, messages, myRole: member.role });
 }
 
+// DELETE /api/tareeq/groups/[id] — delete group (admin only)
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  const user = await getAuthUser().catch(() => null);
+  if (!user) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
+
+  const member = await prisma.tareeqGroupMember.findUnique({
+    where: { groupId_userId: { groupId: params.id, userId: user.userId } },
+  });
+  if (!member || member.role !== 'admin') return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+
+  await prisma.tareeqGroup.delete({ where: { id: params.id } });
+  return NextResponse.json({ ok: true });
+}
+
 // PATCH /api/tareeq/groups/[id] — update group name/description (admin only)
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getAuthUser().catch(() => null);

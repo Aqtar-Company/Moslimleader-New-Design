@@ -9,6 +9,7 @@ import { setCameraFile } from '@/lib/tareeq-camera-store';
 import { prewireOutRingPipeline } from '@/lib/tareeq-ring-pipeline';
 import TareeqCallScreen, { CallParty } from './TareeqCallScreen';
 import { TareeqSatisfactionSettings } from './TareeqSatisfactionMode';
+import { requestTareeqPush } from '@/hooks/useTareeqPush';
 
 /* ─── Nav color ─────────────────────────────────────────────────────────────── */
 const NAV_ACCENT = '#FFCC00'; // yellow 100 + magenta ~20% — slightly warm, not orange
@@ -232,8 +233,8 @@ function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: P
   async function handleEnableNotifs() {
     if (typeof Notification === 'undefined') return;
     if (Notification.permission === 'granted') return;
-    const perm = await Notification.requestPermission();
-    setNotifState(perm === 'granted' ? 'granted' : 'denied');
+    const result = await requestTareeqPush();
+    setNotifState(result === 'granted' ? 'granted' : 'denied');
   }
 
   function share(platform: 'whatsapp' | 'x' | 'telegram' | 'facebook') {

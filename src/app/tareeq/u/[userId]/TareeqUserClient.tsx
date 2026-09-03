@@ -156,6 +156,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [showReportUser, setShowReportUser] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsUsername, setSettingsUsername] = useState(profileUser.username ?? '');
+  const [displayUsername, setDisplayUsername] = useState(profileUser.username ?? '');
   const [savingUsername, setSavingUsername] = useState(false);
   const [usernameError, setUsernameError] = useState('');
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -489,7 +490,12 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
       });
       const data = await res.json();
       if (!res.ok) { setUsernameError(data.error ?? 'حدث خطأ'); }
-      else { showToast(isRtl ? 'تم الحفظ ✓' : 'Saved ✓'); }
+      else {
+        const saved = data.username ?? '';
+        setDisplayUsername(saved);
+        showToast(isRtl ? 'تم الحفظ ✓' : 'Saved ✓');
+        if (saved) router.replace(`/tareeq/u/${saved}`);
+      }
     } catch { setUsernameError(isRtl ? 'حدث خطأ' : 'Error'); }
     finally { setSavingUsername(false); }
   }
@@ -939,8 +945,8 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                   <h1 className="font-black text-2xl leading-tight truncate" style={{ color: 'var(--tr-text-primary)', textShadow: '0 1px 8px rgba(0,0,0,0.18)' }}>
                     {profileUser.name}
                   </h1>
-                  {profileUser.username && (
-                    <p className="text-sm mt-0.5" style={{ color: 'var(--tr-text-muted)' }} dir="ltr">@{profileUser.username}</p>
+                  {displayUsername && (
+                    <p className="text-sm mt-0.5" style={{ color: 'var(--tr-text-muted)' }} dir="ltr">@{displayUsername}</p>
                   )}
                   <div className="flex gap-6 mt-2">
                     <StatItem count={postCount ?? posts.length} label={isRtl ? 'علامة' : 'Posts'} />

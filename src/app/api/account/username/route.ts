@@ -22,6 +22,12 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'اسم المستخدم يجب أن يكون 3-30 حرف (أرقام وحروف إنجليزية وشرطة سفلية فقط)' }, { status: 400 });
   }
 
+  // Block cuid-shaped names (c + 20-30 lowercase alphanumeric chars) to avoid
+  // ambiguity with user IDs in the profile URL resolver.
+  if (/^c[a-z0-9]{20,29}$/.test(raw.toLowerCase())) {
+    return NextResponse.json({ error: 'هذا الاسم غير مسموح به، جرب اسماً آخر' }, { status: 400 });
+  }
+
   try {
     const updated = await prisma.user.update({
       where: { id: auth.userId },

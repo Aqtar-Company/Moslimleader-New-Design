@@ -7,12 +7,21 @@ import TareeqUserClient from './TareeqUserClient';
 
 interface Props { params: { userId: string } }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const handle = params.userId;
-  const user = await prisma.user.findFirst({
-    where: { OR: [{ username: handle }, { id: handle }] },
-    select: { name: true, avatarUrl: true },
+// Resolve a handle (username or cuid) to a user row — username first, then id.
+async function resolveUser(handle: string) {
+  const byUsername = await prisma.user.findUnique({
+    where: { username: handle },
+    select: { id: true, name: true, username: true, avatarUrl: true, coverUrl: true, createdAt: true },
   });
+  if (byUsername) return byUsername;
+  return prisma.user.findUnique({
+    where: { id: handle },
+    select: { id: true, name: true, username: true, avatarUrl: true, coverUrl: true, createdAt: true },
+  });
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const user = await resolveUser(params.userId);
   if (!user) return { title: 'طريق' };
   const ogImage = user.avatarUrl ?? '/Tareeq-big.png';
   return {
@@ -31,30 +40,28 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function TareeqUserPage({ params }: Props) {
-  const handle = params.userId;
-
-  const profileUser = await prisma.user.findFirst({
-    where: { OR: [{ username: handle }, { id: handle }] },
-    select: { id: true, name: true, username: true, avatarUrl: true, coverUrl: true, createdAt: true },
-  });
-
+  const profileUser = await resolveUser(params.userId);
   if (!profileUser) notFound();
 
   const userId = profileUser.id;
 
   const [rawPosts, postCount] = await Promise.all([
     prisma.tareeqPost.findMany({
-      where: { userId },
+      where: { userId, isHidden: false },
       take: 13,
       orderBy: { createdAt: 'desc' },
       select: {
         id: true, title: true, summary: true, content: true,
-        category: true, tags: true, imageUrl: true, videoUrl: true,
-        authorName: true, likeCount: true, commentCount: true, createdAt: true, userId: true,
-        user: { select: { id: true, name: true, avatarUrl: true } },
+        category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true,
+        authorName: true, likeCount: true, commentCount: true, savedCount: true,
+        createdAt: true, userId: true,
+        pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
+        seriesId: true, seriesTitle: true, seriesOrder: true,
+        user: { select: { id: true, name: true, avatarUrl: true, role: true } },
+        reactions: { distinct: ['type'], select: { type: true }, take: 4 },
       },
     }),
-    prisma.tareeqPost.count({ where: { userId } }),
+    prisma.tareeqPost.count({ where: { userId, isHidden: false } }),
   ]);
 
   const hasMore = rawPosts.length > 12;
@@ -65,6 +72,9 @@ export default async function TareeqUserPage({ params }: Props) {
     ...p,
     tags: Array.isArray(p.tags) ? (p.tags as string[]) : null,
     createdAt: p.createdAt.toISOString(),
+    postUpdateAt: p.postUpdateAt ? p.postUpdateAt.toISOString() : null,
+    topReactions: p.reactions?.map((r: { type: string }) => r.type) ?? [],
+    reactions: undefined,
   }));
 
   const serializedUser = {

@@ -6,6 +6,19 @@ import TareeqClient from './TareeqClient';
 export const metadata: Metadata = {
   title: 'طريق',
   description: 'وَبِالنَّجْمِ هُمْ يَهْتَدُونَ — شارك تجربتك واترك علامة يهتدي بها غيرك',
+  openGraph: {
+    title: 'طريق',
+    description: 'وَبِالنَّجْمِ هُمْ يَهْتَدُونَ — شارك تجربتك واترك علامة يهتدي بها غيرك',
+    url: 'https://moslimleader.com/tareeq',
+    siteName: 'مسلم ليدر',
+    locale: 'ar_AR',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'طريق',
+    description: 'وَبِالنَّجْمِ هُمْ يَهْتَدُونَ — شارك تجربتك واترك علامة يهتدي بها غيرك',
+  },
 };
 
 export default async function TareeqPage() {

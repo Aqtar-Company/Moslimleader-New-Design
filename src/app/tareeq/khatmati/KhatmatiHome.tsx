@@ -22,8 +22,8 @@ const BG_GRADIENT     = `linear-gradient(170deg, ${BG_TOP} 0%, ${BG_MID} 38%, ${
 const DRAFT_PAGES_KEY = 'nuri-daily-pages';
 
 // ── Thin circular progress ring — single outer arc ───────────────────────────
-function LampRing({ pct, wardDone, lanternLit, lanternLevel, wardProgress, children }: {
-  pct: number; wardDone: boolean; lanternLit: boolean; lanternLevel: number; wardProgress: number; children: React.ReactNode;
+function LampRing({ pct, wardDone, lanternLit, children }: {
+  pct: number; wardDone: boolean; lanternLit: boolean; children: React.ReactNode;
 }) {
   const R = 100; const S = 220; const C = S / 2;
   const circ = 2 * Math.PI * R;
@@ -334,7 +334,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, paddingBlock: 18, flexShrink: 0, position: 'relative' }}>
           {/* Radial luxury glow behind the ring */}
           <div style={{ position: 'absolute', width: 340, height: 200, borderRadius: '50%', background: 'radial-gradient(ellipse at center, rgba(15,50,120,0.55) 0%, rgba(5,20,60,0.25) 55%, transparent 75%)', top: '50%', left: '50%', transform: 'translate(-50%,-52%)', pointerEvents: 'none' }} />
-          <LampRing pct={pct} wardDone={wardDone} lanternLit={lanternLit} lanternLevel={lanternLevel} wardProgress={wardProgress}>
+          <LampRing pct={pct} wardDone={wardDone} lanternLit={lanternLit}>
             <img
               src={`/${lanternLit ? 4 : pctLevel}-light.png`}
               alt=""
@@ -581,7 +581,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
                       <button
                         onClick={() => router.push(`/tareeq/khatmati/groups/${g.id}`)}
                         style={{
-                          width: 52, border: 'none', cursor: 'pointer',
+                          width: 52, flexShrink: 0, border: 'none', cursor: 'pointer',
                           background: 'rgba(255,255,255,0.05)',
                           borderInlineStart: `1px solid ${g.readToday ? 'rgba(74,222,128,0.15)' : 'rgba(255,204,51,0.1)'}`,
                           color: TEXT_MUT, display: 'flex', alignItems: 'center', justifyContent: 'center',

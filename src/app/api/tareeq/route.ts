@@ -69,11 +69,14 @@ export async function GET(req: NextRequest) {
         pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
         seriesId: true, seriesTitle: true, seriesOrder: true,
         user: { select: { id: true, name: true, avatarUrl: true, role: true } },
+        reactions: { distinct: ['type'], select: { type: true }, take: 4 },
       },
     });
 
     const hasMoreFollow = followPosts.length > limit;
-    const followItems = hasMoreFollow ? followPosts.slice(0, limit) : followPosts;
+    const followItems = (hasMoreFollow ? followPosts.slice(0, limit) : followPosts).map(p => ({
+      ...p, topReactions: p.reactions.map((r: { type: string }) => r.type), reactions: undefined,
+    }));
     const followNextCursor = hasMoreFollow ? followItems[followItems.length - 1].id : null;
     return NextResponse.json({ posts: followItems, nextCursor: followNextCursor });
   }
@@ -97,12 +100,15 @@ export async function GET(req: NextRequest) {
             pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
             seriesId: true, seriesTitle: true, seriesOrder: true,
             user: { select: { id: true, name: true, avatarUrl: true, role: true } },
+            reactions: { distinct: ['type'], select: { type: true }, take: 4 },
           },
         },
       },
     });
     const hasMore = likes.length > limit;
-    const items = (hasMore ? likes.slice(0, limit) : likes).map(l => l.post);
+    const items = (hasMore ? likes.slice(0, limit) : likes).map(l => ({
+      ...l.post, topReactions: l.post.reactions.map((r: { type: string }) => r.type), reactions: undefined,
+    }));
     const nextCursor = hasMore ? likes[limit - 1].id : null;
     return NextResponse.json({ posts: items, nextCursor });
   }
@@ -146,11 +152,14 @@ export async function GET(req: NextRequest) {
       pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
       seriesId: true, seriesTitle: true, seriesOrder: true,
       user: { select: { id: true, name: true, avatarUrl: true } },
+      reactions: { distinct: ['type'], select: { type: true }, take: 4 },
     },
   });
 
   const hasMore = posts.length > limit;
-  const items = hasMore ? posts.slice(0, limit) : posts;
+  const items = (hasMore ? posts.slice(0, limit) : posts).map(p => ({
+    ...p, topReactions: p.reactions.map((r: { type: string }) => r.type), reactions: undefined,
+  }));
   const nextCursor = hasMore ? items[items.length - 1].id : null;
 
   return NextResponse.json({ posts: items, nextCursor });

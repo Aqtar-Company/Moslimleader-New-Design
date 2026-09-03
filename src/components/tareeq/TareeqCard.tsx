@@ -103,6 +103,7 @@ export interface TareeqPostSummary {
   seriesTitle?: string | null;
   seriesOrder?: number | null;
   pinnedCommentId?: string | null;
+  topReactions?: string[] | null;
 }
 
 interface Props {
@@ -737,21 +738,57 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   /* ── Social summary row ─────────────────────────────────────────── */
   function SocialSummary() {
     if (likeCount <= 0 && commentCount <= 0) return null;
+
+    // Build emoji list: use topReactions from API (actual reaction types used),
+    // or fallback to current user's reaction, or generic star
+    const topEmojis: string[] = (() => {
+      const tr = post.topReactions;
+      if (tr && tr.length > 0) return tr.slice(0, 3).map(t => reactionEmoji(t));
+      if (currentReaction) return [reactionEmoji(currentReaction)];
+      return ['⭐'];
+    })();
+
     return (
       <div className="px-4 py-2 flex items-center justify-between" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
         {likeCount > 0 && (
           <button
             onClick={e => { e.preventDefault(); e.stopPropagation(); setShowReactors(true); }}
-            className="flex items-center gap-1.5 text-xs transition hover:underline"
+            className="flex items-center gap-1.5 transition"
             style={{ color: 'var(--tr-text-secondary)' }}
           >
-            {currentReaction ? reactionEmoji(currentReaction) : '⭐'}
-            <span>{fmt(likeCount)}</span>
+            {/* Stacked reaction emoji circles — Facebook style */}
+            <span className="flex items-center" style={{ direction: 'ltr' }}>
+              {topEmojis.map((em, i) => (
+                <span
+                  key={i}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: 20, height: 20, borderRadius: '50%',
+                    fontSize: 13, lineHeight: 1,
+                    border: '2px solid var(--tr-base)',
+                    marginInlineStart: i > 0 ? -7 : 0,
+                    background: 'var(--tr-raised)',
+                    zIndex: topEmojis.length - i,
+                    position: 'relative',
+                  }}
+                >
+                  {em}
+                </span>
+              ))}
+            </span>
+            <span style={{ fontSize: 12, fontWeight: 600 }}>{fmt(likeCount)}</span>
           </button>
         )}
         {commentCount > 0 && (
-          <button onClick={handleCommentToggle} className="text-xs ms-auto transition hover:underline" style={{ color: 'var(--tr-text-secondary)' }}>
-            {fmt(commentCount)} {isRtl ? 'تعليق' : 'comments'}
+          <button
+            onClick={handleCommentToggle}
+            className="flex items-center gap-1 transition hover:underline ms-auto"
+            style={{ color: 'var(--tr-text-secondary)', fontSize: 12 }}
+          >
+            <svg width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z" />
+            </svg>
+            <span>{fmt(commentCount)}</span>
           </button>
         )}
       </div>
@@ -882,9 +919,11 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             )}
           </div>
 
-          {/* Desktop: social summary + action bar */}
+          {/* Social summary - all screens */}
+          <SocialSummary />
+
+          {/* Desktop action bar */}
           <div className="hidden lg:block">
-            <SocialSummary />
             <DesktopActionBar />
           </div>
 
@@ -1067,7 +1106,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             </div>
           </div>{/* close image container */}
 
-          {/* ── DESKTOP ONLY: author + text + action bars ── */}
+          {/* ── DESKTOP ONLY: author + text ── */}
           <div className="hidden lg:block">
             <div className="px-4 pt-3.5 pb-2">
               <div className="flex items-center gap-2.5 mb-2.5">
@@ -1099,6 +1138,11 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             <SocialSummary />
             <DesktopActionBar />
             {commentForm}
+          </div>
+
+          {/* Social summary - mobile only (desktop version is inside the hidden lg:block above) */}
+          <div className="lg:hidden">
+            <SocialSummary />
           </div>
         </article>
 
@@ -1254,10 +1298,8 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           )}
         </Link>
 
-        {/* Social summary - desktop */}
-        <div className="hidden lg:block">
-          <SocialSummary />
-        </div>
+        {/* Social summary - all screens */}
+        <SocialSummary />
 
         {/* Desktop action bar */}
         <div className="hidden lg:block">

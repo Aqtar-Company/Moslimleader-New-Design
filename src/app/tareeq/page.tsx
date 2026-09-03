@@ -34,6 +34,7 @@ export default async function TareeqPage() {
         category: true, tags: true, imageUrl: true, videoUrl: true, authorName: true,
         likeCount: true, commentCount: true, createdAt: true, userId: true,
         user: { select: { id: true, name: true, avatarUrl: true } },
+        reactions: { distinct: ['type'], select: { type: true }, take: 4 },
       },
     });
     const hasMore = posts.length > 12;
@@ -43,7 +44,7 @@ export default async function TareeqPage() {
 
   return (
     <TareeqClient
-      initialPosts={initialPosts.map(p => ({ ...p, createdAt: p.createdAt.toISOString() }))}
+      initialPosts={initialPosts.map(p => ({ ...p, createdAt: p.createdAt.toISOString(), topReactions: p.reactions?.map(r => r.type) ?? [] }))}
       initialCursor={initialCursor}
     />
   );

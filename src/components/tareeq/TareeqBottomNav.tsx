@@ -157,7 +157,7 @@ function ContactsSheet({ onClose, onStartCall }: ContactsSheetProps) {
               <span className="font-semibold text-sm flex-1 min-w-0 truncate" style={{ color: 'var(--tr-text-primary)' }}>{c.name}</span>
               <button
                 onClick={() => { onStartCall(c, 'video'); }}
-                className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"
+                className="w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90"
                 style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)' }}
                 aria-label={isRtl ? 'مكالمة فيديو' : 'Video call'}
               >
@@ -167,7 +167,7 @@ function ContactsSheet({ onClose, onStartCall }: ContactsSheetProps) {
               </button>
               <button
                 onClick={() => { onStartCall(c, 'audio'); }}
-                className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"
+                className="w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90"
                 style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)' }}
                 aria-label={isRtl ? 'مكالمة صوتية' : 'Voice call'}
               >
@@ -283,7 +283,7 @@ function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: P
         </div>
 
         {/* Profile header */}
-        <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+        <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: '1px solid var(--tr-border-subtle)', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
           <div style={{ flex: 1 }}>
             <p className="font-black text-base" style={{ color: 'var(--tr-text-primary)' }}>{userName}</p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--tr-text-muted)' }}>@{userName.toLowerCase().replace(/\s+/g, '')}</p>
@@ -746,7 +746,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
         if (navigator.vibrate) navigator.vibrate(12);
         // Pulse glow on threshold
         if (btnRef.current) {
-          btnRef.current.style.boxShadow = '0 0 28px rgba(255,255,255,0.45), 0 4px 14px rgba(0,0,0,0.2)';
+          btnRef.current.style.boxShadow = '0 0 28px rgba(255,204,51,0.5), 0 4px 14px rgba(0,0,0,0.2)';
         }
         // Swap to camera icon
         if (addIconRef.current) addIconRef.current.style.opacity = '0';
@@ -1036,7 +1036,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
                 transition: 'all 0.3s',
               }}
             />
-            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isKhatmati ? NAV_ACCENT : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
+            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isKhatmati ? NAV_ACCENT : 'var(--tr-text-secondary)', transition: 'color 0.2s' }}>
               {isRtl ? 'نُوري' : 'Nuri'}
             </span>
           </button>
@@ -1048,7 +1048,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             style={{ minWidth: 44 }}
           >
             {isHome && <div style={{ position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)', width: 20, height: 3, borderRadius: 2, background: NAV_ACCENT, boxShadow: `0 0 8px 1px ${NAV_ACCENT}99`, transition: 'opacity 0.25s' }} />}
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.65} viewBox="0 0 24 24"
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={isHome ? 2.2 : 1.75} viewBox="0 0 24 24"
               style={{
                 color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
                 filter: isHome ? 'drop-shadow(0 0 6px var(--tr-gold-glow))' : 'none',
@@ -1057,7 +1057,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
+            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isHome ? 'var(--tr-gold)' : 'var(--tr-text-secondary)', transition: 'color 0.2s' }}>
               {isRtl ? 'اكتشف' : 'Discover'}
             </span>
           </Link>
@@ -1076,7 +1076,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             style={{ minWidth: 44 }}
           >
             {isInbox && <div style={{ position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)', width: 20, height: 3, borderRadius: 2, background: NAV_ACCENT, boxShadow: `0 0 8px 1px ${NAV_ACCENT}99`, transition: 'opacity 0.25s' }} />}
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={isInbox ? 2.2 : 1.75} viewBox="0 0 24 24"
               style={{
                 color: isInbox ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
                 filter: isInbox ? 'drop-shadow(0 0 5px rgba(212,168,83,0.45))' : 'none',
@@ -1085,12 +1085,12 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
             </svg>
             {messageCount > 0 && (
-              <span className="absolute top-0 end-0 min-w-[17px] h-[17px] rounded-full flex items-center justify-center text-[9px] font-black px-0.5"
-                style={{ background: '#f43f5e', color: '#fff' }}>
+              <span className="absolute -top-1 -end-1 min-w-[17px] h-[17px] rounded-full flex items-center justify-center text-[9px] font-black px-0.5"
+                style={{ background: '#f43f5e', color: '#fff', boxShadow: '0 0 0 2px var(--tr-surface)' }}>
                 {messageCount > 9 ? '9+' : messageCount}
               </span>
             )}
-            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isInbox ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
+            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isInbox ? 'var(--tr-gold)' : 'var(--tr-text-secondary)', transition: 'color 0.2s' }}>
               {isRtl ? 'الشات' : 'Chat'}
             </span>
           </Link>
@@ -1102,7 +1102,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
             style={{ minWidth: 44, background: 'none', border: 'none', cursor: 'pointer' }}
           >
             {showContacts && <div style={{ position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)', width: 20, height: 3, borderRadius: 2, background: NAV_ACCENT, boxShadow: `0 0 8px 1px ${NAV_ACCENT}99`, transition: 'opacity 0.25s' }} />}
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={showContacts ? 2.2 : 1.75} viewBox="0 0 24 24"
               style={{
                 color: showContacts ? 'var(--tr-gold)' : 'var(--tr-text-secondary)',
                 filter: showContacts ? 'drop-shadow(0 0 5px rgba(212,168,83,0.45))' : 'none',
@@ -1110,7 +1110,7 @@ export default function TareeqBottomNav({ onCreateClick }: Props) {
               }}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
             </svg>
-            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: showContacts ? 'var(--tr-gold)' : 'var(--tr-text-muted)', transition: 'color 0.2s' }}>
+            <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: showContacts ? 'var(--tr-gold)' : 'var(--tr-text-secondary)', transition: 'color 0.2s' }}>
               {isRtl ? 'اتصال' : 'Call'}
             </span>
           </button>

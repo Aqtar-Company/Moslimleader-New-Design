@@ -53,3 +53,4 @@ public/membership-perks/
 
 # Next.js build
 .next/
+.claude/

@@ -8,8 +8,9 @@ import TareeqUserClient from './TareeqUserClient';
 interface Props { params: { userId: string } }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const user = await prisma.user.findUnique({
-    where: { id: params.userId },
+  const handle = params.userId;
+  const user = await prisma.user.findFirst({
+    where: { OR: [{ username: handle }, { id: handle }] },
     select: { name: true, avatarUrl: true },
   });
   if (!user) return { title: 'طريق' };
@@ -30,13 +31,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function TareeqUserPage({ params }: Props) {
-  const { userId } = params;
+  const handle = params.userId;
 
-  const [profileUser, rawPosts, postCount] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, name: true, avatarUrl: true, coverUrl: true, createdAt: true },
-    }),
+  const profileUser = await prisma.user.findFirst({
+    where: { OR: [{ username: handle }, { id: handle }] },
+    select: { id: true, name: true, username: true, avatarUrl: true, coverUrl: true, createdAt: true },
+  });
+
+  if (!profileUser) notFound();
+
+  const userId = profileUser.id;
+
+  const [rawPosts, postCount] = await Promise.all([
     prisma.tareeqPost.findMany({
       where: { userId },
       take: 13,
@@ -50,8 +56,6 @@ export default async function TareeqUserPage({ params }: Props) {
     }),
     prisma.tareeqPost.count({ where: { userId } }),
   ]);
-
-  if (!profileUser) notFound();
 
   const hasMore = rawPosts.length > 12;
   const posts = hasMore ? rawPosts.slice(0, 12) : rawPosts;

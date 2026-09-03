@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 interface ProfileUser {
   id: string;
   name: string;
+  username?: string | null;
   avatarUrl?: string | null;
   coverUrl?: string | null;
   createdAt: string;
@@ -133,7 +134,7 @@ type ProfileTab = 'posts' | 'bookmarks';
 
 export default function TareeqUserClient({ profileUser, initialPosts, initialCursor, likedIds: initialLiked, postCount }: Props) {
   const { isRtl } = useLang();
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, signOut } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const [posts, setPosts] = useState<TareeqPostSummary[]>(initialPosts);
@@ -153,6 +154,10 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [isBlockedBy, setIsBlockedBy] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showReportUser, setShowReportUser] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingsUsername, setSettingsUsername] = useState(profileUser.username ?? '');
+  const [savingUsername, setSavingUsername] = useState(false);
+  const [usernameError, setUsernameError] = useState('');
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Bookmarks state
@@ -471,6 +476,24 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
     } catch { /* ignore */ }
   }
 
+  async function saveUsername() {
+    if (savingUsername) return;
+    setUsernameError('');
+    setSavingUsername(true);
+    try {
+      const res = await fetch('/api/account/username', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username: settingsUsername.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setUsernameError(data.error ?? 'حدث خطأ'); }
+      else { showToast(isRtl ? 'تم الحفظ ✓' : 'Saved ✓'); }
+    } catch { setUsernameError(isRtl ? 'حدث خطأ' : 'Error'); }
+    finally { setSavingUsername(false); }
+  }
+
   const coverGradient = nameGradient(profileUser.name);
   const skeletons = Array.from({ length: 6 });
 
@@ -539,7 +562,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   function SettingsBtn({ className }: { className?: string }) {
     return (
       <button
-        onClick={() => window.dispatchEvent(new Event('tareeq:open-settings'))}
+        onClick={() => setShowSettings(true)}
         className={`flex items-center gap-1.5 font-bold text-xs px-4 py-2 rounded-full transition-all active:scale-95 ${className ?? ''}`}
         style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}
       >
@@ -916,6 +939,9 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                   <h1 className="font-black text-2xl leading-tight truncate" style={{ color: 'var(--tr-text-primary)', textShadow: '0 1px 8px rgba(0,0,0,0.18)' }}>
                     {profileUser.name}
                   </h1>
+                  {profileUser.username && (
+                    <p className="text-sm mt-0.5" style={{ color: 'var(--tr-text-muted)' }} dir="ltr">@{profileUser.username}</p>
+                  )}
                   <div className="flex gap-6 mt-2">
                     <StatItem count={postCount ?? posts.length} label={isRtl ? 'علامة' : 'Posts'} />
                     <StatItem count={followerCount} label={isRtl ? 'تابعوني' : 'Followers'} onClick={() => openFollowList('followers')} />
@@ -1202,6 +1228,9 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
             </div>
 
             <h1 className="font-black text-xl mt-3" style={{ color: 'var(--tr-text-primary)' }}>{profileUser.name}</h1>
+            {profileUser.username && (
+              <p className="text-sm mt-0.5" style={{ color: 'var(--tr-text-muted)' }} dir="ltr">@{profileUser.username}</p>
+            )}
 
             <div className="flex gap-6 mt-4">
               <StatItem count={postCount ?? posts.length} label={isRtl ? 'علامة' : 'Posts'} />
@@ -1336,6 +1365,88 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
           isRtl={isRtl}
           onClose={() => setShowQR(false)}
         />
+      )}
+
+      {/* ── Settings Sheet (own profile) ── */}
+      {showSettings && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }}
+          onClick={() => setShowSettings(false)}
+        >
+          <div
+            className="w-full sm:max-w-sm sm:mx-4 rounded-t-3xl sm:rounded-2xl flex flex-col"
+            style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', maxHeight: '90dvh', overflow: 'hidden' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+              <h3 className="font-black text-base" style={{ color: 'var(--tr-text-primary)' }}>
+                {isRtl ? 'الإعدادات' : 'Settings'}
+              </h3>
+              <button onClick={() => setShowSettings(false)} className="w-8 h-8 flex items-center justify-center rounded-xl text-sm" style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)' }}>✕</button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-5 flex flex-col gap-6">
+              {/* Username section */}
+              <div>
+                <p className="text-xs font-bold mb-2" style={{ color: 'var(--tr-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                  {isRtl ? 'اسم المستخدم' : 'Username'}
+                </p>
+                <p className="text-[11px] mb-3" style={{ color: 'var(--tr-text-muted)' }}>
+                  {isRtl
+                    ? 'يظهر في رابط ملفك: moslimleader.com/tareeq/u/اسمك'
+                    : 'Appears in your profile link: moslimleader.com/tareeq/u/yourname'}
+                </p>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 flex items-center rounded-xl overflow-hidden" style={{ border: '1px solid var(--tr-border-soft)', background: 'var(--tr-overlay)' }}>
+                    <span className="px-3 font-bold text-sm" style={{ color: 'var(--tr-gold)' }}>@</span>
+                    <input
+                      value={settingsUsername}
+                      onChange={e => { setSettingsUsername(e.target.value); setUsernameError(''); }}
+                      onKeyDown={e => { if (e.key === 'Enter') saveUsername(); }}
+                      placeholder={isRtl ? 'اسم_المستخدم' : 'username'}
+                      maxLength={30}
+                      className="flex-1 py-2.5 pe-3 text-sm outline-none bg-transparent"
+                      style={{ color: 'var(--tr-text-primary)' }}
+                      dir="ltr"
+                    />
+                  </div>
+                  <button
+                    onClick={saveUsername}
+                    disabled={savingUsername}
+                    className="px-4 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-40"
+                    style={{ background: 'var(--tr-gold)', color: '#fff', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    {savingUsername ? '...' : (isRtl ? 'حفظ' : 'Save')}
+                  </button>
+                </div>
+                {usernameError && (
+                  <p className="mt-2 text-xs font-semibold" style={{ color: '#f43f5e' }}>{usernameError}</p>
+                )}
+              </div>
+
+              {/* Divider */}
+              <div style={{ height: 1, background: 'var(--tr-border-subtle)' }} />
+
+              {/* Logout */}
+              <button
+                onClick={async () => {
+                  setShowSettings(false);
+                  await signOut();
+                  router.push('/tareeq');
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition active:scale-[0.98]"
+                style={{ background: 'rgba(244,63,94,0.08)', color: '#f43f5e', border: '1px solid rgba(244,63,94,0.15)' }}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                </svg>
+                {isRtl ? 'تسجيل الخروج' : 'Sign out'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

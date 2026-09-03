@@ -60,6 +60,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         body: preview,
         url: `/tareeq/groups/${params.id}`,
         tag: `gmsg-${params.id}`,
+        type: 'message',
+        icon: message.sender?.avatarUrl ?? undefined,
       }).catch(() => {});
     }
   }).catch(() => {});

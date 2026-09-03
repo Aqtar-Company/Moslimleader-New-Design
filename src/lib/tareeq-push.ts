@@ -14,6 +14,8 @@ export interface PushPayload {
   body: string;
   url: string;
   tag?: string;
+  // Custom notification icon (e.g. sender's avatar for DMs)
+  icon?: string;
   // Rich push (Feature 5): post image shown in the notification
   image?: string;
   // Notification type drives which action buttons appear in SW (Feature 4)

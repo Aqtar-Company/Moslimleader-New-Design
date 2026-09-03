@@ -177,8 +177,8 @@ self.addEventListener('push', e => {
   const isCall = postType === 'call';
   const options = {
     body:              data.body  ?? '',
-    icon:              '/Tareeq-big.png',
-    badge:             '/tareeq-icon.svg',
+    icon:              data.icon  ?? '/Tareeq-big.png',
+    badge:             '/Tareeq-small.png',
     image:             data.image ?? undefined,
     tag:               data.tag   ?? 'tareeq',
     renotify:          true,

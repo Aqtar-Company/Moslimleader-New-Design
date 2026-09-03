@@ -21,23 +21,20 @@ const BG_GRADIENT     = `linear-gradient(170deg, ${BG_TOP} 0%, ${BG_MID} 38%, ${
 
 const DRAFT_PAGES_KEY = 'nuri-daily-pages';
 
-// ── Thin circular progress ring — no stage dots ──────────────────────────────
+// ── Thin circular progress ring — single outer arc ───────────────────────────
 function LampRing({ pct, wardDone, lanternLit, lanternLevel, wardProgress, children }: {
   pct: number; wardDone: boolean; lanternLit: boolean; lanternLevel: number; wardProgress: number; children: React.ReactNode;
 }) {
   const R = 100; const S = 220; const C = S / 2;
-  const RW = 88; // inner ring radius for wird progress
   const circ = 2 * Math.PI * R;
-  const circW = 2 * Math.PI * RW;
   const offset = circ * (1 - pct / 100);
-  const offsetW = circW * (1 - wardProgress);
   const glowing = wardDone || lanternLit;
   return (
     <div style={{ position: 'relative', width: S, height: S, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
       <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{ position: 'absolute', inset: 0 }}>
-        {/* outer track (overall Quran progress) */}
+        {/* track */}
         <circle cx={C} cy={C} r={R} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={2} />
-        {/* outer progress arc — overall Quran % */}
+        {/* Khatma progress arc */}
         <circle
           cx={C} cy={C} r={R} fill="none"
           stroke={glowing ? NURI_YELLOW : 'rgba(255,204,51,0.38)'}
@@ -48,22 +45,6 @@ function LampRing({ pct, wardDone, lanternLit, lanternLevel, wardProgress, child
           transform={`rotate(-90 ${C} ${C})`}
           style={{ transition: 'stroke-dashoffset 1.2s ease, stroke 0.6s ease' }}
         />
-        {/* inner wird ring — daily progress */}
-        {wardProgress > 0 && (
-          <>
-            <circle cx={C} cy={C} r={RW} fill="none" stroke="rgba(255,204,51,0.08)" strokeWidth={1.5} />
-            <circle
-              cx={C} cy={C} r={RW} fill="none"
-              stroke={wardDone ? NURI_YELLOW : 'rgba(255,204,51,0.65)'}
-              strokeWidth={wardDone ? 2.5 : 2}
-              strokeLinecap="round"
-              strokeDasharray={circW}
-              strokeDashoffset={offsetW}
-              transform={`rotate(-90 ${C} ${C})`}
-              style={{ transition: 'stroke-dashoffset 0.8s ease, stroke 0.4s ease' }}
-            />
-          </>
-        )}
       </svg>
       {/* glow pulses */}
       {glowing && (
@@ -392,17 +373,6 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
             </div>
           )}
 
-          {/* Rings legend */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <svg width={10} height={10} viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="none" stroke={NURI_YELLOW} strokeWidth="1.5"/></svg>
-              <span style={{ fontSize: 10, color: TEXT_MUT }}>{isRtl ? 'الختمة' : 'Khatma'}</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <svg width={10} height={10} viewBox="0 0 10 10"><circle cx="5" cy="5" r="3" fill="none" stroke="rgba(255,204,51,0.65)" strokeWidth="1.5"/></svg>
-              <span style={{ fontSize: 10, color: TEXT_MUT }}>{isRtl ? 'الورد اليومي' : 'Daily wird'}</span>
-            </div>
-          </div>
         </div>
 
         {/* ── Streak danger banner ── */}
@@ -519,6 +489,42 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
           )}
         </div>
 
+        {/* ── Empty-groups CTA ── */}
+        {user && initialGroups.length === 0 && (
+          <div style={{ paddingInline: 20, marginTop: 16, flexShrink: 0 }}>
+            <button
+              onClick={() => router.push('/tareeq/khatmati/groups')}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+                width: '100%', padding: '16px 20px', borderRadius: 18, cursor: 'pointer',
+                background: 'rgba(255,204,51,0.08)', border: '1.5px dashed rgba(255,204,51,0.3)',
+              }}
+            >
+              <div style={{
+                width: 44, height: 44, borderRadius: '50%',
+                background: NURI_YELLOW_DIM, border: `1px solid rgba(255,204,51,0.3)`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                <svg width={22} height={22} fill="none" stroke={NURI_YELLOW} strokeWidth={1.8} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+                  <line x1="19" y1="8" x2="19" y2="14" strokeLinecap="round"/>
+                  <line x1="16" y1="11" x2="22" y2="11" strokeLinecap="round"/>
+                </svg>
+              </div>
+              <div style={{ textAlign: isRtl ? 'right' : 'left' }}>
+                <p style={{ fontSize: 14, fontWeight: 800, color: NURI_YELLOW, marginBottom: 2 }}>
+                  {isRtl ? 'انشئ ختمة جماعية' : 'Create a Group Khatma'}
+                </p>
+                <p style={{ fontSize: 11, color: TEXT_MUT }}>
+                  {isRtl ? 'اختم القرآن مع أصدقائك' : 'Finish the Quran together with friends'}
+                </p>
+              </div>
+            </button>
+          </div>
+        )}
+
         {/* ── Group Khatmas ── */}
         {initialGroups.length > 0 && (
           <div style={{ flexShrink: 0, marginTop: 16 }}>
@@ -536,43 +542,60 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
               {initialGroups.map(g => {
                 const gSurahAr = SURAH_NAMES_AR[(g.myCurrentSurah ?? 1) - 1] ?? '';
                 return (
-                  <button key={g.id}
-                    onClick={() => router.push(`/tareeq/khatmati/read?page=${g.myCurrentPage}&surah=${g.myCurrentSurah}&ayah=${g.myCurrentAyah}&groupId=${g.id}`)}
-                    style={{
-                      display: 'flex', flexDirection: 'column', gap: 0,
-                      background: BG_CARD,
-                      border: `1px solid ${g.readToday ? 'rgba(74,222,128,0.3)' : BG_CARD_BD}`,
-                      borderRadius: 16, overflow: 'hidden',
-                      width: '100%', cursor: 'pointer', textAlign: 'start',
-                    }}>
-                    {/* Top row */}
-                    <div style={{ padding: '10px 12px 8px', display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <p style={{ fontSize: 13, fontWeight: 700, color: TEXT_PRI, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</p>
-                        <span style={{ fontSize: 11, fontWeight: 900, color: g.readToday ? '#4ade80' : NURI_YELLOW }}>{g.myStreak}🔥</span>
+                  <div key={g.id} style={{
+                    display: 'flex', flexDirection: 'column', gap: 0,
+                    background: BG_CARD,
+                    border: `1px solid ${g.readToday ? 'rgba(74,222,128,0.3)' : BG_CARD_BD}`,
+                    borderRadius: 16, overflow: 'hidden',
+                  }}>
+                    {/* Info row */}
+                    <div style={{ padding: '12px 14px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 14, fontWeight: 800, color: TEXT_PRI, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 3 }}>{g.name}</p>
+                        <p style={{ fontSize: 11, color: TEXT_MUT }}>
+                          {isRtl ? `${gSurahAr} · ص${g.myCurrentPage} · ${g.memberCount} عضو` : `${SURAH_NAMES_EN[(g.myCurrentSurah ?? 1) - 1]} · p${g.myCurrentPage} · ${g.memberCount} members`}
+                        </p>
                       </div>
-                      <p style={{ fontSize: 11, color: TEXT_MUT }}>
-                        {isRtl ? `${gSurahAr} · ص${g.myCurrentPage}` : `${SURAH_NAMES_EN[(g.myCurrentSurah ?? 1) - 1]} · p${g.myCurrentPage}`}
-                      </p>
-                      <p style={{ fontSize: 10, color: TEXT_MUT }}>
-                        {isRtl ? `${g.memberCount} عضو` : `${g.memberCount} members`}
-                      </p>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+                        <span style={{ fontSize: 18 }}>🔥</span>
+                        <span style={{ fontSize: 11, fontWeight: 900, color: g.readToday ? '#4ade80' : NURI_YELLOW }}>{g.myStreak}</span>
+                      </div>
                     </div>
-                    {/* CTA strip */}
+                    {/* Two-action CTA strip */}
                     <div style={{
-                      padding: '8px 12px',
-                      background: g.readToday ? 'rgba(74,222,128,0.12)' : 'rgba(255,204,51,0.1)',
-                      borderTop: `1px solid ${g.readToday ? 'rgba(74,222,128,0.15)' : 'rgba(255,204,51,0.1)'}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      display: 'flex', borderTop: `1px solid ${g.readToday ? 'rgba(74,222,128,0.15)' : 'rgba(255,204,51,0.1)'}`,
                     }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: g.readToday ? '#4ade80' : NURI_YELLOW }}>
-                        {g.readToday ? (isRtl ? '✓ قرأت اليوم' : '✓ Read today') : (isRtl ? 'اقرأ الآن' : 'Read now')}
-                      </span>
-                      <svg width={13} height={13} fill="none" stroke={g.readToday ? '#4ade80' : NURI_YELLOW} strokeWidth={2.5} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
-                      </svg>
+                      <button
+                        onClick={() => router.push(`/tareeq/khatmati/read?page=${g.myCurrentPage}&surah=${g.myCurrentSurah}&ayah=${g.myCurrentAyah}&groupId=${g.id}`)}
+                        style={{
+                          flex: 1, padding: '10px 12px', border: 'none', cursor: 'pointer',
+                          background: g.readToday ? 'rgba(74,222,128,0.12)' : NURI_YELLOW,
+                          color: g.readToday ? '#4ade80' : '#080E1C',
+                          fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        }}>
+                        <svg width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                        </svg>
+                        {g.readToday ? (isRtl ? '✓ قرأت اليوم' : '✓ Read today') : (isRtl ? 'استمر في القراءة' : 'Continue reading')}
+                      </button>
+                      <button
+                        onClick={() => router.push(`/tareeq/khatmati/groups/${g.id}`)}
+                        style={{
+                          width: 52, border: 'none', cursor: 'pointer',
+                          background: 'rgba(255,255,255,0.05)',
+                          borderInlineStart: `1px solid ${g.readToday ? 'rgba(74,222,128,0.15)' : 'rgba(255,204,51,0.1)'}`,
+                          color: TEXT_MUT, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                        title={isRtl ? 'دخول المجموعة' : 'Enter group'}
+                      >
+                        <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                          <circle cx="9" cy="7" r="4"/>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+                        </svg>
+                      </button>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>

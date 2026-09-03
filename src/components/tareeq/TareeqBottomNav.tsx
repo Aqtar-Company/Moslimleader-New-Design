@@ -234,7 +234,7 @@ function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: P
     if (typeof Notification === 'undefined') return;
     if (Notification.permission === 'granted') return;
     const result = await requestTareeqPush();
-    setNotifState(result === 'granted' ? 'granted' : 'denied');
+    setNotifState(result === 'granted' ? 'granted' : result === 'denied' ? 'denied' : 'default');
   }
 
   function share(platform: 'whatsapp' | 'x' | 'telegram' | 'facebook') {

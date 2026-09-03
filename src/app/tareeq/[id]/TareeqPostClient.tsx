@@ -78,6 +78,23 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
       .catch(() => {});
   }, [post.id]);
 
+  // Hydrate comment like counts + my-liked state from server
+  useEffect(() => {
+    if (post.comments.length === 0) return;
+    Promise.all(
+      post.comments.map(c =>
+        fetch(`/api/tareeq/comments/${c.id}/react`, { credentials: 'include' })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => d ? { id: c.id, count: d.count as number, liked: d.liked as boolean } : null)
+          .catch(() => null)
+      )
+    ).then(results => {
+      const map: Record<string, { count: number; liked: boolean }> = {};
+      results.forEach(r => { if (r) map[r.id] = { count: r.count, liked: r.liked }; });
+      setCommentLikes(map);
+    });
+  }, [post.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const isOwner = user && post.userId && user.id === post.userId;
   const msElapsed = Date.now() - new Date(post.createdAt).getTime();
   const canEdit = !!isOwner && msElapsed < 3_600_000;

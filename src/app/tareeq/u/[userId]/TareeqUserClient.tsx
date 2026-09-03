@@ -180,6 +180,15 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [followListUsers, setFollowListUsers] = useState<{ id: string; name: string; avatarUrl?: string | null; isFollowedByViewer: boolean }[]>([]);
   const [followListLoading, setFollowListLoading] = useState(false);
 
+  // Toast notification
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function showToast(msg: string) {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast(msg);
+    toastTimer.current = setTimeout(() => setToast(null), 2500);
+  }
+
   const isOwnProfile = user?.id === profileUser.id;
 
   // Close folder menu on outside click
@@ -831,6 +840,19 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   return (
     <div style={{ background: 'var(--tr-base)' }}>
 
+      {/* Toast notification */}
+      {toast && (
+        <div
+          className="fixed bottom-24 inset-x-0 flex justify-center z-[200] pointer-events-none"
+          style={{ animation: 'fadeInUp 0.2s ease' }}
+        >
+          <div className="px-5 py-2.5 rounded-full text-sm font-bold shadow-lg"
+            style={{ background: 'rgba(30,30,30,0.92)', color: '#fff', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            {toast}
+          </div>
+        </div>
+      )}
+
       {/* ════════════════════════════════════════════════════════════
           DESKTOP LAYOUT
       ════════════════════════════════════════════════════════════ */}
@@ -942,8 +964,11 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                           setFollowerCount(c => wasFollowing ? Math.max(0, c - 1) : c + 1);
                           try {
                             const res = await fetch(`/api/tareeq/follow/${profileUser.id}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' } });
-                            if (res.ok) { const d = await res.json(); setIsFollowing(d.following); }
-                            else { setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1)); }
+                            if (res.ok) {
+                              const d = await res.json();
+                              setIsFollowing(d.following);
+                              showToast(d.following ? (isRtl ? 'تمت المتابعة ✓' : 'Following ✓') : (isRtl ? 'تم إلغاء المتابعة' : 'Unfollowed'));
+                            } else { setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1)); }
                           } catch {
                             setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1));
                           } finally { setFollowLoading(false); }
@@ -951,7 +976,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                         disabled={followLoading}
                         className="font-bold text-sm px-5 py-2 rounded-full transition active:scale-95"
                         style={isFollowing
-                          ? { background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }
+                          ? { background: '#3b82f6', color: '#fff', border: '1px solid #3b82f6' }
                           : { background: 'var(--tr-gold)', color: '#fff', border: '1px solid var(--tr-gold)' }}
                       >
                         {isFollowing ? (isRtl ? 'متابَع' : 'Following') : (isRtl ? 'تابع' : 'Follow')}
@@ -1084,7 +1109,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
         {/* Profile card */}
         <div className="relative max-w-2xl mx-auto px-4" style={{ marginTop: -32, zIndex: 1 }}>
           <div
-            className="rounded-3xl px-5 pt-3 pb-6"
+            className="rounded-3xl ps-5 pe-6 pt-3 pb-6"
             style={{ background: 'var(--tr-surface)', boxShadow: '0 4px 32px var(--tr-shadow-card)', border: '1px solid var(--tr-border-subtle)' }}
           >
             {/* Avatar row */}
@@ -1132,8 +1157,11 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                       setFollowerCount(c => wasFollowing ? Math.max(0, c - 1) : c + 1);
                       try {
                         const res = await fetch(`/api/tareeq/follow/${profileUser.id}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' } });
-                        if (res.ok) { const d = await res.json(); setIsFollowing(d.following); }
-                        else { setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1)); }
+                        if (res.ok) {
+                          const d = await res.json();
+                          setIsFollowing(d.following);
+                          showToast(d.following ? (isRtl ? 'تمت المتابعة ✓' : 'Following ✓') : (isRtl ? 'تم إلغاء المتابعة' : 'Unfollowed'));
+                        } else { setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1)); }
                       } catch {
                         setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1));
                       } finally { setFollowLoading(false); }
@@ -1141,7 +1169,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                     disabled={followLoading}
                     className="font-bold text-sm px-5 py-2 rounded-full transition active:scale-95"
                     style={isFollowing
-                      ? { background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }
+                      ? { background: '#3b82f6', color: '#fff', border: '1px solid #3b82f6' }
                       : { background: 'var(--tr-gold)', color: '#fff', border: '1px solid var(--tr-gold)' }}
                   >
                     {isFollowing ? (isRtl ? 'متابَع' : 'Following') : (isRtl ? 'تابع' : 'Follow')}

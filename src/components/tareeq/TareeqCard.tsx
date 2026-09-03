@@ -261,10 +261,14 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   const [showReport, setShowReport] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [isSavedOffline, setIsSavedOffline] = useState(false);
-  const [inlineComments, setInlineComments] = useState<Array<{ id: string; content: string; createdAt: string; userId: string | null; user: { id: string; name: string } | null }>>([]);
+  const [inlineComments, setInlineComments] = useState<Array<{ id: string; content: string; createdAt: string; userId: string | null; user: { id: string; name: string } | null; replyCount?: number; parentId?: string | null }>>([]);
   const [inlineCommentsLoading, setInlineCommentsLoading] = useState(false);
   const [inlineLoaded, setInlineLoaded] = useState(false);
   const [commentError, setCommentError] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<{ id: string; name: string } | null>(null);
+  const [showRepliesFor, setShowRepliesFor] = useState<Set<string>>(new Set());
+  const [repliesMap, setRepliesMap] = useState<Record<string, Array<{ id: string; content: string; createdAt: string; userId: string | null; user: { id: string; name: string } | null }>>>({});
+  const [repliesLoading, setRepliesLoading] = useState<Record<string, boolean>>({});
   const [showDMPicker, setShowDMPicker] = useState(false);
   const [dmConversations, setDMConversations] = useState<{ id: string; otherUser: { id: string; name: string; avatarUrl?: string | null } }[]>([]);
   const [dmSending, setDMSending] = useState<string | null>(null);
@@ -420,22 +424,46 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     if (!user || commentText.trim().length < 2) return;
     setCommentError(null);
     setSubmitting(true);
+    const parentId = replyingTo?.id ?? null;
     try {
       const res = await fetch(`/api/tareeq/${post.id}/comments`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ content: commentText.trim() }),
+        body: JSON.stringify({ content: commentText.trim(), ...(parentId ? { parentId } : {}) }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        setCommentCount(c => c + 1);
         setCommentText('');
-        if (data.comment) setInlineComments(prev => [...prev, data.comment]);
+        if (parentId) {
+          // Add reply to repliesMap and increment parent replyCount
+          if (data.comment) {
+            setRepliesMap(prev => ({ ...prev, [parentId]: [...(prev[parentId] ?? []), data.comment] }));
+            setShowRepliesFor(prev => new Set([...prev, parentId]));
+          }
+          setInlineComments(prev => prev.map(c => c.id === parentId ? { ...c, replyCount: (c.replyCount ?? 0) + 1 } : c));
+          setReplyingTo(null);
+        } else {
+          setCommentCount(c => c + 1);
+          if (data.comment) setInlineComments(prev => [...prev, data.comment]);
+        }
       } else {
         setCommentError(data.error ?? (isRtl ? 'حدث خطأ، حاول مرة أخرى' : 'Error, please try again'));
       }
     } catch { setCommentError(isRtl ? 'تحقق من اتصالك بالإنترنت' : 'Check your internet connection'); } finally {
       setSubmitting(false);
     }
+  }
+
+  async function loadReplies(commentId: string) {
+    if (repliesLoading[commentId]) return;
+    setRepliesLoading(prev => ({ ...prev, [commentId]: true }));
+    try {
+      const res = await fetch(`/api/tareeq/${post.id}/comments?parentId=${commentId}`);
+      if (res.ok) {
+        const d = await res.json();
+        setRepliesMap(prev => ({ ...prev, [commentId]: d.comments ?? [] }));
+      }
+    } catch { /* ignore */ }
+    finally { setRepliesLoading(prev => ({ ...prev, [commentId]: false })); }
   }
 
   async function handleBookmarkClick(e: React.MouseEvent) {
@@ -488,14 +516,63 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
       ) : inlineComments.length > 0 ? (
         <div className="px-4 pt-2 pb-0 flex flex-col gap-0" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
           {inlineComments.map(c => (
-            <div key={c.id} className="flex gap-2.5 py-2" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)' }}>
-                {(c.user?.name ?? '?').charAt(0)}
+            <div key={c.id}>
+              <div className="flex gap-2.5 py-2" style={{ borderBottom: (c.replyCount ?? 0) > 0 || showRepliesFor.has(c.id) ? 'none' : '1px solid var(--tr-border-subtle)' }}>
+                <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)' }}>
+                  {(c.user?.name ?? '?').charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold mb-0.5" style={{ color: 'var(--tr-text-primary)' }}>{c.user?.name ?? '—'}</p>
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--tr-text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{c.content}</p>
+                  <button
+                    className="text-[11px] font-semibold mt-1"
+                    style={{ color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    onClick={() => { setReplyingTo({ id: c.id, name: c.user?.name ?? '' }); setTimeout(() => commentInputRef.current?.focus(), 30); }}
+                  >
+                    {isRtl ? 'رد' : 'Reply'}
+                  </button>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold mb-0.5" style={{ color: 'var(--tr-text-primary)' }}>{c.user?.name ?? '—'}</p>
-                <p className="text-xs leading-relaxed" style={{ color: 'var(--tr-text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{c.content}</p>
-              </div>
+              {/* Replies */}
+              {(c.replyCount ?? 0) > 0 && (
+                <div className="ps-9 pb-1" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                  {!showRepliesFor.has(c.id) ? (
+                    <button
+                      className="text-[11px] font-semibold mb-1"
+                      style={{ color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                      onClick={() => {
+                        setShowRepliesFor(prev => new Set([...prev, c.id]));
+                        if (!repliesMap[c.id]) loadReplies(c.id);
+                      }}
+                    >
+                      {repliesLoading[c.id] ? '...' : (isRtl ? `الردود (${c.replyCount})` : `Replies (${c.replyCount})`)}
+                    </button>
+                  ) : (
+                    <>
+                      {repliesLoading[c.id] ? (
+                        <div className="text-[11px] py-1" style={{ color: 'var(--tr-text-muted)' }}>...</div>
+                      ) : (repliesMap[c.id] ?? []).map(r => (
+                        <div key={r.id} className="flex gap-2 py-1.5">
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black shrink-0" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)' }}>
+                            {(r.user?.name ?? '?').charAt(0)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[11px] font-semibold mb-0.5" style={{ color: 'var(--tr-text-primary)' }}>{r.user?.name ?? '—'}</p>
+                            <p className="text-[11px] leading-relaxed" style={{ color: 'var(--tr-text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{r.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                      <button
+                        className="text-[11px] font-semibold mb-1"
+                        style={{ color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                        onClick={() => setShowRepliesFor(prev => { const s = new Set(prev); s.delete(c.id); return s; })}
+                      >
+                        {isRtl ? 'إخفاء الردود' : 'Hide replies'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -505,6 +582,15 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         {commentError && (
           <p className="px-4 pt-2 text-xs font-semibold" style={{ color: '#ef4444' }}>{commentError}</p>
         )}
+        {/* Reply indicator */}
+        {replyingTo && (
+          <div className="px-4 pt-2 flex items-center gap-2">
+            <span className="text-[11px]" style={{ color: 'var(--tr-text-muted)' }}>
+              {isRtl ? `رد على ${replyingTo.name}` : `Replying to ${replyingTo.name}`}
+            </span>
+            <button onClick={() => setReplyingTo(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tr-text-muted)', fontSize: 12, lineHeight: 1 }}>✕</button>
+          </div>
+        )}
         <form onSubmit={handleComment} className="px-4 pb-3 pt-2.5 flex gap-2 items-center">
           <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold)' }}>
             {user?.name?.charAt(0) ?? '?'}
@@ -513,11 +599,11 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             inputRef={commentInputRef}
             value={commentText}
             onValueChange={v => { setCommentText(v); if (commentError) setCommentError(null); }}
-            onKeyDown={e => { if (e.key === 'Escape') setShowCommentInput(false); }}
-            placeholder={isRtl ? 'أضف تعليقاً...' : 'Add a comment...'}
+            onKeyDown={e => { if (e.key === 'Escape') { if (replyingTo) setReplyingTo(null); else setShowCommentInput(false); } }}
+            placeholder={replyingTo ? (isRtl ? `رد على ${replyingTo.name}...` : `Reply to ${replyingTo.name}...`) : (isRtl ? 'أضف تعليقاً...' : 'Add a comment...')}
             maxLength={500}
             className="rounded-full px-3 py-1.5 text-sm outline-none transition"
-            style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
+            style={{ background: 'var(--tr-raised)', border: `1px solid ${replyingTo ? '#3b82f6' : 'var(--tr-border-soft)'}`, color: 'var(--tr-text-primary)' }}
             isRtl={isRtl}
           />
           <button type="submit" disabled={submitting || commentText.trim().length < 2} className="px-4 py-1.5 rounded-full text-sm font-bold disabled:opacity-40 transition shrink-0 text-white" style={{ background: 'var(--tr-gold)' }}>

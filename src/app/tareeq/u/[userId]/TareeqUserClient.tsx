@@ -829,7 +829,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   );
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--tr-base)' }}>
+    <div style={{ background: 'var(--tr-base)' }}>
 
       {/* ════════════════════════════════════════════════════════════
           DESKTOP LAYOUT
@@ -941,7 +941,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                           setIsFollowing(!wasFollowing);
                           setFollowerCount(c => wasFollowing ? Math.max(0, c - 1) : c + 1);
                           try {
-                            const res = await fetch(`/api/tareeq/follow/${profileUser.id}`, { method: 'POST', credentials: 'include' });
+                            const res = await fetch(`/api/tareeq/follow/${profileUser.id}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' } });
                             if (res.ok) { const d = await res.json(); setIsFollowing(d.following); }
                             else { setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1)); }
                           } catch {
@@ -1054,7 +1054,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
       {/* ════════════════════════════════════════════════════════════
           MOBILE LAYOUT
       ════════════════════════════════════════════════════════════ */}
-      <div className="lg:hidden">
+      <div className="lg:hidden" style={{ overflowX: 'hidden' }}>
         {/* Cover */}
         <div className="relative w-full" style={{ height: 110, background: coverGradient }}>
           {(coverPreview ?? (coverLoadError ? null : coverUrl)) ? (
@@ -1131,7 +1131,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                       setIsFollowing(!wasFollowing);
                       setFollowerCount(c => wasFollowing ? Math.max(0, c - 1) : c + 1);
                       try {
-                        const res = await fetch(`/api/tareeq/follow/${profileUser.id}`, { method: 'POST', credentials: 'include' });
+                        const res = await fetch(`/api/tareeq/follow/${profileUser.id}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' } });
                         if (res.ok) { const d = await res.json(); setIsFollowing(d.following); }
                         else { setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1)); }
                       } catch {

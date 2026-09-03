@@ -363,11 +363,16 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
   async function handleShare(e: React.MouseEvent) {
     e.preventDefault(); e.stopPropagation();
+    setShowShareMenu(v => !v);
+  }
+
+  async function handleNativeShare(e: React.MouseEvent) {
+    e.preventDefault(); e.stopPropagation();
     const url = `${window.location.origin}/tareeq/${post.id}`;
     if (navigator.share) {
       try { await navigator.share({ title: post.title || (isRtl ? 'علامة على طريق' : 'A mark on Tareeq'), text: post.content.slice(0, 100), url }); }
       catch { /* cancelled */ }
-    } else { setShowShareMenu(v => !v); }
+    }
   }
 
   async function handleOpenDMPicker() {
@@ -670,7 +675,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             <IconShare size={17} check={copied} />
             <span>{isRtl ? 'مشاركة' : 'Share'}</span>
           </button>
-          {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} isRtl={isRtl} />}
+          {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} />}
         </div>
 
         {/* Options — own posts: delete; others: report/unfollow */}
@@ -892,7 +897,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                 <button onClick={handleShare} className="flex items-center gap-1 text-xs font-semibold transition" style={{ color: copied ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
                   <IconShare size={16} check={copied} />
                 </button>
-                {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} isRtl={isRtl} />}
+                {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} />}
               </div>
               {user && (
                 <button onClick={e => { e.preventDefault(); e.stopPropagation(); setShowOptions(true); }} aria-label={isRtl ? 'خيارات' : 'Options'} className="flex items-center gap-1 text-xs font-semibold transition active:scale-90" style={{ color: 'var(--tr-text-muted)' }}>
@@ -1011,7 +1016,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                   </div>
                   <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{copied ? '✓' : (isRtl ? 'شارك' : 'Share')}</span>
                 </button>
-                {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} isRtl={isRtl} />}
+                {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} />}
               </div>
 
               {/* Comment */}
@@ -1246,7 +1251,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               <button onClick={handleShare} className="flex items-center gap-1 text-xs font-semibold transition" style={{ color: copied ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
                 <IconShare size={16} check={copied} />
               </button>
-              {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} isRtl={isRtl} />}
+              {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} />}
             </div>
 
             {user && (
@@ -1756,10 +1761,10 @@ function DMPickerModal({ conversations, dmSending, dmSent, onSend, onClose, isRt
 }
 
 /* ── Share dropdown ─────────────────────────────────────────────────── */
-function ShareDropdown({ postId, title, content, onCopy, onClose, onSendDM, isRtl }: {
+function ShareDropdown({ postId, title, content, onCopy, onClose, onSendDM, onNativeShare, isRtl }: {
   postId: string; title?: string | null; content: string;
   onCopy: (e: React.MouseEvent) => void; onClose: () => void;
-  onSendDM?: () => void; isRtl: boolean;
+  onSendDM?: () => void; onNativeShare?: (e: React.MouseEvent) => void; isRtl: boolean;
 }) {
   const postUrl = typeof window !== 'undefined' ? `${window.location.origin}/tareeq/${postId}` : `/tareeq/${postId}`;
   const text    = encodeURIComponent(title || content.slice(0, 80));
@@ -1776,6 +1781,12 @@ function ShareDropdown({ postId, title, content, onCopy, onClose, onSendDM, isRt
         <button onClick={e => { e.stopPropagation(); onClose(); onSendDM(); }} className="flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-semibold w-full hover:opacity-70 transition" style={{ color: 'var(--tr-text-secondary)' }}>
           <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: '#1a6ed4' }} />
           {isRtl ? 'إرسال برسالة' : 'Send in DM'}
+        </button>
+      )}
+      {onNativeShare && typeof navigator !== 'undefined' && navigator.share && (
+        <button onClick={e => { e.stopPropagation(); onClose(); onNativeShare(e); }} className="flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-semibold w-full hover:opacity-70 transition" style={{ color: 'var(--tr-text-secondary)' }}>
+          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: '#7c3aed' }} />
+          {isRtl ? 'مشاركة خارجية' : 'Share externally'}
         </button>
       )}
       {items.map(item => (

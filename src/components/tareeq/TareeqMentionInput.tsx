@@ -91,8 +91,11 @@ export default function TareeqMentionInput({
   }
 
   function handleBlur(e: React.FocusEvent<HTMLInputElement>) {
-    setMentionQuery(null);
-    setUsers([]);
+    // Delay so onMouseDown/onTouchStart on dropdown buttons can fire first
+    setTimeout(() => {
+      setMentionQuery(null);
+      setUsers([]);
+    }, 200);
     onBlur?.(e);
   }
 
@@ -129,6 +132,7 @@ export default function TareeqMentionInput({
                 key={u.id}
                 type="button"
                 onMouseDown={e => { e.preventDefault(); insertMention(u); }}
+                onTouchStart={e => { e.preventDefault(); insertMention(u); }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8, width: '100%',
                   padding: '8px 12px', border: 'none', cursor: 'pointer',

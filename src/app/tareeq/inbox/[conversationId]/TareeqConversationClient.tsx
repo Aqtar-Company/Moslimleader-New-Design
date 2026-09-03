@@ -959,7 +959,7 @@ function Inner({ conversationId }: { conversationId: string }) {
                     const mineRadius = isLast ? '18px 18px 4px 18px' : '18px';
                     const otherRadius = isLast ? '18px 18px 18px 4px' : '18px';
                     return (
-                      <div key={m.id} className={`flex items-end gap-1.5 mb-0.5 ${group.mine ? 'justify-end' : 'justify-start'}`}>
+                      <div key={m.id} className={`flex items-end gap-1.5 mb-0.5 group/msg ${group.mine ? 'justify-end' : 'justify-start'}`}>
                         {/* Receiver avatar — only on last message in group */}
                         {!group.mine && (
                           <div
@@ -976,6 +976,17 @@ function Inner({ conversationId }: { conversationId: string }) {
                               : group.senderInfo.name.charAt(0)
                             )}
                           </div>
+                        )}
+                        {/* Reply button — appears on hover (desktop) or tap (mobile) */}
+                        {group.mine && (
+                          <button
+                            className="opacity-0 group-hover/msg:opacity-100 transition-opacity shrink-0 w-7 h-7 flex items-center justify-center rounded-full"
+                            style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', border: 'none', cursor: 'pointer' }}
+                            onClick={() => { setReplyingTo({ id: m.id, content: m.content || (m.imageUrl ? '📷' : m.audioUrl ? '🎙️' : '...'), senderName: group.senderInfo.name }); setTimeout(() => textareaRef.current?.focus(), 50); }}
+                            title={isRtl ? 'رد' : 'Reply'}
+                          >
+                            <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
+                          </button>
                         )}
                         <div
                           className="max-w-[72%] relative"
@@ -1035,6 +1046,17 @@ function Inner({ conversationId }: { conversationId: string }) {
                             {group.mine && <ReadTick read={m.read} />}
                           </div>
                         </div>
+                        {/* Reply button for other person's messages */}
+                        {!group.mine && (
+                          <button
+                            className="opacity-0 group-hover/msg:opacity-100 transition-opacity shrink-0 w-7 h-7 flex items-center justify-center rounded-full"
+                            style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', border: 'none', cursor: 'pointer' }}
+                            onClick={() => { setReplyingTo({ id: m.id, content: m.content || (m.imageUrl ? '📷' : m.audioUrl ? '🎙️' : '...'), senderName: group.senderInfo.name }); setTimeout(() => textareaRef.current?.focus(), 50); }}
+                            title={isRtl ? 'رد' : 'Reply'}
+                          >
+                            <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
+                          </button>
+                        )}
                       </div>
                     );
                   })}

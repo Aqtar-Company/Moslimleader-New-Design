@@ -989,7 +989,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           aria-label={post.title || post.content.slice(0, 80)}
         >
           {/* Image container: portrait on mobile, landscape on desktop */}
-          <div className="relative aspect-[3/4] lg:aspect-auto lg:h-[320px]">
+          <div className="relative aspect-[3/4] lg:aspect-auto lg:h-[320px] overflow-hidden">
             {/* Inner clip — keeps image + overlays within bounds without clipping side icons */}
             <div className="absolute inset-0 overflow-hidden">
               {/* Blurred letterbox bg — same image blurred + dimmed to fill empty space */}

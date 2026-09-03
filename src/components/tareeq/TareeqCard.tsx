@@ -1122,18 +1122,18 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           <div style={{ height: 3, background: `linear-gradient(90deg, ${accentHex}, ${accentHex}40)`, borderRadius: '14px 14px 0 0' }} />
         )}
 
-        <Link href={`/tareeq/${post.id}`} className="block px-4 pt-4 pb-3" onClick={handlePostLinkClick}>
+        <Link href={`/tareeq/${post.id}`} className="block px-4 pt-5 pb-3.5" onClick={handlePostLinkClick}>
           {/* Author row */}
-          <div className="flex items-center gap-2.5 mb-3">
+          <div className="flex items-center gap-3 mb-3.5">
             {post.user?.avatarUrl
-              ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold)' }} />
-              : <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
+              ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-11 h-11 rounded-full object-cover shrink-0" style={{ border: '2px solid var(--tr-gold)' }} />
+              : <div className="w-11 h-11 rounded-full flex items-center justify-center text-base font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
             }
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 min-w-0">
                 {post.userId
-                  ? <Link href={`/tareeq/u/${post.userId}`} onClick={e => e.stopPropagation()} className="text-sm font-semibold truncate hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{post.authorName}</Link>
-                  : <p className="text-sm font-semibold truncate" style={{ color: 'var(--tr-text-primary)' }}>{post.authorName}</p>
+                  ? <Link href={`/tareeq/u/${post.userId}`} onClick={e => e.stopPropagation()} className="text-[15px] font-semibold truncate hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{post.authorName}</Link>
+                  : <p className="text-[15px] font-semibold truncate" style={{ color: 'var(--tr-text-primary)' }}>{post.authorName}</p>
                 }
                 {isOfficial && (
                   <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold shrink-0" style={{ background: 'rgba(59,130,246,0.13)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.28)' }}>
@@ -1156,12 +1156,12 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           )}
 
           <p
-            className="text-sm leading-relaxed"
+            className="text-[15px] leading-relaxed"
             style={{
               color: 'var(--tr-text-secondary)',
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',
-              ...(isLong && !textExpanded ? { display: '-webkit-box', WebkitBoxOrient: 'vertical' as const, WebkitLineClamp: 4, overflow: 'hidden' } : {}),
+              ...(isLong && !textExpanded ? { display: '-webkit-box', WebkitBoxOrient: 'vertical' as const, WebkitLineClamp: 5, overflow: 'hidden' } : {}),
             }}
           >
             {renderRichText(textExpanded ? post.content : snippet)}
@@ -1234,33 +1234,33 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         </div>
 
         {/* Mobile action bar */}
-        <div className="lg:hidden px-4 pb-3 pt-2 flex items-center gap-3 relative" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
-          <div className="relative flex items-center gap-1.5">
+        <div className="lg:hidden px-4 pb-4 pt-3 flex items-center gap-4 relative" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
+          <div className="relative flex items-center gap-2">
             <button onClick={handleReactionAreaClick} aria-label={isRtl ? 'تفاعل' : 'React'} className="flex items-center gap-1.5 active:scale-90 transition-transform">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: currentReaction ? `${reactionConfig?.color ?? '#f59e0b'}18` : 'var(--tr-overlay)', border: `1.5px solid ${currentReaction ? (reactionConfig?.color ?? '#f59e0b') + '50' : 'var(--tr-border-soft)'}`, fontSize: currentReaction ? 16 : 13 }}>
-                {currentReaction ? reactionEmoji(currentReaction) : <svg width={14} height={14} viewBox="0 0 24 24" fill="currentColor" style={{ color: 'var(--tr-text-muted)' }}><path d="M12 3l1.2 4.8L18 6.8l-3.6 3.6 1.2 5.4-3.6-2.4-3.6 2.4 1.2-5.4L6 6.8l4.8 1.2z" /></svg>}
+              <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: currentReaction ? `${reactionConfig?.color ?? '#f59e0b'}18` : 'var(--tr-overlay)', border: `1.5px solid ${currentReaction ? (reactionConfig?.color ?? '#f59e0b') + '50' : 'var(--tr-border-soft)'}`, fontSize: currentReaction ? 18 : 15 }}>
+                {currentReaction ? reactionEmoji(currentReaction) : <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor" style={{ color: 'var(--tr-text-muted)' }}><path d="M12 3l1.2 4.8L18 6.8l-3.6 3.6 1.2 5.4-3.6-2.4-3.6 2.4 1.2-5.4L6 6.8l4.8 1.2z" /></svg>}
               </div>
-              <span className="text-xs font-semibold" style={{ color: currentReaction ? (reactionConfig?.color ?? '#f59e0b') : 'var(--tr-text-muted)' }}>{fmt(likeCount)}</span>
+              <span className="text-sm font-semibold" style={{ color: currentReaction ? (reactionConfig?.color ?? '#f59e0b') : 'var(--tr-text-muted)' }}>{fmt(likeCount)}</span>
             </button>
             {showPicker && (
               <ReactionPicker currentReaction={currentReaction} onReact={(t) => handleReact(t)} onClose={() => setShowPicker(false)} isRtl={isRtl} />
             )}
           </div>
 
-          <button onClick={handleCommentToggle} className="flex items-center gap-1.5 text-xs font-semibold transition" style={{ color: showCommentInput ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
-            <IconComment size={16} />
+          <button onClick={handleCommentToggle} className="flex items-center gap-1.5 text-sm font-semibold transition" style={{ color: showCommentInput ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
+            <IconComment size={18} />
             {fmt(commentCount)}
           </button>
 
-          <button onClick={handleBookmarkClick} aria-label={isRtl ? 'حفظ' : 'Save'} className="flex items-center gap-1 text-xs font-semibold transition active:scale-90" style={{ color: isBookmarked ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
-            <IconBookmark filled={isBookmarked} size={16} />
+          <button onClick={handleBookmarkClick} aria-label={isRtl ? 'حفظ' : 'Save'} className="flex items-center gap-1 text-sm font-semibold transition active:scale-90" style={{ color: isBookmarked ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
+            <IconBookmark filled={isBookmarked} size={18} />
             {savedCount > 0 && <span>{fmt(savedCount)}</span>}
           </button>
 
           <div className="ms-auto flex items-center gap-2">
             <div ref={shareMenuRef} className="relative">
-              <button onClick={handleShare} className="flex items-center gap-1 text-xs font-semibold transition" style={{ color: copied ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
-                <IconShare size={16} check={copied} />
+              <button onClick={handleShare} className="flex items-center gap-1 text-sm font-semibold transition" style={{ color: copied ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
+                <IconShare size={18} check={copied} />
               </button>
               {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} />}
             </div>

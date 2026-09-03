@@ -19,8 +19,8 @@ export async function GET(req: NextRequest, { params }: { params: { userId: stri
       ? { followingId: params.userId }
       : { followerId: params.userId },
     include: {
-      follower: { select: { id: true, name: true, avatarUrl: true } },
-      following: { select: { id: true, name: true, avatarUrl: true } },
+      follower: { select: { id: true, name: true, username: true, avatarUrl: true } },
+      following: { select: { id: true, name: true, username: true, avatarUrl: true } },
     },
     orderBy: { createdAt: 'desc' },
     take: 100,
@@ -42,6 +42,7 @@ export async function GET(req: NextRequest, { params }: { params: { userId: stri
     users: users.map(u => ({
       id: u.id,
       name: u.name,
+      username: (u as { username?: string | null }).username ?? null,
       avatarUrl: u.avatarUrl,
       isFollowedByViewer: viewerFollowingIds.has(u.id),
     })),

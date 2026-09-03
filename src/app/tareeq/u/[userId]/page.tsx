@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+import { cache } from 'react';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { prisma } from '@/lib/prisma';
@@ -8,7 +9,8 @@ import TareeqUserClient from './TareeqUserClient';
 interface Props { params: { userId: string } }
 
 // Resolve a handle (username or cuid) to a user row — username first, then id.
-async function resolveUser(handle: string) {
+// Wrapped in cache() so generateMetadata and the page component share one DB hit.
+const resolveUser = cache(async function resolveUser(handle: string) {
   const byUsername = await prisma.user.findUnique({
     where: { username: handle },
     select: { id: true, name: true, username: true, avatarUrl: true, coverUrl: true, createdAt: true },
@@ -18,7 +20,7 @@ async function resolveUser(handle: string) {
     where: { id: handle },
     select: { id: true, name: true, username: true, avatarUrl: true, coverUrl: true, createdAt: true },
   });
-}
+});
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const user = await resolveUser(params.userId);

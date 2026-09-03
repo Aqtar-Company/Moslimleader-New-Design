@@ -2,11 +2,16 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
+import { tareeqRateLimit } from '@/lib/tareeq-guard';
 
 // PATCH /api/account/username — set or clear the user's tareeq username
 export async function PATCH(req: NextRequest) {
   const auth = await getAuthUser().catch(() => null);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // 10 attempts per hour per user to prevent username enumeration
+  const rl = tareeqRateLimit('username', auth.userId, 10, 60 * 60 * 1000);
+  if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
 
   const body = await req.json().catch(() => ({}));
   const raw = String(body.username ?? '').trim();

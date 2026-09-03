@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { compressImage } from '@/lib/compress-image';
@@ -134,13 +134,13 @@ type ProfileTab = 'posts' | 'bookmarks';
 
 export default function TareeqUserClient({ profileUser, initialPosts, initialCursor, likedIds: initialLiked, postCount }: Props) {
   const { isRtl } = useLang();
-  const { user, updateUser, signOut } = useAuth();
+  const { user, updateUser, signOut, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const [posts, setPosts] = useState<TareeqPostSummary[]>(initialPosts);
   const [cursor, setCursor] = useState<string | null>(initialCursor);
   const [loading, setLoading] = useState(false);
-  const [postsHasImages] = useState(() => initialPosts.some(p => p.imageUrl));
+  const postsHasImages = useMemo(() => posts.some(p => p.imageUrl), [posts]);
   const [likedIds] = useState<Set<string>>(new Set(initialLiked));
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
@@ -183,7 +183,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
 
   // Follow list modal
   const [followListType, setFollowListType] = useState<'followers' | 'following' | null>(null);
-  const [followListUsers, setFollowListUsers] = useState<{ id: string; name: string; avatarUrl?: string | null; isFollowedByViewer: boolean }[]>([]);
+  const [followListUsers, setFollowListUsers] = useState<{ id: string; name: string; username?: string | null; avatarUrl?: string | null; isFollowedByViewer: boolean }[]>([]);
   const [followListLoading, setFollowListLoading] = useState(false);
 
   // Toast notification
@@ -195,7 +195,8 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
     toastTimer.current = setTimeout(() => setToast(null), 2500);
   }
 
-  const isOwnProfile = user?.id === profileUser.id;
+  // Defer own-profile detection until auth has hydrated to avoid flash
+  const isOwnProfile = !authLoading && user?.id === profileUser.id;
 
   // Close folder menu on outside click
   useEffect(() => {
@@ -1327,10 +1328,10 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                 </p>
               ) : followListUsers.map(u => (
                 <div key={u.id} className="flex items-center gap-3">
-                  <button onClick={() => { setFollowListType(null); router.push(`/tareeq/u/${u.id}`); }} className="w-10 h-10 rounded-full shrink-0 overflow-hidden flex items-center justify-center font-bold text-sm" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-border-soft)' }}>
+                  <button onClick={() => { setFollowListType(null); router.push(`/tareeq/u/${u.username ?? u.id}`); }} className="w-10 h-10 rounded-full shrink-0 overflow-hidden flex items-center justify-center font-bold text-sm" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-border-soft)' }}>
                     {u.avatarUrl ? <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" /> : u.name.charAt(0)}
                   </button>
-                  <button onClick={() => { setFollowListType(null); router.push(`/tareeq/u/${u.id}`); }} className="flex-1 min-w-0 text-start">
+                  <button onClick={() => { setFollowListType(null); router.push(`/tareeq/u/${u.username ?? u.id}`); }} className="flex-1 min-w-0 text-start">
                     <p className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{u.name}</p>
                   </button>
                   {user && u.id !== user.id && (

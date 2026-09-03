@@ -29,7 +29,7 @@ function renderRichText(text: string): React.ReactNode {
     if (match.index > last) segments.push(text.slice(last, match.index));
     const m = match[0];
     if (m.startsWith('**')) {
-      segments.push(<strong key={key++} style={{ fontWeight: 800, color: 'inherit' }}>{match[2]}</strong>);
+      segments.push(<strong key={key++} style={{ fontWeight: 700, color: 'inherit' }}>{match[2]}</strong>);
     } else if (m.startsWith('*')) {
       segments.push(<em key={key++}>{match[3]}</em>);
     } else if (m.startsWith('#')) {
@@ -210,7 +210,7 @@ function ReactionPicker({ currentReaction, onReact, onClose, isRtl, dark = false
               >
                 {r.emoji}
               </div>
-              <span style={{ fontSize: 9, fontWeight: 700, color: active ? r.color : (dark ? 'rgba(255,255,255,0.6)' : 'var(--tr-text-muted)') }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: active ? r.color : (dark ? 'rgba(255,255,255,0.6)' : 'var(--tr-text-muted)') }}>
                 {isRtl ? r.labelAr : r.labelEn}
               </span>
             </button>
@@ -523,7 +523,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           {inlineComments.map(c => (
             <div key={c.id}>
               <div className="flex gap-2.5 py-2" style={{ borderBottom: (c.replyCount ?? 0) > 0 || showRepliesFor.has(c.id) ? 'none' : '1px solid var(--tr-border-subtle)' }}>
-                <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)' }}>
+                <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold-dim, rgba(212,168,83,0.3))' }}>
                   {(c.user?.name ?? '?').charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -531,7 +531,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                   <p className="text-xs leading-relaxed" style={{ color: 'var(--tr-text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{c.content}</p>
                   <button
                     className="text-[11px] font-semibold mt-1"
-                    style={{ color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    style={{ color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', margin: '-4px -8px' }}
                     onClick={() => { setReplyingTo({ id: c.id, name: c.user?.name ?? '' }); setTimeout(() => commentInputRef.current?.focus(), 30); }}
                   >
                     {isRtl ? 'رد' : 'Reply'}
@@ -597,7 +597,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           </div>
         )}
         <form onSubmit={handleComment} className="px-4 pb-3 pt-2.5 flex gap-2 items-center">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold)' }}>
+          <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black shrink-0" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold-dim, rgba(212,168,83,0.3))' }}>
             {user?.name?.charAt(0) ?? '?'}
           </div>
           <TareeqMentionInput
@@ -624,12 +624,15 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     const btnBase: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600, transition: 'background 150ms', background: 'transparent', border: 'none', cursor: 'pointer' };
     const hover = { background: 'var(--tr-overlay)' };
     return (
-      <div className="px-2 py-1 flex items-center gap-0.5" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
+      <>
+        <style>{'.tr-action-btn:focus-visible{outline:2px solid var(--tr-gold);outline-offset:2px;border-radius:8px} @keyframes tr-copy-pop{0%{transform:scale(1)}50%{transform:scale(1.22)}100%{transform:scale(1)}}'}</style>
+        <div className="px-2 py-1 flex items-center gap-0.5" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
 
         {/* React */}
         <div className="relative">
           <button
             onClick={handleReactionAreaClick}
+            className="tr-action-btn"
             style={{ ...btnBase, color: currentReaction ? (reactionConfig?.color ?? 'var(--tr-gold)') : 'var(--tr-text-secondary)' }}
             onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, hover)}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
@@ -655,6 +658,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         {/* Comment */}
         <button
           onClick={handleCommentToggle}
+          className="tr-action-btn"
           style={{ ...btnBase, color: showCommentInput ? 'var(--tr-gold)' : 'var(--tr-text-secondary)' }}
           onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, hover)}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
@@ -668,11 +672,14 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         <div ref={shareMenuRef} className="relative ms-auto">
           <button
             onClick={handleShare}
+            className="tr-action-btn"
             style={{ ...btnBase, color: copied ? 'var(--tr-gold)' : 'var(--tr-text-secondary)' }}
             onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, hover)}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
           >
-            <IconShare size={17} check={copied} />
+            <span style={copied ? { animation: 'tr-copy-pop 0.3s cubic-bezier(0.34,1.56,0.64,1)' } : undefined}>
+              <IconShare size={17} check={copied} />
+            </span>
             <span>{isRtl ? 'مشاركة' : 'Share'}</span>
           </button>
           {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} />}
@@ -683,6 +690,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           <button
             onClick={e => { e.preventDefault(); e.stopPropagation(); setShowOptions(true); }}
             aria-label={isRtl ? 'خيارات' : 'Options'}
+            className="tr-action-btn"
             style={{ ...btnBase, color: 'var(--tr-text-muted)', padding: '8px 10px', gap: 5 }}
             onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, hover)}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
@@ -695,6 +703,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         <button
           onClick={handleBookmarkClick}
           aria-label={isRtl ? 'حفظ' : 'Save'}
+          className="tr-action-btn"
           style={{ ...btnBase, color: isBookmarked ? 'var(--tr-gold)' : 'var(--tr-text-muted)', padding: '8px 10px' }}
           onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, hover)}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
@@ -707,6 +716,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           onClick={handleOfflineToggle}
           aria-label={isRtl ? (isSavedOffline ? 'إزالة من الحفظ بدون إنترنت' : 'حفظ للقراءة بدون إنترنت') : (isSavedOffline ? 'Remove offline' : 'Save offline')}
           title={isRtl ? (isSavedOffline ? 'إزالة من الحفظ بدون إنترنت' : 'حفظ للقراءة بدون إنترنت') : (isSavedOffline ? 'Remove offline' : 'Save offline')}
+          className="tr-action-btn"
           style={{ ...btnBase, color: isSavedOffline ? 'var(--tr-gold)' : 'var(--tr-text-muted)', padding: '8px 10px' }}
           onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, hover)}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
@@ -719,6 +729,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           </svg>
         </button>
       </div>
+      </>
     );
   }
 
@@ -731,14 +742,14 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           <button
             onClick={e => { e.preventDefault(); e.stopPropagation(); setShowReactors(true); }}
             className="flex items-center gap-1.5 text-xs transition hover:underline"
-            style={{ color: 'var(--tr-text-muted)' }}
+            style={{ color: 'var(--tr-text-secondary)' }}
           >
             {currentReaction ? reactionEmoji(currentReaction) : '⭐'}
             <span>{fmt(likeCount)}</span>
           </button>
         )}
         {commentCount > 0 && (
-          <button onClick={handleCommentToggle} className="text-xs ms-auto transition hover:underline" style={{ color: 'var(--tr-text-muted)' }}>
+          <button onClick={handleCommentToggle} className="text-xs ms-auto transition hover:underline" style={{ color: 'var(--tr-text-secondary)' }}>
             {fmt(commentCount)} {isRtl ? 'تعليق' : 'comments'}
           </button>
         )}
@@ -856,7 +867,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             </div>
             {(post.title || snippet) && (
               <Link href={`/tareeq/${post.id}`} className="block" onClick={handlePostLinkClick}>
-                {post.title && <h3 className="font-bold text-sm leading-snug mb-1 hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{post.title}</h3>}
+                {post.title && <h3 className="font-extrabold text-sm leading-snug mb-1 hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{post.title}</h3>}
                 {snippet && <p className="text-sm leading-relaxed line-clamp-3" style={{ color: 'var(--tr-text-secondary)' }}>{snippet}</p>}
               </Link>
             )}
@@ -990,7 +1001,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                   : <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black shrink-0" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: '2px solid rgba(255,255,255,0.4)', backdropFilter: 'blur(8px)' }}>{post.authorName.charAt(0)}</div>
                 }
                 <p className="text-white text-[9px] font-bold text-center leading-tight mt-0.5" style={{ maxWidth: 52, textShadow: '0 1px 3px rgba(0,0,0,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.authorName}</p>
-                <p className="text-white/60 text-[8px] text-center" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>{timeAgo(post.createdAt, isRtl)}</p>
+                <p className="text-white/60 text-[10px] text-center" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)', opacity: 0.72 }}>{timeAgo(post.createdAt, isRtl)}</p>
               </Link>
 
               {/* Reaction */}
@@ -1064,7 +1075,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                 </div>
               </div>
               <Link href={`/tareeq/${post.id}`} className="block" onClick={handlePostLinkClick}>
-                {post.title && <h3 className="font-bold text-sm leading-snug mb-1.5 hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{post.title}</h3>}
+                {post.title && <h3 className="font-extrabold text-sm leading-snug mb-1.5 hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{post.title}</h3>}
                 {snippet && <p className="text-sm leading-relaxed line-clamp-3" style={{ color: 'var(--tr-text-secondary)' }}>{snippet}</p>}
               </Link>
             </div>
@@ -1141,7 +1152,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           </div>
 
           {post.title && (
-            <h3 className="font-bold text-[15px] leading-snug mb-2" style={{ color: 'var(--tr-text-primary)' }}>{post.title}</h3>
+            <h3 className="font-extrabold text-[15px] leading-snug mb-2" style={{ color: 'var(--tr-text-primary)' }}>{post.title}</h3>
           )}
 
           <p

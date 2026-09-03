@@ -1139,11 +1139,11 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           <div style={{ height: 3, background: `linear-gradient(90deg, ${accentHex}, ${accentHex}40)`, borderRadius: '14px 14px 0 0' }} />
         )}
 
-        <Link href={`/tareeq/${post.id}`} className="block px-4 pt-5 pb-3.5" onClick={handlePostLinkClick}>
-          {/* Author row */}
+        {/* Author row — outside post link to avoid nested <a> tags */}
+        <div className="px-4 pt-5 pb-0">
           <div className="flex items-center gap-3 mb-3.5">
             {post.userId
-              ? <Link href={`/tareeq/u/${post.userId}`} onClick={e => e.stopPropagation()} className="shrink-0">
+              ? <Link href={`/tareeq/u/${post.userId}`} className="shrink-0" onClick={e => e.stopPropagation()}>
                   {post.user?.avatarUrl
                     ? <img src={post.user.avatarUrl} alt={post.authorName} className="w-11 h-11 rounded-full object-cover" style={{ border: '2px solid var(--tr-gold)' }} />
                     : <div className="w-11 h-11 rounded-full flex items-center justify-center text-base font-black" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '2px solid var(--tr-gold)' }}>{post.authorName.charAt(0)}</div>
@@ -1157,7 +1157,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 min-w-0">
                 {post.userId
-                  ? <Link href={`/tareeq/u/${post.userId}`} onClick={e => e.stopPropagation()} className="text-[15px] font-semibold truncate hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{post.authorName}</Link>
+                  ? <Link href={`/tareeq/u/${post.userId}`} className="text-[15px] font-semibold truncate hover:underline" style={{ color: 'var(--tr-text-primary)' }}>{post.authorName}</Link>
                   : <p className="text-[15px] font-semibold truncate" style={{ color: 'var(--tr-text-primary)' }}>{post.authorName}</p>
                 }
                 {isOfficial && (
@@ -1175,7 +1175,10 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               </span>
             )}
           </div>
+        </div>
 
+        {/* Post content — separate link so no nested anchors */}
+        <Link href={`/tareeq/${post.id}`} className="block px-4 pb-3.5" onClick={handlePostLinkClick}>
           {post.title && (
             <h3 className="font-extrabold text-[15px] leading-snug mb-2" style={{ color: 'var(--tr-text-primary)' }}>{post.title}</h3>
           )}

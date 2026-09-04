@@ -7,7 +7,6 @@ import TareeqCard, { TareeqPostSummary } from '@/components/tareeq/TareeqCard';
 import TareeqCardSkeleton from '@/components/tareeq/TareeqCardSkeleton';
 import TareeqCreateModal from '@/components/tareeq/TareeqCreateModal';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
-import TareeqGatePage from '@/components/tareeq/TareeqGatePage';
 import TareeqPostSheet from '@/components/tareeq/TareeqPostSheet';
 import { TAREEQ_CATEGORIES, CATEGORY_ICONS, CATEGORY_ACCENT_HEX } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
@@ -392,7 +391,8 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
 
   // Unauthenticated users see the full-screen landing gate
   if (!authLoading && !user) {
-    return <TareeqGatePage />;
+    if (typeof window !== 'undefined') window.location.href = '/login?redirect=%2Ftareeq';
+    return null;
   }
 
   return (

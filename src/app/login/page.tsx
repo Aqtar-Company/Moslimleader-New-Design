@@ -5,22 +5,6 @@ import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LanguageContext';
 
-const TareeqIcon = ({ size = 64 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect width="80" height="80" rx="18" fill="#071524" />
-    <rect x="1.5" y="1.5" width="77" height="77" rx="16.5" stroke="#d4a853" strokeWidth="3" />
-    {/* 8-pointed star — two alternating radii */}
-    <polygon
-      points="40,20 43,32 54,26 48,37 60,40 48,43 54,54 43,48 40,60 37,48 26,54 32,43 20,40 32,37 26,26 37,32"
-      fill="#d4a853"
-    />
-    {/* 3 dots */}
-    <circle cx="31" cy="71" r="2" fill="#d4a853" fillOpacity="0.45" />
-    <circle cx="40" cy="71" r="2.5" fill="#d4a853" />
-    <circle cx="49" cy="71" r="2" fill="#d4a853" fillOpacity="0.45" />
-  </svg>
-);
-
 function AuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -92,9 +76,23 @@ function AuthContent() {
 
   const labelClass = 'block text-xs font-semibold text-[#4a6a8a] mb-1.5 uppercase tracking-wide';
 
+  const GoogleButton = () => (
+    <a
+      href="/api/auth/oauth/google"
+      className="w-full flex items-center justify-center gap-3 rounded-xl py-3 transition text-sm font-medium text-[#b8cfe0] border border-[#1e3a5f] hover:border-[#d4a853]/40 hover:bg-[#0a1929]"
+    >
+      <svg className="w-5 h-5" viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+      </svg>
+      {isRtl ? 'المتابعة بـ Google' : 'Continue with Google'}
+    </a>
+  );
+
   return (
     <>
-      {/* Google Fonts — Cairo Play italic for headings, Cairo for body, Scheherazade New for Quran verse */}
       <link
         rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Cairo+Play:ital,wght@1,700;1,800&family=Cairo:wght@400;500;600;700&family=Scheherazade+New:wght@400;700&display=swap"
@@ -114,33 +112,23 @@ function AuthContent() {
             className="object-cover object-center"
             unoptimized
           />
-          {/* Top-to-mid fade */}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#07111f]/70 via-transparent to-[#07111f]/90" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#07111f]/60 via-transparent to-[#07111f]/85" />
 
-          {/* Overlay content */}
           <div className="relative z-10 flex flex-col justify-between h-full px-10 py-12">
-            {/* Top: Tareeq wordmark */}
+            {/* Top: brand mark */}
             <div className="flex items-center gap-3">
-              <TareeqIcon size={40} />
-              <span
-                className="text-[#d4a853] text-2xl font-bold"
-                style={{ fontFamily: "'Cairo Play', 'Cairo', sans-serif", fontStyle: 'italic' }}
-              >
-                طريق
-              </span>
+              <Image src="/Tareeq-small.png" alt="طريق" width={36} height={36} className="rounded-xl" unoptimized />
+              <Image src="/Tareeq-Typo.png" alt="طريق" width={90} height={36} className="object-contain" unoptimized />
             </div>
 
-            {/* Bottom: verse + badge */}
+            {/* Bottom: badge + verse */}
             <div className="text-center pb-2">
-              {/* علامات badge */}
               <div className="inline-flex items-center gap-2 bg-[#d4a853]/10 border border-[#d4a853]/30 rounded-full px-4 py-1.5 mb-5">
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="#d4a853">
                   <polygon points="8,1 9.8,5.8 15,6.2 11.2,9.6 12.4,14.8 8,12 3.6,14.8 4.8,9.6 1,6.2 6.2,5.8" />
                 </svg>
                 <span className="text-[#d4a853] text-sm font-semibold tracking-widest">علامات</span>
               </div>
-
-              {/* Quran verse */}
               <p
                 className="text-[#f0e8cc] text-2xl leading-loose mb-3"
                 style={{ fontFamily: "'Scheherazade New', serif" }}
@@ -153,14 +141,14 @@ function AuthContent() {
         </div>
 
         {/* ── Form panel — second DOM child = LEFT in RTL ── */}
-        <div className="flex-1 flex items-center justify-center px-6 py-12 bg-[#07111f]">
-          <div className="w-full max-w-md">
+        <div className="flex-1 flex flex-col items-center bg-[#07111f] overflow-y-auto">
+          <div className="w-full max-w-md px-6 pt-10 pb-16">
 
             {/* ── EMAIL VERIFICATION PENDING ── */}
             {verifyEmail ? (
-              <div className="text-center">
+              <div className="text-center pt-6">
                 <div className="flex justify-center mb-5">
-                  <TareeqIcon size={56} />
+                  <Image src="/Tareeq-Typo.png" alt="طريق" width={120} height={48} className="object-contain" unoptimized />
                 </div>
                 <h2
                   className="text-2xl text-[#f0e8cc] mb-2"
@@ -199,7 +187,7 @@ function AuthContent() {
             ) : mode === 'forgot' ? (
               <>
                 {forgotSent ? (
-                  <div className="text-center">
+                  <div className="text-center pt-6">
                     <div className="w-16 h-16 bg-[#d4a853]/10 border border-[#d4a853]/30 rounded-full flex items-center justify-center mx-auto mb-5">
                       <svg className="w-8 h-8 text-[#d4a853]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -225,8 +213,8 @@ function AuthContent() {
                   </div>
                 ) : (
                   <>
-                    <div className="flex justify-center mb-6">
-                      <TareeqIcon size={52} />
+                    <div className="flex justify-center mb-6 pt-4">
+                      <Image src="/Tareeq-Typo.png" alt="طريق" width={120} height={48} className="object-contain" unoptimized />
                     </div>
                     <div className="mb-7">
                       <h2
@@ -243,9 +231,7 @@ function AuthContent() {
                     </div>
                     <form onSubmit={handleSubmit} className="space-y-5">
                       <div>
-                        <label className={labelClass}>
-                          {isRtl ? 'البريد الإلكتروني' : 'Email'}
-                        </label>
+                        <label className={labelClass}>{isRtl ? 'البريد الإلكتروني' : 'Email'}</label>
                         <input
                           type="email" required
                           value={form.email} dir="ltr"
@@ -255,13 +241,11 @@ function AuthContent() {
                         />
                       </div>
                       {error && (
-                        <div className="bg-red-950/40 border border-red-800/40 text-red-400 rounded-xl px-4 py-3 text-sm">
-                          {error}
-                        </div>
+                        <div className="bg-red-950/40 border border-red-800/40 text-red-400 rounded-xl px-4 py-3 text-sm">{error}</div>
                       )}
                       <button
                         type="submit" disabled={loading}
-                        className="w-full disabled:opacity-50 text-[#07111f] font-bold py-3.5 rounded-xl transition text-sm mt-1"
+                        className="w-full disabled:opacity-50 text-[#07111f] font-bold py-3.5 rounded-xl transition text-sm"
                         style={{ background: loading ? '#8a6a30' : 'linear-gradient(to left, #c9943d, #e8c068)' }}
                       >
                         {loading ? '...' : (isRtl ? 'إرسال رابط إعادة التعيين' : 'Send Reset Link')}
@@ -280,13 +264,13 @@ function AuthContent() {
               </>
             ) : (
               <>
-                {/* Icon */}
-                <div className="flex justify-center mb-6">
-                  <TareeqIcon size={56} />
+                {/* Logo */}
+                <div className="flex justify-center mb-5 pt-2">
+                  <Image src="/Tareeq-Typo.png" alt="طريق" width={140} height={56} className="object-contain" unoptimized />
                 </div>
 
-                {/* Heading */}
-                <div className="mb-7 text-center">
+                {/* Heading + tagline */}
+                <div className="mb-5 text-center">
                   <h2
                     className="text-3xl text-[#f0e8cc]"
                     style={{ fontFamily: "'Cairo Play', 'Cairo', sans-serif", fontStyle: 'italic', fontWeight: 800 }}
@@ -295,15 +279,25 @@ function AuthContent() {
                       ? (isRtl ? 'مرحباً بعودتك' : 'Welcome back')
                       : (isRtl ? 'ابدأ رحلتك' : 'Start your journey')}
                   </h2>
-                  <p className="text-[#4a6a8a] text-sm mt-1">
-                    {mode === 'signin'
-                      ? (isRtl ? 'سجل دخولك لمتابعة مسيرتك' : 'Sign in to continue your journey')
-                      : (isRtl ? 'انضم إلى مجتمع طريق' : 'Join the Tareeq community')}
+                  <p className="text-[#4a6a8a] text-sm mt-1 leading-relaxed">
+                    {isRtl
+                      ? 'انضم لمجتمع مسلم ليدر واستمتع بمنصة طريق للتواصل الاجتماعي مجاناً'
+                      : 'Join Moslim Leader and enjoy the Tareeq social platform for free'}
                   </p>
                 </div>
 
+                {/* Google — at the top */}
+                <GoogleButton />
+
+                {/* OR divider */}
+                <div className="flex items-center gap-3 my-4">
+                  <div className="flex-1 h-px bg-[#1e3a5f]" />
+                  <span className="text-xs text-[#3a5a7a] font-medium">{isRtl ? 'أو' : 'OR'}</span>
+                  <div className="flex-1 h-px bg-[#1e3a5f]" />
+                </div>
+
                 {/* Tab switcher */}
-                <div className="flex gap-1 bg-[#0a1929] rounded-xl p-1 mb-7">
+                <div className="flex gap-1 bg-[#0a1929] rounded-xl p-1 mb-6">
                   {(['signin', 'signup'] as const).map(m => (
                     <button
                       key={m} type="button"
@@ -323,9 +317,7 @@ function AuthContent() {
                 <form onSubmit={handleSubmit} className="space-y-5">
                   {mode === 'signup' && (
                     <div>
-                      <label className={labelClass}>
-                        {isRtl ? 'الاسم الكامل' : 'Full Name'}
-                      </label>
+                      <label className={labelClass}>{isRtl ? 'الاسم الكامل' : 'Full Name'}</label>
                       <input
                         type="text" required
                         value={form.name}
@@ -336,9 +328,7 @@ function AuthContent() {
                     </div>
                   )}
                   <div>
-                    <label className={labelClass}>
-                      {isRtl ? 'البريد الإلكتروني' : 'Email'}
-                    </label>
+                    <label className={labelClass}>{isRtl ? 'البريد الإلكتروني' : 'Email'}</label>
                     <input
                       type="email" required
                       value={form.email} dir="ltr"
@@ -349,9 +339,7 @@ function AuthContent() {
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label className={labelClass}>
-                        {isRtl ? 'كلمة المرور' : 'Password'}
-                      </label>
+                      <label className={labelClass}>{isRtl ? 'كلمة المرور' : 'Password'}</label>
                       {mode === 'signin' && (
                         <button
                           type="button"
@@ -383,9 +371,7 @@ function AuthContent() {
                   </div>
                   {mode === 'signup' && (
                     <div>
-                      <label className={labelClass}>
-                        {isRtl ? 'رقم الهاتف (اختياري)' : 'Phone (optional)'}
-                      </label>
+                      <label className={labelClass}>{isRtl ? 'رقم الهاتف (اختياري)' : 'Phone (optional)'}</label>
                       <input
                         type="tel" value={form.phone} dir="ltr"
                         onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
@@ -411,13 +397,11 @@ function AuthContent() {
                     </label>
                   )}
                   {error && (
-                    <div className="bg-red-950/40 border border-red-800/40 text-red-400 rounded-xl px-4 py-3 text-sm">
-                      {error}
-                    </div>
+                    <div className="bg-red-950/40 border border-red-800/40 text-red-400 rounded-xl px-4 py-3 text-sm">{error}</div>
                   )}
                   <button
                     type="submit" disabled={loading}
-                    className="w-full disabled:opacity-50 font-bold py-3.5 rounded-xl transition text-sm mt-1"
+                    className="w-full disabled:opacity-50 font-bold py-3.5 rounded-xl transition text-sm"
                     style={{
                       background: loading ? '#8a6a30' : 'linear-gradient(to left, #b8832c, #e8c068)',
                       color: '#07111f',
@@ -427,27 +411,6 @@ function AuthContent() {
                       ? (isRtl ? 'دخول' : 'Sign In')
                       : (isRtl ? 'إنشاء الحساب' : 'Create Account')}
                   </button>
-
-                  {/* OR divider */}
-                  <div className="flex items-center gap-3 my-1">
-                    <div className="flex-1 h-px bg-[#1e3a5f]" />
-                    <span className="text-xs text-[#3a5a7a] font-medium">{isRtl ? 'أو' : 'OR'}</span>
-                    <div className="flex-1 h-px bg-[#1e3a5f]" />
-                  </div>
-
-                  {/* Google button */}
-                  <a
-                    href="/api/auth/oauth/google"
-                    className="w-full flex items-center justify-center gap-3 rounded-xl py-3 transition text-sm font-medium text-[#b8cfe0] border border-[#1e3a5f] hover:border-[#d4a853]/40 hover:bg-[#0a1929]"
-                  >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                    </svg>
-                    {isRtl ? 'المتابعة بـ Google' : 'Continue with Google'}
-                  </a>
                 </form>
 
                 <p className="text-center text-[#4a6a8a] text-sm mt-6">

@@ -68,7 +68,7 @@ const SOCIAL = [
 export default function Footer() {
   const { t, isRtl } = useLang();
   const pathname = usePathname();
-  if (pathname?.startsWith('/tareeq')) return null;
+  if (pathname?.startsWith('/tareeq') || pathname === '/login') return null;
 
   return (
     <footer className="bg-gray-950 border-t border-white/8 text-gray-400 pt-10 pb-5 mt-16 print:hidden" dir={isRtl ? 'rtl' : 'ltr'}>

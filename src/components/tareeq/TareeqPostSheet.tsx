@@ -15,6 +15,7 @@ interface Props {
   postId: string;
   focusComments?: boolean;
   onClose: () => void;
+  onDeleted?: (id: string) => void;
 }
 
 interface Comment {
@@ -54,7 +55,7 @@ const REACTIONS = [
 
 type ReactionType = typeof REACTIONS[number]['type'];
 
-export default function TareeqPostSheet({ postId, focusComments = false, onClose }: Props) {
+export default function TareeqPostSheet({ postId, focusComments = false, onClose, onDeleted }: Props) {
   const { isRtl } = useLang();
   const { user } = useAuth();
 
@@ -73,6 +74,8 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
   const [loadingReplies, setLoadingReplies] = useState<Record<string, boolean>>({});
   const [visible, setVisible] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const sheetRef = useRef<HTMLDivElement>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
@@ -157,6 +160,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
     if (!user) { setShowGate(true); return; }
     const prev = currentReaction;
     setCurrentReaction(prev === type ? null : type);
+    try { navigator.vibrate?.(40); } catch { /* not supported */ }
     const res = await fetch(`/api/tareeq/${postId}/react`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
       body: JSON.stringify({ type }),
@@ -166,6 +170,20 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
       setCurrentReaction(data.reaction ?? null);
     } else {
       setCurrentReaction(prev);
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/tareeq/${postId}`, { method: 'DELETE', credentials: 'include' });
+      if (res.ok) {
+        onDeleted?.(postId);
+        doClose();
+      }
+    } catch { /* ignore */ } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
     }
   }
 
@@ -316,16 +334,37 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
             )}
 
             {/* Right: content + comments */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, maxHeight: '90vh' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, maxHeight: '90vh', position: 'relative' }}>
+              {/* Close button — always at physical top-right */}
+              <button
+                onClick={doClose}
+                style={{ position: 'absolute', top: 12, right: 16, zIndex: 10, width: 32, height: 32, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', border: 'none', cursor: 'pointer', fontSize: 18, fontWeight: 700 }}
+              >×</button>
+
               {/* Header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--tr-border-subtle)', flexShrink: 0 }}>
-                <button onClick={doClose} style={{ width: 32, height: 32, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', border: 'none', cursor: 'pointer', fontSize: 18, fontWeight: 700, flexShrink: 0 }}>×</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 56px 12px 16px', borderBottom: '1px solid var(--tr-border-subtle)', flexShrink: 0 }}>
                 {catLabel && (
                   <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, color: accentHex, background: `${accentHex}18`, border: `1px solid ${accentHex}30`, flexShrink: 0 }}>
                     {catIcon} {catLabel}
                   </span>
                 )}
                 <div style={{ flex: 1 }} />
+                {/* Delete option for post owner */}
+                {user && post?.userId === user.id && (
+                  <div style={{ position: 'relative' }}>
+                    {showDeleteConfirm ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 12, color: 'var(--tr-text-muted)' }}>{isRtl ? 'تأكيد الحذف؟' : 'Delete?'}</span>
+                        <button onClick={handleDelete} disabled={deleting} style={{ fontSize: 12, fontWeight: 700, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>{deleting ? '...' : (isRtl ? 'نعم' : 'Yes')}</button>
+                        <button onClick={() => setShowDeleteConfirm(false)} style={{ fontSize: 12, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>{isRtl ? 'لا' : 'No'}</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setShowDeleteConfirm(true)} style={{ width: 32, height: 32, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', border: 'none', cursor: 'pointer', flexShrink: 0 }} title={isRtl ? 'حذف المنشور' : 'Delete post'}>
+                        <svg width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
+                    )}
+                  </div>
+                )}
                 <Link href={`/tareeq/${postId}`} onClick={doClose} style={{ width: 32, height: 32, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', textDecoration: 'none', flexShrink: 0 }} title={isRtl ? 'فتح المنشور كاملاً' : 'Open full post'}>
                   <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
                 </Link>

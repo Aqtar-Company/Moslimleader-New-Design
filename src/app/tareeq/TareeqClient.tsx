@@ -853,6 +853,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           postId={sheetPostId}
           focusComments={sheetFocusComments}
           onClose={() => { setSheetPostId(null); setSheetFocusComments(false); }}
+          onDeleted={(id) => { setPosts(prev => prev.filter(p => p.id !== id)); setSheetPostId(null); setSheetFocusComments(false); }}
         />
       )}
     </div>

@@ -1439,14 +1439,6 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                     borderBottom: '1px solid var(--tr-border-subtle)',
                     borderInlineStart: `3px solid ${color}`,
                   }}>
-                    <div style={{
-                      width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                      background: `${color}1a`, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/>
-                      </svg>
-                    </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--tr-text-primary)', marginBottom: 2 }}>{w.name}</p>
                       <p style={{ fontSize: 11.5, color: 'var(--tr-text-muted)' }}>
@@ -1455,28 +1447,31 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                           : `${SURAH_NAMES_EN[w.surah - 1] ?? ''} (${w.ayah}) • Page ${w.page}`}
                       </p>
                     </div>
+                    {/* Single bookmark button — save current page to this wird */}
                     <button onClick={() => saveWirdHere(w.id)} title={isRtl ? 'احفظ هنا' : 'Save here'}
                       style={{
-                        width: 32, height: 32, borderRadius: '50%', flexShrink: 0, cursor: 'pointer',
-                        background: wirdSavedFlash === w.id ? 'rgba(34,197,94,0.16)' : `${color}17`,
-                        border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: 40, height: 40, borderRadius: 12, flexShrink: 0, cursor: 'pointer',
+                        background: wirdSavedFlash === w.id ? 'rgba(34,197,94,0.16)' : `${color}1a`,
+                        border: `1.5px solid ${wirdSavedFlash === w.id ? '#16a34a50' : color + '40'}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 200ms',
                       }}>
                       {wirdSavedFlash === w.id ? (
-                        <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                        <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
                       ) : (
-                        <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2}>
+                        <svg width={18} height={18} viewBox="0 0 24 24" fill={color} stroke={color} strokeWidth={1.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/>
                         </svg>
                       )}
                     </button>
+                    {/* Go button — arrow points left (RTL = forward direction) */}
                     <button onClick={() => goToWird(w)} title={isRtl ? 'اذهب' : 'Go'}
                       style={{
-                        width: 32, height: 32, borderRadius: '50%', flexShrink: 0, cursor: 'pointer',
+                        width: 40, height: 40, borderRadius: 12, flexShrink: 0, cursor: 'pointer',
                         background: `linear-gradient(135deg, ${color}, ${color}cc)`, border: 'none',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}>
-                      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+                      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/>
                       </svg>
                     </button>
                     <button onClick={() => deleteWird(w.id)} title={isRtl ? 'حذف' : 'Delete'}

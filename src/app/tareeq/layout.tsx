@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
+import { getAuthUser } from '@/lib/jwt';
 import TareeqShell from '@/components/tareeq/TareeqShell';
 import TareeqMediaSession from '@/components/tareeq/TareeqMediaSession';
 import TareeqContentWrapper from '@/components/tareeq/TareeqContentWrapper';
@@ -14,7 +16,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function TareeqLayout({ children }: { children: React.ReactNode }) {
+export default async function TareeqLayout({ children }: { children: React.ReactNode }) {
+  try {
+    await getAuthUser();
+  } catch {
+    redirect('/login?redirect=%2Ftareeq');
+  }
   return (
     <div className="min-h-screen relative" data-tareeq-root style={{ background: 'var(--tr-base)' }}>
       {/* Runs before paint — applies saved theme to <html> to prevent flash */}

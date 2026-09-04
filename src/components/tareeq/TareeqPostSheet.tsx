@@ -16,6 +16,7 @@ interface Props {
   focusComments?: boolean;
   onClose: () => void;
   onDeleted?: (id: string) => void;
+  onReacted?: (postId: string, reaction: string | null) => void;
 }
 
 interface Comment {
@@ -55,7 +56,7 @@ const REACTIONS = [
 
 type ReactionType = typeof REACTIONS[number]['type'];
 
-export default function TareeqPostSheet({ postId, focusComments = false, onClose, onDeleted }: Props) {
+export default function TareeqPostSheet({ postId, focusComments = false, onClose, onDeleted, onReacted }: Props) {
   const { isRtl } = useLang();
   const { user } = useAuth();
 
@@ -167,7 +168,9 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
     });
     if (res.ok) {
       const data = await res.json();
-      setCurrentReaction(data.reaction ?? null);
+      const newReaction = data.reaction ?? null;
+      setCurrentReaction(newReaction);
+      onReacted?.(postId, newReaction);
     } else {
       setCurrentReaction(prev);
     }

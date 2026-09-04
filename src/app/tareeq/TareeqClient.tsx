@@ -369,6 +369,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
                 style={newPostId === post.id ? { outline: '2px solid var(--tr-gold)', borderRadius: 16, boxShadow: '0 0 24px var(--tr-gold-glow)' } : undefined}
               >
                 <TareeqCard
+                  key={`${post.id}-${reactedPosts[post.id] ?? ''}`}
                   post={post}
                   initialLiked={likedIds.has(post.id)}
                   initialReaction={reactedPosts[post.id] ?? null}
@@ -854,6 +855,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           focusComments={sheetFocusComments}
           onClose={() => { setSheetPostId(null); setSheetFocusComments(false); }}
           onDeleted={(id) => { setPosts(prev => prev.filter(p => p.id !== id)); setSheetPostId(null); setSheetFocusComments(false); }}
+          onReacted={(id, reaction) => setReactedPosts(prev => { const next = { ...prev }; if (reaction) next[id] = reaction; else delete next[id]; return next; })}
         />
       )}
     </div>

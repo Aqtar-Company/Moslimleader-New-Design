@@ -572,7 +572,31 @@ function Inner({ conversationId }: { conversationId: string }) {
         setSendError(d.error || (isRtl ? 'فشل الإرسال' : 'Send failed'));
       }
     } catch {
-      setSendError(isRtl ? 'خطأ في الشبكة' : 'Network error');
+      // Mobile networks briefly drop — the server may have processed the request
+      // even though the client got a network error. Wait 1.5s then poll to confirm.
+      let confirmed = false;
+      try {
+        await new Promise(r => setTimeout(r, 1500));
+        const check = await fetch(`/api/tareeq/conversations/${conversationId}`, { credentials: 'include' });
+        if (check.ok) {
+          const d = await check.json();
+          const msgs: Message[] = d.messages ?? [];
+          const newLatest = msgs.length ? msgs[msgs.length - 1].id : '';
+          if (newLatest && newLatest !== latestIdRef.current) {
+            confirmed = true;
+            shouldScrollRef.current = true;
+            setMessages(msgs);
+            latestIdRef.current = newLatest;
+            setInput('');
+            setShowEmoji(false);
+            setMediaUrl(null); setMediaType(null); setLocalPreview(null); setUploadProgress(0);
+            setReplyingTo(null);
+            refresh();
+            setTimeout(() => textareaRef.current?.focus(), 0);
+          }
+        }
+      } catch { /* ignore secondary check failure */ }
+      if (!confirmed) setSendError(isRtl ? 'خطأ في الشبكة' : 'Network error');
     } finally {
       setSending(false);
     }

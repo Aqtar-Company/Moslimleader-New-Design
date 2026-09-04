@@ -108,7 +108,7 @@ function AuthContent() {
         {/* ── Image panel — first DOM child = RIGHT in RTL ── */}
         <div className="hidden lg:flex lg:w-[46%] relative overflow-hidden shrink-0 flex-col">
           <Image
-            src="/sign-in.jpg"
+            src="/Tareeq sign in panner photo.jpg"
             alt=""
             fill
             className="object-cover object-center"

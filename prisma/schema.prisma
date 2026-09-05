@@ -1190,6 +1190,8 @@ model TareeqMessage {
   audioUrl         String?            @db.Text
   read             Boolean            @default(false)
   deletedAt        DateTime?
+  deletedForA      Boolean   @default(false)
+  deletedForB      Boolean   @default(false)
   expiresAt        DateTime?
   replyToId        String?
   replyToContent   String?            @db.Text

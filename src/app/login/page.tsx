@@ -71,15 +71,15 @@ function AuthContent() {
   const labelClass = 'block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide';
 
   return (
-    <div className="flex min-h-[calc(100vh-64px)]" dir={isRtl ? 'rtl' : 'ltr'}>
+    <div className="flex h-[calc(100vh-64px)]" dir={isRtl ? 'rtl' : 'ltr'}>
       {/* Image panel */}
-      <div className="hidden lg:relative lg:block lg:w-1/2 bg-gray-900 overflow-hidden shrink-0">
+      <div className="hidden lg:relative lg:flex lg:w-1/2 bg-gray-900 overflow-hidden shrink-0 self-stretch">
         <Image src="/sign-in.jpg" alt="" fill className="object-cover object-center" unoptimized />
       </div>
 
       {/* Form panel */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12 bg-white">
-        <div className="w-full max-w-md">
+      <div className="flex-1 flex items-center justify-center px-6 py-12 bg-white overflow-y-auto">
+        <div className="w-full max-w-md mx-auto">
 
           {/* EMAIL VERIFICATION PENDING */}
           {verifyEmail ? (

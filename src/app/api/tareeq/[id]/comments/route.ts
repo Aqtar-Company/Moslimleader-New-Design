@@ -39,14 +39,26 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const items = hasMore ? comments.slice(0, limit) : comments;
   const nextCursor = hasMore ? items[items.length - 1].id : null;
 
-  // Fetch which comments the current user has liked (one batch query)
-  let likedIds = new Set<string>();
+  // Fetch which comments the current user reacted to (one batch query)
+  let myReactionMap = new Map<string, string>();
   if (authResult && items.length > 0) {
     const myReactions = await prisma.tareeqCommentReaction.findMany({
       where: { commentId: { in: items.map(c => c.id) }, userId: authResult.userId },
-      select: { commentId: true },
+      select: { commentId: true, type: true },
     });
-    likedIds = new Set(myReactions.map(r => r.commentId));
+    for (const r of myReactions) myReactionMap.set(r.commentId, r.type);
+  }
+
+  // Fetch reaction counts per comment
+  const reactionRows = items.length > 0 ? await prisma.tareeqCommentReaction.groupBy({
+    by: ['commentId', 'type'],
+    where: { commentId: { in: items.map(c => c.id) } },
+    _count: true,
+  }) : [];
+  const reactionCountMap = new Map<string, Record<string, number>>();
+  for (const r of reactionRows) {
+    if (!reactionCountMap.has(r.commentId)) reactionCountMap.set(r.commentId, {});
+    reactionCountMap.get(r.commentId)![r.type] = r._count;
   }
 
   const shaped = items.map(c => ({
@@ -55,7 +67,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     user: c.user,
     replyCount: c._count.replies,
     likeCount: c._count.reactions,
-    liked: likedIds.has(c.id),
+    liked: myReactionMap.has(c.id),
+    likedType: myReactionMap.get(c.id) ?? null,
+    reactionCounts: reactionCountMap.get(c.id) ?? {},
   }));
   return NextResponse.json({ comments: shaped, nextCursor });
 }

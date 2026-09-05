@@ -1041,6 +1041,7 @@ model TareeqCommentReaction {
   comment   TareeqComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
   userId    String
   user      User          @relation("TareeqCommentReactions", fields: [userId], references: [id], onDelete: Cascade)
+  type      String        @default("heart")
   createdAt DateTime      @default(now())
 
   @@unique([commentId, userId])

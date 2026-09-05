@@ -1307,11 +1307,14 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           })()}
 
           {post.videoUrl && !hasImage && (
-            <div className="mt-3 flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: 'var(--tr-raised)' }}>
-              <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--tr-gold-glow)' }}>
-                <svg className="w-3 h-3 ms-0.5" fill="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--tr-gold)' }}><path d="M8 5v14l11-7z" /></svg>
-              </div>
-              <span className="text-xs" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'يحتوي على فيديو' : 'Contains a video'}</span>
+            <div className="mt-3 rounded-2xl overflow-hidden" style={{ border: '1px solid var(--tr-border-soft)' }} onClick={e => e.stopPropagation()}>
+              <video
+                src={post.videoUrl}
+                controls
+                preload="metadata"
+                playsInline
+                style={{ width: '100%', maxHeight: 480, display: 'block', background: '#000', borderRadius: 16 }}
+              />
             </div>
           )}
 

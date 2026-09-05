@@ -19,6 +19,15 @@ interface Props {
   onReacted?: (postId: string, reaction: string | null) => void;
 }
 
+const COMMENT_REACTIONS = [
+  { type: 'heart',    emoji: '❤️', labelAr: 'أحب',    labelEn: 'Love',     color: '#ef4444' },
+  { type: 'inspired', emoji: '⭐', labelAr: 'ألهمني', labelEn: 'Inspiring', color: '#f59e0b' },
+  { type: 'thanks',   emoji: '🙏', labelAr: 'شكرًا',  labelEn: 'Thanks',   color: '#10b981' },
+  { type: 'agree',    emoji: '✊', labelAr: 'أتفق',   labelEn: 'Agree',    color: '#3b82f6' },
+  { type: 'yarabb',   emoji: '🤲', labelAr: 'يارب',   labelEn: 'Ameen',    color: '#8b5cf6' },
+] as const;
+type CommentReactionType = typeof COMMENT_REACTIONS[number]['type'];
+
 interface Comment {
   id: string;
   content: string;
@@ -28,6 +37,8 @@ interface Comment {
   replyCount?: number;
   likeCount?: number;
   liked?: boolean;
+  likedType?: string | null;
+  reactionCounts?: Record<string, number>;
   user: { id: string; name: string } | null;
 }
 
@@ -67,7 +78,8 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
   const [submitting, setSubmitting] = useState(false);
   const [commentError, setCommentError] = useState<string | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
-  const [commentLikes, setCommentLikes] = useState<Record<string, { liked: boolean; count: number }>>({});
+  const [commentLikes, setCommentLikes] = useState<Record<string, { reaction: string | null; counts: Record<string, number> }>>({});
+  const [showCommentReactionPicker, setShowCommentReactionPicker] = useState<string | null>(null); // commentId
   const [showGate, setShowGate] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{ commentId: string; authorName: string } | null>(null);
   const [reportCommentId, setReportCommentId] = useState<string | null>(null);
@@ -244,18 +256,26 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
     }
   }
 
-  async function handleCommentLike(commentId: string) {
+  async function handleCommentReact(commentId: string, type: CommentReactionType) {
     if (!user) { setShowGate(true); return; }
-    const prev = commentLikes[commentId] ?? { liked: false, count: 0 };
+    setShowCommentReactionPicker(null);
+    const prev = commentLikes[commentId] ?? { reaction: null, counts: {} };
     // Optimistic update
-    setCommentLikes(s => ({ ...s, [commentId]: { liked: !prev.liked, count: prev.liked ? Math.max(0, prev.count - 1) : prev.count + 1 } }));
+    const isSame = prev.reaction === type;
+    const newCounts = { ...prev.counts };
+    if (prev.reaction) newCounts[prev.reaction] = Math.max(0, (newCounts[prev.reaction] ?? 1) - 1);
+    if (!isSame) newCounts[type] = (newCounts[type] ?? 0) + 1;
+    setCommentLikes(s => ({ ...s, [commentId]: { reaction: isSame ? null : type, counts: newCounts } }));
     try {
-      const res = await fetch(`/api/tareeq/comments/${commentId}/react`, { method: 'POST', credentials: 'include' });
+      const res = await fetch(`/api/tareeq/comments/${commentId}/react`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ type }),
+      });
       if (res.ok) {
         const d = await res.json();
-        setCommentLikes(s => ({ ...s, [commentId]: { liked: d.liked, count: d.count } }));
+        setCommentLikes(s => ({ ...s, [commentId]: { reaction: d.reaction ?? null, counts: d.counts ?? {} } }));
       } else {
-        setCommentLikes(s => ({ ...s, [commentId]: prev })); // revert
+        setCommentLikes(s => ({ ...s, [commentId]: prev }));
       }
     } catch { setCommentLikes(s => ({ ...s, [commentId]: prev })); }
   }
@@ -265,7 +285,12 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
     setCommentLikes(prev => {
       const next = { ...prev };
       for (const c of list) {
-        if (!(c.id in next)) next[c.id] = { liked: !!c.liked, count: c.likeCount ?? 0 };
+        if (!(c.id in next)) {
+          next[c.id] = {
+            reaction: c.likedType ?? (c.liked ? 'heart' : null),
+            counts: c.reactionCounts ?? (c.likeCount ? { heart: c.likeCount } : {}),
+          };
+        }
       }
       return next;
     });
@@ -440,11 +465,34 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                                 <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{c.content}</p>
                                 <div style={{ display: 'flex', gap: 12, marginTop: 4, alignItems: 'center' }}>
                                   <button type="button" onClick={() => setReplyingTo({ commentId: c.id, authorName: c.user?.name ?? '' })} style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{isRtl ? 'رد' : 'Reply'}</button>
-                                  {/* Heart like */}
-                                  <button type="button" onClick={() => handleCommentLike(c.id)} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: commentLikes[c.id]?.liked ? '#ef4444' : 'var(--tr-text-muted)', transition: 'color 150ms' }}>
-                                    <span style={{ fontSize: 13 }}>{commentLikes[c.id]?.liked ? '❤️' : '🤍'}</span>
-                                    {(commentLikes[c.id]?.count ?? 0) > 0 && <span>{commentLikes[c.id]?.count}</span>}
-                                  </button>
+                                  {/* Emoji reactions on comment */}
+                                  <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => setShowCommentReactionPicker(showCommentReactionPicker === c.id ? null : c.id)}
+                                      style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: commentLikes[c.id]?.reaction ? (COMMENT_REACTIONS.find(r => r.type === commentLikes[c.id]?.reaction)?.color ?? '#ef4444') : 'var(--tr-text-muted)', transition: 'color 150ms' }}
+                                    >
+                                      <span style={{ fontSize: 13 }}>
+                                        {commentLikes[c.id]?.reaction
+                                          ? COMMENT_REACTIONS.find(r => r.type === commentLikes[c.id]?.reaction)?.emoji ?? '❤️'
+                                          : '🤍'}
+                                      </span>
+                                      {(() => {
+                                        const total = Object.values(commentLikes[c.id]?.counts ?? {}).reduce((s, n) => s + n, 0);
+                                        return total > 0 ? <span>{total}</span> : null;
+                                      })()}
+                                    </button>
+                                    {showCommentReactionPicker === c.id && (
+                                      <div style={{ position: 'absolute', bottom: '100%', left: 0, zIndex: 20, display: 'flex', gap: 4, padding: '6px 8px', borderRadius: 20, background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', boxShadow: '0 4px 20px rgba(0,0,0,0.25)', marginBottom: 4, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+                                        {COMMENT_REACTIONS.map(r => (
+                                          <button key={r.type} type="button" onClick={() => handleCommentReact(c.id, r.type as CommentReactionType)} title={isRtl ? r.labelAr : r.labelEn} style={{ fontSize: 20, background: commentLikes[c.id]?.reaction === r.type ? `${r.color}22` : 'none', border: 'none', cursor: 'pointer', borderRadius: 10, padding: '3px 4px', lineHeight: 1, transition: 'transform 120ms', transform: 'scale(1)' }}
+                                            onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.3)')}
+                                            onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+                                          >{r.emoji}</button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
                                   {user && user.id !== c.userId && (
                                     <button type="button" onClick={() => setReportCommentId(c.id)} style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{isRtl ? 'إبلاغ' : 'Report'}</button>
                                   )}
@@ -726,15 +774,33 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                             >
                               {isRtl ? 'رد' : 'Reply'}
                             </button>
-                            {/* Heart like button */}
-                            <button
-                              type="button"
-                              onClick={() => handleCommentLike(c.id)}
-                              style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: (commentLikes[c.id]?.liked) ? '#ef4444' : 'var(--tr-text-muted)', transition: 'color 150ms' }}
-                            >
-                              <span style={{ fontSize: 13 }}>{(commentLikes[c.id]?.liked) ? '❤️' : '🤍'}</span>
-                              {(commentLikes[c.id]?.count ?? 0) > 0 && <span>{commentLikes[c.id]?.count}</span>}
-                            </button>
+                            {/* Emoji reactions on comment */}
+                            <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => setShowCommentReactionPicker(showCommentReactionPicker === c.id ? null : c.id)}
+                                style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: commentLikes[c.id]?.reaction ? (COMMENT_REACTIONS.find(r => r.type === commentLikes[c.id]?.reaction)?.color ?? '#ef4444') : 'var(--tr-text-muted)', transition: 'color 150ms' }}
+                              >
+                                <span style={{ fontSize: 13 }}>
+                                  {commentLikes[c.id]?.reaction
+                                    ? COMMENT_REACTIONS.find(r => r.type === commentLikes[c.id]?.reaction)?.emoji ?? '❤️'
+                                    : '🤍'}
+                                </span>
+                                {(() => {
+                                  const total = Object.values(commentLikes[c.id]?.counts ?? {}).reduce((s, n) => s + n, 0);
+                                  return total > 0 ? <span>{total}</span> : null;
+                                })()}
+                              </button>
+                              {showCommentReactionPicker === c.id && (
+                                <div style={{ position: 'absolute', bottom: '100%', left: 0, zIndex: 20, display: 'flex', gap: 4, padding: '6px 8px', borderRadius: 20, background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', boxShadow: '0 4px 20px rgba(0,0,0,0.35)', marginBottom: 4, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+                                  {COMMENT_REACTIONS.map(r => (
+                                    <button key={r.type} type="button" onClick={() => handleCommentReact(c.id, r.type as CommentReactionType)} title={isRtl ? r.labelAr : r.labelEn} style={{ fontSize: 20, background: commentLikes[c.id]?.reaction === r.type ? `${r.color}22` : 'none', border: 'none', cursor: 'pointer', borderRadius: 10, padding: '3px 4px', lineHeight: 1 }}>
+                                      {r.emoji}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                             {(c.replyCount ?? 0) > 0 && (
                               <button
                                 onClick={() => loadReplies(c.id)}

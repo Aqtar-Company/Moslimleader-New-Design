@@ -4,7 +4,10 @@ import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isTareeqSuspended } from '@/lib/tareeq-guard';
 
-// POST — toggle heart reaction on a comment
+const ALLOWED_TYPES = ['heart', 'inspired', 'thanks', 'agree', 'yarabb'] as const;
+type CommentReactionType = typeof ALLOWED_TYPES[number];
+
+// POST — toggle reaction on a comment (type: heart | inspired | thanks | agree | yarabb)
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const authResult = await getAuthUser().catch(() => null);
   if (!authResult) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -17,6 +20,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: 'تم تعليق حسابك في طريق' }, { status: 403 });
   }
 
+  const body = await req.json().catch(() => ({}));
+  const type: CommentReactionType = ALLOWED_TYPES.includes(body.type) ? body.type : 'heart';
+
   const comment = await prisma.tareeqComment.findUnique({
     where: { id: params.id },
     select: { id: true, isHidden: true },
@@ -28,27 +34,47 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   });
 
   if (existing) {
-    await prisma.tareeqCommentReaction.delete({ where: { id: existing.id } });
-    const count = await prisma.tareeqCommentReaction.count({ where: { commentId: params.id } });
-    return NextResponse.json({ liked: false, count });
+    if (existing.type === type) {
+      // Same type → remove (toggle off)
+      await prisma.tareeqCommentReaction.delete({ where: { id: existing.id } });
+      const counts = await getReactionCounts(params.id);
+      return NextResponse.json({ reaction: null, counts });
+    } else {
+      // Different type → switch
+      await prisma.tareeqCommentReaction.update({ where: { id: existing.id }, data: { type } });
+      const counts = await getReactionCounts(params.id);
+      return NextResponse.json({ reaction: type, counts });
+    }
   } else {
-    await prisma.tareeqCommentReaction.create({ data: { commentId: params.id, userId: me.userId } });
-    const count = await prisma.tareeqCommentReaction.count({ where: { commentId: params.id } });
-    return NextResponse.json({ liked: true, count });
+    await prisma.tareeqCommentReaction.create({ data: { commentId: params.id, userId: me.userId, type } });
+    const counts = await getReactionCounts(params.id);
+    return NextResponse.json({ reaction: type, counts });
   }
 }
 
-// GET — fetch like count + whether current user liked
+async function getReactionCounts(commentId: string) {
+  const rows = await prisma.tareeqCommentReaction.groupBy({
+    by: ['type'],
+    where: { commentId },
+    _count: true,
+  });
+  const counts: Record<string, number> = {};
+  for (const r of rows) counts[r.type] = r._count;
+  return counts;
+}
+
+// GET — fetch reaction counts + current user's reaction
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const authResult = await getAuthUser().catch(() => null);
-  const [count, myReaction] = await Promise.all([
-    prisma.tareeqCommentReaction.count({ where: { commentId: params.id } }),
+  const [counts, myReaction] = await Promise.all([
+    getReactionCounts(params.id),
     authResult
       ? prisma.tareeqCommentReaction.findUnique({
           where: { commentId_userId: { commentId: params.id, userId: authResult.userId } },
-          select: { id: true },
+          select: { type: true },
         })
       : null,
   ]);
-  return NextResponse.json({ count, liked: !!myReaction });
+  const total = Object.values(counts).reduce((s, n) => s + n, 0);
+  return NextResponse.json({ counts, total, reaction: myReaction?.type ?? null });
 }

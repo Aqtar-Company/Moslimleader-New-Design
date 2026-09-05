@@ -16,12 +16,13 @@ export async function GET(req: Request) {
     const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10));
     const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') ?? '20', 10)));
     const status = url.searchParams.get('status') ?? 'all'; // all | suspended | active
+    const scope = url.searchParams.get('scope') ?? 'tareeq'; // tareeq | all
 
     const skip = (page - 1) * limit;
 
-    // Build where clause — only users who have used Tareeq
+    // Build where clause
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: any = { tareeqLastSeen: { not: null } };
+    const where: any = scope === 'tareeq' ? { tareeqLastSeen: { not: null } } : {};
 
     if (q.trim()) {
       where.OR = [

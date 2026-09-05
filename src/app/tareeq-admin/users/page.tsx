@@ -80,13 +80,14 @@ function UsersContent() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED'>('ALL');
+  const [scope, setScope] = useState<'tareeq' | 'all'>('tareeq');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const fetchUsers = useCallback(() => {
     setLoading(true);
-    const params = new URLSearchParams({ page: String(page), limit: '20' });
+    const params = new URLSearchParams({ page: String(page), limit: '20', scope });
     if (search) params.set('q', search);
     if (statusFilter !== 'ALL') params.set('status', statusFilter.toLowerCase());
 
@@ -98,14 +99,14 @@ function UsersContent() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [page, search, statusFilter]);
+  }, [page, search, statusFilter, scope]);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
   // Debounce search
   useEffect(() => {
     setPage(1);
-  }, [search, statusFilter]);
+  }, [search, statusFilter, scope]);
 
   async function toggleSuspend(user: User) {
     if (!can('users.view')) return;
@@ -182,6 +183,30 @@ function UsersContent() {
             onFocus={e => (e.currentTarget.style.borderColor = '#f59e0b')}
             onBlur={e => (e.currentTarget.style.borderColor = '#334155')}
           />
+        </div>
+
+        {/* Scope toggle */}
+        <div style={{ display: 'flex', gap: '0.25rem', background: '#0f172a', borderRadius: '8px', padding: '3px' }}>
+          {([['tareeq', 'مستخدمو طريق'], ['all', 'كل الأعضاء']] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setScope(key)}
+              style={{
+                background: scope === key ? '#f59e0b' : 'transparent',
+                border: 'none',
+                borderRadius: '6px',
+                color: scope === key ? '#0f172a' : '#94a3b8',
+                padding: '0.4rem 0.9rem',
+                fontSize: '0.8rem',
+                fontWeight: scope === key ? 700 : 400,
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {/* Status tabs */}

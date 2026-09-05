@@ -1,7 +1,6 @@
 'use client';
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LanguageContext';
 
@@ -71,15 +70,16 @@ function AuthContent() {
   const labelClass = 'block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide';
 
   return (
-    <div className="flex h-[calc(100vh-64px)]" dir={isRtl ? 'rtl' : 'ltr'}>
+    <div className="flex min-h-screen" dir={isRtl ? 'rtl' : 'ltr'}>
       {/* Image panel */}
-      <div className="hidden lg:relative lg:flex lg:w-1/2 bg-gray-900 overflow-hidden shrink-0 self-stretch">
-        <Image src="/sign-in.jpg" alt="" fill className="object-cover object-center" unoptimized />
-      </div>
+      <div
+        className="hidden lg:block lg:w-1/2 shrink-0 bg-cover bg-center bg-gray-900"
+        style={{ backgroundImage: "url('/sign-in.jpg')" }}
+      />
 
       {/* Form panel */}
       <div className="flex-1 flex items-center justify-center px-6 py-12 bg-white overflow-y-auto">
-        <div className="w-full max-w-md mx-auto">
+        <div className="w-full max-w-md">
 
           {/* EMAIL VERIFICATION PENDING */}
           {verifyEmail ? (

@@ -31,14 +31,7 @@ async function getJwtPayload(req: NextRequest): Promise<{ userId: string } | nul
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Mobile logged-in shortcut: / → /tareeq
   if (pathname === '/') {
-    if (isMobile(req)) {
-      const user = await getJwtPayload(req);
-      if (user) {
-        return NextResponse.redirect(new URL('/tareeq', req.url));
-      }
-    }
     return NextResponse.next();
   }
 

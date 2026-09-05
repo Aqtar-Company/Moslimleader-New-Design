@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
+import { sendPushToUser } from '@/lib/tareeq-push';
 
 // PATCH /api/tareeq/message-requests/[requestId]
 // body: { action: 'accept' | 'reject' }
@@ -30,6 +31,14 @@ export async function PATCH(
       where: { id: params.requestId },
       data: { status: 'rejected' },
     });
+    // Notify sender (non-blocking)
+    sendPushToUser(request.fromId, {
+      title: user.name ?? 'طريق',
+      body: `لم يقبل ${user.name ?? 'المستخدم'} طلب رسالتك`,
+      url: '/tareeq',
+      tag: `msgreq-reject-${params.requestId}`,
+      type: 'message',
+    }).catch(() => {});
     return NextResponse.json({ ok: true });
   }
 
@@ -54,6 +63,15 @@ export async function PATCH(
     where: { id: params.requestId },
     data: { status: 'accepted' },
   });
+
+  // Notify sender that their request was accepted (non-blocking)
+  sendPushToUser(request.fromId, {
+    title: user.name ?? 'طريق',
+    body: `${user.name ?? 'المستخدم'} قبل طلب رسالتك — يمكنك الآن التحدث معه`,
+    url: `/tareeq/inbox/${convo.id}`,
+    tag: `msgreq-accept-${params.requestId}`,
+    type: 'message',
+  }).catch(() => {});
 
   return NextResponse.json({ ok: true, conversationId: convo.id });
 }

@@ -307,6 +307,8 @@ function Inner({ conversationId }: { conversationId: string }) {
   const [replyingTo, setReplyingTo] = useState<{ id: string; content: string; senderName: string } | null>(null);
   const [msgActionSheet, setMsgActionSheet] = useState<{ id: string; mine: boolean; content: string; senderName: string } | null>(null);
   const [deletingMsgId, setDeletingMsgId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState('');
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const micTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const micIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -541,17 +543,28 @@ function Inner({ conversationId }: { conversationId: string }) {
 
   async function handleDeleteMessage(msgId: string) {
     setDeletingMsgId(msgId);
+    setDeleteError('');
     try {
       const res = await fetch(`/api/tareeq/conversations/${conversationId}/messages/${msgId}`, {
         method: 'DELETE',
         credentials: 'include',
       });
       if (res.ok) {
-        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: isRtl ? 'تم حذف هذه الرسالة' : 'This message was deleted', imageUrl: null, videoUrl: null, audioUrl: null } : m));
+        const deletedLabel = isRtl ? 'تم حذف هذه الرسالة' : 'This message was deleted';
+        setMessages(prev => prev.map(m =>
+          m.id === msgId
+            ? { ...m, content: deletedLabel, imageUrl: null, videoUrl: null, audioUrl: null, replyToContent: null }
+            : m
+        ));
+        setMsgActionSheet(null);
+        setDeleteConfirmId(null);
+      } else {
+        setDeleteError(isRtl ? 'فشل الحذف، حاول مرة أخرى' : 'Delete failed, try again');
       }
-    } catch { /* ignore */ } finally {
+    } catch {
+      setDeleteError(isRtl ? 'خطأ في الاتصال' : 'Connection error');
+    } finally {
       setDeletingMsgId(null);
-      setMsgActionSheet(null);
     }
   }
 
@@ -1020,7 +1033,7 @@ function Inner({ conversationId }: { conversationId: string }) {
                           onTouchMove={() => { if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; } }}
                         >
                           {/* Reply quote */}
-                          {m.replyToId && m.replyToContent !== null && (
+                          {m.replyToId && (
                             <div className="mx-2 mt-2 mb-0 px-2 py-1.5 rounded-lg text-xs" style={{
                               borderInlineStart: `3px solid ${group.mine ? 'rgba(255,255,255,0.50)' : MSG_BLUE}`,
                               background: group.mine ? 'rgba(0,0,0,0.18)' : 'rgba(26,110,212,0.07)',
@@ -1028,7 +1041,11 @@ function Inner({ conversationId }: { conversationId: string }) {
                               maxWidth: '100%',
                             }}>
                               <p className="font-semibold mb-0.5" style={{ fontSize: 10 }}>{group.mine ? (isRtl ? 'أنت رددت على' : 'You replied to') : group.senderInfo.name}</p>
-                              <p className="truncate" style={{ maxWidth: 200 }}>{m.replyToContent}</p>
+                              <p className="truncate italic" style={{ maxWidth: 200 }}>
+                                {m.replyToContent
+                                  ? m.replyToContent
+                                  : (isRtl ? '🚫 تم حذف هذه الرسالة' : '🚫 This message was deleted')}
+                              </p>
                             </div>
                           )}
                           {/* Shared post card */}
@@ -1399,7 +1416,7 @@ function Inner({ conversationId }: { conversationId: string }) {
         <div
           className="fixed inset-0 z-[200] flex items-end justify-center"
           style={{ background: 'rgba(0,0,0,0.45)' }}
-          onClick={() => setMsgActionSheet(null)}
+          onClick={() => { setMsgActionSheet(null); setDeleteConfirmId(null); setDeleteError(''); }}
         >
           <div
             className="w-full max-w-md rounded-t-2xl pb-safe"
@@ -1407,37 +1424,72 @@ function Inner({ conversationId }: { conversationId: string }) {
             onClick={e => e.stopPropagation()}
           >
             <div className="mx-auto mb-4 w-10 h-1 rounded-full" style={{ background: 'var(--tr-border-soft)' }} />
-            <button
-              className="w-full flex items-center gap-3 px-6 py-3.5 text-sm font-semibold"
-              style={{ color: 'var(--tr-text-primary)' }}
-              onClick={() => {
-                setReplyingTo({ id: msgActionSheet.id, content: msgActionSheet.content, senderName: msgActionSheet.senderName });
-                setMsgActionSheet(null);
-                setTimeout(() => textareaRef.current?.focus(), 50);
-              }}
-            >
-              <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
-              {isRtl ? 'رد على الرسالة' : 'Reply'}
-            </button>
-            {msgActionSheet.mine && (
-              <button
-                className="w-full flex items-center gap-3 px-6 py-3.5 text-sm font-semibold"
-                style={{ color: '#e74c3c' }}
-                disabled={deletingMsgId === msgActionSheet.id}
-                onClick={() => handleDeleteMessage(msgActionSheet.id)}
-              >
-                <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                {deletingMsgId === msgActionSheet.id ? (isRtl ? 'جاري الحذف...' : 'Deleting...') : (isRtl ? 'حذف الرسالة' : 'Delete message')}
-              </button>
+
+            {deleteConfirmId === msgActionSheet.id ? (
+              /* Confirmation step */
+              <div className="px-6">
+                <p className="text-sm font-bold mb-1" style={{ color: 'var(--tr-text-primary)' }}>
+                  {isRtl ? 'حذف هذه الرسالة؟' : 'Delete this message?'}
+                </p>
+                <p className="text-xs mb-4" style={{ color: 'var(--tr-text-muted)' }}>
+                  {isRtl ? 'لن يتمكن أحد من رؤيتها بعد الحذف' : 'No one will be able to see it after deletion'}
+                </p>
+                {deleteError && (
+                  <p className="text-xs mb-3 font-semibold" style={{ color: '#e74c3c' }}>{deleteError}</p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    className="flex-1 py-2.5 rounded-xl text-sm font-black transition active:scale-95"
+                    style={{ background: '#e74c3c', color: '#fff', opacity: deletingMsgId === msgActionSheet.id ? 0.6 : 1 }}
+                    disabled={!!deletingMsgId}
+                    onClick={() => handleDeleteMessage(msgActionSheet.id)}
+                  >
+                    {deletingMsgId === msgActionSheet.id ? (isRtl ? 'جاري الحذف...' : 'Deleting...') : (isRtl ? 'نعم، احذف' : 'Yes, delete')}
+                  </button>
+                  <button
+                    className="flex-1 py-2.5 rounded-xl text-sm font-bold transition active:scale-95"
+                    style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-primary)' }}
+                    onClick={() => { setDeleteConfirmId(null); setDeleteError(''); }}
+                  >
+                    {isRtl ? 'إلغاء' : 'Cancel'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Main actions */
+              <>
+                <button
+                  className="w-full flex items-center gap-3 px-6 py-3.5 text-sm font-semibold"
+                  style={{ color: 'var(--tr-text-primary)' }}
+                  onClick={() => {
+                    setReplyingTo({ id: msgActionSheet.id, content: msgActionSheet.content, senderName: msgActionSheet.senderName });
+                    setMsgActionSheet(null);
+                    setTimeout(() => textareaRef.current?.focus(), 50);
+                  }}
+                >
+                  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
+                  {isRtl ? 'رد على الرسالة' : 'Reply'}
+                </button>
+                {msgActionSheet.mine && (
+                  <button
+                    className="w-full flex items-center gap-3 px-6 py-3.5 text-sm font-semibold"
+                    style={{ color: '#e74c3c' }}
+                    onClick={() => setDeleteConfirmId(msgActionSheet.id)}
+                  >
+                    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    {isRtl ? 'حذف الرسالة' : 'Delete message'}
+                  </button>
+                )}
+                <button
+                  className="w-full flex items-center gap-3 px-6 py-3.5 text-sm"
+                  style={{ color: 'var(--tr-text-muted)' }}
+                  onClick={() => { setMsgActionSheet(null); setDeleteConfirmId(null); }}
+                >
+                  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                  {isRtl ? 'إلغاء' : 'Cancel'}
+                </button>
+              </>
             )}
-            <button
-              className="w-full flex items-center gap-3 px-6 py-3.5 text-sm"
-              style={{ color: 'var(--tr-text-muted)' }}
-              onClick={() => setMsgActionSheet(null)}
-            >
-              <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              {isRtl ? 'إلغاء' : 'Cancel'}
-            </button>
           </div>
         </div>
       )}

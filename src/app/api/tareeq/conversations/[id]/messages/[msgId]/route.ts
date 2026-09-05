@@ -12,9 +12,15 @@ export async function DELETE(
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
 
+  // Verify user is a participant in this conversation first (prevents enumeration)
+  const convo = await prisma.tareeqConversation.findUnique({ where: { id: params.id }, select: { participantA: true, participantB: true } });
+  if (!convo) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
+  if (convo.participantA !== user.userId && convo.participantB !== user.userId) {
+    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+  }
+
   const msg = await prisma.tareeqMessage.findUnique({ where: { id: params.msgId } });
-  if (!msg) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
-  if (msg.conversationId !== params.id) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
+  if (!msg || msg.conversationId !== params.id) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
   if (msg.senderId !== user.userId) return NextResponse.json({ error: 'يمكنك فقط حذف رسائلك' }, { status: 403 });
 
   await prisma.tareeqMessage.update({

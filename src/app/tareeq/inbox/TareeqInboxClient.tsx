@@ -118,6 +118,7 @@ function Inner() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [msgRequests, setMsgRequests] = useState<{ id: string; message: string; createdAt: string; from: { id: string; name: string; avatarUrl?: string | null; username?: string | null } }[]>([]);
   const [processingReqId, setProcessingReqId] = useState<string | null>(null);
+  const [reqError, setReqError] = useState('');
   const [loading, setLoading] = useState(true);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -139,6 +140,7 @@ function Inner() {
 
   async function handleRequest(reqId: string, action: 'accept' | 'reject') {
     setProcessingReqId(reqId);
+    setReqError('');
     try {
       const res = await fetch(`/api/tareeq/message-requests/${reqId}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -150,8 +152,12 @@ function Inner() {
         if (action === 'accept' && d.conversationId) {
           router.push(`/tareeq/inbox/${d.conversationId}`);
         }
+      } else {
+        setReqError(isRtl ? 'فشلت العملية، حاول مرة أخرى' : 'Action failed, try again');
       }
-    } catch { /* ignore */ } finally { setProcessingReqId(null); }
+    } catch {
+      setReqError(isRtl ? 'خطأ في الاتصال' : 'Connection error');
+    } finally { setProcessingReqId(null); }
   }
 
   useEffect(() => {
@@ -201,18 +207,21 @@ function Inner() {
                   </div>
                 </div>
                 <p className="text-[13px] leading-relaxed" style={{ color: 'var(--tr-text-primary)', background: 'var(--tr-overlay)', padding: '10px 14px', borderRadius: 12 }}>{r.message}</p>
+                {reqError && processingReqId === r.id && (
+                  <p className="text-xs font-semibold" style={{ color: '#e74c3c' }}>{reqError}</p>
+                )}
                 <div className="flex gap-2">
                   <button
-                    disabled={processingReqId === r.id}
+                    disabled={!!processingReqId}
                     onClick={() => handleRequest(r.id, 'accept')}
                     className="flex-1 py-2 rounded-xl text-sm font-bold transition active:scale-95"
-                    style={{ background: BLUE, color: '#fff', opacity: processingReqId === r.id ? 0.6 : 1 }}
-                  >{isRtl ? 'قبول' : 'Accept'}</button>
+                    style={{ background: BLUE, color: '#fff', opacity: processingReqId ? 0.6 : 1 }}
+                  >{processingReqId === r.id ? '...' : (isRtl ? 'قبول' : 'Accept')}</button>
                   <button
-                    disabled={processingReqId === r.id}
+                    disabled={!!processingReqId}
                     onClick={() => handleRequest(r.id, 'reject')}
                     className="flex-1 py-2 rounded-xl text-sm font-bold transition active:scale-95"
-                    style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', opacity: processingReqId === r.id ? 0.6 : 1 }}
+                    style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', opacity: processingReqId ? 0.6 : 1 }}
                   >{isRtl ? 'رفض' : 'Decline'}</button>
                 </div>
               </div>

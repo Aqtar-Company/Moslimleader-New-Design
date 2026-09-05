@@ -18,9 +18,10 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'قيمة غير صالحة' }, { status: 400 });
   }
 
-  await prisma.user.update({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (prisma.user.update as any)({
     where: { id: user.userId },
-    data: { tareeqMessagePrivacy: privacy } as object,
+    data: { tareeqMessagePrivacy: privacy },
   });
 
   return NextResponse.json({ ok: true, tareeqMessagePrivacy: privacy });

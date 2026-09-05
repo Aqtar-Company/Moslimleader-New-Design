@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
+import { isBlockedEitherWay } from '@/lib/tareeq-guard';
 
 // GET /api/tareeq/conversations/[id] — messages in conversation
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -12,6 +13,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   if (!convo) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
   if (convo.participantA !== user.userId && convo.participantB !== user.userId) {
     return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+  }
+
+  const otherId = convo.participantA === user.userId ? convo.participantB : convo.participantA;
+  if (await isBlockedEitherWay(user.userId, otherId)) {
+    return NextResponse.json({ error: 'لا يمكن الوصول لهذه المحادثة' }, { status: 403 });
   }
 
   const { searchParams } = new URL(req.url);
@@ -42,7 +48,6 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     });
   }
 
-  const otherId = convo.participantA === user.userId ? convo.participantB : convo.participantA;
   const otherUser = await prisma.user.findUnique({
     where: { id: otherId },
     select: { id: true, name: true, avatarUrl: true, tareeqLastSeen: true },
@@ -77,6 +82,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 }
 
 // DELETE /api/tareeq/conversations/[id] — soft-delete conversation for current user
+// Uses a transaction to avoid TOCTOU race when both sides delete simultaneously.
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
@@ -88,15 +94,20 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   }
 
   const isA = convo.participantA === user.userId;
-  await prisma.tareeqConversation.update({
-    where: { id: params.id },
-    data: isA ? { deletedForA: true } : { deletedForB: true },
-  });
 
-  // If both sides deleted, hard-delete the whole conversation
-  const refreshed = await prisma.tareeqConversation.findUnique({ where: { id: params.id } });
-  if (refreshed && refreshed.deletedForA && refreshed.deletedForB) {
-    await prisma.tareeqConversation.delete({ where: { id: params.id } });
+  try {
+    await prisma.$transaction(async (tx) => {
+      const updated = await tx.tareeqConversation.update({
+        where: { id: params.id },
+        data: isA ? { deletedForA: true } : { deletedForB: true },
+      });
+      if (updated.deletedForA && updated.deletedForB) {
+        await tx.tareeqConversation.delete({ where: { id: params.id } });
+      }
+    });
+  } catch (e: any) {
+    // P2025 = record not found — already hard-deleted by the other side, which is fine
+    if (e?.code !== 'P2025') throw e;
   }
 
   return NextResponse.json({ ok: true });

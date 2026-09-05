@@ -160,6 +160,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [msgReqText, setMsgReqText] = useState('');
   const [msgReqSending, setMsgReqSending] = useState(false);
   const [msgReqSent, setMsgReqSent] = useState(false);
+  const [msgReqError, setMsgReqError] = useState('');
   const [settingsUsername, setSettingsUsername] = useState(profileUser.username ?? '');
   const [msgPrivacy, setMsgPrivacy] = useState<string>(profileUser.tareeqMessagePrivacy ?? 'everyone');
   const [savingMsgPrivacy, setSavingMsgPrivacy] = useState(false);
@@ -443,6 +444,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   async function handleSendMsgRequest() {
     if (!msgReqText.trim() || msgReqSending) return;
     setMsgReqSending(true);
+    setMsgReqError('');
     try {
       const res = await fetch('/api/tareeq/message-requests', {
         method: 'POST',
@@ -450,8 +452,15 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
         credentials: 'include',
         body: JSON.stringify({ toId: profileUser.id, message: msgReqText.trim() }),
       });
-      if (res.ok) { setMsgReqSent(true); }
-    } catch { /* ignore */ } finally { setMsgReqSending(false); }
+      if (res.ok) {
+        setMsgReqSent(true);
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setMsgReqError(d.error || (isRtl ? 'فشل الإرسال، حاول مرة أخرى' : 'Failed to send, try again'));
+      }
+    } catch {
+      setMsgReqError(isRtl ? 'خطأ في الاتصال' : 'Connection error');
+    } finally { setMsgReqSending(false); }
   }
 
   async function renameFolder(id: string) {
@@ -1371,6 +1380,9 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                   dir="auto"
                 />
                 <p className="text-[11px] text-end" style={{ color: 'var(--tr-text-muted)' }}>{msgReqText.length}/500</p>
+                {msgReqError && (
+                  <p className="text-[13px] text-center rounded-xl px-3 py-2" style={{ color: '#e53e3e', background: 'rgba(229,62,62,0.08)' }}>{msgReqError}</p>
+                )}
                 <button
                   disabled={!msgReqText.trim() || msgReqSending}
                   onClick={handleSendMsgRequest}

@@ -16,8 +16,12 @@ export async function GET(req: NextRequest) {
       where: {
         senderId: { not: user.userId },
         read: false,
+        deletedAt: null,
         conversation: {
-          OR: [{ participantA: user.userId }, { participantB: user.userId }],
+          OR: [
+            { participantA: user.userId, deletedForA: false },
+            { participantB: user.userId, deletedForB: false },
+          ],
         },
       },
     });
@@ -45,23 +49,23 @@ export async function GET(req: NextRequest) {
   });
   const userMap = Object.fromEntries(users.map(u => [u.id, u]));
 
-  // Count unread messages in each conversation
-  const unreadCounts = await Promise.all(
-    convos.map(c =>
-      prisma.tareeqMessage.count({
-        where: { conversationId: c.id, senderId: { not: user.userId }, read: false },
-      })
-    )
-  );
+  // Count unread messages for all conversations in one grouped query (avoids N+1)
+  const convoIds = convos.map(c => c.id);
+  const unreadGroups = await prisma.tareeqMessage.groupBy({
+    by: ['conversationId'],
+    where: { conversationId: { in: convoIds }, senderId: { not: user.userId }, read: false, deletedAt: null },
+    _count: { id: true },
+  });
+  const unreadMap = Object.fromEntries(unreadGroups.map(g => [g.conversationId, g._count.id]));
 
-  const conversations = convos.map((c, i) => {
+  const conversations = convos.map(c => {
     const otherId = c.participantA === user.userId ? c.participantB : c.participantA;
     return {
       id: c.id,
       lastMessage: c.lastMessage,
       lastMessageAt: c.lastMessageAt,
       createdAt: c.createdAt,
-      unreadCount: unreadCounts[i],
+      unreadCount: unreadMap[c.id] ?? 0,
       otherUser: userMap[otherId] ?? { id: otherId, name: 'مستخدم', avatarUrl: null },
     };
   });
@@ -98,7 +102,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (privacy === 'followers') {
-    // Check if the target follows the sender (i.e., sender is a follower of target)
+    // Check if the sender follows the target — "followers only" means only people who follow the target can message them
     const isFollower = await prisma.tareeqFollow.findUnique({
       where: { followerId_followingId: { followerId: user.userId, followingId: otherId } },
     });
@@ -114,7 +118,7 @@ export async function POST(req: NextRequest) {
   const convo = await prisma.tareeqConversation.upsert({
     where: { participantA_participantB: { participantA: pA, participantB: pB } },
     create: { participantA: pA, participantB: pB },
-    update: {},
+    update: { deletedForA: false, deletedForB: false },
   });
 
   return NextResponse.json({ conversationId: convo.id });

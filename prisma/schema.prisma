@@ -1199,6 +1199,7 @@ model TareeqMessage {
   createdAt        DateTime           @default(now())
 
   @@index([conversationId, createdAt])
+  @@index([conversationId, deletedAt])
   @@index([senderId])
 }
 

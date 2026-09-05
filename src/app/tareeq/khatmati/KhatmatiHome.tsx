@@ -485,7 +485,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
             </div>
           ) : (
             <button
-              onClick={() => router.push('/login?next=/tareeq/khatmati')}
+              onClick={() => router.push('/tareeq/login?redirect=/tareeq/khatmati')}
               style={{
                 display: 'block', width: '100%', textAlign: 'center',
                 fontWeight: 700, padding: '16px 0', borderRadius: 18, fontSize: 15,

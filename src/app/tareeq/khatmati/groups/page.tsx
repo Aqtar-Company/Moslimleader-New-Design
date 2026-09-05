@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function GroupsPage() {
   const user = await getAuthUser().catch(() => null);
-  if (!user) redirect('/login?next=/tareeq/khatmati/groups');
+  if (!user) redirect('/tareeq/login?redirect=/tareeq/khatmati/groups');
 
   const memberships = await prisma.khatmaGroupMember.findMany({
     where: { userId: user.userId },

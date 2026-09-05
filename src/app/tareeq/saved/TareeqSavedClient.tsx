@@ -31,7 +31,7 @@ export default function TareeqSavedClient() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { router.push('/login?next=/tareeq/saved'); return; }
+    if (!user) { router.push('/tareeq/login?redirect=/tareeq/saved'); return; }
     fetch('/api/tareeq/bookmark-folders', { credentials: 'include' })
       .then(r => r.json()).then(d => setFolders(d.folders ?? [])).catch(() => {});
     const url = activeFolderId ? `/api/tareeq/bookmarks?folderId=${activeFolderId}` : '/api/tareeq/bookmarks';

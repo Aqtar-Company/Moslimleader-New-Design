@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function StatsPage() {
   const user = await getAuthUser().catch(() => null);
-  if (!user) redirect('/login?next=/tareeq/khatmati/stats');
+  if (!user) redirect('/tareeq/login?redirect=/tareeq/khatmati/stats');
 
   const progress = await prisma.khatmatiProgress.findUnique({ where: { userId: user.userId } });
   if (!progress) redirect('/tareeq/khatmati');

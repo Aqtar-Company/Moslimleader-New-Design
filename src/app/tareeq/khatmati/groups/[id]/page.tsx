@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function GroupDetailPage({ params }: { params: { id: string } }) {
   const user = await getAuthUser().catch(() => null);
-  if (!user) redirect(`/login?next=/tareeq/khatmati/groups/${params.id}`);
+  if (!user) redirect(`/tareeq/login?redirect=/tareeq/khatmati/groups/${params.id}`);
 
   const [group, soloProgress] = await Promise.all([
     prisma.khatmaGroup.findUnique({

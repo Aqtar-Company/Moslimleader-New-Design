@@ -38,7 +38,7 @@ export default function TareeqNotebookClient() {
 
   // Auth guard
   useEffect(() => {
-    if (!authLoading && !user) router.push('/login?next=/tareeq/notebook');
+    if (!authLoading && !user) router.push('/tareeq/login?redirect=/tareeq/notebook');
   }, [user, authLoading, router]);
 
   const fetchNotes = useCallback(async (q?: string, s?: string) => {

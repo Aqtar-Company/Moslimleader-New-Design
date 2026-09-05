@@ -21,6 +21,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const messages = await prisma.tareeqMessage.findMany({
     where: {
       conversationId: params.id,
+      deletedAt: null,
       ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),
     },
     orderBy: { createdAt: 'desc' },
@@ -73,4 +74,30 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     nextCursor,
     otherUser: otherUser ?? { id: otherId, name: 'مستخدم', avatarUrl: null },
   });
+}
+
+// DELETE /api/tareeq/conversations/[id] — soft-delete conversation for current user
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  const user = await getAuthUser().catch(() => null);
+  if (!user) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
+
+  const convo = await prisma.tareeqConversation.findUnique({ where: { id: params.id } });
+  if (!convo) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
+  if (convo.participantA !== user.userId && convo.participantB !== user.userId) {
+    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+  }
+
+  const isA = convo.participantA === user.userId;
+  await prisma.tareeqConversation.update({
+    where: { id: params.id },
+    data: isA ? { deletedForA: true } : { deletedForB: true },
+  });
+
+  // If both sides deleted, hard-delete the whole conversation
+  const refreshed = await prisma.tareeqConversation.findUnique({ where: { id: params.id } });
+  if (refreshed && refreshed.deletedForA && refreshed.deletedForB) {
+    await prisma.tareeqConversation.delete({ where: { id: params.id } });
+  }
+
+  return NextResponse.json({ ok: true });
 }

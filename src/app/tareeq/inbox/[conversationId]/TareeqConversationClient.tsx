@@ -305,6 +305,8 @@ function Inner({ conversationId }: { conversationId: string }) {
   const [waveformBars, setWaveformBars] = useState<number[]>(Array(24).fill(0.15));
   const [showNotebook, setShowNotebook] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{ id: string; content: string; senderName: string } | null>(null);
+  const [msgActionSheet, setMsgActionSheet] = useState<{ id: string; mine: boolean; content: string; senderName: string } | null>(null);
+  const [deletingMsgId, setDeletingMsgId] = useState<string | null>(null);
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const micTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const micIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -535,6 +537,22 @@ function Inner({ conversationId }: { conversationId: string }) {
         setActiveCall({ callId, role: 'caller', callType });
       }
     } catch { /* network error — ignore */ }
+  }
+
+  async function handleDeleteMessage(msgId: string) {
+    setDeletingMsgId(msgId);
+    try {
+      const res = await fetch(`/api/tareeq/conversations/${conversationId}/messages/${msgId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: isRtl ? 'تم حذف هذه الرسالة' : 'This message was deleted', imageUrl: null, videoUrl: null, audioUrl: null } : m));
+      }
+    } catch { /* ignore */ } finally {
+      setDeletingMsgId(null);
+      setMsgActionSheet(null);
+    }
   }
 
   async function handleSend() {
@@ -996,8 +1014,8 @@ function Inner({ conversationId }: { conversationId: string }) {
                             ...(group.mine ? {} : { border: '1px solid var(--tr-border-soft)' }),
                             borderRadius: group.mine ? mineRadius : otherRadius,
                           }}
-                          onContextMenu={e => { e.preventDefault(); setReplyingTo({ id: m.id, content: m.replyToContent ?? m.content ?? (m.imageUrl ? '📷' : m.audioUrl ? '🎙️' : '...'), senderName: group.senderInfo.name }); setTimeout(() => textareaRef.current?.focus(), 50); }}
-                          onTouchStart={() => { longPressRef.current = setTimeout(() => { setReplyingTo({ id: m.id, content: m.content || (m.imageUrl ? '📷' : m.audioUrl ? '🎙️' : '...'), senderName: group.senderInfo.name }); setTimeout(() => textareaRef.current?.focus(), 50); }, 500); }}
+                          onContextMenu={e => { e.preventDefault(); setMsgActionSheet({ id: m.id, mine: group.mine, content: m.content || (m.imageUrl ? '📷' : m.audioUrl ? '🎙️' : '...'), senderName: group.senderInfo.name }); }}
+                          onTouchStart={() => { longPressRef.current = setTimeout(() => { try { navigator.vibrate?.(30); } catch {} setMsgActionSheet({ id: m.id, mine: group.mine, content: m.content || (m.imageUrl ? '📷' : m.audioUrl ? '🎙️' : '...'), senderName: group.senderInfo.name }); }, 500); }}
                           onTouchEnd={() => { if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; } }}
                           onTouchMove={() => { if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; } }}
                         >
@@ -1374,6 +1392,54 @@ function Inner({ conversationId }: { conversationId: string }) {
           </button>
           {showNotebook && <TareeqNotebookPopup onClose={() => setShowNotebook(false)} />}
         </>
+      )}
+
+      {/* Message action sheet */}
+      {msgActionSheet && (
+        <div
+          className="fixed inset-0 z-[200] flex items-end justify-center"
+          style={{ background: 'rgba(0,0,0,0.45)' }}
+          onClick={() => setMsgActionSheet(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-t-2xl pb-safe"
+            style={{ background: 'var(--tr-surface)', padding: '20px 0 32px' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="mx-auto mb-4 w-10 h-1 rounded-full" style={{ background: 'var(--tr-border-soft)' }} />
+            <button
+              className="w-full flex items-center gap-3 px-6 py-3.5 text-sm font-semibold"
+              style={{ color: 'var(--tr-text-primary)' }}
+              onClick={() => {
+                setReplyingTo({ id: msgActionSheet.id, content: msgActionSheet.content, senderName: msgActionSheet.senderName });
+                setMsgActionSheet(null);
+                setTimeout(() => textareaRef.current?.focus(), 50);
+              }}
+            >
+              <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
+              {isRtl ? 'رد على الرسالة' : 'Reply'}
+            </button>
+            {msgActionSheet.mine && (
+              <button
+                className="w-full flex items-center gap-3 px-6 py-3.5 text-sm font-semibold"
+                style={{ color: '#e74c3c' }}
+                disabled={deletingMsgId === msgActionSheet.id}
+                onClick={() => handleDeleteMessage(msgActionSheet.id)}
+              >
+                <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                {deletingMsgId === msgActionSheet.id ? (isRtl ? 'جاري الحذف...' : 'Deleting...') : (isRtl ? 'حذف الرسالة' : 'Delete message')}
+              </button>
+            )}
+            <button
+              className="w-full flex items-center gap-3 px-6 py-3.5 text-sm"
+              style={{ color: 'var(--tr-text-muted)' }}
+              onClick={() => setMsgActionSheet(null)}
+            >
+              <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              {isRtl ? 'إلغاء' : 'Cancel'}
+            </button>
+          </div>
+        </div>
       )}
       </div> {/* end chat area */}
     </div>

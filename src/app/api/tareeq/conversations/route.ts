@@ -27,8 +27,8 @@ export async function GET(req: NextRequest) {
   const convos = await prisma.tareeqConversation.findMany({
     where: {
       OR: [
-        { participantA: user.userId },
-        { participantB: user.userId },
+        { participantA: user.userId, deletedForA: false },
+        { participantB: user.userId, deletedForB: false },
       ],
     },
     orderBy: { lastMessageAt: 'desc' },
@@ -81,11 +81,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'معرّف غير صالح' }, { status: 400 });
   }
 
-  const otherUser = await prisma.user.findUnique({ where: { id: otherId }, select: { id: true } });
+  const otherUser = await prisma.user.findUnique({
+    where: { id: otherId },
+    select: { id: true, tareeqMessagePrivacy: true },
+  });
   if (!otherUser) return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 404 });
 
   if (await isBlockedEitherWay(user.userId, otherId)) {
     return NextResponse.json({ error: 'لا يمكن بدء محادثة مع هذا المستخدم' }, { status: 403 });
+  }
+
+  const privacy = (otherUser as any).tareeqMessagePrivacy ?? 'everyone';
+
+  if (privacy === 'nobody') {
+    return NextResponse.json({ error: 'هذا المستخدم لا يقبل رسائل' }, { status: 403 });
+  }
+
+  if (privacy === 'followers') {
+    // Check if the target follows the sender (i.e., sender is a follower of target)
+    const isFollower = await prisma.tareeqFollow.findUnique({
+      where: { followerId_followingId: { followerId: user.userId, followingId: otherId } },
+    });
+    if (!isFollower) {
+      // Route to message request instead of direct conversation
+      return NextResponse.json({ requestRequired: true }, { status: 202 });
+    }
   }
 
   // Always sort alphabetically to ensure deduplication

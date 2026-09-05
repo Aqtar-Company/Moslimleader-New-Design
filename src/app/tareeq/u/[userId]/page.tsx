@@ -13,12 +13,12 @@ interface Props { params: { userId: string } }
 const resolveUser = cache(async function resolveUser(handle: string) {
   const byUsername = await prisma.user.findUnique({
     where: { username: handle },
-    select: { id: true, name: true, username: true, avatarUrl: true, coverUrl: true, createdAt: true },
+    select: { id: true, name: true, username: true, avatarUrl: true, coverUrl: true, createdAt: true, tareeqMessagePrivacy: true },
   });
   if (byUsername) return byUsername;
   return prisma.user.findUnique({
     where: { id: handle },
-    select: { id: true, name: true, username: true, avatarUrl: true, coverUrl: true, createdAt: true },
+    select: { id: true, name: true, username: true, avatarUrl: true, coverUrl: true, createdAt: true, tareeqMessagePrivacy: true },
   });
 });
 

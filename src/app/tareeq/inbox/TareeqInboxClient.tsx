@@ -113,9 +113,11 @@ function Inner() {
   const { isRtl } = useLang();
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
-  const [tab, setTab] = useState<'dms' | 'groups'>('dms');
+  const [tab, setTab] = useState<'dms' | 'groups' | 'requests'>('dms');
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [msgRequests, setMsgRequests] = useState<{ id: string; message: string; createdAt: string; from: { id: string; name: string; avatarUrl?: string | null; username?: string | null } }[]>([]);
+  const [processingReqId, setProcessingReqId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -127,10 +129,29 @@ function Inner() {
     Promise.all([
       fetch('/api/tareeq/conversations', { credentials: 'include' }).then(r => r.json()).catch(() => ({})),
       fetch('/api/tareeq/groups', { credentials: 'include' }).then(r => r.json()).catch(() => ({})),
-    ]).then(([c, g]) => {
+      fetch('/api/tareeq/message-requests', { credentials: 'include' }).then(r => r.json()).catch(() => ({})),
+    ]).then(([c, g, r]) => {
       setConversations(c.conversations ?? []);
       setGroups(g.groups ?? []);
+      setMsgRequests(r.requests ?? []);
     }).finally(() => setLoading(false));
+  }
+
+  async function handleRequest(reqId: string, action: 'accept' | 'reject') {
+    setProcessingReqId(reqId);
+    try {
+      const res = await fetch(`/api/tareeq/message-requests/${reqId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', body: JSON.stringify({ action }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setMsgRequests(prev => prev.filter(r => r.id !== reqId));
+        if (action === 'accept' && d.conversationId) {
+          router.push(`/tareeq/inbox/${d.conversationId}`);
+        }
+      }
+    } catch { /* ignore */ } finally { setProcessingReqId(null); }
   }
 
   useEffect(() => {
@@ -150,6 +171,7 @@ function Inner() {
   } as React.CSSProperties);
 
   const hasUnread = conversations.some(c => c.unreadCount > 0);
+  const hasRequests = msgRequests.length > 0;
 
   // ── Conversation list (shared between mobile + desktop panel) ──────
   const conversationList = (
@@ -159,7 +181,45 @@ function Inner() {
           <div className="w-5 h-5 border-2 rounded-full animate-spin"
             style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: BLUE }} />
         </div>
-      ) : tab === 'dms' ? (() => {
+      ) : tab === 'requests' ? (() => {
+        if (msgRequests.length === 0) return (
+          <div className="flex flex-col items-center px-6" style={{ paddingTop: '15dvh' }}>
+            <div className="w-14 h-14 mb-4 rounded-2xl flex items-center justify-center text-2xl" style={{ background: BLUE_SOFT }}>📬</div>
+            <p className="font-bold text-[15px]" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'لا طلبات جديدة' : 'No requests'}</p>
+            <p className="text-[13px] mt-1.5 text-center" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'ستظهر هنا طلبات الرسائل من غير المتابَعين' : 'Message requests from non-followers appear here'}</p>
+          </div>
+        );
+        return (
+          <div className="pb-2">
+            {msgRequests.map((r, idx) => (
+              <div key={r.id} className="flex flex-col gap-3 px-4 py-4" style={{ borderBottom: idx < msgRequests.length - 1 ? '1px solid var(--tr-border-subtle)' : 'none' }}>
+                <div className="flex items-center gap-3">
+                  <RowAvatar url={r.from.avatarUrl} name={r.from.name} />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-[15px] truncate" style={{ color: 'var(--tr-text-primary)' }}>{r.from.name}</p>
+                    {r.from.username && <p className="text-[12px]" style={{ color: 'var(--tr-text-muted)' }}>@{r.from.username}</p>}
+                  </div>
+                </div>
+                <p className="text-[13px] leading-relaxed" style={{ color: 'var(--tr-text-primary)', background: 'var(--tr-overlay)', padding: '10px 14px', borderRadius: 12 }}>{r.message}</p>
+                <div className="flex gap-2">
+                  <button
+                    disabled={processingReqId === r.id}
+                    onClick={() => handleRequest(r.id, 'accept')}
+                    className="flex-1 py-2 rounded-xl text-sm font-bold transition active:scale-95"
+                    style={{ background: BLUE, color: '#fff', opacity: processingReqId === r.id ? 0.6 : 1 }}
+                  >{isRtl ? 'قبول' : 'Accept'}</button>
+                  <button
+                    disabled={processingReqId === r.id}
+                    onClick={() => handleRequest(r.id, 'reject')}
+                    className="flex-1 py-2 rounded-xl text-sm font-bold transition active:scale-95"
+                    style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', opacity: processingReqId === r.id ? 0.6 : 1 }}
+                  >{isRtl ? 'رفض' : 'Decline'}</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })() : tab === 'dms' ? (() => {
         const filtered = conversations.filter(c =>
           !searchQuery || c.otherUser.name.toLowerCase().includes(searchQuery.toLowerCase())
         );
@@ -316,6 +376,13 @@ function Inner() {
             <button style={tabStyle(tab === 'groups')} onClick={() => setTab('groups')}>
               {isRtl ? 'المجموعات' : 'Groups'}
             </button>
+            <button style={tabStyle(tab === 'requests')} onClick={() => setTab('requests')}>
+              {isRtl ? 'طلبات' : 'Requests'}
+              {hasRequests && (
+                <span className="ms-1.5 inline-flex w-4 h-4 rounded-full text-[9px] font-black items-center justify-center"
+                  style={{ background: '#e74c3c', color: '#fff' }}>{msgRequests.length > 9 ? '9+' : msgRequests.length}</span>
+              )}
+            </button>
           </div>
           <div className="overflow-y-auto flex-1" style={{ scrollbarWidth: 'none' }}>
             {conversationList}
@@ -383,6 +450,13 @@ function Inner() {
             </button>
             <button style={tabStyle(tab === 'groups')} onClick={() => setTab('groups')}>
               {isRtl ? 'المجموعات' : 'Groups'}
+            </button>
+            <button style={tabStyle(tab === 'requests')} onClick={() => setTab('requests')}>
+              {isRtl ? 'طلبات' : 'Requests'}
+              {hasRequests && (
+                <span className="ms-1.5 inline-flex w-4 h-4 rounded-full text-[9px] font-black items-center justify-center"
+                  style={{ background: '#e74c3c', color: '#fff' }}>{msgRequests.length > 9 ? '9+' : msgRequests.length}</span>
+              )}
             </button>
           </div>
         </div>

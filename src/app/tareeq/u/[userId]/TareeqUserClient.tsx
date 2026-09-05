@@ -19,6 +19,7 @@ interface ProfileUser {
   avatarUrl?: string | null;
   coverUrl?: string | null;
   createdAt: string;
+  tareeqMessagePrivacy?: string | null;
 }
 
 interface Props {
@@ -155,7 +156,13 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showReportUser, setShowReportUser] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showMsgReqModal, setShowMsgReqModal] = useState(false);
+  const [msgReqText, setMsgReqText] = useState('');
+  const [msgReqSending, setMsgReqSending] = useState(false);
+  const [msgReqSent, setMsgReqSent] = useState(false);
   const [settingsUsername, setSettingsUsername] = useState(profileUser.username ?? '');
+  const [msgPrivacy, setMsgPrivacy] = useState<string>(profileUser.tareeqMessagePrivacy ?? 'everyone');
+  const [savingMsgPrivacy, setSavingMsgPrivacy] = useState(false);
   const [displayUsername, setDisplayUsername] = useState(profileUser.username ?? '');
   const [savingUsername, setSavingUsername] = useState(false);
   const [usernameError, setUsernameError] = useState('');
@@ -424,11 +431,27 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
         credentials: 'include',
         body: JSON.stringify({ userId: profileUser.id }),
       });
+      const d = await res.json();
       if (res.ok) {
-        const d = await res.json();
         router.push(`/tareeq/inbox/${d.conversationId}`);
+      } else if (res.status === 202 && d.requestRequired) {
+        setShowMsgReqModal(true);
       }
     } catch { /* ignore */ }
+  }
+
+  async function handleSendMsgRequest() {
+    if (!msgReqText.trim() || msgReqSending) return;
+    setMsgReqSending(true);
+    try {
+      const res = await fetch('/api/tareeq/message-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ toId: profileUser.id, message: msgReqText.trim() }),
+      });
+      if (res.ok) { setMsgReqSent(true); }
+    } catch { /* ignore */ } finally { setMsgReqSending(false); }
   }
 
   async function renameFolder(id: string) {
@@ -499,6 +522,19 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
       }
     } catch { setUsernameError(isRtl ? 'حدث خطأ' : 'Error'); }
     finally { setSavingUsername(false); }
+  }
+
+  async function saveMsgPrivacy(value: string) {
+    setSavingMsgPrivacy(true);
+    setMsgPrivacy(value);
+    try {
+      await fetch('/api/tareeq/settings/privacy', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ tareeqMessagePrivacy: value }),
+      });
+    } catch { /* ignore */ } finally { setSavingMsgPrivacy(false); }
   }
 
   const coverGradient = nameGradient(profileUser.name);
@@ -1307,6 +1343,46 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
       {showReportUser && <ReportModal targetType="user" targetId={profileUser.id} isRtl={isRtl} onClose={() => setShowReportUser(false)} />}
 
+      {/* Message request modal */}
+      {showMsgReqModal && (
+        <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }} onClick={() => { setShowMsgReqModal(false); setMsgReqSent(false); setMsgReqText(''); }}>
+          <div className="w-full sm:max-w-sm sm:mx-4 rounded-t-3xl sm:rounded-2xl p-6 flex flex-col gap-4" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)' }} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="font-black text-base" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'طلب رسالة' : 'Message Request'}</h2>
+              <button onClick={() => { setShowMsgReqModal(false); setMsgReqSent(false); setMsgReqText(''); }} className="w-8 h-8 flex items-center justify-center rounded-xl text-sm" style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)' }}>✕</button>
+            </div>
+            {msgReqSent ? (
+              <div className="flex flex-col items-center gap-3 py-4">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl" style={{ background: 'rgba(26,110,212,0.12)' }}>📬</div>
+                <p className="font-bold text-[15px] text-center" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'تم إرسال طلبك!' : 'Request sent!'}</p>
+                <p className="text-[13px] text-center" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? `سيتمكن ${profileUser.name} من قبول أو رفض طلبك` : `${profileUser.name} can accept or decline your request`}</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-[13px]" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? `${profileUser.name} يقبل الرسائل من المتابِعين فقط. أرسل طلباً برسالة مختصرة.` : `${profileUser.name} only accepts messages from followers. Send a short request.`}</p>
+                <textarea
+                  value={msgReqText}
+                  onChange={e => setMsgReqText(e.target.value)}
+                  maxLength={500}
+                  rows={4}
+                  placeholder={isRtl ? 'اكتب رسالتك هنا...' : 'Write your message here...'}
+                  className="w-full rounded-xl px-4 py-3 text-sm outline-none resize-none"
+                  style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
+                  dir="auto"
+                />
+                <p className="text-[11px] text-end" style={{ color: 'var(--tr-text-muted)' }}>{msgReqText.length}/500</p>
+                <button
+                  disabled={!msgReqText.trim() || msgReqSending}
+                  onClick={handleSendMsgRequest}
+                  className="w-full py-3 rounded-xl font-black text-sm transition active:scale-95"
+                  style={{ background: '#1a6ed4', color: '#fff', opacity: (!msgReqText.trim() || msgReqSending) ? 0.6 : 1 }}
+                >{msgReqSending ? (isRtl ? 'جاري الإرسال...' : 'Sending...') : (isRtl ? 'إرسال الطلب' : 'Send Request')}</button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Followers / Following modal */}
       {followListType && (
         <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center" style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }} onClick={() => setFollowListType(null)}>
@@ -1430,6 +1506,42 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                 </div>
                 {usernameError && (
                   <p className="mt-2 text-xs font-semibold" style={{ color: '#f43f5e' }}>{usernameError}</p>
+                )}
+              </div>
+
+              {/* Divider */}
+              <div style={{ height: 1, background: 'var(--tr-border-subtle)' }} />
+
+              {/* Message privacy */}
+              <div>
+                <p className="text-xs font-bold mb-2" style={{ color: 'var(--tr-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                  {isRtl ? 'من يستطيع مراسلتك' : 'Who can message you'}
+                </p>
+                <div className="flex flex-col gap-2">
+                  {(['everyone', 'followers', 'nobody'] as const).map(option => (
+                    <button
+                      key={option}
+                      disabled={savingMsgPrivacy}
+                      onClick={() => saveMsgPrivacy(option)}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-start"
+                      style={{
+                        background: msgPrivacy === option ? 'rgba(26,110,212,0.12)' : 'var(--tr-overlay)',
+                        color: msgPrivacy === option ? '#1a6ed4' : 'var(--tr-text-primary)',
+                        border: `1.5px solid ${msgPrivacy === option ? '#1a6ed4' : 'var(--tr-border-soft)'}`,
+                      }}
+                    >
+                      <span style={{ fontSize: 16 }}>{option === 'everyone' ? '🌍' : option === 'followers' ? '👥' : '🔒'}</span>
+                      <span>
+                        {isRtl
+                          ? option === 'everyone' ? 'الجميع' : option === 'followers' ? 'المتابِعون فقط' : 'لا أحد'
+                          : option === 'everyone' ? 'Everyone' : option === 'followers' ? 'Followers only' : 'Nobody'}
+                      </span>
+                      {msgPrivacy === option && <svg className="ms-auto w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>}
+                    </button>
+                  ))}
+                </div>
+                {msgPrivacy === 'followers' && (
+                  <p className="mt-2 text-[11px]" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'سيصل طلب رسالة من غير المتابِعين إلى بريد الطلبات' : 'Non-followers will send a request that goes to your Requests tab'}</p>
                 )}
               </div>
 

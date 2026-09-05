@@ -90,7 +90,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     url: `/tareeq/inbox/${params.id}`,
     tag: `msg-${params.id}`,
     type: 'message',
-    icon: msg.sender?.avatarUrl ?? undefined,
+    icon: message.sender?.avatarUrl ?? undefined,
   }).catch(() => {});
 
   // In-app notification at most once per 5 minutes (non-blocking)

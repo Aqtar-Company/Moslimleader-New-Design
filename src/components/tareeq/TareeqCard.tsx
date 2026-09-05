@@ -15,10 +15,27 @@ function extractYouTubeId(text: string): string | null {
   return m ? m[1] : null;
 }
 
-function extractFirstNonYouTubeUrl(text: string): string | null {
+function extractTikTokId(text: string): string | null {
+  const m = text.match(/tiktok\.com\/@[^/]+\/video\/(\d+)/);
+  return m ? m[1] : null;
+}
+
+function extractVimeoId(text: string): string | null {
+  const m = text.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  return m ? m[1] : null;
+}
+
+function extractFacebookVideoUrl(text: string): string | null {
+  const m = text.match(/https?:\/\/(?:www\.|m\.)?(?:facebook\.com\/(?:[^/]+\/videos\/|watch\/?\?v=|video\.php\?v=)|fb\.watch\/)[^\s<>"'؀-ۿ]+/);
+  return m ? m[0].split('?')[0] + (m[0].includes('?v=') ? '?' + m[0].split('?')[1] : '') : null;
+}
+
+const VIDEO_PLATFORMS_RE = /youtu\.?be|tiktok\.com|vimeo\.com|facebook\.com\/.*video|fb\.watch/;
+
+function extractFirstNonVideoUrl(text: string): string | null {
   const matches = text.match(/https?:\/\/[^\s<>"'؀-ۿ]{8,}/g);
   if (!matches) return null;
-  return matches.find(u => !/youtu\.?be/.test(u)) ?? null;
+  return matches.find(u => !VIDEO_PLATFORMS_RE.test(u)) ?? null;
 }
 
 function renderRichText(text: string): React.ReactNode {
@@ -1247,27 +1264,45 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             </button>
           )}
 
-          {/* YouTube embed — auto-detected from content */}
+          {/* Video embeds — auto-detected from content (YouTube → TikTok → Vimeo → Facebook) */}
           {(() => {
+            const embedStyle: React.CSSProperties = { aspectRatio: '16/9', border: '1px solid var(--tr-border-soft)' };
+            const iframeProps = { className: 'w-full h-full', allowFullScreen: true as const, loading: 'lazy' as const, style: { border: 'none', display: 'block' } };
+
             const ytId = extractYouTubeId(post.content);
-            if (!ytId) return null;
-            return (
-              <div className="mt-3 rounded-2xl overflow-hidden" style={{ aspectRatio: '16/9', border: '1px solid var(--tr-border-soft)' }} onClick={e => e.stopPropagation()}>
-                <iframe
-                  src={`https://www.youtube-nocookie.com/embed/${ytId}?rel=0&modestbranding=1`}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                  loading="lazy"
-                  style={{ border: 'none', display: 'block' }}
-                />
+            if (ytId) return (
+              <div className="mt-3 rounded-2xl overflow-hidden" style={embedStyle} onClick={e => e.stopPropagation()}>
+                <iframe src={`https://www.youtube-nocookie.com/embed/${ytId}?rel=0&modestbranding=1`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" {...iframeProps} />
               </div>
             );
+
+            const ttId = extractTikTokId(post.content);
+            if (ttId) return (
+              <div className="mt-3 rounded-2xl overflow-hidden" style={{ ...embedStyle, aspectRatio: '9/16', maxHeight: 560 }} onClick={e => e.stopPropagation()}>
+                <iframe src={`https://www.tiktok.com/embed/v2/${ttId}`} allow="autoplay" {...iframeProps} />
+              </div>
+            );
+
+            const vimeoId = extractVimeoId(post.content);
+            if (vimeoId) return (
+              <div className="mt-3 rounded-2xl overflow-hidden" style={embedStyle} onClick={e => e.stopPropagation()}>
+                <iframe src={`https://player.vimeo.com/video/${vimeoId}?badge=0&autopause=0`} allow="autoplay; fullscreen; picture-in-picture" {...iframeProps} />
+              </div>
+            );
+
+            const fbUrl = extractFacebookVideoUrl(post.content);
+            if (fbUrl) return (
+              <div className="mt-3 rounded-2xl overflow-hidden" style={embedStyle} onClick={e => e.stopPropagation()}>
+                <iframe src={`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(fbUrl)}&width=640&show_text=false&height=360`} allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" {...iframeProps} />
+              </div>
+            );
+
+            return null;
           })()}
 
-          {/* Link preview — shown only when no image/video and no YouTube */}
-          {isTextOnly && !extractYouTubeId(post.content) && (() => {
-            const firstUrl = extractFirstNonYouTubeUrl(post.content);
+          {/* Link preview — shown only when no image/video and no video embed detected */}
+          {isTextOnly && !extractYouTubeId(post.content) && !extractTikTokId(post.content) && !extractVimeoId(post.content) && !extractFacebookVideoUrl(post.content) && (() => {
+            const firstUrl = extractFirstNonVideoUrl(post.content);
             return firstUrl ? <LinkPreviewCard url={firstUrl} isRtl={isRtl} /> : null;
           })()}
 

@@ -162,7 +162,7 @@ function Inner() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { router.push('/login'); return; }
+    if (!user) { router.push('/tareeq/login'); return; }
     loadAll();
     const onVisible = () => { if (!document.hidden) loadAll(); };
     document.addEventListener('visibilitychange', onVisible);

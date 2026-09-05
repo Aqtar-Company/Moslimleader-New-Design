@@ -392,7 +392,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
 
   // Unauthenticated users see the full-screen landing gate
   if (!authLoading && !user) {
-    if (typeof window !== 'undefined') window.location.href = '/login?redirect=%2Ftareeq';
+    if (typeof window !== 'undefined') window.location.href = '/tareeq/login';
     return null;
   }
 

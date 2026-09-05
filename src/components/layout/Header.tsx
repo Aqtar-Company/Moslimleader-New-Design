@@ -32,8 +32,8 @@ export default function Header() {
       .catch(() => {});
   }, []);
 
-  // Tareeq and login have their own full-screen layouts
-  if (pathname?.startsWith('/tareeq') || pathname === '/login') return null;
+  // Tareeq has its own header
+  if (pathname?.startsWith('/tareeq')) return null;
 
   return (
     <>

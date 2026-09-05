@@ -403,7 +403,7 @@ function Inner({ conversationId }: { conversationId: string }) {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { router.push('/login'); return; }
+    if (!user) { router.push('/tareeq/login'); return; }
     loadMessages();
     pollingRef.current = setInterval(async () => {
       const res = await fetch(`/api/tareeq/conversations/${conversationId}`, { credentials: 'include' }).catch(() => null);

@@ -706,7 +706,7 @@ function Inner({ groupId }: { groupId: string }) {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { router.push('/login'); return; }
+    if (!user) { router.push('/tareeq/login'); return; }
     load();
     pollingRef.current = setInterval(async () => {
       const res = await fetch(`/api/tareeq/groups/${groupId}`, { credentials: 'include' }).catch(() => null);

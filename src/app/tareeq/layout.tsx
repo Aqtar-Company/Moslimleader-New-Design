@@ -20,7 +20,7 @@ export default async function TareeqLayout({ children }: { children: React.React
   try {
     await getAuthUser();
   } catch {
-    redirect('/login?redirect=%2Ftareeq');
+    redirect('/tareeq/login');
   }
   return (
     <div className="min-h-screen relative" data-tareeq-root style={{ background: 'var(--tr-base)' }}>

@@ -1137,7 +1137,7 @@ function Inner({ conversationId }: { conversationId: string }) {
           accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
           className="hidden" disabled={uploading} onChange={handleMedia} />
         <input ref={cameraInputRef} type="file"
-          accept="image/*" capture="environment"
+          accept="image/*,image/heic,image/heif" capture="environment"
           className="hidden" disabled={uploading} onChange={handleMedia} />
 
         <div className="w-full px-3 py-2 flex flex-col gap-2 relative">

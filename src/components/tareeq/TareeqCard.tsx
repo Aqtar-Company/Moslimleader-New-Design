@@ -1891,11 +1891,24 @@ function ShareDropdown({ postId, title, content, onCopy, onClose, onSendDM, onNa
   const postUrl = typeof window !== 'undefined' ? `${window.location.origin}/tareeq/${postId}` : `/tareeq/${postId}`;
   const text    = encodeURIComponent(title || content.slice(0, 80));
   const url     = encodeURIComponent(postUrl);
+
+  function openFbPopup(e: React.MouseEvent) {
+    e.stopPropagation();
+    onClose();
+    const w = 580, h = 400;
+    const left = Math.max(0, (screen.width - w) / 2);
+    const top  = Math.max(0, (screen.height - h) / 2);
+    window.open(
+      `https://www.facebook.com/sharer/sharer.php?u=${url}`,
+      'fb-share-dialog',
+      `width=${w},height=${h},top=${top},left=${left},toolbar=0,menubar=0,location=0,status=0,scrollbars=1`
+    );
+  }
+
   const items   = [
-    { label: 'WhatsApp',   color: '#25D366', href: `https://api.whatsapp.com/send?text=${text}%20${url}` },
-    { label: 'Twitter / X', color: '#000',  href: `https://twitter.com/intent/tweet?text=${text}&url=${url}` },
-    { label: 'Telegram',   color: '#4aaed9', href: `https://t.me/share/url?url=${url}&text=${text}` },
-    { label: 'Facebook',   color: '#4c8ef0', href: `https://www.facebook.com/sharer/sharer.php?u=${url}` },
+    { label: 'WhatsApp',    color: '#25D366', href: `https://api.whatsapp.com/send?text=${text}%20${url}` },
+    { label: 'Twitter / X', color: '#000',    href: `https://twitter.com/intent/tweet?text=${text}&url=${url}` },
+    { label: 'Telegram',    color: '#4aaed9', href: `https://t.me/share/url?url=${url}&text=${text}` },
   ];
   return (
     <div className="absolute bottom-full end-0 mb-2 py-1.5 w-44 z-30 rounded-2xl" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', boxShadow: '0 8px 28px rgba(0,0,0,0.14)' }}>
@@ -1911,6 +1924,11 @@ function ShareDropdown({ postId, title, content, onCopy, onClose, onSendDM, onNa
           {isRtl ? 'مشاركة خارجية' : 'Share externally'}
         </button>
       )}
+      {/* Facebook — popup so user stays in Tareeq */}
+      <button onClick={openFbPopup} className="flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-semibold w-full hover:opacity-70 transition" style={{ color: 'var(--tr-text-secondary)' }}>
+        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: '#1877f2' }} />
+        Facebook
+      </button>
       {items.map(item => (
         <a key={item.label} href={item.href} target="_blank" rel="noopener noreferrer" onClick={e => { e.stopPropagation(); onClose(); }} className="flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-semibold hover:opacity-70 transition" style={{ color: 'var(--tr-text-secondary)' }}>
           <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: item.color }} />

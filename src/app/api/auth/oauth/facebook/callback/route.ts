@@ -11,14 +11,19 @@ export async function GET(req: NextRequest) {
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://moslimleader.com';
 
+  const clearState = (res: NextResponse) => {
+    res.cookies.set('oauth_state_fb', '', { httpOnly: true, maxAge: 0, path: '/' });
+    return res;
+  };
+
   if (error || !code) {
-    return NextResponse.redirect(`${baseUrl}/tareeq/login?error=fb_failed`);
+    return clearState(NextResponse.redirect(`${baseUrl}/tareeq/login?error=fb_failed`));
   }
 
-  // Verify CSRF state cookie
-  const cookieState = req.cookies.get('oauth_state')?.value;
+  // Verify CSRF state cookie (separate from Google's oauth_state)
+  const cookieState = req.cookies.get('oauth_state_fb')?.value;
   if (!cookieState || !receivedState || cookieState !== receivedState) {
-    return NextResponse.redirect(`${baseUrl}/tareeq/login?error=fb_failed`);
+    return clearState(NextResponse.redirect(`${baseUrl}/tareeq/login?error=fb_failed`));
   }
 
   try {
@@ -30,86 +35,74 @@ export async function GET(req: NextRequest) {
     const tokenRes = await fetch('https://graph.facebook.com/v19.0/oauth/access_token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        code,
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: redirectUri,
-      }),
+      body: new URLSearchParams({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: redirectUri }),
     });
 
     const tokenData = await tokenRes.json();
     if (!tokenData.access_token) {
-      return NextResponse.redirect(`${baseUrl}/tareeq/login?error=fb_failed`);
+      return clearState(NextResponse.redirect(`${baseUrl}/tareeq/login?error=fb_failed`));
     }
 
     // Get user info from Facebook
     const userRes = await fetch(
-      `https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${tokenData.access_token}`
+      `https://graph.facebook.com/me?fields=id,name,email&access_token=${tokenData.access_token}`
     );
     const fbUser = await userRes.json();
 
     if (!fbUser.id) {
-      return NextResponse.redirect(`${baseUrl}/tareeq/login?error=fb_failed`);
+      return clearState(NextResponse.redirect(`${baseUrl}/tareeq/login?error=fb_failed`));
     }
 
-    // Facebook may not return email if user removed it — generate a placeholder in that case
-    const emailKey = fbUser.email
-      ? fbUser.email.toLowerCase()
-      : `fb_${fbUser.id}@fb.placeholder`;
+    // 1. Look up by OAuthAccount first — handles users who revoked email permission
+    const existingOAuth = await prisma.oAuthAccount.findUnique({
+      where: { provider_providerAccountId: { provider: 'facebook', providerAccountId: String(fbUser.id) } },
+      select: { userId: true },
+    });
 
-    // Find or create user
-    let user = await prisma.user.findUnique({ where: { email: emailKey } });
+    let user;
+    if (existingOAuth) {
+      // Known FB user — load their account directly
+      user = await prisma.user.findUnique({ where: { id: existingOAuth.userId } });
+    }
 
     if (!user) {
-      // Grant admin role if email matches ADMIN_EMAIL env var
-      const adminEmail = (process.env.ADMIN_EMAIL || '').toLowerCase();
-      const role = (adminEmail && emailKey === adminEmail) ? 'admin' : 'customer';
+      // 2. Try by email (first-time login with email permission)
+      const emailKey = fbUser.email
+        ? fbUser.email.toLowerCase()
+        : `fb_${fbUser.id}@fb.placeholder`;
 
-      user = await prisma.user.create({
-        data: {
-          name: fbUser.name || emailKey.split('@')[0],
-          email: emailKey,
-          passwordHash: '',
-          emailVerified: true,
-          role,
-          savedAddresses: [],
-        },
+      user = await prisma.user.findUnique({ where: { email: emailKey } });
+
+      if (!user) {
+        const adminEmail = (process.env.ADMIN_EMAIL || '').toLowerCase();
+        const role = (adminEmail && emailKey === adminEmail) ? 'admin' : 'customer';
+        user = await prisma.user.create({
+          data: { name: fbUser.name || `fb_${fbUser.id}`, email: emailKey, passwordHash: '', emailVerified: true, role, savedAddresses: [] },
+        });
+      }
+
+      // Link this FB account to the user (first time)
+      await prisma.oAuthAccount.upsert({
+        where: { provider_providerAccountId: { provider: 'facebook', providerAccountId: String(fbUser.id) } },
+        update: {},
+        create: { provider: 'facebook', providerAccountId: String(fbUser.id), userId: user.id },
       });
+    }
+
+    if (!user) {
+      return clearState(NextResponse.redirect(`${baseUrl}/tareeq/login?error=fb_failed`));
     }
 
     if (!user.emailVerified) {
       await prisma.user.update({ where: { id: user.id }, data: { emailVerified: true } });
     }
 
-    // Link OAuth account
-    await prisma.oAuthAccount.upsert({
-      where: {
-        provider_providerAccountId: {
-          provider: 'facebook',
-          providerAccountId: String(fbUser.id),
-        },
-      },
-      update: {},
-      create: {
-        provider: 'facebook',
-        providerAccountId: String(fbUser.id),
-        userId: user.id,
-      },
-    });
-
-    // Create JWT token and set cookie using shared makeAuthCookie (consistent cookie name)
     const token = await signToken({ userId: user.id, email: user.email, role: user.role, name: user.name });
     const response = NextResponse.redirect(`${baseUrl}/tareeq`);
     response.cookies.set(makeAuthCookie(token));
-    // Clear the CSRF state cookie
-    response.cookies.set('oauth_state', '', { httpOnly: true, maxAge: 0, path: '/' });
-
-    return response;
+    return clearState(response);
   } catch (err) {
     console.error('[facebook oauth callback]', err);
-    const errResponse = NextResponse.redirect(`${baseUrl}/tareeq/login?error=fb_failed`);
-    errResponse.cookies.set('oauth_state', '', { httpOnly: true, maxAge: 0, path: '/' });
-    return errResponse;
+    return clearState(NextResponse.redirect(`${baseUrl}/tareeq/login?error=fb_failed`));
   }
 }

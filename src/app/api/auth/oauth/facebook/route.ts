@@ -19,7 +19,7 @@ export async function GET() {
   });
 
   const response = NextResponse.redirect(`https://www.facebook.com/v19.0/dialog/oauth?${params.toString()}`);
-  response.cookies.set('oauth_state', state, {
+  response.cookies.set('oauth_state_fb', state, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',

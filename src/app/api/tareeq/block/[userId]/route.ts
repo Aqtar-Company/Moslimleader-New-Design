@@ -18,7 +18,8 @@ export async function GET(_req: NextRequest, { params }: { params: { userId: str
     }),
   ]);
 
-  return NextResponse.json({ blocking: !!blocking, blockedBy: !!blockedBy });
+  // Never reveal to the blocked user that they are blocked — always return false for blockedBy
+  return NextResponse.json({ blocking: !!blocking, blockedBy: false });
 }
 
 // POST — toggle block/unblock. Blocking someone stops them from DMing you

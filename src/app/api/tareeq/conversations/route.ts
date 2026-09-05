@@ -16,8 +16,12 @@ export async function GET(req: NextRequest) {
       where: {
         senderId: { not: user.userId },
         read: false,
+        deletedAt: null,
         conversation: {
-          OR: [{ participantA: user.userId }, { participantB: user.userId }],
+          OR: [
+            { participantA: user.userId, deletedForA: false },
+            { participantB: user.userId, deletedForB: false },
+          ],
         },
       },
     });
@@ -27,8 +31,8 @@ export async function GET(req: NextRequest) {
   const convos = await prisma.tareeqConversation.findMany({
     where: {
       OR: [
-        { participantA: user.userId },
-        { participantB: user.userId },
+        { participantA: user.userId, deletedForA: false },
+        { participantB: user.userId, deletedForB: false },
       ],
     },
     orderBy: { lastMessageAt: 'desc' },
@@ -45,23 +49,23 @@ export async function GET(req: NextRequest) {
   });
   const userMap = Object.fromEntries(users.map(u => [u.id, u]));
 
-  // Count unread messages in each conversation
-  const unreadCounts = await Promise.all(
-    convos.map(c =>
-      prisma.tareeqMessage.count({
-        where: { conversationId: c.id, senderId: { not: user.userId }, read: false },
-      })
-    )
-  );
+  // Count unread messages for all conversations in one grouped query (avoids N+1)
+  const convoIds = convos.map(c => c.id);
+  const unreadGroups = await prisma.tareeqMessage.groupBy({
+    by: ['conversationId'],
+    where: { conversationId: { in: convoIds }, senderId: { not: user.userId }, read: false, deletedAt: null },
+    _count: { id: true },
+  });
+  const unreadMap = Object.fromEntries(unreadGroups.map(g => [g.conversationId, g._count.id]));
 
-  const conversations = convos.map((c, i) => {
+  const conversations = convos.map(c => {
     const otherId = c.participantA === user.userId ? c.participantB : c.participantA;
     return {
       id: c.id,
       lastMessage: c.lastMessage,
       lastMessageAt: c.lastMessageAt,
       createdAt: c.createdAt,
-      unreadCount: unreadCounts[i],
+      unreadCount: unreadMap[c.id] ?? 0,
       otherUser: userMap[otherId] ?? { id: otherId, name: 'مستخدم', avatarUrl: null },
     };
   });
@@ -81,11 +85,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'معرّف غير صالح' }, { status: 400 });
   }
 
-  const otherUser = await prisma.user.findUnique({ where: { id: otherId }, select: { id: true } });
+  const otherUser = await prisma.user.findUnique({
+    where: { id: otherId },
+    select: { id: true, tareeqMessagePrivacy: true },
+  });
   if (!otherUser) return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 404 });
 
   if (await isBlockedEitherWay(user.userId, otherId)) {
     return NextResponse.json({ error: 'لا يمكن بدء محادثة مع هذا المستخدم' }, { status: 403 });
+  }
+
+  const privacy = (otherUser as any).tareeqMessagePrivacy ?? 'everyone';
+
+  if (privacy === 'nobody') {
+    return NextResponse.json({ error: 'هذا المستخدم لا يقبل رسائل' }, { status: 403 });
+  }
+
+  if (privacy === 'followers') {
+    // Check if the sender follows the target — "followers only" means only people who follow the target can message them
+    const isFollower = await prisma.tareeqFollow.findUnique({
+      where: { followerId_followingId: { followerId: user.userId, followingId: otherId } },
+    });
+    if (!isFollower) {
+      // Route to message request instead of direct conversation
+      return NextResponse.json({ requestRequired: true }, { status: 202 });
+    }
   }
 
   // Always sort alphabetically to ensure deduplication
@@ -94,7 +118,7 @@ export async function POST(req: NextRequest) {
   const convo = await prisma.tareeqConversation.upsert({
     where: { participantA_participantB: { participantA: pA, participantB: pB } },
     create: { participantA: pA, participantB: pB },
-    update: {},
+    update: { deletedForA: false, deletedForB: false },
   });
 
   return NextResponse.json({ conversationId: convo.id });

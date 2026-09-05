@@ -304,10 +304,14 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
               if (xhr.status >= 200 && xhr.status < 300) {
                 setExtraImages(prev => prev.map(x => x.id === item.id ? { ...x, url: data.url, progress: 100 } : x));
                 resolve();
-              } else { reject(); }
+              } else {
+                const errMsg = data?.error || (isRtl ? 'فشل رفع صورة' : 'Image upload failed');
+                setError(errMsg);
+                reject();
+              }
             } catch { reject(); }
           };
-          xhr.onerror = () => reject();
+          xhr.onerror = () => { setError(isRtl ? 'خطأ في رفع الصورة' : 'Image upload error'); reject(); };
           xhr.send(form);
         });
       } catch {
@@ -799,7 +803,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                     <input
                       ref={extraFileInputRef}
                       type="file"
-                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif"
                       multiple
                       className="hidden"
                       onChange={handleExtraImages}

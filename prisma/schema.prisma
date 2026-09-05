@@ -43,6 +43,7 @@ model User {
   tareeqSuspended         Boolean   @default(false)
   tareeqSuspendedAt       DateTime?
   tareeqSuspendReason     String?
+  tareeqMessagePrivacy    String    @default("everyone")
   communityMemberNumber   String?   @unique
   username                String?   @unique
   createdAt               DateTime  @default(now())
@@ -93,6 +94,8 @@ model User {
   khatmatiWirds           KhatmatiWird[]
   tareeqBlocksMade        TareeqBlock[]            @relation("TareeqBlocksMade")
   tareeqBlocksReceived    TareeqBlock[]            @relation("TareeqBlocksReceived")
+  tareeqMsgRequestsSent   TareeqMessageRequest[]   @relation("TareeqMsgReqFrom")
+  tareeqMsgRequestsReceived TareeqMessageRequest[] @relation("TareeqMsgReqTo")
   khatmaGroupsAdmin       KhatmaGroup[]            @relation("KhatmaGroupAdmin")
   khatmaGroupMemberships  KhatmaGroupMember[]      @relation("KhatmaGroupMemberships")
   familyMembership        FamilyMembership?        @relation("MembershipOwner")
@@ -1165,6 +1168,8 @@ model TareeqConversation {
   participantB  String
   lastMessage   String?         @db.Text
   lastMessageAt DateTime?
+  deletedForA   Boolean         @default(false)
+  deletedForB   Boolean         @default(false)
   createdAt     DateTime        @default(now())
   messages      TareeqMessage[]
 
@@ -1184,6 +1189,10 @@ model TareeqMessage {
   videoUrl         String?            @db.Text
   audioUrl         String?            @db.Text
   read             Boolean            @default(false)
+  deletedAt        DateTime?
+  deletedForA      Boolean   @default(false)
+  deletedForB      Boolean   @default(false)
+  expiresAt        DateTime?
   replyToId        String?
   replyToContent   String?            @db.Text
   sharedPostId     String?
@@ -1192,7 +1201,23 @@ model TareeqMessage {
   createdAt        DateTime           @default(now())
 
   @@index([conversationId, createdAt])
+  @@index([conversationId, deletedAt])
   @@index([senderId])
+}
+
+model TareeqMessageRequest {
+  id          String   @id @default(cuid())
+  fromId      String
+  from        User     @relation("TareeqMsgReqFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  toId        String
+  to          User     @relation("TareeqMsgReqTo", fields: [toId], references: [id], onDelete: Cascade)
+  message     String   @db.Text
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+
+  @@unique([fromId, toId])
+  @@index([toId])
+  @@index([fromId])
 }
 
 model TareeqPushSubscription {

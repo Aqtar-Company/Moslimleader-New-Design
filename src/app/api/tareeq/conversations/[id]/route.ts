@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
+import { isBlockedEitherWay } from '@/lib/tareeq-guard';
 
 // GET /api/tareeq/conversations/[id] — messages in conversation
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -14,13 +15,22 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   }
 
+  const otherId = convo.participantA === user.userId ? convo.participantB : convo.participantA;
+  if (await isBlockedEitherWay(user.userId, otherId)) {
+    return NextResponse.json({ error: 'لا يمكن الوصول لهذه المحادثة' }, { status: 403 });
+  }
+
   const { searchParams } = new URL(req.url);
   const cursor = searchParams.get('cursor');
   const limit = 30;
 
-  const messages = await prisma.tareeqMessage.findMany({
+  const isA = convo.participantA === user.userId;
+
+  const rawMessages = await prisma.tareeqMessage.findMany({
     where: {
       conversationId: params.id,
+      // Exclude messages the current user deleted for themselves; keep tombstones (deletedAt != null)
+      ...(isA ? { deletedForA: false } : { deletedForB: false }),
       ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),
     },
     orderBy: { createdAt: 'desc' },
@@ -28,8 +38,23 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     select: {
       id: true, content: true, imageUrl: true, videoUrl: true, audioUrl: true, read: true, createdAt: true, senderId: true,
       replyToId: true, replyToContent: true, sharedPostId: true, sharedPostTitle: true, sharedPostImageUrl: true,
+      deletedAt: true,
       sender: { select: { id: true, name: true, avatarUrl: true } },
     },
+  });
+
+  // Shape messages: tombstones lose media/content, expose isDeletedForEveryone flag
+  const messages = rawMessages.map(m => {
+    if (m.deletedAt) {
+      return {
+        id: m.id, content: '', imageUrl: null, videoUrl: null, audioUrl: null,
+        read: m.read, createdAt: m.createdAt, senderId: m.senderId, sender: m.sender,
+        replyToId: null, replyToContent: null, sharedPostId: null, sharedPostTitle: null, sharedPostImageUrl: null,
+        isDeletedForEveryone: true,
+      };
+    }
+    const { deletedAt: _d, ...rest } = m;
+    return { ...rest, isDeletedForEveryone: false };
   });
 
   // Mark only the fetched unread messages as read (not beyond the page window)
@@ -41,7 +66,6 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     });
   }
 
-  const otherId = convo.participantA === user.userId ? convo.participantB : convo.participantA;
   const otherUser = await prisma.user.findUnique({
     where: { id: otherId },
     select: { id: true, name: true, avatarUrl: true, tareeqLastSeen: true },
@@ -73,4 +97,36 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     nextCursor,
     otherUser: otherUser ?? { id: otherId, name: 'مستخدم', avatarUrl: null },
   });
+}
+
+// DELETE /api/tareeq/conversations/[id] — soft-delete conversation for current user
+// Uses a transaction to avoid TOCTOU race when both sides delete simultaneously.
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  const user = await getAuthUser().catch(() => null);
+  if (!user) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
+
+  const convo = await prisma.tareeqConversation.findUnique({ where: { id: params.id } });
+  if (!convo) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
+  if (convo.participantA !== user.userId && convo.participantB !== user.userId) {
+    return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+  }
+
+  const isA = convo.participantA === user.userId;
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const updated = await tx.tareeqConversation.update({
+        where: { id: params.id },
+        data: isA ? { deletedForA: true } : { deletedForB: true },
+      });
+      if (updated.deletedForA && updated.deletedForB) {
+        await tx.tareeqConversation.delete({ where: { id: params.id } });
+      }
+    });
+  } catch (e: any) {
+    // P2025 = record not found — already hard-deleted by the other side, which is fine
+    if (e?.code !== 'P2025') throw e;
+  }
+
+  return NextResponse.json({ ok: true });
 }

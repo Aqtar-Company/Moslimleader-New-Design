@@ -13,12 +13,12 @@ interface Props { params: { userId: string } }
 const resolveUser = cache(async function resolveUser(handle: string) {
   const byUsername = await prisma.user.findUnique({
     where: { username: handle },
-    select: { id: true, name: true, username: true, avatarUrl: true, coverUrl: true, createdAt: true },
+    select: { id: true, name: true, username: true, avatarUrl: true, coverUrl: true, createdAt: true, tareeqMessagePrivacy: true },
   });
   if (byUsername) return byUsername;
   return prisma.user.findUnique({
     where: { id: handle },
-    select: { id: true, name: true, username: true, avatarUrl: true, coverUrl: true, createdAt: true },
+    select: { id: true, name: true, username: true, avatarUrl: true, coverUrl: true, createdAt: true, tareeqMessagePrivacy: true },
   });
 });
 
@@ -79,16 +79,12 @@ export default async function TareeqUserPage({ params }: Props) {
     reactions: undefined,
   }));
 
-  const serializedUser = {
-    ...profileUser,
-    coverUrl: profileUser.coverUrl ?? null,
-    createdAt: profileUser.createdAt.toISOString(),
-  };
-
-  // Fetch liked IDs for the current viewer (best-effort)
+  // Fetch liked IDs for the current viewer (best-effort) + check ownership
   let likedIds: string[] = [];
+  let isOwner = false;
   try {
     const viewer = await getAuthUser();
+    isOwner = viewer.userId === profileUser.id;
     const likes = await prisma.tareeqLike.findMany({
       where: { userId: viewer.userId, postId: { in: posts.map(p => p.id) } },
       select: { postId: true },
@@ -97,6 +93,17 @@ export default async function TareeqUserPage({ params }: Props) {
   } catch {
     // unauthenticated — empty likedIds is fine
   }
+
+  // Only expose tareeqMessagePrivacy to the profile owner — hide from public HTML
+  const serializedUser = {
+    id: profileUser.id,
+    name: profileUser.name,
+    username: profileUser.username ?? null,
+    avatarUrl: profileUser.avatarUrl ?? null,
+    coverUrl: profileUser.coverUrl ?? null,
+    createdAt: profileUser.createdAt.toISOString(),
+    ...(isOwner ? { tareeqMessagePrivacy: profileUser.tareeqMessagePrivacy ?? 'everyone' } : {}),
+  };
 
   return (
     <TareeqUserClient

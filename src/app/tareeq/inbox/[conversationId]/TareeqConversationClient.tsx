@@ -25,6 +25,7 @@ interface Message {
   sharedPostId?: string | null;
   sharedPostTitle?: string | null;
   sharedPostImageUrl?: string | null;
+  isDeletedForEveryone?: boolean;
 }
 interface OtherUser { id: string; name: string; avatarUrl?: string | null; tareeqLastSeen?: string | null }
 
@@ -305,6 +306,11 @@ function Inner({ conversationId }: { conversationId: string }) {
   const [waveformBars, setWaveformBars] = useState<number[]>(Array(24).fill(0.15));
   const [showNotebook, setShowNotebook] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{ id: string; content: string; senderName: string } | null>(null);
+  const [msgActionSheet, setMsgActionSheet] = useState<{ id: string; mine: boolean; content: string; senderName: string } | null>(null);
+  const [deletingMsgId, setDeletingMsgId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteType, setDeleteType] = useState<'me' | 'everyone'>('me');
+  const [deleteError, setDeleteError] = useState('');
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const micTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const micIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -535,6 +541,41 @@ function Inner({ conversationId }: { conversationId: string }) {
         setActiveCall({ callId, role: 'caller', callType });
       }
     } catch { /* network error — ignore */ }
+  }
+
+  async function handleDeleteMessage(msgId: string, type: 'me' | 'everyone') {
+    setDeletingMsgId(msgId);
+    setDeleteError('');
+    try {
+      const res = await fetch(`/api/tareeq/conversations/${conversationId}/messages/${msgId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deleteType: type }),
+      });
+      if (res.ok) {
+        if (type === 'everyone') {
+          // Tombstone — replace with deleted marker for both sides
+          setMessages(prev => prev.map(m =>
+            m.id === msgId
+              ? { ...m, content: '', imageUrl: null, videoUrl: null, audioUrl: null, replyToContent: null, isDeletedForEveryone: true }
+              : m
+          ));
+        } else {
+          // Hidden only for me — remove from local list
+          setMessages(prev => prev.filter(m => m.id !== msgId));
+        }
+        setMsgActionSheet(null);
+        setDeleteConfirmId(null);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setDeleteError(data.error || (isRtl ? 'فشل الحذف، حاول مرة أخرى' : 'Delete failed, try again'));
+      }
+    } catch {
+      setDeleteError(isRtl ? 'خطأ في الاتصال' : 'Connection error');
+    } finally {
+      setDeletingMsgId(null);
+    }
   }
 
   async function handleSend() {
@@ -1020,13 +1061,19 @@ function Inner({ conversationId }: { conversationId: string }) {
                             ...(group.mine ? {} : { border: '1px solid var(--tr-border-soft)' }),
                             borderRadius: group.mine ? mineRadius : otherRadius,
                           }}
-                          onContextMenu={e => { e.preventDefault(); setReplyingTo({ id: m.id, content: m.replyToContent ?? m.content ?? (m.imageUrl ? '📷' : m.audioUrl ? '🎙️' : '...'), senderName: group.senderInfo.name }); setTimeout(() => textareaRef.current?.focus(), 50); }}
-                          onTouchStart={() => { longPressRef.current = setTimeout(() => { setReplyingTo({ id: m.id, content: m.content || (m.imageUrl ? '📷' : m.audioUrl ? '🎙️' : '...'), senderName: group.senderInfo.name }); setTimeout(() => textareaRef.current?.focus(), 50); }, 500); }}
+                          onContextMenu={e => { if (m.isDeletedForEveryone) return; e.preventDefault(); setMsgActionSheet({ id: m.id, mine: group.mine, content: m.content || (m.imageUrl ? '📷' : m.audioUrl ? '🎙️' : '...'), senderName: group.senderInfo.name }); }}
+                          onTouchStart={() => { if (m.isDeletedForEveryone) return; longPressRef.current = setTimeout(() => { try { navigator.vibrate?.(30); } catch {} setMsgActionSheet({ id: m.id, mine: group.mine, content: m.content || (m.imageUrl ? '📷' : m.audioUrl ? '🎙️' : '...'), senderName: group.senderInfo.name }); }, 500); }}
                           onTouchEnd={() => { if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; } }}
                           onTouchMove={() => { if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; } }}
                         >
+                          {/* Tombstone — deleted for everyone */}
+                          {m.isDeletedForEveryone ? (
+                            <p className="px-3.5 py-2 text-sm italic" style={{ opacity: 0.55 }}>
+                              🚫 {isRtl ? 'تم حذف هذه الرسالة' : 'This message was deleted'}
+                            </p>
+                          ) : (<>
                           {/* Reply quote */}
-                          {m.replyToId && m.replyToContent !== null && (
+                          {m.replyToId && (
                             <div className="mx-2 mt-2 mb-0 px-2 py-1.5 rounded-lg text-xs" style={{
                               borderInlineStart: `3px solid ${group.mine ? 'rgba(255,255,255,0.50)' : MSG_BLUE}`,
                               background: group.mine ? 'rgba(0,0,0,0.18)' : 'rgba(26,110,212,0.07)',
@@ -1034,7 +1081,11 @@ function Inner({ conversationId }: { conversationId: string }) {
                               maxWidth: '100%',
                             }}>
                               <p className="font-semibold mb-0.5" style={{ fontSize: 10 }}>{group.mine ? (isRtl ? 'أنت رددت على' : 'You replied to') : group.senderInfo.name}</p>
-                              <p className="truncate" style={{ maxWidth: 200 }}>{m.replyToContent}</p>
+                              <p className="truncate italic" style={{ maxWidth: 200 }}>
+                                {m.replyToContent
+                                  ? m.replyToContent
+                                  : (isRtl ? '🚫 تم حذف هذه الرسالة' : '🚫 This message was deleted')}
+                              </p>
                             </div>
                           )}
                           {/* Shared post card */}
@@ -1069,6 +1120,7 @@ function Inner({ conversationId }: { conversationId: string }) {
                             </span>
                             {group.mine && <ReadTick read={m.read} />}
                           </div>
+                          </>)}
                         </div>
                         {/* Reply button for other person's messages */}
                         {!group.mine && (
@@ -1109,7 +1161,7 @@ function Inner({ conversationId }: { conversationId: string }) {
           accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
           className="hidden" disabled={uploading} onChange={handleMedia} />
         <input ref={cameraInputRef} type="file"
-          accept="image/*" capture="environment"
+          accept="image/*,image/heic,image/heif" capture="environment"
           className="hidden" disabled={uploading} onChange={handleMedia} />
 
         <div className="w-full px-3 py-2 flex flex-col gap-2 relative">
@@ -1398,6 +1450,103 @@ function Inner({ conversationId }: { conversationId: string }) {
           </button>
           {showNotebook && <TareeqNotebookPopup onClose={() => setShowNotebook(false)} />}
         </>
+      )}
+
+      {/* Message action sheet */}
+      {msgActionSheet && (
+        <div
+          className="fixed inset-0 z-[200] flex items-end justify-center"
+          style={{ background: 'rgba(0,0,0,0.45)' }}
+          onClick={() => { setMsgActionSheet(null); setDeleteConfirmId(null); setDeleteError(''); }}
+        >
+          <div
+            className="w-full max-w-md rounded-t-2xl pb-safe"
+            style={{ background: 'var(--tr-surface)', padding: '20px 0 32px' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="mx-auto mb-4 w-10 h-1 rounded-full" style={{ background: 'var(--tr-border-soft)' }} />
+
+            {deleteConfirmId === msgActionSheet.id ? (
+              /* Confirmation step */
+              <div className="px-6">
+                <p className="text-sm font-bold mb-1" style={{ color: 'var(--tr-text-primary)' }}>
+                  {deleteType === 'everyone'
+                    ? (isRtl ? 'حذف للجميع؟' : 'Delete for everyone?')
+                    : (isRtl ? 'حذف لديّ فقط؟' : 'Delete for me only?')}
+                </p>
+                <p className="text-xs mb-4" style={{ color: 'var(--tr-text-muted)' }}>
+                  {deleteType === 'everyone'
+                    ? (isRtl ? 'ستظهر للطرف الآخر كـ "تم حذف هذه الرسالة"' : 'The other party will see "Message deleted"')
+                    : (isRtl ? 'لن تظهر لك فقط، ستبقى مرئية للطرف الآخر' : 'Only hidden from you, still visible to the other party')}
+                </p>
+                {deleteError && (
+                  <p className="text-xs mb-3 font-semibold" style={{ color: '#e74c3c' }}>{deleteError}</p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    className="flex-1 py-2.5 rounded-xl text-sm font-black transition active:scale-95"
+                    style={{ background: '#e74c3c', color: '#fff', opacity: deletingMsgId === msgActionSheet.id ? 0.6 : 1 }}
+                    disabled={!!deletingMsgId}
+                    onClick={() => handleDeleteMessage(msgActionSheet.id, deleteType)}
+                  >
+                    {deletingMsgId === msgActionSheet.id ? (isRtl ? 'جاري الحذف...' : 'Deleting...') : (isRtl ? 'نعم، احذف' : 'Yes, delete')}
+                  </button>
+                  <button
+                    className="flex-1 py-2.5 rounded-xl text-sm font-bold transition active:scale-95"
+                    style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-primary)' }}
+                    onClick={() => { setDeleteConfirmId(null); setDeleteError(''); }}
+                  >
+                    {isRtl ? 'إلغاء' : 'Cancel'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Main actions */
+              <>
+                <button
+                  className="w-full flex items-center gap-3 px-6 py-3.5 text-sm font-semibold"
+                  style={{ color: 'var(--tr-text-primary)' }}
+                  onClick={() => {
+                    setReplyingTo({ id: msgActionSheet.id, content: msgActionSheet.content, senderName: msgActionSheet.senderName });
+                    setMsgActionSheet(null);
+                    setTimeout(() => textareaRef.current?.focus(), 50);
+                  }}
+                >
+                  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
+                  {isRtl ? 'رد على الرسالة' : 'Reply'}
+                </button>
+                {/* Delete for me — available for all participants */}
+                <button
+                  className="w-full flex items-center gap-3 px-6 py-3.5 text-sm font-semibold"
+                  style={{ color: 'var(--tr-text-primary)' }}
+                  onClick={() => { setDeleteType('me'); setDeleteConfirmId(msgActionSheet.id); }}
+                >
+                  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                  {isRtl ? 'حذف لديّ فقط' : 'Delete for me'}
+                </button>
+                {/* Delete for everyone — only sender */}
+                {msgActionSheet.mine && (
+                  <button
+                    className="w-full flex items-center gap-3 px-6 py-3.5 text-sm font-semibold"
+                    style={{ color: '#e74c3c' }}
+                    onClick={() => { setDeleteType('everyone'); setDeleteConfirmId(msgActionSheet.id); }}
+                  >
+                    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    {isRtl ? 'حذف للجميع' : 'Delete for everyone'}
+                  </button>
+                )}
+                <button
+                  className="w-full flex items-center gap-3 px-6 py-3.5 text-sm"
+                  style={{ color: 'var(--tr-text-muted)' }}
+                  onClick={() => { setMsgActionSheet(null); setDeleteConfirmId(null); }}
+                >
+                  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                  {isRtl ? 'إلغاء' : 'Cancel'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
       )}
       </div> {/* end chat area */}
     </div>

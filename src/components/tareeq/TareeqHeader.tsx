@@ -287,7 +287,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   const loadConversations = useCallback(async () => {
     setMsgsLoading(true);
     try {
-      const res = await fetch('/api/tareeq/conversations', { credentials: 'include' });
+      const res = await fetch('/api/tareeq/conversations', { credentials: 'include', cache: 'no-store' });
       if (res.ok) {
         const d = await res.json();
         setConversations(d.conversations ?? []);
@@ -295,6 +295,12 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
     } catch { /* offline */ }
     setMsgsLoading(false);
   }, []);
+
+  /* ── Auto-refresh conversations list when a new message arrives ── */
+  useEffect(() => {
+    if (showMsgPanel && msgPanelView === 'list') loadConversations();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messageCount]);
 
   const openChat = useCallback(async (conv: Conversation) => {
     setMsgPanelView('chat');

@@ -1892,23 +1892,23 @@ function ShareDropdown({ postId, title, content, onCopy, onClose, onSendDM, onNa
   const text    = encodeURIComponent(title || content.slice(0, 80));
   const url     = encodeURIComponent(postUrl);
 
+  function openSharePopup(shareUrl: string, name: string) {
+    const w = 580, h = 520;
+    const left = Math.max(0, (screen.width - w) / 2);
+    const top  = Math.max(0, (screen.height - h) / 2);
+    window.open(shareUrl, name, `width=${w},height=${h},top=${top},left=${left},toolbar=0,menubar=0,location=0,status=0,scrollbars=1`);
+  }
+
   function openFbPopup(e: React.MouseEvent) {
     e.stopPropagation();
     onClose();
-    const w = 580, h = 400;
-    const left = Math.max(0, (screen.width - w) / 2);
-    const top  = Math.max(0, (screen.height - h) / 2);
-    window.open(
-      `https://www.facebook.com/sharer/sharer.php?u=${url}`,
-      'fb-share-dialog',
-      `width=${w},height=${h},top=${top},left=${left},toolbar=0,menubar=0,location=0,status=0,scrollbars=1`
-    );
+    openSharePopup(`https://www.facebook.com/sharer/sharer.php?u=${url}`, 'fb-share-dialog');
   }
 
-  const items   = [
-    { label: 'WhatsApp',    color: '#25D366', href: `https://api.whatsapp.com/send?text=${text}%20${url}` },
-    { label: 'Twitter / X', color: '#000',    href: `https://twitter.com/intent/tweet?text=${text}&url=${url}` },
-    { label: 'Telegram',    color: '#4aaed9', href: `https://t.me/share/url?url=${url}&text=${text}` },
+  const items = [
+    { label: 'WhatsApp',    color: '#25D366', shareUrl: `https://api.whatsapp.com/send?text=${text}%20${url}`,     name: 'wa-share' },
+    { label: 'Twitter / X', color: '#000',    shareUrl: `https://twitter.com/intent/tweet?text=${text}&url=${url}`, name: 'tw-share' },
+    { label: 'Telegram',    color: '#4aaed9', shareUrl: `https://t.me/share/url?url=${url}&text=${text}`,           name: 'tg-share' },
   ];
   return (
     <div className="absolute bottom-full end-0 mb-2 py-1.5 w-44 z-30 rounded-2xl" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', boxShadow: '0 8px 28px rgba(0,0,0,0.14)' }}>
@@ -1929,11 +1929,12 @@ function ShareDropdown({ postId, title, content, onCopy, onClose, onSendDM, onNa
         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: '#1877f2' }} />
         Facebook
       </button>
+      {/* WhatsApp / Twitter / Telegram — popup so user stays in Tareeq */}
       {items.map(item => (
-        <a key={item.label} href={item.href} target="_blank" rel="noopener noreferrer" onClick={e => { e.stopPropagation(); onClose(); }} className="flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-semibold hover:opacity-70 transition" style={{ color: 'var(--tr-text-secondary)' }}>
+        <button key={item.label} onClick={e => { e.stopPropagation(); onClose(); openSharePopup(item.shareUrl, item.name); }} className="flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-semibold w-full hover:opacity-70 transition" style={{ color: 'var(--tr-text-secondary)' }}>
           <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: item.color }} />
           {item.label}
-        </a>
+        </button>
       ))}
       <button onClick={onCopy} className="flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-semibold w-full hover:opacity-70 transition" style={{ color: 'var(--tr-text-secondary)' }}>
         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: 'var(--tr-text-muted)' }} />

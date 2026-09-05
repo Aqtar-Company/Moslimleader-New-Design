@@ -106,6 +106,14 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
     requestAnimationFrame(() => setVisible(true));
   }, []);
 
+  // Close comment reaction picker when clicking outside
+  useEffect(() => {
+    if (!showCommentReactionPicker) return;
+    const handler = () => setShowCommentReactionPicker(null);
+    document.addEventListener('click', handler, { capture: true, once: true });
+    return () => document.removeEventListener('click', handler, { capture: true });
+  }, [showCommentReactionPicker]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') doClose(); };
     document.addEventListener('keydown', onKey);

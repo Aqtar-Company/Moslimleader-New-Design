@@ -1264,8 +1264,8 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             </button>
           )}
 
-          {/* Video embeds — auto-detected from content (YouTube → TikTok → Vimeo → Facebook) */}
-          {(() => {
+          {/* Video embeds — auto-detected from content (YouTube → TikTok → Vimeo → Facebook) — skip if post has its own uploaded video */}
+          {!post.videoUrl && (() => {
             const embedStyle: React.CSSProperties = { aspectRatio: '16/9', border: '1px solid var(--tr-border-soft)' };
             const iframeProps = { className: 'w-full h-full', allowFullScreen: true as const, loading: 'lazy' as const, style: { border: 'none', display: 'block' } };
 

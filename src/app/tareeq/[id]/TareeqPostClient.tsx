@@ -86,7 +86,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
       post.comments.map(c =>
         fetch(`/api/tareeq/comments/${c.id}/react`, { credentials: 'include' })
           .then(r => r.ok ? r.json() : null)
-          .then(d => d ? { id: c.id, count: d.count as number, liked: d.liked as boolean } : null)
+          .then(d => d ? { id: c.id, count: (d.total as number) ?? 0, liked: d.reaction !== null && d.reaction !== undefined } : null)
           .catch(() => null)
       )
     ).then(results => {
@@ -202,11 +202,13 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
     const optimistic = { count: prev.liked ? prev.count - 1 : prev.count + 1, liked: !prev.liked };
     setCommentLikes(cl => ({ ...cl, [commentId]: optimistic }));
     const res = await fetch(`/api/tareeq/comments/${commentId}/react`, {
-      method: 'POST', credentials: 'include',
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ type: 'heart' }),
     });
     if (res.ok) {
       const d = await res.json();
-      setCommentLikes(cl => ({ ...cl, [commentId]: { count: d.count, liked: d.liked } }));
+      const total = d.total ?? Object.values((d.counts ?? {}) as Record<string, number>).reduce((s: number, n: number) => s + n, 0);
+      setCommentLikes(cl => ({ ...cl, [commentId]: { count: total, liked: d.reaction !== null && d.reaction !== undefined } }));
     } else {
       setCommentLikes(cl => ({ ...cl, [commentId]: prev }));
     }

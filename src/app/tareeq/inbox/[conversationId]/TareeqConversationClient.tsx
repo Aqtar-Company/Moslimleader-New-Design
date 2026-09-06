@@ -288,6 +288,11 @@ function Inner({ conversationId }: { conversationId: string }) {
   const { refresh } = useTareeqNotifications();
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
+  // The API caps a page at 30 messages and returns nextCursor for going further back —
+  // without wiring it up, any conversation past its first 30 messages permanently hid
+  // its earlier history with no way to reach it.
+  const [olderCursor, setOlderCursor] = useState<string | null>(null);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [calls, setCalls] = useState<CallEvent[]>([]);
   const [otherUser, setOtherUser] = useState<OtherUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -336,6 +341,10 @@ function Inner({ conversationId }: { conversationId: string }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputBarRef = useRef<HTMLDivElement>(null);
   const shouldScrollRef = useRef(true);
+  // Tracks whether the reader is currently near the bottom of the scroll — an incoming
+  // message used to force-scroll unconditionally, yanking anyone who'd scrolled up to
+  // read history back down to the newest message.
+  const isNearBottomRef = useRef(true);
 
   // Call state
   const [activeCall, setActiveCall] = useState<{
@@ -387,6 +396,7 @@ function Inner({ conversationId }: { conversationId: string }) {
         setMessages(msgs);
         setCalls(callEvents);
         setOtherUser(d.otherUser ?? null);
+        setOlderCursor(d.nextCursor ?? null);
         latestIdRef.current = msgs.length ? msgs[msgs.length - 1].id : '';
         callCountRef.current = callEvents.length;
         refresh();
@@ -395,6 +405,31 @@ function Inner({ conversationId }: { conversationId: string }) {
       if (!silent) setLoading(false);
     }
   }, [conversationId, router, refresh]);
+
+  // Prepends an older page above the currently-loaded messages, preserving the reader's
+  // visual scroll position (otherwise the container jumps to the top after content is
+  // added above what's on screen).
+  async function loadOlderMessages() {
+    if (!olderCursor || loadingOlder) return;
+    setLoadingOlder(true);
+    const el = messagesContainerRef.current;
+    const prevScrollHeight = el?.scrollHeight ?? 0;
+    const prevScrollTop = el?.scrollTop ?? 0;
+    try {
+      const res = await fetch(`/api/tareeq/conversations/${conversationId}?cursor=${olderCursor}`, { credentials: 'include' });
+      if (res.ok) {
+        const d = await res.json();
+        const older: Message[] = d.messages ?? [];
+        setMessages(prev => [...older, ...prev]);
+        setOlderCursor(d.nextCursor ?? null);
+        requestAnimationFrame(() => {
+          if (el) el.scrollTop = el.scrollHeight - prevScrollHeight + prevScrollTop;
+        });
+      }
+    } catch { /* offline */ } finally {
+      setLoadingOlder(false);
+    }
+  }
 
   // Ping own presence every 30s while conversation is open
   useEffect(() => {
@@ -429,7 +464,10 @@ function Inner({ conversationId }: { conversationId: string }) {
       if (newLatest !== latestIdRef.current && !localLatestIsStale) {
         const latestMsg = msgs[msgs.length - 1];
         if (latestMsg && latestMsg.senderId !== user?.id) playMsgChime();
-        shouldScrollRef.current = true;
+        // Only auto-scroll if the reader was already near the bottom, or the new message
+        // is their own (e.g. sent from another tab/device) — otherwise leave them where
+        // they are while reading earlier messages.
+        if (isNearBottomRef.current || latestMsg?.senderId === user?.id) shouldScrollRef.current = true;
         setMessages(msgs);
         latestIdRef.current = newLatest;
         refresh();
@@ -969,7 +1007,13 @@ function Inner({ conversationId }: { conversationId: string }) {
       </div>
 
       {/* Messages */}
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 pb-24 w-full" dir="ltr">
+      <div
+        ref={messagesContainerRef}
+        onScroll={e => {
+          const el = e.currentTarget;
+          isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+        }}
+        className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 pb-24 w-full" dir="ltr">
         {loading ? (
           <div className="flex justify-center py-16">
             <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: MSG_BLUE }} />
@@ -983,7 +1027,20 @@ function Inner({ conversationId }: { conversationId: string }) {
             </p>
           </div>
         ) : (
-          dayBuckets.map(bucket => (
+          <>
+            {olderCursor && (
+              <div className="flex justify-center pb-3">
+                <button
+                  onClick={loadOlderMessages}
+                  disabled={loadingOlder}
+                  className="px-4 py-1.5 rounded-full text-[12px] font-bold transition"
+                  style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}
+                >
+                  {loadingOlder ? '...' : (isRtl ? 'تحميل رسائل أقدم' : 'Load earlier messages')}
+                </button>
+              </div>
+            )}
+            {dayBuckets.map(bucket => (
             <div key={bucket.day}>
               {/* Day separator */}
               <div className="flex items-center gap-2 my-4">
@@ -1154,7 +1211,8 @@ function Inner({ conversationId }: { conversationId: string }) {
               );
               })}
             </div>
-          ))
+            ))}
+          </>
         )}
         <div ref={bottomRef} />
       </div>

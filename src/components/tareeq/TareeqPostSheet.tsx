@@ -17,6 +17,10 @@ interface Props {
   onClose: () => void;
   onDeleted?: (id: string) => void;
   onReacted?: (postId: string, reaction: string | null) => void;
+  // Fired only for a top-level comment (matches the API, which only increments
+  // commentCount for those) — lets the caller bump the feed card's own count, which
+  // otherwise stayed stale until a full refetch after commenting from the sheet.
+  onCommented?: (postId: string) => void;
 }
 
 const COMMENT_REACTIONS = [
@@ -67,7 +71,7 @@ const REACTIONS = [
 
 type ReactionType = typeof REACTIONS[number]['type'];
 
-export default function TareeqPostSheet({ postId, focusComments = false, onClose, onDeleted, onReacted }: Props) {
+export default function TareeqPostSheet({ postId, focusComments = false, onClose, onDeleted, onReacted, onCommented }: Props) {
   const { isRtl } = useLang();
   const { user } = useAuth();
 
@@ -78,6 +82,11 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
   const [submitting, setSubmitting] = useState(false);
   const [commentError, setCommentError] = useState<string | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
+  // The initial load only fetches the first page (server default limit) — without a
+  // "load more" wired to the returned cursor, threads past that page were silently
+  // truncated with no way to see the rest.
+  const [commentsCursor, setCommentsCursor] = useState<string | null>(null);
+  const [loadingMoreComments, setLoadingMoreComments] = useState(false);
   const [commentLikes, setCommentLikes] = useState<Record<string, { reaction: string | null; counts: Record<string, number> }>>({});
   const [showCommentReactionPicker, setShowCommentReactionPicker] = useState<string | null>(null); // commentId
   const [showGate, setShowGate] = useState(false);
@@ -144,10 +153,28 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
       if (p) setPost(p);
       const loadedComments = commentData.comments ?? p?.comments ?? [];
       setComments(loadedComments);
+      setCommentsCursor(commentData.nextCursor ?? null);
       seedCommentLikes(loadedComments);
       setCurrentReaction(reactData.userReaction ?? postData.userReaction ?? null);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [postId]);
+
+  async function loadMoreComments() {
+    if (!commentsCursor || loadingMoreComments) return;
+    setLoadingMoreComments(true);
+    try {
+      const res = await fetch(`/api/tareeq/${postId}/comments?cursor=${commentsCursor}`, { credentials: 'include' });
+      if (res.ok) {
+        const d = await res.json();
+        const more: Comment[] = d.comments ?? [];
+        setComments(prev => [...prev, ...more]);
+        seedCommentLikes(more);
+        setCommentsCursor(d.nextCursor ?? null);
+      }
+    } catch { /* offline */ } finally {
+      setLoadingMoreComments(false);
+    }
+  }
 
   useEffect(() => {
     if (focusComments && !loading && commentInputRef.current) {
@@ -252,6 +279,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
             ));
           } else {
             setComments(prev => [...prev, data.comment]);
+            onCommented?.(postId);
           }
         }
         setCommentText('');
@@ -453,7 +481,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
 
                     {/* Comments heading */}
                     <div style={{ padding: '12px 16px 6px' }}>
-                      <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--tr-text-primary)', margin: 0 }}>{isRtl ? `التعليقات (${comments.length})` : `Comments (${comments.length})`}</p>
+                      <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--tr-text-primary)', margin: 0 }}>{isRtl ? `التعليقات (${post?.commentCount ?? comments.length})` : `Comments (${post?.commentCount ?? comments.length})`}</p>
                     </div>
 
                     {/* Comments */}
@@ -526,6 +554,11 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                             ))}
                           </div>
                         ))}
+                        {commentsCursor && (
+                          <button onClick={loadMoreComments} disabled={loadingMoreComments} style={{ display: 'block', width: '100%', textAlign: 'center', padding: '10px 16px', fontSize: 12, fontWeight: 700, color: 'var(--tr-gold)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                            {loadingMoreComments ? '...' : (isRtl ? 'تحميل المزيد من التعليقات' : 'Load more comments')}
+                          </button>
+                        )}
                       </div>
                     )}
                     <div style={{ height: 16 }} />
@@ -632,6 +665,25 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
           )}
 
           <div style={{ flex: 1 }} />
+
+          {/* Delete option for post owner — was desktop-only; the mobile sheet is the
+              primary surface, so its absence here meant owners couldn't delete their own
+              post from this sheet on mobile at all. */}
+          {user && post?.userId === user.id && (
+            <div style={{ position: 'relative' }}>
+              {showDeleteConfirm ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 12, color: 'var(--tr-text-muted)' }}>{isRtl ? 'تأكيد الحذف؟' : 'Delete?'}</span>
+                  <button onClick={handleDelete} disabled={deleting} style={{ fontSize: 12, fontWeight: 700, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>{deleting ? '...' : (isRtl ? 'نعم' : 'Yes')}</button>
+                  <button onClick={() => setShowDeleteConfirm(false)} style={{ fontSize: 12, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>{isRtl ? 'لا' : 'No'}</button>
+                </div>
+              ) : (
+                <button onClick={() => setShowDeleteConfirm(true)} style={{ width: 32, height: 32, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', border: 'none', cursor: 'pointer', flexShrink: 0 }} title={isRtl ? 'حذف المنشور' : 'Delete post'}>
+                  <svg width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </button>
+              )}
+            </div>
+          )}
 
           <Link
             href={`/tareeq/${postId}`}
@@ -740,7 +792,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
               {/* Comments heading */}
               <div style={{ padding: '14px 16px 8px' }}>
                 <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--tr-text-primary)', margin: 0 }}>
-                  {isRtl ? `التعليقات (${comments.length})` : `Comments (${comments.length})`}
+                  {isRtl ? `التعليقات (${post?.commentCount ?? comments.length})` : `Comments (${post?.commentCount ?? comments.length})`}
                 </p>
               </div>
 
@@ -809,6 +861,9 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                                 </div>
                               )}
                             </div>
+                            {user && user.id !== c.userId && (
+                              <button type="button" onClick={() => setReportCommentId(c.id)} style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{isRtl ? 'إبلاغ' : 'Report'}</button>
+                            )}
                             {(c.replyCount ?? 0) > 0 && (
                               <button
                                 onClick={() => loadReplies(c.id)}
@@ -844,6 +899,11 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                       ))}
                     </div>
                   ))}
+                  {commentsCursor && (
+                    <button onClick={loadMoreComments} disabled={loadingMoreComments} style={{ display: 'block', width: '100%', textAlign: 'center', padding: '12px 16px', fontSize: 13, fontWeight: 700, color: 'var(--tr-gold)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                      {loadingMoreComments ? '...' : (isRtl ? 'تحميل المزيد من التعليقات' : 'Load more comments')}
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -914,6 +974,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
       </div>
 
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
+      {reportCommentId && <ReportModal targetType="comment" targetId={reportCommentId} isRtl={isRtl} onClose={() => setReportCommentId(null)} />}
     </>
   );
 

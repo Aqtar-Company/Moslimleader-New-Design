@@ -189,6 +189,10 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [activeFolderName, setActiveFolderName] = useState('');
   const [bmPosts, setBmPosts] = useState<BmPost[]>([]);
   const [bmPostsLoading, setBmPostsLoading] = useState(false);
+  // The API caps a page at 50 and returns nextCursor — without this, anyone with more
+  // than 50 bookmarks in a folder could never reach the older ones from the profile tab.
+  const [bmCursor, setBmCursor] = useState<string | null>(null);
+  const [bmLoadingMore, setBmLoadingMore] = useState(false);
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [creatingFolder, setCreatingFolder] = useState(false);
@@ -383,9 +387,25 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
     try {
       const url = folderId ? `/api/tareeq/bookmarks?folderId=${folderId}` : '/api/tareeq/bookmarks';
       const res = await fetch(url, { credentials: 'include' });
-      if (res.ok) { const d = await res.json(); setBmPosts(d.bookmarks ?? []); }
+      if (res.ok) { const d = await res.json(); setBmPosts(d.bookmarks ?? []); setBmCursor(d.nextCursor ?? null); }
     } finally {
       setBmPostsLoading(false);
+    }
+  }
+
+  async function loadMoreBmPosts() {
+    if (!bmCursor || bmLoadingMore) return;
+    setBmLoadingMore(true);
+    try {
+      const base = activeFolderId && activeFolderId !== '__all__' ? `/api/tareeq/bookmarks?folderId=${activeFolderId}` : '/api/tareeq/bookmarks';
+      const res = await fetch(`${base}${base.includes('?') ? '&' : '?'}cursor=${bmCursor}`, { credentials: 'include' });
+      if (res.ok) {
+        const d = await res.json();
+        setBmPosts(prev => [...prev, ...(d.bookmarks ?? [])]);
+        setBmCursor(d.nextCursor ?? null);
+      }
+    } catch { /* offline */ } finally {
+      setBmLoadingMore(false);
     }
   }
 
@@ -903,6 +923,16 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
               <div className="flex flex-col gap-2">
                 {bmPosts.map(bm => <BmListCard key={bm.id} bm={bm} />)}
               </div>
+            )}
+            {bmCursor && (
+              <button
+                onClick={loadMoreBmPosts}
+                disabled={bmLoadingMore}
+                className="mx-auto mt-3 block px-6 py-2.5 rounded-xl font-bold text-sm transition"
+                style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}
+              >
+                {bmLoadingMore ? '...' : (isRtl ? 'تحميل المزيد' : 'Load more')}
+              </button>
             )}
           </>
         )

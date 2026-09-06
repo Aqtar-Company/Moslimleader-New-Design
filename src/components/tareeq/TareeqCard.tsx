@@ -764,13 +764,14 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   function SocialSummary() {
     if (likeCount <= 0 && commentCount <= 0) return null;
 
-    // Build emoji list: use topReactions from API (actual reaction types used),
-    // or fallback to current user's reaction, or generic star
+    // Build emoji list: topReactions from the API, with the viewer's own live reaction
+    // merged in — without this, reacting (or switching reaction type) bumped the count
+    // but left the stacked emojis showing the stale server snapshot from page load.
     const topEmojis: string[] = (() => {
-      const tr = post.topReactions;
-      if (tr && tr.length > 0) return tr.slice(0, 3).map(t => reactionEmoji(t));
-      if (currentReaction) return [reactionEmoji(currentReaction)];
-      return ['⭐'];
+      const types = [...(post.topReactions ?? [])];
+      if (currentReaction && !types.includes(currentReaction)) types.unshift(currentReaction);
+      if (types.length === 0) return ['⭐'];
+      return types.slice(0, 3).map(t => reactionEmoji(t));
     })();
 
     return (
@@ -1051,6 +1052,29 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               {/* ── MOBILE ONLY: comment input overlay ── */}
               {showCommentInput && (
                 <div className="absolute bottom-0 inset-x-0 z-20 px-4 pb-4 pt-3 lg:hidden" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(12px)' }}>
+                  {/* Comments list — this overlay used to be a bare input with no way to
+                      read existing comments or see one you'd just posted; inlineComments
+                      was already being fetched (below) and updated on submit, just never
+                      rendered here (unlike the gallery/text cards' commentForm). */}
+                  {(inlineCommentsLoading || inlineComments.length > 0) && (
+                    <div className="max-h-32 overflow-y-auto mb-2 flex flex-col gap-2.5 pe-1" onClick={e => e.stopPropagation()}>
+                      {inlineCommentsLoading ? (
+                        <p className="text-white/60 text-[11px] text-center py-1">...</p>
+                      ) : (
+                        inlineComments.map(c => (
+                          <div key={c.id} className="flex gap-2">
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 text-white" style={{ background: 'rgba(255,255,255,0.2)' }}>
+                              {(c.user?.name ?? '?').charAt(0)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-white text-[11px] font-semibold">{c.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}</p>
+                              <p className="text-white/85 text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>{c.content}</p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                   {commentError && (
                     <p className="text-[11px] font-semibold mb-1.5" style={{ color: '#fca5a5' }}>{commentError}</p>
                   )}

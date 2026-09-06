@@ -35,7 +35,9 @@ export default async function GroupDetailPage({ params }: { params: { id: string
   const isMember = group.members.some(m => m.user.id === user.userId);
   if (!isMember) redirect('/tareeq/khatmati/groups');
 
-  const today = new Date().toLocaleDateString('en-CA');
+  // lastReadDate is exposed raw — KhatmaGroupDetail (client) compares it against "today"
+  // using the browser's own local date, since this server component's "today" would be
+  // the container's (UTC) timezone and can disagree with the viewer's near midnight.
   const membersWithStatus = group.members.map((m, rank) => ({
     id: m.id,
     userId: m.user.id,
@@ -44,7 +46,7 @@ export default async function GroupDetailPage({ params }: { params: { id: string
     streak: m.streak,
     totalPages: m.totalPages,
     points: m.points,
-    readToday: m.lastReadDate === today,
+    lastReadDate: m.lastReadDate,
     rank: rank + 1,
     currentPage: m.currentPage,
     currentSurah: m.currentSurah,

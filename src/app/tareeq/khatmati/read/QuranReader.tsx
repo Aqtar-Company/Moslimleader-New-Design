@@ -192,6 +192,10 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   const pageRef     = useRef(initialPage);
   const audioRef    = useRef<HTMLAudioElement | null>(null);
   const saveTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Latest pending save payload, kept in sync so it can be flushed immediately
+  // (leaving the page, backgrounding the tab) instead of lost when the 3s debounce
+  // timer never gets to fire.
+  const lastSaveRef = useRef<{ page: number; surah: number; ayah: number } | null>(null);
   const verseRefs   = useRef<(HTMLSpanElement | null)[]>([]);
   const isMountedRef = useRef(true);
   // Set right before navigating to a page so the page's own verse-fetch
@@ -277,6 +281,32 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, retryKey]);
 
+  // Sends whatever position is currently pending, bypassing the debounce timer. Reads
+  // from lastSaveRef (not component state) so it stays correct when called from a
+  // mount-only effect's cleanup/unload handlers without re-subscribing to every render.
+  const flushProgressSave = useCallback(() => {
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null; }
+    const pending = lastSaveRef.current;
+    if (!pending) return;
+    lastSaveRef.current = null;
+    const endpoint = groupId
+      ? `/api/tareeq/khatmati/groups/${groupId}/progress`
+      : '/api/tareeq/khatmati/progress';
+    fetch(endpoint, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      keepalive: true, // lets this survive a navigation/tab-close that would otherwise abort it
+      body: JSON.stringify({
+        currentPage: pending.page,
+        currentSurah: pending.surah,
+        currentAyah: pending.ayah,
+        localDate: new Date().toLocaleDateString('en-CA'),
+      }),
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupId]);
+
   // URL sync + progress save when verse or page changes
   useEffect(() => {
     // Always clear debounce timer first, even if we return early
@@ -295,24 +325,24 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
     // Save position to localStorage for bottom nav quick-resume
     localStorage.setItem('nuri-progress', JSON.stringify({ page, surah: v.chapter_id, ayah: v.verse_number }));
 
-    saveTimer.current = setTimeout(() => {
-      const endpoint = groupId
-        ? `/api/tareeq/khatmati/groups/${groupId}/progress`
-        : '/api/tareeq/khatmati/progress';
-      fetch(endpoint, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          currentPage: page,
-          currentSurah: v.chapter_id,
-          currentAyah: v.verse_number,
-          localDate: new Date().toLocaleDateString('en-CA'),
-        }),
-      }).catch(() => {});
-    }, 3000);
+    lastSaveRef.current = { page, surah: v.chapter_id, ayah: v.verse_number };
+    saveTimer.current = setTimeout(flushProgressSave, 3000);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIdx, page, verses]);
+
+  // Flush on backgrounding (mobile app switch / lock screen — the case that used to lose
+  // a session's progress most often, since the debounce timer simply never gets to run)
+  // and on unmount (e.g. client-side navigation away from the reader).
+  useEffect(() => {
+    const onVisibility = () => { if (document.visibilityState === 'hidden') flushProgressSave(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', flushProgressSave);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', flushProgressSave);
+      flushProgressSave();
+    };
+  }, [flushProgressSave]);
 
   // ── Audio engine ──────────────────────────────────────────────────────────
 
@@ -351,6 +381,10 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
       } else {
         const nextPage = pageRef.current + 1;
         if (nextPage <= TOTAL_QURAN_PAGES) {
+          // Listen-mode auto-advance never counted toward the daily ward at all
+          // (only manual swipes in 'both' mode did) — the lantern never lit up for
+          // someone who reads purely via audio.
+          bumpDailyWardCounter();
           pageRef.current = nextPage;
           setPage(nextPage);
           // playFromRef() called again after new verses load (see fetch effect)
@@ -375,6 +409,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
         // Last verse errored — advance to next page instead of stopping
         const nextPage = pageRef.current + 1;
         if (nextPage <= TOTAL_QURAN_PAGES) {
+          bumpDailyWardCounter();
           pageRef.current = nextPage;
           setPage(nextPage);
         } else {
@@ -462,20 +497,23 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
     audioRef.current?.pause();
     setIsPlaying(false);
     playingRef.current = false;
+    // Only a forward advance counts as a page actually read — this used to fire on any
+    // change including flipping backward, over-counting the home lantern's daily total.
+    // It was also gated to mode==='both' only, so switching pages while in Listen mode
+    // (the only other mode) never counted at all.
+    if (next > page) bumpDailyWardCounter();
     pageRef.current = next;
     setPage(next);
-    if (mode === 'both') {
-      try {
-        const today = new Date().toLocaleDateString('en-CA');
-        const raw = localStorage.getItem('nuri-daily-progress');
-        const data = raw ? JSON.parse(raw) : null;
-        if (data?.date === today) {
-          localStorage.setItem('nuri-daily-progress', JSON.stringify({ date: today, pagesRead: (data.pagesRead || 0) + 1 }));
-        } else {
-          localStorage.setItem('nuri-daily-progress', JSON.stringify({ date: today, pagesRead: 1 }));
-        }
-      } catch { /* ignore */ }
-    }
+  }
+
+  function bumpDailyWardCounter() {
+    try {
+      const today = new Date().toLocaleDateString('en-CA');
+      const raw = localStorage.getItem('nuri-daily-progress');
+      const data = raw ? JSON.parse(raw) : null;
+      const prevCount = data?.date === today ? (data.pagesRead || 0) : 0;
+      localStorage.setItem('nuri-daily-progress', JSON.stringify({ date: today, pagesRead: prevCount + 1 }));
+    } catch { /* ignore */ }
   }
 
   // A light tap on the Mushaf page (not a long-press on a word) reveals or

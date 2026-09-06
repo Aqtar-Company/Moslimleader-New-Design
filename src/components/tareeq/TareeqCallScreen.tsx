@@ -329,6 +329,10 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
         if (disconnectTimerRef.current) { clearTimeout(disconnectTimerRef.current); disconnectTimerRef.current = null; }
         stopOutRing();
         setCallState('active');
+        // A connected→disconnected→connected flap re-enters this branch without ever
+        // having cleared the first interval, stacking a second one that made the
+        // displayed duration count 2x (or more, on repeated flaps) real speed.
+        if (durationRef.current) clearInterval(durationRef.current);
         durationRef.current = setInterval(() => setDuration(d => d + 1), 1000);
       }
       if (pc.connectionState === 'failed') {
@@ -435,6 +439,10 @@ export default function TareeqCallScreen({ callId, role, callType, remoteUser, o
       if (pc.connectionState === 'connected') {
         if (disconnectTimerRef.current) { clearTimeout(disconnectTimerRef.current); disconnectTimerRef.current = null; }
         setCallState('active');
+        // A connected→disconnected→connected flap re-enters this branch without ever
+        // having cleared the first interval, stacking a second one that made the
+        // displayed duration count 2x (or more, on repeated flaps) real speed.
+        if (durationRef.current) clearInterval(durationRef.current);
         durationRef.current = setInterval(() => setDuration(d => d + 1), 1000);
       }
       if (pc.connectionState === 'failed') {

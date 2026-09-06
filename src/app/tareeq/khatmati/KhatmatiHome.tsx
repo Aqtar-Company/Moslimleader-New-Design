@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
@@ -62,6 +62,7 @@ function LampRing({ pct, wardDone, lanternLit, children }: {
 interface Progress {
   currentPage: number; currentSurah: number; currentAyah: number;
   lastReadDate: string | null; sirajStreak: number; totalPagesRead: number;
+  dailyReminder?: boolean;
 }
 
 function sirajState(lastReadDate: string | null): 'bright' | 'dim' | 'dark' {
@@ -73,20 +74,32 @@ function sirajState(lastReadDate: string | null): 'bright' | 'dim' | 'dark' {
   return 'dark';
 }
 
-interface GroupCard { id: string; name: string; dailyGoal: number; memberCount: number; myStreak: number; myPoints: number; myTotalPages: number; readToday: boolean; myCurrentPage: number; myCurrentSurah: number; myCurrentAyah: number; }
+// lastReadDate (not a pre-computed readToday boolean) — comparing it against "today" must
+// happen client-side using the browser's own local date. The server previously computed
+// readToday using its own (container/UTC) "today", which could disagree with the client's
+// local date near midnight and show a stale/wrong "read today" state for hours.
+interface GroupCard { id: string; name: string; dailyGoal: number; memberCount: number; myStreak: number; myPoints: number; myTotalPages: number; lastReadDate: string | null; myCurrentPage: number; myCurrentSurah: number; myCurrentAyah: number; }
+type GroupCardWithReadToday = GroupCard & { readToday: boolean };
 
 export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { initialProgress: Progress | null; initialGroups?: GroupCard[] }) {
   const { isRtl } = useLang();
   const { user } = useAuth();
   const router = useRouter();
   const p = initialProgress;
+  const groups: GroupCardWithReadToday[] = useMemo(() => {
+    const today = new Date().toLocaleDateString('en-CA');
+    return initialGroups.map(g => ({ ...g, readToday: g.lastReadDate === today }));
+  }, [initialGroups]);
 
   const [showSurahPicker, setShowSurahPicker] = useState(false);
   const [showSettings, setShowSettings]       = useState(false);
   const [dailyPages, setDailyPages]           = useState(1);
   const [customPages, setCustomPages]         = useState('');
   const [surahSearch, setSurahSearch]         = useState('');
-  const [reminderOn, setReminderOn]           = useState(false);
+  // Sourced from the server (persisted preference) rather than localStorage — the
+  // toggle used to only live client-side with no durable signal a reminder job could
+  // read, and no way to reflect the real state across devices/reinstalls.
+  const [reminderOn, setReminderOn]           = useState(!!p?.dailyReminder);
   const [sharing, setSharing]                 = useState(false);
   const [lanternLit, setLanternLit]           = useState(false);
   const [showBlessing, setShowBlessing]       = useState(false);
@@ -98,8 +111,6 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
     try {
       const stored = localStorage.getItem(DRAFT_PAGES_KEY);
       if (stored) setDailyPages(parseInt(stored, 10) || 1);
-      const rem = localStorage.getItem('nuri-reminder');
-      if (rem === '1') setReminderOn(true);
       // Load today's ward (wird) progress
       const prog = localStorage.getItem('nuri-daily-progress');
       if (prog) {
@@ -191,14 +202,16 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
   async function toggleReminder() {
     const next = !reminderOn;
     setReminderOn(next);
-    try { localStorage.setItem('nuri-reminder', next ? '1' : '0'); } catch { /* ignore */ }
     try {
-      await fetch('/api/tareeq/khatmati/remind', {
+      const res = await fetch('/api/tareeq/khatmati/remind', {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enable: next }),
       });
-    } catch { /* ignore */ }
+      if (!res.ok) setReminderOn(!next); // revert on failure — persistence didn't actually happen
+    } catch {
+      setReminderOn(!next);
+    }
   }
 
   async function handleShare() {
@@ -501,7 +514,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
         </div>
 
         {/* ── Empty-groups CTA ── */}
-        {user && initialGroups.length === 0 && (
+        {user && groups.length === 0 && (
           <div style={{ paddingInline: 20, marginTop: 16, flexShrink: 0 }}>
             <button
               onClick={() => router.push('/tareeq/khatmati/groups')}
@@ -537,7 +550,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
         )}
 
         {/* ── Group Khatmas ── */}
-        {initialGroups.length > 0 && (
+        {groups.length > 0 && (
           <div style={{ flexShrink: 0, marginTop: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingInline: 20, marginBottom: 10 }}>
               <p style={{ fontSize: 14, fontWeight: 800, color: TEXT_PRI }}>
@@ -550,7 +563,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingInline: 20, paddingBottom: 6 }}>
-              {initialGroups.map(g => {
+              {groups.map(g => {
                 const gSurahAr = SURAH_NAMES_AR[(g.myCurrentSurah ?? 1) - 1] ?? '';
                 return (
                   <div key={g.id} style={{

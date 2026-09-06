@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 
@@ -10,9 +10,12 @@ const TEXT_MUT = 'rgba(240,237,228,0.45)';
 const CARD     = 'rgba(255,255,255,0.05)';
 const CARD_BD  = 'rgba(255,255,255,0.09)';
 
+// lastReadDate (not a pre-computed readToday) — compared against "today" client-side
+// using the browser's own local date. The server's own "today" (container/UTC) could
+// disagree with the viewer's near midnight and show a stale/wrong "read today" state.
 interface Member {
   id: string; userId: string; name: string; avatarUrl: string | null;
-  streak: number; totalPages: number; points: number; readToday: boolean; rank: number;
+  streak: number; totalPages: number; points: number; lastReadDate: string | null; rank: number;
   currentPage?: number; currentSurah?: number; currentAyah?: number;
 }
 interface Group {
@@ -23,7 +26,7 @@ interface Group {
 const RANK_COLORS: Record<number, string> = { 1: '#FFCC00', 2: '#94a3b8', 3: '#cd7f32' };
 
 export default function KhatmaGroupDetail({
-  group, members, userId, myCurrentPage = 1, myCurrentSurah = 1, myCurrentAyah = 1, linkedToSolo: initialLinked = false,
+  group, members: rawMembers, userId, myCurrentPage = 1, myCurrentSurah = 1, myCurrentAyah = 1, linkedToSolo: initialLinked = false,
 }: {
   group: Group; members: Member[]; userId: string;
   myCurrentPage?: number; myCurrentSurah?: number; myCurrentAyah?: number;
@@ -31,6 +34,10 @@ export default function KhatmaGroupDetail({
 }) {
   const router = useRouter();
   const { isRtl } = useLang();
+  const members = useMemo(() => {
+    const today = new Date().toLocaleDateString('en-CA');
+    return rawMembers.map(m => ({ ...m, readToday: m.lastReadDate === today }));
+  }, [rawMembers]);
   const [copied, setCopied] = useState(false);
   const [linkedToSolo, setLinkedToSolo] = useState(initialLinked);
   const [linkSaving, setLinkSaving] = useState(false);

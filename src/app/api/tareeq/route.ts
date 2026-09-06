@@ -75,7 +75,12 @@ export async function GET(req: NextRequest) {
         pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
         seriesId: true, seriesTitle: true, seriesOrder: true,
         user: { select: { id: true, name: true, avatarUrl: true, role: true } },
-        reactions: { distinct: ['type'], select: { type: true }, take: 4 },
+        // No orderBy here previously meant Prisma picked one row per distinct type in
+        // whatever order the DB scan happened to return — an arbitrary, not "top",
+        // selection. Ordering by recency at least makes it deterministic and reflects
+        // which reaction types are currently active; a true popularity ranking would
+        // need a per-post groupBy, too costly to run for every post in a feed page.
+        reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 4 },
       },
     });
 
@@ -110,7 +115,7 @@ export async function GET(req: NextRequest) {
             pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
             seriesId: true, seriesTitle: true, seriesOrder: true,
             user: { select: { id: true, name: true, avatarUrl: true, role: true } },
-            reactions: { distinct: ['type'], select: { type: true }, take: 4 },
+            reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 4 },
           },
         },
       },
@@ -162,7 +167,7 @@ export async function GET(req: NextRequest) {
       pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
       seriesId: true, seriesTitle: true, seriesOrder: true,
       user: { select: { id: true, name: true, avatarUrl: true } },
-      reactions: { distinct: ['type'], select: { type: true }, take: 4 },
+      reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 4 },
     },
   });
 

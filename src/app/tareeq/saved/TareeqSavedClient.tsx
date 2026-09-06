@@ -26,6 +26,10 @@ export default function TareeqSavedClient() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [loading, setLoading] = useState(true);
+  // The API caps a page at 50 and returns nextCursor — without wiring it up, anyone with
+  // more than 50 saved posts could never reach the older ones.
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [sheetPostId, setSheetPostId] = useState<string | null>(null);
   const [focusComments, setFocusComments] = useState(false);
 
@@ -38,10 +42,26 @@ export default function TareeqSavedClient() {
     setLoading(true);
     fetch(url, { credentials: 'include' })
       .then(r => r.json())
-      .then(d => setBookmarks(d.bookmarks ?? []))
+      .then(d => { setBookmarks(d.bookmarks ?? []); setCursor(d.nextCursor ?? null); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [user, authLoading, activeFolderId, router]);
+
+  async function loadMore() {
+    if (!cursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const base = activeFolderId ? `/api/tareeq/bookmarks?folderId=${activeFolderId}` : '/api/tareeq/bookmarks';
+      const res = await fetch(`${base}${base.includes('?') ? '&' : '?'}cursor=${cursor}`, { credentials: 'include' });
+      if (res.ok) {
+        const d = await res.json();
+        setBookmarks(prev => [...prev, ...(d.bookmarks ?? [])]);
+        setCursor(d.nextCursor ?? null);
+      }
+    } catch { /* offline */ } finally {
+      setLoadingMore(false);
+    }
+  }
 
   const activeFolder = folders.find(f => f.id === activeFolderId);
 
@@ -115,14 +135,26 @@ export default function TareeqSavedClient() {
             </Link>
           </div>
         ) : (
-          bookmarks.map(bm => (
-            <TareeqCard
-              key={bm.id}
-              post={bm.post as unknown as TareeqPostSummary}
-              initialBookmarked
-              onMobileOpen={(id, fc) => { setSheetPostId(id); setFocusComments(!!fc); }}
-            />
-          ))
+          <>
+            {bookmarks.map(bm => (
+              <TareeqCard
+                key={bm.id}
+                post={bm.post as unknown as TareeqPostSummary}
+                initialBookmarked
+                onMobileOpen={(id, fc) => { setSheetPostId(id); setFocusComments(!!fc); }}
+              />
+            ))}
+            {cursor && (
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="mx-auto mt-2 px-6 py-2.5 rounded-xl font-bold text-sm transition"
+                style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}
+              >
+                {loadingMore ? '...' : (isRtl ? 'تحميل المزيد' : 'Load more')}
+              </button>
+            )}
+          </>
         )}
       </div>
 
@@ -131,6 +163,7 @@ export default function TareeqSavedClient() {
           postId={sheetPostId}
           focusComments={focusComments}
           onClose={() => setSheetPostId(null)}
+          onCommented={(id) => setBookmarks(prev => prev.map(b => b.post.id === id ? { ...b, post: { ...b.post, commentCount: b.post.commentCount + 1 } } : b))}
         />
       )}
     </div>

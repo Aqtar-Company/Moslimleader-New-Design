@@ -1,5 +1,6 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
@@ -293,12 +294,19 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   const [dmSending, setDMSending] = useState<string | null>(null);
   const [dmSent, setDMSent] = useState<string | null>(null);
   const shareMenuRef = useRef<HTMLDivElement>(null);
+  // The dropdown itself renders in a portal (see ShareDropdown) so it can never be clipped
+  // by a rounded/overflow-hidden card ancestor — this ref tracks that portaled node so
+  // outside-click detection still works even though it's no longer a DOM child of shareMenuRef.
+  const shareMenuPortalRef = useRef<HTMLDivElement>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!showShareMenu) return;
     const h = (e: MouseEvent) => {
-      if (shareMenuRef.current && !shareMenuRef.current.contains(e.target as Node)) setShowShareMenu(false);
+      const t = e.target as Node;
+      const insideAnchor = !!shareMenuRef.current?.contains(t);
+      const insidePortal = !!shareMenuPortalRef.current?.contains(t);
+      if (!insideAnchor && !insidePortal) setShowShareMenu(false);
     };
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
@@ -701,7 +709,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             </span>
             <span>{isRtl ? 'مشاركة' : 'Share'}</span>
           </button>
-          {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} />}
+          {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} anchorRef={shareMenuRef} menuRef={shareMenuPortalRef} />}
         </div>
 
         {/* Options — own posts: delete; others: report/unfollow */}
@@ -973,7 +981,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                 <button onClick={handleShare} className="flex items-center gap-1 text-xs font-semibold transition" style={{ color: copied ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
                   <IconShare size={16} check={copied} />
                 </button>
-                {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} />}
+                {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} anchorRef={shareMenuRef} menuRef={shareMenuPortalRef} />}
               </div>
               {user && (
                 <button onClick={e => { e.preventDefault(); e.stopPropagation(); setShowOptions(true); }} aria-label={isRtl ? 'خيارات' : 'Options'} className="flex items-center gap-1 text-xs font-semibold transition active:scale-90" style={{ color: 'var(--tr-text-muted)' }}>
@@ -1092,7 +1100,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                   </div>
                   <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{copied ? '✓' : (isRtl ? 'شارك' : 'Share')}</span>
                 </button>
-                {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} />}
+                {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} anchorRef={shareMenuRef} menuRef={shareMenuPortalRef} />}
               </div>
 
               {/* Comment */}
@@ -1373,7 +1381,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               <button onClick={handleShare} className="flex items-center gap-1 text-sm font-semibold transition" style={{ color: copied ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
                 <IconShare size={18} check={copied} />
               </button>
-              {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} />}
+              {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} anchorRef={shareMenuRef} menuRef={shareMenuPortalRef} />}
             </div>
 
             {user && (
@@ -1882,15 +1890,54 @@ function DMPickerModal({ conversations, dmSending, dmSent, onSend, onClose, isRt
   );
 }
 
-/* ── Share dropdown ─────────────────────────────────────────────────── */
-function ShareDropdown({ postId, title, content, onCopy, onClose, onSendDM, onNativeShare, isRtl }: {
+/* ── Share dropdown ─────────────────────────────────────────────────────
+   Renders in a portal to document.body with viewport-computed fixed
+   coordinates, instead of `position: absolute` inside the card. The image
+   and video cards wrap their action rail in a rounded, `overflow-hidden`
+   article (needed to clip the media itself) — some mobile browsers/in-app
+   webviews fail to clip an absolutely-positioned popup nested that deep,
+   so it visibly escaped the rounded card and overlapped the header above
+   it. A portal sidesteps any ancestor clipping entirely, and computing the
+   position from the trigger's real screen coordinates also lets it flip
+   below the button (instead of always opening upward) when there isn't
+   room above — the case that used to push it off-screen on short cards. */
+function ShareDropdown({ postId, title, content, onCopy, onClose, onSendDM, onNativeShare, isRtl, anchorRef, menuRef }: {
   postId: string; title?: string | null; content: string;
   onCopy: (e: React.MouseEvent) => void; onClose: () => void;
   onSendDM?: () => void; onNativeShare?: (e: React.MouseEvent) => void; isRtl: boolean;
+  anchorRef: React.RefObject<HTMLElement>; menuRef: React.RefObject<HTMLDivElement>;
 }) {
   const postUrl = typeof window !== 'undefined' ? `${window.location.origin}/tareeq/${postId}` : `/tareeq/${postId}`;
   const text    = encodeURIComponent(title || content.slice(0, 80));
   const url     = encodeURIComponent(postUrl);
+
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const anchor = anchorRef.current;
+    const menu = menuRef.current;
+    if (!anchor || !menu) return;
+    const MARGIN = 8;
+    const a = anchor.getBoundingClientRect();
+    const mw = menu.offsetWidth;
+    const mh = menu.offsetHeight;
+    // Align to the anchor's inline-end edge (matches the old `end-0`), clamped to the viewport.
+    let left = isRtl ? a.right - mw : a.left;
+    left = Math.min(Math.max(left, MARGIN), window.innerWidth - mw - MARGIN);
+    // Prefer opening above the anchor; flip below when there isn't enough room.
+    let top = a.top - MARGIN - mh;
+    if (top < MARGIN) top = a.bottom + MARGIN;
+    top = Math.min(top, window.innerHeight - mh - MARGIN);
+    setPos({ top, left });
+  }, [isRtl, anchorRef, menuRef]);
+
+  // The anchor can move under the popup (page scroll, feed re-layout) — close rather than
+  // let it drift out of sync with a fixed-position popup that no longer tracks it.
+  useEffect(() => {
+    window.addEventListener('scroll', onClose, true);
+    window.addEventListener('resize', onClose);
+    return () => { window.removeEventListener('scroll', onClose, true); window.removeEventListener('resize', onClose); };
+  }, [onClose]);
 
   function openSharePopup(shareUrl: string, name: string) {
     const w = 580, h = 520;
@@ -1910,8 +1957,18 @@ function ShareDropdown({ postId, title, content, onCopy, onClose, onSendDM, onNa
     { label: 'Twitter / X', color: '#000',    shareUrl: `https://twitter.com/intent/tweet?text=${text}&url=${url}`, name: 'tw-share' },
     { label: 'Telegram',    color: '#4aaed9', shareUrl: `https://t.me/share/url?url=${url}&text=${text}`,           name: 'tg-share' },
   ];
-  return (
-    <div className="absolute bottom-full end-0 mb-2 py-1.5 w-44 z-30 rounded-2xl" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', boxShadow: '0 8px 28px rgba(0,0,0,0.14)' }}>
+  if (typeof document === 'undefined') return null;
+  return createPortal(
+    <div
+      ref={menuRef}
+      className="fixed py-1.5 w-44 z-[999] rounded-2xl"
+      style={{
+        background: 'var(--tr-surface)', border: '1px solid var(--tr-border-soft)', boxShadow: '0 8px 28px rgba(0,0,0,0.14)',
+        top: pos?.top ?? -9999, left: pos?.left ?? -9999,
+        visibility: pos ? 'visible' : 'hidden',
+      }}
+      onMouseDown={e => e.stopPropagation()}
+    >
       {onSendDM && (
         <button onClick={e => { e.stopPropagation(); onClose(); onSendDM(); }} className="flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-semibold w-full hover:opacity-70 transition" style={{ color: 'var(--tr-text-secondary)' }}>
           <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: '#1a6ed4' }} />
@@ -1940,6 +1997,7 @@ function ShareDropdown({ postId, title, content, onCopy, onClose, onSendDM, onNa
         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: 'var(--tr-text-muted)' }} />
         {isRtl ? 'نسخ الرابط' : 'Copy link'}
       </button>
-    </div>
+    </div>,
+    document.body
   );
 }

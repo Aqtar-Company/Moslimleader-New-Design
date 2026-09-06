@@ -149,6 +149,10 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const postsHasImages = useMemo(() => posts.some(p => p.imageUrl), [posts]);
   const [likedIds] = useState<Set<string>>(new Set(initialLiked));
   const [isFollowing, setIsFollowing] = useState(false);
+  // Guards against the mount GET below resolving AFTER the user has already tapped
+  // Follow — without this, a slow initial fetch could overwrite the optimistic (or
+  // server-confirmed) follow state and count with the stale pre-follow snapshot it read.
+  const followMutatedRef = useRef(false);
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
@@ -293,6 +297,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
     fetch(`/api/tareeq/follow/${profileUser.id}`, { credentials: 'include' })
       .then(r => r.json())
       .then(d => {
+        if (followMutatedRef.current) return; // user already followed/unfollowed — don't clobber it
         setIsFollowing(d.isFollowing ?? false);
         setFollowerCount(d.followerCount ?? 0);
         setFollowingCount(d.followingCount ?? 0);
@@ -1063,6 +1068,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                               if (!user) { setShowGate(true); return; }
                               if (followLoading) return;
                               setFollowLoading(true);
+                              followMutatedRef.current = true;
                               const wasFollowing = isFollowing;
                               setIsFollowing(!wasFollowing);
                               setFollowerCount(c => wasFollowing ? Math.max(0, c - 1) : c + 1);
@@ -1264,6 +1270,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                           if (!user) { setShowGate(true); return; }
                           if (followLoading) return;
                           setFollowLoading(true);
+                          followMutatedRef.current = true;
                           const wasFollowing = isFollowing;
                           setIsFollowing(!wasFollowing);
                           setFollowerCount(c => wasFollowing ? Math.max(0, c - 1) : c + 1);

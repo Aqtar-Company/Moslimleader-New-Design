@@ -66,6 +66,9 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const [sharePrefill, setSharePrefill] = useState('');
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [reactedPosts, setReactedPosts] = useState<Record<string, string>>({});
+  // Hydrates each card's save/bookmark icon — without this every post showed as
+  // un-saved even when already bookmarked, and tapping it re-triggered the save flow.
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [newPostId, setNewPostId] = useState<string | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
   const [pullY, setPullY] = useState(0);
@@ -127,12 +130,13 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   }, [user]);
 
   useEffect(() => {
-    if (!user) { setLikedIds(new Set()); setReactedPosts({}); return; }
+    if (!user) { setLikedIds(new Set()); setReactedPosts({}); setBookmarkedIds(new Set()); return; }
     fetch('/api/tareeq/me', { credentials: 'include' })
       .then(r => r.json())
       .then(d => {
         setLikedIds(new Set(d.likedIds ?? []));
         setReactedPosts(d.reactedPosts ?? {});
+        setBookmarkedIds(new Set(d.bookmarkedIds ?? []));
       })
       .catch(() => {});
   }, [user]);
@@ -159,6 +163,9 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         });
         setCursor(data.nextCursor);
       }
+    } catch {
+      // Network failure — leave existing posts as-is; the caller's own try/finally
+      // (see the pull-to-refresh handler) still resets its state either way.
     } finally {
       setLoading(false);
       setInitialLoading(false);
@@ -257,9 +264,15 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         if ('vibrate' in navigator) navigator.vibrate(30);
         pullRefreshingRef.current = true;
         setPullRefreshing(true);
-        await loadPosts(categoryRef.current, searchValRef.current, null, sortRef.current);
-        pullRefreshingRef.current = false;
-        setPullRefreshing(false);
+        try {
+          await loadPosts(categoryRef.current, searchValRef.current, null, sortRef.current);
+        } finally {
+          // Without this, one failed refresh (offline / network drop) left
+          // pullRefreshingRef stuck true forever — the onMove guard above checks it,
+          // so pull-to-refresh silently stopped working until a full page reload.
+          pullRefreshingRef.current = false;
+          setPullRefreshing(false);
+        }
       }
       pullYRef.current = 0;
       setPullY(0);
@@ -373,6 +386,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
                   post={post}
                   initialLiked={likedIds.has(post.id)}
                   initialReaction={reactedPosts[post.id] ?? null}
+                  initialBookmarked={bookmarkedIds.has(post.id)}
                   onMobileOpen={(postId, focusComments) => { setSheetPostId(postId); setSheetFocusComments(!!focusComments); }}
                   onDeleted={(id) => setPosts(prev => prev.filter(p => p.id !== id))}
                 />

@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
-import { TareeqNotificationsProvider } from '@/context/TareeqNotificationsContext';
 import { compressImage } from '@/lib/compress-image';
 
 // ── Interfaces ────────────────────────────────────────────────────────
@@ -1324,10 +1323,8 @@ function Inner({ groupId }: { groupId: string }) {
   );
 }
 
+// TareeqShell already provides a TareeqNotificationsProvider for every /tareeq page —
+// nesting a second one here doubled the 30s polling and badge effects.
 export default function TareeqGroupClient({ groupId }: { groupId: string }) {
-  return (
-    <TareeqNotificationsProvider>
-      <Inner groupId={groupId} />
-    </TareeqNotificationsProvider>
-  );
+  return <Inner groupId={groupId} />;
 }

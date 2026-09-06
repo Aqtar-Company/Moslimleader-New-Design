@@ -96,11 +96,15 @@ export async function PUT(req: NextRequest) {
     },
   });
 
-  // Update all group memberships with today's read date + streak + page advance
-  // For linkedToSolo groups: also sync the reading position (currentPage/Surah/Ayah)
+  // Update ONLY linkedToSolo group memberships with today's read date + streak + page
+  // advance, and mirror the reading position. Groups explicitly promise independent
+  // members "a separate position and counter — group reading is independent from your
+  // solo khatma" (see KhatmaGroupDetail.tsx); without this `linkedToSolo` filter, solo
+  // reading silently bumped every group's leaderboard/streak/points regardless, since
+  // only the position mirror below was actually gated on it.
   if (pagesAdvanced > 0) {
     const memberships = await prisma.khatmaGroupMember.findMany({
-      where: { userId: user.userId },
+      where: { userId: user.userId, linkedToSolo: true },
       select: { id: true, lastReadDate: true, streak: true, linkedToSolo: true },
     });
     for (const m of memberships) {
@@ -119,7 +123,8 @@ export async function PUT(req: NextRequest) {
           lastReadDate: today,
           streak: mStreak,
           points: { increment: pagesAdvanced + (mStreak > 1 ? 2 : 0) },
-          // Mirror reading position for linked groups
+          // Mirror reading position (m.linkedToSolo is always true here now, but kept as
+          // an explicit guard rather than relying solely on the query filter above)
           ...(m.linkedToSolo && currentPage != null && {
             currentPage,
             ...(currentSurah != null && { currentSurah }),

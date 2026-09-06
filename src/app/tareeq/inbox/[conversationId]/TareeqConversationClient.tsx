@@ -3,7 +3,7 @@ import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } fr
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
-import { TareeqNotificationsProvider, useTareeqNotifications } from '@/context/TareeqNotificationsContext';
+import { useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 import { compressImage } from '@/lib/compress-image';
 import { prewireOutRingPipeline } from '@/lib/tareeq-ring-pipeline';
 import TareeqCallScreen from '@/components/tareeq/TareeqCallScreen';
@@ -418,7 +418,15 @@ function Inner({ conversationId }: { conversationId: string }) {
       const newLatest = msgs.length ? msgs[msgs.length - 1].id : '';
       const newCallCount = callEvents.length;
 
-      if (newLatest !== latestIdRef.current) {
+      // A poll that started before a just-sent message landed in the DB returns a snapshot
+      // that predates it — its `newLatest` then differs from latestIdRef (which handleSend
+      // already advanced) even though nothing is actually newer. Overwriting with that
+      // stale snapshot wiped the sent message from view for up to one poll cycle. The fix:
+      // only trust this response as "newer" when our current latest message is actually
+      // present in it — i.e. the poll's snapshot is at least as fresh as local state.
+      const localLatestIsStale = latestIdRef.current !== '' && !msgs.some(m => m.id === latestIdRef.current);
+
+      if (newLatest !== latestIdRef.current && !localLatestIsStale) {
         const latestMsg = msgs[msgs.length - 1];
         if (latestMsg && latestMsg.senderId !== user?.id) playMsgChime();
         shouldScrollRef.current = true;
@@ -434,10 +442,12 @@ function Inner({ conversationId }: { conversationId: string }) {
               : c
           ));
         }
-      } else {
+      } else if (!localLatestIsStale) {
         // Still update messages to reflect changed read statuses (seen ticks)
         setMessages(msgs);
       }
+      // else: this response is stale relative to what we already have locally — skip it
+      // and let the next poll (3s later) pick up once the DB has caught up.
 
       if (newCallCount !== callCountRef.current) {
         setCalls(callEvents);
@@ -1557,10 +1567,10 @@ function Inner({ conversationId }: { conversationId: string }) {
   );
 }
 
+// TareeqShell already provides a TareeqNotificationsProvider for every /tareeq page —
+// nesting a second one here doubled the 30s polling and badge effects, and this page's
+// own refresh() calls only updated this inner provider, not the header's bell/inbox
+// badges (bound to the outer one).
 export default function TareeqConversationClient({ conversationId }: { conversationId: string }) {
-  return (
-    <TareeqNotificationsProvider>
-      <Inner conversationId={conversationId} />
-    </TareeqNotificationsProvider>
-  );
+  return <Inner conversationId={conversationId} />;
 }

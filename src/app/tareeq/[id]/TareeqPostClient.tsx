@@ -147,7 +147,16 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
     if (!user) { setShowGate(true); return; }
     const wasBookmarked = bookmarked;
     setBookmarked(!wasBookmarked);
-    fetch(`/api/tareeq/${post.id}/bookmark`, { method: 'POST', credentials: 'include' })
+    // Use the same /api/tareeq/bookmarks endpoint the feed card uses — the old
+    // /[id]/bookmark toggle route never touched savedCount, so saving from this page
+    // left the count shown everywhere else (feed, profile) stale.
+    const req = wasBookmarked
+      ? fetch(`/api/tareeq/bookmarks?postId=${post.id}`, { method: 'DELETE', credentials: 'include' })
+      : fetch('/api/tareeq/bookmarks', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ postId: post.id }),
+        });
+    req
       .then(r => { if (!r.ok) setBookmarked(wasBookmarked); })
       .catch(() => setBookmarked(wasBookmarked));
   }

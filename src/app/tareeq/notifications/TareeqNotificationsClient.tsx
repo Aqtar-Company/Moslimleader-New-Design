@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
-import { TareeqNotificationsProvider, useTareeqNotifications } from '@/context/TareeqNotificationsContext';
+import { useTareeqNotifications } from '@/context/TareeqNotificationsContext';
 import { requestTareeqPush } from '@/hooks/useTareeqPush';
 
 interface TareeqNotif {
@@ -237,10 +237,11 @@ function Inner() {
   );
 }
 
+// TareeqShell (src/app/tareeq/layout.tsx) already wraps every /tareeq page in a
+// TareeqNotificationsProvider — nesting a second one here doubled the 30s polling and
+// its badge/setAppBadge effects, and this page's own `refresh()` calls (e.g. mark-all-
+// read) only updated this inner provider, leaving the header's bell badge (bound to the
+// outer one) stale until its own next poll.
 export default function TareeqNotificationsClient() {
-  return (
-    <TareeqNotificationsProvider>
-      <Inner />
-    </TareeqNotificationsProvider>
-  );
+  return <Inner />;
 }

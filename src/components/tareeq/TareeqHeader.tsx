@@ -101,7 +101,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   const { user } = useAuth();
   const router = useRouter();
   const pathname = usePathname() ?? '';
-  const { notifCount, messageCount } = useTareeqNotifications();
+  const { notifCount, messageCount, refresh: refreshNotifCounts } = useTareeqNotifications();
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const mobileSearchRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -279,9 +279,14 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
       }
     } catch { /* offline */ }
     setNotifsLoading(false);
-    // Mark all read
-    fetch('/api/tareeq/notifications', { method: 'POST', credentials: 'include' }).catch(() => {});
-  }, []);
+    // Mark all read, then refresh the shared badge count — without this the bell kept
+    // showing the pre-read count for up to 30s (the next background poll) even though
+    // the panel the user just opened had already cleared everything.
+    try {
+      await fetch('/api/tareeq/notifications', { method: 'POST', credentials: 'include' });
+    } catch { /* offline */ }
+    refreshNotifCounts();
+  }, [refreshNotifCounts]);
 
   /* ── Load conversations ── */
   const loadConversations = useCallback(async () => {

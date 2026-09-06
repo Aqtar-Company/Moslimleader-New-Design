@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
+import { isBlockedEitherWay } from '@/lib/tareeq-guard';
 import TareeqUserClient from './TareeqUserClient';
 
 interface Props { params: { userId: string } }
@@ -47,24 +48,46 @@ export default async function TareeqUserPage({ params }: Props) {
 
   const userId = profileUser.id;
 
-  const [rawPosts, postCount] = await Promise.all([
-    prisma.tareeqPost.findMany({
-      where: { userId, isHidden: false },
-      take: 13,
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true, title: true, summary: true, content: true,
-        category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true,
-        authorName: true, likeCount: true, commentCount: true, savedCount: true,
-        createdAt: true, userId: true,
-        pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
-        seriesId: true, seriesTitle: true, seriesOrder: true,
-        user: { select: { id: true, name: true, avatarUrl: true, role: true } },
-        reactions: { distinct: ['type'], select: { type: true }, take: 4 },
-      },
-    }),
-    prisma.tareeqPost.count({ where: { userId, isHidden: false } }),
-  ]);
+  // Resolve the viewer + block relationship BEFORE deciding what to send: rendering
+  // initialPosts unconditionally and only hiding them client-side (after an async check)
+  // let a blocked viewer see the first paint of content either side blocked. Checked in
+  // both directions — blocking someone should hide their posts from you just as being
+  // blocked by them should.
+  let viewerId: string | null = null;
+  let isOwner = false;
+  try {
+    // getAuthUser() returns null for a guest (no cookie) rather than throwing — only an
+    // unexpected error throws, which the catch below treats the same as "no viewer".
+    const viewer = await getAuthUser();
+    if (viewer) {
+      viewerId = viewer.userId;
+      isOwner = viewer.userId === profileUser.id;
+    }
+  } catch {
+    // unauthenticated — treated as a non-blocked anonymous viewer below
+  }
+  const blocked = !isOwner && viewerId ? await isBlockedEitherWay(viewerId, profileUser.id) : false;
+
+  const [rawPosts, postCount] = blocked
+    ? [[], 0]
+    : await Promise.all([
+        prisma.tareeqPost.findMany({
+          where: { userId, isHidden: false },
+          take: 13,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true, title: true, summary: true, content: true,
+            category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true,
+            authorName: true, likeCount: true, commentCount: true, savedCount: true,
+            createdAt: true, userId: true,
+            pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
+            seriesId: true, seriesTitle: true, seriesOrder: true,
+            user: { select: { id: true, name: true, avatarUrl: true, role: true } },
+            reactions: { distinct: ['type'], select: { type: true }, take: 4 },
+          },
+        }),
+        prisma.tareeqPost.count({ where: { userId, isHidden: false } }),
+      ]);
 
   const hasMore = rawPosts.length > 12;
   const posts = hasMore ? rawPosts.slice(0, 12) : rawPosts;
@@ -79,19 +102,16 @@ export default async function TareeqUserPage({ params }: Props) {
     reactions: undefined,
   }));
 
-  // Fetch liked IDs for the current viewer (best-effort) + check ownership
+  // Fetch liked IDs for the current viewer (best-effort) — skipped entirely when blocked
   let likedIds: string[] = [];
-  let isOwner = false;
-  try {
-    const viewer = await getAuthUser();
-    isOwner = viewer.userId === profileUser.id;
-    const likes = await prisma.tareeqLike.findMany({
-      where: { userId: viewer.userId, postId: { in: posts.map(p => p.id) } },
-      select: { postId: true },
-    });
-    likedIds = likes.map(l => l.postId);
-  } catch {
-    // unauthenticated — empty likedIds is fine
+  if (viewerId && !blocked) {
+    try {
+      const likes = await prisma.tareeqLike.findMany({
+        where: { userId: viewerId, postId: { in: posts.map(p => p.id) } },
+        select: { postId: true },
+      });
+      likedIds = likes.map(l => l.postId);
+    } catch { /* best-effort */ }
   }
 
   // Only expose tareeqMessagePrivacy to the profile owner — hide from public HTML
@@ -112,6 +132,7 @@ export default async function TareeqUserPage({ params }: Props) {
       initialCursor={nextCursor}
       likedIds={likedIds}
       postCount={postCount}
+      initialBlocked={blocked}
     />
   );
 }

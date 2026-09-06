@@ -11,19 +11,26 @@ export async function GET(req: NextRequest) {
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://moslimleader.com';
 
+  // Set by the start route so a deep link (e.g. /tareeq/khatmati/groups/x) survives the
+  // round trip to Facebook instead of always landing on the Tareeq home.
+  const rawRedirect = req.cookies.get('oauth_redirect')?.value || '/tareeq';
+  const safeRedirect = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/tareeq';
+  const loginPage = safeRedirect.startsWith('/tareeq') ? '/tareeq/login' : '/login';
+
   const clearState = (res: NextResponse) => {
     res.cookies.set('oauth_state_fb', '', { httpOnly: true, maxAge: 0, path: '/' });
+    res.cookies.set('oauth_redirect', '', { httpOnly: true, maxAge: 0, path: '/' });
     return res;
   };
 
   if (error || !code) {
-    return clearState(NextResponse.redirect(`${baseUrl}/tareeq/login?error=fb_failed`));
+    return clearState(NextResponse.redirect(`${baseUrl}${loginPage}?error=fb_failed`));
   }
 
   // Verify CSRF state cookie (separate from Google's oauth_state)
   const cookieState = req.cookies.get('oauth_state_fb')?.value;
   if (!cookieState || !receivedState || cookieState !== receivedState) {
-    return clearState(NextResponse.redirect(`${baseUrl}/tareeq/login?error=fb_failed`));
+    return clearState(NextResponse.redirect(`${baseUrl}${loginPage}?error=fb_failed`));
   }
 
   try {
@@ -40,7 +47,7 @@ export async function GET(req: NextRequest) {
 
     const tokenData = await tokenRes.json();
     if (!tokenData.access_token) {
-      return clearState(NextResponse.redirect(`${baseUrl}/tareeq/login?error=fb_failed`));
+      return clearState(NextResponse.redirect(`${baseUrl}${loginPage}?error=fb_failed`));
     }
 
     // Get user info from Facebook
@@ -50,7 +57,7 @@ export async function GET(req: NextRequest) {
     const fbUser = await userRes.json();
 
     if (!fbUser.id) {
-      return clearState(NextResponse.redirect(`${baseUrl}/tareeq/login?error=fb_failed`));
+      return clearState(NextResponse.redirect(`${baseUrl}${loginPage}?error=fb_failed`));
     }
 
     // 1. Look up by OAuthAccount first — handles users who revoked email permission
@@ -90,7 +97,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (!user) {
-      return clearState(NextResponse.redirect(`${baseUrl}/tareeq/login?error=fb_failed`));
+      return clearState(NextResponse.redirect(`${baseUrl}${loginPage}?error=fb_failed`));
     }
 
     if (!user.emailVerified) {
@@ -98,11 +105,11 @@ export async function GET(req: NextRequest) {
     }
 
     const token = await signToken({ userId: user.id, email: user.email, role: user.role, name: user.name });
-    const response = NextResponse.redirect(`${baseUrl}/tareeq`);
+    const response = NextResponse.redirect(`${baseUrl}${safeRedirect}`);
     response.cookies.set(makeAuthCookie(token));
     return clearState(response);
   } catch (err) {
     console.error('[facebook oauth callback]', err);
-    return clearState(NextResponse.redirect(`${baseUrl}/tareeq/login?error=fb_failed`));
+    return clearState(NextResponse.redirect(`${baseUrl}${loginPage}?error=fb_failed`));
   }
 }

@@ -11,14 +11,26 @@ export async function GET(req: NextRequest) {
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://moslimleader.com';
 
+  // This route is shared by the shop's /login and Tareeq's /tareeq/login — the redirect
+  // cookie set in the start route tells us which one to send the user back to on error,
+  // and where to land on success (see below), instead of always assuming the shop.
+  const rawRedirect = req.cookies.get('oauth_redirect')?.value || '/';
+  const safeRedirect = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/';
+  const loginPage = safeRedirect.startsWith('/tareeq') ? '/tareeq/login' : '/login';
+
+  const clearRedirectCookie = (res: NextResponse) => {
+    res.cookies.set('oauth_redirect', '', { httpOnly: true, maxAge: 0, path: '/' });
+    return res;
+  };
+
   if (error || !code) {
-    return NextResponse.redirect(`${baseUrl}/login?error=google_denied`);
+    return clearRedirectCookie(NextResponse.redirect(`${baseUrl}${loginPage}?error=google_denied`));
   }
 
   // Verify CSRF state cookie
   const cookieState = req.cookies.get('oauth_state')?.value;
   if (!cookieState || !receivedState || cookieState !== receivedState) {
-    return NextResponse.redirect(`${baseUrl}/login?error=google_csrf`);
+    return clearRedirectCookie(NextResponse.redirect(`${baseUrl}${loginPage}?error=google_csrf`));
   }
 
   try {
@@ -41,7 +53,7 @@ export async function GET(req: NextRequest) {
 
     const tokenData = await tokenRes.json();
     if (!tokenData.access_token) {
-      return NextResponse.redirect(`${baseUrl}/login?error=google_token`);
+      return clearRedirectCookie(NextResponse.redirect(`${baseUrl}${loginPage}?error=google_token`));
     }
 
     // Get user info from Google
@@ -51,7 +63,7 @@ export async function GET(req: NextRequest) {
     const googleUser = await userRes.json();
 
     if (!googleUser.email) {
-      return NextResponse.redirect(`${baseUrl}/login?error=google_email`);
+      return clearRedirectCookie(NextResponse.redirect(`${baseUrl}${loginPage}?error=google_email`));
     }
 
     const emailKey = googleUser.email.toLowerCase();
@@ -98,16 +110,18 @@ export async function GET(req: NextRequest) {
 
     // Create JWT token and set cookie using shared makeAuthCookie (consistent cookie name)
     const token = await signToken({ userId: user.id, email: user.email, role: user.role, name: user.name });
-    const response = NextResponse.redirect(`${baseUrl}/`);
+    const response = NextResponse.redirect(`${baseUrl}${safeRedirect}`);
     response.cookies.set(makeAuthCookie(token));
-    // Clear the CSRF state cookie
+    // Clear the CSRF state + redirect cookies
     response.cookies.set('oauth_state', '', { httpOnly: true, maxAge: 0, path: '/' });
+    response.cookies.set('oauth_redirect', '', { httpOnly: true, maxAge: 0, path: '/' });
 
     return response;
   } catch (err) {
     console.error('[google oauth callback]', err);
-    const errResponse = NextResponse.redirect(`${baseUrl}/login?error=google_failed`);
+    const errResponse = NextResponse.redirect(`${baseUrl}${loginPage}?error=google_failed`);
     errResponse.cookies.set('oauth_state', '', { httpOnly: true, maxAge: 0, path: '/' });
+    errResponse.cookies.set('oauth_redirect', '', { httpOnly: true, maxAge: 0, path: '/' });
     return errResponse;
   }
 }

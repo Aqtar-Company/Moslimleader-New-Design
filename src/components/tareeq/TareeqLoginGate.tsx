@@ -2,12 +2,18 @@
 import { createPortal } from 'react-dom';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 
 interface Props { onClose: () => void; }
 
 export default function TareeqLoginGate({ onClose }: Props) {
   const { isRtl } = useLang();
+  const pathname = usePathname();
+  // Send the user to Tareeq's own login (not the shop's /login) and bring them back to
+  // whatever they were doing — without this they landed on the shop homepage after
+  // signing in from a reaction/bookmark/reply prompt deep inside Tareeq.
+  const redirectParam = `redirect=${encodeURIComponent(pathname || '/tareeq')}`;
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
@@ -46,7 +52,7 @@ export default function TareeqLoginGate({ onClose }: Props) {
         </p>
         <div className="flex gap-3">
           <Link
-            href="/login"
+            href={`/tareeq/login?${redirectParam}`}
             className="flex-1 font-bold py-3 rounded-xl text-sm transition"
             style={{
               background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))',
@@ -56,7 +62,7 @@ export default function TareeqLoginGate({ onClose }: Props) {
             {isRtl ? 'تسجيل الدخول' : 'Sign In'}
           </Link>
           <Link
-            href="/login?mode=signup"
+            href={`/tareeq/login?mode=signup&${redirectParam}`}
             className="flex-1 font-bold py-3 rounded-xl text-sm transition"
             style={{
               background: 'var(--tr-overlay)',

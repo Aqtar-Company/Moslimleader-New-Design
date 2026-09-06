@@ -28,6 +28,11 @@ interface Props {
   initialCursor: string | null;
   likedIds: string[];
   postCount?: number;
+  // Server-computed block check (either direction) at request time — see page.tsx.
+  // Combined client-side with the live isBlocking/isBlockedBy fetch so posts and the
+  // Follow/Message buttons stay hidden immediately on load AND react to toggling block
+  // from the options menu, without a round trip.
+  initialBlocked?: boolean;
 }
 
 interface BmFolder {
@@ -133,7 +138,7 @@ function nameGradient(name: string): string {
 
 type ProfileTab = 'posts' | 'bookmarks';
 
-export default function TareeqUserClient({ profileUser, initialPosts, initialCursor, likedIds: initialLiked, postCount }: Props) {
+export default function TareeqUserClient({ profileUser, initialPosts, initialCursor, likedIds: initialLiked, postCount, initialBlocked }: Props) {
   const { isRtl } = useLang();
   const { user, updateUser, signOut, isLoading: authLoading } = useAuth();
   const router = useRouter();
@@ -153,6 +158,9 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [showQR, setShowQR] = useState(false);
   const [isBlocking, setIsBlocking] = useState(false);
   const [isBlockedBy, setIsBlockedBy] = useState(false);
+  // Either direction of block hides posts and disables Follow/Message — the SSR value
+  // covers the first paint, the live fetch/toggle covers everything after.
+  const contentBlocked = !!initialBlocked || isBlocking || isBlockedBy;
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showReportUser, setShowReportUser] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -912,6 +920,18 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
     </div>
   );
 
+  // ── Blocked state — either direction; posts are never sent by the server in this case ──
+  const blockedEmpty = (
+    <div className="text-center py-20">
+      <svg className="w-14 h-14 mx-auto mb-4" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+      </svg>
+      <p className="font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>
+        {isRtl ? 'لا يمكن عرض منشورات هذا الحساب' : "This account's posts aren't available"}
+      </p>
+    </div>
+  );
+
   return (
     <div style={{ background: 'var(--tr-base)' }}>
 
@@ -1032,40 +1052,48 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                     </>
                   ) : (
                     <>
-                      <button
-                        onClick={async () => {
-                          if (!user) { setShowGate(true); return; }
-                          if (followLoading) return;
-                          setFollowLoading(true);
-                          const wasFollowing = isFollowing;
-                          setIsFollowing(!wasFollowing);
-                          setFollowerCount(c => wasFollowing ? Math.max(0, c - 1) : c + 1);
-                          try {
-                            const res = await fetch(`/api/tareeq/follow/${profileUser.id}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' } });
-                            if (res.ok) {
-                              const d = await res.json();
-                              setIsFollowing(d.following);
-                              showToast(d.following ? (isRtl ? 'تمت المتابعة ✓' : 'Following ✓') : (isRtl ? 'تم إلغاء المتابعة' : 'Unfollowed'));
-                            } else { setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1)); }
-                          } catch {
-                            setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1));
-                          } finally { setFollowLoading(false); }
-                        }}
-                        disabled={followLoading}
-                        className="font-bold text-sm px-5 py-2 rounded-full transition active:scale-95"
-                        style={isFollowing
-                          ? { background: '#3b82f6', color: '#fff', border: '1px solid #3b82f6' }
-                          : { background: 'var(--tr-gold)', color: '#fff', border: '1px solid var(--tr-gold)' }}
-                      >
-                        {isFollowing ? (isRtl ? 'متابَع' : 'Following') : (isRtl ? 'تابع' : 'Follow')}
-                      </button>
-                      <button
-                        onClick={handleSendMessage}
-                        className="font-bold text-sm px-5 py-2 rounded-full transition active:scale-95"
-                        style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}
-                      >
-                        {isRtl ? 'رسالة' : 'Message'}
-                      </button>
+                      {contentBlocked ? (
+                        <span className="font-bold text-sm px-5 py-2 rounded-full" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', border: '1px solid var(--tr-border-soft)' }}>
+                          {isRtl ? 'غير متاح' : 'Unavailable'}
+                        </span>
+                      ) : (
+                        <>
+                          <button
+                            onClick={async () => {
+                              if (!user) { setShowGate(true); return; }
+                              if (followLoading) return;
+                              setFollowLoading(true);
+                              const wasFollowing = isFollowing;
+                              setIsFollowing(!wasFollowing);
+                              setFollowerCount(c => wasFollowing ? Math.max(0, c - 1) : c + 1);
+                              try {
+                                const res = await fetch(`/api/tareeq/follow/${profileUser.id}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+                                if (res.ok) {
+                                  const d = await res.json();
+                                  setIsFollowing(d.following);
+                                  showToast(d.following ? (isRtl ? 'تمت المتابعة ✓' : 'Following ✓') : (isRtl ? 'تم إلغاء المتابعة' : 'Unfollowed'));
+                                } else { setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1)); }
+                              } catch {
+                                setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1));
+                              } finally { setFollowLoading(false); }
+                            }}
+                            disabled={followLoading}
+                            className="font-bold text-sm px-5 py-2 rounded-full transition active:scale-95"
+                            style={isFollowing
+                              ? { background: '#3b82f6', color: '#fff', border: '1px solid #3b82f6' }
+                              : { background: 'var(--tr-gold)', color: '#fff', border: '1px solid var(--tr-gold)' }}
+                          >
+                            {isFollowing ? (isRtl ? 'متابَع' : 'Following') : (isRtl ? 'تابع' : 'Follow')}
+                          </button>
+                          <button
+                            onClick={handleSendMessage}
+                            className="font-bold text-sm px-5 py-2 rounded-full transition active:scale-95"
+                            style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}
+                          >
+                            {isRtl ? 'رسالة' : 'Message'}
+                          </button>
+                        </>
+                      )}
                       <UserOptionsMenu
                         isRtl={isRtl} isBlocking={isBlocking} showUserMenu={showUserMenu}
                         setShowUserMenu={setShowUserMenu} toggleBlock={toggleBlock}
@@ -1098,7 +1126,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
               {/* Feed column */}
               <div className="flex-1 min-w-0">
                 {activeTab === 'posts' && (
-                  posts.length === 0 ? postsEmpty : (
+                  contentBlocked ? blockedEmpty : posts.length === 0 ? postsEmpty : (
                     <>
                       <div className="flex flex-col gap-4">
                         {posts.map(post => (
@@ -1225,40 +1253,48 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
               {/* Follow/Message/QR buttons */}
               {!isOwnProfile && (
                 <div className="flex gap-2 mt-14">
-                  <button
-                    onClick={async () => {
-                      if (!user) { setShowGate(true); return; }
-                      if (followLoading) return;
-                      setFollowLoading(true);
-                      const wasFollowing = isFollowing;
-                      setIsFollowing(!wasFollowing);
-                      setFollowerCount(c => wasFollowing ? Math.max(0, c - 1) : c + 1);
-                      try {
-                        const res = await fetch(`/api/tareeq/follow/${profileUser.id}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' } });
-                        if (res.ok) {
-                          const d = await res.json();
-                          setIsFollowing(d.following);
-                          showToast(d.following ? (isRtl ? 'تمت المتابعة ✓' : 'Following ✓') : (isRtl ? 'تم إلغاء المتابعة' : 'Unfollowed'));
-                        } else { setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1)); }
-                      } catch {
-                        setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1));
-                      } finally { setFollowLoading(false); }
-                    }}
-                    disabled={followLoading}
-                    className="font-bold text-sm px-5 py-2 rounded-full transition active:scale-95"
-                    style={isFollowing
-                      ? { background: '#3b82f6', color: '#fff', border: '1px solid #3b82f6' }
-                      : { background: 'var(--tr-gold)', color: '#fff', border: '1px solid var(--tr-gold)' }}
-                  >
-                    {isFollowing ? (isRtl ? 'متابَع' : 'Following') : (isRtl ? 'تابع' : 'Follow')}
-                  </button>
-                  <button
-                    onClick={handleSendMessage}
-                    className="font-bold text-sm px-5 py-2 rounded-full transition active:scale-95"
-                    style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}
-                  >
-                    {isRtl ? 'رسالة' : 'Message'}
-                  </button>
+                  {contentBlocked ? (
+                    <span className="font-bold text-sm px-5 py-2 rounded-full" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)', border: '1px solid var(--tr-border-soft)' }}>
+                      {isRtl ? 'غير متاح' : 'Unavailable'}
+                    </span>
+                  ) : (
+                    <>
+                      <button
+                        onClick={async () => {
+                          if (!user) { setShowGate(true); return; }
+                          if (followLoading) return;
+                          setFollowLoading(true);
+                          const wasFollowing = isFollowing;
+                          setIsFollowing(!wasFollowing);
+                          setFollowerCount(c => wasFollowing ? Math.max(0, c - 1) : c + 1);
+                          try {
+                            const res = await fetch(`/api/tareeq/follow/${profileUser.id}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+                            if (res.ok) {
+                              const d = await res.json();
+                              setIsFollowing(d.following);
+                              showToast(d.following ? (isRtl ? 'تمت المتابعة ✓' : 'Following ✓') : (isRtl ? 'تم إلغاء المتابعة' : 'Unfollowed'));
+                            } else { setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1)); }
+                          } catch {
+                            setIsFollowing(wasFollowing); setFollowerCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1));
+                          } finally { setFollowLoading(false); }
+                        }}
+                        disabled={followLoading}
+                        className="font-bold text-sm px-5 py-2 rounded-full transition active:scale-95"
+                        style={isFollowing
+                          ? { background: '#3b82f6', color: '#fff', border: '1px solid #3b82f6' }
+                          : { background: 'var(--tr-gold)', color: '#fff', border: '1px solid var(--tr-gold)' }}
+                      >
+                        {isFollowing ? (isRtl ? 'متابَع' : 'Following') : (isRtl ? 'تابع' : 'Follow')}
+                      </button>
+                      <button
+                        onClick={handleSendMessage}
+                        className="font-bold text-sm px-5 py-2 rounded-full transition active:scale-95"
+                        style={{ background: 'var(--tr-raised)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-soft)' }}
+                      >
+                        {isRtl ? 'رسالة' : 'Message'}
+                      </button>
+                    </>
+                  )}
                   <button
                     onClick={() => setShowQR(true)}
                     className="w-9 h-9 flex items-center justify-center rounded-full transition active:scale-95"
@@ -1312,7 +1348,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
           {/* Feed / Bookmarks content */}
           <div className="py-4 pb-24">
             {activeTab === 'posts' && (
-              posts.length === 0 ? postsEmpty : (
+              contentBlocked ? blockedEmpty : posts.length === 0 ? postsEmpty : (
                 <>
                   {postsHasImages ? (
                     <div className="grid grid-cols-2 gap-3">

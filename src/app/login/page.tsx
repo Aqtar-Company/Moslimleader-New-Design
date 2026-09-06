@@ -294,7 +294,7 @@ function AuthContent() {
                   <div className="flex-1 h-px bg-gray-200" />
                 </div>
                 <a
-                  href="/api/auth/oauth/google"
+                  href={`/api/auth/oauth/google?redirect=${encodeURIComponent(redirect)}`}
                   className="w-full flex items-center justify-center gap-3 border border-gray-200 hover:border-gray-300 hover:bg-gray-50 rounded-xl py-3 transition text-sm font-medium text-gray-700"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">

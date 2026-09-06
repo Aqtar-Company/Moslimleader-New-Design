@@ -43,6 +43,19 @@ export default function TareeqQueueBanner() {
     return () => window.removeEventListener('tareeq-queue-changed', refresh);
   }, [refresh]);
 
+  // Auto-send when the connection comes back. Nothing replayed this queue on its own —
+  // a post composed offline just sat there until the user happened to notice the banner
+  // and press Retry, which doesn't match the app's "works offline" promise.
+  useEffect(() => {
+    if (!user) return;
+    const onOnline = () => { if (loadQueue().length > 0) void retryAll(); };
+    window.addEventListener('online', onOnline);
+    // Also try once on mount in case we came back while the tab was closed/backgrounded.
+    if (navigator.onLine && loadQueue().length > 0) void retryAll();
+    return () => window.removeEventListener('online', onOnline);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
   const retryAll = useCallback(async () => {
     if (!user || retrying) return;
     setRetrying(true);

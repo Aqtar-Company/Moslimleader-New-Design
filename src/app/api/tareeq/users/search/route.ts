@@ -12,12 +12,20 @@ export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q')?.trim() ?? '';
   if (q.length < 2) return NextResponse.json({ users: [] });
 
+  // Anyone in a block relationship either way is not discoverable/mentionable.
+  const blocks = await prisma.tareeqBlock.findMany({
+    where: { OR: [{ blockerId: user.userId }, { blockedId: user.userId }] },
+    select: { blockerId: true, blockedId: true },
+  });
+  const blockedIds = blocks.map(b => (b.blockerId === user.userId ? b.blockedId : b.blockerId));
+
   const users = await prisma.user.findMany({
     where: {
-      id: { not: user.userId },
-      name: { contains: q },
+      id: { not: user.userId, ...(blockedIds.length ? { notIn: blockedIds } : {}) },
+      // Searching `name` only meant people couldn't be found by their @handle.
+      OR: [{ name: { contains: q } }, { username: { contains: q } }],
     },
-    select: { id: true, name: true, avatarUrl: true },
+    select: { id: true, name: true, username: true, avatarUrl: true },
     take: 8,
   });
 

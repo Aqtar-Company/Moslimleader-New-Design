@@ -459,11 +459,36 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
     finally { setFollowListLoading(false); }
   }
 
+  // NOTE: also adjusts the profile's own counters — updating just the row left the
+  // "Following" stat stale until reload.
   async function toggleFollowFromList(targetId: string, currentlyFollowing: boolean) {
+    lastFollowMutationRef.current = Date.now();
     setFollowListUsers(prev => prev.map(u => u.id === targetId ? { ...u, isFollowedByViewer: !currentlyFollowing } : u));
-    await fetch(`/api/tareeq/follow/${targetId}`, { method: 'POST', credentials: 'include' }).catch(() => {
+    // Keep the profile's own stats in step. On your OWN profile the "Following" count
+    // changes; on someone else's, following THEM changes their follower count.
+    const isSelfProfile = isOwnProfile;
+    const affectsThisProfile = targetId === profileUser.id;
+    const delta = currentlyFollowing ? -1 : 1;
+    if (isSelfProfile) setFollowingCount(c => Math.max(0, c + delta));
+    if (affectsThisProfile) {
+      setIsFollowing(!currentlyFollowing);
+      setFollowerCount(c => Math.max(0, c + delta));
+    }
+    try {
+      const res = await fetch(`/api/tareeq/follow/${targetId}`, { method: 'POST', credentials: 'include' });
+      if (!res.ok) throw new Error('failed');
+      const d = await res.json();
+      // Reconcile with what the server actually did rather than trusting the optimism.
+      if (typeof d.following === 'boolean' && d.following === currentlyFollowing) {
+        setFollowListUsers(prev => prev.map(u => u.id === targetId ? { ...u, isFollowedByViewer: d.following } : u));
+        if (isSelfProfile) setFollowingCount(c => Math.max(0, c - delta));
+        if (affectsThisProfile) { setIsFollowing(d.following); setFollowerCount(c => Math.max(0, c - delta)); }
+      }
+    } catch {
       setFollowListUsers(prev => prev.map(u => u.id === targetId ? { ...u, isFollowedByViewer: currentlyFollowing } : u));
-    });
+      if (isSelfProfile) setFollowingCount(c => Math.max(0, c - delta));
+      if (affectsThisProfile) { setIsFollowing(currentlyFollowing); setFollowerCount(c => Math.max(0, c - delta)); }
+    }
   }
 
   async function handleSendMessage() {
@@ -541,7 +566,12 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   async function handleExport() {
     try {
       const res = await fetch('/api/tareeq/export', { credentials: 'include' });
-      if (!res.ok) return;
+      if (!res.ok) {
+        showToast(res.status === 429
+          ? (isRtl ? 'حاولت كثيراً — انتظر قليلاً' : 'Too many attempts — try again later')
+          : (isRtl ? 'تعذّر التصدير' : 'Export failed'));
+        return;
+      }
       const data = await res.json();
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -550,7 +580,9 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
       a.download = `tareeq-posts-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch { /* ignore */ }
+    } catch {
+      showToast(isRtl ? 'تعذّر التصدير — تحقّق من اتصالك' : 'Export failed — check your connection');
+    }
   }
 
   async function saveUsername() {
@@ -577,16 +609,24 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   }
 
   async function saveMsgPrivacy(value: string) {
+    const previous = msgPrivacy;
     setSavingMsgPrivacy(true);
     setMsgPrivacy(value);
     try {
-      await fetch('/api/tareeq/settings/privacy', {
+      const res = await fetch('/api/tareeq/settings/privacy', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ tareeqMessagePrivacy: value }),
       });
-    } catch { /* ignore */ } finally { setSavingMsgPrivacy(false); }
+      if (!res.ok) throw new Error('save failed');
+      showToast(isRtl ? 'تم حفظ الإعداد ✓' : 'Setting saved ✓');
+    } catch {
+      // Revert and say so — silently keeping the new value on screen made the user
+      // believe a privacy setting had been applied when it hadn't.
+      setMsgPrivacy(previous);
+      showToast(isRtl ? 'تعذّر حفظ الإعداد' : 'Couldn\u2019t save setting');
+    } finally { setSavingMsgPrivacy(false); }
   }
 
   const coverGradient = nameGradient(profileUser.name);

@@ -73,10 +73,14 @@ export async function GET(req: NextRequest) {
     }
 
     if (!user) {
-      // 2. Try by email (first-time login with email permission)
-      const emailKey = fbUser.email
-        ? fbUser.email.toLowerCase()
-        : `fb_${fbUser.id}@fb.placeholder`;
+      // First-time Facebook login. Without an email we cannot tell whether this person
+      // already has an account here (via Google or a password) — minting a placeholder
+      // `fb_<id>@fb.placeholder` user silently split their identity into two accounts
+      // with none of their history. Ask for the permission instead.
+      if (!fbUser.email) {
+        return clearState(NextResponse.redirect(`${baseUrl}${loginPage}?error=fb_no_email`));
+      }
+      const emailKey = fbUser.email.toLowerCase();
 
       user = await prisma.user.findUnique({ where: { email: emailKey } });
 
@@ -84,7 +88,7 @@ export async function GET(req: NextRequest) {
         const adminEmail = (process.env.ADMIN_EMAIL || '').toLowerCase();
         const role = (adminEmail && emailKey === adminEmail) ? 'admin' : 'customer';
         user = await prisma.user.create({
-          data: { name: fbUser.name || `fb_${fbUser.id}`, email: emailKey, passwordHash: '', emailVerified: true, role, savedAddresses: [] },
+          data: { name: fbUser.name || emailKey.split('@')[0], email: emailKey, passwordHash: '', emailVerified: true, role, savedAddresses: [] },
         });
       }
 

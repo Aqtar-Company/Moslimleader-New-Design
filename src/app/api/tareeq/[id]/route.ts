@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { recordPostView } from '@/lib/tareeq-views';
 import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isTareeqSuspended } from '@/lib/tareeq-guard';
 import { filterContent } from '@/lib/tareeq-content-filter';
@@ -27,11 +28,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   // Resolve current user once for both view recording and like/bookmark checks
   const authUser = await getAuthUser().catch(() => null);
 
-  // Increment view count and record viewer (non-blocking)
-  prisma.$transaction([
-    prisma.tareeqPostView.create({ data: { postId: params.id, userId: authUser?.userId ?? null } }),
-    prisma.tareeqPost.update({ where: { id: params.id }, data: { viewCount: { increment: 1 } } }),
-  ]).catch(() => {});
+  // Record view (non-blocking) — shared helper so this agrees with the SSR page instead
+  // of each path counting on its own terms.
+  void recordPostView(params.id, authUser?.userId ?? null, post.userId);
 
   // Check if current user already liked/bookmarked/subscribed
   let userLiked = false;

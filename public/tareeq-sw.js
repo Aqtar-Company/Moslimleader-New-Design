@@ -12,11 +12,16 @@ const SHELL = [
 
 // ── Install: pre-cache shell ────────────────────────────────────────
 self.addEventListener('install', e => {
+  // NOTE: no unconditional skipWaiting() — activating immediately swaps the controller
+  // and the client reloads, which could wipe a half-written post. The page decides when
+  // it is safe to take the update and tells us via the SKIP_WAITING message below.
   e.waitUntil(
-    caches.open(CACHE_STATIC)
-      .then(c => c.addAll(SHELL))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_STATIC).then(c => c.addAll(SHELL))
   );
+});
+
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 // ── Activate: purge old caches ──────────────────────────────────────

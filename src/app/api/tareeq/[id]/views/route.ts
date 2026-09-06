@@ -2,21 +2,13 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
+import { recordPostView } from '@/lib/tareeq-views';
 
 // POST — record a view (called when post detail page opens)
 export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
-  try {
-    const user = await getAuthUser();
-    await prisma.$transaction([
-      prisma.tareeqPostView.create({
-        data: { postId: params.id, userId: user?.userId ?? null },
-      }),
-      prisma.tareeqPost.update({
-        where: { id: params.id },
-        data: { viewCount: { increment: 1 } },
-      }),
-    ]);
-  } catch { /* ignore duplicate or missing post */ }
+  const user = await getAuthUser().catch(() => null);
+  const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { userId: true } });
+  if (post) await recordPostView(params.id, user?.userId ?? null, post.userId);
   return NextResponse.json({ ok: true });
 }
 

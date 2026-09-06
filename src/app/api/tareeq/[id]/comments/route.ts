@@ -135,10 +135,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const commenterName = comment.user?.name ?? 'شخص ما';
 
   // Parse @mentions and notify mentioned users (non-blocking, max 3)
-  const mentionMatches = (content.match(/@([؀-ۿa-zA-Z0-9_][^\s@]{1,19})/g) ?? []).slice(0, 3);
-  if (mentionMatches.length > 0) {
-    const names = mentionMatches.map(m => m.slice(1).trim());
-    prisma.user.findMany({ where: { name: { in: names } }, select: { id: true } })
+  // Two accepted forms: @handle (no spaces) and @[Full Name] for names that contain
+  // spaces. The old single pattern stopped at the first space, so selecting "Ahmed Ali"
+  // from the dropdown stored "@Ahmed" and notified the wrong person — or nobody.
+  const mentionRe = /@\[([^\]\n]{1,40})\]|@([؀-ۿa-zA-Z0-9_][^\s@]{1,29})/g;
+  const tokens: string[] = [];
+  for (const m of content.matchAll(mentionRe)) {
+    tokens.push((m[1] ?? m[2] ?? '').trim());
+    if (tokens.length >= 3) break;
+  }
+  if (tokens.length > 0) {
+    const names = tokens;
+    prisma.user.findMany({
+      where: { OR: [{ username: { in: names } }, { name: { in: names } }] },
+      select: { id: true },
+    })
       .then(mentioned => {
         for (const m of mentioned) {
           if (m.id !== user.userId) {

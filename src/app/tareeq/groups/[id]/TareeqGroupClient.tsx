@@ -183,16 +183,22 @@ function AddMemberSheet({ groupId, existingIds, onClose, onAdded }: {
   const [added, setAdded] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const searchReqRef = useRef(0);
   useEffect(() => {
     if (q.trim().length < 2) { setResults([]); return; }
     if (timerRef.current) clearTimeout(timerRef.current);
+    const reqId = ++searchReqRef.current;
     timerRef.current = setTimeout(async () => {
       setSearching(true);
       try {
         const res = await fetch(`/api/tareeq/users/search?q=${encodeURIComponent(q.trim())}`, { credentials: 'include' });
         const d = await res.json();
-        setResults(d.users ?? []);
-      } catch { /* ignore */ } finally { setSearching(false); }
+        // Apply only if this is still the newest query — a slow earlier response used to
+        // overwrite newer results (the notebook's fetchNotes already guards this way).
+        if (reqId === searchReqRef.current) setResults(d.users ?? []);
+      } catch { /* ignore */ } finally {
+        if (reqId === searchReqRef.current) setSearching(false);
+      }
     }, 350);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [q]);

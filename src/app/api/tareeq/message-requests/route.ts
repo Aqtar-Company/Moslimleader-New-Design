@@ -47,6 +47,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'لا يمكن إرسال طلب لهذا المستخدم' }, { status: 403 });
   }
 
+  // A previously rejected request must NOT be resurrected by simply sending again —
+  // otherwise "decline" means nothing and the sender can keep re-requesting. An accepted
+  // one shouldn't be reset either; those users already have a conversation.
+  const prior = await prisma.tareeqMessageRequest.findUnique({
+    where: { fromId_toId: { fromId: user.userId, toId } },
+    select: { status: true },
+  });
+  if (prior?.status === 'rejected') {
+    return NextResponse.json({ error: 'لا يمكن إرسال طلب آخر لهذا المستخدم' }, { status: 403 });
+  }
+  if (prior?.status === 'accepted') {
+    return NextResponse.json({ error: 'لديكما محادثة بالفعل' }, { status: 409 });
+  }
+
   await prisma.tareeqMessageRequest.upsert({
     where: { fromId_toId: { fromId: user.userId, toId } },
     create: { fromId: user.userId, toId, message, status: 'pending' },

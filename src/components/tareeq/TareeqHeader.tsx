@@ -39,6 +39,10 @@ interface Conversation {
 }
 interface ChatMessage {
   id: string; content: string; senderId: string; createdAt: string;
+  // Media fields were missing, so a voice note or image — including ones sent from this
+  // very panel — rendered as an empty bubble.
+  imageUrl?: string | null; videoUrl?: string | null; audioUrl?: string | null;
+  isDeletedForEveryone?: boolean;
   sender: { id: string; name: string; avatarUrl?: string | null };
 }
 
@@ -325,12 +329,17 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           setChatMessages(prev => {
             if (fresh.length === 0) return prev;
             if (prev.length === 0) return fresh;
-            // Only prepend genuinely new messages — prevents full re-render on every poll
             const prevIds = new Set(prev.map(m => m.id));
             const newMsgs = fresh.filter(m => !prevIds.has(m.id));
-            if (newMsgs.length === 0) return prev; // no change → skip re-render & scroll jump
-            if (newMsgs.length > 0) isAtBottomRef.current = true; // incoming msg → scroll to show it
-            return [...prev, ...newMsgs];
+            // Reconcile known messages too (deletions/tombstones and read-state changes) —
+            // an append-only merge left a deleted message rendering its original content
+            // for as long as the panel stayed open.
+            const freshById = new Map(fresh.map(m => [m.id, m]));
+            const reconciled = prev.map(m => freshById.get(m.id) ?? m);
+            const changed = reconciled.some((m, i) => m !== prev[i]);
+            if (newMsgs.length === 0) return changed ? reconciled : prev;
+            isAtBottomRef.current = true; // incoming msg → scroll to show it
+            return [...reconciled, ...newMsgs];
           });
         }
       } catch { /* offline */ }
@@ -357,6 +366,8 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
     setChatSending(true);
     const content = chatInput.trim();
     setChatInput('');
+    setVoiceError('');
+    let sent = false;
     try {
       const res = await fetch(`/api/tareeq/conversations/${activeChatConv.id}/messages`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
@@ -365,10 +376,17 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
       if (res.ok) {
         const d = await res.json();
         if (d.message) { isAtBottomRef.current = true; setChatMessages(prev => [...prev, d.message]); }
+        sent = true;
       }
     } catch { /* offline */ }
+    // Restore the text and say so instead of silently swallowing it.
+    if (!sent) {
+      setChatInput(content);
+      setVoiceError(isRtl ? 'تعذّر الإرسال — حاول مرة أخرى' : 'Couldn\u2019t send — try again');
+      setTimeout(() => setVoiceError(''), 4000);
+    }
     setChatSending(false);
-  }, [chatInput, activeChatConv, chatSending]);
+  }, [chatInput, activeChatConv, chatSending, isRtl]);
 
   const startDesktopCall = async (callType: 'audio' | 'video') => {
     if (!activeChatConv || callStarting) return;
@@ -1247,7 +1265,22 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                               return (
                                 <div key={msg.id} className={`flex ${isMine ? 'justify-start' : 'justify-end'}`}>
                                   <div className="max-w-[80%] px-3 py-2 text-xs leading-relaxed" style={{ background: isMine ? 'var(--tr-gold)' : 'var(--tr-overlay)', color: isMine ? '#fff' : 'var(--tr-text-primary)', borderRadius: isMine ? '18px 18px 4px 18px' : '18px 18px 18px 4px' }}>
-                                    {msg.content}
+                                    {msg.isDeletedForEveryone ? (
+                                      <span style={{ opacity: 0.6, fontStyle: 'italic' }}>{isRtl ? 'تم حذف الرسالة' : 'Message deleted'}</span>
+                                    ) : (
+                                      <>
+                                        {msg.imageUrl && (
+                                          <img src={msg.imageUrl} alt="" className="rounded-lg mb-1" style={{ maxWidth: '100%', maxHeight: 160, display: 'block' }} />
+                                        )}
+                                        {msg.audioUrl && (
+                                          <audio src={msg.audioUrl} controls preload="metadata" style={{ maxWidth: 200, height: 32, display: 'block' }} />
+                                        )}
+                                        {msg.videoUrl && (
+                                          <video src={msg.videoUrl} controls preload="metadata" playsInline className="rounded-lg mb-1" style={{ maxWidth: '100%', maxHeight: 160, display: 'block' }} />
+                                        )}
+                                        {msg.content}
+                                      </>
+                                    )}
                                   </div>
                                 </div>
                               );

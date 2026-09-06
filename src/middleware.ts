@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { jwtVerify } from 'jose';
 
 const ALLOWED_ORIGINS = [
   'https://moslimleader.com',
@@ -7,26 +6,15 @@ const ALLOWED_ORIGINS = [
   'http://localhost:3000',
 ];
 
-const TOKEN_COOKIE = 'ml_auth';
-
-function isMobile(req: NextRequest): boolean {
-  const ua = req.headers.get('user-agent') ?? '';
-  return /mobile|android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(ua);
-}
-
-async function getJwtPayload(req: NextRequest): Promise<{ userId: string } | null> {
-  const token = req.cookies.get(TOKEN_COOKIE)?.value;
-  if (!token) return null;
-  try {
-    const secret = new TextEncoder().encode(
-      process.env.JWT_SECRET ?? 'dev-only-fallback-secret-not-for-production'
-    );
-    const { payload } = await jwtVerify(token, secret);
-    return payload as { userId: string };
-  } catch {
-    return null;
-  }
-}
+// NOTE ON SCOPE: this middleware does CSRF origin checking only — it deliberately does
+// NOT gate /tareeq or /tareeq-admin. Two dead helpers (isMobile, getJwtPayload) used to
+// sit here suggesting otherwise; they were never called and have been removed so nobody
+// mistakes this for an auth boundary.
+//   - /tareeq is intentionally browsable by guests (TareeqLoginGate prompts on the
+//     actions that actually require an account), so an auth redirect here would break it.
+//   - /tareeq-admin is enforced per-route on the server (every /api/tareeq-admin/*
+//     handler checks the role) plus client gating in AdminShell. That server-side check
+//     is the real boundary.
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

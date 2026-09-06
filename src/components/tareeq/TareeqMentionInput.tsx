@@ -1,7 +1,7 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 
-interface MentionUser { id: string; name: string; avatarUrl?: string | null; }
+interface MentionUser { id: string; name: string; username?: string | null; avatarUrl?: string | null; }
 
 interface Props {
   value: string;
@@ -51,7 +51,7 @@ export default function TareeqMentionInput({
   }
 
   useEffect(() => {
-    if (mentionQuery === null || mentionQuery.length < 1) { setUsers([]); return; }
+    if (mentionQuery === null || mentionQuery.length < 2) { setUsers([]); return; } // matches the API's own minimum
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
@@ -67,13 +67,21 @@ export default function TareeqMentionInput({
     const cursor = ref.current?.selectionStart ?? value.length;
     const before = value.slice(0, mentionStart);
     const after = value.slice(cursor);
-    const newVal = `${before}@${u.name} ${after}`;
+    // `@handle` is unambiguous; a display name with spaces has to be bracketed or the
+    // parser (client and server alike) would stop reading at the first space.
+    const token = u.username
+      ? `@${u.username}`
+      : /\s/.test(u.name) ? `@[${u.name}]` : `@${u.name}`;
+    let newVal = `${before}${token} ${after}`;
+    // Inserting via state bypasses the input's own maxLength, so enforce it here too —
+    // otherwise a mention could push the text past the server's limit and be rejected.
+    if (maxLength && newVal.length > maxLength) newVal = newVal.slice(0, maxLength);
     onValueChange(newVal);
     setMentionQuery(null);
     setUsers([]);
     setTimeout(() => {
       if (ref.current) {
-        const pos = before.length + u.name.length + 2;
+        const pos = Math.min(before.length + token.length + 1, newVal.length);
         ref.current.setSelectionRange(pos, pos);
         ref.current.focus();
       }

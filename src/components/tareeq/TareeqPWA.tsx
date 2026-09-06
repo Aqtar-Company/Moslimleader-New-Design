@@ -68,7 +68,26 @@ export default function TareeqPWA() {
 
     // Register service worker + listen for updates
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/tareeq-sw.js', { scope: '/tareeq' }).catch(() => {});
+      navigator.serviceWorker.register('/tareeq-sw.js', { scope: '/tareeq' }).then(reg => {
+        // Take a waiting update only when the page is safe to reload. The composer sets
+        // data-tareeq-composing on <html> while there's unsent input; reloading then
+        // would throw away whatever the user was writing.
+        const activateIfSafe = () => {
+          if (!reg.waiting) return;
+          if (document.documentElement.hasAttribute('data-tareeq-composing')) return;
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        };
+        if (reg.waiting) activateIfSafe();
+        reg.addEventListener('updatefound', () => {
+          const nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener('statechange', () => { if (nw.state === 'installed') activateIfSafe(); });
+        });
+        // Re-check when the user returns to the tab — a natural, safe moment.
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') activateIfSafe();
+        });
+      }).catch(() => {});
 
       // When a new SW takes control, reload to get fresh assets
       let prevController = navigator.serviceWorker.controller;
@@ -155,7 +174,12 @@ export function TareeqInstallBanner() {
   const [visible, setVisible]     = useState(false);
 
   useEffect(() => {
-    if (sessionStorage.getItem('tareeq-install-dismissed')) { setDismissed(true); return; }
+    // Suppress for a week after a dismissal (was sessionStorage, so it returned on
+    // every new tab — repeatedly interrupting people who already said no).
+    try {
+      const until = Number(localStorage.getItem('tareeq-install-dismissed-until') ?? 0);
+      if (until && Date.now() < until) { setDismissed(true); return; }
+    } catch { /* ignore */ }
     // Small delay so it doesn't flash on first paint
     const t = setTimeout(() => setVisible(true), 1200);
     return () => clearTimeout(t);
@@ -164,7 +188,7 @@ export function TareeqInstallBanner() {
   if (!canInstall || installed || dismissed) return null;
 
   function dismiss() {
-    sessionStorage.setItem('tareeq-install-dismissed', '1');
+    try { localStorage.setItem('tareeq-install-dismissed-until', String(Date.now() + 7 * 24 * 3600 * 1000)); } catch { /* ignore */ }
     setDismissed(true);
   }
 

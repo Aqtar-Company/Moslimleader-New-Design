@@ -60,6 +60,7 @@ interface Post {
   comments: Comment[];
   postUpdate?: string | null;
   category?: string | null;
+  pinnedCommentId?: string | null;
 }
 
 const REACTIONS = [
@@ -94,6 +95,8 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
   const [reportCommentId, setReportCommentId] = useState<string | null>(null);
   const [expandedReplies, setExpandedReplies] = useState<Record<string, Comment[]>>({});
   const [loadingReplies, setLoadingReplies] = useState<Record<string, boolean>>({});
+  const [repliesError, setRepliesError] = useState<Record<string, boolean>>({});
+  const [commentsError, setCommentsError] = useState(false);
   const [visible, setVisible] = useState(false);
   const [closing, setClosing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -106,7 +109,13 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
   const isDragging = useRef(false);
   const [dragOffset, setDragOffset] = useState(0);
 
+  const closedByPopRef = useRef(false);
   const doClose = useCallback(() => {
+    // Consume the history entry pushed on mount unless we're closing BECAUSE of a pop —
+    // leaving it behind made the next Back press a no-op.
+    if (!closedByPopRef.current) {
+      try { history.back(); } catch { /* ignore */ }
+    }
     setClosing(true);
     setTimeout(() => onClose(), 280);
   }, [onClose]);
@@ -132,7 +141,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
   // Android back button — push a history entry so back closes sheet instead of leaving page
   useEffect(() => {
     history.pushState({ tareeqSheet: postId }, '');
-    const handlePop = () => { doClose(); };
+    const handlePop = () => { closedByPopRef.current = true; doClose(); };
     window.addEventListener('popstate', handlePop, { once: true });
     return () => window.removeEventListener('popstate', handlePop);
   }, [postId, doClose]);
@@ -147,11 +156,12 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
     Promise.all([
       fetch(`/api/tareeq/${postId}`, { credentials: 'include' }).then(r => r.json()),
       fetch(`/api/tareeq/${postId}/react`, { credentials: 'include' }).then(r => r.json()).catch(() => ({})),
-      fetch(`/api/tareeq/${postId}/comments`, { credentials: 'include' }).then(r => r.json()).catch(() => ({ comments: [] })),
+      fetch(`/api/tareeq/${postId}/comments`, { credentials: 'include' }).then(r => r.json()).catch(() => ({ comments: [], failed: true })),
     ]).then(([postData, reactData, commentData]) => {
       const p = postData.post ?? postData;
       if (p) setPost(p);
       const loadedComments = commentData.comments ?? p?.comments ?? [];
+      setCommentsError(!!commentData.failed);
       setComments(loadedComments);
       setCommentsCursor(commentData.nextCursor ?? null);
       seedCommentLikes(loadedComments);
@@ -240,21 +250,52 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
     }
   }
 
-  async function loadReplies(commentId: string) {
-    if (expandedReplies[commentId]) {
-      // toggle collapse
-      setExpandedReplies(prev => { const n = { ...prev }; delete n[commentId]; return n; });
-      return;
-    }
+  async function fetchRepliesInto(commentId: string) {
     setLoadingReplies(prev => ({ ...prev, [commentId]: true }));
     try {
       const res = await fetch(`/api/tareeq/${postId}/comments?parentId=${commentId}`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setExpandedReplies(prev => ({ ...prev, [commentId]: data.comments ?? [] }));
+      } else {
+        setRepliesError(prev => ({ ...prev, [commentId]: true }));
       }
-    } catch { /* offline */ } finally {
+    } catch {
+      // A failed fetch used to be indistinguishable from "no replies".
+      setRepliesError(prev => ({ ...prev, [commentId]: true }));
+    } finally {
       setLoadingReplies(prev => ({ ...prev, [commentId]: false }));
+    }
+  }
+
+  async function loadReplies(commentId: string) {
+    if (expandedReplies[commentId]) {
+      // toggle collapse
+      setExpandedReplies(prev => { const n = { ...prev }; delete n[commentId]; return n; });
+      return;
+    }
+    setRepliesError(prev => ({ ...prev, [commentId]: false }));
+    await fetchRepliesInto(commentId);
+  }
+
+  // Pin / unpin a comment as the post's "best reply". The API and the pinnedCommentId
+  // field already existed but nothing in this sheet ever read or set them.
+  async function togglePinComment(commentId: string) {
+    if (!post || post.userId !== user?.id) return;
+    const previous = post.pinnedCommentId ?? null;
+    const next = previous === commentId ? null : commentId;
+    setPost(prev => (prev ? { ...prev, pinnedCommentId: next } : prev));
+    try {
+      // Unpin is a DELETE — the POST handler rejects a null commentId with 400.
+      const res = next
+        ? await fetch(`/api/tareeq/${postId}/pin-comment`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+            body: JSON.stringify({ commentId: next }),
+          })
+        : await fetch(`/api/tareeq/${postId}/pin-comment`, { method: 'DELETE', credentials: 'include' });
+      if (!res.ok) setPost(prev => (prev ? { ...prev, pinnedCommentId: previous } : prev));
+    } catch {
+      setPost(prev => (prev ? { ...prev, pinnedCommentId: previous } : prev));
     }
   }
 
@@ -273,13 +314,18 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
       if (res.ok) {
         if (data.comment) {
           if (replyingTo) {
-            setExpandedReplies(prev => ({
-              ...prev,
-              [replyingTo.commentId]: [...(prev[replyingTo.commentId] ?? []), data.comment],
-            }));
+            const parentId = replyingTo.commentId;
+            const alreadyLoaded = !!expandedReplies[parentId];
             setComments(prev => prev.map(c =>
-              c.id === replyingTo.commentId ? { ...c, replyCount: (c.replyCount ?? 0) + 1 } : c
+              c.id === parentId ? { ...c, replyCount: (c.replyCount ?? 0) + 1 } : c
             ));
+            if (alreadyLoaded) {
+              setExpandedReplies(prev => ({ ...prev, [parentId]: [...(prev[parentId] ?? []), data.comment] }));
+            } else {
+              // Thread wasn't open yet — seeding it with just this reply made it look
+              // expanded while hiding the existing ones. Fetch the real list instead.
+              void fetchRepliesInto(parentId);
+            }
           } else {
             setComments(prev => [...prev, data.comment]);
             setPost(prev => (prev ? { ...prev, commentCount: prev.commentCount + 1 } : prev));
@@ -490,7 +536,13 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
 
                     {/* Comments */}
                     {comments.length === 0 ? (
-                      <p style={{ fontSize: 13, color: 'var(--tr-text-muted)', padding: '6px 16px 16px', margin: 0 }}>{isRtl ? 'لا تعليقات بعد' : 'No comments yet'}</p>
+                      commentsError ? (
+                        <p style={{ fontSize: 13, color: '#ef4444', padding: '6px 16px 16px', margin: 0 }}>
+                          {isRtl ? 'تعذّر تحميل التعليقات — تحقّق من اتصالك' : 'Couldn\u2019t load comments — check your connection'}
+                        </p>
+                      ) : (
+                        <p style={{ fontSize: 13, color: 'var(--tr-text-muted)', padding: '6px 16px 16px', margin: 0 }}>{isRtl ? 'لا تعليقات بعد' : 'No comments yet'}</p>
+                      )
                     ) : (
                       <div style={{ paddingBottom: 12 }}>
                         {comments.map(c => (
@@ -501,6 +553,11 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
                                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tr-text-primary)' }}>{c.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}</span>
                                   <span style={{ fontSize: 10, color: 'var(--tr-text-muted)' }}>{timeAgo(c.createdAt, isRtl)}</span>
+                                  {post?.pinnedCommentId === c.id && (
+                                    <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--tr-gold)', background: 'var(--tr-gold-glow)', borderRadius: 6, padding: '1px 6px' }}>
+                                      📌 {isRtl ? 'مثبّت' : 'Pinned'}
+                                    </span>
+                                  )}
                                 </div>
                                 <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{c.content}</p>
                                 <div style={{ display: 'flex', gap: 12, marginTop: 4, alignItems: 'center' }}>
@@ -536,9 +593,14 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                                   {user && user.id !== c.userId && (
                                     <button type="button" onClick={() => setReportCommentId(c.id)} style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{isRtl ? 'إبلاغ' : 'Report'}</button>
                                   )}
+                                  {user && post?.userId === user.id && (
+                                    <button type="button" onClick={() => togglePinComment(c.id)} style={{ fontSize: 11, fontWeight: 600, color: post?.pinnedCommentId === c.id ? 'var(--tr-gold)' : 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                                      {post?.pinnedCommentId === c.id ? (isRtl ? 'إلغاء التثبيت' : 'Unpin') : (isRtl ? 'تثبيت' : 'Pin')}
+                                    </button>
+                                  )}
                                   {(c.replyCount ?? 0) > 0 && (
                                     <button onClick={() => loadReplies(c.id)} style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-gold)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                                      {loadingReplies[c.id] ? '...' : expandedReplies[c.id] ? (isRtl ? 'إخفاء' : 'Hide') : (isRtl ? `${c.replyCount} ردود` : `${c.replyCount} replies`)}
+                                      {loadingReplies[c.id] ? '...' : repliesError[c.id] ? (isRtl ? 'إعادة المحاولة' : 'Retry') : expandedReplies[c.id] ? (isRtl ? 'إخفاء' : 'Hide') : (isRtl ? `${c.replyCount} ردود` : `${c.replyCount} replies`)}
                                     </button>
                                   )}
                                 </div>
@@ -802,8 +864,10 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
 
               {/* Comment list */}
               {comments.length === 0 ? (
-                <p style={{ fontSize: 13, color: 'var(--tr-text-muted)', padding: '8px 16px 16px', margin: 0 }}>
-                  {isRtl ? 'لا تعليقات بعد' : 'No comments yet'}
+                <p style={{ fontSize: 13, color: commentsError ? '#ef4444' : 'var(--tr-text-muted)', padding: '8px 16px 16px', margin: 0 }}>
+                  {commentsError
+                    ? (isRtl ? 'تعذّر تحميل التعليقات — تحقّق من اتصالك' : 'Couldn\u2019t load comments — check your connection')
+                    : (isRtl ? 'لا تعليقات بعد' : 'No comments yet')}
                 </p>
               ) : (
                 <div style={{ paddingBottom: 16 }}>
@@ -826,6 +890,11 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                             <span style={{ fontSize: 10, color: 'var(--tr-text-muted)' }}>
                               {timeAgo(c.createdAt, isRtl)}
                             </span>
+                            {post?.pinnedCommentId === c.id && (
+                              <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--tr-gold)', background: 'var(--tr-gold-glow)', borderRadius: 6, padding: '1px 6px' }}>
+                                📌 {isRtl ? 'مثبّت' : 'Pinned'}
+                              </span>
+                            )}
                           </div>
                           <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>
                             {c.content}
@@ -868,14 +937,21 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                             {user && user.id !== c.userId && (
                               <button type="button" onClick={() => setReportCommentId(c.id)} style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{isRtl ? 'إبلاغ' : 'Report'}</button>
                             )}
+                            {user && post?.userId === user.id && (
+                              <button type="button" onClick={() => togglePinComment(c.id)} style={{ fontSize: 11, fontWeight: 600, color: post?.pinnedCommentId === c.id ? 'var(--tr-gold)' : 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                                {post?.pinnedCommentId === c.id ? (isRtl ? 'إلغاء التثبيت' : 'Unpin') : (isRtl ? 'تثبيت' : 'Pin')}
+                              </button>
+                            )}
                             {(c.replyCount ?? 0) > 0 && (
                               <button
                                 onClick={() => loadReplies(c.id)}
                                 style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-gold)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                               >
-                                {loadingReplies[c.id] ? '...' : expandedReplies[c.id]
-                                  ? (isRtl ? 'إخفاء الردود' : 'Hide replies')
-                                  : (isRtl ? `${c.replyCount} ردود` : `${c.replyCount} replies`)}
+                                {loadingReplies[c.id] ? '...' : repliesError[c.id]
+                                  ? (isRtl ? 'إعادة المحاولة' : 'Retry')
+                                  : expandedReplies[c.id]
+                                    ? (isRtl ? 'إخفاء الردود' : 'Hide replies')
+                                    : (isRtl ? `${c.replyCount} ردود` : `${c.replyCount} replies`)}
                               </button>
                             )}
                           </div>

@@ -199,6 +199,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   // Where the reader was opened — used to tell "actually read something" apart from
   // "opened the reader and left", which must not count as a reading day.
   const openedAtRef = useRef({ page: initialPage, surah: initialSurah, ayah: initialAyah });
+  const [needsSignIn, setNeedsSignIn] = useState(false);
   const verseRefs   = useRef<(HTMLSpanElement | null)[]>([]);
   const isMountedRef = useRef(true);
   // Set right before navigating to a page so the page's own verse-fetch
@@ -306,6 +307,10 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
         currentAyah: pending.ayah,
         localDate: new Date().toLocaleDateString('en-CA'),
       }),
+    }).then(res => {
+      // 401 => reading as a guest. Nothing is being saved; tell them rather than
+      // letting a whole session quietly evaporate.
+      if (res && res.status === 401) setNeedsSignIn(true);
     }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupId]);
@@ -653,6 +658,22 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
 
   return (
     <div className="flex flex-col min-h-screen" style={{ background: mode === 'listen' ? '#05101f' : '#F8EBD5', overflow: mode === 'listen' ? 'hidden' : undefined }}>
+
+      {/* Guest notice — reading is open to everyone, but progress can't be saved without
+          an account, and silently discarding a whole session is worse than saying so. */}
+      {needsSignIn && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 px-4 py-2.5 flex items-center justify-center gap-3 text-[12px]"
+          style={{ background: 'rgba(8,14,28,0.94)', color: '#F0EDE4', borderTop: '1px solid rgba(255,204,51,0.25)' }}>
+          <span>{isRtl ? 'تقدّمك لا يُحفظ — سجّل الدخول' : 'Your progress isn\u2019t being saved — sign in'}</span>
+          <a href={`/tareeq/login?redirect=${encodeURIComponent('/tareeq/khatmati/read')}`}
+            className="font-bold px-3 py-1 rounded-full shrink-0"
+            style={{ background: '#FFCC33', color: '#080E1C', textDecoration: 'none' }}>
+            {isRtl ? 'تسجيل الدخول' : 'Sign in'}
+          </a>
+          <button onClick={() => setNeedsSignIn(false)} aria-label={isRtl ? 'إغلاق' : 'Dismiss'}
+            style={{ background: 'none', border: 'none', color: 'rgba(240,237,228,0.5)', cursor: 'pointer', fontSize: 16 }}>×</button>
+        </div>
+      )}
 
       {/* ── Top bar ── */}
       <div className="fixed top-0 left-0 right-0 z-40 flex flex-col gap-0"

@@ -115,10 +115,14 @@ export async function POST(req: NextRequest) {
   // Always sort alphabetically to ensure deduplication
   const [pA, pB] = [user.userId, otherId].sort();
 
+  // Un-hide only for the user opening the thread. Clearing both flags meant opening a
+  // conversation resurrected it in the other person's inbox — before a single message.
+  // Their side comes back when an actual message is sent (see messages/route.ts).
+  const isRequesterA = pA === user.userId;
   const convo = await prisma.tareeqConversation.upsert({
     where: { participantA_participantB: { participantA: pA, participantB: pB } },
     create: { participantA: pA, participantB: pB },
-    update: { deletedForA: false, deletedForB: false },
+    update: isRequesterA ? { deletedForA: false } : { deletedForB: false },
   });
 
   return NextResponse.json({ conversationId: convo.id });

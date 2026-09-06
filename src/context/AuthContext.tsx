@@ -47,11 +47,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/auth/me', { credentials: 'include' })
-      .then(r => r.json())
-      .then(data => { if (data.user) setUser(data.user); })
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
+    let cancelled = false;
+    const revalidate = (initial = false) => {
+      fetch('/api/auth/me', { credentials: 'include' })
+        .then(r => r.json())
+        .then(data => {
+          if (cancelled) return;
+          // Clear on an expired/revoked session instead of leaving a stale "signed in"
+          // UI whose every action fails — /api/auth/me returning no user is the signal.
+          if (data.user) setUser(data.user);
+          else if (!initial) setUser(null);
+        })
+        .catch(() => {})
+        .finally(() => { if (initial && !cancelled) setIsLoading(false); });
+    };
+    revalidate(true);
+    // Re-check when the user comes back to the tab — the 30-day JWT can expire, or be
+    // revoked server-side, long before the page is ever reloaded.
+    const onVisible = () => { if (document.visibilityState === 'visible') revalidate(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { cancelled = true; document.removeEventListener('visibilitychange', onVisible); };
   }, []);
 
   const signIn = async (email: string, password: string) => {

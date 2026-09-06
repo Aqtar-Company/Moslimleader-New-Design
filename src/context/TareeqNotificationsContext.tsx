@@ -131,22 +131,45 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
         fetch('/api/tareeq/notifications?countOnly=true', { credentials: 'include' }),
         fetch('/api/tareeq/conversations?countOnly=true', { credentials: 'include' }),
       ]);
+      // Coalesce to ONE chime per poll — a tick where both counters rose used to play
+      // two overlapping oscillators.
+      let shouldChime = false;
       if (nRes.ok) {
         const d = await nRes.json();
         const n = d.unreadCount ?? 0;
-        if (initialPollDone.current && n > prevNotifRef.current) playChime();
+        if (initialPollDone.current && n > prevNotifRef.current) shouldChime = true;
         prevNotifRef.current = n;
         setNotifCount(n);
       }
       if (cRes.ok) {
         const d = await cRes.json();
         const m = d.unreadCount ?? 0;
-        if (initialPollDone.current && m > prevMsgRef.current) playChime();
+        if (initialPollDone.current && m > prevMsgRef.current) shouldChime = true;
         prevMsgRef.current = m;
         setMessageCount(m);
       }
+      if (shouldChime) playChime();
       initialPollDone.current = true;
     } catch { /* ignore */ }
+  }, [user]);
+
+  // Adopt counts pushed by the service worker's periodic background sync.
+  useEffect(() => {
+    if (!user || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+    const onMessage = (e: MessageEvent) => {
+      const data = e.data;
+      if (!data || data.type !== 'TAREEQ_BADGE_UPDATE') return;
+      if (typeof data.notifCount === 'number') {
+        prevNotifRef.current = data.notifCount; // adopt silently — the SW already notified
+        setNotifCount(data.notifCount);
+      }
+      if (typeof data.messageCount === 'number') {
+        prevMsgRef.current = data.messageCount;
+        setMessageCount(data.messageCount);
+      }
+    };
+    navigator.serviceWorker.addEventListener('message', onMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage);
   }, [user]);
 
   useEffect(() => {
@@ -187,27 +210,12 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
     } catch { /* subscription failed — don't show "On" */ }
   }, []);
 
-  // Auto-request push permission on first user gesture when permission is 'default'.
-  // Fires once after login — subsequent opens skip this because permission is no longer 'default'.
-  useEffect(() => {
-    if (!user) return;
-    if (typeof window === 'undefined' || !('Notification' in window)) return;
-    if (Notification.permission !== 'default') return;
-    let fired = false;
-    const onFirstGesture = async () => {
-      if (fired) return;
-      fired = true;
-      document.removeEventListener('touchstart', onFirstGesture);
-      document.removeEventListener('click', onFirstGesture);
-      await enablePush();
-    };
-    document.addEventListener('touchstart', onFirstGesture, { passive: true });
-    document.addEventListener('click', onFirstGesture);
-    return () => {
-      document.removeEventListener('touchstart', onFirstGesture);
-      document.removeEventListener('click', onFirstGesture);
-    };
-  }, [user, enablePush]);
+  // NOTE: push permission is deliberately NOT auto-requested. This used to fire the OS
+  // permission dialog on the user's first tap anywhere in the app — before they had seen
+  // any reason to say yes, which is the surest way to get a permanent "denied". It also
+  // contradicted useTareeqPush, which documents the opposite policy. Opt-in now happens
+  // only through the explicit in-app banner (PushPermissionBanner) or the settings
+  // toggle, both of which call enablePush() directly.
 
   const disablePush = useCallback(async () => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;

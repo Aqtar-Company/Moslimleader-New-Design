@@ -49,26 +49,25 @@ export async function DELETE(
     });
   }
 
-  // Refresh lastMessage preview — skip tombstones and messages hidden from both
-  const latest = await prisma.tareeqMessage.findFirst({
-    where: {
-      conversationId: params.id,
-      deletedAt: null,
-      deletedForA: false,
-      deletedForB: false,
-    },
-    orderBy: { createdAt: 'desc' },
-    select: { content: true, imageUrl: true, videoUrl: true, audioUrl: true, sharedPostId: true },
-  });
+  // Only a delete-for-EVERYONE may change the shared preview. `lastMessage` is a single
+  // column both participants read, so recomputing it after a one-sided "delete for me"
+  // rewrote the preview shown to the other person, who can still see that message.
+  if (deleteType === 'everyone') {
+    const latest = await prisma.tareeqMessage.findFirst({
+      where: { conversationId: params.id, deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+      select: { content: true, imageUrl: true, videoUrl: true, audioUrl: true, sharedPostId: true },
+    });
 
-  await prisma.tareeqConversation.update({
-    where: { id: params.id },
-    data: {
-      lastMessage: latest
-        ? (latest.sharedPostId ? '🔗 منشور' : latest.imageUrl ? '📷 صورة' : latest.videoUrl ? '🎥 فيديو' : latest.audioUrl ? '🎙️ رسالة صوتية' : (latest.content ?? '')).slice(0, 100)
-        : null,
-    },
-  });
+    await prisma.tareeqConversation.update({
+      where: { id: params.id },
+      data: {
+        lastMessage: latest
+          ? (latest.sharedPostId ? '🔗 منشور' : latest.imageUrl ? '📷 صورة' : latest.videoUrl ? '🎥 فيديو' : latest.audioUrl ? '🎙️ رسالة صوتية' : (latest.content ?? '')).slice(0, 100)
+          : null,
+      },
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }

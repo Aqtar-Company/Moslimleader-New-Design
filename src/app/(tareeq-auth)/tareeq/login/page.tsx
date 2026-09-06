@@ -18,7 +18,18 @@ function TareeqAuthContent() {
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>(initMode);
   const [form, setForm] = useState({ name: '', email: initEmail, password: '', phone: '', marketingOptIn: false });
   const [showPass, setShowPass] = useState(false);
-  const [error, setError] = useState('');
+  // OAuth failures redirect back here with ?error=... — nothing read it, so a failed
+  // Google/Facebook sign-in dumped the user on the login form with no explanation.
+  const oauthError = searchParams.get('error');
+  const [error, setError] = useState(
+    oauthError === 'fb_no_email'
+      ? 'لم يشارك فيسبوك بريدك الإلكتروني. اسمح بمشاركة البريد وحاول مرة أخرى، أو سجّل الدخول بالبريد.'
+      : oauthError === 'fb_failed'
+        ? 'تعذّر تسجيل الدخول عبر فيسبوك. حاول مرة أخرى.'
+        : oauthError?.startsWith('google_')
+          ? 'تعذّر تسجيل الدخول عبر جوجل. حاول مرة أخرى.'
+          : '',
+  );
   const [loading, setLoading] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
   const [verifyEmail, setVerifyEmail] = useState('');
@@ -438,5 +449,14 @@ function TareeqAuthContent() {
 }
 
 export default function TareeqLoginPage() {
-  return <Suspense><TareeqAuthContent /></Suspense>;
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a1929' }}>
+        <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid rgba(212,168,83,0.25)', borderTopColor: '#d4a853', animation: 'spin 0.8s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    }>
+      <TareeqAuthContent />
+    </Suspense>
+  );
 }

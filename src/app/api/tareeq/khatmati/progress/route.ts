@@ -70,8 +70,13 @@ export async function PUT(req: NextRequest) {
     sirajStreak = 1;
   }
 
-  const pagesAdvanced = isReset ? 0 : ((existing?.currentPage != null && currentPage != null)
-    ? Math.max(0, currentPage - existing.currentPage) : 0);
+  // Cap what a single save can credit. A forward JUMP (surah picker, search, deep link)
+  // is navigation, not reading — uncapped it credited hundreds of pages at once and
+  // inflated totalPagesRead, the "full khatmas" figure and the daily averages.
+  const MAX_PAGES_PER_SAVE = 20;
+  const rawAdvance = (existing?.currentPage != null && currentPage != null)
+    ? Math.max(0, currentPage - existing.currentPage) : 0;
+  const pagesAdvanced = isReset ? 0 : Math.min(rawAdvance, MAX_PAGES_PER_SAVE);
 
   const progress = await prisma.khatmatiProgress.upsert({
     where: { userId: user.userId },
@@ -125,7 +130,9 @@ export async function PUT(req: NextRequest) {
           totalPages: { increment: pagesAdvanced },
           lastReadDate: today,
           streak: mStreak,
-          points: { increment: pagesAdvanced + (mStreak > 1 ? 2 : 0) },
+          // Award the streak bonus once per day, matching the group route — granting it
+          // on every save let linked members out-earn independent ones for the same reading.
+          points: { increment: pagesAdvanced + (mStreak > 1 && m.lastReadDate !== today ? 2 : 0) },
           // Mirror reading position (m.linkedToSolo is always true here now, but kept as
           // an explicit guard rather than relying solely on the query filter above)
           ...(m.linkedToSolo && currentPage != null && {

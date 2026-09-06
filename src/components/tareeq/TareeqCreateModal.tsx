@@ -17,6 +17,12 @@ interface Draft {
   savedAt: number;
   imageUrl?: string | null;
   imageUrls?: string[] | null;
+  // Video + series were previously dropped from the draft, so closing by accident lost
+  // an already-uploaded video and the series title with no way back.
+  videoUrl?: string | null;
+  mediaType?: 'image' | 'video' | null;
+  thumbnailUrl?: string | null;
+  seriesTitle?: string | null;
 }
 
 interface Props {
@@ -52,7 +58,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   const [thumbUploading, setThumbUploading] = useState(false);
   const thumbInputRef = useRef<HTMLInputElement>(null);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
-  const [extraImages, setExtraImages] = useState<{ id: string; previewUrl: string; url: string | null; progress: number; failed?: boolean }[]>([]);
+  const [extraImages, setExtraImages] = useState<{ id: string; previewUrl: string; url: string | null; progress: number; failed?: boolean; file?: File }[]>([]);
   const extraFileInputRef = useRef<HTMLInputElement>(null);
   // Track all object URLs for cleanup on unmount
   const localPreviewRef = useRef<string | null>(null);
@@ -67,7 +73,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   const uploadedForFile = useRef<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const latestDraftRef = useRef<{ content: string; category: string; imageUrl: string | null; imageUrls: string[] | null }>({ content: '', category: '', imageUrl: null, imageUrls: null });
+  const latestDraftRef = useRef<Omit<Draft, 'savedAt'>>({ content: '', category: '', imageUrl: null, imageUrls: null });
 
   useEffect(() => {
     setMounted(true);
@@ -126,8 +132,25 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   useEffect(() => {
     const extraUrls = extraImages.filter(e => e.url).map(e => e.url!);
     const allUrls = mediaType === 'image' && mediaUrl ? [mediaUrl, ...extraUrls] : null;
-    latestDraftRef.current = { content, category, imageUrl: mediaType === 'image' ? mediaUrl : null, imageUrls: allUrls };
-  }, [content, category, mediaUrl, mediaType, extraImages]);
+    latestDraftRef.current = {
+      content, category,
+      imageUrl: mediaType === 'image' ? mediaUrl : null,
+      imageUrls: allUrls,
+      videoUrl: mediaType === 'video' ? mediaUrl : null,
+      mediaType,
+      thumbnailUrl: mediaType === 'video' ? (customThumbUrl ?? videoThumb) : null,
+      seriesTitle: seriesTitle.trim() || null,
+    };
+  }, [content, category, mediaUrl, mediaType, extraImages, customThumbUrl, videoThumb, seriesTitle]);
+
+  // Tells TareeqPWA it is not safe to adopt a waiting service worker right now — taking
+  // an update reloads the page, which would discard whatever is in the composer.
+  useEffect(() => {
+    const dirty = !!(content.trim() || mediaUrl || localPreview || uploading);
+    if (dirty) document.documentElement.setAttribute('data-tareeq-composing', '1');
+    else document.documentElement.removeAttribute('data-tareeq-composing');
+    return () => document.documentElement.removeAttribute('data-tareeq-composing');
+  }, [content, mediaUrl, localPreview, uploading]);
 
   useEffect(() => { localPreviewRef.current = localPreview; }, [localPreview]);
   useEffect(() => { extraPreviewUrlsRef.current = extraImages.map(e => e.previewUrl); }, [extraImages]);
@@ -135,10 +158,11 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   useEffect(() => {
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     draftTimerRef.current = setTimeout(() => {
-      const { content: c, category: cat, imageUrl: imgUrl, imageUrls: imgUrls } = latestDraftRef.current;
-      if (c.trim() || cat || imgUrl) {
+      const d = latestDraftRef.current;
+      const { content: c, category: cat, imageUrl: imgUrl } = d;
+      if (c.trim() || cat || imgUrl || d.videoUrl) {
         try {
-          localStorage.setItem(DRAFT_KEY, JSON.stringify({ content: c, category: cat, imageUrl: imgUrl, imageUrls: imgUrls, savedAt: Date.now() }));
+          localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...d, savedAt: Date.now() }));
           setDraftSaved(true);
           setTimeout(() => setDraftSaved(false), 2000);
         } catch { /* storage full or blocked */ }
@@ -152,9 +176,9 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     return () => {
       if (localPreviewRef.current) URL.revokeObjectURL(localPreviewRef.current);
       extraPreviewUrlsRef.current.forEach(u => URL.revokeObjectURL(u));
-      const { content: c, category: cat, imageUrl: imgUrl, imageUrls: imgUrls } = latestDraftRef.current;
-      if (c.trim() || imgUrl) {
-        try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ content: c, category: cat, imageUrl: imgUrl, imageUrls: imgUrls, savedAt: Date.now() })); } catch { /* ignore */ }
+      const d = latestDraftRef.current;
+      if (d.content.trim() || d.imageUrl || d.videoUrl) {
+        try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...d, savedAt: Date.now() })); } catch { /* ignore */ }
       }
     };
   }, []);
@@ -297,12 +321,27 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
       previewUrl: URL.createObjectURL(f),
       url: null as string | null,
       progress: 0,
+      file: f,
     }));
     setExtraImages(prev => [...prev, ...newItems]);
 
     for (let i = 0; i < toAdd.length; i++) {
-      const file = toAdd[i];
-      const item = newItems[i];
+      await uploadExtraImage(newItems[i].id, toAdd[i]);
+    }
+  }
+
+  // Re-runs the upload for one failed tile. Extras had a Remove button but no Retry,
+  // unlike the main media — so one flaky thumbnail meant re-picking the file.
+  async function retryExtraImage(id: string) {
+    const item = extraImages.find(x => x.id === id);
+    if (!item?.file) return;
+    setExtraImages(prev => prev.map(x => x.id === id ? { ...x, failed: false, progress: 0 } : x));
+    await uploadExtraImage(id, item.file);
+  }
+
+  async function uploadExtraImage(itemId: string, file: File) {
+    {
+      const item = { id: itemId };
       try {
         const compressed = await compressImage(file, { maxWidth: 1920, maxHeight: 1920, quality: 0.82 });
         const form = new FormData();
@@ -408,7 +447,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   // Exclude failed items — url stays null for a failed upload (only `failed:true` marks
   // it), so without this filter one flaky thumbnail permanently disabled Publish.
   const extraUploading = extraImages.some(e => e.url === null && !e.failed);
-  const canPublish = !loading && !uploading && !extraUploading && !mainUploadFailed && !!(mediaUrl || content.trim());
+  const canPublish = !loading && !uploading && !extraUploading && !thumbUploading && !mainUploadFailed && !!(mediaUrl || content.trim());
   const catObj = category ? TAREEQ_CATEGORIES[category] : null;
   const charCount = content.length;
   const charLeft = 5000 - charCount;
@@ -552,6 +591,19 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                       progress: 100,
                     })));
                   }
+                }
+                // Restore a drafted video + its cover and the series title too — these
+                // were saved but never read back, so they were effectively lost.
+                if (draftBanner.videoUrl && isSafeUrl(draftBanner.videoUrl)) {
+                  setMediaUrl(draftBanner.videoUrl);
+                  setMediaType('video');
+                  if (draftBanner.thumbnailUrl && isSafeUrl(draftBanner.thumbnailUrl)) {
+                    setCustomThumbUrl(draftBanner.thumbnailUrl);
+                  }
+                }
+                if (draftBanner.seriesTitle) {
+                  setSeriesTitle(draftBanner.seriesTitle);
+                  setShowSeriesInput(true);
                 }
                 setDraftBanner(null);
                 try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
@@ -823,6 +875,13 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                           className="text-white text-[10px] font-bold underline"
                         >{isRtl ? 'حذف' : 'Remove'}</button>
                       </div>
+                    )}
+                    {ex.failed && (
+                      <button
+                        onClick={() => retryExtraImage(ex.id)}
+                        className="absolute bottom-0.5 start-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold"
+                        style={{ background: 'var(--tr-gold)', color: '#fff' }}
+                      >{isRtl ? 'إعادة' : 'Retry'}</button>
                     )}
                     {/* Uploaded — large enough × tap target */}
                     {!ex.failed && ex.url !== null && (

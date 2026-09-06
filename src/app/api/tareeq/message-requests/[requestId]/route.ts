@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { isBlockedEitherWay } from '@/lib/tareeq-guard';
 import { getAuthUser } from '@/lib/jwt';
 import { sendPushToUser } from '@/lib/tareeq-push';
 
@@ -42,7 +43,11 @@ export async function PATCH(
     return NextResponse.json({ ok: true });
   }
 
-  // Accept: create conversation then update request status
+  // Accept: re-check the block first — it may have been added AFTER the request arrived,
+  // in which case accepting would still inject the sender's message into a live thread.
+  if (await isBlockedEitherWay(user.userId, request.fromId)) {
+    return NextResponse.json({ error: 'لا يمكن قبول هذا الطلب' }, { status: 403 });
+  }
   const [pA, pB] = [request.fromId, user.userId].sort();
   const convo = await prisma.tareeqConversation.upsert({
     where: { participantA_participantB: { participantA: pA, participantB: pB } },

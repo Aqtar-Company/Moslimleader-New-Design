@@ -7,12 +7,29 @@ export default function TareeqOfflineBanner() {
   const [offline, setOffline] = useState(false);
 
   useEffect(() => {
-    setOffline(!navigator.onLine);
-    const onOnline  = () => setOffline(false);
-    const onOffline = () => setOffline(true);
+    let cancelled = false;
+    // navigator.onLine only means "there is a network interface" — it stays true on a
+    // captive portal or a connection with no route to us. Confirm with a cheap probe
+    // before telling the user they're offline (and before clearing the banner).
+    const probe = async () => {
+      if (!navigator.onLine) { if (!cancelled) setOffline(true); return; }
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 4000);
+        const res = await fetch('/api/geo', { method: 'HEAD', cache: 'no-store', signal: ctrl.signal });
+        clearTimeout(t);
+        if (!cancelled) setOffline(!res.ok);
+      } catch {
+        if (!cancelled) setOffline(true);
+      }
+    };
+    probe();
+    const onOnline  = () => { probe(); };
+    const onOffline = () => { if (!cancelled) setOffline(true); };
     window.addEventListener('online',  onOnline);
     window.addEventListener('offline', onOffline);
     return () => {
+      cancelled = true;
       window.removeEventListener('online',  onOnline);
       window.removeEventListener('offline', onOffline);
     };

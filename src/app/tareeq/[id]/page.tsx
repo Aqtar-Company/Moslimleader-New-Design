@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { isBlockedEitherWay } from '@/lib/tareeq-guard';
+import { recordPostView } from '@/lib/tareeq-views';
 import { getAuthUser } from '@/lib/jwt';
 import TareeqPostClient from './TareeqPostClient';
 import type { Metadata } from 'next';
@@ -71,8 +72,10 @@ export default async function TareeqPostPage({ params }: { params: { id: string 
     }
   }
 
-  // Increment view (non-blocking)
-  prisma.tareeqPost.update({ where: { id: params.id }, data: { viewCount: { increment: 1 } } }).catch(() => {});
+  // Record view (non-blocking, deduped, skips the author) — this used to increment on
+  // every single render without ever creating the viewer row the "who viewed" list reads.
+  const viewerForCount = await getAuthUser().catch(() => null);
+  void recordPostView(params.id, viewerForCount?.userId ?? null, post.userId);
 
   // Check current user's reactions + subscription
   let userLiked = false;

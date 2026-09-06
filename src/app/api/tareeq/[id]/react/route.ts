@@ -51,9 +51,19 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const actor = await prisma.user.findUnique({ where: { id: me.userId }, select: { name: true, avatarUrl: true } });
     const actorName = actor?.name ?? 'شخص ما';
     const LABELS: Record<string, string> = { inspired: 'ألهمه ⭐', thanks: 'شكره 🙏', agree: 'يتفق معه ✊', yarabb: 'يارب 🤲', mashaallah: 'ماشاء الله 🌴' };
+    // A user who liked this post before reactions existed still has a legacy TareeqLike
+    // row that already contributed its own +1 to likeCount. Creating a reaction on top of
+    // it double-counted them (and the client, which maps an existing like to a reaction,
+    // showed no change) — so convert the like rather than stacking on it.
+    const legacyLike = await prisma.tareeqLike.findUnique({
+      where: { postId_userId: { postId: params.id, userId: me.userId } },
+      select: { id: true },
+    });
     await prisma.$transaction([
+      ...(legacyLike ? [prisma.tareeqLike.delete({ where: { id: legacyLike.id } })] : []),
       prisma.tareeqReaction.create({ data: { postId: params.id, userId: me.userId, type } }),
-      prisma.tareeqPost.update({ where: { id: params.id }, data: { likeCount: { increment: 1 } } }),
+      // The converted like already counted — only a genuinely new reaction adds one.
+      ...(legacyLike ? [] : [prisma.tareeqPost.update({ where: { id: params.id }, data: { likeCount: { increment: 1 } } })]),
     ]);
     // Notify post author (skip self-reactions)
     if (post.userId && post.userId !== me.userId) {

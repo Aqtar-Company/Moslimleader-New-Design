@@ -124,17 +124,19 @@ function Inner() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [showNotebook, setShowNotebook] = useState(false);
 
-  function loadAll() {
-    setLoading(true);
+  // `silent` keeps the background poll from flashing the loading skeleton over a list
+  // the user is already reading.
+  function loadAll(silent = false) {
+    if (!silent) setLoading(true);
     Promise.all([
-      fetch('/api/tareeq/conversations', { credentials: 'include' }).then(r => r.json()).catch(() => ({})),
+      fetch('/api/tareeq/conversations', { credentials: 'include', cache: 'no-store' }).then(r => r.json()).catch(() => ({})),
       fetch('/api/tareeq/groups', { credentials: 'include' }).then(r => r.json()).catch(() => ({})),
       fetch('/api/tareeq/message-requests', { credentials: 'include' }).then(r => r.json()).catch(() => ({})),
     ]).then(([c, g, r]) => {
       setConversations(c.conversations ?? []);
       setGroups(g.groups ?? []);
       setMsgRequests(r.requests ?? []);
-    }).finally(() => setLoading(false));
+    }).finally(() => { if (!silent) setLoading(false); });
   }
 
   async function handleRequest(reqId: string, action: 'accept' | 'reject') {
@@ -165,7 +167,14 @@ function Inner() {
     loadAll();
     const onVisible = () => { if (!document.hidden) loadAll(); };
     document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
+    // Poll while the inbox is open and focused. Without this the list only refreshed on
+    // tab-switch, so messages arriving while the user sat on the inbox didn't bump unread
+    // counts, didn't reorder, and new conversations never appeared.
+    const poll = setInterval(() => { if (!document.hidden) loadAll(true); }, 15_000);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      clearInterval(poll);
+    };
   }, [authLoading, user, router]);
 
   const tabStyle = (active: boolean) => ({

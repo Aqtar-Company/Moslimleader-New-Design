@@ -88,6 +88,8 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const touchStartY = useRef(0);
   const pullYRef = useRef(0);
   const pullRefreshingRef = useRef(false);
+  // Monotonic id so a slow response for an abandoned filter can't overwrite a newer one.
+  const feedRequestIdRef = useRef(0);
   const categoryRef = useRef(category);
   const searchValRef = useRef(search);
   const sortRef = useRef<'newest' | 'following' | 'useful'>(sort);
@@ -142,6 +144,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   }, [user]);
 
   const loadPosts = useCallback(async (cat: string, q: string, fromCursor?: string | null, sortBy: 'newest' | 'following' | 'useful' = 'newest') => {
+    const reqId = ++feedRequestIdRef.current;
     if (fromCursor) { setLoading(true); } else { setInitialLoading(true); }
     try {
       const params = new URLSearchParams({ limit: '12' });
@@ -150,6 +153,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       if (fromCursor) params.set('cursor', fromCursor);
       if (sortBy !== 'newest') params.set('sort', sortBy);
       const res = await fetch(`/api/tareeq?${params}`);
+      if (reqId !== feedRequestIdRef.current) return; // a newer filter/search superseded this
       if (res.ok) {
         const data = await res.json();
         setPosts(prev => {
@@ -167,8 +171,10 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       // Network failure — leave existing posts as-is; the caller's own try/finally
       // (see the pull-to-refresh handler) still resets its state either way.
     } finally {
-      setLoading(false);
-      setInitialLoading(false);
+      if (reqId === feedRequestIdRef.current) {
+        setLoading(false);
+        setInitialLoading(false);
+      }
     }
   }, []);
 
@@ -235,7 +241,10 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       window.history.replaceState({}, '', '/tareeq');
       try {
         const prefill = sessionStorage.getItem('tareeq-share-prefill') ?? '';
-        sessionStorage.removeItem('tareeq-share-prefill');
+        // Only consume it once the user is actually signed in and the composer can
+        // receive it. Removing it up-front meant a signed-out share was gone for good
+        // after the login round-trip.
+        if (user) sessionStorage.removeItem('tareeq-share-prefill');
         if (prefill) setSharePrefill(prefill);
       } catch { /* private mode */ }
       if (user) setShowCreate(true); else setShowGate(true);
@@ -243,7 +252,20 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   }, [authLoading, user]);
 
   useEffect(() => {
-    if (authLoading || !user || !sharePrefill || showCreate) return;
+    if (authLoading || !user) return;
+    if (!sharePrefill) {
+      // Recover a share that arrived while signed out and survived the login round-trip.
+      try {
+        const pending = sessionStorage.getItem('tareeq-share-prefill');
+        if (pending) {
+          sessionStorage.removeItem('tareeq-share-prefill');
+          setSharePrefill(pending);
+          return;
+        }
+      } catch { /* private mode */ }
+      return;
+    }
+    if (showCreate) return;
     setShowCreate(true);
   }, [authLoading, user, sharePrefill, showCreate]);
 
@@ -357,9 +379,26 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
             )}
           </div>
           <p className="font-semibold mb-2" style={{ color: 'var(--tr-text-secondary)' }}>
-            {search ? (isRtl ? 'لا نتائج للبحث' : 'No results found') : (isRtl ? 'لا توجد علامات بعد' : 'No marks yet')}
+            {search
+              ? (isRtl ? 'لا نتائج للبحث' : 'No results found')
+              : sort === 'following'
+                ? (isRtl ? 'لا تتابع أحداً بعد' : 'You aren\u2019t following anyone yet')
+                : (isRtl ? 'لا توجد علامات بعد' : 'No marks yet')}
           </p>
-          {!search && (
+          {!search && sort === 'following' ? (
+            <>
+              <p className="text-sm mb-6" style={{ color: 'var(--tr-text-muted)' }}>
+                {isRtl ? 'تابع أشخاصاً ليظهر ما يكتبونه هنا' : 'Follow people to see what they write here'}
+              </p>
+              <button
+                onClick={() => handleSortChange('newest')}
+                className="font-black px-8 py-3 rounded-xl text-sm"
+                style={{ background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))', color: '#fff' }}
+              >
+                {isRtl ? 'اكتشف علامات جديدة' : 'Discover new marks'}
+              </button>
+            </>
+          ) : !search && (
             <>
               <p className="text-sm mb-6" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'كن أول من يترك علامة' : 'Be the first to leave a mark'}</p>
               <button

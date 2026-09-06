@@ -344,11 +344,13 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
 
   const closeChat = useCallback(() => {
     setMsgPanelView('list');
+    loadConversations(); // returning to the list — refresh previews/unread counts
+
     setActiveChatConv(null);
     setChatMessages([]);
     setChatInput('');
     if (chatPollingRef.current) { clearInterval(chatPollingRef.current); chatPollingRef.current = null; }
-  }, []);
+  }, [loadConversations]);
 
   const sendChatMessage = useCallback(async () => {
     if (!chatInput.trim() || !activeChatConv || chatSending) return;

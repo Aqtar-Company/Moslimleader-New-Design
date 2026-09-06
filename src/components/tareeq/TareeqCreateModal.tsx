@@ -96,6 +96,9 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     setUploadProgress(0);
     setVideoThumb(null);
     setCustomThumbUrl(null);
+    // Record it for Retry — otherwise the retry button is a silent no-op when the modal
+    // was opened straight from the camera/gallery shortcut.
+    lastMediaFileRef.current = initialFile;
     if (initialFile.type.startsWith('image/')) {
       setLocalPreview(URL.createObjectURL(initialFile));
     } else if (initialFile.type.startsWith('video/')) {
@@ -608,7 +611,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
 
           {/* ── YouTube preview — auto-detected while typing ── */}
           {(() => {
-            if (localPreview || mediaUrl || uploading) return null;
+            if (localPreview || mediaUrl || uploading || videoThumb || mainUploadFailed) return null;
             const m = content.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
             const ytId = m ? m[1] : null;
             if (!ytId) return null;
@@ -627,7 +630,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           })()}
 
           {/* ── Media zone ── */}
-          {(localPreview || mediaUrl || uploading) ? (
+          {(localPreview || mediaUrl || uploading || videoThumb || mainUploadFailed) ? (
             <>
             {/* Active media preview */}
             <div className="mx-4 mb-4 relative rounded-2xl overflow-hidden" style={{ border: '1px solid var(--tr-border-soft)', minHeight: 180 }}>

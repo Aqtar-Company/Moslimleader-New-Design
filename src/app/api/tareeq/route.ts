@@ -25,12 +25,35 @@ export async function GET(req: NextRequest) {
     ? [{ likeCount: 'desc' as const }, { id: 'desc' as const }]
     : sort === 'useful'
     ? [
-        { bookmarks: { _count: 'desc' as const } },
+        // savedCount is the denormalized column the card renders; ranking on it avoids a
+        // correlated aggregate subquery that no index can serve. NOTE: any popularity
+        // sort is only stable within a snapshot — counts change between page fetches, so
+        // items can still shift across the cursor boundary. The tiebreaker removes the
+        // tie-related churn; the residual drift is inherent to ranking on live counters.
+        { savedCount: 'desc' as const },
         { likeCount: 'desc' as const },
         { createdAt: 'desc' as const },
         { id: 'desc' as const },
       ]
-    : { createdAt: 'desc' as const };
+    : [{ createdAt: 'desc' as const }, { id: 'desc' as const }];
+
+  // Anyone in a block relationship with the viewer (either direction) is excluded from
+  // every branch below. This is resolved up-front — it used to be computed only for the
+  // main feed AND skipped entirely whenever `userId` was set, so a blocked viewer could
+  // still read a blocker's entire timeline via /api/tareeq?userId=<blocker>.
+  const viewerForBlocks = await getAuthUser().catch(() => null);
+  let blockedIds: string[] = [];
+  if (viewerForBlocks) {
+    const blocks = await prisma.tareeqBlock.findMany({
+      where: { OR: [{ blockerId: viewerForBlocks.userId }, { blockedId: viewerForBlocks.userId }] },
+      select: { blockerId: true, blockedId: true },
+    });
+    blockedIds = blocks.map(b => (b.blockerId === viewerForBlocks.userId ? b.blockedId : b.blockerId));
+  }
+  // A blocked author is never visible, even when explicitly requested by id.
+  if (userId && blockedIds.includes(userId)) {
+    return NextResponse.json({ posts: [], nextCursor: null });
+  }
 
   // sort=following — return posts only from users the current viewer follows
   if (sort === 'following') {
@@ -52,7 +75,7 @@ export async function GET(req: NextRequest) {
 
     const followWhere = {
       isHidden: false,
-      userId: { in: followingIds },
+      userId: { in: followingIds.filter(id => !blockedIds.includes(id)) },
       ...(category ? { category } : {}),
       ...(search ? {
         OR: [
@@ -65,7 +88,7 @@ export async function GET(req: NextRequest) {
 
     const followPosts = await prisma.tareeqPost.findMany({
       where: followWhere,
-      orderBy: { createdAt: 'desc' as const },
+      orderBy: [{ createdAt: 'desc' as const }, { id: 'desc' as const }],
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       select: {
@@ -80,7 +103,7 @@ export async function GET(req: NextRequest) {
         // selection. Ordering by recency at least makes it deterministic and reflects
         // which reaction types are currently active; a true popularity ranking would
         // need a per-post groupBy, too costly to run for every post in a feed page.
-        reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 4 },
+        reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 40 },
       },
     });
 
@@ -95,14 +118,17 @@ export async function GET(req: NextRequest) {
   // likedBy: return posts liked by a specific user (via TareeqLike join)
   if (likedBy) {
     const likes = await prisma.tareeqLike.findMany({
-      where: { userId: likedBy, post: { isHidden: false } },
+      where: {
+        userId: likedBy,
+        post: { isHidden: false, ...(blockedIds.length ? { userId: { notIn: blockedIds } } : {}) },
+      },
       // Checking `orderBy.hasOwnProperty('likeCount')` broke once `orderBy` above became
       // an array for sort==='liked' (arrays don't own that key) — check `sort` directly
       // instead. The `id` tiebreaker is this model's own (unique, cursor) id, needed for
       // the same reason as above: `post.likeCount` alone isn't a stable sort for paging.
       orderBy: sort === 'liked'
         ? [{ post: { likeCount: 'desc' as const } }, { id: 'desc' as const }]
-        : { createdAt: 'desc' as const },
+        : [{ createdAt: 'desc' as const }, { id: 'desc' as const }],
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       select: {
@@ -115,7 +141,7 @@ export async function GET(req: NextRequest) {
             pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
             seriesId: true, seriesTitle: true, seriesOrder: true,
             user: { select: { id: true, name: true, avatarUrl: true, role: true } },
-            reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 4 },
+            reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 40 },
           },
         },
       },
@@ -128,23 +154,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ posts: items, nextCursor });
   }
 
-  // Exclude posts from anyone in a block relationship with the viewer (either
-  // direction) — blocking previously did nothing to the feed itself.
-  let blockedIds: string[] = [];
-  const viewerForBlocks = await getAuthUser().catch(() => null);
-  if (viewerForBlocks && !userId) {
-    const blocks = await prisma.tareeqBlock.findMany({
-      where: { OR: [{ blockerId: viewerForBlocks.userId }, { blockedId: viewerForBlocks.userId }] },
-      select: { blockerId: true, blockedId: true },
-    });
-    blockedIds = blocks.map(b => (b.blockerId === viewerForBlocks.userId ? b.blockedId : b.blockerId));
-  }
-
   const where = {
     isHidden: false,
     ...(category ? { category } : {}),
-    ...(userId ? { userId } : {}),
-    ...(blockedIds.length ? { userId: { notIn: blockedIds } } : {}),
+    // AND (not two spreads) — both of these constrain `userId`, so spreading them side by
+    // side silently dropped whichever came first.
+    AND: [
+      ...(userId ? [{ userId }] : []),
+      ...(blockedIds.length ? [{ userId: { notIn: blockedIds } }] : []),
+    ],
     ...(sort === 'useful' ? { createdAt: { gte: new Date(Date.now() - 30 * 24 * 3600 * 1000) } } : {}),
     ...(search ? {
       OR: [
@@ -167,7 +185,7 @@ export async function GET(req: NextRequest) {
       pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
       seriesId: true, seriesTitle: true, seriesOrder: true,
       user: { select: { id: true, name: true, avatarUrl: true } },
-      reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 4 },
+      reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 40 },
     },
   });
 

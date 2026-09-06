@@ -345,6 +345,8 @@ function Inner({ conversationId }: { conversationId: string }) {
   // message used to force-scroll unconditionally, yanking anyone who'd scrolled up to
   // read history back down to the newest message.
   const isNearBottomRef = useRef(true);
+  const knownIdsRef = useRef<Set<string>>(new Set());
+  const scrollRestoreRef = useRef<{ height: number; top: number } | null>(null);
 
   // Call state
   const [activeCall, setActiveCall] = useState<{
@@ -420,11 +422,9 @@ function Inner({ conversationId }: { conversationId: string }) {
       if (res.ok) {
         const d = await res.json();
         const older: Message[] = d.messages ?? [];
+        scrollRestoreRef.current = { height: prevScrollHeight, top: prevScrollTop };
         setMessages(prev => [...older, ...prev]);
         setOlderCursor(d.nextCursor ?? null);
-        requestAnimationFrame(() => {
-          if (el) el.scrollTop = el.scrollHeight - prevScrollHeight + prevScrollTop;
-        });
       }
     } catch { /* offline */ } finally {
       setLoadingOlder(false);
@@ -453,22 +453,34 @@ function Inner({ conversationId }: { conversationId: string }) {
       const newLatest = msgs.length ? msgs[msgs.length - 1].id : '';
       const newCallCount = callEvents.length;
 
-      // A poll that started before a just-sent message landed in the DB returns a snapshot
-      // that predates it — its `newLatest` then differs from latestIdRef (which handleSend
-      // already advanced) even though nothing is actually newer. Overwriting with that
-      // stale snapshot wiped the sent message from view for up to one poll cycle. The fix:
-      // only trust this response as "newer" when our current latest message is actually
-      // present in it — i.e. the poll's snapshot is at least as fresh as local state.
-      const localLatestIsStale = latestIdRef.current !== '' && !msgs.some(m => m.id === latestIdRef.current);
+      // The poll only ever returns the newest page. It must MERGE into local state, never
+      // replace it: a wholesale setMessages(msgs) both wiped any earlier history the
+      // reader had loaded via "load earlier messages" (within ~3s of loading it) and, if
+      // the response predated a just-sent message, briefly erased that message too.
+      // Merging by id fixes both, and also picks up read-receipt changes on known rows.
+      const mergeIn = (incoming: Message[]) => setMessages(prev => {
+        if (prev.length === 0) return incoming;
+        const byId = new Map(prev.map(m => [m.id, m]));
+        for (const m of incoming) byId.set(m.id, m);
+        return [...byId.values()].sort(
+          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        );
+      });
 
-      if (newLatest !== latestIdRef.current && !localLatestIsStale) {
+      const isNewer = newLatest !== '' && newLatest !== latestIdRef.current;
+
+      if (isNewer) {
         const latestMsg = msgs[msgs.length - 1];
-        if (latestMsg && latestMsg.senderId !== user?.id) playMsgChime();
+        const knownIds = knownIdsRef.current;
+        const isGenuinelyNew = latestMsg ? !knownIds.has(latestMsg.id) : false;
+        if (isGenuinelyNew && latestMsg && latestMsg.senderId !== user?.id) playMsgChime();
         // Only auto-scroll if the reader was already near the bottom, or the new message
         // is their own (e.g. sent from another tab/device) — otherwise leave them where
         // they are while reading earlier messages.
-        if (isNearBottomRef.current || latestMsg?.senderId === user?.id) shouldScrollRef.current = true;
-        setMessages(msgs);
+        if (isGenuinelyNew && (isNearBottomRef.current || latestMsg?.senderId === user?.id)) {
+          shouldScrollRef.current = true;
+        }
+        mergeIn(msgs);
         latestIdRef.current = newLatest;
         refresh();
         // Keep sidebar in sync with active conversation's latest message
@@ -480,12 +492,11 @@ function Inner({ conversationId }: { conversationId: string }) {
               : c
           ));
         }
-      } else if (!localLatestIsStale) {
-        // Still update messages to reflect changed read statuses (seen ticks)
-        setMessages(msgs);
+      } else {
+        // Same newest message — still merge so read-status (seen ticks) changes land,
+        // without discarding earlier history the reader loaded.
+        mergeIn(msgs);
       }
-      // else: this response is stale relative to what we already have locally — skip it
-      // and let the next poll (3s later) pick up once the DB has caught up.
 
       if (newCallCount !== callCountRef.current) {
         setCalls(callEvents);
@@ -497,6 +508,14 @@ function Inner({ conversationId }: { conversationId: string }) {
     }, 3_000);
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
   }, [authLoading, user, router, loadMessages, conversationId, refresh]);
+
+  useEffect(() => {
+    knownIdsRef.current = new Set(messages.map(m => m.id));
+    // Re-anchor to what is actually on screen. Deleting the newest message (delete-for-me
+    // removes it from the server's response entirely) used to leave latestIdRef pointing
+    // at an id the poll could never return again.
+    if (messages.length) latestIdRef.current = messages[messages.length - 1].id;
+  }, [messages]);
 
   function scrollToBottom(smooth = false) {
     const el = messagesContainerRef.current;
@@ -510,6 +529,15 @@ function Inner({ conversationId }: { conversationId: string }) {
 
   // Scroll to bottom on new messages — useLayoutEffect fires before paint, no visible flash
   useLayoutEffect(() => {
+    // Prepended history: keep the reader's viewport anchored to the same message rather
+    // than letting the taller container shift it.
+    const restore = scrollRestoreRef.current;
+    if (restore) {
+      const el = messagesContainerRef.current;
+      if (el) el.scrollTop = el.scrollHeight - restore.height + restore.top;
+      scrollRestoreRef.current = null;
+      return;
+    }
     if (shouldScrollRef.current) {
       scrollToBottom(false);
       shouldScrollRef.current = false;
@@ -767,6 +795,9 @@ function Inner({ conversationId }: { conversationId: string }) {
       : ''; // Safari fallback: uses its default (mp4/aac)
     const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
     mediaRecorderRef.current = mr;
+    // Bound at record time, not at send time — a voice note belongs to the conversation
+    // it was recorded in, even if the user navigates to another chat before releasing.
+    const recordingConvId = conversationIdRef.current;
 
     mr.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
 
@@ -803,7 +834,7 @@ function Inner({ conversationId }: { conversationId: string }) {
         setUploadProgress(90);
         // Auto-send immediately — no intermediate preview step
         setSending(true);
-        const sendRes = await fetch(`/api/tareeq/conversations/${conversationIdRef.current}/messages`, {
+        const sendRes = await fetch(`/api/tareeq/conversations/${recordingConvId}/messages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -811,7 +842,7 @@ function Inner({ conversationId }: { conversationId: string }) {
         });
         if (sendRes.ok) {
           const d = await sendRes.json();
-          if (d.message) {
+          if (d.message && recordingConvId === conversationIdRef.current) {
             shouldScrollRef.current = true;
             setMessages(prev => { const updated = [...prev, d.message as Message]; latestIdRef.current = d.message.id; return updated; });
           }

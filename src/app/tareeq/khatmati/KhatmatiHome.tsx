@@ -65,11 +65,12 @@ interface Progress {
   dailyReminder?: boolean;
 }
 
-function sirajState(lastReadDate: string | null): 'bright' | 'dim' | 'dark' {
-  if (!lastReadDate) return 'dark';
-  const today = new Date().toLocaleDateString('en-CA');
+// `today` is passed in (resolved after mount) rather than read from the clock here, so
+// this never produces a different result on the server than in the browser.
+function sirajState(lastReadDate: string | null, today: string | null): 'bright' | 'dim' | 'dark' {
+  if (!lastReadDate || !today) return 'dark';
   if (lastReadDate === today) return 'bright';
-  const d = new Date(); d.setDate(d.getDate() - 1);
+  const d = new Date(today + 'T12:00:00'); d.setDate(d.getDate() - 1);
   if (lastReadDate === d.toLocaleDateString('en-CA')) return 'dim';
   return 'dark';
 }
@@ -86,10 +87,37 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
   const { user } = useAuth();
   const router = useRouter();
   const p = initialProgress;
-  const groups: GroupCardWithReadToday[] = useMemo(() => {
-    const today = new Date().toLocaleDateString('en-CA');
-    return initialGroups.map(g => ({ ...g, readToday: g.lastReadDate === today }));
-  }, [initialGroups]);
+  // Computed AFTER mount, never during render: these client components are also
+  // server-rendered, so calling toLocaleDateString() in render would use the container's
+  // (UTC) date for the SSR HTML and the browser's local date on hydration — a mismatch
+  // that React does not reliably patch for inline styles, leaving a card whose label and
+  // colours disagree. Rendering the neutral state first and settling after mount is the
+  // only way to keep a local-time comparison consistent.
+  const [localToday, setLocalToday] = useState<string | null>(null);
+  useEffect(() => { setLocalToday(new Date().toLocaleDateString('en-CA')); }, []);
+
+  // One-time migration: the reminder preference used to live only in localStorage. Now
+  // that it's persisted server-side, carry the old value over once instead of silently
+  // switching every existing opted-in user back off.
+  useEffect(() => {
+    if (!user) return;
+    let stored: string | null = null;
+    try { stored = localStorage.getItem('nuri-reminder'); } catch { return; }
+    if (stored === null) return;
+    if (stored === '1' && !p?.dailyReminder) {
+      fetch('/api/tareeq/khatmati/remind', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enable: true }),
+      }).then(r => { if (r.ok) setReminderOn(true); }).catch(() => {});
+    }
+    try { localStorage.removeItem('nuri-reminder'); } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+  const groups: GroupCardWithReadToday[] = useMemo(
+    () => initialGroups.map(g => ({ ...g, readToday: localToday != null && g.lastReadDate === localToday })),
+    [initialGroups, localToday],
+  );
 
   const [showSurahPicker, setShowSurahPicker] = useState(false);
   const [showSettings, setShowSettings]       = useState(false);
@@ -265,7 +293,7 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
     setSharing(false);
   }
 
-  const state       = sirajState(p?.lastReadDate ?? null);
+  const state       = sirajState(p?.lastReadDate ?? null, localToday);
   const page        = p?.currentPage ?? 1;
   const pct         = Math.round((page / TOTAL_QURAN_PAGES) * 100);
   const surahNameAr = SURAH_NAMES_AR[(p?.currentSurah ?? 1) - 1];

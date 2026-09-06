@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 
@@ -34,10 +34,13 @@ export default function KhatmaGroupDetail({
 }) {
   const router = useRouter();
   const { isRtl } = useLang();
-  const members = useMemo(() => {
-    const today = new Date().toLocaleDateString('en-CA');
-    return rawMembers.map(m => ({ ...m, readToday: m.lastReadDate === today }));
-  }, [rawMembers]);
+  // Resolved after mount — see KhatmatiHome for why this must not run during render.
+  const [localToday, setLocalToday] = useState<string | null>(null);
+  useEffect(() => { setLocalToday(new Date().toLocaleDateString('en-CA')); }, []);
+  const members = useMemo(
+    () => rawMembers.map(m => ({ ...m, readToday: localToday != null && m.lastReadDate === localToday })),
+    [rawMembers, localToday],
+  );
   const [copied, setCopied] = useState(false);
   const [linkedToSolo, setLinkedToSolo] = useState(initialLinked);
   const [linkSaving, setLinkSaving] = useState(false);

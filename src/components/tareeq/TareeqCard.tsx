@@ -273,6 +273,14 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   const [showReactors, setShowReactors] = useState(false);
   const [textExpanded, setTextExpanded] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(initialBookmarked);
+  // These four are seeded from props but the parent updates them AFTER first paint —
+  // /api/tareeq/me resolves later (bookmark + reaction hydration), and the feed bumps
+  // commentCount when a comment is posted from the sheet. Without syncing, the card kept
+  // showing its first-render values unless something else happened to remount it.
+  useEffect(() => { setIsBookmarked(initialBookmarked); }, [initialBookmarked]);
+  useEffect(() => { setCommentCount(post.commentCount); }, [post.commentCount]);
+  useEffect(() => { setLikeCount(post.likeCount); }, [post.likeCount]);
+  useEffect(() => { setCurrentReaction(initialReaction ?? (initialLiked ? 'inspired' : null)); }, [initialReaction, initialLiked]);
   const [showBookmarkPicker, setShowBookmarkPicker] = useState(false);
   const [bmFolders, setBmFolders] = useState<{ id: string; name: string; _count: { bookmarks: number } }[]>([]);
   const [bmFoldersLoaded, setBmFoldersLoaded] = useState(false);
@@ -293,10 +301,15 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   const [dmConversations, setDMConversations] = useState<{ id: string; otherUser: { id: string; name: string; avatarUrl?: string | null } }[]>([]);
   const [dmSending, setDMSending] = useState<string | null>(null);
   const [dmSent, setDMSent] = useState<string | null>(null);
-  const shareMenuRef = useRef<HTMLDivElement>(null);
-  // The dropdown itself renders in a portal (see ShareDropdown) so it can never be clipped
-  // by a rounded/overflow-hidden card ancestor — this ref tracks that portaled node so
-  // outside-click detection still works even though it's no longer a DOM child of shareMenuRef.
+  // The trigger element is captured from the click itself rather than a shared ref: the
+  // mobile and desktop action bars are BOTH mounted (hidden with CSS, not conditionally
+  // rendered), so a single ref attached to all of them ends up pointing at whichever node
+  // React attached last — frequently a display:none one, whose getBoundingClientRect() is
+  // all zeros and sent the portaled menu to the corner of the viewport.
+  const [shareAnchorEl, setShareAnchorEl] = useState<HTMLElement | null>(null);
+  // The dropdown renders in a portal (see ShareDropdown) so it can never be clipped by a
+  // rounded/overflow-hidden card ancestor — this ref tracks that portaled node so
+  // outside-click detection still works even though it isn't a DOM child of the trigger.
   const shareMenuPortalRef = useRef<HTMLDivElement>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
 
@@ -304,13 +317,13 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     if (!showShareMenu) return;
     const h = (e: MouseEvent) => {
       const t = e.target as Node;
-      const insideAnchor = !!shareMenuRef.current?.contains(t);
+      const insideAnchor = !!shareAnchorEl?.contains(t);
       const insidePortal = !!shareMenuPortalRef.current?.contains(t);
       if (!insideAnchor && !insidePortal) setShowShareMenu(false);
     };
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
-  }, [showShareMenu]);
+  }, [showShareMenu, shareAnchorEl]);
 
   // Check if post is pinned offline on mount
   useEffect(() => {
@@ -390,6 +403,9 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
   async function handleShare(e: React.MouseEvent) {
     e.preventDefault(); e.stopPropagation();
+    // Anchor to the button that was actually clicked — this is the only reliable way to
+    // know which of the simultaneously-mounted breakpoint variants the user pressed.
+    setShareAnchorEl(e.currentTarget as HTMLElement);
     setShowShareMenu(v => !v);
   }
 
@@ -696,7 +712,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         </button>
 
         {/* Share */}
-        <div ref={shareMenuRef} className="relative ms-auto">
+        <div className="relative ms-auto">
           <button
             onClick={handleShare}
             className="tr-action-btn"
@@ -709,7 +725,6 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             </span>
             <span>{isRtl ? 'مشاركة' : 'Share'}</span>
           </button>
-          {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} anchorRef={shareMenuRef} menuRef={shareMenuPortalRef} />}
         </div>
 
         {/* Options — own posts: delete; others: report/unfollow */}
@@ -978,11 +993,10 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             </button>
 
             <div className="ms-auto flex items-center gap-2">
-              <div ref={shareMenuRef} className="relative">
+              <div className="relative">
                 <button onClick={handleShare} className="flex items-center gap-1 text-xs font-semibold transition" style={{ color: copied ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
                   <IconShare size={16} check={copied} />
                 </button>
-                {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} anchorRef={shareMenuRef} menuRef={shareMenuPortalRef} />}
               </div>
               {user && (
                 <button onClick={e => { e.preventDefault(); e.stopPropagation(); setShowOptions(true); }} aria-label={isRtl ? 'خيارات' : 'Options'} className="flex items-center gap-1 text-xs font-semibold transition active:scale-90" style={{ color: 'var(--tr-text-muted)' }}>
@@ -996,6 +1010,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         </article>
 
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
+{showShareMenu && shareAnchorEl && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} anchorEl={shareAnchorEl} menuRef={shareMenuPortalRef} />}
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
         {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
@@ -1117,14 +1132,13 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               </div>
 
               {/* Share */}
-              <div ref={shareMenuRef} className="relative flex flex-col items-center gap-1">
+              <div className="relative flex flex-col items-center gap-1">
                 <button onClick={handleShare} aria-label={isRtl ? 'مشاركة' : 'Share'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
                   <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)' }}>
                     <IconShare size={20} check={copied} />
                   </div>
                   <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{copied ? '✓' : (isRtl ? 'شارك' : 'Share')}</span>
                 </button>
-                {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} anchorRef={shareMenuRef} menuRef={shareMenuPortalRef} />}
               </div>
 
               {/* Comment */}
@@ -1196,6 +1210,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         </article>
 
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
+{showShareMenu && shareAnchorEl && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} anchorEl={shareAnchorEl} menuRef={shareMenuPortalRef} />}
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
         {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
@@ -1401,11 +1416,10 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           </button>
 
           <div className="ms-auto flex items-center gap-2">
-            <div ref={shareMenuRef} className="relative">
+            <div className="relative">
               <button onClick={handleShare} className="flex items-center gap-1 text-sm font-semibold transition" style={{ color: copied ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
                 <IconShare size={18} check={copied} />
               </button>
-              {showShareMenu && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} anchorRef={shareMenuRef} menuRef={shareMenuPortalRef} />}
             </div>
 
             {user && (
@@ -1425,6 +1439,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
       </article>
 
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
+{showShareMenu && shareAnchorEl && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} anchorEl={shareAnchorEl} menuRef={shareMenuPortalRef} />}
       {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
       {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
       {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
@@ -1748,7 +1763,7 @@ export function ReportModal({ targetType, targetId, isRtl, onClose }: {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      className="fixed inset-0 z-[10000] flex items-center justify-center px-4"
       style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
       onClick={onClose}
     >
@@ -1925,11 +1940,11 @@ function DMPickerModal({ conversations, dmSending, dmSent, onSend, onClose, isRt
    position from the trigger's real screen coordinates also lets it flip
    below the button (instead of always opening upward) when there isn't
    room above — the case that used to push it off-screen on short cards. */
-function ShareDropdown({ postId, title, content, onCopy, onClose, onSendDM, onNativeShare, isRtl, anchorRef, menuRef }: {
+function ShareDropdown({ postId, title, content, onCopy, onClose, onSendDM, onNativeShare, isRtl, anchorEl, menuRef }: {
   postId: string; title?: string | null; content: string;
   onCopy: (e: React.MouseEvent) => void; onClose: () => void;
   onSendDM?: () => void; onNativeShare?: (e: React.MouseEvent) => void; isRtl: boolean;
-  anchorRef: React.RefObject<HTMLElement>; menuRef: React.RefObject<HTMLDivElement>;
+  anchorEl: HTMLElement; menuRef: React.RefObject<HTMLDivElement>;
 }) {
   const postUrl = typeof window !== 'undefined' ? `${window.location.origin}/tareeq/${postId}` : `/tareeq/${postId}`;
   const text    = encodeURIComponent(title || content.slice(0, 80));
@@ -1938,11 +1953,14 @@ function ShareDropdown({ postId, title, content, onCopy, onClose, onSendDM, onNa
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
   useLayoutEffect(() => {
-    const anchor = anchorRef.current;
+    const anchor = anchorEl;
     const menu = menuRef.current;
     if (!anchor || !menu) return;
     const MARGIN = 8;
     const a = anchor.getBoundingClientRect();
+    // Guard against measuring a hidden node (zero rect) — better to leave the menu
+    // unpositioned/invisible than to pin it to the corner of the viewport.
+    if (a.width === 0 && a.height === 0) return;
     const mw = menu.offsetWidth;
     const mh = menu.offsetHeight;
     // Align to the anchor's inline-end edge (matches the old `end-0`), clamped to the viewport.
@@ -1953,7 +1971,7 @@ function ShareDropdown({ postId, title, content, onCopy, onClose, onSendDM, onNa
     if (top < MARGIN) top = a.bottom + MARGIN;
     top = Math.min(top, window.innerHeight - mh - MARGIN);
     setPos({ top, left });
-  }, [isRtl, anchorRef, menuRef]);
+  }, [isRtl, anchorEl, menuRef]);
 
   // The anchor can move under the popup (page scroll, feed re-layout) — close rather than
   // let it drift out of sync with a fixed-position popup that no longer tracks it.
@@ -1967,7 +1985,7 @@ function ShareDropdown({ postId, title, content, onCopy, onClose, onSendDM, onNa
     const w = 580, h = 520;
     const left = Math.max(0, (screen.width - w) / 2);
     const top  = Math.max(0, (screen.height - h) / 2);
-    window.open(shareUrl, name, `width=${w},height=${h},top=${top},left=${left},toolbar=0,menubar=0,location=0,status=0,scrollbars=1`);
+    window.open(shareUrl, name, `noopener,width=${w},height=${h},top=${top},left=${left},toolbar=0,menubar=0,location=0,status=0,scrollbars=1`);
   }
 
   function openFbPopup(e: React.MouseEvent) {

@@ -80,9 +80,12 @@ export async function PUT(req: NextRequest) {
       ...(currentSurah     != null && { currentSurah }),
       ...(currentAyah      != null && { currentAyah }),
       ...(dailyGoalPages   != null && { dailyGoalPages }),
-      lastReadDate: today,
-      sirajStreak,
-      ...(isReset ? { totalPagesRead: 0 } : { totalPagesRead: { increment: pagesAdvanced } }),
+      // A reset reads zero pages, so it must NOT count as a reading day: writing
+      // lastReadDate=today lit the "read today" lamp and could mint a streak day for a
+      // button press (and keep an otherwise-broken streak alive).
+      ...(isReset
+        ? { totalPagesRead: 0 }
+        : { lastReadDate: today, sirajStreak, totalPagesRead: { increment: pagesAdvanced } }),
     },
     create: {
       userId:        user.userId,

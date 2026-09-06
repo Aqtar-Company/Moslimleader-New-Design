@@ -2,7 +2,7 @@
 import { createPortal } from 'react-dom';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 
 interface Props { onClose: () => void; }
@@ -10,10 +10,14 @@ interface Props { onClose: () => void; }
 export default function TareeqLoginGate({ onClose }: Props) {
   const { isRtl } = useLang();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   // Send the user to Tareeq's own login (not the shop's /login) and bring them back to
   // whatever they were doing — without this they landed on the shop homepage after
-  // signing in from a reaction/bookmark/reply prompt deep inside Tareeq.
-  const redirectParam = `redirect=${encodeURIComponent(pathname || '/tareeq')}`;
+  // signing in from a reaction/bookmark/reply prompt deep inside Tareeq. The query string
+  // is part of "what they were doing" (active category/search filters), so keep it.
+  const qs = searchParams?.toString();
+  const returnTo = `${pathname || '/tareeq'}${qs ? `?${qs}` : ''}`;
+  const redirectParam = `redirect=${encodeURIComponent(returnTo)}`;
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {

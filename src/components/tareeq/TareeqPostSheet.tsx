@@ -167,7 +167,10 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
       if (res.ok) {
         const d = await res.json();
         const more: Comment[] = d.comments ?? [];
-        setComments(prev => [...prev, ...more]);
+        setComments(prev => {
+          const have = new Set(prev.map(c => c.id));
+          return [...prev, ...more.filter(c => !have.has(c.id))];
+        });
         seedCommentLikes(more);
         setCommentsCursor(d.nextCursor ?? null);
       }
@@ -279,6 +282,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
             ));
           } else {
             setComments(prev => [...prev, data.comment]);
+            setPost(prev => (prev ? { ...prev, commentCount: prev.commentCount + 1 } : prev));
             onCommented?.(postId);
           }
         }

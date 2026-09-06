@@ -35,6 +35,8 @@ export default function TareeqNotebookClient() {
   const lastSavedTitle = useRef('');
   const lastSavedContent = useRef('');
   const requestIdRef   = useRef(0);
+  const inFlightSaveRef = useRef<Promise<boolean> | null>(null);
+  const [saveError, setSaveError] = useState(false);
 
   // Auth guard
   useEffect(() => {
@@ -78,7 +80,8 @@ export default function TareeqNotebookClient() {
   // note's autosave timer ever fired, so its cleanup saw "not dirty" and skipped saving.
   async function openNote(note: Note) {
     if (autosaveTimer.current) { clearTimeout(autosaveTimer.current); autosaveTimer.current = null; }
-    await saveNote();
+    if (!(await saveNote())) { setSaveError(true); return; } // keep the unsaved note open
+    setSaveError(false);
     setActiveId(note.id);
     setIsNew(false);
     setEditTitle(note.title ?? '');
@@ -91,7 +94,8 @@ export default function TareeqNotebookClient() {
   // Start new note — same flush as openNote, for the same reason.
   async function startNew() {
     if (autosaveTimer.current) { clearTimeout(autosaveTimer.current); autosaveTimer.current = null; }
-    await saveNote();
+    if (!(await saveNote())) { setSaveError(true); return; }
+    setSaveError(false);
     setActiveId(null);
     setIsNew(true);
     setEditTitle('');
@@ -101,32 +105,46 @@ export default function TareeqNotebookClient() {
     setShowMobileEditor(true);
   }
 
-  const saveNote = useCallback(async () => {
-    if (!editContent.trim() && !editTitle.trim()) return;
-    setSaving(true);
+  const saveNote = useCallback(async (): Promise<boolean> => {
+    if (!editContent.trim() && !editTitle.trim()) return true;
+    // Reuse the in-flight save rather than starting a competing one. `isNew` only flips
+    // to false in the response handler, so a second save entering while the first POST is
+    // still on the wire used to create a DUPLICATE note (and orphan the first one).
+    if (inFlightSaveRef.current) return inFlightSaveRef.current;
+
     const body = { title: editTitle.trim() || null, content: editContent.trim() };
-    try {
-      if (isNew) {
-        const res  = await fetch('/api/tareeq/notes', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-        const data = await res.json().catch(() => ({}));
-        if (data.note) {
-          setNotes(prev => [data.note, ...prev]);
-          setActiveId(data.note.id);
-          setIsNew(false);
-          lastSavedTitle.current   = editTitle;
-          lastSavedContent.current = editContent;
+    const run = (async (): Promise<boolean> => {
+      setSaving(true);
+      let ok = false;
+      try {
+        if (isNew) {
+          const res  = await fetch('/api/tareeq/notes', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          const data = await res.json().catch(() => ({}));
+          if (data.note) {
+            setNotes(prev => [data.note, ...prev]);
+            setActiveId(data.note.id);
+            setIsNew(false);
+            lastSavedTitle.current   = editTitle;
+            lastSavedContent.current = editContent;
+            ok = true;
+          }
+        } else if (activeId) {
+          const res  = await fetch(`/api/tareeq/notes/${activeId}`, { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          const data = await res.json().catch(() => ({}));
+          if (data.note) {
+            setNotes(prev => prev.map(n => n.id === activeId ? data.note : n));
+            lastSavedTitle.current   = editTitle;
+            lastSavedContent.current = editContent;
+            ok = true;
+          }
         }
-      } else if (activeId) {
-        const res  = await fetch(`/api/tareeq/notes/${activeId}`, { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-        const data = await res.json().catch(() => ({}));
-        if (data.note) {
-          setNotes(prev => prev.map(n => n.id === activeId ? data.note : n));
-          lastSavedTitle.current   = editTitle;
-          lastSavedContent.current = editContent;
-        }
-      }
-    } catch { /* network error — saving indicator cleared below */ }
-    finally { setSaving(false); }
+      } catch { /* network error — reported to the caller via the false return */ }
+      finally { setSaving(false); }
+      return ok;
+    })();
+
+    inFlightSaveRef.current = run;
+    try { return await run; } finally { inFlightSaveRef.current = null; }
   }, [editContent, editTitle, isNew, activeId]);
 
   // Autosave on change — depends on saveNote so closure is always fresh
@@ -302,12 +320,14 @@ export default function TareeqNotebookClient() {
                 </svg>
               </button>
 
-              <span className="flex-1 text-xs" style={{ color: 'var(--tr-text-muted)' }}>
+              <span className="flex-1 text-xs" style={{ color: saveError ? '#ef4444' : 'var(--tr-text-muted)' }}>
                 {saving
                   ? (isRtl ? 'جاري الحفظ…' : 'Saving…')
-                  : (activeId || isNew) && editContent.trim()
-                    ? (isRtl ? '✓ تم الحفظ تلقائياً' : '✓ Auto-saved')
-                    : ''}
+                  : saveError
+                    ? (isRtl ? '⚠ تعذّر الحفظ — تحقّق من اتصالك' : '⚠ Couldn\u2019t save — check your connection')
+                    : (activeId || isNew) && editContent.trim()
+                      ? (isRtl ? '✓ تم الحفظ تلقائياً' : '✓ Auto-saved')
+                      : ''}
               </span>
 
               {/* Convert to post */}

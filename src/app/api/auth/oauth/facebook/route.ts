@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     maxAge: 600, // 10 minutes
     path: '/',
   });
-  response.cookies.set('oauth_redirect', safeRedirect, {
+  response.cookies.set('oauth_redirect_fb', safeRedirect, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',

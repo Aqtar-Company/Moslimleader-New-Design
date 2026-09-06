@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { isBlockedEitherWay } from '@/lib/tareeq-guard';
 import { getAuthUser } from '@/lib/jwt';
 import TareeqPostClient from './TareeqPostClient';
 import type { Metadata } from 'next';
@@ -59,6 +60,16 @@ export default async function TareeqPostPage({ params }: { params: { id: string 
   });
 
   if (!post) return notFound();
+
+  // A blocked author's post is not viewable by direct URL either — the feed and profile
+  // both filter these out, so leaving the permalink open defeated the whole block.
+  if (post.userId) {
+    const viewerForBlock = await getAuthUser().catch(() => null);
+    if (viewerForBlock && viewerForBlock.userId !== post.userId
+        && await isBlockedEitherWay(viewerForBlock.userId, post.userId)) {
+      return notFound();
+    }
+  }
 
   // Increment view (non-blocking)
   prisma.tareeqPost.update({ where: { id: params.id }, data: { viewCount: { increment: 1 } } }).catch(() => {});

@@ -4,7 +4,6 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
-import { isBlockedEitherWay } from '@/lib/tareeq-guard';
 import TareeqUserClient from './TareeqUserClient';
 
 interface Props { params: { userId: string } }
@@ -66,7 +65,26 @@ export default async function TareeqUserPage({ params }: Props) {
   } catch {
     // unauthenticated — treated as a non-blocked anonymous viewer below
   }
-  const blocked = !isOwner && viewerId ? await isBlockedEitherWay(viewerId, profileUser.id) : false;
+  // The two directions are kept separate on purpose. Posts are hidden either way, but
+  // the UI must not TELL a user they've been blocked — /api/tareeq/block deliberately
+  // never returns blockedBy for that reason, so surfacing an explicit "Unavailable"
+  // state in that direction would leak exactly what that endpoint withholds.
+  let viewerIsBlocking = false;   // viewer blocked this profile — safe to show explicitly
+  let blockedByProfile = false;   // profile blocked viewer — must look like an empty profile
+  if (!isOwner && viewerId) {
+    const rows = await prisma.tareeqBlock.findMany({
+      where: {
+        OR: [
+          { blockerId: viewerId, blockedId: profileUser.id },
+          { blockerId: profileUser.id, blockedId: viewerId },
+        ],
+      },
+      select: { blockerId: true },
+    });
+    viewerIsBlocking = rows.some(r => r.blockerId === viewerId);
+    blockedByProfile = rows.some(r => r.blockerId === profileUser.id);
+  }
+  const blocked = viewerIsBlocking || blockedByProfile;
 
   const [rawPosts, postCount] = blocked
     ? [[], 0]
@@ -83,7 +101,7 @@ export default async function TareeqUserPage({ params }: Props) {
             pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
             seriesId: true, seriesTitle: true, seriesOrder: true,
             user: { select: { id: true, name: true, avatarUrl: true, role: true } },
-            reactions: { distinct: ['type'], select: { type: true }, take: 4 },
+            reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 40 },
           },
         }),
         prisma.tareeqPost.count({ where: { userId, isHidden: false } }),
@@ -132,7 +150,7 @@ export default async function TareeqUserPage({ params }: Props) {
       initialCursor={nextCursor}
       likedIds={likedIds}
       postCount={postCount}
-      initialBlocked={blocked}
+      initialBlocked={viewerIsBlocking}
     />
   );
 }

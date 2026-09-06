@@ -34,7 +34,7 @@ export default async function TareeqPage() {
         category: true, tags: true, imageUrl: true, videoUrl: true, authorName: true,
         likeCount: true, commentCount: true, createdAt: true, userId: true,
         user: { select: { id: true, name: true, avatarUrl: true } },
-        reactions: { distinct: ['type'], select: { type: true }, take: 4 },
+        reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 40 },
       },
     });
     const hasMore = posts.length > 12;

@@ -89,7 +89,7 @@ export default function TareeqSavedClient() {
             </h1>
             {!loading && (
               <p className="text-xs" style={{ color: 'var(--tr-text-muted)' }}>
-                {bookmarks.length} {isRtl ? 'علامة محفوظة' : 'saved marks'}
+                {activeFolder?._count.bookmarks ?? (cursor ? `${bookmarks.length}+` : bookmarks.length)} {isRtl ? 'علامة محفوظة' : 'saved marks'}
               </p>
             )}
           </div>

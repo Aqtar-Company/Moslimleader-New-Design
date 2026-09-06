@@ -13,13 +13,13 @@ export async function GET(req: NextRequest) {
 
   // Set by the start route so a deep link (e.g. /tareeq/khatmati/groups/x) survives the
   // round trip to Facebook instead of always landing on the Tareeq home.
-  const rawRedirect = req.cookies.get('oauth_redirect')?.value || '/tareeq';
+  const rawRedirect = req.cookies.get('oauth_redirect_fb')?.value || '/tareeq';
   const safeRedirect = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/tareeq';
   const loginPage = safeRedirect.startsWith('/tareeq') ? '/tareeq/login' : '/login';
 
   const clearState = (res: NextResponse) => {
     res.cookies.set('oauth_state_fb', '', { httpOnly: true, maxAge: 0, path: '/' });
-    res.cookies.set('oauth_redirect', '', { httpOnly: true, maxAge: 0, path: '/' });
+    res.cookies.set('oauth_redirect_fb', '', { httpOnly: true, maxAge: 0, path: '/' });
     return res;
   };
 

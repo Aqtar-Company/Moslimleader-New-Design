@@ -149,10 +149,11 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const postsHasImages = useMemo(() => posts.some(p => p.imageUrl), [posts]);
   const [likedIds] = useState<Set<string>>(new Set(initialLiked));
   const [isFollowing, setIsFollowing] = useState(false);
-  // Guards against the mount GET below resolving AFTER the user has already tapped
-  // Follow — without this, a slow initial fetch could overwrite the optimistic (or
-  // server-confirmed) follow state and count with the stale pre-follow snapshot it read.
-  const followMutatedRef = useRef(false);
+  // Guards against the mount GET resolving AFTER the user has already tapped Follow.
+  // Stored as a timestamp compared against when each GET was issued, so a request that
+  // started after the last mutation is still allowed to correct the counts — a sticky
+  // boolean here froze the profile at 0 followers whenever a follow request failed.
+  const lastFollowMutationRef = useRef(0);
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
@@ -162,9 +163,11 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   const [showQR, setShowQR] = useState(false);
   const [isBlocking, setIsBlocking] = useState(false);
   const [isBlockedBy, setIsBlockedBy] = useState(false);
-  // Either direction of block hides posts and disables Follow/Message — the SSR value
-  // covers the first paint, the live fetch/toggle covers everything after.
-  const contentBlocked = !!initialBlocked || isBlocking || isBlockedBy;
+  // `initialBlocked` is only the "viewer blocked this profile" direction (being blocked
+  // BY someone is deliberately never disclosed — see /api/tareeq/block). Held as state so
+  // unblocking restores the profile immediately instead of requiring a reload.
+  const [serverBlocked, setServerBlocked] = useState(!!initialBlocked);
+  const contentBlocked = serverBlocked || isBlocking;
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showReportUser, setShowReportUser] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -298,10 +301,13 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
   }
 
   useEffect(() => {
+    const issuedAt = Date.now();
+    lastFollowMutationRef.current = 0; // new profile → clean slate
     fetch(`/api/tareeq/follow/${profileUser.id}`, { credentials: 'include' })
       .then(r => r.json())
       .then(d => {
-        if (followMutatedRef.current) return; // user already followed/unfollowed — don't clobber it
+        // Ignore only if a mutation started AFTER this request was issued.
+        if (lastFollowMutationRef.current > issuedAt) return;
         setIsFollowing(d.isFollowing ?? false);
         setFollowerCount(d.followerCount ?? 0);
         setFollowingCount(d.followingCount ?? 0);
@@ -328,6 +334,10 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
       if (res.ok) {
         const d = await res.json();
         setIsBlocking(d.blocking);
+        setServerBlocked(d.blocking);
+        // Unblocking has nothing to reveal without a refetch — the posts were withheld
+        // server-side, so ask the server component to re-render with them.
+        if (!d.blocking) router.refresh();
         if (d.blocking) setIsFollowing(false);
       } else {
         setIsBlocking(was);
@@ -1098,7 +1108,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                               if (!user) { setShowGate(true); return; }
                               if (followLoading) return;
                               setFollowLoading(true);
-                              followMutatedRef.current = true;
+                              lastFollowMutationRef.current = Date.now();
                               const wasFollowing = isFollowing;
                               setIsFollowing(!wasFollowing);
                               setFollowerCount(c => wasFollowing ? Math.max(0, c - 1) : c + 1);
@@ -1300,7 +1310,7 @@ export default function TareeqUserClient({ profileUser, initialPosts, initialCur
                           if (!user) { setShowGate(true); return; }
                           if (followLoading) return;
                           setFollowLoading(true);
-                          followMutatedRef.current = true;
+                          lastFollowMutationRef.current = Date.now();
                           const wasFollowing = isFollowing;
                           setIsFollowing(!wasFollowing);
                           setFollowerCount(c => wasFollowing ? Math.max(0, c - 1) : c + 1);

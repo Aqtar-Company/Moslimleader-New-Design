@@ -196,6 +196,9 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   // (leaving the page, backgrounding the tab) instead of lost when the 3s debounce
   // timer never gets to fire.
   const lastSaveRef = useRef<{ page: number; surah: number; ayah: number } | null>(null);
+  // Where the reader was opened — used to tell "actually read something" apart from
+  // "opened the reader and left", which must not count as a reading day.
+  const openedAtRef = useRef({ page: initialPage, surah: initialSurah, ayah: initialAyah });
   const verseRefs   = useRef<(HTMLSpanElement | null)[]>([]);
   const isMountedRef = useRef(true);
   // Set right before navigating to a page so the page's own verse-fetch
@@ -325,8 +328,13 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
     // Save position to localStorage for bottom nav quick-resume
     localStorage.setItem('nuri-progress', JSON.stringify({ page, surah: v.chapter_id, ayah: v.verse_number }));
 
-    lastSaveRef.current = { page, surah: v.chapter_id, ayah: v.verse_number };
-    saveTimer.current = setTimeout(flushProgressSave, 3000);
+    const moved = page !== openedAtRef.current.page
+      || v.chapter_id !== openedAtRef.current.surah
+      || v.verse_number !== openedAtRef.current.ayah;
+    if (moved) {
+      lastSaveRef.current = { page, surah: v.chapter_id, ayah: v.verse_number };
+      saveTimer.current = setTimeout(flushProgressSave, 3000);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIdx, page, verses]);
 

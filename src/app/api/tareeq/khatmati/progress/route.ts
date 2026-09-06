@@ -30,9 +30,15 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
   }
 
-  const currentPage      = parseIntField(body.currentPage,      1, 604);
-  const currentSurah     = parseIntField(body.currentSurah,     1, 114);
-  const currentAyah      = parseIntField(body.currentAyah,      1, 286);
+  // Explicit "start a new khatma" reset — forces position back to page 1 and zeroes the
+  // page count. A plain currentPage:1 update wouldn't do this: totalPagesRead only ever
+  // moves via pagesAdvanced below (max(0, currentPage - existing.currentPage)), which is
+  // 0 when currentPage goes DOWN, so it can advance but never reset without this flag.
+  const isReset = body.reset === true;
+
+  const currentPage      = parseIntField(isReset ? 1 : body.currentPage,      1, 604);
+  const currentSurah     = parseIntField(isReset ? 1 : body.currentSurah,     1, 114);
+  const currentAyah      = parseIntField(isReset ? 1 : body.currentAyah,      1, 286);
   const dailyGoalPages   = parseIntField(body.dailyGoalPages,   1, 20);
 
   if (currentPage === null || currentSurah === null || currentAyah === null) {
@@ -64,8 +70,8 @@ export async function PUT(req: NextRequest) {
     sirajStreak = 1;
   }
 
-  const pagesAdvanced = (existing?.currentPage != null && currentPage != null)
-    ? Math.max(0, currentPage - existing.currentPage) : 0;
+  const pagesAdvanced = isReset ? 0 : ((existing?.currentPage != null && currentPage != null)
+    ? Math.max(0, currentPage - existing.currentPage) : 0);
 
   const progress = await prisma.khatmatiProgress.upsert({
     where: { userId: user.userId },
@@ -76,7 +82,7 @@ export async function PUT(req: NextRequest) {
       ...(dailyGoalPages   != null && { dailyGoalPages }),
       lastReadDate: today,
       sirajStreak,
-      totalPagesRead: { increment: pagesAdvanced },
+      ...(isReset ? { totalPagesRead: 0 } : { totalPagesRead: { increment: pagesAdvanced } }),
     },
     create: {
       userId:        user.userId,

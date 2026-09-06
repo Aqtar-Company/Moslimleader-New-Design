@@ -72,8 +72,13 @@ export default function TareeqNotebookClient() {
     fetchNotes(searchQ || undefined, s);
   }
 
-  // Open a note for editing
-  function openNote(note: Note) {
+  // Open a note for editing — flush any pending autosave for the note currently open first.
+  // Switching notes within the 1200ms debounce window used to silently discard the last
+  // few keystrokes: this reset lastSavedTitle/Content to the new note before the old
+  // note's autosave timer ever fired, so its cleanup saw "not dirty" and skipped saving.
+  async function openNote(note: Note) {
+    if (autosaveTimer.current) { clearTimeout(autosaveTimer.current); autosaveTimer.current = null; }
+    await saveNote();
     setActiveId(note.id);
     setIsNew(false);
     setEditTitle(note.title ?? '');
@@ -83,8 +88,10 @@ export default function TareeqNotebookClient() {
     setShowMobileEditor(true);
   }
 
-  // Start new note
-  function startNew() {
+  // Start new note — same flush as openNote, for the same reason.
+  async function startNew() {
+    if (autosaveTimer.current) { clearTimeout(autosaveTimer.current); autosaveTimer.current = null; }
+    await saveNote();
     setActiveId(null);
     setIsNew(true);
     setEditTitle('');

@@ -16,13 +16,19 @@ export async function GET(req: NextRequest) {
   const likedBy = searchParams.get('likedBy') || undefined;
   const sort = searchParams.get('sort') ?? 'newest';
   const limit = Math.min(Number(searchParams.get('limit') ?? 12), 30);
+  // Cursor pagination (`cursor: { id }, skip: 1` below) needs the orderBy to fully and
+  // deterministically order the table — otherwise rows tied on the leading sort key(s)
+  // can land on either side of the cursor boundary unpredictably between requests,
+  // dropping or duplicating posts while scrolling. `id` is unique and is the cursor
+  // field itself, so appending it as the final tiebreaker makes every sort stable.
   const orderBy: object | object[] = sort === 'liked'
-    ? { likeCount: 'desc' as const }
+    ? [{ likeCount: 'desc' as const }, { id: 'desc' as const }]
     : sort === 'useful'
     ? [
         { bookmarks: { _count: 'desc' as const } },
         { likeCount: 'desc' as const },
         { createdAt: 'desc' as const },
+        { id: 'desc' as const },
       ]
     : { createdAt: 'desc' as const };
 
@@ -85,9 +91,13 @@ export async function GET(req: NextRequest) {
   if (likedBy) {
     const likes = await prisma.tareeqLike.findMany({
       where: { userId: likedBy, post: { isHidden: false } },
-      orderBy: orderBy.hasOwnProperty('likeCount')
-        ? { post: { likeCount: 'desc' } }
-        : { createdAt: 'desc' },
+      // Checking `orderBy.hasOwnProperty('likeCount')` broke once `orderBy` above became
+      // an array for sort==='liked' (arrays don't own that key) — check `sort` directly
+      // instead. The `id` tiebreaker is this model's own (unique, cursor) id, needed for
+      // the same reason as above: `post.likeCount` alone isn't a stable sort for paging.
+      orderBy: sort === 'liked'
+        ? [{ post: { likeCount: 'desc' as const } }, { id: 'desc' as const }]
+        : { createdAt: 'desc' as const },
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       select: {

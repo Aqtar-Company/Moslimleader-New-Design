@@ -321,6 +321,10 @@ function Inner({ conversationId }: { conversationId: string }) {
   const animFrameRef = useRef<number | null>(null);
   const animAudioCtxRef = useRef<AudioContext | null>(null);
   const conversationIdRef = useRef(conversationId);
+  // Keep in sync when the component is reused across chats (desktop sidebar navigation
+  // doesn't remount this page) — without this, a voice note recorded after switching
+  // conversations was posted to the previously-open conversation's id.
+  useEffect(() => { conversationIdRef.current = conversationId; }, [conversationId]);
   const attachInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);

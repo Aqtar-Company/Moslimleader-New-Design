@@ -41,6 +41,12 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadFileName, setUploadFileName] = useState('');
   const [uploadFileSize, setUploadFileSize] = useState(0);
+  // Tracks a failed main-media upload: the preview stays visible (it's a local object URL,
+  // not the failed remote one) so without this the post could silently publish with no
+  // image at all, or the button could remain stuck reading "Uploading...". The last
+  // selected file is kept so Retry doesn't require re-picking it.
+  const [mainUploadFailed, setMainUploadFailed] = useState(false);
+  const lastMediaFileRef = useRef<File | null>(null);
   const [videoThumb, setVideoThumb] = useState<string | null>(null);
   const [customThumbUrl, setCustomThumbUrl] = useState<string | null>(null);
   const [thumbUploading, setThumbUploading] = useState(false);
@@ -176,6 +182,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   async function doUpload(file: File) {
     setUploading(true);
     setError('');
+    setMainUploadFailed(false);
     setUploadFileName(file.name);
     setUploadFileSize(file.size);
     try {
@@ -203,14 +210,15 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
               resolve();
             } else {
               setError(data.error || (isRtl ? 'فشل رفع الملف' : 'Upload failed'));
+              setMainUploadFailed(true);
               reject();
             }
-          } catch { setError(isRtl ? 'فشل رفع الملف' : 'Upload failed'); reject(); }
+          } catch { setError(isRtl ? 'فشل رفع الملف' : 'Upload failed'); setMainUploadFailed(true); reject(); }
         };
-        xhr.onerror = () => { setError(isRtl ? 'فشل رفع الملف' : 'Upload failed'); reject(); };
+        xhr.onerror = () => { setError(isRtl ? 'فشل رفع الملف' : 'Upload failed'); setMainUploadFailed(true); reject(); };
         xhr.send(form);
       });
-    } catch { /* error set above */ }
+    } catch { /* error + mainUploadFailed already set above */ }
     finally { setUploading(false); }
   }
 
@@ -226,6 +234,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     setExtraImages([]);
     setVideoThumb(null);
     setCustomThumbUrl(null);
+    setMainUploadFailed(false);
+    lastMediaFileRef.current = file;
     if (file.type.startsWith('image/')) {
       setLocalPreview(URL.createObjectURL(file));
     } else if (file.type.startsWith('video/')) {
@@ -233,6 +243,10 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     }
     await doUpload(file);
     e.target.value = '';
+  }
+
+  function retryMainUpload() {
+    if (lastMediaFileRef.current) doUpload(lastMediaFileRef.current);
   }
 
   function autoResize() {
@@ -244,6 +258,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
 
   function removeMedia() {
     if (localPreviewRef.current) URL.revokeObjectURL(localPreviewRef.current);
+    setMainUploadFailed(false);
+    lastMediaFileRef.current = null;
     // If extras exist, promote the first completed one as the new main image
     const firstDone = extraImages.find(e => e.url !== null && !e.failed);
     if (firstDone) {
@@ -386,8 +402,10 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     }
   }
 
-  const extraUploading = extraImages.some(e => e.url === null);
-  const canPublish = !loading && !uploading && !extraUploading && !!(mediaUrl || content.trim());
+  // Exclude failed items — url stays null for a failed upload (only `failed:true` marks
+  // it), so without this filter one flaky thumbnail permanently disabled Publish.
+  const extraUploading = extraImages.some(e => e.url === null && !e.failed);
+  const canPublish = !loading && !uploading && !extraUploading && !mainUploadFailed && !!(mediaUrl || content.trim());
   const catObj = category ? TAREEQ_CATEGORIES[category] : null;
   const charCount = content.length;
   const charLeft = 5000 - charCount;
@@ -667,6 +685,32 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                         style={{ width: `${uploadProgress}%`, background: 'var(--tr-gold-bright)' }}
                       />
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Upload failed overlay — the preview above is still a local object URL, not
+                  the (never-received) remote one, so without this the failure is invisible
+                  and the post could otherwise publish with no image at all. */}
+              {!uploading && mainUploadFailed && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5" style={{ background: 'rgba(0,0,0,0.65)' }}>
+                  <svg width={28} height={28} fill="none" stroke="#f87171" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path strokeLinecap="round" d="M12 8v5m0 3h.01"/></svg>
+                  <span className="text-xs font-bold text-white">{isRtl ? 'فشل رفع الصورة' : 'Upload failed'}</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={retryMainUpload}
+                      className="px-3.5 py-1.5 rounded-full text-[11px] font-bold transition active:scale-95"
+                      style={{ background: 'var(--tr-gold)', color: '#fff' }}
+                    >
+                      {isRtl ? 'إعادة المحاولة' : 'Retry'}
+                    </button>
+                    <button
+                      onClick={removeMedia}
+                      className="px-3.5 py-1.5 rounded-full text-[11px] font-bold transition active:scale-95"
+                      style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }}
+                    >
+                      {isRtl ? 'إزالة' : 'Remove'}
+                    </button>
                   </div>
                 </div>
               )}

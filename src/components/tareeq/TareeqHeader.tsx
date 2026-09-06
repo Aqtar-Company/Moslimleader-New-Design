@@ -312,7 +312,11 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
         const res = await fetch(`/api/tareeq/conversations/${conv.id}`, { credentials: 'include' });
         if (res.ok) {
           const d = await res.json();
-          const fresh = ((d.messages ?? []) as ChatMessage[]).slice().reverse();
+          // The API already returns messages oldest→newest — matches the render below
+          // (flex-col-reverse + [...chatMessages].reverse()) and the poll's append-at-end
+          // logic. Reversing here a second time inverted the whole history and made
+          // incoming messages land at the wrong end once polling started appending.
+          const fresh = (d.messages ?? []) as ChatMessage[];
           setChatMessages(prev => {
             if (fresh.length === 0) return prev;
             if (prev.length === 0) return fresh;

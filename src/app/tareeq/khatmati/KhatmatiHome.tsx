@@ -150,10 +150,13 @@ export default function KhatmatiHome({ initialProgress, initialGroups = [] }: { 
   async function resetKhatma() {
     try {
       localStorage.setItem('nuri-progress', JSON.stringify({ page: 1, surah: 1, ayah: 1 }));
+      // { reset: true } — the endpoint expects currentPage/currentSurah/currentAyah, and
+      // only THIS flag actually zeroes totalPagesRead server-side (see the route for why
+      // a plain field update can't do it).
       await fetch('/api/tareeq/khatmati/progress', {
         method: 'PUT', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ page: 1, surah: 1, ayah: 1, totalPagesRead: 0 }),
+        body: JSON.stringify({ reset: true }),
       });
       window.location.reload();
     } catch { /* ignore */ }

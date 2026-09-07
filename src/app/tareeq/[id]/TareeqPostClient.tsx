@@ -136,6 +136,8 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
     if (res.ok) {
       const data = await res.json();
       setCurrentReaction(data.reaction);
+      // Server's count wins — see the note in TareeqCard.handleReact.
+      if (typeof data.likeCount === 'number') setLikeCount(data.likeCount);
     } else {
       setCurrentReaction(prev);
       if (prev === type) { setLikeCount(c => c + 1); setReactionCounts(rc => ({ ...rc, [type]: (rc[type] ?? 0) + 1 })); }

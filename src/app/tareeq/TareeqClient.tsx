@@ -90,6 +90,8 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const pullRefreshingRef = useRef(false);
   // Monotonic id so a slow response for an abandoned filter can't overwrite a newer one.
   const feedRequestIdRef = useRef(0);
+  // Identifies which (category, search, sort) an in-flight feed request belongs to.
+  const feedKeyRef = useRef('');
   const categoryRef = useRef(category);
   const searchValRef = useRef(search);
   const sortRef = useRef<'newest' | 'following' | 'useful'>(sort);
@@ -144,8 +146,25 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   }, [user]);
 
   const loadPosts = useCallback(async (cat: string, q: string, fromCursor?: string | null, sortBy: 'newest' | 'following' | 'useful' = 'newest') => {
+    // The filter triple this request belongs to. A replace load claims it immediately, so
+    // an infinite-scroll append that was already in flight for the previous filter is
+    // dropped instead of being appended under the new one.
+    const key = `${cat}\u0000${q}\u0000${sortBy}`;
+    // Bail BEFORE touching feedRequestIdRef — bumping it here would orphan an in-flight
+    // replace load, whose `finally` only resets the spinners while it is still the newest.
+    if (fromCursor && feedKeyRef.current !== key) return;
+
     const reqId = ++feedRequestIdRef.current;
-    if (fromCursor) { setLoading(true); } else { setInitialLoading(true); }
+    if (fromCursor) {
+      setLoading(true);
+    } else {
+      feedKeyRef.current = key;
+      // Drop the old filter's cursor NOW, not when the response lands: the observer effect
+      // re-runs on the category/sort change and would otherwise fire an append using a
+      // cursor that belongs to the filter we just left.
+      setCursor(null);
+      setInitialLoading(true);
+    }
     try {
       const params = new URLSearchParams({ limit: '12' });
       if (cat) params.set('category', cat);
@@ -153,7 +172,8 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       if (fromCursor) params.set('cursor', fromCursor);
       if (sortBy !== 'newest') params.set('sort', sortBy);
       const res = await fetch(`/api/tareeq?${params}`);
-      if (reqId !== feedRequestIdRef.current) return; // a newer filter/search superseded this
+      // A newer filter/search superseded this, or the filter changed while it was in flight.
+      if (reqId !== feedRequestIdRef.current || feedKeyRef.current !== key) return;
       if (res.ok) {
         const data = await res.json();
         setPosts(prev => {
@@ -188,12 +208,14 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   useEffect(() => {
     if (!sentinelRef.current || !cursor) return;
     const obs = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting && !loading) loadPosts(category, search, cursor, sort); },
+      // `!initialLoading` matters as much as `!loading`: a filter change sets only
+      // initialLoading, and without this the sentinel could fire an append mid-switch.
+      (entries) => { if (entries[0].isIntersecting && !loading && !initialLoading) loadPosts(category, search, cursor, sort); },
       { rootMargin: '200px' },
     );
     obs.observe(sentinelRef.current);
     return () => obs.disconnect();
-  }, [cursor, loading, category, search, sort, loadPosts]);
+  }, [cursor, loading, initialLoading, category, search, sort, loadPosts]);
 
   useEffect(() => {
     if (!searchMountedRef.current) { searchMountedRef.current = true; return; }
@@ -216,6 +238,15 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   function handleSortChange(newSort: 'newest' | 'following' | 'useful') {
     setSort(newSort);
     loadPosts(category, search, null, newSort);
+  }
+
+  /** "Discover new marks" — clears the category as well, so it can't land on another
+   *  empty screen. Note loadPosts takes the category explicitly: reading `category`
+   *  state right after setCategory('') would still give the old value. */
+  function handleDiscoverAll() {
+    setCategory('');
+    setSort('newest');
+    loadPosts('', search, null, 'newest');
   }
 
   function handleFollowingCircleClick() {
@@ -382,16 +413,23 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
             {search
               ? (isRtl ? 'لا نتائج للبحث' : 'No results found')
               : sort === 'following'
-                ? (isRtl ? 'لا تتابع أحداً بعد' : 'You aren\u2019t following anyone yet')
+                // An empty "following" feed has two very different causes, and asserting
+                // the wrong one is worse than saying nothing: the user may follow fifty
+                // people whose posts are simply all filtered out by the active category.
+                ? category
+                  ? (isRtl ? 'لا علامات في هذا القسم ممن تتابعهم' : 'Nothing in this category from people you follow')
+                  : (isRtl ? 'لا شيء جديد ممن تتابعهم' : 'Nothing new from people you follow')
                 : (isRtl ? 'لا توجد علامات بعد' : 'No marks yet')}
           </p>
           {!search && sort === 'following' ? (
             <>
               <p className="text-sm mb-6" style={{ color: 'var(--tr-text-muted)' }}>
-                {isRtl ? 'تابع أشخاصاً ليظهر ما يكتبونه هنا' : 'Follow people to see what they write here'}
+                {category
+                  ? (isRtl ? 'جرّب إزالة الفلتر أو تابع أشخاصاً جدد' : 'Try clearing the filter, or follow more people')
+                  : (isRtl ? 'تابع أشخاصاً ليظهر ما يكتبونه هنا' : 'Follow people to see what they write here')}
               </p>
               <button
-                onClick={() => handleSortChange('newest')}
+                onClick={handleDiscoverAll}
                 className="font-black px-8 py-3 rounded-xl text-sm"
                 style={{ background: 'linear-gradient(135deg, var(--tr-gold-dim), var(--tr-gold-bright))', color: '#fff' }}
               >

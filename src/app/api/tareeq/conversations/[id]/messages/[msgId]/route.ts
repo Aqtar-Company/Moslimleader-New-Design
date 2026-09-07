@@ -54,7 +54,10 @@ export async function DELETE(
   // rewrote the preview shown to the other person, who can still see that message.
   if (deleteType === 'everyone') {
     const latest = await prisma.tareeqMessage.findFirst({
-      where: { conversationId: params.id, deletedAt: null },
+      // `lastMessage` is ONE column both participants read, so it may only ever carry a
+      // message neither of them has hidden. Filtering on `deletedAt` alone would let a
+      // message one side deleted-for-themselves become their own inbox preview.
+      where: { conversationId: params.id, deletedAt: null, deletedForA: false, deletedForB: false },
       orderBy: { createdAt: 'desc' },
       select: { content: true, imageUrl: true, videoUrl: true, audioUrl: true, sharedPostId: true },
     });

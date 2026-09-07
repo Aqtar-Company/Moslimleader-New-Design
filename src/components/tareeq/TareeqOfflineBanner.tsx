@@ -16,7 +16,7 @@ export default function TareeqOfflineBanner() {
       try {
         const ctrl = new AbortController();
         const t = setTimeout(() => ctrl.abort(), 4000);
-        const res = await fetch('/api/geo', { method: 'HEAD', cache: 'no-store', signal: ctrl.signal });
+        const res = await fetch('/api/tareeq/ping', { method: 'GET', cache: 'no-store', signal: ctrl.signal });
         clearTimeout(t);
         if (!cancelled) setOffline(!res.ok);
       } catch {

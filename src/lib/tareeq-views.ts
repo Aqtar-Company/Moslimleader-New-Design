@@ -26,15 +26,20 @@ export async function recordPostView(
     // Never count the author reading their own post.
     if (viewerId && authorId && viewerId === authorId) return;
 
-    if (viewerId) {
-      const since = new Date();
-      since.setHours(0, 0, 0, 0);
-      const seenToday = await prisma.tareeqPostView.findFirst({
-        where: { postId, userId: viewerId, createdAt: { gte: since } },
-        select: { id: true },
-      });
-      if (seenToday) return;
+    // Anonymous: bump the counter but write no row. The "who viewed" list filters
+    // `userId: { not: null }`, so an anonymous row is pure ballast — and this path runs on
+    // every SSR render, including bots, link-preview fetchers and RSC prefetches, which
+    // would grow TareeqPostView by a row per pageview forever.
+    if (!viewerId) {
+      await prisma.tareeqPost.update({ where: { id: postId }, data: { viewCount: { increment: 1 } } });
+      return;
     }
+
+    const seenToday = await prisma.tareeqPostView.findFirst({
+      where: { postId, userId: viewerId, createdAt: { gte: startOfLocalDay() } },
+      select: { id: true },
+    });
+    if (seenToday) return;
 
     await prisma.$transaction([
       prisma.tareeqPostView.create({ data: { postId, userId: viewerId } }),
@@ -43,4 +48,31 @@ export async function recordPostView(
   } catch {
     /* view tracking is best-effort — never let it break rendering */
   }
+}
+
+/**
+ * Midnight in the audience's timezone, not the server's.
+ *
+ * `new Date().setHours(0,0,0,0)` uses the Node process TZ, which nothing in this repo
+ * pins — on a UTC VPS the "day" would flip at 02:00/03:00 Cairo, so someone reading at
+ * 00:30 and again at 03:30 local counts twice. The khatmati routes solve the same problem
+ * by taking the client's `localDate`; view recording happens server-side with no client
+ * involved, so the boundary is pinned explicitly instead.
+ *
+ * Caveat: the dedupe is a read-then-write and TareeqPostView has no unique key on
+ * (postId, userId, day), so two truly concurrent first-views of the same post can both
+ * insert. That costs one extra row and one extra count, not correctness of the viewer list.
+ */
+const DAY_TZ = 'Africa/Cairo';
+function startOfLocalDay(): Date {
+  const now = new Date();
+  // e.g. "2026-09-07" in Cairo, whatever the server clock is set to.
+  const localDate = new Intl.DateTimeFormat('en-CA', {
+    timeZone: DAY_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(now);
+  // Offset (in minutes) between the server's UTC clock and Cairo at this instant.
+  const asUtc = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
+  const asLocal = new Date(now.toLocaleString('en-US', { timeZone: DAY_TZ }));
+  const offsetMs = asLocal.getTime() - asUtc.getTime();
+  return new Date(new Date(`${localDate}T00:00:00.000Z`).getTime() - offsetMs);
 }

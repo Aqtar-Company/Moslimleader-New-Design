@@ -62,40 +62,41 @@ export default async function TareeqPostPage({ params }: { params: { id: string 
 
   if (!post) return notFound();
 
+  // Resolve the viewer ONCE. Each getAuthUser() is a cookie read plus a jwtVerify, and for
+  // an admin/staff token it also does a prisma.user lookup — this page used to pay for
+  // three of them per render.
+  const viewer = await getAuthUser().catch(() => null);
+
   // A blocked author's post is not viewable by direct URL either — the feed and profile
   // both filter these out, so leaving the permalink open defeated the whole block.
-  if (post.userId) {
-    const viewerForBlock = await getAuthUser().catch(() => null);
-    if (viewerForBlock && viewerForBlock.userId !== post.userId
-        && await isBlockedEitherWay(viewerForBlock.userId, post.userId)) {
-      return notFound();
-    }
+  if (post.userId && viewer && viewer.userId !== post.userId
+      && await isBlockedEitherWay(viewer.userId, post.userId)) {
+    return notFound();
   }
 
   // Record view (non-blocking, deduped, skips the author) — this used to increment on
   // every single render without ever creating the viewer row the "who viewed" list reads.
-  const viewerForCount = await getAuthUser().catch(() => null);
-  void recordPostView(params.id, viewerForCount?.userId ?? null, post.userId);
+  void recordPostView(params.id, viewer?.userId ?? null, post.userId);
 
   // Check current user's reactions + subscription
   let userLiked = false;
   let userBookmarked = false;
   let userReaction: string | null = null;
   let userSubscribed = false;
-  try {
-    const currentUser = await getAuthUser();
-    if (!currentUser) throw new Error('');
-    const [like, bookmark, reaction, subscription] = await Promise.all([
-      prisma.tareeqLike.findUnique({ where: { postId_userId: { postId: params.id, userId: currentUser.userId } } }),
-      prisma.tareeqBookmark.findUnique({ where: { postId_userId: { postId: params.id, userId: currentUser.userId } } }),
-      (prisma as any).tareeqReaction?.findUnique({ where: { postId_userId: { postId: params.id, userId: currentUser.userId } } }).catch(() => null) ?? null,
-      prisma.tareeqPostSubscription.findUnique({ where: { postId_userId: { postId: params.id, userId: currentUser.userId } } }),
-    ]);
-    userLiked = !!like;
-    userBookmarked = !!bookmark;
-    userReaction = (reaction as any)?.type ?? null;
-    userSubscribed = !!subscription;
-  } catch { /* not logged in */ }
+  if (viewer) {
+    try {
+      const [like, bookmark, reaction, subscription] = await Promise.all([
+        prisma.tareeqLike.findUnique({ where: { postId_userId: { postId: params.id, userId: viewer.userId } } }),
+        prisma.tareeqBookmark.findUnique({ where: { postId_userId: { postId: params.id, userId: viewer.userId } } }),
+        (prisma as any).tareeqReaction?.findUnique({ where: { postId_userId: { postId: params.id, userId: viewer.userId } } }).catch(() => null) ?? null,
+        prisma.tareeqPostSubscription.findUnique({ where: { postId_userId: { postId: params.id, userId: viewer.userId } } }),
+      ]);
+      userLiked = !!like;
+      userBookmarked = !!bookmark;
+      userReaction = (reaction as any)?.type ?? null;
+      userSubscribed = !!subscription;
+    } catch { /* best-effort */ }
+  }
 
   return (
     <TareeqPostClient

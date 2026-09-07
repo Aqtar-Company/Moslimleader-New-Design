@@ -1216,6 +1216,9 @@ model TareeqMessageRequest {
   message     String   @db.Text
   status      String   @default("pending")
   createdAt   DateTime @default(now())
+  // When the status last changed — a declined request is silenced for 30 days from
+  // THIS, not from when it was first sent.
+  updatedAt   DateTime @default(now()) @updatedAt
 
   @@unique([fromId, toId])
   @@index([toId])

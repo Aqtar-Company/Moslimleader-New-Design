@@ -47,9 +47,10 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   }
 
-  // Refuse to leave a group with no admin behind. The UI already blocks this, but a
-  // direct API call could orphan a group permanently — there's no promote-to-admin flow
-  // to recover from it.
+  // Refuse to leave a group with no admin behind. The UI already blocks this (an admin is
+  // offered "delete group" instead of "leave"), but a direct API call could orphan a group
+  // permanently: only the creator is ever given the admin role — POST adds everyone as
+  // 'member' — so there is no promote-to-admin flow to recover with.
   const targetMembership = await prisma.tareeqGroupMember.findUnique({
     where: { groupId_userId: { groupId: params.id, userId: targetUserId } },
     select: { role: true },

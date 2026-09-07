@@ -79,7 +79,17 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }),
     prisma.tareeqConversation.update({
       where: { id: params.id },
-      data: { lastMessage: lastMsgPreview.slice(0, 100), lastMessageAt: new Date() },
+      data: {
+        lastMessage: lastMsgPreview.slice(0, 100),
+        lastMessageAt: new Date(),
+        // An actual message un-hides the thread for BOTH sides. Opening a conversation
+        // only un-hides the opener's own side (see conversations/route.ts POST), so
+        // without this the recipient — who had deleted the thread — would never see this
+        // message or any that follow: the inbox list and the unread count both filter on
+        // deletedForA/deletedForB, and nothing else ever clears them.
+        deletedForA: false,
+        deletedForB: false,
+      },
     }),
   ]);
 

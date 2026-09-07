@@ -48,17 +48,37 @@ export async function POST(req: NextRequest) {
   }
 
   // A previously rejected request must NOT be resurrected by simply sending again —
-  // otherwise "decline" means nothing and the sender can keep re-requesting. An accepted
-  // one shouldn't be reset either; those users already have a conversation.
+  // otherwise "decline" means nothing and the sender can keep re-requesting.
   const prior = await prisma.tareeqMessageRequest.findUnique({
     where: { fromId_toId: { fromId: user.userId, toId } },
-    select: { status: true },
+    select: { status: true, updatedAt: true },
   });
+
+  // Time-boxed, not permanent: the row is unique per (fromId, toId) and the recipient has
+  // no UI to clear it, so a terminal 'rejected' would silence that person for life over a
+  // single mis-tap. A permanent silence is what TareeqBlock is for — and it is already
+  // enforced above on every path.
   if (prior?.status === 'rejected') {
-    return NextResponse.json({ error: 'لا يمكن إرسال طلب آخر لهذا المستخدم' }, { status: 403 });
+    const cooldownEnds = new Date(prior.updatedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+    if (cooldownEnds > new Date()) {
+      return NextResponse.json({ error: 'لا يمكن إرسال طلب آخر لهذا المستخدم حالياً' }, { status: 403 });
+    }
   }
+
+  // 'accepted' normally means a live conversation — hand back its id so the client can
+  // just open it. But conversations are HARD-deleted once both sides delete them
+  // (conversations/[id]/route.ts), while this row stays 'accepted' forever. Answering
+  // "you already have a conversation" in that case is both untrue and a dead end, so fall
+  // through and let the request go out again.
   if (prior?.status === 'accepted') {
-    return NextResponse.json({ error: 'لديكما محادثة بالفعل' }, { status: 409 });
+    const [pA, pB] = [user.userId, toId].sort();
+    const existing = await prisma.tareeqConversation.findUnique({
+      where: { participantA_participantB: { participantA: pA, participantB: pB } },
+      select: { id: true },
+    });
+    if (existing) {
+      return NextResponse.json({ ok: true, conversationId: existing.id, alreadyAccepted: true });
+    }
   }
 
   await prisma.tareeqMessageRequest.upsert({

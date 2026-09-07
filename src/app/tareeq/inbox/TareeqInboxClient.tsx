@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
@@ -123,38 +123,53 @@ function Inner() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [showNotebook, setShowNotebook] = useState(false);
+  // Guards against an older in-flight loadAll() repainting over newer state.
+  const loadSeqRef = useRef(0);
 
   // `silent` keeps the background poll from flashing the loading skeleton over a list
   // the user is already reading.
+  //
+  // Two polls (the 15s tick and the visibilitychange handler) can be in flight at once,
+  // and a mutation can land between one starting and finishing. Only the newest load is
+  // allowed to write state — otherwise a slow response repaints the pre-action snapshot
+  // and, e.g., a request the user just declined pops back into the list.
   function loadAll(silent = false) {
+    const seq = ++loadSeqRef.current;
     if (!silent) setLoading(true);
     Promise.all([
       fetch('/api/tareeq/conversations', { credentials: 'include', cache: 'no-store' }).then(r => r.json()).catch(() => ({})),
-      fetch('/api/tareeq/groups', { credentials: 'include' }).then(r => r.json()).catch(() => ({})),
-      fetch('/api/tareeq/message-requests', { credentials: 'include' }).then(r => r.json()).catch(() => ({})),
+      fetch('/api/tareeq/groups', { credentials: 'include', cache: 'no-store' }).then(r => r.json()).catch(() => ({})),
+      fetch('/api/tareeq/message-requests', { credentials: 'include', cache: 'no-store' }).then(r => r.json()).catch(() => ({})),
     ]).then(([c, g, r]) => {
+      if (seq !== loadSeqRef.current) return;
       setConversations(c.conversations ?? []);
       setGroups(g.groups ?? []);
       setMsgRequests(r.requests ?? []);
-    }).finally(() => { if (!silent) setLoading(false); });
+    }).finally(() => { if (!silent && seq === loadSeqRef.current) setLoading(false); });
   }
 
   async function handleRequest(reqId: string, action: 'accept' | 'reject') {
     setProcessingReqId(reqId);
     setReqError('');
+    // Invalidate any poll that started before this mutation — its snapshot still contains
+    // the request we're about to remove.
+    loadSeqRef.current++;
     try {
       const res = await fetch(`/api/tareeq/message-requests/${reqId}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         credentials: 'include', body: JSON.stringify({ action }),
       });
+      const d = await res.json().catch(() => ({}));
       if (res.ok) {
-        const d = await res.json();
         setMsgRequests(prev => prev.filter(r => r.id !== reqId));
         if (action === 'accept' && d.conversationId) {
           router.push(`/tareeq/inbox/${d.conversationId}`);
         }
       } else {
-        setReqError(isRtl ? 'فشلت العملية، حاول مرة أخرى' : 'Action failed, try again');
+        // Drop the row on a terminal rejection (already handled, or blocked since) —
+        // leaving it in the list invites an endless retry against a permanent failure.
+        if (res.status === 400 || res.status === 403) setMsgRequests(prev => prev.filter(r => r.id !== reqId));
+        setReqError(d.error || (isRtl ? 'فشلت العملية، حاول مرة أخرى' : 'Action failed, try again'));
       }
     } catch {
       setReqError(isRtl ? 'خطأ في الاتصال' : 'Connection error');

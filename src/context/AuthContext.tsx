@@ -50,13 +50,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     const revalidate = (initial = false) => {
       fetch('/api/auth/me', { credentials: 'include' })
-        .then(r => r.json())
-        .then(data => {
+        .then(async r => ({ status: r.status, data: await r.json().catch(() => null) }))
+        .then(({ status, data }) => {
           if (cancelled) return;
+          if (data?.user) { setUser(data.user); return; }
           // Clear on an expired/revoked session instead of leaving a stale "signed in"
-          // UI whose every action fails — /api/auth/me returning no user is the signal.
-          if (data.user) setUser(data.user);
-          else if (!initial) setUser(null);
+          // UI whose every action fails. ONLY on 401: /api/auth/me also answers
+          // `{ user: null }` with a 500 when the DB hiccups, and treating that as a
+          // logout would sign people out of the whole site (cart, checkout, admin)
+          // on a transient error.
+          if (!initial && status === 401) setUser(null);
         })
         .catch(() => {})
         .finally(() => { if (initial && !cancelled) setIsLoading(false); });
@@ -64,7 +67,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     revalidate(true);
     // Re-check when the user comes back to the tab — the 30-day JWT can expire, or be
     // revoked server-side, long before the page is ever reloaded.
-    const onVisible = () => { if (document.visibilityState === 'visible') revalidate(); };
+    // Throttled: tab-switching is frequent, and the session doesn't change that fast.
+    let lastCheck = Date.now();
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastCheck < 60_000) return;
+      lastCheck = Date.now();
+      revalidate();
+    };
     document.addEventListener('visibilitychange', onVisible);
     return () => { cancelled = true; document.removeEventListener('visibilitychange', onVisible); };
   }, []);

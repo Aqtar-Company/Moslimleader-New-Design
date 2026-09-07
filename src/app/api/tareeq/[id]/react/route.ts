@@ -35,60 +35,79 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     where: { postId_userId: { postId: params.id, userId: me.userId } },
   });
 
+  // A user who liked this post before reactions existed still has a legacy TareeqLike row
+  // that already contributed its own +1 to likeCount. It has to be looked up on EVERY
+  // path, not just the new-reaction one: someone who reacted before this fix carries both
+  // rows and a permanently inflated count, and their stale like also makes the card render
+  // the star as active again after they toggle the reaction off.
+  const legacyLike = await prisma.tareeqLike.findUnique({
+    where: { postId_userId: { postId: params.id, userId: me.userId } },
+    select: { id: true },
+  });
+  const hadLike = !!legacyLike;
+
+  // One person contributes at most 1 to likeCount, whether via a like, a reaction, or the
+  // double row this fix retires. `delta` is what that person's contribution changes by.
+  let reaction: string | null;
+  let delta: number;
   if (existing?.type === type) {
-    // Same reaction — toggle off (atomic, with floor guard on likeCount)
-    await prisma.$transaction(async (tx) => {
-      await tx.tareeqReaction.delete({ where: { id: existing!.id } });
-      await tx.$executeRaw`UPDATE \`TareeqPost\` SET likeCount = GREATEST(0, likeCount - 1) WHERE id = ${params.id}`;
-    });
-    return NextResponse.json({ reaction: null });
+    reaction = null;
+    delta = -(1 + (hadLike ? 1 : 0)); // reaction goes away, and the stale like with it
   } else if (existing) {
-    // Different reaction — switch type (no likeCount change)
-    await prisma.tareeqReaction.update({ where: { id: existing.id }, data: { type } });
-    return NextResponse.json({ reaction: type });
+    reaction = type;
+    delta = hadLike ? -1 : 0; // type switch counts nothing; the stale like is repaid
   } else {
-    // New reaction (atomic: create + increment)
+    reaction = type;
+    delta = hadLike ? 0 : 1; // convert the like rather than stacking on it
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (legacyLike) await tx.tareeqLike.delete({ where: { id: legacyLike.id } });
+    if (existing?.type === type) {
+      await tx.tareeqReaction.delete({ where: { id: existing!.id } });
+    } else if (existing) {
+      await tx.tareeqReaction.update({ where: { id: existing!.id }, data: { type } });
+    } else {
+      await tx.tareeqReaction.create({ data: { postId: params.id, userId: me.userId, type } });
+    }
+    if (delta > 0) {
+      await tx.tareeqPost.update({ where: { id: params.id }, data: { likeCount: { increment: delta } } });
+    } else if (delta < 0) {
+      await tx.$executeRaw`UPDATE \`TareeqPost\` SET likeCount = GREATEST(0, likeCount - ${-delta}) WHERE id = ${params.id}`;
+    }
+  });
+
+  // Notify the post author on a genuinely new reaction only (skip self, skip type switches
+  // and toggles-off).
+  if (!existing && post.userId && post.userId !== me.userId) {
     const actor = await prisma.user.findUnique({ where: { id: me.userId }, select: { name: true, avatarUrl: true } });
     const actorName = actor?.name ?? 'شخص ما';
     const LABELS: Record<string, string> = { inspired: 'ألهمه ⭐', thanks: 'شكره 🙏', agree: 'يتفق معه ✊', yarabb: 'يارب 🤲', mashaallah: 'ماشاء الله 🌴' };
-    // A user who liked this post before reactions existed still has a legacy TareeqLike
-    // row that already contributed its own +1 to likeCount. Creating a reaction on top of
-    // it double-counted them (and the client, which maps an existing like to a reaction,
-    // showed no change) — so convert the like rather than stacking on it.
-    const legacyLike = await prisma.tareeqLike.findUnique({
-      where: { postId_userId: { postId: params.id, userId: me.userId } },
-      select: { id: true },
-    });
-    await prisma.$transaction([
-      ...(legacyLike ? [prisma.tareeqLike.delete({ where: { id: legacyLike.id } })] : []),
-      prisma.tareeqReaction.create({ data: { postId: params.id, userId: me.userId, type } }),
-      // The converted like already counted — only a genuinely new reaction adds one.
-      ...(legacyLike ? [] : [prisma.tareeqPost.update({ where: { id: params.id }, data: { likeCount: { increment: 1 } } })]),
-    ]);
-    // Notify post author (skip self-reactions)
-    if (post.userId && post.userId !== me.userId) {
-      prisma.tareeqNotification.create({
-        data: {
-          userId: post.userId,
-          type: type,
-          actorId: me.userId,
-          actorName,
-          actorAvatarUrl: actor?.avatarUrl ?? null,
-          postId: post.id,
-          postTitle: post.title ?? null,
-        },
-      }).catch(() => {});
-      sendPushToUser(post.userId, {
-        title: 'طريق ★',
-        body: `${actorName} ${LABELS[type] ?? 'تفاعل مع علامتك'}`,
-        url: `/tareeq/${post.id}`,
-        tag: `react-${post.id}-${me.userId}`,
-        type: 'like',
+    prisma.tareeqNotification.create({
+      data: {
+        userId: post.userId,
+        type: type,
+        actorId: me.userId,
+        actorName,
+        actorAvatarUrl: actor?.avatarUrl ?? null,
         postId: post.id,
-      });
-    }
-    return NextResponse.json({ reaction: type });
+        postTitle: post.title ?? null,
+      },
+    }).catch(() => {});
+    sendPushToUser(post.userId, {
+      title: 'طريق ★',
+      body: `${actorName} ${LABELS[type] ?? 'تفاعل مع علامتك'}`,
+      url: `/tareeq/${post.id}`,
+      tag: `react-${post.id}-${me.userId}`,
+      type: 'like',
+      postId: post.id,
+    });
   }
+
+  // Return the authoritative count: the client cannot predict it (a converted legacy like
+  // changes nothing), and guessing left the on-screen number one below the truth.
+  const fresh = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { likeCount: true } });
+  return NextResponse.json({ reaction, likeCount: fresh?.likeCount ?? 0 });
 }
 
 // GET — fetch reaction counts or full reactor list (?users=1)

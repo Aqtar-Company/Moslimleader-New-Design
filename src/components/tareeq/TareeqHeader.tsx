@@ -42,6 +42,11 @@ interface ChatMessage {
   // Media fields were missing, so a voice note or image — including ones sent from this
   // very panel — rendered as an empty bubble.
   imageUrl?: string | null; videoUrl?: string | null; audioUrl?: string | null;
+  // A shared post is allowed to have empty `content` server-side, so without these it too
+  // rendered as an empty bubble.
+  sharedPostId?: string | null; sharedPostTitle?: string | null; sharedPostImageUrl?: string | null;
+  replyToContent?: string | null;
+  read?: boolean;
   isDeletedForEveryone?: boolean;
   sender: { id: string; name: string; avatarUrl?: string | null };
 }
@@ -229,6 +234,18 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   const [micSeconds, setMicSeconds] = useState(0);
   const [voiceUploading, setVoiceUploading] = useState(false);
   const [voiceError, setVoiceError] = useState('');
+  // One error line is shared by the voice-note path and the text-send path, so their
+  // dismiss timers used to clobber each other: a voice failure raised at t=3.9s was wiped
+  // 100ms later by a text send's stale 4s timer. One owner, one cancellable timer.
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showChatError = useCallback((msg: string) => {
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    setVoiceError(msg);
+    errorTimerRef.current = setTimeout(() => { setVoiceError(''); errorTimerRef.current = null; }, 4000);
+  }, []);
+  // Mirrors activeChatConv?.id for async callbacks that must not act on a thread the user
+  // has already left.
+  const chatConvIdRef = useRef<string | null>(null);
   const micTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -314,6 +331,10 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
   const openChat = useCallback(async (conv: Conversation) => {
     setMsgPanelView('chat');
     setActiveChatConv(conv);
+    chatConvIdRef.current = conv.id;
+    setChatInput(''); // never carry one thread's half-typed text into another
+    if (errorTimerRef.current) { clearTimeout(errorTimerRef.current); errorTimerRef.current = null; }
+    setVoiceError('');
     setChatMessages([]);
     setChatLoading(true);
     const fetchMsgs = async () => {
@@ -335,8 +356,26 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
             // an append-only merge left a deleted message rendering its original content
             // for as long as the panel stayed open.
             const freshById = new Map(fresh.map(m => [m.id, m]));
-            const reconciled = prev.map(m => freshById.get(m.id) ?? m);
-            const changed = reconciled.some((m, i) => m !== prev[i]);
+            // Compare the fields we actually render, NOT object identity: `fresh` is
+            // freshly-parsed JSON, so every object in it is a new reference and an
+            // identity test would report "changed" on every 3s tick, committing a new
+            // array (and a scroll nudge) forever.
+            const sameContent = (a: ChatMessage, b: ChatMessage) =>
+              a.content === b.content && a.imageUrl === b.imageUrl && a.videoUrl === b.videoUrl
+              && a.audioUrl === b.audioUrl && a.read === b.read
+              && !!a.isDeletedForEveryone === !!b.isDeletedForEveryone;
+            // Messages the viewer deleted for themselves elsewhere drop out of `fresh`;
+            // keep dropping them here too, but only within the window `fresh` covers, so
+            // older history that simply wasn't returned is not wiped.
+            const oldestFresh = fresh[0]?.id;
+            const oldestIdx = oldestFresh ? prev.findIndex(m => m.id === oldestFresh) : -1;
+            const reconciled = prev
+              .filter((m, i) => oldestIdx < 0 || i < oldestIdx || freshById.has(m.id))
+              .map(m => {
+                const f = freshById.get(m.id);
+                return f && !sameContent(f, m) ? f : m;
+              });
+            const changed = reconciled.length !== prev.length || reconciled.some((m, i) => m !== prev[i]);
             if (newMsgs.length === 0) return changed ? reconciled : prev;
             isAtBottomRef.current = true; // incoming msg → scroll to show it
             return [...reconciled, ...newMsgs];
@@ -355,6 +394,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
     setMsgPanelView('list');
     loadConversations(); // returning to the list — refresh previews/unread counts
 
+    chatConvIdRef.current = null;
     setActiveChatConv(null);
     setChatMessages([]);
     setChatInput('');
@@ -365,11 +405,15 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
     if (!chatInput.trim() || !activeChatConv || chatSending) return;
     setChatSending(true);
     const content = chatInput.trim();
+    // Which conversation this text belongs to. Without it a failed send restores the text
+    // into whatever thread the user has since switched to — one Enter away from going to
+    // the wrong person.
+    const convId = activeChatConv.id;
     setChatInput('');
-    setVoiceError('');
     let sent = false;
+    let failureMessage = '';
     try {
-      const res = await fetch(`/api/tareeq/conversations/${activeChatConv.id}/messages`, {
+      const res = await fetch(`/api/tareeq/conversations/${convId}/messages`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ content }),
       });
@@ -377,16 +421,21 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
         const d = await res.json();
         if (d.message) { isAtBottomRef.current = true; setChatMessages(prev => [...prev, d.message]); }
         sent = true;
+      } else {
+        // Surface the server's reason — blocked, rate-limited and too-long are permanent
+        // rejections, and "try again" invites an endless retry against them.
+        const d = await res.json().catch(() => ({}));
+        failureMessage = d.error || (isRtl ? 'تعذّر الإرسال — حاول مرة أخرى' : 'Couldn\u2019t send — try again');
       }
-    } catch { /* offline */ }
-    // Restore the text and say so instead of silently swallowing it.
-    if (!sent) {
+    } catch {
+      failureMessage = isRtl ? 'تعذّر الإرسال — حاول مرة أخرى' : 'Couldn\u2019t send — try again';
+    }
+    if (!sent && chatConvIdRef.current === convId) {
       setChatInput(content);
-      setVoiceError(isRtl ? 'تعذّر الإرسال — حاول مرة أخرى' : 'Couldn\u2019t send — try again');
-      setTimeout(() => setVoiceError(''), 4000);
+      showChatError(failureMessage);
     }
     setChatSending(false);
-  }, [chatInput, activeChatConv, chatSending, isRtl]);
+  }, [chatInput, activeChatConv, chatSending, isRtl, showChatError]);
 
   const startDesktopCall = async (callType: 'audio' | 'video') => {
     if (!activeChatConv || callStarting) return;
@@ -436,7 +485,7 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: actualMime });
           const form = new FormData(); form.append('file', file);
           const upRes = await fetch('/api/tareeq/upload', { method: 'POST', body: form, credentials: 'include' });
-          if (!upRes.ok) { setVoiceError(isRtl ? 'فشل رفع الصوت' : 'Upload failed'); setTimeout(() => setVoiceError(''), 3000); setVoiceUploading(false); return; }
+          if (!upRes.ok) { showChatError(isRtl ? 'فشل رفع الصوت' : 'Upload failed'); setVoiceUploading(false); return; }
           const { url: audioUrl } = await upRes.json();
           const sendRes = await fetch(`/api/tareeq/conversations/${convId}/messages`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
@@ -445,8 +494,8 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
           if (sendRes.ok) {
             const d = await sendRes.json();
             if (d.message) { isAtBottomRef.current = true; setChatMessages(prev => [...prev, d.message]); }
-          } else { setVoiceError(isRtl ? 'فشل الإرسال' : 'Send failed'); setTimeout(() => setVoiceError(''), 3000); }
-        } catch { setVoiceError(isRtl ? 'خطأ في الشبكة' : 'Network error'); setTimeout(() => setVoiceError(''), 3000); }
+          } else { showChatError(isRtl ? 'فشل الإرسال' : 'Send failed'); }
+        } catch { showChatError(isRtl ? 'خطأ في الشبكة' : 'Network error'); }
         setVoiceUploading(false);
       };
       mr.start(250);
@@ -1041,139 +1090,11 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                     </div>
                   )}
 
-                  {/* Messages popup panel */}
-                  {key === 'messages' && showMsgPanel && (
-                    <div ref={msgPanelRef} style={msgPanelStyle}>
-                      {/* Header */}
-                      {msgPanelView === 'list' ? (
-                        <div onMouseDown={startPanelDrag} dir="ltr" className="flex items-center px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
-                          <button onClick={() => setShowMsgPanel(false)} className="w-8 h-8 rounded-full flex items-center justify-center transition shrink-0 hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-text-secondary)' }}>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
-                          </button>
-                          <span className="font-black text-sm flex-1 text-center" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الرسائل' : 'Messages'}</span>
-                          <Link href="/tareeq/inbox" onClick={() => setShowMsgPanel(false)} className="text-xs font-semibold shrink-0" style={{ color: 'var(--tr-gold)' }}>
-                            {isRtl ? 'عرض الكل' : 'See all'}
-                          </Link>
-                        </div>
-                      ) : (
-                        <div onMouseDown={startPanelDrag} dir="ltr" className="flex items-center px-3 py-2.5" style={{ borderBottom: '1px solid var(--tr-border-subtle)', cursor: 'grab', userSelect: 'none' }}>
-                          <button onClick={closeChat} className="w-8 h-8 rounded-full flex items-center justify-center transition shrink-0 hover:bg-[var(--tr-overlay)]" style={{ color: 'var(--tr-text-secondary)' }}>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
-                          </button>
-                          <span className="font-black text-sm flex-1 text-center" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الرسائل' : 'Messages'}</span>
-                          <Link href={`/tareeq/inbox/${activeChatConv?.id}`} onClick={() => setShowMsgPanel(false)} className="text-xs font-semibold shrink-0" style={{ color: 'var(--tr-gold)' }}>
-                            {isRtl ? 'عرض الكل' : 'See all'}
-                          </Link>
-                        </div>
-                      )}
-
-                      {/* Content */}
-                      {msgPanelView === 'list' ? (
-                        <>
-                          {/* Search */}
-                          <div className="px-3 py-2" style={{ borderBottom: '1px solid var(--tr-border-subtle)' }}>
-                            <div className="relative">
-                              <svg className="absolute top-1/2 -translate-y-1/2 start-3 w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--tr-text-muted)' }}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                              </svg>
-                              <input
-                                value={msgSearch}
-                                onChange={e => setMsgSearch(e.target.value)}
-                                placeholder={isRtl ? 'بحث في الرسائل...' : 'Search messages...'}
-                                className="w-full rounded-full ps-8 pe-3 py-1.5 text-xs focus:outline-none"
-                                style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
-                              />
-                            </div>
-                          </div>
-                          {msgsLoading ? (
-                            <div className="flex justify-center py-10"><div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} /></div>
-                          ) : conversations.filter(c => !msgSearch || c.otherUser.name.toLowerCase().includes(msgSearch.toLowerCase())).length === 0 ? (
-                            <div className="text-center py-10 px-4">
-                              <p className="text-sm font-semibold" style={{ color: 'var(--tr-text-secondary)' }}>{isRtl ? 'لا رسائل بعد' : 'No messages yet'}</p>
-                              <p className="text-xs mt-1.5" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'ابدأ محادثة من صفحة أي مستخدم' : 'Start a chat from any profile'}</p>
-                            </div>
-                          ) : (
-                            <div>
-                              {conversations.filter(c => !msgSearch || c.otherUser.name.toLowerCase().includes(msgSearch.toLowerCase())).map(c => (
-                                <button key={c.id} onClick={() => openChat(c)} className="w-full flex items-center gap-3 px-4 py-3 text-start transition" style={{ background: c.unreadCount > 0 ? 'rgba(212,168,83,0.04)' : 'transparent', borderBottom: '1px solid var(--tr-border-subtle)' }}>
-                                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden relative" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-border-soft)' }}>
-                                    {c.otherUser.avatarUrl ? <img src={c.otherUser.avatarUrl} alt={c.otherUser.name} className="w-full h-full object-cover" /> : c.otherUser.name.charAt(0)}
-                                    {c.unreadCount > 0 && <span className="absolute bottom-0 end-0 w-3 h-3 rounded-full border-2" style={{ background: 'var(--tr-gold)', borderColor: 'var(--tr-surface)' }} />}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-bold text-sm truncate" style={{ color: 'var(--tr-text-primary)' }}>{c.otherUser.name}</p>
-                                    {c.lastMessage && <p className="text-xs truncate mt-0.5" style={{ color: c.unreadCount > 0 ? 'var(--tr-text-primary)' : 'var(--tr-text-muted)', fontWeight: c.unreadCount > 0 ? 600 : 400 }}>{c.lastMessage}</p>}
-                                  </div>
-                                  <div className="flex flex-col items-end gap-1 shrink-0">
-                                    {c.lastMessageAt && <span className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(c.lastMessageAt, isRtl)}</span>}
-                                    {c.unreadCount > 0 && <span className="text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center" style={{ background: 'var(--tr-gold)', color: '#0a0d06' }}>{c.unreadCount}</span>}
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        /* Chat view */
-                        <>
-                          <div ref={chatMsgsRef} onScroll={e => { isAtBottomRef.current = e.currentTarget.scrollTop <= 5; }} className="overflow-y-auto flex flex-col-reverse gap-1 p-3" style={{ flex: 1, minHeight: 0 }}>
-                            {chatLoading ? (
-                              <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: 'var(--tr-gold)' }} /></div>
-                            ) : chatMessages.length === 0 ? (
-                              <p className="text-center text-xs py-6" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'ابدأ المحادثة...' : 'Start the conversation...'}</p>
-                            ) : (
-                              [...chatMessages].reverse().map(msg => {
-                                const isMine = msg.senderId === user?.id;
-                                return (
-                                  <div key={msg.id} className={`flex ${isMine ? 'justify-start' : 'justify-end'}`}>
-                                    <div className="max-w-[80%] px-3 py-2 text-xs leading-relaxed" style={{
-                                      background: isMine ? 'var(--tr-gold)' : 'var(--tr-overlay)',
-                                      color: isMine ? '#fff' : 'var(--tr-text-primary)',
-                                      borderRadius: isMine ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                                    }}>
-                                      {msg.content}
-                                    </div>
-                                  </div>
-                                );
-                              })
-                            )}
-                          </div>
-                          {/* Input */}
-                          <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
-                            <input
-                              ref={chatInputRef}
-                              value={chatInput}
-                              onChange={e => setChatInput(e.target.value)}
-                              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } }}
-                              placeholder={isRtl ? 'اكتب رسالة...' : 'Type a message...'}
-                              disabled={chatSending}
-                              className="flex-1 rounded-full px-3 py-2 text-xs focus:outline-none"
-                              style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)' }}
-                            />
-                            <button
-                              onClick={sendChatMessage}
-                              disabled={!chatInput.trim() || chatSending}
-                              className="w-8 h-8 rounded-full flex items-center justify-center transition shrink-0"
-                              style={{ background: chatInput.trim() ? 'var(--tr-gold)' : 'var(--tr-overlay)', color: chatInput.trim() ? '#fff' : 'var(--tr-text-muted)' }}
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                              </svg>
-                            </button>
-                          </div>
-                        </>
-                      )}
-                      {/* Resize handle — bottom-start corner */}
-                      <div
-                        onMouseDown={startPanelResize}
-                        style={{ position: 'absolute', bottom: 0, insetInlineStart: 0, width: 20, height: 20, cursor: isRtl ? 'nesw-resize' : 'nwse-resize', zIndex: 10, display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-start', padding: 4, opacity: 0.35 }}
-                      >
-                        <svg width={10} height={10} viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth={1.5} style={{ color: 'var(--tr-text-muted)' }}>
-                          <path d="M1 9L9 1M5 9L9 5M1 5L5 1" />
-                        </svg>
-                      </div>
-                    </div>
-                  )}
+                  {/* NOTE: the messages popup used to be rendered here too. It was
+                      unreachable — the `key === 'messages'` early return above skips this
+                      whole branch — and it had already drifted out of sync with the live
+                      panel further down (no media, no tombstones, no shared posts). The
+                      only mini-chat renderer is the one in the desktop icon row below. */}
                 </div>
               );
             })}
@@ -1269,6 +1190,21 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                                       <span style={{ opacity: 0.6, fontStyle: 'italic' }}>{isRtl ? 'تم حذف الرسالة' : 'Message deleted'}</span>
                                     ) : (
                                       <>
+                                        {msg.replyToContent && (
+                                          <p className="text-[10px] mb-1 px-2 py-1 rounded truncate" style={{ background: 'rgba(0,0,0,0.12)', opacity: 0.85 }}>
+                                            {msg.replyToContent}
+                                          </p>
+                                        )}
+                                        {msg.sharedPostId && (
+                                          <a href={`/tareeq/${msg.sharedPostId}`} className="flex items-center gap-2 mb-1 p-1.5 rounded-lg" style={{ background: 'rgba(0,0,0,0.12)' }}>
+                                            {msg.sharedPostImageUrl && (
+                                              <img src={msg.sharedPostImageUrl} alt="" className="rounded shrink-0" style={{ width: 32, height: 32, objectFit: 'cover' }} />
+                                            )}
+                                            <span className="truncate text-[11px] font-semibold">
+                                              {msg.sharedPostTitle || (isRtl ? '🔗 منشور' : '🔗 Post')}
+                                            </span>
+                                          </a>
+                                        )}
                                         {msg.imageUrl && (
                                           <img src={msg.imageUrl} alt="" className="rounded-lg mb-1" style={{ maxWidth: '100%', maxHeight: 160, display: 'block' }} />
                                         )}

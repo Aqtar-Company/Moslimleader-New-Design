@@ -380,7 +380,14 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
       method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
       body: JSON.stringify({ type }),
     });
-    if (res.ok) { const data = await res.json(); setCurrentReaction(data.reaction); }
+    if (res.ok) {
+      const data = await res.json();
+      setCurrentReaction(data.reaction);
+      // Trust the server's count over the optimistic guess. The client can't predict it:
+      // a legacy TareeqLike being converted into a reaction changes nothing, and a stale
+      // like being repaid changes it by more than one.
+      if (typeof data.likeCount === 'number') setLikeCount(data.likeCount);
+    }
     else {
       setCurrentReaction(prev);
       if (prev === type) setLikeCount(c => c + 1);

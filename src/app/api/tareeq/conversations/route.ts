@@ -95,6 +95,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'لا يمكن بدء محادثة مع هذا المستخدم' }, { status: 403 });
   }
 
+  // Always sort alphabetically to ensure deduplication.
+  const [pA, pB] = [user.userId, otherId].sort();
+
+  // An EXISTING conversation always reopens, whatever the privacy setting now says —
+  // these two have already talked. Checking this before the privacy branch is what stops
+  // a "followers only" user's past correspondents from being bounced to the message-request
+  // flow (which then answers "you already have a conversation") with no way through.
+  const existing = await prisma.tareeqConversation.findUnique({
+    where: { participantA_participantB: { participantA: pA, participantB: pB } },
+    select: { id: true },
+  });
+  if (existing) {
+    await prisma.tareeqConversation.update({
+      where: { id: existing.id },
+      data: pA === user.userId ? { deletedForA: false } : { deletedForB: false },
+    });
+    return NextResponse.json({ conversationId: existing.id });
+  }
+
   const privacy = (otherUser as any).tareeqMessagePrivacy ?? 'everyone';
 
   if (privacy === 'nobody') {
@@ -112,17 +131,14 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Always sort alphabetically to ensure deduplication
-  const [pA, pB] = [user.userId, otherId].sort();
-
-  // Un-hide only for the user opening the thread. Clearing both flags meant opening a
-  // conversation resurrected it in the other person's inbox — before a single message.
-  // Their side comes back when an actual message is sent (see messages/route.ts).
-  const isRequesterA = pA === user.userId;
+  // Nothing existed — create it. (Un-hiding is handled by the early-return above; a
+  // brand-new row has both flags false. The other side is un-hidden only when a real
+  // message is sent, see messages/route.ts, so merely opening a thread no longer
+  // resurrects it in the other person's inbox.)
   const convo = await prisma.tareeqConversation.upsert({
     where: { participantA_participantB: { participantA: pA, participantB: pB } },
     create: { participantA: pA, participantB: pB },
-    update: isRequesterA ? { deletedForA: false } : { deletedForB: false },
+    update: {}, // no-op: still an upsert so two concurrent opens can't hit the unique constraint
   });
 
   return NextResponse.json({ conversationId: convo.id });

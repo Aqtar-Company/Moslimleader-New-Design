@@ -4,13 +4,10 @@ import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { recordPostView } from '@/lib/tareeq-views';
 
-// POST — record a view (called when post detail page opens)
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
-  const user = await getAuthUser().catch(() => null);
-  const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { userId: true } });
-  if (post) await recordPostView(params.id, user?.userId ?? null, post.userId);
-  return NextResponse.json({ ok: true });
-}
+// NOTE: there is deliberately no POST here any more. It was an unauthenticated,
+// unmetered "increment this post's viewCount" endpoint that nothing in the app called —
+// views are recorded server-side by the SSR page and by GET /api/tareeq/[id], both via
+// recordPostView(). Re-adding a public POST would need an IP rate limit at minimum.
 
 // GET — return viewer list (post author only, last 50 unique viewers)
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {

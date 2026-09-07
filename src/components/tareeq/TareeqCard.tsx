@@ -1,7 +1,9 @@
 'use client';
-import { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import TareeqTip from '@/components/tareeq/TareeqTip';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { TAREEQ_CATEGORIES, CATEGORY_ICONS, CATEGORY_ACCENT_HEX } from '@/lib/tareeq-constants';
@@ -307,6 +309,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   // rendered), so a single ref attached to all of them ends up pointing at whichever node
   // React attached last — frequently a display:none one, whose getBoundingClientRect() is
   // all zeros and sent the portaled menu to the corner of the viewport.
+  const router = useRouter();
   const [shareAnchorEl, setShareAnchorEl] = useState<HTMLElement | null>(null);
   // The dropdown renders in a portal (see ShareDropdown) so it can never be clipped by a
   // rounded/overflow-hidden card ancestor — this ref tracks that portaled node so
@@ -316,14 +319,19 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
   useEffect(() => {
     if (!showShareMenu) return;
-    const h = (e: MouseEvent) => {
+    const h = (e: MouseEvent | TouchEvent) => {
       const t = e.target as Node;
       const insideAnchor = !!shareAnchorEl?.contains(t);
       const insidePortal = !!shareMenuPortalRef.current?.contains(t);
       if (!insideAnchor && !insidePortal) setShowShareMenu(false);
     };
     document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
+    // Touch devices may never synthesise mousedown for a tap on a scrollable surface.
+    document.addEventListener('touchstart', h, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', h);
+      document.removeEventListener('touchstart', h);
+    };
   }, [showShareMenu, shareAnchorEl]);
 
   // Check if post is pinned offline on mount
@@ -415,6 +423,20 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     // know which of the simultaneously-mounted breakpoint variants the user pressed.
     setShareAnchorEl(e.currentTarget as HTMLElement);
     setShowShareMenu(v => !v);
+  }
+
+  // Share the post ONTO Tareeq itself — the composer opens pre-filled with a quote and
+  // the permalink, which the feed renders as a link preview. Reuses the existing
+  // share-target prefill channel (sessionStorage + ?action=create) that TareeqClient
+  // already listens on, so there's no new plumbing and it survives a sign-in round-trip.
+  function handleShareToTareeq(e: React.MouseEvent) {
+    e.preventDefault(); e.stopPropagation();
+    setShowShareMenu(false);
+    const url = `${window.location.origin}/tareeq/${post.id}`;
+    const quote = (post.title || post.content || '').trim().slice(0, 160);
+    const prefill = quote ? `«${quote}»\n\n${url}` : url;
+    try { sessionStorage.setItem('tareeq-share-prefill', prefill); } catch { /* private mode */ }
+    router.push('/tareeq?action=create');
   }
 
   async function handleNativeShare(e: React.MouseEvent) {
@@ -737,31 +759,40 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
         {/* Options — own posts: delete; others: report/unfollow */}
         {user && (
-          <button
-            onClick={e => { e.preventDefault(); e.stopPropagation(); setShowOptions(true); }}
-            aria-label={isRtl ? 'خيارات' : 'Options'}
-            className="tr-action-btn"
-            style={{ ...btnBase, color: 'var(--tr-text-muted)', padding: '8px 10px', gap: 5 }}
-            onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, hover)}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-          >
-            <svg width={15} height={15} fill="currentColor" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-          </button>
+          <TareeqTip label={user?.id === post.userId ? (isRtl ? 'خيارات المنشور — تعديل أو حذف' : 'Post options — edit or delete') : (isRtl ? 'خيارات — إبلاغ أو إلغاء المتابعة' : 'Options — report or unfollow')}>
+            <button
+              onClick={e => { e.preventDefault(); e.stopPropagation(); setShowOptions(true); }}
+              aria-label={isRtl ? 'خيارات' : 'Options'}
+              className="tr-action-btn"
+              style={{ ...btnBase, color: 'var(--tr-text-muted)', padding: '8px 10px', gap: 5 }}
+              onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, hover)}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+            >
+              <svg width={15} height={15} fill="currentColor" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+            </button>
+          </TareeqTip>
         )}
 
         {/* Bookmark */}
-        <button
-          onClick={handleBookmarkClick}
-          aria-label={isRtl ? 'حفظ' : 'Save'}
-          className="tr-action-btn"
-          style={{ ...btnBase, color: isBookmarked ? 'var(--tr-gold)' : 'var(--tr-text-muted)', padding: '8px 10px' }}
-          onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, hover)}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-        >
-          <IconBookmark filled={isBookmarked} size={17} />
-        </button>
+        <TareeqTip label={isBookmarked
+          ? (isRtl ? 'إزالة من المحفوظات' : 'Remove from saved')
+          : (isRtl ? 'حفظ في المحفوظات — تلاقيه في «المحفوظات»' : 'Save to your collection — find it under “Saved”')}>
+          <button
+            onClick={handleBookmarkClick}
+            aria-label={isRtl ? 'حفظ' : 'Save'}
+            className="tr-action-btn"
+            style={{ ...btnBase, color: isBookmarked ? 'var(--tr-gold)' : 'var(--tr-text-muted)', padding: '8px 10px' }}
+            onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, hover)}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+          >
+            <IconBookmark filled={isBookmarked} size={17} />
+          </button>
+        </TareeqTip>
 
-        {/* Offline pin */}
+        {/* Offline pin — the icon reads as "download", so say what it actually does. */}
+        <TareeqTip label={isSavedOffline
+          ? (isRtl ? 'محفوظ على جهازك — اضغط للإزالة' : 'Saved on this device — tap to remove')
+          : (isRtl ? 'حفظ على جهازك للقراءة بدون إنترنت' : 'Keep on this device to read offline')}>
         <button
           onClick={handleOfflineToggle}
           aria-label={isRtl ? (isSavedOffline ? 'إزالة من الحفظ بدون إنترنت' : 'حفظ للقراءة بدون إنترنت') : (isSavedOffline ? 'Remove offline' : 'Save offline')}
@@ -778,6 +809,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               : <><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></>}
           </svg>
         </button>
+        </TareeqTip>
       </div>
       </>
     );
@@ -1018,7 +1050,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         </article>
 
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
-{showShareMenu && shareAnchorEl && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} anchorEl={shareAnchorEl} menuRef={shareMenuPortalRef} />}
+{showShareMenu && shareAnchorEl && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onShareToTareeq={user ? handleShareToTareeq : undefined} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} anchorEl={shareAnchorEl} menuRef={shareMenuPortalRef} />}
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
         {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
@@ -1218,7 +1250,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         </article>
 
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
-{showShareMenu && shareAnchorEl && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} anchorEl={shareAnchorEl} menuRef={shareMenuPortalRef} />}
+{showShareMenu && shareAnchorEl && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onShareToTareeq={user ? handleShareToTareeq : undefined} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} anchorEl={shareAnchorEl} menuRef={shareMenuPortalRef} />}
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
         {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
@@ -1447,7 +1479,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
       </article>
 
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
-{showShareMenu && shareAnchorEl && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} anchorEl={shareAnchorEl} menuRef={shareMenuPortalRef} />}
+{showShareMenu && shareAnchorEl && <ShareDropdown postId={post.id} title={post.title} content={post.content} onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)} onShareToTareeq={user ? handleShareToTareeq : undefined} onSendDM={user ? handleOpenDMPicker : undefined} onNativeShare={handleNativeShare} isRtl={isRtl} anchorEl={shareAnchorEl} menuRef={shareMenuPortalRef} />}
       {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
       {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
       {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
@@ -1948,9 +1980,10 @@ function DMPickerModal({ conversations, dmSending, dmSent, onSend, onClose, isRt
    position from the trigger's real screen coordinates also lets it flip
    below the button (instead of always opening upward) when there isn't
    room above — the case that used to push it off-screen on short cards. */
-function ShareDropdown({ postId, title, content, onCopy, onClose, onSendDM, onNativeShare, isRtl, anchorEl, menuRef }: {
+export function ShareDropdown({ postId, title, content, onCopy, onClose, onShareToTareeq, onSendDM, onNativeShare, isRtl, anchorEl, menuRef }: {
   postId: string; title?: string | null; content: string;
   onCopy: (e: React.MouseEvent) => void; onClose: () => void;
+  onShareToTareeq?: (e: React.MouseEvent) => void;
   onSendDM?: () => void; onNativeShare?: (e: React.MouseEvent) => void; isRtl: boolean;
   anchorEl: HTMLElement; menuRef: React.RefObject<HTMLDivElement>;
 }) {
@@ -1960,7 +1993,7 @@ function ShareDropdown({ postId, title, content, onCopy, onClose, onSendDM, onNa
 
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
-  useLayoutEffect(() => {
+  const place = useCallback(() => {
     const anchor = anchorEl;
     const menu = menuRef.current;
     if (!anchor || !menu) return;
@@ -1981,12 +2014,32 @@ function ShareDropdown({ postId, title, content, onCopy, onClose, onSendDM, onNa
     setPos({ top, left });
   }, [isRtl, anchorEl, menuRef]);
 
-  // The anchor can move under the popup (page scroll, feed re-layout) — close rather than
-  // let it drift out of sync with a fixed-position popup that no longer tracks it.
+  useLayoutEffect(() => { place(); }, [place]);
+
+  // FOLLOW the anchor on scroll/resize — do NOT close.
+  //
+  // This used to be `addEventListener('scroll', onClose, true)`, which is why the share
+  // menu looked broken: with capture:true it fires for any scrolling element, and on a
+  // phone the tap itself (momentum, the address bar collapsing, the feed settling) scrolls
+  // enough to fire it. The menu opened and shut in the same frame, so the button read as
+  // completely unresponsive.
   useEffect(() => {
-    window.addEventListener('scroll', onClose, true);
-    window.addEventListener('resize', onClose);
-    return () => { window.removeEventListener('scroll', onClose, true); window.removeEventListener('resize', onClose); };
+    let raf = 0;
+    const onMove = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(place); };
+    window.addEventListener('scroll', onMove, true);
+    window.addEventListener('resize', onMove);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', onMove, true);
+      window.removeEventListener('resize', onMove);
+    };
+  }, [place]);
+
+  // Escape closes it — the menu has no visible close affordance otherwise.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
   function openSharePopup(shareUrl: string, name: string) {
@@ -2019,6 +2072,14 @@ function ShareDropdown({ postId, title, content, onCopy, onClose, onSendDM, onNa
       }}
       onMouseDown={e => e.stopPropagation()}
     >
+      {/* Sharing onto Tareeq itself comes first — it was missing entirely, so the only way
+          to pass a post to another member here was to leave the platform. */}
+      {onShareToTareeq && (
+        <button onClick={onShareToTareeq} className="flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-bold w-full hover:opacity-70 transition" style={{ color: 'var(--tr-gold)' }}>
+          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: 'var(--tr-gold)' }} />
+          {isRtl ? 'مشاركة على طريق' : 'Share on Tareeq'}
+        </button>
+      )}
       {onSendDM && (
         <button onClick={e => { e.stopPropagation(); onClose(); onSendDM(); }} className="flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-semibold w-full hover:opacity-70 transition" style={{ color: 'var(--tr-text-secondary)' }}>
           <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: '#1a6ed4' }} />

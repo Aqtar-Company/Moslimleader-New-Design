@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
-import { ReportModal } from '@/components/tareeq/TareeqCard';
+import { ReportModal, ShareDropdown } from '@/components/tareeq/TareeqCard';
 import { TAREEQ_CATEGORIES, CATEGORY_COLORS, CATEGORY_ICONS } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import { timeAgo } from '@/lib/tareeq-utils';
@@ -42,6 +42,9 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
   const { isRtl } = useLang();
   const { user } = useAuth();
   const router = useRouter();
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [shareAnchorEl, setShareAnchorEl] = useState<HTMLElement | null>(null);
+  const shareMenuPortalRef = useRef<HTMLDivElement>(null);
   useWakeLock();
 
   const startReaction: string | null = userReaction ?? (userLiked ? 'inspired' : null);
@@ -164,16 +167,52 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
       .catch(() => setBookmarked(wasBookmarked));
   }
 
-  async function handleShare() {
+  // Open the same menu the feed card uses. This button used to go straight to the native
+  // share sheet (or a silent clipboard copy on desktop), so there was no way to share a
+  // post onto Tareeq itself, and on desktop it looked like nothing happened.
+  function handleShare(e: React.MouseEvent) {
+    e.preventDefault(); e.stopPropagation();
+    setShareAnchorEl(e.currentTarget as HTMLElement);
+    setShowShareMenu(v => !v);
+  }
+
+  useEffect(() => {
+    if (!showShareMenu) return;
+    const h = (e: MouseEvent | TouchEvent) => {
+      const t = e.target as Node;
+      if (shareAnchorEl?.contains(t) || shareMenuPortalRef.current?.contains(t)) return;
+      setShowShareMenu(false);
+    };
+    document.addEventListener('mousedown', h);
+    document.addEventListener('touchstart', h, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', h);
+      document.removeEventListener('touchstart', h);
+    };
+  }, [showShareMenu, shareAnchorEl]);
+
+  async function handleCopyLink(e: React.MouseEvent) {
+    e.preventDefault(); e.stopPropagation();
+    await navigator.clipboard.writeText(window.location.href).catch(() => {});
+    setShowShareMenu(false);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleNativeShare(e: React.MouseEvent) {
+    e.preventDefault(); e.stopPropagation();
     const url = window.location.href;
     const text = post.title || post.content.slice(0, 80);
-    if (navigator.share) {
-      await navigator.share({ title: text, url }).catch(() => {});
-    } else {
-      await navigator.clipboard.writeText(url).catch(() => {});
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+    if (navigator.share) await navigator.share({ title: text, url }).catch(() => { /* cancelled */ });
+  }
+
+  function handleShareToTareeq(e: React.MouseEvent) {
+    e.preventDefault(); e.stopPropagation();
+    setShowShareMenu(false);
+    const url = `${window.location.origin}/tareeq/${post.id}`;
+    const quote = (post.title || post.content || '').trim().slice(0, 160);
+    try { sessionStorage.setItem('tareeq-share-prefill', quote ? `«${quote}»\n\n${url}` : url); } catch { /* private mode */ }
+    router.push('/tareeq?action=create');
   }
 
   async function saveEdit() {
@@ -561,6 +600,15 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                   )}
                   {copied ? (isRtl ? 'تم النسخ!' : 'Copied!') : (isRtl ? 'مشاركة' : 'Share')}
                 </button>
+                {showShareMenu && shareAnchorEl && (
+                  <ShareDropdown
+                    postId={post.id} title={post.title} content={post.content}
+                    onCopy={handleCopyLink} onClose={() => setShowShareMenu(false)}
+                    onShareToTareeq={user ? handleShareToTareeq : undefined}
+                    onNativeShare={handleNativeShare}
+                    isRtl={isRtl} anchorEl={shareAnchorEl} menuRef={shareMenuPortalRef}
+                  />
+                )}
 
                 {/* Subscribe to post */}
                 {user && (

@@ -10,6 +10,7 @@ import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import TareeqLoginGate from './TareeqLoginGate';
 import { ReportModal } from './TareeqCard';
 import TareeqMentionInput from './TareeqMentionInput';
+import { displayMentions } from '@/lib/tareeq-mentions';
 
 interface Props {
   postId: string;
@@ -110,7 +111,12 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
   const [dragOffset, setDragOffset] = useState(0);
 
   const closedByPopRef = useRef(false);
+  const closingRef = useRef(false);
   const doClose = useCallback(() => {
+    // Closing with × calls history.back(), which fires popstate, which calls doClose again.
+    // Run the teardown once.
+    if (closingRef.current) return;
+    closingRef.current = true;
     // Consume the history entry pushed on mount unless we're closing BECAUSE of a pop —
     // leaving it behind made the next Back press a no-op.
     if (!closedByPopRef.current) {
@@ -138,13 +144,19 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
     return () => document.removeEventListener('keydown', onKey);
   }, [doClose]);
 
-  // Android back button — push a history entry so back closes sheet instead of leaving page
+  // Android back button — push a history entry so back closes the sheet instead of leaving
+  // the page. Keep `doClose` in a ref rather than in the deps: the parent passes an inline
+  // arrow as `onClose`, so `doClose`'s identity changes on EVERY parent render (a reaction,
+  // a pull-to-refresh touchmove...) and a dep on it pushed a new entry each time, while
+  // doClose only ever pops one. Tens of dead entries per session, and Back stopped working.
+  const doCloseRef = useRef(doClose);
+  doCloseRef.current = doClose;
   useEffect(() => {
     history.pushState({ tareeqSheet: postId }, '');
-    const handlePop = () => { closedByPopRef.current = true; doClose(); };
+    const handlePop = () => { closedByPopRef.current = true; doCloseRef.current(); };
     window.addEventListener('popstate', handlePop, { once: true });
     return () => window.removeEventListener('popstate', handlePop);
-  }, [postId, doClose]);
+  }, [postId]);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -154,9 +166,16 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      fetch(`/api/tareeq/${postId}`, { credentials: 'include' }).then(r => r.json()),
+      // Every leg needs its own catch: without one on the post fetch, going offline
+      // rejected the whole Promise.all and the "couldn't load comments" banner — the point
+      // of this block — never rendered at all.
+      fetch(`/api/tareeq/${postId}`, { credentials: 'include' }).then(r => r.json()).catch(() => ({})),
       fetch(`/api/tareeq/${postId}/react`, { credentials: 'include' }).then(r => r.json()).catch(() => ({})),
-      fetch(`/api/tareeq/${postId}/comments`, { credentials: 'include' }).then(r => r.json()).catch(() => ({ comments: [], failed: true })),
+      // ...and `res.ok` matters as much as the throw: a 404/5xx returns perfectly valid
+      // JSON with no `comments` key, which used to read as "no comments yet".
+      fetch(`/api/tareeq/${postId}/comments`, { credentials: 'include' })
+        .then(async r => (r.ok ? await r.json() : { comments: [], failed: true }))
+        .catch(() => ({ comments: [], failed: true })),
     ]).then(([postData, reactData, commentData]) => {
       const p = postData.post ?? postData;
       if (p) setPost(p);
@@ -257,6 +276,9 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
       if (res.ok) {
         const data = await res.json();
         setExpandedReplies(prev => ({ ...prev, [commentId]: data.comments ?? [] }));
+        // Clear a previous failure — otherwise the thread renders expanded while its
+        // button still says "Retry", and pressing it collapses instead of retrying.
+        setRepliesError(prev => (prev[commentId] ? { ...prev, [commentId]: false } : prev));
       } else {
         setRepliesError(prev => ({ ...prev, [commentId]: true }));
       }
@@ -559,7 +581,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                                     </span>
                                   )}
                                 </div>
-                                <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{c.content}</p>
+                                <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{displayMentions(c.content)}</p>
                                 <div style={{ display: 'flex', gap: 12, marginTop: 4, alignItems: 'center' }}>
                                   <button type="button" onClick={() => setReplyingTo({ commentId: c.id, authorName: c.user?.name ?? '' })} style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{isRtl ? 'رد' : 'Reply'}</button>
                                   {/* Emoji reactions on comment */}
@@ -897,7 +919,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                             )}
                           </div>
                           <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>
-                            {c.content}
+                            {displayMentions(c.content)}
                           </p>
                           <div style={{ display: 'flex', gap: 12, marginTop: 6, alignItems: 'center' }}>
                             <button

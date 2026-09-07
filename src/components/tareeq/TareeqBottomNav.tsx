@@ -232,7 +232,10 @@ function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: P
 
   async function handleEnableNotifs() {
     if (typeof Notification === 'undefined') return;
-    if (Notification.permission === 'granted') return;
+    // Do NOT bail on 'granted': permission granted with no live subscription is exactly the
+    // state a dropped subscription or a previous opt-out leaves behind, and bailing meant
+    // the toggle did nothing at all, forever. requestTareeqPush() reuses an existing
+    // subscription, so calling it when already subscribed is harmless.
     const result = await requestTareeqPush();
     setNotifState(result === 'granted' ? 'granted' : result === 'denied' ? 'denied' : 'default');
   }

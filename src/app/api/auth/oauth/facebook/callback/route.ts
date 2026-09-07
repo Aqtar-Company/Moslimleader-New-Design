@@ -16,6 +16,9 @@ export async function GET(req: NextRequest) {
   const rawRedirect = req.cookies.get('oauth_redirect_fb')?.value || '/tareeq';
   const safeRedirect = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/tareeq';
   const loginPage = safeRedirect.startsWith('/tareeq') ? '/tareeq/login' : '/login';
+  // Carry the deep link through the failure. Without it, someone who followed a khatma
+  // invite and hit the no-email path lands on a bare login page with the invite lost.
+  const failRedirect = `${loginPage}?redirect=${encodeURIComponent(safeRedirect)}&error=`;
 
   const clearState = (res: NextResponse) => {
     res.cookies.set('oauth_state_fb', '', { httpOnly: true, maxAge: 0, path: '/' });
@@ -24,13 +27,13 @@ export async function GET(req: NextRequest) {
   };
 
   if (error || !code) {
-    return clearState(NextResponse.redirect(`${baseUrl}${loginPage}?error=fb_failed`));
+    return clearState(NextResponse.redirect(`${baseUrl}${failRedirect}fb_failed`));
   }
 
   // Verify CSRF state cookie (separate from Google's oauth_state)
   const cookieState = req.cookies.get('oauth_state_fb')?.value;
   if (!cookieState || !receivedState || cookieState !== receivedState) {
-    return clearState(NextResponse.redirect(`${baseUrl}${loginPage}?error=fb_failed`));
+    return clearState(NextResponse.redirect(`${baseUrl}${failRedirect}fb_failed`));
   }
 
   try {
@@ -47,7 +50,7 @@ export async function GET(req: NextRequest) {
 
     const tokenData = await tokenRes.json();
     if (!tokenData.access_token) {
-      return clearState(NextResponse.redirect(`${baseUrl}${loginPage}?error=fb_failed`));
+      return clearState(NextResponse.redirect(`${baseUrl}${failRedirect}fb_failed`));
     }
 
     // Get user info from Facebook
@@ -57,7 +60,7 @@ export async function GET(req: NextRequest) {
     const fbUser = await userRes.json();
 
     if (!fbUser.id) {
-      return clearState(NextResponse.redirect(`${baseUrl}${loginPage}?error=fb_failed`));
+      return clearState(NextResponse.redirect(`${baseUrl}${failRedirect}fb_failed`));
     }
 
     // 1. Look up by OAuthAccount first — handles users who revoked email permission
@@ -78,7 +81,7 @@ export async function GET(req: NextRequest) {
       // `fb_<id>@fb.placeholder` user silently split their identity into two accounts
       // with none of their history. Ask for the permission instead.
       if (!fbUser.email) {
-        return clearState(NextResponse.redirect(`${baseUrl}${loginPage}?error=fb_no_email`));
+        return clearState(NextResponse.redirect(`${baseUrl}${failRedirect}fb_no_email`));
       }
       const emailKey = fbUser.email.toLowerCase();
 
@@ -101,7 +104,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (!user) {
-      return clearState(NextResponse.redirect(`${baseUrl}${loginPage}?error=fb_failed`));
+      return clearState(NextResponse.redirect(`${baseUrl}${failRedirect}fb_failed`));
     }
 
     if (!user.emailVerified) {
@@ -114,6 +117,6 @@ export async function GET(req: NextRequest) {
     return clearState(response);
   } catch (err) {
     console.error('[facebook oauth callback]', err);
-    return clearState(NextResponse.redirect(`${baseUrl}${loginPage}?error=fb_failed`));
+    return clearState(NextResponse.redirect(`${baseUrl}${failRedirect}fb_failed`));
   }
 }

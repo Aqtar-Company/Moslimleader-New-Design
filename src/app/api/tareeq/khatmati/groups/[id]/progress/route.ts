@@ -31,6 +31,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const currentSurah = Math.max(1, Math.min(114, Number(body.currentSurah) || 1));
   const currentAyah  = Math.max(1, Number(body.currentAyah)  || 1);
   const localDate: string = body.localDate ?? new Date().toLocaleDateString('en-CA');
+  // The reader sets this when the position change came from the surah picker, a bookmark
+  // or a deep link rather than from turning pages.
+  const jumped = body.jumped === true;
 
   const existing = await prisma.khatmaGroupMember.findUnique({
     where: { groupId_userId: { groupId: params.id, userId: user.userId } },
@@ -51,7 +54,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     newStreak = (wasYesterday || existing.lastReadDate === null) ? existing.streak + 1 : 1;
   }
 
-  const pagesAdvanced = Math.max(0, currentPage - (existing.currentPage ?? 1));
+  // Same cap as the solo route (/api/tareeq/khatmati/progress). This route feeds `points`,
+  // which orders the group leaderboard, so an uncapped surah-picker jump from page 3 to
+  // page 582 credited 579 pages AND 579 points — instantly topping the board. `jumped`
+  // says the move was navigation rather than reading and credits nothing; the cap stays
+  // as a backstop for any path that doesn't send it.
+  const MAX_PAGES_PER_SAVE = 20;
+  const rawAdvance = Math.max(0, currentPage - (existing.currentPage ?? 1));
+  const pagesAdvanced = jumped ? 0 : Math.min(rawAdvance, MAX_PAGES_PER_SAVE);
   // Match the streak bonus that solo readers receive (+2 per session when streak > 1)
   const pointsBonus = pagesAdvanced + (newStreak > 1 && isNewDay ? 2 : 0);
 

@@ -296,6 +296,11 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
       } catch { /* private mode */ }
       return;
     }
+    // We already hold the text in state and are about to open the composer with it, so the
+    // stored copy has done its job. Leaving it behind (the signed-out path deliberately
+    // does not remove it) meant the next visit to /tareeq in this tab popped the composer
+    // open again, pre-filled with content the user had already published.
+    try { sessionStorage.removeItem('tareeq-share-prefill'); } catch { /* private mode */ }
     if (showCreate) return;
     setShowCreate(true);
   }, [authLoading, user, sharePrefill, showCreate]);

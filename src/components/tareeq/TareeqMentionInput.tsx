@@ -30,6 +30,8 @@ export default function TareeqMentionInput({
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Guards against an older in-flight search overwriting a newer one.
+  const searchSeqRef = useRef(0);
 
   function detectMention(val: string, cursor: number) {
     const before = val.slice(0, cursor);
@@ -53,12 +55,18 @@ export default function TareeqMentionInput({
   useEffect(() => {
     if (mentionQuery === null || mentionQuery.length < 2) { setUsers([]); return; } // matches the API's own minimum
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    // Only the newest query may write the list. Debouncing alone doesn't prevent this: a
+    // slow response for "sar" can land after a fast one for "sara", leaving the dropdown
+    // showing the wrong people while `selectedIdx` is still 0 — so Enter inserts, and
+    // notifies, someone the user never saw.
+    const seq = ++searchSeqRef.current;
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
         const res = await fetch(`/api/tareeq/users/search?q=${encodeURIComponent(mentionQuery)}`, { credentials: 'include' });
+        if (seq !== searchSeqRef.current) return;
         if (res.ok) { const d = await res.json(); setUsers(d.users ?? []); }
-      } catch { /* offline */ } finally { setLoading(false); }
+      } catch { /* offline */ } finally { if (seq === searchSeqRef.current) setLoading(false); }
     }, 220);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [mentionQuery]);
@@ -69,13 +77,22 @@ export default function TareeqMentionInput({
     const after = value.slice(cursor);
     // `@handle` is unambiguous; a display name with spaces has to be bracketed or the
     // parser (client and server alike) would stop reading at the first space.
+    // A `]` inside the name would close the bracket early and the server would match the
+    // wrong person (or nobody), so strip it from the token.
+    const safeName = u.name.replace(/[[\]]/g, '').trim();
     const token = u.username
       ? `@${u.username}`
-      : /\s/.test(u.name) ? `@[${u.name}]` : `@${u.name}`;
+      : /\s/.test(safeName) ? `@[${safeName}]` : `@${safeName}`;
     let newVal = `${before}${token} ${after}`;
     // Inserting via state bypasses the input's own maxLength, so enforce it here too —
     // otherwise a mention could push the text past the server's limit and be rejected.
-    if (maxLength && newVal.length > maxLength) newVal = newVal.slice(0, maxLength);
+    // Trim from `after` rather than from the end, so the insert never cuts its own token
+    // in half (an unmatched `@[أحمد محم` matches nothing server-side) and never silently
+    // eats text the user typed before the caret.
+    if (maxLength && newVal.length > maxLength) {
+      const head = `${before}${token} `;
+      newVal = head.length >= maxLength ? head.slice(0, maxLength) : head + after.slice(0, maxLength - head.length);
+    }
     onValueChange(newVal);
     setMentionQuery(null);
     setUsers([]);
@@ -157,7 +174,12 @@ export default function TareeqMentionInput({
                     {u.name?.charAt(0) ?? '?'}
                   </div>
                 )}
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--tr-text-primary)' }}>@{u.name}</span>
+                {/* Show the name, and the handle that will actually be inserted — the row
+                    used to render `@{name}` for everyone while inserting `@{username}`. */}
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--tr-text-primary)' }}>{u.name}</span>
+                {u.username && (
+                  <span style={{ fontSize: 11, color: 'var(--tr-text-muted)' }}>@{u.username}</span>
+                )}
               </button>
             ))
           )}

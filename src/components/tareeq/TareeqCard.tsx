@@ -97,6 +97,7 @@ function LinkPreviewCard({ url, isRtl }: { url: string; isRtl: boolean }) {
 }
 
 import { useSatisfactionCounter } from './TareeqSatisfactionMode';
+import { displayMentions } from '@/lib/tareeq-mentions';
 
 export interface TareeqPostSummary {
   id: string;
@@ -578,7 +579,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold mb-0.5" style={{ color: 'var(--tr-text-primary)' }}>{c.user?.name ?? '—'}</p>
-                  <p className="text-xs leading-relaxed" style={{ color: 'var(--tr-text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{c.content}</p>
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--tr-text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{displayMentions(c.content)}</p>
                   <button
                     className="text-[11px] font-semibold mt-1"
                     style={{ color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', margin: '-4px -8px' }}
@@ -1090,7 +1091,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-white text-[11px] font-semibold">{c.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}</p>
-                              <p className="text-white/85 text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>{c.content}</p>
+                              <p className="text-white/85 text-[11px] leading-relaxed" style={{ wordBreak: 'break-word' }}>{displayMentions(c.content)}</p>
                             </div>
                           </div>
                         ))

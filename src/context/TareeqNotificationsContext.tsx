@@ -48,6 +48,22 @@ function playChime() {
   } catch { /* audio not available */ }
 }
 
+/**
+ * Whether the user explicitly turned push OFF.
+ *
+ * `PushSubscription.unsubscribe()` cannot revoke `Notification.permission`, so after an
+ * opt-out the browser state ("granted, no subscription") is indistinguishable from a
+ * subscription the browser dropped on its own — which the auto-recover effect is meant to
+ * repair. This flag is what tells the two apart. Per-device by design.
+ */
+const OPT_OUT_KEY = 'tareeq-push-opted-out';
+function pushOptedOut(): boolean {
+  try { return localStorage.getItem(OPT_OUT_KEY) === '1'; } catch { return false; }
+}
+function setPushOptedOut(v: boolean) {
+  try { if (v) localStorage.setItem(OPT_OUT_KEY, '1'); else localStorage.removeItem(OPT_OUT_KEY); } catch { /* blocked */ }
+}
+
 export function TareeqNotificationsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [notifCount, setNotifCount] = useState(0);
@@ -57,6 +73,8 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
   const prevNotifRef = useRef(0);
   const prevMsgRef = useRef(0);
   const initialPollDone = useRef(false);
+  // When a chime last played, from ANY source (poll or service worker).
+  const lastChimeAtRef = useRef(0);
 
   // Register service worker + periodic background sync (badge update)
   useEffect(() => {
@@ -91,8 +109,13 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) { setPushPermission(perm); return; }
     navigator.serviceWorker.ready.then(async reg => {
       let sub = await reg.pushManager.getSubscription();
-      // Auto-recover: permission granted but no active subscription → re-subscribe silently
-      if (!sub && user) {
+      // Auto-recover: permission granted but no active subscription → re-subscribe silently.
+      // NOT when the user turned notifications off themselves: unsubscribing cannot revoke
+      // Notification.permission (it stays 'granted'), so "no subscription + granted" looks
+      // identical to a dropped subscription. Without this flag every re-run of this effect
+      // silently turned push back on — and since AuthContext now revalidates on tab focus,
+      // `user` gets a new identity (and this effect re-runs) about once a minute.
+      if (!sub && user && !pushOptedOut()) {
         const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
         if (vapidKey) {
           sub = await reg.pushManager.subscribe({
@@ -148,7 +171,13 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
         prevMsgRef.current = m;
         setMessageCount(m);
       }
-      if (shouldChime) playChime();
+      // The service worker already chimes for a push that arrives while the tab is visible
+      // (TAREEQ_PLAY_SOUND). Without this the poll would chime AGAIN for the same message
+      // within 30s — the exact double-chime this coalescing was meant to remove.
+      if (shouldChime && Date.now() - lastChimeAtRef.current > 30_000) {
+        lastChimeAtRef.current = Date.now();
+        playChime();
+      }
       initialPollDone.current = true;
     } catch { /* ignore */ }
   }, [user]);
@@ -158,6 +187,8 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
     if (!user || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
     const onMessage = (e: MessageEvent) => {
       const data = e.data;
+      // The SW chimed for this one; suppress the poll's own chime for the same event.
+      if (data?.type === 'TAREEQ_PLAY_SOUND') { lastChimeAtRef.current = Date.now(); return; }
       if (!data || data.type !== 'TAREEQ_BADGE_UPDATE') return;
       if (typeof data.notifCount === 'number') {
         prevNotifRef.current = data.notifCount; // adopt silently — the SW already notified
@@ -186,6 +217,7 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
 
   const enablePush = useCallback(async () => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    setPushOptedOut(false); // an explicit opt-in cancels a previous explicit opt-out
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') { setPushPermission(permission as PushPermission); return; }
     try {
@@ -231,6 +263,7 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
         body: JSON.stringify({ endpoint: sub.endpoint }),
       }).catch(() => {});
       await sub.unsubscribe();
+      setPushOptedOut(true);
       setPushPermission('default');
     } catch { /* ignore */ }
   }, []);

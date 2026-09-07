@@ -43,11 +43,12 @@ export function useTareeqInstall() {
     if (!deferredPrompt) return;
     await deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      deferredPrompt = null;
-      setCanInstall(false);
-      setInstalled(true);
-    }
+    // A BeforeInstallPromptEvent is single-use either way, so drop it on a dismissal too —
+    // otherwise the full-screen prompt stayed up with a CTA that could no longer do
+    // anything at all.
+    deferredPrompt = null;
+    setCanInstall(false);
+    if (outcome === 'accepted') setInstalled(true);
   }, []);
 
   return { canInstall, installed, install };
@@ -66,6 +67,9 @@ export default function TareeqPWA() {
     }
     link.href = '/tareeq.webmanifest';
 
+    // Assigned asynchronously inside the registration promise; the cleanup below removes it.
+    let onVisible: (() => void) | null = null;
+
     // Register service worker + listen for updates
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/tareeq-sw.js', { scope: '/tareeq' }).then(reg => {
@@ -75,6 +79,15 @@ export default function TareeqPWA() {
         const activateIfSafe = () => {
           if (!reg.waiting) return;
           if (document.documentElement.hasAttribute('data-tareeq-composing')) return;
+          // The composer's flag covers only ONE of the app's text inputs. A half-typed
+          // comment, an unsent DM in the mini-chat or in /tareeq/inbox would still be
+          // reloaded away — and the visibilitychange trigger makes that land exactly when
+          // the user comes back to their draft. Any non-empty text field counts as unsafe.
+          const el = document.activeElement as HTMLInputElement | HTMLTextAreaElement | null;
+          const isTextField = !!el && (el.tagName === 'TEXTAREA'
+            || (el.tagName === 'INPUT' && /^(text|search|email|url|tel|password|)$/.test((el as HTMLInputElement).type ?? ''))
+            || (el as HTMLElement).isContentEditable);
+          if (isTextField && (el?.value ?? (el as HTMLElement | null)?.textContent ?? '').trim()) return;
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         };
         if (reg.waiting) activateIfSafe();
@@ -84,9 +97,10 @@ export default function TareeqPWA() {
           nw.addEventListener('statechange', () => { if (nw.state === 'installed') activateIfSafe(); });
         });
         // Re-check when the user returns to the tab — a natural, safe moment.
-        document.addEventListener('visibilitychange', () => {
-          if (document.visibilityState === 'visible') activateIfSafe();
-        });
+        // Tracked so the cleanup below can remove it: this used to leak one listener per
+        // mount of TareeqPWA.
+        onVisible = () => { if (document.visibilityState === 'visible') activateIfSafe(); };
+        document.addEventListener('visibilitychange', onVisible);
       }).catch(() => {});
 
       // When a new SW takes control, reload to get fresh assets
@@ -101,6 +115,7 @@ export default function TareeqPWA() {
       navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
       return () => {
         navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+        if (onVisible) document.removeEventListener('visibilitychange', onVisible);
         const l = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
         if (l) l.href = original || '/site.webmanifest';
       };

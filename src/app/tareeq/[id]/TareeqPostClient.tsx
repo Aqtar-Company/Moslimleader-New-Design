@@ -9,6 +9,7 @@ import { TAREEQ_CATEGORIES, CATEGORY_COLORS, CATEGORY_ICONS } from '@/lib/tareeq
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import { timeAgo } from '@/lib/tareeq-utils';
 import { useWakeLock } from '@/hooks/useWakeLock';
+import { displayMentions } from '@/lib/tareeq-mentions';
 
 interface Comment { id: string; content: string; createdAt: string; userId: string; user: { id: string; name: string } | null; }
 interface Post {
@@ -675,7 +676,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                           )}
                         </div>
                       </div>
-                      <p className="text-sm leading-relaxed" style={{ color: 'var(--tr-text-secondary)' }}>{c.content}</p>
+                      <p className="text-sm leading-relaxed" style={{ color: 'var(--tr-text-secondary)' }}>{displayMentions(c.content)}</p>
                       <div className="flex items-center mt-2">
                         <button
                           onClick={() => toggleCommentLike(c.id)}

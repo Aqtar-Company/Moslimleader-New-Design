@@ -86,7 +86,9 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
         const raw = localStorage.getItem(DRAFT_KEY);
         if (raw) {
           const d: Draft = JSON.parse(raw);
-          if (d.content?.trim() || d.imageUrl) setDraftBanner(d);
+          // `videoUrl` has to be here too — it is in both WRITE conditions below, so a
+          // video-only draft was being saved and then never offered for restore.
+          if (d.content?.trim() || d.imageUrl || d.videoUrl) setDraftBanner(d);
         }
       } catch { /* ignore */ }
     }
@@ -138,7 +140,12 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
       imageUrls: allUrls,
       videoUrl: mediaType === 'video' ? mediaUrl : null,
       mediaType,
-      thumbnailUrl: mediaType === 'video' ? (customThumbUrl ?? videoThumb) : null,
+      // Only a real uploaded URL. `videoThumb` is a canvas.toDataURL() JPEG frame —
+      // hundreds of KB of base64 — and JSON-stringifying it into localStorage on every
+      // debounce tick blows the quota, at which point the catch swallows the failure and
+      // the WHOLE draft (caption included) silently stops saving. It could never be
+      // restored anyway: the restore path rejects `data:` URLs as unsafe.
+      thumbnailUrl: mediaType === 'video' ? (customThumbUrl ?? null) : null,
       seriesTitle: seriesTitle.trim() || null,
     };
   }, [content, category, mediaUrl, mediaType, extraImages, customThumbUrl, videoThumb, seriesTitle]);
@@ -335,6 +342,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   async function retryExtraImage(id: string) {
     const item = extraImages.find(x => x.id === id);
     if (!item?.file) return;
+    setError(''); // otherwise a successful retry still shows the failed attempt's message
     setExtraImages(prev => prev.map(x => x.id === id ? { ...x, failed: false, progress: 0 } : x));
     await uploadExtraImage(id, item.file);
   }
@@ -407,7 +415,12 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           category: category || null,
           imageUrl: mediaType === 'image' ? mediaUrl : null,
           videoUrl: mediaType === 'video' ? mediaUrl : null,
-          thumbnailUrl: mediaType === 'video' ? (customThumbUrl ?? videoThumb) : null,
+          // Only a real uploaded URL. `videoThumb` is a canvas.toDataURL() JPEG frame —
+      // hundreds of KB of base64 — and JSON-stringifying it into localStorage on every
+      // debounce tick blows the quota, at which point the catch swallows the failure and
+      // the WHOLE draft (caption included) silently stops saving. It could never be
+      // restored anyway: the restore path rejects `data:` URLs as unsafe.
+      thumbnailUrl: mediaType === 'video' ? (customThumbUrl ?? null) : null,
           imageUrls: allImageUrls,
           seriesTitle: seriesTitle.trim() || null,
         }),
@@ -429,6 +442,10 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           imageUrl: mediaType === 'image' ? mediaUrl : null,
           videoUrl: mediaType === 'video' ? mediaUrl : null,
           imageUrls: mediaType === 'image' && mediaUrl ? [mediaUrl, ...extraImages.map(e => e.url).filter(Boolean)] : null,
+          // The replay sends these too — a queued video used to lose its custom cover and
+          // a queued series post its series.
+          thumbnailUrl: mediaType === 'video' ? (customThumbUrl ?? null) : null,
+          seriesTitle: seriesTitle.trim() || null,
           queuedAt: Date.now(),
         });
         localStorage.setItem(QUEUE_KEY, JSON.stringify(q));

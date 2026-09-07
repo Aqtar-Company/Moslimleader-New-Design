@@ -12,6 +12,7 @@ export default function TareeqOfflineBanner() {
     // captive portal or a connection with no route to us. Confirm with a cheap probe
     // before telling the user they're offline (and before clearing the banner).
     const probe = async () => {
+      if (document.visibilityState === 'hidden') return; // don't burn requests in the background
       if (!navigator.onLine) { if (!cancelled) setOffline(true); return; }
       try {
         const ctrl = new AbortController();
@@ -26,12 +27,22 @@ export default function TareeqOfflineBanner() {
     probe();
     const onOnline  = () => { probe(); };
     const onOffline = () => { if (!cancelled) setOffline(true); };
+    const onVisible = () => { if (document.visibilityState === 'visible') probe(); };
+    // A single probe on mount leaves the banner stuck in BOTH directions: one timed-out
+    // probe pins "you're offline" on a perfectly online user for the whole session (the
+    // `online` event only fires on a navigator.onLine false→true edge, which never
+    // happens), and a captive portal that appears mid-session is never noticed. Re-probe
+    // periodically and whenever the user comes back to the tab.
+    const iv = setInterval(probe, 20_000);
     window.addEventListener('online',  onOnline);
     window.addEventListener('offline', onOffline);
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
       cancelled = true;
+      clearInterval(iv);
       window.removeEventListener('online',  onOnline);
       window.removeEventListener('offline', onOffline);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, []);
 

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LanguageContext';
 
@@ -10,9 +10,19 @@ interface QueuedPost {
   content: string;
   category: string | null;
   imageUrl: string | null;
+  // The composer writes all of these; the replay used to send only content/category/
+  // imageUrl/videoUrl, so a 5-image carousel published as one image, a video lost its
+  // custom cover, and a series post lost its series.
+  imageUrls?: string[] | null;
   videoUrl: string | null;
+  thumbnailUrl?: string | null;
+  seriesTitle?: string | null;
   queuedAt: number;
+  /** Failed attempts so far. A permanently-rejected post must not retry forever. */
+  attempts?: number;
 }
+
+const MAX_ATTEMPTS = 5;
 
 function loadQueue(): QueuedPost[] {
   try { return JSON.parse(localStorage.getItem(QUEUE_KEY) ?? '[]'); } catch { return []; }
@@ -33,6 +43,7 @@ export default function TareeqQueueBanner() {
   const { isRtl } = useLang();
   const [queue, setQueue] = useState<QueuedPost[]>([]);
   const [retrying, setRetrying] = useState(false);
+  const retryingRef = useRef(false);
   const [confirmDismiss, setConfirmDismiss] = useState(false);
 
   const refresh = useCallback(() => setQueue(loadQueue()), []);
@@ -46,6 +57,54 @@ export default function TareeqQueueBanner() {
   // Auto-send when the connection comes back. Nothing replayed this queue on its own —
   // a post composed offline just sat there until the user happened to notice the banner
   // and press Retry, which doesn't match the app's "works offline" promise.
+  const retryAll = useCallback(async () => {
+    // A ref, not the `retrying` state: the `online` listener below is registered once and
+    // closes over the render where `retrying` was false, so the state check never fired
+    // for it. Two overlapping replays read the same queue and published duplicates.
+    if (!user || retryingRef.current) return;
+    retryingRef.current = true;
+    setRetrying(true);
+    const current = loadQueue();
+    const remaining: QueuedPost[] = [];
+    let published = 0;
+    for (const post of current) {
+      const attempts = (post.attempts ?? 0) + 1;
+      try {
+        const res = await fetch('/api/tareeq', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            content: post.content, category: post.category,
+            imageUrl: post.imageUrl, imageUrls: post.imageUrls ?? undefined,
+            videoUrl: post.videoUrl, thumbnailUrl: post.thumbnailUrl ?? undefined,
+            seriesTitle: post.seriesTitle ?? undefined,
+          }),
+        });
+        // `res.ok` alone is not proof of publication: a captive portal answers 200 with an
+        // HTML login page, and dropping the post on that would destroy it unrecoverably.
+        // The real API always answers JSON with the created post's id.
+        let confirmed = false;
+        if (res.ok) {
+          const d = await res.json().catch(() => null);
+          confirmed = !!(d && (d.post?.id || d.id));
+        }
+        if (confirmed) { published++; continue; }
+        // Client errors other than rate-limiting are permanent — retrying them on every
+        // `online` event and every re-render would never succeed.
+        const permanent = res.status >= 400 && res.status < 500 && res.status !== 429 && res.status !== 401;
+        if (!permanent && attempts < MAX_ATTEMPTS) remaining.push({ ...post, attempts });
+      } catch {
+        if (attempts < MAX_ATTEMPTS) remaining.push({ ...post, attempts });
+      }
+    }
+    saveQueue(remaining);
+    setQueue(remaining);
+    retryingRef.current = false;
+    setRetrying(false);
+    if (published > 0) window.dispatchEvent(new Event('tareeq-refresh-feed'));
+  }, [user]);
+
   useEffect(() => {
     if (!user) return;
     const onOnline = () => { if (loadQueue().length > 0) void retryAll(); };
@@ -53,32 +112,7 @@ export default function TareeqQueueBanner() {
     // Also try once on mount in case we came back while the tab was closed/backgrounded.
     if (navigator.onLine && loadQueue().length > 0) void retryAll();
     return () => window.removeEventListener('online', onOnline);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
-  const retryAll = useCallback(async () => {
-    if (!user || retrying) return;
-    setRetrying(true);
-    const current = loadQueue();
-    const remaining: QueuedPost[] = [];
-    for (const post of current) {
-      try {
-        const res = await fetch('/api/tareeq', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ content: post.content, category: post.category, imageUrl: post.imageUrl, videoUrl: post.videoUrl }),
-        });
-        if (!res.ok) remaining.push(post);
-      } catch {
-        remaining.push(post);
-      }
-    }
-    saveQueue(remaining);
-    setQueue(remaining);
-    setRetrying(false);
-    if (remaining.length === 0) window.dispatchEvent(new Event('tareeq-refresh-feed'));
-  }, [user, retrying]);
+  }, [user, retryAll]);
 
   const dismiss = useCallback(() => {
     saveQueue([]);

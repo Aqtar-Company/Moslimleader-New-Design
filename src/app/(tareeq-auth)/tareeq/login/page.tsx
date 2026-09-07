@@ -1,5 +1,5 @@
 'use client';
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
@@ -21,19 +21,25 @@ function TareeqAuthContent() {
   // OAuth failures redirect back here with ?error=... — nothing read it, so a failed
   // Google/Facebook sign-in dumped the user on the login form with no explanation.
   const oauthError = searchParams.get('error');
-  const [error, setError] = useState(
-    oauthError === 'fb_no_email'
-      ? 'لم يشارك فيسبوك بريدك الإلكتروني. اسمح بمشاركة البريد وحاول مرة أخرى، أو سجّل الدخول بالبريد.'
-      : oauthError === 'fb_failed'
-        ? 'تعذّر تسجيل الدخول عبر فيسبوك. حاول مرة أخرى.'
-        : oauthError?.startsWith('google_')
-          ? 'تعذّر تسجيل الدخول عبر جوجل. حاول مرة أخرى.'
-          : '',
-  );
+  const isRtl = lang === 'ar';
+  // Bilingual like every other string on this page — hardcoding Arabic here is the
+  // `isEn = false` bug CLAUDE.md calls out.
+  const oauthErrorText = oauthError === 'fb_no_email'
+    ? (isRtl
+        ? 'لم يشارك فيسبوك بريدك الإلكتروني. اسمح بمشاركة البريد وحاول مرة أخرى، أو سجّل الدخول بالبريد.'
+        : 'Facebook did not share your email. Allow email sharing and try again, or sign in with your email.')
+    : oauthError === 'fb_failed'
+      ? (isRtl ? 'تعذّر تسجيل الدخول عبر فيسبوك. حاول مرة أخرى.' : 'Facebook sign-in failed. Please try again.')
+      : oauthError?.startsWith('google_')
+        ? (isRtl ? 'تعذّر تسجيل الدخول عبر جوجل. حاول مرة أخرى.' : 'Google sign-in failed. Please try again.')
+        : '';
+  const [error, setError] = useState(oauthErrorText);
+  // useState only seeds on mount, so a language switch (or a client-side change of
+  // ?error=) would otherwise leave the previous language's message on screen.
+  useEffect(() => { setError(prev => (prev === '' || prev === oauthErrorText ? oauthErrorText : prev)); }, [oauthErrorText]);
   const [loading, setLoading] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
   const [verifyEmail, setVerifyEmail] = useState('');
-  const isRtl = lang === 'ar';
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

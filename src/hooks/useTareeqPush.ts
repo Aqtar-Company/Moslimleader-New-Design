@@ -72,11 +72,22 @@ export async function requestTareeqPush(): Promise<'granted' | 'denied' | 'defau
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') return permission as 'denied' | 'default';
 
+    // An explicit opt-in cancels a previous explicit opt-out (see
+    // TareeqNotificationsContext — same key, same meaning).
+    try { localStorage.removeItem('tareeq-push-opted-out'); } catch { /* blocked */ }
+
     const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlB64ToUint8Array(VAPID_PUBLIC),
-    });
+    // Reuse the existing subscription. Calling subscribe() when one already exists under a
+    // different applicationServerKey throws InvalidStateError, which the catch below turned
+    // into 'denied' — so the banner told a user who HAD granted permission that they
+    // hadn't, permanently.
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlB64ToUint8Array(VAPID_PUBLIC),
+      });
+    }
     await syncSubscription(sub);
     return 'granted';
   } catch {

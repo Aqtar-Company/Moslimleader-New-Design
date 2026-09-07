@@ -5,6 +5,7 @@ import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isTareeqSuspended, isBlockedEitherWay } from '@/lib/tareeq-guard';
 import { sendPushToUser } from '@/lib/tareeq-push';
 import { filterContent } from '@/lib/tareeq-content-filter';
+import { displayMentions } from '@/lib/tareeq-mentions';
 
 // GET /api/tareeq/[id]/comments?cursor=xxx&parentId=xxx
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -138,10 +139,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   // Two accepted forms: @handle (no spaces) and @[Full Name] for names that contain
   // spaces. The old single pattern stopped at the first space, so selecting "Ahmed Ali"
   // from the dropdown stored "@Ahmed" and notified the wrong person — or nobody.
-  const mentionRe = /@\[([^\]\n]{1,40})\]|@([؀-ۿa-zA-Z0-9_][^\s@]{1,29})/g;
+  const mentionRe = /@\[([^\]\n]{1,60})\]|@([؀-ۿa-zA-Z0-9_][^\s@]{0,39})/g;
   const tokens: string[] = [];
   for (const m of content.matchAll(mentionRe)) {
-    tokens.push((m[1] ?? m[2] ?? '').trim());
+    // Trailing punctuation is part of the sentence, not of the handle: "@ahmed!" and
+    // "(@ahmed)" are how people actually type, and `[^\s@]` swallowed it into the name.
+    const raw = (m[1] ?? m[2] ?? '').trim().replace(/[.,،!?؟:;)\]}'"«»…]+$/u, '');
+    if (raw) tokens.push(raw);
     if (tokens.length >= 3) break;
   }
   if (tokens.length > 0) {
@@ -149,16 +153,31 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     prisma.user.findMany({
       where: { OR: [{ username: { in: names } }, { name: { in: names } }] },
       select: { id: true },
+      // Display names are NOT unique. Without a cap, "@[محمد]" fans out a notification to
+      // every user with that exact name — three tokens per comment, unbounded each.
+      take: 10,
     })
-      .then(mentioned => {
+      .then(async mentioned => {
+        // The dropdown already hides blocked users, but the token is plain text: typing
+        // a handle by hand was a way to notify someone who had blocked you.
+        const blocks = await prisma.tareeqBlock.findMany({
+          where: {
+            OR: [
+              { blockerId: user.userId, blockedId: { in: mentioned.map(m => m.id) } },
+              { blockedId: user.userId, blockerId: { in: mentioned.map(m => m.id) } },
+            ],
+          },
+          select: { blockerId: true, blockedId: true },
+        }).catch(() => []);
+        const blocked = new Set(blocks.flatMap(b => [b.blockerId, b.blockedId]));
         for (const m of mentioned) {
-          if (m.id !== user.userId) {
+          if (m.id !== user.userId && !blocked.has(m.id)) {
             prisma.tareeqNotification.create({
               data: {
                 userId: m.id, type: 'mention',
                 actorId: user.userId, actorName: commenterName,
                 postId: params.id, postTitle: post.title ?? null,
-                body: content.slice(0, 120),
+                body: displayMentions(content).slice(0, 120),
               },
             }).catch(() => {});
           }
@@ -173,7 +192,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         userId: parentAuthorId, type: 'comment',
         actorId: user.userId, actorName: commenterName,
         postId: post.id, postTitle: post.title ?? null,
-        body: content.slice(0, 120),
+        body: displayMentions(content).slice(0, 120),
       },
     }).catch(() => {});
     sendPushToUser(parentAuthorId, {
@@ -195,7 +214,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         userId: post.userId, type: 'comment',
         actorId: user.userId, actorName: actorName,
         postId: post.id, postTitle: post.title ?? null,
-        body: content.slice(0, 120),
+        body: displayMentions(content).slice(0, 120),
       },
     }).catch(() => {});
     sendPushToUser(post.userId, {
@@ -223,7 +242,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
             userId: sub.userId, type: 'subscribed_comment',
             actorId: user.userId, actorName: commenterName,
             postId: post.id, postTitle: post.title ?? null,
-            body: content.slice(0, 120),
+            body: displayMentions(content).slice(0, 120),
           },
         }).catch(() => {});
         sendPushToUser(sub.userId, {

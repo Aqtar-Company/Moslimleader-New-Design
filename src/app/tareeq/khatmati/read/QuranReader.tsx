@@ -195,7 +195,12 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
   // Latest pending save payload, kept in sync so it can be flushed immediately
   // (leaving the page, backgrounding the tab) instead of lost when the 3s debounce
   // timer never gets to fire.
-  const lastSaveRef = useRef<{ page: number; surah: number; ayah: number } | null>(null);
+  const lastSaveRef = useRef<{ page: number; surah: number; ayah: number; jumped: boolean } | null>(null);
+  // Set whenever the position moves by navigation (surah picker, bookmark, search result,
+  // deep link) rather than by reading. The API credits 0 pages for such a move — otherwise
+  // jumping to Al-Naba credited hundreds of "read" pages and, in a group khatma, hundreds
+  // of leaderboard points. Cleared once the move it describes has been saved.
+  const jumpedRef = useRef(false);
   // Where the reader was opened — used to tell "actually read something" apart from
   // "opened the reader and left", which must not count as a reading day.
   const openedAtRef = useRef({ page: initialPage, surah: initialSurah, ayah: initialAyah });
@@ -305,12 +310,13 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
         currentPage: pending.page,
         currentSurah: pending.surah,
         currentAyah: pending.ayah,
+        jumped: pending.jumped,
         localDate: new Date().toLocaleDateString('en-CA'),
       }),
     }).then(res => {
       // 401 => reading as a guest. Nothing is being saved; tell them rather than
       // letting a whole session quietly evaporate.
-      if (res && res.status === 401) setNeedsSignIn(true);
+      if (res && res.status === 401 && isMountedRef.current) setNeedsSignIn(true);
     }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupId]);
@@ -337,7 +343,8 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
       || v.chapter_id !== openedAtRef.current.surah
       || v.verse_number !== openedAtRef.current.ayah;
     if (moved) {
-      lastSaveRef.current = { page, surah: v.chapter_id, ayah: v.verse_number };
+      lastSaveRef.current = { page, surah: v.chapter_id, ayah: v.verse_number, jumped: jumpedRef.current };
+      jumpedRef.current = false;
       saveTimer.current = setTimeout(flushProgressSave, 3000);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -561,6 +568,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
     setIsPlaying(false);
     playingRef.current = false;
     targetVerseRef.current = { chapter: r.surah, verse: r.verse };
+    jumpedRef.current = true;
     setPage(r.page);
     setShowWordSearch(false);
     setWordQuery('');
@@ -618,6 +626,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
     setIsPlaying(false);
     playingRef.current = false;
     targetVerseRef.current = { chapter: w.surah, verse: w.ayah };
+    jumpedRef.current = true;
     setPage(w.page);
     setShowWirdSheet(false);
   }
@@ -665,7 +674,9 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
         <div className="fixed bottom-0 left-0 right-0 z-50 px-4 py-2.5 flex items-center justify-center gap-3 text-[12px]"
           style={{ background: 'rgba(8,14,28,0.94)', color: '#F0EDE4', borderTop: '1px solid rgba(255,204,51,0.25)' }}>
           <span>{isRtl ? 'تقدّمك لا يُحفظ — سجّل الدخول' : 'Your progress isn\u2019t being saved — sign in'}</span>
-          <a href={`/tareeq/login?redirect=${encodeURIComponent('/tareeq/khatmati/read')}`}
+          {/* Carry the reading position through the sign-in, or a guest on page 340 comes
+              back to the top of the reader. */}
+          <a href={`/tareeq/login?redirect=${encodeURIComponent(`/tareeq/khatmati/read?page=${page}${verses[currentIdx] ? `&surah=${verses[currentIdx].chapter_id}&ayah=${verses[currentIdx].verse_number}` : ''}${groupId ? `&groupId=${groupId}` : ''}`)}`}
             className="font-bold px-3 py-1 rounded-full shrink-0"
             style={{ background: '#FFCC33', color: '#080E1C', textDecoration: 'none' }}>
             {isRtl ? 'تسجيل الدخول' : 'Sign in'}
@@ -1406,6 +1417,7 @@ export default function QuranReader({ initialPage, initialSurah, initialAyah, gr
                           // tail verses share the page) — target ayah 1 of
                           // the picked surah explicitly, not "index 0".
                           targetVerseRef.current = { chapter: num, verse: 1 };
+                          jumpedRef.current = true;
                           setPage(targetPage);
                         }
                         setShowSearch(false);

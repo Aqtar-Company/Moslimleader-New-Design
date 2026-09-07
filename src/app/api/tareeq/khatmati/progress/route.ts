@@ -76,7 +76,10 @@ export async function PUT(req: NextRequest) {
   const MAX_PAGES_PER_SAVE = 20;
   const rawAdvance = (existing?.currentPage != null && currentPage != null)
     ? Math.max(0, currentPage - existing.currentPage) : 0;
-  const pagesAdvanced = isReset ? 0 : Math.min(rawAdvance, MAX_PAGES_PER_SAVE);
+  // `jumped` says the reader navigated rather than read; the cap remains a backstop for
+  // any client that doesn't send it.
+  const jumped = body.jumped === true;
+  const pagesAdvanced = (isReset || jumped) ? 0 : Math.min(rawAdvance, MAX_PAGES_PER_SAVE);
 
   const progress = await prisma.khatmatiProgress.upsert({
     where: { userId: user.userId },

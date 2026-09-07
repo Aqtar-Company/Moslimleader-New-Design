@@ -22,6 +22,7 @@ interface SharePost {
   title?: string | null;
   content: string;
   imageUrl?: string | null;
+  category?: string | null;
 }
 
 interface Conversation {
@@ -60,20 +61,46 @@ export default function TareeqShareSheet({
 
   const [copied, setCopied] = useState(false);
   const closedRef = useRef(false);
+  // The auto-close timer is the one thing closedRef could not save us from: a manual close
+  // while it is pending would fire the parent's onClose a second time.
+  const autoCloseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copiedRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Escape + body scroll lock, like every other modal in Tareeq.
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Escape, body scroll lock, and focus. `aria-modal` asserts the rest of the page is
+  // inert; without moving focus in and trapping it, Tab walked the feed underneath and a
+  // screen reader kept reading it.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const returnTo = document.activeElement as HTMLElement | null;
+    dialogRef.current?.querySelector<HTMLElement>('textarea, button')?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key !== 'Tab') return;
+      const items = dialogRef.current?.querySelectorAll<HTMLElement>(
+        'button, textarea, a[href], [tabindex]:not([tabindex="-1"])',
+      );
+      if (!items || items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
     document.addEventListener('keydown', onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prev;
+      returnTo?.focus?.();
     };
   }, [onClose]);
 
-  useEffect(() => () => { closedRef.current = true; }, []);
+  useEffect(() => () => {
+    closedRef.current = true;
+    if (autoCloseRef.current) clearTimeout(autoCloseRef.current);
+    if (copiedRef.current) clearTimeout(copiedRef.current);
+  }, []);
 
   // Conversations power the "send in messages" row. Signed-out users have none.
   useEffect(() => {
@@ -98,9 +125,21 @@ export default function TareeqShareSheet({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ content: body }),
+        // Carry the original's category: without it the share is categoryless, shows no
+        // badge, and is filtered out of every category tab in the feed.
+        body: JSON.stringify({ content: body, ...(post.category ? { category: post.category } : {}) }),
       });
       const d = await res.json().catch(() => ({}));
+      if (res.ok && d.flagged) {
+        // POST /api/tareeq answers 200 { flagged: true } and creates the post with
+        // isHidden — the content filter ran over words that are not even yours, since a
+        // share re-submits someone else's text. Claiming "✓ shared" here would be a lie:
+        // the post exists and nobody can see it.
+        setPostError(isRtl
+          ? 'تم إرسال المشاركة للمراجعة — لن تظهر في التسلسل حتى تتم الموافقة عليها.'
+          : 'Your share was sent for review — it won’t appear in the feed until it’s approved.');
+        return;
+      }
       if (res.ok) {
         setPosted(true);
         onShared?.();
@@ -108,7 +147,7 @@ export default function TareeqShareSheet({
         // not show the share until a reload. TareeqClient already listens for this event
         // (the offline queue uses it), so fire it unconditionally.
         window.dispatchEvent(new Event('tareeq-refresh-feed'));
-        setTimeout(() => { if (!closedRef.current) onClose(); }, 900);
+        autoCloseRef.current = setTimeout(() => { if (!closedRef.current) onClose(); }, 1400);
       } else {
         setPostError(d.error || (isRtl ? 'تعذّرت المشاركة، حاول مرة أخرى' : 'Couldn’t share — try again'));
       }
@@ -153,14 +192,26 @@ export default function TareeqShareSheet({
   async function copyLink() {
     await navigator.clipboard.writeText(postUrl).catch(() => {});
     setCopied(true);
-    setTimeout(() => { if (!closedRef.current) setCopied(false); }, 2000);
+    if (copiedRef.current) clearTimeout(copiedRef.current);
+    copiedRef.current = setTimeout(() => { if (!closedRef.current) setCopied(false); }, 2000);
   }
 
   function openPopup(url: string, name: string) {
     const w = 580, h = 520;
     const left = Math.max(0, (screen.width - w) / 2);
     const top = Math.max(0, (screen.height - h) / 2);
-    window.open(url, name, `noopener,width=${w},height=${h},top=${top},left=${left},toolbar=0,menubar=0,location=0,status=0,scrollbars=1`);
+    // `noopener` goes in windowFeatures, which makes window.open return null even on
+    // success — so a null return tells us nothing. Popups are also refused outright inside
+    // in-app webviews (the Facebook and Instagram browsers), where this used to do
+    // literally nothing: no navigation, no error, no state change. Fall back to a normal
+    // navigation attempt so the user always gets somewhere.
+    const win = window.open(url, name, `width=${w},height=${h},top=${top},left=${left},toolbar=0,menubar=0,location=0,status=0,scrollbars=1`);
+    if (win) { win.opener = null; return; }
+    const a = document.createElement('a');
+    a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   }
 
   async function nativeShare() {
@@ -238,6 +289,7 @@ export default function TareeqShareSheet({
       dir={isRtl ? 'rtl' : 'ltr'}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={isRtl ? 'مشاركة' : 'Share'}

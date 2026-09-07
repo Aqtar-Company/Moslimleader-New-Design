@@ -96,7 +96,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   // Push notification to recipient (non-blocking, always send — messages feel urgent)
   sendPushToUser(otherId, {
     title: user.name ?? 'رسالة جديدة',
-    body: (imageUrl ? '📷 صورة' : videoUrl ? '🎥 فيديو' : audioUrl ? '🎙️ رسالة صوتية' : content).slice(0, 80),
+    // sharedPostId has to be in this chain: sharing a post with no note is the normal
+    // case from the share sheet, and without it the recipient's push arrived with the
+    // sender's name and a completely blank body.
+    body: (imageUrl ? '📷 صورة' : videoUrl ? '🎥 فيديو' : audioUrl ? '🎙️ رسالة صوتية'
+      : content || (sharedPostId ? (sharedPostTitle || '🔗 منشور') : '')).slice(0, 80),
     url: `/tareeq/inbox/${params.id}`,
     tag: `msg-${params.id}`,
     type: 'message',
@@ -121,7 +125,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           actorId: user.userId,
           actorName: user.name ?? null,
           postId: params.id,   // conversationId — used to navigate directly on click
-          body: content.slice(0, 80),
+          // Same reason as the push body above — a shared post with no note is not blank.
+          body: (content || lastMsgPreview).slice(0, 80),
         },
       });
     }

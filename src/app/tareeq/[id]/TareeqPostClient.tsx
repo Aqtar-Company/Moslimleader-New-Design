@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
@@ -559,7 +559,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                 </button>
                 {showShareMenu && (
                   <TareeqShareSheet
-                    post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl }}
+                    post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl, category: post.category }}
                     isRtl={isRtl}
                     onClose={() => setShowShareMenu(false)}
                   />

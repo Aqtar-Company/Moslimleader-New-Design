@@ -1,8 +1,6 @@
 'use client';
-import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import TareeqTip from '@/components/tareeq/TareeqTip';
 import TareeqShareSheet from '@/components/tareeq/TareeqShareSheet';
 import { useLang } from '@/context/LanguageContext';
@@ -36,6 +34,10 @@ function extractFacebookVideoUrl(text: string): string | null {
 
 const VIDEO_PLATFORMS_RE = /youtu\.?be|tiktok\.com|vimeo\.com|facebook\.com\/.*video|fb\.watch/;
 
+/** How much of a post body the card shows before "read more". Shared by the snippet and
+ *  the `isLong` test — they must not diverge. */
+const SNIPPET_LEN = 200;
+
 function extractFirstNonVideoUrl(text: string): string | null {
   const matches = text.match(/https?:\/\/[^\s<>"'؀-ۿ]{8,}/g);
   if (!matches) return null;
@@ -56,7 +58,22 @@ function renderRichText(text: string): React.ReactNode {
     } else if (m.startsWith('#')) {
       segments.push(<span key={key++} style={{ color: 'var(--tr-gold)', fontWeight: 600 }}>{m}</span>);
     } else {
-      segments.push(<span key={key++} style={{ color: 'var(--tr-teal)', wordBreak: 'break-all' }}>{m}</span>);
+      // A real anchor, not a teal-coloured span. Sharing a post puts its permalink in the
+      // body of another post, and until this was an <a> the only way back to the original
+      // was the link-preview card — which renders nothing at all when the preview fetch
+      // fails, leaving an unclickable string.
+      segments.push(
+        <a
+          key={key++}
+          href={m}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={e => e.stopPropagation()}
+          style={{ color: 'var(--tr-teal)', wordBreak: 'break-all', textDecoration: 'underline', textUnderlineOffset: 2 }}
+        >
+          {m}
+        </a>,
+      );
     }
     last = match.index + m.length;
   }
@@ -331,7 +348,11 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   const catLabel  = catKey && TAREEQ_CATEGORIES[catKey] ? (isRtl ? TAREEQ_CATEGORIES[catKey].ar : TAREEQ_CATEGORIES[catKey].en) : post.category;
   const catIcon   = catKey ? (CATEGORY_ICONS[catKey] ?? '') : '';
   const accentHex = catKey ? (CATEGORY_ACCENT_HEX[catKey] ?? '#ff5c38') : '#ff5c38';
-  const snippet   = post.summary || post.content.slice(0, 200);
+  // SNIPPET_LEN must equal the `isLong` threshold below, or content lands in the gap
+  // between them: a 219-character body was rendered cut to 200 characters while `isLong`
+  // (>220) said it was short enough to need no "read more" — so the tail, which for a
+  // shared post is the permalink itself, was simply unreachable.
+  const snippet   = post.summary || post.content.slice(0, SNIPPET_LEN);
   // Safe cast from Prisma JsonValue (string[] at runtime, but typed loosely)
   const parsedImageUrls: string[] | null = Array.isArray(post.imageUrls)
     ? (post.imageUrls as unknown[]).filter((u): u is string => typeof u === 'string')
@@ -704,7 +725,6 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         <button
           onClick={handleOfflineToggle}
           aria-label={isRtl ? (isSavedOffline ? 'إزالة من الحفظ بدون إنترنت' : 'حفظ للقراءة بدون إنترنت') : (isSavedOffline ? 'Remove offline' : 'Save offline')}
-          title={isRtl ? (isSavedOffline ? 'إزالة من الحفظ بدون إنترنت' : 'حفظ للقراءة بدون إنترنت') : (isSavedOffline ? 'Remove offline' : 'Save offline')}
           className="tr-action-btn"
           style={{ ...btnBase, color: isSavedOffline ? 'var(--tr-gold)' : 'var(--tr-text-muted)', padding: '8px 10px' }}
           onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, hover)}
@@ -935,10 +955,12 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               {fmt(commentCount)}
             </button>
 
-            <button onClick={handleBookmarkClick} aria-label={isRtl ? 'حفظ' : 'Save'} className="flex items-center gap-1 text-xs font-semibold transition active:scale-90" style={{ color: isBookmarked ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
-              <IconBookmark filled={isBookmarked} size={16} />
-              {savedCount > 0 && <span>{fmt(savedCount)}</span>}
-            </button>
+            <TareeqTip label={isBookmarked ? (isRtl ? 'إزالة من المحفوظات' : 'Remove from saved') : (isRtl ? 'حفظ في المحفوظات' : 'Save to your collection')}>
+              <button onClick={handleBookmarkClick} aria-label={isRtl ? 'حفظ' : 'Save'} className="flex items-center gap-1 text-xs font-semibold transition active:scale-90" style={{ color: isBookmarked ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
+                <IconBookmark filled={isBookmarked} size={16} />
+                {savedCount > 0 && <span>{fmt(savedCount)}</span>}
+              </button>
+            </TareeqTip>
 
             <div className="ms-auto flex items-center gap-2">
               <div className="relative">
@@ -947,9 +969,11 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                 </button>
               </div>
               {user && (
-                <button onClick={e => { e.preventDefault(); e.stopPropagation(); setShowOptions(true); }} aria-label={isRtl ? 'خيارات' : 'Options'} className="flex items-center gap-1 text-xs font-semibold transition active:scale-90" style={{ color: 'var(--tr-text-muted)' }}>
-                  <svg width={16} height={16} fill="currentColor" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-                </button>
+                <TareeqTip label={user?.id === post.userId ? (isRtl ? 'خيارات المنشور' : 'Post options') : (isRtl ? 'إبلاغ أو إلغاء المتابعة' : 'Report or unfollow')}>
+                  <button onClick={e => { e.preventDefault(); e.stopPropagation(); setShowOptions(true); }} aria-label={isRtl ? 'خيارات' : 'Options'} className="flex items-center gap-1 text-xs font-semibold transition active:scale-90" style={{ color: 'var(--tr-text-muted)' }}>
+                    <svg width={16} height={16} fill="currentColor" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                  </button>
+                </TareeqTip>
               )}
             </div>
           </div>
@@ -958,7 +982,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         </article>
 
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
-{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
+{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl, category: post.category }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
         {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
@@ -1157,7 +1181,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         </article>
 
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
-{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
+{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl, category: post.category }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
         {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
@@ -1167,7 +1191,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   }
 
   /* ── TEXT CARD ──────────────────────────────────────────────────── */
-  const isLong = post.content.length > 220 || post.content.split('\n').length > 4;
+  const isLong = post.content.length > SNIPPET_LEN || post.content.split('\n').length > 4;
   const isTextOnly = !post.imageUrl && !post.videoUrl;
 
   return (
@@ -1356,10 +1380,10 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             {fmt(commentCount)}
           </button>
 
-          <button onClick={handleBookmarkClick} aria-label={isRtl ? 'حفظ' : 'Save'} className="flex items-center gap-1 text-sm font-semibold transition active:scale-90" style={{ color: isBookmarked ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
+          <TareeqTip label={isBookmarked ? (isRtl ? 'إزالة من المحفوظات' : 'Remove from saved') : (isRtl ? 'حفظ في المحفوظات' : 'Save to your collection')}><button onClick={handleBookmarkClick} aria-label={isRtl ? 'حفظ' : 'Save'} className="flex items-center gap-1 text-sm font-semibold transition active:scale-90" style={{ color: isBookmarked ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
             <IconBookmark filled={isBookmarked} size={18} />
             {savedCount > 0 && <span>{fmt(savedCount)}</span>}
-          </button>
+          </button></TareeqTip>
 
           <div className="ms-auto flex items-center gap-2">
             <div className="relative">
@@ -1369,6 +1393,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             </div>
 
             {user && (
+              <TareeqTip label={user?.id === post.userId ? (isRtl ? 'خيارات المنشور' : 'Post options') : (isRtl ? 'إبلاغ أو إلغاء المتابعة' : 'Report or unfollow')}>
               <button
                 onClick={e => { e.preventDefault(); e.stopPropagation(); setShowOptions(true); }}
                 aria-label={isRtl ? 'خيارات' : 'Options'}
@@ -1377,6 +1402,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               >
                 <svg width={16} height={16} fill="currentColor" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
               </button>
+              </TareeqTip>
             )}
           </div>
         </div>
@@ -1385,7 +1411,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
       </article>
 
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
-{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
+{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl, category: post.category }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
       {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
       {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
       {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
@@ -1834,17 +1860,6 @@ function BookmarkPicker({ isRtl, folders, newFolderName, setNewFolderName, creat
 // NOTE: DMPickerModal is gone — sending a post in a DM is now a row inside
 // TareeqShareSheet, reachable in one tap instead of two.
 
-/* ── Share dropdown ─────────────────────────────────────────────────────
-   Renders in a portal to document.body with viewport-computed fixed
-   coordinates, instead of `position: absolute` inside the card. The image
-   and video cards wrap their action rail in a rounded, `overflow-hidden`
-   article (needed to clip the media itself) — some mobile browsers/in-app
-   webviews fail to clip an absolutely-positioned popup nested that deep,
-   so it visibly escaped the rounded card and overlapped the header above
-   it. A portal sidesteps any ancestor clipping entirely, and computing the
-   position from the trigger's real screen coordinates also lets it flip
-   below the button (instead of always opening upward) when there isn't
-   room above — the case that used to push it off-screen on short cards. */
 // NOTE: the anchored ShareDropdown that used to live here is gone. It had to measure a
 // trigger that might be any one of the simultaneously-mounted breakpoint variants, track
 // it through every scroll, and stay short enough not to bury the card — and it failed all

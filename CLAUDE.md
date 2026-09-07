@@ -192,23 +192,40 @@ pm2 save
 ### Backup before any deploy (run this first)
 
 ```bash
-# DB dump + uploaded assets snapshot.
-# NOTE: retention is handled by /etc/cron.daily/disk-cleanup (runs daily), NOT here —
-# it always keeps the newest 3 backups of each type regardless of age, then deletes
-# anything older than 7 days beyond that. Don't add a naive `find -mtime +N -delete`
-# in this block: it would delete the ONLY backup if deploys stop for a while (found
-# during the 2026-07-23 disk-full incident, where /root/backups had grown to 6.7GB —
-# full assets re-tar on every deploy, several times a day, outpacing any age-only
-# cleanup). If /etc/cron.daily/disk-cleanup doesn't exist on this server, recreate it
-# before relying on retention at all.
+# DB dump only — 2 MB, cheap enough to take on every deploy.
 mkdir -p /root/backups
 TS=$(date +%Y%m%d-%H%M%S)
 mysqldump --single-transaction --routines moslimleader \
   | gzip > /root/backups/db-$TS.sql.gz
-tar czf /root/backups/assets-$TS.tar.gz \
-  -C /home/moslimleader.com/app private public/products public/covers .env 2>/dev/null
 ls -lh /root/backups | tail
 ```
+
+> **Do NOT re-add `tar czf assets-$TS.tar.gz` to this block.** It was here until
+> 2026-09-07 and it is what filled the disk twice. That archive is ~1.5 GB
+> (`private/` book PDFs + `public/covers` + `public/products`), and none of it is
+> touched by a deploy — those paths are gitignored, so `git reset --hard` cannot
+> change them. Snapshotting them per deploy backs up nothing new at 1.5 GB a time.
+> Take an assets snapshot by hand when you actually change those files.
+
+**Retention lives in `/etc/cron.daily/disk-cleanup`, and it is capped by COUNT, not by age.**
+Age-based retention is what failed, twice — and the second time the script was working
+exactly as written:
+
+- `find -mtime +7` means *strictly more than 7 whole days*, floored. Files 7 days and
+  18 hours old count as `7`, so `+7` is false and they survive another day.
+- Even correct, 7 days × several deploys a day × 1.5 GB is tens of gigabytes — larger
+  than the disk. The window can't be the safety net when the artifact is that big.
+
+So the policy is: keep the newest **2** `assets-*.tar.gz` and the newest **20**
+`db-*.sql.gz`, with **no age condition at all** — an age condition is also what could
+delete the only remaining backup if deploys stop for a while. That caps `/root/backups`
+at ~3 GB permanently. The script is kept in the repo at `ops/disk-cleanup.sh` — if it
+is missing on a server, install that copy (`cp ops/disk-cleanup.sh
+/etc/cron.daily/disk-cleanup && chmod +x /etc/cron.daily/disk-cleanup`) before relying
+on retention.
+
+> Incidents: 2026-07-23 (`/root/backups` at 6.7 GB) and 2026-09-07 (17 GB — eleven
+> 1.5 GB asset archives, disk at 91%). Same root cause both times.
 
 ### Verify sync (server ↔ GitHub)
 

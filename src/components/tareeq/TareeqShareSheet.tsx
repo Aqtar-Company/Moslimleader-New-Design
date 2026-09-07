@@ -56,6 +56,7 @@ export default function TareeqShareSheet({
   const [convosLoading, setConvosLoading] = useState(false);
   const [sendingTo, setSendingTo] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<Set<string>>(new Set());
+  const [sendError, setSendError] = useState('');
 
   const [copied, setCopied] = useState(false);
   const closedRef = useRef(false);
@@ -103,6 +104,10 @@ export default function TareeqShareSheet({
       if (res.ok) {
         setPosted(true);
         onShared?.();
+        // Neither caller passes onShared, and both sit inside a feed that would otherwise
+        // not show the share until a reload. TareeqClient already listens for this event
+        // (the offline queue uses it), so fire it unconditionally.
+        window.dispatchEvent(new Event('tareeq-refresh-feed'));
         setTimeout(() => { if (!closedRef.current) onClose(); }, 900);
       } else {
         setPostError(d.error || (isRtl ? 'تعذّرت المشاركة، حاول مرة أخرى' : 'Couldn’t share — try again'));
@@ -117,6 +122,7 @@ export default function TareeqShareSheet({
   async function sendToConversation(convId: string) {
     if (sendingTo || sentTo.has(convId)) return;
     setSendingTo(convId);
+    setSendError('');
     try {
       const res = await fetch(`/api/tareeq/conversations/${convId}/messages`, {
         method: 'POST',
@@ -129,8 +135,18 @@ export default function TareeqShareSheet({
           sharedPostImageUrl: post.imageUrl ?? null,
         }),
       });
-      if (res.ok) setSentTo(prev => new Set(prev).add(convId));
-    } catch { /* offline */ }
+      if (res.ok) {
+        setSentTo(prev => new Set(prev).add(convId));
+      } else {
+        // Blocked (403) and the 30-per-10-min limit (429) both land here. Swallowing them
+        // would leave the avatar looking untouched with no explanation, and the user
+        // tapping it again forever.
+        const d = await res.json().catch(() => ({}));
+        setSendError(d.error || (isRtl ? 'تعذّر الإرسال' : 'Couldn’t send'));
+      }
+    } catch {
+      setSendError(isRtl ? 'خطأ في الاتصال' : 'Connection error');
+    }
     finally { if (!closedRef.current) setSendingTo(null); }
   }
 
@@ -395,6 +411,7 @@ export default function TareeqShareSheet({
                 })}
               </div>
             )}
+            {sendError && <p className="mt-2 text-[11px] font-semibold" style={{ color: '#ef4444' }}>{sendError}</p>}
           </div>
         )}
 

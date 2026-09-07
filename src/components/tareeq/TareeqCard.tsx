@@ -171,10 +171,10 @@ function IconComment({ size = 18 }: { size?: number }) {
     </svg>
   );
 }
-function IconShare({ size = 18, check = false }: { size?: number; check?: boolean }) {
+function IconShare({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d={check ? 'M4.5 12.75l6 6 9-13.5' : 'M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z'} />
+      <path strokeLinecap="round" strokeLinejoin="round" d={'M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z'} />
     </svg>
   );
 }
@@ -268,7 +268,6 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   const [commentCount, setCommentCount] = useState(post.commentCount);
   const [savedCount, setSavedCount] = useState(post.savedCount ?? 0);
   const [showGate, setShowGate] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [commentText, setCommentText] = useState('');
@@ -301,10 +300,6 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
   const [showRepliesFor, setShowRepliesFor] = useState<Set<string>>(new Set());
   const [repliesMap, setRepliesMap] = useState<Record<string, Array<{ id: string; content: string; createdAt: string; userId: string | null; user: { id: string; name: string } | null }>>>({});
   const [repliesLoading, setRepliesLoading] = useState<Record<string, boolean>>({});
-  const [showDMPicker, setShowDMPicker] = useState(false);
-  const [dmConversations, setDMConversations] = useState<{ id: string; otherUser: { id: string; name: string; avatarUrl?: string | null } }[]>([]);
-  const [dmSending, setDMSending] = useState<string | null>(null);
-  const [dmSent, setDMSent] = useState<string | null>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
 
   // Check if post is pinned offline on mount
@@ -383,47 +378,15 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     setShowPicker(v => !v);
   }
 
-  async function handleCopyLink(e: React.MouseEvent) {
-    e.preventDefault(); e.stopPropagation();
-    await navigator.clipboard.writeText(`${window.location.origin}/tareeq/${post.id}`).catch(() => {});
-    setCopied(true); setShowShareMenu(false);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
   function handleShare(e: React.MouseEvent) {
     e.preventDefault(); e.stopPropagation();
     setShowShareMenu(true);
   }
 
-  async function handleOpenDMPicker() {
-    if (!user) return;
-    setShowDMPicker(true);
-    setDMSent(null);
-    try {
-      const res = await fetch('/api/tareeq/conversations', { credentials: 'include' });
-      if (res.ok) { const d = await res.json(); setDMConversations(d.conversations ?? []); }
-    } catch { /* offline */ }
-  }
-
-  async function handleSendToDM(convId: string) {
-    if (dmSending) return;
-    setDMSending(convId);
-    try {
-      await fetch(`/api/tareeq/conversations/${convId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          content: '',
-          sharedPostId: post.id,
-          sharedPostTitle: post.title ?? null,
-          sharedPostImageUrl: post.imageUrl ?? null,
-        }),
-      });
-      setDMSent(convId);
-    } catch { /* ignore */ }
-    finally { setDMSending(null); }
-  }
+  // NOTE: copy-link, native share and the DM picker used to live here. They are all in
+  // TareeqShareSheet now — one implementation instead of a menu item per action. Do not
+  // re-add a second copy here: a divergent duplicate of a shared feature is exactly the
+  // failure mode CLAUDE.md flags for the membership UI.
 
   function handleCommentToggle(e: React.MouseEvent) {
     e.preventDefault(); e.stopPropagation();
@@ -645,7 +608,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
     const hover = { background: 'var(--tr-overlay)' };
     return (
       <>
-        <style>{'.tr-action-btn:focus-visible{outline:2px solid var(--tr-gold);outline-offset:2px;border-radius:8px} @keyframes tr-copy-pop{0%{transform:scale(1)}50%{transform:scale(1.22)}100%{transform:scale(1)}}'}</style>
+        <style>{'.tr-action-btn:focus-visible{outline:2px solid var(--tr-gold);outline-offset:2px;border-radius:8px}'}</style>
         <div className="px-2 py-1 flex items-center gap-0.5" style={{ borderTop: '1px solid var(--tr-border-subtle)' }}>
 
         {/* React */}
@@ -693,13 +656,11 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           <button
             onClick={handleShare}
             className="tr-action-btn"
-            style={{ ...btnBase, color: copied ? 'var(--tr-gold)' : 'var(--tr-text-secondary)' }}
+            style={{ ...btnBase, color: 'var(--tr-text-secondary)' }}
             onMouseEnter={e => Object.assign((e.currentTarget as HTMLElement).style, hover)}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
           >
-            <span style={copied ? { animation: 'tr-copy-pop 0.3s cubic-bezier(0.34,1.56,0.64,1)' } : undefined}>
-              <IconShare size={17} check={copied} />
-            </span>
+            <IconShare size={17} />
             <span>{isRtl ? 'مشاركة' : 'Share'}</span>
           </button>
         </div>
@@ -981,8 +942,8 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
             <div className="ms-auto flex items-center gap-2">
               <div className="relative">
-                <button onClick={handleShare} className="flex items-center gap-1 text-xs font-semibold transition" style={{ color: copied ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
-                  <IconShare size={16} check={copied} />
+                <button onClick={handleShare} className="flex items-center gap-1 text-xs font-semibold transition" style={{ color: 'var(--tr-text-muted)' }}>
+                  <IconShare size={16} />
                 </button>
               </div>
               {user && (
@@ -1002,7 +963,6 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
         {showReactors && <ReactorsModal postId={post.id} isRtl={isRtl} onClose={() => setShowReactors(false)} />}
-        {showDMPicker && <DMPickerModal conversations={dmConversations} dmSending={dmSending} dmSent={dmSent} onSend={handleSendToDM} onClose={() => { setShowDMPicker(false); setDMSent(null); }} isRtl={isRtl} />}
       </>
     );
   }
@@ -1122,9 +1082,9 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
               <div className="relative flex flex-col items-center gap-1">
                 <button onClick={handleShare} aria-label={isRtl ? 'مشاركة' : 'Share'} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
                   <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.20)', backdropFilter: 'blur(10px)' }}>
-                    <IconShare size={20} check={copied} />
+                    <IconShare size={20} />
                   </div>
-                  <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{copied ? '✓' : (isRtl ? 'شارك' : 'Share')}</span>
+                  <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{isRtl ? 'شارك' : 'Share'}</span>
                 </button>
               </div>
 
@@ -1202,7 +1162,6 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
         {showReactors && <ReactorsModal postId={post.id} isRtl={isRtl} onClose={() => setShowReactors(false)} />}
-        {showDMPicker && <DMPickerModal conversations={dmConversations} dmSending={dmSending} dmSent={dmSent} onSend={handleSendToDM} onClose={() => { setShowDMPicker(false); setDMSent(null); }} isRtl={isRtl} />}
       </>
     );
   }
@@ -1404,8 +1363,8 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
 
           <div className="ms-auto flex items-center gap-2">
             <div className="relative">
-              <button onClick={handleShare} className="flex items-center gap-1 text-sm font-semibold transition" style={{ color: copied ? 'var(--tr-gold)' : 'var(--tr-text-muted)' }}>
-                <IconShare size={18} check={copied} />
+              <button onClick={handleShare} className="flex items-center gap-1 text-sm font-semibold transition" style={{ color: 'var(--tr-text-muted)' }}>
+                <IconShare size={18} />
               </button>
             </div>
 
@@ -1431,7 +1390,6 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
       {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
       {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
       {showReactors && <ReactorsModal postId={post.id} isRtl={isRtl} onClose={() => setShowReactors(false)} />}
-      {showDMPicker && <DMPickerModal conversations={dmConversations} dmSending={dmSending} dmSent={dmSent} onSend={handleSendToDM} onClose={() => { setShowDMPicker(false); setDMSent(null); }} isRtl={isRtl} />}
     </>
   );
 }
@@ -1873,48 +1831,8 @@ function BookmarkPicker({ isRtl, folders, newFolderName, setNewFolderName, creat
   );
 }
 
-/* ── DM Picker Modal ────────────────────────────────────────────────── */
-function DMPickerModal({ conversations, dmSending, dmSent, onSend, onClose, isRtl }: {
-  conversations: { id: string; otherUser: { id: string; name: string; avatarUrl?: string | null } }[];
-  dmSending: string | null; dmSent: string | null;
-  onSend: (convId: string) => void; onClose: () => void; isRtl: boolean;
-}) {
-  return (
-    <div className="fixed inset-0 z-[200] flex items-end justify-center sm:items-center" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
-      <div className="w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-5 pb-8 sm:pb-5" style={{ background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)' }} onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-black text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'إرسال إلى...' : 'Send to...'}</h3>
-          <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}>✕</button>
-        </div>
-        {conversations.length === 0 ? (
-          <p className="text-sm text-center py-6" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'لا توجد محادثات بعد' : 'No conversations yet'}</p>
-        ) : (
-          <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
-            {conversations.map(c => {
-              const sent = dmSent === c.id;
-              const sending = dmSending === c.id;
-              return (
-                <button key={c.id} onClick={() => !sent && onSend(c.id)} disabled={!!dmSending || sent}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-2xl text-start transition"
-                  style={{ background: sent ? 'rgba(34,197,94,0.08)' : 'var(--tr-overlay)', opacity: dmSending && !sending ? 0.5 : 1 }}>
-                  <div className="w-9 h-9 rounded-full shrink-0 overflow-hidden flex items-center justify-center text-sm font-bold"
-                    style={{ background: 'var(--tr-surface)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-border-soft)' }}>
-                    {c.otherUser.avatarUrl
-                      ? <img src={c.otherUser.avatarUrl} alt="" className="w-full h-full object-cover" />
-                      : c.otherUser.name.charAt(0)}
-                  </div>
-                  <span className="flex-1 text-sm font-semibold" style={{ color: 'var(--tr-text-primary)' }}>{c.otherUser.name}</span>
-                  {sending && <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--tr-border-soft)', borderTopColor: '#1a6ed4' }} />}
-                  {sent && <span className="text-xs font-bold" style={{ color: '#22c55e' }}>{isRtl ? 'تم الإرسال ✓' : 'Sent ✓'}</span>}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+// NOTE: DMPickerModal is gone — sending a post in a DM is now a row inside
+// TareeqShareSheet, reachable in one tap instead of two.
 
 /* ── Share dropdown ─────────────────────────────────────────────────────
    Renders in a portal to document.body with viewport-computed fixed

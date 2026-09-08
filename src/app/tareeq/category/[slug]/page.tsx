@@ -10,6 +10,7 @@ import {
 } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import CategoryPageClient from './CategoryPageClient';
+import { SHARED_FROM_SELECT, normalizeSharedFrom } from '@/lib/tareeq-post-select';
 
 interface Props {
   params: { slug: string };
@@ -49,6 +50,7 @@ export default async function CategoryPage({ params }: Props) {
         authorName: true, likeCount: true, commentCount: true,
         createdAt: true, userId: true,
         user: { select: { id: true, name: true, avatarUrl: true } },
+        ...SHARED_FROM_SELECT,
       },
     });
 
@@ -67,6 +69,7 @@ export default async function CategoryPage({ params }: Props) {
     ...p,
     createdAt: p.createdAt.toISOString(),
     isUseful: usefulPostIds.has(p.id),
+    sharedFrom: normalizeSharedFrom(p.sharedFrom),
   }));
 
   return (

@@ -50,3 +50,27 @@ export const CATEGORY_COLORS: Record<string, string> = {
   project:    'bg-orange-100 text-orange-700',
   reflection: 'bg-rose-100 text-rose-700',
 };
+
+/**
+ * The platform's reaction set — the ONLY one. Posts and comments must offer the same
+ * reactions: comments used to lead with a ❤️ "heart" that exists nowhere else in طريق,
+ * and to omit ماشاء الله, so the same act meant different things in two places.
+ *
+ * 'heart' is still accepted by the comment API for rows written before this was unified;
+ * it is mapped to ⭐ for display and is never offered as a choice.
+ */
+export const TAREEQ_REACTIONS = [
+  { type: 'inspired',   emoji: '⭐', labelAr: 'ألهمني',     labelEn: 'Inspiring',  color: '#f59e0b' },
+  { type: 'thanks',     emoji: '🙏', labelAr: 'شكرًا',      labelEn: 'Thanks',     color: '#10b981' },
+  { type: 'agree',      emoji: '✊', labelAr: 'أتفق',       labelEn: 'Agree',      color: '#3b82f6' },
+  { type: 'yarabb',     emoji: '🤲', labelAr: 'يارب',       labelEn: 'Ameen',      color: '#8b5cf6' },
+  { type: 'mashaallah', emoji: '🌴', labelAr: 'ماشاء الله', labelEn: 'MashaAllah', color: '#16a34a' },
+] as const;
+
+export type TareeqReactionType = typeof TAREEQ_REACTIONS[number]['type'];
+
+/** Legacy 'heart' rows render as ⭐ rather than as an emoji the platform doesn't use. */
+export function reactionEmojiFor(type: string | null | undefined): string {
+  if (!type) return '⭐';
+  return TAREEQ_REACTIONS.find(r => r.type === type)?.emoji ?? '⭐';
+}

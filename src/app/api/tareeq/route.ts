@@ -5,6 +5,7 @@ import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isBlockedEitherWay } from '@/lib/tareeq-guard';
 import { CATEGORY_KEY } from '@/lib/tareeq-constants';
 import { filterContent, validateMediaUrl } from '@/lib/tareeq-content-filter';
+import { SHARED_FROM_SELECT, normalizeSharedFrom } from '@/lib/tareeq-post-select';
 
 // GET /api/tareeq?cursor=xxx&category=xxx&limit=12&likedBy=userId&sort=newest|liked|following|useful
 export async function GET(req: NextRequest) {
@@ -97,18 +98,7 @@ export async function GET(req: NextRequest) {
         likeCount: true, commentCount: true, savedCount: true, createdAt: true, userId: true,
         pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
         seriesId: true, seriesTitle: true, seriesOrder: true,
-        // The embedded original, so a share renders under its real author instead of
-          // reading as something the sharer wrote. Selected live rather than denormalised, so
-          // an edit to the original shows through every share of it.
-        shareCount: true,
-        sharedFromId: true,
-        sharedFrom: {
-          select: {
-            id: true, title: true, content: true, imageUrl: true, videoUrl: true,
-            authorName: true, userId: true, createdAt: true, isHidden: true,
-            user: { select: { id: true, name: true, avatarUrl: true } },
-          },
-        },
+        ...SHARED_FROM_SELECT,
         user: { select: { id: true, name: true, avatarUrl: true, role: true } },
         // No orderBy here previously meant Prisma picked one row per distinct type in
         // whatever order the DB scan happened to return — an arbitrary, not "top",
@@ -124,7 +114,7 @@ export async function GET(req: NextRequest) {
       ...p,
       topReactions: p.reactions.map((r: { type: string }) => r.type),
       reactions: undefined,
-      sharedFrom: p.sharedFrom && !p.sharedFrom.isHidden ? p.sharedFrom : null,
+      sharedFrom: normalizeSharedFrom(p.sharedFrom),
     }));
     const followNextCursor = hasMoreFollow ? followItems[followItems.length - 1].id : null;
     return NextResponse.json({ posts: followItems, nextCursor: followNextCursor });
@@ -156,6 +146,7 @@ export async function GET(req: NextRequest) {
             pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
             seriesId: true, seriesTitle: true, seriesOrder: true,
             user: { select: { id: true, name: true, avatarUrl: true, role: true } },
+            ...SHARED_FROM_SELECT,
             reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 40 },
           },
         },
@@ -163,7 +154,10 @@ export async function GET(req: NextRequest) {
     });
     const hasMore = likes.length > limit;
     const items = (hasMore ? likes.slice(0, limit) : likes).map(l => ({
-      ...l.post, topReactions: l.post.reactions.map((r: { type: string }) => r.type), reactions: undefined,
+      ...l.post,
+      topReactions: l.post.reactions.map((r: { type: string }) => r.type),
+      reactions: undefined,
+      sharedFrom: normalizeSharedFrom(l.post.sharedFrom),
     }));
     const nextCursor = hasMore ? likes[limit - 1].id : null;
     return NextResponse.json({ posts: items, nextCursor });
@@ -199,18 +193,7 @@ export async function GET(req: NextRequest) {
       likeCount: true, commentCount: true, savedCount: true, createdAt: true, userId: true,
       pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
       seriesId: true, seriesTitle: true, seriesOrder: true,
-      // The embedded original, so a share renders under its real author instead of
-      // reading as something the sharer wrote. Selected live rather than denormalised, so
-      // an edit to the original shows through every share of it.
-      shareCount: true,
-      sharedFromId: true,
-      sharedFrom: {
-        select: {
-          id: true, title: true, content: true, imageUrl: true, videoUrl: true,
-          authorName: true, userId: true, createdAt: true, isHidden: true,
-          user: { select: { id: true, name: true, avatarUrl: true } },
-        },
-      },
+      ...SHARED_FROM_SELECT,
       user: { select: { id: true, name: true, avatarUrl: true } },
       reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 40 },
     },
@@ -223,7 +206,7 @@ export async function GET(req: NextRequest) {
     reactions: undefined,
     // Never let a hidden original leak out through someone's share of it. The card shows
     // an "unavailable" placeholder for a null sharedFrom.
-    sharedFrom: p.sharedFrom && !p.sharedFrom.isHidden ? p.sharedFrom : null,
+    sharedFrom: normalizeSharedFrom(p.sharedFrom),
   }));
   const nextCursor = hasMore ? items[items.length - 1].id : null;
 

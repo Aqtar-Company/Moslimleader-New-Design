@@ -5,9 +5,9 @@ import TareeqTip from '@/components/tareeq/TareeqTip';
 import TareeqShareSheet from '@/components/tareeq/TareeqShareSheet';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
-import { TAREEQ_CATEGORIES, CATEGORY_ICONS, CATEGORY_ACCENT_HEX } from '@/lib/tareeq-constants';
+import { TAREEQ_CATEGORIES, CATEGORY_ICONS, CATEGORY_ACCENT_HEX, TAREEQ_REACTIONS, reactionEmojiFor } from '@/lib/tareeq-constants';
 import { savePostOffline, removePostOffline, isPostSavedOffline } from '@/lib/tareeq-idb';
-import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
+import type { TareeqCategoryKey, TareeqReactionType } from '@/lib/tareeq-constants';
 import { timeAgo } from '@/lib/tareeq-utils';
 import TareeqLoginGate from './TareeqLoginGate';
 import TareeqMentionInput from './TareeqMentionInput';
@@ -232,19 +232,10 @@ interface Props {
   onDeleted?: (postId: string) => void;
 }
 
-const REACTIONS = [
-  { type: 'inspired',    emoji: '⭐', labelAr: 'ألهمني',      labelEn: 'Inspiring',  color: '#f59e0b' },
-  { type: 'thanks',      emoji: '🙏', labelAr: 'شكرًا',       labelEn: 'Thanks',     color: '#10b981' },
-  { type: 'agree',       emoji: '✊', labelAr: 'أتفق',        labelEn: 'Agree',      color: '#3b82f6' },
-  { type: 'yarabb',      emoji: '🤲', labelAr: 'يارب',        labelEn: 'Ameen',      color: '#8b5cf6' },
-  { type: 'mashaallah',  emoji: '🌴', labelAr: 'ماشاء الله',  labelEn: 'MashaAllah', color: '#16a34a' },
-] as const;
-
-type ReactionType = typeof REACTIONS[number]['type'];
-
-function reactionEmoji(type: string): string {
-  return REACTIONS.find(r => r.type === type)?.emoji ?? '⭐';
-}
+// One list for the whole platform — posts AND comments. See TAREEQ_REACTIONS.
+const REACTIONS = TAREEQ_REACTIONS;
+type ReactionType = TareeqReactionType;
+const reactionEmoji = reactionEmojiFor;
 
 function fmt(n: number): string {
   if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';

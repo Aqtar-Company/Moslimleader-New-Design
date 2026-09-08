@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { SHARED_FROM_SELECT, normalizeSharedFrom } from '@/lib/tareeq-post-select';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +27,9 @@ export async function GET(req: NextRequest) {
       post: {
         include: {
           user: { select: { id: true, name: true, avatarUrl: true } },
+          // `include` brings the scalar sharedFromId along, but not the relation — so a
+          // saved share would have rendered as "the original is unavailable".
+          sharedFrom: SHARED_FROM_SELECT.sharedFrom,
           _count: { select: { likes: true, comments: true } },
         },
       },
@@ -33,7 +37,10 @@ export async function GET(req: NextRequest) {
   });
 
   const hasMore    = bookmarks.length > LIMIT;
-  const items      = hasMore ? bookmarks.slice(0, LIMIT) : bookmarks;
+  const items      = (hasMore ? bookmarks.slice(0, LIMIT) : bookmarks).map(b => ({
+    ...b,
+    post: { ...b.post, sharedFrom: normalizeSharedFrom(b.post.sharedFrom) },
+  }));
   const nextCursor = hasMore ? items[items.length - 1].id : null;
 
   return NextResponse.json({ bookmarks: items, nextCursor });

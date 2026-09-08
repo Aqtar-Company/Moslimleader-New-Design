@@ -4,10 +4,14 @@ import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isTareeqSuspended } from '@/lib/tareeq-guard';
 
-const ALLOWED_TYPES = ['heart', 'inspired', 'thanks', 'agree', 'yarabb'] as const;
+// 'heart' stays ACCEPTED so rows written before comment reactions were unified with the
+// post set still read back — but it is no longer offered anywhere, and the default is
+// 'inspired'. 'mashaallah' was missing entirely, so the picker could send a type the API
+// silently rewrote to a heart.
+const ALLOWED_TYPES = ['inspired', 'thanks', 'agree', 'yarabb', 'mashaallah', 'heart'] as const;
 type CommentReactionType = typeof ALLOWED_TYPES[number];
 
-// POST — toggle reaction on a comment (type: heart | inspired | thanks | agree | yarabb)
+// POST — toggle reaction on a comment (same set as post reactions; see TAREEQ_REACTIONS)
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const authResult = await getAuthUser().catch(() => null);
   if (!authResult) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -21,7 +25,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   const body = await req.json().catch(() => ({}));
-  const type: CommentReactionType = ALLOWED_TYPES.includes(body.type) ? body.type : 'heart';
+  const type: CommentReactionType = ALLOWED_TYPES.includes(body.type) ? body.type : 'inspired';
 
   const comment = await prisma.tareeqComment.findUnique({
     where: { id: params.id },

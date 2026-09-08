@@ -11,6 +11,7 @@ import TareeqLoginGate from './TareeqLoginGate';
 import { ReportModal } from './TareeqCard';
 import TareeqMentionInput from './TareeqMentionInput';
 import { displayMentions } from '@/lib/tareeq-mentions';
+import { TAREEQ_REACTIONS, reactionEmojiFor, type TareeqReactionType } from '@/lib/tareeq-constants';
 
 interface Props {
   postId: string;
@@ -24,14 +25,11 @@ interface Props {
   onCommented?: (postId: string) => void;
 }
 
-const COMMENT_REACTIONS = [
-  { type: 'heart',    emoji: '❤️', labelAr: 'أحب',    labelEn: 'Love',     color: '#ef4444' },
-  { type: 'inspired', emoji: '⭐', labelAr: 'ألهمني', labelEn: 'Inspiring', color: '#f59e0b' },
-  { type: 'thanks',   emoji: '🙏', labelAr: 'شكرًا',  labelEn: 'Thanks',   color: '#10b981' },
-  { type: 'agree',    emoji: '✊', labelAr: 'أتفق',   labelEn: 'Agree',    color: '#3b82f6' },
-  { type: 'yarabb',   emoji: '🤲', labelAr: 'يارب',   labelEn: 'Ameen',    color: '#8b5cf6' },
-] as const;
-type CommentReactionType = typeof COMMENT_REACTIONS[number]['type'];
+// Comments use the SAME reactions as posts — see TAREEQ_REACTIONS. This list used to be a
+// separate copy that led with a ❤️ heart (which طريق does not have anywhere else) and
+// omitted ماشاء الله.
+const COMMENT_REACTIONS = TAREEQ_REACTIONS;
+type CommentReactionType = TareeqReactionType;
 
 interface Comment {
   id: string;
@@ -395,8 +393,8 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
       for (const c of list) {
         if (!(c.id in next)) {
           next[c.id] = {
-            reaction: c.likedType ?? (c.liked ? 'heart' : null),
-            counts: c.reactionCounts ?? (c.likeCount ? { heart: c.likeCount } : {}),
+            reaction: c.likedType ?? (c.liked ? 'inspired' : null),
+            counts: c.reactionCounts ?? (c.likeCount ? { inspired: c.likeCount } : {}),
           };
         }
       }
@@ -593,7 +591,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                                     >
                                       <span style={{ fontSize: 13 }}>
                                         {commentLikes[c.id]?.reaction
-                                          ? COMMENT_REACTIONS.find(r => r.type === commentLikes[c.id]?.reaction)?.emoji ?? '❤️'
+                                          ? reactionEmojiFor(commentLikes[c.id]?.reaction)
                                           : '🤍'}
                                       </span>
                                       {(() => {
@@ -938,7 +936,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                               >
                                 <span style={{ fontSize: 13 }}>
                                   {commentLikes[c.id]?.reaction
-                                    ? COMMENT_REACTIONS.find(r => r.type === commentLikes[c.id]?.reaction)?.emoji ?? '❤️'
+                                    ? reactionEmojiFor(commentLikes[c.id]?.reaction)
                                     : '🤍'}
                                 </span>
                                 {(() => {

@@ -6,6 +6,7 @@ import { recordPostView } from '@/lib/tareeq-views';
 import { getAuthUser } from '@/lib/jwt';
 import TareeqPostClient from './TareeqPostClient';
 import type { Metadata } from 'next';
+import { SHARED_FROM_SELECT, normalizeSharedFrom } from '@/lib/tareeq-post-select';
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const post = await prisma.tareeqPost.findUnique({
@@ -49,14 +50,7 @@ export default async function TareeqPostPage({ params }: { params: { id: string 
     where: { id: params.id },
     include: {
       user: { select: { id: true, name: true, avatarUrl: true } },
-      // A share renders the original under its real author — see TareeqPost.sharedFromId.
-      sharedFrom: {
-        select: {
-          id: true, title: true, content: true, imageUrl: true, videoUrl: true,
-          authorName: true, userId: true, createdAt: true, isHidden: true,
-          user: { select: { id: true, name: true, avatarUrl: true } },
-        },
-      },
+      ...SHARED_FROM_SELECT,
       comments: {
         orderBy: { createdAt: 'asc' },
         take: 100,
@@ -120,9 +114,7 @@ export default async function TareeqPostPage({ params }: { params: { id: string 
         seriesOrder: post.seriesOrder ?? null,
         pinnedCommentId: post.pinnedCommentId ?? null,
         sharedFromId: post.sharedFromId ?? null,
-        sharedFrom: post.sharedFrom && !post.sharedFrom.isHidden
-          ? (({ isHidden: _h, ...rest }) => ({ ...rest, createdAt: rest.createdAt.toISOString() }))(post.sharedFrom)
-          : null,
+        sharedFrom: normalizeSharedFrom(post.sharedFrom),
       }}
       userLiked={userLiked}
       userBookmarked={userBookmarked}

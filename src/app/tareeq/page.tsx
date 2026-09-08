@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import type { Metadata } from 'next';
 import { prisma } from '@/lib/prisma';
 import TareeqClient from './TareeqClient';
+import { SHARED_FROM_SELECT, normalizeSharedFrom } from '@/lib/tareeq-post-select';
 
 export const metadata: Metadata = {
   title: 'طريق',
@@ -34,6 +35,7 @@ export default async function TareeqPage() {
         category: true, tags: true, imageUrl: true, videoUrl: true, authorName: true,
         likeCount: true, commentCount: true, createdAt: true, userId: true,
         user: { select: { id: true, name: true, avatarUrl: true } },
+        ...SHARED_FROM_SELECT,
         reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 40 },
       },
     });
@@ -44,7 +46,12 @@ export default async function TareeqPage() {
 
   return (
     <TareeqClient
-      initialPosts={initialPosts.map(p => ({ ...p, createdAt: p.createdAt.toISOString(), topReactions: p.reactions?.map(r => r.type) ?? [] }))}
+      initialPosts={initialPosts.map(p => ({
+        ...p,
+        createdAt: p.createdAt.toISOString(),
+        topReactions: p.reactions?.map((r: { type: string }) => r.type) ?? [],
+        sharedFrom: normalizeSharedFrom(p.sharedFrom),
+      }))}
       initialCursor={initialCursor}
     />
   );

@@ -101,6 +101,16 @@ export default async function TareeqUserPage({ params }: Props) {
             pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
             seriesId: true, seriesTitle: true, seriesOrder: true,
             user: { select: { id: true, name: true, avatarUrl: true, role: true } },
+            // Shares on a profile must credit the original author too.
+            shareCount: true,
+            sharedFromId: true,
+            sharedFrom: {
+              select: {
+                id: true, title: true, content: true, imageUrl: true, videoUrl: true,
+                authorName: true, userId: true, createdAt: true, isHidden: true,
+                user: { select: { id: true, name: true, avatarUrl: true } },
+              },
+            },
             reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 40 },
           },
         }),
@@ -118,6 +128,11 @@ export default async function TareeqUserPage({ params }: Props) {
     postUpdateAt: p.postUpdateAt ? p.postUpdateAt.toISOString() : null,
     topReactions: p.reactions?.map((r: { type: string }) => r.type) ?? [],
     reactions: undefined,
+    // Dates have to be strings for the client component, and a hidden original must not
+    // leak through a share of it.
+    sharedFrom: p.sharedFrom && !p.sharedFrom.isHidden
+      ? (({ isHidden: _h, ...rest }) => ({ ...rest, createdAt: rest.createdAt.toISOString() }))(p.sharedFrom)
+      : null,
   }));
 
   // Fetch liked IDs for the current viewer (best-effort) — skipped entirely when blocked

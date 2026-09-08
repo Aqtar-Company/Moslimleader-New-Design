@@ -6,6 +6,8 @@ import { useAuth } from '@/context/AuthContext';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
 import { ReportModal } from '@/components/tareeq/TareeqCard';
 import TareeqShareSheet from '@/components/tareeq/TareeqShareSheet';
+import { SharedOriginalCard } from '@/components/tareeq/TareeqCard';
+import type { SharedOriginal } from '@/components/tareeq/TareeqCard';
 import { TAREEQ_CATEGORIES, CATEGORY_COLORS, CATEGORY_ICONS } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import { timeAgo } from '@/lib/tareeq-utils';
@@ -26,6 +28,8 @@ interface Post {
   seriesId?: string | null;
   seriesTitle?: string | null;
   seriesOrder?: number | null;
+  sharedFromId?: string | null;
+  sharedFrom?: SharedOriginal | null;
 }
 
 // ── Reaction config ───────────────────────────────────────────────────
@@ -383,6 +387,9 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                 <div className="text-sm sm:text-base leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--tr-text-secondary)' }}>
                   {post.content}
                 </div>
+                {/* The shared original, under its own author. Same component the feed card
+                    uses, so the two can't drift. */}
+                {post.sharedFromId && <SharedOriginalCard original={post.sharedFrom ?? null} isRtl={isRtl} />}
               </>
             )}
 
@@ -559,7 +566,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                 </button>
                 {showShareMenu && (
                   <TareeqShareSheet
-                    post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl, category: post.category }}
+                    post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null }}
                     isRtl={isRtl}
                     onClose={() => setShowShareMenu(false)}
                   />

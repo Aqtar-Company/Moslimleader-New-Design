@@ -23,6 +23,8 @@ interface SharePost {
   content: string;
   imageUrl?: string | null;
   category?: string | null;
+  authorName?: string | null;
+  authorAvatarUrl?: string | null;
 }
 
 interface Conversation {
@@ -117,9 +119,10 @@ export default function TareeqShareSheet({
     if (posting || posted) return;
     setPosting(true);
     setPostError('');
-    // The permalink is what makes this a share rather than a copy — the feed renders it as
-    // a link preview back to the original.
-    const body = [note.trim(), quote ? `«${quote}»` : '', postUrl].filter(Boolean).join('\n\n');
+    // Only YOUR words go in the body. The original travels as `sharedFromId`, so the card
+    // can render it under its real author's name, avatar and timestamp. Copying its text
+    // into the body — which is what this used to do — produced a post that read as if the
+    // sharer had written it.
     try {
       const res = await fetch('/api/tareeq', {
         method: 'POST',
@@ -127,7 +130,11 @@ export default function TareeqShareSheet({
         credentials: 'include',
         // Carry the original's category: without it the share is categoryless, shows no
         // badge, and is filtered out of every category tab in the feed.
-        body: JSON.stringify({ content: body, ...(post.category ? { category: post.category } : {}) }),
+        body: JSON.stringify({
+          content: note.trim(),
+          sharedFromId: post.id,
+          ...(post.category ? { category: post.category } : {}),
+        }),
       });
       const d = await res.json().catch(() => ({}));
       if (res.ok && d.flagged) {
@@ -357,14 +364,30 @@ export default function TareeqShareSheet({
               }}
             />
 
-            {quote && (
-              <p
-                className="mt-2 text-[11px] leading-relaxed px-3 py-2 rounded-xl"
-                style={{ background: 'var(--tr-overlay)', color: 'var(--tr-text-muted)' }}
-              >
-                «{quote}»
-              </p>
-            )}
+            {/* Shows what will actually be published: the original, credited to its author. */}
+            <div
+              className="mt-2 px-3 py-2.5 rounded-xl"
+              style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)' }}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                {post.authorAvatarUrl
+                  ? <img src={post.authorAvatarUrl} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
+                  : (
+                    <span
+                      className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[10px] font-black"
+                      style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)' }}
+                    >
+                      {(post.authorName ?? '؟').charAt(0)}
+                    </span>
+                  )}
+                <span className="text-[11px] font-bold truncate" style={{ color: 'var(--tr-text-primary)' }}>
+                  {post.authorName ?? (isRtl ? 'صاحب المنشور' : 'Original author')}
+                </span>
+              </div>
+              {quote && (
+                <p className="text-[11px] leading-relaxed" style={{ color: 'var(--tr-text-muted)' }}>{quote}</p>
+              )}
+            </div>
 
             {postError && <p className="mt-2 text-[11px] font-semibold" style={{ color: '#ef4444' }}>{postError}</p>}
 

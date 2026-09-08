@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
-import { tareeqRateLimit } from '@/lib/tareeq-guard';
+import { tareeqRateLimit, isBlockedEitherWay } from '@/lib/tareeq-guard';
 import { CATEGORY_KEY } from '@/lib/tareeq-constants';
 import { filterContent, validateMediaUrl } from '@/lib/tareeq-content-filter';
 
@@ -97,6 +97,18 @@ export async function GET(req: NextRequest) {
         likeCount: true, commentCount: true, savedCount: true, createdAt: true, userId: true,
         pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
         seriesId: true, seriesTitle: true, seriesOrder: true,
+        // The embedded original, so a share renders under its real author instead of
+          // reading as something the sharer wrote. Selected live rather than denormalised, so
+          // an edit to the original shows through every share of it.
+        shareCount: true,
+        sharedFromId: true,
+        sharedFrom: {
+          select: {
+            id: true, title: true, content: true, imageUrl: true, videoUrl: true,
+            authorName: true, userId: true, createdAt: true, isHidden: true,
+            user: { select: { id: true, name: true, avatarUrl: true } },
+          },
+        },
         user: { select: { id: true, name: true, avatarUrl: true, role: true } },
         // No orderBy here previously meant Prisma picked one row per distinct type in
         // whatever order the DB scan happened to return — an arbitrary, not "top",
@@ -109,7 +121,10 @@ export async function GET(req: NextRequest) {
 
     const hasMoreFollow = followPosts.length > limit;
     const followItems = (hasMoreFollow ? followPosts.slice(0, limit) : followPosts).map(p => ({
-      ...p, topReactions: p.reactions.map((r: { type: string }) => r.type), reactions: undefined,
+      ...p,
+      topReactions: p.reactions.map((r: { type: string }) => r.type),
+      reactions: undefined,
+      sharedFrom: p.sharedFrom && !p.sharedFrom.isHidden ? p.sharedFrom : null,
     }));
     const followNextCursor = hasMoreFollow ? followItems[followItems.length - 1].id : null;
     return NextResponse.json({ posts: followItems, nextCursor: followNextCursor });
@@ -184,6 +199,18 @@ export async function GET(req: NextRequest) {
       likeCount: true, commentCount: true, savedCount: true, createdAt: true, userId: true,
       pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
       seriesId: true, seriesTitle: true, seriesOrder: true,
+      // The embedded original, so a share renders under its real author instead of
+      // reading as something the sharer wrote. Selected live rather than denormalised, so
+      // an edit to the original shows through every share of it.
+      shareCount: true,
+      sharedFromId: true,
+      sharedFrom: {
+        select: {
+          id: true, title: true, content: true, imageUrl: true, videoUrl: true,
+          authorName: true, userId: true, createdAt: true, isHidden: true,
+          user: { select: { id: true, name: true, avatarUrl: true } },
+        },
+      },
       user: { select: { id: true, name: true, avatarUrl: true } },
       reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 40 },
     },
@@ -191,7 +218,12 @@ export async function GET(req: NextRequest) {
 
   const hasMore = posts.length > limit;
   const items = (hasMore ? posts.slice(0, limit) : posts).map(p => ({
-    ...p, topReactions: p.reactions.map((r: { type: string }) => r.type), reactions: undefined,
+    ...p,
+    topReactions: p.reactions.map((r: { type: string }) => r.type),
+    reactions: undefined,
+    // Never let a hidden original leak out through someone's share of it. The card shows
+    // an "unavailable" placeholder for a null sharedFrom.
+    sharedFrom: p.sharedFrom && !p.sharedFrom.isHidden ? p.sharedFrom : null,
   }));
   const nextCursor = hasMore ? items[items.length - 1].id : null;
 
@@ -238,8 +270,35 @@ export async function POST(req: NextRequest) {
     : null;
   const videoUrl = String(body.videoUrl ?? '').trim() || null;
 
+  // A share points at the original instead of copying its text — see the schema comment
+  // on TareeqPost.sharedFromId.
+  const sharedFromId = String(body.sharedFromId ?? '').trim() || null;
+  let sharedFromAuthorId: string | null = null;
+  if (sharedFromId) {
+    const original = await prisma.tareeqPost.findUnique({
+      where: { id: sharedFromId },
+      select: { id: true, userId: true, isHidden: true, sharedFromId: true },
+    });
+    if (!original) return NextResponse.json({ error: 'المنشور غير موجود' }, { status: 404 });
+    if (original.isHidden) return NextResponse.json({ error: 'لا يمكن مشاركة هذا المنشور' }, { status: 403 });
+    if (original.userId && await isBlockedEitherWay(user.userId, original.userId)) {
+      return NextResponse.json({ error: 'لا يمكن مشاركة هذا المنشور' }, { status: 403 });
+    }
+    // Sharing a share attributes the ORIGINAL, not the middleman — otherwise the embed
+    // nests without limit and the first author disappears a level at a time.
+    sharedFromAuthorId = original.userId;
+    if (original.sharedFromId) {
+      const root = await prisma.tareeqPost.findUnique({
+        where: { id: original.sharedFromId },
+        select: { id: true, userId: true, isHidden: true },
+      });
+      if (root && !root.isHidden) sharedFromAuthorId = root.userId;
+    }
+  }
+
   const hasMedia = !!(imageUrl || (imageUrls?.length) || videoUrl);
-  if (!hasMedia && content.length < 1) {
+  // A share carries the original as its body, so an empty note is a complete post.
+  if (!hasMedia && !sharedFromId && content.length < 1) {
     return NextResponse.json({ error: 'أضف نصاً أو صورة' }, { status: 400 });
   }
   if (content.length > 5000) {
@@ -283,6 +342,7 @@ export async function POST(req: NextRequest) {
 
   const post = await prisma.tareeqPost.create({
     data: {
+      ...(sharedFromId ? { sharedFromId } : {}),
       content,
       title,
       summary,
@@ -297,6 +357,31 @@ export async function POST(req: NextRequest) {
       ...(autoHide ? { isHidden: true, hiddenReason: filterResult.reason ?? 'auto-filter' } : {}),
     },
   });
+
+  if (sharedFromId) {
+    // Best-effort: the share itself is already saved, so neither of these may fail it.
+    prisma.tareeqPost.update({
+      where: { id: sharedFromId },
+      data: { shareCount: { increment: 1 } },
+    }).catch(() => {});
+
+    // Tell the author someone shared their mark — the whole point of attribution is that
+    // it reaches them. Skip self-shares and anything auto-hidden (nothing to see yet).
+    if (sharedFromAuthorId && sharedFromAuthorId !== user.userId && !autoHide) {
+      prisma.tareeqNotification.create({
+        data: {
+          userId: sharedFromAuthorId,
+          type: 'share',
+          actorId: user.userId,
+          actorName: dbUser?.name ?? 'شخص ما',
+          actorAvatarUrl: dbUser?.avatarUrl ?? null,
+          postId: post.id,
+          postTitle: title ?? null,
+          body: content.slice(0, 120) || null,
+        },
+      }).catch(() => {});
+    }
+  }
 
   return NextResponse.json({ ok: true, id: post.id, flagged: autoHide });
 }

@@ -81,6 +81,14 @@ function NotifText({ n, isRtl }: { n: TareeqNotif; isRtl: boolean }) {
       </span>
     );
   }
+  if (n.type === 'share') {
+    return (
+      <span>
+        {isRtl ? `${actor} شارك علامتك 🔁` : `${actor} shared your mark 🔁`}
+        {n.body && <span className="block text-xs mt-0.5 truncate" style={{ color: 'var(--tr-text-muted)' }}>{n.body}</span>}
+      </span>
+    );
+  }
   if (n.type === 'follow') {
     return <span>{isRtl ? `${actor} بدأ متابعتك` : `${actor} started following you`}</span>;
   }

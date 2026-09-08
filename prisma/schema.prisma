@@ -985,6 +985,18 @@ model TareeqPost {
   seriesId        String?
   seriesTitle     String?
   seriesOrder     Int?
+
+  // A share is a POINTER to the original, not a copy of its text. Copying produced a post
+  // that read as if the sharer had written it themselves — the author's name, avatar and
+  // timestamp were all lost. The card embeds the original from this relation, so edits to
+  // it show through and attribution can't drift.
+  // onDelete: SetNull, never Cascade: deleting a post must not delete everyone's shares of
+  // it. A share whose original is gone renders an "unavailable" placeholder.
+  sharedFromId    String?
+  sharedFrom      TareeqPost?              @relation("TareeqShares", fields: [sharedFromId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  shares          TareeqPost[]             @relation("TareeqShares")
+  shareCount      Int                      @default(0)
+
   likes           TareeqLike[]
   comments        TareeqComment[]
   bookmarks       TareeqBookmark[]
@@ -1000,6 +1012,7 @@ model TareeqPost {
   @@index([category])
   @@index([isHidden])
   @@index([seriesId])
+  @@index([sharedFromId])
 }
 
 model TareeqLike {

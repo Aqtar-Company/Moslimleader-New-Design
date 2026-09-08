@@ -143,6 +143,84 @@ export interface TareeqPostSummary {
   seriesOrder?: number | null;
   pinnedCommentId?: string | null;
   topReactions?: string[] | null;
+  /** Set when this post is a share of another. `sharedFrom` is null when the original was
+   *  deleted or hidden — the card then shows an "unavailable" placeholder rather than
+   *  pretending the share is original writing. */
+  sharedFromId?: string | null;
+  sharedFrom?: SharedOriginal | null;
+  shareCount?: number;
+}
+
+export interface SharedOriginal {
+  id: string;
+  title?: string | null;
+  content: string;
+  imageUrl?: string | null;
+  videoUrl?: string | null;
+  authorName: string;
+  userId?: string | null;
+  createdAt: string;
+  user?: { id: string; name: string; avatarUrl?: string | null } | null;
+}
+
+/**
+ * The original post, embedded inside a share.
+ *
+ * This is the whole point of the feature: a share must carry its author's name, avatar and
+ * timestamp. The first implementation copied the text into a new post, so it read as if the
+ * sharer had written it — which is what this replaces.
+ */
+export function SharedOriginalCard({ original, isRtl }: { original: SharedOriginal | null; isRtl: boolean }) {
+  if (!original) {
+    return (
+      <div
+        className="mt-2 px-3 py-4 rounded-xl text-center text-xs"
+        style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-muted)' }}
+      >
+        {isRtl ? 'المنشور الأصلي لم يعد متاحاً' : 'The original post is no longer available'}
+      </div>
+    );
+  }
+  const authorName = original.user?.name ?? original.authorName;
+  return (
+    <Link
+      href={`/tareeq/${original.id}`}
+      onClick={e => e.stopPropagation()}
+      className="block mt-2 rounded-xl overflow-hidden"
+      style={{ border: '1px solid var(--tr-border-soft)', background: 'var(--tr-raised)', textDecoration: 'none' }}
+    >
+      <div className="flex items-center gap-2 px-3 pt-2.5">
+        {original.user?.avatarUrl
+          ? <img src={original.user.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+          : (
+            <span
+              className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-[11px] font-black"
+              style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)' }}
+            >
+              {authorName.charAt(0)}
+            </span>
+          )}
+        <div className="min-w-0">
+          <p className="text-[12px] font-bold truncate" style={{ color: 'var(--tr-text-primary)' }}>{authorName}</p>
+          <p className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(original.createdAt, isRtl)}</p>
+        </div>
+      </div>
+      {original.title && (
+        <p className="px-3 pt-1.5 text-[13px] font-bold" style={{ color: 'var(--tr-text-primary)' }}>{original.title}</p>
+      )}
+      {original.content && (
+        <p
+          className="px-3 pt-1 pb-2.5 text-[12.5px] leading-relaxed"
+          style={{ color: 'var(--tr-text-secondary)', display: '-webkit-box', WebkitBoxOrient: 'vertical' as const, WebkitLineClamp: 4, overflow: 'hidden' }}
+        >
+          {displayMentions(original.content)}
+        </p>
+      )}
+      {original.imageUrl && (
+        <img src={original.imageUrl} alt="" className="w-full object-cover" style={{ maxHeight: 220 }} />
+      )}
+    </Link>
+  );
 }
 
 interface Props {
@@ -982,7 +1060,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         </article>
 
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
-{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl, category: post.category }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
+{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
         {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
@@ -1181,7 +1259,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         </article>
 
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
-{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl, category: post.category }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
+{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
         {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
@@ -1317,8 +1395,12 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             return null;
           })()}
 
+          {/* The shared original, under its own author. Rendered before the link preview so
+              a share reads as "X's words, passed on by Y" rather than as Y's own text. */}
+          {post.sharedFromId && <SharedOriginalCard original={post.sharedFrom ?? null} isRtl={isRtl} />}
+
           {/* Link preview — shown only when no image/video and no video embed detected */}
-          {isTextOnly && !extractYouTubeId(post.content) && !extractTikTokId(post.content) && !extractVimeoId(post.content) && !extractFacebookVideoUrl(post.content) && (() => {
+          {!post.sharedFromId && isTextOnly && !extractYouTubeId(post.content) && !extractTikTokId(post.content) && !extractVimeoId(post.content) && !extractFacebookVideoUrl(post.content) && (() => {
             const firstUrl = extractFirstNonVideoUrl(post.content);
             return firstUrl ? <LinkPreviewCard url={firstUrl} isRtl={isRtl} /> : null;
           })()}
@@ -1411,7 +1493,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
       </article>
 
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
-{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl, category: post.category }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
+{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
       {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
       {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
       {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}

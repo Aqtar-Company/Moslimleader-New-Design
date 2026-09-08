@@ -734,10 +734,14 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                           {n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}
                           {n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>
                       )}
+                      {n.type === 'share' && (
+                        <>{isRtl ? `${n.actorName || 'شخص ما'} شارك علامتك 🔁` : `${n.actorName || 'Someone'} shared your mark 🔁`}
+                          {n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>
+                      )}
                       {n.type === 'follow' && (
                         <>{isRtl ? `${n.actorName || 'شخص ما'} بدأ متابعتك` : `${n.actorName || 'Someone'} started following you`}</>
                       )}
-                      {n.type !== 'like' && n.type !== 'inspired' && n.type !== 'thanks' && n.type !== 'agree' && n.type !== 'yarabb' && n.type !== 'comment' && n.type !== 'follow' && (
+                      {n.type !== 'like' && n.type !== 'inspired' && n.type !== 'thanks' && n.type !== 'agree' && n.type !== 'yarabb' && n.type !== 'comment' && n.type !== 'follow' && n.type !== 'share' && (
                         <>{isRtl ? `رسالة من ${n.actorName || 'شخص ما'}` : `Message from ${n.actorName || 'Someone'}`}
                           {n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>
                       )}
@@ -1061,8 +1065,9 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                                   {n.type === 'agree' && <>{isRtl ? `${n.actorName || 'شخص ما'} يتفق مع علامتك ✊` : `${n.actorName || 'Someone'} agreed ✊`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
                                   {n.type === 'yarabb' && <>{isRtl ? `${n.actorName || 'شخص ما'} دعا لك 🤲` : `${n.actorName || 'Someone'} made du'a 🤲`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
                                   {n.type === 'comment' && <>{isRtl ? `${n.actorName || 'شخص ما'} علّق على` : `${n.actorName || 'Someone'} commented on`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}
+                                  {n.type === 'share' && <>{isRtl ? `${n.actorName || 'شخص ما'} شارك علامتك 🔁` : `${n.actorName || 'Someone'} shared your mark 🔁`}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}
                                   {n.type === 'follow' && <>{isRtl ? `${n.actorName || 'شخص ما'} بدأ متابعتك` : `${n.actorName || 'Someone'} started following you`}</>}
-                                  {n.type !== 'like' && n.type !== 'inspired' && n.type !== 'thanks' && n.type !== 'agree' && n.type !== 'yarabb' && n.type !== 'comment' && n.type !== 'follow' && <>{isRtl ? `رسالة من ${n.actorName || 'شخص ما'}` : `Message from ${n.actorName || 'Someone'}`}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}
+                                  {n.type !== 'like' && n.type !== 'inspired' && n.type !== 'thanks' && n.type !== 'agree' && n.type !== 'yarabb' && n.type !== 'comment' && n.type !== 'follow' && n.type !== 'share' && <>{isRtl ? `رسالة من ${n.actorName || 'شخص ما'}` : `Message from ${n.actorName || 'Someone'}`}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}
                                 </p>
                                 <p className="text-[10px] mt-1" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(n.createdAt, isRtl)}</p>
                               </div>
@@ -1339,8 +1344,9 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                                 {n.type === 'agree' && <>{isRtl ? `${n.actorName || 'شخص ما'} يتفق مع علامتك ✊` : `${n.actorName || 'Someone'} agreed ✊`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
                                 {n.type === 'yarabb' && <>{isRtl ? `${n.actorName || 'شخص ما'} دعا لك 🤲` : `${n.actorName || 'Someone'} made du'a 🤲`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}</>}
                                 {n.type === 'comment' && <>{isRtl ? `${n.actorName || 'شخص ما'} علّق على` : `${n.actorName || 'Someone'} commented on`}{n.postTitle && <span className="font-semibold"> «{n.postTitle}»</span>}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}
+                                  {n.type === 'share' && <>{isRtl ? `${n.actorName || 'شخص ما'} شارك علامتك 🔁` : `${n.actorName || 'Someone'} shared your mark 🔁`}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}
                                 {n.type === 'follow' && <>{isRtl ? `${n.actorName || 'شخص ما'} بدأ متابعتك` : `${n.actorName || 'Someone'} started following you`}</>}
-                                {n.type !== 'like' && n.type !== 'inspired' && n.type !== 'thanks' && n.type !== 'agree' && n.type !== 'yarabb' && n.type !== 'comment' && n.type !== 'follow' && <>{isRtl ? `رسالة من ${n.actorName || 'شخص ما'}` : `Message from ${n.actorName || 'Someone'}`}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}
+                                {n.type !== 'like' && n.type !== 'inspired' && n.type !== 'thanks' && n.type !== 'agree' && n.type !== 'yarabb' && n.type !== 'comment' && n.type !== 'follow' && n.type !== 'share' && <>{isRtl ? `رسالة من ${n.actorName || 'شخص ما'}` : `Message from ${n.actorName || 'Someone'}`}{n.body && <span className="block opacity-60 truncate mt-0.5">{n.body}</span>}</>}
                               </p>
                               <p className="text-[10px] mt-1" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(n.createdAt, isRtl)}</p>
                             </div>

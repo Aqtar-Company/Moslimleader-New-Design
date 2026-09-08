@@ -49,6 +49,14 @@ export default async function TareeqPostPage({ params }: { params: { id: string 
     where: { id: params.id },
     include: {
       user: { select: { id: true, name: true, avatarUrl: true } },
+      // A share renders the original under its real author — see TareeqPost.sharedFromId.
+      sharedFrom: {
+        select: {
+          id: true, title: true, content: true, imageUrl: true, videoUrl: true,
+          authorName: true, userId: true, createdAt: true, isHidden: true,
+          user: { select: { id: true, name: true, avatarUrl: true } },
+        },
+      },
       comments: {
         orderBy: { createdAt: 'asc' },
         take: 100,
@@ -111,6 +119,10 @@ export default async function TareeqPostPage({ params }: { params: { id: string 
         seriesTitle: post.seriesTitle ?? null,
         seriesOrder: post.seriesOrder ?? null,
         pinnedCommentId: post.pinnedCommentId ?? null,
+        sharedFromId: post.sharedFromId ?? null,
+        sharedFrom: post.sharedFrom && !post.sharedFrom.isHidden
+          ? (({ isHidden: _h, ...rest }) => ({ ...rest, createdAt: rest.createdAt.toISOString() }))(post.sharedFrom)
+          : null,
       }}
       userLiked={userLiked}
       userBookmarked={userBookmarked}

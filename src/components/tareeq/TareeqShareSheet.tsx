@@ -178,6 +178,10 @@ export default function TareeqShareSheet({
           content: note.trim(),
           sharedPostId: post.id,
           sharedPostTitle: post.title ?? null,
+          // Most posts have no title. Without an excerpt and an author the bubble had
+          // nothing to show but a generic "Tareeq post" label.
+          sharedPostExcerpt: (post.content ?? '').trim().slice(0, 300) || null,
+          sharedPostAuthor: post.authorName ?? null,
           sharedPostImageUrl: post.imageUrl ?? null,
         }),
       });

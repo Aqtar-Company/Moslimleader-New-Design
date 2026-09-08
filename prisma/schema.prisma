@@ -1210,8 +1210,14 @@ model TareeqMessage {
   expiresAt        DateTime?
   replyToId        String?
   replyToContent   String?            @db.Text
+  // A shared post is snapshotted at send time on purpose: the message must still show
+  // something if the post is later deleted. Title alone was not enough — most posts have
+  // no title, so the bubble fell back to a generic "منشور طريق" with no author and no text,
+  // which reads as a broken attachment rather than a post.
   sharedPostId     String?
   sharedPostTitle  String?
+  sharedPostExcerpt String?           @db.Text
+  sharedPostAuthor String?
   sharedPostImageUrl String?          @db.Text
   createdAt        DateTime           @default(now())
 

@@ -36,6 +36,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const replyToId: string | null = body.replyToId || null;
   const sharedPostId: string | null = body.sharedPostId || null;
   const sharedPostTitle: string | null = body.sharedPostTitle || null;
+  const sharedPostExcerpt: string | null = String(body.sharedPostExcerpt ?? '').trim().slice(0, 300) || null;
+  const sharedPostAuthor: string | null = String(body.sharedPostAuthor ?? '').trim().slice(0, 80) || null;
   const sharedPostImageUrl: string | null = body.sharedPostImageUrl || null;
 
   const hasMedia = !!(imageUrl || videoUrl || audioUrl);
@@ -69,11 +71,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       data: {
         conversationId: params.id, senderId: user.userId, content, imageUrl, videoUrl, audioUrl,
         ...(replyToId ? { replyToId, replyToContent } : {}),
-        ...(sharedPostId ? { sharedPostId, sharedPostTitle, sharedPostImageUrl } : {}),
+        ...(sharedPostId ? { sharedPostId, sharedPostTitle, sharedPostExcerpt, sharedPostAuthor, sharedPostImageUrl } : {}),
       },
       select: {
         id: true, content: true, imageUrl: true, videoUrl: true, audioUrl: true, read: true, createdAt: true, senderId: true,
-        replyToId: true, replyToContent: true, sharedPostId: true, sharedPostTitle: true, sharedPostImageUrl: true,
+        replyToId: true, replyToContent: true, sharedPostId: true, sharedPostTitle: true,
+        sharedPostExcerpt: true, sharedPostAuthor: true, sharedPostImageUrl: true,
         sender: { select: { id: true, name: true, avatarUrl: true } },
       },
     }),

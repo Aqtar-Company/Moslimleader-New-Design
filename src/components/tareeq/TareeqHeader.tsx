@@ -45,6 +45,7 @@ interface ChatMessage {
   // A shared post is allowed to have empty `content` server-side, so without these it too
   // rendered as an empty bubble.
   sharedPostId?: string | null; sharedPostTitle?: string | null; sharedPostImageUrl?: string | null;
+  sharedPostExcerpt?: string | null; sharedPostAuthor?: string | null;
   replyToContent?: string | null;
   read?: boolean;
   isDeletedForEveryone?: boolean;
@@ -1205,8 +1206,13 @@ export default function TareeqHeader({ onCreateClick, searchInput, onSearch, onT
                                             {msg.sharedPostImageUrl && (
                                               <img src={msg.sharedPostImageUrl} alt="" className="rounded shrink-0" style={{ width: 32, height: 32, objectFit: 'cover' }} />
                                             )}
-                                            <span className="truncate text-[11px] font-semibold">
-                                              {msg.sharedPostTitle || (isRtl ? '🔗 منشور' : '🔗 Post')}
+                                            <span className="min-w-0">
+                                              {msg.sharedPostAuthor && (
+                                                <span className="block truncate text-[11px] font-bold">{msg.sharedPostAuthor}</span>
+                                              )}
+                                              <span className="block truncate text-[10.5px] opacity-80">
+                                                {msg.sharedPostTitle || msg.sharedPostExcerpt || (isRtl ? '★ منشور من طريق' : '★ A mark on Tareeq')}
+                                              </span>
                                             </span>
                                           </a>
                                         )}

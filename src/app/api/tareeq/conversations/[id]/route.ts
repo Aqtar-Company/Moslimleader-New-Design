@@ -37,7 +37,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     take: limit,
     select: {
       id: true, content: true, imageUrl: true, videoUrl: true, audioUrl: true, read: true, createdAt: true, senderId: true,
-      replyToId: true, replyToContent: true, sharedPostId: true, sharedPostTitle: true, sharedPostImageUrl: true,
+      replyToId: true, replyToContent: true, sharedPostId: true, sharedPostTitle: true,
+      sharedPostExcerpt: true, sharedPostAuthor: true, sharedPostImageUrl: true,
       deletedAt: true,
       sender: { select: { id: true, name: true, avatarUrl: true } },
     },
@@ -49,7 +50,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       return {
         id: m.id, content: '', imageUrl: null, videoUrl: null, audioUrl: null,
         read: m.read, createdAt: m.createdAt, senderId: m.senderId, sender: m.sender,
-        replyToId: null, replyToContent: null, sharedPostId: null, sharedPostTitle: null, sharedPostImageUrl: null,
+        replyToId: null, replyToContent: null, sharedPostId: null, sharedPostTitle: null,
+        sharedPostExcerpt: null, sharedPostAuthor: null, sharedPostImageUrl: null,
         isDeletedForEveryone: true,
       };
     }

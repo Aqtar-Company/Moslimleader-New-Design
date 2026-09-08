@@ -23,6 +23,8 @@ interface Message {
   replyToId?: string | null;
   replyToContent?: string | null;
   sharedPostId?: string | null;
+  sharedPostExcerpt?: string | null;
+  sharedPostAuthor?: string | null;
   sharedPostTitle?: string | null;
   sharedPostImageUrl?: string | null;
   isDeletedForEveryone?: boolean;
@@ -1192,13 +1194,57 @@ function Inner({ conversationId }: { conversationId: string }) {
                           )}
                           {/* Shared post card */}
                           {m.sharedPostId && (
-                            <a href={`/tareeq/${m.sharedPostId}`} className="block mx-2 mt-2 mb-0 rounded-lg overflow-hidden" style={{ border: `1px solid ${group.mine ? 'rgba(255,255,255,0.25)' : 'var(--tr-border-soft)'}`, textDecoration: 'none' }}>
+                            <a
+                              href={`/tareeq/${m.sharedPostId}`}
+                              className="block mx-2 mt-2 mb-0 rounded-2xl overflow-hidden"
+                              style={{
+                                // Cards inside a coloured bubble need their own surface, or
+                                // they read as part of the bubble instead of as an object
+                                // you can open.
+                                background: group.mine ? 'rgba(255,255,255,0.14)' : 'var(--tr-raised)',
+                                border: `1px solid ${group.mine ? 'rgba(255,255,255,0.22)' : 'var(--tr-border-soft)'}`,
+                                textDecoration: 'none',
+                                minWidth: 210,
+                              }}
+                            >
                               {m.sharedPostImageUrl && (
-                                <img src={m.sharedPostImageUrl} alt="" className="w-full object-cover" style={{ maxHeight: 120 }} />
+                                <img src={m.sharedPostImageUrl} alt="" className="w-full object-cover" style={{ maxHeight: 150 }} />
                               )}
-                              <div className="px-2 py-1.5">
-                                <p className="text-xs font-semibold" style={{ color: group.mine ? 'rgba(255,255,255,0.85)' : 'var(--tr-text-primary)', lineClamp: 2 } as React.CSSProperties}>{m.sharedPostTitle || (isRtl ? 'منشور طريق' : 'Tareeq post')}</p>
-                                <p className="text-[10px] mt-0.5" style={{ color: group.mine ? 'rgba(255,255,255,0.55)' : 'var(--tr-text-muted)' }}>طريق ★</p>
+                              <div className="px-2.5 py-2">
+                                {/* Source line — says what this attachment IS before anything else. */}
+                                <p
+                                  className="text-[10px] font-black mb-1 flex items-center gap-1"
+                                  style={{ color: group.mine ? 'rgba(255,255,255,0.7)' : 'var(--tr-gold)', letterSpacing: '0.04em' }}
+                                >
+                                  <span>★</span>
+                                  {isRtl ? 'منشور من طريق' : 'A mark on Tareeq'}
+                                </p>
+                                {m.sharedPostAuthor && (
+                                  <p className="text-[11.5px] font-bold truncate" style={{ color: group.mine ? '#fff' : 'var(--tr-text-primary)' }}>
+                                    {m.sharedPostAuthor}
+                                  </p>
+                                )}
+                                {(m.sharedPostTitle || m.sharedPostExcerpt) && (
+                                  <p
+                                    className="text-[11.5px] leading-relaxed mt-0.5"
+                                    style={{
+                                      color: group.mine ? 'rgba(255,255,255,0.82)' : 'var(--tr-text-secondary)',
+                                      display: '-webkit-box',
+                                      WebkitBoxOrient: 'vertical' as const,
+                                      WebkitLineClamp: 3,
+                                      overflow: 'hidden',
+                                    }}
+                                  >
+                                    {m.sharedPostTitle || m.sharedPostExcerpt}
+                                  </p>
+                                )}
+                                {/* Older messages carry neither author nor excerpt — say so
+                                    plainly rather than showing an empty card. */}
+                                {!m.sharedPostAuthor && !m.sharedPostTitle && !m.sharedPostExcerpt && (
+                                  <p className="text-[11.5px]" style={{ color: group.mine ? 'rgba(255,255,255,0.82)' : 'var(--tr-text-secondary)' }}>
+                                    {isRtl ? 'اضغط لفتح المنشور' : 'Tap to open the post'}
+                                  </p>
+                                )}
                               </div>
                             </a>
                           )}

@@ -261,12 +261,12 @@ export default function TareeqShareSheet({
     {
       key: 'telegram',
       label: 'Telegram',
-      bg: '#4aaed9',
-      // The Telegram plane, not the ✈️ emoji — which renders as a full-colour airliner and
-      // looked nothing like the brand next to the other marks.
+      bg: '#26A5E4',
+      // Telegram's own paper plane, on its own brand blue. Two earlier passes used the
+      // ✈️ emoji and then a hand-drawn plane; neither looked like the logo.
       glyph: (
         <svg width={20} height={20} viewBox="0 0 24 24" fill="#fff" aria-hidden>
-          <path d="M21.73 3.36a1 1 0 00-1.05-.15L2.6 10.87a1 1 0 00.07 1.86l4.2 1.42 1.6 5.06a1 1 0 001.64.42l2.4-2.3 4.2 3.1a1 1 0 001.57-.6l3.6-15.4a1 1 0 00-.15-.87zM9.03 13.6l8.1-5.5-6.3 6.6a1 1 0 00-.27.53l-.37 2.06-1.16-3.69z" />
+          <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z" />
         </svg>
       ),
       onClick: () => openPopup(`https://t.me/share/url?url=${enc(postUrl)}&text=${enc(quote)}`, 'tg-share'),

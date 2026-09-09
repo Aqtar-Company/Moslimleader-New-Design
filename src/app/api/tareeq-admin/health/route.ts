@@ -42,5 +42,18 @@ export async function GET(request: NextRequest) {
     },
     pushSubscriptions: pushSubscriptions.status === 'fulfilled' ? pushSubscriptions.value : 0,
     activeCalls:       activeCalls.status      === 'fulfilled' ? activeCalls.value       : 0,
+    // Web push fails SILENTLY without these: sendPushToUser() returns immediately when the
+    // server keys are missing, and the client refuses to subscribe at all without the
+    // public one. Nothing logs it, so a whole platform with no background notifications
+    // looks exactly like a platform where nobody enabled them. Booleans only — never the
+    // key values, and never the private key in any form.
+    push: {
+      serverKeys: !!(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY),
+      clientKey: !!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+      // The browser subscribes with the client key; the server signs with the server pair.
+      // If these differ, every send is rejected 403 and every subscription is dead weight.
+      keysMatch: !!process.env.VAPID_PUBLIC_KEY
+        && process.env.VAPID_PUBLIC_KEY === process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+    },
   });
 }

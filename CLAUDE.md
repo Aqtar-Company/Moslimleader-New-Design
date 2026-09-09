@@ -151,7 +151,26 @@ TURNSTILE_SECRET_KEY=
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=0x4AAAAAACzKEGf-IQ39WfSB
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+
+# Web push for طريق. Without these there are NO background notifications at all:
+# sendPushToUser() returns immediately when the server pair is missing, and the browser
+# refuses to subscribe without the public one — and neither path logs anything, so it
+# looks identical to "nobody turned notifications on".
+# VAPID_PUBLIC_KEY and NEXT_PUBLIC_VAPID_PUBLIC_KEY MUST be the same value: the browser
+# subscribes with the client one and the server signs with the pair. If they differ,
+# every send is rejected 403.
+# Generate once with: npx web-push generate-vapid-keys
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=
+
+# Shared secret for /api/cron/khatmati-reminder (sent as the x-cron-key header)
+CRON_KEY=
 ```
+
+> `NEXT_PUBLIC_*` values are inlined at BUILD time. Changing `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
+> in `.env` does nothing until `npm run build` runs again — `pm2 restart` alone will not
+> pick it up.
 
 ## Live Server
 

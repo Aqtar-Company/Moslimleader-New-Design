@@ -9,9 +9,16 @@
  * Read paths that need it: /api/tareeq (all branches), the SSR feed (app/tareeq/page.tsx),
  * the category page, the profile page, the permalink page, and bookmarks.
  */
-export const SHARED_FROM_SELECT = {
-  shareCount: true,
-  sharedFromId: true,
+/**
+ * The relation on its own — use this in queries that use `include`.
+ *
+ * `include` accepts RELATIONS ONLY. Spreading SHARED_FROM_SELECT into one puts the scalars
+ * `shareCount` and `sharedFromId` in there, which Prisma rejects at RUNTIME: it type-checks,
+ * it builds, and then it throws on every single request. That is exactly what took the whole
+ * post page down — every post, not just shares. `include` already returns every scalar, so
+ * the relation is all you need here.
+ */
+export const SHARED_FROM_INCLUDE = {
   sharedFrom: {
     select: {
       id: true, title: true, content: true, imageUrl: true, videoUrl: true,
@@ -19,6 +26,13 @@ export const SHARED_FROM_SELECT = {
       user: { select: { id: true, name: true, avatarUrl: true } },
     },
   },
+} as const;
+
+/** For queries that use `select` — the relation plus the scalars the card reads. */
+export const SHARED_FROM_SELECT = {
+  shareCount: true,
+  sharedFromId: true,
+  ...SHARED_FROM_INCLUDE,
 } as const;
 
 /** Exactly what SHARED_FROM_SELECT returns for `sharedFrom`, before serialisation. */

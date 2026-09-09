@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { SHARED_FROM_SELECT, normalizeSharedFrom } from '@/lib/tareeq-post-select';
+import { SHARED_FROM_INCLUDE, normalizeSharedFrom } from '@/lib/tareeq-post-select';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
           user: { select: { id: true, name: true, avatarUrl: true } },
           // `include` brings the scalar sharedFromId along, but not the relation — so a
           // saved share would have rendered as "the original is unavailable".
-          sharedFrom: SHARED_FROM_SELECT.sharedFrom,
+          ...SHARED_FROM_INCLUDE,
           _count: { select: { likes: true, comments: true } },
         },
       },

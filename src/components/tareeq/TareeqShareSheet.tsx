@@ -251,14 +251,24 @@ export default function TareeqShareSheet({
       key: 'whatsapp',
       label: 'WhatsApp',
       bg: '#25D366',
-      glyph: <span style={{ fontSize: 18 }}>💬</span>,
+      glyph: (
+        <svg width={20} height={20} viewBox="0 0 24 24" fill="#fff" aria-hidden>
+          <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.46 1.32 4.96L2 22l5.25-1.38a9.9 9.9 0 004.79 1.22h.01c5.46 0 9.9-4.45 9.9-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0012.04 2zm5.8 14.14c-.25.69-1.44 1.32-1.98 1.37-.53.05-1.02.24-3.44-.72-2.9-1.14-4.74-4.1-4.88-4.29-.14-.19-1.16-1.55-1.16-2.96s.74-2.1 1-2.39c.26-.29.57-.36.76-.36h.54c.18 0 .42-.07.65.5.25.6.83 2.06.9 2.21.07.14.12.31.02.5-.09.19-.14.31-.28.48-.14.17-.3.37-.42.5-.14.14-.29.29-.12.57.16.29.73 1.2 1.56 1.95 1.08.96 1.98 1.25 2.27 1.4.28.14.45.12.62-.07.17-.19.71-.83.9-1.12.19-.29.38-.24.64-.14.26.09 1.65.78 1.94.92.28.14.47.21.54.33.07.12.07.69-.18 1.38z" />
+        </svg>
+      ),
       onClick: () => openPopup(`https://api.whatsapp.com/send?text=${enc(quote)}%20${enc(postUrl)}`, 'wa-share'),
     },
     {
       key: 'telegram',
       label: 'Telegram',
       bg: '#4aaed9',
-      glyph: <span style={{ fontSize: 18 }}>✈️</span>,
+      // The Telegram plane, not the ✈️ emoji — which renders as a full-colour airliner and
+      // looked nothing like the brand next to the other marks.
+      glyph: (
+        <svg width={20} height={20} viewBox="0 0 24 24" fill="#fff" aria-hidden>
+          <path d="M21.73 3.36a1 1 0 00-1.05-.15L2.6 10.87a1 1 0 00.07 1.86l4.2 1.42 1.6 5.06a1 1 0 001.64.42l2.4-2.3 4.2 3.1a1 1 0 001.57-.6l3.6-15.4a1 1 0 00-.15-.87zM9.03 13.6l8.1-5.5-6.3 6.6a1 1 0 00-.27.53l-.37 2.06-1.16-3.69z" />
+        </svg>
+      ),
       onClick: () => openPopup(`https://t.me/share/url?url=${enc(postUrl)}&text=${enc(quote)}`, 'tg-share'),
     },
     {
@@ -430,6 +440,11 @@ export default function TareeqShareSheet({
             <p className="text-[11px] font-black uppercase tracking-widest mb-2.5" style={{ color: 'var(--tr-text-muted)' }}>
               {isRtl ? 'إرسال في الرسائل' : 'Send in messages'}
             </p>
+            {/* The button above is a separate action. Without this line people read the
+                avatars as a multi-select feeding "شارك الآن", when a tap sends at once. */}
+            <p className="text-[11px] mb-2.5 -mt-1.5" style={{ color: 'var(--tr-text-muted)' }}>
+              {isRtl ? 'اضغط على أي شخص ليُرسَل المنشور له فوراً' : 'Tap someone to send the post to them right away'}
+            </p>
             {convosLoading ? (
               <div className="flex gap-3">
                 {[0, 1, 2, 3].map(i => (
@@ -464,26 +479,45 @@ export default function TareeqShareSheet({
                               {c.otherUser.name.charAt(0)}
                             </span>
                           )}
-                        {(sent || busy) && (
+                        {busy && (
                           <span
-                            className="absolute inset-0 rounded-full flex items-center justify-center text-sm font-black"
-                            style={{ background: 'rgba(0,0,0,0.35)', color: '#fff' }}
+                            className="absolute inset-0 rounded-full flex items-center justify-center"
+                            style={{ background: 'rgba(0,0,0,0.35)' }}
                           >
-                            {busy ? '…' : '✓'}
+                            <span
+                              className="w-4 h-4 rounded-full animate-spin"
+                              style={{ border: '2px solid rgba(255,255,255,0.5)', borderTopColor: '#fff' }}
+                            />
+                          </span>
+                        )}
+                        {sent && (
+                          // A solid badge on the rim, not a thin glyph over a grey scrim —
+                          // the old tick was almost invisible, so a sent message read as if
+                          // nothing had happened.
+                          <span
+                            className="absolute flex items-center justify-center rounded-full"
+                            style={{
+                              width: 20, height: 20, bottom: -1, insetInlineEnd: -1,
+                              background: '#16a34a', border: '2px solid var(--tr-surface)',
+                            }}
+                          >
+                            <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={3.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                            </svg>
                           </span>
                         )}
                       </span>
                       <span
                         className="text-[10px] font-semibold text-center leading-tight"
                         style={{
-                          color: 'var(--tr-text-secondary)',
+                          color: sent ? '#16a34a' : 'var(--tr-text-secondary)',
                           maxWidth: 58,
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {c.otherUser.name}
+                        {sent ? (isRtl ? 'تم الإرسال' : 'Sent') : c.otherUser.name}
                       </span>
                     </button>
                   );

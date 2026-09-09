@@ -6,7 +6,7 @@ import { recordPostView } from '@/lib/tareeq-views';
 import { getAuthUser } from '@/lib/jwt';
 import TareeqPostClient from './TareeqPostClient';
 import type { Metadata } from 'next';
-import { SHARED_FROM_SELECT, normalizeSharedFrom } from '@/lib/tareeq-post-select';
+import { SHARED_FROM_INCLUDE, normalizeSharedFrom } from '@/lib/tareeq-post-select';
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const post = await prisma.tareeqPost.findUnique({
@@ -50,7 +50,7 @@ export default async function TareeqPostPage({ params }: { params: { id: string 
     where: { id: params.id },
     include: {
       user: { select: { id: true, name: true, avatarUrl: true } },
-      ...SHARED_FROM_SELECT,
+      ...SHARED_FROM_INCLUDE,
       comments: {
         orderBy: { createdAt: 'asc' },
         take: 100,

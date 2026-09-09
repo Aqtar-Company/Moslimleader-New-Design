@@ -183,43 +183,69 @@ export function SharedOriginalCard({ original, isRtl }: { original: SharedOrigin
   }
   const authorName = original.user?.name ?? original.authorName;
   return (
-    <Link
-      href={`/tareeq/${original.id}`}
-      onClick={e => e.stopPropagation()}
-      className="block mt-2 rounded-xl overflow-hidden"
-      style={{ border: '1px solid var(--tr-border-soft)', background: 'var(--tr-raised)', textDecoration: 'none' }}
+    <div
+      className="mt-2 rounded-xl overflow-hidden"
+      style={{ border: '1px solid var(--tr-border-soft)', background: 'var(--tr-raised)' }}
     >
-      <div className="flex items-center gap-2 px-3 pt-2.5">
-        {original.user?.avatarUrl
-          ? <img src={original.user.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
-          : (
-            <span
-              className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-[11px] font-black"
-              style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)' }}
-            >
-              {authorName.charAt(0)}
-            </span>
-          )}
-        <div className="min-w-0">
-          <p className="text-[12px] font-bold truncate" style={{ color: 'var(--tr-text-primary)' }}>{authorName}</p>
-          <p className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(original.createdAt, isRtl)}</p>
+      {/* Text and author open the original. The video is deliberately OUTSIDE this link:
+          a <video controls> inside an <a> is both invalid nesting and unusable — every
+          press on play or the scrubber navigates away instead. */}
+      <Link
+        href={`/tareeq/${original.id}`}
+        onClick={e => e.stopPropagation()}
+        className="block"
+        style={{ textDecoration: 'none' }}
+      >
+        <div className="flex items-center gap-2 px-3 pt-2.5">
+          {original.user?.avatarUrl
+            ? <img src={original.user.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+            : (
+              <span
+                className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-[11px] font-black"
+                style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)' }}
+              >
+                {authorName.charAt(0)}
+              </span>
+            )}
+          <div className="min-w-0">
+            <p className="text-[12px] font-bold truncate" style={{ color: 'var(--tr-text-primary)' }}>{authorName}</p>
+            <p className="text-[10px]" style={{ color: 'var(--tr-text-muted)' }}>{timeAgo(original.createdAt, isRtl)}</p>
+          </div>
         </div>
-      </div>
-      {original.title && (
-        <p className="px-3 pt-1.5 text-[13px] font-bold" style={{ color: 'var(--tr-text-primary)' }}>{original.title}</p>
+        {original.title && (
+          <p className="px-3 pt-1.5 text-[13px] font-bold" style={{ color: 'var(--tr-text-primary)' }}>{original.title}</p>
+        )}
+        {original.content && (
+          <p
+            className="px-3 pt-1 pb-2.5 text-[12.5px] leading-relaxed"
+            style={{ color: 'var(--tr-text-secondary)', display: '-webkit-box', WebkitBoxOrient: 'vertical' as const, WebkitLineClamp: 4, overflow: 'hidden' }}
+          >
+            {displayMentions(original.content)}
+          </p>
+        )}
+        {!original.content && !original.title && !original.imageUrl && !original.videoUrl && (
+          <p className="px-3 pt-1 pb-2.5 text-[12.5px]" style={{ color: 'var(--tr-text-muted)' }}>
+            {isRtl ? 'اضغط لفتح المنشور' : 'Open the post'}
+          </p>
+        )}
+        {original.imageUrl && (
+          <img src={original.imageUrl} alt="" className="w-full object-cover" style={{ maxHeight: 220 }} />
+        )}
+      </Link>
+      {/* A shared video used to render nothing at all — only imageUrl was drawn. */}
+      {original.videoUrl && !original.imageUrl && (
+        <div onClick={e => { e.preventDefault(); e.stopPropagation(); }}>
+          <video
+            src={original.videoUrl}
+            controls
+            playsInline
+            preload="metadata"
+            className="w-full"
+            style={{ maxHeight: 240, display: 'block', background: '#000' }}
+          />
+        </div>
       )}
-      {original.content && (
-        <p
-          className="px-3 pt-1 pb-2.5 text-[12.5px] leading-relaxed"
-          style={{ color: 'var(--tr-text-secondary)', display: '-webkit-box', WebkitBoxOrient: 'vertical' as const, WebkitLineClamp: 4, overflow: 'hidden' }}
-        >
-          {displayMentions(original.content)}
-        </p>
-      )}
-      {original.imageUrl && (
-        <img src={original.imageUrl} alt="" className="w-full object-cover" style={{ maxHeight: 220 }} />
-      )}
-    </Link>
+    </div>
   );
 }
 

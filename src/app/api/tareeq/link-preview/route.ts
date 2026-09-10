@@ -73,6 +73,8 @@ async function resolveAllowedAddress(hostname: string): Promise<{ address: strin
 }
 
 interface SimpleResponse { statusCode: number; headers: http.IncomingHttpHeaders; body: string; }
+/** The response plus where the redirect chain actually ended. */
+interface FetchResult extends SimpleResponse { finalUrl: string }
 
 // Fetches a single hop using Node's http/https directly (not the global
 // `fetch`) so a custom `lookup` can pin the TCP connection to the EXACT IP
@@ -118,18 +120,20 @@ function requestPinned(target: URL, address: string, family: 4 | 6): Promise<Sim
 
 // Follows redirects manually (capped at 3 hops), re-resolving AND
 // re-validating the target host on every hop, including the first request.
-async function fetchSafely(startUrl: string): Promise<SimpleResponse> {
+async function fetchSafely(startUrl: string): Promise<FetchResult> {
   let current = new URL(startUrl);
   for (let hop = 0; hop < 4; hop++) {
     const { address, family } = await resolveAllowedAddress(current.hostname);
     const res = await requestPinned(current, address, family);
     if (res.statusCode >= 300 && res.statusCode < 400) {
       const loc = res.headers.location;
-      if (!loc) return res;
+      if (!loc) return { ...res, finalUrl: current.toString() };
       current = new URL(loc, current);
       continue;
     }
-    return res;
+    // The end of the chain is the answer for short links: Facebook's /share/v/<id> URLs
+    // are redirects, and its video embed plugin needs the canonical URL they land on.
+    return { ...res, finalUrl: current.toString() };
   }
   throw new Error('too many redirects');
 }
@@ -163,7 +167,7 @@ export async function GET(req: NextRequest) {
     const domain      = parsed.hostname.replace(/^www\./, '');
 
     return NextResponse.json(
-      { title, description, image, domain, url: rawUrl },
+      { title, description, image, domain, url: rawUrl, finalUrl: res.finalUrl },
       { headers: { 'Cache-Control': 'public, max-age=3600, s-maxage=3600' } },
     );
   } catch {

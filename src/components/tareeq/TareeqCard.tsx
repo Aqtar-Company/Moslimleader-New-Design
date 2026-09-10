@@ -28,11 +28,21 @@ function extractVimeoId(text: string): string | null {
 }
 
 function extractFacebookVideoUrl(text: string): string | null {
-  const m = text.match(/https?:\/\/(?:www\.|m\.)?(?:facebook\.com\/(?:[^/]+\/videos\/|watch\/?\?v=|video\.php\?v=)|fb\.watch\/)[^\s<>"'؀-ۿ]+/);
-  return m ? m[0].split('?')[0] + (m[0].includes('?v=') ? '?' + m[0].split('?')[1] : '') : null;
+  // `share/v/`, `share/r/` and `reel/` are what the Facebook app produces today when you
+  // tap Share → Copy link. Without them a pasted video link rendered as a bare URL.
+  const m = text.match(/https?:\/\/(?:www\.|m\.|web\.)?(?:facebook\.com\/(?:[^/]+\/videos\/|watch\/?\?v=|video\.php\?v=|reel\/|share\/(?:v|r)\/)|fb\.watch\/)[^\s<>"'؀-ۿ]+/);
+  if (!m) return null;
+  return m[0].split('?')[0] + (m[0].includes('?v=') ? '?' + m[0].split('?')[1] : '');
 }
 
-const VIDEO_PLATFORMS_RE = /youtu\.?be|tiktok\.com|vimeo\.com|facebook\.com\/.*video|fb\.watch/;
+/** A `/share/` or `fb.watch` link is a REDIRECT — the embed plugin needs where it lands. */
+function isFacebookShortLink(url: string): boolean {
+  return /facebook\.com\/share\/|fb\.watch\//.test(url);
+}
+
+// Keeps a video link out of the generic link-preview card, which would otherwise render
+// a second, redundant box under the player.
+const VIDEO_PLATFORMS_RE = /youtu\.?be|tiktok\.com|vimeo\.com|facebook\.com\/(?:.*video|reel\/|share\/(?:v|r)\/)|fb\.watch/;
 
 /** How much of a post body the card shows before "read more". Shared by the snippet and
  *  the `isLong` test — they must not diverge. */
@@ -79,6 +89,83 @@ function renderRichText(text: string): React.ReactNode {
   }
   if (last < text.length) segments.push(text.slice(last));
   return segments.length ? segments : text;
+}
+
+/**
+ * Facebook video embed.
+ *
+ * The plugin needs a canonical video URL. What the Facebook app hands you today is
+ * `facebook.com/share/v/<id>` — a redirect — and feeding that to the plugin gets you
+ * Facebook's own "unavailable" panel. So a short link is resolved first, through
+ * /api/tareeq/link-preview, which already follows redirects behind SSRF protection and now
+ * returns where the chain ended.
+ */
+function FacebookVideoEmbed({ url, isRtl }: { url: string; isRtl: boolean }) {
+  const needsResolving = isFacebookShortLink(url);
+  const [resolved, setResolved] = useState<string | null>(needsResolving ? null : url);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!needsResolving) { setResolved(url); return; }
+    let cancelled = false;
+    setResolved(null);
+    setFailed(false);
+    fetch(`/api/tareeq/link-preview?url=${encodeURIComponent(url)}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (cancelled) return;
+        const final: string | null = d?.finalUrl ?? null;
+        // Only embed if we actually got a CANONICAL url out of it. Facebook can answer a
+        // server-side fetch with a login wall, and handing the plugin an unresolved short
+        // link gets Facebook's own "content unavailable" panel — worse than a clean link,
+        // because it looks like our bug. So: resolved → embed, not resolved → link out.
+        if (final && !isFacebookShortLink(final)) setResolved(final);
+        else setFailed(true);
+      })
+      .catch(() => { if (!cancelled) setFailed(true); });
+    return () => { cancelled = true; };
+  }, [url, needsResolving]);
+
+  if (failed) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={e => e.stopPropagation()}
+        className="block mt-3 px-3 py-3 rounded-2xl text-xs font-semibold text-center"
+        style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-teal)', textDecoration: 'none' }}
+      >
+        {isRtl ? 'فتح الفيديو على فيسبوك ↗' : 'Open the video on Facebook ↗'}
+      </a>
+    );
+  }
+
+  if (!resolved) {
+    return (
+      <div
+        className="mt-3 rounded-2xl"
+        style={{ aspectRatio: '16/9', background: 'var(--tr-raised)', border: '1px solid var(--tr-border-subtle)' }}
+      />
+    );
+  }
+
+  return (
+    <div
+      className="mt-3 rounded-2xl overflow-hidden"
+      style={{ aspectRatio: '16/9', background: '#000', border: '1px solid var(--tr-border-subtle)' }}
+      onClick={e => e.stopPropagation()}
+    >
+      <iframe
+        src={`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(resolved)}&width=640&show_text=false&height=360`}
+        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+        allowFullScreen
+        loading="lazy"
+        style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+        title={isRtl ? 'فيديو فيسبوك' : 'Facebook video'}
+      />
+    </div>
+  );
 }
 
 interface LinkPreviewData { title: string | null; description: string | null; image: string | null; domain: string; url: string }
@@ -1403,11 +1490,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             );
 
             const fbUrl = extractFacebookVideoUrl(post.content);
-            if (fbUrl) return (
-              <div className="mt-3 rounded-2xl overflow-hidden" style={embedStyle} onClick={e => e.stopPropagation()}>
-                <iframe src={`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(fbUrl)}&width=640&show_text=false&height=360`} allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" {...iframeProps} />
-              </div>
-            );
+            if (fbUrl) return <FacebookVideoEmbed url={fbUrl} isRtl={isRtl} />;
 
             return null;
           })()}

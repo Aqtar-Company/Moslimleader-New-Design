@@ -126,27 +126,28 @@ function FacebookVideoEmbed({ url, isRtl }: { url: string; isRtl: boolean }) {
     return () => { cancelled = true; };
   }, [url, needsResolving]);
 
-  if (failed) {
+  // Not resolved YET, or resolution failed: show the LINK, not a placeholder. A 16/9 grey
+  // box is indistinguishable from a broken player while it waits, and for a share link
+  // that Facebook won't resolve it never becomes anything else. The link is the honest
+  // resting state; the player replaces it only once there is a canonical URL to embed.
+  if (failed || !resolved) {
     return (
       <a
         href={url}
         target="_blank"
         rel="noopener noreferrer"
         onClick={e => e.stopPropagation()}
-        className="block mt-3 px-3 py-3 rounded-2xl text-xs font-semibold text-center"
+        className="flex items-center justify-center gap-2 mt-3 px-3 py-3 rounded-2xl text-xs font-semibold"
         style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-teal)', textDecoration: 'none' }}
       >
+        <span
+          className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+          style={{ background: '#1877f2', color: '#fff', fontWeight: 900, fontSize: 13, fontFamily: 'Georgia, serif' }}
+        >
+          f
+        </span>
         {isRtl ? 'فتح الفيديو على فيسبوك ↗' : 'Open the video on Facebook ↗'}
       </a>
-    );
-  }
-
-  if (!resolved) {
-    return (
-      <div
-        className="mt-3 rounded-2xl"
-        style={{ aspectRatio: '16/9', background: 'var(--tr-raised)', border: '1px solid var(--tr-border-subtle)' }}
-      />
     );
   }
 

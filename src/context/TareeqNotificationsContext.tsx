@@ -20,26 +20,71 @@ const Ctx = createContext<TareeqNotificationsCtx>({
 });
 
 
+/**
+ * In-app chime.
+ *
+ * ONE AudioContext for the page, unlocked on the first user gesture — not a fresh one per
+ * chime, which is what this used to do. A newly created AudioContext starts `suspended` on
+ * mobile, and `resume()` is only granted inside a user-gesture callback. Called from the
+ * 30-second poll there is no gesture, so resume never took effect and the chime was
+ * silent: the sound only appeared after the user interacted with the page, which is why it
+ * seemed to need a refresh.
+ *
+ * (This is the in-app sound only. With the app closed the sound comes from the OS
+ * notification itself — see the push handler in tareeq-sw.js.)
+ */
+let sharedAudioCtx: AudioContext | null = null;
+let audioUnlockBound = false;
+
+function getAudioCtx(): AudioContext | null {
+  const AudioCtx = typeof window === 'undefined'
+    ? null
+    : window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioCtx) return null;
+  if (!sharedAudioCtx) {
+    try { sharedAudioCtx = new AudioCtx(); } catch { return null; }
+  }
+  return sharedAudioCtx;
+}
+
+/** Resumes the shared context from inside a real gesture, once. */
+function bindAudioUnlock() {
+  if (audioUnlockBound || typeof document === 'undefined') return;
+  audioUnlockBound = true;
+  const unlock = () => {
+    const ctx = getAudioCtx();
+    if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+    if (ctx && ctx.state === 'running') {
+      document.removeEventListener('pointerdown', unlock);
+      document.removeEventListener('keydown', unlock);
+      document.removeEventListener('touchstart', unlock);
+    }
+  };
+  document.addEventListener('pointerdown', unlock);
+  document.addEventListener('keydown', unlock);
+  document.addEventListener('touchstart', unlock, { passive: true });
+}
+
 function playChime() {
   try {
-    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const resume = ctx.state === 'suspended' ? ctx.resume() : Promise.resolve();
-    resume.then(() => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.18);
-      gain.gain.setValueAtTime(0.28, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.35);
-      osc.onended = () => ctx.close().catch(() => {});
-    }).catch(() => {});
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    // Best-effort: outside a gesture this is a no-op, and the context stays suspended until
+    // the unlock listener above catches a real one.
+    if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); return; }
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.18);
+    gain.gain.setValueAtTime(0.28, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.35);
+    // The context is REUSED, never closed — closing it would put the next chime back in the
+    // suspended-without-a-gesture hole this fix exists to escape.
   } catch { /* audio not available */ }
 }
 
@@ -200,6 +245,9 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
   useEffect(() => {
     if (!user) { setNotifCount(0); setMessageCount(0); return; }
     poll();
+    // Arm the audio unlock as soon as there is a signed-in user, so the FIRST tap anywhere
+    // in the app makes every later chime audible — including ones fired from this timer.
+    bindAudioUnlock();
     timerRef.current = setInterval(poll, 30_000);
     const onVisible = () => { if (!document.hidden) poll(); };
     document.addEventListener('visibilitychange', onVisible);

@@ -420,10 +420,17 @@ function ProfileSheet({ onClose, onCreateClick, userId, userName, avatarUrl }: P
             </div>
             <div className="flex flex-col gap-0.5 flex-1 min-w-0">
               <span className="font-bold text-sm" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'فعّل الإشعارات' : 'Enable Notifications'}</span>
-              <span className="text-xs" style={{ color: 'var(--tr-text-muted)' }}>
+              {/* "Blocked in settings" was true but useless: it never said WHICH settings.
+                  This is the browser's PER-SITE permission, which is a different switch from
+                  the one in the phone's app settings — and having the app-level one turned on
+                  makes the message look plainly wrong. Name the actual place. */}
+              <span className="text-xs" style={{ color: notifState === 'denied' ? '#ef4444' : 'var(--tr-text-muted)', whiteSpace: 'normal' }}>
                 {notifState === 'granted' ? (isRtl ? 'مفعّلة ✓' : 'Enabled ✓')
-                  : notifState === 'denied' ? (isRtl ? 'محظورة من الإعدادات' : 'Blocked in browser settings')
-                  : (isRtl ? 'تلقّ إشعارات على جهازك' : 'Get alerts on your device')}
+                  : notifState === 'denied'
+                    ? (isRtl
+                        ? 'مرفوضة لهذا الموقع في المتصفح. من كروم: ⋮ ← Settings ← Site settings ← Notifications ← moslimleader.com ← Allow. (إذن التطبيق في إعدادات الهاتف لا يكفي.)'
+                        : 'Denied for this site in your browser. Chrome: ⋮ → Settings → Site settings → Notifications → moslimleader.com → Allow. (The phone\u2019s app permission is a different switch.)')
+                    : (isRtl ? 'تلقّ إشعارات على جهازك' : 'Get alerts on your device')}
               </span>
             </div>
             {notifState === 'default' && (

@@ -2,14 +2,9 @@
 import { useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 
-const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '';
+import { ensurePushSubscription } from '@/lib/tareeq-push-client';
 
-function urlB64ToUint8Array(base64: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64.length % 4)) % 4);
-  const b64 = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const raw = atob(b64);
-  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
-}
+const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '';
 
 export function useTareeqPush() {
   const { user } = useAuth();
@@ -27,26 +22,16 @@ export function useTareeqPush() {
         // Only prompt if permission not yet decided
         if (Notification.permission === 'denied') return;
 
-        const reg = await navigator.serviceWorker.ready;
-
-        // Check if already subscribed
-        const existing = await reg.pushManager.getSubscription();
-        if (existing) {
-          // Re-register to server in case it was lost
-          await syncSubscription(existing);
-          return;
-        }
-
-        // Don't auto-prompt — wait for permission to be 'granted' (user may
-        // have already allowed it via the app's install/settings flow)
+        // Don't auto-prompt — wait for permission to be 'granted' (the user may have
+        // allowed it via the install/settings flow).
         if (Notification.permission !== 'granted') return;
 
-        const sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlB64ToUint8Array(VAPID_PUBLIC),
-        });
-
-        await syncSubscription(sub);
+        const reg = await navigator.serviceWorker.ready;
+        // ensurePushSubscription, NOT getSubscription() → reuse. This path used to re-save
+        // whatever the browser was holding, which after a key rotation meant re-saving a
+        // subscription the push service rejects with 403 forever.
+        const sub = await ensurePushSubscription(reg, VAPID_PUBLIC);
+        if (sub) await syncSubscription(sub);
       } catch { /* ignore — offline or permission denied */ }
     })();
   }, [user]);
@@ -77,17 +62,11 @@ export async function requestTareeqPush(): Promise<'granted' | 'denied' | 'defau
     try { localStorage.removeItem('tareeq-push-opted-out'); } catch { /* blocked */ }
 
     const reg = await navigator.serviceWorker.ready;
-    // Reuse the existing subscription. Calling subscribe() when one already exists under a
-    // different applicationServerKey throws InvalidStateError, which the catch below turned
-    // into 'denied' — so the banner told a user who HAD granted permission that they
-    // hadn't, permanently.
-    let sub = await reg.pushManager.getSubscription();
-    if (!sub) {
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlB64ToUint8Array(VAPID_PUBLIC),
-      });
-    }
+    // Handles both traps in one place: a bare subscribe() throws InvalidStateError when a
+    // subscription already exists (which used to be reported to the user as 'denied'), and
+    // a bare reuse keeps a subscription bound to a retired key alive forever.
+    const sub = await ensurePushSubscription(reg, VAPID_PUBLIC);
+    if (!sub) return 'denied';
     await syncSubscription(sub);
     return 'granted';
   } catch {

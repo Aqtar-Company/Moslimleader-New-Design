@@ -1,6 +1,7 @@
 'use client';
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { ensurePushSubscription } from '@/lib/tareeq-push-client';
 
 type PushPermission = 'default' | 'granted' | 'denied' | 'unsupported';
 
@@ -18,12 +19,6 @@ const Ctx = createContext<TareeqNotificationsCtx>({
   pushPermission: 'unsupported', enablePush: async () => {}, disablePush: async () => {},
 });
 
-function urlBase64ToUint8Array(base64: string): Uint8Array {
-  const padding = '='.repeat((4 - base64.length % 4) % 4);
-  const b64 = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const raw = atob(b64);
-  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
-}
 
 function playChime() {
   try {
@@ -109,20 +104,19 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) { setPushPermission(perm); return; }
     navigator.serviceWorker.ready.then(async reg => {
       let sub = await reg.pushManager.getSubscription();
-      // Auto-recover: permission granted but no active subscription → re-subscribe silently.
+      // Auto-recover: permission granted but no usable subscription → re-subscribe silently.
       // NOT when the user turned notifications off themselves: unsubscribing cannot revoke
       // Notification.permission (it stays 'granted'), so "no subscription + granted" looks
       // identical to a dropped subscription. Without this flag every re-run of this effect
       // silently turned push back on — and since AuthContext now revalidates on tab focus,
       // `user` gets a new identity (and this effect re-runs) about once a minute.
-      if (!sub && user && !pushOptedOut()) {
-        const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-        if (vapidKey) {
-          sub = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
-          }).catch(() => null);
-        }
+      //
+      // "usable" includes the KEY: a subscription bound to a retired VAPID key is rejected
+      // 403 for the rest of its life, so ensurePushSubscription replaces it rather than
+      // handing the same dead one back.
+      if (user && !pushOptedOut()) {
+        const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '';
+        if (vapidKey) sub = await ensurePushSubscription(reg, vapidKey);
       }
       setPushPermission(sub ? 'granted' : perm);
       if (sub && user) {
@@ -222,15 +216,11 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
     if (permission !== 'granted') { setPushPermission(permission as PushPermission); return; }
     try {
       const reg = await navigator.serviceWorker.ready;
-      let sub = await reg.pushManager.getSubscription();
-      if (!sub) {
-        const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-        if (!vapidKey) return;
-        sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
-        });
-      }
+      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '';
+      // Replaces a subscription bound to a retired key instead of reusing it — reuse is
+      // what made "turn notifications back on" a no-op after a key rotation.
+      const sub = await ensurePushSubscription(reg, vapidKey);
+      if (!sub) return;
       await fetch('/api/tareeq/push-subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

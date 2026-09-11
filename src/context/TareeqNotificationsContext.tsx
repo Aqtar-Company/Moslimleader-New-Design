@@ -1,7 +1,7 @@
 'use client';
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { ensurePushSubscription } from '@/lib/tareeq-push-client';
+import { ensurePushSubscription, pushOptedOut, setPushOptedOut } from '@/lib/tareeq-push-client';
 
 type PushPermission = 'default' | 'granted' | 'denied' | 'unsupported';
 
@@ -54,24 +54,26 @@ function bindAudioUnlock() {
   const unlock = () => {
     const ctx = getAudioCtx();
     if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
-    if (ctx && ctx.state === 'running') {
-      document.removeEventListener('pointerdown', unlock);
-      document.removeEventListener('keydown', unlock);
-      document.removeEventListener('touchstart', unlock);
-    }
+    // Detach after the FIRST gesture, not after the context reports 'running': resume() is
+    // async, so state is still 'suspended' here and the old check never removed anything —
+    // three listeners, plus a `new AudioContext()` attempt per tap when audio is
+    // unavailable, for the life of the page.
+    document.removeEventListener('pointerdown', unlock);
+    document.removeEventListener('keydown', unlock);
+    document.removeEventListener('touchstart', unlock);
   };
   document.addEventListener('pointerdown', unlock);
   document.addEventListener('keydown', unlock);
   document.addEventListener('touchstart', unlock, { passive: true });
 }
 
-function playChime() {
+function playChime(): boolean {
   try {
     const ctx = getAudioCtx();
-    if (!ctx) return;
+    if (!ctx) return false;
     // Best-effort: outside a gesture this is a no-op, and the context stays suspended until
     // the unlock listener above catches a real one.
-    if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); return; }
+    if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); return false; }
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
@@ -85,23 +87,9 @@ function playChime() {
     osc.stop(ctx.currentTime + 0.35);
     // The context is REUSED, never closed — closing it would put the next chime back in the
     // suspended-without-a-gesture hole this fix exists to escape.
+    return true;
   } catch { /* audio not available */ }
-}
-
-/**
- * Whether the user explicitly turned push OFF.
- *
- * `PushSubscription.unsubscribe()` cannot revoke `Notification.permission`, so after an
- * opt-out the browser state ("granted, no subscription") is indistinguishable from a
- * subscription the browser dropped on its own — which the auto-recover effect is meant to
- * repair. This flag is what tells the two apart. Per-device by design.
- */
-const OPT_OUT_KEY = 'tareeq-push-opted-out';
-function pushOptedOut(): boolean {
-  try { return localStorage.getItem(OPT_OUT_KEY) === '1'; } catch { return false; }
-}
-function setPushOptedOut(v: boolean) {
-  try { if (v) localStorage.setItem(OPT_OUT_KEY, '1'); else localStorage.removeItem(OPT_OUT_KEY); } catch { /* blocked */ }
+  return false;
 }
 
 export function TareeqNotificationsProvider({ children }: { children: React.ReactNode }) {
@@ -163,7 +151,10 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
         const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '';
         if (vapidKey) sub = await ensurePushSubscription(reg, vapidKey);
       }
-      setPushPermission(sub ? 'granted' : perm);
+      // NOT `sub ? 'granted' : perm` — this effect already returned unless perm was
+      // 'granted', so both branches were 'granted' and the sidebar claimed push was on
+      // when there was no subscription at all (after an opt-out, or a failed re-subscribe).
+      setPushPermission(sub ? 'granted' : 'default');
       if (sub && user) {
         fetch('/api/tareeq/push-subscribe', {
           method: 'POST',
@@ -174,6 +165,15 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
       }
     }).catch(() => setPushPermission(perm));
   }, [user]);
+
+  // The media-channel player could not sound (no gesture has started its session yet), and
+  // the service worker had already silenced the OS notification on the assumption that the
+  // page would handle it. Play it here, through the shared context.
+  useEffect(() => {
+    const onFallback = () => { if (playChime()) lastChimeAtRef.current = Date.now(); };
+    window.addEventListener('tareeq-chime-fallback', onFallback);
+    return () => window.removeEventListener('tareeq-chime-fallback', onFallback);
+  }, []);
 
   // Update PWA app-icon badge (Badging API)
   useEffect(() => {
@@ -213,9 +213,11 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
       // The service worker already chimes for a push that arrives while the tab is visible
       // (TAREEQ_PLAY_SOUND). Without this the poll would chime AGAIN for the same message
       // within 30s — the exact double-chime this coalescing was meant to remove.
+      // Only spend the 30s window on a chime that was actually AUDIBLE. While the audio
+      // context is still locked playChime() is a no-op, and stamping anyway meant the next
+      // genuine event inside 30 seconds was silent too.
       if (shouldChime && Date.now() - lastChimeAtRef.current > 30_000) {
-        lastChimeAtRef.current = Date.now();
-        playChime();
+        if (playChime()) lastChimeAtRef.current = Date.now();
       }
       initialPollDone.current = true;
     } catch { /* ignore */ }
@@ -226,7 +228,11 @@ export function TareeqNotificationsProvider({ children }: { children: React.Reac
     if (!user || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
     const onMessage = (e: MessageEvent) => {
       const data = e.data;
-      // The SW chimed for this one; suppress the poll's own chime for the same event.
+      // TareeqMediaSession owns this sound — it routes through the media channel, so it is
+      // audible with the screen locked. Here we only record that it happened, so the 30s
+      // poll doesn't chime a second time for the same event. The FALLBACK, for when that
+      // player has no unlocked session, arrives as a `tareeq-chime-fallback` window event
+      // (see the effect below) rather than as a second listener on this message.
       if (data?.type === 'TAREEQ_PLAY_SOUND') { lastChimeAtRef.current = Date.now(); return; }
       if (!data || data.type !== 'TAREEQ_BADGE_UPDATE') return;
       if (typeof data.notifCount === 'number') {

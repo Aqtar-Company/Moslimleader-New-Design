@@ -211,8 +211,8 @@ self.addEventListener('push', e => {
   };
 
   if (isCall && data.callId) {
-    // Repeated ringing: show notification + wake windows, then re-ring every 4s
-    // for up to 24 seconds (6 iterations) — stop early if call is no longer ringing.
+    // Repeated ringing: show notification + wake windows, then re-ring every 2s across
+    // 6 iterations (~10s of gaps) — stop early if the call is no longer ringing.
     // Each iteration uses a UNIQUE tag so the OS treats it as a new notification
     // and plays the system sound again (reusing the same tag silences subsequent rings
     // on Android/iOS even with renotify:true).

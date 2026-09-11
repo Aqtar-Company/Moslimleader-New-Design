@@ -1,12 +1,24 @@
 import webpush from 'web-push';
 import { prisma } from './prisma';
 
+/**
+ * Whether web-push is usable. setVapidDetails VALIDATES the keys and throws on a malformed
+ * one — unwrapped, that throw happens during module evaluation, so a single typo in .env
+ * took down every route that imports this file (calls, DMs, reactions, admin send) with a
+ * 500 instead of degrading to "no push configured".
+ */
+let vapidReady = false;
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(
-    'mailto:info@moslimleader.com',
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY,
-  );
+  try {
+    webpush.setVapidDetails(
+      'mailto:info@moslimleader.com',
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY,
+    );
+    vapidReady = true;
+  } catch (err) {
+    console.error('[tareeq-push] VAPID keys are present but invalid — no push will be delivered', err);
+  }
 }
 
 export interface PushPayload {
@@ -27,10 +39,10 @@ export interface PushPayload {
 }
 
 export async function sendPushToUser(userId: string, payload: PushPayload): Promise<void> {
-  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
-    // Loudly, once per send: a missing key pair means NO background notifications at all,
-    // and staying silent about it made the whole platform look like nobody had opted in.
-    console.warn('[tareeq-push] VAPID keys are not configured — no push will be delivered');
+  if (!vapidReady) {
+    // Loudly, once per send: missing OR malformed keys mean NO background notifications at
+    // all, and staying silent about it made the whole platform look like nobody had opted in.
+    console.warn('[tareeq-push] VAPID is not configured — no push will be delivered');
     return;
   }
 

@@ -164,8 +164,11 @@ VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=
 
-# Shared secret for /api/cron/khatmati-reminder (sent as the x-cron-key header)
-CRON_KEY=
+# Shared secret for BOTH cron routes — /api/cron/khatmati-reminder and
+# /api/cron/fb-follow-up. The variable is CRON_SECRET; the HEADER is `x-cron-key`.
+# The two names differ, and getting them the wrong way round leaves both endpoints
+# answering 403 in production forever (they fail closed when NODE_ENV=production).
+CRON_SECRET=
 ```
 
 > `NEXT_PUBLIC_*` values are inlined at BUILD time. Changing `NEXT_PUBLIC_VAPID_PUBLIC_KEY`

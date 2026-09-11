@@ -129,9 +129,23 @@ export default function TareeqMediaSession() {
         const t = ev.data?.type;
         if (t !== 'TAREEQ_PLAY_SOUND' && t !== 'TAREEQ_NEW_MESSAGE') return;
 
-        // Only play if a user gesture has already unlocked audio.
-        // If not, the OS notification already played its sound.
-        if (!_sessionStarted) return;
+        // This player owns the sound whenever it CAN play: it routes through the media
+        // channel, so it is heard with the screen locked and in silent mode. It needs a
+        // gesture to have started the session first.
+        //
+        // When it can't, it must hand off rather than return — the comment here used to say
+        // "the OS notification already played its sound", which is exactly wrong in this
+        // branch: the service worker sets `silent: true` on the notification whenever a
+        // visible window exists, precisely because it expects the page to play it. Silence
+        // on both sides was the result.
+        //
+        // A window event, not a second SW-message listener: two listeners on the same
+        // target would both fire for one push and chime twice, and their order is an
+        // implementation detail. One owner per branch.
+        if (!_sessionStarted) {
+          window.dispatchEvent(new Event('tareeq-chime-fallback'));
+          return;
+        }
 
         // ensureCtxWithLoop() rebuilds a closed ctx and restarts the loop,
         // so _sessionStarted stays true and media-channel routing is restored.

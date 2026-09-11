@@ -50,8 +50,15 @@ export async function GET(request: NextRequest) {
     push: {
       serverKeys: !!(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY),
       clientKey: !!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-      // The browser subscribes with the client key; the server signs with the server pair.
-      // If these differ, every send is rejected 403 and every subscription is dead weight.
+      // A keysMatch BOOLEAN was green in the exact case it existed to catch: add the key to
+      // .env, restart without rebuilding, and this route reads the runtime value while the
+      // browser bundle — where NEXT_PUBLIC_* is inlined at BUILD time — still has none.
+      // Prefixes instead, so the operator compares what the server signs with against what
+      // the browser actually subscribed with (read it in DevTools, or from the sidebar).
+      // Safe to expose: the VAPID public key is public by design. The private one is never
+      // touched here.
+      serverKeyPrefix: (process.env.VAPID_PUBLIC_KEY ?? '').slice(0, 10) || null,
+      clientKeyPrefix: (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '').slice(0, 10) || null,
       keysMatch: !!process.env.VAPID_PUBLIC_KEY
         && process.env.VAPID_PUBLIC_KEY === process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
     },

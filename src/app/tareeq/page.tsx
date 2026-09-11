@@ -28,6 +28,7 @@ export default async function TareeqPage() {
 
   try {
     const posts = await prisma.tareeqPost.findMany({
+      where: { isHidden: false, isDraft: false },
       orderBy: { createdAt: 'desc' },
       take: 13,
       select: {

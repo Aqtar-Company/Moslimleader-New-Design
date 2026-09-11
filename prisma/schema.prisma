@@ -44,6 +44,11 @@ model User {
   tareeqSuspendedAt       DateTime?
   tareeqSuspendReason     String?
   tareeqMessagePrivacy    String    @default("everyone")
+  /// Which notification types this user wants, as { like: false, comment: true, … }.
+  /// Nine notification types existed and the only control was all-or-nothing, so anyone
+  /// annoyed by "someone liked your mark" lost "you have a new message" along with it.
+  /// Null means every type is on — the previous behaviour, so nothing changes on upgrade.
+  tareeqNotifPrefs        Json?
   communityMemberNumber   String?   @unique
   username                String?   @unique
   createdAt               DateTime  @default(now())
@@ -94,6 +99,8 @@ model User {
   khatmatiWirds           KhatmatiWird[]
   tareeqBlocksMade        TareeqBlock[]            @relation("TareeqBlocksMade")
   tareeqBlocksReceived    TareeqBlock[]            @relation("TareeqBlocksReceived")
+  tareeqMutesMade         TareeqMute[]             @relation("TareeqMutesMade")
+  tareeqMutesReceived     TareeqMute[]             @relation("TareeqMutesReceived")
   tareeqMsgRequestsSent   TareeqMessageRequest[]   @relation("TareeqMsgReqFrom")
   tareeqMsgRequestsReceived TareeqMessageRequest[] @relation("TareeqMsgReqTo")
   khatmaGroupsAdmin       KhatmaGroup[]            @relation("KhatmaGroupAdmin")
@@ -968,6 +975,10 @@ model TareeqPost {
   tags         Json?
   imageUrl     String?          @db.Text
   imageUrls    Json?
+  // Author-written description of the image, for screen readers. Every <img> in Tareeq
+  // was hardcoded alt="" — correct for decoration, wrong for a photo carrying the point
+  // of the post, which made every uploaded image invisible to a blind reader.
+  imageAlt     String?          @db.Text
   videoUrl     String?          @db.Text
   // Poster frame for a video post. The composer has always SENT this (a frame it grabs
   // from the video, or a cover the author picked) and POST /api/tareeq silently dropped
@@ -990,6 +1001,15 @@ model TareeqPost {
   seriesId        String?
   seriesTitle     String?
   seriesOrder     Int?
+
+  // Server-side drafts. The composer already kept ONE draft in localStorage, which meant
+  // a draft started on the phone did not exist on the desktop, and starting a second post
+  // overwrote the first. A draft is a real row that the feed filters out.
+  isDraft         Boolean                  @default(false)
+  // When the post actually went public. Null while it is a draft. Set on publish rather
+  // than reusing createdAt, so a post drafted last week and published today is not buried
+  // a week deep in the feed.
+  publishedAt     DateTime?
 
   // A share is a POINTER to the original, not a copy of its text. Copying produced a post
   // that read as if the sharer had written it themselves — the author's name, avatar and
@@ -1018,6 +1038,11 @@ model TareeqPost {
   @@index([isHidden])
   @@index([seriesId])
   @@index([sharedFromId])
+  @@index([isDraft])
+  @@index([publishedAt])
+  // Post search ran as `contains`, which MySQL executes as LIKE '%…%' — a full table scan
+  // no index can help. This is the index that makes `search:` possible instead.
+  @@fulltext([title, content])
 }
 
 model TareeqLike {
@@ -1141,6 +1166,30 @@ model KhatmatiProgress {
   updatedAt      DateTime  @updatedAt
 }
 
+/// Muting, as distinct from blocking.
+///
+/// `TareeqBlock` was the only tool, and it is the loud one: it severs both directions and
+/// the other person can tell. In a small community where everyone knows everyone, that
+/// social cost means people don't use it — they put up with the noise, or they leave.
+/// A mute is one-directional, invisible to the muted, and only filters the feed.
+///
+/// `postId` set instead of `mutedId` mutes one post's notifications rather than a person.
+model TareeqMute {
+  id        String   @id @default(cuid())
+  muterId   String
+  muter     User     @relation("TareeqMutesMade", fields: [muterId], references: [id], onDelete: Cascade)
+  mutedId   String?
+  muted     User?    @relation("TareeqMutesReceived", fields: [mutedId], references: [id], onDelete: Cascade)
+  postId    String?
+  createdAt DateTime @default(now())
+
+  @@unique([muterId, mutedId])
+  @@unique([muterId, postId])
+  @@index([muterId])
+  @@index([mutedId])
+  @@index([postId])
+}
+
 model TareeqBlock {
   id        String   @id @default(cuid())
   blockerId String
@@ -1180,6 +1229,10 @@ model TareeqPostView {
 
   @@index([postId])
   @@index([userId])
+  // recordPostView() asks "did this viewer already see this post today?" — postId + userId
+  // + createdAt. With only the two single-column indexes above, every view of a popular
+  // post scanned every view that post had ever received.
+  @@index([postId, userId, createdAt])
 }
 
 model TareeqConversation {
@@ -1768,10 +1821,16 @@ model TareeqBan {
   isActive  Boolean       @default(true)
   liftedBy  String?
   liftedAt  DateTime?
+  // A ban with no way to answer it reads as arbitrary even when it is correct. The banned
+  // user can state their case once; an admin sees it in the same row as the ban.
+  appealText   String?    @db.Text
+  appealedAt   DateTime?
+  appealStatus String?    // null = never appealed | "pending" | "rejected" | "accepted"
   createdAt DateTime      @default(now())
 
   @@index([userId])
   @@index([isActive])
+  @@index([appealStatus])
 }
 
 model TareeqFeatureFlag {

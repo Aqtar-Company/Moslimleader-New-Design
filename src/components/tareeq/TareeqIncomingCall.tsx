@@ -20,7 +20,10 @@ export default function TareeqIncomingCall() {
   const [incoming, setIncoming] = useState<IncomingCall | null>(null);
   const [acceptedAs, setAcceptedAs] = useState<'audio' | 'video' | null>(null);
   const seenRef = useRef<Set<string>>(new Set());
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Read by the poll loop to pick its own cadence. A ref, not the state value: the loop is
+  // created once per session and must not be torn down and rebuilt on every render.
+  const ringingRef = useRef(false);
   const ringTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ringSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const ringActiveRef = useRef(false);
@@ -176,15 +179,49 @@ export default function TareeqIncomingCall() {
     }
     navigator.serviceWorker?.addEventListener('message', onSwMessage);
 
+    // Cadence, and why it is not a flat 3 seconds any more.
+    //
+    // This used to be `setInterval(poll, 3000)` for every signed-in user, on every page,
+    // with no visibility check — so a minimised tab kept asking "is anyone calling me?"
+    // twenty times a minute, all day. Measured against the rest of Tareeq that was 20 of
+    // the 27 requests a minute each open tab made: about three quarters of the platform's
+    // entire load, spent on a question the push above already answers instantly.
+    //
+    // So: while nothing is ringing this is a slow safety net (the push is the real
+    // channel), and it stops dead while the tab is hidden. While a call IS on screen it
+    // goes back to 3 seconds, because that is how the overlay learns the caller hung up.
+    const IDLE_MS = 60_000;
+    const RINGING_MS = 3_000;
+    let stopped = false;
+
+    const tick = async () => {
+      if (stopped) return;
+      // Hidden and nothing ringing: skip the request entirely, and look again later.
+      if (!(document.hidden && !ringingRef.current)) await poll();
+      if (stopped) return;
+      intervalRef.current = setTimeout(tick, ringingRef.current ? RINGING_MS : IDLE_MS);
+    };
+
+    // Coming back to the tab is the one moment worth an immediate check: a push may have
+    // been dropped while it was in the background.
+    const onVisible = () => { if (!document.hidden) poll(); };
+    document.addEventListener('visibilitychange', onVisible);
+
     poll();
-    intervalRef.current = setInterval(poll, 3000);
+    intervalRef.current = setTimeout(tick, IDLE_MS);
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      stopped = true;
+      if (intervalRef.current) clearTimeout(intervalRef.current);
+      document.removeEventListener('visibilitychange', onVisible);
       navigator.serviceWorker?.removeEventListener('message', onSwMessage);
       stopRing();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  // One assignment, one place: every path that shows or clears the overlay goes through
+  // `incoming`, so mirroring it here cannot drift from what the user sees.
+  useEffect(() => { ringingRef.current = incoming !== null; }, [incoming]);
 
   function dismiss() {
     stopRing();

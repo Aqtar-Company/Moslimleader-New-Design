@@ -6,6 +6,7 @@ import { tareeqRateLimit, isBlockedEitherWay } from '@/lib/tareeq-guard';
 import { CATEGORY_KEY } from '@/lib/tareeq-constants';
 import { filterContent, validateMediaUrl } from '@/lib/tareeq-content-filter';
 import { SHARED_FROM_SELECT, normalizeSharedFrom } from '@/lib/tareeq-post-select';
+import { postSearchWhere } from '@/lib/tareeq-search';
 
 // GET /api/tareeq?cursor=xxx&category=xxx&limit=12&likedBy=userId&sort=newest|liked|following|useful
 export async function GET(req: NextRequest) {
@@ -76,15 +77,10 @@ export async function GET(req: NextRequest) {
 
     const followWhere = {
       isHidden: false,
+      isDraft: false,
       userId: { in: followingIds.filter(id => !blockedIds.includes(id)) },
       ...(category ? { category } : {}),
-      ...(search ? {
-        OR: [
-          { title: { contains: search } },
-          { content: { contains: search } },
-          { authorName: { contains: search } },
-        ],
-      } : {}),
+      ...postSearchWhere(search),
     };
 
     const followPosts = await prisma.tareeqPost.findMany({
@@ -165,6 +161,9 @@ export async function GET(req: NextRequest) {
 
   const where = {
     isHidden: false,
+    // A draft is a real row now, and it belongs to nobody's feed — not even its author's.
+    // It is reachable only through the drafts list.
+    isDraft: false,
     ...(category ? { category } : {}),
     // AND (not two spreads) — both of these constrain `userId`, so spreading them side by
     // side silently dropped whichever came first.
@@ -173,13 +172,7 @@ export async function GET(req: NextRequest) {
       ...(blockedIds.length ? [{ userId: { notIn: blockedIds } }] : []),
     ],
     ...(sort === 'useful' ? { createdAt: { gte: new Date(Date.now() - 30 * 24 * 3600 * 1000) } } : {}),
-    ...(search ? {
-      OR: [
-        { title: { contains: search } },
-        { content: { contains: search } },
-        { authorName: { contains: search } },
-      ],
-    } : {}),
+    ...postSearchWhere(search),
   };
 
   const posts = await prisma.tareeqPost.findMany({

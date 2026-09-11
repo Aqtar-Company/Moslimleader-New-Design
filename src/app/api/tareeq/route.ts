@@ -317,6 +317,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'رابط الفيديو غير مسموح به' }, { status: 400 });
   }
 
+  // Saving as a draft rather than publishing. Everything else on this route is identical:
+  // validation, the content filter and the media checks all run, so a draft cannot be used
+  // as a way to store content that would be rejected on publish.
+  const isDraft = body.isDraft === true;
+
   // Content filter
   const textToCheck = [content, title, summary].filter(Boolean).join(' ');
   const filterResult = filterContent(textToCheck);
@@ -352,6 +357,10 @@ export async function POST(req: NextRequest) {
       imageUrl: imageUrl ?? (imageUrls?.[0] ?? null),
       imageUrls: imageUrls ?? undefined,
       imageAlt,
+      isDraft,
+      // Null while it is a draft; the publish route stamps it. Not reusing createdAt so a
+      // post drafted last week and published today isn't buried a week deep.
+      publishedAt: isDraft ? null : new Date(),
       videoUrl,
       ...(thumbnailUrl ? { thumbnailUrl } : {}),
       userId: user.userId,
@@ -361,7 +370,10 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  if (sharedFromId) {
+  // `!isDraft`: a draft share must not bump the original's shareCount or tell its author
+  // anything. Nothing has been shared yet — and a draft that is later discarded would have
+  // left a permanent +1 and a notification about a post that never existed.
+  if (sharedFromId && !isDraft) {
     // Best-effort: the share itself is already saved, so neither of these may fail it.
     prisma.tareeqPost.update({
       where: { id: sharedFromId },
@@ -396,5 +408,5 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, id: post.id, flagged: autoHide });
+  return NextResponse.json({ ok: true, id: post.id, flagged: autoHide, isDraft });
 }

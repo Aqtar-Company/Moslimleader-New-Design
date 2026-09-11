@@ -396,7 +396,12 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     setExtraImages(prev => prev.filter(x => x.id !== id));
   }
 
-  async function submit() {
+  /**
+   * `asDraft` rather than a second function: the publish path validates media URLs,
+   * runs the content filter server-side and assembles the image list, and a separate
+   * draft submitter would have to duplicate all of it — and then drift from it.
+   */
+  async function submit(asDraft = false) {
     if (!mediaUrl && !content.trim()) {
       setError(isRtl ? 'اكتب شيئاً أو أضف صورة' : 'Write something or add a photo');
       return;
@@ -415,6 +420,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
+          isDraft: asDraft,
           content: content.trim(),
           category: category || null,
           imageUrl: mediaType === 'image' ? mediaUrl : null,
@@ -433,7 +439,10 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
       const data = await res.json();
       if (res.ok) {
         try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
-        onCreated(data.id);
+        // NOT for a draft. `onCreated` tells the feed a new post arrived and makes it
+        // scroll to and highlight that id — but a draft is filtered out of every feed, so
+        // the feed would hunt for a post it can never be shown.
+        if (!asDraft) onCreated(data.id);
         onClose();
       } else setError(data.error || (isRtl ? 'حدث خطأ' : 'An error occurred'));
     } catch {
@@ -470,6 +479,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   // it), so without this filter one flaky thumbnail permanently disabled Publish.
   const extraUploading = extraImages.some(e => e.url === null && !e.failed);
   const canPublish = !loading && !uploading && !extraUploading && !thumbUploading && !mainUploadFailed && !!(mediaUrl || content.trim());
+  // A draft has nothing to wait for that publishing doesn't, so it shares the gate.
+  const canDraft = canPublish;
   const catObj = category ? TAREEQ_CATEGORIES[category] : null;
   const charCount = content.length;
   const charLeft = 5000 - charCount;
@@ -525,9 +536,36 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
             )}
           </div>
 
+          {/* Save as draft.
+              The composer already kept one draft in localStorage, which meant a draft
+              started on the phone did not exist on the desktop and a second post silently
+              overwrote the first. This one is a row on the server. The local draft stays
+              too: it survives a closed tab before any save, and works offline. */}
+          <button
+            onClick={() => submit(true)}
+            disabled={!canDraft}
+            className="font-bold px-3.5 py-2 rounded-full text-xs transition active:scale-95 disabled:opacity-40"
+            style={{
+              background: 'var(--tr-overlay)',
+              color: 'var(--tr-text-secondary)',
+              border: '1px solid var(--tr-border-subtle)',
+            }}
+          >
+            {isRtl ? 'حفظ كمسودة' : 'Save draft'}
+          </button>
+
+          {/* A saved draft with no way back to it would be write-only. */}
+          <a
+            href="/tareeq/drafts"
+            className="text-[11px] font-bold px-2 py-2"
+            style={{ color: 'var(--tr-text-muted)', textDecoration: 'none', whiteSpace: 'nowrap' }}
+          >
+            {isRtl ? 'مسوداتي' : 'Drafts'}
+          </a>
+
           {/* Publish */}
           <button
-            onClick={submit}
+            onClick={() => submit(false)}
             disabled={!canPublish}
             className="font-black px-5 py-2 rounded-full text-sm transition active:scale-95 disabled:opacity-40"
             style={{

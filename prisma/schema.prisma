@@ -969,6 +969,11 @@ model TareeqPost {
   imageUrl     String?          @db.Text
   imageUrls    Json?
   videoUrl     String?          @db.Text
+  // Poster frame for a video post. The composer has always SENT this (a frame it grabs
+  // from the video, or a cover the author picked) and POST /api/tareeq silently dropped
+  // it — there was no column. So a video post had no still image anywhere: no poster on
+  // the player, and nothing to show when it was sent in a message.
+  thumbnailUrl String?          @db.Text
   userId       String?
   user         User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
   authorName   String           @default("مجهول")

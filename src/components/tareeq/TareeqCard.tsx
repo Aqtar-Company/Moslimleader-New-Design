@@ -217,6 +217,8 @@ export interface TareeqPostSummary {
   imageUrl?: string | null;
   imageUrls?: string[] | null;
   videoUrl?: string | null;
+  /** Poster frame for a video post — also what a DM share uses as its thumbnail. */
+  thumbnailUrl?: string | null;
   authorName: string;
   likeCount: number;
   commentCount: number;
@@ -245,6 +247,7 @@ export interface SharedOriginal {
   content: string;
   imageUrl?: string | null;
   videoUrl?: string | null;
+  thumbnailUrl?: string | null;
   authorName: string;
   userId?: string | null;
   createdAt: string;
@@ -325,6 +328,7 @@ export function SharedOriginalCard({ original, isRtl }: { original: SharedOrigin
         <div onClick={e => { e.preventDefault(); e.stopPropagation(); }}>
           <video
             src={original.videoUrl}
+            poster={original.thumbnailUrl ?? undefined}
             controls
             playsInline
             preload="metadata"
@@ -1165,7 +1169,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         </article>
 
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
-{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
+{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl ?? post.thumbnailUrl ?? null, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
         {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
@@ -1364,7 +1368,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
         </article>
 
         {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
-{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
+{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl ?? post.thumbnailUrl ?? null, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
         {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
         {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
         {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}
@@ -1510,6 +1514,9 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
             <div className="mt-3 rounded-2xl overflow-hidden" style={{ border: '1px solid var(--tr-border-soft)' }} onClick={e => e.stopPropagation()}>
               <video
                 src={post.videoUrl}
+                // The author's cover frame, so the card shows a still instead of a black
+                // rectangle before playback. It was being collected and thrown away.
+                poster={post.thumbnailUrl ?? undefined}
                 controls
                 preload="metadata"
                 playsInline
@@ -1594,7 +1601,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
       </article>
 
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
-{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
+{showShareMenu && <TareeqShareSheet post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl ?? post.thumbnailUrl ?? null, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null }} isRtl={isRtl} onClose={() => setShowShareMenu(false)} />}
       {showBookmarkPicker && <BookmarkPicker isRtl={isRtl} folders={bmFolders} newFolderName={newFolderName} setNewFolderName={setNewFolderName} creatingFolder={creatingFolder} onSave={handleBookmarkSave} onCreate={handleCreateFolder} onClose={() => setShowBookmarkPicker(false)} />}
       {showOptions && <OptionsSheet isRtl={isRtl} postId={post.id} postUserId={post.userId ?? ''} isOwn={user?.id === post.userId} onReport={() => setShowReport(true)} onDeleted={() => { setShowOptions(false); onDeleted?.(post.id); }} onClose={() => setShowOptions(false)} />}
       {showReport && <ReportModal targetType="post" targetId={post.id} isRtl={isRtl} onClose={() => setShowReport(false)} />}

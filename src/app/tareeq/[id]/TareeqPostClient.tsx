@@ -28,6 +28,7 @@ interface Post {
   seriesId?: string | null;
   seriesTitle?: string | null;
   seriesOrder?: number | null;
+  thumbnailUrl?: string | null;
   sharedFromId?: string | null;
   sharedFrom?: SharedOriginal | null;
 }
@@ -567,7 +568,7 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
                 </button>
                 {showShareMenu && (
                   <TareeqShareSheet
-                    post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null }}
+                    post={{ id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl ?? post.thumbnailUrl ?? null, category: post.category, authorName: post.user?.name ?? post.authorName, authorAvatarUrl: post.user?.avatarUrl ?? null }}
                     isRtl={isRtl}
                     onClose={() => setShowShareMenu(false)}
                   />

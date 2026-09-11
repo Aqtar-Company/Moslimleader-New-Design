@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       select: {
         id: true, title: true, summary: true, content: true,
-        category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true, authorName: true,
+        category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true, thumbnailUrl: true, authorName: true,
         likeCount: true, commentCount: true, savedCount: true, createdAt: true, userId: true,
         pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
         seriesId: true, seriesTitle: true, seriesOrder: true,
@@ -141,7 +141,7 @@ export async function GET(req: NextRequest) {
         post: {
           select: {
             id: true, title: true, summary: true, content: true,
-            category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true, authorName: true,
+            category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true, thumbnailUrl: true, authorName: true,
             likeCount: true, commentCount: true, savedCount: true, createdAt: true, userId: true,
             pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
             seriesId: true, seriesTitle: true, seriesOrder: true,
@@ -189,7 +189,7 @@ export async function GET(req: NextRequest) {
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     select: {
       id: true, title: true, summary: true, content: true,
-      category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true, authorName: true,
+      category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true, thumbnailUrl: true, authorName: true,
       likeCount: true, commentCount: true, savedCount: true, createdAt: true, userId: true,
       pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
       seriesId: true, seriesTitle: true, seriesOrder: true,
@@ -252,6 +252,8 @@ export async function POST(req: NextRequest) {
     ? rawImageUrls.filter((u): u is string => typeof u === 'string' && u.trim().length > 0).slice(0, 9)
     : null;
   const videoUrl = String(body.videoUrl ?? '').trim() || null;
+  // The composer sends this for every video post; it used to be read by nothing.
+  const thumbnailUrl = String(body.thumbnailUrl ?? '').trim() || null;
 
   // A share points at the original instead of copying its text — see the schema comment
   // on TareeqPost.sharedFromId.
@@ -289,7 +291,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Media URL domain validation
-  const allImageUrls = [imageUrl, ...(imageUrls ?? [])].filter(Boolean) as string[];
+  const allImageUrls = [imageUrl, ...(imageUrls ?? []), thumbnailUrl].filter(Boolean) as string[];
   for (const u of allImageUrls) {
     if (!validateMediaUrl(u, 'image')) {
       return NextResponse.json({ error: 'رابط الصورة غير مسموح به' }, { status: 400 });
@@ -334,6 +336,7 @@ export async function POST(req: NextRequest) {
       imageUrl: imageUrl ?? (imageUrls?.[0] ?? null),
       imageUrls: imageUrls ?? undefined,
       videoUrl,
+      ...(thumbnailUrl ? { thumbnailUrl } : {}),
       userId: user.userId,
       authorName: dbUser?.name ?? 'مجهول',
       ...(seriesId ? { seriesId, seriesTitle: rawSeriesTitle, seriesOrder } : {}),

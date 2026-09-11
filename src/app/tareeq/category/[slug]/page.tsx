@@ -46,7 +46,7 @@ export default async function CategoryPage({ params }: Props) {
       take: 30,
       select: {
         id: true, title: true, summary: true, content: true,
-        category: true, tags: true, imageUrl: true, videoUrl: true,
+        category: true, tags: true, imageUrl: true, videoUrl: true, thumbnailUrl: true,
         authorName: true, likeCount: true, commentCount: true,
         createdAt: true, userId: true,
         user: { select: { id: true, name: true, avatarUrl: true } },

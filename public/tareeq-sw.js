@@ -2,7 +2,12 @@
 const CACHE_STATIC  = 'tareeq-v7-static';
 const CACHE_PAGES   = 'tareeq-v7-pages';
 const CACHE_IMAGES  = 'tareeq-v7-images';
-const ALL_CACHES    = [CACHE_STATIC, CACHE_PAGES, CACHE_IMAGES];
+// Mushaf page data and the per-page QCF4 fonts. Kept in their OWN cache, never version-
+// suffixed, so a service-worker version bump does not throw away tens of megabytes the
+// user already paid to download. These files are immutable: a given page's glyph data and
+// font never change, so there is nothing to revalidate.
+const CACHE_MUSHAF  = 'tareeq-mushaf-immutable';
+const ALL_CACHES    = [CACHE_STATIC, CACHE_PAGES, CACHE_IMAGES, CACHE_MUSHAF];
 
 const SHELL = [
   '/tareeq',
@@ -46,6 +51,17 @@ self.addEventListener('fetch', e => {
   // Cross-origin images (R2, CDN) — let browser handle directly, never cache
   // Opaque SW responses for cross-origin images cause blank-after-load bugs
   if (url.origin !== self.location.origin) return;
+
+  // Mushaf data + fonts: cache-first, and they never expire.
+  //
+  // These were falling through to the network on EVERY open, which is the delay when the
+  // Mushaf first appears: each page needs its JSON (~30 KB) plus a per-page QCF4 woff2
+  // (~750 KB average, 48 files). Nothing cached them, so re-reading the same page paid the
+  // same cost again. They are content-addressed by page number and immutable.
+  if (url.pathname.startsWith('/mushaf-qcf4/') || url.pathname.startsWith('/fonts/')) {
+    e.respondWith(cacheFirst(e.request, CACHE_MUSHAF));
+    return;
+  }
 
   // Images: cache-first (fast, infrequently changed)
   if (/\.(png|jpg|jpeg|webp|gif|svg|ico)$/i.test(url.pathname)) {

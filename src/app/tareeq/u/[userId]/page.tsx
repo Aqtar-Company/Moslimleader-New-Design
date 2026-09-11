@@ -96,7 +96,7 @@ export default async function TareeqUserPage({ params }: Props) {
           orderBy: { createdAt: 'desc' },
           select: {
             id: true, title: true, summary: true, content: true,
-            category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true,
+            category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true, thumbnailUrl: true,
             authorName: true, likeCount: true, commentCount: true, savedCount: true,
             createdAt: true, userId: true,
             pinnedCommentId: true, postUpdate: true, postUpdateAt: true,

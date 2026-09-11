@@ -20,9 +20,10 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   const siteUrl = 'https://moslimleader.com';
   const pageUrl = `${siteUrl}/tareeq/${params.id}`;
 
-  // Use post image if available, else fall back to generated OG image route
+  // Use the post's own image when there is one, else the generated card. Uploaded paths
+  // are site-relative, and og:image must be absolute or scrapers drop it.
   const ogImage = post.imageUrl
-    ? post.imageUrl
+    ? new URL(post.imageUrl, siteUrl).toString()
     : `${siteUrl}/api/tareeq/${params.id}/og`;
 
   return {

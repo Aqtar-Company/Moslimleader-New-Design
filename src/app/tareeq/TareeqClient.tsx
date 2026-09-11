@@ -85,6 +85,18 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
   const [myGroups, setMyGroups] = useState<MyGroup[]>([]);
   const [bookmarkFolders, setBookmarkFolders] = useState<BookmarkFolder[]>([]);
   const [totalSaved, setTotalSaved] = useState(0);
+  // Drives the onboarding prompt. A member who follows nobody sees a feed with nothing
+  // personal in it, and there was no path from that state to a single suggested account.
+  const [followsNobody, setFollowsNobody] = useState(false);
+  const [welcomeDismissed, setWelcomeDismissed] = useState(true);
+
+  // Read lazily from localStorage, and default to dismissed until we know: the prompt
+  // flashing in for a moment on every load for someone who already dismissed it would be
+  // worse than never showing it.
+  useEffect(() => {
+    try { setWelcomeDismissed(localStorage.getItem('tareeq-welcome-dismissed') === '1'); }
+    catch { setWelcomeDismissed(false); }
+  }, []);
   const touchStartY = useRef(0);
   const pullYRef = useRef(0);
   const pullRefreshingRef = useRef(false);
@@ -141,6 +153,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         setLikedIds(new Set(d.likedIds ?? []));
         setReactedPosts(d.reactedPosts ?? {});
         setBookmarkedIds(new Set(d.bookmarkedIds ?? []));
+        setFollowsNobody(d.followingCount === 0);
       })
       .catch(() => {});
   }, [user]);
@@ -456,6 +469,48 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
         </div>
       ) : (
         <>
+          {/* Onboarding prompt.
+              Shown only to a signed-in member who follows nobody — which is exactly the
+              state in which the feed has nothing personal in it and the platform used to
+              offer no way out. Dismissible, and dismissed permanently per device: a prompt
+              that returns after being answered is nagging, not help. */}
+          {user && followsNobody && !welcomeDismissed && (
+            <div
+              className="flex items-start gap-3 px-4 py-4 rounded-2xl mb-4"
+              style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-gold-dim)' }}
+            >
+              <span className="text-lg leading-none mt-0.5">★</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold mb-1" style={{ color: 'var(--tr-text-primary)' }}>
+                  {isRtl ? 'صفحتك فارغة لأنك لا تتابع أحداً بعد' : 'Your feed is empty because you follow nobody yet'}
+                </p>
+                <p className="text-xs mb-3" style={{ color: 'var(--tr-text-secondary)' }}>
+                  {isRtl ? 'اختر ما يهمّك، ونقترح عليك من يكتب فيه.' : "Pick what matters to you and we'll suggest who writes about it."}
+                </p>
+                <Link
+                  href="/tareeq/welcome"
+                  className="inline-block px-3.5 py-1.5 rounded-xl text-xs font-black"
+                  style={{ background: 'var(--tr-gold)', color: '#080E1C', textDecoration: 'none' }}
+                >
+                  {isRtl ? 'ابدأ' : 'Start'}
+                </Link>
+              </div>
+              <button
+                onClick={() => {
+                  setWelcomeDismissed(true);
+                  try { localStorage.setItem('tareeq-welcome-dismissed', '1'); } catch { /* blocked */ }
+                }}
+                aria-label={isRtl ? 'إخفاء' : 'Dismiss'}
+                className="shrink-0 p-1 -m-1"
+                style={{ color: 'var(--tr-text-muted)' }}
+              >
+                <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+
           <div className="flex flex-col gap-4">
             {posts.map((post) => (
               <div

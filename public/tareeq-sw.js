@@ -1,7 +1,7 @@
-/* tareeq-v7 — Offline, Background Sync, Periodic Sync, Rich Push, Media-channel audio */
-const CACHE_STATIC  = 'tareeq-v7-static';
-const CACHE_PAGES   = 'tareeq-v7-pages';
-const CACHE_IMAGES  = 'tareeq-v7-images';
+/* tareeq-v8 — Offline, Background Sync, Periodic Sync, Rich Push, Media-channel audio */
+const CACHE_STATIC  = 'tareeq-v8-static';
+const CACHE_PAGES   = 'tareeq-v8-pages';
+const CACHE_IMAGES  = 'tareeq-v8-images';
 // Mushaf page data and the per-page QCF4 fonts. Kept in their OWN cache, never version-
 // suffixed, so a service-worker version bump does not throw away tens of megabytes the
 // user already paid to download. These files are immutable: a given page's glyph data and
@@ -141,7 +141,18 @@ async function processSyncQueue() {
   }
 }
 
-// ── Periodic Background Sync: badge update ──────────────────────────
+// ── App-icon badge ──────────────────────────────────────────────────
+//
+// The number on the installed app's icon had exactly two writers: an effect in the page
+// (so, only while the app is OPEN) and the periodicsync below — which asks for a 15-minute
+// minInterval and which the browser grants and schedules at its own discretion, so in
+// practice it may never run. Nothing updated the badge when a push arrived, which is the
+// one moment the count actually changes while the app is closed. The result was a number
+// frozen at whatever it was when the app was last open: it did not grow on a new
+// notification, and it did not go down after reading one somewhere else.
+//
+// So the push and notificationclick handlers now recount too. It costs two cheap
+// count-only requests per push.
 self.addEventListener('periodicsync', e => {
   if (e.tag === 'tareeq-badge') {
     e.waitUntil(updateBadgeSilently());
@@ -274,13 +285,25 @@ self.addEventListener('push', e => {
       for (const c of visibleWindows) {
         c.postMessage({ type: 'TAREEQ_PLAY_SOUND', notifType: postType });
       }
+      // Recount rather than increment: the push tells us something happened, not how many
+      // unread items there now are, and the user may have read others on another device.
+      await updateBadgeSilently();
     })());
   }
+});
+
+// Dismissing without opening leaves the item unread, but the count may still have moved
+// on another device — and this is a cheap place to notice.
+self.addEventListener('notificationclose', e => {
+  e.waitUntil(updateBadgeSilently());
 });
 
 // ── Notification Click: action-aware routing ─────────────────────────
 self.addEventListener('notificationclick', e => {
   e.notification.close();
+  // Opening from a notification usually marks something read a moment later; the page's
+  // own effect then owns the badge. This covers the gap before it mounts.
+  e.waitUntil(updateBadgeSilently());
   const notifData = e.notification.data ?? {};
   let url = notifData.url ?? '/tareeq/notifications';
   const isCall = !!notifData.callId;

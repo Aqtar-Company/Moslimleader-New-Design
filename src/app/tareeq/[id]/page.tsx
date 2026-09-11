@@ -11,7 +11,7 @@ import { SHARED_FROM_INCLUDE, normalizeSharedFrom } from '@/lib/tareeq-post-sele
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const post = await prisma.tareeqPost.findUnique({
     where: { id: params.id },
-    select: { title: true, content: true, imageUrl: true, authorName: true, category: true },
+    select: { title: true, content: true, imageUrl: true, imageAlt: true, authorName: true, category: true },
   });
   if (!post) return {};
 

@@ -107,7 +107,7 @@ export async function GET(req: NextRequest) {
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       select: {
         id: true, title: true, summary: true, content: true,
-        category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true, thumbnailUrl: true, authorName: true,
+        category: true, tags: true, imageUrl: true, imageAlt: true, imageUrls: true, videoUrl: true, thumbnailUrl: true, authorName: true,
         likeCount: true, commentCount: true, savedCount: true, createdAt: true, userId: true,
         pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
         seriesId: true, seriesTitle: true, seriesOrder: true,
@@ -154,7 +154,7 @@ export async function GET(req: NextRequest) {
         post: {
           select: {
             id: true, title: true, summary: true, content: true,
-            category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true, thumbnailUrl: true, authorName: true,
+            category: true, tags: true, imageUrl: true, imageAlt: true, imageUrls: true, videoUrl: true, thumbnailUrl: true, authorName: true,
             likeCount: true, commentCount: true, savedCount: true, createdAt: true, userId: true,
             pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
             seriesId: true, seriesTitle: true, seriesOrder: true,
@@ -202,7 +202,7 @@ export async function GET(req: NextRequest) {
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     select: {
       id: true, title: true, summary: true, content: true,
-      category: true, tags: true, imageUrl: true, imageUrls: true, videoUrl: true, thumbnailUrl: true, authorName: true,
+      category: true, tags: true, imageUrl: true, imageAlt: true, imageUrls: true, videoUrl: true, thumbnailUrl: true, authorName: true,
       likeCount: true, commentCount: true, savedCount: true, createdAt: true, userId: true,
       pinnedCommentId: true, postUpdate: true, postUpdateAt: true,
       seriesId: true, seriesTitle: true, seriesOrder: true,
@@ -265,6 +265,9 @@ export async function POST(req: NextRequest) {
     ? rawImageUrls.filter((u): u is string => typeof u === 'string' && u.trim().length > 0).slice(0, 9)
     : null;
   const videoUrl = String(body.videoUrl ?? '').trim() || null;
+  // Author's description of the image, for screen readers. Capped like a caption rather
+  // than left as Text-length free input — it is read aloud, not published as prose.
+  const imageAlt = String(body.imageAlt ?? '').trim().slice(0, 300) || null;
   // The composer sends this for every video post; it used to be read by nothing.
   const thumbnailUrl = String(body.thumbnailUrl ?? '').trim() || null;
 
@@ -348,6 +351,7 @@ export async function POST(req: NextRequest) {
       tags: tags ?? undefined,
       imageUrl: imageUrl ?? (imageUrls?.[0] ?? null),
       imageUrls: imageUrls ?? undefined,
+      imageAlt,
       videoUrl,
       ...(thumbnailUrl ? { thumbnailUrl } : {}),
       userId: user.userId,

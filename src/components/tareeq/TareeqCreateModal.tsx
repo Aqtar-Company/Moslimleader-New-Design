@@ -42,6 +42,10 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  // Author's description of the image, for screen readers. Every <img> in Tareeq was
+  // hardcoded alt="" — correct for decoration, wrong for a photo carrying the point of the
+  // post, which made every uploaded image invisible to a blind reader.
+  const [imageAlt, setImageAlt] = useState('');
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -414,6 +418,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           content: content.trim(),
           category: category || null,
           imageUrl: mediaType === 'image' ? mediaUrl : null,
+          imageAlt: mediaType === 'image' ? (imageAlt.trim() || null) : null,
           videoUrl: mediaType === 'video' ? mediaUrl : null,
           // Only a real uploaded URL. `videoThumb` is a canvas.toDataURL() JPEG frame —
       // hundreds of KB of base64 — and JSON-stringifying it into localStorage on every
@@ -848,6 +853,36 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                 </>
               )}
             </div>
+
+            {/* ── Alt text (only when there is an image) ──
+                 Optional, and labelled as optional: a required field here would be
+                 answered with a space to get past it, which is worse than nothing because
+                 a screen reader would then announce a blank description as deliberate. */}
+            {mediaType === 'image' && !uploading && (
+              <div className="mx-4 mb-3">
+                <label
+                  htmlFor="tareeq-image-alt"
+                  className="block text-[11px] font-bold mb-1.5"
+                  style={{ color: 'var(--tr-text-muted)' }}
+                >
+                  {isRtl ? 'وصف الصورة لقارئ الشاشة (اختياري)' : 'Describe the image for screen readers (optional)'}
+                </label>
+                <input
+                  id="tareeq-image-alt"
+                  type="text"
+                  value={imageAlt}
+                  onChange={e => setImageAlt(e.target.value.slice(0, 300))}
+                  maxLength={300}
+                  placeholder={isRtl ? 'مثال: كتاب مفتوح على طاولة خشبية بجانب فنجان شاي' : 'e.g. an open book on a wooden table beside a cup of tea'}
+                  className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                  style={{
+                    background: 'var(--tr-overlay)',
+                    color: 'var(--tr-text-primary)',
+                    border: '1px solid var(--tr-border-subtle)',
+                  }}
+                />
+              </div>
+            )}
 
             {/* ── Extra images strip (only when main is an image) ── */}
             {mediaType === 'image' && !uploading && (

@@ -21,7 +21,7 @@
 export const SHARED_FROM_INCLUDE = {
   sharedFrom: {
     select: {
-      id: true, title: true, content: true, imageUrl: true, videoUrl: true, thumbnailUrl: true,
+      id: true, title: true, content: true, imageUrl: true, imageAlt: true, videoUrl: true, thumbnailUrl: true,
       authorName: true, userId: true, createdAt: true, isHidden: true,
       user: { select: { id: true, name: true, avatarUrl: true } },
     },
@@ -41,6 +41,7 @@ export interface RawSharedFrom {
   title: string | null;
   content: string;
   imageUrl: string | null;
+  imageAlt: string | null;
   videoUrl: string | null;
   thumbnailUrl: string | null;
   authorName: string;

@@ -41,7 +41,10 @@ export default async function CategoryPage({ params }: Props) {
 
   try {
     posts = await prisma.tareeqPost.findMany({
-      where: { category: key },
+      // isHidden/isDraft were missing here for the same reason they were missing on the
+      // homepage: the filter lives in the API route, and these pages query Prisma directly.
+      // So a moderated post stayed fully readable on its category page.
+      where: { category: key, isHidden: false, isDraft: false },
       orderBy: { likeCount: 'desc' },
       take: 30,
       select: {

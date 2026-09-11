@@ -214,6 +214,8 @@ export interface TareeqPostSummary {
   content: string;
   category?: string | null;
   tags?: string[] | null;
+  /** Author-written description of the image, read by screen readers. */
+  imageAlt?: string | null;
   imageUrl?: string | null;
   imageUrls?: string[] | null;
   videoUrl?: string | null;
@@ -246,6 +248,7 @@ export interface SharedOriginal {
   title?: string | null;
   content: string;
   imageUrl?: string | null;
+  imageAlt?: string | null;
   videoUrl?: string | null;
   thumbnailUrl?: string | null;
   authorName: string;
@@ -320,7 +323,7 @@ export function SharedOriginalCard({ original, isRtl }: { original: SharedOrigin
           </p>
         )}
         {original.imageUrl && (
-          <img src={original.imageUrl} alt="" className="w-full object-cover" style={{ maxHeight: 220 }} />
+          <img src={original.imageUrl} alt={original.imageAlt ?? ''} className="w-full object-cover" style={{ maxHeight: 220 }} />
         )}
       </Link>
       {/* A shared video used to render nothing at all — only imageUrl was drawn. */}
@@ -1004,7 +1007,7 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
           <div className="grid grid-cols-2 gap-1">
             {shown.map((url, i) => (
               <div key={i} className="relative aspect-square overflow-hidden">
-                <img src={url} alt="" className="w-full h-full object-cover" loading={i === 0 ? 'eager' : 'lazy'} referrerPolicy="no-referrer" />
+                <img src={url} alt={i === 0 ? (post.imageAlt ?? '') : ''} className="w-full h-full object-cover" loading={i === 0 ? 'eager' : 'lazy'} referrerPolicy="no-referrer" />
               </div>
             ))}
           </div>
@@ -1466,6 +1469,35 @@ export default function TareeqCard({ post, initialLiked = false, initialReaction
                 <path d={isRtl ? 'M15 18l-6-6 6-6' : 'M9 18l6-6-6-6'} />
               </svg>
             </button>
+          )}
+
+          {/* Tags.
+              The composer has always accepted up to ten of these and the API has always
+              stored them, and until now nothing rendered them anywhere — so every tag a
+              user had ever written was invisible, and writing one did nothing. They are
+              links, because a tag that isn't a way to find more is just decoration.
+              Outside the post <Link>: an <a> inside an <a> is invalid and the browser
+              breaks the outer one. */}
+          {Array.isArray(post.tags) && post.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-3" onClick={e => e.stopPropagation()}>
+              {post.tags.slice(0, 10).map(tag => (
+                <Link
+                  key={tag}
+                  href={`/tareeq/tag/${encodeURIComponent(tag)}`}
+                  className="text-[11px] font-bold px-2 py-1 rounded-full transition"
+                  style={{
+                    background: 'var(--tr-overlay)',
+                    color: 'var(--tr-text-secondary)',
+                    border: '1px solid var(--tr-border-subtle)',
+                    textDecoration: 'none',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--tr-gold)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--tr-gold-dim)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--tr-text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--tr-border-subtle)'; }}
+                >
+                  #{tag}
+                </Link>
+              ))}
+            </div>
           )}
 
           {/* Video embeds — auto-detected from content (YouTube → TikTok → Vimeo → Facebook) — skip if post has its own uploaded video */}

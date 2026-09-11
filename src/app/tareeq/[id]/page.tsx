@@ -20,11 +20,11 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   const siteUrl = 'https://moslimleader.com';
   const pageUrl = `${siteUrl}/tareeq/${params.id}`;
 
-  // Use the post's own image when there is one, else the generated card. Uploaded paths
-  // are site-relative, and og:image must be absolute or scrapers drop it.
-  const ogImage = post.imageUrl
-    ? new URL(post.imageUrl, siteUrl).toString()
-    : `${siteUrl}/api/tareeq/${params.id}/og`;
+  // The post's own image wins when there is one — uploaded paths are site-relative, and
+  // og:image must be absolute or scrapers drop it. With no image we set nothing here on
+  // purpose: `images` left undefined is what lets Next wire up the generated card from
+  // `opengraph-image.tsx`. Naming a URL here would override it.
+  const ogImage = post.imageUrl ? new URL(post.imageUrl, siteUrl).toString() : null;
 
   return {
     title: `${title} — طريق`,
@@ -34,14 +34,14 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
       description,
       url: pageUrl,
       siteName: 'طريق — مسلم ليدر',
-      images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
+      ...(ogImage ? { images: [{ url: ogImage, width: 1200, height: 630, alt: title }] } : {}),
       type: 'article',
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: [ogImage],
+      ...(ogImage ? { images: [ogImage] } : {}),
     },
   };
 }

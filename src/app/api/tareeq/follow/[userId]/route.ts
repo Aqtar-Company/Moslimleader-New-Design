@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isTareeqSuspended, isBlockedEitherWay } from '@/lib/tareeq-guard';
-import { sendPushToUser } from '@/lib/tareeq-push';
+import { notifyTareeq } from '@/lib/tareeq-notify';
 
 // GET — check if current user follows this profile + counts
 export async function GET(_req: NextRequest, { params }: { params: { userId: string } }) {
@@ -66,22 +66,20 @@ export async function POST(_req: NextRequest, { params }: { params: { userId: st
     // created here, so growth's most basic feedback signal never fired.
     const actor = await prisma.user.findUnique({ where: { id: me.userId }, select: { name: true, avatarUrl: true } });
     const actorName = actor?.name ?? 'شخص ما';
-    prisma.tareeqNotification.create({
-      data: {
-        userId: params.userId,
-        type: 'follow',
-        actorId: me.userId,
-        actorName,
-        actorAvatarUrl: actor?.avatarUrl ?? null,
+    void notifyTareeq({
+      userId: params.userId,
+      type: 'follow',
+      actorId: me.userId,
+      actorName,
+      actorAvatarUrl: actor?.avatarUrl ?? null,
+      push: {
+        title: 'طريق ★',
+        body: `${actorName} بدأ متابعتك`,
+        url: `/tareeq/u/${me.userId}`,
+        tag: `follow-${me.userId}`,
+        type: 'generic',
       },
-    }).catch(() => {});
-    sendPushToUser(params.userId, {
-      title: 'طريق ★',
-      body: `${actorName} بدأ متابعتك`,
-      url: `/tareeq/u/${me.userId}`,
-      tag: `follow-${me.userId}`,
-      type: 'generic',
-    }).catch(() => {});
+    });
     return NextResponse.json({ following: true });
   }
 }

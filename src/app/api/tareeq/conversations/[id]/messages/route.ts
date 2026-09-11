@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isTareeqSuspended, isBlockedEitherWay } from '@/lib/tareeq-guard';
 import { sendPushToUser } from '@/lib/tareeq-push';
+import { shouldNotify } from '@/lib/tareeq-notify';
 
 // POST /api/tareeq/conversations/[id]/messages — send message
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
@@ -96,8 +97,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }),
   ]);
 
-  // Push notification to recipient (non-blocking, always send — messages feel urgent)
-  sendPushToUser(otherId, {
+  // The recipient's 'messages' switch and any mute of the sender gate BOTH halves below.
+  // Checked once rather than twice: one query, and the two halves can never disagree.
+  const notifyAllowed = await shouldNotify(otherId, 'message', { actorId: user.userId });
+
+  // Push on every allowed message — a message is urgent, so unlike the in-app row below it
+  // is not throttled.
+  if (notifyAllowed) sendPushToUser(otherId, {
     title: user.name ?? 'رسالة جديدة',
     // sharedPostId has to be in this chain: sharing a post with no note is the normal
     // case from the share sheet, and without it the recipient's push arrived with the
@@ -111,7 +117,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }).catch(() => {});
 
   // In-app notification at most once per 5 minutes (non-blocking)
-  prisma.tareeqNotification.findFirst({
+  if (notifyAllowed) prisma.tareeqNotification.findFirst({
     where: {
       userId: otherId,
       actorId: user.userId,

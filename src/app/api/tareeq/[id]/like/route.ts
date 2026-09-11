@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isTareeqSuspended, isBlockedEitherWay } from '@/lib/tareeq-guard';
-import { sendPushToUser } from '@/lib/tareeq-push';
+import { notifyTareeq } from '@/lib/tareeq-notify';
 
 // POST /api/tareeq/[id]/like — toggle like (atomic)
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
@@ -42,28 +42,27 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       prisma.tareeqLike.create({ data: { postId: params.id, userId: user.userId } }),
       prisma.tareeqPost.update({ where: { id: params.id }, data: { likeCount: { increment: 1 } } }),
     ]);
-    // Notify post author (non-blocking, never fail the like)
-    if (post.userId && post.userId !== user.userId) {
+    // Notify post author. notifyTareeq owns the self-notify guard, the recipient's
+    // per-type preference and the mute check — non-blocking, never fails the like.
+    if (post.userId) {
       const actorName = user.name ?? 'شخص ما';
-      prisma.tareeqNotification.create({
-        data: {
-          userId: post.userId,
-          type: 'like',
-          actorId: user.userId,
-          actorName: actorName,
-          postId: post.id,
-          postTitle: post.title ?? null,
-        },
-      }).catch(() => {});
-      sendPushToUser(post.userId, {
-        title: 'طريق ★',
-        body: `${actorName} أعجب بعلامتك`,
-        url: `/tareeq/${post.id}`,
-        tag: `like-${post.id}`,
+      void notifyTareeq({
+        userId: post.userId,
         type: 'like',
+        actorId: user.userId,
+        actorName,
         postId: post.id,
-        image: post.imageUrl ?? undefined,
-      }).catch(() => {});
+        postTitle: post.title ?? null,
+        push: {
+          title: 'طريق ★',
+          body: `${actorName} أعجب بعلامتك`,
+          url: `/tareeq/${post.id}`,
+          tag: `like-${post.id}`,
+          type: 'like',
+          postId: post.id,
+          image: post.imageUrl ?? undefined,
+        },
+      });
     }
     return NextResponse.json({ liked: true });
   }

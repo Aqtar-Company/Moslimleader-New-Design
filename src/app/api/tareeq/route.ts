@@ -7,6 +7,7 @@ import { CATEGORY_KEY } from '@/lib/tareeq-constants';
 import { filterContent, validateMediaUrl } from '@/lib/tareeq-content-filter';
 import { SHARED_FROM_SELECT, normalizeSharedFrom } from '@/lib/tareeq-post-select';
 import { postSearchWhere } from '@/lib/tareeq-search';
+import { notifyTareeq } from '@/lib/tareeq-notify';
 
 // GET /api/tareeq?cursor=xxx&category=xxx&limit=12&likedBy=userId&sort=newest|liked|following|useful
 export async function GET(req: NextRequest) {
@@ -45,12 +46,26 @@ export async function GET(req: NextRequest) {
   // still read a blocker's entire timeline via /api/tareeq?userId=<blocker>.
   const viewerForBlocks = await getAuthUser().catch(() => null);
   let blockedIds: string[] = [];
+  let mutedIds: string[] = [];
   if (viewerForBlocks) {
     const blocks = await prisma.tareeqBlock.findMany({
       where: { OR: [{ blockerId: viewerForBlocks.userId }, { blockedId: viewerForBlocks.userId }] },
       select: { blockerId: true, blockedId: true },
     });
     blockedIds = blocks.map(b => (b.blockerId === viewerForBlocks.userId ? b.blockedId : b.blockerId));
+
+    // Mutes are kept in their OWN list, not folded into blockedIds. Two differences that
+    // matter:
+    //  - A mute is one-directional: being muted does not hide that person from you, so
+    //    this reads muterId only.
+    //  - A mute hides someone from your FEED, not from their own page. Folding it into
+    //    blockedIds made the guard below return an empty timeline when you deliberately
+    //    opened a muted person's profile, which is not what muting means.
+    const mutes = await prisma.tareeqMute.findMany({
+      where: { muterId: viewerForBlocks.userId, mutedId: { not: null } },
+      select: { mutedId: true },
+    });
+    mutedIds = mutes.map(m => m.mutedId!).filter(Boolean);
   }
   // A blocked author is never visible, even when explicitly requested by id.
   if (userId && blockedIds.includes(userId)) {
@@ -78,7 +93,9 @@ export async function GET(req: NextRequest) {
     const followWhere = {
       isHidden: false,
       isDraft: false,
-      userId: { in: followingIds.filter(id => !blockedIds.includes(id)) },
+      // Muted authors leave the feed; blocked ones were already filtered out of
+      // followingIds' source relationship.
+      userId: { in: followingIds.filter(id => !blockedIds.includes(id) && !mutedIds.includes(id)) },
       ...(category ? { category } : {}),
       ...postSearchWhere(search),
     };
@@ -170,6 +187,9 @@ export async function GET(req: NextRequest) {
     AND: [
       ...(userId ? [{ userId }] : []),
       ...(blockedIds.length ? [{ userId: { notIn: blockedIds } }] : []),
+      // Muted authors are dropped from the browse feed only. When `userId` is set the
+      // viewer asked for that person's page on purpose, so the mute does not apply.
+      ...(!userId && mutedIds.length ? [{ userId: { notIn: mutedIds } }] : []),
     ],
     ...(sort === 'useful' ? { createdAt: { gte: new Date(Date.now() - 30 * 24 * 3600 * 1000) } } : {}),
     ...postSearchWhere(search),
@@ -346,19 +366,29 @@ export async function POST(req: NextRequest) {
 
     // Tell the author someone shared their mark — the whole point of attribution is that
     // it reaches them. Skip self-shares and anything auto-hidden (nothing to see yet).
-    if (sharedFromAuthorId && sharedFromAuthorId !== user.userId && !autoHide) {
-      prisma.tareeqNotification.create({
-        data: {
-          userId: sharedFromAuthorId,
-          type: 'share',
-          actorId: user.userId,
-          actorName: dbUser?.name ?? 'شخص ما',
-          actorAvatarUrl: dbUser?.avatarUrl ?? null,
+    if (sharedFromAuthorId && !autoHide) {
+      const sharerName = dbUser?.name ?? 'شخص ما';
+      void notifyTareeq({
+        userId: sharedFromAuthorId,
+        type: 'share',
+        actorId: user.userId,
+        actorName: sharerName,
+        actorAvatarUrl: dbUser?.avatarUrl ?? null,
+        postId: post.id,
+        postTitle: title ?? null,
+        body: content.slice(0, 120) || null,
+        // A share reaching its author is the entire point of attribution, and it was the
+        // one notification with no push at all — so the author only learned about it by
+        // opening the app.
+        push: {
+          title: 'طريق ★',
+          body: `${sharerName} شارك علامتك 🔁`,
+          url: `/tareeq/${post.id}`,
+          tag: `share-${post.id}`,
+          type: 'generic',
           postId: post.id,
-          postTitle: title ?? null,
-          body: content.slice(0, 120) || null,
         },
-      }).catch(() => {});
+      });
     }
   }
 

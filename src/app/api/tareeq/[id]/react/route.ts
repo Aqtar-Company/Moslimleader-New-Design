@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isTareeqSuspended, isBlockedEitherWay } from '@/lib/tareeq-guard';
-import { sendPushToUser } from '@/lib/tareeq-push';
+import { notifyTareeq, type TareeqNotifType } from '@/lib/tareeq-notify';
 
 const VALID_TYPES = ['inspired', 'thanks', 'agree', 'yarabb', 'mashaallah'] as const;
 
@@ -79,28 +79,28 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   // Notify the post author on a genuinely new reaction only (skip self, skip type switches
   // and toggles-off).
-  if (!existing && post.userId && post.userId !== me.userId) {
+  if (!existing && post.userId) {
     const actor = await prisma.user.findUnique({ where: { id: me.userId }, select: { name: true, avatarUrl: true } });
     const actorName = actor?.name ?? 'شخص ما';
     const LABELS: Record<string, string> = { inspired: 'ألهمه ⭐', thanks: 'شكره 🙏', agree: 'يتفق معه ✊', yarabb: 'يارب 🤲', mashaallah: 'ماشاء الله 🌴' };
-    prisma.tareeqNotification.create({
-      data: {
-        userId: post.userId,
-        type: type,
-        actorId: me.userId,
-        actorName,
-        actorAvatarUrl: actor?.avatarUrl ?? null,
-        postId: post.id,
-        postTitle: post.title ?? null,
-      },
-    }).catch(() => {});
-    sendPushToUser(post.userId, {
-      title: 'طريق ★',
-      body: `${actorName} ${LABELS[type] ?? 'تفاعل مع علامتك'}`,
-      url: `/tareeq/${post.id}`,
-      tag: `react-${post.id}-${me.userId}`,
-      type: 'like',
+    // The reaction kind IS the notification type, and all five share one preference switch
+    // ('reactions') — nobody wants to decide separately about "ألهمه" and "شكره".
+    void notifyTareeq({
+      userId: post.userId,
+      type: type as TareeqNotifType,
+      actorId: me.userId,
+      actorName,
+      actorAvatarUrl: actor?.avatarUrl ?? null,
       postId: post.id,
+      postTitle: post.title ?? null,
+      push: {
+        title: 'طريق ★',
+        body: `${actorName} ${LABELS[type] ?? 'تفاعل مع علامتك'}`,
+        url: `/tareeq/${post.id}`,
+        tag: `react-${post.id}-${me.userId}`,
+        type: 'like',
+        postId: post.id,
+      },
     });
   }
 

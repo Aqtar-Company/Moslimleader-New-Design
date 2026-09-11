@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { sendPushToUser } from '@/lib/tareeq-push';
+import { notifyTareeq } from '@/lib/tareeq-notify';
 
 // PATCH /api/tareeq/[id]/update — add "ماذا حدث" update to the post (owner only)
 export async function PATCH(
@@ -76,28 +76,25 @@ export async function PATCH(
       const snippet = update.slice(0, 120);
 
       await Promise.all(
-        recipientIds.map(async (userId) => {
-          await prisma.tareeqNotification.create({
-            data: {
-              userId,
-              type: 'post_update',
-              actorId: user.userId,
-              actorName,
-              postId: params.id,
-              postTitle: post.title ?? null,
-              body: snippet,
-            },
-          }).catch(() => {});
-
-          await sendPushToUser(userId, {
-            title: `${actorName} — طريق`,
-            body: snippet,
-            url: `/tareeq/${params.id}`,
-            tag: `update-${params.id}`,
-            type: 'generic',
+        recipientIds.map((userId) =>
+          notifyTareeq({
+            userId,
+            type: 'post_update',
+            actorId: user.userId,
+            actorName,
             postId: params.id,
-          }).catch(() => {});
-        })
+            postTitle: post.title ?? null,
+            body: snippet,
+            push: {
+              title: `${actorName} — طريق`,
+              body: snippet,
+              url: `/tareeq/${params.id}`,
+              tag: `update-${params.id}`,
+              type: 'generic',
+              postId: params.id,
+            },
+          })
+        )
       );
     } catch {
       // non-blocking — silently ignore errors

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isTareeqSuspended, isBlockedEitherWay } from '@/lib/tareeq-guard';
-import { sendPushToUser } from '@/lib/tareeq-push';
+import { notifyTareeq } from '@/lib/tareeq-notify';
 import { filterContent } from '@/lib/tareeq-content-filter';
 import { displayMentions } from '@/lib/tareeq-mentions';
 
@@ -171,61 +171,54 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         }).catch(() => []);
         const blocked = new Set(blocks.flatMap(b => [b.blockerId, b.blockedId]));
         for (const m of mentioned) {
-          if (m.id !== user.userId && !blocked.has(m.id)) {
-            prisma.tareeqNotification.create({
-              data: {
-                userId: m.id, type: 'mention',
-                actorId: user.userId, actorName: commenterName,
-                postId: params.id, postTitle: post.title ?? null,
-                body: displayMentions(content).slice(0, 120),
-              },
-            }).catch(() => {});
-          }
+          if (blocked.has(m.id)) continue;
+          void notifyTareeq({
+            userId: m.id, type: 'mention',
+            actorId: user.userId, actorName: commenterName,
+            postId: params.id, postTitle: post.title ?? null,
+            body: displayMentions(content).slice(0, 120),
+          });
         }
       }).catch(() => {});
   }
 
   // Notify comment author when someone replies (non-blocking)
-  if (parentId && parentAuthorId && parentAuthorId !== user.userId) {
-    prisma.tareeqNotification.create({
-      data: {
-        userId: parentAuthorId, type: 'comment',
-        actorId: user.userId, actorName: commenterName,
-        postId: post.id, postTitle: post.title ?? null,
-        body: displayMentions(content).slice(0, 120),
+  if (parentId && parentAuthorId) {
+    void notifyTareeq({
+      userId: parentAuthorId, type: 'comment',
+      actorId: user.userId, actorName: commenterName,
+      postId: post.id, postTitle: post.title ?? null,
+      body: displayMentions(content).slice(0, 120),
+      push: {
+        title: 'طريق ★',
+        body: `${commenterName} ردّ على تعليقك: ${content.slice(0, 60)}`,
+        url: `/tareeq/${post.id}`,
+        tag: `reply-${parentId}`,
+        type: 'comment',
+        postId: post.id,
+        image: post.imageUrl ?? undefined,
       },
-    }).catch(() => {});
-    sendPushToUser(parentAuthorId, {
-      title: 'طريق ★',
-      body: `${commenterName} ردّ على تعليقك: ${content.slice(0, 60)}`,
-      url: `/tareeq/${post.id}`,
-      tag: `reply-${parentId}`,
-      type: 'comment',
-      postId: post.id,
-      image: post.imageUrl ?? undefined,
-    }).catch(() => {});
+    });
   }
 
   // Notify post author (non-blocking)
-  if (!parentId && post.userId && post.userId !== user.userId) {
+  if (!parentId && post.userId) {
     const actorName = user.name ?? 'شخص ما';
-    prisma.tareeqNotification.create({
-      data: {
-        userId: post.userId, type: 'comment',
-        actorId: user.userId, actorName: actorName,
-        postId: post.id, postTitle: post.title ?? null,
-        body: displayMentions(content).slice(0, 120),
+    void notifyTareeq({
+      userId: post.userId, type: 'comment',
+      actorId: user.userId, actorName,
+      postId: post.id, postTitle: post.title ?? null,
+      body: displayMentions(content).slice(0, 120),
+      push: {
+        title: 'طريق ★',
+        body: `${actorName} علّق على علامتك: ${content.slice(0, 60)}`,
+        url: `/tareeq/${post.id}`,
+        tag: `comment-${post.id}`,
+        type: 'comment',
+        postId: post.id,
+        image: post.imageUrl ?? undefined,
       },
-    }).catch(() => {});
-    sendPushToUser(post.userId, {
-      title: 'طريق ★',
-      body: `${actorName} علّق على علامتك: ${content.slice(0, 60)}`,
-      url: `/tareeq/${post.id}`,
-      tag: `comment-${post.id}`,
-      type: 'comment',
-      postId: post.id,
-      image: post.imageUrl ?? undefined,
-    }).catch(() => {});
+    });
   }
 
   // Notify post subscribers (non-blocking)
@@ -235,25 +228,24 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       select: { userId: true },
     }).then(async (subs) => {
       for (const sub of subs) {
-        if (sub.userId === user.userId) continue;
+        // The post author already got the 'comment' notification above; without this a
+        // subscribed author is told twice about the same comment.
         if (sub.userId === post.userId) continue;
-        await prisma.tareeqNotification.create({
-          data: {
-            userId: sub.userId, type: 'subscribed_comment',
-            actorId: user.userId, actorName: commenterName,
-            postId: post.id, postTitle: post.title ?? null,
-            body: displayMentions(content).slice(0, 120),
+        await notifyTareeq({
+          userId: sub.userId, type: 'subscribed_comment',
+          actorId: user.userId, actorName: commenterName,
+          postId: post.id, postTitle: post.title ?? null,
+          body: displayMentions(content).slice(0, 120),
+          push: {
+            title: `${commenterName} — طريق`,
+            body: content.slice(0, 80),
+            url: `/tareeq/${post.id}`,
+            tag: `sub-comment-${post.id}`,
+            type: 'comment',
+            postId: post.id,
+            image: post.imageUrl ?? undefined,
           },
-        }).catch(() => {});
-        sendPushToUser(sub.userId, {
-          title: `${commenterName} — طريق`,
-          body: content.slice(0, 80),
-          url: `/tareeq/${post.id}`,
-          tag: `sub-comment-${post.id}`,
-          type: 'comment',
-          postId: post.id,
-          image: post.imageUrl ?? undefined,
-        }).catch(() => {});
+        });
       }
     }).catch(() => {});
   }

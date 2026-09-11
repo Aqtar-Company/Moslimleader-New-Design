@@ -1748,6 +1748,7 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, onReport, onDeleted, o
 }) {
   const [done, setDone] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [muting, setMuting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   async function handleDelete() {
@@ -1784,9 +1785,37 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, onReport, onDeleted, o
     }
   }
 
-  function handleNotInterested() {
-    setDone(isRtl ? 'تم. لن يظهر لك هذا الشخص كثيرًا' : "Done. You'll see less from this person");
-    setTimeout(onClose, 1500);
+  /**
+   * Mute this author.
+   *
+   * This button used to be a lie: it set the "done" message and called nothing at all, so
+   * the user was told "you'll see less from this person" and then saw exactly as much.
+   * `TareeqMute` now exists, so it does what it says.
+   *
+   * Mute, not block, is the right verb here: the post stays where it is, the author is
+   * never told, and nothing is severed — only this viewer's feed changes.
+   */
+  async function handleNotInterested() {
+    setMuting(true);
+    try {
+      const res = await fetch(`/api/tareeq/mute/${postUserId}`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        setDone(isRtl ? 'تعذّر الكتم، حاول مرة أخرى' : 'Could not mute — please try again');
+        setTimeout(onClose, 2200);
+        return;
+      }
+      setDone(isRtl ? 'تم الكتم. لن تظهر منشوراته في صفحتك' : "Muted. Their posts will no longer appear in your feed");
+      // The card is still on screen behind the sheet; the feed drops it on next load.
+      setTimeout(onClose, 1800);
+    } catch {
+      setDone(isRtl ? 'لا يوجد اتصال' : 'No connection');
+      setTimeout(onClose, 2200);
+    } finally {
+      setMuting(false);
+    }
   }
 
   /* Shared row style */
@@ -1892,13 +1921,18 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, onReport, onDeleted, o
             </button>
             <button
               onClick={handleNotInterested}
+              disabled={muting}
               className={row}
-              style={{ borderBottom: '1px solid var(--tr-border-subtle)', color: 'var(--tr-text-primary)' }}
+              style={{ borderBottom: '1px solid var(--tr-border-subtle)', color: 'var(--tr-text-primary)', opacity: muting ? 0.5 : 1 }}
             >
               <svg width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="9"/><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6"/>
               </svg>
-              <span className="text-sm">{isRtl ? 'لا أريد رؤية منشورات هذا الشخص' : "Don't show posts from this person"}</span>
+              <span className="text-sm">
+                {muting
+                  ? (isRtl ? 'جاري الكتم...' : 'Muting...')
+                  : (isRtl ? 'كتم هذا الشخص — لن يعرف' : "Mute this person — they won't know")}
+              </span>
             </button>
             <button
               onClick={handleUnfollow}

@@ -154,6 +154,132 @@ function PushPermissionBanner({ isRtl }: { isRtl: boolean }) {
   );
 }
 
+/**
+ * The nine notification switches.
+ *
+ * Nine notification types existed and the only control anyone had was the browser's
+ * all-or-nothing permission — so a user annoyed by "someone liked your mark" had to give
+ * up "you have a new message" to be rid of it.
+ *
+ * Collapsed by default: this page is opened to read notifications, not to configure them,
+ * and nine rows above the list would bury what the user came for.
+ */
+function NotificationSettings({ isRtl }: { isRtl: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [groups, setGroups] = useState<{ key: string; ar: string; en: string }[]>([]);
+  const [prefs, setPrefs] = useState<Record<string, boolean>>({});
+  const [saving, setSaving] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  // Fetched on first open, not on mount: most visits never touch this.
+  useEffect(() => {
+    if (!open || loaded) return;
+    fetch('/api/tareeq/settings/notifications', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => { setGroups(d.groups ?? []); setPrefs(d.prefs ?? {}); })
+      .catch(() => {})
+      .finally(() => setLoaded(true));
+  }, [open, loaded]);
+
+  async function toggle(key: string, enabled: boolean) {
+    setSaving(key);
+    // Optimistic: a switch that waits on the network feels broken.
+    setPrefs(p => { const n = { ...p }; if (enabled) delete n[key]; else n[key] = false; return n; });
+    try {
+      const res = await fetch('/api/tareeq/settings/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ key, enabled }),
+      });
+      // Roll back rather than leave the switch showing a state the server rejected.
+      if (!res.ok) setPrefs(p => { const n = { ...p }; if (enabled) n[key] = false; else delete n[key]; return n; });
+      else { const d = await res.json(); if (d.prefs) setPrefs(d.prefs); }
+    } catch {
+      setPrefs(p => { const n = { ...p }; if (enabled) n[key] = false; else delete n[key]; return n; });
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  const offCount = Object.values(prefs).filter(v => v === false).length;
+
+  return (
+    <div className="mt-4 mx-auto max-w-sm">
+      <button
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        className="w-full flex items-center gap-2.5 px-4 py-3 rounded-2xl transition"
+        style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)' }}
+      >
+        <svg width={16} height={16} fill="none" stroke="var(--tr-text-muted)" strokeWidth={1.8} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.272-.806.108-1.204-.165-.397-.506-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <span className="text-xs font-bold flex-1 text-start" style={{ color: 'var(--tr-text-secondary)' }}>
+          {isRtl ? 'إعدادات الإشعارات' : 'Notification settings'}
+        </span>
+        {offCount > 0 && (
+          <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md" style={{ background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)' }}>
+            {isRtl ? `${offCount} مُوقف` : `${offCount} off`}
+          </span>
+        )}
+        <svg width={14} height={14} fill="none" stroke="var(--tr-text-muted)" strokeWidth={2.5} viewBox="0 0 24 24"
+          style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .18s' }}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="mt-2 rounded-2xl overflow-hidden" style={{ background: 'var(--tr-surface)', border: '1px solid var(--tr-border-subtle)' }}>
+          {!loaded ? (
+            <p className="text-xs px-4 py-4 text-center" style={{ color: 'var(--tr-text-muted)' }}>
+              {isRtl ? 'جاري التحميل...' : 'Loading...'}
+            </p>
+          ) : groups.map((g, i) => {
+            // Absent key means on — the same rule the server uses, so the switch cannot
+            // disagree with what actually gets delivered.
+            const on = prefs[g.key] !== false;
+            return (
+              <label
+                key={g.key}
+                htmlFor={`notif-${g.key}`}
+                className="flex items-center gap-3 px-4 py-3 cursor-pointer"
+                style={{ borderTop: i === 0 ? 'none' : '1px solid var(--tr-border-subtle)' }}
+              >
+                <span className="text-[13px] font-semibold flex-1 text-start" style={{ color: 'var(--tr-text-primary)' }}>
+                  {isRtl ? g.ar : g.en}
+                </span>
+                <input
+                  id={`notif-${g.key}`}
+                  type="checkbox"
+                  checked={on}
+                  disabled={saving === g.key}
+                  onChange={e => toggle(g.key, e.target.checked)}
+                  className="sr-only"
+                />
+                <span
+                  aria-hidden
+                  className="shrink-0 rounded-full transition-colors"
+                  style={{
+                    width: 40, height: 22, padding: 2,
+                    background: on ? 'var(--tr-gold)' : 'var(--tr-border-soft)',
+                    opacity: saving === g.key ? 0.5 : 1,
+                    display: 'flex',
+                    justifyContent: on ? 'flex-end' : 'flex-start',
+                  }}
+                >
+                  <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', display: 'block' }} />
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Inner() {
   const { isRtl } = useLang();
   const { user } = useAuth();
@@ -198,6 +324,7 @@ function Inner() {
       <div className="py-8 px-4 text-center">
         <h1 className="font-black text-2xl" style={{ color: 'var(--tr-text-primary)' }}>{isRtl ? 'الإشعارات' : 'Notifications'}</h1>
         <PushPermissionBanner isRtl={isRtl} />
+        <NotificationSettings isRtl={isRtl} />
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-2">

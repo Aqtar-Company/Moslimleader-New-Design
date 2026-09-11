@@ -41,6 +41,38 @@ export default function TareeqSidebar() {
 
   return (
     <div className="space-y-3">
+      {/* Mine.
+          Three pages that existed with no link to them: server drafts, the author's own
+          numbers, and the account-status page a restricted member needs. A page nothing
+          points at is a page nobody opens. */}
+      {user && (
+        <div style={widgetStyle}>
+          <SectionLabel>{isRtl ? 'صفحاتي' : 'Mine'}</SectionLabel>
+          <div className="flex flex-col gap-1.5">
+            {([
+              { href: '/tareeq/drafts',   ar: 'مسوداتي',      en: 'My drafts' },
+              { href: '/tareeq/my-stats', ar: 'أثر علاماتي',  en: 'My reach' },
+              { href: '/tareeq/appeal',   ar: 'حالة الحساب',  en: 'Account status' },
+            ] as { href: string; ar: string; en: string }[]).map(l => (
+              <a
+                key={l.href}
+                href={l.href}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition hover:opacity-90"
+                style={{
+                  background: 'var(--tr-overlay)',
+                  color: 'var(--tr-text-secondary)',
+                  border: '1px solid var(--tr-border-subtle)',
+                  textDecoration: 'none',
+                }}
+              >
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--tr-gold)' }} />
+                {isRtl ? l.ar : l.en}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Share */}
       <div style={widgetStyle}>
         <SectionLabel>{isRtl ? 'شارك طريق' : 'Share Tareeq'}</SectionLabel>

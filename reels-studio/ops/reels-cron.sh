@@ -42,4 +42,6 @@ mkdir -p "$LOG_DIR"
 # تنظيف اللوجّات: نحتفظ بأحدث 30 ملف بالعدد، من غير أي شرط عمر.
 # (نفس سياسة ops/disk-cleanup.sh في المشروع الأساسي — الشرط الزمني هو
 #  اللي فشل مرتين هناك وملى الديسك.)
-ls -1t "${LOG_DIR}"/cron-*.log 2>/dev/null | tail -n +31 | xargs -r rm -f
+# find مش ls: الـ glob الفاضي بيخلي ls يرجّع خطأ، ومع pipefail بيفشل السكربت.
+find "$LOG_DIR" -maxdepth 1 -type f -name 'cron-*.log' -printf '%T@ %p\n' \
+  | sort -rn | tail -n +31 | cut -d' ' -f2- | xargs -r rm -f

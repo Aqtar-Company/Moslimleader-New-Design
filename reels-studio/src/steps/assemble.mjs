@@ -318,6 +318,12 @@ export async function assembleReel({ scenes, outDir, title }) {
     'utf8',
   );
 
+  // الملفات الوسيطة (كليبات موحّدة + المدموج + الخاتمة) نص حجم المجلد تقريباً
+  // ومالهاش لازمة بعد النجاح. بتفضل موجودة لو الإخراج فشل عشان التشخيص.
+  if (!CONFIG.keepWork) {
+    fs.rmSync(workDir, { recursive: true, force: true });
+  }
+
   log.ok(`الريل جاهز: ${finalPath} (${totalDuration}ث)`);
   return { finalPath, voiceoverPath, totalDuration };
 }

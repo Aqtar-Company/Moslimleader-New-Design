@@ -75,6 +75,8 @@ export const CONFIG = {
   maxCostUsd: num(process.env.REELS_MAX_COST_USD, 3),
 
   audioMode,
+  // الملفات الوسيطة بتتمسح بعد النجاح — خليها بـ 1 وقت تشخيص مشكلة مونتاج
+  keepWork: process.env.REELS_KEEP_WORK === '1',
   burnSubtitles: process.env.REELS_BURN_SUBTITLES !== '0',
   subtitleFont: process.env.REELS_SUBTITLE_FONT || 'Noto Sans Arabic',
 

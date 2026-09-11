@@ -57,11 +57,20 @@ cp .env.example .env      # واملا المفاتيح
 **متطلبات النظام** (CentOS/RHEL 9 — السيرفر بتاعنا):
 
 ```bash
-dnf install -y epel-release
-dnf install -y ffmpeg                          # المونتاج
-dnf install -y google-noto-sans-arabic-fonts   # السَبتايتل العربي
+# ffmpeg — مش موجود في مستودعات RHEL 9 الأساسية ولا EPEL.
+# بناء ثابت، مابيلمسش أي حزمة نظام:
+cd /usr/local/src
+curl -LO https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+tar xf ffmpeg-release-amd64-static.tar.xz
+cp ffmpeg-*-static/{ffmpeg,ffprobe} /usr/local/bin/ && chmod +x /usr/local/bin/ff*
+
+# الخط العربي للسَبتايتل
+dnf install -y google-noto-sans-arabic-fonts fontconfig
 fc-cache -f
 ```
+
+> 📋 **للتركيب الكامل على السيرفر:** [`ops/SERVER-SETUP.md`](ops/SERVER-SETUP.md)
+> — ١٦ خطوة مرقّمة من الصفر لحد الجدولة التلقائية.
 
 > من غير الخط العربي، السَبتايتل بيطلع حروف مقطّعة **من غير أي رسالة خطأ** —
 > fontconfig بيرجّع خط بديل في صمت. `doctor` بيكشف الحالة دي.
@@ -138,12 +147,17 @@ node src/cli.mjs run-queue --limit 2
 جدولة يومية على السيرفر:
 
 ```bash
-cp ops/reels-cron.sh /etc/cron.daily/reels-studio
-chmod +x /etc/cron.daily/reels-studio
+cp ops/reels-cron.sh     /etc/cron.daily/reels-studio
+cp ops/reels-cleanup.sh  /etc/cron.daily/reels-cleanup
+chmod +x /etc/cron.daily/reels-studio /etc/cron.daily/reels-cleanup
 ```
 
 السكربت فيه `flock` — تشغيلين متوازيين مستحيل، فمفيش صرف مضاعف على نفس المهمة.
 والمهمة الفاشلة بتتسجّل `failed` مش `pending`، فالـ cron مابيفضلش يكررها ويحرق فلوس.
+
+**التنظيف إلزامي مع الجدولة.** الريل ~٧ ميجا؛ `reels-cleanup.sh` بيحتفظ بأحدث
+٦٠ ريل **بالعدد مش بالعمر**، فالحجم مسقوف عند ~٤٢٠ ميجا للأبد. (نفس سياسة
+`ops/disk-cleanup.sh` في المشروع الأساسي — الشرط الزمني هو اللي فشل مرتين هناك.)
 
 ---
 

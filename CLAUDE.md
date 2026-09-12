@@ -164,6 +164,19 @@ VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=
 
+# OPTIONAL. Shared store for طريق's rate limits and presence (src/lib/tareeq-store.ts).
+# Everything works without it — it falls back to this process's memory, which is exactly
+# what the code did before the variable existed. What it buys:
+#   - The 20 Tareeq rate limits survive `pm2 restart`. Without it every deploy resets them.
+#   - Presence stops writing User.tareeqLastSeen twice a minute per open chat. That column
+#     is on the table the SHOP's sign-in, orders and membership use.
+#   - It is the precondition for ever running more than one process: per-process counters
+#     would silently multiply every limit.
+# Never required. A missing, refused or dying Redis must never take the shop down, and the
+# store is written so it cannot.
+#   yum install -y redis && systemctl enable --now redis
+REDIS_URL=redis://127.0.0.1:6379
+
 # Shared secret for BOTH cron routes — /api/cron/khatmati-reminder and
 # /api/cron/fb-follow-up. The variable is CRON_SECRET; the HEADER is `x-cron-key`.
 # The two names differ, and getting them the wrong way round leaves both endpoints
@@ -210,6 +223,25 @@ pm2 save
 ```
 
 > If `pm2 stop <id>`/`pm2 start <id>` prints `[PM2][ERROR] Process <id> not found`, the site keeps running on the OLD build the whole time (build files on disk change, but the live process never reloads them) — run `pm2 list` to find the real id, then `pm2 restart <real-id> --update-env` immediately.
+
+### Daily backup (independent of deploys)
+
+The dump below lives inside the deploy block, which means it only runs when someone pastes
+that block. A week with no deploy was a week with no backup. `ops/daily-db-backup.sh` is
+the same dump on a schedule:
+
+```bash
+cp ops/daily-db-backup.sh /usr/local/bin/moslimleader-db-backup
+chmod +x /usr/local/bin/moslimleader-db-backup
+( crontab -l 2>/dev/null; echo '30 3 * * * /usr/local/bin/moslimleader-db-backup' ) | crontab -
+crontab -l | grep moslimleader-db-backup
+```
+
+> **Careful with `crontab` rewrites.** This server's crontab also holds CyberPanel's backup
+> jobs, certbot renewal, and another project's Laravel scheduler. A filter like
+> `crontab -l | grep -v <pattern> | crontab -` deletes everything the pattern matches —
+> that is how the `fb-follow-up` and `khatmati-reminder` lines were lost once. Always run
+> `crontab -l` first and read it.
 
 ### Backup before any deploy (run this first)
 

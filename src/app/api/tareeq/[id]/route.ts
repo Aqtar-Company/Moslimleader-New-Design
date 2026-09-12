@@ -56,7 +56,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
-  const rl = tareeqRateLimit('edit', user.userId, 20, 60 * 60 * 1000);
+  const rl = await tareeqRateLimit('edit', user.userId, 20, 60 * 60 * 1000);
   if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
 
   if (await isTareeqSuspended(user.userId)) {
@@ -100,7 +100,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
-  const rl = tareeqRateLimit('delete', user.userId, 10, 60 * 60 * 1000);
+  const rl = await tareeqRateLimit('delete', user.userId, 10, 60 * 60 * 1000);
   if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
 
   const post = await prisma.tareeqPost.findUnique({ where: { id: params.id }, select: { userId: true } });

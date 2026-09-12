@@ -32,7 +32,7 @@ export async function PATCH(req: NextRequest) {
   const me = await getAuthUser().catch(() => null);
   if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const rl = tareeqRateLimit('notif-prefs', me.userId, 60, 60_000);
+  const rl = await tareeqRateLimit('notif-prefs', me.userId, 60, 60_000);
   if (!rl.allowed) {
     return NextResponse.json({ error: 'rate limited', retryAfterMs: rl.retryAfterMs }, { status: 429 });
   }

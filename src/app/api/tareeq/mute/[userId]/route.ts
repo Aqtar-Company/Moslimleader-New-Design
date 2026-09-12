@@ -22,7 +22,7 @@ export async function POST(_req: NextRequest, { params }: { params: { userId: st
     return NextResponse.json({ error: 'cannot mute yourself' }, { status: 400 });
   }
 
-  const rl = tareeqRateLimit('mute', me.userId, 60, 60_000);
+  const rl = await tareeqRateLimit('mute', me.userId, 60, 60_000);
   if (!rl.allowed) {
     return NextResponse.json({ error: 'rate limited', retryAfterMs: rl.retryAfterMs }, { status: 429 });
   }

@@ -12,7 +12,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!authResult) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const me = authResult;
 
-  const rl = tareeqRateLimit('react', me.userId, 60, 60 * 1000);
+  const rl = await tareeqRateLimit('react', me.userId, 60, 60 * 1000);
   if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
 
   if (await isTareeqSuspended(me.userId)) {

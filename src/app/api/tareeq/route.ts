@@ -231,7 +231,7 @@ export async function POST(req: NextRequest) {
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
 
-  const rl = tareeqRateLimit('post', user.userId, 10, 60 * 60 * 1000);
+  const rl = await tareeqRateLimit('post', user.userId, 10, 60 * 60 * 1000);
   if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
 
   // Check if user is suspended from Tareeq (also fetch name/avatar for post creation below)

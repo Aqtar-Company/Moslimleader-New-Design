@@ -34,7 +34,7 @@ export async function POST(_req: NextRequest, { params }: { params: { userId: st
     return NextResponse.json({ error: 'Cannot block yourself' }, { status: 400 });
   }
 
-  const rl = tareeqRateLimit('block', user.userId, 30, 60_000);
+  const rl = await tareeqRateLimit('block', user.userId, 30, 60_000);
   if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
 
   const existing = await prisma.tareeqBlock.findUnique({

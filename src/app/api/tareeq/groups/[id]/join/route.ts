@@ -12,7 +12,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
 
-  const rl = tareeqRateLimit('group-join', user.userId, 20, 60 * 60 * 1000);
+  const rl = await tareeqRateLimit('group-join', user.userId, 20, 60 * 60 * 1000);
   if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
 
   if (await isTareeqSuspended(user.userId)) {

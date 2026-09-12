@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
   // Previously unthrottled — an account could file unlimited reports against
   // many different targets, making coordinated brigading trivial.
-  const rl = tareeqRateLimit('report', user.userId, 15, 60 * 60 * 1000);
+  const rl = await tareeqRateLimit('report', user.userId, 15, 60 * 60 * 1000);
   if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
 
   const body = await req.json().catch(() => ({}));

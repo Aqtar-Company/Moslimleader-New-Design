@@ -1,5 +1,5 @@
 import { prisma } from './prisma';
-import { checkRateLimit } from './rate-limit';
+import { checkLimitShared } from './tareeq-store';
 
 // Rate-limiting every Tareeq mutation route by the client-supplied
 // X-Forwarded-For header was fully bypassable: nginx (see deploy/nginx.conf)
@@ -10,8 +10,24 @@ import { checkRateLimit } from './rate-limit';
 // signed-in user (getAuthUser() succeeds before this is called), so keying
 // on the authenticated user id instead removes the spoofable header
 // entirely — a single account can't get a new bucket without a new account.
+/**
+ * Tareeq's rate limits, through the shared store.
+ *
+ * Async now, and that is the whole change at the call sites: `await` and nothing else, same
+ * answer shape. What it buys is that the counters survive a restart and stay correct if the
+ * app is ever run as more than one process — the in-memory version reset all twenty of
+ * these on every deploy, and would have silently doubled every one of them the moment a
+ * second process existed.
+ *
+ * `src/lib/rate-limit.ts` is deliberately NOT changed. Twenty-three shop routes call it
+ * synchronously — PayPal, membership, orders, the book reader — and Tareeq must not reach
+ * into the shop's request paths to improve its own.
+ *
+ * With no Redis configured this behaves exactly as before: same sliding window, same
+ * process memory. Redis is an upgrade here, never a dependency.
+ */
 export function tareeqRateLimit(action: string, userId: string, maxRequests: number, windowMs: number) {
-  return checkRateLimit(`tareeq-${action}:${userId}`, maxRequests, windowMs);
+  return checkLimitShared(`tareeq-${action}:${userId}`, maxRequests, windowMs);
 }
 
 // `TareeqBan`/`User.tareeqSuspended` previously only blocked new top-level

@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
   const me = await getAuthUser().catch(() => null);
   if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const rl = tareeqRateLimit('appeal', me.userId, 3, 24 * 60 * 60 * 1000);
+  const rl = await tareeqRateLimit('appeal', me.userId, 3, 24 * 60 * 60 * 1000);
   if (!rl.allowed) {
     return NextResponse.json({ error: 'rate limited', retryAfterMs: rl.retryAfterMs }, { status: 429 });
   }

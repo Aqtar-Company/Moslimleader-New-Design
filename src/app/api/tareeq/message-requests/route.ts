@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'تم تعليق حسابك في طريق' }, { status: 403 });
   }
 
-  const rl = tareeqRateLimit('msgreq', user.userId, 10, 3_600_000);
+  const rl = await tareeqRateLimit('msgreq', user.userId, 10, 3_600_000);
   if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
 
   const body = await req.json().catch(() => ({}));

@@ -22,7 +22,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: 'تم تعليق حسابك في طريق' }, { status: 403 });
   }
 
-  const rl = tareeqRateLimit('publish-draft', me.userId, 10, 60 * 60 * 1000);
+  const rl = await tareeqRateLimit('publish-draft', me.userId, 10, 60 * 60 * 1000);
   if (!rl.allowed) {
     return NextResponse.json({ error: 'rate limited', retryAfterMs: rl.retryAfterMs }, { status: 429 });
   }

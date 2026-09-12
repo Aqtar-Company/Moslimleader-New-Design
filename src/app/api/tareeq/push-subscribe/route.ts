@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   const user = await getAuthUser().catch(() => null);
   if (!user) return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
 
-  const rl = tareeqRateLimit('push-sub', user.userId, 10, 60_000);
+  const rl = await tareeqRateLimit('push-sub', user.userId, 10, 60_000);
   if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
 
   const body = await req.json().catch(() => ({}));

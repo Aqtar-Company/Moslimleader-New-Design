@@ -10,7 +10,7 @@ export async function PATCH(req: NextRequest) {
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   // 10 attempts per hour per user to prevent username enumeration
-  const rl = tareeqRateLimit('username', auth.userId, 10, 60 * 60 * 1000);
+  const rl = await tareeqRateLimit('username', auth.userId, 10, 60 * 60 * 1000);
   if (!rl.allowed) return NextResponse.json({ error: 'حاول لاحقاً' }, { status: 429 });
 
   const body = await req.json().catch(() => ({}));

@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { storeIsShared } from '@/lib/tareeq-store';
 import { requireAdmin } from '@/lib/tareeq-admin-auth';
 import { TareeqAdminRole } from '@prisma/client';
 
@@ -21,11 +22,14 @@ export async function GET(request: NextRequest) {
     database = 'error';
   }
 
-  const [pushSubscriptions, activeCalls] = await Promise.allSettled([
+  const [pushSubscriptions, activeCalls, storeShared] = await Promise.allSettled([
     prisma.tareeqPushSubscription.count(),
     prisma.tareeqCall.count({
       where: { status: { in: ['ringing', 'active'] } },
     }),
+    // allSettled, and only here: this pings Redis, and a health page must never be the
+    // thing that hangs because the store it is reporting on is unreachable.
+    storeIsShared(),
   ]);
 
   const mem = process.memoryUsage();
@@ -61,6 +65,14 @@ export async function GET(request: NextRequest) {
       clientKeyPrefix: (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '').slice(0, 10) || null,
       keysMatch: !!process.env.VAPID_PUBLIC_KEY
         && process.env.VAPID_PUBLIC_KEY === process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+    },
+    // Whether rate limits and presence are in a shared store or in this process's memory.
+    // `shared: false` is not an error — it is the fallback, and everything works — but it
+    // means every restart resets all twenty of Tareeq's limits, and that running more than
+    // one process would silently multiply each of them.
+    store: {
+      configured: !!process.env.REDIS_URL,
+      shared: storeShared.status === 'fulfilled' ? storeShared.value : false,
     },
   });
 }

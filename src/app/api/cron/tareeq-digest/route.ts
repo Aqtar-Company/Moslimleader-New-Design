@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getTransporter } from '@/lib/smtp';
+import { getShared, setShared } from '@/lib/tareeq-store';
 
 /**
  * The weekly "here is what you missed" email.
@@ -11,6 +12,20 @@ import { getTransporter } from '@/lib/smtp';
  * already configured and paid for; the channel existed and went unused.
  *
  * Authentication: shared CRON_SECRET, header `x-cron-key` — same as the other cron routes.
+ *
+ * ## Why it also refuses to run twice
+ *
+ * The secret alone is not enough protection for this particular route, because this one
+ * SENDS MAIL. Every other cron endpoint deletes old rows or nudges a chat; this one can
+ * put 300 emails on the wire per call. Anyone holding the secret — and it travels in
+ * plain text inside a crontab line, printed by `crontab -l` — could call it a hundred
+ * times and push 30,000 messages through Titan.
+ *
+ * That does not damage طريق. It burns the SENDING REPUTATION of the address the SHOP uses
+ * for order receipts and account verification, and can get the mailbox suspended. So the
+ * route is idempotent for the period: the first run of a given week claims a key, and
+ * every later call that week returns without sending. Bulk mail behind a shared secret
+ * needs a second lock, not just the secret.
  *
  * Install (Sunday 9am Cairo = 07:00 UTC):
  *   0 7 * * 0 curl -s -H "x-cron-key: $CRON_SECRET" https://moslimleader.com/api/cron/tareeq-digest >/dev/null 2>&1
@@ -36,6 +51,15 @@ function esc(s: string): string {
 
 export async function GET(req: NextRequest) {
   if (!isAuthorized(req)) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+
+  // One send per calendar week, whatever calls it and however often. The claim is written
+  // BEFORE any mail goes out: a crash halfway through must not leave the week unclaimed and
+  // let a retry send to everyone again.
+  const week = new Date();
+  const weekKey = `digest-sent:${week.getUTCFullYear()}-${Math.floor((week.getTime() - Date.UTC(week.getUTCFullYear(), 0, 1)) / 604_800_000)}`;
+  if (await getShared(weekKey)) {
+    return NextResponse.json({ ok: true, sent: 0, reason: 'already sent this week' });
+  }
 
   const since = new Date(Date.now() - AWAY_DAYS * 86_400_000);
 
@@ -67,6 +91,10 @@ export async function GET(req: NextRequest) {
     select: { id: true, name: true, email: true, marketingToken: true },
     take: MAX_RECIPIENTS,
   });
+
+  // Claimed for nine days — longer than the week, so a run that starts late cannot slip
+  // past the boundary and send twice.
+  await setShared(weekKey, new Date().toISOString(), 9 * 86_400);
 
   const transporter = getTransporter();
   let sent = 0;

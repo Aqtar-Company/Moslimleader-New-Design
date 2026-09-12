@@ -193,7 +193,26 @@ CRON_SECRET=
 - **URL:** https://moslimleader.com
 - **Path:** `/home/moslimleader.com/app`
 - **OS:** CentOS/RHEL 9 (use `yum`/`dnf` for packages)
-- **PM2:** process id `0`, name `moslimleader` — restart with `pm2 restart 0 --update-env` (id drifted from `1`→`0` at some point; always confirm with `pm2 list` before using a hardcoded id — `pm2 stop 1`/`pm2 start 1` fail silently with "Process 1 not found" if it's drifted again, leaving the old build running)
+- **PM2:** process id `0`, name `moslimleader` — restart with `pm2 restart 0 --update-env`.
+  **PM2 on this server manages more than one project.** As of 2026-09-12 `pm2 list` shows:
+
+  | id | name | project |
+  |----|------|---------|
+  | 0  | `moslimleader` | this one |
+  | 1  | `reels-ui`     | a DIFFERENT project |
+
+  Three consequences, and the second one is the dangerous one:
+
+  1. Always confirm the id with `pm2 list` before using a hardcoded number. This app's id
+     already drifted `1`→`0` once.
+  2. **Id `1` is now someone else's site.** An old instruction saying `pm2 restart 1` no
+     longer fails with "Process 1 not found" — it now succeeds, against the WRONG project.
+     Restarting by number is only safe after reading `pm2 list`; restarting by name
+     (`pm2 restart moslimleader --update-env`) cannot hit the wrong one at all, and is the
+     safer habit.
+  3. Never use `pm2 restart all` / `pm2 stop all` / `pm2 delete all` here — they take every
+     project on the server with them. `pm2 save` writes the whole list, which is correct:
+     both projects come back after a reboot.
 - **Node:** PM2 fork mode, port 3000, Nginx reverse proxy on 80/443
 - **SSL:** Let's Encrypt via Nginx
 - **Required system packages:** `ghostscript`, `poppler-utils` (for PDF rendering)

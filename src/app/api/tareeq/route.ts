@@ -8,6 +8,7 @@ import { filterContent, validateMediaUrl } from '@/lib/tareeq-content-filter';
 import { SHARED_FROM_SELECT, normalizeSharedFrom } from '@/lib/tareeq-post-select';
 import { postSearchWhere } from '@/lib/tareeq-search';
 import { notifyTareeq } from '@/lib/tareeq-notify';
+import { computeHotScore } from '@/lib/tareeq-rank';
 
 // GET /api/tareeq?cursor=xxx&category=xxx&limit=12&likedBy=userId&sort=newest|liked|following|useful
 export async function GET(req: NextRequest) {
@@ -28,14 +29,14 @@ export async function GET(req: NextRequest) {
     ? [{ likeCount: 'desc' as const }, { id: 'desc' as const }]
     : sort === 'useful'
     ? [
-        // savedCount is the denormalized column the card renders; ranking on it avoids a
-        // correlated aggregate subquery that no index can serve. NOTE: any popularity
-        // sort is only stable within a snapshot — counts change between page fetches, so
-        // items can still shift across the cursor boundary. The tiebreaker removes the
-        // tie-related churn; the residual drift is inherent to ranking on live counters.
-        { savedCount: 'desc' as const },
-        { likeCount: 'desc' as const },
-        { createdAt: 'desc' as const },
+        // `hotScore` blends engagement with recency (src/lib/tareeq-rank.ts). It replaced
+        // `savedCount desc, likeCount desc`, which was popularity with no sense of time:
+        // inside the 30-day window the oldest popular post sat on top for a month, and a
+        // good post from this morning could not reach anyone.
+        // NOTE: like any ranking on live counters, this is only stable within a snapshot —
+        // the score moves between page fetches, so items can still shift across the cursor
+        // boundary. The id tiebreaker removes the tie-related churn; the rest is inherent.
+        { hotScore: 'desc' as const },
         { id: 'desc' as const },
       ]
     : [{ createdAt: 'desc' as const }, { id: 'desc' as const }];
@@ -361,6 +362,9 @@ export async function POST(req: NextRequest) {
       // Null while it is a draft; the publish route stamps it. Not reusing createdAt so a
       // post drafted last week and published today isn't buried a week deep.
       publishedAt: isDraft ? null : new Date(),
+      // A new post has no engagement, so its score is purely its age — which is exactly
+      // what gets it seen at all. The nightly pass takes over from here.
+      hotScore: isDraft ? 0 : computeHotScore({ at: new Date() }),
       videoUrl,
       ...(thumbnailUrl ? { thumbnailUrl } : {}),
       userId: user.userId,

@@ -1006,6 +1006,11 @@ model TareeqPost {
   // a draft started on the phone did not exist on the desktop, and starting a second post
   // overwrote the first. A draft is a real row that the feed filters out.
   isDraft         Boolean                  @default(false)
+  /// Ranking score for the «الأنفع» feed: engagement, damped, plus a recency term.
+  /// Stored rather than computed at read time so the feed can ORDER BY an index instead of
+  /// sorting the whole table. Set on publish and recomputed nightly by
+  /// /api/cron/tareeq-cleanup — the decay is slow enough that a daily pass is plenty.
+  hotScore        Float                    @default(0)
   // When the post actually went public. Null while it is a draft. Set on publish rather
   // than reusing createdAt, so a post drafted last week and published today is not buried
   // a week deep in the feed.
@@ -1040,6 +1045,7 @@ model TareeqPost {
   @@index([sharedFromId])
   @@index([isDraft])
   @@index([publishedAt])
+  @@index([hotScore])
   // Post search ran as `contains`, which MySQL executes as LIKE '%…%' — a full table scan
   // no index can help. This is the index that makes `search:` possible instead.
   @@fulltext([title, content])

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isTareeqSuspended } from '@/lib/tareeq-guard';
+import { computeHotScore } from '@/lib/tareeq-rank';
 
 /**
  * Publish a draft (POST) or discard it (DELETE).
@@ -29,9 +30,12 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
 
   // updateMany scoped by userId, not findUnique-then-update: it makes "is this mine?" part
   // of the write instead of a separate check something could slip between.
+  const publishedAt = new Date();
   const res = await prisma.tareeqPost.updateMany({
     where: { id: params.id, userId: me.userId, isDraft: true },
-    data: { isDraft: false, publishedAt: new Date() },
+    // The score is seeded from the publication moment, not from when the draft was
+    // written — otherwise a post drafted a month ago would arrive already buried.
+    data: { isDraft: false, publishedAt, hotScore: computeHotScore({ at: publishedAt }) },
   });
 
   if (res.count === 0) {

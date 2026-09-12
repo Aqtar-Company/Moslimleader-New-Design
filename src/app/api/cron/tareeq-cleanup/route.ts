@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { computeHotScore } from '@/lib/tareeq-rank';
 
 /**
  * Retention for the two Tareeq tables that grow without limit.
@@ -18,11 +19,17 @@ import { prisma } from '@/lib/prisma';
  * the header have different names on purpose; getting them the wrong way round is what
  * left both of those answering 403 for a while.
  *
+ * It also recomputes the «الأنفع» ranking score. That score has a recency term, so every
+ * post's standing changes simply by time passing — a nightly pass is what keeps the feed
+ * from freezing around whatever was popular the day each post was written.
+ *
  * Install with:
  *   0 4 * * * curl -s -H "x-cron-key: $CRON_SECRET" https://moslimleader.com/api/cron/tareeq-cleanup
  */
 
 const VIEW_RETENTION_DAYS = 90;
+/** How far back to rescore. Older than this and nothing can realistically climb back. */
+const RESCORE_DAYS = 60;
 const READ_NOTIF_RETENTION_DAYS = 120;
 /** Deleting in chunks keeps the row locks short — this table is on the hot view path. */
 const BATCH = 5_000;
@@ -87,9 +94,38 @@ export async function GET(req: NextRequest) {
       return r.count;
     });
 
+    // Rescore recent posts. Bounded to 5,000: past that it is not a cron job any more,
+    // and posts outside the window are not going to climb the feed regardless.
+    let rescored = 0;
+    const since = new Date(now - RESCORE_DAYS * 86_400_000);
+    const recent = await prisma.tareeqPost.findMany({
+      where: { isHidden: false, isDraft: false, createdAt: { gte: since } },
+      select: {
+        id: true, savedCount: true, likeCount: true, commentCount: true, shareCount: true,
+        publishedAt: true, createdAt: true,
+      },
+      take: 5_000,
+    });
+
+    for (const p of recent) {
+      const score = computeHotScore({
+        savedCount: p.savedCount,
+        likeCount: p.likeCount,
+        commentCount: p.commentCount,
+        shareCount: p.shareCount,
+        // publishedAt is null for everything written before drafts existed.
+        at: p.publishedAt ?? p.createdAt,
+      });
+      // Sequential, not Promise.all: five thousand concurrent updates would take every
+      // connection in the pool, and the shop shares that pool.
+      await prisma.tareeqPost.update({ where: { id: p.id }, data: { hotScore: score } }).catch(() => {});
+      rescored++;
+    }
+
     return NextResponse.json({
       ok: true,
       deleted: { views, readNotifications: notifs },
+      rescored,
       retentionDays: { views: VIEW_RETENTION_DAYS, readNotifications: READ_NOTIF_RETENTION_DAYS },
     });
   } catch (e) {

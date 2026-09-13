@@ -454,22 +454,42 @@ Books are protected from download at two levels:
     the limit for two OTHER projects. Edit `/etc/nginx/conf.d/moslimleader.conf` by name.
 - **Video is re-encoded in the BROWSER, and only when it has to be.** Images are compressed
   twice (canvas in the browser, then sharp on the server, 1920px). Video is uploaded as-is
-  unless one of two things is true, both decided in `src/lib/tareeq-video-compress.ts`:
-  it is over the size cap, or `needsTranscodeForCompat()` says the codec will not play for
-  everyone. Server-side ffmpeg is not an option — one 250MB re-encode takes the CPU for
-  minutes on a box that also runs the shop and two other projects.
+  unless one of two things is true: it is over the size cap, or the codec will not play for
+  everyone (HEVC/AV1, or an unknown-codec `.mov`), decided by `detectVideoCodec()` in
+  `src/lib/tareeq-video-compress.ts`. Server-side ffmpeg is not an option — one 250MB
+  re-encode takes the CPU for minutes on a box that also runs the shop and two other projects.
 
-  Three things about that re-encode that cost six rounds of wrong fixes to learn:
-  - **It runs in REAL TIME**, off the source `<video>`'s own playback. A two-minute clip
-    takes two minutes, and anything that stalls decoding part-way — screen lock, the app
-    backgrounded, the element scrolled out of view on Android — leaves the canvas holding
-    one frame while the audio, passed through untouched, keeps running. The output is then
-    a video with a frozen MIDDLE and a normal start and end. A screen wake lock is held for
-    the duration, and `MAX_FROZEN_SPAN_SECONDS` refuses the result rather than publishing
-    it. The permanent fix is WebCodecs (no real-time dependency); not done yet.
-  - **The picture must be visible while it runs.** Chrome on Android suspends frame
-    decoding for an invisible media element — audio keeps playing, frames stop. That is why
-    `compressVideo` takes a `mountInto` element and the modal shows a live preview.
+  **Two re-encoders exist, and the order matters** (`TareeqCreateModal.tsx`, the video branch
+  of `doUpload`):
+  1. **`src/lib/tareeq-video-transcode.ts` — WebCodecs via `mediabunny`, the primary path.**
+     Demux → decode → scale → encode → mux, with no playback and no wall clock. Measured in a
+     real Chromium at ~5× faster than real time with a software encoder; output frames are
+     derived from input packets, so a frozen picture with running audio is structurally
+     impossible. `mediabunny` is `import()`ed lazily (~100 KB gzip, never in the main
+     bundle); it needs no wasm, no SharedArrayBuffer, no COOP/COEP. Output is H.264/MP4 when
+     the browser can encode H.264 (plays on iOS), else VP9/VP8 WebM. Audio is COPIED
+     packet-for-packet when it can be (AAC→MP4), which is why iOS 16.4–18 works despite its
+     WebCodecs having no `AudioEncoder`. **Do not pass `hardwareAcceleration:
+     'prefer-hardware'`** — on a device without a hardware session for that codec the encoder
+     rejects the config outright and the whole conversion fails at init; the default lets
+     the browser choose. **Unverified here:** the H.264 path (this sandbox's Chromium has no
+     proprietary codecs) and real iOS — test on a real Android and a real iPhone, including a
+     portrait clip, before trusting a change to this file.
+  2. **`compressVideo()` in `tareeq-video-compress.ts` — MediaRecorder, the FALLBACK** for
+     browsers without WebCodecs (Firefox for Android, iOS < 16.4). It plays the source
+     `<video>` in REAL TIME and records a canvas. A two-minute clip takes two minutes, and
+     anything that stalls decoding part-way — screen lock, backgrounding, the element off
+     screen on Android, a decoder that cannot keep up with a 259MB source — leaves the canvas
+     holding one frame while the audio keeps running: a frozen MIDDLE with a normal start
+     and end. Mitigations: a wake lock, pausing video+recorder together on
+     `visibilitychange`, and a freeze detector sampled on a 500ms WALL-CLOCK timer (not per
+     paint — per-paint sampling made refusal automatic on any slow device). **The detector
+     WARNS (`onWarning`) and never refuses**: three rounds of refusing guards each blocked a
+     real author. Only no-picture-at-all / bigger-than-input still return `null`.
+  - **The fallback's picture must be visible while it runs.** Chrome on Android suspends
+    frame decoding for an invisible media element — audio keeps playing, frames stop. That
+    is why `compressVideo` takes a `mountInto` element and the modal shows a live preview.
+    The WebCodecs path has no such requirement.
   - **iPhones record HEVC in a `.mov` by default, and Chrome on Android cannot decode it.**
     Such a file uploads fine, plays fine for the person who posted it, and is a frozen
     picture with working sound for every Android viewer. It cannot be caught by playing the

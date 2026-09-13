@@ -6,7 +6,8 @@ import { useAuth } from '@/context/AuthContext';
 import { TAREEQ_CATEGORIES, CATEGORY_ICONS } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import { compressImage } from '@/lib/compress-image';
-import { compressVideo, canCompressVideo, needsTranscodeForCompat, detectVideoCodec, type CompressFailure } from '@/lib/tareeq-video-compress';
+import { compressVideo, canCompressVideo, detectVideoCodec, type CompressFailure } from '@/lib/tareeq-video-compress';
+import { transcodeVideo, canTranscodeWithWebCodecs } from '@/lib/tareeq-video-transcode';
 
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
@@ -314,9 +315,10 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     // The WARNING must not depend on whether we can do anything about it — folding
     // `canCompressVideo()` in here meant a browser that cannot re-encode showed no warning
     // at all, which is the one browser whose users most needed it.
-    const compatTranscode = codecIncompatible && canCompressVideo();
+    const canReencode = canTranscodeWithWebCodecs() || canCompressVideo();
+    const compatTranscode = codecIncompatible && canReencode;
 
-    if (isVideoFile && (file.size > MAX_VIDEO_BYTES || compatTranscode) && canCompressVideo()) {
+    if (isVideoFile && (file.size > MAX_VIDEO_BYTES || compatTranscode) && canReencode) {
       setUploading(true);
       setMainUploadFailed(false);
       setUploadFileName(file.name);
@@ -334,21 +336,48 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
         if (!compressPreviewRef.current) {
           await new Promise(r => setTimeout(r, 120));
         }
-        const smaller = await compressVideo(
-          file,
-          pct => setUploadProgress(pct),
-          compressPreviewRef.current,
-          reason => { failReason = reason; },
-          {
-            // ONLY when the codec is the reason we are here. If the file is also over the
-            // cap, allowing a bigger output just produces something the size check refuses
-            // two lines later, and tells the user we made their file bigger.
-            acceptLarger: compatTranscode && file.size <= MAX_VIDEO_BYTES,
-            onWarning: reason => {
-              if (reason === 'stalled' || reason === 'truncated') setQualityNotice(reason);
+        // ONLY when the codec is the reason we are here. If the file is also over the cap,
+        // allowing a bigger output just produces something the size check refuses two
+        // lines later, and tells the user we made their file bigger.
+        const acceptLarger = compatTranscode && file.size <= MAX_VIDEO_BYTES;
+
+        /**
+         * WebCodecs first. It does not play the video, so it does not care whether the
+         * screen is on, the app is in front, or the device can decode in real time — the
+         * three things that froze the middle of every long clip on the MediaRecorder path.
+         * That path stays as the fallback for browsers without WebCodecs (Firefox on
+         * Android, iOS before 16.4), and for a WebCodecs run that fails for a reason the
+         * old path might not share.
+         */
+        let smaller: File | null = null;
+        let webcodecsReason: CompressFailure | null = null;
+        if (canTranscodeWithWebCodecs()) {
+          smaller = await transcodeVideo(
+            file,
+            pct => setUploadProgress(pct),
+            reason => { webcodecsReason = reason; },
+            { acceptLarger },
+          );
+        }
+        // Reasons that are about the FILE, not about this browser's WebCodecs, will not
+        // change on the slower path — do not make the user sit through it for the same answer.
+        const finalForFile = webcodecsReason === 'too-long' || webcodecsReason === 'not-smaller';
+        if (!smaller && !finalForFile && canCompressVideo()) {
+          smaller = await compressVideo(
+            file,
+            pct => setUploadProgress(pct),
+            compressPreviewRef.current,
+            reason => { failReason = reason; },
+            {
+              acceptLarger,
+              onWarning: reason => {
+                if (reason === 'stalled' || reason === 'truncated') setQualityNotice(reason);
+              },
             },
-          },
-        );
+          );
+        } else if (!smaller && webcodecsReason) {
+          failReason = webcodecsReason;
+        }
         if (smaller) workingFile = smaller;
       } catch {
         /* fall through to the size check below */

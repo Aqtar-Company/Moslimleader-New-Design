@@ -13,6 +13,19 @@ const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
 const DRAFT_KEY = 'tareeq_draft';
 
+/** The "this one is the cover" mark on a picker tile. */
+function CoverCheck() {
+  return (
+    <span
+      className="absolute flex items-center justify-center rounded-full"
+      style={{ top: 4, insetInlineEnd: 4, width: 18, height: 18, background: 'var(--tr-gold)', color: '#fff' }}
+      aria-hidden
+    >
+      <svg width={11} height={11} fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+    </span>
+  );
+}
+
 /** Must match MAX_VIDEO / MAX_AUDIO in src/app/api/tareeq/upload/route.ts — which are in
  *  turn bounded by nginx's `client_max_body_size` (50M on this server). See the note there
  *  before changing either. */
@@ -85,6 +98,15 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   /** Candidate cover frames pulled from the local file, for "pick a frame". */
   const [frames, setFrames] = useState<string[]>([]);
   const [pickingFrame, setPickingFrame] = useState<number | null>(null);
+  /** Which tile is the current cover — a frame index, the uploaded image, or nothing yet. */
+  const [selectedCover, setSelectedCover] = useState<number | 'custom' | null>(null);
+  /**
+   * What the preview shows as the cover RIGHT NOW. Set the instant a tile is tapped, from
+   * the local frame, before the upload even starts. The tap used to change nothing on
+   * screen until the round-trip finished — and if that failed silently, nothing at all —
+   * so the strip read as broken.
+   */
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
   /** A cover (auto or picked) is on its way up. Publish must wait for it. */
   const [coverUploading, setCoverUploading] = useState(false);
   const framesForFileRef = useRef<File | null>(null);
@@ -689,6 +711,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     setFrames([]);
     setPickingFrame(null);
     setCoverUploading(false);
+    setSelectedCover(null);
+    setCoverPreview(null);
     framesForFileRef.current = null;
     // The previous file's error stayed on screen through the whole codec scan of the new
     // one, describing a file the user had already replaced.
@@ -730,6 +754,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     setFrames([]);
     setPickingFrame(null);
     setCoverUploading(false);
+    setSelectedCover(null);
+    setCoverPreview(null);
     framesForFileRef.current = null;
     setCompatNotice(false);
     setQualityNotice(null);
@@ -1273,7 +1299,10 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                     ? <img src={mediaUrl} alt="" className="w-full max-h-72 object-cover" />
                     : <video
                         src={mediaUrl}
-                        poster={customThumbUrl ?? videoThumb ?? undefined}
+                        // Remounted on a cover change: a <video> that has already shown its
+                        // poster does not repaint when the attribute changes.
+                        key={coverPreview ?? customThumbUrl ?? 'video-preview'}
+                        poster={coverPreview ?? customThumbUrl ?? videoThumb ?? undefined}
                         className="w-full max-h-72"
                         controls playsInline
                       />
@@ -1400,47 +1429,6 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                       </svg>
                       {isRtl ? 'تم الرفع' : 'Uploaded'}
                     </div>
-                  )}
-                  {/* Custom thumbnail button — only for videos */}
-                  {mediaType === 'video' && mediaUrl && (
-                    <>
-                      <input
-                        ref={thumbInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={async (e) => {
-                          const f = e.target.files?.[0];
-                          if (!f) return;
-                          setThumbUploading(true);
-                          try {
-                            const compressed = await compressImage(f, { maxWidth: 1280, maxHeight: 720, quality: 0.82 });
-                            const form = new FormData();
-                            form.append('file', compressed);
-                            const res = await fetch('/api/tareeq/upload', { method: 'POST', credentials: 'include', body: form });
-                            const data = await res.json();
-                            if (data.url) setCustomThumbUrl(data.url);
-                          } catch { /* ignore */ }
-                          finally { setThumbUploading(false); e.target.value = ''; }
-                        }}
-                      />
-                      <button
-                        onClick={() => thumbInputRef.current?.click()}
-                        disabled={thumbUploading}
-                        className="absolute bottom-2 start-2 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-bold transition active:scale-95 disabled:opacity-60"
-                        style={{ background: 'rgba(0,0,0,0.65)', color: '#fff', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.2)' }}
-                      >
-                        {thumbUploading
-                          ? <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          : <svg width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-                        }
-                        {thumbUploading
-                          ? (isRtl ? 'جاري...' : 'Uploading...')
-                          : customThumbUrl
-                            ? (isRtl ? 'تغيير الغلاف' : 'Change cover')
-                            : (isRtl ? 'إضافة غلاف' : 'Add cover')}
-                      </button>
-                    </>
                   )}
                   <button
                     onClick={removeMedia}
@@ -1570,15 +1558,89 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
               </div>
             )}
 
-            {/* ── Cover picker — frames from the video itself ── */}
-            {mediaType === 'video' && mediaUrl && frames.length > 0 && (
+            {/* ── Cover picker — a "+" tile to upload an image, then frames from the video ── */}
+            {mediaType === 'video' && mediaUrl && (
               <div className="mx-4 mb-4">
                 <p className="text-[11px] font-bold mb-2" style={{ color: 'var(--tr-text-muted)' }}>
-                  {isRtl ? 'اختر غلافاً من الفيديو' : 'Pick a cover from the video'}
+                  {isRtl ? 'الغلاف — اختر فريماً من الفيديو أو ارفع صورة' : 'Cover — pick a frame from the video or upload an image'}
                 </p>
+                <input
+                  ref={thumbInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    const forFile = lastMediaFileRef.current;
+                    setThumbUploading(true);
+                    setSelectedCover('custom');
+                    // Optimistic: show the chosen image at once, swap to the uploaded URL after.
+                    const localUrl = URL.createObjectURL(f);
+                    setCoverPreview(localUrl);
+                    try {
+                      const compressed = await compressImage(f, { maxWidth: 1280, maxHeight: 720, quality: 0.82 });
+                      const form = new FormData();
+                      form.append('file', compressed);
+                      const res = await fetch('/api/tareeq/upload', { method: 'POST', credentials: 'include', body: form });
+                      const data = await res.json().catch(() => ({}));
+                      if (lastMediaFileRef.current === forFile) {
+                        if (res.ok && data.url) { setCustomThumbUrl(data.url); setCoverPreview(data.url); }
+                        else { setError(data.error || (isRtl ? 'تعذّر رفع الغلاف، حاول تاني' : 'Could not upload the cover — try again')); setSelectedCover(null); setCoverPreview(null); }
+                      }
+                    } catch {
+                      if (lastMediaFileRef.current === forFile) { setError(isRtl ? 'لا يوجد اتصال' : 'No connection'); setSelectedCover(null); setCoverPreview(null); }
+                    } finally {
+                      URL.revokeObjectURL(localUrl);
+                      setThumbUploading(false);
+                      e.target.value = '';
+                    }
+                  }}
+                />
                 <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'thin' }}>
+                  {/* Upload tile. First in DOM = at the START edge, which in Arabic is the far
+                      right — where it was asked to be. */}
+                  <button
+                    type="button"
+                    onClick={() => thumbInputRef.current?.click()}
+                    disabled={thumbUploading || pickingFrame !== null}
+                    className="relative shrink-0 rounded-lg overflow-hidden flex flex-col items-center justify-center gap-0.5 transition active:scale-95 disabled:opacity-70"
+                    style={{
+                      width: 96, height: 54,
+                      border: selectedCover === 'custom' ? '2px solid var(--tr-gold)' : '2px dashed var(--tr-border-soft)',
+                      background: selectedCover === 'custom' && coverPreview ? '#000' : 'var(--tr-overlay)',
+                      color: 'var(--tr-gold)',
+                    }}
+                    aria-label={isRtl ? 'رفع صورة كغلاف' : 'Upload an image as cover'}
+                  >
+                    {selectedCover === 'custom' && coverPreview
+                      // eslint-disable-next-line @next/next/no-img-element
+                      ? <img src={coverPreview} alt="" className="w-full h-full object-cover" />
+                      : (
+                        <>
+                          <span className="text-xl font-black leading-none">+</span>
+                          <span className="text-[9px] font-bold" style={{ color: 'var(--tr-text-muted)' }}>{isRtl ? 'صورة' : 'Image'}</span>
+                        </>
+                      )}
+                    {thumbUploading && (
+                      <span className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.45)' }}>
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      </span>
+                    )}
+                    {selectedCover === 'custom' && !thumbUploading && <CoverCheck />}
+                  </button>
+
+                  {frames.length === 0 && (
+                    // Frames are still being captured from the file. Placeholders keep the
+                    // row from jumping when they arrive.
+                    [0, 1, 2, 3].map(i => (
+                      <span key={i} className="shrink-0 rounded-lg animate-pulse" style={{ width: 96, height: 54, background: 'var(--tr-overlay)', border: '2px solid var(--tr-border-subtle)' }} />
+                    ))
+                  )}
+
                   {frames.map((f, i) => {
                     const busy = pickingFrame === i;
+                    const selected = selectedCover === i;
                     return (
                       <button
                         key={i}
@@ -1586,29 +1648,45 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                         disabled={pickingFrame !== null || thumbUploading}
                         onClick={async () => {
                           const forFile = lastMediaFileRef.current;
+                          const previous = { selected: selectedCover, preview: coverPreview };
+                          // Feedback first, network second.
+                          setSelectedCover(i);
+                          setCoverPreview(f);
                           setPickingFrame(i);
                           setCoverUploading(true);
                           const url = await uploadCoverDataUrl(f);
                           // The user may have swapped or removed the video meanwhile — a
                           // cover for the OLD file must not attach to the new one.
                           if (lastMediaFileRef.current === forFile) {
-                            if (url) setCustomThumbUrl(url);
-                            else setError(isRtl ? 'تعذّر رفع الغلاف، حاول تاني' : 'Could not upload the cover — try again');
+                            if (url) {
+                              setCustomThumbUrl(url);
+                              setCoverPreview(url);
+                            } else {
+                              setError(isRtl ? 'تعذّر رفع الغلاف، حاول تاني' : 'Could not upload the cover — try again');
+                              setSelectedCover(previous.selected);
+                              setCoverPreview(previous.preview);
+                            }
                           }
                           setPickingFrame(null);
                           setCoverUploading(false);
                         }}
                         className="relative shrink-0 rounded-lg overflow-hidden transition active:scale-95 disabled:opacity-70"
-                        style={{ width: 96, height: 54, border: '2px solid var(--tr-border-soft)', background: '#000' }}
+                        style={{
+                          width: 96, height: 54, background: '#000',
+                          border: selected ? '2px solid var(--tr-gold)' : '2px solid var(--tr-border-soft)',
+                          boxShadow: selected ? '0 0 0 2px var(--tr-gold-glow)' : 'none',
+                        }}
                         aria-label={isRtl ? `غلاف ${i + 1}` : `Cover ${i + 1}`}
+                        aria-pressed={selected}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={f} alt="" className="w-full h-full object-cover" />
+                        <img src={f} alt="" className="w-full h-full object-cover" style={{ opacity: selected ? 1 : 0.85 }} />
                         {busy && (
                           <span className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.45)' }}>
                             <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                           </span>
                         )}
+                        {selected && !busy && <CoverCheck />}
                       </button>
                     );
                   })}

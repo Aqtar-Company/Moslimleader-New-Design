@@ -16,7 +16,18 @@ const MAX_IMAGE = 10 * 1024 * 1024;  // 10MB
 // To raise it, add `client_max_body_size 100M;` inside the moslimleader server block ONLY
 // (not to uploads.conf, which would raise it for the other projects on this box too), then
 // change this and MAX_VIDEO_BYTES in TareeqCreateModal.tsx to match.
-const MAX_VIDEO = 50 * 1024 * 1024;  // 50MB
+/**
+ * Raised ONLY together with nginx. Default 50MB, which is what nginx allows today.
+ *
+ * The number lives in an env var so the app cannot be raised past nginx by accident: a
+ * larger value here without the matching `client_max_body_size` is a lie — nginx answers
+ * 413 before this file runs, after the phone has already sent the whole video, and the
+ * uploader sees a bare failure. Set NEXT_PUBLIC_TAREEQ_MAX_VIDEO_MB only after adding
+ * `client_max_body_size <same>M;` inside the moslimleader server block (NOT uploads.conf,
+ * which is the http-level default for the other projects on this box too).
+ */
+const MAX_VIDEO_MB = Number(process.env.NEXT_PUBLIC_TAREEQ_MAX_VIDEO_MB) || 50;
+const MAX_VIDEO = MAX_VIDEO_MB * 1024 * 1024;
 const MAX_AUDIO = 20 * 1024 * 1024;  // 20MB
 
 const r2 = new S3Client({

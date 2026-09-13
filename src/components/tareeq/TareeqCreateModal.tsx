@@ -25,7 +25,7 @@ const DRAFT_KEY = 'tareeq_draft';
  * has already uploaded all of it, and with no message the app can read. The headroom keeps
  * the client's own limit the one the user actually hits, where it can be explained.
  */
-const MAX_VIDEO_BYTES = 48 * 1024 * 1024;
+const MAX_VIDEO_BYTES = ((Number(process.env.NEXT_PUBLIC_TAREEQ_MAX_VIDEO_MB) || 50) - 2) * 1024 * 1024;
 const MAX_AUDIO_BYTES = 19 * 1024 * 1024;
 
 const mb = (bytes: number) => (bytes / 1024 / 1024).toFixed(0);
@@ -1044,7 +1044,10 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
               {!uploading && mainUploadFailed && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5" style={{ background: 'rgba(0,0,0,0.65)' }}>
                   <svg width={28} height={28} fill="none" stroke="#f87171" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path strokeLinecap="round" d="M12 8v5m0 3h.01"/></svg>
-                  <span className="text-xs font-bold text-white">{isRtl ? 'فشل رفع الصورة' : 'Upload failed'}</span>
+                  {/* It said "الصورة" over a video, which reads as the wrong file failing. */}
+                  <span className="text-xs font-bold text-white">
+                    {isRtl ? (mediaType === 'video' ? 'فشل رفع الفيديو' : 'فشل رفع الصورة') : 'Upload failed'}
+                  </span>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={retryMainUpload}

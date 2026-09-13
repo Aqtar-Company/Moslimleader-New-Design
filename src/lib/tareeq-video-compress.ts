@@ -245,6 +245,27 @@ export async function compressVideo(
   // Declared out here so the `finally` can stop them on every exit path.
   let canvasStream: MediaStream | null = null;
   let audioTrack: MediaStreamTrack | null = null;
+
+  /**
+   * Keep the screen awake for the duration.
+   *
+   * The re-encode runs in real time off the source element's own playback, so the screen
+   * turning off part-way is enough to stall frame decoding — the canvas then holds one
+   * frame while the audio, passed through untouched, keeps going, and the finished video
+   * has a still image in the middle. A two-minute clip on a phone whose screen sleeps after
+   * thirty seconds hits this every time.
+   *
+   * Best-effort and never fatal: the API needs a secure context and a visible document, is
+   * missing on some browsers entirely, and a rejected request must not stop a compression
+   * that would otherwise work.
+   */
+  let wakeLock: { release: () => Promise<void> } | null = null;
+  try {
+    const nav = navigator as Navigator & {
+      wakeLock?: { request: (type: 'screen') => Promise<{ release: () => Promise<void> }> };
+    };
+    wakeLock = (await nav.wakeLock?.request('screen')) ?? null;
+  } catch { /* denied, unsupported, or the tab is not visible — carry on regardless */ }
   const video = document.createElement('video');
   video.src = url;
   video.muted = true;
@@ -604,6 +625,7 @@ export async function compressVideo(
     // original in memory for the life of the page.
     // Tracks left running hold the camera pipeline and the audio graph open for the life
     // of the page.
+    try { void wakeLock?.release(); } catch { /* already gone */ }
     try { canvasStream?.getTracks().forEach((t: MediaStreamTrack) => t.stop()); } catch { /* gone */ }
     try { audioTrack?.stop(); } catch { /* gone */ }
     try { video.pause(); } catch { /* already stopped */ }

@@ -60,6 +60,9 @@ const MAX_DURATION_SECONDS = 10 * 60;
  */
 const MAX_FROZEN_SPAN_SECONDS = 3;
 
+/** How often the picture is sampled, in wall-clock milliseconds. See `sampleFreeze`. */
+const FREEZE_SAMPLE_MS = 500;
+
 /**
  * How different two sampled frames must be to count as movement.
  *
@@ -73,18 +76,32 @@ const MAX_FROZEN_SPAN_SECONDS = 3;
  * So movement is a mean absolute difference across the sample, in 0-255 units. Two is
  * comfortably above codec noise and far below any real change in the picture.
  */
-const MOTION_THRESHOLD = 2;
+const PIXEL_DELTA = 12;
+/** What share of the sampled pixels must move that much for the picture to count as moving. */
+const MOVED_FRACTION = 0.01;
 
-/** Mean absolute difference per channel between two samples of the same size. */
-function frameDelta(a: Uint8ClampedArray, b: Uint8ClampedArray): number {
-  let sum = 0;
-  let n = 0;
-  // Alpha is skipped: it is constant at 255 for canvas samples and only dilutes the mean.
+/**
+ * Did the picture move between two samples?
+ *
+ * A mean absolute difference over the WHOLE frame was the first attempt, and it is nearly
+ * blind to the content this app actually carries. One person talking to a locked-off
+ * camera changes a few percent of the pixels by a lot; averaged over every pixel that
+ * lands around one or two levels — indistinguishable from codec noise. So the mean was
+ * either set low enough to call noise "motion" or high enough to call a talking head
+ * "frozen", and there is no value that is both.
+ *
+ * Counting pixels instead separates them cleanly: codec noise moves almost every pixel by
+ * a little, real motion moves some pixels by a lot.
+ */
+function pictureMoved(a: Uint8ClampedArray, b: Uint8ClampedArray): boolean {
+  let moved = 0;
+  let total = 0;
   for (let i = 0; i < a.length; i += 4) {
-    sum += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]);
-    n += 3;
+    total++;
+    const d = Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]);
+    if (d > PIXEL_DELTA * 3) moved++;
   }
-  return n ? sum / n : 0;
+  return total > 0 && moved / total > MOVED_FRACTION;
 }
 
 type Progress = (percent: number) => void;
@@ -192,8 +209,31 @@ export type CompressFailure =
   | 'no-video-track'
   | 'no-motion'
   | 'stalled'
+  | 'truncated'
   | 'not-smaller'
   | 'error';
+
+/**
+ * Numbers attached to a failure, so the message can say WHY rather than guess.
+ *
+ * Three rounds were spent unable to tell a real mid-clip freeze from an encode that was
+ * simply cut short, because both ended at the same `fail('stalled')` with nothing to
+ * separate them. These are the figures that separate them.
+ */
+export type CompressStats = {
+  /** Longest span, in WALL-CLOCK seconds, during which the picture did not change. */
+  worstFrozenSpan: number;
+  /** Whether the encode was paused because the page went to the background. */
+  wasPaused: boolean;
+  /** Where source playback actually got to, in seconds. */
+  playedSeconds: number;
+  /** The source's own duration, in seconds. */
+  sourceSeconds: number;
+  /** Whether playback reached the end rather than being cut off. */
+  reachedEnd: boolean;
+  /** Wall-clock seconds the encode took. Greater than sourceSeconds means slower than real time. */
+  wallSeconds: number;
+};
 
 export function canCompressVideo(): boolean {
   if (typeof document === 'undefined') return false;
@@ -222,8 +262,8 @@ export async function compressVideo(
    * anywhere else.
    */
   mountInto?: HTMLElement | null,
-  /** Called once with the reason when the result is null. */
-  onFailure?: (reason: CompressFailure) => void,
+  /** Called once with the reason when the result is null, and the figures behind it. */
+  onFailure?: (reason: CompressFailure, stats?: CompressStats) => void,
   /**
    * `acceptLarger` when the re-encode is for COMPATIBILITY rather than size.
    *
@@ -231,12 +271,19 @@ export async function compressVideo(
    * efficient codec, which is the whole reason phones use it. Refusing that output would
    * send the file up in the codec nobody can play, which is the bug this exists to fix.
    */
-  opts?: { acceptLarger?: boolean },
+  opts?: {
+    acceptLarger?: boolean;
+    /** Called when the output is usable but imperfect — choppy, or cut short. */
+    onWarning?: (reason: CompressFailure, stats?: CompressStats) => void;
+  },
 ): Promise<File | null> {
+  let stats: CompressStats | undefined;
   const fail = (reason: CompressFailure): null => {
-    onFailure?.(reason);
+    onFailure?.(reason, stats);
     return null;
   };
+  /** Reported alongside a file that WAS produced — a quality note, not a refusal. */
+  const warn = (reason: CompressFailure) => { opts?.onWarning?.(reason, stats); };
 
   const mimeType = pickMimeType();
   if (!mimeType || !canCompressVideo()) return fail('unsupported-browser');
@@ -423,15 +470,31 @@ export async function compressVideo(
     let lastReportedPct = -1;
 
     /**
-     * The freeze detector: how long the canvas went without changing, in media time.
+     * The freeze detector — sampled on a WALL-CLOCK interval, and measured on the wall clock.
      *
-     * Tracked in the SOURCE's own `currentTime`, not wall-clock, because that is what the
-     * hole in the output is measured in — twelve seconds of source time with no new picture
-     * is twelve seconds of still image in the file, however long it took to get there.
+     * Both of those were wrong before, and each was wrong badly enough on its own to refuse
+     * good videos:
+     *
+     * 1. It sampled every fifth PAINT. The gap between two samples was therefore
+     *    `5 / paint-rate` seconds, which the detector does not control — so a device
+     *    painting under about 1.7 frames a second produced sample gaps over the three-second
+     *    limit *by construction*, and every clip it encoded was refused as frozen no matter
+     *    how good the output was. A phone re-encoding a high-bitrate clip paints at exactly
+     *    that sort of rate. This is what blocked a real upload, repeatedly, and no amount of
+     *    "keep the screen on" could have helped, because nothing had frozen.
+     * 2. It measured the span in the source's media time. The hole is in the RECORDER's
+     *    timeline, which is wall clock. The two only agree while playback advances normally
+     *    — and when the media element stalls, which is the very failure being hunted,
+     *    `currentTime` stops advancing too, so a real freeze measured as zero.
+     *
+     * So: a fixed 500ms timer reads the canvas whether or not anything painted, and the
+     * span is wall-clock seconds during which the picture did not change.
      */
     let lastSig: Uint8ClampedArray | null = null;
-    let lastSigChangeAt = 0;
+    let lastSigChangeWall = Date.now();
+    let lastSigChangeMedia = 0;
     let worstFrozenSpan = 0;
+    let sawFirstChange = false;
 
     const probe = document.createElement('canvas');
     // 64x36, not 32x18: a coarser sample cannot see small movement, and mistaking real
@@ -461,32 +524,6 @@ export async function compressVideo(
        *                                     check discarded these and told the author
        *                                     their codec was unsupported.
        */
-      if (pctx && painted % 5 === 0) {
-        if (!sourceMoved) {
-          pctx.drawImage(video, 0, 0, 64, 36);
-          const sig = pctx.getImageData(0, 0, 64, 36).data;
-          if (sourceFirst === null) sourceFirst = sig;
-          else if (frameDelta(sig, sourceFirst) > MOTION_THRESHOLD) sourceMoved = true;
-        }
-
-        // Sampled on EVERY pass, not only until the canvas first moves. The old version
-        // stopped looking the moment it saw one change, which is why a clip that froze
-        // half-way through sailed through the guard.
-        pctx.drawImage(canvas, 0, 0, 64, 36);
-        const csig = pctx.getImageData(0, 0, 64, 36).data;
-        const at = video.currentTime;
-        if (lastSig === null) {
-          lastSig = csig;
-          lastSigChangeAt = at;
-        } else if (frameDelta(csig, lastSig) > MOTION_THRESHOLD) {
-          canvasMoved = true;
-          const span = at - lastSigChangeAt;
-          if (span > worstFrozenSpan) worstFrozenSpan = span;
-          lastSig = csig;
-          lastSigChangeAt = at;
-        }
-      }
-
       // Only on a whole-percent change: this fired 30-60 times a second into a React
       // setState, re-rendering a large modal during the most CPU-bound moment on the
       // weakest device in the user base.
@@ -498,6 +535,81 @@ export async function compressVideo(
         }
       }
     };
+
+    /**
+     * Reads the picture on a timer, independent of painting.
+     *
+     * Independence is the point: if paints stop entirely, this keeps running and keeps
+     * charging wall-clock time against the unchanged picture. The previous design could
+     * only sample from inside `paint()`, so when frames stopped arriving it stopped
+     * looking, and then inferred a freeze from the ABSENCE of samples — which is also how
+     * it confused "slow" with "broken".
+     */
+    const sampleFreeze = () => {
+      if (!pctx) return;
+      const now = Date.now();
+
+      if (!sourceMoved) {
+        pctx.drawImage(video, 0, 0, 64, 36);
+        const sig = pctx.getImageData(0, 0, 64, 36).data;
+        if (sourceFirst === null) sourceFirst = sig;
+        else if (pictureMoved(sig, sourceFirst)) sourceMoved = true;
+      }
+
+      pctx.drawImage(canvas, 0, 0, 64, 36);
+      const csig = pctx.getImageData(0, 0, 64, 36).data;
+      if (lastSig === null) {
+        lastSig = csig;
+        lastSigChangeWall = now;
+        lastSigChangeMedia = video.currentTime;
+        return;
+      }
+      if (pictureMoved(csig, lastSig)) {
+        canvasMoved = true;
+        // Only spans BETWEEN two observed changes count. The span before the very first
+        // change is start-up — the recorder, the decoder and the first keyframe — and
+        // charging that as a freeze condemned every clip that opens on a title card.
+        if (sawFirstChange) {
+          const span = (now - lastSigChangeWall) / 1000;
+          if (span > worstFrozenSpan) worstFrozenSpan = span;
+        }
+        sawFirstChange = true;
+        lastSig = csig;
+        lastSigChangeWall = now;
+        lastSigChangeMedia = video.currentTime;
+      }
+    };
+    const freezeTimer = setInterval(sampleFreeze, FREEZE_SAMPLE_MS);
+
+    /**
+     * Going to the background PAUSES the work instead of corrupting it.
+     *
+     * This is the fix for the reported bug, as opposed to the detection of it. When the
+     * page is hidden the browser stops giving the element frames, but the recorder and the
+     * passthrough audio track carry on — that mismatch IS the frozen middle with running
+     * sound. Pausing both together leaves no hole at all: the encode simply takes longer.
+     *
+     * The wake lock is also released by the browser on hide, so it is re-requested on the
+     * way back rather than being silently gone for the rest of the encode.
+     */
+    let wasPaused = false;
+    const onVisibility = () => {
+      try {
+        if (document.hidden) {
+          wasPaused = true;
+          video.pause();
+          if (recorder.state === 'recording') recorder.pause();
+        } else {
+          if (recorder.state === 'paused') recorder.resume();
+          void video.play().catch(() => {});
+          const nav = navigator as Navigator & {
+            wakeLock?: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> };
+          };
+          nav.wakeLock?.request('screen').then(l => { wakeLock = l; }).catch(() => {});
+        }
+      } catch { /* a browser that will not pause mid-record — carry on */ }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
 
     if (typeof v.requestVideoFrameCallback === 'function') {
       const onFrame = () => {
@@ -547,6 +659,8 @@ export async function compressVideo(
     });
 
     stopPump = true;
+    clearInterval(freezeTimer);
+    document.removeEventListener('visibilitychange', onVisibility);
     if (raf) cancelAnimationFrame(raf);
     if (rvfc && typeof v.cancelVideoFrameCallback === 'function') v.cancelVideoFrameCallback(rvfc);
     // How much media was actually recorded. NOT the source's duration: the recorder is
@@ -583,15 +697,47 @@ export async function compressVideo(
      * recitation, a cover image with audio — is a legitimate thing to post, and measuring
      * it as one long freeze would refuse it.
      */
-    if (canvasMoved) {
-      // MEDIA time on both sides. `recordedSeconds` is wall-clock and belongs to the
-      // duration written into the container, not here — subtracting it from a media-time
-      // mark compares two different clocks, and on a device that ran slower than real time
-      // it would invent a freeze that never happened.
-      const endedAt = Number.isFinite(video.duration) ? video.duration : video.currentTime;
-      const trailing = endedAt - lastSigChangeAt;
-      const worst = Math.max(worstFrozenSpan, trailing > 0 ? trailing : 0);
-      if (worst > MAX_FROZEN_SPAN_SECONDS) return fail('stalled');
+    /**
+     * Where playback ACTUALLY got to — not where the source ends.
+     *
+     * This used to read `video.duration` unconditionally. The wait above gives up after a
+     * budget, so playback can stop short; the untouched remainder was then charged as
+     * though the picture had frozen there.
+     */
+    const reachedEnd = !!video.ended;
+    const playedSeconds = reachedEnd && Number.isFinite(video.duration) ? video.duration : video.currentTime;
+
+    // A trailing span is only charged when the clip did NOT run to the end. A video that
+    // finishes on a held shot or a fade to black is a normal video, and measuring the hold
+    // at its end as a freeze refused exactly those.
+    if (canvasMoved && sawFirstChange && !reachedEnd) {
+      const trailing = (Date.now() - lastSigChangeWall) / 1000;
+      if (trailing > worstFrozenSpan) worstFrozenSpan = trailing;
+    }
+
+    stats = {
+      worstFrozenSpan,
+      wasPaused,
+      playedSeconds,
+      sourceSeconds: Number.isFinite(video.duration) ? video.duration : 0,
+      reachedEnd,
+      wallSeconds: recordedSeconds,
+    };
+
+    /**
+     * From here on, a quality problem WARNS. It does not throw the encode away.
+     *
+     * The previous version refused, and the refusal reached a real author on the live site
+     * and left them unable to post at all — twice, both times because of a guard I added to
+     * protect them. The lesson is in the asymmetry: a video that is choppy, or shorter than
+     * the original, is still a video the author can look at and decide about. A wall gives
+     * them nothing and no way forward. Only an output that is definitely unusable — no
+     * decodable picture at all, or bigger than what we started with — is still refused.
+     */
+    if (!reachedEnd && stats.sourceSeconds > 0 && playedSeconds < stats.sourceSeconds - 2) {
+      warn('truncated');
+    } else if (canvasMoved && worstFrozenSpan > MAX_FROZEN_SPAN_SECONDS) {
+      warn('stalled');
     }
 
     let blob: Blob = new Blob(chunks, { type: mimeType.split(';')[0] });

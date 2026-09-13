@@ -76,6 +76,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   const [pickedKind, setPickedKind] = useState<'image' | 'video' | 'audio' | null>(null);
   /** Set when a video went up in a codec that will not play everywhere. Not an error. */
   const [compatNotice, setCompatNotice] = useState(false);
+  /** Set when the re-encode produced a usable but imperfect file. Not an error either. */
+  const [qualityNotice, setQualityNotice] = useState<'stalled' | 'truncated' | null>(null);
   const [uploading, setUploading] = useState(false);
   /** True while the browser is re-encoding a video, which is slow and needs its own label:
    *  "جاري الرفع 40%" during a local re-encode is simply a lie about what is happening. */
@@ -300,8 +302,19 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
      */
     setPickedKind(isVideoFile ? 'video' : isAudioFile ? 'audio' : 'image');
     setCompatNotice(false);
+    setQualityNotice(null);
+
+    // Read ONCE. This used to run here and again inside needsTranscodeForCompat, and each
+    // run slices 4MB off each end of the file and scans it byte by byte — on the main
+    // thread, at file-pick, on a phone already decoding the same file for a thumbnail.
     const detectedCodec = isVideoFile ? await detectVideoCodec(file) : 'unknown';
-    const compatTranscode = isVideoFile && canCompressVideo() && await needsTranscodeForCompat(file);
+    const codecIncompatible = isVideoFile
+      && (detectedCodec === 'hevc' || detectedCodec === 'av1'
+        || (detectedCodec === 'unknown' && file.type === 'video/quicktime'));
+    // The WARNING must not depend on whether we can do anything about it — folding
+    // `canCompressVideo()` in here meant a browser that cannot re-encode showed no warning
+    // at all, which is the one browser whose users most needed it.
+    const compatTranscode = codecIncompatible && canCompressVideo();
 
     if (isVideoFile && (file.size > MAX_VIDEO_BYTES || compatTranscode) && canCompressVideo()) {
       setUploading(true);
@@ -326,7 +339,15 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           pct => setUploadProgress(pct),
           compressPreviewRef.current,
           reason => { failReason = reason; },
-          { acceptLarger: compatTranscode },
+          {
+            // ONLY when the codec is the reason we are here. If the file is also over the
+            // cap, allowing a bigger output just produces something the size check refuses
+            // two lines later, and tells the user we made their file bigger.
+            acceptLarger: compatTranscode && file.size <= MAX_VIDEO_BYTES,
+            onWarning: reason => {
+              if (reason === 'stalled' || reason === 'truncated') setQualityNotice(reason);
+            },
+          },
         );
         if (smaller) workingFile = smaller;
       } catch {
@@ -351,7 +372,9 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
      * both that and a wall. The file only has to still fit under the cap — if it does not,
      * the size check below refuses it, because that one is not a judgement call.
      */
-    const compatWarning = compatTranscode && workingFile === file;
+    // Warn whenever the codec will not play everywhere and nothing was done about it —
+    // including when this browser could not even try.
+    const compatWarning = codecIncompatible && workingFile === file;
 
     if (!isImageFile) {
       const cap = isAudioFile ? MAX_AUDIO_BYTES : MAX_VIDEO_BYTES;
@@ -453,6 +476,21 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           } catch { setError(isRtl ? 'فشل رفع الملف' : 'Upload failed'); setMainUploadFailed(true); reject(); }
         };
         xhr.onerror = () => { setError(isRtl ? 'فشل رفع الملف' : 'Upload failed'); setMainUploadFailed(true); reject(); };
+        /**
+         * A timeout, because without one there was a state with NO way out.
+         *
+         * On a mobile connection that drops mid-upload, neither `onload` nor `onerror`
+         * necessarily fires — the request simply hangs. `uploading` then stayed true
+         * forever: the spinner never stopped, the media picker is hidden while uploading,
+         * Publish stays disabled, and the only escape was reloading the page and losing
+         * the draft. Ten minutes is long enough for 200MB on a slow connection.
+         */
+        xhr.timeout = 10 * 60 * 1000;
+        xhr.ontimeout = () => {
+          setError(isRtl ? 'انتهت مهلة الرفع — الاتصال بطيء أو انقطع. حاول تاني.' : 'Upload timed out — the connection is slow or dropped. Try again.');
+          setMainUploadFailed(true);
+          reject();
+        };
         xhr.send(form);
       });
     } catch { /* error + mainUploadFailed already set above */ }
@@ -472,6 +510,11 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     setVideoThumb(null);
     setCustomThumbUrl(null);
     setMainUploadFailed(false);
+    // The previous file's error stayed on screen through the whole codec scan of the new
+    // one, describing a file the user had already replaced.
+    setError('');
+    setCompatNotice(false);
+    setQualityNotice(null);
     lastMediaFileRef.current = file;
     if (file.type.startsWith('image/')) {
       setLocalPreview(URL.createObjectURL(file));
@@ -483,7 +526,10 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   }
 
   function retryMainUpload() {
-    if (lastMediaFileRef.current) doUpload(lastMediaFileRef.current);
+    // Guarded: the overlay disappears on the first click, but two fast taps could start two
+    // concurrent uploads of the same file.
+    if (uploading || compressing) return;
+    if (lastMediaFileRef.current) void doUpload(lastMediaFileRef.current);
   }
 
   function autoResize() {
@@ -494,6 +540,12 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   }
 
   function removeMedia() {
+    // The banners described the file being removed. Leaving them up left a red error and
+    // an amber warning hanging over an empty composer.
+    setError('');
+    setCompatNotice(false);
+    setQualityNotice(null);
+    setPickedKind(null);
     if (localPreviewRef.current) URL.revokeObjectURL(localPreviewRef.current);
     setMainUploadFailed(false);
     lastMediaFileRef.current = null;
@@ -827,6 +879,25 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
         )}
 
         {/* ── Codec warning — amber, not red: the video DID upload ── */}
+        {/* ── Quality warning — the re-encode worked but the result is imperfect ── */}
+        {qualityNotice && !error && (
+          <div
+            className="shrink-0 px-4 py-2 flex items-start gap-2 text-xs font-semibold"
+            style={{ background: 'rgba(245,158,11,0.12)', borderBottom: '1px solid rgba(245,158,11,0.22)', color: '#d97706' }}
+          >
+            <span className="shrink-0">⚠️</span>
+            <span>
+              {qualityNotice === 'truncated'
+                ? (isRtl
+                  ? 'الضغط خلص بس الجهاز ما لحقش الفيديو كله، فالنسخة المضغوطة أقصر من الأصل. اتفرّج عليها في المعاينة قبل ما تنشر — ولو ناقصة، اضغط الفيديو على الكمبيوتر وارفعه تاني.'
+                  : "Compressed, but your device couldn't keep up with the whole clip, so the result is shorter than the original. Check the preview before publishing — if it's cut short, compress it on a computer and upload again.")
+                : (isRtl
+                  ? 'الضغط خلص بس الصورة اتقطّعت في جزء منه على الجهاز ده. اتفرّج على المعاينة قبل ما تنشر — ولو الصورة واقفة في مكان، اضغط الفيديو على الكمبيوتر وارفعه تاني.'
+                  : 'Compressed, but the picture stuttered in places on this device. Check the preview before publishing — if it freezes anywhere, compress it on a computer and upload again.')}
+            </span>
+          </div>
+        )}
+
         {compatNotice && !error && (
           <div
             className="shrink-0 px-4 py-2 flex items-start gap-2 text-xs font-semibold"

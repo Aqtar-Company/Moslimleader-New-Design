@@ -1069,15 +1069,72 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                             <span style={{ fontSize: 10, color: 'var(--tr-text-muted)' }}>
                               {timeAgo(c.createdAt, isRtl)}
                             </span>
+                            {c.editedAt && (
+                              <span style={{ fontSize: 10, color: 'var(--tr-text-muted)' }}>
+                                · {isRtl ? 'مُعدَّل' : 'edited'}
+                              </span>
+                            )}
                             {post?.pinnedCommentId === c.id && (
                               <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--tr-gold)', background: 'var(--tr-gold-glow)', borderRadius: 6, padding: '1px 6px' }}>
                                 📌 {isRtl ? 'مثبّت' : 'Pinned'}
                               </span>
                             )}
                           </div>
-                          <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>
-                            {displayMentions(c.content)}
-                          </p>
+
+                          {editingComment?.id === c.id ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              <textarea
+                                value={editingComment.text}
+                                onChange={e => setEditingComment({ id: c.id, text: e.target.value.slice(0, 3000) })}
+                                rows={3}
+                                autoFocus
+                                style={{ width: '100%', fontSize: 13, lineHeight: 1.5, padding: '8px 10px', borderRadius: 10, resize: 'vertical', background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)', outline: 'none' }}
+                              />
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                <button
+                                  type="button"
+                                  disabled={commentBusy === c.id || !editingComment.text.trim()}
+                                  onClick={() => saveCommentEdit(c.id, editingComment.text)}
+                                  style={{ fontSize: 11, fontWeight: 800, padding: '5px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'var(--tr-gold)', color: '#080E1C', opacity: commentBusy === c.id ? 0.5 : 1 }}
+                                >
+                                  {isRtl ? 'حفظ' : 'Save'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingComment(null)}
+                                  style={{ fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 8, cursor: 'pointer', background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-subtle)' }}
+                                >
+                                  {isRtl ? 'إلغاء' : 'Cancel'}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>
+                              {displayMentions(c.content)}
+                            </p>
+                          )}
+
+                          {confirmDeleteComment === c.id && (
+                            <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 11, color: 'var(--tr-text-secondary)' }}>{isRtl ? 'حذف التعليق؟' : 'Delete this comment?'}</span>
+                              <button
+                                type="button"
+                                disabled={commentBusy === c.id}
+                                onClick={() => deleteComment(c.id)}
+                                style={{ fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', background: '#f43f5e', color: '#fff', opacity: commentBusy === c.id ? 0.5 : 1 }}
+                              >
+                                {isRtl ? 'نعم' : 'Yes'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteComment(null)}
+                                style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 8, cursor: 'pointer', background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-subtle)' }}
+                              >
+                                {isRtl ? 'تراجع' : 'Cancel'}
+                              </button>
+                            </div>
+                          )}
+
                           <div style={{ display: 'flex', gap: 12, marginTop: 6, alignItems: 'center' }}>
                             <button
                               type="button"
@@ -1086,6 +1143,26 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                             >
                               {isRtl ? 'رد' : 'Reply'}
                             </button>
+
+                            {user?.id === c.userId && editingComment?.id !== c.id && (
+                              <button
+                                type="button"
+                                onClick={() => { setConfirmDeleteComment(null); setEditingComment({ id: c.id, text: c.content }); }}
+                                style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                              >
+                                {isRtl ? 'تعديل' : 'Edit'}
+                              </button>
+                            )}
+
+                            {(user?.id === c.userId || (user && post?.userId === user.id)) && confirmDeleteComment !== c.id && (
+                              <button
+                                type="button"
+                                onClick={() => { setEditingComment(null); setConfirmDeleteComment(c.id); }}
+                                style={{ fontSize: 11, fontWeight: 600, color: '#f43f5e', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                              >
+                                {isRtl ? 'حذف' : 'Delete'}
+                              </button>
+                            )}
                             {/* Emoji reactions on comment */}
                             <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
                               <button

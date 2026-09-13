@@ -73,8 +73,23 @@ export async function compressVideo(file: File, onProgress?: Progress): Promise<
   video.src = url;
   video.muted = true;
   video.playsInline = true;
-  // Needed for captureStream on a blob URL in some browsers, harmless otherwise.
-  video.crossOrigin = 'anonymous';
+  // NOT crossOrigin. A blob: URL is same-origin, and forcing CORS mode on it made the
+  // canvas behave as if tainted: the audio track came through fine while the video froze
+  // after a handful of frames, which is exactly what a dead canvas stream looks like.
+
+  // The element MUST be in the document. A detached <video> is allowed to play, but
+  // browsers stop advancing its decoded frames when nothing can display it — so the canvas
+  // kept redrawing the same still image. Off-screen and invisible, but attached.
+  Object.assign(video.style, {
+    position: 'fixed',
+    left: '-9999px',
+    top: '0',
+    width: '1px',
+    height: '1px',
+    opacity: '0',
+    pointerEvents: 'none',
+  } as Partial<CSSStyleDeclaration>);
+  document.body.appendChild(video);
 
   try {
     await new Promise<void>((resolve, reject) => {
@@ -128,17 +143,53 @@ export async function compressVideo(file: File, onProgress?: Progress): Promise<
     recorder.start(1000);
     await video.play();
 
-    let raf = 0;
-    const draw = () => {
-      if (video.ended || video.paused) return;
-      ctx.drawImage(video, 0, 0, width, height);
-      onProgress?.(Math.min(99, Math.round((video.currentTime / video.duration) * 100)));
-      raf = requestAnimationFrame(draw);
+    /**
+     * One canvas paint per DECODED frame.
+     *
+     * `requestVideoFrameCallback` fires when the element actually has a new frame, which is
+     * the only signal that matches what is being recorded. The previous version used
+     * `requestAnimationFrame` and bailed out on `video.paused` — so a single momentary
+     * stall ended the loop for good and the rest of the clip recorded as one frozen image
+     * while the audio kept going. rAF is kept only as a fallback, and it no longer stops:
+     * it skips a paint and schedules the next one.
+     */
+    let stopPump = false;
+    type WithRVFC = HTMLVideoElement & {
+      requestVideoFrameCallback?: (cb: () => void) => number;
+      cancelVideoFrameCallback?: (h: number) => void;
     };
-    draw();
+    const v = video as WithRVFC;
+    let raf = 0;
+    let rvfc = 0;
+
+    const paint = () => {
+      ctx.drawImage(video, 0, 0, width, height);
+      if (video.duration) {
+        onProgress?.(Math.min(99, Math.round((video.currentTime / video.duration) * 100)));
+      }
+    };
+
+    if (typeof v.requestVideoFrameCallback === 'function') {
+      const onFrame = () => {
+        if (stopPump) return;
+        paint();
+        rvfc = v.requestVideoFrameCallback!(onFrame);
+      };
+      rvfc = v.requestVideoFrameCallback(onFrame);
+    } else {
+      const tick = () => {
+        if (stopPump) return;
+        // No `paused` bail-out: a brief stall must not end the recording.
+        if (!video.ended) paint();
+        raf = requestAnimationFrame(tick);
+      };
+      tick();
+    }
 
     await new Promise<void>(resolve => { video.onended = () => resolve(); });
-    cancelAnimationFrame(raf);
+    stopPump = true;
+    if (raf) cancelAnimationFrame(raf);
+    if (rvfc && typeof v.cancelVideoFrameCallback === 'function') v.cancelVideoFrameCallback(rvfc);
     // One last frame, or the final second can come out blank.
     ctx.drawImage(video, 0, 0, width, height);
     recorder.stop();
@@ -162,6 +213,7 @@ export async function compressVideo(file: File, onProgress?: Progress): Promise<
     try { video.pause(); } catch { /* already stopped */ }
     video.removeAttribute('src');
     video.load();
+    video.remove();
     URL.revokeObjectURL(url);
   }
 }

@@ -111,13 +111,23 @@ export type OgPost = {
   category?: string | null;
 };
 
+/** Cuts to at most `max` characters at a word boundary, with an ellipsis. */
+function cutAtWord(text: string, max: number): string {
+  const head = text.slice(0, max);
+  const lastSpace = head.lastIndexOf(' ');
+  return (lastSpace > max * 0.5 ? head.slice(0, lastSpace) : head).trimEnd() + '…';
+}
+
 export function buildOgTree({ title, author, category }: OgPost) {
   const cat = CATEGORY_AR[category ?? ''] ?? '';
   const clean = title.replace(/\s+/g, ' ').trim() || 'علامة في طريق';
 
   // Only the type size is chosen from the length; how many lines that takes is yoga's
   // problem, and the card has room for four at the smallest size.
-  const head = clean.length <= 160 ? clean : `${clean.slice(0, 159).trimEnd()}…`;
+  // At a word boundary. `slice(0, 159)` ended the live card in the middle of a word —
+  // «...تف», the first two letters of «تفاصيل» — and in Arabic a half-word is frequently a
+  // different word, not just an ugly one.
+  const head = clean.length <= 160 ? clean : cutAtWord(clean, 159);
   const fontSize = head.length <= 42 ? 64 : head.length <= 90 ? 50 : 42;
 
   return (

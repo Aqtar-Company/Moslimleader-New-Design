@@ -8,24 +8,50 @@ import TareeqPostClient from './TareeqPostClient';
 import type { Metadata } from 'next';
 import { SHARED_FROM_INCLUDE, normalizeSharedFrom } from '@/lib/tareeq-post-select';
 
+/**
+ * Cuts text to at most `max` characters at a word boundary, with an ellipsis.
+ *
+ * A plain `slice(0, 60)` ended a share title in the middle of a word — the live card read
+ * «...تف», the first two letters of «تفاصيل». In Arabic a half-word is not just ugly, it is
+ * often a different word.
+ */
+function cutAtWord(text: string, max: number): string {
+  const t = text.replace(/\s+/g, ' ').trim();
+  if (t.length <= max) return t;
+  const head = t.slice(0, max);
+  const lastSpace = head.lastIndexOf(' ');
+  return (lastSpace > max * 0.5 ? head.slice(0, lastSpace) : head).trimEnd() + '…';
+}
+
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const post = await prisma.tareeqPost.findUnique({
     where: { id: params.id },
-    select: { title: true, content: true, imageUrl: true, imageAlt: true, authorName: true, category: true, isDraft: true, isHidden: true },
+    select: {
+      title: true, content: true, imageUrl: true, imageAlt: true, authorName: true, category: true,
+      isDraft: true, isHidden: true,
+      // A video post's share image is its COVER. This select used to stop at imageUrl, so
+      // every video post fell through to the generated text card: Facebook showed a
+      // paragraph instead of the video's poster, and WhatsApp — which is far less patient
+      // with a slow, large PNG — showed nothing at all.
+      thumbnailUrl: true, videoUrl: true,
+    },
   });
   // An unpublished or moderated post must not describe itself to a scraper either.
   if (!post || post.isDraft || post.isHidden) return {};
 
-  const title = post.title ?? post.content?.slice(0, 60) ?? 'علامة في طريق';
-  const description = post.content?.slice(0, 160) ?? '';
+  const title = post.title ?? cutAtWord(post.content ?? '', 60) ?? 'علامة في طريق';
+  const description = cutAtWord(post.content ?? '', 160);
   const siteUrl = 'https://moslimleader.com';
   const pageUrl = `${siteUrl}/tareeq/${params.id}`;
 
-  // The post's own image wins when there is one — uploaded paths are site-relative, and
-  // og:image must be absolute or scrapers drop it. With no image we set nothing here on
-  // purpose: `images` left undefined is what lets Next wire up the generated card from
-  // `opengraph-image.tsx`. Naming a URL here would override it.
-  const ogImage = post.imageUrl ? new URL(post.imageUrl, siteUrl).toString() : null;
+  // The post's own media wins when there is any — the image for an image post, the cover
+  // for a video post. Uploaded paths may be site-relative, and og:image must be absolute
+  // or scrapers drop it. With no media we set nothing here on purpose: `images` left
+  // undefined is what lets Next wire up the generated card from `opengraph-image.tsx`.
+  // Naming a URL here would override it.
+  const mediaImage = post.imageUrl ?? (post.videoUrl ? post.thumbnailUrl : null);
+  const ogImage = mediaImage ? new URL(mediaImage, siteUrl).toString() : null;
+  const isVideo = !!post.videoUrl;
 
   return {
     title: `${title} — طريق`,
@@ -35,8 +61,11 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
       description,
       url: pageUrl,
       siteName: 'طريق — مسلم ليدر',
-      ...(ogImage ? { images: [{ url: ogImage, width: 1200, height: 630, alt: title }] } : {}),
-      type: 'article',
+      // No declared width/height: the cover is whatever the encoder produced (1280x720 for
+      // a landscape clip, portrait for a portrait one) and a wrong declaration is worse
+      // than none — scrapers that trust it crop to it.
+      ...(ogImage ? { images: [{ url: ogImage, alt: title }] } : {}),
+      type: isVideo ? 'video.other' : 'article',
     },
     twitter: {
       card: 'summary_large_image',

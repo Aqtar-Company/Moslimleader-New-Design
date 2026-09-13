@@ -946,6 +946,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
       );
       if (!ok) return;
     }
+    // Now true to its word: the confirm says leaving cancels the compression.
+    abortRef.current?.abort();
     onClose();
   }
   requestCloseRef.current = requestClose;

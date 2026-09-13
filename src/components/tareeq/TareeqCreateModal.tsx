@@ -377,6 +377,10 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           msg = isRtl
             ? `تعذّر ضغط هذا الفيديو — ترميزه غير مدعوم في هذا المتصفح (فيديو الآيفون يُسجَّل بـ HEVC افتراضياً، وكروم على أندرويد لا يفكّه؛ تظهر الصورة ثابتة والصوت يعمل). ${sizes} جرّب: من إعدادات كاميرا الآيفون اختر «الأكثر توافقاً»، أو اضغط الفيديو بتطبيق قبل الرفع.`
             : `Couldn't compress this video — this browser can't decode its codec (iPhone records HEVC by default and Chrome on Android can't decode it: the sound plays and the picture stays frozen). ${sizes} Try setting your iPhone camera to "Most Compatible", or compress it in an app first.`;
+        } else if (failReason === 'stalled') {
+          msg = isRtl
+            ? 'الضغط وقف في نص الفيديو، والناتج كان صورة ثابتة في المنتصف والصوت شغال — فرفضناه بدل ما يتنشر كده. الضغط بيشتغل بالوقت الحقيقي، فسيب الشاشة مفتوحة على طريق لحد ما يخلص، من غير ما تقفل الشاشة أو تفتح تطبيق تاني.'
+            : 'Compression stalled part-way through, and the result had a frozen picture in the middle with the audio still running — so it was refused rather than published like that. It runs in real time: keep the screen on and طريق open until it finishes, without locking the screen or switching apps.';
         } else if (failReason === 'not-smaller') {
           msg = isRtl
             ? `هذا الفيديو مضغوط بالفعل، وإعادة ضغطه تكبّره. اقصره أو اضغطه بتطبيق قبل الرفع. ${sizes}`

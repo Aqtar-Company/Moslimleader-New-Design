@@ -39,6 +39,54 @@ const AUDIO_BITS_PER_SECOND = 128_000;
 /** Anything longer is refused rather than made the user wait its full length. */
 const MAX_DURATION_SECONDS = 10 * 60;
 
+/**
+ * The longest stretch of identical picture tolerated inside a clip that otherwise moves.
+ *
+ * This exists because of a failure none of the earlier checks could see. The re-encode runs
+ * in REAL TIME off the source element's own playback, so if decoding stalls part-way — the
+ * app is backgrounded, the screen locks, the element scrolls out of view on Android, the
+ * device throttles under load — the canvas keeps its last frame while the audio track,
+ * which is passed through untouched, carries on perfectly. The output is then a video whose
+ * MIDDLE is one still image, with a normal beginning and a normal end. Reported from the
+ * live site as: «بيجي في جزء معين ويهنج والصورة تفضل ثابتة — لكن في الآخر والأول شغال عادي».
+ *
+ * The old guard asked only "did any two frames ever differ", which a mid-clip freeze passes
+ * trivially: the beginning moved. So the freeze has to be measured as a SPAN, in the
+ * source's own media time.
+ *
+ * Three seconds, not one: a held shot is a legitimate thing for a video to contain, and a
+ * false positive refuses a good upload. Three seconds of a pixel-identical frame in a clip
+ * that is otherwise moving is a stall, not an edit.
+ */
+const MAX_FROZEN_SPAN_SECONDS = 3;
+
+/**
+ * How different two sampled frames must be to count as movement.
+ *
+ * Exact pixel equality does NOT work here, and testing it is what showed that. A frozen
+ * stretch of a lossy stream is not pixel-identical when it comes back out of the decoder:
+ * VP8 and H.264 refresh their reference frames, so the same held picture decodes with a
+ * point or two of noise per channel, frame after frame. Compared exactly, that noise reads
+ * as motion — so the first version of this detector scored a deliberately frozen 4.5-second
+ * stretch as three short ones and let the clip through.
+ *
+ * So movement is a mean absolute difference across the sample, in 0-255 units. Two is
+ * comfortably above codec noise and far below any real change in the picture.
+ */
+const MOTION_THRESHOLD = 2;
+
+/** Mean absolute difference per channel between two samples of the same size. */
+function frameDelta(a: Uint8ClampedArray, b: Uint8ClampedArray): number {
+  let sum = 0;
+  let n = 0;
+  // Alpha is skipped: it is constant at 255 for canvas samples and only dilutes the mean.
+  for (let i = 0; i < a.length; i += 4) {
+    sum += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]);
+    n += 3;
+  }
+  return n ? sum / n : 0;
+}
+
 type Progress = (percent: number) => void;
 
 function pickMimeType(): string | null {
@@ -143,6 +191,7 @@ export type CompressFailure =
   | 'too-long'
   | 'no-video-track'
   | 'no-motion'
+  | 'stalled'
   | 'not-smaller'
   | 'error';
 
@@ -347,15 +396,27 @@ export async function compressVideo(
      * did not.
      */
     let painted = 0;
-    let sourceFirst: string | null = null;
-    let canvasFirst: string | null = null;
+    let sourceFirst: Uint8ClampedArray | null = null;
     let sourceMoved = false;
     let canvasMoved = false;
     let lastReportedPct = -1;
 
+    /**
+     * The freeze detector: how long the canvas went without changing, in media time.
+     *
+     * Tracked in the SOURCE's own `currentTime`, not wall-clock, because that is what the
+     * hole in the output is measured in — twelve seconds of source time with no new picture
+     * is twelve seconds of still image in the file, however long it took to get there.
+     */
+    let lastSig: Uint8ClampedArray | null = null;
+    let lastSigChangeAt = 0;
+    let worstFrozenSpan = 0;
+
     const probe = document.createElement('canvas');
-    probe.width = 32;
-    probe.height = 18;
+    // 64x36, not 32x18: a coarser sample cannot see small movement, and mistaking real
+    // motion for a freeze refuses a perfectly good upload.
+    probe.width = 64;
+    probe.height = 36;
     const pctx = probe.getContext('2d', { willReadFrequently: true });
 
     const paint = () => {
@@ -381,16 +442,27 @@ export async function compressVideo(
        */
       if (pctx && painted % 5 === 0) {
         if (!sourceMoved) {
-          pctx.drawImage(video, 0, 0, 32, 18);
-          const sig = pctx.getImageData(0, 0, 32, 18).data.join(',');
+          pctx.drawImage(video, 0, 0, 64, 36);
+          const sig = pctx.getImageData(0, 0, 64, 36).data;
           if (sourceFirst === null) sourceFirst = sig;
-          else if (sig !== sourceFirst) sourceMoved = true;
+          else if (frameDelta(sig, sourceFirst) > MOTION_THRESHOLD) sourceMoved = true;
         }
-        if (!canvasMoved) {
-          pctx.drawImage(canvas, 0, 0, 32, 18);
-          const sig = pctx.getImageData(0, 0, 32, 18).data.join(',');
-          if (canvasFirst === null) canvasFirst = sig;
-          else if (sig !== canvasFirst) canvasMoved = true;
+
+        // Sampled on EVERY pass, not only until the canvas first moves. The old version
+        // stopped looking the moment it saw one change, which is why a clip that froze
+        // half-way through sailed through the guard.
+        pctx.drawImage(canvas, 0, 0, 64, 36);
+        const csig = pctx.getImageData(0, 0, 64, 36).data;
+        const at = video.currentTime;
+        if (lastSig === null) {
+          lastSig = csig;
+          lastSigChangeAt = at;
+        } else if (frameDelta(csig, lastSig) > MOTION_THRESHOLD) {
+          canvasMoved = true;
+          const span = at - lastSigChangeAt;
+          if (span > worstFrozenSpan) worstFrozenSpan = span;
+          lastSig = csig;
+          lastSigChangeAt = at;
         }
       }
 
@@ -478,6 +550,27 @@ export async function compressVideo(
      */
     if (sourceMoved && !canvasMoved && painted > 10) {
       return fail('no-motion');
+    }
+
+    /**
+     * A freeze in the middle, or one that ran to the end of the clip.
+     *
+     * The trailing span has to be counted separately: a stall that never recovers produces
+     * no further signature CHANGE, so nothing inside the loop above ever records it.
+     *
+     * Only for clips that move at all. A deliberately static video — one held frame over a
+     * recitation, a cover image with audio — is a legitimate thing to post, and measuring
+     * it as one long freeze would refuse it.
+     */
+    if (canvasMoved) {
+      // MEDIA time on both sides. `recordedSeconds` is wall-clock and belongs to the
+      // duration written into the container, not here — subtracting it from a media-time
+      // mark compares two different clocks, and on a device that ran slower than real time
+      // it would invent a freeze that never happened.
+      const endedAt = Number.isFinite(video.duration) ? video.duration : video.currentTime;
+      const trailing = endedAt - lastSigChangeAt;
+      const worst = Math.max(worstFrozenSpan, trailing > 0 ? trailing : 0);
+      if (worst > MAX_FROZEN_SPAN_SECONDS) return fail('stalled');
     }
 
     let blob: Blob = new Blob(chunks, { type: mimeType.split(';')[0] });

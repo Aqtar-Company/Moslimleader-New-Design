@@ -432,18 +432,51 @@ Books are protected from download at two levels:
 - **`variantStocks` index shift** — Variant stocks are stored as `{"0": 5, "1": 3}` keyed by variant array index. If a variant is deleted from the middle of the array, all subsequent indices shift and stored stocks become mismatched. Admin must manually re-enter stocks after deleting a middle variant.
 - **Upload limits are bounded by nginx, not by the app.** `/etc/nginx/conf.d/uploads.conf`
   holds a bare `client_max_body_size 50M;` — no server block, so it is the http-level
-  default for every site on this box that does not override it, moslimleader included.
-  (`waqf-api.conf` sets 100M, `reels.conf` 32m, `solh.conf` 2m for themselves.) So
-  `MAX_VIDEO` in `src/app/api/tareeq/upload/route.ts` is 50MB to match: a larger number
-  there is a lie, because nginx answers 413 before the route runs and the uploader sees a
-  bare failure after sending the whole file. To raise it, add `client_max_body_size 100M;`
-  inside the **moslimleader server block only** — editing `uploads.conf` raises it for the
-  other projects too — then change `MAX_VIDEO` and `MAX_VIDEO_BYTES` in
-  `TareeqCreateModal.tsx` together.
-- **Video is never compressed anywhere.** Images are, twice (canvas in the browser, then
-  sharp on the server, 1920px). Video is uploaded as-is. Transcoding server-side would mean
-  ffmpeg on a box that also runs the shop and two other projects, and one 250MB re-encode
-  takes the CPU for minutes. Browser-side compression before upload is the right place.
+  default for every site on this box that does not override it. moslimleader no longer
+  relies on it: **as of 2026-09-13 `moslimleader.conf` sets `client_max_body_size 200M;` in
+  both of its server blocks (:80 and :443)**, and `.env` carries
+  `NEXT_PUBLIC_TAREEQ_MAX_VIDEO_MB=200` to match. (`waqf-api.conf` sets 100M, `reels.conf`
+  32m, `solh.conf` 2m for themselves.)
+
+  The number now lives in ONE place, `NEXT_PUBLIC_TAREEQ_MAX_VIDEO_MB`, read by both
+  `src/app/api/tareeq/upload/route.ts` and `TareeqCreateModal.tsx` (the client keeps 2MB of
+  headroom, because nginx counts the whole multipart body and not just the file). It
+  defaults to 50 if unset. **Raising it past nginx is a lie**: nginx answers 413 before the
+  route runs, after the phone has sent the entire video, and the uploader sees a bare
+  failure. So change nginx first, then the variable.
+
+  Two traps, both hit for real:
+  - `NEXT_PUBLIC_*` is inlined at BUILD time. The variable must be in `.env` **before**
+    `npm run build`; `pm2 restart` alone will not pick it up.
+  - Do NOT find the server block with a pattern like
+    `grep/sed '/server_name[^;]*moslimleader/'`. `game-proxy.conf` and `reels.conf` also
+    carry moslimleader subdomains in their `server_name`, so that pattern silently raised
+    the limit for two OTHER projects. Edit `/etc/nginx/conf.d/moslimleader.conf` by name.
+- **Video is re-encoded in the BROWSER, and only when it has to be.** Images are compressed
+  twice (canvas in the browser, then sharp on the server, 1920px). Video is uploaded as-is
+  unless one of two things is true, both decided in `src/lib/tareeq-video-compress.ts`:
+  it is over the size cap, or `needsTranscodeForCompat()` says the codec will not play for
+  everyone. Server-side ffmpeg is not an option — one 250MB re-encode takes the CPU for
+  minutes on a box that also runs the shop and two other projects.
+
+  Three things about that re-encode that cost six rounds of wrong fixes to learn:
+  - **It runs in REAL TIME**, off the source `<video>`'s own playback. A two-minute clip
+    takes two minutes, and anything that stalls decoding part-way — screen lock, the app
+    backgrounded, the element scrolled out of view on Android — leaves the canvas holding
+    one frame while the audio, passed through untouched, keeps running. The output is then
+    a video with a frozen MIDDLE and a normal start and end. A screen wake lock is held for
+    the duration, and `MAX_FROZEN_SPAN_SECONDS` refuses the result rather than publishing
+    it. The permanent fix is WebCodecs (no real-time dependency); not done yet.
+  - **The picture must be visible while it runs.** Chrome on Android suspends frame
+    decoding for an invisible media element — audio keeps playing, frames stop. That is why
+    `compressVideo` takes a `mountInto` element and the modal shows a live preview.
+  - **iPhones record HEVC in a `.mov` by default, and Chrome on Android cannot decode it.**
+    Such a file uploads fine, plays fine for the person who posted it, and is a frozen
+    picture with working sound for every Android viewer. It cannot be caught by playing the
+    file — only by reading the codec out of its bytes, which `detectVideoCodec()` does
+    (`hvc1`/`hev1`/`dvh1`/`dvhe`, scanning both ends because `moov` can be at either).
+    Such files are re-encoded **regardless of size**, with `acceptLarger` set, because HEVC
+    is the more efficient codec and the re-encode usually comes out bigger.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

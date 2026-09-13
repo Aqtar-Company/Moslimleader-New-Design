@@ -33,6 +33,7 @@ const mb = (bytes: number) => (bytes / 1024 / 1024).toFixed(0);
 const QUEUE_KEY = 'tareeq-post-queue';
 interface Draft {
   content: string;
+  title?: string;
   category: string;
   savedAt: number;
   imageUrl?: string | null;
@@ -66,6 +67,25 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   // hardcoded alt="" — correct for decoration, wrong for a photo carrying the point of the
   // post, which made every uploaded image invisible to a blind reader.
   const [imageAlt, setImageAlt] = useState('');
+  /**
+   * An optional title. The post model, the create route and the feed card have all
+   * supported `title` for a long time — the composer simply never had a field for it, so
+   * no post ever got one. For a video it is the difference between "a video" and "خطوة
+   * بخطوة — وسام القائد" in the feed, in a share, and in search.
+   */
+  const [title, setTitle] = useState('');
+  /**
+   * The first-frame poster, UPLOADED, when the author has not chosen a cover.
+   *
+   * `videoThumb` is a data URL used only for the local preview; it was never sent, so a
+   * video with no hand-picked cover had `thumbnailUrl: null` and every surface that needs
+   * a still — the feed card before play, a DM share, the link preview — got nothing.
+   */
+  const [autoThumbUrl, setAutoThumbUrl] = useState<string | null>(null);
+  /** Candidate cover frames pulled from the local file, for "pick a frame". */
+  const [frames, setFrames] = useState<string[]>([]);
+  const [pickingFrame, setPickingFrame] = useState<number | null>(null);
+  const framesForFileRef = useRef<File | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   /**
    * What the PICKED file is, as opposed to what was successfully uploaded.
@@ -182,6 +202,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     const allUrls = mediaType === 'image' && mediaUrl ? [mediaUrl, ...extraUrls] : null;
     latestDraftRef.current = {
       content, category,
+      title: title.trim() || undefined,
       imageUrl: mediaType === 'image' ? mediaUrl : null,
       imageUrls: allUrls,
       videoUrl: mediaType === 'video' ? mediaUrl : null,
@@ -191,10 +212,10 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
       // debounce tick blows the quota, at which point the catch swallows the failure and
       // the WHOLE draft (caption included) silently stops saving. It could never be
       // restored anyway: the restore path rejects `data:` URLs as unsafe.
-      thumbnailUrl: mediaType === 'video' ? (customThumbUrl ?? null) : null,
+      thumbnailUrl: mediaType === 'video' ? (customThumbUrl ?? autoThumbUrl ?? null) : null,
       seriesTitle: seriesTitle.trim() || null,
     };
-  }, [content, category, mediaUrl, mediaType, extraImages, customThumbUrl, videoThumb, seriesTitle]);
+  }, [content, title, category, mediaUrl, mediaType, extraImages, customThumbUrl, autoThumbUrl, videoThumb, seriesTitle]);
 
   // Tells TareeqPWA it is not safe to adopt a waiting service worker right now — taking
   // an update reloads the page, which would discard whatever is in the composer.
@@ -235,6 +256,92 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
       }
     };
   }, []);
+
+  /** Uploads a JPEG data URL (a captured frame) as a cover image; resolves to its URL. */
+  async function uploadCoverDataUrl(dataUrl: string): Promise<string | null> {
+    try {
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], 'cover.jpg', { type: 'image/jpeg' });
+      const compressed = await compressImage(file, { maxWidth: 1280, maxHeight: 720, quality: 0.82 });
+      const form = new FormData();
+      form.append('file', compressed);
+      const res = await fetch('/api/tareeq/upload', { method: 'POST', credentials: 'include', body: form });
+      const data = await res.json().catch(() => ({}));
+      return res.ok && data.url ? String(data.url) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Pulls `count` evenly spaced frames out of a local video file, as small JPEG data URLs.
+   *
+   * This is what "choose a cover" should have been from the start: the frames are already
+   * on the device, the element can seek to them in a few hundred milliseconds each, and a
+   * frame FROM the video is almost always the cover the author wants. Uploading a separate
+   * image stays available for the cases where it is not.
+   */
+  function captureFrames(file: File, count: number): Promise<string[]> {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = 'auto';
+      const url = URL.createObjectURL(file);
+      const out: string[] = [];
+      const finish = () => { URL.revokeObjectURL(url); resolve(out); };
+      // A file that never yields metadata or a frame must not hang the effect forever.
+      const guard = setTimeout(finish, 20_000);
+      video.onerror = () => { clearTimeout(guard); finish(); };
+      video.onloadedmetadata = () => {
+        const d = video.duration;
+        if (!Number.isFinite(d) || d <= 0) { clearTimeout(guard); return finish(); }
+        const canvas = document.createElement('canvas');
+        const scale = Math.min(1, 480 / Math.max(1, video.videoWidth));
+        canvas.width = Math.max(2, Math.round(video.videoWidth * scale));
+        canvas.height = Math.max(2, Math.round(video.videoHeight * scale));
+        const ctx = canvas.getContext('2d');
+        let i = 0;
+        const next = () => {
+          if (i >= count || !ctx) { clearTimeout(guard); return finish(); }
+          // Centred in each slot, so the first frame is not a black lead-in and the last
+          // is not the fade-out.
+          video.currentTime = Math.min(d - 0.05, ((i + 0.5) / count) * d);
+        };
+        video.onseeked = () => {
+          try {
+            ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
+            out.push(canvas.toDataURL('image/jpeg', 0.72));
+          } catch { /* a frame that will not draw is skipped */ }
+          i++;
+          next();
+        };
+        next();
+      };
+      video.src = url;
+    });
+  }
+
+  // Default cover: once a video has uploaded and the first-frame poster exists, upload
+  // that poster too — unless the author has already chosen one.
+  useEffect(() => {
+    if (mediaType !== 'video' || !mediaUrl || !videoThumb || customThumbUrl || autoThumbUrl) return;
+    let cancelled = false;
+    void uploadCoverDataUrl(videoThumb).then(url => { if (!cancelled && url) setAutoThumbUrl(url); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mediaType, mediaUrl, videoThumb, customThumbUrl, autoThumbUrl]);
+
+  // Candidate frames for the cover picker — once per local file.
+  useEffect(() => {
+    const f = lastMediaFileRef.current;
+    if (mediaType !== 'video' || !mediaUrl || !f || framesForFileRef.current === f) return;
+    framesForFileRef.current = f;
+    let cancelled = false;
+    void captureFrames(f, 6).then(list => { if (!cancelled) setFrames(list); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mediaType, mediaUrl]);
 
   function generateVideoThumb(file: File): Promise<string | null> {
     return new Promise((resolve) => {
@@ -539,6 +646,9 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     setVideoThumb(null);
     setCustomThumbUrl(null);
     setMainUploadFailed(false);
+    setAutoThumbUrl(null);
+    setFrames([]);
+    framesForFileRef.current = null;
     // The previous file's error stayed on screen through the whole codec scan of the new
     // one, describing a file the user had already replaced.
     setError('');
@@ -572,6 +682,9 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     // The banners described the file being removed. Leaving them up left a red error and
     // an amber warning hanging over an empty composer.
     setError('');
+    setAutoThumbUrl(null);
+    setFrames([]);
+    framesForFileRef.current = null;
     setCompatNotice(false);
     setQualityNotice(null);
     setPickedKind(null);
@@ -702,6 +815,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
         body: JSON.stringify({
           isDraft: asDraft,
           content: content.trim(),
+          title: title.trim() || null,
           category: category || null,
           imageUrl: mediaType === 'image' ? mediaUrl : null,
           imageAlt: mediaType === 'image' ? (imageAlt.trim() || null) : null,
@@ -711,7 +825,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
       // debounce tick blows the quota, at which point the catch swallows the failure and
       // the WHOLE draft (caption included) silently stops saving. It could never be
       // restored anyway: the restore path rejects `data:` URLs as unsafe.
-      thumbnailUrl: mediaType === 'video' ? (customThumbUrl ?? null) : null,
+      thumbnailUrl: mediaType === 'video' ? (customThumbUrl ?? autoThumbUrl ?? null) : null,
           imageUrls: allImageUrls,
           seriesTitle: seriesTitle.trim() || null,
         }),
@@ -732,13 +846,14 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
         q.push({
           id: Math.random().toString(36).slice(2),
           content: content.trim(),
+          title: title.trim() || null,
           category: category || null,
           imageUrl: mediaType === 'image' ? mediaUrl : null,
           videoUrl: mediaType === 'video' ? mediaUrl : null,
           imageUrls: mediaType === 'image' && mediaUrl ? [mediaUrl, ...extraImages.map(e => e.url).filter(Boolean)] : null,
           // The replay sends these too — a queued video used to lose its custom cover and
           // a queued series post its series.
-          thumbnailUrl: mediaType === 'video' ? (customThumbUrl ?? null) : null,
+          thumbnailUrl: mediaType === 'video' ? (customThumbUrl ?? autoThumbUrl ?? null) : null,
           seriesTitle: seriesTitle.trim() || null,
           queuedAt: Date.now(),
         });
@@ -974,6 +1089,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
             <button
               onClick={() => {
                 setContent(draftBanner.content);
+                setTitle(draftBanner.title ?? '');
                 if (draftBanner.category) setCategory(draftBanner.category as TareeqCategoryKey);
                 // Restore media if saved in draft — only allow relative or same-origin URLs
                 const isSafeUrl = (u: string) => u.startsWith('/') || u.startsWith(window.location.origin);
@@ -1025,7 +1141,10 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
         )}
 
         {/* ── Scrollable body ── */}
-        <div className="flex-1 overflow-y-auto">
+        {/* While the post is being sent nothing below may change: typing, swapping the
+            image or removing the video mid-request would race the request that is already
+            carrying the old values. */}
+        <div className="flex-1 overflow-y-auto" style={{ pointerEvents: loading ? 'none' : undefined, opacity: loading ? 0.6 : 1, transition: 'opacity 150ms' }}>
 
           {/* Compose: avatar + textarea */}
           <div className="flex gap-3 px-4 pt-4 pb-3">
@@ -1042,6 +1161,18 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
             {/* Name + Textarea */}
             <div className="flex-1 min-w-0 pt-1">
               <p className="text-sm font-bold mb-2" style={{ color: 'var(--tr-text-primary)' }}>{user?.name}</p>
+              <input
+                type="text"
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                maxLength={120}
+                placeholder={mediaType === 'video' || pickedKind === 'video'
+                  ? (isRtl ? 'عنوان الفيديو (اختياري)' : 'Video title (optional)')
+                  : (isRtl ? 'عنوان (اختياري)' : 'Title (optional)')}
+                className="w-full text-[15px] font-extrabold outline-none bg-transparent mb-1.5"
+                style={{ color: 'var(--tr-text-primary)' }}
+                dir="auto"
+              />
               <textarea
                 ref={textareaRef}
                 value={content}
@@ -1381,6 +1512,44 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                   </label>
                 )}
               </div>
+              </div>
+            )}
+
+            {/* ── Cover picker — frames from the video itself ── */}
+            {mediaType === 'video' && mediaUrl && frames.length > 0 && (
+              <div className="mx-4 mb-4">
+                <p className="text-[11px] font-bold mb-2" style={{ color: 'var(--tr-text-muted)' }}>
+                  {isRtl ? 'اختر غلافاً من الفيديو' : 'Pick a cover from the video'}
+                </p>
+                <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'thin' }}>
+                  {frames.map((f, i) => {
+                    const busy = pickingFrame === i;
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        disabled={pickingFrame !== null || thumbUploading}
+                        onClick={async () => {
+                          setPickingFrame(i);
+                          const url = await uploadCoverDataUrl(f);
+                          if (url) setCustomThumbUrl(url);
+                          setPickingFrame(null);
+                        }}
+                        className="relative shrink-0 rounded-lg overflow-hidden transition active:scale-95 disabled:opacity-70"
+                        style={{ width: 96, height: 54, border: '2px solid var(--tr-border-soft)', background: '#000' }}
+                        aria-label={isRtl ? `غلاف ${i + 1}` : `Cover ${i + 1}`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={f} alt="" className="w-full h-full object-cover" />
+                        {busy && (
+                          <span className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.45)' }}>
+                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 

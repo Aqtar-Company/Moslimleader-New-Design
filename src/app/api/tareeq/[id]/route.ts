@@ -5,6 +5,7 @@ import { recordPostView } from '@/lib/tareeq-views';
 import { getAuthUser } from '@/lib/jwt';
 import { tareeqRateLimit, isTareeqSuspended } from '@/lib/tareeq-guard';
 import { filterContent } from '@/lib/tareeq-content-filter';
+import { CATEGORY_KEY } from '@/lib/tareeq-constants';
 
 // GET /api/tareeq/[id] — returns post + userLiked + userBookmarked
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -77,14 +78,28 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (!post) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
   if (post.userId !== user.userId) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
-  const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
-  if (post.createdAt < hourAgo) {
-    return NextResponse.json({ error: 'Edit window expired — posts can only be edited within 1 hour of posting' }, { status: 403 });
+  /**
+   * 24 hours, not one — and no limit for an admin.
+   *
+   * One hour was strict enough that, in practice, nobody could edit anything: the typo is
+   * noticed the next morning, the wrong link the day after. The site owner reported it as
+   * "I cannot edit any post", and that was an accurate description of the experience. A
+   * day covers the real cases; an admin fixing their own platform's posts should never
+   * be told to wait.
+   */
+  const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
+  const isAdmin = user.role === 'admin';
+  if (!isAdmin && Date.now() - post.createdAt.getTime() > EDIT_WINDOW_MS) {
+    return NextResponse.json({ error: 'انتهت مهلة التعديل (24 ساعة)' }, { status: 403 });
   }
 
   const body = await req.json().catch(() => ({}));
   const content = String(body.content ?? '').trim();
-  const title = String(body.title ?? '').trim() || null;
+  const title = String(body.title ?? '').trim().slice(0, 120) || null;
+  // Same map the create route validates against. `undefined` means "leave it alone", so a
+  // client that does not send the field cannot accidentally clear the category.
+  const rawCategory = body.category === undefined ? undefined : String(body.category ?? '').trim();
+  const category = rawCategory === undefined ? undefined : (rawCategory ? (CATEGORY_KEY[rawCategory] ?? null) : null);
 
   if (content.length < 10) return NextResponse.json({ error: 'اكتب أكثر' }, { status: 400 });
   if (content.length > 5000) return NextResponse.json({ error: 'النص طويل جداً' }, { status: 400 });
@@ -98,6 +113,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     where: { id: params.id },
     data: {
       content, title, updatedAt: new Date(),
+      ...(category !== undefined ? { category } : {}),
       ...(filterResult.flagged ? { isHidden: true, hiddenReason: filterResult.reason ?? 'auto-filter' } : {}),
     },
   });

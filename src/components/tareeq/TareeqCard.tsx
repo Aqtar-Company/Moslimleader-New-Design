@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import TareeqVideo from './TareeqVideo';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import TareeqTip from '@/components/tareeq/TareeqTip';
 import TareeqShareSheet from '@/components/tareeq/TareeqShareSheet';
 import { useLang } from '@/context/LanguageContext';
@@ -1751,6 +1752,7 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, onReport, onDeleted, o
   const [deleting, setDeleting] = useState(false);
   const [muting, setMuting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const router = useRouter();
 
   async function handleDelete() {
     setDeleting(true);
@@ -1887,6 +1889,21 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, onReport, onDeleted, o
                 </div>
               </div>
             ) : (
+              <>
+              {/* Edit. The tooltip on the ⋯ button has promised "تعديل أو حذف" all along,
+                  and the sheet only ever offered delete — the only way to edit was a small
+                  grey link on the post page that most people never found. The editor lives
+                  on the post page; `?edit=1` opens it directly. */}
+              <button
+                onClick={() => { onClose(); router.push(`/tareeq/${postId}?edit=1`); }}
+                className={row}
+                style={{ borderBottom: '1px solid var(--tr-border-subtle)', color: 'var(--tr-text-primary)' }}
+              >
+                <svg width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                </svg>
+                <span className="font-semibold text-sm">{isRtl ? 'تعديل المنشور' : 'Edit post'}</span>
+              </button>
               <button
                 onClick={() => setConfirmDelete(true)}
                 className={row}
@@ -1897,6 +1914,7 @@ function OptionsSheet({ isRtl, postId, postUserId, isOwn, onReport, onDeleted, o
                 </svg>
                 <span className="font-semibold text-sm">{isRtl ? 'حذف المنشور' : 'Delete Post'}</span>
               </button>
+              </>
             )}
             {!confirmDelete && (
               <button onClick={onClose} className="w-full py-4 text-center text-sm font-semibold" style={{ color: 'var(--tr-text-muted)' }}>

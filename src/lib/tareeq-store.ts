@@ -31,8 +31,21 @@ const memoryValues = new Map<string, { v: string; expiresAt: number }>();
 
 let client: Redis | null = null;
 let clientTried = false;
-/** Set on the first failure; stops every later request paying a connection timeout. */
-let redisDown = false;
+/**
+ * Timestamp until which Redis is treated as unavailable.
+ *
+ * This used to be a permanent flag set on the first failure. That was wrong twice over:
+ * ioredis emits one `error` per failed reconnection attempt even when the connection later
+ * succeeds, so a single blip at boot — or Redis simply starting a second after the app —
+ * latched the whole feature into memory mode until the next deploy, silently. Now a failure
+ * only parks Redis for a cooldown, after which the next request tries it again.
+ */
+let redisDownUntil = 0;
+const REDIS_COOLDOWN_MS = 60_000;
+
+function markRedisDown() {
+  redisDownUntil = Date.now() + REDIS_COOLDOWN_MS;
+}
 
 /**
  * The Redis client, or null.
@@ -41,7 +54,7 @@ let redisDown = false;
  * must not make every Tareeq request wait on a connection that will never open.
  */
 function getClient(): Redis | null {
-  if (redisDown) return null;
+  if (Date.now() < redisDownUntil) return null;
   if (clientTried) return client;
   clientTried = true;
 
@@ -61,18 +74,24 @@ function getClient(): Redis | null {
       // Without this ioredis retries forever and logs on every attempt, which on a server
       // with no Redis is a permanent stream of noise in the shop's own logs.
       retryStrategy: (times: number) => (times > 3 ? null : Math.min(times * 200, 1000)),
-      enableOfflineQueue: false,
+      // MUST stay true. With it false ioredis rejects any command issued before the socket
+      // is writable — and the very first Tareeq request after a `pm2 restart` always is one,
+      // because the client is created on that request. That rejection tripped the down-flag,
+      // so Redis was dropped forever on every boot and nothing ever logged it. The queue is
+      // bounded in practice by `commandTimeout` above: a command that never gets a writable
+      // socket rejects after a second and falls back to memory like any other failure.
+      enableOfflineQueue: true,
     }) as Redis;
 
     client.on('error', () => {
       // Swallowed on purpose. An unhandled 'error' on an ioredis client is an unhandled
       // exception, and an unhandled exception in this process takes the SHOP down with it.
-      // One flag, and everything falls back to memory from here.
-      redisDown = true;
+      // A cooldown rather than a permanent flag — see `redisDownUntil`.
+      markRedisDown();
     });
     return client;
   } catch {
-    redisDown = true;
+    markRedisDown();
     return null;
   }
 }
@@ -83,9 +102,10 @@ export async function storeIsShared(): Promise<boolean> {
   if (!c) return false;
   try {
     await c.ping();
+    redisDownUntil = 0;
     return true;
   } catch {
-    redisDown = true;
+    markRedisDown();
     return false;
   }
 }
@@ -104,6 +124,10 @@ export async function checkLimitShared(
   const c = getClient();
 
   if (c) {
+    // Set once the hit has been recorded in Redis. If a later call in the same block throws
+    // (the `pexpire`, say), the hit is already counted there and must NOT be counted again
+    // in memory — a double-count that halves the effective limit.
+    let recorded = false;
     try {
       const now = Date.now();
       const rkey = `rl:${key}`;
@@ -124,15 +148,17 @@ export async function checkLimitShared(
       // A unique member per hit: the score is the timestamp, and two requests in the same
       // millisecond would otherwise collapse into one entry and under-count.
       await c.zadd(rkey, now, `${now}-${Math.random().toString(36).slice(2, 8)}`);
+      recorded = true;
       // Always re-set: without it a key whose window keeps being refreshed never expires.
       await c.pexpire(rkey, windowMs);
 
       return { allowed: true, retryAfterMs: 0 };
     } catch {
-      redisDown = true;
+      markRedisDown();
       // Falls through to memory below rather than rejecting the request. A rate limiter
       // that starts refusing traffic because its own storage is unavailable is worse than
       // one that briefly forgets.
+      if (recorded) return { allowed: true, retryAfterMs: 0 };
     }
   }
 
@@ -147,10 +173,16 @@ export async function checkLimitShared(
 
   // The in-memory map is never emptied by anything else, so it grows with every key ever
   // seen. Bounded here because this process also serves the shop.
+  // An expiry-only sweep can delete nothing at all (every key still fresh) and then re-run
+  // on every following request forever, so the oldest-first pass below actually bounds it.
   if (memoryWindows.size > 20_000) {
     for (const [k, times] of memoryWindows) {
-      if (!times.length || now - times[times.length - 1] > windowMs) memoryWindows.delete(k);
       if (memoryWindows.size <= 10_000) break;
+      if (!times.length || now - times[times.length - 1] > windowMs) memoryWindows.delete(k);
+    }
+    for (const k of memoryWindows.keys()) {
+      if (memoryWindows.size <= 10_000) break;
+      memoryWindows.delete(k);
     }
   }
 
@@ -165,17 +197,65 @@ export async function setShared(key: string, value: string, ttlSeconds: number):
       await c.set(key, value, 'EX', ttlSeconds);
       return;
     } catch {
-      redisDown = true;
+      markRedisDown();
     }
   }
   memoryValues.set(key, { v: value, expiresAt: Date.now() + ttlSeconds * 1000 });
   if (memoryValues.size > 20_000) {
     const now = Date.now();
     for (const [k, entry] of memoryValues) {
-      if (entry.expiresAt <= now) memoryValues.delete(k);
       if (memoryValues.size <= 10_000) break;
+      if (entry.expiresAt <= now) memoryValues.delete(k);
+    }
+    // Same reason as the windows map: oldest-first, so it stays bounded even when nothing
+    // has expired yet.
+    for (const k of memoryValues.keys()) {
+      if (memoryValues.size <= 10_000) break;
+      memoryValues.delete(k);
     }
   }
+}
+
+/**
+ * Claims a key for a period, atomically. Returns true only for the caller that got it.
+ *
+ * A `getShared` then `setShared` pair is NOT the same thing: two calls arriving together
+ * both read nothing and both proceed. That matters for the weekly digest, where losing the
+ * race means a second send of the same 300 emails from the address the SHOP uses for order
+ * receipts.
+ */
+export async function claimShared(key: string, ttlSeconds: number): Promise<boolean> {
+  const c = getClient();
+  if (c) {
+    try {
+      const res = await c.set(key, '1', 'EX', ttlSeconds, 'NX');
+      return res === 'OK';
+    } catch {
+      markRedisDown();
+      // Falls through to the memory claim below.
+    }
+  }
+  // Single-process fallback. Node runs this synchronously between awaits, so the read and
+  // the write cannot interleave here the way they can across processes.
+  const now = Date.now();
+  const entry = memoryValues.get(key);
+  if (entry && entry.expiresAt > now) return false;
+  memoryValues.set(key, { v: '1', expiresAt: now + ttlSeconds * 1000 });
+  return true;
+}
+
+/** Releases a claim taken by `claimShared`, so the period can be claimed again. */
+export async function releaseShared(key: string): Promise<void> {
+  const c = getClient();
+  if (c) {
+    try {
+      await c.del(key);
+      return;
+    } catch {
+      markRedisDown();
+    }
+  }
+  memoryValues.delete(key);
 }
 
 export async function getShared(key: string): Promise<string | null> {
@@ -184,7 +264,7 @@ export async function getShared(key: string): Promise<string | null> {
     try {
       return await c.get(key);
     } catch {
-      redisDown = true;
+      markRedisDown();
     }
   }
   const entry = memoryValues.get(key);

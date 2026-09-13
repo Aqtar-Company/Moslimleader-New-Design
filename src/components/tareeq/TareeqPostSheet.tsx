@@ -24,6 +24,9 @@ interface Props {
   // commentCount for those) — lets the caller bump the feed card's own count, which
   // otherwise stayed stale until a full refetch after commenting from the sheet.
   onCommented?: (postId: string) => void;
+  // The mirror of onCommented. Without it, deleting a comment from the sheet left the feed
+  // card behind it showing the old, higher count until a full refetch.
+  onCommentDeleted?: (postId: string) => void;
 }
 
 // Comments use the SAME reactions as posts — see TAREEQ_REACTIONS. This list used to be a
@@ -74,7 +77,7 @@ const REACTIONS = [
 
 type ReactionType = typeof REACTIONS[number]['type'];
 
-export default function TareeqPostSheet({ postId, focusComments = false, onClose, onDeleted, onReacted, onCommented }: Props) {
+export default function TareeqPostSheet({ postId, focusComments = false, onClose, onDeleted, onReacted, onCommented, onCommentDeleted }: Props) {
   const { isRtl } = useLang();
   const { user } = useAuth();
 
@@ -120,7 +123,27 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
     try {
       const res = await fetch(`/api/tareeq/comments/${id}`, { method: 'DELETE', credentials: 'include' });
       if (res.ok) {
+        // Only a TOP-LEVEL comment moves the counter — the API counts only those, so
+        // decrementing for a reply would make the header disagree with the database (and
+        // go negative on a thread whose replies are cleaned up).
+        const wasTopLevel = comments.some(c => c.id === id);
         setComments(prev => prev.filter(c => c.id !== id));
+        // A reply lives in its parent's expanded list, not in `comments` — filtering only
+        // the latter left a deleted reply on screen until the thread was collapsed.
+        setExpandedReplies(prev => {
+          let touched = false;
+          const next: Record<string, Comment[]> = {};
+          for (const [parentId, list] of Object.entries(prev)) {
+            const filtered = list.filter(r => r.id !== id);
+            if (filtered.length !== list.length) touched = true;
+            next[parentId] = filtered;
+          }
+          return touched ? next : prev;
+        });
+        if (wasTopLevel) {
+          setPost(prev => (prev ? { ...prev, commentCount: Math.max(0, prev.commentCount - 1) } : prev));
+          onCommentDeleted?.(postId);
+        }
         setConfirmDeleteComment(null);
       } else {
         const d = await res.json().catch(() => ({}));
@@ -156,6 +179,39 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
   const [closing, setClosing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  /**
+   * How much of the screen the on-screen keyboard is covering.
+   *
+   * The sheet is `position: fixed; bottom: 0`, and the comment box is pinned to its bottom
+   * edge. On Android Chrome — and on iOS Safari — opening the keyboard does NOT shrink the
+   * layout viewport by default, so `bottom: 0` stays at the bottom of the SCREEN, behind
+   * the keyboard. The user was typing a comment they could not see: «بكتب كومنت مش شايف
+   * انا بكتب ايه».
+   *
+   * `visualViewport` is the only thing that reports the keyboard's real height. The sheet
+   * is lifted by that amount and shortened by it, so the input sits directly on top of the
+   * keyboard and the comments above it stay scrollable. On a browser with no
+   * `visualViewport` the inset stays 0 and the layout is exactly what it was.
+   */
+  const [kbInset, setKbInset] = useState(0);
+  useEffect(() => {
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+    if (!vv) return;
+    const update = () => {
+      // Anything under ~120px is a URL bar collapsing or a rounding artefact, not a
+      // keyboard — reacting to those makes the sheet jitter while scrolling.
+      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setKbInset(inset > 120 ? inset : 0);
+    };
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, []);
 
   const sheetRef = useRef<HTMLDivElement>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
@@ -770,14 +826,19 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                               </div>
                             </div>
                             {expandedReplies[c.id]?.map(r => (
-                              <div key={r.id} style={{ display: 'flex', gap: 8, padding: '7px 16px 7px 46px', background: 'var(--tr-overlay)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                              // paddingInlineStart, not a physical left: the indent that
+                              // marks a reply has to sit on the side the thread reads FROM,
+                              // and طريق is Arabic first. With `padding-left` the indent
+                              // landed opposite the avatar in RTL and the replies looked
+                              // detached from the comment they belong to.
+                              <div key={r.id} style={{ display: 'flex', gap: 8, padding: '7px 16px', paddingInlineStart: 46, background: 'var(--tr-overlay)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
                                 <div style={{ width: 24, height: 24, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 900, background: 'var(--tr-gold-glow)', color: 'var(--tr-gold)', border: '1.5px solid var(--tr-gold)' }}>{(r.user?.name ?? '?').charAt(0)}</div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 2 }}>
                                     <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--tr-text-primary)' }}>{r.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}</span>
                                     <span style={{ fontSize: 10, color: 'var(--tr-text-muted)' }}>{timeAgo(r.createdAt, isRtl)}</span>
                                   </div>
-                                  <p style={{ fontSize: 12, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{r.content}</p>
+                                  <p style={{ fontSize: 12, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{displayMentions(r.content)}</p>
                                 </div>
                               </div>
                             ))}
@@ -846,8 +907,10 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
       <div
         ref={sheetRef}
         style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999,
-          height: '88dvh',
+          position: 'fixed', bottom: kbInset, left: 0, right: 0, zIndex: 9999,
+          // Lifted AND shortened: lifting alone would push the sheet's top off-screen and
+          // take the post itself with it.
+          height: kbInset > 0 ? `calc(88dvh - ${kbInset}px)` : '88dvh',
           borderRadius: '24px 24px 0 0',
           background: 'var(--tr-surface)',
           border: '1px solid var(--tr-border-soft)',
@@ -1215,7 +1278,8 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                       </div>
                       {/* Inline replies */}
                       {expandedReplies[c.id]?.map(r => (
-                        <div key={r.id} style={{ display: 'flex', gap: 8, padding: '8px 16px 8px 52px', background: 'var(--tr-overlay)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
+                        // Logical start padding — see the desktop branch above.
+                        <div key={r.id} style={{ display: 'flex', gap: 8, padding: '8px 16px', paddingInlineStart: 52, background: 'var(--tr-overlay)', borderBottom: '1px solid var(--tr-border-subtle)' }}>
                           <div style={{
                             width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1229,7 +1293,7 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--tr-text-primary)' }}>{r.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}</span>
                               <span style={{ fontSize: 10, color: 'var(--tr-text-muted)' }}>{timeAgo(r.createdAt, isRtl)}</span>
                             </div>
-                            <p style={{ fontSize: 12, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{r.content}</p>
+                            <p style={{ fontSize: 12, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{displayMentions(r.content)}</p>
                           </div>
                         </div>
                       ))}

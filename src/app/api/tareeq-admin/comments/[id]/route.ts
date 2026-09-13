@@ -29,19 +29,25 @@ export async function PATCH(
 
   const existing = await prisma.tareeqComment.findUnique({
     where: { id: params.id },
-    select: { id: true, postId: true },
+    select: { id: true, postId: true, parentId: true },
   });
   if (!existing) return Response.json({ error: 'Comment not found' }, { status: 404 });
 
   const ip = request.headers.get('x-forwarded-for') ?? undefined;
 
   if (action === 'delete') {
+    // Only top-level comments are counted (see the comments POST handler), so only those
+    // may decrement. Deleting a REPLY here used to decrement all the same, which drives
+    // commentCount below zero on any post whose replies a moderator has cleaned up — and
+    // the feed then renders a negative comment count.
     await prisma.$transaction([
       prisma.tareeqComment.delete({ where: { id: params.id } }),
-      prisma.tareeqPost.update({
-        where: { id: existing.postId },
-        data: { commentCount: { decrement: 1 } },
-      }),
+      ...(!existing.parentId
+        ? [prisma.tareeqPost.update({
+            where: { id: existing.postId },
+            data: { commentCount: { decrement: 1 } },
+          })]
+        : []),
     ]);
     await logAudit(admin.id, 'comment.delete', {
       targetType: 'comment',

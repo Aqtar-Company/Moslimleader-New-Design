@@ -11,9 +11,10 @@ import { SHARED_FROM_INCLUDE, normalizeSharedFrom } from '@/lib/tareeq-post-sele
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const post = await prisma.tareeqPost.findUnique({
     where: { id: params.id },
-    select: { title: true, content: true, imageUrl: true, imageAlt: true, authorName: true, category: true },
+    select: { title: true, content: true, imageUrl: true, imageAlt: true, authorName: true, category: true, isDraft: true, isHidden: true },
   });
-  if (!post) return {};
+  // An unpublished or moderated post must not describe itself to a scraper either.
+  if (!post || post.isDraft || post.isHidden) return {};
 
   const title = post.title ?? post.content?.slice(0, 60) ?? 'علامة في طريق';
   const description = post.content?.slice(0, 160) ?? '';
@@ -69,6 +70,16 @@ export default async function TareeqPostPage({ params }: { params: { id: string 
   // an admin/staff token it also does a prisma.user lookup — this page used to pay for
   // three of them per render.
   const viewer = await getAuthUser().catch(() => null);
+
+  /**
+   * A draft belongs to its author and nobody else.
+   *
+   * The drafts feature filtered `isDraft` out of the feeds and stopped there, so the
+   * permalink served the whole thing to anyone holding the id — and the id was printed
+   * in the author's own public profile markup. Reachable, readable, and it kept working
+   * through every edit until the post was published or discarded.
+   */
+  if (post.isDraft && (!viewer || viewer.userId !== post.userId)) return notFound();
 
   // A blocked author's post is not viewable by direct URL either — the feed and profile
   // both filter these out, so leaving the permalink open defeated the whole block.

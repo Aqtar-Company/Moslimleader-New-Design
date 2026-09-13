@@ -56,6 +56,24 @@ function pickMimeType(): string | null {
 }
 
 /** Whether this browser can do it at all — lets the UI promise nothing it cannot deliver. */
+/**
+ * Why a compression attempt gave up.
+ *
+ * Every `return null` below used to be indistinguishable from every other one, so the
+ * uploader showed a single message blaming HEVC — including when the real cause was a clip
+ * longer than the ceiling, or a file that simply could not be made smaller. Being told to
+ * change an iPhone camera setting that has nothing to do with your problem is worse than
+ * being told nothing.
+ */
+export type CompressFailure =
+  | 'unsupported-browser'
+  | 'unreadable'
+  | 'too-long'
+  | 'no-video-track'
+  | 'no-motion'
+  | 'not-smaller'
+  | 'error';
+
 export function canCompressVideo(): boolean {
   if (typeof document === 'undefined') return false;
   const canvas = document.createElement('canvas');
@@ -83,11 +101,21 @@ export async function compressVideo(
    * anywhere else.
    */
   mountInto?: HTMLElement | null,
+  /** Called once with the reason when the result is null. */
+  onFailure?: (reason: CompressFailure) => void,
 ): Promise<File | null> {
+  const fail = (reason: CompressFailure): null => {
+    onFailure?.(reason);
+    return null;
+  };
+
   const mimeType = pickMimeType();
-  if (!mimeType || !canCompressVideo()) return null;
+  if (!mimeType || !canCompressVideo()) return fail('unsupported-browser');
 
   const url = URL.createObjectURL(file);
+  // Declared out here so the `finally` can stop them on every exit path.
+  let canvasStream: MediaStream | null = null;
+  let audioTrack: MediaStreamTrack | null = null;
   const video = document.createElement('video');
   video.src = url;
   video.muted = true;
@@ -152,9 +180,8 @@ export async function compressVideo(
       video.currentTime = 0;
     }
 
-    if (!video.duration || !isFinite(video.duration) || video.duration > MAX_DURATION_SECONDS) {
-      return null;
-    }
+    if (!video.duration || !isFinite(video.duration)) return fail('unreadable');
+    if (video.duration > MAX_DURATION_SECONDS) return fail('too-long');
 
     /**
      * No decodable video track.
@@ -167,7 +194,7 @@ export async function compressVideo(
      * publish it believing it worked.
      */
     if (!video.videoWidth || !video.videoHeight) {
-      return null;
+      return fail('no-video-track');
     }
 
     const scale = Math.min(1, TARGET_MAX_DIMENSION / Math.max(video.videoWidth, video.videoHeight));
@@ -179,15 +206,14 @@ export async function compressVideo(
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
+    if (!ctx) return fail('unsupported-browser');
 
-    const canvasStream = (canvas as HTMLCanvasElement & { captureStream(fps?: number): MediaStream })
+    canvasStream = (canvas as HTMLCanvasElement & { captureStream(fps?: number): MediaStream })
       .captureStream(30);
 
     // The audio is taken from the element's own stream and passed through as-is. Decoding
     // and re-encoding it separately would cost time and quality for no size worth having —
     // audio is a rounding error next to the video track.
-    let audioTrack: MediaStreamTrack | null = null;
     try {
       const el = video as HTMLVideoElement & { captureStream?: () => MediaStream; mozCaptureStream?: () => MediaStream };
       const elStream = el.captureStream?.() ?? el.mozCaptureStream?.();
@@ -241,27 +267,62 @@ export async function compressVideo(
      * did not.
      */
     let painted = 0;
-    let firstSample: string | null = null;
-    let sawMotion = false;
+    let sourceFirst: string | null = null;
+    let canvasFirst: string | null = null;
+    let sourceMoved = false;
+    let canvasMoved = false;
+    let lastReportedPct = -1;
+
     const probe = document.createElement('canvas');
     probe.width = 32;
     probe.height = 18;
-    const pctx = probe.getContext('2d');
+    const pctx = probe.getContext('2d', { willReadFrequently: true });
 
     const paint = () => {
       ctx.drawImage(video, 0, 0, width, height);
       painted++;
 
-      // Sample cheaply, and only until motion is seen.
-      if (!sawMotion && pctx && painted % 5 === 0) {
-        pctx.drawImage(video, 0, 0, 32, 18);
-        const sig = pctx.getImageData(0, 0, 32, 18).data.join(',');
-        if (firstSample === null) firstSample = sig;
-        else if (sig !== firstSample) sawMotion = true;
+      /**
+       * Two samples, and the comparison BETWEEN them is the whole point.
+       *
+       * The first version of this check sampled `video` — the source — and called that
+       * verification. It was not: the bug it was written to catch is the CANVAS going
+       * dead while the source element keeps decoding, so sampling the source returns
+       * "moving" in exactly the case that is broken. It would have passed the very
+       * regression that caused it to be written.
+       *
+       * So the canvas is sampled too, and only the pair is meaningful:
+       *   source moves, canvas does not  → the pipeline is broken, throw the result away.
+       *   neither moves                  → a legitimately static clip (a held slide, a
+       *                                     recitation over one frame, a cover with
+       *                                     audio). Perfectly valid; keep it. The old
+       *                                     check discarded these and told the author
+       *                                     their codec was unsupported.
+       */
+      if (pctx && painted % 5 === 0) {
+        if (!sourceMoved) {
+          pctx.drawImage(video, 0, 0, 32, 18);
+          const sig = pctx.getImageData(0, 0, 32, 18).data.join(',');
+          if (sourceFirst === null) sourceFirst = sig;
+          else if (sig !== sourceFirst) sourceMoved = true;
+        }
+        if (!canvasMoved) {
+          pctx.drawImage(canvas, 0, 0, 32, 18);
+          const sig = pctx.getImageData(0, 0, 32, 18).data.join(',');
+          if (canvasFirst === null) canvasFirst = sig;
+          else if (sig !== canvasFirst) canvasMoved = true;
+        }
       }
 
+      // Only on a whole-percent change: this fired 30-60 times a second into a React
+      // setState, re-rendering a large modal during the most CPU-bound moment on the
+      // weakest device in the user base.
       if (video.duration) {
-        onProgress?.(Math.min(99, Math.round((video.currentTime / video.duration) * 100)));
+        const pct = Math.min(99, Math.round((video.currentTime / video.duration) * 100));
+        if (pct !== lastReportedPct) {
+          lastReportedPct = pct;
+          onProgress?.(pct);
+        }
       }
     };
 
@@ -282,22 +343,61 @@ export async function compressVideo(
       tick();
     }
 
-    await new Promise<void>(resolve => { video.onended = () => resolve(); });
+    /**
+     * Wait for the end — but never unconditionally.
+     *
+     * This was the only await in the function with no timeout and no error path, and
+     * three ordinary things stop `ended` from ever arriving: a decode error mid-playback
+     * (the `onerror` set during metadata belongs to a promise that already settled), the
+     * tab being backgrounded on Android during a multi-minute real-time encode, and a
+     * source whose duration only "resolved" via the seek timeout. Any of them left the
+     * composer pinned on "جاري الضغط" with the publish button dead until a page reload.
+     *
+     * The ceiling is generous — real time plus a third, plus thirty seconds — because
+     * overshooting truncates a legitimate encode, which is worse than waiting.
+     */
+    const startedAt = Date.now();
+    const budgetMs = Math.max(30_000, video.duration * 1000 * 1.35 + 30_000);
+    await new Promise<void>(resolve => {
+      let settled = false;
+      const finish = () => { if (!settled) { settled = true; resolve(); } };
+      video.onended = finish;
+      video.onerror = finish;
+      const guard = setInterval(() => {
+        // Playback that has stopped short, or simply run out of budget.
+        if (video.ended || Date.now() - startedAt > budgetMs) {
+          clearInterval(guard);
+          finish();
+        }
+      }, 1000);
+      setTimeout(() => { clearInterval(guard); finish(); }, budgetMs + 2000);
+    });
+
     stopPump = true;
     if (raf) cancelAnimationFrame(raf);
     if (rvfc && typeof v.cancelVideoFrameCallback === 'function') v.cancelVideoFrameCallback(rvfc);
+    // How much media was actually recorded. NOT the source's duration: the recorder is
+    // started before playback, frames drop, and stalls happen — stamping the source length
+    // into the header points the scrubber's end past where data exists.
+    const recordedSeconds = (Date.now() - startedAt) / 1000;
+
     // One last frame, or the final second can come out blank.
     ctx.drawImage(video, 0, 0, width, height);
-    recorder.stop();
-    await done;
+    // Tracks ending can auto-stop the recorder, and stop() then throws InvalidStateError —
+    // which used to land in the outer catch and discard a finished encode.
+    try { if (recorder.state !== 'inactive') recorder.stop(); } catch { /* already stopped */ }
+    await Promise.race([
+      done,
+      new Promise<void>(r => setTimeout(r, 10_000)),
+    ]);
 
     /**
      * Nothing moved. The source decoded audio but never a second distinct frame — an
      * undecodable video codec is the usual cause. Returning this blob would hand back a
      * file with sound and a still image.
      */
-    if (!sawMotion && painted > 10) {
-      return null;
+    if (sourceMoved && !canvasMoved && painted > 10) {
+      return fail('no-motion');
     }
 
     let blob: Blob = new Blob(chunks, { type: mimeType.split(';')[0] });
@@ -313,22 +413,26 @@ export async function compressVideo(
      * the worst case is the scrubber we already had — never a corrupted file.
      */
     if (blob.type.includes('webm')) {
-      blob = await writeWebmDuration(blob, video.duration);
+      blob = await writeWebmDuration(blob, recordedSeconds);
     }
 
     // A clip that is already efficiently encoded can come out BIGGER. Returning it would
     // make the upload worse, which is the opposite of the point.
-    if (blob.size >= file.size) return null;
+    if (blob.size >= file.size) return fail('not-smaller');
 
     onProgress?.(100);
     const ext = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
     const base = file.name.replace(/\.[^.]+$/, '') || 'video';
     return new File([blob], `${base}.${ext}`, { type: blob.type });
   } catch {
-    return null;
+    return fail('error');
   } finally {
     // Always: the element holds the decoded file, and a blob URL left alive keeps the whole
     // original in memory for the life of the page.
+    // Tracks left running hold the camera pipeline and the audio graph open for the life
+    // of the page.
+    try { canvasStream?.getTracks().forEach((t: MediaStreamTrack) => t.stop()); } catch { /* gone */ }
+    try { audioTrack?.stop(); } catch { /* gone */ }
     try { video.pause(); } catch { /* already stopped */ }
     video.removeAttribute('src');
     video.load();

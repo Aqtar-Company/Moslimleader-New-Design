@@ -108,6 +108,41 @@ function NotifText({ n, isRtl }: { n: TareeqNotif; isRtl: boolean }) {
       </span>
     );
   }
+  /**
+   * Everything below used to land on "رسالة جديدة من فلان" / "New message from X".
+   * Four real notification types went through it — a mention, a reply on a thread you
+   * follow, an update to a post you engaged with, and a missed call — and all four told the
+   * user they had a private message they did not have. The fallback now only covers types
+   * that genuinely have no wording of their own.
+   */
+  if (n.type === 'mention') {
+    return (
+      <span>
+        {isRtl ? `${actor} ذكرك في ${title}` : `${actor} mentioned you in ${title}`}
+        {n.body && <span className="block text-xs mt-0.5 truncate" style={{ color: 'var(--tr-text-muted)' }}>{n.body}</span>}
+      </span>
+    );
+  }
+  if (n.type === 'subscribed_comment') {
+    return (
+      <span>
+        {isRtl ? `تعليق جديد على ${title}` : `New comment on ${title}`}
+        {n.body && <span className="block text-xs mt-0.5 truncate" style={{ color: 'var(--tr-text-muted)' }}>{n.body}</span>}
+      </span>
+    );
+  }
+  if (n.type === 'post_update') {
+    return (
+      <span>
+        {isRtl ? `${actor} أضاف تحديثاً على ${title}` : `${actor} posted an update on ${title}`}
+        {n.body && <span className="block text-xs mt-0.5 truncate" style={{ color: 'var(--tr-text-muted)' }}>{n.body}</span>}
+      </span>
+    );
+  }
+  if (n.type === 'call') {
+    return <span>{isRtl ? `مكالمة فائتة من ${actor} 📞` : `Missed call from ${actor} 📞`}</span>;
+  }
+
   return (
     <span>
       {isRtl ? `رسالة جديدة من ${actor}` : `New message from ${actor}`}
@@ -379,7 +414,10 @@ function Inner() {
                   borderInlineStartWidth: n.read ? 1 : 4,
                 }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--tr-overlay)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = n.read ? 'var(--tr-surface)' : 'var(--tr-raised)'; }}
+                // Restores the SAME value the row is rendered with above. It restored
+                // `--tr-raised` instead, so the first hover over an unread row permanently
+                // stripped the gold tint and the row read as already-seen.
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = n.read ? 'var(--tr-surface)' : 'var(--tr-gold-glow)'; }}
               >
                 <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ background: 'var(--tr-overlay)', border: '1px solid var(--tr-border-soft)' }}>
                   <NotifIcon type={n.type} />

@@ -1007,6 +1007,7 @@ export default function TareeqClient({ initialPosts, initialCursor }: Props) {
           onDeleted={(id) => { setPosts(prev => prev.filter(p => p.id !== id)); setSheetPostId(null); setSheetFocusComments(false); }}
           onReacted={(id, reaction) => setReactedPosts(prev => { const next = { ...prev }; if (reaction) next[id] = reaction; else delete next[id]; return next; })}
           onCommented={(id) => setPosts(prev => prev.map(p => p.id === id ? { ...p, commentCount: p.commentCount + 1 } : p))}
+          onCommentDeleted={(id) => setPosts(prev => prev.map(p => p.id === id ? { ...p, commentCount: Math.max(0, p.commentCount - 1) } : p))}
         />
       )}
     </div>

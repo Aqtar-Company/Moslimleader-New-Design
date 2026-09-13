@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { TAREEQ_CATEGORIES, CATEGORY_ICONS } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import { compressImage } from '@/lib/compress-image';
-import { compressVideo, canCompressVideo } from '@/lib/tareeq-video-compress';
+import { compressVideo, canCompressVideo, type CompressFailure } from '@/lib/tareeq-video-compress';
 
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
@@ -15,8 +15,18 @@ const DRAFT_KEY = 'tareeq_draft';
 /** Must match MAX_VIDEO / MAX_AUDIO in src/app/api/tareeq/upload/route.ts — which are in
  *  turn bounded by nginx's `client_max_body_size` (50M on this server). See the note there
  *  before changing either. */
-const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
-const MAX_AUDIO_BYTES = 20 * 1024 * 1024;
+/**
+ * Deliberately 2MB under the server's 50MB, and the 2MB is not padding.
+ *
+ * The file goes up inside a `multipart/form-data` body: boundary lines, a
+ * Content-Disposition header per part, the other form fields, and the trailing boundary all
+ * sit on the wire alongside the bytes. nginx counts THE BODY, not the file. So a file of
+ * exactly 50MB produces a request slightly over 50M and nginx answers 413 — after the phone
+ * has already uploaded all of it, and with no message the app can read. The headroom keeps
+ * the client's own limit the one the user actually hits, where it can be explained.
+ */
+const MAX_VIDEO_BYTES = 48 * 1024 * 1024;
+const MAX_AUDIO_BYTES = 19 * 1024 * 1024;
 
 const mb = (bytes: number) => (bytes / 1024 / 1024).toFixed(0);
 const QUEUE_KEY = 'tareeq-post-queue';
@@ -135,11 +145,15 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialFile]);
 
+  // A ref, not the function itself: the listener is bound once, but Escape must see the
+  // CURRENT `compressing` state — a handler captured on mount would always read `false` and
+  // close straight through the guard.
+  const requestCloseRef = useRef<() => void>(() => {});
   useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') requestCloseRef.current(); };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [onClose]);
+  }, []);
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
@@ -258,6 +272,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     //
     // It runs in real time (see tareeq-video-compress.ts), so the progress bar is not
     // decoration: without it a three-minute video looks like a frozen app.
+    let failReason: CompressFailure | null = null;
     if (isVideoFile && file.size > MAX_VIDEO_BYTES && canCompressVideo()) {
       setUploading(true);
       setMainUploadFailed(false);
@@ -271,7 +286,17 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
         // ref that is still null would put the <video> back off-screen — the exact
         // condition this whole change exists to avoid.
         await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
-        const smaller = await compressVideo(file, pct => setUploadProgress(pct), compressPreviewRef.current);
+        // A second frame if the ref is STILL null — a slow device can miss the first one,
+        // and silently compressing off-screen is the frozen-picture bug coming back.
+        if (!compressPreviewRef.current) {
+          await new Promise(r => setTimeout(r, 120));
+        }
+        const smaller = await compressVideo(
+          file,
+          pct => setUploadProgress(pct),
+          compressPreviewRef.current,
+          reason => { failReason = reason; },
+        );
         if (smaller) workingFile = smaller;
       } catch {
         /* fall through to the size check below */
@@ -287,19 +312,48 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
         setUploading(false);
         setCompressing(false);
         setMainUploadFailed(true);
-        // Two different messages: "we tried and it is still too big" is a different
-        // situation from "we could not try", and telling the user the wrong one sends them
-        // off to do something that will not help.
+        /**
+         * One message per actual cause.
+         *
+         * There used to be exactly two: "still too big" and a long paragraph blaming HEVC
+         * and telling the user to change their iPhone camera setting. That paragraph was
+         * shown for every failure — including a clip that was simply too long, one this
+         * browser has no encoder for at all, and one already so well encoded that
+         * re-encoding made it bigger. In all three the advice was wrong, and acting on it
+         * cost the user time and changed nothing.
+         */
         const tried = workingFile !== file;
-        setError(
-          isRtl
-            ? tried
-              ? `ضغطنا الفيديو إلى ${mb(workingFile.size)} ميجا، وما زال أكبر من الحد (${mb(cap)} ميجا). اقصره وحاول تاني.`
-              : `تعذّر ضغط هذا الفيديو — غالباً لأن ترميزه غير مدعوم في هذا المتصفح (فيديو الآيفون يُسجَّل بـ HEVC افتراضياً، وكروم على أندرويد لا يفكّه؛ تظهر الصورة ثابتة والصوت يعمل). الملف ${mb(file.size)} ميجا والحد ${mb(cap)} ميجا. جرّب: من إعدادات كاميرا الآيفون اختر «الأكثر توافقاً»، أو اضغط الفيديو بتطبيق قبل الرفع.`
-            : tried
-              ? `Compressed to ${mb(workingFile.size)} MB, still over the ${mb(cap)} MB limit. Trim it and try again.`
-              : `Couldn't compress this video — most likely its codec isn't supported by this browser (iPhone records HEVC by default and Chrome on Android can't decode it: the sound plays and the picture stays frozen). The file is ${mb(file.size)} MB and the limit is ${mb(cap)} MB. Try setting your iPhone camera to "Most Compatible", or compress it in an app first.`,
-        );
+        const sizes = isRtl
+          ? `الملف ${mb(file.size)} ميجا والحد ${mb(cap)} ميجا.`
+          : `The file is ${mb(file.size)} MB and the limit is ${mb(cap)} MB.`;
+
+        let msg: string;
+        if (tried) {
+          msg = isRtl
+            ? `ضغطنا الفيديو إلى ${mb(workingFile.size)} ميجا، وما زال أكبر من الحد (${mb(cap)} ميجا). اقصره وحاول تاني.`
+            : `Compressed to ${mb(workingFile.size)} MB, still over the ${mb(cap)} MB limit. Trim it and try again.`;
+        } else if (failReason === 'too-long') {
+          msg = isRtl
+            ? `الفيديو أطول من المدة المسموحة للضغط. اقصره وحاول تاني. ${sizes}`
+            : `This video is longer than we can compress. Trim it and try again. ${sizes}`;
+        } else if (failReason === 'no-video-track' || failReason === 'no-motion') {
+          msg = isRtl
+            ? `تعذّر ضغط هذا الفيديو — ترميزه غير مدعوم في هذا المتصفح (فيديو الآيفون يُسجَّل بـ HEVC افتراضياً، وكروم على أندرويد لا يفكّه؛ تظهر الصورة ثابتة والصوت يعمل). ${sizes} جرّب: من إعدادات كاميرا الآيفون اختر «الأكثر توافقاً»، أو اضغط الفيديو بتطبيق قبل الرفع.`
+            : `Couldn't compress this video — this browser can't decode its codec (iPhone records HEVC by default and Chrome on Android can't decode it: the sound plays and the picture stays frozen). ${sizes} Try setting your iPhone camera to "Most Compatible", or compress it in an app first.`;
+        } else if (failReason === 'not-smaller') {
+          msg = isRtl
+            ? `هذا الفيديو مضغوط بالفعل، وإعادة ضغطه تكبّره. اقصره أو اضغطه بتطبيق قبل الرفع. ${sizes}`
+            : `This video is already efficiently encoded — re-encoding made it bigger. Trim it, or compress it in an app first. ${sizes}`;
+        } else if (failReason === 'unsupported-browser') {
+          msg = isRtl
+            ? `متصفحك لا يدعم ضغط الفيديو. اضغط الفيديو بتطبيق قبل الرفع، أو جرّب من متصفح آخر. ${sizes}`
+            : `Your browser can't compress video. Compress it in an app first, or try another browser. ${sizes}`;
+        } else {
+          msg = isRtl
+            ? `تعذّر ضغط هذا الفيديو. اقصره أو اضغطه بتطبيق قبل الرفع. ${sizes}`
+            : `Couldn't compress this video. Trim it, or compress it in an app first. ${sizes}`;
+        }
+        setError(msg);
         return;
       }
     }
@@ -573,13 +627,34 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   const charCount = content.length;
   const charLeft = 5000 - charCount;
 
+  /**
+   * Closing is refused while a video is being compressed.
+   *
+   * Compression runs in real time — a two-minute clip takes two minutes — and the only
+   * visible sign is the progress bar. A stray tap on the backdrop threw all of it away with
+   * no warning, and on a phone the backdrop is most of the screen. Publishing is not
+   * blocked; only the accidental dismissal is.
+   */
+  function requestClose() {
+    if (compressing) {
+      const ok = window.confirm(
+        isRtl
+          ? 'جاري ضغط الفيديو. الخروج الآن يلغي الضغط ويضيّع ما تم. متأكد؟'
+          : 'The video is still being compressed. Leaving now cancels it. Are you sure?',
+      );
+      if (!ok) return;
+    }
+    onClose();
+  }
+  requestCloseRef.current = requestClose;
+
   if (!mounted) return null;
 
   return createPortal(
     <div
       className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center"
       style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }}
-      onClick={onClose}
+      onClick={requestClose}
     >
       <div
         className="w-full sm:max-w-lg sm:mx-4 rounded-t-3xl sm:rounded-2xl flex flex-col overflow-hidden"
@@ -600,7 +675,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
         >
           {/* Close */}
           <button
-            onClick={onClose}
+            onClick={requestClose}
             className="w-9 h-9 flex items-center justify-center rounded-xl transition"
             style={{ color: 'var(--tr-text-muted)', background: 'var(--tr-overlay)' }}
             aria-label={isRtl ? 'إغلاق' : 'Close'}

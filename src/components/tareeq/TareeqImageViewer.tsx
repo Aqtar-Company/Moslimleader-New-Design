@@ -68,8 +68,14 @@ export default function TareeqImageViewer({
         overflow: 'auto',
         WebkitOverflowScrolling: 'touch',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        // `safe` matters: with a plain `center`, a portrait image taller than the viewport
+        // is centred so that its TOP overflows the scroll container's start edge, and that
+        // overflow is unreachable — the user can scroll down but never back up to the top
+        // of the picture. `safe center` falls back to start-alignment the moment the item
+        // does not fit. A browser that does not know the keyword drops the whole
+        // declaration and start-aligns anyway, which is the behaviour we want.
+        alignItems: 'safe center',
+        justifyContent: 'safe center',
       }}
     >
       <button
@@ -102,7 +108,9 @@ export default function TareeqImageViewer({
         // Stops a tap ON the image from closing it — panning a zoomed page would otherwise
         // dismiss the viewer on every finger-up.
         onClick={e => e.stopPropagation()}
-        style={{ width: '100%', height: 'auto', display: 'block', margin: 'auto' }}
+        // No `margin: auto` — auto margins in a flex container absorb the free space and
+        // reintroduce exactly the unreachable-top overflow that `safe center` avoids.
+        style={{ width: '100%', height: 'auto', display: 'block', flexShrink: 0 }}
       />
     </div>,
     document.body,

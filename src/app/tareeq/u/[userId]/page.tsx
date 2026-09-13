@@ -91,7 +91,12 @@ export default async function TareeqUserPage({ params }: Props) {
     ? [[], 0]
     : await Promise.all([
         prisma.tareeqPost.findMany({
-          where: { userId, isHidden: false },
+          // isDraft too. The drafts commit claimed they were "filtered out of every feed"
+          // and named three; this page is a fourth, and it is PUBLIC — so every unpublished
+          // draft was rendering on its author's profile as an ordinary post, with its text
+          // and images, to anyone at all. A draft is by definition the one thing its author
+          // has not chosen to show.
+          where: { userId, isHidden: false, isDraft: false },
           take: 13,
           orderBy: { createdAt: 'desc' },
           select: {
@@ -106,7 +111,7 @@ export default async function TareeqUserPage({ params }: Props) {
             reactions: { distinct: ['type'], orderBy: { createdAt: 'desc' as const }, select: { type: true }, take: 40 },
           },
         }),
-        prisma.tareeqPost.count({ where: { userId, isHidden: false } }),
+        prisma.tareeqPost.count({ where: { userId, isHidden: false, isDraft: false } }),
       ]);
 
   const hasMore = rawPosts.length > 12;

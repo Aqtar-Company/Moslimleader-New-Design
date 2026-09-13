@@ -4,8 +4,16 @@ export const dynamic = 'force-dynamic';
 const ONLINE_WINDOW_MS = 3 * 60 * 1000;
 /** Slightly longer than the window, so an entry never expires while it still means online. */
 const PRESENCE_TTL_SECONDS = 4 * 60;
-/** How often the durable column is refreshed, versus twice a minute before. */
-const DB_WRITE_EVERY_SECONDS = 5 * 60;
+/**
+ * How often the durable column is refreshed, versus twice a minute before.
+ *
+ * MUST stay below ONLINE_WINDOW_MS. The column is what the GET below falls back to once the
+ * store entry is gone; if it is refreshed less often than the window is wide, someone who is
+ * actively typing can still read as offline because their last column write is older than
+ * three minutes. Two minutes keeps the fallback correct and is still a quarter of the write
+ * traffic this route used to put on the users table the shop shares.
+ */
+const DB_WRITE_EVERY_SECONDS = 2 * 60;
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/jwt';

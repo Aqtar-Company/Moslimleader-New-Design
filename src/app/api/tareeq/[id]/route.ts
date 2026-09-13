@@ -28,6 +28,16 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   // Resolve current user once for both view recording and like/bookmark checks
   const authUser = await getAuthUser().catch(() => null);
 
+  /**
+   * A draft is its author's alone, and this route returned the whole row to anyone with
+   * the id — which was being printed in the author's public profile markup. The SSR page
+   * has the same guard; this is the JSON door to the same data, and it also records a
+   * view, so drafts were accruing `viewCount` from strangers.
+   */
+  if (post.isDraft && authUser?.userId !== post.userId) {
+    return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
+  }
+
   // Record view (non-blocking) — shared helper so this agrees with the SSR page instead
   // of each path counting on its own terms.
   void recordPostView(params.id, authUser?.userId ?? null, post.userId);

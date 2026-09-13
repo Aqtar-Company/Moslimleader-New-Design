@@ -23,7 +23,12 @@ import { filterContent } from '@/lib/tareeq-content-filter';
  */
 
 const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
-const MAX_LEN = 3000;
+/**
+ * Must match the limit POST /api/tareeq/[id]/comments enforces on a NEW comment (500).
+ * It was 3000 here, so editing was a way to write a comment six times longer than the
+ * form would ever accept — and the composer does not even allow typing one.
+ */
+const MAX_LEN = 500;
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const me = await getAuthUser().catch(() => null);
@@ -35,9 +40,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   const body = await req.json().catch(() => ({}));
-  const content = String(body.content ?? '').trim().slice(0, MAX_LEN);
+  const content = String(body.content ?? '').trim();
   if (content.length < 1) {
     return NextResponse.json({ error: 'التعليق فارغ' }, { status: 400 });
+  }
+  // Rejected, not silently truncated: quietly cutting someone's words in half and saving
+  // that as what they said is worse than telling them it is too long.
+  if (content.length > MAX_LEN) {
+    return NextResponse.json({ error: 'التعليق طويل جداً' }, { status: 400 });
   }
 
   const comment = await prisma.tareeqComment.findUnique({

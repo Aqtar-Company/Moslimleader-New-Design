@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getTransporter } from '@/lib/smtp';
-import { getShared, setShared } from '@/lib/tareeq-store';
+import { claimShared, releaseShared } from '@/lib/tareeq-store';
 
 /**
  * The weekly "here is what you missed" email.
@@ -52,12 +52,24 @@ function esc(s: string): string {
 export async function GET(req: NextRequest) {
   if (!isAuthorized(req)) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
-  // One send per calendar week, whatever calls it and however often. The claim is written
-  // BEFORE any mail goes out: a crash halfway through must not leave the week unclaimed and
-  // let a retry send to everyone again.
-  const week = new Date();
-  const weekKey = `digest-sent:${week.getUTCFullYear()}-${Math.floor((week.getTime() - Date.UTC(week.getUTCFullYear(), 0, 1)) / 604_800_000)}`;
-  if (await getShared(weekKey)) {
+  /**
+   * One send per week, whatever calls it and however often.
+   *
+   * The key is the date of the week's Sunday, not a week NUMBER. Counting 604800000-ms
+   * buckets from the 1st of January gives windows that are not weeks: they start on
+   * whatever weekday January began on, and the final bucket of the year is one or two days
+   * long — so a run on the 30th of December and one on the 1st of January could claim
+   * different keys and send twice in three days.
+   *
+   * The claim is atomic and is taken BEFORE any mail goes out: a crash halfway through must
+   * not leave the week unclaimed and let a retry send to everyone again. Two calls landing
+   * together must not both read "not sent" and both proceed — which is exactly what a
+   * read-then-write pair allowed.
+   */
+  const now = new Date();
+  const sunday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - now.getUTCDay()));
+  const weekKey = `digest-sent:${sunday.toISOString().slice(0, 10)}`;
+  if (!(await claimShared(weekKey, 8 * 86_400))) {
     return NextResponse.json({ ok: true, sent: 0, reason: 'already sent this week' });
   }
 
@@ -73,7 +85,10 @@ export async function GET(req: NextRequest) {
   });
 
   // Nothing was written this week: sending an email that says so is worse than silence.
+  // The claim is given back, so this run having happened does not stop a later one in the
+  // same week from sending once there is something to send.
   if (posts.length === 0) {
+    await releaseShared(weekKey);
     return NextResponse.json({ ok: true, sent: 0, reason: 'no posts this week' });
   }
 
@@ -91,10 +106,6 @@ export async function GET(req: NextRequest) {
     select: { id: true, name: true, email: true, marketingToken: true },
     take: MAX_RECIPIENTS,
   });
-
-  // Claimed for nine days — longer than the week, so a run that starts late cannot slip
-  // past the boundary and send twice.
-  await setShared(weekKey, new Date().toISOString(), 9 * 86_400);
 
   const transporter = getTransporter();
   let sent = 0;

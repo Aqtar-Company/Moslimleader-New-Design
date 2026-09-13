@@ -75,27 +75,43 @@ export async function PATCH(
       const actorName = (user as { name?: string }).name ?? 'شخص ما';
       const snippet = update.slice(0, 120);
 
-      await Promise.all(
-        recipientIds.map((userId) =>
-          notifyTareeq({
-            userId,
-            type: 'post_update',
-            actorId: user.userId,
-            actorName,
-            postId: params.id,
-            postTitle: post.title ?? null,
-            body: snippet,
-            push: {
-              title: `${actorName} — طريق`,
-              body: snippet,
-              url: `/tareeq/${params.id}`,
-              tag: `update-${params.id}`,
-              type: 'generic',
+      /**
+       * Serial, in small batches, and capped.
+        *
+       * `Promise.all` over the whole list opened one `notifyTareeq` per recipient at once,
+       * and each of those writes a row and may send a push. A post with five hundred likes
+       * therefore fired five hundred concurrent queries at the connection pool the SHOP
+       * shares — checkout and sign-in queue behind them. The cap is on top of that: past a
+       * few hundred recipients this is an announcement, not a notification, and the tail
+       * can wait for the next update.
+       */
+      const MAX_RECIPIENTS = 500;
+      const BATCH = 20;
+      const targets = recipientIds.slice(0, MAX_RECIPIENTS);
+
+      for (let i = 0; i < targets.length; i += BATCH) {
+        await Promise.all(
+          targets.slice(i, i + BATCH).map((userId) =>
+            notifyTareeq({
+              userId,
+              type: 'post_update',
+              actorId: user.userId,
+              actorName,
               postId: params.id,
-            },
-          })
-        )
-      );
+              postTitle: post.title ?? null,
+              body: snippet,
+              push: {
+                title: `${actorName} — طريق`,
+                body: snippet,
+                url: `/tareeq/${params.id}`,
+                tag: `update-${params.id}`,
+                type: 'generic',
+                postId: params.id,
+              },
+            })
+          )
+        );
+      }
     } catch {
       // non-blocking — silently ignore errors
     }

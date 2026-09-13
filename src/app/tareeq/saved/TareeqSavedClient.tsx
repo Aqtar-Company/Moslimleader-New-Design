@@ -164,6 +164,7 @@ export default function TareeqSavedClient() {
           focusComments={focusComments}
           onClose={() => setSheetPostId(null)}
           onCommented={(id) => setBookmarks(prev => prev.map(b => b.post.id === id ? { ...b, post: { ...b.post, commentCount: b.post.commentCount + 1 } } : b))}
+          onCommentDeleted={(id) => setBookmarks(prev => prev.map(b => b.post.id === id ? { ...b, post: { ...b.post, commentCount: Math.max(0, b.post.commentCount - 1) } } : b))}
         />
       )}
     </div>

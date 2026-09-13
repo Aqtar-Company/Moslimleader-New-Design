@@ -66,9 +66,21 @@ function readSize(r: Reader): { size: number; bytes: number } | null {
   return { size: allOnes ? UNKNOWN_SIZE : value, bytes: len };
 }
 
-/** Minimal EBML size encoding, wide enough for anything this writes. */
-function encodeSize(value: number): Uint8Array {
-  for (let len = 1; len <= 8; len++) {
+/**
+ * EBML size encoding.
+ *
+ * `width` pins the field to an exact number of bytes. EBML allows a size to be written
+ * wider than it needs to be — a muxer that does not yet know how big an element will be
+ * reserves a fat field and fills it in later, which is exactly what MediaRecorder does — so
+ * the minimal encoding of the new size is very often NARROWER than the field already in the
+ * file. Re-encoding minimally and then insisting the widths match meant every such file was
+ * refused and kept its broken scrubber. Padding to the original width is legal EBML and
+ * keeps every byte offset in the file where it was.
+ */
+function encodeSize(value: number, width?: number): Uint8Array | null {
+  for (let len = width ?? 1; len <= 8; len++) {
+    // The all-ones value at each width is reserved (it means "unknown size"), so a value
+    // needs a field strictly wider than that.
     const max = Math.pow(2, 7 * len) - 1;
     if (value < max) {
       const out = new Uint8Array(len);
@@ -77,8 +89,14 @@ function encodeSize(value: number): Uint8Array {
       out[0] |= 0x80 >> (len - 1);
       return out;
     }
+    // A fixed width that cannot hold the value is a failure, not a reason to widen: any
+    // widening shifts the rest of the file.
+    if (width !== undefined) return null;
   }
-  return new Uint8Array([0x01, 0, 0, 0, 0, 0, 0, 0]);
+  // Unreachable at any realistic size. Returning an encoding of ZERO here would have been
+  // a silent-corruption fallback in a file whose whole policy is "fail by returning the
+  // original", so it signals failure instead.
+  return null;
 }
 
 type Found = {
@@ -147,7 +165,12 @@ function locate(buf: Uint8Array): Found | null {
         if (cid === null) break;
         const cs = readSize(ir);
         if (!cs || cs.size === UNKNOWN_SIZE) break;
-        if (cid === ID_DURATION) durationPayloadAt = ir.pos;
+        if (cid === ID_DURATION) {
+          // A Matroska Duration is a float and may legally be 4 bytes. Writing 8 over it
+          // would clobber the id/size of the next Info child and return that blob — the
+          // one outcome this file's contract forbids. Only an 8-byte element is claimed.
+          if (cs.size === 8) durationPayloadAt = ir.pos;
+        }
         if (cid === ID_TIMECODE_SCALE) {
           let v = 0;
           for (let i = 0; i < cs.size; i++) v = v * 256 + buf[ir.pos + i];
@@ -209,11 +232,11 @@ export async function writeWebmDuration(blob: Blob, durationSeconds: number): Pr
     element.set(durationValue, 3);
 
     const newInfoSize = found.infoSize + element.length;
-    const newInfoSizeField = encodeSize(newInfoSize);
-    // Keep the field the same width. Growing it would shift everything after Info by a
-    // byte, and every offset recorded elsewhere in the file — Cues, SeekHead — would then
-    // point one byte off. Refusing is correct; the scrubber is not worth a broken index.
-    if (newInfoSizeField.length !== found.infoSizeFieldLen) return blob;
+    // Written at the field's EXISTING width. Growing it would shift everything after Info
+    // by a byte, and every offset recorded elsewhere in the file — Cues, SeekHead — would
+    // then point one byte off.
+    const newInfoSizeField = encodeSize(newInfoSize, found.infoSizeFieldLen);
+    if (!newInfoSizeField) return blob;
 
     const out = new Uint8Array(buf.length + element.length);
     out.set(buf.subarray(0, found.infoSizeFieldAt), 0);
@@ -229,8 +252,8 @@ export async function writeWebmDuration(blob: Blob, durationSeconds: number): Pr
     // Segment's own size, when it has one, must grow too.
     if (found.segmentSize !== UNKNOWN_SIZE) {
       const newSegmentSize = found.segmentSize + element.length;
-      const field = encodeSize(newSegmentSize);
-      if (field.length !== found.segmentSizeFieldLen) return blob;
+      const field = encodeSize(newSegmentSize, found.segmentSizeFieldLen);
+      if (!field) return blob;
       out.set(field, found.segmentSizeFieldAt);
     }
 

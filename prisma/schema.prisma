@@ -1243,6 +1243,10 @@ model TareeqPostView {
   // + createdAt. With only the two single-column indexes above, every view of a popular
   // post scanned every view that post had ever received.
   @@index([postId, userId, createdAt])
+  // The nightly cleanup selects by createdAt alone (`createdAt < cutoff`). Neither index
+  // above can serve that, so the sweep full-scanned the biggest table طريق writes to — on
+  // the same MySQL instance the shop's orders run on.
+  @@index([createdAt])
 }
 
 model TareeqConversation {

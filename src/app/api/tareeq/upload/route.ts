@@ -63,7 +63,8 @@ export async function POST(req: NextRequest) {
 
   const maxSize = isImage ? MAX_IMAGE : isAudio ? MAX_AUDIO : MAX_VIDEO;
   if (file.size > maxSize) {
-    return NextResponse.json({ error: isImage ? 'الحجم الأقصى 10MB' : isAudio ? 'الحجم الأقصى 20MB' : 'الحجم الأقصى 100MB' }, { status: 400 });
+    const mb = Math.round(maxSize / 1024 / 1024);
+    return NextResponse.json({ error: `الحجم الأقصى ${mb}MB` }, { status: 400 });
   }
 
   const raw = Buffer.from(await file.arrayBuffer());
@@ -84,10 +85,10 @@ export async function POST(req: NextRequest) {
     fileData = raw;
     contentType = baseType; // strip codec params — 'audio/webm;codecs=opus' → 'audio/webm'
   } else {
-    const ext = file.type.split('/')[1].replace('quicktime', 'mov');
+    const ext = baseType.split('/')[1].replace('quicktime', 'mov');
     key = `tareeq/${auth.userId}-${timestamp}.${ext}`;
     fileData = raw;
-    contentType = file.type;
+    contentType = baseType;
   }
 
   await r2.send(new PutObjectCommand({

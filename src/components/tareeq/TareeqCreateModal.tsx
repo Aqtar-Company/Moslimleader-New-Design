@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { TAREEQ_CATEGORIES, CATEGORY_ICONS } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import { compressImage } from '@/lib/compress-image';
-import { compressVideo, canCompressVideo, needsTranscodeForCompat, type CompressFailure } from '@/lib/tareeq-video-compress';
+import { compressVideo, canCompressVideo, needsTranscodeForCompat, detectVideoCodec, type CompressFailure } from '@/lib/tareeq-video-compress';
 
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
@@ -66,6 +66,16 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   // post, which made every uploaded image invisible to a blind reader.
   const [imageAlt, setImageAlt] = useState('');
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
+  /**
+   * What the PICKED file is, as opposed to what was successfully uploaded.
+   *
+   * `mediaType` is only set from the server's response, so during an upload — and after a
+   * failed one — it is still null. The failure overlay read it and therefore said
+   * "فشل رفع الصورة" over a video that had just failed.
+   */
+  const [pickedKind, setPickedKind] = useState<'image' | 'video' | 'audio' | null>(null);
+  /** Set when a video went up in a codec that will not play everywhere. Not an error. */
+  const [compatNotice, setCompatNotice] = useState(false);
   const [uploading, setUploading] = useState(false);
   /** True while the browser is re-encoding a video, which is slow and needs its own label:
    *  "جاري الرفع 40%" during a local re-encode is simply a lie about what is happening. */
@@ -288,6 +298,9 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
      * codec and a short clip usually comes out BIGGER as VP8 — refusing that would put the
      * unplayable file back on the wire.
      */
+    setPickedKind(isVideoFile ? 'video' : isAudioFile ? 'audio' : 'image');
+    setCompatNotice(false);
+    const detectedCodec = isVideoFile ? await detectVideoCodec(file) : 'unknown';
     const compatTranscode = isVideoFile && canCompressVideo() && await needsTranscodeForCompat(file);
 
     if (isVideoFile && (file.size > MAX_VIDEO_BYTES || compatTranscode) && canCompressVideo()) {
@@ -325,23 +338,20 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     }
 
     /**
-     * A file that MUST be re-encoded and could not be is refused, even under the cap.
+     * A compatibility re-encode that failed WARNS; it no longer refuses.
      *
-     * Uploading it anyway stores a video that plays for the person who posted it and is a
-     * frozen picture for a large share of everyone else — and they would have no way to
-     * know. A clear refusal now is better than a broken post forever.
+     * The first version of this blocked the upload outright, on the reasoning that a video
+     * which plays for its author and is a frozen picture for Android viewers is worse than
+     * no video. That reasoning was wrong in practice, and the live site showed it: a
+     * two-minute clip whose re-encode stalls leaves the author unable to post at all, and
+     * "you cannot publish this" is a worse outcome than "this may not play for everyone".
+     *
+     * Note what the previous behaviour was, before any of this existed: the file went up
+     * silently with no warning whatsoever. A warning the author can act on is better than
+     * both that and a wall. The file only has to still fit under the cap — if it does not,
+     * the size check below refuses it, because that one is not a judgement call.
      */
-    if (compatTranscode && workingFile === file) {
-      setUploading(false);
-      setCompressing(false);
-      setMainUploadFailed(true);
-      setError(
-        isRtl
-          ? 'ترميز هذا الفيديو (HEVC) لا يعمل على أجهزة أندرويد، وتعذّر تحويله على جهازك. من إعدادات كاميرا الآيفون: «الصيغ» ← «الأكثر توافقاً»، وصوّر الفيديو تاني — أو حوّله بتطبيق قبل الرفع.'
-          : "This video's codec (HEVC) doesn't play on Android, and it couldn't be converted on your device. On iPhone: Settings → Camera → Formats → Most Compatible, then record again — or convert it in an app first.",
-      );
-      return;
-    }
+    const compatWarning = compatTranscode && workingFile === file;
 
     if (!isImageFile) {
       const cap = isAudioFile ? MAX_AUDIO_BYTES : MAX_VIDEO_BYTES;
@@ -360,15 +370,18 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
          * cost the user time and changed nothing.
          */
         const tried = workingFile !== file;
+        // The facts, in every message. Three rounds of this were spent guessing which
+        // branch a failure came from; the message that reports the failure is the cheapest
+        // possible place to put the answer.
         const sizes = isRtl
-          ? `الملف ${mb(file.size)} ميجا والحد ${mb(cap)} ميجا.`
-          : `The file is ${mb(file.size)} MB and the limit is ${mb(cap)} MB.`;
+          ? `(الملف ${mb(file.size)} ميجا، الحد ${mb(cap)} ميجا، الترميز ${detectedCodec}${compatTranscode ? '، اتحوّل بسبب الترميز' : ''})`
+          : `(file ${mb(file.size)} MB, limit ${mb(cap)} MB, codec ${detectedCodec}${compatTranscode ? ', re-encoded for codec' : ''})`;
 
         let msg: string;
         if (tried) {
           msg = isRtl
-            ? `ضغطنا الفيديو إلى ${mb(workingFile.size)} ميجا، وما زال أكبر من الحد (${mb(cap)} ميجا). اقصره وحاول تاني.`
-            : `Compressed to ${mb(workingFile.size)} MB, still over the ${mb(cap)} MB limit. Trim it and try again.`;
+            ? `ضغطنا الفيديو إلى ${mb(workingFile.size)} ميجا، وما زال أكبر من الحد (${mb(cap)} ميجا). اقصره وحاول تاني. ${sizes}`
+            : `Compressed to ${mb(workingFile.size)} MB, still over the ${mb(cap)} MB limit. Trim it and try again. ${sizes}`;
         } else if (failReason === 'too-long') {
           msg = isRtl
             ? `الفيديو أطول من المدة المسموحة للضغط. اقصره وحاول تاني. ${sizes}`
@@ -379,8 +392,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
             : `Couldn't compress this video — this browser can't decode its codec (iPhone records HEVC by default and Chrome on Android can't decode it: the sound plays and the picture stays frozen). ${sizes} Try setting your iPhone camera to "Most Compatible", or compress it in an app first.`;
         } else if (failReason === 'stalled') {
           msg = isRtl
-            ? 'الضغط وقف في نص الفيديو، والناتج كان صورة ثابتة في المنتصف والصوت شغال — فرفضناه بدل ما يتنشر كده. الضغط بيشتغل بالوقت الحقيقي، فسيب الشاشة مفتوحة على طريق لحد ما يخلص، من غير ما تقفل الشاشة أو تفتح تطبيق تاني.'
-            : 'Compression stalled part-way through, and the result had a frozen picture in the middle with the audio still running — so it was refused rather than published like that. It runs in real time: keep the screen on and طريق open until it finishes, without locking the screen or switching apps.';
+            ? `الضغط وقف في نص الفيديو، والناتج كان صورة ثابتة في المنتصف والصوت شغال — فرفضناه بدل ما يتنشر كده. الضغط بيشتغل بالوقت الحقيقي، فسيب الشاشة مفتوحة على طريق لحد ما يخلص. ${sizes}`
+            : `Compression stalled part-way through, and the result had a frozen picture in the middle with the audio still running — so it was refused rather than published like that. It runs in real time: keep the screen on and طريق open until it finishes. ${sizes}`;
         } else if (failReason === 'not-smaller') {
           msg = isRtl
             ? `هذا الفيديو مضغوط بالفعل، وإعادة ضغطه تكبّره. اقصره أو اضغطه بتطبيق قبل الرفع. ${sizes}`
@@ -400,6 +413,9 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     }
 
     file = workingFile;
+    // Shown once the upload succeeds — see `compatWarning` above for why this warns rather
+    // than refuses.
+    if (compatWarning) setCompatNotice(true);
 
     setUploading(true);
     setError('');
@@ -810,6 +826,21 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           </div>
         )}
 
+        {/* ── Codec warning — amber, not red: the video DID upload ── */}
+        {compatNotice && !error && (
+          <div
+            className="shrink-0 px-4 py-2 flex items-start gap-2 text-xs font-semibold"
+            style={{ background: 'rgba(245,158,11,0.12)', borderBottom: '1px solid rgba(245,158,11,0.22)', color: '#d97706' }}
+          >
+            <span className="shrink-0">⚠️</span>
+            <span>
+              {isRtl
+                ? 'اترفع، بس ترميز الفيديو ده (HEVC) ممكن ميشتغلش على بعض أجهزة أندرويد — الصوت يشتغل والصورة تثبت. لو مهم يوصل للكل: من إعدادات كاميرا الآيفون «الصيغ» ← «الأكثر توافقاً»، أو حوّله بتطبيق وارفعه تاني.'
+                : "Uploaded — but this video's codec (HEVC) may not play on some Android devices: the sound plays and the picture stays frozen. To reach everyone, set iPhone Camera → Formats → Most Compatible, or convert it in an app and re-upload."}
+            </span>
+          </div>
+        )}
+
         {/* ── Draft restore banner (sticky, always visible) ── */}
         {draftBanner && (
           <div
@@ -1044,9 +1075,15 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
               {!uploading && mainUploadFailed && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5" style={{ background: 'rgba(0,0,0,0.65)' }}>
                   <svg width={28} height={28} fill="none" stroke="#f87171" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path strokeLinecap="round" d="M12 8v5m0 3h.01"/></svg>
-                  {/* It said "الصورة" over a video, which reads as the wrong file failing. */}
+                  {/* From the PICKED file, not from mediaType — mediaType is only set on a
+                      SUCCESSFUL upload, so here it is always null and this said "الصورة"
+                      over every failed video. */}
                   <span className="text-xs font-bold text-white">
-                    {isRtl ? (mediaType === 'video' ? 'فشل رفع الفيديو' : 'فشل رفع الصورة') : 'Upload failed'}
+                    {isRtl
+                      ? pickedKind === 'video' ? 'فشل رفع الفيديو'
+                        : pickedKind === 'audio' ? 'فشل رفع الصوت'
+                        : 'فشل رفع الصورة'
+                      : 'Upload failed'}
                   </span>
                   <div className="flex items-center gap-2">
                     <button

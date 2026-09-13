@@ -31,6 +31,8 @@
  * guarantee, and a failure here must never block a file the server would have accepted.
  */
 
+import { writeWebmDuration } from '@/lib/webm-duration';
+
 const TARGET_MAX_DIMENSION = 1280;
 const VIDEO_BITS_PER_SECOND = 1_500_000;
 const AUDIO_BITS_PER_SECOND = 128_000;
@@ -298,7 +300,21 @@ export async function compressVideo(
       return null;
     }
 
-    const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
+    let blob: Blob = new Blob(chunks, { type: mimeType.split(';')[0] });
+
+    /**
+     * MediaRecorder cannot rewind its own output, so it never writes a Duration — players
+     * then report Infinity and the scrubber is useless. Repaired in the bytes here rather
+     * than by making the player seek to the end, which fixed the scrubber and froze the
+     * picture: these files have no Cues index either, so the demuxer could not find a
+     * keyframe after such a seek.
+     *
+     * `writeWebmDuration` returns the original blob unchanged on anything unexpected, so
+     * the worst case is the scrubber we already had — never a corrupted file.
+     */
+    if (blob.type.includes('webm')) {
+      blob = await writeWebmDuration(blob, video.duration);
+    }
 
     // A clip that is already efficiently encoded can come out BIGGER. Returning it would
     // make the upload worse, which is the opposite of the point.

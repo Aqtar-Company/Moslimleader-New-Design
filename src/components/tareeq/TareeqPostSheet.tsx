@@ -50,6 +50,7 @@ interface Post {
   title: string | null;
   content: string;
   imageUrl: string | null;
+  imageAlt?: string | null;
   authorName: string;
   likeCount: number;
   commentCount: number;
@@ -76,6 +77,8 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
   const { user } = useAuth();
 
   const [post, setPost] = useState<Post | null>(null);
+  /** The image opened full-screen. A picture that carries the post's text needs zooming. */
+  const [zoomed, setZoomed] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentReaction, setCurrentReaction] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
@@ -816,10 +819,26 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                 </div>
               </div>
 
-              {/* Image */}
+              {/* Image.
+                  `contain`, not `cover`, and no fixed height. This view is what someone
+                  opens BECAUSE they want to see the picture — cropping it here defeats the
+                  only reason to open it. On طريق that is not a cosmetic loss: a post is
+                  often a written page photographed, so `cover` at 300px was cutting off
+                  both the top of the image and the end of the text. Tap opens it full. */}
               {post.imageUrl && (
-                <div style={{ marginBottom: 12 }}>
-                  <img src={post.imageUrl} alt="" style={{ width: '100%', maxHeight: 300, objectFit: 'cover', display: 'block' }} />
+                <div style={{ marginBottom: 12, background: 'var(--tr-overlay)' }}>
+                  <img
+                    src={post.imageUrl}
+                    alt={post.imageAlt ?? ''}
+                    onClick={() => setZoomed(post.imageUrl!)}
+                    style={{
+                      width: '100%',
+                      maxHeight: '70vh',
+                      objectFit: 'contain',
+                      display: 'block',
+                      cursor: 'zoom-in',
+                    }}
+                  />
                 </div>
               )}
 
@@ -1075,6 +1094,44 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
 
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
       {reportCommentId && <ReportModal targetType="comment" targetId={reportCommentId} isRtl={isRtl} onClose={() => setReportCommentId(null)} />}
+
+      {/* Full-screen image viewer.
+          The image is rendered at full width with height auto and the backdrop scrolls,
+          rather than being scaled to fit the screen. That is deliberate: most posts here
+          are a written page photographed, and "fits on screen" is precisely the state in
+          which the text is unreadable. Overflow is what lets the browser's own pinch-zoom
+          and panning do their job. */}
+      {zoomed && (
+        <div
+          onClick={() => setZoomed(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: 'rgba(0,0,0,0.94)',
+            overflow: 'auto',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <button
+            onClick={e => { e.stopPropagation(); setZoomed(null); }}
+            aria-label={isRtl ? 'إغلاق' : 'Close'}
+            style={{
+              position: 'fixed', top: 'max(12px, env(safe-area-inset-top))', insetInlineEnd: 12,
+              zIndex: 201, width: 38, height: 38, borderRadius: '50%',
+              background: 'rgba(0,0,0,0.6)', color: '#fff',
+              border: '1px solid rgba(255,255,255,0.25)', fontSize: 20, lineHeight: 1, cursor: 'pointer',
+            }}
+          >
+            ×
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={zoomed}
+            alt={post?.imageAlt ?? ''}
+            onClick={e => e.stopPropagation()}
+            style={{ width: '100%', height: 'auto', display: 'block', margin: 'auto' }}
+          />
+        </div>
+      )}
     </>
   );
 

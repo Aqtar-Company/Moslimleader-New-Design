@@ -10,6 +10,12 @@ import { compressImage } from '@/lib/compress-image';
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
 const DRAFT_KEY = 'tareeq_draft';
+
+/** Must match MAX_VIDEO / MAX_AUDIO in src/app/api/tareeq/upload/route.ts. */
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
+const MAX_AUDIO_BYTES = 20 * 1024 * 1024;
+
+const mb = (bytes: number) => (bytes / 1024 / 1024).toFixed(0);
 const QUEUE_KEY = 'tareeq-post-queue';
 interface Draft {
   content: string;
@@ -218,6 +224,34 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   }
 
   async function doUpload(file: File) {
+    /**
+     * Refuse an oversized file HERE, before a byte leaves the phone.
+     *
+     * The server has always rejected video over 100MB, but the check only ran after the
+     * whole file arrived — so a 258MB video uploaded on mobile data, took minutes, and
+     * then said "فشل رفع الملف" with no reason. The user has no way to guess that size was
+     * the problem, and pays for the upload twice by retrying.
+     *
+     * Images are exempt because `compressImage` below shrinks them first: a 40MB photo
+     * becomes a couple of MB, so judging it by its original size would reject files that
+     * upload perfectly well.
+     */
+    const isImageFile = file.type.startsWith('image/');
+    const isAudioFile = file.type.startsWith('audio/');
+    if (!isImageFile) {
+      const cap = isAudioFile ? MAX_AUDIO_BYTES : MAX_VIDEO_BYTES;
+      if (file.size > cap) {
+        setUploading(false);
+        setMainUploadFailed(true);
+        setError(
+          isRtl
+            ? `الملف ${mb(file.size)} ميجا، والحد الأقصى ${mb(cap)} ميجا. اضغط الفيديو أو اقصره وحاول تاني.`
+            : `This file is ${mb(file.size)} MB — the limit is ${mb(cap)} MB. Compress or trim it and try again.`,
+        );
+        return;
+      }
+    }
+
     setUploading(true);
     setError('');
     setMainUploadFailed(false);

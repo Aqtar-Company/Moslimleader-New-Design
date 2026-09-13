@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import TareeqLoginGate from '@/components/tareeq/TareeqLoginGate';
 import { ReportModal } from '@/components/tareeq/TareeqCard';
 import TareeqShareSheet from '@/components/tareeq/TareeqShareSheet';
+import TareeqImageViewer from '@/components/tareeq/TareeqImageViewer';
 import { SharedOriginalCard } from '@/components/tareeq/TareeqCard';
 import type { SharedOriginal } from '@/components/tareeq/TareeqCard';
 import { TAREEQ_CATEGORIES, CATEGORY_COLORS, CATEGORY_ICONS } from '@/lib/tareeq-constants';
@@ -17,7 +18,7 @@ import { displayMentions } from '@/lib/tareeq-mentions';
 interface Comment { id: string; content: string; createdAt: string; userId: string; user: { id: string; name: string } | null; }
 interface Post {
   id: string; title: string | null; content: string; summary: string | null;
-  category: string | null; tags: string[] | null; imageUrl: string | null; videoUrl: string | null;
+  category: string | null; tags: string[] | null; imageUrl: string | null; imageAlt?: string | null; videoUrl: string | null;
   authorName: string;
   likeCount: number; commentCount: number; viewCount: number; createdAt: string;
   userId: string | null; user: { id: string; name: string; avatarUrl?: string | null } | null;
@@ -76,6 +77,8 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
 
   // Edit state
   const [editing, setEditing] = useState(false);
+  /** The image opened full screen. */
+  const [zoomed, setZoomed] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState(post.title ?? '');
   const [editContent, setEditContent] = useState(post.content);
   const [editSaving, setEditSaving] = useState(false);
@@ -285,7 +288,19 @@ export default function TareeqPostClient({ post, userLiked = false, userBookmark
           {/* Hero image */}
           {!editing && post.imageUrl && (
             <div className="w-full overflow-hidden" style={{ background: 'var(--tr-overlay)' }}>
-              <img src={post.imageUrl} alt="" className="w-full object-cover max-h-[60vw] sm:max-h-[480px]" />
+              {/* `contain`, not `cover`: this page is opened to READ the post, and a large
+                  share of them are a written page photographed — cropping is what makes
+                  them unreadable. Tap opens it full screen with no container at all. */}
+              <img
+                src={post.imageUrl}
+                alt={post.imageAlt ?? ''}
+                onClick={() => setZoomed(post.imageUrl!)}
+                className="w-full object-contain max-h-[80vh] cursor-zoom-in"
+                style={{ background: 'var(--tr-overlay)' }}
+              />
+              {zoomed && (
+                <TareeqImageViewer src={zoomed} alt={post.imageAlt} isRtl={isRtl} onClose={() => setZoomed(null)} />
+              )}
             </div>
           )}
 

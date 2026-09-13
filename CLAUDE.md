@@ -430,6 +430,20 @@ Books are protected from download at two levels:
 - **Static product overrides** — ALWAYS apply product-overrides for `source='static'` DB products (see Architecture section)
 - **SSR timeout** — `page.tsx` getProducts() has 3s timeout; falls back to static products if DB is slow
 - **`variantStocks` index shift** — Variant stocks are stored as `{"0": 5, "1": 3}` keyed by variant array index. If a variant is deleted from the middle of the array, all subsequent indices shift and stored stocks become mismatched. Admin must manually re-enter stocks after deleting a middle variant.
+- **Upload limits are bounded by nginx, not by the app.** `/etc/nginx/conf.d/uploads.conf`
+  holds a bare `client_max_body_size 50M;` — no server block, so it is the http-level
+  default for every site on this box that does not override it, moslimleader included.
+  (`waqf-api.conf` sets 100M, `reels.conf` 32m, `solh.conf` 2m for themselves.) So
+  `MAX_VIDEO` in `src/app/api/tareeq/upload/route.ts` is 50MB to match: a larger number
+  there is a lie, because nginx answers 413 before the route runs and the uploader sees a
+  bare failure after sending the whole file. To raise it, add `client_max_body_size 100M;`
+  inside the **moslimleader server block only** — editing `uploads.conf` raises it for the
+  other projects too — then change `MAX_VIDEO` and `MAX_VIDEO_BYTES` in
+  `TareeqCreateModal.tsx` together.
+- **Video is never compressed anywhere.** Images are, twice (canvas in the browser, then
+  sharp on the server, 1920px). Video is uploaded as-is. Transcoding server-side would mean
+  ffmpeg on a box that also runs the shop and two other projects, and one 250MB re-encode
+  takes the CPU for minutes. Browser-side compression before upload is the right place.
 - **`wkhtmltopdf` blocks external HTTP** — never use `<img src="https://...">` in invoice HTML. Always embed images as `data:image/png;base64,...` read from `public/` at generation time.
 
 ## Bugs Fixed (Reference)

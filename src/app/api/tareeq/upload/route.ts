@@ -8,7 +8,15 @@ const ALLOWED_IMAGE = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'im
 const ALLOWED_VIDEO = ['video/mp4', 'video/webm', 'video/quicktime'];
 const ALLOWED_AUDIO = ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg', 'audio/wav'];
 const MAX_IMAGE = 10 * 1024 * 1024;  // 10MB
-const MAX_VIDEO = 100 * 1024 * 1024; // 100MB
+// 50MB, NOT because the app cannot handle more — because nginx on this server caps the
+// request body at 50M (`/etc/nginx/conf.d/uploads.conf`, a bare directive in the http
+// block, so it is the default for every site here that does not override it, moslimleader
+// included). A larger limit here would be a lie: nginx rejects the request with 413 before
+// this file ever runs, and the uploader sees a bare failure after sending 60MB.
+// To raise it, add `client_max_body_size 100M;` inside the moslimleader server block ONLY
+// (not to uploads.conf, which would raise it for the other projects on this box too), then
+// change this and MAX_VIDEO_BYTES in TareeqCreateModal.tsx to match.
+const MAX_VIDEO = 50 * 1024 * 1024;  // 50MB
 const MAX_AUDIO = 20 * 1024 * 1024;  // 20MB
 
 const r2 = new S3Client({

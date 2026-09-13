@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import TareeqImageViewer from './TareeqImageViewer';
 import Link from 'next/link';
 import { useLang } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
@@ -1095,42 +1096,8 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
       {showGate && <TareeqLoginGate onClose={() => setShowGate(false)} />}
       {reportCommentId && <ReportModal targetType="comment" targetId={reportCommentId} isRtl={isRtl} onClose={() => setReportCommentId(null)} />}
 
-      {/* Full-screen image viewer.
-          The image is rendered at full width with height auto and the backdrop scrolls,
-          rather than being scaled to fit the screen. That is deliberate: most posts here
-          are a written page photographed, and "fits on screen" is precisely the state in
-          which the text is unreadable. Overflow is what lets the browser's own pinch-zoom
-          and panning do their job. */}
       {zoomed && (
-        <div
-          onClick={() => setZoomed(null)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 200,
-            background: 'rgba(0,0,0,0.94)',
-            overflow: 'auto',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <button
-            onClick={e => { e.stopPropagation(); setZoomed(null); }}
-            aria-label={isRtl ? 'إغلاق' : 'Close'}
-            style={{
-              position: 'fixed', top: 'max(12px, env(safe-area-inset-top))', insetInlineEnd: 12,
-              zIndex: 201, width: 38, height: 38, borderRadius: '50%',
-              background: 'rgba(0,0,0,0.6)', color: '#fff',
-              border: '1px solid rgba(255,255,255,0.25)', fontSize: 20, lineHeight: 1, cursor: 'pointer',
-            }}
-          >
-            ×
-          </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={zoomed}
-            alt={post?.imageAlt ?? ''}
-            onClick={e => e.stopPropagation()}
-            style={{ width: '100%', height: 'auto', display: 'block', margin: 'auto' }}
-          />
-        </div>
+        <TareeqImageViewer src={zoomed} alt={post?.imageAlt} isRtl={isRtl} onClose={() => setZoomed(null)} />
       )}
     </>
   );

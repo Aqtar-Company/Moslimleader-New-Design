@@ -154,6 +154,20 @@ export async function compressVideo(
       return null;
     }
 
+    /**
+     * No decodable video track.
+     *
+     * `videoWidth === 0` after metadata means the browser parsed the file but cannot decode
+     * its picture — overwhelmingly because of the codec. An iPhone records HEVC (H.265) by
+     * default, and Chrome on Android cannot decode it, so such a file plays its AUDIO
+     * perfectly while the picture never moves. Re-encoding it here would faithfully produce
+     * a file with sound and one frozen frame, which is worse than refusing: the user would
+     * publish it believing it worked.
+     */
+    if (!video.videoWidth || !video.videoHeight) {
+      return null;
+    }
+
     const scale = Math.min(1, TARGET_MAX_DIMENSION / Math.max(video.videoWidth, video.videoHeight));
     // Even dimensions: odd widths break some encoders outright.
     const width = Math.max(2, Math.round((video.videoWidth * scale) / 2) * 2);
@@ -215,8 +229,35 @@ export async function compressVideo(
     let raf = 0;
     let rvfc = 0;
 
+    /**
+     * Frames painted, and whether any two of them differed.
+     *
+     * This is the check that should have existed from the start. Three separate attempts at
+     * this file shipped a compressor that could return a video with working sound and a
+     * frozen picture, and nothing in the code would have noticed — the user found out by
+     * publishing it. A pipeline that can silently produce a still image must verify that it
+     * did not.
+     */
+    let painted = 0;
+    let firstSample: string | null = null;
+    let sawMotion = false;
+    const probe = document.createElement('canvas');
+    probe.width = 32;
+    probe.height = 18;
+    const pctx = probe.getContext('2d');
+
     const paint = () => {
       ctx.drawImage(video, 0, 0, width, height);
+      painted++;
+
+      // Sample cheaply, and only until motion is seen.
+      if (!sawMotion && pctx && painted % 5 === 0) {
+        pctx.drawImage(video, 0, 0, 32, 18);
+        const sig = pctx.getImageData(0, 0, 32, 18).data.join(',');
+        if (firstSample === null) firstSample = sig;
+        else if (sig !== firstSample) sawMotion = true;
+      }
+
       if (video.duration) {
         onProgress?.(Math.min(99, Math.round((video.currentTime / video.duration) * 100)));
       }
@@ -247,6 +288,15 @@ export async function compressVideo(
     ctx.drawImage(video, 0, 0, width, height);
     recorder.stop();
     await done;
+
+    /**
+     * Nothing moved. The source decoded audio but never a second distinct frame — an
+     * undecodable video codec is the usual cause. Returning this blob would hand back a
+     * file with sound and a still image.
+     */
+    if (!sawMotion && painted > 10) {
+      return null;
+    }
 
     const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
 

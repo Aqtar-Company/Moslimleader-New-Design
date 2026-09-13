@@ -295,10 +295,10 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           isRtl
             ? tried
               ? `ضغطنا الفيديو إلى ${mb(workingFile.size)} ميجا، وما زال أكبر من الحد (${mb(cap)} ميجا). اقصره وحاول تاني.`
-              : `الملف ${mb(file.size)} ميجا، والحد الأقصى ${mb(cap)} ميجا. اضغطه أو اقصره وحاول تاني.`
+              : `تعذّر ضغط هذا الفيديو — غالباً لأن ترميزه غير مدعوم في هذا المتصفح (فيديو الآيفون يُسجَّل بـ HEVC افتراضياً، وكروم على أندرويد لا يفكّه؛ تظهر الصورة ثابتة والصوت يعمل). الملف ${mb(file.size)} ميجا والحد ${mb(cap)} ميجا. جرّب: من إعدادات كاميرا الآيفون اختر «الأكثر توافقاً»، أو اضغط الفيديو بتطبيق قبل الرفع.`
             : tried
               ? `Compressed to ${mb(workingFile.size)} MB, still over the ${mb(cap)} MB limit. Trim it and try again.`
-              : `This file is ${mb(file.size)} MB — the limit is ${mb(cap)} MB. Compress or trim it and try again.`,
+              : `Couldn't compress this video — most likely its codec isn't supported by this browser (iPhone records HEVC by default and Chrome on Android can't decode it: the sound plays and the picture stays frozen). The file is ${mb(file.size)} MB and the limit is ${mb(cap)} MB. Try setting your iPhone camera to "Most Compatible", or compress it in an app first.`,
         );
         return;
       }

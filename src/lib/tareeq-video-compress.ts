@@ -64,7 +64,24 @@ export function canCompressVideo(): boolean {
   );
 }
 
-export async function compressVideo(file: File, onProgress?: Progress): Promise<File | null> {
+export async function compressVideo(
+  file: File,
+  onProgress?: Progress,
+  /**
+   * Where to put the `<video>` while it plays. **Pass a real, on-screen element.**
+   *
+   * Chrome on Android suspends frame decoding for a media element that is not visible —
+   * audio keeps playing, but no new frames arrive. Hidden off-screen, the canvas therefore
+   * redrew one still for the whole clip while the sound ran normally, which is exactly the
+   * symptom that was reported. Desktop Chrome does not do this, which is why a harness on
+   * the desktop passed while real phones failed.
+   *
+   * So the element is mounted where the user can see it, as a live preview. Omit this and
+   * it falls back to an off-screen mount, which works on desktop and cannot be relied on
+   * anywhere else.
+   */
+  mountInto?: HTMLElement | null,
+): Promise<File | null> {
   const mimeType = pickMimeType();
   if (!mimeType || !canCompressVideo()) return null;
 
@@ -77,19 +94,34 @@ export async function compressVideo(file: File, onProgress?: Progress): Promise<
   // canvas behave as if tainted: the audio track came through fine while the video froze
   // after a handful of frames, which is exactly what a dead canvas stream looks like.
 
-  // The element MUST be in the document. A detached <video> is allowed to play, but
-  // browsers stop advancing its decoded frames when nothing can display it — so the canvas
-  // kept redrawing the same still image. Off-screen and invisible, but attached.
-  Object.assign(video.style, {
-    position: 'fixed',
-    left: '-9999px',
-    top: '0',
-    width: '1px',
-    height: '1px',
-    opacity: '0',
-    pointerEvents: 'none',
-  } as Partial<CSSStyleDeclaration>);
-  document.body.appendChild(video);
+  // The element must be in the document AND actually rendered. A detached or invisible
+  // <video> is allowed to play, but browsers — Android Chrome in particular — stop
+  // advancing its decoded frames when nothing can display it, so the canvas keeps
+  // redrawing one still while the audio runs on.
+  if (mountInto) {
+    Object.assign(video.style, {
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+      display: 'block',
+      borderRadius: '10px',
+    } as Partial<CSSStyleDeclaration>);
+    mountInto.appendChild(video);
+  } else {
+    // Fallback only. Kept barely visible rather than fully hidden — `opacity: 0` and
+    // off-screen positions are precisely what triggers the suspension above.
+    Object.assign(video.style, {
+      position: 'fixed',
+      bottom: '2px',
+      insetInlineStart: '2px',
+      width: '2px',
+      height: '2px',
+      opacity: '0.01',
+      zIndex: '0',
+      pointerEvents: 'none',
+    } as Partial<CSSStyleDeclaration>);
+    document.body.appendChild(video);
+  }
 
   try {
     await new Promise<void>((resolve, reject) => {

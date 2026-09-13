@@ -60,6 +60,9 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   /** True while the browser is re-encoding a video, which is slow and needs its own label:
    *  "جاري الرفع 40%" during a local re-encode is simply a lie about what is happening. */
   const [compressing, setCompressing] = useState(false);
+  /** Where the compressor mounts its <video>. It has to be ON SCREEN — see the note in
+   *  tareeq-video-compress.ts about Android suspending frames for invisible elements. */
+  const compressPreviewRef = useRef<HTMLDivElement | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadFileName, setUploadFileName] = useState('');
   const [uploadFileSize, setUploadFileSize] = useState(0);
@@ -264,7 +267,11 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
       setUploadProgress(0);
       setError('');
       try {
-        const smaller = await compressVideo(file, pct => setUploadProgress(pct));
+        // One frame, so React has actually mounted the preview box above. Handing over a
+        // ref that is still null would put the <video> back off-screen — the exact
+        // condition this whole change exists to avoid.
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
+        const smaller = await compressVideo(file, pct => setUploadProgress(pct), compressPreviewRef.current);
         if (smaller) workingFile = smaller;
       } catch {
         /* fall through to the size check below */
@@ -880,6 +887,23 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                         it is the only thing that stops a three-minute wait reading as a
                         frozen app, and it says to stay on the screen because leaving it
                         genuinely cancels the work. */}
+                    {/* The live preview is not decoration: the compressor mounts its
+                        <video> here, and Android only keeps decoding frames while the
+                        element is actually visible. Seeing it move is also the clearest
+                        possible signal that the work is progressing. */}
+                    {compressing && (
+                      <div
+                        ref={compressPreviewRef}
+                        style={{
+                          width: 128,
+                          height: 72,
+                          overflow: 'hidden',
+                          borderRadius: 10,
+                          marginTop: 8,
+                          background: '#000',
+                        }}
+                      />
+                    )}
                     {compressing && (
                       <span className="text-[11px] text-center" style={{ color: 'var(--tr-gold-bright)' }}>
                         {isRtl

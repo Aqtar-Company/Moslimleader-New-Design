@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { TAREEQ_CATEGORIES, CATEGORY_ICONS } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import { compressImage } from '@/lib/compress-image';
-import { compressVideo, canCompressVideo, type CompressFailure } from '@/lib/tareeq-video-compress';
+import { compressVideo, canCompressVideo, needsTranscodeForCompat, type CompressFailure } from '@/lib/tareeq-video-compress';
 
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
@@ -273,7 +273,24 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     // It runs in real time (see tareeq-video-compress.ts), so the progress bar is not
     // decoration: without it a three-minute video looks like a frozen app.
     let failReason: CompressFailure | null = null;
-    if (isVideoFile && file.size > MAX_VIDEO_BYTES && canCompressVideo()) {
+
+    /**
+     * Re-encode for COMPATIBILITY, not only for size.
+     *
+     * Everything below the size cap used to be uploaded byte-for-byte, untouched — and an
+     * iPhone records HEVC in a `.mov` by default, which this form accepts. Chrome on
+     * Android cannot decode HEVC, so those clips were stored fine, played their audio, and
+     * showed a frozen picture to every Android viewer. The uploader never saw it: on the
+     * iPhone that recorded it, the file plays perfectly.
+     *
+     * So the codec is read from the file's own bytes, and an undecodable one is re-encoded
+     * whatever its size. `acceptLarger` goes with it, because HEVC is the more efficient
+     * codec and a short clip usually comes out BIGGER as VP8 — refusing that would put the
+     * unplayable file back on the wire.
+     */
+    const compatTranscode = isVideoFile && canCompressVideo() && await needsTranscodeForCompat(file);
+
+    if (isVideoFile && (file.size > MAX_VIDEO_BYTES || compatTranscode) && canCompressVideo()) {
       setUploading(true);
       setMainUploadFailed(false);
       setUploadFileName(file.name);
@@ -296,6 +313,7 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           pct => setUploadProgress(pct),
           compressPreviewRef.current,
           reason => { failReason = reason; },
+          { acceptLarger: compatTranscode },
         );
         if (smaller) workingFile = smaller;
       } catch {
@@ -304,6 +322,25 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
         setCompressing(false);
         setUploadProgress(0);
       }
+    }
+
+    /**
+     * A file that MUST be re-encoded and could not be is refused, even under the cap.
+     *
+     * Uploading it anyway stores a video that plays for the person who posted it and is a
+     * frozen picture for a large share of everyone else — and they would have no way to
+     * know. A clear refusal now is better than a broken post forever.
+     */
+    if (compatTranscode && workingFile === file) {
+      setUploading(false);
+      setCompressing(false);
+      setMainUploadFailed(true);
+      setError(
+        isRtl
+          ? 'ترميز هذا الفيديو (HEVC) لا يعمل على أجهزة أندرويد، وتعذّر تحويله على جهازك. من إعدادات كاميرا الآيفون: «الصيغ» ← «الأكثر توافقاً»، وصوّر الفيديو تاني — أو حوّله بتطبيق قبل الرفع.'
+          : "This video's codec (HEVC) doesn't play on Android, and it couldn't be converted on your device. On iPhone: Settings → Camera → Formats → Most Compatible, then record again — or convert it in an app first.",
+      );
+      return;
     }
 
     if (!isImageFile) {

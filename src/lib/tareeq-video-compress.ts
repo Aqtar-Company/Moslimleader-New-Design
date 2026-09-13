@@ -55,6 +55,78 @@ function pickMimeType(): string | null {
   return null;
 }
 
+/**
+ * What video codec a file actually carries.
+ *
+ * ## Why this has to exist
+ *
+ * Compression only ever ran on files OVER the size cap. Everything smaller went up exactly
+ * as the phone recorded it — and an iPhone records HEVC (H.265) in a `.mov` by default,
+ * which `ALLOWED_VIDEO` accepts. Chrome on Android cannot decode HEVC. So a short clip from
+ * an iPhone was stored untouched and then played, for every Android viewer, as a frozen
+ * picture with working sound. That is the same symptom the compressor was blamed for, from
+ * a completely different cause, on the one path the compressor never saw.
+ *
+ * It cannot be caught by playing the file either: on the iPhone that uploaded it, HEVC
+ * decodes perfectly. The uploader sees it work. Only the file's own bytes say what it is.
+ *
+ * ## How
+ *
+ * MP4 and MOV are both ISO base media files, and the codec is a four-character tag inside
+ * the sample description — `hvc1`/`hev1` for HEVC, `avc1`/`avc3` for H.264, `av01` for AV1.
+ * The tags are searched for directly rather than by walking the box tree: `moov` sits at the
+ * front in some files and at the very end in others, walking it properly means handling
+ * 64-bit box sizes and fragmented files, and a plain search over both ends of the file gets
+ * the same answer. A false positive costs one unnecessary re-encode; missing a real HEVC
+ * file costs a video nobody can watch, so the tags are checked HEVC-first.
+ */
+export type VideoCodec = 'hevc' | 'h264' | 'av1' | 'unknown';
+
+function findAscii(buf: Uint8Array, tag: string): boolean {
+  const t = [tag.charCodeAt(0), tag.charCodeAt(1), tag.charCodeAt(2), tag.charCodeAt(3)];
+  const end = buf.length - 4;
+  for (let i = 0; i <= end; i++) {
+    if (buf[i] === t[0] && buf[i + 1] === t[1] && buf[i + 2] === t[2] && buf[i + 3] === t[3]) return true;
+  }
+  return false;
+}
+
+/** How much of each end of the file to read. The header and the index live in one or the other. */
+const CODEC_SCAN_BYTES = 4 * 1024 * 1024;
+
+export async function detectVideoCodec(file: File): Promise<VideoCodec> {
+  try {
+    const head = new Uint8Array(await file.slice(0, CODEC_SCAN_BYTES).arrayBuffer());
+    const tail = file.size > CODEC_SCAN_BYTES * 2
+      ? new Uint8Array(await file.slice(file.size - CODEC_SCAN_BYTES).arrayBuffer())
+      : new Uint8Array(0);
+    const has = (tag: string) => findAscii(head, tag) || findAscii(tail, tag);
+
+    // HEVC first, and Dolby Vision with it — a DV file is an HEVC base layer.
+    if (has('hvc1') || has('hev1') || has('dvh1') || has('dvhe')) return 'hevc';
+    if (has('av01')) return 'av1';
+    if (has('avc1') || has('avc3')) return 'h264';
+    return 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+/**
+ * Whether this file must be re-encoded before it is stored, whatever its size.
+ *
+ * HEVC and AV1 both decode on the device that recorded them and fail on a large share of
+ * everything else. `.mov` whose codec could not be read is included: the container is
+ * overwhelmingly an iPhone recording, and being wrong costs one re-encode, while being
+ * wrong the other way costs a video that some viewers can never watch.
+ */
+export async function needsTranscodeForCompat(file: File): Promise<boolean> {
+  if (!file.type.startsWith('video/')) return false;
+  const codec = await detectVideoCodec(file);
+  if (codec === 'hevc' || codec === 'av1') return true;
+  return codec === 'unknown' && file.type === 'video/quicktime';
+}
+
 /** Whether this browser can do it at all — lets the UI promise nothing it cannot deliver. */
 /**
  * Why a compression attempt gave up.
@@ -103,6 +175,14 @@ export async function compressVideo(
   mountInto?: HTMLElement | null,
   /** Called once with the reason when the result is null. */
   onFailure?: (reason: CompressFailure) => void,
+  /**
+   * `acceptLarger` when the re-encode is for COMPATIBILITY rather than size.
+   *
+   * A short HEVC clip re-encoded to VP8 very often comes out bigger — HEVC is the more
+   * efficient codec, which is the whole reason phones use it. Refusing that output would
+   * send the file up in the codec nobody can play, which is the bug this exists to fix.
+   */
+  opts?: { acceptLarger?: boolean },
 ): Promise<File | null> {
   const fail = (reason: CompressFailure): null => {
     onFailure?.(reason);
@@ -418,7 +498,7 @@ export async function compressVideo(
 
     // A clip that is already efficiently encoded can come out BIGGER. Returning it would
     // make the upload worse, which is the opposite of the point.
-    if (blob.size >= file.size) return fail('not-smaller');
+    if (blob.size >= file.size && !opts?.acceptLarger) return fail('not-smaller');
 
     onProgress?.(100);
     const ext = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';

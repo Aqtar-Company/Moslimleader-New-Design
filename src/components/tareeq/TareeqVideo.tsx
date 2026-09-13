@@ -52,11 +52,16 @@ export default function TareeqVideo(props: React.VideoHTMLAttributes<HTMLVideoEl
   return (
     // Sized by the caller's `style`/`className` exactly as the bare element was, so no
     // existing layout moves. The overlay is absolutely positioned inside.
-    <div className={className} style={{ position: 'relative', display: 'block', lineHeight: 0, ...style }}>
+    <div className={className} style={{ position: 'relative', display: 'block', lineHeight: 0, overflow: 'hidden', ...style }}>
       <video
         ref={ref}
         {...rest}
-        style={{ width: '100%', height: '100%', display: 'block', background: '#000', borderRadius: 'inherit' }}
+        // `max-height: inherit` takes the wrapper's COMPUTED max-height — whether it came
+        // from a `style` prop or a Tailwind `max-h-*` class — so the constraint the caller
+        // put on "the video" still lands on the video. Without it a tall portrait clip
+        // would size to its intrinsic height and overflow the card; the wrapper's
+        // `overflow: hidden` is the second line of defence, not the first.
+        style={{ width: '100%', maxHeight: 'inherit', display: 'block', background: '#000', borderRadius: 'inherit' }}
         onPlay={e => { setPlaying(true); onPlay?.(e); }}
         onPause={e => { setPlaying(false); onPause?.(e); }}
         onEnded={e => { setPlaying(false); onEnded?.(e); }}

@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { TAREEQ_CATEGORIES, CATEGORY_ICONS } from '@/lib/tareeq-constants';
 import type { TareeqCategoryKey } from '@/lib/tareeq-constants';
 import { compressImage } from '@/lib/compress-image';
+import { compressVideo, canCompressVideo } from '@/lib/tareeq-video-compress';
 
 const CATEGORY_KEYS = Object.keys(TAREEQ_CATEGORIES) as TareeqCategoryKey[];
 
@@ -56,6 +57,9 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
   const [imageAlt, setImageAlt] = useState('');
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const [uploading, setUploading] = useState(false);
+  /** True while the browser is re-encoding a video, which is slow and needs its own label:
+   *  "جاري الرفع 40%" during a local re-encode is simply a lie about what is happening. */
+  const [compressing, setCompressing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadFileName, setUploadFileName] = useState('');
   const [uploadFileSize, setUploadFileSize] = useState(0);
@@ -225,7 +229,8 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
     });
   }
 
-  async function doUpload(file: File) {
+  async function doUpload(originalFile: File) {
+    let file = originalFile;
     /**
      * Refuse an oversized file HERE, before a byte leaves the phone.
      *
@@ -240,19 +245,59 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
      */
     const isImageFile = file.type.startsWith('image/');
     const isAudioFile = file.type.startsWith('audio/');
+    const isVideoFile = file.type.startsWith('video/');
+
+    let workingFile = file;
+
+    // An oversized video is shrunk here rather than refused. Most of the size in a phone
+    // video is resolution and bitrate, and 720p at 1.5 Mbps is already more than Tareeq
+    // ever displays — a 4K clip usually drops by an order of magnitude.
+    //
+    // It runs in real time (see tareeq-video-compress.ts), so the progress bar is not
+    // decoration: without it a three-minute video looks like a frozen app.
+    if (isVideoFile && file.size > MAX_VIDEO_BYTES && canCompressVideo()) {
+      setUploading(true);
+      setMainUploadFailed(false);
+      setUploadFileName(file.name);
+      setUploadFileSize(file.size);
+      setCompressing(true);
+      setUploadProgress(0);
+      setError('');
+      try {
+        const smaller = await compressVideo(file, pct => setUploadProgress(pct));
+        if (smaller) workingFile = smaller;
+      } catch {
+        /* fall through to the size check below */
+      } finally {
+        setCompressing(false);
+        setUploadProgress(0);
+      }
+    }
+
     if (!isImageFile) {
       const cap = isAudioFile ? MAX_AUDIO_BYTES : MAX_VIDEO_BYTES;
-      if (file.size > cap) {
+      if (workingFile.size > cap) {
         setUploading(false);
+        setCompressing(false);
         setMainUploadFailed(true);
+        // Two different messages: "we tried and it is still too big" is a different
+        // situation from "we could not try", and telling the user the wrong one sends them
+        // off to do something that will not help.
+        const tried = workingFile !== file;
         setError(
           isRtl
-            ? `الملف ${mb(file.size)} ميجا، والحد الأقصى ${mb(cap)} ميجا. اضغط الفيديو أو اقصره وحاول تاني.`
-            : `This file is ${mb(file.size)} MB — the limit is ${mb(cap)} MB. Compress or trim it and try again.`,
+            ? tried
+              ? `ضغطنا الفيديو إلى ${mb(workingFile.size)} ميجا، وما زال أكبر من الحد (${mb(cap)} ميجا). اقصره وحاول تاني.`
+              : `الملف ${mb(file.size)} ميجا، والحد الأقصى ${mb(cap)} ميجا. اضغطه أو اقصره وحاول تاني.`
+            : tried
+              ? `Compressed to ${mb(workingFile.size)} MB, still over the ${mb(cap)} MB limit. Trim it and try again.`
+              : `This file is ${mb(file.size)} MB — the limit is ${mb(cap)} MB. Compress or trim it and try again.`,
         );
         return;
       }
     }
+
+    file = workingFile;
 
     setUploading(true);
     setError('');
@@ -620,7 +665,9 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
               : extraUploading
               ? <span className="flex items-center gap-2">
                   <span className="w-3.5 h-3.5 border-2 border-current/30 border-t-current rounded-full animate-spin" />
-                  {isRtl ? 'جاري الرفع...' : 'Uploading...'}
+                  {compressing
+                    ? (isRtl ? 'جاري الضغط...' : 'Compressing...')
+                    : (isRtl ? 'جاري الرفع...' : 'Uploading...')}
                 </span>
               : (isRtl ? 'انشر' : 'Publish')
             }
@@ -829,6 +876,17 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
                         ? `${(uploadFileSize / (1024 * 1024)).toFixed(1)} MB`
                         : `${(uploadFileSize / 1024).toFixed(0)} KB`}
                     </span>
+                    {/* Compressing a video runs in real time, so this is not reassurance —
+                        it is the only thing that stops a three-minute wait reading as a
+                        frozen app, and it says to stay on the screen because leaving it
+                        genuinely cancels the work. */}
+                    {compressing && (
+                      <span className="text-[11px] text-center" style={{ color: 'var(--tr-gold-bright)' }}>
+                        {isRtl
+                          ? 'جاري ضغط الفيديو — يستغرق مدة الفيديو نفسها. لا تغلق الصفحة.'
+                          : 'Compressing — this takes as long as the video itself. Keep this screen open.'}
+                      </span>
+                    )}
                     {/* Linear progress bar */}
                     <div className="w-full h-1 rounded-full mt-1" style={{ background: 'rgba(255,255,255,0.15)' }}>
                       <div
@@ -1225,7 +1283,9 @@ export default function TareeqCreateModal({ onClose, onCreated, initialContent, 
           {uploading && (
             <div className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-full" style={{ color: 'var(--tr-gold)', background: 'var(--tr-gold-glow)' }}>
               <span className="w-3.5 h-3.5 border-2 border-current/30 border-t-current rounded-full animate-spin" />
-              {isRtl ? `جاري الرفع ${uploadProgress}%` : `Uploading ${uploadProgress}%`}
+              {compressing
+                ? (isRtl ? `جاري الضغط ${uploadProgress}%` : `Compressing ${uploadProgress}%`)
+                : (isRtl ? `جاري الرفع ${uploadProgress}%` : `Uploading ${uploadProgress}%`)}
             </div>
           )}
 

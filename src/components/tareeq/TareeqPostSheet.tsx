@@ -36,6 +36,7 @@ interface Comment {
   id: string;
   content: string;
   createdAt: string;
+  editedAt?: string | null;
   userId: string;
   parentId?: string | null;
   replyCount?: number;
@@ -80,6 +81,57 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
   const [post, setPost] = useState<Post | null>(null);
   /** The image opened full-screen. A picture that carries the post's text needs zooming. */
   const [zoomed, setZoomed] = useState<string | null>(null);
+  /** The comment being edited, and its working text. */
+  const [editingComment, setEditingComment] = useState<{ id: string; text: string } | null>(null);
+  const [commentBusy, setCommentBusy] = useState<string | null>(null);
+  /** Which comment is showing its "really delete?" row. No native confirm(): it is
+   *  unstyled, unlocalised, and on mobile it reads as a browser warning, not the app. */
+  const [confirmDeleteComment, setConfirmDeleteComment] = useState<string | null>(null);
+
+  /** Saves an edit. Updates in place rather than refetching the thread — a refetch would
+   *  scroll the reader away from the comment they just fixed. */
+  async function saveCommentEdit(id: string, text: string) {
+    const content = text.trim();
+    if (!content) return;
+    setCommentBusy(id);
+    try {
+      const res = await fetch(`/api/tareeq/comments/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ content }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setComments(prev => prev.map(c => (c.id === id ? { ...c, content, editedAt: d.comment?.editedAt ?? new Date().toISOString() } : c)));
+        setEditingComment(null);
+      } else {
+        setCommentError(d.error || (isRtl ? 'تعذّر حفظ التعديل' : 'Could not save the edit'));
+      }
+    } catch {
+      setCommentError(isRtl ? 'لا يوجد اتصال' : 'No connection');
+    } finally {
+      setCommentBusy(null);
+    }
+  }
+
+  async function deleteComment(id: string) {
+    setCommentBusy(id);
+    try {
+      const res = await fetch(`/api/tareeq/comments/${id}`, { method: 'DELETE', credentials: 'include' });
+      if (res.ok) {
+        setComments(prev => prev.filter(c => c.id !== id));
+        setConfirmDeleteComment(null);
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setCommentError(d.error || (isRtl ? 'تعذّر حذف التعليق' : 'Could not delete the comment'));
+      }
+    } catch {
+      setCommentError(isRtl ? 'لا يوجد اتصال' : 'No connection');
+    } finally {
+      setCommentBusy(null);
+    }
+  }
   const [loading, setLoading] = useState(true);
   const [currentReaction, setCurrentReaction] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
@@ -577,15 +629,102 @@ export default function TareeqPostSheet({ postId, focusComments = false, onClose
                                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
                                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tr-text-primary)' }}>{c.user?.name ?? (isRtl ? 'مجهول' : 'Anonymous')}</span>
                                   <span style={{ fontSize: 10, color: 'var(--tr-text-muted)' }}>{timeAgo(c.createdAt, isRtl)}</span>
+                                  {/* A comment that changes silently after someone replied
+                                      to it is how a conversation gets rewritten. */}
+                                  {c.editedAt && (
+                                    <span style={{ fontSize: 10, color: 'var(--tr-text-muted)' }}>
+                                      · {isRtl ? 'مُعدَّل' : 'edited'}
+                                    </span>
+                                  )}
                                   {post?.pinnedCommentId === c.id && (
                                     <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--tr-gold)', background: 'var(--tr-gold-glow)', borderRadius: 6, padding: '1px 6px' }}>
                                       📌 {isRtl ? 'مثبّت' : 'Pinned'}
                                     </span>
                                   )}
                                 </div>
-                                <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{displayMentions(c.content)}</p>
+                                {editingComment?.id === c.id ? (
+                                  /* Edited in place, not in a modal: the reader needs the
+                                     replies around it visible while rewriting, since that
+                                     is usually why they are editing. */
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                    <textarea
+                                      value={editingComment.text}
+                                      onChange={e => setEditingComment({ id: c.id, text: e.target.value.slice(0, 3000) })}
+                                      rows={3}
+                                      autoFocus
+                                      style={{ width: '100%', fontSize: 13, lineHeight: 1.5, padding: '8px 10px', borderRadius: 10, resize: 'vertical', background: 'var(--tr-raised)', border: '1px solid var(--tr-border-soft)', color: 'var(--tr-text-primary)', outline: 'none' }}
+                                    />
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                      <button
+                                        type="button"
+                                        disabled={commentBusy === c.id || !editingComment.text.trim()}
+                                        onClick={() => saveCommentEdit(c.id, editingComment.text)}
+                                        style={{ fontSize: 11, fontWeight: 800, padding: '5px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'var(--tr-gold)', color: '#080E1C', opacity: commentBusy === c.id ? 0.5 : 1 }}
+                                      >
+                                        {commentBusy === c.id ? (isRtl ? '...' : '...') : (isRtl ? 'حفظ' : 'Save')}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditingComment(null)}
+                                        style={{ fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 8, cursor: 'pointer', background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-subtle)' }}
+                                      >
+                                        {isRtl ? 'إلغاء' : 'Cancel'}
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <p style={{ fontSize: 13, color: 'var(--tr-text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>{displayMentions(c.content)}</p>
+                                )}
+
+                                {confirmDeleteComment === c.id && (
+                                  <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center' }}>
+                                    <span style={{ fontSize: 11, color: 'var(--tr-text-secondary)' }}>{isRtl ? 'حذف التعليق؟' : 'Delete this comment?'}</span>
+                                    <button
+                                      type="button"
+                                      disabled={commentBusy === c.id}
+                                      onClick={() => deleteComment(c.id)}
+                                      style={{ fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', background: '#f43f5e', color: '#fff', opacity: commentBusy === c.id ? 0.5 : 1 }}
+                                    >
+                                      {isRtl ? 'نعم' : 'Yes'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setConfirmDeleteComment(null)}
+                                      style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 8, cursor: 'pointer', background: 'var(--tr-overlay)', color: 'var(--tr-text-secondary)', border: '1px solid var(--tr-border-subtle)' }}
+                                    >
+                                      {isRtl ? 'تراجع' : 'Cancel'}
+                                    </button>
+                                  </div>
+                                )}
+
                                 <div style={{ display: 'flex', gap: 12, marginTop: 4, alignItems: 'center' }}>
                                   <button type="button" onClick={() => setReplyingTo({ commentId: c.id, authorName: c.user?.name ?? '' })} style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{isRtl ? 'رد' : 'Reply'}</button>
+
+                                  {/* Edit: the author only. Editing someone else's words
+                                      under their name is forgery whatever the intent, so
+                                      this is not offered to the post's owner or an admin. */}
+                                  {user?.id === c.userId && editingComment?.id !== c.id && (
+                                    <button
+                                      type="button"
+                                      onClick={() => { setConfirmDeleteComment(null); setEditingComment({ id: c.id, text: c.content }); }}
+                                      style={{ fontSize: 11, fontWeight: 600, color: 'var(--tr-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                                    >
+                                      {isRtl ? 'تعديل' : 'Edit'}
+                                    </button>
+                                  )}
+
+                                  {/* Delete: the author, or whoever owns the post. A post is
+                                      someone's page, and not being able to take something
+                                      off it is what makes people stop writing. */}
+                                  {(user?.id === c.userId || (user && post?.userId === user.id)) && confirmDeleteComment !== c.id && (
+                                    <button
+                                      type="button"
+                                      onClick={() => { setEditingComment(null); setConfirmDeleteComment(c.id); }}
+                                      style={{ fontSize: 11, fontWeight: 600, color: '#f43f5e', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                                    >
+                                      {isRtl ? 'حذف' : 'Delete'}
+                                    </button>
+                                  )}
                                   {/* Emoji reactions on comment */}
                                   <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
                                     <button

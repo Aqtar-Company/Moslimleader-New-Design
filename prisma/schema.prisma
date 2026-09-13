@@ -1070,6 +1070,10 @@ model TareeqComment {
   userId    String
   user      User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   content   String                  @db.Text
+  /// When the author last edited it. Null means never edited — shown as "مُعدَّل" beside
+  /// the time, because a comment that silently changes after someone replied to it is how
+  /// a conversation gets rewritten.
+  editedAt  DateTime?
   isHidden  Boolean                 @default(false)
   hiddenBy  String?
   parentId  String?

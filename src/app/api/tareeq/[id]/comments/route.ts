@@ -30,7 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     take: limit + 1,
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     select: {
-      id: true, content: true, createdAt: true, userId: true, parentId: true,
+      id: true, content: true, createdAt: true, editedAt: true, userId: true, parentId: true,
       user: { select: { id: true, name: true } },
       _count: { select: { replies: true, reactions: true } },
     },
@@ -64,6 +64,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const shaped = items.map(c => ({
     id: c.id, content: c.content, createdAt: c.createdAt,
+    editedAt: c.editedAt,
     userId: c.userId, parentId: c.parentId,
     user: c.user,
     replyCount: c._count.replies,
@@ -125,7 +126,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         ...(commentAutoHide ? { isHidden: true, hiddenBy: 'auto-filter' } : {}),
       },
       select: {
-        id: true, content: true, createdAt: true, userId: true, parentId: true,
+        id: true, content: true, createdAt: true, editedAt: true, userId: true, parentId: true,
         user: { select: { id: true, name: true } },
       },
     }),
